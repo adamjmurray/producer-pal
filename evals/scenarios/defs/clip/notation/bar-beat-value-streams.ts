@@ -22,17 +22,8 @@
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type EvalScenario } from "../../../types.ts";
-import {
-  clearSessionSlots,
-  clipStateAssertion,
-  MSG_CONNECT,
-  TOOL_CONNECT,
-} from "../clip-scenario-helpers.ts";
+import { leadClipNotationScenario } from "../clip-scenario-helpers.ts";
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const LIVE_SET = "basic-midi-4-track";
-/** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
-const LEAD_TRACK = 3;
 /** Float tolerance for note start_time comparisons (in beats). */
 const EPS = 1e-6;
 
@@ -56,52 +47,13 @@ function eightNoteCheck(
 }
 
 /**
- * Build a single-create-clip notation scenario on the Lead track: connect, then
- * one `create-clip` whose read-back is graded by `check` (against the
- * re-interpreted notes in 4/4) with the LLM judge advisory. Both value-stream
- * scenarios share this skeleton; only the prompt, the read-back check, and the
- * judge prompt differ.
- * @param config - Scenario specifics
- * @param config.id - Scenario id
- * @param config.description - One-line description
- * @param config.message - User turn after the connect turn
- * @param config.check - Read-back verdict over the re-interpreted notes
- * @param config.judgePrompt - Advisory LLM-judge prompt
- * @returns The assembled eval scenario
- */
-function leadClipScenario(config: {
-  id: string;
-  description: string;
-  message: string;
-  check: (events: NoteEvent[]) => boolean;
-  judgePrompt: string;
-}): EvalScenario {
-  return {
-    id: config.id,
-    description: config.description,
-    kind: "capability",
-    liveSet: LIVE_SET,
-    judgeAdvisory: true,
-    messages: [MSG_CONNECT, config.message],
-    setup: (mcpClient) => clearSessionSlots(mcpClient, [`${LEAD_TRACK}/0`]),
-    assertions: [
-      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-      clipStateAssertion(`${LEAD_TRACK}/0`, "4/4", config.check),
-      { type: "llm_judge", prompt: config.judgePrompt },
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
-    ],
-  };
-}
-
-/**
  * Loud/soft alternating eighth-note line: velocity cycles 110, 70 across eight
  * eighth notes filling a 4/4 bar. The canonical bracket form is
  * `[v110 v70] C3 1|1x8@n/8`. The read-back checks every note's pitch, position
  * (eighths at Ableton beats 0, 0.5, …, 3.5), and the alternating velocity — the
  * accent pattern is the part a note count alone can't verify.
  */
-export const barBeatVelocityAccent: EvalScenario = leadClipScenario({
+export const barBeatVelocityAccent: EvalScenario = leadClipNotationScenario({
   id: "bar-beat-velocity-accent",
   description:
     "Alternating loud/soft eighth-note line — velocity cycling across a bar",
@@ -129,7 +81,7 @@ const GALLOP_ONSETS = [0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75];
  * left to the advisory judge since a hand-written gallop may voice lengths
  * differently while keeping the same onsets.
  */
-export const barBeatGallop: EvalScenario = leadClipScenario({
+export const barBeatGallop: EvalScenario = leadClipNotationScenario({
   id: "bar-beat-gallop",
   description: "Galloping dotted-8th + 16th rhythm — duration-fold spacing",
   message:

@@ -13,7 +13,7 @@ Format: v<vel> n<dur> [p<prob>] pitch(es) bar|beat(s)
 - v: velocity 0-127 (default 100). n: duration, an absolute note value (default n/4 = quarter). p: probability 0-1 (default 1) — opt-in; if any note uses it, set it on every note
 - Durations REQUIRE a denominator: n/4 = quarter, n/8 = eighth, n/16 = sixteenth, n/12 = eighth triplet. n3/8 = dotted quarter, n3/16 = dotted eighth. Bare integers or decimals are invalid
 - **Set n explicitly and re-set it per drum/pitch** — it persists, so a hat's n/16 otherwise carries onto the next kick
-- Positions: bar|beat — **bar number first, beat second** (\`3|2\` = bar 3, beat 2, NOT beat 3 of bar 2), both 1-indexed. A decimal places a note *within* a beat — \`1|1.5\` = the "&" (halfway), \`1|1.75\` = the last 16th (in 4/4)
+- Positions: bar|beat — reads left-to-right like the name: \`4|2\` is bar 4 beat 2, \`2|4\` is bar 2 beat 4, both 1-indexed. For one note per bar, step the LEFT number (\`1|1 2|1 3|1 4|1\`); to move within a bar, step the right number (\`1|1 1|2 1|3 1|4\`). A decimal places a note *within* a beat — \`1|1.5\` = the "&" (halfway), \`1|1.75\` = the last 16th (in 4/4)
 
 ### Melody (one quarter note per beat across 2 bars)
 \`\`\`

@@ -20,6 +20,10 @@ export {
   barBeatTriplets,
 } from "./clip/notation/bar-beat-absolute-durations.ts";
 export {
+  barBeatPerBarChord,
+  barBeatPerBarNote,
+} from "./clip/notation/bar-beat-multibar-spread.ts";
+export {
   barBeatMelodicCompoundStepping,
   barBeatMelodicLegatoRun,
   barBeatMelodicStepping,
