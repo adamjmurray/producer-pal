@@ -157,15 +157,140 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
     });
   });
 
-  describe("replacement (stream supersedes prior pitch state)", () => {
-    it("replaces a preceding bare pitch with the stream", () => {
-      // C3 sets the pitch to a length-1 chord; the bracket then replaces it, so
-      // only the stream emits (C3 is dropped) — the spec's "later assignment
-      // replaces the parameter's stream" rule.
+  describe("pitch layering (multiple voices in a group)", () => {
+    it("layers a bare pitch under a bracket (does not replace it)", () => {
+      // C3 captures a constant voice; the bracket ADDS a second voice rather
+      // than superseding it, so both sound together (pitch brackets layer).
       const result = interpretNotation("C3 [E3 G3] 1|1");
 
       expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
         [64, 0],
+      ]);
+    });
+
+    it("holds a bare pitch under a moving bracket line (user example 1)", () => {
+      // `C4 [E4 G4 C5]` = a held C4 layered under a moving line. Asserted both
+      // structurally and against the fully written-out equivalent.
+      const result = interpretNotation("n/4 C4 [E4 G4 C5] 1|1,2,3,4");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [72, 0],
+        [76, 0],
+        [72, 1],
+        [79, 1],
+        [72, 2],
+        [84, 2],
+        [72, 3],
+        [76, 3],
+      ]);
+      expect(result).toStrictEqual(
+        interpretNotation("n/4 C4 E4 1|1 C4 G4 1|2 C4 C5 1|3 C4 E4 1|4"),
+      );
+    });
+
+    it("phases two voices of unequal length (user example 2)", () => {
+      // Voices of length 2 and 3 phase against the shared emission index.
+      const result = interpretNotation("n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 0],
+        [72, 1],
+        [67, 1],
+        [60, 2],
+        [76, 2],
+        [72, 3],
+        [64, 3],
+      ]);
+      expect(result).toStrictEqual(
+        interpretNotation("n/4 C3 E3 1|1 C4 G3 1|2 C3 E4 1|3 C4 E3 1|4"),
+      );
+    });
+
+    it("layers a bracket that precedes a bare pitch (constant emits first)", () => {
+      const result = interpretNotation("[E3 G3] C3 1|1,2");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 0],
+        [60, 1],
+        [67, 1],
+      ]);
+    });
+
+    it("layers a multi-pitch constant chord under a bracket", () => {
+      const result = interpretNotation("C3 E3 [G3 A3] 1|1,2");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 0],
+        [67, 0],
+        [60, 1],
+        [64, 1],
+        [69, 1],
+      ]);
+    });
+
+    it("layers a constant pitch under a bracket of chords", () => {
+      const result = interpretNotation("C2 [(C3 E3) (D3 F3)] 1|1,2");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [48, 0],
+        [60, 0],
+        [64, 0],
+        [48, 1],
+        [62, 1],
+        [65, 1],
+      ]);
+    });
+
+    it("carries the shared cursor for layered voices across positions", () => {
+      // The two voices persist past the first time position and keep phasing on
+      // the shared cross-event cursor.
+      const result = interpretNotation("[C3 C4] [E3 G3 E4] 1|1 1|2");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 0],
+        [72, 1],
+        [67, 1],
+      ]);
+    });
+
+    it("drops out-of-range pitches per voice, keeping the layered rest", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = interpretNotation("C3 [E3 C9] 1|1,2");
+
+      // C9 (132) is dropped from its voice at index 1; C3 keeps sounding.
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 0],
+        [60, 1],
+      ]);
+      expect(warn).toHaveBeenCalledWith(
+        "MIDI pitch 132 outside valid range 0-127; note skipped",
+      );
+      warn.mockRestore();
+    });
+
+    it("warns and emits nothing when every layered voice is empty", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = interpretNotation("[C9 D9] 1|1");
+
+      expect(result).toStrictEqual([]);
+      expect(warn).toHaveBeenCalledWith("Time position 1|1 has no pitches");
+      warn.mockRestore();
+    });
+
+    it("does not layer a bracket after a time position (fresh group)", () => {
+      // The second bracket follows an emission, so it starts a fresh group and
+      // clears the first voice instead of layering with it.
+      const result = interpretNotation("[C3 E3] 1|1 [G3 A3] 1|2");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [67, 1],
       ]);
     });
   });

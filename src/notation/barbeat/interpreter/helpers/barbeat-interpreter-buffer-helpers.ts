@@ -32,19 +32,24 @@ export interface InterpreterState {
   currentVelocityMax?: number | null;
   currentPitches: PitchState[];
   /**
-   * Active pitch stream (pattern bracket): a list of chords cycled across
-   * emitted note-events. `null`/absent ⇒ no active stream, so emission falls
-   * back to the single `currentPitches` chord. The stream PERSISTS across
-   * separate time positions (cross-event cursor) and is replaced/cleared only on
-   * reassignment (a later pitch token or bracket), `@clear`, or bar copy.
+   * Active pitch "voices" within the current group (pattern brackets): a list of
+   * voices, each a list of chords cycled across emitted note-events. Pitch
+   * brackets LAYER — multiple voices stack into a chord at each emission, each
+   * voice cycling by its own length against the shared cursor. Empty `[]` ⇒ no
+   * active brackets, so emission uses only the single `currentPitches` chord.
+   * Voices accumulate only WITHIN a group (tokens before the group's first time
+   * position); they PERSIST across separate time positions (cross-event cursor)
+   * and clear on the next group start, `@clear`, or bar copy. (Velocity/
+   * duration/probability stay single last-wins streams — stacking those is
+   * meaningless; stacking pitches is a chord.)
    */
-  currentPitchStream?: PitchState[][] | null;
+  currentPitchStreams: PitchState[][][];
   /**
-   * Cursor into `currentPitchStream`, advanced once per emitted note-event and
-   * carried across separate time positions. Value at emission `i` is
-   * `stream[cursor mod stream.length]`. Reset to 0 when the pitch stream is
-   * (re)assigned. Harmless for the length-1 fallback (`cursor mod 1` is always
-   * 0), so it can advance unconditionally.
+   * Shared cursor into every pitch voice, advanced once per emitted note-event
+   * and carried across separate time positions. The chord emitted at index `i`
+   * is the union over all voices of `voice[(cursor + i) mod voice.length]`. Reset
+   * to 0 at each group start. Harmless for the length-1 fallback (`cursor mod 1`
+   * is always 0), so it can advance unconditionally.
    */
   pitchStreamCursor: number;
   /**
@@ -69,7 +74,7 @@ export interface InterpreterState {
 
 export interface BufferState {
   currentPitches: PitchState[];
-  currentPitchStream?: PitchState[][] | null;
+  currentPitchStreams: PitchState[][][];
   pitchesEmitted: boolean;
   stateChangedSinceLastPitch: boolean;
   pitchGroupStarted: boolean;
@@ -86,7 +91,7 @@ export interface BarCopyResult {
  */
 export function clearPitchBuffer(state: InterpreterState): void {
   state.currentPitches = [];
-  state.currentPitchStream = null;
+  state.currentPitchStreams = [];
   state.pitchStreamCursor = 0;
   state.pitchGroupStarted = false;
   state.pitchesEmitted = false;
@@ -95,17 +100,19 @@ export function clearPitchBuffer(state: InterpreterState): void {
 }
 
 /**
- * Count un-emitted buffered pitches across both the single `currentPitches`
- * chord and any pending pitch stream. Used by the "buffered but not emitted"
- * warnings so a dangling pattern bracket is reported like a dangling chord.
+ * Count un-emitted buffered pitches across the single `currentPitches` chord and
+ * every pending pitch voice (summed over each voice's chords). Used by the
+ * "buffered but not emitted" warnings so dangling pattern brackets are reported
+ * like a dangling chord.
  * @param state - Buffer/interpreter state to inspect
- * @returns Total pitch count buffered (chord + stream)
+ * @returns Total pitch count buffered (chord + all voices)
  */
 export function countBufferedPitches(
-  state: Pick<BufferState, "currentPitches" | "currentPitchStream">,
+  state: Pick<BufferState, "currentPitches" | "currentPitchStreams">,
 ): number {
-  const streamCount = (state.currentPitchStream ?? []).reduce(
-    (sum, chord) => sum + chord.length,
+  const streamCount = state.currentPitchStreams.reduce(
+    (sum, voice) =>
+      sum + voice.reduce((voiceSum, chord) => voiceSum + chord.length, 0),
     0,
   );
 
@@ -222,9 +229,9 @@ export function handlePropertyUpdate(
 
 /**
  * Apply an update to every buffered pitch state — the single carried chord
- * (`currentPitches`) and each chord of a carried pitch stream
- * (`currentPitchStream`). Lets a post-emission scalar retroactively update a
- * carried stream the same way it updates a carried bare pitch.
+ * (`currentPitches`) and every chord of every carried pitch voice
+ * (`currentPitchStreams`). Lets a post-emission scalar retroactively update
+ * carried voices the same way it updates a carried bare pitch.
  * @param state - Interpreter state holding the buffered pitches
  * @param pitchUpdater - Function to mutate each pitch state
  */
@@ -236,9 +243,11 @@ function applyToBufferedPitches(
     pitchUpdater(pitchState);
   }
 
-  for (const chord of state.currentPitchStream ?? []) {
-    for (const pitchState of chord) {
-      pitchUpdater(pitchState);
+  for (const voice of state.currentPitchStreams) {
+    for (const chord of voice) {
+      for (const pitchState of chord) {
+        pitchUpdater(pitchState);
+      }
     }
   }
 }
@@ -251,7 +260,7 @@ function applyToBufferedPitches(
 export function extractBufferState(state: InterpreterState): BufferState {
   return {
     currentPitches: state.currentPitches,
-    currentPitchStream: state.currentPitchStream,
+    currentPitchStreams: state.currentPitchStreams,
     pitchesEmitted: state.pitchesEmitted,
     stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
     pitchGroupStarted: state.pitchGroupStarted,

@@ -76,6 +76,15 @@ describe("pattern brackets are author-only sugar (never serialized)", () => {
     );
   });
 
+  it("layered pitch voices expand to explicit chords", () => {
+    // Two pitch voices (lengths 2 and 3) phase into chords; the serialized form
+    // is the explicit chord-per-position expansion, not re-bracketed.
+    expectBracketSugar(
+      "n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4",
+      "n/4 C3 E3 1|1 C4 G3 1|2 C3 E4 1|3 C4 E3 1|4",
+    );
+  });
+
   it("pitch stream in 6/8 expands meter-correctly", () => {
     expectBracketSugar("n/8 [C3 E3 G3] 1|1x3@n/8", "n/8 C3 1|1 E3 1|2 G3 1|3", {
       timeSigNumerator: 6,

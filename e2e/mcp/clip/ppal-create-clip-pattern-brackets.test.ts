@@ -12,11 +12,13 @@
  * author-only sugar — the read-back notation is always bracket-free explicit
  * notes that re-interpret to the expansion.
  *
- * Covers pitch streams, the velocity/pitch zip, and the no-@step duration-fold
- * (gallop). All cases are overlap-safe (legato-touching or distinct pitches), so
- * they round-trip through Live's add_new_notes without truncation/deletion.
+ * Covers pitch streams, the velocity/pitch zip, the no-@step duration-fold
+ * (gallop), and pitch layering (multiple pitch voices stacking into chords). All
+ * cases are overlap-safe (legato-touching or distinct pitches), so they
+ * round-trip through Live's add_new_notes without truncation/deletion.
  *
- * Uses: e2e-test-set — t8 is the empty MIDI track.
+ * Uses: e2e-test-set — t8 is the empty MIDI track. Slots /0../5 (avoids /4, the
+ * 3/4 scene s4, so all cases stay in 4/4).
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-create-clip-pattern-brackets
@@ -89,6 +91,47 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
       { pitch: 60, start: 4, duration: 0.5 },
       { pitch: 60, start: 4.5, duration: 1 },
       { pitch: 60, start: 5.5, duration: 0.5 },
+    ]);
+  });
+
+  it("layers a held pitch under a moving bracket line", async () => {
+    const { notation, events } = await createAndReadback(
+      `${emptyMidiTrack}/3`,
+      "n/4 C4 [E4 G4 C5] 1|1,2,3,4",
+    );
+
+    expect(notation).not.toMatch(/[[\]]/);
+    // Held C4 (72) layered under the moving line E4/G4/C5/E4.
+    expectNotes(events, [
+      { pitch: 72, start: 0, duration: 1 },
+      { pitch: 76, start: 0, duration: 1 },
+      { pitch: 72, start: 1, duration: 1 },
+      { pitch: 79, start: 1, duration: 1 },
+      { pitch: 72, start: 2, duration: 1 },
+      { pitch: 84, start: 2, duration: 1 },
+      { pitch: 72, start: 3, duration: 1 },
+      { pitch: 76, start: 3, duration: 1 },
+    ]);
+  });
+
+  it("layers two pitch voices that phase into chords", async () => {
+    const { notation, events } = await createAndReadback(
+      `${emptyMidiTrack}/5`,
+      "n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4",
+    );
+
+    expect(notation).not.toMatch(/[[\]]/);
+    // Voices [C3 C4] (len 2) and [E3 G3 E4] (len 3) phase: (C3,E3) (C4,G3)
+    // (C3,E4) (C4,E3). Listed time-then-pitch sorted.
+    expectNotes(events, [
+      { pitch: 60, start: 0, duration: 1 },
+      { pitch: 64, start: 0, duration: 1 },
+      { pitch: 67, start: 1, duration: 1 },
+      { pitch: 72, start: 1, duration: 1 },
+      { pitch: 60, start: 2, duration: 1 },
+      { pitch: 76, start: 2, duration: 1 },
+      { pitch: 64, start: 3, duration: 1 },
+      { pitch: 72, start: 3, duration: 1 },
     ]);
   });
 });

@@ -74,6 +74,9 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
     });
 
     it("parses sibling pitch streams as separate elements", () => {
+      // The grammar is unchanged by pitch layering: sibling brackets parse to
+      // two independent pitch-stream elements. Layering them into a chord is an
+      // interpreter concern (see barbeat-interpreter-pitch-streams.test.ts).
       expect(parser.parse("[C3 E3] [G3 A3]")).toStrictEqual([
         {
           stream: {

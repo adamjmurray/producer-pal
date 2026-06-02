@@ -518,6 +518,31 @@ Emission reads two independent things, both indexed by a per-parameter cursor
 When every stream is length-1, the zip reduces **exactly** to today's broadcast
 (each position emits the whole pitch buffer) — full backward compatibility.
 
+#### Pitch LAYERS; velocity/duration/probability are last-wins
+
+Pitch is the one parameter that can hold **multiple voices at once**. Within a
+group, the constant chord (bare pitches) and every pitch bracket are independent
+**voices**, each a stream of chords. At emission `i` the sounding chord is the
+**union over all voices** of `voice[(cursor + i) mod voice.length]` — one shared
+pitch cursor, each voice cycling by its own length, so voices of unequal length
+phase against each other.
+
+```
+C4 [E4 G4 C5] 1|1,2,3,4   // held C4 layered under a moving line:
+                          //   (C4,E4) (C4,G4) (C4,C5) (C4,E4)
+[C3 C4] [E3 G3 E4] 1|1,2,3,4   // two voices (len 2, len 3) phasing:
+                               //   (C3,E3) (C4,G3) (C3,E4) (C4,E3)
+```
+
+Velocity, duration, and probability are **single last-wins streams** — a note
+has exactly one of each, so stacking them is meaningless; a second value bracket
+for the same parameter replaces the first. Stacking _pitches_ is a chord, which
+is musically meaningful, so pitch layers instead. Layering only accumulates
+**within a group** (pitch tokens before the group's first time position); a
+pitch token or bracket after a time position starts a fresh group (see Cursor
+lifetime). A single pitch voice still behaves exactly as before — `[C1] 1|1`
+emits one note, the length-1 == scalar invariant.
+
 ### Syntax
 
 ```
@@ -550,11 +575,14 @@ When every stream is length-1, the zip reduces **exactly** to today's broadcast
   cursor advances **once per emitted note-event** — a chord counts as one event.
   It never rewinds.
 - A stream **persists until its parameter is reassigned**, advancing **globally
-  across separate note events**, not just within one `x<count>` expansion. A
-  later scalar, or a later `[...]` for the same parameter, replaces the stream
-  with a fresh cursor (index 0). All four parameters implement this — each
-  parameter's cursor carries across separate time positions and comma-separated
-  beat lists, independently.
+  across separate note events**, not just within one `x<count>` expansion. For
+  **velocity/duration/probability**, a later scalar or a later `[...]` for that
+  parameter replaces the stream with a fresh cursor (index 0). For **pitch**, a
+  later pitch token or bracket _within the same group_ LAYERS (adds a voice); a
+  pitch token or bracket _after a time position_ starts a fresh group, which
+  clears the voices and rewinds the shared pitch cursor to 0. Each cursor
+  carries across separate time positions and comma-separated beat lists,
+  independently.
 - **Identity is lexical, not textual.** The same bracket text written twice is
   two independent streams, each starting at index 0.
 
@@ -580,11 +608,17 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 ### Rules and errors
 
 - **Bare token = constant (length-1) stream.** Don't bracket what doesn't vary.
-- **One active stream per parameter — last wins.** A second bracket for the same
-  parameter replaces the first with a fresh cursor (no error), consistent across
-  all parameters. (The locked design floated a parse-time error here; it was
-  dropped — a hard error would abort the whole clip's notation, and last-wins is
-  unambiguous and recoverable, matching the forgiving-parser philosophy.)
+- **Velocity/duration/probability: one active stream per parameter — last
+  wins.** A second bracket for the same value parameter replaces the first with
+  a fresh cursor (no error). (The locked design floated a parse-time error here;
+  it was dropped — a hard error would abort the whole clip's notation, and
+  last-wins is unambiguous and recoverable, matching the forgiving-parser
+  philosophy.)
+- **Pitch: multiple voices LAYER within a group.** A bare pitch/chord and any
+  number of pitch brackets before the group's first time position stack into one
+  sounding chord, each cycling on its own length against the shared pitch
+  cursor. (Reassignment happens at the group boundary, not per-bracket — a pitch
+  token after a time position starts a fresh group.) This never errors.
 - **Flat two-level grammar; nesting is a parse-time type error.** A stream's
   element is a value (a bare token or a one-level `(...)` chord), never another
   stream. `[A [B C] D]` is rejected at parse time (`[B C]` is a schedule, not a
@@ -648,6 +682,18 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 // folding to 1|1, 1|2, 1|2.5, 1|3.5, 1|4, 2|1, 2|1.5, 2|2.5
 ```
 
+**Pitch layering (voices stack into chords):**
+
+```
+n/4 C4 [E4 G4 C5] 1|1,2,3,4
+// held C4 under a moving line; equivalent to:
+//   n/4 C4 E4 1|1 C4 G4 1|2 C4 C5 1|3 C4 E4 1|4
+
+n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4
+// two voices (len 2, len 3) phasing; equivalent to:
+//   n/4 C3 E3 1|1 C4 G3 1|2 C3 E4 1|3 C4 E3 1|4
+```
+
 ### AST shape
 
 A bracket parses to a single element carrying its parameter kind and the ordered
@@ -655,13 +701,14 @@ value list: `{ stream: { param, values } }`, discriminated by `param`. For
 `"pitch"` each value is a chord (a length-1 array for a bare pitch);
 `"velocity"` values are `{ velocity }` or `{ velocityMin, velocityMax }`,
 `"duration"` values are `{ duration, bars? }`, and `"probability"` values are
-`{ probability }`. The interpreter holds the pitch stream as
-`state.currentPitchStream` (a `PitchState[][]`) and each value stream as
-`state.current<Param>Stream` with a per-parameter cursor; at emission `i` a
-value stream's value (`values[(cursor + i) mod length]`) OVERRIDES the per-pitch
-captured value, and the pitch chord comes from
-`pitchStream[(cursor + i) mod length]`. See the **AST Schema** section for the
-element type.
+`{ probability }`. The interpreter holds the pitch voices as
+`state.currentPitchStreams` (a `PitchState[][][]` — a list of voices, each a
+list of chords) and each value stream as `state.current<Param>Stream` with a
+per-parameter cursor; at emission `i` a value stream's value
+(`values[(cursor + i) mod length]`) OVERRIDES the per-pitch captured value, and
+the sounding chord is the union over all voices of
+`voice[(cursor + i) mod voice.length]` (the constant chord `currentPitches` is
+the implicit first voice). See the **AST Schema** section for the element type.
 
 ---
 

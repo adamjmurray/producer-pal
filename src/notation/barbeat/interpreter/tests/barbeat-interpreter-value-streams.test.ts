@@ -202,6 +202,28 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
         [67, 5, 100, 0.5],
       ]);
     });
+
+    it("applies one velocity per emission to a layered (multi-voice) chord", () => {
+      // A velocity stream zips against the emission index while two pitch voices
+      // LAYER: the cycled velocity applies to the whole layered chord, not per
+      // voice. (Regression for value-stream zip × pitch layering.)
+      const result = interpretNotation(
+        "n/4 [v80 v100] [C3 C4] [E3 G3 E4] 1|1,2,3,4",
+      );
+
+      expect(
+        result.map((n) => [n.pitch, n.start_time, n.velocity]),
+      ).toStrictEqual([
+        [60, 0, 80],
+        [64, 0, 80],
+        [72, 1, 100],
+        [67, 1, 100],
+        [60, 2, 80],
+        [76, 2, 80],
+        [72, 3, 100],
+        [64, 3, 100],
+      ]);
+    });
   });
 
   describe("cross-event cursor (value streams persist across positions)", () => {
@@ -273,8 +295,9 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
     });
 
     it("lets a second bracket replace the first for the same parameter (last wins)", () => {
-      // A redundant value stream is last-wins (consistent with pitch), not a
-      // hard error that would abort the whole clip's notation.
+      // Value streams are last-wins — a note has exactly one velocity, so a
+      // second velocity bracket supersedes the first. (Pitch is the exception:
+      // multiple pitch brackets LAYER into a chord instead of replacing.)
       const result = interpretNotation("[v80 v100] [v60 v70] C3 1|1x2@n/4");
 
       expect(result.map((n) => n.velocity)).toStrictEqual([60, 70]);

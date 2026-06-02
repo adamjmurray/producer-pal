@@ -69,14 +69,7 @@ function processPitchElement(
   state: InterpreterState,
 ): void {
   if (!state.pitchGroupStarted) {
-    state.currentPitches = [];
-    // A bare pitch reassigns the pitch parameter to a length-1 stream, so it
-    // replaces any active pattern bracket and rewinds the cursor.
-    state.currentPitchStream = null;
-    state.pitchStreamCursor = 0;
-    state.pitchGroupStarted = true;
-    state.pitchesEmitted = false;
-    state.stateChangedAfterEmission = false;
+    startPitchGroup(state);
   }
 
   // Out-of-range pitch is skipped (other pitches in the same chord/group still
@@ -137,11 +130,28 @@ function processStreamElement(
 }
 
 /**
- * Build the pitch buffer from a pitch stream's chords. Starts a pitch group
- * (mirror processPitchElement) so the post-stream "state change won't affect
- * this group" warning still fires, captures the current velocity/duration/
- * probability into each chord, and rewinds the cursor. Out-of-range pitches are
- * dropped per chord (matching plain pitches).
+ * Start a fresh pitch group: clear the constant chord, the layered voices, and
+ * the shared cursor, and reset the group flags. Shared by the bare-pitch and
+ * pitch-stream paths so a group begins identically however its first pitch token
+ * arrives.
+ * @param state - Interpreter state
+ */
+function startPitchGroup(state: InterpreterState): void {
+  state.currentPitches = [];
+  state.currentPitchStreams = [];
+  state.pitchStreamCursor = 0;
+  state.pitchGroupStarted = true;
+  state.pitchesEmitted = false;
+  state.stateChangedAfterEmission = false;
+}
+
+/**
+ * Add a pitch stream's chords as a LAYERED voice in the current group. Starts a
+ * group when needed (mirror processPitchElement) so the post-stream "state
+ * change won't affect this group" warning still fires, captures the current
+ * velocity/duration/probability into each chord, and APPENDS the voice (pitch
+ * brackets layer — they do not replace). Out-of-range pitches are dropped per
+ * chord (matching plain pitches). The shared cursor rewinds only at group start.
  * @param values - Pitch stream chords (each a list of pitches)
  * @param state - Interpreter state
  */
@@ -150,19 +160,16 @@ function processPitchStreamElement(
   state: InterpreterState,
 ): void {
   if (!state.pitchGroupStarted) {
-    state.currentPitches = [];
-    state.pitchGroupStarted = true;
-    state.pitchesEmitted = false;
-    state.stateChangedAfterEmission = false;
+    startPitchGroup(state);
   }
 
-  state.currentPitchStream = values.map((chord) =>
+  const voice = values.map((chord) =>
     chord
       .filter((value) => acceptPitch(value.pitch))
       .map((value) => buildPitchState(value.pitch, state)),
   );
-  // A new bracket reassigns the pitch parameter, so its cursor starts fresh.
-  state.pitchStreamCursor = 0;
+
+  state.currentPitchStreams.push(voice);
   state.stateChangedSinceLastPitch = false;
 }
 
@@ -327,7 +334,7 @@ export function interpretNotation(
       currentVelocityMin: null,
       currentVelocityMax: null,
       currentPitches: [],
-      currentPitchStream: null,
+      currentPitchStreams: [],
       pitchStreamCursor: 0,
       currentVelocityStream: null,
       velocityStreamCursor: 0,

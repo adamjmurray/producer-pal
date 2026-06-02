@@ -186,19 +186,21 @@ function emitPitchAtPosition(
 }
 
 /**
- * Emit a pitch stream across multiple positions, zipping value to position by a
- * cursor that carries across separate time positions. `pitchStream` is a stream
- * of chords (each element is a chord = one or more simultaneous pitches); the
- * `i`-th position emits the chord at `pitchStream[(startCursor + i) mod length]`.
- * A plain (unbracketed) chord is a length-1 stream, so every position re-emits
- * the same chord — the existing broadcast. Pattern brackets (streams) make the
- * stream longer so the value cycles, and `startCursor` lets a bracket continue
- * cycling across multiple position tokens (cross-event cursor; see "Pattern
- * Brackets (Streams)" in dev/specs/BarBeat-Spec.md).
+ * Emit layered pitch voices across multiple positions, zipping value to position
+ * by a cursor that carries across separate time positions. `voices` is a list of
+ * voices, each a stream of chords; the chord emitted at the `i`-th position is
+ * the UNION over all voices of `voice[(startCursor + i) mod voice.length]`. Pitch
+ * brackets LAYER — each voice cycles by its own length, so voices of unequal
+ * length phase against each other. A single unbracketed chord is one length-1
+ * voice, so every position re-emits the same chord (the existing broadcast).
+ * `startCursor` lets the voices continue cycling across multiple position tokens
+ * (cross-event cursor; see "Pattern Brackets (Streams)" in
+ * dev/specs/BarBeat-Spec.md).
  * Any active velocity/duration/probability value stream OVERRIDES the captured
- * per-pitch value at each emission, cycled by its own carried cursor (the zip).
+ * per-pitch value at each emission, cycled by its own carried cursor (the zip);
+ * it applies to the whole layered chord.
  * @param positions - Array of time positions
- * @param pitchStream - Stream of chords (length 1 for unbracketed input)
+ * @param voices - List of pitch voices (each a stream of chords; >= 1 voice)
  * @param state - Interpreter state (carries the per-parameter cursors + streams)
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator
@@ -208,7 +210,7 @@ function emitPitchAtPosition(
  */
 function emitPitchesAtPositions(
   positions: TimePosition[],
-  pitchStream: PitchState[][],
+  voices: PitchState[][][],
   state: InterpreterState,
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
@@ -219,11 +221,13 @@ function emitPitchesAtPositions(
 
   for (const [i, position] of positions.entries()) {
     currentTime = position;
-    // Modulo keeps the index in range (stream length is always >= 1), so the
-    // chord is always defined; the cast documents the guaranteed bounds.
-    const chord = pitchStream[
-      (state.pitchStreamCursor + i) % pitchStream.length
-    ] as PitchState[];
+    // Each voice cycles by its own length (always >= 1), so the per-voice chord
+    // is always defined; the cast documents the guaranteed bounds. flatMap
+    // unions the voices' chords into the layered chord emitted at this position.
+    const chord = voices.flatMap(
+      (voice) =>
+        voice[(state.pitchStreamCursor + i) % voice.length] as PitchState[],
+    );
     const velocity = streamValueAt(
       state.currentVelocityStream,
       state.velocityStreamCursor,
@@ -354,11 +358,17 @@ export function handlePitchEmission(
   events: NoteEvent[],
   notesByBar: Map<number, BarCopyNote[]>,
 ): void {
-  // A pending pattern bracket is the pitch source when present; otherwise the
-  // single current chord as a length-1 stream. All-length-1 ⇒ today's broadcast.
-  const pitchStream = state.currentPitchStream ?? [state.currentPitches];
-  const totalPitches = pitchStream.reduce(
-    (sum, chord) => sum + chord.length,
+  // The voices that layer at each position: the single current chord (a
+  // length-1 voice, present only when bare pitches were captured) plus every
+  // pattern-bracket voice. With no brackets and one chord this is today's
+  // broadcast; with multiple voices they stack and phase (pitch layering).
+  const voices: PitchState[][][] =
+    state.currentPitches.length > 0
+      ? [[state.currentPitches], ...state.currentPitchStreams]
+      : [...state.currentPitchStreams];
+  const totalPitches = voices.reduce(
+    (sum, voice) =>
+      sum + voice.reduce((voiceSum, chord) => voiceSum + chord.length, 0),
     0,
   );
 
@@ -386,7 +396,7 @@ export function handlePitchEmission(
 
   const emitResult = emitPitchesAtPositions(
     positions,
-    pitchStream,
+    voices,
     state,
     beatsPerBar,
     timeSigDenominator,
