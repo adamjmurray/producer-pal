@@ -9,6 +9,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { createNote } from "#src/test/test-data-builders.ts";
 import { createClip } from "../create-clip.ts";
 import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
 
@@ -114,5 +115,33 @@ describe("createClip - arrangement view", () => {
         notes: "C4 1|1",
       }),
     ).rejects.toThrow("trackIndex is required for arrangement clips");
+  });
+
+  it("cycles clipseq() by clip.index across arrangement positions", async () => {
+    const { track, clip } = setupArrangementClipMocks();
+
+    await createClip({
+      trackIndex: 0,
+      arrangementStart: "1|1,2|1,3|1",
+      notes: "C3 1|1",
+      transforms: "velocity = clipseq(11, 22, 33)",
+    });
+
+    // All three positions resolve to the same mock clip, so inspect each
+    // add_new_notes payload: the velocity cycles by clip.index per position.
+    const addNotesPayloads = clip.call.mock.calls
+      .filter((call: unknown[]) => call[0] === "add_new_notes")
+      .map((call: unknown[]) => call[1]);
+
+    expect(addNotesPayloads).toStrictEqual([
+      { notes: [createNote({ velocity: 11 })] },
+      { notes: [createNote({ velocity: 22 })] },
+      { notes: [createNote({ velocity: 33 })] },
+    ]);
+
+    // create_midi_clip still receives the per-position arrangement start
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 4, 4);
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
   });
 });

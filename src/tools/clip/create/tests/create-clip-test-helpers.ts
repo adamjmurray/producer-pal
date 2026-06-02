@@ -26,7 +26,13 @@ export interface ArrangementClipMockHandles {
 export function setupArrangementClipMocks(): ArrangementClipMockHandles {
   const liveSet = registerMockObject("live-set", {
     path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      // scale_mode 0 = no active scale, so transform tests resolve scale:mask
+      // to undefined rather than reading undefined scale intervals.
+      scale_mode: 0,
+    },
   });
 
   const track = registerMockObject("track-0", {

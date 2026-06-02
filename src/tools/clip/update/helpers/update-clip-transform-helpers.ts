@@ -7,12 +7,9 @@ import { sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import {
-  CHROMATIC_SCALE_MASK,
-  scaleIntervalsToPitchClassMask,
-} from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
   getClipNoteCount,
@@ -125,24 +122,6 @@ export function buildClipContext(
       : undefined,
     barDuration: timeSigNumerator,
     timeSigDenominator,
-    scalePitchClassMask: readScaleMask(),
+    scalePitchClassMask: readLiveSetScaleMask(),
   };
-}
-
-/**
- * Read the Live Set's global scale and return a pitch class bitmask.
- * Returns undefined if no scale is active or the scale is chromatic (no-op optimization).
- * @returns Pitch class bitmask, or undefined for no-op cases
- */
-function readScaleMask(): number | undefined {
-  const liveSet = LiveAPI.from("live_set");
-  const scaleMode = liveSet.getProperty("scale_mode") as number;
-
-  if (scaleMode === 0) return undefined;
-
-  const rootNote = liveSet.getProperty("root_note") as number;
-  const intervals = liveSet.getProperty("scale_intervals") as number[];
-  const mask = scaleIntervalsToPitchClassMask(intervals, rootNote);
-
-  return mask === CHROMATIC_SCALE_MASK ? undefined : mask;
 }
