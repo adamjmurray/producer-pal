@@ -192,20 +192,54 @@ export function handlePropertyUpdate(
   state: InterpreterState,
   pitchUpdater: (pitchState: PitchState) => void,
 ): void {
-  if (state.pitchGroupStarted && state.currentPitches.length > 0) {
+  const buffered = countBufferedPitches(state);
+
+  // Scalar lands mid-group — after the pitch token(s) but before that group's
+  // first time position (`[C3 E3] v80 1|1`, or the bare `C3 E3 v80 1|1`). It
+  // can't change the already-captured group, so flag it for the "won't affect
+  // this group" warning. A buffered pattern bracket counts as group pitches
+  // here too. (Only scalars reach this path; value streams bypass it, so
+  // reassigning a value stream after a pitch stream stays warning-free.)
+  if (state.pitchGroupStarted && buffered > 0) {
     state.stateChangedSinceLastPitch = true;
   }
 
-  if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
-    for (const pitchState of state.currentPitches) {
-      pitchUpdater(pitchState);
-    }
-
+  // Scalar lands after emission, on the carried pitch buffer (`C1 1|1 v80
+  // 1|2`): retroactively update the carried bare pitches AND a carried pitch
+  // stream's captured values, so a length-1 stream stays exactly a bare pitch
+  // (`[C1] 1|1 v80 1|2` == `C1 1|1 v80 1|2`). For a multi-value stream every
+  // captured value updates, so emissions at and after the scalar reflect it —
+  // matching how a carried chord updates all its pitches.
+  if (!state.pitchGroupStarted && buffered > 0) {
+    applyToBufferedPitches(state, pitchUpdater);
     state.stateChangedAfterEmission = true;
   }
 
-  if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
+  if (!state.pitchGroupStarted && buffered === 0) {
     state.stateChangedAfterEmission = true;
+  }
+}
+
+/**
+ * Apply an update to every buffered pitch state — the single carried chord
+ * (`currentPitches`) and each chord of a carried pitch stream
+ * (`currentPitchStream`). Lets a post-emission scalar retroactively update a
+ * carried stream the same way it updates a carried bare pitch.
+ * @param state - Interpreter state holding the buffered pitches
+ * @param pitchUpdater - Function to mutate each pitch state
+ */
+function applyToBufferedPitches(
+  state: InterpreterState,
+  pitchUpdater: (pitchState: PitchState) => void,
+): void {
+  for (const pitchState of state.currentPitches) {
+    pitchUpdater(pitchState);
+  }
+
+  for (const chord of state.currentPitchStream ?? []) {
+    for (const pitchState of chord) {
+      pitchUpdater(pitchState);
+    }
   }
 }
 

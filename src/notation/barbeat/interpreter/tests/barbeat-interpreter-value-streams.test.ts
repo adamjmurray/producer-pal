@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)", () => {
   describe("velocity streams", () => {
@@ -74,6 +75,18 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
         [3, 0.5],
       ]);
     });
+
+    it("resolves a bar-length stream value into beats (under @step)", () => {
+      // `1bar` in a duration stream resolves through the bar component
+      // (bars * beatsPerBar); with @step pinning the spacing, the stream only
+      // varies LENGTH: a whole-bar note (4 beats in 4/4) then a quarter.
+      const result = interpretNotation("[1bar n/4] C3 1|1x2@n/4");
+
+      expect(result.map((n) => [n.start_time, n.duration])).toStrictEqual([
+        [0, 4],
+        [1, 1],
+      ]);
+    });
   });
 
   describe("duration-fold (no @step, gallop)", () => {
@@ -118,6 +131,33 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
         [60, 0],
         [64, 1],
         [67, 2],
+      ]);
+    });
+
+    it("folds a bar-length stream value into the spacing", () => {
+      // A whole-bar duration in the fold advances a full bar (4 beats in 4/4):
+      // note 1 holds bar 1 and the next lands at 2|1, then a quarter.
+      const result = interpretNotation("[1bar n/4] C3 1|1x2");
+
+      expect(result.map((n) => [n.start_time, n.duration])).toStrictEqual([
+        [0, 4],
+        [4, 1],
+      ]);
+    });
+
+    it("continues the duration-fold cursor across token boundaries", () => {
+      // The fold cursor carries across separate repeat tokens (the wrinkle P3c
+      // was built around: the position computation reads the cursor base before
+      // it advances). Three notes in 1|1x3 leave the cursor on the SHORT value,
+      // so 2|1x2 resumes short-then-long — not a fresh long-short restart.
+      const result = interpretNotation("[n/4 n/8] C3 1|1x3 2|1x2");
+
+      expect(result.map((n) => [n.start_time, n.duration])).toStrictEqual([
+        [0, 1],
+        [1, 0.5],
+        [1.5, 1],
+        [4, 0.5],
+        [4.5, 1],
       ]);
     });
   });
@@ -177,12 +217,58 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
       ]);
     });
 
+    it("cycles a duration stream's length across separate note events", () => {
+      // Explicit positions (no repeat) → the fold doesn't move them, but the
+      // duration stream still cycles each note's LENGTH by the carried cursor.
+      const result = interpretNotation("[n/4 n/8] C3 1|1 D3 1|2 E3 1|3");
+
+      expect(
+        result.map((n) => [n.pitch, n.start_time, n.duration]),
+      ).toStrictEqual([
+        [60, 0, 1],
+        [62, 1, 0.5],
+        [64, 2, 1],
+      ]);
+    });
+
+    it("cycles a probability stream across separate note events", () => {
+      const result = interpretNotation("[p1 p0.5] C3 1|1 D3 1|2 E3 1|3");
+
+      expect(
+        result.map((n) => [n.pitch, n.start_time, n.probability]),
+      ).toStrictEqual([
+        [60, 0, 1],
+        [62, 1, 0.5],
+        [64, 2, 1],
+      ]);
+    });
+
     it("lets a later scalar replace an active value stream", () => {
       const result = interpretNotation("[v80 v100] C3 1|1 v60 D3 1|2");
 
       expect(result.map((n) => [n.pitch, n.velocity])).toStrictEqual([
         [60, 80],
         [62, 60],
+      ]);
+    });
+
+    it("lets a scalar duration cancel an active duration stream", () => {
+      const result = interpretNotation("[n/4 n/8] C3 1|1 n/16 D3 1|2");
+
+      // The n/16 clears the stream, so D3 takes the scalar (0.25), not the
+      // stream's next value (0.5).
+      expect(result.map((n) => [n.pitch, n.duration])).toStrictEqual([
+        [60, 1],
+        [62, 0.25],
+      ]);
+    });
+
+    it("lets a scalar probability cancel an active probability stream", () => {
+      const result = interpretNotation("[p1 p0.5] C3 1|1 p0.25 D3 1|2");
+
+      expect(result.map((n) => [n.pitch, n.probability])).toStrictEqual([
+        [60, 1],
+        [62, 0.25],
       ]);
     });
 
@@ -204,6 +290,50 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
       expect(result.map((n) => [n.pitch, n.velocity])).toStrictEqual([
         [60, 80],
         [64, 100],
+      ]);
+    });
+
+    it("warns when a SCALAR follows a pitch stream (can't affect the group)", () => {
+      // A pitch stream captures v/n/p at bracket time, so a late scalar can't
+      // change it — same as a bare chord (`C3 E3 v80 1|1`). The scalar is
+      // dropped for this group (notes stay at the default velocity) AND the
+      // "won't affect this group" warning fires (it didn't before — the warning
+      // keyed only off the bare-chord buffer, not a buffered pitch stream).
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const result = interpretNotation("[C3 E3] v80 1|1x2@n/4");
+
+      expect(result.map((n) => [n.pitch, n.velocity])).toStrictEqual([
+        [60, 100],
+        [64, 100],
+      ]);
+      expect(warn).toHaveBeenCalledWith(
+        "state change after pitch(es) but before time position won't affect this group",
+      );
+      warn.mockRestore();
+    });
+
+    it("updates a carried pitch stream like a carried bare pitch (length-1 == bare)", () => {
+      // The core design principle: "a scalar — or a bare chord — is just a
+      // length-1 stream." A scalar between two carried positions retroactively
+      // updates the carried pitch state, and a length-1 stream MUST behave
+      // exactly like the bare pitch: both give the second note velocity 80.
+      const carriedStream = interpretNotation("[C3] 1|1 v80 1|2");
+      const carriedBare = interpretNotation("C3 1|1 v80 1|2");
+
+      expect(carriedStream.map((n) => n.velocity)).toStrictEqual([100, 80]);
+      expect(carriedBare.map((n) => n.velocity)).toStrictEqual([100, 80]);
+      expect(carriedStream).toStrictEqual(carriedBare);
+    });
+
+    it("carries a scalar forward through a multi-value stream's captured values", () => {
+      // For a longer stream the scalar updates every captured value, so
+      // emissions at/after it reflect it: C3 already emitted at v100, E3 (the
+      // next value) emits at v80.
+      const result = interpretNotation("[C3 E3] 1|1 v80 1|2");
+
+      expect(result.map((n) => [n.pitch, n.velocity])).toStrictEqual([
+        [60, 100],
+        [64, 80],
       ]);
     });
   });

@@ -565,6 +565,19 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
   pitch stream whose single element is the chord. The legacy intra-chord
   per-pitch capture (`v80 C3 v100 E3 1|1`) still applies when no value stream is
   active.
+- **Streams follow the same state-capture rules as bare pitches/chords.** Two
+  cases, both identical to the unbracketed behavior:
+  - _Within an open group_ (after the pitch token, before that group's first
+    time position) a scalar can't change the already-captured group:
+    `C3 E3 v80 1|1` and `[C3 E3] v80 1|1` both drop the `v80` and warn ("state
+    change … won't affect this group"). Put the scalar _before_ the
+    pitch/bracket, or use a value stream, to vary the value.
+  - _Between emitted positions_ a later scalar retroactively updates the
+    _carried_ pitch state: `C1 1|1 v80 1|2` gives the second note velocity 80,
+    and a carried stream behaves identically — `[C1] 1|1 v80 1|2` is
+    **equivalent** (a length-1 stream is exactly a bare pitch). For a
+    multi-value stream every captured value updates, so emissions at and after
+    the scalar reflect it.
 - **Bar copy / `v0` / `@clear`** operate post-emission on real note events, so
   once notes are emitted they are unaffected by streams. The pre-emission buffer
   warnings (`N pitch(es) buffered but not emitted`, dangling state) count a
