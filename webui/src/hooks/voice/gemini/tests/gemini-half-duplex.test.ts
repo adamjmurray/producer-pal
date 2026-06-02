@@ -84,8 +84,32 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     expect(deps.autoMutedRef.current).toBe(false);
   });
 
-  it("lifts the auto-mute on interruption", async () => {
-    const { deps, mic } = makeMessageDeps({ halfDuplex: true });
+  it("defers the auto-mute lift on interruption while audio is still queued", async () => {
+    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    // Mid-stream interrupt (legal under NO_INTERRUPTION): audio is still queued,
+    // so lifting now would flicker the Muted indicator before the next chunk.
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(interrupted, deps);
+
+    // Only the initial auto-mute fired; the interrupt did not unmute.
+    expect(mic.setMuted).toHaveBeenCalledTimes(1);
+    expect(mic.setMuted).toHaveBeenCalledWith(true);
+    expect(deps.autoMutedRef.current).toBe(true);
+
+    // The real turn end lifts it.
+    await handleGeminiMessage(turnDone, deps);
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  it("lifts the auto-mute on interruption once the queue has drained", async () => {
+    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    // No queued audio: the turn really ended at the interrupt, so lift now.
+    vi.mocked(player.hasQueued).mockReturnValue(false);
 
     await handleGeminiMessage(audioChunk("A"), deps);
     await handleGeminiMessage(interrupted, deps);

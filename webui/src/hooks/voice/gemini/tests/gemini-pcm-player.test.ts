@@ -168,6 +168,28 @@ describe("GeminiPcmPlayer", () => {
     expect(ctx.sources[0]!.stop).not.toHaveBeenCalled();
   });
 
+  it("hasQueued reflects scheduled sources, draining on end and flush", async () => {
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+    const ctx = FakeAudioContext.instances[0]!;
+
+    expect(player.hasQueued()).toBe(false);
+
+    player.enqueueBase64(pcmBase64(10));
+    expect(player.hasQueued()).toBe(true);
+
+    // A finished source drains from the queue.
+    ctx.sources[0]!.onended!();
+    expect(player.hasQueued()).toBe(false);
+
+    // flush clears any remaining scheduled audio.
+    player.enqueueBase64(pcmBase64(10));
+    expect(player.hasQueued()).toBe(true);
+    player.flush();
+    expect(player.hasQueued()).toBe(false);
+  });
+
   it("close flushes and closes the context (idempotent)", async () => {
     const player = new GeminiPcmPlayer();
 

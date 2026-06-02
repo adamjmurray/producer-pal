@@ -22,6 +22,7 @@ export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
   const player = {
     flush: vi.fn(),
     enqueueBase64: vi.fn(),
+    hasQueued: vi.fn(() => false),
   } as unknown as GeminiPcmPlayer;
   const sendToolResponse = vi.fn();
   const session = { sendToolResponse } as unknown as Session;

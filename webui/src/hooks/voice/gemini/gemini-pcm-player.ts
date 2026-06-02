@@ -83,6 +83,17 @@ export class GeminiPcmPlayer {
     source.onended = () => this.sources.delete(source);
   }
 
+  /**
+   * Whether any scheduled audio is still pending or playing. Used by the
+   * half-duplex mute gate: an `interrupted` signal that arrives while audio is
+   * still queued (legal mid-stream under NO_INTERRUPTION) should not lift the
+   * auto-mute, since more chunks will follow and re-mute it.
+   * @returns True while a scheduled source has not yet ended
+   */
+  hasQueued(): boolean {
+    return this.sources.size > 0;
+  }
+
   /** Barge-in: stop all scheduled audio and reset the cursor. */
   flush(): void {
     for (const source of this.sources) {
