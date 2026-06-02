@@ -1,18 +1,31 @@
 {{
-  const PITCH_CLASS_VALUES = {
-    "C": 0,
-    "C#": 1, "Db": 1,
-    "D": 2,
-    "D#": 3, "Eb": 3,
-    "E": 4,
-    "F": 5,
-    "F#": 6, "Gb": 6,
-    "G": 7,
-    "G#": 8, "Ab": 8,
-    "A": 9,
-    "A#": 10, "Bb": 10,
-    "B": 11,
+  // Pitch-class semitones. Canonical source: src/shared/pitch.ts; this is an
+  // inline copy because Peggy cannot import modules. Only the seven naturals are
+  // tabulated — accidentals shift by ±1 in pitchClassFromParts, and the
+  // enharmonic octave edges need no special case: B# resolves to 12 (the next
+  // octave's C) and Cb to -1 (the previous octave's B), and the
+  // (octave+2)*12+value formula carries that across the octave on its own.
+  const NATURAL_PITCH_CLASS_VALUES = {
+    c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11,
   };
+
+  // Resolve a { name, value } pitch class from a note letter and optional
+  // accidental. Case-insensitive (LLMs lowercase note names); accepts ASCII
+  // `#`/`b`, the Unicode ♯ (U+266F) / ♭ (U+266D) glyphs, and an uppercase `B`
+  // as a flat (so an all-caps `GB3` still reads as Gb3). Enharmonic spellings
+  // (E#, B#, Cb, Fb) fall out for free. `name` is the normalized ASCII spelling,
+  // used only in error text — downstream consumes the numeric value.
+  function pitchClassFromParts(letter, accidental) {
+    const upper = letter.toUpperCase();
+    const value = NATURAL_PITCH_CLASS_VALUES[letter.toLowerCase()];
+    if (accidental === "#" || accidental === "♯") {
+      return { name: upper + "#", value: value + 1 };
+    }
+    if (accidental === "b" || accidental === "B" || accidental === "♭") {
+      return { name: upper + "b", value: value - 1 };
+    }
+    return { name: upper, value };
+  }
 
   // Borrow across bar lines so a `-n` beat offset can pull a position earlier
   // than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4). The
@@ -238,10 +251,12 @@ pitch "note pitch"
   }
 
 pitchClass
-  = pc:("C#" / "Db" / "D#" / "Eb" / "F#" / "Gb" / "G#" / "Ab" / "A#" / "Bb" /
-        "C" / "D" / "E" / "F" / "G" / "A" / "B") {
-  return { name: pc, value: PITCH_CLASS_VALUES[pc] };
-}
+  = letter:[A-Ga-g] accidental:pitchAccidental? {
+      return pitchClassFromParts(letter, accidental);
+    }
+
+pitchAccidental
+  = "#" / "b" / "B" / "♯" / "♭"
 
 // Pattern bracket holding a parameter STREAM (AJM-482 pitch, AJM-483 v/n/p): an
 // ordered list of one parameter's values, cycled across emitted note-events. The

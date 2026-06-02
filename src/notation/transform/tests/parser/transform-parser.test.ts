@@ -690,6 +690,18 @@ describe("Transform Parser", () => {
       expect(expr.left).toBe(60);
       expect((expr.right as VariableNode).name).toBe("pitch");
     });
+
+    it("parses case-insensitive, Unicode, and enharmonic pitch literals", () => {
+      // Same tolerance as the bar|beat note layer, locked across both grammars
+      // by pitch-class-grammar-parity.test.ts. Enharmonics wrap the octave: B#
+      // resolves up to C, Cb down to B.
+      expect(parser.parse("pitch = c3")[0]!.expression).toBe(60);
+      expect(parser.parse("pitch = gb1")[0]!.expression).toBe(42);
+      expect(parser.parse("pitch = C♯1")[0]!.expression).toBe(37);
+      expect(parser.parse("pitch = E#3")[0]!.expression).toBe(65); // → F3
+      expect(parser.parse("pitch = B#3")[0]!.expression).toBe(72); // → C4
+      expect(parser.parse("pitch = Cb4")[0]!.expression).toBe(71); // → B3
+    });
   });
 
   describe("legato function", () => {

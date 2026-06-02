@@ -155,10 +155,16 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:
-    - A–G (with optional sharp `#` or flat `b`)
-    - Valid pitch classes: C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#,
-      Bb, B
-    - Invalid: `Cb`, `B#`, `Fb`, `E#` (not supported)
+    - A–G (case-insensitive) with an optional accidental: sharp `#`, flat `b`,
+      or the Unicode glyphs `♯` (U+266F) / `♭` (U+266D). An uppercase `B` also
+      reads as a flat, so an all-caps `GB3` parses as `Gb3`.
+    - All twelve pitch classes are spellable both ways: C, C#/Db, D, D#/Eb, E,
+      F, F#/Gb, G, G#/Ab, A, A#/Bb, B.
+    - Enharmonic spellings are accepted and normalized: `E#`→F, `Fb`→E, and the
+      two octave-wrapping edges `B#`→C of the next octave, `Cb`→B of the
+      previous octave (the `(octave+2)*12+value` formula carries the wrap: `B#3`
+      = `C4`, `Cb4` = `B3`).
+    - A double accidental (`Cbb`, `C##`) or a non-letter (`H`) is rejected.
   - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
   - Valid MIDI range is 0–127. Range is **not** enforced by the parser — an

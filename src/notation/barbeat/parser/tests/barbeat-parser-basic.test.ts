@@ -57,11 +57,35 @@ describe("BarBeatScript Parser - basic tests", () => {
       ]);
     });
 
-    it("doesn't support B#, Cb, E# or Fb", () => {
-      expect(() => parser.parse("B#3")).toThrow();
-      expect(() => parser.parse("Cb3")).toThrow();
-      expect(() => parser.parse("E#3")).toThrow();
-      expect(() => parser.parse("Fb3")).toThrow();
+    it("supports enharmonic spellings B#, Cb, E#, Fb (octave wrap included)", () => {
+      expect(parser.parse("E#3")).toStrictEqual([{ pitch: 65 }]); // → F3
+      expect(parser.parse("Fb3")).toStrictEqual([{ pitch: 64 }]); // → E3
+      expect(parser.parse("B#3")).toStrictEqual([{ pitch: 72 }]); // → C4 (up)
+      expect(parser.parse("Cb3")).toStrictEqual([{ pitch: 59 }]); // → B2 (down)
+    });
+
+    it("accepts case-insensitive note names", () => {
+      expect(parser.parse("c3 eb3 f#3 gb1")).toStrictEqual([
+        { pitch: 60 }, // c3
+        { pitch: 63 }, // eb3
+        { pitch: 66 }, // f#3
+        { pitch: 42 }, // gb1
+      ]);
+      // An all-caps spelling still reads the uppercase B as a flat.
+      expect(parser.parse("GB1")).toStrictEqual([{ pitch: 42 }]); // Gb1
+    });
+
+    it("accepts Unicode ♯/♭ accidentals", () => {
+      expect(parser.parse("C♯1 D♭1")).toStrictEqual([
+        { pitch: 37 }, // C#1
+        { pitch: 37 }, // Db1
+      ]);
+    });
+
+    it("still rejects a non-letter or double accidental", () => {
+      expect(() => parser.parse("H3")).toThrow();
+      expect(() => parser.parse("Cbb3")).toThrow();
+      expect(() => parser.parse("C##3")).toThrow();
     });
   });
 

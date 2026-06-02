@@ -75,7 +75,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. It applies to notes **after** it — put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length and overlaps A3). For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always). Opt-in — if any note uses probability, set it on every note (a stray p otherwise rides along)
-- Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
+- Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2; case-insensitive). C3 = middle C
 - **Shortcut (stateful)**: omit any of v/n/p to reuse its last value — they don't reset per note, so re-state one whenever it should change. v/n/p and pitch persist until changed
 - **Same-pitch overlap**: two notes of the same pitch can't sound at once — if one's length runs into the next same-pitch note, Live truncates the earlier to end where the next starts. Both are kept (authored notes aren't dropped for overlapping); same pitch *and* start collapses to one
 - copying bars (**MERGES** - use v0 to clear unwanted notes):
