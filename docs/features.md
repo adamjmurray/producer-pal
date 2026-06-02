@@ -321,8 +321,7 @@ arithmetic or `clipseq()` inside the string for per-clip variation:
 - **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
   arbitrary ranges, choose from sets of values (e.g. chord notes)
 - **Context variables**: Access note order (`note.index`), clip metadata
-  (`clip.duration`, `clip.index`, `clip.position`, `clip.barDuration`) in
-  expressions
+  (`clip.duration`, `clip.index`, `clip.position`) in expressions
 - **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)

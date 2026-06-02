@@ -45,7 +45,7 @@
 
   // Targeted error for the removed synced-period syntax (Nt, N:Nt).
   function oldPeriodError(matched) {
-    return `Period syntax "${matched}" is no longer supported. Use a note-value period with the "sync" keyword, e.g. sin(n/4, sync) for a quarter-note cycle, or cos(clip.barDuration, sync) for a bar-length cycle.`;
+    return `Period syntax "${matched}" is no longer supported. Use a note-value period with the "sync" keyword, e.g. sin(n/4, sync) for a quarter-note cycle, or cos(1bar, sync) for a bar-length cycle.`;
   }
 
   // Desugars a shorthand additive op (v±N, p±N) to the same shape the full form

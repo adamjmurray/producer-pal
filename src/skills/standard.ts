@@ -161,10 +161,10 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
 - For ramp/curve, end the time filter on the last note's beat position so it reaches its end value. In 4/4: last 8th=N|4.5, last 16th=N|4.75
-- Waveform period is a note value: \`n/4\` = quarter-note cycle, \`n/1\` = whole-note cycle, \`n/2\` = half-note cycle. For a meter-aware bar-length cycle use \`Nbar\` or \`clip.barDuration\` (e.g. \`cos(1bar)\`). Same \`n\` fraction grammar as everywhere; bare numbers are beats
+- Waveform period is a note value: \`n/4\` = quarter-note cycle, \`n/1\` = whole-note cycle, \`n/2\` = half-note cycle. For a meter-aware bar-length cycle use \`Nbar\` (e.g. \`cos(1bar)\`, \`cos(4bar)\`). Same \`n\` fraction grammar as everywhere; bare numbers are beats
 - \`sync\` keyword (last arg on periodic waves) anchors phase to the arrangement timeline (continuous across clips) instead of clip start. Only meaningful on arrangement clips: a session clip has no arrangement position, so \`sync\` is ignored and the wave degrades to clip-relative (phase resets at clip start) with a warning — the modulation still applies. Without \`sync\`, phase is clip-relative everywhere (the default)
 
-**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`next.pitch\`, \`next.velocity\`, \`next.start\`, \`next.duration\` (next distinct-start note; skips chords; warns on last note), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
+**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`next.pitch\`, \`next.velocity\`, \`next.start\`, \`next.duration\` (next distinct-start note; skips chords; warns on last note), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only)
 
 \`\`\`
 timing = swing(0.05)             // swing (auto-quantizes). Use swing() alone unless asked for a specific grid
@@ -173,7 +173,7 @@ timing = quant(n/16)             // snap to 16th-note grid
 timing += 0.05 * rand()          // humanize timing
 timing += n/8                    // nudge every note an eighth note later (relative)
 velocity += 20 * cos(n/2)        // cycle every half note (2 beats in 4/4)
-velocity += 20 * cos(clip.barDuration, sync) // bar-length cycle, continuous across clips
+velocity += 20 * cos(1bar, sync)  // bar-length cycle, continuous across clips
 1|1-4|4.75: velocity = ramp(40, 127) // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30            // accent bass notes
 1|1-2|4: velocity = 100          // forte in bars 1-2

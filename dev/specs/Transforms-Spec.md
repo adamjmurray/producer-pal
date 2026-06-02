@@ -49,8 +49,7 @@ pow(base, exponent); // base raised to exponent
     - Meter-invariant in absolute time: `n/4` is one cycle per quarter note in
       any meter.
   - **Bar-length cycle** (`Nbar`): meter-aware bars, e.g. `cos(1bar)` (1 bar) or
-    `cos(4bar)` (4 bars). Equivalent to the `clip.barDuration` variable —
-    `cos(clip.barDuration)` and `cos(clip.barDuration * 4)` still work.
+    `cos(4bar)` (4 bars).
   - **Expressions**: Any numeric expression (including variables)
     - Examples: `note.duration`, `note.start / 4`, `2.5`
     - A bare number is treated as a period in beats
@@ -103,13 +102,13 @@ across clips on the global timeline.
 
 ```
 // Clip-relative (default) — phase resets at each clip start
-velocity += 20 * cos(clip.barDuration * 4);
+velocity += 20 * cos(4bar);
 
 // Timeline-synced — continuous phase from 1|1
-velocity += 20 * cos(clip.barDuration * 4, sync);
+velocity += 20 * cos(4bar, sync);
 
 // With phase offset and sync
-velocity += 20 * cos(clip.barDuration * 4, 0.25, sync);
+velocity += 20 * cos(4bar, 0.25, sync);
 
 // square with all args and sync
 velocity += 20 * square(n/2, 0, 0.75, sync);
@@ -347,7 +346,7 @@ time across meters (see Absolute Durations below).
 - `timing += 1` shifts by 1 eighth note
 - `duration = 6` sets to 6 eighth notes (1 bar)
 - `cos(n/4)` still completes one cycle per quarter note (= 2 eighth-note beats)
-- `cos(clip.barDuration)` completes one cycle per bar (6 eighth notes)
+- `cos(1bar)` completes one cycle per bar (6 eighth notes)
 
 **In 2/2 time**:
 
@@ -385,8 +384,8 @@ note value.
 
 For meter-aware durations and periods, use `Nbar` — the same token as the
 `create-clip`/`update-clip` length fields. A bar is the number of musical beats
-in one bar (the time-signature numerator), so `Nbar` evaluates to
-`N * clip.barDuration`:
+in one bar (the time-signature numerator), so `Nbar` evaluates to N times the
+beats-per-bar count:
 
 - `1bar` = one bar (4 musical beats in 4/4, 6 in 6/8, 3 in 3/4)
 - `4bar` = four bars
@@ -478,8 +477,12 @@ Access clip and bar context in expressions:
 - `clip.position` - Arrangement position in musical beats (arrangement clips
   only; on session clips it resolves to 0 with a warning, since session clips
   have no arrangement origin)
-- `clip.barDuration` - Beats per bar from clip time signature (e.g., 4 in 4/4, 3
-  in 3/4, 6 in 6/8)
+- `clip.barDuration` - **Legacy alias**, still accepted by the parser but no
+  longer taught. Equals the beats-per-bar count (e.g., 4 in 4/4, 3 in 3/4, 6 in
+  6/8). Prefer the `Nbar` literal: `1bar` == `clip.barDuration` and `4bar` ==
+  `clip.barDuration * 4`, and it composes in any expression
+  (`note.start % 1bar`), so it fully subsumes the variable while staying uniform
+  with the length/duration fields.
 
 Variables can be used anywhere in expressions: arithmetic, function arguments,
 waveform periods, etc.
@@ -507,25 +510,25 @@ Parentheses for grouping: `(expression)`
 
 ```
 // Basic envelope
-velocity += 20 * cos(clip.barDuration);
+velocity += 20 * cos(1bar);
 
 // Phase-shifted
-velocity += 20 * cos(clip.barDuration, 0.5);
+velocity += 20 * cos(1bar, 0.5);
 
 // Pulse width modulation
 velocity += 20 * square(n/2, 0, 0.25);
 
 // Dynamic PWM (pulse width modulated by another waveform)
-velocity += 20 * square(n/2, 0, cos(clip.barDuration) * 0.25 + 0.5);
+velocity += 20 * square(n/2, 0, cos(1bar) * 0.25 + 0.5);
 
 // Combined functions
-velocity += 20 * cos(clip.barDuration * 4) + 10 * rand();
+velocity += 20 * cos(4bar) + 10 * rand();
 
 // Unipolar envelope (adds 0 to 40)
-velocity += 20 + 20 * cos(clip.barDuration * 2);
+velocity += 20 + 20 * cos(2bar);
 
 // Amplitude modulation
-velocity += 30 * cos(clip.barDuration * 4) * cos(n/4);
+velocity += 30 * cos(4bar) * cos(n/4);
 
 // Set absolute velocity value
 velocity = 80;
@@ -682,7 +685,7 @@ velocity += cos(n/4, note.probability);
 ### Multi-Parameter
 
 ```
-transforms: `velocity += 20 * cos(clip.barDuration) + 10 * rand()
+transforms: `velocity += 20 * cos(1bar) + 10 * rand()
 timing += 0.03 * rand()
 probability += 0.2 * cos(n/2)`;
 
@@ -723,8 +726,8 @@ pitch += clip.index * 7;
 // Scale gain by arrangement position
 gain = ramp(-24, 0) * (clip.position/32);
 
-// Use bar duration for rhythmic patterns
-velocity += (20 * (note.start % clip.barDuration)) / clip.barDuration;
+// Position within the bar drives velocity (the bar literal composes in arithmetic)
+velocity += (20 * (note.start % 1bar)) / 1bar;
 ```
 
 ### Audio Clip Transforms
