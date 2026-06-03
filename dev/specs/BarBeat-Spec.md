@@ -282,11 +282,16 @@ When a `v0` note is encountered during interpretation:
    the same pitch AND time (within 0.001 beats tolerance)
 2. **Serial order**: Only affects notes that appear earlier in the notation
    string
-3. **Kept in output**: The `v0` note itself remains in the interpreter output so
-   that tools such as update-clip can make use of the data (to delete notes in
-   existing clips, a separate process from notation interpretation)
-4. **Filtered by tools**: `create-clip` filters out v0 notes; `update-clip` uses
-   them to delete existing clip notes
+3. **Stripped from output**: The `v0` note itself is also removed —
+   `interpretNotation` applies the deletions as its final step and never returns
+   a `velocity: 0` note. The output contains only surviving real notes
+4. **How update-clip deletes**: `update-clip` does NOT read surviving v0 notes
+   from the interpreter output. It serializes the clip's existing notes to
+   notation, concatenates `<existing> <new>` into one string, and interprets
+   that combined string ONCE — so a `v0` in the new notation deletes the
+   matching existing note during that single interpretation pass. `create-clip`
+   has no existing notes to match, so any `v0` simply deletes nothing and is
+   stripped
 
 ### Examples
 
@@ -299,7 +304,8 @@ C3 D3 E3 1|1 v0 C3 1|1  // Result: D3 and E3 at 1|1 (C3 deleted)
 **Order matters:**
 
 ```
-v0 C3 1|1 v100 C3 1|1  // Result: both notes (v0 has nothing to delete)
+v0 C3 1|1 v100 C3 1|1  // Result: one note — v100 C3 (the v0 had nothing earlier
+                       // to delete and is itself stripped from the output)
 ```
 
 **Deletion after bar copy:**
@@ -348,11 +354,14 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 
 - **Time tolerance**: Notes within 0.001 beats are considered at the same time
 - **Processing order**: Applied as final step after all bar copy operations
-- **Output format**: v0 notes appear in interpreter output with `velocity: 0`
+- **Output format**: v0 notes are stripped — interpreter output never contains a
+  `velocity: 0` note (deletions resolve in-pass, leaving only real notes)
 - **Tool behavior**:
-  - `create-clip`: Filters out v0 notes (can't create v0 notes in Live)
-  - `update-clip`: Uses v0 notes to delete matching existing clip notes, then
-    filters them out
+  - `create-clip`: A v0 has no earlier match to delete and is dropped — no v0
+    note reaches Live
+  - `update-clip`: Deletes by interpreting `<existing-notation> <new-notation>`
+    as one combined string, so a v0 in the new notation removes the matching
+    existing note during that pass (it does not consume v0 notes from output)
 
 ---
 
@@ -1130,8 +1139,9 @@ grammar AST to return an array of note events:
     quarter note — only the measuring unit differs. See `Transforms-Spec.md` →
     "Units and Time Signatures".
 - **velocity**: Base velocity (0-127)
-  - `v0` notes appear in output with `velocity: 0` for deletion purposes
-  - Tools filter v0 notes before sending to Live API (see Note Deletion section)
+  - `v0` marks a deletion: it removes matching earlier notes and is then
+    stripped — interpreter output never contains a `velocity: 0` note (see Note
+    Deletion section)
 - **velocity_deviation**: When velocity range is used (e.g., `v80-100`),
   velocity is min value and velocity_deviation is the range (20)
 - **Precision**: Both start_time and duration support floating point for
