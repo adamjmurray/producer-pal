@@ -81,6 +81,29 @@ describe("Transform Parser - time range selectors", () => {
     );
   });
 
+  it("gives the targeted note-value steer for a decimal offset base too", () => {
+    // The integer-base malformed offset (`1|1+2`) and the decimal-base one
+    // (`1|1.5+2`) both get the targeted steer; previously the decimal base fell
+    // through to a generic peggy error.
+    expect(() => parser.parse("1|1+2-2|1: velocity += 10")).toThrow(
+      /note-value form/,
+    );
+    expect(() => parser.parse("1|1.5+2-2|1: velocity += 10")).toThrow(
+      /note-value form/,
+    );
+    // The valid decimal offset still parses.
+    expect(() => parser.parse("1|1.5+n/4-2|1: velocity += 10")).not.toThrow();
+  });
+
+  it("rejects a descending/inverted time range", () => {
+    // Mirrors the pitchRange descending guard: end-before-start is a parse
+    // error, not a silent no-op. Equal bounds (a point range) stay valid.
+    expect(() => parser.parse("2|1-1|1: velocity += 10")).toThrow(
+      /end .* is before start/,
+    );
+    expect(() => parser.parse("1|1-1|1: velocity += 10")).not.toThrow();
+  });
+
   it("rejects a 0-indexed beat in a range bound (either end)", () => {
     // Beats are 1-indexed in time ranges too; the error steers to 1|1 / the
     // offset pickup form, never the phased-out 1|0 spelling.

@@ -75,6 +75,18 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
+  it("gives the targeted note-value steer for a malformed offset (int and decimal base)", () => {
+    // A malformed offset (`+2`, `-2`) gets the targeted steer whether the base
+    // is an integer (`1|1+2`) or a decimal (`1|1.5+2`); previously a decimal
+    // base fell through to a generic peggy error. The valid `+n/...` form still
+    // wins, and a real `-bar|` span still gets its own range error.
+    expect(() => parser.parse("1|1+2 C3")).toThrow(/note-value form/);
+    expect(() => parser.parse("1|1.5+2 C3")).toThrow(/note-value form/);
+    expect(() => parser.parse("1|1.5-2 C3")).toThrow(/note-value form/);
+    expect(() => parser.parse("1|1.5+n/4 C3")).not.toThrow();
+    expect(() => parser.parse("1|1.5-2|1 C3")).toThrow(/single bar\|beat/);
+  });
+
   it("parses beat lists with note-value offsets", () => {
     expect(parser.parse("1|1,2+n/16,2+n/8,2+n3/16")).toStrictEqual([
       { bar: 1, beat: 1 },

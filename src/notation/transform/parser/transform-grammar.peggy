@@ -230,6 +230,15 @@ timeRange "time range"
     const beatsPerBar = options.beatsPerBar ?? 4;
     const start = borrowBars(startBar, startBeat, beatsPerBar);
     const end = borrowBars(endBar, endBeat, beatsPerBar);
+    // Reject a descending/inverted range at parse, mirroring pitchRange's
+    // "end is lower than start" guard. Without this, end-before-start silently
+    // selects no notes (a warn-free no-op). Equal bounds stay allowed (a point
+    // range). Compare absolute musical beats so an offset/borrow is respected.
+    const startAbs = (start.bar - 1) * beatsPerBar + (start.beat - 1);
+    const endAbs = (end.bar - 1) * beatsPerBar + (end.beat - 1);
+    if (endAbs < startAbs) {
+      throw new Error(`Invalid time range: end ${endBar}|${endBeat} is before start ${startBar}|${startBeat}`);
+    }
     const range = {
       startBar: start.bar,
       startBeat: start.beat,
@@ -276,7 +285,12 @@ beatValue
       // before 1|1 resolves to negative time. So return the raw beat even < 1.
       return base - frac * (options.timeSigDenominator ?? 4);
     }
-  / oneOrMoreInt "+" bad:badBeatOffset {
+  / oneOrMoreDecimal "+" bad:badBeatOffset {
+      // Decimal base (`1|1.5+2`) gets the same targeted steer as the integer
+      // base (`1|1+2`); `oneOrMoreDecimal` subsumes integers, and the valid
+      // `oneOrMoreDecimal "+n" frac` branch above is tried first, so a real
+      // `1.5+n/4` still wins. Without this, a decimal base fell through to a
+      // generic peggy error.
       throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write +n/3, not +${bad}).`);
     }
   / bad:bareFractionBeat {

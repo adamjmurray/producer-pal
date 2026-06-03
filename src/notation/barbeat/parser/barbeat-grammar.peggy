@@ -328,7 +328,11 @@ beatValue
       return sign === "+" ? base + offsetBeats : base - offsetBeats;
     }
   / rangeAsBeat
-  / oneOrMoreInt sign:("+" / "-") bad:badBeatOffset {
+  / oneOrMoreDecimal sign:("+" / "-") bad:badBeatOffset {
+      // Decimal base (`1|1.5+2`) gets the same targeted steer as the integer
+      // base (`1|1+2`); `oneOrMoreDecimal` subsumes integers, and the valid
+      // `oneOrMoreDecimal sign "n" frac` branch above (plus `rangeAsBeat` for a
+      // `-bar|` span) is tried first, so a real `1.5+n/4` / `1.5-2|1` still wins.
       throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write ${sign}n/3, not ${sign}${bad}).`);
     }
   / bad:bareFractionBeat {
