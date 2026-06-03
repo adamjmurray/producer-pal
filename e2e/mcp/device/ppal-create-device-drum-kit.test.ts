@@ -196,4 +196,53 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     expect(after.type).toContain("Simpler");
     expect(after.sample).toContain("kick.aiff");
   });
+
+  it("refuses a drum-pad sample write on a non-drum rack and strands no chain", async () => {
+    const t = await createMidiTrack();
+
+    // A plain Instrument Rack: chain-capable but NOT a Drum Rack
+    // (can_have_chains true, can_have_drum_pads false). A pad path aimed at it
+    // must warn-skip before insert_chain, or an empty chain gets stranded in the
+    // wrong rack (the C2 guard in resolveOrCreateDrumPadChain).
+    await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "Instrument Rack", path: `t${t}` },
+    });
+
+    await sleep(150);
+
+    const before = parseToolResult<{ chains?: unknown[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path: `t${t}/d0`, include: ["chains"], maxDepth: 0 },
+      }),
+    );
+    const beforeChainCount = before.chains?.length ?? 0;
+
+    const { warnings } = parseToolResultWithWarnings(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          path: `t${t}/d0`,
+          params: [{ name: "pC1/d0/sample", value: KICK_FILE }],
+        },
+      }),
+    );
+
+    expect(warnings.join("\n")).toContain(
+      "could not resolve or create drum pad",
+    );
+
+    await sleep(150);
+
+    const after = parseToolResult<{ chains?: unknown[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path: `t${t}/d0`, include: ["chains"], maxDepth: 0 },
+      }),
+    );
+
+    // No stray chain: the guard refused before insert_chain.
+    expect(after.chains?.length ?? 0).toBe(beforeChainCount);
+  });
 });
