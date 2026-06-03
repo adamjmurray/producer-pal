@@ -34,6 +34,8 @@ export {
 } from "./clip/notation/bar-beat-value-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
+export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
+export { deviceSoundDesign } from "./workflow/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate } from "./clip/duplicate.ts";
 export {
