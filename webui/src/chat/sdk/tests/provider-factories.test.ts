@@ -13,11 +13,14 @@ import {
 const getModelId = (model: unknown): string =>
   (model as Record<string, unknown>).modelId as string;
 
-// @ai-sdk/openai tags the API surface on `provider`: "openai.chat" for the
-// Chat Completions API (.chat()) vs "openai.responses" for the default factory
-// (Responses API). Local OpenAI-compatible servers (LM Studio, Ollama) only
-// implement Chat Completions, so they MUST use .chat() — the Responses API
-// sends an `input` field they reject with "Invalid type for 'input'".
+// The `provider` field tags the API surface. @ai-sdk/openai uses "openai.chat"
+// for the Chat Completions API (.chat()) vs "openai.responses" for the default
+// factory (Responses API). @ai-sdk/openai-compatible tags "<name>.chat" (e.g.
+// "lmstudio.chat"). Either way the value MUST end in ".chat": local servers
+// only implement Chat Completions and reject the Responses API's `input` field
+// with "Invalid type for 'input'". LM Studio and custom endpoints route through
+// @ai-sdk/openai-compatible so their `reasoning_content` shows as thinking;
+// Ollama stays on @ai-sdk/openai (its `think` option needs that namespace).
 const getApiProvider = (model: unknown): string =>
   (model as Record<string, unknown>).provider as string;
 
@@ -126,11 +129,12 @@ describe("createProviderModel", () => {
   // Regression: LM Studio (and other local OpenAI-compatible servers) must hit
   // the Chat Completions API, not the Responses API. The default createOpenAI
   // factory routes to /v1/responses, which LM Studio rejects with a 400
-  // "Invalid type for 'input'". See getApiProvider comment above.
+  // "Invalid type for 'input'". @ai-sdk/openai-compatible is Chat-Completions-
+  // only, so LM Studio/custom report "<name>.chat". See getApiProvider comment.
   it("uses the Chat Completions API for lmstudio (not Responses)", () => {
     const model = createProviderModel("lmstudio", "local-model", "");
 
-    expect(getApiProvider(model)).toBe("openai.chat");
+    expect(getApiProvider(model)).toBe("lmstudio.chat");
   });
 
   it("uses the Chat Completions API for ollama (not Responses)", () => {
@@ -142,7 +146,7 @@ describe("createProviderModel", () => {
   it("uses the Chat Completions API for custom (not Responses)", () => {
     const model = createProviderModel("custom", "m", "k", "https://x/v1");
 
-    expect(getApiProvider(model)).toBe("openai.chat");
+    expect(getApiProvider(model)).toBe("custom.chat");
   });
 
   it("uses the Responses API for openai proper", () => {
