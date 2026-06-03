@@ -88,7 +88,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .string()
       .optional()
       .describe(
-        "findSimilar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Each result carries a `similarity` score (0–1).",
+        "findSimilar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Each result carries a `similarity` score (-1 to 1, ~1 = very similar).",
       ),
 
     deviceKind: z
