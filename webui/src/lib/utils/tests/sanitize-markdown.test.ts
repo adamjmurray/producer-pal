@@ -32,6 +32,13 @@ describe("sanitizeMarkdown", () => {
     expect(result).toContain('href="https://example.com"');
   });
 
+  it("opens links in a new window (target + rel hardening)", () => {
+    const result = sanitizeMarkdown("[link](https://example.com)");
+
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('rel="noopener noreferrer"');
+  });
+
   it("strips script tags", () => {
     const result = sanitizeMarkdown('<script>alert("xss")</script>safe text');
 
@@ -72,6 +79,13 @@ describe("sanitizeMarkdownInline", () => {
 
     expect(result).not.toContain("<script");
     expect(result).toContain("safe");
+  });
+
+  it("opens inline links in a new window", () => {
+    const result = sanitizeMarkdownInline("[link](https://example.com)");
+
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('rel="noopener noreferrer"');
   });
 
   it("handles empty string", () => {
