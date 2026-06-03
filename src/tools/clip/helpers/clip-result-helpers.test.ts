@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { validateBarBeatPosition } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   buildClipResultObject,
   emitArrangementWarnings,
@@ -30,6 +31,10 @@ vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
 
     return 0;
   }),
+  // No-op by default (valid positions pass); a single test overrides it to
+  // throw, exercising the wiring. The real accept/reject parity is covered in
+  // barbeat-position-validation.test.ts.
+  validateBarBeatPosition: vi.fn(),
 }));
 
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
@@ -94,6 +99,19 @@ describe("clip-result-helpers", () => {
       expect(() =>
         validateAndParseArrangementParams(undefined, "-1bar"),
       ).toThrow("arrangementLength must be greater than 0");
+    });
+
+    it("rejects a 0-indexed arrangementStart with the 1-indexing steer", () => {
+      // Parity with create-clip: validateAndParseArrangementParams runs the
+      // 1-indexing guard on arrangementStart, so a steer thrown there propagates
+      // rather than resolving to a silent pre-origin beat.
+      vi.mocked(validateBarBeatPosition).mockImplementationOnce(() => {
+        throw new Error("beats are 1-indexed");
+      });
+
+      expect(() => validateAndParseArrangementParams("1|0", undefined)).toThrow(
+        /1-indexed/,
+      );
     });
   });
 

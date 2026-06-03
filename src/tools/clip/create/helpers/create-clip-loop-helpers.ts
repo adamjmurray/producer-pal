@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -220,6 +223,11 @@ function resolveIterationPosition(
   }
 
   const arrangementStart = params.arrangementStarts[i] as string;
+
+  // Validate the standalone position first so a 0-indexed/zero-bar arrangement
+  // start gets the 1-indexing steer (matching the single-clip create path), not
+  // a silent pre-origin beat.
+  validateBarBeatPosition(arrangementStart);
 
   return {
     trackIndex: params.trackIndex,

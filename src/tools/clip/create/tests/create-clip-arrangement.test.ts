@@ -36,6 +36,24 @@ describe("createClip - arrangement view", () => {
     });
   });
 
+  it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
+    setupArrangementClipMocks();
+
+    // arrangementStart is converted per-position in the create loop; a
+    // 0-indexed/zero-bar position is a hard error there, not a silent pre-origin
+    // beat. Also covers the per-item check in a comma-separated list.
+    await expect(
+      createClip({ trackIndex: 0, arrangementStart: "1|0", notes: "C3 1|1" }),
+    ).rejects.toThrow(/1-indexed/);
+    await expect(
+      createClip({
+        trackIndex: 0,
+        arrangementStart: "3|1,0|1",
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(/1-indexed/);
+  });
+
   it("should create arrangement clips at specified positions", async () => {
     const { track } = setupArrangementClipMocks();
 

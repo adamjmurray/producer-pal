@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
@@ -193,10 +196,14 @@ function resolveClipArrangementPositions(
     return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
   }
 
-  // Bar|beat positions: multiple positions supported
+  // Bar|beat positions: multiple positions supported. Validate each standalone
+  // position first so a 0-indexed/zero-bar one gets the 1-indexing steer, not a
+  // silent pre-origin beat.
   const positions = parseArrangementStartList(arrangementStart);
 
-  return positions.map((pos) =>
-    barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator),
-  );
+  return positions.map((pos) => {
+    validateBarBeatPosition(pos);
+
+    return barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator);
+  });
 }
