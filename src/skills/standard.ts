@@ -87,6 +87,7 @@ Create MIDI clips using the bar|beat notation syntax:
 ## Audio Clips
 \`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
 Audio params ignored when updating MIDI clips.
+What Producer Pal **can** do with audio: set gain/pitch/warp settings, change clip length, place and arrange audio clips in the Arrangement, and load/manage samples on Simpler instruments (including Drum Rack pads). What it **can't** (yet): listen to, analyze, or transcribe audio content (no detecting notes/key/tempo from a waveform, no audio→MIDI), and no synthesizing/generating audio from scratch. Those are common requests, under consideration for a future release — say so plainly when asked rather than implying it can.
 
 ## Examples
 

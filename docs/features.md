@@ -368,6 +368,13 @@ required. For fully remote control, use
   plug-in's window); Producer Pal can then set those mapped parameters like any
   other device parameter. You map them yourself — up to 128 parameters, and not
   every plug-in parameter is mappable, so pick the ones that matter most.
+- **Audio content can't be analyzed or generated.** Producer Pal can manage
+  audio clips — set gain, pitch, and warp settings, change clip length, arrange
+  clips in the Arrangement, and load and manage samples on Simpler instruments
+  (including Drum Rack pads) — but it cannot listen to, analyze, or transcribe
+  the audio itself (no detecting notes, key, or tempo from a waveform; no
+  audio-to-MIDI), nor synthesize audio from scratch. These are common requests
+  and are under consideration for a future release.
 - **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
   with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
   per track for predictable results.
