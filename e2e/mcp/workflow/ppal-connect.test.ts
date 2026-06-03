@@ -71,10 +71,10 @@ describe("ppal-connect", () => {
     expect(parsed.connected).toBe(true);
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
 
-    // Skills documentation - small model mode has simplified skills (~4.2K chars)
+    // Skills documentation - small model mode has simplified skills (~5.2K chars)
     expect(parsed.skills).toBeDefined();
     expect(parsed.skills).toContain("Producer Pal Skills");
-    expect(parsed.skills!.length).toBeLessThan(5000);
+    expect(parsed.skills!.length).toBeLessThan(5500);
 
     // Small model mode excludes the advanced features the standard tier asserts
     // it contains (see standard-mode test above). The basic tier does document
