@@ -1,8 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -228,6 +232,7 @@ async function createLocator(
     };
   }
 
+  validateBarBeatPosition(locatorTime);
   const targetBeats = barBeatToAbletonBeats(
     locatorTime,
     timeSigNumerator,

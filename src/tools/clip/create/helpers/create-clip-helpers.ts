@@ -6,6 +6,7 @@
 import {
   barBeatToAbletonBeats,
   durationToAbletonBeats,
+  validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -54,23 +55,41 @@ export function convertTimingParameters(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
 ): TimingParameters {
-  // Convert bar|beat timing parameters to Ableton beats
-  const arrangementStartBeats =
-    arrangementStart != null
-      ? barBeatToAbletonBeats(
-          arrangementStart,
-          songTimeSigNumerator,
-          songTimeSigDenominator,
-        )
-      : null;
-  const startBeats =
-    start != null
-      ? barBeatToAbletonBeats(start, timeSigNumerator, timeSigDenominator)
-      : null;
-  const firstStartBeats =
-    firstStart != null
-      ? barBeatToAbletonBeats(firstStart, timeSigNumerator, timeSigDenominator)
-      : null;
+  // Convert bar|beat timing parameters to Ableton beats. Validate the standalone
+  // position fields first so a 0-indexed/zero-bar position is a hard error
+  // (matching the notes grammar), not a silent pre-origin beat.
+  let arrangementStartBeats: number | null = null;
+
+  if (arrangementStart != null) {
+    validateBarBeatPosition(arrangementStart);
+    arrangementStartBeats = barBeatToAbletonBeats(
+      arrangementStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+  }
+
+  let startBeats: number | null = null;
+
+  if (start != null) {
+    validateBarBeatPosition(start);
+    startBeats = barBeatToAbletonBeats(
+      start,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+  }
+
+  let firstStartBeats: number | null = null;
+
+  if (firstStart != null) {
+    validateBarBeatPosition(firstStart);
+    firstStartBeats = barBeatToAbletonBeats(
+      firstStart,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+  }
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && looping === false) {

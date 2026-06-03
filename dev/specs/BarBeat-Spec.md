@@ -200,6 +200,22 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - `1|1-2|1` — a position is a **single** `bar|beat`; a beat range belongs in a
     transform time filter, not a bar|beat position.
 
+- **Standalone position fields share the 1-indexing gate.** Bar|beat positions
+  that arrive as their own tool-input field (create-clip `start` / `firstStart`
+  / `arrangementStart`, locator `time`, playback loop start/end) bypass the
+  notes grammar, so they are guarded by `validateBarBeatPosition` at the field
+  boundary. It throws the **same** 1-indexing error as the `1|0` / zero-bar
+  parse-error above, keeping the two surfaces consistent. (The low-level
+  `barBeatToMusicalBeats` / `barBeatToAbletonBeats` conversions stay
+  intentionally **never-throw** — they allow negative time so a `-n` pickup
+  resolves before the origin, and run per-note in transform `timeRange` checks
+  where a throw would spam — so the gate lives at the field boundary, not in the
+  conversion.)
+  - **Negative time is by design, not the zero-index mistake:** a pickup before
+    the downbeat is the offset form `1|1-n/4` (which keeps the beat literal at 1
+    and resolves to a negative beat); it passes the gate. Only a literal `1|0` /
+    `0|1` / `1|01` is the rejected 1-indexing mistake.
+
 ---
 
 ## Note Emission Rules

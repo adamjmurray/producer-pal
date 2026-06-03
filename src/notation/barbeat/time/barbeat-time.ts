@@ -228,6 +228,80 @@ export function barBeatToAbletonBeats(
 }
 
 /**
+ * Validate a STANDALONE bar|beat POSITION field (create-clip start/firstStart/
+ * arrangementStart, locator time, playback loop start/end) so it rejects the
+ * same 1-indexing mistakes the `notes` grammar rejects with a targeted steer.
+ *
+ * The low-level {@link barBeatToMusicalBeats} / {@link barBeatToAbletonBeats}
+ * conversions are intentionally never-throw (they allow negative time so pickups
+ * like `1|1-n/4` resolve before the origin, and run per-note in transform
+ * timeRange checks where a throw would spam). That leniency silently accepted
+ * 0-indexed / zero-bar / negative-bar / leading-zero positions (`1|0` → -1,
+ * `0|1` → -4, `1|01` → 0) at these standalone fields — inconsistent with the
+ * notes grammar, which throws `badZeroBeat` for the same strings. This thin
+ * boundary validator restores parity: it throws the IDENTICAL 1-indexing message
+ * for any position the notes grammar would reject with that steer, while letting
+ * everything the grammar accepts (including `-n` pickups) pass through.
+ *
+ * The accept/reject set mirrors the barbeat grammar exactly:
+ *  - bar must be `[1-9][0-9]*` (grammar `oneOrMoreInt`): a bar < 1 or with a
+ *    leading zero (`0|1`, `01|1`) is rejected.
+ *  - the integer part of the beat literal must be 1-indexed: a beat literal that
+ *    starts with `0` (`1|0`, `1|01`, `1|007`, `1|0.5`) is the grammar's
+ *    `badZeroBeat` mistake. A `-n` PICKUP keeps the beat literal at 1
+ *    (`1|1-n/4`) and stays valid.
+ *
+ * Does NOT throw for an unparseable/empty string — callers already guard
+ * `!= null`, and the subsequent {@link barBeatToAbletonBeats} call raises its own
+ * format error for genuinely malformed input. This validator's sole job is the
+ * 1-indexing steer.
+ * @param barBeat - Standalone bar|beat position string
+ * @throws With the `notes` grammar's 1-indexing message when the position is
+ *   0-indexed / zero-bar / negative-bar / leading-zero
+ */
+export function validateBarBeatPosition(barBeat: string): void {
+  // Same regex shape as barBeatToMusicalBeats: capture the bar literal and the
+  // raw beat literal (the integer/decimal base, before any `±n` offset). Keep in
+  // parity with that regex — only the OUTER structure matters here; the offset
+  // suffix is allowed but not inspected (a pickup keeps a valid base).
+  const match = barBeat.match(
+    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*))?)$/,
+  );
+
+  // Not a recognizable bar|beat shape: leave it to barBeatToAbletonBeats's own
+  // format error (this validator only owns the 1-indexing steer).
+  if (!match) {
+    return;
+  }
+
+  const barLiteral = match[1] as string;
+  const beatBaseLiteral = match[3] as string;
+  const bar = Number.parseInt(barLiteral);
+
+  // Bar is grammar `oneOrMoreInt` = [1-9][0-9]*: reject bar < 1 (zero/negative)
+  // or a leading-zero bar (`01|1`). Bars are 1-indexed for the same reason beats
+  // are; reuse the 1-indexing steer, naming the bar that is at fault.
+  const barHasLeadingZero = /^0\d/.test(barLiteral);
+
+  if (bar < 1 || barHasLeadingZero) {
+    throw new Error(
+      `bars are 1-indexed: the first bar is bar 1 (e.g. 1|1). Got bar ${barLiteral}.`,
+    );
+  }
+
+  // Beat is `badZeroBeat` = "0" [0-9]* ("." [0-9]*)?: the literal starts with a
+  // `0` (`1|0`, `1|01`, `1|007`, `1|0.5`). A literal negative beat (`1|-1`) is
+  // also rejected by the notes grammar (a sub-downbeat position is only the `-n`
+  // offset form, which keeps the base at 1). A 1-9 lead (or a `-n` pickup) is
+  // valid. Word-for-word the grammar's badZeroBeat steer.
+  if (beatBaseLiteral.startsWith("0") || beatBaseLiteral.startsWith("-")) {
+    throw new Error(
+      `beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${beatBaseLiteral}.`,
+    );
+  }
+}
+
+/**
  * Convert Ableton beats (quarter notes) to a duration string in the unified
  * duration grammar. Note-value fractions are whole-note based and carry the `n`
  * prefix (`n/4` = quarter, `n/8` = eighth, `n/12` = eighth triplet; numerator

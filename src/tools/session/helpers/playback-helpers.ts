@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
+  validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorRefToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
@@ -127,6 +129,7 @@ export function resolveStartTime(
   let startTimeBeats: number | undefined;
 
   if (startTime != null) {
+    validateBarBeatPosition(startTime);
     startTimeBeats = barBeatToAbletonBeats(
       startTime,
       timeSigNumerator,
@@ -160,6 +163,7 @@ export function resolveLoopStart(
   let loopStartBeats: number | undefined;
 
   if (loopStart != null) {
+    validateBarBeatPosition(loopStart);
     loopStartBeats = barBeatToAbletonBeats(
       loopStart,
       timeSigNumerator,
@@ -198,6 +202,7 @@ export function resolveLoopEnd(
   let loopEndBeats: number | undefined;
 
   if (loopEnd != null) {
+    validateBarBeatPosition(loopEnd);
     loopEndBeats = barBeatToAbletonBeats(
       loopEnd,
       timeSigNumerator,

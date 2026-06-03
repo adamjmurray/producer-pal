@@ -1,8 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { waitUntil } from "#src/shared/v8-sleep.ts";
 import {
@@ -164,6 +168,7 @@ export async function deleteLocator(
     timeInBeats = found.locator.getProperty("time") as number;
   } else {
     // locatorTime must be defined here (validated above)
+    validateBarBeatPosition(locatorTime as string);
     timeInBeats = barBeatToAbletonBeats(
       locatorTime as string,
       timeSigNumerator,
@@ -252,6 +257,7 @@ export function renameLocator(
     }
   } else {
     // locatorTime must be defined here (validated above)
+    validateBarBeatPosition(locatorTime as string);
     const timeInBeats = barBeatToAbletonBeats(
       locatorTime as string,
       timeSigNumerator,
