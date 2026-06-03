@@ -188,6 +188,18 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - No commas between elements
   - All state (time, probability, velocity, duration) persists across events
 
+- **Targeted parse errors** — a few malformed tokens raise a specific,
+  fix-suggesting error instead of peggy's generic "Expected …", because each is
+  a recognizable model mistake with a single right answer:
+  - `1|0` (and `1|0.x`) — beats are **1-indexed**; the downbeat is beat 1
+    (`1|1`). For a pickup before it, offset from beat 1 (`1|1-n/4`). The
+    `1|0`-as-pickup reading is deliberately **not** taught.
+  - `1.1`, `1:1` — positions use a **pipe** (`1|1`), not `.` or `:`.
+  - a bare integer standing alone (e.g. `60`) — use a **note name** (`C3`), not
+    a raw MIDI number.
+  - `1|1-2|1` — a position is a **single** `bar|beat`; a beat range belongs in a
+    transform time filter, not a bar|beat position.
+
 ---
 
 ## Note Emission Rules

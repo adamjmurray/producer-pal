@@ -237,6 +237,12 @@ C3-C5: duration = legato()       // legato for melody notes only
   - Single pitch: `C3 velocity += 10`
   - Pitch range: `C3-C5 velocity += 10` (applies to all notes from C3 to C5
     inclusive)
+  - Note names follow the **same rules as bar|beat notes**: case-insensitive
+    letters, ASCII (`#`/`b`) or Unicode (`♯`/`♭`) accidentals, and enharmonic
+    spellings (`E#`→F, `B#`→C of the next octave, `Cb`→B of the previous octave)
+    — see BarBeat-Spec. (`B` also reads as a flat, so `GB3` = `Gb3`.) The
+    transform grammar shares one `pitchClassFromParts`, locked in parity with
+    the bar|beat note grammar by `pitch-class-grammar-parity.test.ts`.
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
   `1|1-2|1 velocity += 10`). Both bounds are **inclusive** by default (matching
   note start time). Two opt-in forms make the end **exclusive** (half-open), so
@@ -265,7 +271,9 @@ C3-C5: duration = legato()       // legato for melody notes only
   absolute musical position, not by its bar number, so the bound filters at its
   true position regardless of which bar it overflows into. Bare fractions
   (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the grid+offset
-  form instead.
+  form instead. A **0-indexed bound** (`1|0-2|1`) is rejected too: beats count
+  from 1 in time ranges just as in note positions (the downbeat is beat 1; for a
+  pickup before it, offset from beat 1 — `1|1-n/4`).
 
 - **Range clamping**: Applied after modulation:
   - velocity: 1-127
