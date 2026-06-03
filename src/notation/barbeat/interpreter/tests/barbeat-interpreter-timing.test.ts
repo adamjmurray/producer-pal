@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, type vi } from "vitest";
@@ -215,7 +216,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining(
-          "state change after pitch(es) but before time position won't affect this group",
+          "has no effect: these apply to the notes that follow, so put the setting before them (v1 C4, not C4 v1)",
         ),
       );
     });
@@ -224,7 +225,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
       const result = interpretNotation("v80 C4 v90 G4 1|1");
 
       expect(result).toHaveLength(2);
-      // Should only warn about "state change won't affect group", not about it happening
+      // The interspersed `v90` has a following pitch (G4) to apply to, so this is
+      // the taught per-note form, NOT the wasted-trailing case — no warning here.
       const warningCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls
         .filter((call) => call[0] === 1)
         .filter((call) => !call[1].includes("buffered but no time position"));

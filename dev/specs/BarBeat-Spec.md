@@ -643,9 +643,9 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
   cases, both identical to the unbracketed behavior:
   - _Within an open group_ (after the pitch token, before that group's first
     time position) a scalar can't change the already-captured group:
-    `C3 E3 v80 1|1` and `[C3 E3] v80 1|1` both drop the `v80` and warn ("state
-    change … won't affect this group"). Put the scalar _before_ the
-    pitch/bracket, or use a value stream, to vary the value.
+    `C3 E3 v80 1|1` and `[C3 E3] v80 1|1` both drop the `v80` and warn (the
+    setting "has no effect … put the setting before" the notes). Put the scalar
+    _before_ the pitch/bracket, or use a value stream, to vary the value.
   - _Between emitted positions_ a later scalar retroactively updates the
     _carried_ pitch state: `C1 1|1 v80 1|2` gives the second note velocity 80,
     and a carried stream behaves identically — `[C1] 1|1 v80 1|2` is

@@ -147,8 +147,8 @@ function startPitchGroup(state: InterpreterState): void {
 
 /**
  * Add a pitch stream's chords as a LAYERED voice in the current group. Starts a
- * group when needed (mirror processPitchElement) so the post-stream "state
- * change won't affect this group" warning still fires, captures the current
+ * group when needed (mirror processPitchElement) so the post-stream
+ * trailing-setting "has no effect" warning still fires, captures the current
  * velocity/duration/probability into each chord, and APPENDS the voice (pitch
  * brackets layer — they do not replace). Out-of-range pitches are dropped per
  * chord (matching plain pitches). The shared cursor rewinds only at group start.

@@ -390,7 +390,7 @@ export function handlePitchEmission(
 
   if (state.stateChangedSinceLastPitch) {
     console.warn(
-      "state change after pitch(es) but before time position won't affect this group",
+      "velocity/duration/probability set after the note(s) but before the time position has no effect: these apply to the notes that follow, so put the setting before them (v1 C4, not C4 v1)",
     );
   }
 

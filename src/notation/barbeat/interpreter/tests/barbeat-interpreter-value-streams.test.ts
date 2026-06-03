@@ -320,8 +320,8 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
       // A pitch stream captures v/n/p at bracket time, so a late scalar can't
       // change it — same as a bare chord (`C3 E3 v80 1|1`). The scalar is
       // dropped for this group (notes stay at the default velocity) AND the
-      // "won't affect this group" warning fires (it didn't before — the warning
-      // keyed only off the bare-chord buffer, not a buffered pitch stream).
+      // trailing-setting warning fires (it didn't before — the warning keyed
+      // only off the bare-chord buffer, not a buffered pitch stream).
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const result = interpretNotation("[C3 E3] v80 1|1x2@n/4");
 
@@ -330,7 +330,7 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
         [64, 100],
       ]);
       expect(warn).toHaveBeenCalledWith(
-        "state change after pitch(es) but before time position won't affect this group",
+        "velocity/duration/probability set after the note(s) but before the time position has no effect: these apply to the notes that follow, so put the setting before them (v1 C4, not C4 v1)",
       );
       warn.mockRestore();
     });
