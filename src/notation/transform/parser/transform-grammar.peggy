@@ -199,7 +199,7 @@ pitchLiteral
   = pitchClass:pitchClass octave:signedInt {
     const pitch = (octave + 2) * 12 + pitchClass.value;
     if (pitch >= 0 && pitch <= 127) {
-      return pitch;
+      return { type: "pitchLiteral", value: pitch, name: `${pitchClass.name}${octave}` };
     }
     throw new Error(`MIDI pitch ${pitch} (${pitchClass.name}${octave}) outside valid range 0-127`);
   }

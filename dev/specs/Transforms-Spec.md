@@ -243,6 +243,15 @@ C3-C5: duration = legato()       // legato for melody notes only
     — see BarBeat-Spec. (`B` also reads as a flat, so `GB3` = `Gb3`.) The
     transform grammar shares one `pitchClassFromParts`, locked in parity with
     the bar|beat note grammar by `pitch-class-grammar-parity.test.ts`.
+  - A bare pitch name is a value only for the `pitch` parameter (`pitch = C4`),
+    as a selector (`C3:`), or as a function argument (`min(C3, C5)`). Assigned
+    to any other parameter it is warned-and-skipped — not silently coerced to a
+    MIDI number:
+
+    ```
+    velocity = b2    // skipped with a warning (b2 is not a velocity)
+    ```
+
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
   `1|1-2|1: velocity += 10`). Both bounds are **inclusive** by default (matching
   note start time). Two opt-in forms make the end **exclusive** (half-open), so

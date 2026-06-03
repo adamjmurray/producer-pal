@@ -52,6 +52,14 @@ export interface BarDurationNode {
   bars: number;
 }
 
+/** Pitch literal (e.g., C4, b2). Evaluates to its MIDI number, but stays tagged
+ * so a bare pitch literal assigned to a non-pitch parameter can be warned-and-skipped. */
+export interface PitchLiteralNode {
+  type: "pitchLiteral";
+  value: number;
+  name: string;
+}
+
 /** Expression AST node */
 export type ExpressionNode =
   | number
@@ -59,7 +67,8 @@ export type ExpressionNode =
   | BinaryOpNode
   | FunctionNode
   | NDurationNode
-  | BarDurationNode;
+  | BarDurationNode
+  | PitchLiteralNode;
 
 /** Pitch range filter */
 export interface PitchRange {

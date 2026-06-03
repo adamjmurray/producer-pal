@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   type BinaryOpNode,
   type FunctionNode,
+  type PitchLiteralNode,
   type VariableNode,
 } from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
@@ -621,19 +622,23 @@ describe("Transform Parser", () => {
     it("parses pitch literal C3 (middle C)", () => {
       const result = parser.parse("pitch = C3");
 
-      expect(result[0]!.expression).toBe(60);
+      expect(result[0]!.expression).toStrictEqual({
+        type: "pitchLiteral",
+        value: 60,
+        name: "C3",
+      });
     });
 
     it("parses pitch literal with sharp", () => {
       const result = parser.parse("pitch = C#3");
 
-      expect(result[0]!.expression).toBe(61);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(61);
     });
 
     it("parses pitch literal with flat", () => {
       const result = parser.parse("pitch = Db3");
 
-      expect(result[0]!.expression).toBe(61);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(61);
     });
 
     it("parses pitch literal in arithmetic expression", () => {
@@ -641,26 +646,26 @@ describe("Transform Parser", () => {
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("add");
-      expect(expr.left).toBe(60);
+      expect((expr.left as PitchLiteralNode).value).toBe(60);
       expect(expr.right).toBe(7);
     });
 
     it("parses pitch literal with negative octave", () => {
       const result = parser.parse("pitch = C-1");
 
-      expect(result[0]!.expression).toBe(12);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(12);
     });
 
     it("parses lowest valid pitch literal C-2", () => {
       const result = parser.parse("pitch = C-2");
 
-      expect(result[0]!.expression).toBe(0);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(0);
     });
 
     it("parses highest valid pitch literal G8", () => {
       const result = parser.parse("pitch = G8");
 
-      expect(result[0]!.expression).toBe(127);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(127);
     });
 
     it("throws on pitch literal out of range (too high)", () => {
@@ -677,8 +682,12 @@ describe("Transform Parser", () => {
 
       expect(expr.type).toBe("divide");
       expect((expr.left as BinaryOpNode).type).toBe("add");
-      expect((expr.left as BinaryOpNode).left).toBe(60);
-      expect((expr.left as BinaryOpNode).right).toBe(67);
+      expect(((expr.left as BinaryOpNode).left as PitchLiteralNode).value).toBe(
+        60,
+      );
+      expect(
+        ((expr.left as BinaryOpNode).right as PitchLiteralNode).value,
+      ).toBe(67);
       expect(expr.right).toBe(2);
     });
 
@@ -687,7 +696,7 @@ describe("Transform Parser", () => {
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("add");
-      expect(expr.left).toBe(60);
+      expect((expr.left as PitchLiteralNode).value).toBe(60);
       expect((expr.right as VariableNode).name).toBe("pitch");
     });
 
@@ -695,12 +704,15 @@ describe("Transform Parser", () => {
       // Same tolerance as the bar|beat note layer, locked across both grammars
       // by pitch-class-grammar-parity.test.ts. Enharmonics wrap the octave: B#
       // resolves up to C, Cb down to B.
-      expect(parser.parse("pitch = c3")[0]!.expression).toBe(60);
-      expect(parser.parse("pitch = gb1")[0]!.expression).toBe(42);
-      expect(parser.parse("pitch = C♯1")[0]!.expression).toBe(37);
-      expect(parser.parse("pitch = E#3")[0]!.expression).toBe(65); // → F3
-      expect(parser.parse("pitch = B#3")[0]!.expression).toBe(72); // → C4
-      expect(parser.parse("pitch = Cb4")[0]!.expression).toBe(71); // → B3
+      const value = (s: string): number =>
+        (parser.parse(s)[0]!.expression as PitchLiteralNode).value;
+
+      expect(value("pitch = c3")).toBe(60);
+      expect(value("pitch = gb1")).toBe(42);
+      expect(value("pitch = C♯1")).toBe(37);
+      expect(value("pitch = E#3")).toBe(65); // → F3
+      expect(value("pitch = B#3")).toBe(72); // → C4
+      expect(value("pitch = Cb4")).toBe(71); // → B3
     });
   });
 

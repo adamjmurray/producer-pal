@@ -281,7 +281,7 @@ describe("Transform Parser - shorthand", () => {
           timeRange: null,
           parameter: "pitch",
           operator: "set",
-          expression: 72, // C4 = MIDI 72
+          expression: { type: "pitchLiteral", value: 72, name: "C4" }, // C4 = MIDI 72
         },
       ]);
     });
@@ -308,7 +308,7 @@ describe("Transform Parser - shorthand", () => {
         timeRange: null,
         parameter: "pitch",
         operator: "set",
-        expression: 72,
+        expression: { type: "pitchLiteral", value: 72, name: "C4" },
       });
     });
 
