@@ -147,7 +147,122 @@ describe("ppal-update-live-set", () => {
       },
     });
   });
+
+  it("creates, renames, and deletes locators", async () => {
+    // Locator IDs are positional and assignment only sticks against real Live,
+    // so this exercises the full create/rename/delete cycle end-to-end. The set
+    // ships with locators (Intro/Verse/Chorus/Bridge), so use unique names and
+    // unoccupied positions to avoid collisions.
+    const initialLocators = await readLocatorList();
+
+    // Create a locator at bar 2 with a name
+    const createResult = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "2|1",
+          locatorName: "E2E Alpha",
+        },
+      }),
+    );
+
+    expect(createResult.locator?.operation).toBe("created");
+    expect(createResult.locator?.id).toBeDefined();
+    expect(createResult.locator?.name).toBe("E2E Alpha");
+
+    await sleep(100);
+    let locators = await readLocatorList();
+    const alpha = locators.find((l) => l.name === "E2E Alpha");
+
+    expect(alpha).toBeDefined();
+    expect(alpha!.time).toBe("2|1");
+
+    // Rename it by ID
+    const renameResult = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "rename",
+          locatorId: alpha!.id,
+          locatorName: "E2E Beta",
+        },
+      }),
+    );
+
+    expect(renameResult.locator?.operation).toBe("renamed");
+    expect(renameResult.locator?.name).toBe("E2E Beta");
+
+    await sleep(100);
+    locators = await readLocatorList();
+
+    expect(locators.find((l) => l.name === "E2E Beta")).toBeDefined();
+    expect(locators.find((l) => l.name === "E2E Alpha")).toBeUndefined();
+
+    // Add a second locator, then delete the first by name match
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "3|1",
+        locatorName: "E2E Gamma",
+      },
+    });
+    await sleep(100);
+
+    const deleteByName = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "delete",
+          locatorName: "E2E Beta",
+        },
+      }),
+    );
+
+    expect(deleteByName.locator?.operation).toBe("deleted");
+    expect(deleteByName.locator?.count).toBe(1);
+
+    await sleep(100);
+    locators = await readLocatorList();
+
+    expect(locators.find((l) => l.name === "E2E Beta")).toBeUndefined();
+    expect(locators.find((l) => l.name === "E2E Gamma")).toBeDefined();
+
+    // Delete the remaining locator by time, restoring the original count
+    const deleteByTime = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "delete",
+          locatorTime: "3|1",
+        },
+      }),
+    );
+
+    expect(deleteByTime.locator?.operation).toBe("deleted");
+
+    await sleep(100);
+    locators = await readLocatorList();
+
+    expect(locators.length).toBe(initialLocators.length);
+  });
 });
+
+async function readLocatorList(): Promise<LocatorInfo[]> {
+  const read = await ctx.client!.callTool({
+    name: "ppal-read-live-set",
+    arguments: { include: ["locators"] },
+  });
+
+  return parseToolResult<ReadResult>(read).locators ?? [];
+}
+
+interface LocatorInfo {
+  id: string;
+  name: string;
+  time: string;
+}
 
 interface ReadResult {
   id: string;
@@ -156,6 +271,7 @@ interface ReadResult {
   sceneCount?: number;
   scale?: string;
   scalePitches?: string;
+  locators?: LocatorInfo[];
 }
 
 interface UpdateResult {
@@ -164,4 +280,11 @@ interface UpdateResult {
   timeSignature?: string;
   scale?: string;
   scalePitches?: string[];
+  locator?: {
+    operation: string;
+    id?: string;
+    name?: string;
+    time?: string;
+    count?: number;
+  };
 }
