@@ -6,7 +6,7 @@
 /**
  * Scenarios for preTransforms reach-for in SMALL MODEL MODE.
  *
- * RUN PENDING: needs Ableton (agentic — drives a live model against Live).
+ * Requires Ableton (agentic — drives a live model against Live).
  *
  * In small-model mode `transforms` is excluded from update-clip but
  * `preTransforms` is KEPT, with a shorthand-only description (`1|1-2|1: v0`

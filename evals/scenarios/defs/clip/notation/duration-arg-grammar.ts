@@ -6,7 +6,7 @@
 /**
  * Scenarios for the create-clip `length` duration-argument grammar.
  *
- * RUN PENDING: needs Ableton (agentic — drives a live model against Live).
+ * Requires Ableton (agentic — drives a live model against Live).
  *
  * The grammar itself (`Nbar`, `n<fraction>`, `Nbar+n<fraction>`; rejection of
  * bare numbers / bare fractions / the retired `2:0` glyph) is fully covered at
