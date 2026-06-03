@@ -61,6 +61,7 @@ export const toolDefSelect = defineTool("ppal-select", {
   },
 
   smallModelModeConfig: {
-    // Intentionally empty — simple tool with few params, all useful for SLMs
+    // Marginal feature — hide from SLMs to keep the schema focused
+    excludeParams: ["openPluginWindow"],
   },
 });
