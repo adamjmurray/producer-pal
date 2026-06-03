@@ -214,6 +214,36 @@ export async function listConversations(): Promise<ConversationSummary[]> {
 }
 
 /**
+ * Find conversations whose title or any message text contains the query
+ * (case-insensitive substring). Scans full records because transcripts are not
+ * carried by the summary list; the {@link MAX_CONVERSATIONS} cap keeps this a
+ * cheap linear scan.
+ * @param query - Search text; a blank/whitespace-only query matches nothing
+ * @returns Set of matching conversation IDs
+ */
+export async function searchConversations(query: string): Promise<Set<string>> {
+  const needle = query.trim().toLowerCase();
+  const matches = new Set<string>();
+
+  if (!needle) return matches;
+
+  const db = await getConversationDb();
+  const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
+
+  for (const raw of all) {
+    const record = normalizeLegacyRecord(raw);
+    const inTitle = record.title?.toLowerCase().includes(needle) ?? false;
+    const inMessages = record.messages.some((m) =>
+      m.content.toLowerCase().includes(needle),
+    );
+
+    if (inTitle || inMessages) matches.add(record.id);
+  }
+
+  return matches;
+}
+
+/**
  * Close the DB connection and reset the cached promise. Used in tests.
  */
 export async function resetDbCache(): Promise<void> {

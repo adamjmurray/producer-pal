@@ -54,6 +54,17 @@ describe("useConversationPanelState", () => {
     expect(result.current.activeConversationId).toBe("conv-1");
   });
 
+  it("exposes search state and a query setter", () => {
+    const deps = createMockDeps();
+    const { result } = renderHook(() =>
+      useConversationPanelState(deps as never),
+    );
+
+    expect(result.current.searchQuery).toBe("");
+    expect(result.current.matchedIds).toBeNull();
+    expect(typeof result.current.onSearchChange).toBe("function");
+  });
+
   it("onExport calls transfer.handleExport", () => {
     const deps = createMockDeps();
     const { result } = renderHook(() =>

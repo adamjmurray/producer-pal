@@ -87,6 +87,7 @@ export function ConversationItem({
             <input
               type="text"
               value={editValue}
+              aria-label="Conversation title"
               onInput={(e) =>
                 onEditChange((e.target as HTMLInputElement).value)
               }

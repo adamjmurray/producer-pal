@@ -147,10 +147,10 @@ describe("App conversation management", () => {
       ],
       renameConversation: mockRename,
     });
-    const { getByLabelText, container } = render(<App />);
+    const { getByLabelText } = render(<App />);
 
     fireEvent.click(getByLabelText("Rename conversation"));
-    const input = container.querySelector("input") as HTMLInputElement;
+    const input = getByLabelText("Conversation title") as HTMLInputElement;
 
     fireEvent.input(input, { target: { value: "New Title" } });
     fireEvent.keyDown(input, { key: "Enter" });

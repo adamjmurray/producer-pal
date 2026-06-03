@@ -11,6 +11,10 @@ import { type ConversationSummary } from "#webui/lib/conversation-db";
 export interface ConversationListProps {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
+  /** Current search query; when non-empty, the list is filtered to matchedIds. */
+  searchQuery: string;
+  /** IDs matching the active search, or null when no search is active. */
+  matchedIds: Set<string> | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onExportItem: (id: string) => void | Promise<void>;
@@ -23,6 +27,8 @@ export interface ConversationListProps {
  * @param props - Component props
  * @param props.conversations - List of conversation summaries
  * @param props.activeConversationId - Currently active conversation ID
+ * @param props.searchQuery - Current search query (filters the list when non-empty)
+ * @param props.matchedIds - IDs matching the active search, or null when not searching
  * @param props.onSelect - Callback when a conversation is selected
  * @param props.onDelete - Callback to delete a conversation
  * @param props.onExportItem - Callback to export a single conversation
@@ -33,6 +39,8 @@ export interface ConversationListProps {
 export function ConversationList({
   conversations,
   activeConversationId,
+  searchQuery,
+  matchedIds,
   onSelect,
   onDelete,
   onExportItem,
@@ -43,7 +51,13 @@ export function ConversationList({
   const [editValue, setEditValue] = useState("");
   const [bookmarksCollapsed, setBookmarksCollapsed] = useState(false);
   const [allCollapsed, setAllCollapsed] = useState(false);
-  const bookmarked = conversations.filter((c) => c.bookmarked);
+  const query = searchQuery.trim();
+  // matchedIds lags the query by one debounce tick; until it arrives, show all.
+  const visible =
+    query && matchedIds
+      ? conversations.filter((c) => matchedIds.has(c.id))
+      : conversations;
+  const bookmarked = visible.filter((c) => c.bookmarked);
 
   const renderItems = (items: ConversationSummary[]) =>
     items.map((conv) => (
@@ -75,9 +89,9 @@ export function ConversationList({
   return (
     <div className="flex-1 overflow-y-auto">
       {conversations.length === 0 ? (
-        <p className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
-          No conversations yet
-        </p>
+        <EmptyState message="No conversations yet" />
+      ) : query && visible.length === 0 ? (
+        <EmptyState message={`No conversations match “${query}”`} />
       ) : (
         <>
           {bookmarked.length > 0 && (
@@ -94,11 +108,11 @@ export function ConversationList({
 
           <SectionHeader
             label="All Conversations"
-            count={conversations.length}
+            count={visible.length}
             collapsed={allCollapsed}
             onToggle={() => setAllCollapsed(!allCollapsed)}
           />
-          {!allCollapsed && renderItems(conversations)}
+          {!allCollapsed && renderItems(visible)}
         </>
       )}
     </div>
@@ -106,6 +120,20 @@ export function ConversationList({
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Placeholder message shown when the list is empty or a search has no matches.
+ * @param props - Component props
+ * @param props.message - Text to display
+ * @returns Empty-state paragraph element
+ */
+function EmptyState({ message }: { message: string }) {
+  return (
+    <p className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
+      {message}
+    </p>
+  );
+}
 
 /**
  * Collapsible section header for conversation sublists.

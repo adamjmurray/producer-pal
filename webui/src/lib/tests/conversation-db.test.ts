@@ -19,6 +19,7 @@ import {
   renameConversation,
   resetDbCache,
   saveConversation,
+  searchConversations,
   setBookmark,
 } from "#webui/lib/conversation-db";
 import { createTestRecord as createRecord } from "#webui/test-utils/conversation-test-helpers";
@@ -302,6 +303,64 @@ describe("conversation-db", () => {
     const list = await listConversations();
 
     expect(list[0]?.modelLabel).toBe("Test Model Label");
+  });
+
+  it("searchConversations matches on title", async () => {
+    const a = createRecord({ title: "Drum patterns", messages: [] });
+    const b = createRecord({ title: "Bass line", messages: [] });
+
+    await saveConversation(a);
+    await saveConversation(b);
+
+    const matches = await searchConversations("drum");
+
+    expect(matches.has(a.id)).toBe(true);
+    expect(matches.has(b.id)).toBe(false);
+  });
+
+  it("searchConversations matches on message content", async () => {
+    const a = createRecord({
+      messages: [
+        { role: "user", content: "make a syncopated groove" },
+        { role: "assistant", content: "done" },
+      ],
+    });
+    const b = createRecord({
+      messages: [{ role: "user", content: "transpose up an octave" }],
+    });
+
+    await saveConversation(a);
+    await saveConversation(b);
+
+    const matches = await searchConversations("syncopated");
+
+    expect(matches.has(a.id)).toBe(true);
+    expect(matches.has(b.id)).toBe(false);
+  });
+
+  it("searchConversations is case-insensitive", async () => {
+    const record = createRecord({ title: "MixDown Session", messages: [] });
+
+    await saveConversation(record);
+
+    const matches = await searchConversations("mixdown");
+
+    expect(matches.has(record.id)).toBe(true);
+  });
+
+  it("searchConversations returns empty set for a blank query", async () => {
+    await saveConversation(createRecord({ title: "Anything" }));
+
+    expect(await searchConversations("")).toStrictEqual(new Set());
+    expect(await searchConversations("   ")).toStrictEqual(new Set());
+  });
+
+  it("searchConversations returns empty set when nothing matches", async () => {
+    await saveConversation(createRecord({ title: "Hello", messages: [] }));
+
+    const matches = await searchConversations("no-such-text");
+
+    expect(matches.size).toBe(0);
   });
 
   it("sorts all conversations by updatedAt desc regardless of bookmark", async () => {
