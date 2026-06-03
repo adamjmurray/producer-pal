@@ -234,8 +234,8 @@ C3-C5: duration = legato()       // legato for melody notes only
     note position (`note.start`), so `timing *= 0.5` compresses all notes toward
     bar 1.
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
-  - Single pitch: `C3 velocity += 10`
-  - Pitch range: `C3-C5 velocity += 10` (applies to all notes from C3 to C5
+  - Single pitch: `C3: velocity += 10`
+  - Pitch range: `C3-C5: velocity += 10` (applies to all notes from C3 to C5
     inclusive)
   - Note names follow the **same rules as bar|beat notes**: case-insensitive
     letters, ASCII (`#`/`b`) or Unicode (`♯`/`♭`) accidentals, and enharmonic
@@ -244,7 +244,7 @@ C3-C5: duration = legato()       // legato for melody notes only
     transform grammar shares one `pitchClassFromParts`, locked in parity with
     the bar|beat note grammar by `pitch-class-grammar-parity.test.ts`.
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
-  `1|1-2|1 velocity += 10`). Both bounds are **inclusive** by default (matching
+  `1|1-2|1: velocity += 10`). Both bounds are **inclusive** by default (matching
   note start time). Two opt-in forms make the end **exclusive** (half-open), so
   a selection can stop at a bar line without catching the next downbeat:
   - **Whole-bar wildcard:** `N|*` selects all of bar N; `A|*-B|*` selects whole
@@ -632,24 +632,24 @@ velocity = pow(note.velocity / 127, 2) * 127;
 
 ```
 // Single pitch selector (only affects C3 notes)
-C3 velocity += 20
+C3: velocity += 20
 
 // Pitch range selector (affects C3, C#3, D3, ... up to C5)
-C3-C5 velocity += 20
+C3-C5: velocity += 20
 
 // Accent bass notes (C1 through C2)
-C1-C2 velocity += 30
+C1-C2: velocity += 30
 
 // Different modulation for high notes
-C5-C7 velocity = 100
+C5-C7: velocity = 100
 
 // Combine pitch range with time range
-C3-C5 1|1-2|1 velocity += 10
+C3-C5 1|1-2|1: velocity += 10
 
 // Multiple pitch ranges with different modulations
-C1-C2 velocity += 30
-C3-C5 velocity += 10
-C6-C7 velocity = 100
+C1-C2: velocity += 30
+C3-C5: velocity += 10
+C6-C7: velocity = 100
 ```
 
 ### Note Property Variables
@@ -662,7 +662,7 @@ velocity = note.pitch / 127 * 100
 velocity = note.velocity / 2
 
 // Delay higher notes progressively
-C4-C6 timing += note.pitch * 0.01
+C4-C6: timing += note.pitch * 0.01
 
 // Reduce duration based on probability
 duration = note.duration * note.probability
