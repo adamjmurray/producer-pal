@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
@@ -254,15 +254,19 @@ export function updateSceneSelection({
  * @param options.songView - LiveAPI instance for live_set view
  * @param options.deviceId - Device ID to select
  * @param options.devicePath - Device path (e.g. "t0/d1")
+ * @returns The resolved device, or undefined if none was targeted/found
  */
 export function updateDeviceSelection({
   songView,
   deviceId,
   devicePath,
-}: UpdateDeviceSelectionOptions): void {
+}: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
-    validateIdType(deviceId, "device", "select");
+    const deviceAPI = validateIdType(deviceId, "device", "select");
+
     songView.call("select_device", toLiveApiId(deviceId));
+
+    return deviceAPI;
   } else if (devicePath != null) {
     const resolved = resolvePathToLiveApi(devicePath);
 
@@ -276,8 +280,45 @@ export function updateDeviceSelection({
 
     if (deviceAPI.exists()) {
       songView.call("select_device", toLiveApiId(deviceAPI.id));
+
+      return deviceAPI;
     }
   }
+
+  return undefined;
+}
+
+/**
+ * Open or close a plug-in's (VST/AU) floating editor window. The `is_editor_open`
+ * property is specific to the PluginDevice LOM class (Live 12.4+), so for any
+ * other device this warns and skips rather than throwing.
+ * @param device - The resolved target device, or undefined if none was targeted
+ * @param open - true to open the editor window, false to close it
+ * @returns true if the property was written (device is a plug-in)
+ */
+export function applyPluginEditorWindow(
+  device: LiveAPI | undefined,
+  open: boolean,
+): boolean {
+  if (device == null) {
+    console.warn(
+      "select: openPluginWindow requires a plug-in device — specify id or devicePath",
+    );
+
+    return false;
+  }
+
+  if (device.type !== "PluginDevice") {
+    console.warn(
+      `select: openPluginWindow ignored — ${device.type} is not a plug-in (VST/AU)`,
+    );
+
+    return false;
+  }
+
+  device.setProperty("is_editor_open", open ? 1 : 0);
+
+  return true;
 }
 
 /**

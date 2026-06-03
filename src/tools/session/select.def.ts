@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
@@ -48,6 +49,13 @@ export const toolDefSelect = defineTool("ppal-select", {
       .string()
       .optional()
       .describe("select device by path (e.g. t0/d1)"),
+
+    openPluginWindow: z
+      .boolean()
+      .optional()
+      .describe(
+        "open (true) or close (false) a plug-in's (VST/AU) floating editor window; targets the device given by id or devicePath",
+      ),
 
     view: z.enum(["session", "arrangement"]).optional().describe("main view"),
   },
