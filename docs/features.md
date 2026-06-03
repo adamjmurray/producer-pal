@@ -359,6 +359,15 @@ required. For fully remote control, use
   create, or edit arrangement automation or clip envelopes — parameter values
   that change over time. Track and device parameters like volume, pan, sends,
   and knobs can be set to static values, but not automated.
+- **VST/AU plug-in internals can't be controlled directly.** Producer Pal can
+  open or close a plug-in's editor window, but it cannot read or set the
+  parameters inside a third-party VST/AU plug-in. To control them, map the
+  parameters onto the Live plug-in device using Live's
+  [Configure mode](https://www.ableton.com/en/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode)
+  (expand the device, click "Configure", then click the controls you want in the
+  plug-in's window); Producer Pal can then set those mapped parameters like any
+  other device parameter. You map them yourself — up to 128 parameters, and not
+  every plug-in parameter is mappable, so pick the ones that matter most.
 - **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
   with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
   per track for predictable results.
