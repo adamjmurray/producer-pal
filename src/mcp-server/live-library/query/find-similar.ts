@@ -44,7 +44,7 @@ import { withLiveDb } from "./live-db-query.ts";
 const DEFAULT_FIND_SIMILAR_LIMIT = 20;
 
 /** Candidate row plus its raw feature-vector BLOB. */
-type CandidateRow = SearchRow & { data: Uint8Array };
+type CandidateRow = SearchRow & { data: Uint8Array | null };
 
 /**
  * Find library samples whose audio most resembles the seed at `args.similarTo`.
@@ -221,7 +221,7 @@ function rankCandidates(
 function loadVector(db: DatabaseSync, fileId: number): Float32Array | null {
   const row = db
     .prepare("SELECT data FROM fe_values WHERE file_id = ? LIMIT 1")
-    .get(fileId) as { data: Uint8Array } | undefined;
+    .get(fileId) as { data: Uint8Array | null } | undefined;
 
   return row == null ? null : decodeFeatureVector(row.data);
 }

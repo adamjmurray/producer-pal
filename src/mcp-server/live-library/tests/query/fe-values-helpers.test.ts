@@ -67,6 +67,10 @@ describe("decodeFeatureVector", () => {
     expect(decodeFeatureVector(blob(sample, { totalBytes: 200 }))).toBeNull();
   });
 
+  it("returns null for a NULL BLOB (does not throw — one bad row can't collapse the whole call)", () => {
+    expect(decodeFeatureVector(null)).toBeNull();
+  });
+
   it("returns null for an unknown version tag", () => {
     expect(decodeFeatureVector(blob(sample, { version: 99 }))).toBeNull();
   });

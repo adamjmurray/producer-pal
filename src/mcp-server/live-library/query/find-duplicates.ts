@@ -41,7 +41,7 @@ import { withLiveDb } from "./live-db-query.ts";
 const DEFAULT_FIND_DUPLICATES_LIMIT = 50;
 
 /** Candidate row plus its feature-vector BLOB and stringified fingerprint. */
-type DuplicateRow = SearchRow & { data: Uint8Array; hash: string };
+type DuplicateRow = SearchRow & { data: Uint8Array | null; hash: string };
 
 /**
  * Find groups of library files that share an audio fingerprint.

@@ -29,16 +29,20 @@ const HEADER_BYTES = 12;
 const EXPECTED_BYTES = HEADER_BYTES + FE_VALUES_FLOAT_COUNT * 4; // 268
 
 /**
- * Decode a feature-vector BLOB into its 64 float32s, or null when the BLOB
- * isn't the expected length or its header version/float-count don't match.
- * Returning null (rather than throwing) lets callers skip an unknown future
- * format instead of failing the whole request.
+ * Decode a feature-vector BLOB into its 64 float32s, or null when the BLOB is
+ * NULL/absent, isn't the expected length, or its header version/float-count
+ * don't match. Returning null (rather than throwing) lets callers skip an
+ * unknown or empty row instead of failing the whole request — a single NULL
+ * `fe_values.data` row must not collapse the entire findSimilar/findDuplicates
+ * call into `dbAvailable:false`.
  *
- * @param data - Raw `fe_values.data` BLOB (node:sqlite returns BLOBs as Uint8Array)
- * @returns The 64-float vector, or null if undecodable
+ * @param data - Raw `fe_values.data` BLOB (node:sqlite returns BLOBs as Uint8Array; NULL → null)
+ * @returns The 64-float vector, or null if absent/undecodable
  */
-export function decodeFeatureVector(data: Uint8Array): Float32Array | null {
-  if (data.byteLength !== EXPECTED_BYTES) {
+export function decodeFeatureVector(
+  data: Uint8Array | null,
+): Float32Array | null {
+  if (data?.byteLength !== EXPECTED_BYTES) {
     return null;
   }
 

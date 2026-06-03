@@ -24,7 +24,10 @@ function registerRack(chainIds: string[] = []): RegisteredMockObject {
   return registerMockObject("rack", {
     path: RACK_PATH,
     type: "RackDevice",
-    properties: { chains: chainIds.flatMap((id) => ["id", id]) },
+    properties: {
+      can_have_drum_pads: 1,
+      chains: chainIds.flatMap((id) => ["id", id]),
+    },
   });
 }
 
@@ -204,6 +207,35 @@ describe("resolveNestedParamTarget", () => {
       );
 
       expect(target).toBeNull();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("could not resolve or create drum pad"),
+      );
+    });
+
+    it("refuses to auto-create a pad chain on a non-drum rack (leaves no stray chain)", () => {
+      // A plain chain-capable Rack (not a Drum Rack) addressed with a pad path:
+      // the guard must warn-skip before insert_chain, or it would strand an
+      // empty chain in the wrong rack.
+      const rackMock = registerMockObject("rack", {
+        path: RACK_PATH,
+        type: "RackDevice",
+        properties: {
+          can_have_drum_pads: 0,
+          can_have_chains: 1,
+          chains: [],
+        },
+      });
+
+      const target = resolveNestedParamTarget(
+        rack(),
+        "pC1/d0",
+        "sample",
+        "createDevice",
+      );
+
+      expect(target).toBeNull();
+      expect(rackMock.call).not.toHaveBeenCalledWith("insert_chain");
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining("could not resolve or create drum pad"),

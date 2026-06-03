@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -236,6 +237,15 @@ export function resolveOrCreateDrumPadChain(
   chainSegments: string[],
 ): LiveAPI | null {
   if (!rack.exists()) {
+    return null;
+  }
+
+  // Only a Drum Rack has drum pads. A plain chain-capable Rack (can_have_chains
+  // true, can_have_drum_pads false) would let insert_chain below succeed and
+  // strand an empty chain in the wrong rack; refuse it here so a `pC1/…/sample`
+  // aimed at a non-drum rack warn-skips with state untouched (the inverse of
+  // autoCreateChains, which refuses Drum Racks on the regular-chain path).
+  if ((rack.getProperty("can_have_drum_pads") as number) <= 0) {
     return null;
   }
 
