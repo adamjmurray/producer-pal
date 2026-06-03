@@ -8,7 +8,7 @@
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { extractToolResultText } from "#evals/chat/mcp.ts";
+import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
@@ -233,9 +233,9 @@ export function readClipNotesFromTurn(
     let parsed: unknown;
 
     try {
-      parsed = JSON.parse(String(call.result));
+      parsed = parseToolResult(String(call.result));
     } catch {
-      continue; // non-JSON read result
+      continue; // unparseable read result
     }
 
     for (const clip of clipObjectsFrom(parsed)) {
@@ -331,9 +331,10 @@ export async function clearSessionSlots(
     let id: unknown;
 
     try {
-      id = (JSON.parse(extractToolResultText(result)) as { id?: unknown }).id;
+      id = (parseToolResult(extractToolResultText(result)) as { id?: unknown })
+        .id;
     } catch {
-      id = null; // empty/non-JSON slot read — nothing to delete
+      id = null; // empty/unparseable slot read — nothing to delete
     }
 
     if (id != null) ids.push(String(id));

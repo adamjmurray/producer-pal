@@ -86,11 +86,11 @@ Override with `-b` / `--base-url` in the chat CLI, or set `LOCAL_BASE_URL` in
 
 Profiles control server-side settings that are orthogonal to scenarios:
 
-| Profile       | Description                                          |
-| ------------- | ---------------------------------------------------- |
-| `default`     | Standard: JSON output, full tools, normal model mode |
-| `small-model` | Enables small model mode (simplified descriptions)   |
-| `json-off`    | Disables JSON output formatting                      |
+| Profile       | Description                                             |
+| ------------- | ------------------------------------------------------- |
+| `default`     | Standard: compact output, full tools, normal model mode |
+| `small-model` | Enables small model mode (simplified descriptions)      |
+| `json-on`     | Enables JSON output (matches the MCP Inspector)         |
 
 Test multiple configs in a matrix:
 

@@ -11,6 +11,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { type ToolSet, jsonSchema } from "ai";
+import { parseCompactJSLiteral } from "#src/shared/compact-parser.ts";
 
 const DEFAULT_MCP_URL = "http://localhost:3350/mcp";
 const MCP_CLIENT_NAME = "producer-pal-chat";
@@ -100,4 +101,21 @@ export function extractToolResultText(result: unknown): string {
   const typed = result as { content?: Array<{ text?: string }> } | null;
 
   return typed?.content?.[0]?.text ?? "";
+}
+
+/**
+ * Parse an MCP tool-result string that may be JSON (the `json-on` profile / MCP
+ * Inspector) OR the server's default compact JS-literal format. Tries native
+ * JSON first, then the compact parser. Throws if the text is neither — callers
+ * that want a graceful fallback should wrap this in try/catch.
+ *
+ * @param text - The tool result text (e.g. from extractToolResultText)
+ * @returns The parsed value
+ */
+export function parseToolResult(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return parseCompactJSLiteral(text);
+  }
 }
