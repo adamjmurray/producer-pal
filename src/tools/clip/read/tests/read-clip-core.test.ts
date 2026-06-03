@@ -164,8 +164,9 @@ describe("readClip", () => {
   it("returns notes outside the playable region (pickup before start, overhang past end)", () => {
     // read-clip reads a window of one clip-length on each side of the playable
     // region [0, length] so authored out-of-bounds notes round-trip on read
-    // instead of being silently dropped. The window itself ([-4, 12] here)
-    // delegates the filtering to Live; our code must not drop what comes back.
+    // instead of being silently dropped. The window itself ([-4, 8] here, i.e.
+    // get_notes_extended from_time=-4 spanning 12 beats) delegates the filtering
+    // to Live; our code must not drop what comes back.
     const clip = setupMidiClipMock({
       clipProps: {
         signature_numerator: 4,

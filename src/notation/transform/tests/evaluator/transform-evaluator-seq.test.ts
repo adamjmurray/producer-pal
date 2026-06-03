@@ -136,6 +136,19 @@ describe("Transform - seq function", () => {
       expect(result.velocity!.value).toBe(30);
       expect(outlet).not.toHaveBeenCalled();
     });
+
+    it("prefers note.index over clip.index when both axes are in scope", () => {
+      // The mirror of clipseq's "ignores note.index" test: with both axes
+      // present (typical MIDI scenario), seq() picks by note.index, not
+      // clip:index. note.index=0 → 10; if it used clip:index=2 it would be 30.
+      const result = evaluateTransform(
+        "velocity = seq(10, 20, 30)",
+        createContext(),
+        { index: 0, "clip:index": 2, "clip:count": 3 },
+      );
+
+      expect(result.velocity!.value).toBe(10);
+    });
   });
 
   describe("pitch-range-filtered index in applyTransforms", () => {
