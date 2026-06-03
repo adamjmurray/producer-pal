@@ -327,6 +327,31 @@ describe("note-value grammar parity across all parse sites", () => {
     }
   });
 
+  describe("leading-zero bar counts are rejected as note values (L2)", () => {
+    // The grammars' bar count is `oneOrMoreInt = [1-9][0-9]*`; the regex now
+    // matches it with `0|[1-9]\d*`. A leading-zero count (`01bar`, `007bar`)
+    // parses on no duration site — previously the regex accepted `01bar` → 4
+    // while both grammars rejected it (the unguarded half of the parity gap).
+    for (const token of ["01bar", "007bar", "01bar+n/4"]) {
+      it(`duration "${token}" is rejected by every duration site`, () => {
+        for (const site of DURATION_SITES) {
+          expect(() => site.fn(token, 4, 4)).toThrow();
+        }
+      });
+    }
+
+    it("`0bar` → 0 on the regex site only (documented intentional divergence)", () => {
+      // A lone `0bar` is the one bar-count value where the sites legitimately
+      // differ: the regex maps it to 0 (the length serializer emits `0bar` for a
+      // zero-length clip, an output-only field never fed back through Peggy),
+      // while both grammars reject it (`oneOrMoreInt` starts at 1). This is the
+      // documented exception the L2 fix deliberately preserves.
+      expect(durationViaRegex("0bar", 4, 4)).toBe(0);
+      expect(() => durationViaBarbeat("0bar", 4, 4)).toThrow();
+      expect(() => durationViaTransform("0bar", 4, 4)).toThrow();
+    });
+  });
+
   describe("±n beat offsets agree across all offset sites", () => {
     // Plain grid beats, dyadic decimals, and `±n` note-value offsets — including
     // a `-n` that borrows below beat 1 into negative time (a note before 1|1),

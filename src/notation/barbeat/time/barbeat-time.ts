@@ -409,13 +409,17 @@ export function durationToAbletonBeats(
   // off-grid escape, e.g. `n1.9638/4`). Denominator is a no-leading-zero integer
   // (`0|[1-9]\d*`): a lone `0` flows to the division-by-zero guard, while `08`
   // (leading zero) is rejected outright, matching the peggy grammars' denominator
-  // (`[1-9][0-9]*`). Bars stay `\d+` so `0bar` parses to 0 (rejected downstream
-  // as non-positive, not as a format error). A plural `bars` (`2bars`) is an
-  // accepted tolerance alias (`bars?`), matching the grammars; output stays `bar`.
-  // The mixed tail carries a SIGN (`([+-])n…`): `1bar-n/16` is "almost a full
-  // bar". A leading sign group shifts the capture indices read below.
+  // (`[1-9][0-9]*`). The bar count uses the SAME no-leading-zero shape
+  // (`0|[1-9]\d*`): a lone `0bar` parses to 0 (documented intentional — the
+  // length serializer emits `0bar` for a zero-length clip, never re-parsed by
+  // Peggy), while a leading-zero count (`01bar`, `007bar`) is rejected outright,
+  // matching the grammars' bar count (`oneOrMoreInt = [1-9][0-9]*`). A plural
+  // `bars` (`2bars`) is an accepted tolerance alias (`bars?`), matching the
+  // grammars; output stays `bar`. The mixed tail carries a SIGN (`([+-])n…`):
+  // `1bar-n/16` is "almost a full bar". A leading sign group shifts the capture
+  // indices read below.
   const match = duration.match(
-    /^(?:(\d+)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
+    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
   );
 
   if (!match) {
