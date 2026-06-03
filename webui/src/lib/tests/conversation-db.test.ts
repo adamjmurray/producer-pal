@@ -349,6 +349,13 @@ describe("conversation-db", () => {
         null,
         { type: "function_call", name: "ppal-create-clip", arguments: "{}" },
         { type: "message", role: "system", content: "not-an-array" },
+        // A system message IS skipped even with valid array content: search
+        // mirrors the transcript, which doesn't render system text.
+        {
+          type: "message",
+          role: "system",
+          content: [{ type: "input_text", text: "supercalifragilistic" }],
+        },
         {
           type: "message",
           role: "user",
@@ -389,6 +396,11 @@ describe("conversation-db", () => {
     const typed = await searchConversations("louder");
 
     expect(typed.has(other.id)).toBe(true);
+
+    // System-message text is NOT searchable (it isn't rendered in the transcript).
+    const system = await searchConversations("supercalifragilistic");
+
+    expect(system.has(voice.id)).toBe(false);
   });
 
   it("searchConversations handles records missing the messages field", async () => {

@@ -294,8 +294,10 @@ function normalizeLegacyRecord(
  * rather than `messages`, so this pulls the `text`/`transcript` strings out of
  * each user and assistant message item. Walks the structure defensively because
  * the storage layer keeps `voiceHistory` typed as `unknown[]` to stay decoupled
- * from @openai/agents/realtime. Mirrors the fields read by
- * `realtimeItemsToUIMessages`; keep the two in sync if the item shape changes.
+ * from @openai/agents/realtime. Mirrors `realtimeItemsToUIMessages`, including
+ * its role filter — only `user`/`assistant` messages are searched, so search
+ * never matches `system` text the transcript doesn't render. Keep the two in
+ * sync if the item shape changes.
  * @param voiceHistory - Raw RealtimeItem list persisted on the record, or null
  * @returns All transcript text joined by spaces (empty string if none)
  */
@@ -306,6 +308,9 @@ function extractVoiceTranscriptText(voiceHistory: unknown[] | null): string {
 
   for (const item of voiceHistory) {
     if (!isRecord(item) || item.type !== "message") continue;
+    // Only search what the transcript renders: `realtimeItemsToUIMessages`
+    // skips system messages, so search must too (don't match hidden text).
+    if (item.role !== "user" && item.role !== "assistant") continue;
     if (!Array.isArray(item.content)) continue;
 
     for (const part of item.content) {
