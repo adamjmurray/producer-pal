@@ -105,6 +105,20 @@ describe("createProviderModel", () => {
     expect(getModelId(model)).toBe("my-model");
   });
 
+  it("throws an actionable error for custom provider without a URL", () => {
+    // baseUrl defaults to "" in settings, so the empty-string path is the real
+    // failure mode; whitespace-only and missing baseUrl take the same branch.
+    expect(() => createProviderModel("custom", "my-model", "key", "")).toThrow(
+      /custom provider requires a url/i,
+    );
+    expect(() =>
+      createProviderModel("custom", "my-model", "key", "   "),
+    ).toThrow(/custom provider requires a url/i);
+    expect(() => createProviderModel("custom", "my-model", "key")).toThrow(
+      /custom provider requires a url/i,
+    );
+  });
+
   it("creates a model for gemini provider", () => {
     const model = createProviderModel("gemini", "gemini-2.0-flash", "key");
 
