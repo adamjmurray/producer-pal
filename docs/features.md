@@ -363,7 +363,7 @@ required. For fully remote control, use
   open or close a plug-in's editor window, but it cannot read or set the
   parameters inside a third-party VST/AU plug-in. To control them, map the
   parameters onto the Live plug-in device using Live's
-  [Configure mode](https://www.ableton.com/en/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode)
+  [Configure mode](https://www.ableton.com/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode)
   (expand the device, click "Configure", then click the controls you want in the
   plug-in's window); Producer Pal can then set those mapped parameters like any
   other device parameter. You map them yourself — up to 128 parameters, and not
