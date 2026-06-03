@@ -23,9 +23,9 @@ export interface UseConversationSearchReturn {
 
 /**
  * Owns conversation-search state: a query string plus the debounced set of
- * matching conversation IDs (title + message text). Re-runs when the query or
- * the conversation list changes, so results stay live as conversations are
- * added, renamed, or deleted.
+ * matching conversation IDs (title, message text, or voice transcript). Re-runs
+ * when the query or the conversation list changes, so results stay live as
+ * conversations are added, renamed, or deleted.
  * @param conversations - Current conversation summaries; identity changes on each refresh
  * @returns Search query state and the set of matching IDs (null = no active search)
  */

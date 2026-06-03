@@ -214,10 +214,11 @@ export async function listConversations(): Promise<ConversationSummary[]> {
 }
 
 /**
- * Find conversations whose title or any message text contains the query
- * (case-insensitive substring). Scans full records because transcripts are not
- * carried by the summary list; the {@link MAX_CONVERSATIONS} cap keeps this a
- * cheap linear scan.
+ * Find conversations whose title, message text, or voice transcript contains
+ * the query (case-insensitive substring). Scans full records because
+ * transcripts are not carried by the summary list; the {@link MAX_CONVERSATIONS}
+ * cap keeps this a cheap linear scan. Text records match on `messages`; voice
+ * records keep their transcript in `voiceHistory`, so both are searched.
  * @param query - Search text; a blank/whitespace-only query matches nothing
  * @returns Set of matching conversation IDs
  */
@@ -236,8 +237,11 @@ export async function searchConversations(query: string): Promise<Set<string>> {
     const inMessages = record.messages.some((m) =>
       m.content.toLowerCase().includes(needle),
     );
+    const inVoice = extractVoiceTranscriptText(record.voiceHistory)
+      .toLowerCase()
+      .includes(needle);
 
-    if (inTitle || inMessages) matches.add(record.id);
+    if (inTitle || inMessages || inVoice) matches.add(record.id);
   }
 
   return matches;
@@ -276,8 +280,53 @@ function normalizeLegacyRecord(
   raw.totalUsage ??= null;
   raw.sessionType ??= "text";
   raw.voiceHistory ??= null;
+  // Voice records persist messages: [], but a corrupt/older record could lack
+  // the field entirely; default it so callers (e.g. searchConversations) can
+  // treat messages as a guaranteed array.
+  raw.messages ??= [];
 
   return raw as ConversationRecord;
+}
+
+/**
+ * Extract searchable text from a voice record's transcript history. Voice
+ * conversations keep their spoken/typed text in `voiceHistory` (RealtimeItem[])
+ * rather than `messages`, so this pulls the `text`/`transcript` strings out of
+ * each user and assistant message item. Walks the structure defensively because
+ * the storage layer keeps `voiceHistory` typed as `unknown[]` to stay decoupled
+ * from @openai/agents/realtime. Mirrors the fields read by
+ * `realtimeItemsToUIMessages`; keep the two in sync if the item shape changes.
+ * @param voiceHistory - Raw RealtimeItem list persisted on the record, or null
+ * @returns All transcript text joined by spaces (empty string if none)
+ */
+function extractVoiceTranscriptText(voiceHistory: unknown[] | null): string {
+  if (voiceHistory == null) return "";
+
+  const parts: string[] = [];
+
+  for (const item of voiceHistory) {
+    if (!isRecord(item) || item.type !== "message") continue;
+    if (!Array.isArray(item.content)) continue;
+
+    for (const part of item.content) {
+      if (!isRecord(part)) continue;
+      // input_text/output_text carry `.text`; audio items carry `.transcript`.
+      const text = part.text ?? part.transcript;
+
+      if (typeof text === "string" && text) parts.push(text);
+    }
+  }
+
+  return parts.join(" ");
+}
+
+/**
+ * Narrow an unknown value to a plain object for safe property access.
+ * @param value - The value to test
+ * @returns True if value is a non-null object
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null;
 }
 
 /**

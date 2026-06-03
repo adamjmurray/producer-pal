@@ -338,6 +338,79 @@ describe("conversation-db", () => {
     expect(matches.has(b.id)).toBe(false);
   });
 
+  it("searchConversations matches on voice transcript text", async () => {
+    const voice = createRecord({
+      sessionType: "voice",
+      messages: [],
+      voiceHistory: [
+        // Malformed entries are tolerated (voiceHistory is unknown[]): a
+        // non-object item, a tool call, and a message with non-array content
+        // are all skipped without throwing.
+        null,
+        { type: "function_call", name: "ppal-create-clip", arguments: "{}" },
+        { type: "message", role: "system", content: "not-an-array" },
+        {
+          type: "message",
+          role: "user",
+          content: [
+            "not-an-object",
+            { type: "input_text" }, // no text/transcript yet
+            { type: "input_audio", transcript: "play a shuffle beat" },
+          ],
+        },
+        {
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_audio", transcript: "here you go" }],
+        },
+      ],
+    });
+    const other = createRecord({
+      sessionType: "voice",
+      messages: [],
+      voiceHistory: [
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "make it louder" }],
+        },
+      ],
+    });
+
+    await saveConversation(voice);
+    await saveConversation(other);
+
+    const matches = await searchConversations("shuffle");
+
+    expect(matches.has(voice.id)).toBe(true);
+    expect(matches.has(other.id)).toBe(false);
+
+    // Typed voice input (input_text) is searchable too.
+    const typed = await searchConversations("louder");
+
+    expect(typed.has(other.id)).toBe(true);
+  });
+
+  it("searchConversations handles records missing the messages field", async () => {
+    const record = createRecord({ title: "Legacy convo" });
+
+    await saveConversation(record);
+    const db = await getConversationDb();
+    const raw = await db.get("conversations", record.id);
+
+    delete (raw as Record<string, unknown>).messages;
+    await db.put("conversations", raw);
+
+    // Must not throw on the absent messages array; title search still matches.
+    const matches = await searchConversations("legacy");
+
+    expect(matches.has(record.id)).toBe(true);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.messages).toStrictEqual([]);
+  });
+
   it("searchConversations is case-insensitive", async () => {
     const record = createRecord({ title: "MixDown Session", messages: [] });
 
