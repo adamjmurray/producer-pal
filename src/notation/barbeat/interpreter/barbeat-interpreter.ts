@@ -22,7 +22,7 @@ import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
-  clearPitchBuffer,
+  clearCarriedStreams,
   countBufferedPitches,
   extractBufferState,
   validateBufferedState,
@@ -248,7 +248,7 @@ function processElementInLoop(
       state.currentTime = result.currentTime;
     }
 
-    clearPitchBuffer(state);
+    clearCarriedStreams(state);
   } else if (element.destination?.bar !== undefined) {
     const result = handleBarCopySingleDestination(
       element as BarCopyElement,
@@ -263,11 +263,11 @@ function processElementInLoop(
       state.currentTime = result.currentTime;
     }
 
-    clearPitchBuffer(state);
+    clearCarriedStreams(state);
   } else if (element.clearBuffer) {
     validateBufferedState(extractBufferState(state), "@clear");
     handleClearBuffer(notesByBar);
-    clearPitchBuffer(state);
+    clearCarriedStreams(state);
   } else if (element.bar !== undefined && element.beat !== undefined) {
     processTimePosition(
       element,

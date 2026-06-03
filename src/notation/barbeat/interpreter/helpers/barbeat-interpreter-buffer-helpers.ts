@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
@@ -97,6 +98,38 @@ export function clearPitchBuffer(state: InterpreterState): void {
   state.pitchesEmitted = false;
   state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
+}
+
+/**
+ * Drop all carried VALUE streams (velocity/duration/probability) and rewind
+ * their cursors. Companion to {@link clearPitchBuffer}: a `[...]` value stream
+ * carries across emitted positions by its own cursor (AJM-483) exactly as a
+ * pitch stream does, so the operations that forget the carried pitch stream
+ * (`@clear`, bar copy) must forget the carried value streams too — otherwise a
+ * velocity/duration/probability stream keeps cycling past a `@clear` that wiped
+ * the pitch carry, an undocumented asymmetry.
+ * @param state - Interpreter state to clear
+ */
+export function clearValueStreams(state: InterpreterState): void {
+  state.currentVelocityStream = null;
+  state.velocityStreamCursor = 0;
+  state.currentDurationStream = null;
+  state.durationStreamCursor = 0;
+  state.currentProbabilityStream = null;
+  state.probabilityStreamCursor = 0;
+}
+
+/**
+ * Forget ALL carried stream state — the pitch buffer/stream and every value
+ * stream — symmetrically. This is what `@clear` and bar copy do: they reset the
+ * carry so a following time position with no fresh pitch/value emits nothing
+ * (pitch) / falls back to the last scalar (value), rather than resuming a
+ * mid-cycle stream.
+ * @param state - Interpreter state to clear
+ */
+export function clearCarriedStreams(state: InterpreterState): void {
+  clearPitchBuffer(state);
+  clearValueStreams(state);
 }
 
 /**

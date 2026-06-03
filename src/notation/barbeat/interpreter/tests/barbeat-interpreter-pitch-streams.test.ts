@@ -421,4 +421,44 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
       warn.mockRestore();
     });
   });
+
+  describe("@clear forgets carried value streams symmetrically (L6)", () => {
+    // A `[...]` value stream carries across emitted positions by its own cursor,
+    // exactly as a pitch stream does. `@clear` already drops the carried pitch
+    // stream; it must drop the carried value streams too, or a velocity/duration/
+    // probability stream keeps cycling past the `@clear` (the undocumented
+    // asymmetry L6 found). After `@clear` the stream is gone, so emission falls
+    // back to the last scalar / default.
+
+    it("stops a carried velocity stream at @clear (was [80,100,120,80])", () => {
+      const result = interpretNotation(
+        "[v80 v100 v120] C3 1|1 1|2 @clear C3 1|3 1|4",
+      );
+
+      // 1|1,1|2 cycle the stream (80,100); @clear drops it, so 1|3,1|4 fall back
+      // to the default velocity (100) instead of resuming the stream at 120,80.
+      expect(result.map((n) => n.velocity)).toStrictEqual([80, 100, 100, 100]);
+    });
+
+    it("stops a carried duration stream at @clear", () => {
+      const result = interpretNotation(
+        "[n/4 n/2] C3 1|1 1|2 @clear C3 1|3 1|4",
+      );
+
+      // n/4 = 1 beat, n/2 = 2 beats; after @clear the duration stream is gone, so
+      // 1|3,1|4 use the default quarter-note duration (1 beat).
+      expect(result.map((n) => n.duration)).toStrictEqual([1, 2, 1, 1]);
+    });
+
+    it("drops the pitch carry at @clear so a later bare position emits nothing", () => {
+      // The pitch half of the symmetry (unchanged) — kept here so the pitch and
+      // value behaviors are documented side by side.
+      const result = interpretNotation("[C3 E3 G3] 1|1 1|2 @clear 1|3");
+
+      expect(result.map((n) => [n.start_time, n.pitch])).toStrictEqual([
+        [0, 60],
+        [1, 64],
+      ]);
+    });
+  });
 });

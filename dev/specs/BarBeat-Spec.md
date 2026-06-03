@@ -907,6 +907,12 @@ Explicitly clear the copy buffer:
 - **Use case**: "Forget" bars and start fresh for next copyable section
 - **Does not update time**: Unlike `@N=`, stays at current bar/beat position
 - **Clears pitch buffer**: Same as `@N=`
+- **Clears carried streams**: `@clear` and `@N=` forget ALL carried stream state
+  symmetrically — the pitch stream AND any carried velocity / duration /
+  probability value stream (`[...]` pattern brackets). A value stream cycles
+  across emitted positions by its own cursor just as a pitch stream does, so a
+  later position after `@clear` resumes neither: it falls back to the last
+  scalar / default for each parameter, not to the middle of a stream.
 
 **Example**:
 
