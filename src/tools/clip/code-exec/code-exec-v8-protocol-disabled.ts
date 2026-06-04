@@ -54,6 +54,8 @@ export function handleCodeExecResult(
  * @param _clip - Unused
  * @param _userCode - Unused
  * @param _view - Unused
+ * @param _clipIndex - Unused
+ * @param _clipCount - Unused
  * @param _sceneIndex - Unused
  * @param _arrangementStartBeats - Unused
  * @returns Error result
@@ -62,6 +64,8 @@ export async function executeNoteCode(
   _clip: LiveAPI,
   _userCode: string,
   _view: "session" | "arrangement",
+  _clipIndex: number,
+  _clipCount: number,
   _sceneIndex?: number,
   _arrangementStartBeats?: number,
 ): Promise<CodeExecutionResult> {

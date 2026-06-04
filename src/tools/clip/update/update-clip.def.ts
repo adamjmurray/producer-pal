@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
@@ -36,29 +37,31 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins"),
+      .describe("bar|beat position where loop/clip region begins (clip meter)"),
     length: z
       .string()
       .optional()
-      .describe("duration in bar:beat (e.g., '4:0' = 4 bars)"),
+      .describe(
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or Nbar+n<fraction> (e.g., '1bar+n/4'); clip meter",
+      ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     firstStart: z
       .string()
       .optional()
       .describe(
-        "bar|beat playback start (looping clips, when different from start)",
+        "bar|beat playback start (looping clips, when different from start; clip meter)",
       ),
     arrangementStart: z
       .string()
       .optional()
       .describe(
-        "bar|beat position to move arrangement clip (arrangement clips only)",
+        "bar|beat position (song meter) to move arrangement clip (arrangement clips only)",
       ),
     arrangementLength: z
       .string()
       .optional()
       .describe(
-        "duration in bar:beat (e.g., '4:0' = 4 bars), arrangement clips only",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter",
       ),
     toSlot: z.coerce
       .string()
@@ -68,7 +71,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        `comma-separated bar|beat positions to split clip (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only`,
+        `comma-separated bar|beat positions to split clip (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only; song meter`,
       ),
 
     // Audio clip parameters
@@ -100,18 +103,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
+        "MIDI notes in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only. MERGES into existing notes (overwrites at same pitch+start - restate a note to edit it in place). To delete/move existing notes or replace a region use preTransforms; don't rewrite the whole clip",
       ),
     transforms: z
       .string()
       .optional()
-      .describe("transform expressions (parameter: expression per line)"),
-    noteUpdateMode: z
-      .enum(["replace", "merge"])
-      .optional()
-      .default("merge")
       .describe(
-        '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
+        "transform expressions applied AFTER merging notes (broadcast across ids); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
+      ),
+    preTransforms: z
+      .string()
+      .optional()
+      .describe(
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip. v0 deletes (zero velocity): clear a whole bar ('3|*: v0', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: v0'), or all ('v0'); also remap a drum lane ('C1: C4'). Works with or without notes",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
@@ -120,7 +124,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
             .max(MAX_CODE_LENGTH)
             .optional()
             .describe(
-              "JS function body: receives (notes, context), returns notes array (see Skills for properties)",
+              "JS function body (broadcast across ids): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)",
             ),
         }
       : {}),
@@ -131,7 +135,16 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .min(0)
       .max(1)
       .optional()
-      .describe("quantization strength 0-1 (MIDI clips only)"),
+      .describe(
+        "MIDI quantize strength 0-1 (1 = full snap); snaps note starts to quantizeGrid (default 1/16). MIDI clips only",
+      ),
+
+    // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),
+    // mapping directly to Live's quantize API constants — do not migrate to n/N.
+    // The mixed grids (1/8+1/8T, 1/16+1/16T) have no note-value spelling, so they
+    // stay enum-only. The single-grid values ALSO accept the n/N note-value alias
+    // used elsewhere (n/4=1/4, n/8=1/8, n/12=1/8T, n/16=1/16, n/24=1/16T,
+    // n/32=1/32), normalized to the native form in handleQuantization.
     quantizeGrid: z
       .enum([
         "1/4",
@@ -142,9 +155,18 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "1/16T",
         "1/16+1/16T",
         "1/32",
+        "n/4",
+        "n/8",
+        "n/12",
+        "n/16",
+        "n/24",
+        "n/32",
       ])
       .optional()
-      .describe("note grid (required with quantize)"),
+      .describe(
+        "grid that note starts snap to: 1/16 (default), 1/8, 1/4, 1/8T, 1/16T, 1/32; n/N note values also accepted (n/12=1/8T, n/24=1/16T); mixed grids 1/8+1/8T and 1/16+1/16T are enum-only",
+      ),
+
     quantizePitch: z
       .string()
       .optional()
@@ -197,6 +219,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     descriptionOverrides: {
       name: "clip name",
       color: "#RRGGBB",
+      notes:
+        "MIDI notes (bar|beat). MERGES - overwrites at same pitch+start; restate to edit in place. Delete/move existing notes via preTransforms, don't rewrite the clip",
+      preTransforms:
+        "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `1|1-2|1: v0` clears a span, `v0` clears all, `C1: C4` remaps a drum lane",
     },
   },
 });

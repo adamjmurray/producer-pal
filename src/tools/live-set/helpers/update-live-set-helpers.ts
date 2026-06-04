@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
@@ -40,7 +41,7 @@ export function extendSongIfNeeded(
   targetBeats: number,
   context: { silenceWavPath?: string },
 ): TempClipInfo | null {
-  const songLength = liveSet.get("song_length")[0] as number;
+  const songLength = liveSet.getProperty("song_length") as number;
 
   if (targetBeats <= songLength) {
     return null; // No extension needed

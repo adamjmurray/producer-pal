@@ -29,7 +29,7 @@ export async function checkForUpdate(
       return null;
     }
 
-    const tagName = (data as { tag_name: unknown }).tag_name;
+    const tagName = data.tag_name;
 
     if (typeof tagName !== "string") return null;
 

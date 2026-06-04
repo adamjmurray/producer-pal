@@ -5,7 +5,7 @@
 
 import { Fragment } from "preact";
 import { useEffect } from "preact/hooks";
-import { type QueuedMessage } from "#webui/hooks/chat/helpers/use-message-queue";
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 
 interface QueuedMessagesProps {
   queuedMessages: QueuedMessage[];

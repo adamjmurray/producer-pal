@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,8 +14,6 @@
  */
 interface ToolContext {
   memory: {
-    enabled: boolean;
-    writable: boolean;
     content: string;
   };
   smallModelMode: boolean;
@@ -22,6 +21,11 @@ interface ToolContext {
   holdingAreaStartBeats?: number;
   silenceWavPath?: string;
   timeoutMs?: number;
+  /**
+   * Per-request override for output format. true = compact JS-literal,
+   * false = JSON. When undefined, V8 uses the global compactOutput config.
+   */
+  compactOutput?: boolean;
 }
 
 /**

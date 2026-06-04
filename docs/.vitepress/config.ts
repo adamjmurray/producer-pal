@@ -6,7 +6,7 @@ export default defineConfig({
   title: "Producer Pal",
   titleTemplate: ":title | Producer Pal — Ableton MCP for AI music production",
   description:
-    "Producer Pal is an Ableton MCP server — AI for Ableton Live that works with Claude, Gemini, ChatGPT, and local models.",
+    "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
 
   // GitHub Pages base URL
   base: "/",
@@ -38,7 +38,7 @@ export default defineConfig({
       {
         name: "keywords",
         content:
-          "Ableton MCP, AI for Ableton, Ableton Live MCP, Ableton AI, AI music production, Max for Live MCP server, Claude Ableton, Gemini Ableton, ChatGPT Ableton",
+          "Ableton MCP, AI for Ableton, Ableton Live MCP, Ableton AI, AI music production, Max for Live MCP server, Claude Ableton, Gemini Ableton, ChatGPT Ableton, Ableton REST API, Ableton Live REST API, Ableton HTTP API, Ableton Live API, Agent Skills, Claude Skills, Codex Skills, Gemini Skills, Coding Agent Skills, Ableton Live Agent Skill, SKILL.md",
       },
     ],
     ["meta", { property: "og:type", content: "website" }],
@@ -55,7 +55,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "Producer Pal is an Ableton MCP server — AI for Ableton Live that works with Claude, Gemini, ChatGPT, and local models.",
+          "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
       },
     ],
     ["meta", { property: "og:url", content: "https://producer-pal.org" }],
@@ -79,7 +79,7 @@ export default defineConfig({
       {
         name: "twitter:description",
         content:
-          "Producer Pal is an Ableton MCP server — AI for Ableton Live that works with Claude, Gemini, ChatGPT, and local models.",
+          "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
       },
     ],
     [
@@ -115,6 +115,7 @@ export default defineConfig({
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
           { text: "REST API", link: "/guide/rest-api" },
+          { text: "Agent Skills", link: "/guide/skills" },
         ],
       },
       {

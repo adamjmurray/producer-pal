@@ -16,18 +16,11 @@ import {
 } from "./use-chat-test-helpers";
 
 // Mock streaming helpers
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
-  handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
-    for await (const chatHistory of stream) {
-      onUpdate(formatter(chatHistory));
-    }
+vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
+  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
 
-    return true;
-  }),
-  validateMcpConnection: vi.fn(),
-  filterOverrides: vi.fn((overrides) => overrides),
-  showMissingApiKeyError: vi.fn(),
-}));
+  return streamingHelpersMockBody();
+});
 
 describe("useChat handleEdit", () => {
   const mockAdapter = createMockAdapter();

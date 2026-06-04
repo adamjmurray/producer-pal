@@ -96,14 +96,14 @@ describe("Transform Evaluator", () => {
 
   describe("cosine waveform", () => {
     it("evaluates cos at position 0 (starts at peak)", () => {
-      const result = evaluateTransform("velocity += cos(1t)", createContext());
+      const result = evaluateTransform("velocity += cos(n/4)", createContext());
 
       expect(result.velocity!.value).toBeCloseTo(1.0, 10);
     });
 
     it("evaluates cos at position 0.25 (quarter period)", () => {
       const result = evaluateTransform(
-        "velocity += cos(1t)",
+        "velocity += cos(n/4)",
         createContext({ position: 0.25 }),
       );
 
@@ -112,7 +112,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates cos at position 0.5 (half period)", () => {
       const result = evaluateTransform(
-        "velocity += cos(1t)",
+        "velocity += cos(n/4)",
         createContext({ position: 0.5 }),
       );
 
@@ -121,7 +121,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates cos with phase offset", () => {
       const result = evaluateTransform(
-        "velocity += cos(1t, 0.5)",
+        "velocity += cos(n/4, 0.5)",
         createContext(),
       );
 
@@ -129,9 +129,9 @@ describe("Transform Evaluator", () => {
       expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
 
-    it("evaluates cos with bar:beat frequency (1:0t in 4/4 = 4 beats)", () => {
+    it("evaluates cos with whole-note period (n/1 = 4 beats in 4/4)", () => {
       const result = evaluateTransform(
-        "velocity += cos(1:0t)",
+        "velocity += cos(n/1)",
         createContext({ position: 2 }), // halfway through 4-beat period
       );
 
@@ -141,7 +141,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates scaled cosine", () => {
       const result = evaluateTransform(
-        "velocity += 20 * cos(1t)",
+        "velocity += 20 * cos(n/4)",
         createContext(),
       );
 
@@ -151,14 +151,14 @@ describe("Transform Evaluator", () => {
 
   describe("sine waveform", () => {
     it("evaluates sin at position 0 (starts at zero)", () => {
-      const result = evaluateTransform("velocity += sin(1t)", createContext());
+      const result = evaluateTransform("velocity += sin(n/4)", createContext());
 
       expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
 
     it("evaluates sin at position 0.25 (quarter period = peak)", () => {
       const result = evaluateTransform(
-        "velocity += sin(1t)",
+        "velocity += sin(n/4)",
         createContext({ position: 0.25 }),
       );
 
@@ -167,7 +167,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates sin at position 0.5 (half period)", () => {
       const result = evaluateTransform(
-        "velocity += sin(1t)",
+        "velocity += sin(n/4)",
         createContext({ position: 0.5 }),
       );
 
@@ -176,7 +176,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates sin with phase offset", () => {
       const result = evaluateTransform(
-        "velocity += sin(1t, 0.25)",
+        "velocity += sin(n/4, 0.25)",
         createContext(),
       );
 
@@ -187,14 +187,14 @@ describe("Transform Evaluator", () => {
 
   describe("triangle waveform", () => {
     it("evaluates tri at position 0 (starts at zero)", () => {
-      const result = evaluateTransform("velocity += tri(1t)", createContext());
+      const result = evaluateTransform("velocity += tri(n/4)", createContext());
 
       expect(result.velocity!.value).toBe(0.0);
     });
 
     it("evaluates tri at position 0.25 (quarter period = peak)", () => {
       const result = evaluateTransform(
-        "velocity += tri(1t)",
+        "velocity += tri(n/4)",
         createContext({ position: 0.25 }),
       );
 
@@ -203,7 +203,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates tri at position 0.5 (half period)", () => {
       const result = evaluateTransform(
-        "velocity += tri(1t)",
+        "velocity += tri(n/4)",
         createContext({ position: 0.5 }),
       );
 
@@ -212,7 +212,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates tri with phase offset", () => {
       const result = evaluateTransform(
-        "velocity += tri(1t, 0.5)",
+        "velocity += tri(n/4, 0.5)",
         createContext(),
       );
 
@@ -223,14 +223,14 @@ describe("Transform Evaluator", () => {
 
   describe("sawtooth waveform", () => {
     it("evaluates saw at position 0 (starts at zero)", () => {
-      const result = evaluateTransform("velocity += saw(1t)", createContext());
+      const result = evaluateTransform("velocity += saw(n/4)", createContext());
 
       expect(result.velocity!.value).toBe(0.0);
     });
 
     it("evaluates saw at position 0.25 (quarter period)", () => {
       const result = evaluateTransform(
-        "velocity += saw(1t)",
+        "velocity += saw(n/4)",
         createContext({ position: 0.25 }),
       );
 
@@ -239,7 +239,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates saw at position 0.5 (half period = discontinuity)", () => {
       const result = evaluateTransform(
-        "velocity += saw(1t)",
+        "velocity += saw(n/4)",
         createContext({ position: 0.5 }),
       );
 
@@ -248,7 +248,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates saw with phase offset", () => {
       const result = evaluateTransform(
-        "velocity += saw(1t, 0.5)",
+        "velocity += saw(n/4, 0.5)",
         createContext(),
       );
 
@@ -260,7 +260,7 @@ describe("Transform Evaluator", () => {
   describe("square waveform", () => {
     it("evaluates square at position 0 (starts high)", () => {
       const result = evaluateTransform(
-        "velocity += square(1t)",
+        "velocity += square(n/4)",
         createContext(),
       );
 
@@ -269,7 +269,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates square at position 0.5 (switches to low)", () => {
       const result = evaluateTransform(
-        "velocity += square(1t)",
+        "velocity += square(n/4)",
         createContext({ position: 0.5 }),
       );
 
@@ -278,7 +278,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates square with custom pulse width", () => {
       const result = evaluateTransform(
-        "velocity += square(1t, 0, 0.25)",
+        "velocity += square(n/4, 0, 0.25)",
         createContext({ position: 0.3 }), // past 25% duty cycle
       );
 
@@ -287,7 +287,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates square with phase offset", () => {
       const result = evaluateTransform(
-        "velocity += square(1t, 0.5)",
+        "velocity += square(n/4, 0.5)",
         createContext(),
       );
 
@@ -504,16 +504,16 @@ describe("Transform Evaluator", () => {
   describe("complex expressions", () => {
     it("evaluates unipolar envelope (20 + 20 * cos)", () => {
       const result = evaluateTransform(
-        "velocity += 20 + 20 * cos(1:0t)",
+        "velocity += 20 + 20 * cos(n/1)",
         createContext(), // cos at position 0 = 1.0
       );
 
       expect(result.velocity!.value).toBeCloseTo(40.0, 10); // 20 + 20 * 1.0
     });
 
-    it("evaluates swing timing (0.05 * (cos(1t) - 1))", () => {
+    it("evaluates swing timing (0.05 * (cos(n/4) - 1))", () => {
       const result = evaluateTransform(
-        "timing += 0.05 * (cos(1t) - 1)",
+        "timing += 0.05 * (cos(n/4) - 1)",
         createContext(), // cos at position 0 = 1.0
       );
 
@@ -522,7 +522,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates multiple functions combined", () => {
       const result = evaluateTransform(
-        "velocity += 20 * cos(1t) + 10",
+        "velocity += 20 * cos(n/4) + 10",
         createContext(),
       );
 
@@ -531,7 +531,7 @@ describe("Transform Evaluator", () => {
 
     it("evaluates amplitude transform (cos * cos)", () => {
       const result = evaluateTransform(
-        "velocity += 30 * cos(4:0t) * cos(1t)",
+        "velocity += 30 * cos(n4/1) * cos(n/4)",
         createContext(),
       );
 
@@ -542,30 +542,30 @@ describe("Transform Evaluator", () => {
   describe("time signatures", () => {
     it("evaluates transform in 3/4", () => {
       const result = evaluateTransform(
-        "velocity += cos(1:0t)",
-        createContext({ position: 1.5, numerator: 3 }), // halfway through 3-beat bar
+        "velocity += cos(n/4)",
+        createContext({ position: 0.5, numerator: 3 }), // half a quarter-note in
       );
 
-      // position 1.5 / period 3 = phase 0.5 → cos(0.5) = -1
+      // n/4 period = 1 beat; position 0.5 / 1 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
 
     it("evaluates transform in 6/8", () => {
       const result = evaluateTransform(
-        "velocity += cos(1:0t)",
-        createContext({ position: 3, numerator: 6, denominator: 8 }), // halfway through 6-beat bar
+        "velocity += cos(n/4)",
+        createContext({ position: 1, numerator: 6, denominator: 8 }), // half a quarter-note in
       );
 
-      // position 3 / period 6 = phase 0.5 → cos(0.5) = -1
+      // n/4 period = 2 eighth-note beats; position 1 / 2 = phase 0.5 → cos(0.5) = -1
       expect(result.velocity!.value).toBeCloseTo(-1.0, 10);
     });
   });
 
   describe("multi-parameter transform", () => {
     it("evaluates multiple parameters independently", () => {
-      const modString = `velocity += 20 * cos(1:0t)
+      const modString = `velocity += 20 * cos(n/1)
 timing += 0.05 * rand()
-probability += 0.2 * cos(0:2t)`;
+probability += 0.2 * cos(n/2)`;
 
       const result = evaluateTransform(modString, createContext());
 
@@ -611,36 +611,36 @@ timing += 0.05`;
   });
 
   describe("real-world examples from spec", () => {
-    it("basic envelope: velocity += 20 * cos(1:0t)", () => {
+    it("basic envelope: velocity += 20 * cos(n/1)", () => {
       const result = evaluateTransform(
-        "velocity += 20 * cos(1:0t)",
+        "velocity += 20 * cos(n/1)",
         createContext(),
       );
 
       expect(result.velocity!.value).toBeCloseTo(20.0, 10);
     });
 
-    it("phase-shifted: velocity += 20 * cos(1:0t, 0.5)", () => {
+    it("phase-shifted: velocity += 20 * cos(n/1, 0.5)", () => {
       const result = evaluateTransform(
-        "velocity += 20 * cos(1:0t, 0.5)",
+        "velocity += 20 * cos(n/1, 0.5)",
         createContext(),
       );
 
       expect(result.velocity!.value).toBeCloseTo(-20.0, 10);
     });
 
-    it("pulse width transform: velocity += 20 * square(2t, 0, 0.25)", () => {
+    it("pulse width transform: velocity += 20 * square(n/2, 0, 0.25)", () => {
       const result = evaluateTransform(
-        "velocity += 20 * square(2t, 0, 0.25)",
+        "velocity += 20 * square(n/2, 0, 0.25)",
         createContext(),
       );
 
       expect(result.velocity!.value).toBe(20.0);
     });
 
-    it("combined functions: velocity += 20 * cos(4:0t) + 10 * rand()", () => {
+    it("combined functions: velocity += 20 * cos(n4/1) + 10 * rand()", () => {
       const result = evaluateTransform(
-        "velocity += 20 * cos(4:0t) + 10 * rand()",
+        "velocity += 20 * cos(n4/1) + 10 * rand()",
         createContext(),
       );
 

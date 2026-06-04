@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -396,32 +397,9 @@ describe("device-reader", () => {
 
     it("returns empty object when max recursion depth exceeded", () => {
       const consoleSpy = vi.spyOn(console, "warn");
-      const device = {
-        id: "device_1",
-        path: "live_set tracks 0 devices 0",
-        getProperty: (prop: string) => {
-          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
-          if (prop === "can_have_chains") return false;
-          if (prop === "can_have_drum_pads") return false;
-          if (prop === "class_display_name") return "Operator";
-          if (prop === "name") return "Operator";
-          if (prop === "is_active") return 1;
+      const device = makeOperatorDevice();
 
-          return null;
-        },
-        getChildren: () => [],
-      };
-
-      // Mock LiveAPI for device view
-      const TestMockLiveAPI = vi.fn().mockImplementation(() => ({
-        exists: vi.fn().mockReturnValue(false),
-        getProperty: vi.fn().mockReturnValue(0),
-      })) as unknown as { from: ReturnType<typeof vi.fn> };
-
-      TestMockLiveAPI.from = vi.fn((path: string) =>
-        (TestMockLiveAPI as unknown as (path: string) => unknown)(path),
-      );
-      g.LiveAPI = TestMockLiveAPI;
+      setupLiveApiMock();
 
       // Call with depth > maxDepth
       const result = readDevice(device as unknown as LiveAPI, {
@@ -435,8 +413,70 @@ describe("device-reader", () => {
       );
     });
 
-    it("returns multisample flag for Simpler in multisample mode", () => {
-      const device = {
+    it("omits the focused sample field for Simpler in multisample mode", () => {
+      const device = makeSimplerDevice({ multiSampleMode: 1 });
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as unknown as LiveAPI, {
+        includeChains: false,
+        includeSample: true,
+      });
+
+      // No single sample loaded in multi-sample mode → no top-level `sample`
+      // field (multi-sample state is conveyed via the multiSampleMode param in
+      // the full `params` view).
+      expect(result.multisample).toBeUndefined();
+      expect(result.sample).toBeUndefined();
+      expect(result.parameters).toBeUndefined();
+    });
+
+    it("returns the focused sample as a flat top-level field (no gainDb, no parameters)", () => {
+      const device = makeSimplerDevice({ samplePath: "/tmp/kick.wav" });
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeSample: true,
+      });
+
+      expect(result.sample).toBe("/tmp/kick.wav");
+      expect(result.gainDb).toBeUndefined();
+      expect(result.parameters).toBeUndefined();
+    });
+
+    it("emits both the top-level sample field and the sample param entry when params and sample are both included", () => {
+      const device = makeSimplerDevice({ samplePath: "/tmp/kick.wav" });
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+        includeSample: true,
+      });
+
+      // The two includes are independent (e.g. include:["*"]): the flat
+      // top-level `sample` is emitted alongside the `sample` param entry —
+      // redundant, but least-surprising.
+      expect(result.sample).toBe("/tmp/kick.wav");
+
+      const params = result.parameters as Record<string, unknown>[];
+
+      expect(params).toContainEqual({ name: "sample", value: "/tmp/kick.wav" });
+    });
+
+    function makeSimplerDevice(opts: {
+      multiSampleMode?: number;
+      samplePath?: string;
+    }): unknown {
+      const sampleChild = {
+        getProperty: (prop: string) =>
+          prop === "file_path" ? (opts.samplePath ?? null) : null,
+      };
+
+      return {
         id: "simpler_1",
         path: "live_set tracks 0 devices 0",
         getProperty: (prop: string) => {
@@ -446,19 +486,25 @@ describe("device-reader", () => {
           if (prop === "class_display_name") return DEVICE_CLASS.SIMPLER;
           if (prop === "name") return DEVICE_CLASS.SIMPLER;
           if (prop === "is_active") return 1;
-          if (prop === "multi_sample_mode") return 1;
+          if (prop === "multi_sample_mode") return opts.multiSampleMode ?? 0;
 
           return null;
         },
-        getChildren: () => [],
-      };
+        getChildren: (kind: string) => {
+          if (kind === "sample" && opts.samplePath) return [sampleChild];
 
-      // Mock LiveAPI for device view
+          return [];
+        },
+        call: (method: string) =>
+          method === "guess_playback_length" ? 16 : null,
+      };
+    }
+
+    function setupLiveApiMock(): void {
       interface MockInstance {
         exists: ReturnType<typeof vi.fn>;
         getProperty: ReturnType<typeof vi.fn>;
       }
-
       const TestMockLiveAPI = vi.fn(function (this: MockInstance) {
         this.exists = vi.fn().mockReturnValue(false);
         this.getProperty = vi.fn().mockReturnValue(0);
@@ -466,14 +512,96 @@ describe("device-reader", () => {
 
       TestMockLiveAPI.from = vi.fn(() => new TestMockLiveAPI());
       g.LiveAPI = TestMockLiveAPI;
+    }
 
-      const result = readDevice(device as unknown as LiveAPI, {
+    function makeOperatorDevice(): unknown {
+      return {
+        id: "op_1",
+        path: "live_set tracks 0 devices 0",
+        getProperty: (prop: string) => {
+          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
+          if (prop === "can_have_chains") return false;
+          if (prop === "can_have_drum_pads") return false;
+          if (prop === "class_display_name") return "Operator";
+          if (prop === "name") return "Operator";
+          if (prop === "is_active") return 1;
+
+          return null;
+        },
+        getChildren: () => [],
+      };
+    }
+
+    function readParamsWithSample(device: unknown): Record<string, unknown>[] {
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
         includeChains: false,
-        includeSample: true,
+        includeParams: true,
       });
 
-      expect(result.multisample).toBe(true);
-      expect(result.sample).toBeUndefined();
+      return result.parameters as Record<string, unknown>[];
+    }
+
+    it("adds synthetic sample entry to parameters[] when params included", () => {
+      const params = readParamsWithSample(
+        makeSimplerDevice({ samplePath: "/tmp/kick.wav" }),
+      );
+
+      expect(params[0]).toStrictEqual({
+        name: "sample",
+        value: "/tmp/kick.wav",
+      });
+    });
+
+    it("does not add synthetic sample entry for non-Simpler devices", () => {
+      const params = readParamsWithSample(makeOperatorDevice());
+
+      expect(params.find((p) => p.name === "sample")).toBeUndefined();
+    });
+
+    it("omits synthetic sample entry for Simpler in multi-sample mode", () => {
+      const params = readParamsWithSample(
+        makeSimplerDevice({ multiSampleMode: 1, samplePath: "/tmp/kick.wav" }),
+      );
+
+      expect(params.find((p) => p.name === "sample")).toBeUndefined();
+    });
+
+    it("omits synthetic sample entry when no sample is loaded", () => {
+      const params = readParamsWithSample(makeSimplerDevice({}));
+
+      expect(params.find((p) => p.name === "sample")).toBeUndefined();
+    });
+
+    it("filters synthetic sample entry by paramSearch", () => {
+      const device = makeSimplerDevice({ samplePath: "/tmp/kick.wav" });
+
+      setupLiveApiMock();
+
+      const matched = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+        paramSearch: "samp",
+      });
+      const matchedParams = matched.parameters as Record<string, unknown>[];
+
+      expect(matchedParams[0]).toStrictEqual({
+        name: "sample",
+        value: "/tmp/kick.wav",
+      });
+
+      const filteredOut = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+        paramSearch: "volume",
+      });
+      const filteredParams = filteredOut.parameters as Record<
+        string,
+        unknown
+      >[];
+
+      expect(filteredParams.find((p) => p.name === "sample")).toBeUndefined();
     });
   });
 });

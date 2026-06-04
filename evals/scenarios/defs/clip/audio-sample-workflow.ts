@@ -23,7 +23,10 @@ export const audioSampleWorkflow: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Show me available drum samples",
-    "Create an audio clip using the kick sample on the Drums track",
+    // The kick lives in the drum rack on the MIDI "Drums" track. Audio clips
+    // can't go on a MIDI track, so the intended workflow is: create a new audio
+    // track (the set has none) and place the sample as an audio clip there.
+    "Create an audio clip from that kick sample. The Drums track is MIDI, so make a new audio track for the clip.",
     "Pitch shift it up 5 semitones and loop it",
   ],
 
@@ -31,10 +34,11 @@ export const audioSampleWorkflow: EvalScenario = {
     // Turn 0: Connection
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
-    // Turn 1: Sample browsing
-    { type: "tool_called", tool: "ppal-context", turn: 1 },
+    // Turn 1: Sample browsing (ppal-library is the modern sample-search tool)
+    { type: "tool_called", tool: "ppal-library", turn: 1 },
 
-    // Turn 2: Audio clip creation
+    // Turn 2: New audio track + audio clip with the sample
+    { type: "tool_called", tool: "ppal-create-track", turn: 2 },
     { type: "tool_called", tool: "ppal-create-clip", turn: 2 },
 
     // Turn 3: Audio property updates
@@ -58,8 +62,8 @@ export const audioSampleWorkflow: EvalScenario = {
       type: "llm_judge",
       prompt: `Evaluate if the assistant:
 1. Listed available drum samples including kick
-2. Created an audio clip using the kick sample
-3. Applied pitch shift of 5 semitones and enabled looping
+2. Created a new audio track (the set had only MIDI tracks) and placed the kick sample into an audio clip on that audio track — NOT on the MIDI Drums track
+3. Applied pitch shift of 5 semitones and enabled looping on the audio clip
 4. Confirmed each step was completed`,
     },
   ],

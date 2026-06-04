@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Max from "max-api";
@@ -8,6 +9,7 @@ import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import {
   callLiveApi,
   handleLiveApiResult,
+  type RequestOverrides,
   setTimeoutForTesting,
 } from "../max-api-adapter.ts"; // eslint-disable-line import-x/no-duplicates -- separate side-effect import below registers handler
 
@@ -20,11 +22,17 @@ vi.mock(import("../code-exec-protocol.ts"), () => ({
   handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock(import("../rpc/node-request-protocol.ts"), () => ({
+  handleNodeRequest: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { handleCodeExecRequest } from "../code-exec-protocol.ts";
+import { handleNodeRequest } from "../rpc/node-request-protocol.ts";
 
 // Capture the timeoutMs handler before mocks are cleared
 let timeoutMsHandler: ((input: unknown) => void) | undefined;
 let codeExecRequestHandler: ((...args: unknown[]) => void) | undefined;
+let nodeRequestHandler: ((...args: unknown[]) => void) | undefined;
 
 const timeoutMsCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
@@ -44,6 +52,16 @@ const codeExecCall = (
 
 if (codeExecCall) {
   codeExecRequestHandler = codeExecCall[1] as (...args: unknown[]) => void;
+}
+
+const nodeRequestCall = (
+  Max.addHandler as ReturnType<typeof vi.fn>
+).mock.calls.find((call: unknown[]) => call[0] === "node_request") as
+  | unknown[]
+  | undefined;
+
+if (nodeRequestCall) {
+  nodeRequestHandler = nodeRequestCall[1] as (...args: unknown[]) => void;
 }
 
 interface PendingRequestResult {
@@ -71,6 +89,25 @@ function setupPendingRequest(
     .calls[0]![1] as string;
 
   return { promise, requestId };
+}
+
+/**
+ * Fire a `callLiveApi` call and return the parsed contextJSON Max received.
+ * Re-installs `Max.outlet` as a fresh mock for each call.
+ *
+ * @param overrides - RequestOverrides passed through to callLiveApi
+ * @returns Parsed contextJSON as a record
+ */
+function captureContextJSON(
+  overrides?: RequestOverrides,
+): Record<string, unknown> {
+  Max.outlet = vi.fn().mockResolvedValue(undefined);
+  void callLiveApi("test-tool", {}, overrides);
+
+  const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
+  const contextJSON = callArgs[4] as string;
+
+  return JSON.parse(contextJSON) as Record<string, unknown>;
 }
 
 describe("Max API Adapter", () => {
@@ -123,7 +160,8 @@ describe("Max API Adapter", () => {
 
       const result = await callLiveApi("test-tool", {});
 
-      // Should resolve with isError: true instead of rejecting
+      // Should resolve with isError: true instead of rejecting, and carry the
+      // "timeout" discriminator so the REST route can map it to HTTP 504.
       expect(result).toStrictEqual({
         content: [
           {
@@ -132,6 +170,7 @@ describe("Max API Adapter", () => {
           },
         ],
         isError: true,
+        errorCode: "timeout",
       });
 
       expect(Max.outlet).toHaveBeenCalled();
@@ -188,6 +227,52 @@ describe("Max API Adapter", () => {
         ],
         isError: true,
       });
+    });
+
+    it("should merge compactOutput override into contextJSON", async () => {
+      const context = captureContextJSON({ compactOutput: false });
+
+      expect(context).toMatchObject({ compactOutput: false });
+      expect(context).toHaveProperty("silenceWavPath");
+      expect(context).toHaveProperty("timeoutMs");
+    });
+
+    it("should override timeoutMs in contextJSON when provided", async () => {
+      const context = captureContextJSON({ timeoutMs: 1234 });
+
+      expect(context).toMatchObject({ timeoutMs: 1234 });
+    });
+
+    it("should use timeoutMs override for the actual timeout deadline", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+      const result = await callLiveApi("test-tool", {}, { timeoutMs: 2 });
+
+      expect(result).toStrictEqual({
+        content: [
+          { type: "text", text: "Tool call 'test-tool' timed out after 2ms" },
+        ],
+        isError: true,
+        errorCode: "timeout",
+      });
+    });
+
+    it("should omit compactOutput from contextJSON when overrides not provided", async () => {
+      const context = captureContextJSON();
+
+      expect(context).not.toHaveProperty("compactOutput");
+    });
+
+    it("should not let overrides override silenceWavPath", async () => {
+      // Cast through unknown to bypass the RequestOverrides type — we want to
+      // prove the adapter ignores rogue silenceWavPath fields even if a caller
+      // somehow smuggles one in.
+      const context = captureContextJSON({
+        silenceWavPath: "/evil/path.wav",
+      } as unknown as RequestOverrides);
+
+      expect(context.silenceWavPath).not.toBe("/evil/path.wav");
+      expect(typeof context.silenceWavPath).toBe("string");
     });
   });
 
@@ -484,6 +569,44 @@ describe("Max API Adapter", () => {
       await vi.waitFor(() => {
         expect(Max.post).toHaveBeenCalledWith(
           expect.stringContaining("Error handling code_exec_request"),
+          "error",
+        );
+      });
+    });
+  });
+
+  describe("node_request handler", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should register a node_request handler", () => {
+      expect(nodeRequestHandler).toBeDefined();
+    });
+
+    it("should delegate to handleNodeRequest with correct args", async () => {
+      vi.mocked(handleNodeRequest).mockResolvedValue(undefined);
+
+      nodeRequestHandler!("req-123", '{"route":"library.search"}');
+
+      await vi.waitFor(() => {
+        expect(handleNodeRequest).toHaveBeenCalledWith(
+          "req-123",
+          '{"route":"library.search"}',
+        );
+      });
+    });
+
+    it("should log error when handleNodeRequest rejects", async () => {
+      vi.mocked(handleNodeRequest).mockRejectedValue(
+        new Error("handler failed"),
+      );
+
+      nodeRequestHandler!("req-456", '{"route":"bad"}');
+
+      await vi.waitFor(() => {
+        expect(Max.post).toHaveBeenCalledWith(
+          expect.stringContaining("Error handling node_request"),
           "error",
         );
       });

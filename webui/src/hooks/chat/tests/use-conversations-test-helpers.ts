@@ -6,7 +6,11 @@
 import { renderHook, act } from "@testing-library/preact";
 import { vi } from "vitest";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
-import { getConversationDb, resetDbCache } from "#webui/lib/conversation-db";
+import {
+  type ConversationRecord,
+  getConversationDb,
+  resetDbCache,
+} from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
 
 /**
@@ -28,6 +32,9 @@ export function createConversationsProps() {
       activeTemperature: null as number | null,
       activeShowThoughts: null as boolean | null,
       activeSmallModelMode: null as boolean | null,
+      onForeignRecord: undefined as
+        | ((record: ConversationRecord) => void)
+        | undefined,
     },
   };
 }
@@ -38,6 +45,8 @@ export async function waitForEffects(): Promise<void> {
     await new Promise((r) => setTimeout(r, 10));
   });
 }
+
+export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
 
 /**
  * Create props, render hook, and wait for init.

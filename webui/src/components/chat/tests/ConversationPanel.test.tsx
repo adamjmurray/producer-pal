@@ -32,6 +32,9 @@ const conversations: ConversationSummary[] = [
 const defaultProps = {
   isOpen: true,
   activeConversationId: null as string | null,
+  searchQuery: "",
+  matchedIds: null as Set<string> | null,
+  onSearchChange: vi.fn(),
   onSelect: vi.fn(),
   onNewConversation: vi.fn(),
   onDelete: vi.fn(),
@@ -166,43 +169,35 @@ describe("ConversationPanel", () => {
   it("supports inline rename: commit, cancel, and empty clears title", () => {
     const onRename = vi.fn();
 
-    const { getAllByLabelText, container, rerender } = render(
-      <ConversationPanel
-        {...defaultProps}
-        conversations={conversations}
-        onRename={onRename}
-      />,
-    );
+    const { getAllByLabelText, queryByLabelText, getByLabelText, container } =
+      render(
+        <ConversationPanel
+          {...defaultProps}
+          conversations={conversations}
+          onRename={onRename}
+        />,
+      );
 
-    const pencils = getAllByLabelText("Rename conversation");
+    const titleInput = () =>
+      getByLabelText("Conversation title") as HTMLInputElement;
 
     // Commit on Enter
-    fireEvent.click(pencils[0] as HTMLElement);
-    let input = container.querySelector("input") as HTMLInputElement;
-
-    expect(input.value).toBe("My session");
-    fireEvent.input(input, { target: { value: "Renamed" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.click(getAllByLabelText("Rename conversation")[0] as HTMLElement);
+    expect(titleInput().value).toBe("My session");
+    fireEvent.input(titleInput(), { target: { value: "Renamed" } });
+    fireEvent.keyDown(titleInput(), { key: "Enter" });
     expect(onRename).toHaveBeenCalledWith("conv-1", "Renamed");
 
-    // Cancel on Escape — re-render to reset editing state
+    // Cancel on Escape — editing state clears, leaving only the search input
     onRename.mockClear();
-    rerender(
-      <ConversationPanel
-        {...defaultProps}
-        conversations={conversations}
-        onRename={onRename}
-      />,
-    );
     fireEvent.click(
       container.querySelectorAll(
         "[aria-label='Rename conversation']",
       )[0] as HTMLElement,
     );
-    input = container.querySelector("input") as HTMLInputElement;
-    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.keyDown(titleInput(), { key: "Escape" });
     expect(onRename).not.toHaveBeenCalled();
-    expect(container.querySelector("input")).toBeNull();
+    expect(queryByLabelText("Conversation title")).toBeNull();
 
     // Empty input clears title to null
     fireEvent.click(
@@ -210,16 +205,15 @@ describe("ConversationPanel", () => {
         "[aria-label='Rename conversation']",
       )[0] as HTMLElement,
     );
-    input = container.querySelector("input") as HTMLInputElement;
-    fireEvent.input(input, { target: { value: "" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.input(titleInput(), { target: { value: "" } });
+    fireEvent.keyDown(titleInput(), { key: "Enter" });
     expect(onRename).toHaveBeenCalledWith("conv-1", null);
   });
 
   it("does not trigger onSelect when clicking edit input", () => {
     const onSelect = vi.fn();
 
-    const { getAllByLabelText, container } = render(
+    const { getAllByLabelText, getByLabelText } = render(
       <ConversationPanel
         {...defaultProps}
         conversations={conversations}
@@ -228,7 +222,7 @@ describe("ConversationPanel", () => {
     );
 
     fireEvent.click(getAllByLabelText("Rename conversation")[0] as HTMLElement);
-    const input = container.querySelector("input") as HTMLInputElement;
+    const input = getByLabelText("Conversation title") as HTMLInputElement;
 
     onSelect.mockClear();
     fireEvent.click(input);
@@ -534,5 +528,99 @@ describe("ConversationPanel", () => {
     );
 
     expect(queryByRole("status")).toBeNull();
+  });
+
+  it("renders the search field when conversations exist", () => {
+    const { getByLabelText } = render(
+      <ConversationPanel {...defaultProps} conversations={conversations} />,
+    );
+
+    expect(getByLabelText("Search conversations")).toBeTruthy();
+  });
+
+  it("hides the search field when there are no conversations", () => {
+    const { queryByLabelText } = render(
+      <ConversationPanel {...defaultProps} conversations={[]} />,
+    );
+
+    expect(queryByLabelText("Search conversations")).toBeNull();
+  });
+
+  it("calls onSearchChange as the query is typed", () => {
+    const onSearchChange = vi.fn();
+
+    const { getByLabelText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    fireEvent.input(getByLabelText("Search conversations"), {
+      target: { value: "session" },
+    });
+
+    expect(onSearchChange).toHaveBeenCalledWith("session");
+  });
+
+  it("clears the query when clicking the clear button", () => {
+    const onSearchChange = vi.fn();
+
+    const { getByLabelText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        searchQuery="session"
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    fireEvent.click(getByLabelText("Clear search"));
+
+    expect(onSearchChange).toHaveBeenCalledWith("");
+  });
+
+  it("filters the list to matched IDs while searching", () => {
+    const { queryByText, getByText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        searchQuery="session"
+        matchedIds={new Set(["conv-1"])}
+      />,
+    );
+
+    expect(getByText("My session")).toBeTruthy();
+    // conv-2 is excluded from the match set
+    expect(getByText(/All Conversations \(1\)/)).toBeTruthy();
+    expect(queryByText(/All Conversations \(2\)/)).toBeNull();
+  });
+
+  it("shows a no-matches message when the search has no results", () => {
+    const { getByText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        searchQuery="nonexistent"
+        matchedIds={new Set()}
+      />,
+    );
+
+    expect(getByText(/No conversations match/)).toBeTruthy();
+  });
+
+  it("shows all conversations before matchedIds arrives (debounce window)", () => {
+    const { getByText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        searchQuery="session"
+        matchedIds={null}
+      />,
+    );
+
+    // matchedIds still null: don't filter, show everything
+    expect(getByText(/All Conversations \(2\)/)).toBeTruthy();
   });
 });

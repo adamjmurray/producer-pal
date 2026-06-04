@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 # Chat CLI - delegates to TypeScript implementation in evals/chat/
-# Usage: ./scripts/chat --provider gemini|openai|openrouter [options]
+# Usage: ./scripts/chat -m <provider/model> [options]
+#
+# Examples:
+#   ./scripts/chat -m gemini-3.5-flash -1 "list tracks in the set"
+#   ./scripts/chat -m anthropic/claude-sonnet-4-6
+#   ./scripts/chat --list-models openai
+#
+# Local OpenAI-compatible servers (use the local/ provider + -b base URL):
+#   ./scripts/chat -b http://localhost:1234/v1 -m local/google/gemma-4-e4b  # LM Studio
+#   ./scripts/chat -b http://localhost:11434/v1 -m local/qwen3.5            # Ollama
+#   ./scripts/chat -b http://192.168.4.37:1234/v1 --list-models local       # remote LM Studio
 
-exec npx tsx --env-file=.env evals/chat/index.ts "$@"
+exec node --env-file=.env evals/chat/index.ts "$@"

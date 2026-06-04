@@ -141,19 +141,21 @@ describe("legato()", () => {
 
     expect(notes[0]!.duration).toBe(1.5);
     expect(notes[1]!.duration).toBe(1.5);
-    // Last note unchanged (skipped)
+    // Last note keeps its current duration (no next note, no clip end)
     expect(notes[2]!.duration).toBe(0.25);
   });
 
-  it("skips last note without clip context", () => {
+  it("keeps last note's current duration without clip context, with a warning", () => {
     const warn = vi.spyOn(console, "warn");
     const notes = createTestNotes([{ start_time: 0 }, { start_time: 2 }]);
 
     applyTransforms(notes, "duration = legato()", 4, 4);
 
     expect(notes[0]!.duration).toBe(2);
-    expect(notes[1]!.duration).toBe(1); // unchanged
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("legato()"));
+    expect(notes[1]!.duration).toBe(1); // kept current duration
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("keeping current duration"),
+    );
   });
 
   it("extends last note to clip end with clip context", () => {

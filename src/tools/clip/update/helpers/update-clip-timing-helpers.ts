@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
+  durationToAbletonBeats,
+  validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
@@ -87,8 +89,11 @@ export function calculateBeatPositions({
   let endBeats: number | null = null;
   let firstStartBeats: number | null = null;
 
-  // Convert start to beats if provided
+  // Convert start to beats if provided. Validate the standalone position first
+  // so a 0-indexed/zero-bar position gets the 1-indexing steer (matching
+  // create-clip's start), not a silent pre-origin beat.
   if (start != null) {
+    validateBarBeatPosition(start);
     startBeats = barBeatToAbletonBeats(
       start,
       timeSigNumerator,
@@ -98,7 +103,7 @@ export function calculateBeatPositions({
 
   // Calculate end from start + length
   if (length != null) {
-    const lengthBeats = barBeatDurationToAbletonBeats(
+    const lengthBeats = durationToAbletonBeats(
       length,
       timeSigNumerator,
       timeSigDenominator,
@@ -130,6 +135,7 @@ export function calculateBeatPositions({
 
   // Handle firstStart for looping clips
   if (firstStart != null && isLooping) {
+    validateBarBeatPosition(firstStart);
     firstStartBeats = barBeatToAbletonBeats(
       firstStart,
       timeSigNumerator,

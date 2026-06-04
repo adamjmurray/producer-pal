@@ -5,6 +5,7 @@
 
 import { vi } from "vitest";
 import { type TokenUsage } from "#webui/chat/sdk/types";
+import type * as StreamingHelpers from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -15,6 +16,7 @@ import { type UIMessage } from "#webui/types/messages";
 export interface TestMessage {
   role: "user" | "assistant";
   content: string;
+  isError?: boolean;
 }
 
 /** Test configuration for mock adapter */
@@ -28,6 +30,7 @@ export interface TestConfig {
 export class MockChatClient implements ChatClient<TestMessage> {
   chatHistory: TestMessage[] = [];
   totalUsage: TokenUsage | null = null;
+  toolLimitReached = false;
 
   initialize = vi.fn(async () => {
     // Initialization logic
@@ -87,7 +90,15 @@ export function createMockAdapter(): ChatAdapter<
     formatMessages: vi.fn((messages: TestMessage[]): UIMessage[] => {
       return messages.map((msg, idx) => ({
         role: msg.role === "user" ? ("user" as const) : ("model" as const),
-        parts: [{ type: "text" as const, content: msg.content }],
+        parts: msg.isError
+          ? [
+              {
+                type: "error" as const,
+                content: msg.content,
+                isError: true,
+              },
+            ]
+          : [{ type: "text" as const, content: msg.content }],
         rawHistoryIndex: idx,
         timestamp: Date.now(),
       }));
@@ -95,23 +106,15 @@ export function createMockAdapter(): ChatAdapter<
 
     createErrorMessage: vi.fn(
       (error: unknown, chatHistory: TestMessage[]): UIMessage[] => {
-        const formatted = adapter.formatMessages(chatHistory);
+        // Match the real adapter's contract: mutate chatHistory by pushing
+        // the error so callers can persist it via getChatHistory.
+        chatHistory.push({
+          role: "assistant",
+          content: String(error),
+          isError: true,
+        });
 
-        return [
-          ...formatted,
-          {
-            role: "model" as const,
-            parts: [
-              {
-                type: "error" as const,
-                content: String(error),
-                isError: true,
-              },
-            ],
-            rawHistoryIndex: chatHistory.length,
-            timestamp: Date.now(),
-          },
-        ];
+        return adapter.formatMessages(chatHistory);
       },
     ),
 
@@ -155,3 +158,53 @@ export const RESTORED_HISTORY: TestMessage[] = [
   { role: "user", content: "restored msg" },
   { role: "assistant", content: "restored reply" },
 ];
+
+/**
+ * Factory body for `vi.mock("#webui/hooks/chat/helpers/streaming-helpers", ...)`.
+ * The real module is replaced with a pass-through `handleMessageStream` that
+ * forwards every yielded chat history through the formatter so tests can
+ * assert on the resulting `UIMessage[]` updates.
+ *
+ * @returns The mocked streaming-helpers module exports
+ */
+export function streamingHelpersMockBody(): Partial<typeof StreamingHelpers> {
+  return {
+    handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
+      for await (const chatHistory of stream) {
+        onUpdate(formatter(chatHistory));
+      }
+
+      return true;
+    }),
+    validateMcpConnection: vi.fn(),
+    filterOverrides: vi.fn((overrides) => overrides),
+  };
+}
+
+/**
+ * Wraps a custom `sendMessage` generator in a fresh MockChatClient
+ * and returns an adapter that uses it. Used for scripted rate-limit / retry
+ * scenarios where the sendMessage body varies but the wrapping boilerplate
+ * is identical.
+ *
+ * @param baseAdapter - Base adapter to spread (commonly the shared `mockAdapter`)
+ * @param scriptedSendMessage - Function that receives the new client and returns its sendMessage generator
+ * @returns Adapter whose `createClient` yields a client with the scripted sendMessage
+ */
+export function createScriptedAdapter(
+  baseAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig>,
+  scriptedSendMessage: (
+    client: MockChatClient,
+  ) => MockChatClient["sendMessage"],
+): ChatAdapter<MockChatClient, TestMessage, TestConfig> {
+  return {
+    ...baseAdapter,
+    createClient: vi.fn(() => {
+      const client = new MockChatClient();
+
+      client.sendMessage = scriptedSendMessage(client);
+
+      return client;
+    }),
+  };
+}

@@ -12,6 +12,8 @@
  * can be deleted without the expensive duplicate+move operation.
  */
 
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+
 interface ClipMoveInfo {
   clipId: string;
   clipLength: number;
@@ -52,7 +54,7 @@ export function computeNonSurvivorClipIds(
   const trackClips = new Map<number, ClipMoveInfo[]>();
 
   for (const clip of clips) {
-    if ((clip.getProperty("is_arrangement_clip") as number) <= 0) continue;
+    if (!isEligibleForSurvivorAnalysis(clip)) continue;
 
     const trackIndex = clip.trackIndex;
 
@@ -100,4 +102,20 @@ export function computeNonSurvivorClipIds(
   }
 
   return nonSurvivorIds.size > 0 ? nonSurvivorIds : null;
+}
+
+/**
+ * Whether a clip should participate in non-survivor grouping. Session clips
+ * skip (they aren't moved via arrangement APIs), and take-lane clips skip
+ * because `duplicate_clip_to_arrangement` is Track-only and they get
+ * warned-and-skipped downstream — including them would let a long take-lane
+ * clip wrongly mark a shorter main-lane clip as a non-survivor.
+ * @param clip - Candidate clip
+ * @returns true when the clip should be grouped for survivor analysis
+ */
+function isEligibleForSurvivorAnalysis(clip: LiveAPI): boolean {
+  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
+  if (isTakeLaneClip(clip)) return false;
+
+  return true;
 }

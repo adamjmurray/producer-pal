@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
@@ -24,6 +25,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
     include: z
       .array(
         z.enum([
+          "actions",
           "chains",
           "drum-map",
           "drum-pads",
@@ -31,12 +33,13 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
           "param-values",
           "return-chains",
           "sample",
+          "options",
           "*",
         ]),
       )
       .default([])
       .describe(
-        'chains, return-chains, drum-pads = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. "*" = all',
+        'chains, return-chains, drum-pads = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler sample file path (flat top-level field; gainDb and other sample params are in params). actions = device-specific actions for update-device (name, signature, description). options = valid pseudo-param values (paramOptions) + dynamic catalogs for specialized devices (IR files, sidechain sources, wavetables) + Wavetable mod routes. "*" = all',
       ),
     maxDepth: z.coerce
       .number()
@@ -58,7 +61,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
     excludeEnumValues: { include: ["drum-pads", "return-chains", "*"] },
     descriptionOverrides: {
       include:
-        "chains = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file",
+        "chains = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler sample file path. actions = device actions. options = valid param values + device catalogs",
       maxDepth:
         "Device tree depth for chains. 0=chains only with deviceCount, 1=direct devices, 2+=deeper",
     },

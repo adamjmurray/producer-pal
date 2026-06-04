@@ -21,6 +21,12 @@ Looped arrangement clips cannot be directly lengthened. Instead, they are
 duplicated and tiled, which can create a lot of clips. Unlooped clips (MIDI and
 audio) are extended in place without creating additional clips.
 
+## Automation and Envelopes Not Supported
+
+Producer Pal cannot read, create, or edit arrangement automation or clip
+envelopes (parameter values that change over time). See
+[Limitations](/features#limitations) on the Features page for details.
+
 ## Claude Desktop Caches Tool Definitions
 
 If you change the "small model mode" setting in the Max for Live device while

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +10,7 @@ import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 
 // Mock child components
 vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
@@ -115,10 +117,15 @@ describe("SettingsScreen", () => {
     setProvider: vi.fn(),
     apiKey: "",
     setApiKey: vi.fn(),
+    openaiApiKey: "",
+    geminiApiKey: "",
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
+    savedModel: "gemini-2.5-pro",
+    savedProvider: "gemini" as const,
     thinking: "Default",
     setThinking: vi.fn(),
+    savedThinking: "Default",
     temperature: 1,
     setTemperature: vi.fn(),
     showThoughts: false,
@@ -127,12 +134,31 @@ describe("SettingsScreen", () => {
     cancelSettings: vi.fn(),
     hasApiKey: false,
     settingsConfigured: false,
+    saveError: null,
     enabledTools: {} as Record<string, boolean>,
     setEnabledTools: vi.fn(),
     resetBehaviorToDefaults: vi.fn(),
     isToolEnabled: () => true,
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
+    liveApiEnabled: false,
+    liveApiEnabledDirty: false,
+    setLiveApiEnabled: vi.fn(),
+    seedLiveApiEnabled: vi.fn(),
+    realtimeVoice: "marin",
+    setRealtimeVoice: vi.fn(),
+    savedRealtimeVoice: "marin",
+    voiceSpeed: 1.0,
+    setVoiceSpeed: vi.fn(),
+    savedVoiceSpeed: 1.0,
+    voiceVolume: 1.0,
+    setVoiceVolume: vi.fn(),
+    turnDetection: DEFAULT_TURN_DETECTION,
+    setTurnDetection: vi.fn(),
+    savedTurnDetection: DEFAULT_TURN_DETECTION,
+    voiceLanguage: "en",
+    setVoiceLanguage: vi.fn(),
+    savedVoiceLanguage: "en",
   };
 
   const defaultDisplay = {
@@ -168,6 +194,8 @@ describe("SettingsScreen", () => {
       activeProvider: null,
       activeSmallModelMode: null,
     },
+    liveApiForcedOn: false,
+    activeVoice: null,
   };
 
   /**

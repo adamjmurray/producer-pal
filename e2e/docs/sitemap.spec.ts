@@ -18,10 +18,12 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "claude.ai",
   "cline.bot",
   "cloudflare.com",
+  "docs.claude.com",
   "docs.cycling74.com",
   "console.mistral.ai",
   "discord.gg",
   "forms.gle",
+  "geminicli.com",
   "github.com",
   "google.com",
   "groq.com",
@@ -36,6 +38,9 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "openai.com",
   "openrouter.ai",
   "pinggy.io",
+  // Our own canonical site. The skills (embedded into /features) link to it
+  // with absolute URLs because relative links wouldn't resolve in the chat UI.
+  "producer-pal.org",
   "en.wikipedia.org",
   "www.ableton.com",
   "www.youtube.com",

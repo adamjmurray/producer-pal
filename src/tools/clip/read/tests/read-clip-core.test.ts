@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,7 +31,7 @@ describe("readClip", () => {
       denominator: 4,
       expectedStart: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
       expectedEnd: "2|2", // end_marker (5 beats = 2|2)
-      expectedLength: "1:0", // 1 bar duration
+      expectedLength: "1bar", // 1 bar duration
       expectedNotes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
     },
     {
@@ -39,8 +40,10 @@ describe("readClip", () => {
       denominator: 8,
       expectedStart: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
-      expectedLength: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
-      expectedNotes: "t2 C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8 (t2 = duration in 8th-note beats)
+      expectedLength: "1bar+n/4", // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
+      // Notes default to 1 Ableton beat = a quarter note. The new notation
+      // default is also a quarter (`n/4`), so no `n` prefix is emitted.
+      expectedNotes: "C3 1|1 D3 1|3 E3 1|5",
     },
   ])(
     "returns clip information when a valid MIDI clip exists ($timeSig time)",
@@ -117,7 +120,7 @@ describe("readClip", () => {
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("3/4");
-    expect(result).toHaveLength("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
+    expect(result).toHaveLength("1bar+n/4"); // 4 Ableton beats in 3/4 = 1 bar + 1 quarter
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
@@ -150,11 +153,47 @@ describe("readClip", () => {
 
     expectGetNotesExtendedCall(clip, 3);
 
-    // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    // t2 emitted because 1 Ableton beat = 2 eighth-note beats (notation default is 1)
-    expect(result.notes).toBe("t2 C3 1|1 D3 2|1 E3 2|2");
+    // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1.
+    // Notes have default duration of 1 Ableton beat (= a quarter note), which
+    // matches the new notation default (`n/4`), so no `n` prefix is emitted.
+    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
-    expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
+    expect(result).toHaveLength("1bar"); // 3 Ableton beats = 1 bar in 6/8
+  });
+
+  it("returns notes outside the playable region (pickup before start, overhang past end)", () => {
+    // read-clip reads a window of one clip-length on each side of the playable
+    // region [0, length] so authored out-of-bounds notes round-trip on read
+    // instead of being silently dropped. The window itself ([-4, 8] here, i.e.
+    // get_notes_extended from_time=-4 spanning 12 beats) delegates the filtering
+    // to Live; our code must not drop what comes back.
+    const clip = setupMidiClipMock({
+      clipProps: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+        looping: 0,
+      },
+    });
+
+    setupNotesMock(clip, [
+      createTestNote({ pitch: 60, startTime: -1 }), // pickup, before clip start
+      createTestNote({ pitch: 62, startTime: 0 }), // in the playable region
+      createTestNote({ pitch: 64, startTime: 5 }), // overhang, past the end
+    ]);
+
+    const result = readClip({
+      trackIndex: 1,
+      sceneIndex: 1,
+      include: ["notes"],
+    });
+
+    expectGetNotesExtendedCall(clip);
+    expect(result.notes).toBe("C3 1|1-n/4 D3 1|1 E3 2|2");
   });
 
   it("returns null values and emits warning when no clip exists at valid track/scene", () => {
@@ -232,6 +271,17 @@ describe("readClip", () => {
         end_marker: 5,
         loop_start: 1,
         loop_end: 5,
+        // Audio/warp props the sample+warp includes read. Registered
+        // explicitly: the mock no longer fills unregistered props with 0,
+        // so a realistic warped sample is set up here rather than relying on
+        // index-0 defaults.
+        gain: 1, // → +24 dB (table max)
+        pitch_coarse: 0,
+        pitch_fine: 0,
+        sample_length: 88200,
+        sample_rate: 44100,
+        warping: 1,
+        warp_mode: 0, // Beats
       },
     });
     const result = readClip({
@@ -250,13 +300,13 @@ describe("readClip", () => {
       looping: true,
       start: "1|2", // loop_start
       end: "2|2", // loop_end (5 beats = 2|2)
-      length: "1:0", // 1 bar
+      length: "1bar", // 1 bar
       playing: true,
-      gainDb: -70, // gain=0 maps to -70 dB
-      sampleLength: 0,
-      sampleRate: 0,
-      warpMode: "beats",
-      warping: false,
+      gainDb: 24, // gain=1 maps to +24 dB
+      sampleLength: 88200,
+      sampleRate: 44100,
+      warpMode: "beats", // warp_mode=0
+      warping: true,
     });
   });
 
@@ -377,7 +427,7 @@ describe("readClip", () => {
     expect(result.id).toBe("session_clip_id");
     expect(result.slot).toBe("2/4");
     expect(result.view).toBe("session");
-    expect(result).toHaveLength("1:0");
+    expect(result).toHaveLength("1bar");
     expect(result.start).toBe("1|2");
   });
 
@@ -417,12 +467,68 @@ describe("readClip", () => {
     expect(result.slot).toBeUndefined();
     // arrangementStart uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
     expect(result.arrangementStart).toBe("5|1");
-    // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1:0
-    expect(result.arrangementLength).toBe("1:0");
+    // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1bar
+    expect(result.arrangementLength).toBe("1bar");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
-    expect(result).toHaveLength("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
+    expect(result).toHaveLength("1bar+n/4"); // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
+  });
+
+  /**
+   * Set up an arrangement MIDI clip + matching live_set time signature.
+   * Shared between the take-lane and main-lane arrangement-clip tests.
+   *
+   * @param clipId - The clip mock id
+   * @param path - The clip's Live API path
+   */
+  function setupArrangementClipFixture(clipId: string, path: string): void {
+    setupMidiClipMock({
+      clipId,
+      path,
+      clipProps: {
+        is_arrangement_clip: 1,
+        start_time: 0,
+        end_time: 4,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+      },
+    });
+    registerMockObject("live-set", {
+      path: "live_set",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+  }
+
+  it("surfaces 1-based takeLane for arrangement clips on a take lane", () => {
+    setupArrangementClipFixture(
+      "take_lane_clip_id",
+      livePath.track(3).takeLane(0).arrangementClip(0),
+    );
+
+    const result = readClip({ clipId: "id take_lane_clip_id" });
+
+    // take_lanes 0 → 1-based takeLane:1 (main lane is excluded from the collection)
+    expect(result.takeLane).toBe(1);
+    expect(result.view).toBe("arrangement");
+    expect(result.trackIndex).toBe(3);
+  });
+
+  it("omits takeLane for arrangement clips on the main lane", () => {
+    setupArrangementClipFixture(
+      "main_lane_clip_id",
+      livePath.track(3).arrangementClip(0),
+    );
+
+    const result = readClip({ clipId: "id main_lane_clip_id" });
+
+    expect(result.takeLane).toBeUndefined();
+    expect(result.view).toBe("arrangement");
   });
 
   it("includes pitchShift for audio clips with non-zero pitch", () => {

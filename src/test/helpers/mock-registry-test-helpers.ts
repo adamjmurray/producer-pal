@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: OpenAI (GPT-5)
+// AI assistance: OpenAI (GPT-5), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
@@ -38,6 +38,28 @@ export function requireMockObject(path: PathLike): RegisteredMockObject {
  */
 export function requireMockTrack(trackIndex: number): RegisteredMockObject {
   return requireMockObject(livePath.track(trackIndex));
+}
+
+/**
+ * Create note-tracking call method implementations for a clip mock.
+ * Tracks notes added via add_new_notes and returns them for get_notes_extended,
+ * so getClipNoteCount() reads back the notes that were actually written.
+ * @returns Method implementations for registerMockObject's `methods` option
+ */
+export function createNoteTrackingMethods(): Record<
+  string,
+  (...args: unknown[]) => unknown
+> {
+  let notes: unknown[] = [];
+
+  return {
+    add_new_notes: (arg: unknown) => {
+      const data = arg as { notes?: unknown[] } | null | undefined;
+
+      notes = data?.notes ?? [];
+    },
+    get_notes_extended: () => JSON.stringify({ notes }),
+  };
 }
 
 /**

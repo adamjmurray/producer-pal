@@ -50,6 +50,35 @@ function mockSessionClip(clipId: string): LiveAPI {
   return LiveAPI.from(`id ${clipId}`);
 }
 
+/**
+ * Create a mock take-lane arrangement clip with the given start/end times.
+ * @param clipId - Clip ID
+ * @param trackIndex - Parent track index
+ * @param laneIndex - Take lane index (0-based, excludes main lane)
+ * @param startTime - Arrangement start time in beats
+ * @param endTime - Arrangement end time in beats
+ * @returns LiveAPI mock clip
+ */
+function mockTakeLaneClip(
+  clipId: string,
+  trackIndex: number,
+  laneIndex: number,
+  startTime: number,
+  endTime: number,
+): LiveAPI {
+  registerMockObject(clipId, {
+    path: livePath.track(trackIndex).takeLane(laneIndex).arrangementClip(0),
+    properties: {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      start_time: startTime,
+      end_time: endTime,
+    },
+  });
+
+  return LiveAPI.from(`id ${clipId}`);
+}
+
 describe("computeNonSurvivorClipIds", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -158,6 +187,19 @@ describe("computeNonSurvivorClipIds", () => {
     // Backwards: E(3)>0, D(6)>3, C(2)<=6 covered, B(8)>6, A(4)<=8 covered
     // Non-survivors: A(4) and C(2)
     expect(result).toStrictEqual(new Set(["1", "3"]));
+  });
+
+  it("excludes take-lane clips so they can't mark main-lane clips as non-survivors", () => {
+    const clips = [
+      mockArrangementClip("1", 0, 0, 4), // main lane: 4 beats
+      mockTakeLaneClip("2", 0, 0, 0, 16), // take lane: 16 beats — must NOT be counted
+    ];
+
+    // With take-lane filtering: track 0 has only one eligible clip (main lane),
+    // so optimization doesn't apply and the result is null. Without filtering,
+    // the take-lane clip's length (16) would have marked clip "1" non-survivor
+    // and the harness would delete it — a real bug for users.
+    expect(computeNonSurvivorClipIds(clips, 32, null)).toBeNull();
   });
 
   it("skips clips with null trackIndex", () => {

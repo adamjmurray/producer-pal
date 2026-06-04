@@ -199,3 +199,44 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`) for LiveAPI tests:
 
 Prefer tool description instructions over code complexity for contextual
 guidance.
+
+## Notation Grammar Duplication
+
+The note-value notation (durations like `n/4`, `±n` beat offsets, the off-grid
+`n<beats>/4` escape, and `Nbar` forms) is parsed at six independent sites:
+
+- the `barbeat-grammar.peggy` rules (authoring),
+- the `transform-grammar.peggy` rules (transform expressions and time-range
+  selectors), and
+- three regexes in `src/notation/barbeat/time/barbeat-time.ts`
+  (`durationToAbletonBeats`, `barBeatToMusicalBeats`, `parseBeatValue`).
+
+This duplication is deliberate and **should not be refactored away**:
+
+- Peggy has no grammar `import`/include and cannot share rule fragments between
+  two grammars. The only way to share them would be a build-time
+  text-concatenation step, which adds a new failure mode just to consolidate the
+  stable lexer rules that rarely change (the rules that actually change during a
+  reform — `beatValue`, `duration`/`nDuration` — are intentionally different per
+  grammar and cannot be shared anyway).
+- The TS regexes run in per-note hot paths (e.g. transform time-range
+  membership), so replacing them with a full parser invocation would be a
+  performance regression.
+- The sites are intentionally not byte-identical: the grammars reject
+  leading-zero denominators with `[1-9][0-9]*`, while the regexes use
+  `0|[1-9]\d*` so a lone `0` reaches a per-site division-by-zero message.
+
+The fraction arithmetic is already shared (`noteValueFractionToBeats()` in
+`barbeat-time.ts`); only the patterns are duplicated. Two parity tests are the
+enforcement mechanism — they turn silent divergence (the dangerous failure) into
+a loud test failure:
+
+- `note-value-grammar-parity.test.ts` feeds one corpus through all six parse
+  sites across multiple meters and asserts identical accept/reject and matching
+  values.
+- `note-value-denominator-parity.test.ts` locks the serializer's
+  denominator-candidate lists as subsets of the canonical
+  `NOTE_VALUE_DENOMINATORS`.
+
+When you add or change a note-value parse site, update **every** site and add it
+to the parity test's site list.

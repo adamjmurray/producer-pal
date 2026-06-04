@@ -11,9 +11,7 @@ import {
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import { useActiveSettings } from "./helpers/use-active-settings";
-import { useConversationActions } from "./helpers/use-conversation-actions";
 import { useExecuteWithRetry } from "./helpers/use-execute-with-retry";
-import { useMessageQueue } from "./helpers/use-message-queue";
 import {
   type ChatClient,
   type ConversationLockedSettings,
@@ -22,6 +20,8 @@ import {
   type UseChatProps,
   type UseChatReturn,
 } from "./use-chat-types";
+import { useConversationActions } from "./use-conversation-actions";
+import { useMessageQueue } from "./use-message-queue";
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -63,6 +63,7 @@ export function useChat<
     drainQueue,
     clearQueue,
   } = useMessageQueue();
+  const [toolLimitReached, setToolLimitReached] = useState(false);
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -86,6 +87,7 @@ export function useChat<
     pendingHistoryRef.current = null;
     clearSettings();
     setRateLimitState(null);
+    setToolLimitReached(false);
     abortRetry();
     clearQueue();
   }, [clearSettings, abortRetry, clearQueue]);
@@ -103,6 +105,7 @@ export function useChat<
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
       restoreSettings(lockedSettings);
       setRateLimitState(null);
+      setToolLimitReached(false);
     },
     [adapter, restoreSettings],
   );
@@ -112,6 +115,7 @@ export function useChat<
     abortRetry();
     setIsAssistantResponding(false);
     setRateLimitState(null);
+    setToolLimitReached(false);
     clearQueue();
   }, [abortRetry, clearQueue]);
 
@@ -168,12 +172,15 @@ export function useChat<
       userMessage?: TMessage,
     ): Promise<T | undefined> => {
       setIsAssistantResponding(true);
+      // A new request clears any prior tool-limit notice before streaming.
+      setToolLimitReached(false);
       pendingUserMessageRef.current = userMessage ?? null;
 
       try {
         const result = await fn();
 
         pendingUserMessageRef.current = null;
+        setToolLimitReached(clientRef.current?.toolLimitReached ?? false);
 
         return result;
       } catch (error) {
@@ -193,7 +200,17 @@ export function useChat<
 
         setMessages(adapter.createErrorMessage(error, errorHistory));
 
-        if (clientRef.current) autoSaveRef?.current?.();
+        if (clientRef.current) {
+          // createErrorMessage mutates errorHistory. When errorHistory is a
+          // fresh copy (includeStashed path), the error didn't reach
+          // chatHistory, so auto-save would persist the user message
+          // without it. Push the error into chatHistory directly.
+          if (errorHistory !== clientRef.current.chatHistory) {
+            clientRef.current.chatHistory.push(errorHistory.at(-1) as TMessage);
+          }
+
+          autoSaveRef?.current?.();
+        }
 
         return undefined;
       } finally {
@@ -308,6 +325,7 @@ export function useChat<
     queuedMessages,
     enqueueMessage,
     removeMessage,
+    toolLimitReached,
     handleSend,
     handleRetry,
     handleEdit,

@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
-import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -26,35 +25,22 @@ import {
 import {
   moveDeviceToPath,
   moveDrumChainToPath,
-  setParamValues,
-  updateABCompare,
   // updateCollapsedState, // Kept for potential future use
-  updateMacroCount,
-  updateMacroVariation,
 } from "./helpers/update-device-helpers.ts";
 import {
-  isChainType,
+  type UpdatePropertyOptions,
+  updateDeviceProperties,
+  updateNonDeviceProperties,
+} from "./helpers/update-device-property-helpers.ts";
+import {
   isDeviceType,
-  isRackDevice,
   isValidUpdateType,
-  warnIfSet,
 } from "./helpers/update-device-type-helpers.ts";
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 
-interface UpdateProperties {
+interface UpdateProperties extends UpdatePropertyOptions {
   toPath?: string;
   name?: string;
-  // collapsed?: boolean; // Kept for potential future use
-  params?: string;
-  macroVariation?: string;
-  macroVariationIndex?: number;
-  macroCount?: number;
-  abCompare?: string;
-  mute?: boolean;
-  solo?: boolean;
-  color?: string;
-  chokeGroup?: number;
-  mappedPitch?: string;
 }
 
 interface UpdateDeviceArgs extends UpdateProperties {
@@ -80,7 +66,8 @@ interface ResolvedTarget {
  * @param args.path - Device/chain/drum-pad path
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
- * @param args.params - JSON: {"paramName": value} (devices only)
+ * @param args.params - {name, value} entries to set (devices only)
+ * @param args.actions - Device-specific action strings (devices only)
  * @param args.macroVariation - Rack variation action (racks only)
  * @param args.macroVariationIndex - Rack variation index (racks only)
  * @param args.macroCount - Rack visible macro count 0-16 (racks only)
@@ -102,6 +89,7 @@ export function updateDevice(
     toPath,
     name,
     params,
+    actions,
     macroVariation,
     macroVariationIndex,
     macroCount,
@@ -134,6 +122,7 @@ export function updateDevice(
       toPath,
       name,
       params,
+      actions,
       macroVariation,
       macroVariationIndex,
       macroCount,
@@ -347,123 +336,4 @@ function updateTarget(
   }
 
   return { id: target.id };
-}
-
-/**
- * Update device-specific properties
- * @param target - Device to update
- * @param type - Device type
- * @param options - Update options
- */
-function updateDeviceProperties(
-  target: LiveAPI,
-  type: string,
-  options: UpdateOptions,
-): void {
-  const {
-    params,
-    macroVariation,
-    macroVariationIndex,
-    macroCount,
-    abCompare,
-    mute,
-    solo,
-    color,
-    chokeGroup,
-    mappedPitch,
-  } = options;
-
-  // collapsed — kept for potential future use
-  // if (options.collapsed != null) {
-  //   updateCollapsedState(target, options.collapsed);
-  // }
-
-  if (params != null) {
-    setParamValues(target, params);
-  }
-
-  if (abCompare != null) {
-    updateABCompare(target, abCompare);
-  }
-
-  // Rack-only properties
-  if (isRackDevice(type)) {
-    if (macroVariation != null || macroVariationIndex != null) {
-      updateMacroVariation(target, macroVariation, macroVariationIndex);
-    }
-
-    if (macroCount != null) {
-      updateMacroCount(target, macroCount);
-    }
-  } else {
-    warnIfSet("macroVariation", macroVariation, type);
-    warnIfSet("macroVariationIndex", macroVariationIndex, type);
-    warnIfSet("macroCount", macroCount, type);
-  }
-
-  // Warn for non-device properties on devices
-  warnIfSet("mute", mute, type);
-  warnIfSet("solo", solo, type);
-  warnIfSet("color", color, type);
-  warnIfSet("chokeGroup", chokeGroup, type);
-  warnIfSet("mappedPitch", mappedPitch, type);
-}
-
-/**
- * Update chain/drum pad properties
- * @param target - Chain or drum pad to update
- * @param type - Target type
- * @param options - Update options
- */
-function updateNonDeviceProperties(
-  target: LiveAPI,
-  type: string,
-  options: UpdateOptions,
-): void {
-  // Warn for device-only properties
-  warnIfSet("params", options.params, type);
-  warnIfSet("macroVariation", options.macroVariation, type);
-  warnIfSet("macroVariationIndex", options.macroVariationIndex, type);
-  warnIfSet("macroCount", options.macroCount, type);
-  warnIfSet("abCompare", options.abCompare, type);
-
-  // Mute/solo work on Chain, DrumChain, DrumPad
-  if (options.mute != null) {
-    target.set("mute", options.mute ? 1 : 0);
-  }
-
-  if (options.solo != null) {
-    target.set("solo", options.solo ? 1 : 0);
-  }
-
-  // Color works on Chain and DrumChain (not DrumPad)
-  if (isChainType(type)) {
-    if (options.color != null) {
-      target.setColor(options.color);
-    }
-  } else {
-    warnIfSet("color", options.color, type);
-  }
-
-  // DrumChain only: chokeGroup, mappedPitch
-  if (type === "DrumChain") {
-    if (options.chokeGroup != null) {
-      target.set("choke_group", options.chokeGroup);
-    }
-
-    if (options.mappedPitch != null) {
-      const midiNote = noteNameToMidi(options.mappedPitch);
-
-      if (midiNote != null) {
-        target.set("out_note", midiNote);
-      } else {
-        console.warn(
-          `updateDevice: invalid note name "${options.mappedPitch}"`,
-        );
-      }
-    }
-  } else {
-    warnIfSet("chokeGroup", options.chokeGroup, type);
-    warnIfSet("mappedPitch", options.mappedPitch, type);
-  }
 }

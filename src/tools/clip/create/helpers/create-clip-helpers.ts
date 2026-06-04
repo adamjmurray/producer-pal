@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
+  durationToAbletonBeats,
+  validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -53,23 +55,41 @@ export function convertTimingParameters(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
 ): TimingParameters {
-  // Convert bar|beat timing parameters to Ableton beats
-  const arrangementStartBeats =
-    arrangementStart != null
-      ? barBeatToAbletonBeats(
-          arrangementStart,
-          songTimeSigNumerator,
-          songTimeSigDenominator,
-        )
-      : null;
-  const startBeats =
-    start != null
-      ? barBeatToAbletonBeats(start, timeSigNumerator, timeSigDenominator)
-      : null;
-  const firstStartBeats =
-    firstStart != null
-      ? barBeatToAbletonBeats(firstStart, timeSigNumerator, timeSigDenominator)
-      : null;
+  // Convert bar|beat timing parameters to Ableton beats. Validate the standalone
+  // position fields first so a 0-indexed/zero-bar position is a hard error
+  // (matching the notes grammar), not a silent pre-origin beat.
+  let arrangementStartBeats: number | null = null;
+
+  if (arrangementStart != null) {
+    validateBarBeatPosition(arrangementStart);
+    arrangementStartBeats = barBeatToAbletonBeats(
+      arrangementStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+  }
+
+  let startBeats: number | null = null;
+
+  if (start != null) {
+    validateBarBeatPosition(start);
+    startBeats = barBeatToAbletonBeats(
+      start,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+  }
+
+  let firstStartBeats: number | null = null;
+
+  if (firstStart != null) {
+    validateBarBeatPosition(firstStart);
+    firstStartBeats = barBeatToAbletonBeats(
+      firstStart,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+  }
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && looping === false) {
@@ -80,7 +100,7 @@ export function convertTimingParameters(
   let endBeats: number | null = null;
 
   if (length != null) {
-    const lengthBeats = barBeatDurationToAbletonBeats(
+    const lengthBeats = durationToAbletonBeats(
       length,
       timeSigNumerator,
       timeSigDenominator,
@@ -135,19 +155,21 @@ interface ArrangementClipResult {
 }
 
 /**
- * Creates an arrangement clip on a track
+ * Creates an arrangement clip on a track or a take lane
  * @param trackIndex - Track index (0-based)
  * @param arrangementStartBeats - Starting position in beats
  * @param clipLength - Clip length in beats
+ * @param takeLane - Take lane to create on, or null for the track's main lane
  * @returns Object with clip and arrangementStartBeats
  */
 function createArrangementClip(
   trackIndex: number,
   arrangementStartBeats: number | null,
   clipLength: number,
+  takeLane: LiveAPI | null = null,
 ): ArrangementClipResult {
-  const track = LiveAPI.from(livePath.track(trackIndex));
-  const newClipResult = track.call(
+  const target = takeLane ?? LiveAPI.from(livePath.track(trackIndex));
+  const newClipResult = target.call(
     "create_midi_clip",
     arrangementStartBeats,
     clipLength,
@@ -183,6 +205,7 @@ function createArrangementClip(
  * @param length - Original length parameter
  * @param sampleFile - Audio file path (for audio clips)
  * @param transformedCount - Number of notes matched by transform selectors
+ * @param takeLane - Take lane to create arrangement clips on, or null for main lane
  * @returns Clip result for this iteration
  */
 export function processClipIteration(
@@ -206,6 +229,7 @@ export function processClipIteration(
   length: string | null,
   sampleFile: string | null,
   transformedCount: number | undefined,
+  takeLane: LiveAPI | null = null,
 ): object {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
@@ -231,6 +255,7 @@ export function processClipIteration(
         trackIndex,
         arrangementStartBeats,
         sampleFile,
+        takeLane,
       );
 
       clip = result.clip;
@@ -266,6 +291,7 @@ export function processClipIteration(
         trackIndex,
         arrangementStartBeats,
         clipLength,
+        takeLane,
       );
 
       clip = result.clip;
@@ -298,7 +324,6 @@ export function processClipIteration(
     currentSceneIndex,
     arrangementStart,
     notationString,
-    notes,
     length,
     timeSigNumerator,
     timeSigDenominator,

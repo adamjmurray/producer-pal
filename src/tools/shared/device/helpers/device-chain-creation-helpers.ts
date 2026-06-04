@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -7,7 +8,9 @@
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
+import { resolveDrumPadFromPath } from "./path/device-drumpad-navigation.ts";
 
 // Maximum chains that can be auto-created to prevent runaway creation
 const MAX_AUTO_CREATE_CHAINS = 16;
@@ -215,4 +218,96 @@ export function autoCreateDrumPadChains(
       newChain.set("in_note", targetInNote);
     }
   }
+}
+
+/**
+ * Resolve a drum pad chain relative to a rack, auto-creating it (and any
+ * lower-indexed sibling chains in the same note group) when missing. The
+ * read-only navigator (`resolveDrumPadFromPath`) never creates chains; this is
+ * the shared write-path entry used by device insertion and the path-prefixed
+ * sample pseudo-param.
+ * @param rack - Drum Rack device LiveAPI object
+ * @param drumPadNote - Note name (e.g. "C1", "F#1") or "*" for the catch-all pad
+ * @param chainSegments - Path segments after the pad note ([] or ["c<n>"])
+ * @returns The resolved chain, or null when it can't be resolved/created
+ */
+export function resolveOrCreateDrumPadChain(
+  rack: LiveAPI,
+  drumPadNote: string,
+  chainSegments: string[],
+): LiveAPI | null {
+  if (!rack.exists()) {
+    return null;
+  }
+
+  // Only a Drum Rack has drum pads. A plain chain-capable Rack (can_have_chains
+  // true, can_have_drum_pads false) would let insert_chain below succeed and
+  // strand an empty chain in the wrong rack; refuse it here so a `pC1/…/sample`
+  // aimed at a non-drum rack warn-skips with state untouched (the inverse of
+  // autoCreateChains, which refuses Drum Racks on the regular-chain path).
+  if ((rack.getProperty("can_have_drum_pads") as number) <= 0) {
+    return null;
+  }
+
+  const existing = resolveDrumPadFromPath(
+    rack.path,
+    drumPadNote,
+    chainSegments,
+  );
+
+  if (existing.target) {
+    return existing.target;
+  }
+
+  // Only a missing chain is auto-creatable (a missing device is a real miss).
+  if (existing.targetType !== "chain") {
+    return null;
+  }
+
+  const targetInNote = drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
+
+  if (targetInNote == null) {
+    return null;
+  }
+
+  const chainIndex = parseDrumPadChainIndex(chainSegments);
+
+  if (chainIndex == null) {
+    return null;
+  }
+
+  const matchingChains = rack
+    .getChildren("chains")
+    .filter((chain) => chain.getProperty("in_note") === targetInNote);
+
+  if (chainIndex >= matchingChains.length) {
+    autoCreateDrumPadChains(
+      rack,
+      targetInNote,
+      chainIndex,
+      matchingChains.length,
+    );
+  }
+
+  return resolveDrumPadFromPath(rack.path, drumPadNote, chainSegments).target;
+}
+
+/**
+ * Parse the chain index from a drum pad's remaining path segments. A leading
+ * `c`-prefixed segment selects the chain within the note group; otherwise it
+ * defaults to 0.
+ * @param chainSegments - Path segments after the pad note
+ * @returns The chain index (>= 0), or null when malformed
+ */
+function parseDrumPadChainIndex(chainSegments: string[]): number | null {
+  if (chainSegments.length === 0) {
+    return 0;
+  }
+
+  const segment = assertDefined(chainSegments[0], "chain segment");
+  const index = segment.startsWith("c")
+    ? Number.parseInt(segment.slice(1))
+    : Number.parseInt(segment);
+
+  return Number.isNaN(index) || index < 0 ? null : index;
 }

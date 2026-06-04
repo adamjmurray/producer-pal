@@ -27,14 +27,15 @@ describe("bar|beat interpretNotation() - time signatures", () => {
     ]);
   });
   it("converts time signatures with half-note denominators correctly", () => {
+    // Default duration is a quarter note regardless of meter — 1 Ableton beat in 2/2
     const result = interpretNotation("C3 1|1 D3 1|2", {
       timeSigNumerator: 2,
       timeSigDenominator: 2,
     });
 
     expect(result).toStrictEqual([
-      createNote({ duration: 2 }),
-      createNote({ pitch: 62, start_time: 2, duration: 2 }),
+      createNote({ duration: 1 }),
+      createNote({ pitch: 62, start_time: 2, duration: 1 }),
     ]);
   });
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
@@ -50,14 +51,15 @@ describe("bar|beat interpretNotation() - time signatures", () => {
     ]);
   });
   it("converts time signatures with different denominators correctly", () => {
+    // Default duration is a quarter note regardless of meter — 1 Ableton beat in 6/8
     const result = interpretNotation("C3 1|1 D3 1|3", {
       timeSigNumerator: 6,
       timeSigDenominator: 8,
     });
 
     expect(result).toStrictEqual([
-      createNote({ duration: 0.5 }),
-      createNote({ pitch: 62, start_time: 1, duration: 0.5 }),
+      createNote({ duration: 1 }),
+      createNote({ pitch: 62, start_time: 1, duration: 1 }),
     ]);
   });
   it("throws error when only timeSigNumerator is provided", () => {

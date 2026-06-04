@@ -36,7 +36,7 @@ export async function callRawApi(
   operations: Record<string, unknown>[],
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${baseUrl}/api/tools/ppal-raw-live-api`, {
+    const res = await fetch(`${baseUrl}/api/tools/ppal-live-api`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path, operations }),
@@ -88,6 +88,35 @@ export async function getProperty(
   property: string,
 ): Promise<string | null> {
   return await callRawApi(baseUrl, path, [{ type: "get", property }]);
+}
+
+/**
+ * Get a property value as a string. Reads the first element of the
+ * `result:[...]` array that `get` operations return — strings come back
+ * unquoted, scalars (numbers/bools) are stringified.
+ * @param baseUrl - Base URL
+ * @param path - Live API path
+ * @param property - Property name
+ * @returns The first array element, or null if the result couldn't be parsed
+ */
+export async function getPropertyValue(
+  baseUrl: string,
+  path: string,
+  property: string,
+): Promise<string | null> {
+  const raw = await getProperty(baseUrl, path, property);
+
+  if (!raw) return null;
+
+  const match = /result:\[(?:"((?:[^"\\]|\\.)*)"|([^,\]]+))/.exec(raw);
+
+  if (!match) return null;
+
+  const value = match[1] ?? match[2];
+
+  if (value == null) return null;
+
+  return value.replaceAll("\\n", "\n").replaceAll("\\\\", "\\");
 }
 
 /**

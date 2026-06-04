@@ -21,7 +21,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "session clip slot(s): trackIndex/sceneIndex, comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
+        "session clip slot(s): trackIndex/sceneIndex, both 0-based (scene 1 = index 0), comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
       ),
 
     trackIndex: z.coerce
@@ -35,7 +35,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
+        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3'). Song meter",
       ),
 
     name: z
@@ -60,13 +60,13 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins"),
+      .describe("bar|beat position where loop/clip region begins (clip meter)"),
 
     length: z
       .string()
       .optional()
       .describe(
-        "duration in bar:beat (e.g., '4:0' = 4 bars), default: next full bar after latest note",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Clip meter. Default: next full bar after latest note",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
@@ -75,14 +75,14 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "bar|beat playback start (looping clips, when different from start)",
+        "bar|beat playback start (looping clips, when different from start; clip meter)",
       ),
 
     notes: z
       .string()
       .optional()
       .describe(
-        "MIDI in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
+        "MIDI in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only",
       ),
 
     transforms: z
@@ -111,13 +111,33 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .enum(["play-scene", "play-clip"])
       .optional()
       .describe("auto-play session clips (play-scene keeps scene in sync)"),
+
+    takeLane: z.coerce
+      .string()
+      .optional()
+      .describe(
+        'arrangement take lane: omit/0 = main lane, 1+ = that lane (auto-created), "new" = append a fresh lane (for variations)',
+      ),
+
+    takeLaneName: z
+      .string()
+      .optional()
+      .describe("name for a take lane newly created by this call"),
   },
 
   smallModelModeConfig: {
-    excludeParams: ["transforms", "code", "firstStart", "auto"],
+    excludeParams: [
+      "transforms",
+      "code",
+      "firstStart",
+      "auto",
+      "takeLane",
+      "takeLaneName",
+    ],
     descriptionOverrides: {
       slot: "session clip slot(s): trackIndex/sceneIndex (e.g., '0/0')",
-      arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",
+      arrangementStart:
+        "arrangement clip bar|beat position (e.g., '1|1'). Song meter",
       name: "clip name",
       color: "#RRGGBB",
     },

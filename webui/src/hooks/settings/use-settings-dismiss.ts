@@ -11,6 +11,12 @@ interface UseSettingsDismissOptions {
   settingsClosing: boolean;
   hasUnsavedChanges: boolean;
   handleCancelSettings: () => void;
+  /**
+   * When true, the Esc-key handler in this hook is suppressed so a higher-
+   * priority overlay (e.g. the project context overlay) can claim the
+   * keystroke. The click-outside dismiss path is unaffected.
+   */
+  blockEscape?: boolean;
 }
 
 interface UseSettingsDismissReturn {
@@ -31,6 +37,7 @@ export function useSettingsDismiss({
   settingsClosing,
   hasUnsavedChanges,
   handleCancelSettings,
+  blockEscape = false,
 }: UseSettingsDismissOptions): UseSettingsDismissReturn {
   const [shake, setShake] = useState(false);
   const clearShake = useCallback(() => setShake(false), []);
@@ -50,9 +57,13 @@ export function useSettingsDismiss({
     handleCancelSettings,
   ]);
 
-  // Escape key handler
+  // Escape key handler. When `blockEscape` is set, Esc is ceded to whichever
+  // overlay has priority (e.g. Context, which renders on top in the DOM) so
+  // both overlays don't dismiss simultaneously when the user reloads with
+  // contextOpen=true and !settingsConfigured.
   useEffect(() => {
     if (!showSettings) return;
+    if (blockEscape) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -63,7 +74,7 @@ export function useSettingsDismiss({
     document.addEventListener("keydown", handleKeyDown);
 
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [showSettings, handleSettingsDismiss]);
+  }, [showSettings, handleSettingsDismiss, blockEscape]);
 
   return { shake, clearShake, handleSettingsDismiss };
 }

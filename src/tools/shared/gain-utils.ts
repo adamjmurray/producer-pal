@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -62,15 +63,15 @@ export function liveGainToDb(gain: number): number {
   // Defensive guards: unreachable with current lookup table (only gain=0 has dB:null,
   // and the gain <= 0 check above prevents it from being a binary search result).
   /* v8 ignore start -- unreachable: null dB only at gain=0, excluded by early return */
-  if (lower.dB === null) {
-    if (upper.dB === null) {
+  if (lower.dB == null) {
+    if (upper.dB == null) {
       return -70;
     }
 
     return upper.dB;
   }
 
-  if (upper.dB === null) {
+  if (upper.dB == null) {
     return lower.dB;
   }
   /* v8 ignore stop */
@@ -112,7 +113,7 @@ export function dbToLiveGain(dB: number): number {
   for (let i = 0; i < LOOKUP_TABLE.length; i++) {
     const entry = LOOKUP_TABLE[i] as LookupEntry;
 
-    if (entry.dB === null || entry.dB === -Infinity) {
+    if (entry.dB == null || entry.dB === -Infinity) {
       continue;
     }
 

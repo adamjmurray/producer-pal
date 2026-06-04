@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
+    "paths": {
+      "#src/*": ["../src/*"],
+      "#evals/*": ["./*"],
+      "#webui/*": ["../webui/src/*"]
+    },
     "checkJs": false,
     "noEmit": true,
     "target": "ES2023",

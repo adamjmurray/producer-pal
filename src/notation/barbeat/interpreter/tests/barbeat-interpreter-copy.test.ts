@@ -73,7 +73,8 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       ]);
     });
     it("preserves note properties (velocity, duration, probability)", () => {
-      const result = interpretNotation("v80 t0.5 p0.7 C3 1|1 @2=1");
+      // n/8 = eighth = 0.5 quarter
+      const result = interpretNotation("v80 n/8 p0.7 C3 1|1 @2=1");
 
       expect(result).toStrictEqual([
         createNote({ duration: 0.5, velocity: 80, probability: 0.7 }), // Bar 1
@@ -97,14 +98,15 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       ]);
     });
     it("handles 6/8 time signature correctly", () => {
+      // Default duration is a quarter note regardless of meter — 1 Ableton beat in 6/8
       const result = interpretNotation("C3 1|1 @2=1", {
         timeSigNumerator: 6,
         timeSigDenominator: 8,
       });
 
       expect(result).toStrictEqual([
-        createNote({ duration: 0.5 }), // Bar 1 (6/8 time = 3 quarter notes per bar)
-        createNote({ start_time: 3, duration: 0.5 }), // Bar 2 (3 quarter notes later)
+        createNote({ duration: 1 }), // Bar 1 (6/8 = 3 quarter notes per bar)
+        createNote({ start_time: 3, duration: 1 }), // Bar 2 (3 quarter notes later)
       ]);
     });
     it("handles multiple notes at different beats", () => {
@@ -174,25 +176,25 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
       expect(result).toHaveLength(6);
 
       // Verify bar 1 notes (beats 1 and 4)
-      expect(result).toContainEqual(createNote({ pitch: 36, duration: 0.5 })); // Bar 1 beat 1
+      expect(result).toContainEqual(createNote({ pitch: 36, duration: 1 })); // Bar 1 beat 1
       expect(result).toContainEqual(
-        createNote({ pitch: 36, start_time: 1.5, duration: 0.5 }),
+        createNote({ pitch: 36, start_time: 1.5, duration: 1 }),
       ); // Bar 1 beat 4
 
       // Verify bar 2 notes (beats 7 and 10 overflow from bar 1)
       expect(result).toContainEqual(
-        createNote({ pitch: 36, start_time: 3.0, duration: 0.5 }),
+        createNote({ pitch: 36, start_time: 3.0, duration: 1 }),
       ); // Bar 2 beat 1
       expect(result).toContainEqual(
-        createNote({ pitch: 36, start_time: 4.5, duration: 0.5 }),
+        createNote({ pitch: 36, start_time: 4.5, duration: 1 }),
       ); // Bar 2 beat 4
 
       // Verify bar 3 has ONLY the 2 notes from bar 1
       expect(result).toContainEqual(
-        createNote({ pitch: 36, start_time: 6.0, duration: 0.5 }),
+        createNote({ pitch: 36, start_time: 6.0, duration: 1 }),
       ); // Bar 3 beat 1
       expect(result).toContainEqual(
-        createNote({ pitch: 36, start_time: 7.5, duration: 0.5 }),
+        createNote({ pitch: 36, start_time: 7.5, duration: 1 }),
       ); // Bar 3 beat 4
 
       // Verify bar 4 does NOT have notes (bug would copy bar 2's notes)

@@ -271,10 +271,7 @@ export function processDrumPads(
     );
 
     // Build drum pad info from the chains
-    const drumPadInfo = buildDrumPadFromChains(
-      inNote,
-      processedChains as ProcessedChain[],
-    );
+    const drumPadInfo = buildDrumPadFromChains(inNote, processedChains);
 
     // Add chains if requested
     if (includeDrumPads && includeChains) {

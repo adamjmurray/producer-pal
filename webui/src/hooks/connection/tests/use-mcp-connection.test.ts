@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the MCP SDK Client
@@ -180,6 +180,27 @@ describe("useMcpConnection", () => {
     });
   });
 
+  it("closes the client even when listTools throws", async () => {
+    mockListTools.mockRejectedValue(new Error("listTools failed"));
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("error");
+    });
+
+    expect(mockClose).toHaveBeenCalledOnce();
+  });
+
+  it("swallows close() failures so they don't leak as the user-facing error", async () => {
+    mockClose.mockRejectedValue(new Error("close failed"));
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("connected");
+    });
+    expect(result.current.mcpError).toBe(null);
+  });
+
   it("shows CORS hint when on Vite dev server and server is reachable", async () => {
     mockConnect.mockRejectedValue(new Error("Failed to fetch"));
     mockIsViteDevServer.mockReturnValue(true);
@@ -214,5 +235,180 @@ describe("useMcpConnection", () => {
       expect(result.current.mcpError).toBe("Connection failed");
     });
     expect(mockDetectCorsBlock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes mcpTools on window focus when connected", async () => {
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("connected");
+    });
+
+    expect(mockListTools).toHaveBeenCalledTimes(1);
+
+    // Device-side change: liveApiEnabled flipped on; tool list now includes
+    // ppal-live-api.
+    mockListTools.mockResolvedValue({
+      tools: [
+        { name: "ppal-connect", title: "Connect to Ableton" },
+        { name: "ppal-read-live-set", title: "Read Live Set" },
+        { name: "ppal-live-api", title: "Live API" },
+      ],
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      // Yield so the focus-triggered fetch can resolve.
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.mcpTools).toHaveLength(3);
+    });
+
+    expect(result.current.mcpStatus).toBe("connected");
+    expect(mockListTools).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips focus refresh when not yet connected", async () => {
+    // Slow the initial connect so the focus event fires before mount-fetch
+    // completes; the listener should bail because status is still
+    // "connecting".
+    let resolveConnect: () => void = () => {};
+
+    mockConnect.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveConnect = resolve;
+        }),
+    );
+
+    renderHook(() => useMcpConnection());
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await Promise.resolve();
+    });
+
+    // No extra listTools call from the focus event during "connecting".
+    expect(mockListTools).not.toHaveBeenCalled();
+
+    // Let the mount-fetch finish so the test cleanup doesn't hang.
+    resolveConnect();
+  });
+
+  it("preserves connected status and prior tools when focus refresh fails", async () => {
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("connected");
+    });
+
+    const priorTools = result.current.mcpTools;
+
+    // Next listTools (triggered by focus) fails; status must NOT flip to
+    // "error" — a transient refresh failure isn't a disconnect.
+    mockListTools.mockRejectedValueOnce(new Error("transient blip"));
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await Promise.resolve();
+    });
+
+    // Yield one more tick for the rejection path.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.mcpStatus).toBe("connected");
+    expect(result.current.mcpError).toBe(null);
+    expect(result.current.mcpTools).toStrictEqual(priorTools);
+  });
+
+  it("discards a stale focus-refresh result when a later refresh resolves first", async () => {
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("connected");
+    });
+
+    const initialTools = result.current.mcpTools;
+
+    // Two focus events fire in quick succession. The first listTools call
+    // resolves AFTER the second (slow-then-fast). Without the seq guard, the
+    // first response would stomp the fresh second one.
+    let resolveSlow: (value: { tools: unknown[] }) => void = () => {};
+    let resolveFast: (value: { tools: unknown[] }) => void = () => {};
+
+    mockListTools
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSlow = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFast = resolve;
+          }),
+      );
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    // Wait until both focus-triggered listTools calls have started (mount
+    // was the first call; the two focuses bring the total to 3) so both
+    // mockImplementationOnce slots have been claimed.
+    await waitFor(() => {
+      expect(mockListTools).toHaveBeenCalledTimes(3);
+    });
+
+    // Resolve the second (fast) refresh first — this is the fresh result.
+    await act(async () => {
+      resolveFast({
+        tools: [
+          { name: "ppal-connect", title: "Connect to Ableton" },
+          { name: "ppal-read-live-set", title: "Read Live Set" },
+          { name: "ppal-live-api", title: "Live API" },
+        ],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.mcpTools).toHaveLength(3);
+    });
+
+    // Now resolve the first (slow) refresh with a STALE tool list. The seq
+    // guard must discard this; tools must remain at the fresh count.
+    await act(async () => {
+      resolveSlow({
+        tools: [{ name: "ppal-connect", title: "Connect to Ableton" }],
+      });
+    });
+
+    expect(result.current.mcpTools).toHaveLength(3);
+    expect(result.current.mcpTools).not.toStrictEqual(initialTools);
+  });
+
+  it("removes the focus listener on unmount", async () => {
+    const { result, unmount } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("connected");
+    });
+
+    const callsBefore = mockListTools.mock.calls.length;
+
+    unmount();
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await Promise.resolve();
+    });
+
+    expect(mockListTools.mock.calls).toHaveLength(callsBefore);
   });
 });

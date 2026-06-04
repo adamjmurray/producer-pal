@@ -13,7 +13,7 @@ import {
 import { updateDevice } from "../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
-vi.mock(import("#src/tools/control/select.ts"), () => ({
+vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 

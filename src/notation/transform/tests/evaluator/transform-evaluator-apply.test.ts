@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -108,6 +109,18 @@ describe("applyTransforms", () => {
       expect(notes).toHaveLength(0);
     });
 
+    it("warns when a duration transform deletes a note", () => {
+      const warn = vi.spyOn(console, "warn");
+      const notes = createTestNote();
+
+      applyTransforms(notes, "duration = -1", 4, 4);
+
+      expect(notes).toHaveLength(0);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("transform drove duration to 0 or below"),
+      );
+    });
+
     it("clamps probability to minimum 0.0 with += operator", () => {
       const notes = createTestNote({ probability: 0.5 });
 
@@ -184,24 +197,24 @@ probability += -0.2`;
     it("handles 4/4 time signature", () => {
       const notes = createTestNote();
 
-      // In 4/4, 1 Ableton beat = 1 musical beat, so cos(1t) at position 0 = 1
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 4, 4);
+      // n/4 is a quarter-note cycle; at position 0 phase = 0, cos = 1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 4, 4);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5);
     });
 
     it("handles 3/4 time signature", () => {
       const notes = createTestNote();
 
-      // In 3/4, 1 Ableton beat = 1 musical beat
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 3, 4);
+      // Quarter-note cycle is meter-invariant; at position 0, cos = 1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 3, 4);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5);
     });
 
     it("handles 6/8 time signature", () => {
       const notes = createTestNote();
 
-      // In 6/8, 1 Ableton beat = 2 musical beats (denominator/4 = 8/4 = 2)
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 6, 8);
+      // In 6/8 a quarter is 2 eighth-note beats, but at position 0 cos = 1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 6, 8);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5);
     });
 
@@ -212,8 +225,8 @@ probability += -0.2`;
         { pitch: 60, start_time: 1 },
       ]);
 
-      // cos(1t) completes one cycle per beat: 0→1, 0.5→-1, 1→1
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 4, 4);
+      // cos(n/4) completes one cycle per beat: 0→1, 0.5→-1, 1→1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 4, 4);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5); // cos(0) = 1
       expect(notes[1]!.velocity).toBeCloseTo(80, 5); // cos(0.5) ≈ -1
       expect(notes[2]!.velocity).toBeCloseTo(120, 5); // cos(1) = 1
@@ -256,6 +269,34 @@ probability += -0.2`;
       expect(notes[0]!.velocity).toBe(120); // in range
       expect(notes[1]!.velocity).toBe(120); // in range
       expect(notes[2]!.velocity).toBe(100); // out of range
+    });
+
+    // Regression: a tuplet/off-grid note (start_time 1/3 in 4/4 → musical beat
+    // ~1.333, which serializes to the `1|1+n/12` offset form) must still be
+    // gated by the time range. The note's bar|beat is derived numerically, not
+    // by reparsing the serialized string with a decimal-only regex — the regex
+    // failed on the `+n` form, dropped bar/beat to undefined, and made the time
+    // filter match every selector.
+    it("excludes an off-grid (tuplet) note from a range that doesn't cover it", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 1 / 3 }, // bar 1, eighth triplet — out of range
+        { pitch: 60, start_time: 4 }, // bar 2, beat 1 — in range
+      ]);
+
+      applyTransforms(notes, "2|1-3|1: velocity += 20", 4, 4);
+      expect(notes[0]!.velocity).toBe(100); // tuplet note correctly excluded
+      expect(notes[1]!.velocity).toBe(120); // in range
+    });
+
+    it("includes an off-grid (tuplet) note when the range covers it", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 1 / 3 }, // bar 1, eighth triplet — in range
+        { pitch: 60, start_time: 8 }, // bar 3, beat 1 — out of range
+      ]);
+
+      applyTransforms(notes, "1|1-1|4: velocity += 20", 4, 4);
+      expect(notes[0]!.velocity).toBe(120); // tuplet note in range
+      expect(notes[1]!.velocity).toBe(100); // out of range
     });
   });
 
@@ -376,7 +417,7 @@ probability += -0.2`;
     it("combines note variables with waveforms", () => {
       const notes = createTestNote({ velocity_deviation: 0 });
 
-      applyTransforms(notes, "velocity = note.velocity * cos(1t)", 4, 4);
+      applyTransforms(notes, "velocity = note.velocity * cos(n/4)", 4, 4);
       expect(notes[0]!.velocity).toBeCloseTo(100, 5); // 100 * cos(0) = 100 * 1
     });
   });

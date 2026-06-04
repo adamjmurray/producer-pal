@@ -161,6 +161,22 @@ export function ImportIcon() {
 }
 
 /**
+ * Lined-document icon for the project context view
+ * @returns SVG element
+ */
+export function ContextIcon() {
+  return (
+    <Icon20 strokeWidth="1.6">
+      <path d="M4.5 2.5h7L15.5 6.5v11a1 1 0 01-1 1H4.5a1 1 0 01-1-1V3.5a1 1 0 011-1z" />
+      <path d="M11.5 2.5V6.5h4" />
+      <line x1="6" y1="10" x2="13" y2="10" />
+      <line x1="6" y1="13" x2="13" y2="13" />
+      <line x1="6" y1="16" x2="11" y2="16" />
+    </Icon20>
+  );
+}
+
+/**
  * Gear/cog icon for settings
  * @returns SVG element
  */
@@ -203,6 +219,28 @@ export function DisclosureChevron() {
       className="chevron shrink-0 transition-transform text-zinc-500 dark:text-zinc-400"
     >
       <path d="M3.5 2L7 5L3.5 8" />
+    </svg>
+  );
+}
+
+/**
+ * Magnifying-glass icon for the conversation search field
+ * @returns SVG element
+ */
+export function SearchIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="6" cy="6" r="4.5" />
+      <path d="M9.5 9.5L12.5 12.5" />
     </svg>
   );
 }

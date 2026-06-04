@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import {
@@ -13,14 +14,16 @@ import {
   computeLoopDeadline,
   isDeadlineExceeded,
 } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   prepareSplitParams,
   performSplitting,
   type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   parseCommaSeparatedIds,
+  parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -36,6 +39,7 @@ import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts"
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
   type ClipAudioWarpQuantizeParams,
+  type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 
@@ -43,7 +47,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
   notes?: string;
   transforms?: string;
-  noteUpdateMode?: string;
+  preTransforms?: string;
   name?: string;
   color?: string;
   timeSignature?: string;
@@ -70,17 +74,17 @@ interface ClipResult {
  * @param args - The clip parameters
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param args.notes - Musical notation string
- * @param args.transforms - Transform expressions (parameter: expression per line)
- * @param args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
+ * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all ids
+ * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
  * @param args.timeSignature - Time signature in format "4/4"
  * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Duration in bar:beat format. end = start + length
+ * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
- * @param args.arrangementLength - Bar:beat duration for arrangement span
+ * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
  * @param args.split - Comma-separated bar|beat positions to split clip
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
@@ -94,7 +98,7 @@ interface ClipResult {
  * @param args.quantize - Quantization strength 0-1 (MIDI clips only)
  * @param args.quantizeGrid - Note grid for quantization
  * @param args.quantizePitch - Limit quantization to specific pitch
- * @param args.code - JavaScript code to transform notes
+ * @param args.code - JavaScript code to transform notes (broadcast across ids; use context.clip.{index,count} for per-clip variation)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Tool execution context with holding area settings
  * @returns Single clip object or array of clip objects
@@ -103,8 +107,8 @@ export async function updateClip(
   {
     ids,
     notes: notationString,
-    transforms: transformString,
-    noteUpdateMode = "merge",
+    transforms,
+    preTransforms,
     name,
     color,
     timeSignature,
@@ -151,12 +155,17 @@ export async function updateClip(
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
+  // Validate timeSignature up front so format errors throw to the caller
+  // instead of being swallowed by the per-clip warn-and-skip wrapper.
+  if (timeSignature != null) parseTimeSignature(timeSignature);
+
   const parsedToSlot = parseToSlotParam(toSlot);
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
   const parsedNames = parseNames(name, mutableClips.length, "updateClip");
   const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
+
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
@@ -170,15 +179,13 @@ export async function updateClip(
       break;
     }
 
-    const prevLen = updatedClips.length;
-
-    processSingleClipUpdate({
+    await processClipUpdateStep({
       clip,
       clipIndex: i,
       clipCount: mutableClips.length,
       notationString,
-      transformString,
-      noteUpdateMode,
+      transformString: transforms,
+      preTransformString: preTransforms,
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       timeSignature,
@@ -204,9 +211,8 @@ export async function updateClip(
       context,
       updatedClips,
       tracksWithMovedClips,
+      code,
     });
-
-    await applyCodeExecToNewClips(updatedClips, prevLen, code);
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
@@ -242,21 +248,56 @@ function parseToSlotParam(
 }
 
 /**
+ * Process one clip update + per-clip code-exec, warn-and-continue on failure.
+ * @param params - Per-clip update params plus optional code to apply
+ */
+async function processClipUpdateStep(
+  params: ProcessSingleClipUpdateParams & { code?: string },
+): Promise<void> {
+  const { code, clipIndex, clipCount, ...processParams } = params;
+  const prevLen = params.updatedClips.length;
+
+  try {
+    processSingleClipUpdate({ ...processParams, clipIndex, clipCount });
+    await applyCodeExecToNewClips(
+      params.updatedClips,
+      prevLen,
+      clipIndex,
+      clipCount,
+      code,
+    );
+  } catch (error) {
+    console.warn(
+      `Failed to update clip ${params.clip.id}: ${errorMessage(error)}`,
+    );
+  }
+}
+
+/**
  * Apply code exec to newly added clip results
  * @param updatedClips - Array of clip results
  * @param prevLen - Length before new clips were added
+ * @param clipIndex - 0-based position in the user's id batch (for clip.index in user code)
+ * @param clipCount - Total ids in the user's batch (for clip.count in user code)
  * @param code - JavaScript code to execute
  */
 async function applyCodeExecToNewClips(
   updatedClips: ClipResult[],
   prevLen: number,
+  clipIndex: number,
+  clipCount: number,
   code?: string,
 ): Promise<void> {
   if (code == null) return;
 
   for (let j = prevLen; j < updatedClips.length; j++) {
     const clipResult = updatedClips[j] as ClipResult;
-    const noteCount = await applyCodeToSingleClip(clipResult.id, code);
+    const noteCount = await applyCodeToSingleClip(
+      clipResult.id,
+      code,
+      clipIndex,
+      clipCount,
+    );
 
     if (noteCount != null) {
       clipResult.noteCount = noteCount;
@@ -276,9 +317,22 @@ function applySplittingIfNeeded(
   split: string | undefined,
   context: Partial<ToolContext>,
 ): LiveAPI[] {
-  const arrangementClips = clips.filter(
-    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
-  );
+  const arrangementClips = clips.filter((clip) => {
+    if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
+
+    // performSplitting uses duplicate_clip_to_arrangement (Track-only) which
+    // can't target take lanes. Warn-and-skip rather than silently misroute
+    // the split onto the main lane.
+    if (isTakeLaneClip(clip)) {
+      console.warn(
+        `split parameter ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
+      );
+
+      return false;
+    }
+
+    return true;
+  });
   const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
 
   if (split != null && splitPoints != null && arrangementClips.length > 0) {

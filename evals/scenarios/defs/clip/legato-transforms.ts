@@ -8,6 +8,7 @@
  * fuzzy legato to handle the humanized chord pairs.
  */
 
+import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type EvalScenario } from "../../types.ts";
 import { assertNotesRead, getTransforms } from "./clip-scenario-helpers.ts";
 
@@ -50,8 +51,10 @@ export const legatoTransforms: EvalScenario = {
         // Should have notes param (adding the octave copies) or use transforms
         const notes = String(updateCall.args.notes ?? "");
         const transforms = String(updateCall.args.transforms ?? "");
-        const result = JSON.parse(String(updateCall.result ?? "{}"));
-        const noteCount = result.noteCount as number | undefined;
+        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+          noteCount?: number;
+        };
+        const noteCount = result.noteCount;
 
         // Original has 12 notes, doubled should be 24
         if (!notes && !transforms && (noteCount == null || noteCount <= 12)) {

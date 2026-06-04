@@ -1,16 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
 import {
-  DEVICE_CLASS,
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
-import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
   isRedundantDeviceClassName,
@@ -18,9 +17,15 @@ import {
   readABCompare,
   readDeviceParameters,
   readMacroVariations,
-  type ProcessChainsOptions,
 } from "./helpers/device-reader-helpers.ts";
 import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
+import { probeSimplerSample } from "./simpler-sample.ts";
+import {
+  readSpecializedActions,
+  readSpecializedModulations,
+  readSpecializedOptions,
+  readSpecializedParams,
+} from "./specialized/specialized-device-registry.ts";
 
 export interface ReadDeviceOptions {
   includeChains?: boolean;
@@ -29,6 +34,8 @@ export interface ReadDeviceOptions {
   includeParams?: boolean;
   includeParamValues?: boolean;
   includeSample?: boolean;
+  includeOptions?: boolean;
+  includeActions?: boolean;
   paramSearch?: string;
   depth?: number;
   maxDepth?: number;
@@ -199,6 +206,8 @@ export function readDevice(
     includeParams = false,
     includeParamValues = false,
     includeSample = false,
+    includeOptions = false,
+    includeActions = false,
     paramSearch,
     depth = 0,
     maxDepth = 4,
@@ -243,18 +252,6 @@ export function readDevice(
   //   deviceInfo.collapsed = true;
   // }
 
-  if (includeParams) {
-    // Add variation/macro info for rack devices (spreads empty object if not applicable)
-    Object.assign(deviceInfo, readMacroVariations(device));
-    // Add A/B Compare state (spreads empty object if device doesn't support it)
-    Object.assign(deviceInfo, readABCompare(device));
-  }
-
-  if (includeSample) {
-    // Add Simpler sample path (spreads empty object if not Simpler or no sample)
-    Object.assign(deviceInfo, readSimplerSample(device, className));
-  }
-
   // Process chains for rack devices
   processDeviceChains(device, deviceInfo, deviceType, {
     includeChains,
@@ -264,57 +261,130 @@ export function readDevice(
     maxDepth,
     readDeviceFn: readDevice,
     devicePath: path ?? undefined,
-  } as ProcessChainsOptions);
+  });
 
-  if (includeParams) {
-    deviceInfo.parameters = readDeviceParameters(device, {
-      includeValues: includeParamValues,
-      search: paramSearch,
-    });
-  }
+  appendDeviceDetails(device, deviceInfo, {
+    className,
+    includeParams,
+    includeParamValues,
+    includeSample,
+    includeOptions,
+    includeActions,
+    paramSearch,
+  });
 
   return deviceInfo;
 }
 
+interface DeviceDetailOptions {
+  className: string;
+  includeParams: boolean;
+  includeParamValues: boolean;
+  includeSample: boolean;
+  includeOptions: boolean;
+  includeActions: boolean;
+  paramSearch: string | undefined;
+}
+
 /**
- * Read sample path from Simpler device
- * @param device - Live API device object
- * @param className - Device class display name
- * @returns Object with sample property, or empty object
+ * Append optional detail sections (macro/AB state, parameters, the focused
+ * Simpler sample file path, and dynamic catalogs) to a device info object, per
+ * the requested includes.
+ * @param device - LiveAPI device object
+ * @param deviceInfo - Device info object to mutate
+ * @param opts - Which detail sections to include
  */
-function readSimplerSample(
+function appendDeviceDetails(
   device: LiveAPI,
-  className: string,
-): Record<string, unknown> {
-  if (className !== DEVICE_CLASS.SIMPLER) {
-    return {};
+  deviceInfo: Record<string, unknown>,
+  opts: DeviceDetailOptions,
+): void {
+  if (opts.includeParams) {
+    // Variation/macro info for racks; A/B Compare state (each spreads an empty
+    // object when not applicable).
+    Object.assign(deviceInfo, readMacroVariations(device));
+    Object.assign(deviceInfo, readABCompare(device));
+    appendParameters(
+      device,
+      deviceInfo,
+      opts.includeParamValues,
+      opts.paramSearch,
+    );
   }
 
-  // Multisample mode doesn't expose a single sample file path
-  if ((device.getProperty("multi_sample_mode") as number) > 0) {
-    return { multisample: true };
+  if (opts.includeSample) {
+    // Focused discovery view: the Simpler sample file path as a flat top-level
+    // `sample` field, optimized for scanning many devices at once (e.g. every
+    // pad in a drum rack). gainDb, multi-sample state, and the other Simpler
+    // params live in the full `params` set, not here. Independent of
+    // includeParams so include:["*"] (and explicitly requesting both) still
+    // emits the top-level field — redundant with the `sample` param entry, but
+    // least-surprising.
+    const probe = probeSimplerSample(device, opts.className);
+
+    if (probe.kind === "single") {
+      deviceInfo.sample = probe.path;
+    }
   }
 
-  const samples = device.getChildren("sample");
-
-  if (samples.length === 0) {
-    return {};
+  // Dynamic catalogs (opt-in; only devices that contribute add anything).
+  if (opts.includeOptions) {
+    appendOptions(device, deviceInfo);
   }
 
-  const firstSample = assertDefined(samples[0], "first sample");
-  const samplePath = firstSample.getProperty("file_path");
+  // Available actions for the device's specialized class (opt-in discovery).
+  if (opts.includeActions) {
+    const actions = readSpecializedActions(device);
 
-  if (!samplePath) {
-    return {};
+    if (actions.length > 0) {
+      deviceInfo.actions = actions;
+    }
+  }
+}
+
+/**
+ * Append DeviceParameters and specialized pseudo-params to a device info object.
+ * @param device - LiveAPI device object
+ * @param deviceInfo - Device info object to mutate
+ * @param includeValues - Whether to include current param values
+ * @param paramSearch - Optional case-insensitive name filter
+ */
+function appendParameters(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  includeValues: boolean,
+  paramSearch: string | undefined,
+): void {
+  const parameters = readDeviceParameters(device, {
+    includeValues,
+    search: paramSearch,
+  });
+  const pseudoParams = readSpecializedParams(device, paramSearch);
+
+  deviceInfo.parameters = [...pseudoParams, ...parameters];
+}
+
+/**
+ * Append dynamic catalog data and modulation-matrix state (the `options`
+ * include) to a device info object. Both are opt-in because the matrix scan
+ * costs many Live API calls; only request it when working the mod matrix.
+ * @param device - LiveAPI device object
+ * @param deviceInfo - Device info object to mutate
+ */
+function appendOptions(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+): void {
+  const deviceOptions = readSpecializedOptions(device);
+
+  if (Object.keys(deviceOptions).length > 0) {
+    deviceInfo.options = deviceOptions;
   }
 
-  const result: Record<string, unknown> = { sample: samplePath };
+  // Current modulation-matrix routes (Wavetable only; undefined otherwise).
+  const modulations = readSpecializedModulations(device);
 
-  const gain = firstSample.getProperty("gain") as number | undefined;
-
-  if (gain != null) {
-    result.gainDb = liveGainToDb(gain);
+  if (modulations != null) {
+    deviceInfo.modulations = modulations;
   }
-
-  return result;
 }

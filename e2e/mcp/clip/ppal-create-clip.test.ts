@@ -117,7 +117,7 @@ describe("ppal-create-clip", () => {
       name: "ppal-create-clip",
       arguments: {
         slot: `${emptyMidiTrack}/4`,
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const lengthClip = parseToolResult<CreateClipResult>(lengthResult);
@@ -129,7 +129,7 @@ describe("ppal-create-clip", () => {
     });
     const readLengthClip = parseToolResult<ReadClipResult>(verifyLength);
 
-    expect(readLengthClip.length).toBe("2:0");
+    expect(readLengthClip.length).toBe("2bar");
 
     // Test 6: Create clip with looping enabled
     const loopingResult = await ctx.client!.callTool({

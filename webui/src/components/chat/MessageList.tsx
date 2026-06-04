@@ -1,13 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Fragment, type VNode } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { ErrorBoundary } from "#webui/components/ErrorBoundary";
-import { type QueuedMessage } from "#webui/hooks/chat/helpers/use-message-queue";
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import {
   calcNewContentTokens,
   compactNumber,
@@ -58,7 +59,7 @@ function useStillThinking(
     const timer = setTimeout(() => setShow(true), STILL_THINKING_DELAY_MS);
 
     return () => clearTimeout(timer);
-  }, [isAssistantResponding, messages]); // eslint-disable-line react-hooks/exhaustive-deps -- clearEditing is stable setState
+  }, [isAssistantResponding, messages, clearEditing]);
 
   return show;
 }
@@ -94,10 +95,13 @@ export function MessageList(props: MessageListProps) {
   const prevMessageCountRef = useRef(0);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+  // Stable identity so useStillThinking can list it as a dependency without
+  // re-running its effect every render.
+  const clearEditing = useCallback(() => setEditingIndex(null), []);
   const showStillThinking = useStillThinking(
     isAssistantResponding,
     messages,
-    () => setEditingIndex(null),
+    clearEditing,
   );
 
   // Auto-scroll to bottom only when a new user message is added (not during

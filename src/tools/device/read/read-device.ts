@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
@@ -35,6 +36,8 @@ interface ReadOptions {
   includeParams: boolean;
   includeParamValues: boolean;
   includeSample: boolean;
+  includeOptions: boolean;
+  includeActions: boolean;
   maxDepth: number;
   paramSearch?: string;
 }
@@ -64,6 +67,8 @@ export function readDevice(
   const includeParamValues = includeAll || include.includes("param-values");
   const includeParams = includeParamValues || include.includes("params");
   const includeSample = includeAll || include.includes("sample");
+  const includeOptions = includeAll || include.includes("options");
+  const includeActions = includeAll || include.includes("actions");
 
   // Force chain processing internally when drum-map is requested (needed for getDrumMap)
   const chainsForDrumMap = includeDrumMap && !includeChains;
@@ -76,6 +81,8 @@ export function readDevice(
     includeParams,
     includeParamValues,
     includeSample,
+    includeOptions,
+    includeActions,
     // drum-map needs depth >= 1 to detect instruments in drum pad chains
     maxDepth: includeDrumMap ? Math.max(1, maxDepth) : maxDepth,
     paramSearch,
@@ -272,7 +279,11 @@ function readDrumPadByPath(
 }
 
 /**
- * Navigate into drum pad chains based on remaining path segments
+ * Navigate into drum pad chains based on remaining path segments. The chain
+ * segment is optional: a leading `c<N>` selects a chain, while a leading `d<N>`
+ * implies chain 0 (so `pC1/d0` == `pC1/c0/d0`). This mirrors the write-side
+ * pad-property shortcut (see resolveNestedParamTarget) so reads and writes
+ * accept the same drum-pad paths.
  * @param pad - Drum pad Live API object
  * @param remainingSegments - Segments after drum pad in path
  * @param fullPath - Full simplified path for response
@@ -286,9 +297,16 @@ function readDrumPadNestedTarget(
   options: ReadOptions,
 ): Record<string, unknown> {
   const chains = pad.getChildren("chains");
-  // Parse chain index from prefixed segment (e.g., "c0" -> 0)
-  const chainSegment = assertDefined(remainingSegments[0], "chain segment");
-  const chainIndex = Number.parseInt(chainSegment.slice(1));
+  const firstSegment = assertDefined(
+    remainingSegments[0],
+    "chain or device segment",
+  );
+  // A leading "c<N>" is an explicit chain index; otherwise chain 0 is implied
+  // and the first segment is the device.
+  const hasChainSegment = firstSegment.startsWith("c");
+  const chainIndex = hasChainSegment
+    ? Number.parseInt(firstSegment.slice(1))
+    : 0;
 
   if (
     Number.isNaN(chainIndex) ||
@@ -303,14 +321,17 @@ function readDrumPadNestedTarget(
     `chain at index ${chainIndex}`,
   );
 
-  // If only chain index, return chain info
-  if (remainingSegments.length === 1) {
+  // The device segment follows the optional chain segment. With no device
+  // segment (explicit chain only, e.g. "pC1/c0"), return the chain.
+  const deviceSegment = hasChainSegment
+    ? remainingSegments[1]
+    : remainingSegments[0];
+
+  if (deviceSegment == null) {
     return readDrumPadChain(chain, fullPath, options);
   }
 
-  // Navigate to device within chain
   // Parse device index from prefixed segment (e.g., "d0" -> 0)
-  const deviceSegment = assertDefined(remainingSegments[1], "device segment");
   const deviceIndex = Number.parseInt(deviceSegment.slice(1));
   const devices = chain.getChildren("devices");
 

@@ -8,9 +8,10 @@ import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import { useViewState } from "#webui/hooks/use-view-state";
+import { useViewState } from "#webui/hooks/view-state/use-view-state";
 
 export const mockChatHook = {
   messages: [],
@@ -31,26 +32,42 @@ export const mockChatHook = {
 export const mockSettingsHook = {
   provider: "gemini" as const,
   setProvider: vi.fn(),
+
   apiKey: "test-key",
   setApiKey: vi.fn(),
+  openaiApiKey: "",
+  geminiApiKey: "",
   baseUrl: "",
   setBaseUrl: vi.fn(),
   model: "gemini-1.5-flash",
   setModel: vi.fn(),
+  savedModel: "gemini-1.5-flash",
+  savedProvider: "gemini" as const,
   thinking: "default" as const,
   setThinking: vi.fn(),
   temperature: 1.0,
   setTemperature: vi.fn(),
   showThoughts: false,
   setShowThoughts: vi.fn(),
+
   enabledTools: {},
   setEnabledTools: vi.fn(),
   resetBehaviorToDefaults: vi.fn(),
-  saveSettings: vi.fn(),
+
+  saveSettings: vi.fn().mockResolvedValue(true),
   cancelSettings: vi.fn(),
   settingsConfigured: true,
+  saveError: null,
+
   smallModelMode: false,
   setSmallModelMode: vi.fn(),
+
+  liveApiEnabled: false,
+  liveApiEnabledDirty: false,
+  setLiveApiEnabled: vi.fn(),
+  seedLiveApiEnabled: vi.fn(),
+
+  savedTurnDetection: DEFAULT_TURN_DETECTION,
 };
 
 /**
@@ -93,6 +110,9 @@ export function setupDefaultMocks(): void {
   });
   (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
     serverSmallModelMode: false,
+    serverLiveApiEnabled: false,
+    serverLiveApiForcedOn: false,
     postSmallModelMode: vi.fn(),
+    postLiveApiEnabled: vi.fn().mockResolvedValue(undefined),
   });
 }

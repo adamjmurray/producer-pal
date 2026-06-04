@@ -184,6 +184,67 @@ describe("ppal-create-scene", () => {
     // Created: 2 batch + 2 multiName + 2 csv = 6
     expect(finalSceneCount).toBeGreaterThan(initialSceneCount);
   });
+
+  it("captures playing session clips into a new scene", async () => {
+    // capture mode calls Live's capture_and_insert_scene on the currently
+    // playing clips — only real Live can confirm a scene is inserted with them.
+    const before = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: {},
+      }),
+    );
+    const beforeCount = before.sceneCount ?? 0;
+
+    // Launch scene 0 (Intro, 5 session clips) so its clips are playing.
+    // Firing while stopped starts playback immediately (no launch-quantization
+    // delay), but wait a moment for Live to settle.
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", sceneIndex: 0 },
+    });
+    await sleep(1500);
+
+    // Capture the playing clips into a new scene
+    const capture = parseToolResult<CaptureSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { capture: true, name: "Captured" },
+      }),
+    );
+
+    expect(capture.id).toBeDefined();
+    expect(capture.sceneIndex).toBeGreaterThan(0);
+    expect(Array.isArray(capture.clips)).toBe(true);
+    expect(capture.clips!.length).toBeGreaterThan(0);
+
+    // The capture inserts exactly one scene
+    await sleep(100);
+    const after = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: {},
+      }),
+    );
+
+    expect(after.sceneCount ?? 0).toBe(beforeCount + 1);
+
+    // The captured scene carries the requested name
+    const captured = parseToolResult<ReadSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { sceneId: capture.id },
+      }),
+    );
+
+    expect(captured.name).toBe("Captured");
+
+    // Cleanup: stop playback
+    await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "stop" },
+    });
+  });
 });
 
 interface LiveSetResult {
@@ -193,6 +254,12 @@ interface LiveSetResult {
 interface CreateSceneResult {
   id: string;
   sceneIndex: number;
+}
+
+interface CaptureSceneResult {
+  id: string;
+  sceneIndex: number;
+  clips?: Array<{ id: string; trackIndex: number }>;
 }
 
 interface ReadSceneResult {

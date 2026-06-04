@@ -43,7 +43,8 @@ describe("bar|beat interpretNotation() - comma-separated beat lists", () => {
   });
 
   it("applies state to all emitted notes in beat list", () => {
-    const result = interpretNotation("v80 t0.25 p0.8 C1 1|1,2,3,4");
+    // n/16 = sixteenth = 0.25 quarter
+    const result = interpretNotation("v80 n/16 p0.8 C1 1|1,2,3,4");
     const stateOverrides = { duration: 0.25, velocity: 80, probability: 0.8 };
 
     expect(result).toStrictEqual(
@@ -108,5 +109,38 @@ describe("bar|beat interpretNotation() - comma-separated beat lists", () => {
     const result = interpretNotation("C1 1|1 D1 1|2");
 
     expect(result).toStrictEqual([note(36, 0), note(38, 1)]);
+  });
+
+  describe("sticky-bar per-item bar|", () => {
+    it("restates the same bar in one list (8|2,8|2.5)", () => {
+      // Bar 8 starts at beat (8-1)*4 = 28; beats 2 and 2.5 → 29 and 29.5.
+      const result = interpretNotation("C1 8|2,8|2.5");
+
+      expect(result).toStrictEqual([note(36, 29), note(36, 29.5)]);
+    });
+
+    it("inherits the most-recent bar for bare items (1|1,2|1,3)", () => {
+      // After 2|1 the running bar is 2, so the bare 3 resolves to 2|3.
+      const result = interpretNotation("C1 1|1,2|1,3");
+
+      expect(result).toStrictEqual([note(36, 0), note(36, 4), note(36, 6)]);
+    });
+
+    it("groups bare items under each preceding explicit bar (1|1,2,2|1,2)", () => {
+      const result = interpretNotation("C1 1|1,2,2|1,2");
+
+      expect(result).toStrictEqual([
+        note(36, 0),
+        note(36, 1),
+        note(36, 4),
+        note(36, 5),
+      ]);
+    });
+
+    it("tolerates spaces around commas and a trailing comma", () => {
+      const result = interpretNotation("C1 1|1, 2, 3, ");
+
+      expect(result).toStrictEqual([note(36, 0), note(36, 1), note(36, 2)]);
+    });
   });
 });

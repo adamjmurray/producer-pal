@@ -37,6 +37,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Guard against dev-only env vars in CI
+        # These flags enable Live API access and arbitrary code execution.
+        # They must never be baked into release artifacts.
+        run: |
+          if [ "${ENABLE_LIVE_API:-}" = "true" ] || \
+             [ "${ENABLE_CODE_EXEC:-}" = "true" ] || \
+             [ "${ENABLE_DEV_CORS:-}" = "true" ]; then
+            echo "::error::Dev-only env vars must not be set in CI builds:"
+            echo "  ENABLE_LIVE_API=${ENABLE_LIVE_API:-}"
+            echo "  ENABLE_CODE_EXEC=${ENABLE_CODE_EXEC:-}"
+            echo "  ENABLE_DEV_CORS=${ENABLE_DEV_CORS:-}"
+            exit 1
+          fi
+
       - name: Build all production artifacts
         run: npm run build
 
@@ -264,6 +278,11 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
+      - name: Test built-in chat UI with Playwright
+        run: |
+          set -o pipefail
+          npm run ui:test 2>&1 | tee ui-playwright-output.txt
+
       - name: Test documentation site with Playwright
         id: summary
         run: |
@@ -271,13 +290,15 @@ jobs:
           npm run docs:test 2>&1 | tee playwright-output.txt
 
           # Extract result summary for job summary
-          RESULT=$(grep -v '^$' playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
+          UI_RESULT=$(grep -v '^$' ui-playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
+          DOCS_RESULT=$(grep -v '^$' playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
           cat > /tmp/summary.md << EOF
           ## End-to-End Tests
 
           | Suite | Result |
           |-------|--------|
-          | Docs | ${RESULT} |
+          | Chat UI | ${UI_RESULT} |
+          | Docs | ${DOCS_RESULT} |
           EOF
 
           # Write to step summary and output (base64 encoded for multiline)

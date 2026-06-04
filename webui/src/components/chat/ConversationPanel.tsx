@@ -7,6 +7,7 @@ import {
   ExportIcon,
   ImportIcon,
   NewConversationIcon,
+  SearchIcon,
 } from "#webui/components/chat/controls/header/HeaderIcons";
 import {
   ConversationList,
@@ -20,6 +21,7 @@ import {
 export interface ConversationPanelProps extends ConversationListProps {
   isOpen: boolean;
   onNewConversation: () => void;
+  onSearchChange: (query: string) => void;
   onExport: () => void;
   onImport: () => void;
   notification: TransferNotificationData | null;
@@ -32,8 +34,11 @@ export interface ConversationPanelProps extends ConversationListProps {
  * @param props.isOpen - Whether the panel is expanded
  * @param props.conversations - List of conversation summaries
  * @param props.activeConversationId - Currently active conversation ID
+ * @param props.searchQuery - Current search query text
+ * @param props.matchedIds - IDs matching the active search, or null when not searching
  * @param props.onSelect - Callback when a conversation is selected
  * @param props.onNewConversation - Callback to start a new conversation
+ * @param props.onSearchChange - Callback when the search query changes
  * @param props.onDelete - Callback to delete a conversation
  * @param props.onExportItem - Callback to export a single conversation
  * @param props.onRename - Callback to rename a conversation
@@ -48,8 +53,11 @@ export function ConversationPanel({
   isOpen,
   conversations,
   activeConversationId,
+  searchQuery,
+  matchedIds,
   onSelect,
   onNewConversation,
+  onSearchChange,
   onDelete,
   onExportItem,
   onRename,
@@ -72,6 +80,10 @@ export function ConversationPanel({
           onImport={onImport}
         />
 
+        {conversations.length > 0 && (
+          <SearchBar value={searchQuery} onChange={onSearchChange} />
+        )}
+
         {notification && (
           <TransferNotification
             notification={notification}
@@ -82,6 +94,8 @@ export function ConversationPanel({
         <ConversationList
           conversations={conversations}
           activeConversationId={activeConversationId}
+          searchQuery={searchQuery}
+          matchedIds={matchedIds}
           onSelect={onSelect}
           onDelete={onDelete}
           onExportItem={onExportItem}
@@ -94,6 +108,60 @@ export function ConversationPanel({
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Search field for filtering the conversation list by title and message text.
+ * @param props - Component props
+ * @param props.value - Current search query
+ * @param props.onChange - Callback when the query changes
+ * @returns Search input row
+ */
+function SearchBar({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (query: string) => void;
+}) {
+  return (
+    <div className="px-2 py-2 border-b border-zinc-300 dark:border-zinc-700">
+      <div className="relative">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none">
+          <SearchIcon />
+        </span>
+
+        <input
+          type="text"
+          value={value}
+          onInput={(e) => onChange((e.target as HTMLInputElement).value)}
+          placeholder="Search conversations"
+          aria-label="Search conversations"
+          className="w-full text-xs pl-7 pr-7 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+
+        {value && (
+          <button
+            onClick={() => onChange("")}
+            aria-label="Clear search"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-200 transition-colors"
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              <path d="M2 2l6 6M8 2l-6 6" />
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Toolbar with new conversation, export, and import buttons.

@@ -38,6 +38,7 @@ describe("ppal-connect", () => {
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
     expect(parsed.abletonLiveVersion).toBeDefined();
     expect(typeof parsed.abletonLiveVersion).toBe("string");
+    expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
 
     // Live Set info
     expect(parsed.liveSet).toBeDefined();
@@ -70,15 +71,17 @@ describe("ppal-connect", () => {
     expect(parsed.connected).toBe(true);
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
 
-    // Skills documentation - small model mode has simplified skills (~1.6K chars)
+    // Skills documentation - small model mode has simplified skills (~5.2K chars)
     expect(parsed.skills).toBeDefined();
     expect(parsed.skills).toContain("Producer Pal Skills");
-    expect(parsed.skills!.length).toBeLessThan(2000);
+    expect(parsed.skills!.length).toBeLessThan(5500);
 
-    // Small model mode excludes advanced features
-    expect(parsed.skills).not.toContain("x{times}"); // No repeat patterns
-    expect(parsed.skills).not.toMatch(/v0[^-]/); // No v0 deletion
-    expect(parsed.skills).not.toMatch(/p0\./); // No probability
+    // Small model mode excludes the advanced features the standard tier asserts
+    // it contains (see standard-mode test above). The basic tier does document
+    // preTransforms `v0`/`pN`, so only standard-only markers are excluded here.
+    expect(parsed.skills).not.toContain("@N="); // No bar copying
+    expect(parsed.skills).not.toContain("v0 C3 1|1"); // No inline note deletion
+    expect(parsed.skills).not.toContain("## Techniques"); // No advanced section
     expect(parsed.skills).not.toContain("/d0"); // No device paths
 
     // Basic features are still present
@@ -89,30 +92,15 @@ describe("ppal-connect", () => {
   describe("memory contents", () => {
     const TEST_NOTES = "Test memory content for e2e testing";
 
-    it("excludes memory when disabled (default)", async () => {
-      await setConfig({ memoryEnabled: false, memoryContent: "" });
-      const parsed = await callConnect();
-
-      expect(parsed.memoryContent).toBeUndefined();
-    });
-
-    it("includes memory when enabled with content", async () => {
-      await setConfig({
-        memoryEnabled: true,
-        memoryContent: TEST_NOTES,
-        memoryWritable: false,
-      });
+    it("includes memory when content is non-empty", async () => {
+      await setConfig({ memoryContent: TEST_NOTES });
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBe(TEST_NOTES);
     });
 
-    it("excludes memory when enabled but content is empty", async () => {
-      await setConfig({
-        memoryEnabled: true,
-        memoryContent: "",
-        memoryWritable: false,
-      });
+    it("excludes memory when content is empty", async () => {
+      await setConfig({ memoryContent: "" });
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBeUndefined();

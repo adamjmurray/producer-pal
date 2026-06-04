@@ -14,7 +14,7 @@ import {
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
-vi.mock(import("#src/tools/control/select.ts"), () => ({
+vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 
@@ -82,7 +82,6 @@ describe("updateClip - Properties and ID handling", () => {
     const result = await updateClip({
       ids: "123, nonexistent",
       name: "Test",
-      noteUpdateMode: "replace",
     });
 
     expect(result).toStrictEqual({ id: "123" });

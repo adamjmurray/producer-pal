@@ -38,6 +38,14 @@ interface SettingsScreenProps {
   onDeleteAllConversations: () => void;
   onDeleteUnbookmarkedConversations: () => void;
   conversationLock: ConversationLock;
+  /** ENABLE_LIVE_API=true forces the server-side Live API flag on; the
+   * device toggle is ignored, so the chat UI must mirror that and disable
+   * the checkbox. Mirrors the server-side liveApiForcedOn flag. */
+  liveApiForcedOn: boolean;
+  /** Voice id locked into a live RealtimeSession (null when idle or chat
+   * mode). Used by the VoiceSelector to render a pending-change notice when
+   * the user edits voice mid-session. */
+  activeVoice: string | null;
 }
 
 const helpLinkClass =
@@ -102,6 +110,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           cancelSettings={cancelSettings}
           pulse={shake}
           hasUnsavedChanges={hasUnsavedChanges}
+          saveError={settings.saveError}
         />
       </div>
     </div>
@@ -134,6 +143,17 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setThinking={settings.setThinking}
           smallModelMode={settings.smallModelMode}
           setSmallModelMode={settings.setSmallModelMode}
+          realtimeVoice={settings.realtimeVoice}
+          setRealtimeVoice={settings.setRealtimeVoice}
+          voiceLanguage={settings.voiceLanguage}
+          setVoiceLanguage={settings.setVoiceLanguage}
+          voiceVolume={settings.voiceVolume}
+          setVoiceVolume={settings.setVoiceVolume}
+          voiceSpeed={settings.voiceSpeed}
+          setVoiceSpeed={settings.setVoiceSpeed}
+          turnDetection={settings.turnDetection}
+          setTurnDetection={settings.setTurnDetection}
+          activeVoice={props.activeVoice}
         />
       )}
 
@@ -143,6 +163,9 @@ function SettingsTabContent(props: SettingsScreenProps) {
           mcpStatus={props.mcpStatus}
           enabledTools={settings.enabledTools}
           setEnabledTools={settings.setEnabledTools}
+          liveApiEnabled={settings.liveApiEnabled}
+          setLiveApiEnabled={settings.setLiveApiEnabled}
+          liveApiForcedOn={props.liveApiForcedOn}
         />
       )}
 

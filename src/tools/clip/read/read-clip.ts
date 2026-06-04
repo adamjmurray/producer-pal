@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import {
   abletonBeatsToBarBeat,
-  abletonBeatsToBarBeatDuration,
+  abletonBeatsToDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
@@ -66,6 +67,9 @@ export interface ReadClipResult {
   // Location properties
   slot?: string;
   trackIndex?: number | null;
+  /** 1-based lane number matching the create-clip/duplicate `takeLane` param
+   * (`0` is the main lane). Only present for clips on a non-main take lane. */
+  takeLane?: number;
   arrangementStart?: string;
   arrangementLength?: string;
 
@@ -106,7 +110,7 @@ export function readClip(
     includeWarp,
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
-  if (clipId === null && (trackIndex === null || sceneIndex === null)) {
+  if (clipId == null && (trackIndex == null || sceneIndex == null)) {
     throw new Error("Either clipId or slot must be provided");
   }
 
@@ -225,7 +229,7 @@ function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
     timeSigNumerator,
     timeSigDenominator,
   );
-  result.length = abletonBeatsToBarBeatDuration(
+  result.length = abletonBeatsToDuration(
     endBeats - startBeats,
     timeSigNumerator,
     timeSigDenominator,
@@ -259,12 +263,22 @@ function processMidiClip(
   ) as number;
   const lengthBeats = clip.getProperty("length") as number;
 
+  // Read one clip-length of margin on each side of the playable region
+  // [0, lengthBeats], i.e. the window [-lengthBeats, 2*lengthBeats], so that
+  // authored notes outside the playable bounds round-trip on read instead of
+  // being silently dropped:
+  //   - before the start (negative start_time — e.g. a pickup `1|1-n/12`)
+  //   - after the end (overhang past lengthBeats)
+  // Live accepts negative note start times. The window is bounded (rather than
+  // unbounded) to keep the scan finite; notes more than a clip-length outside
+  // the region are still missed, which is the same finite-scan tradeoff made on
+  // the low end.
   const notesDictionary = clip.call(
     "get_notes_extended",
     0,
     128,
-    0,
-    lengthBeats,
+    -lengthBeats,
+    lengthBeats * 3,
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
@@ -350,6 +364,12 @@ function addClipLocationProperties(
 ): void {
   if (isArrangementClip) {
     result.trackIndex = clip.trackIndex;
+    const takeLaneIndex = clip.takeLaneIndex;
+
+    if (takeLaneIndex != null) {
+      result.takeLane = takeLaneIndex + 1;
+    }
+
     const startTimeBeats = clip.getProperty("start_time") as number;
 
     const liveSet = LiveAPI.from("live_set");
@@ -369,7 +389,7 @@ function addClipLocationProperties(
     if (includeTiming) {
       const endTimeBeats = clip.getProperty("end_time") as number;
 
-      result.arrangementLength = abletonBeatsToBarBeatDuration(
+      result.arrangementLength = abletonBeatsToDuration(
         endTimeBeats - startTimeBeats,
         songTimeSigNumerator,
         songTimeSigDenominator,

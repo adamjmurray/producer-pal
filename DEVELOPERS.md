@@ -83,7 +83,11 @@ documentation for details on extension types and how to choose between them.
 
 ## Building from source
 
-Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
+Requires [Node.js](https://nodejs.org) **v24 or higher** (enforced by the
+`engines` field in `package.json`). Producer Pal's scripts and CLI tools run
+TypeScript directly through Node's native type stripping — there is no `tsx` or
+`ts-node` dependency — and rely on Node's built-in `--env-file` flag, both of
+which require v24+.
 
 1. Clone this repository
 2. `npm install`
@@ -94,9 +98,13 @@ Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
 5. Drag and drop `claude-desktop-extension/Producer_Pal.mcpb` to Claude Desktop
    → Settings → Extension
 
-**Note**: For development and testing, use `npm run build:debug` to include
-debugging tools like `ppal-raw-live-api`. Use `npm run build:dev` for a normal
-build with CORS enabled (for `npm run ui:dev`).
+**Note**: For development and testing, use `npm run build:debug` to enable
+debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`, `ENABLE_DEV_CORS`).
+`ENABLE_LIVE_API=true` forces the runtime `liveApiEnabled` flag on so the Direct
+Live API tool (`ppal-live-api`) is always available — the Setup-tab toggle
+cannot disable it in this build. `POST /config { liveApiEnabled }` still works
+in either direction so e2e tests can exercise both states. Use
+`npm run build:dev` for a normal build with CORS enabled (for `npm run ui:dev`).
 
 ## Core Development Scripts
 
@@ -250,14 +258,16 @@ Quick commands:
 
 - `node scripts/ppal-client.ts tools/list` - List available tools
 - `node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'` - Call a tool
-- `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live)
+- `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live; the code-exec
+  suite is skipped unless `ENABLE_CODE_EXEC=true` is set —
+  `ENABLE_CODE_EXEC=true npm run e2e:mcp`)
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
 **Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
-See [Development-Tools](dev/Development-Tools.md) for the CLI tool, Raw Live API
+See [Development-Tools](dev/Development-Tools.md) for the CLI tool, Live API
 tool, MCP Inspector setup, debugging tips, and testing workflows.
 
 ### Portal Script (Internal Testing)

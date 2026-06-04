@@ -8,6 +8,7 @@
  */
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { expect } from "vitest";
+import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   type CreateClipResult,
   parseToolResult,
@@ -19,7 +20,7 @@ import { type ExpectedClip } from "./arrangement-lengthening-expected.ts";
 export const ARRANGEMENT_CLIP_TESTS_PATH =
   "e2e/live-sets/arrangement-clip-tests Project/arrangement-clip-tests.als";
 
-export const TARGET_LENGTH = "4:0"; // 4 bars
+export const TARGET_LENGTH = "4bar"; // 4 bars
 export const EPSILON = 0.01; // For floating-point comparisons
 
 export interface TrackClipsResult {
@@ -135,19 +136,24 @@ export function calculateTotalLengthInBars(clips: ReadClipResult[]): number {
 }
 
 /**
- * Parse bar:beat or bar|beat notation to bars as decimal.
- * Examples: "1:2" = 1.5 bars, "1|1" = 0 bars (pipe is 1-indexed)
+ * Parse a bar|beat position OR an absolute-note-value duration to bars (decimal).
+ *
+ * Positions use pipe notation (1-indexed: "1|1" = bar 0, beat 0). Durations use
+ * the unified duration grammar ("1bar", "n/2", "1bar+n/4") or off-grid bare
+ * beats; those are routed through the canonical `durationToAbletonBeats` parser
+ * and divided into bars. e2e test sets are all 4/4, so 1 bar = 4 Ableton beats.
+ * Examples: "1bar" = 1 bar, "n/2" = 0.5 bars, "1|1" = 0 bars.
  */
 export function parseBarBeat(barBeat: string): number {
-  // Handle both formats: "bar:beat" (0-indexed) and "bar|beat" (1-indexed)
-  const separator = barBeat.includes("|") ? "|" : ":";
-  const [bars, beats] = barBeat.split(separator).map(Number);
+  if (barBeat.includes("|")) {
+    // Pipe position notation, 1-indexed (1|1 = bar 0, beat 0)
+    const [bars, beats] = barBeat.split("|").map(Number);
 
-  // Pipe notation is 1-indexed (1|1 = bar 0, beat 0)
-  const barOffset = separator === "|" ? -1 : 0;
-  const beatOffset = separator === "|" ? -1 : 0;
+    return (bars as number) - 1 + ((beats as number) - 1) / 4;
+  }
 
-  return (bars as number) + barOffset + ((beats as number) + beatOffset) / 4;
+  // Duration grammar → Ableton beats (quarter notes) → bars (4/4 test sets)
+  return durationToAbletonBeats(barBeat, 4, 4) / 4;
 }
 
 /**

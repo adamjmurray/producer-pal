@@ -86,7 +86,7 @@ describe("ppal-playback", () => {
       arguments: {
         slot: `${emptyMidiTrack}/0`,
         notes: "C3 1|1",
-        length: "1:0.0",
+        length: "1bar",
       },
     });
     const clip1 = parseToolResult<{ id: string }>(createClip1);
@@ -96,7 +96,7 @@ describe("ppal-playback", () => {
       arguments: {
         slot: `${emptyMidiTrack}/1`,
         notes: "D3 1|1",
-        length: "1:0.0",
+        length: "1bar",
       },
     });
     const clip2 = parseToolResult<{ id: string }>(createClip2);

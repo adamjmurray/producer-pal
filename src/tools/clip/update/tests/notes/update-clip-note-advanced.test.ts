@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  mockMergeNoteTracking,
   note,
   setupAudioClipMock,
   setupMidiClipMock,
@@ -54,7 +55,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 2);
   });
 
-  it("should delete specific notes with v0 when noteUpdateMode is 'merge'", async () => {
+  it("should delete specific notes with v0", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in the clip
@@ -75,7 +76,6 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "v0 C3 v100 F3 1|1", // Delete C3 at 1|1, add F3 at 1|1
-      noteUpdateMode: "merge",
     });
 
     // Should call get_notes_extended to read existing notes
@@ -129,14 +129,13 @@ describe("updateClip - Advanced note operations", () => {
     await updateClip({
       ids: "123",
       notes: "v0 C3 1|1", // Try to delete C3 at 1|1 (doesn't exist)
-      noteUpdateMode: "merge",
     });
 
     // Should still read existing notes and remove/add them back
     expectNoteUpdateCalls(mocks.clip123, [note(62, 1, { velocity: 80 })]); // Original note preserved
   });
 
-  it("should call get_notes_extended in merge mode to format existing notes", async () => {
+  it("should call get_notes_extended to format existing notes", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes
@@ -151,14 +150,13 @@ describe("updateClip - Advanced note operations", () => {
     await updateClip({
       ids: "123",
       notes: "v100 C3 1|1",
-      noteUpdateMode: "merge",
     });
 
-    // Should call get_notes_extended in merge mode
+    // Should call get_notes_extended to merge with existing notes
     expectNoteUpdateCalls(mocks.clip123, [note(60, 0)]);
   });
 
-  it("should support bar copy with existing notes in merge mode", async () => {
+  it("should support bar copy with existing notes", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1, then return added notes after add_new_notes
@@ -185,7 +183,6 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "@2=1", // Copy bar 1 to bar 2
-      noteUpdateMode: "merge",
     });
 
     // Should add existing notes + copied notes
@@ -203,10 +200,12 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
   });
 
-  it("should report noteCount only for notes within clip playback region when length is set", async () => {
+  it("reports noteCount across read-clip's [-length, 2*length] window (near overhang counted, far overhang not)", async () => {
     setupMidiClipMock(mocks.clip123, { length: 8 }); // 2 bars
 
-    // Mock to track added notes and return subset based on length parameter
+    // Mock to track added notes and return the subset inside the requested
+    // window. get_notes_extended args are (pitchStart, pitchSpan, timeStart,
+    // timeSpan), so the window is [timeStart, timeStart + timeSpan).
     let allAddedNotes: Array<{ start_time: number }> = [];
 
     mocks.clip123.call.mockImplementation(
@@ -216,11 +215,10 @@ describe("updateClip - Advanced note operations", () => {
 
           allAddedNotes = arg?.notes ?? [];
         } else if (method === "get_notes_extended") {
-          // First call returns empty (replace mode), second call filters by length
           const startBeat = (args[2] as number | undefined) ?? 0;
-          const endBeat = (args[3] as number | undefined) ?? Infinity;
+          const span = (args[3] as number | undefined) ?? Infinity;
           const notesInRange = allAddedNotes.filter(
-            (n) => n.start_time >= startBeat && n.start_time < endBeat,
+            (n) => n.start_time >= startBeat && n.start_time < startBeat + span,
           );
 
           return JSON.stringify({ notes: notesInRange });
@@ -232,30 +230,28 @@ describe("updateClip - Advanced note operations", () => {
 
     const result = await updateClip({
       ids: "123",
-      notes: "C3 1|1 D3 2|1 E3 3|1", // Notes in bars 1, 2, 3
-      noteUpdateMode: "replace",
-      length: "2:0", // Clip length = 2 bars (8 beats)
+      notes: "C3 1|1 D3 2|1 E3 3|1 F3 6|1", // beats 0, 4, 8, 20
+      length: "2bar", // Clip length = 2 bars (8 beats)
     });
 
-    // Should have added 3 notes total
-    expect(allAddedNotes).toHaveLength(3);
+    // All 4 notes are written (Live stores notes past the clip length).
+    expect(allAddedNotes).toHaveLength(4);
 
-    // But noteCount should only include notes within the 2-bar playback region
-    // C3 at bar 1 (beat 0) and D3 at bar 2 (beat 4) are within 8 beats
-    // E3 at bar 3 (beat 8) is outside the playback region
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    // noteCount mirrors read-clip's window [-8, 16): beats 0, 4, and the overhang
+    // at 8 are counted; F3 at beat 20 (> one clip-length past the end) is not.
+    expect(result).toStrictEqual({ id: "123", noteCount: 3 });
 
-    // Verify get_notes_extended was called with the clip's length (8 beats)
+    // Window: from -length (-8) spanning length*3 (24), i.e. [-8, 16).
     expect(mocks.clip123.call).toHaveBeenCalledWith(
       "get_notes_extended",
       0,
       128,
-      0,
-      8,
+      -8,
+      24,
     );
   });
 
-  it("should support bar copy with v0 deletions in merge mode", async () => {
+  it("should support bar copy with v0 deletions", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1
@@ -275,7 +271,6 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "v0 C3 1|1 @2=1", // Delete C3 at 1|1, then copy bar 1 (now only E3) to bar 2
-      noteUpdateMode: "merge",
     });
 
     // Should have E3 in bar 1 and E3 copied to bar 2 (C3 deleted by v0)
@@ -342,5 +337,58 @@ describe("updateClip - Advanced note operations", () => {
     );
 
     expect(result).toStrictEqual({ id: "123" });
+  });
+
+  // AJM-485: the merge path concatenates existing + new notes, so the combined
+  // array is unsorted (existing sorted, new appended in authored order). Before
+  // add_new_notes we dedupe same-pitch+start collisions (new wins) then sort
+  // ascending, so Live can't silently drop notes via onset-overlap deletion.
+  describe("merge: dedupe + sort before add_new_notes", () => {
+    it("sorts merged notes ascending so a new onset-overlapping same-pitch note can't delete the existing one", async () => {
+      setupMidiClipMock(mocks.clip123);
+
+      // Existing C1 at 1|3 (beat 2), a quarter note spanning [2,3].
+      const tracking = mockMergeNoteTracking(mocks.clip123, [
+        note(36, 2, { duration: 1 }),
+      ]);
+
+      const result = await updateClip({
+        ids: "123",
+        // New C1 half note at 1|2 (beat 1) spanning [1,3] — its onset precedes
+        // the existing note's. Unsorted (existing@2 then new@1), Live would
+        // delete the existing note; sorted ascending it becomes a tail overlap.
+        notes: "n/2 C1 1|2",
+      });
+
+      const added = tracking.getAddedNotes() as { start_time: number }[];
+
+      expect(added.map((n) => n.start_time)).toStrictEqual([1, 2]);
+      expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    });
+
+    it("dedupes a same-pitch+start restatement, keeping the new (shorter) note", async () => {
+      setupMidiClipMock(mocks.clip123);
+
+      // Existing C1 at 1|1 spanning two beats [0,2].
+      const tracking = mockMergeNoteTracking(mocks.clip123, [
+        note(36, 0, { duration: 2 }),
+      ]);
+
+      const result = await updateClip({
+        ids: "123",
+        // Restate C1 at 1|1 as a quarter note — overwrites, not doubles up.
+        notes: "n/4 C1 1|1",
+      });
+
+      const added = tracking.getAddedNotes() as {
+        start_time: number;
+        duration: number;
+      }[];
+
+      expect(added).toHaveLength(1);
+      expect(added[0]?.start_time).toBe(0);
+      expect(added[0]?.duration).toBe(1);
+      expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+    });
   });
 });

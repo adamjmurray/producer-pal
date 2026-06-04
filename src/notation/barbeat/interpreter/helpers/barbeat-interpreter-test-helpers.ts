@@ -22,6 +22,7 @@ type CopyHandler = typeof handleBarCopySingleDestination;
  */
 export const defaultBufferState: BufferState = {
   currentPitches: [] as PitchState[],
+  currentPitchStreams: [],
   pitchesEmitted: true,
   stateChangedSinceLastPitch: false,
   pitchGroupStarted: false,

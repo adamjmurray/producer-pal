@@ -13,6 +13,17 @@ import {
 const getModelId = (model: unknown): string =>
   (model as Record<string, unknown>).modelId as string;
 
+// The `provider` field tags the API surface. @ai-sdk/openai uses "openai.chat"
+// for the Chat Completions API (.chat()) vs "openai.responses" for the default
+// factory (Responses API). @ai-sdk/openai-compatible tags "<name>.chat" (e.g.
+// "lmstudio.chat"). Either way the value MUST end in ".chat": local servers
+// only implement Chat Completions and reject the Responses API's `input` field
+// with "Invalid type for 'input'". LM Studio and custom endpoints route through
+// @ai-sdk/openai-compatible so their `reasoning_content` shows as thinking;
+// Ollama stays on @ai-sdk/openai (its `think` option needs that namespace).
+const getApiProvider = (model: unknown): string =>
+  (model as Record<string, unknown>).provider as string;
+
 describe("createProviderModel", () => {
   it("creates a model for anthropic provider", () => {
     const model = createProviderModel(
@@ -94,6 +105,20 @@ describe("createProviderModel", () => {
     expect(getModelId(model)).toBe("my-model");
   });
 
+  it("throws an actionable error for custom provider without a URL", () => {
+    // baseUrl defaults to "" in settings, so the empty-string path is the real
+    // failure mode; whitespace-only and missing baseUrl take the same branch.
+    expect(() => createProviderModel("custom", "my-model", "key", "")).toThrow(
+      /custom provider requires a url/i,
+    );
+    expect(() =>
+      createProviderModel("custom", "my-model", "key", "   "),
+    ).toThrow(/custom provider requires a url/i);
+    expect(() => createProviderModel("custom", "my-model", "key")).toThrow(
+      /custom provider requires a url/i,
+    );
+  });
+
   it("creates a model for gemini provider", () => {
     const model = createProviderModel("gemini", "gemini-2.0-flash", "key");
 
@@ -113,6 +138,35 @@ describe("createProviderModel", () => {
 
     expect(model).toBeDefined();
     expect(getModelId(model)).toBe("llama3");
+  });
+
+  // Regression: LM Studio (and other local OpenAI-compatible servers) must hit
+  // the Chat Completions API, not the Responses API. The default createOpenAI
+  // factory routes to /v1/responses, which LM Studio rejects with a 400
+  // "Invalid type for 'input'". @ai-sdk/openai-compatible is Chat-Completions-
+  // only, so LM Studio/custom report "<name>.chat". See getApiProvider comment.
+  it("uses the Chat Completions API for lmstudio (not Responses)", () => {
+    const model = createProviderModel("lmstudio", "local-model", "");
+
+    expect(getApiProvider(model)).toBe("lmstudio.chat");
+  });
+
+  it("uses the Chat Completions API for ollama (not Responses)", () => {
+    const model = createProviderModel("ollama", "llama3", "");
+
+    expect(getApiProvider(model)).toBe("openai.chat");
+  });
+
+  it("uses the Chat Completions API for custom (not Responses)", () => {
+    const model = createProviderModel("custom", "m", "k", "https://x/v1");
+
+    expect(getApiProvider(model)).toBe("custom.chat");
+  });
+
+  it("uses the Responses API for openai proper", () => {
+    const model = createProviderModel("openai", "gpt-5.5", "key");
+
+    expect(getApiProvider(model)).toBe("openai.responses");
   });
 });
 

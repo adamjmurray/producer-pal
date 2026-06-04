@@ -5,6 +5,7 @@
 
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -25,7 +26,13 @@ export interface ArrangementClipMockHandles {
 export function setupArrangementClipMocks(): ArrangementClipMockHandles {
   const liveSet = registerMockObject("live-set", {
     path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      // scale_mode 0 = no active scale, so transform tests resolve scale:mask
+      // to undefined rather than reading undefined scale intervals.
+      scale_mode: 0,
+    },
   });
 
   const track = registerMockObject("track-0", {
@@ -37,6 +44,7 @@ export function setupArrangementClipMocks(): ArrangementClipMockHandles {
 
   const clip = registerMockObject("arrangement_clip", {
     properties: { length: 4 }, // 1 bar in 4/4 = 4 beats
+    methods: createNoteTrackingMethods(),
   });
 
   return { liveSet, track, clip };
@@ -294,7 +302,10 @@ export function setupDualMocks(): DualMockHandles {
 
   const sessionClip = registerMockObject(
     "live_set/tracks/0/clip_slots/0/clip",
-    { path: livePath.track(0).clipSlot(0).clip() },
+    {
+      path: livePath.track(0).clipSlot(0).clip(),
+      methods: createNoteTrackingMethods(),
+    },
   );
 
   return { clipSlot, sessionClip, track, arrangementClip };
@@ -326,6 +337,7 @@ export function setupSessionMocks(
   const clip = registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
     path: livePath.track(0).clipSlot(0).clip(),
     properties: opts.clip,
+    methods: createNoteTrackingMethods(),
   });
 
   return { clipSlot, clip };

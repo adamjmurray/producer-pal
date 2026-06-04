@@ -5,7 +5,10 @@
 
 import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { requireMockTrack } from "#src/test/helpers/mock-registry-test-helpers.ts";
+import {
+  createNoteTrackingMethods,
+  requireMockTrack,
+} from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -71,27 +74,6 @@ export interface UpdateClipMocks {
   clip456: RegisteredMockObject;
   clip789: RegisteredMockObject;
   clip999: RegisteredMockObject;
-}
-
-/**
- * Create note-tracking method implementations for a clip.
- * Tracks notes added via add_new_notes and returns them for get_notes_extended.
- * @returns Method implementations for registerMockObject
- */
-function createNoteTrackingMethods(): Record<
-  string,
-  (...args: unknown[]) => unknown
-> {
-  let notes: unknown[] = [];
-
-  return {
-    add_new_notes: (arg: unknown) => {
-      const data = arg as { notes?: unknown[] } | null | undefined;
-
-      notes = data?.notes ?? [];
-    },
-    get_notes_extended: () => JSON.stringify({ notes }),
-  };
 }
 
 /**

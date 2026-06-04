@@ -14,6 +14,7 @@ import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   createConversationsProps as createProps,
+  fireHashChange,
   waitForEffects,
   setupConversationsHook as setupHook,
   saveWithMessage,
@@ -55,7 +56,9 @@ async function saveTestConversation(
     showThoughts: null,
     smallModelMode: null,
     totalUsage: null,
+    sessionType: "text",
     messages,
+    voiceHistory: null,
   });
 
   return id;
@@ -118,7 +121,9 @@ describe("useConversations", () => {
       showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
+      sessionType: "text",
       messages: [{ role: "user", content: "original" }],
+      voiceHistory: null,
     });
 
     const { props, state } = createProps();
@@ -217,7 +222,9 @@ describe("useConversations", () => {
       showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
+      sessionType: "text",
       messages: [{ role: "user", content: "existing conversation" }],
+      voiceHistory: null,
     });
 
     const { result } = renderHook(() => useConversations(props));
@@ -319,7 +326,9 @@ describe("useConversations", () => {
       showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
+      sessionType: "text",
       messages: [{ role: "user", content: "restored" }],
+      voiceHistory: null,
     });
     window.location.hash = existingId;
 
@@ -446,6 +455,78 @@ describe("useConversations", () => {
     expect(conv?.title).toBe("My Title");
   });
 
+  describe("foreign-record handoff", () => {
+    /**
+     * Persist a voice-mode conversation record directly to the DB.
+     * @param id - Conversation id to use
+     */
+    async function saveVoiceConversation(id: string): Promise<void> {
+      await saveConversation({
+        id,
+        title: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+        bookmarked: false,
+        provider: "openai",
+        model: "gpt-realtime-2",
+        modelLabel: null,
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
+        smallModelMode: null,
+        totalUsage: null,
+        sessionType: "voice",
+        messages: [],
+        voiceHistory: [],
+      });
+    }
+
+    it("switchConversation updates the hash to the foreign id before invoking onForeignRecord", async () => {
+      const voiceId = "voice-conv-123";
+
+      await saveVoiceConversation(voiceId);
+
+      let hashWhenForeignCalled: string | null = null;
+      const onForeignRecord = vi.fn(() => {
+        hashWhenForeignCalled = window.location.hash;
+      });
+      const { props } = createProps();
+
+      props.onForeignRecord = onForeignRecord;
+      const { result } = renderHook(() => useConversations(props));
+
+      await waitForEffects();
+
+      await act(async () => {
+        await result.current.switchConversation(voiceId);
+      });
+
+      // The freshly-mounted voice hook reads the hash on mount, so the hash
+      // must point to the foreign id *before* onForeignRecord fires.
+      expect(hashWhenForeignCalled).toBe(`#${voiceId}`);
+      expect(onForeignRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: voiceId }),
+      );
+    });
+
+    it("switchConversation clears the active id for voice records when onForeignRecord is not provided", async () => {
+      const voiceId = "voice-conv-456";
+
+      await saveVoiceConversation(voiceId);
+
+      const { props, result } = await setupHook();
+
+      // sanity: no callback wired
+      expect(props.onForeignRecord).toBeUndefined();
+
+      await act(async () => {
+        await result.current.switchConversation(voiceId);
+      });
+
+      expect(result.current.activeConversationId).toBeNull();
+    });
+  });
+
   describe("hashchange navigation", () => {
     it("switches conversation on browser back/forward to a valid hash", async () => {
       const existingId = await saveTestConversation({
@@ -456,10 +537,7 @@ describe("useConversations", () => {
 
       // Simulate browser back/forward by setting hash and dispatching event
       window.location.hash = existingId;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(result.current.activeConversationId).toBe(existingId);
       expect(props.restoreChatHistory).toHaveBeenCalledWith(
@@ -484,10 +562,7 @@ describe("useConversations", () => {
 
       // Simulate browser back to empty hash
       history.replaceState(null, "", window.location.pathname);
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(result.current.activeConversationId).toBeNull();
       expect(props.clearConversation).toHaveBeenCalled();
@@ -507,18 +582,12 @@ describe("useConversations", () => {
 
       // Navigate to first conversation via hashchange
       window.location.hash = existingId;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       // switchConversation calls setActiveId with same hash — guard must not stall
       // Now navigate to second conversation — this should NOT be swallowed
       window.location.hash = secondId;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(props.restoreChatHistory).toHaveBeenCalledWith(
         [{ role: "user", content: "second" }],

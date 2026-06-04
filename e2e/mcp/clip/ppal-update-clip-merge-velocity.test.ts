@@ -33,7 +33,7 @@ describe("ppal-update-clip velocity merge", () => {
       arguments: {
         slot: `${emptyMidiTrack}/0`,
         notes: "v80-100 Gb1 8|1.25,1.75,2.25,2.75,3.25,3.75,4.25,4.75",
-        length: "8:0",
+        length: "8bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
@@ -46,7 +46,7 @@ describe("ppal-update-clip velocity merge", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        transforms: "Gb1: velocity += 30 * cos(1:0t)",
+        transforms: "Gb1: velocity += 30 * cos(n/1, sync)",
       },
     });
 
@@ -59,7 +59,6 @@ describe("ppal-update-clip velocity merge", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        noteUpdateMode: "merge",
         notes: "C1 1|1",
         transforms: "8|1-8|4 Gb1: velocity += ramp(40, 127)",
       },
@@ -92,7 +91,7 @@ describe("ppal-update-clip velocity merge", () => {
       arguments: {
         slot: `${emptyMidiTrack}/1`,
         notes: "v127 C3 D3 E3 1|1",
-        length: "4:0",
+        length: "4bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
@@ -115,7 +114,6 @@ describe("ppal-update-clip velocity merge", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        noteUpdateMode: "merge",
         notes: "F3 2|1",
       },
     });
@@ -135,7 +133,7 @@ describe("ppal-update-clip velocity merge", () => {
       arguments: {
         slot: `${emptyMidiTrack}/2`,
         notes: "v100-120 C3 1|1,2,3,4",
-        length: "4:0",
+        length: "4bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
@@ -158,7 +156,6 @@ describe("ppal-update-clip velocity merge", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        noteUpdateMode: "merge",
         notes: "D3 2|1",
         transforms: "C3: velocity += 5",
       },

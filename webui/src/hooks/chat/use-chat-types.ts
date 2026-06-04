@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type QueuedMessage } from "#webui/hooks/chat/helpers/use-message-queue";
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
@@ -15,6 +15,12 @@ export interface MessageOverrides {
 /** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
   chatHistory: TMessage[];
+  /**
+   * True when the last stream stopped because it hit the tool-call step limit
+   * while the model still wanted to call more tools. Optional: clients that do
+   * not support multi-step tool calling may omit it.
+   */
+  toolLimitReached?: boolean;
   initialize: () => Promise<void>;
   sendMessage: (
     message: string,
@@ -89,6 +95,8 @@ export interface UseChatReturn {
   queuedMessages: QueuedMessage[];
   enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
   removeMessage: (id: number) => void;
+  /** True when the last response stopped at the tool-call step limit */
+  toolLimitReached: boolean;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;

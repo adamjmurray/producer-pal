@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Enhance Max v8's basic console logging functions (`post()` and `error()`) to behave more like a browser console
@@ -79,8 +80,15 @@ export const log = (...args: unknown[]): void => {
  * @param args - Values to log as errors
  */
 export const error = (...args: unknown[]): void => {
-  if (typeof globalThis.error === "function") {
-    (globalThis.error as (...a: unknown[]) => void)(...args.map(str), "\n");
+  // Max V8's global error() is only ambiently typed under src/tsconfig (via
+  // src/types/max-globals.d.ts). Self-type the access here so this module also
+  // typechecks when pulled into graphs that don't include src/types (e.g. the
+  // e2e/mcp tsconfig). Falls back to Node's console.error outside Max.
+  const maxError = (globalThis as { error?: (...args: unknown[]) => void })
+    .error;
+
+  if (typeof maxError === "function") {
+    maxError(...args.map(str), "\n");
   } else {
     // Fallback for test environment
     console.error(...args.map(str));

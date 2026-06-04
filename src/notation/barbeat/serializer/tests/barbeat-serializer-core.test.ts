@@ -8,6 +8,7 @@ import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
+import { pitchName } from "../helpers/barbeat-serializer-state.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
 
 describe("formatNotation() core", () => {
@@ -78,13 +79,14 @@ describe("formatNotation() core", () => {
   });
 
   it("formats notes with duration changes", () => {
+    // 0.5 quarter = 1/8 whole → n/8; 2 quarter = 1/2 whole → n/2
     const notes = [
       createNote({ duration: 0.5 }),
       createNote({ pitch: 62, duration: 2.0 }),
       createNote({ pitch: 64, duration: 2.0 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("t/2 C3 t2 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("n/8 C3 n/2 D3 E3 1|1");
   });
 
   it("formats sub-beat timing", () => {
@@ -208,10 +210,65 @@ describe("formatNotation() core", () => {
     expect(formatNotation(notes)).toBe("p0.8 C3 p1 E3 1|1");
   });
 
-  it("throws error for invalid MIDI pitch", () => {
-    expect(() =>
-      formatNotation([createNote({ pitch: -1 })] as NoteEvent[]),
-    ).toThrow("Invalid MIDI pitch: -1");
+  it("skips out-of-range MIDI pitch and warns instead of throwing", () => {
+    expect(formatNotation([createNote({ pitch: -1 })] as NoteEvent[])).toBe("");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("MIDI pitch outside valid range 0-127"),
+    );
+  });
+
+  it("serializes valid notes while skipping an out-of-range one", () => {
+    const notes = [
+      createNote({ pitch: 60 }),
+      createNote({ pitch: 200 }),
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("C3 1|1");
+  });
+
+  it("pitchName returns a fallback for an unnameable pitch (never throws)", () => {
+    expect(pitchName(-1)).toBe("?-1");
+  });
+
+  it("skips a zero-duration note and warns instead of emitting an n0/1 token", () => {
+    // A duration:0 note would serialize to `n0/1`, which re-parses to duration
+    // 1 (not 0) — a silent round-trip corruption. Drop + warn keeps the read
+    // path total and round-trip-safe.
+    expect(formatNotation([createNote({ duration: 0 })] as NoteEvent[])).toBe(
+      "",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("duration must be greater than 0"),
+    );
+  });
+
+  it("skips a negative-duration note and warns instead of emitting n-1/4", () => {
+    // A negative duration would emit an unparseable `n-1/4` token; the read path
+    // must never produce notation that throws on re-parse.
+    expect(formatNotation([createNote({ duration: -1 })] as NoteEvent[])).toBe(
+      "",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("duration must be greater than 0"),
+    );
+  });
+
+  it("serializes valid notes while skipping a non-positive-duration one", () => {
+    const notes = [
+      createNote({ pitch: 60, duration: 1 }),
+      createNote({ pitch: 64, duration: 0 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes);
+
+    expect(result).toBe("C3 1|1");
+    // Round-trips without throwing or inflating the dropped note.
+    expect(interpretNotation(result)).toStrictEqual(
+      interpretNotation("C3 1|1"),
+    );
   });
 
   it("clamps velocity ranges to MIDI maximum 127", () => {
@@ -258,7 +315,7 @@ describe("formatNotation() core", () => {
 
     expect(parsed).toStrictEqual(
       interpretNotation(
-        "t0.25 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2",
+        "n/16 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2",
       ),
     );
   });
@@ -286,11 +343,42 @@ describe("formatNotation() per-note state in chords", () => {
   });
 
   it("emits per-note state for mixed properties", () => {
+    // 2 quarter = 1/2 whole → n/2; 1 quarter → n/4
     const notes = [
       createNote({ velocity: 80, duration: 2 }),
       createNote({ pitch: 64, velocity: 80, duration: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80 t2 C3 t1 E3 1|1");
+    expect(formatNotation(notes)).toBe("v80 n/2 C3 n/4 E3 1|1");
+  });
+});
+
+describe("formatNotation() duration-change threshold (meter-correct)", () => {
+  it("emits a sub-0.004-beat off-grid duration change in x/1 meters", () => {
+    // The change threshold is a uniform 0.001 Ableton beats in every meter. A
+    // flat musical-beat threshold widened to 0.004 Ableton beats in x/1, silently
+    // dropping this 0.002-beat off-grid change; now it is emitted (note 1 is a
+    // whole note, note 2 is 0.002 Ableton beats longer).
+    const notes = [
+      createNote({ duration: 4 }),
+      createNote({ pitch: 62, start_time: 4, duration: 4.002 }),
+    ] as NoteEvent[];
+
+    expect(
+      formatNotation(notes, { timeSigNumerator: 4, timeSigDenominator: 1 }),
+    ).toContain("n4.002/4");
+  });
+
+  it("still suppresses sub-0.001-beat duration noise in x/1 meters", () => {
+    // 0.0005 Ableton beats is below the 0.001-Ableton-beat threshold, so the
+    // second note inherits note 1's duration with no spurious n change.
+    const notes = [
+      createNote({ duration: 4 }),
+      createNote({ pitch: 62, start_time: 4, duration: 4.0005 }),
+    ] as NoteEvent[];
+
+    expect(
+      formatNotation(notes, { timeSigNumerator: 4, timeSigDenominator: 1 }),
+    ).toBe("n/1 C3 1|1 D3 1|2");
   });
 });

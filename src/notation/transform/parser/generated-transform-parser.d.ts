@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -39,12 +40,35 @@ export interface FunctionNode {
   raw: boolean;
 }
 
+/** Absolute duration value (e.g., n/4 = quarter note). Resolved to musical beats at evaluation time. */
+export interface NDurationNode {
+  type: "nDuration";
+  wholeNoteFraction: number;
+}
+
+/** Meter-aware bar duration (e.g., 1bar). Resolves to bars * beats-per-bar musical beats. */
+export interface BarDurationNode {
+  type: "barDuration";
+  bars: number;
+}
+
+/** Pitch literal (e.g., C4, b2). Evaluates to its MIDI number, but stays tagged
+ * so a bare pitch literal assigned to a non-pitch parameter can be warned-and-skipped. */
+export interface PitchLiteralNode {
+  type: "pitchLiteral";
+  value: number;
+  name: string;
+}
+
 /** Expression AST node */
 export type ExpressionNode =
   | number
   | VariableNode
   | BinaryOpNode
-  | FunctionNode;
+  | FunctionNode
+  | NDurationNode
+  | BarDurationNode
+  | PitchLiteralNode;
 
 /** Pitch range filter */
 export interface PitchRange {
@@ -58,6 +82,10 @@ export interface TimeRange {
   startBeat: number;
   endBar: number;
   endBeat: number;
+  /** When true the end bound is exclusive (half-open). Set by `N|*`/`A|*-B|*`
+   * whole-bar selectors and the `-<` exclusive-end marker; absent/false keeps
+   * the legacy inclusive-both-ends behavior. */
+  endExclusive?: boolean;
 }
 
 /** Transform assignment produced by the parser */

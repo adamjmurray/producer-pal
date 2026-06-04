@@ -52,6 +52,8 @@ describe("updateClip - code execution", () => {
       "return notes.map(n => ({ ...n, pitch: n.pitch + 12 }))",
       "session",
       0,
+      1,
+      0,
       undefined,
     );
 
@@ -70,7 +72,7 @@ describe("updateClip - code execution", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
   });
 
-  it("should execute code on multiple clips", async () => {
+  it("should execute code on multiple clips, threading clip.index/clip.count", async () => {
     setupMidiClipMock(mocks.clip123, { length: 4 });
     setupMidiClipMock(mocks.clip456, { length: 4 });
 
@@ -84,6 +86,29 @@ describe("updateClip - code execution", () => {
     });
 
     expect(executeNoteCode).toHaveBeenCalledTimes(2);
+    // clip.index/clip.count span the full batch (0/2 and 1/2) so user code can
+    // vary per copy via context.clip.index — the new equivalent of the old
+    // per-clip code array.
+    expect(executeNoteCode).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ id: "123" }),
+      expect.any(String),
+      "session",
+      0,
+      2,
+      0,
+      undefined,
+    );
+    expect(executeNoteCode).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: "456" }),
+      expect.any(String),
+      "session",
+      1,
+      2,
+      1,
+      undefined,
+    );
     expect(result).toStrictEqual([
       { id: "123", noteCount: 1 },
       { id: "456", noteCount: 1 },
@@ -161,6 +186,8 @@ describe("updateClip - code execution", () => {
       expect.objectContaining({ id: "789" }),
       "return []",
       "arrangement",
+      0,
+      1,
       undefined,
       16.0,
     );

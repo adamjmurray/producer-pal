@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -223,6 +224,23 @@ describe("readDevice with drum pad path", () => {
     });
 
     const result = readDevice({ path: "t1/d0/pC1/c0/d0" });
+
+    expect(result.id).toBe("device-1");
+    expect(result.type).toBe("instrument: Simpler");
+  });
+
+  it("should read device inside drum pad with implicit chain (pC1/d0)", () => {
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
+      chainProperties: {
+        "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
+      },
+      deviceProperties: { "device-1": simplerDevice },
+    });
+
+    // "pC1/d0" omits the chain segment; chain 0 is implied (== "pC1/c0/d0"),
+    // matching the write-side pad-property shortcut.
+    const result = readDevice({ path: "t1/d0/pC1/d0" });
 
     expect(result.id).toBe("device-1");
     expect(result.type).toBe("instrument: Simpler");

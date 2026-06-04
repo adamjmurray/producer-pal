@@ -35,7 +35,7 @@ describe("code-exec-helpers", () => {
         velocity_deviation: 10,
       };
 
-      const result = noteEventToCodeNote(noteEvent);
+      const result = noteEventToCodeNote(noteEvent, 4);
 
       expect(result).toStrictEqual({
         pitch: 60,
@@ -55,10 +55,26 @@ describe("code-exec-helpers", () => {
         velocity: 80,
       };
 
-      const result = noteEventToCodeNote(noteEvent);
+      const result = noteEventToCodeNote(noteEvent, 4);
 
       expect(result.probability).toBe(1);
       expect(result.velocityDeviation).toBe(0);
+    });
+
+    it("scales Ableton beats to clip musical beats in compound meters", () => {
+      // In 6/8 a musical beat is an eighth = 0.5 Ableton (quarter-note) beats, so
+      // multiply by denominator/4: an Ableton beat of 3 → musical beat 6.
+      const noteEvent: NoteEvent = {
+        pitch: 60,
+        start_time: 3,
+        duration: 1.5,
+        velocity: 100,
+      };
+
+      const result = noteEventToCodeNote(noteEvent, 8);
+
+      expect(result.start).toBe(6);
+      expect(result.duration).toBe(3);
     });
   });
 
@@ -73,7 +89,7 @@ describe("code-exec-helpers", () => {
         velocityDeviation: 20,
       };
 
-      const result = codeNoteToNoteEvent(codeNote);
+      const result = codeNoteToNoteEvent(codeNote, 4);
 
       expect(result).toStrictEqual({
         pitch: 67,
@@ -83,6 +99,23 @@ describe("code-exec-helpers", () => {
         probability: 0.5,
         velocity_deviation: 20,
       });
+    });
+
+    it("scales clip musical beats back to Ableton beats in compound meters", () => {
+      // Inverse of noteEventToCodeNote: in 6/8, musical beat 6 → Ableton beat 3.
+      const codeNote: CodeNote = {
+        pitch: 60,
+        start: 6,
+        duration: 3,
+        velocity: 100,
+        probability: 1,
+        velocityDeviation: 0,
+      };
+
+      const result = codeNoteToNoteEvent(codeNote, 8);
+
+      expect(result.start_time).toBe(3);
+      expect(result.duration).toBe(1.5);
     });
   });
 
@@ -95,7 +128,9 @@ describe("code-exec-helpers", () => {
         ],
       };
       const mockClip = {
-        getProperty: vi.fn().mockReturnValue(8),
+        getProperty: vi.fn((prop: string) =>
+          prop === "signature_denominator" ? 4 : 8,
+        ),
         call: vi.fn().mockReturnValue(JSON.stringify(mockNotes)),
       };
 
@@ -135,6 +170,7 @@ describe("code-exec-helpers", () => {
   describe("applyNotesToClip", () => {
     it("should remove existing notes and add new ones", () => {
       const mockClip = {
+        getProperty: vi.fn().mockReturnValue(4), // signature_denominator
         call: vi.fn(),
       };
       const notes: CodeNote[] = [
@@ -171,6 +207,38 @@ describe("code-exec-helpers", () => {
       });
     });
 
+    it("converts musical beats back to Ableton beats using the clip meter", () => {
+      const mockClip = {
+        getProperty: vi.fn().mockReturnValue(8), // 6/8 denominator
+        call: vi.fn(),
+      };
+      const notes: CodeNote[] = [
+        {
+          pitch: 60,
+          start: 6, // musical beat 6 in 6/8 → Ableton beat 3
+          duration: 3, // 3 musical eighths → 1.5 Ableton beats
+          velocity: 100,
+          velocityDeviation: 0,
+          probability: 1,
+        },
+      ];
+
+      applyNotesToClip(mockClip as unknown as LiveAPI, notes);
+
+      expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          {
+            pitch: 60,
+            start_time: 3,
+            duration: 1.5,
+            velocity: 100,
+            velocity_deviation: 0,
+            probability: 1,
+          },
+        ],
+      });
+    });
+
     it("should only remove notes when notes array is empty", () => {
       const mockClip = {
         call: vi.fn(),
@@ -190,7 +258,7 @@ describe("code-exec-helpers", () => {
   });
 
   describe("getClipNoteCount", () => {
-    it("should return note count within clip length", () => {
+    it("should count notes across read-clip's [-length, 2*length] window", () => {
       const mockClip = {
         getProperty: vi.fn().mockReturnValue(8),
         call: vi.fn().mockReturnValue(JSON.stringify({ notes: [{}, {}, {}] })),
@@ -199,12 +267,14 @@ describe("code-exec-helpers", () => {
       const result = getClipNoteCount(mockClip as unknown as LiveAPI);
 
       expect(mockClip.getProperty).toHaveBeenCalledWith("length");
+      // length=8 → window from -8 spanning 24 beats ([-8, 16]), matching
+      // read-clip so pickups/overhang are counted (not the old [0, 8]).
       expect(mockClip.call).toHaveBeenCalledWith(
         "get_notes_extended",
         0,
         128,
-        0,
-        8,
+        -8,
+        24,
       );
       expect(result).toBe(3);
     });
@@ -271,6 +341,8 @@ describe("code-exec-helpers", () => {
         const result = buildCodeExecutionContext(
           mockClip as unknown as LiveAPI,
           "session",
+          1,
+          3,
           2,
         );
 
@@ -286,6 +358,8 @@ describe("code-exec-helpers", () => {
           length: 16,
           timeSignature: "4/4",
           looping: true,
+          index: 1,
+          count: 3,
         });
         expect(result.location).toStrictEqual({
           view: "session",
@@ -358,6 +432,8 @@ describe("code-exec-helpers", () => {
         const result = buildCodeExecutionContext(
           mockClip as unknown as LiveAPI,
           "arrangement",
+          0,
+          1,
           undefined,
           32,
         );
@@ -365,6 +441,8 @@ describe("code-exec-helpers", () => {
         expect(result.track.type).toBe("audio");
         expect(result.track.color).toBeNull();
         expect(result.clip.looping).toBe(false);
+        expect(result.clip.index).toBe(0);
+        expect(result.clip.count).toBe(1);
         expect(result.location).toStrictEqual({
           view: "arrangement",
           arrangementStart: 32,

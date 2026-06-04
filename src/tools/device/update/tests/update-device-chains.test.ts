@@ -234,10 +234,20 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should warn when params is used on a DrumPad", () => {
       const result = updateDevice({
         ids: "790",
-        params: "789 = 0.5",
+        params: [{ name: "789", value: "0.5" }],
       });
 
       expect(outlet).toHaveBeenCalledWith(
+        1,
+        "updateDevice: 'params' not applicable to DrumPad",
+      );
+      expect(result).toStrictEqual({ id: "790" });
+    });
+
+    it("should not warn when params is an empty array on a DrumPad", () => {
+      const result = updateDevice({ ids: "790", params: [] });
+
+      expect(outlet).not.toHaveBeenCalledWith(
         1,
         "updateDevice: 'params' not applicable to DrumPad",
       );

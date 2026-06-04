@@ -43,7 +43,9 @@ export function isChainType(type: string): boolean {
 }
 
 /**
- * Warn if parameter is set but not applicable to this type
+ * Warn if parameter is set but not applicable to this type. An empty array is
+ * treated as unset (the caller supplied the key but no entries), so it doesn't
+ * trigger a spurious "not applicable" warning.
  * @param paramName - Parameter name
  * @param value - Parameter value
  * @param type - Live object type
@@ -53,7 +55,7 @@ export function warnIfSet(
   value: unknown,
   type: string,
 ): void {
-  if (value != null) {
-    console.warn(`updateDevice: '${paramName}' not applicable to ${type}`);
-  }
+  if (value == null || (Array.isArray(value) && value.length === 0)) return;
+
+  console.warn(`updateDevice: '${paramName}' not applicable to ${type}`);
 }

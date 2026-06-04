@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -8,6 +9,8 @@
  * This module provides a single source of truth for provider settings
  * used across chat and eval code.
  */
+
+import { type EvalProvider } from "#evals/scenarios/types.ts";
 
 /** Provider configuration interface */
 export interface ProviderConfig {
@@ -29,7 +32,7 @@ export const ANTHROPIC_CONFIG: ProviderConfig = {
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-3-flash-preview",
+  defaultModel: "gemini-3.5-flash",
 };
 
 /** OpenAI provider configuration */
@@ -71,3 +74,17 @@ export function validateApiKey(config: ProviderConfig): string {
 
   return apiKey;
 }
+
+/** All provider configs keyed by provider id (registry order) */
+export const PROVIDER_CONFIGS: Record<EvalProvider, ProviderConfig> = {
+  anthropic: ANTHROPIC_CONFIG,
+  google: GEMINI_CONFIG,
+  local: LOCAL_CONFIG,
+  openai: OPENAI_CONFIG,
+  openrouter: OPENROUTER_CONFIG,
+};
+
+/** All valid provider ids (registry order) */
+export const PROVIDERS: EvalProvider[] = Object.keys(
+  PROVIDER_CONFIGS,
+) as EvalProvider[];

@@ -1,0 +1,390 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { vi } from "vitest";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  type RegisteredMockObject,
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { type SelectResult } from "#src/tools/session/select.ts";
+import type * as SharedUtils from "#src/tools/shared/utils.ts";
+
+/**
+ * Reset all mocks and set up default "nothing selected" state for select() tests.
+ * Call this from beforeEach in select test files.
+ */
+export function resetSelectTestState(): void {
+  clearMockRegistry();
+  setupViewStateMock({
+    selectedTrack: { exists: false },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}
+
+// Constants for Live API paths
+const LIVE_APP_VIEW_PATH = livePath.view.app;
+const LIVE_SET_VIEW_PATH = livePath.view.song;
+const LIVE_SET_VIEW_SELECTED_TRACK_PATH = livePath.view.selectedTrack;
+const DETAIL_CLIP_VIEW_NAME = "Detail/Clip";
+const DETAIL_DEVICE_VIEW_NAME = "Detail/DeviceChain";
+const BROWSER_VIEW_NAME = "Browser";
+
+/**
+ * Register app view mock (live_app view)
+ * @param options - Property overrides
+ * @param options.currentView - Current view ("session" or "arrangement")
+ * @param options.isDetailClipVisible - Whether detail clip view is visible
+ * @param options.isDetailDeviceVisible - Whether detail device view is visible
+ * @param options.showBrowser - Whether browser is shown
+ * @returns Registered app view mock
+ */
+export function setupAppViewMock(
+  options: {
+    currentView?: "session" | "arrangement";
+    isDetailClipVisible?: boolean;
+    isDetailDeviceVisible?: boolean;
+    showBrowser?: boolean;
+  } = {},
+): RegisteredMockObject {
+  const {
+    currentView = "session",
+    isDetailClipVisible = false,
+    isDetailDeviceVisible = false,
+    showBrowser = false,
+  } = options;
+
+  return registerMockObject("app-view", {
+    path: LIVE_APP_VIEW_PATH,
+    type: "Application.View",
+    properties: {
+      focused_document_view: currentView === "session" ? "Session" : "Arranger",
+    },
+    methods: {
+      show_view: () => 0,
+      focus_view: () => 0,
+      hide_view: () => 0,
+      is_view_visible: (...args: unknown[]) => {
+        const view = args[0] as string;
+
+        if (view === DETAIL_CLIP_VIEW_NAME && isDetailClipVisible) return 1;
+
+        if (view === DETAIL_DEVICE_VIEW_NAME && isDetailDeviceVisible) return 1;
+
+        if (view === BROWSER_VIEW_NAME && showBrowser) return 1;
+
+        return 0;
+      },
+    },
+  });
+}
+
+/**
+ * Register song view mock (live_set view)
+ * @returns Registered song view mock
+ */
+export function setupSongViewMock(): RegisteredMockObject {
+  return registerMockObject("song-view", {
+    path: LIVE_SET_VIEW_PATH,
+    type: "Song.View",
+    methods: {
+      select_device: () => null,
+    },
+  });
+}
+
+/**
+ * Register selected track mock or non-existent mock
+ * @param options - Track properties
+ * @param options.exists - Whether track exists
+ * @param options.category - Track category
+ * @param options.trackIndex - Track index for regular tracks
+ * @param options.returnTrackIndex - Track index for return tracks
+ * @param options.id - Track ID
+ * @param options.path - Track path
+ * @param options.hasMidiInput - Whether track has MIDI input (default true)
+ * @returns Registered mock
+ */
+export function setupSelectedTrackMock(options?: {
+  exists?: boolean;
+  category?: "regular" | "return" | "master";
+  trackIndex?: number | null;
+  returnTrackIndex?: number | null;
+  id?: string;
+  path?: string;
+  hasMidiInput?: boolean;
+}): RegisteredMockObject {
+  const {
+    exists = false,
+    category = "regular",
+    trackIndex = null,
+    returnTrackIndex = null,
+    hasMidiInput = true,
+    id = exists ? "selected-track" : "0",
+    path = exists
+      ? category === "master"
+        ? String(livePath.masterTrack())
+        : category === "return"
+          ? String(livePath.returnTrack(returnTrackIndex ?? 0))
+          : String(livePath.track(trackIndex ?? 0))
+      : LIVE_SET_VIEW_SELECTED_TRACK_PATH,
+  } = options ?? {};
+
+  return registerMockObject(id, {
+    path: LIVE_SET_VIEW_SELECTED_TRACK_PATH,
+    type: "Track",
+    // Return actual track path from .path getter (instead of registered path)
+    returnPath: exists ? path : undefined,
+    properties: {
+      category: exists ? category : null,
+      trackIndex: exists ? trackIndex : null,
+      returnTrackIndex: exists ? returnTrackIndex : null,
+      has_midi_input: hasMidiInput ? 1 : 0,
+    },
+  });
+}
+
+/**
+ * Register session clip mock with automatic clip slot setup
+ * @param clipId - Clip ID
+ * @param trackIndex - Track index
+ * @param clipSlotIndex - Clip slot index
+ * @param properties - Additional clip properties
+ * @returns Object with clip and clipSlot mocks
+ */
+export function setupSessionClipMock(
+  clipId: string,
+  trackIndex: number,
+  clipSlotIndex: number,
+  properties: Record<string, unknown> = {},
+): { clip: RegisteredMockObject; clipSlot: RegisteredMockObject } {
+  const clip = registerMockObject(clipId, {
+    path: livePath.track(trackIndex).clipSlot(clipSlotIndex).clip(),
+    type: "Clip",
+    properties: {
+      trackIndex,
+      clipSlotIndex,
+      ...properties,
+    },
+  });
+
+  const clipSlot = registerMockObject(
+    `clipslot-${trackIndex}-${clipSlotIndex}`,
+    {
+      path: livePath.track(trackIndex).clipSlot(clipSlotIndex),
+      type: "ClipSlot",
+    },
+  );
+
+  return { clip, clipSlot };
+}
+
+/**
+ * Register track view mock for device selection
+ * @param trackPathLike - Track path (e.g., "live_set tracks 0")
+ * @param selectedDeviceId - Currently selected device ID
+ * @returns Registered track view mock
+ */
+export function setupTrackViewMock(
+  trackPathLike: PathLike,
+  selectedDeviceId?: string,
+): RegisteredMockObject {
+  const trackPath = String(trackPathLike);
+
+  return registerMockObject(`track-view-${trackPath}`, {
+    path: `${trackPath} view`,
+    type: "Track.View",
+    properties: {
+      selected_device: selectedDeviceId ? ["id", selectedDeviceId] : null,
+    },
+    methods: {
+      select_instrument: () => null,
+    },
+  });
+}
+
+/**
+ * Register device mock with path information
+ * @param deviceId - Device ID
+ * @param devicePath - Device path (e.g., "live_set tracks 0 devices 0")
+ * @returns Registered device mock
+ */
+export function setupDeviceMock(
+  deviceId: string,
+  devicePath: string,
+): RegisteredMockObject {
+  return registerMockObject(deviceId, {
+    path: devicePath,
+    type: "Device",
+  });
+}
+
+interface ViewStateMockOptions {
+  view?: "session" | "arrangement";
+  detailView?: "clip" | "device" | null;
+  showBrowser?: boolean;
+  selectedTrack?: Parameters<typeof setupSelectedTrackMock>[0];
+  selectedScene?: { exists: boolean; sceneIndex?: number; id?: string };
+  selectedClip?: { exists: boolean; id?: string };
+  highlightedClipSlot?: {
+    exists: boolean;
+    trackIndex?: number;
+    sceneIndex?: number;
+  };
+}
+
+/**
+ * Set up complete view state for read-only select() testing
+ * @param state - View state configuration
+ * @returns Object with all registered mocks
+ */
+export function setupViewStateMock(state: ViewStateMockOptions): {
+  appView: RegisteredMockObject;
+  songView: RegisteredMockObject;
+  selectedTrack: RegisteredMockObject;
+  selectedScene: RegisteredMockObject;
+  selectedClip: RegisteredMockObject;
+  highlightedClipSlot: RegisteredMockObject;
+} {
+  const appView = setupAppViewMock({
+    currentView: state.view,
+    isDetailClipVisible: state.detailView === "clip",
+    isDetailDeviceVisible: state.detailView === "device",
+    showBrowser: state.showBrowser,
+  });
+
+  const songView = setupSongViewMock();
+  const selectedTrack = setupSelectedTrackMock(state.selectedTrack);
+
+  const sceneExists = state.selectedScene?.exists ?? false;
+  const clipExists = state.selectedClip?.exists ?? false;
+
+  const selectedScene = registerMockObject(
+    state.selectedScene?.id ?? (sceneExists ? "selected-scene" : "0"),
+    {
+      path: livePath.view.selectedScene,
+      type: "Scene",
+      properties: {
+        sceneIndex: sceneExists ? state.selectedScene?.sceneIndex : null,
+      },
+    },
+  );
+
+  const selectedClip = registerMockObject(
+    state.selectedClip?.id ?? (clipExists ? "selected-clip" : "0"),
+    {
+      path: livePath.view.detailClip,
+      type: "Clip",
+    },
+  );
+
+  const highlightedClipSlot = registerMockObject(
+    state.highlightedClipSlot?.exists
+      ? `clipslot-${state.highlightedClipSlot.trackIndex}-${state.highlightedClipSlot.sceneIndex}`
+      : "0",
+    {
+      path: livePath.view.highlightedClipSlot,
+      type: "ClipSlot",
+      properties: {
+        trackIndex: state.highlightedClipSlot?.exists
+          ? state.highlightedClipSlot.trackIndex
+          : null,
+        sceneIndex: state.highlightedClipSlot?.exists
+          ? state.highlightedClipSlot.sceneIndex
+          : null,
+      },
+    },
+  );
+
+  return {
+    appView,
+    songView,
+    selectedTrack,
+    selectedScene,
+    selectedClip,
+    highlightedClipSlot,
+  };
+}
+
+/**
+ * Returns the expected default read state for select() with no args.
+ * Default mocks have nothing selected, so only view is present.
+ * @returns Default read state (view only)
+ */
+export function getDefaultReadState(): SelectResult {
+  return { view: "session" };
+}
+
+/**
+ * Helper function to merge expected changes with default read state.
+ * For read-only tests (no args).
+ * @param changes - Properties to override in the default state
+ * @returns Merged result
+ */
+export function expectReadState(
+  changes: Partial<SelectResult> = {},
+): SelectResult {
+  return {
+    ...getDefaultReadState(),
+    ...changes,
+  };
+}
+
+/**
+ * Mock implementation for toLiveApiView
+ * @param view - View name to convert
+ * @returns Live API view name
+ */
+export const viewMockToLive = (view: string): string =>
+  ({ session: "Session", arrangement: "Arranger" })[view] ?? "Session";
+
+/**
+ * Mock implementation for fromLiveApiView
+ * @param liveApiView - Live API view name to convert
+ * @returns View name
+ */
+export const viewMockFromLive = (liveApiView: string): string =>
+  ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session";
+
+/**
+ * Body for `vi.mock("#src/tools/shared/utils.ts", ...)` in select tests.
+ * Replaces `toLiveApiView`/`fromLiveApiView` with predictable test implementations.
+ *
+ * @param actual - The original module passed by vitest's `importOriginal`
+ * @returns The patched module exports
+ */
+export function selectSharedUtilsMockBody(
+  actual: typeof SharedUtils,
+): typeof SharedUtils {
+  return {
+    ...actual,
+    toLiveApiView: vi.fn(viewMockToLive),
+    fromLiveApiView: vi.fn(viewMockFromLive),
+  };
+}
+
+/**
+ * Set up view state with a selected track but no selected scene/clip.
+ */
+export function setupTrackOnlyViewState(): void {
+  clearMockRegistry();
+
+  setupViewStateMock({
+    view: "session",
+    selectedTrack: {
+      exists: true,
+      category: "regular",
+      trackIndex: 0,
+      id: "track_1",
+      path: String(livePath.track(0)),
+    },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
@@ -33,17 +34,27 @@ interface LabelPattern {
  * Order matters - more specific patterns should come before general ones.
  */
 const LABEL_PATTERNS: LabelPattern[] = [
-  { regex: /^([\d.]+)\s*kHz$/, unit: "Hz", multiplier: 1000 },
-  { regex: /^([\d.]+)\s*Hz$/, unit: "Hz", multiplier: 1 },
-  { regex: /^([\d.]+)\s*s$/, unit: "ms", multiplier: 1000 },
-  { regex: /^([\d.]+)\s*ms$/, unit: "ms", multiplier: 1 },
-  { regex: /^([\d.-]+)\s*dB$/, unit: "dB", multiplier: 1 },
-  { regex: /^(-?inf)\s*dB$/, unit: "dB", fixedValue: -70 },
-  { regex: /^([\d.-]+)\s*%$/, unit: "%", multiplier: 1 },
-  { regex: /^([+-]?\d+)\s*st$/, unit: "semitones", multiplier: 1 },
-  { regex: /^([A-G][#b]?-?\d+)$/, unit: "note", isNoteName: true },
-  { regex: /^(\d+)([LR])$/, unit: "pan", isPan: true },
-  { regex: /^(C)$/, unit: "pan", fixedValue: 0 },
+  // ms must precede s so "100ms" doesn't match the s-only pattern
+  { regex: /^([\d.]+)\s*khz$/i, unit: "Hz", multiplier: 1000 },
+  { regex: /^([\d.]+)\s*hz$/i, unit: "Hz", multiplier: 1 },
+  { regex: /^([\d.]+)\s*ms$/i, unit: "ms", multiplier: 1 },
+  { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
+  { regex: /^([\d.-]+)\s*db$/i, unit: "dB", multiplier: 1 },
+  { regex: /^(-?inf)\s*db$/i, unit: "dB", fixedValue: -70 },
+  { regex: /^([\d.-]+)\s*(?:%|percent)$/i, unit: "%", multiplier: 1 },
+  {
+    regex: /^([\d.-]+)\s*(?:°|deg|degrees?)$/i,
+    unit: "degrees",
+    multiplier: 1,
+  },
+  {
+    regex: /^([+-]?\d+)\s*(?:st|semis?|semitones?)$/i,
+    unit: "semitones",
+    multiplier: 1,
+  },
+  { regex: /^([a-g][#b]?-?\d+)$/i, unit: "note", isNoteName: true },
+  { regex: /^(\d+)([lr])$/i, unit: "pan", isPan: true },
+  { regex: /^(c)$/i, unit: "pan", fixedValue: 0 },
 ];
 
 export interface ParsedLabel {
@@ -74,8 +85,11 @@ export function parseLabel(label: string): ParsedLabel {
     return { value: null, unit: null };
   }
 
+  // VST plugins like Serum right-pad numeric values (e.g. "    8 Hz")
+  const trimmed = label.trim();
+
   for (const pattern of LABEL_PATTERNS) {
-    const match = label.match(pattern.regex);
+    const match = trimmed.match(pattern.regex);
 
     if (!match) continue;
 
@@ -102,7 +116,7 @@ export function parseLabel(label: string): ParsedLabel {
   }
 
   // No unit detected - try to extract just a number
-  const numMatch = label.match(/^([\d.-]+)/);
+  const numMatch = trimmed.match(/^([\d.-]+)/);
 
   if (numMatch) {
     return {

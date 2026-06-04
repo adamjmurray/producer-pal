@@ -1,0 +1,183 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * Take lane targeting shared by ppal-create-clip and ppal-duplicate.
+ *
+ * Live API notes (verified against Live 12):
+ * - `Track.take_lanes` excludes the main lane; `create_take_lane()` appends one
+ *   and returns its ref. New lane index = prior `take_lanes.length`.
+ * - `TakeLane.create_midi_clip(start, length)` / `create_audio_clip(file, start)`
+ *   create arrangement clips on the lane and return the new clip ref directly.
+ * - There is no `delete_take_lane` and `Track.delete_clip` does not remove
+ *   take-lane clips, so take lanes are append-only (clean up in Live's UI).
+ */
+
+/** Maximum take lanes per track (soft cap; total non-main lanes). */
+export const MAX_TAKE_LANES = 8;
+
+/** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
+ * keeps the match anchored to the segment so future paths that happen to
+ * contain the substring "take_lanes" elsewhere don't false-positive. */
+const TAKE_LANE_PATH_RE = / take_lanes \d+\b/;
+
+/**
+ * Whether a clip lives on a take lane rather than the main arrangement lane.
+ * Take-lane clip paths look like `live_set tracks N take_lanes M arrangement_clips K`;
+ * main-lane arrangement clips use `live_set tracks N arrangement_clips K`.
+ *
+ * Use this whenever a tool is about to invoke a `Track`-scoped arrangement API
+ * (`duplicate_clip_to_arrangement`, `delete_clip`) — those APIs silently
+ * no-op on take-lane clips and the caller must warn-and-skip instead.
+ *
+ * @param clip - The clip LiveAPI
+ * @returns true when the clip's path includes a `take_lanes N` segment
+ */
+export function isTakeLaneClip(clip: LiveAPI): boolean {
+  return TAKE_LANE_PATH_RE.test(clip.path);
+}
+
+/** Normalized take lane target: a 1-based lane number, or "new" to append. */
+export type TakeLaneTarget = number | "new";
+
+/**
+ * Resolve a takeLane argument for `duplicate`: warn-and-ignore for any non
+ * arrangement-clip duplicate (so a malformed takeLane on a session duplicate or
+ * non-clip type warns instead of throwing inside normalizeTakeLaneTarget), else
+ * normalize via the standard validator.
+ * @param type - The duplicate target type ("clip", "track", etc.)
+ * @param destination - "session" | "arrangement" | undefined
+ * @param takeLane - Raw takeLane value from the tool args
+ * @param warn - console.warn binding (Max-aware in V8, native in tests)
+ * @returns Normalized take lane target, or null when ignored or main lane
+ */
+export function resolveTakeLaneForDuplicate(
+  type: string,
+  destination: string | undefined,
+  takeLane: number | string | null | undefined,
+  warn: (...args: unknown[]) => void,
+): TakeLaneTarget | null {
+  if (type !== "clip") {
+    if (isTakeLaneRequested(takeLane)) {
+      warn(
+        `takeLane ignored: only supported when duplicating clips (type "${type}")`,
+      );
+    }
+
+    return null;
+  }
+
+  if (destination === "session") {
+    if (isTakeLaneRequested(takeLane)) {
+      warn(
+        "duplicate: takeLane ignored for session destination (arrangement-only)",
+      );
+    }
+
+    return null;
+  }
+
+  return normalizeTakeLaneTarget(takeLane);
+}
+
+export interface ResolvedTakeLane {
+  /** The resolved TakeLane LiveAPI object. */
+  lane: LiveAPI;
+  /** 1-based lane number (matches the takeLane param). */
+  laneNumber: number;
+}
+
+/**
+ * Whether a raw takeLane value requests a (non-main) take lane. The main lane is
+ * the default, selected by `0`, `null`, `undefined`, `""`, or `"0"`.
+ * @param takeLane - Raw takeLane value from a tool argument
+ * @returns true when a non-main take lane was requested
+ */
+export function isTakeLaneRequested(
+  takeLane: number | string | null | undefined,
+): boolean {
+  return !(
+    takeLane == null ||
+    takeLane === "" ||
+    takeLane === 0 ||
+    takeLane === "0"
+  );
+}
+
+/**
+ * Normalize a raw takeLane argument to a target, or null for the main lane.
+ * `0`, `null`, `undefined`, and `""` mean the main lane (unchanged behavior).
+ * @param takeLane - Raw takeLane value from a tool argument
+ * @returns A TakeLaneTarget, or null to target the main lane
+ */
+export function normalizeTakeLaneTarget(
+  takeLane: number | string | null | undefined,
+): TakeLaneTarget | null {
+  if (!isTakeLaneRequested(takeLane)) {
+    return null;
+  }
+
+  if (takeLane === "new") {
+    return "new";
+  }
+
+  const n = typeof takeLane === "number" ? takeLane : Number(takeLane);
+
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(
+      `takeLane must be 0, a positive integer, or "new" (got "${takeLane}")`,
+    );
+  }
+
+  return n;
+}
+
+/**
+ * Resolve (auto-creating as needed) the target take lane on a track.
+ * A numeric target ensures at least that many lanes exist (auto-creating up to
+ * the index, mirroring scene auto-create); "new" appends a fresh lane. The
+ * MAX_TAKE_LANES cap is enforced. takeLaneName names only the target lane, and
+ * only when this call created it — existing lanes and any intermediate lanes
+ * auto-created to fill a gap are left unnamed.
+ *
+ * NO ROLLBACK: Live has no take-lane delete (see file header), so a lane created
+ * here is permanent. The MAX cap is enforced before any lane is created, so it
+ * never strands one. The one residual leak is unfixable: if a later clip write
+ * fails on a freshly created lane, that empty lane persists. Do all other
+ * throwing validation (e.g. invalid takeLane) before calling this.
+ * @param track - The regular track LiveAPI to resolve the lane on
+ * @param target - Normalized take lane target (lane number or "new")
+ * @param takeLaneName - Optional name for a newly created lane
+ * @returns The resolved take lane and its 1-based number
+ */
+export function resolveTakeLane(
+  track: LiveAPI,
+  target: TakeLaneTarget,
+  takeLaneName?: string | null,
+): ResolvedTakeLane {
+  const currentCount = track.getChildIds("take_lanes").length;
+  const targetCount = target === "new" ? currentCount + 1 : target;
+
+  if (targetCount > MAX_TAKE_LANES) {
+    throw new Error(
+      `Track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`,
+    );
+  }
+
+  // Auto-create lanes until the target lane exists (empty lanes persist).
+  for (let i = currentCount; i < targetCount; i++) {
+    track.call("create_take_lane");
+  }
+
+  const laneIndex = targetCount - 1;
+  const lane = track.child("take_lanes", String(laneIndex));
+  const laneWasCreated = laneIndex >= currentCount;
+
+  if (laneWasCreated && takeLaneName != null && takeLaneName !== "") {
+    lane.setAll({ name: takeLaneName });
+  }
+
+  return { lane, laneNumber: targetCount };
+}

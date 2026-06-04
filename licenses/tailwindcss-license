@@ -1,5 +1,9 @@
 https://github.com/tailwindlabs/tailwindcss/blob/master/LICENSE
 
+Covers the bundled Tailwind CSS output, including the @tailwindcss/typography
+plugin (https://github.com/tailwindlabs/tailwindcss-typography), which is
+published under the same MIT license by the same copyright holder.
+
 MIT License
 
 Copyright (c) Tailwind Labs, Inc.

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // String constants for include options
@@ -76,7 +77,7 @@ export function parseIncludeArray(
   defaults: Partial<IncludeFlags> = {},
 ): IncludeFlags {
   // If no include array is provided (undefined), use defaults
-  if (includeArray === undefined) {
+  if (includeArray == null) {
     return {
       includeDrumMap: Boolean(defaults.includeDrumMap),
       includeClipNotes: Boolean(defaults.includeClipNotes),

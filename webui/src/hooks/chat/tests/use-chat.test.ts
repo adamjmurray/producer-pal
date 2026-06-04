@@ -12,33 +12,45 @@ import {
   MockChatClient,
   createDefaultProps,
   createMockAdapter,
+  createScriptedAdapter,
 } from "./use-chat-test-helpers";
 
 // Mock streaming helpers
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
-  handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
-    for await (const chatHistory of stream) {
-      onUpdate(formatter(chatHistory));
-    }
+vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
+  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
 
-    return true;
-  }),
-  validateMcpConnection: vi.fn(),
-  filterOverrides: vi.fn((overrides) => overrides),
-  showMissingApiKeyError: vi.fn(
-    (adapter, msg, setMessages, pendingHistoryRef) => {
-      const entry = adapter.createUserMessage(msg);
-      const error = new Error(
-        "No API key configured. Please add your API key in Settings.",
-      );
+  return {
+    ...streamingHelpersMockBody(),
+    showMissingApiKeyError: vi.fn(
+      (adapter, msg, setMessages, pendingHistoryRef) => {
+        const entry = adapter.createUserMessage(msg);
+        const error = new Error(
+          "No API key configured. Please add your API key in Settings.",
+        );
 
-      pendingHistoryRef.current = [entry];
-      setMessages(adapter.createErrorMessage(error, [entry]));
-    },
-  ),
-}));
+        pendingHistoryRef.current = [entry];
+        setMessages(adapter.createErrorMessage(error, [entry]));
+      },
+    ),
+  };
+});
 
 const mockAdapter = createMockAdapter();
+
+/**
+ * Build an adapter whose client sets toolLimitReached after streaming once.
+ * @returns Adapter that simulates hitting the tool-call limit
+ */
+function createToolLimitAdapter() {
+  return createScriptedAdapter(mockAdapter, (client) => {
+    client.toolLimitReached = true;
+
+    return async function* send(message: string) {
+      client.chatHistory.push({ role: "user", content: message });
+      yield [...client.chatHistory];
+    };
+  });
+}
 
 /**
  * Render useChat with default props, send "Hello", and return the result.
@@ -295,20 +307,45 @@ describe("useChat", () => {
       expect((firstPart as { content: string }).content).toBe("Hello");
     });
 
+    it("defaults toolLimitReached to false", async () => {
+      const result = await renderAndSend();
+
+      expect(result.current.toolLimitReached).toBe(false);
+    });
+
+    it("reflects toolLimitReached from the client after a stream", async () => {
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: createToolLimitAdapter(),
+      });
+
+      expect(result.current.toolLimitReached).toBe(true);
+    });
+
+    it("clears toolLimitReached on clearConversation", async () => {
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: createToolLimitAdapter(),
+      });
+
+      expect(result.current.toolLimitReached).toBe(true);
+
+      await act(() => {
+        result.current.clearConversation();
+      });
+
+      expect(result.current.toolLimitReached).toBe(false);
+    });
+
     it("covers getChatHistory callback when sendMessage throws non-rate-limit error", async () => {
-      const errorAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
+      const errorAdapter = createScriptedAdapter(
+        mockAdapter,
+        () =>
           // eslint-disable-next-line require-yield -- Throws before yielding
-          client.sendMessage = async function* () {
+          async function* () {
             throw new Error("Network failure");
-          };
-
-          return client;
-        }),
-      };
+          },
+      );
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter: errorAdapter }),

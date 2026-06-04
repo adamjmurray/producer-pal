@@ -3,54 +3,37 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/v8-max-console.ts";
+import { parseLabel } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 
 /**
- * Parse name=value lines into param entries with value coercion
- * @param input - Multiline string of name=value pairs
- * @returns Array of [name, coerced value] tuples
+ * Normalize a raw param value (always a string after schema coercion) into the
+ * value the setter pipeline expects: a number when it parses as a finite number
+ * or carries a recognized unit suffix, otherwise the original string.
+ *
+ * Strings like "1/16" (division params), "On"/"Off" (enums), and note names
+ * ("C3") are intentionally kept as strings for downstream handling. "Infinity"
+ * and "NaN" are not treated as numbers. An empty string stays a string (rather
+ * than coercing to 0 via Number("")) so a future caller can't silently write 0.
+ * @param rawValue - Trimmed value string from a param entry
+ * @returns The coerced number, or the original string
  */
-export function parseParamLines(
-  input: string,
-): Array<[string, string | number]> {
-  const results: Array<[string, string | number]> = [];
-
-  for (const rawLine of input.split("\n")) {
-    const trimmed = rawLine.trim();
-
-    if (trimmed === "" || trimmed.startsWith("//")) {
-      continue;
-    }
-
-    // Strip trailing // comments
-    const commentIndex = trimmed.indexOf(" //");
-    const line = commentIndex >= 0 ? trimmed.slice(0, commentIndex) : trimmed;
-
-    const eqIndex = line.indexOf("=");
-
-    if (eqIndex < 0) {
-      console.warn(`updateDevice: skipping line without "=": ${trimmed}`);
-      continue;
-    }
-
-    const name = line.slice(0, eqIndex).trim();
-    const rawValue = line.slice(eqIndex + 1).trim();
-
-    if (name === "") {
-      console.warn(`updateDevice: skipping line with empty name: ${trimmed}`);
-      continue;
-    }
-
-    if (rawValue === "") {
-      console.warn(`updateDevice: skipping line with empty value: ${trimmed}`);
-      continue;
-    }
-
-    const num = Number(rawValue);
-    const value = Number.isFinite(num) ? num : rawValue;
-
-    results.push([name, value]);
+export function normalizeParamValue(rawValue: string): string | number {
+  if (rawValue === "") {
+    return rawValue;
   }
 
-  return results;
+  const num = Number(rawValue);
+
+  if (Number.isFinite(num)) {
+    return num;
+  }
+
+  // Strip unit suffixes ("72 Hz", "1.5 kHz", "-6 dB") via parseLabel, which
+  // handles unit conversion (kHz→Hz, s→ms) and is case-insensitive. Require a
+  // recognized unit so strings like "1/16" or "On"/"Off" keep their string form.
+  const parsed = parseLabel(rawValue);
+
+  return typeof parsed.value === "number" && parsed.unit != null
+    ? parsed.value
+    : rawValue;
 }

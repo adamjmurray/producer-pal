@@ -42,6 +42,7 @@ describe("ChatHeader", () => {
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
+    onOpenContext: vi.fn(),
     onToggleHistory: vi.fn(),
     onNewConversation: vi.fn(),
   };
@@ -128,27 +129,27 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-flash-lite-preview",
+            activeModel: "gemini-3.1-flash-lite",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Flash Lite")).toBeDefined();
+      expect(screen.getByText("Gemini 3.1 Flash-Lite")).toBeDefined();
     });
 
-    it("shows Gemini 3 Flash model with provider", () => {
+    it("shows Gemini 3.5 Flash model with provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3-flash-preview",
+            activeModel: "gemini-3.5-flash",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3 Flash")).toBeDefined();
+      expect(screen.getByText("Gemini 3.5 Flash")).toBeDefined();
     });
 
     it("shows unknown model ID as-is with provider", () => {

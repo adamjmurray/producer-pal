@@ -3,36 +3,149 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   isDivisionLabel,
   isPanLabel,
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
-import { parseParamLines } from "./update-device-param-parser.ts";
+import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
+import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { normalizeParamValue } from "./update-device-param-parser.ts";
 
 const BINARY_SEARCH_ITERATIONS = 40;
 
 /**
- * Set parameter values from name=value lines
+ * Set parameter values from an array of {name, value} entries. Specialized-device
+ * pseudo-params (e.g. `sample` for Simpler, `routingMode` for Roar) are
+ * dispatched via the specialized-device registry before falling through to
+ * DeviceParameter resolution. Entries with an empty name or value are skipped.
  * @param device - LiveAPI device object to update
- * @param paramsInput - Multiline name=value string
+ * @param params - Array of {name, value} param entries
+ * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
  */
-export function setParamValues(device: LiveAPI, paramsInput: string): void {
-  const paramEntries = parseParamLines(paramsInput);
+export function setParamValues(
+  device: LiveAPI,
+  params: ParamEntry[],
+  toolName: string = "updateDevice",
+): void {
+  for (const entry of params) {
+    const key = entry.name.trim();
+    const rawValue = String(entry.value).trim();
 
-  for (const [key, inputValue] of paramEntries) {
-    const param =
-      resolveParamByName(device, key) ??
-      (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
-
-    if (!param?.exists()) {
-      console.warn(`updateDevice: param "${key}" not found on device`);
+    if (key === "") {
+      console.warn(`${toolName}: skipping param with empty name`);
       continue;
     }
 
-    setParamValue(param, inputValue);
+    if (rawValue === "") {
+      console.warn(`${toolName}: skipping param "${key}" with empty value`);
+      continue;
+    }
+
+    // Isolate each param: a throw resolving one (e.g. a path-prefixed pad param
+    // whose chain auto-create exceeds the cap) must not abort the rest of a
+    // multi-param update. Warn and move on, consistent with update tools'
+    // warn-and-skip contract.
+    try {
+      setOneParam(device, key, rawValue, toolName);
+    } catch (e) {
+      console.warn(
+        `${toolName}: failed to set param "${key}": ${errorMessage(e)}`,
+      );
+    }
+  }
+}
+
+/**
+ * Resolve and set a single param entry (path-prefixed pseudo-param, specialized
+ * pseudo-param, or DeviceParameter by name/index). Separated from the loop so
+ * each entry can be try-isolated. Key and value are already trimmed and non-empty.
+ * @param device - LiveAPI device object to update
+ * @param key - Trimmed param name (may be a "/"-path or a slash-named param)
+ * @param rawValue - Trimmed value
+ * @param toolName - Calling tool name for warning prefix
+ */
+function setOneParam(
+  device: LiveAPI,
+  key: string,
+  rawValue: string,
+  toolName: string,
+): void {
+  // A name containing "/" is normally a path-prefixed pseudo-param
+  // (e.g. "pC1/d0/sample"): resolve the prefix relative to this device, then
+  // write the trailing param to the target. But some real DeviceParameters
+  // have a "/" in their name (e.g. "Dry/Wet" on Reverb/Delay/Glue Compressor),
+  // so prefer an exact param-name match first and only fall back to
+  // path-routing when no such param exists — keeping slash-named params
+  // settable by name.
+  if (key.includes("/")) {
+    const namedParam = resolveParamByName(device, key);
+
+    if (namedParam?.exists()) {
+      setParamValue(namedParam, normalizeParamValue(rawValue), toolName);
+    } else {
+      applyNestedParam(device, key, rawValue, toolName);
+    }
+
+    return;
+  }
+
+  const inputValue = normalizeParamValue(rawValue);
+
+  if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
+    return;
+  }
+
+  const param =
+    resolveParamByName(device, key) ??
+    (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
+
+  if (!param?.exists()) {
+    console.warn(`${toolName}: param "${key}" not found on device`);
+
+    return;
+  }
+
+  setParamValue(param, inputValue, toolName);
+}
+
+/**
+ * Apply a path-prefixed pseudo-param. The prefix (everything before the last
+ * "/") resolves to a target device relative to `device`; the trailing segment is
+ * the param name, written via a single-entry recursion through setParamValues so
+ * all value interpretation (enum, note, numeric, specialized pseudo-params) is
+ * reused.
+ * @param device - The device the path prefix is relative to (e.g. a Drum Rack)
+ * @param key - Full path-prefixed param name (e.g. "pC1/d0/sample")
+ * @param rawValue - Trimmed value to write
+ * @param toolName - Calling tool name for warning prefix
+ */
+function applyNestedParam(
+  device: LiveAPI,
+  key: string,
+  rawValue: string,
+  toolName: string,
+): void {
+  const slashIndex = key.lastIndexOf("/");
+  const prefix = key.slice(0, slashIndex);
+  const paramName = key.slice(slashIndex + 1).trim();
+
+  if (paramName === "") {
+    console.warn(
+      `${toolName}: skipping param "${key}" with empty name after "/"`,
+    );
+
+    return;
+  }
+
+  const target = resolveNestedParamTarget(device, prefix, paramName, toolName);
+
+  if (target) {
+    setParamValues(target, [{ name: paramName, value: rawValue }], toolName);
   }
 }
 
@@ -51,7 +164,7 @@ function resolveParamForDevice(
   const match = paramId.match(/parameters (\d+)$/);
 
   if (match) {
-    return LiveAPI.from(`${device.path} parameters ${match[1]}`);
+    return device.child("parameters", match[1] as string);
   }
 
   // Default: use absolute ID resolution (backward compatible for single-device updates)
@@ -94,8 +207,13 @@ function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
  * Set a parameter value with type-appropriate handling
  * @param param - Parameter to set
  * @param inputValue - Value to set
+ * @param toolName - Calling tool name for warning prefix
  */
-function setParamValue(param: LiveAPI, inputValue: string | number): void {
+function setParamValue(
+  param: LiveAPI,
+  inputValue: string | number,
+  toolName: string,
+): void {
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
   // 1. Enum - string input with quantized param
@@ -105,7 +223,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
 
     if (index === -1) {
       console.warn(
-        `updateDevice: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
+        `${toolName}: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
       );
 
       return;
@@ -121,7 +239,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     const midi = noteNameToMidi(inputValue);
 
     if (midi == null) {
-      console.warn(`updateDevice: invalid note name "${inputValue}"`);
+      console.warn(`${toolName}: invalid note name "${inputValue}"`);
 
       return;
     }
@@ -158,7 +276,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
       param.set("value", rawValue);
     } else {
       console.warn(
-        `updateDevice: "${inputValue}" is not a valid division option`,
+        `${toolName}: "${inputValue}" is not a valid division option`,
       );
     }
 
@@ -181,8 +299,14 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     return;
   }
 
-  // 6. String fallback
-  param.set("value", inputValue);
+  // 6. Uninterpretable string — Live silently rejects string writes to numeric
+  // params, so warn rather than pretending the update succeeded.
+  const paramName = param.getProperty("name") as string;
+  const inputStr = String(inputValue);
+
+  console.warn(
+    `${toolName}: could not interpret "${inputStr}" as a value for param "${paramName}" — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
+  );
 }
 
 /**

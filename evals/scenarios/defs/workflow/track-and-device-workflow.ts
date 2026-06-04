@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenario: Create track, add device, update properties
+ * Scenario: Create track, add device, update properties, route a send
  */
 
 import { type EvalScenario } from "../../types.ts";
 
 export const trackAndDeviceWorkflow: EvalScenario = {
   id: "track-and-device-workflow",
-  description: "Create track, add device, update properties",
+  description: "Create track, add device, update properties, route a send",
   kind: "regression",
   liveSet: "basic-midi-4-track",
 
@@ -20,6 +20,7 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     "Add a Wavetable instrument to it",
     "Mute that track and set its color to purple",
     "Set the filter cutoff to 50%",
+    "Create a return track with a Reverb on it, then send the Synth Lead track to that return at -12 dB",
   ],
 
   assertions: [
@@ -52,6 +53,15 @@ export const trackAndDeviceWorkflow: EvalScenario = {
       turn: 4,
     },
 
+    // Turn 5: Return track + send routing
+    { type: "tool_called", tool: "ppal-create-track", turn: 5 },
+    { type: "tool_called", tool: "ppal-update-track", turn: 5 },
+    {
+      type: "response_contains",
+      pattern: /send|return|reverb/i,
+      turn: 5,
+    },
+
     // LLM quality check
     {
       type: "llm_judge",
@@ -60,13 +70,14 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 2. Added a Wavetable instrument
 3. Muted the track
 4. Changed the track color to purple
-5. Adjusted the filter cutoff parameter on the device`,
+5. Adjusted the filter cutoff parameter on the device
+6. Created a return track (with a Reverb) and set the Synth Lead track's send to that return to -12 dB`,
     },
 
     {
       type: "token_usage",
       metric: "inputTokens",
-      maxTokens: 100_000,
+      maxTokens: 140_000,
     },
   ],
 };

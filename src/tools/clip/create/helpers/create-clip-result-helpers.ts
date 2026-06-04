@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 export interface ClipPropertiesToSet {
@@ -90,6 +91,8 @@ export interface ClipResultObject {
   slot?: string;
   trackIndex?: number;
   arrangementStart?: string | null;
+  /** 1-based take lane number, present only for clips on a take lane */
+  takeLane?: number;
   noteCount?: number;
   transformed?: number;
   length?: string;
@@ -103,7 +106,6 @@ export interface ClipResultObject {
  * @param sceneIndex - Scene index for session clips
  * @param arrangementStart - Arrangement start in bar|beat format (explicit position)
  * @param notationString - Original notation string
- * @param notes - Array of MIDI notes
  * @param length - Original length parameter
  * @param timeSigNumerator - Clip time signature numerator
  * @param timeSigDenominator - Clip time signature denominator
@@ -118,7 +120,6 @@ export function buildClipResult(
   sceneIndex: number | undefined,
   arrangementStart: string | null,
   notationString: string | null,
-  notes: MidiNote[],
   length: string | null,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -135,11 +136,20 @@ export function buildClipResult(
   } else {
     clipResult.trackIndex = trackIndex;
     clipResult.arrangementStart = arrangementStart;
+
+    // Surface the take lane (1-based) when the clip landed on one
+    const takeLaneIndex = clip.takeLaneIndex;
+
+    if (takeLaneIndex != null) {
+      clipResult.takeLane = takeLaneIndex + 1;
+    }
   }
 
-  // For MIDI clips: include noteCount if notes were provided
+  // For MIDI clips: report the count Live actually stored (read back), not the
+  // interpreted-input count. Live can drop/merge overlapping same-pitch notes
+  // during add_new_notes, so input length can over-report. Mirrors update-clip.
   if (notationString != null) {
-    clipResult.noteCount = notes.length;
+    clipResult.noteCount = getClipNoteCount(clip);
 
     if (transformedCount != null) {
       clipResult.transformed = transformedCount;
@@ -149,7 +159,7 @@ export function buildClipResult(
     if (length == null) {
       const actualClipLength = clip.getProperty("length") as number;
 
-      clipResult.length = abletonBeatsToBarBeatDuration(
+      clipResult.length = abletonBeatsToDuration(
         actualClipLength,
         timeSigNumerator,
         timeSigDenominator,
@@ -161,7 +171,7 @@ export function buildClipResult(
   if (sampleFile) {
     const actualClipLength = clip.getProperty("length") as number;
 
-    clipResult.length = abletonBeatsToBarBeatDuration(
+    clipResult.length = abletonBeatsToDuration(
       actualClipLength,
       timeSigNumerator,
       timeSigDenominator,

@@ -1,31 +1,32 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.ts";
 import {
-  DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
   DEFAULT_VELOCITY,
-  DEFAULT_VELOCITY_DEVIATION,
+  defaultDurationMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import {
-  barBeatDurationToMusicalBeats,
-  parseBeatsPerBar,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+  type ASTElement,
+  type PatternStream,
+  type StreamPitch,
+} from "#src/notation/barbeat/parser/barbeat-parser.ts";
+import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
+  clearCarriedStreams,
+  countBufferedPitches,
   extractBufferState,
-  handlePropertyUpdate,
   validateBufferedState,
   type InterpreterState,
-  type PitchState,
 } from "./helpers/barbeat-interpreter-buffer-helpers.ts";
 import {
   handleBarCopyRangeDestination,
@@ -34,97 +35,28 @@ import {
   type BarCopyElement,
 } from "./helpers/barbeat-interpreter-copy-helpers.ts";
 import {
+  buildPitchState,
   calculatePositions,
   handlePitchEmission,
   type TimeElement,
 } from "./helpers/barbeat-interpreter-pitch-helpers.ts";
+import {
+  processDurationUpdate,
+  processProbabilityUpdate,
+  processVelocityRangeUpdate,
+  processVelocityUpdate,
+} from "./helpers/barbeat-interpreter-property-helpers.ts";
+import { acceptPitch } from "./helpers/barbeat-interpreter-range-helpers.ts";
+import {
+  buildDurationStream,
+  buildProbabilityStream,
+  buildVelocityStream,
+} from "./helpers/barbeat-interpreter-stream-helpers.ts";
 
 interface InterpretOptions {
   beatsPerBar?: number;
   timeSigNumerator?: number;
   timeSigDenominator?: number;
-}
-
-/**
- * Process a velocity update (single value)
- * @param element - AST element with velocity value
- * @param state - Interpreter state
- */
-function processVelocityUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-): void {
-  state.currentVelocity = element.velocity ?? null;
-  state.currentVelocityMin = null;
-  state.currentVelocityMax = null;
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.velocity = element.velocity as number;
-    pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
-  });
-}
-
-/**
- * Process a velocity range update
- * @param element - AST element with velocity range
- * @param state - Interpreter state
- */
-function processVelocityRangeUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-): void {
-  state.currentVelocityMin = element.velocityMin ?? null;
-  state.currentVelocityMax = element.velocityMax ?? null;
-  state.currentVelocity = null;
-
-  const velocityMin = element.velocityMin ?? 0;
-  const velocityMax = element.velocityMax ?? 0;
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.velocity = velocityMin;
-    pitchState.velocityDeviation = velocityMax - velocityMin;
-  });
-}
-
-/**
- * Process a duration update
- * @param element - AST element with duration value
- * @param state - Interpreter state
- * @param timeSigNumerator - Time signature numerator
- */
-function processDurationUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-  timeSigNumerator: number | undefined,
-): void {
-  if (typeof element.duration === "string") {
-    state.currentDuration = barBeatDurationToMusicalBeats(
-      element.duration,
-      timeSigNumerator,
-    );
-  } else {
-    state.currentDuration = element.duration as number;
-  }
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.duration = state.currentDuration;
-  });
-}
-
-/**
- * Process a probability update
- * @param element - AST element with probability value
- * @param state - Interpreter state
- */
-function processProbabilityUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-): void {
-  state.currentProbability = element.probability;
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.probability = element.probability;
-  });
 }
 
 /**
@@ -137,43 +69,108 @@ function processPitchElement(
   state: InterpreterState,
 ): void {
   if (!state.pitchGroupStarted) {
-    state.currentPitches = [];
-    state.pitchGroupStarted = true;
-    state.pitchesEmitted = false;
-    state.stateChangedAfterEmission = false;
+    startPitchGroup(state);
   }
 
-  let velocity: number;
-  let velocityDeviation: number;
-
-  if (state.currentVelocityMin != null && state.currentVelocityMax != null) {
-    velocity = state.currentVelocityMin;
-    velocityDeviation = state.currentVelocityMax - state.currentVelocityMin;
-  } else {
-    velocity = state.currentVelocity ?? DEFAULT_VELOCITY;
-    velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+  // Out-of-range pitch is skipped (other pitches in the same chord/group still
+  // emit); range no longer aborts the parse.
+  if (!acceptPitch(element.pitch as number)) {
+    return;
   }
 
-  state.currentPitches.push({
-    pitch: element.pitch as number,
-    velocity: velocity,
-    velocityDeviation: velocityDeviation,
-    duration: state.currentDuration,
-    probability: state.currentProbability,
-  });
+  state.currentPitches.push(buildPitchState(element.pitch as number, state));
   state.stateChangedSinceLastPitch = false;
 }
 
 /**
- * Reset pitch buffer state
- * @param state - Interpreter state to reset
+ * Process a pattern bracket (`[...]`), dispatching on its parameter kind. A
+ * pitch stream feeds the pitch buffer; a velocity/duration/probability stream
+ * becomes an active value stream that OVERRIDES the captured per-pitch value at
+ * emission, cycled by its own cursor. Each stream rewinds its cursor (a new
+ * bracket reassigns the parameter) and persists across separate time positions
+ * until reassigned. With `@step` omitted, a duration stream also folds its
+ * cycled values into the position spacing (the duration-fold; see
+ * `expandRepeatPattern`).
+ * @param element - AST element carrying a stream
+ * @param state - Interpreter state
+ * @param beatsPerBar - Beats per bar (for duration-stream bar components)
+ * @param timeSigDenominator - Time signature denominator (for duration units)
  */
-function resetPitchBufferState(state: InterpreterState): void {
+function processStreamElement(
+  element: ASTElement,
+  state: InterpreterState,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+): void {
+  // stream is always defined here (checked at the dispatch); the cast documents
+  // that guarantee, matching the element.pitch/element.velocity pattern.
+  const stream = element.stream as PatternStream;
+
+  switch (stream.param) {
+    case "pitch":
+      processPitchStreamElement(stream.values, state);
+      break;
+    case "velocity":
+      state.currentVelocityStream = buildVelocityStream(stream.values);
+      state.velocityStreamCursor = 0;
+      break;
+    case "duration":
+      state.currentDurationStream = buildDurationStream(
+        stream.values,
+        beatsPerBar,
+        timeSigDenominator,
+      );
+      state.durationStreamCursor = 0;
+      break;
+    case "probability":
+      state.currentProbabilityStream = buildProbabilityStream(stream.values);
+      state.probabilityStreamCursor = 0;
+      break;
+  }
+}
+
+/**
+ * Start a fresh pitch group: clear the constant chord, the layered voices, and
+ * the shared cursor, and reset the group flags. Shared by the bare-pitch and
+ * pitch-stream paths so a group begins identically however its first pitch token
+ * arrives.
+ * @param state - Interpreter state
+ */
+function startPitchGroup(state: InterpreterState): void {
   state.currentPitches = [];
-  state.pitchGroupStarted = false;
+  state.currentPitchStreams = [];
+  state.pitchStreamCursor = 0;
+  state.pitchGroupStarted = true;
   state.pitchesEmitted = false;
-  state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
+}
+
+/**
+ * Add a pitch stream's chords as a LAYERED voice in the current group. Starts a
+ * group when needed (mirror processPitchElement) so the post-stream
+ * trailing-setting "has no effect" warning still fires, captures the current
+ * velocity/duration/probability into each chord, and APPENDS the voice (pitch
+ * brackets layer — they do not replace). Out-of-range pitches are dropped per
+ * chord (matching plain pitches). The shared cursor rewinds only at group start.
+ * @param values - Pitch stream chords (each a list of pitches)
+ * @param state - Interpreter state
+ */
+function processPitchStreamElement(
+  values: StreamPitch[][],
+  state: InterpreterState,
+): void {
+  if (!state.pitchGroupStarted) {
+    startPitchGroup(state);
+  }
+
+  const voice = values.map((chord) =>
+    chord
+      .filter((value) => acceptPitch(value.pitch))
+      .map((value) => buildPitchState(value.pitch, state)),
+  );
+
+  state.currentPitchStreams.push(voice);
+  state.stateChangedSinceLastPitch = false;
 }
 
 /**
@@ -197,6 +194,7 @@ function processTimePosition(
     element as TimeElement,
     state,
     beatsPerBar,
+    timeSigDenominator,
   );
 
   handlePitchEmission(
@@ -208,6 +206,11 @@ function processTimePosition(
     notesByBar,
   );
 
+  // The pitch stream PERSISTS across time positions (cross-event cursor):
+  // handlePitchEmission already advanced state.pitchStreamCursor by the number
+  // of emitted events, so the next position picks up where this one left off.
+  // The group flags reset (a following pitch token starts a fresh group and
+  // reassigns the stream); the stream itself clears only on reassignment.
   state.pitchGroupStarted = false;
   state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
@@ -219,7 +222,6 @@ function processTimePosition(
  * @param element - AST element to process
  * @param state - Interpreter state
  * @param beatsPerBar - Beats per bar
- * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param notesByBar - Notes by bar cache
  * @param events - Output events array
@@ -228,7 +230,6 @@ function processElementInLoop(
   element: ASTElement,
   state: InterpreterState,
   beatsPerBar: number,
-  timeSigNumerator: number | undefined,
   timeSigDenominator: number | undefined,
   notesByBar: Map<number, BarCopyNote[]>,
   events: NoteEvent[],
@@ -247,7 +248,7 @@ function processElementInLoop(
       state.currentTime = result.currentTime;
     }
 
-    resetPitchBufferState(state);
+    clearCarriedStreams(state);
   } else if (element.destination?.bar !== undefined) {
     const result = handleBarCopySingleDestination(
       element as BarCopyElement,
@@ -262,11 +263,11 @@ function processElementInLoop(
       state.currentTime = result.currentTime;
     }
 
-    resetPitchBufferState(state);
+    clearCarriedStreams(state);
   } else if (element.clearBuffer) {
     validateBufferedState(extractBufferState(state), "@clear");
     handleClearBuffer(notesByBar);
-    resetPitchBufferState(state);
+    clearCarriedStreams(state);
   } else if (element.bar !== undefined && element.beat !== undefined) {
     processTimePosition(
       element,
@@ -276,6 +277,8 @@ function processElementInLoop(
       events,
       notesByBar,
     );
+  } else if (element.stream !== undefined) {
+    processStreamElement(element, state, beatsPerBar, timeSigDenominator);
   } else if (element.pitch !== undefined) {
     processPitchElement(element, state);
   } else if (element.velocity !== undefined) {
@@ -286,7 +289,7 @@ function processElementInLoop(
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
-    processDurationUpdate(element, state, timeSigNumerator);
+    processDurationUpdate(element, state, beatsPerBar, timeSigDenominator);
   } else if (element.probability !== undefined) {
     processProbabilityUpdate(element, state);
   }
@@ -306,11 +309,18 @@ export function interpretNotation(
     return [];
   }
 
-  const { timeSigNumerator, timeSigDenominator } = options;
+  const { timeSigDenominator } = options;
   const beatsPerBar = parseBeatsPerBar(options);
 
   try {
-    const ast = parser.parse(barBeatExpression);
+    // Pass the denominator so the grammar can resolve `±n` beat offsets
+    // (whole-note fractions) into musical beats during the parse, and
+    // beatsPerBar so it can borrow across a bar line when a `-n` offset pulls a
+    // position earlier than beat 1 (e.g. `2|1-n/12`).
+    const ast = parser.parse(barBeatExpression, {
+      timeSigDenominator,
+      beatsPerBar,
+    });
     // Bar copy tracking: Map bar number -> array of note metadata
     const notesByBar = new Map<number, BarCopyNote[]>();
     const events: NoteEvent[] = [];
@@ -319,11 +329,19 @@ export function interpretNotation(
     const state: InterpreterState = {
       currentTime: DEFAULT_TIME,
       currentVelocity: DEFAULT_VELOCITY,
-      currentDuration: DEFAULT_DURATION,
+      currentDuration: defaultDurationMusicalBeats(timeSigDenominator),
       currentProbability: DEFAULT_PROBABILITY,
       currentVelocityMin: null,
       currentVelocityMax: null,
       currentPitches: [],
+      currentPitchStreams: [],
+      pitchStreamCursor: 0,
+      currentVelocityStream: null,
+      velocityStreamCursor: 0,
+      currentDurationStream: null,
+      durationStreamCursor: 0,
+      currentProbabilityStream: null,
+      probabilityStreamCursor: 0,
       pitchGroupStarted: false,
       pitchesEmitted: false,
       stateChangedSinceLastPitch: false,
@@ -335,17 +353,19 @@ export function interpretNotation(
         element,
         state,
         beatsPerBar,
-        timeSigNumerator,
         timeSigDenominator,
         notesByBar,
         events,
       );
     }
 
-    // Warn if pitches buffered but never emitted
-    if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
+    // Warn if pitches buffered but never emitted (includes a dangling pattern
+    // bracket as a new species of un-emitted pitch state).
+    const buffered = countBufferedPitches(state);
+
+    if (buffered > 0 && !state.pitchesEmitted) {
       console.warn(
-        `${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
+        `${buffered} pitch(es) buffered but no time position to emit them`,
       );
     }
 

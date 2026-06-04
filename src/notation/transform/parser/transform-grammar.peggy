@@ -1,20 +1,61 @@
 {{
-  // Canonical source: src/shared/pitch.js
-  // This inline copy is required because Peggy cannot import JS modules.
-  const PITCH_CLASS_VALUES = {
-    "C": 0,
-    "C#": 1, "Db": 1,
-    "D": 2,
-    "D#": 3, "Eb": 3,
-    "E": 4,
-    "F": 5,
-    "F#": 6, "Gb": 6,
-    "G": 7,
-    "G#": 8, "Ab": 8,
-    "A": 9,
-    "A#": 10, "Bb": 10,
-    "B": 11,
+  // Pitch-class semitones. Canonical source: src/shared/pitch.ts; this is an
+  // inline copy because Peggy cannot import modules. Only the seven naturals are
+  // tabulated — accidentals shift by ±1 in pitchClassFromParts, and the
+  // enharmonic octave edges need no special case: B# resolves to 12 (the next
+  // octave's C) and Cb to -1 (the previous octave's B), and the
+  // (octave+2)*12+value formula carries that across the octave on its own.
+  const NATURAL_PITCH_CLASS_VALUES = {
+    c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11,
   };
+
+  // Resolve a { name, value } pitch class from a note letter and optional
+  // accidental. Case-insensitive (LLMs lowercase note names); accepts ASCII
+  // `#`/`b`, the Unicode ♯ (U+266F) / ♭ (U+266D) glyphs, and an uppercase `B`
+  // as a flat (so an all-caps `GB3` still reads as Gb3). Enharmonic spellings
+  // (E#, B#, Cb, Fb) fall out for free. `name` is the normalized ASCII spelling,
+  // used only in error text — downstream consumes the numeric value.
+  function pitchClassFromParts(letter, accidental) {
+    const upper = letter.toUpperCase();
+    const value = NATURAL_PITCH_CLASS_VALUES[letter.toLowerCase()];
+    if (accidental === "#" || accidental === "♯") {
+      return { name: upper + "#", value: value + 1 };
+    }
+    if (accidental === "b" || accidental === "B" || accidental === "♭") {
+      return { name: upper + "b", value: value - 1 };
+    }
+    return { name: upper, value };
+  }
+
+  // Maps a multiplicative operator character to its AST node type.
+  const MULTIPLICATIVE_OP_TYPES = { "*": "multiply", "/": "divide", "%": "modulo" };
+
+  // Borrow across bar lines so a `-n` range-bound offset can pull a position
+  // earlier than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4).
+  // The offset already produced a sub-1 `beat`; wrap it up into the previous
+  // bar(s) using beatsPerBar. A pull before `1|1` is allowed: the bar goes to
+  // 0 / negative and the bound resolves to negative time. Never throws.
+  function borrowBars(bar, beat, beatsPerBar) {
+    while (beat < 1) {
+      beat += beatsPerBar;
+      bar -= 1;
+    }
+    return { bar, beat };
+  }
+
+  // Targeted error for the removed synced-period syntax (Nt, N:Nt).
+  function oldPeriodError(matched) {
+    return `Period syntax "${matched}" is no longer supported. Use a note-value period with the "sync" keyword, e.g. sin(n/4, sync) for a quarter-note cycle, or cos(1bar, sync) for a bar-length cycle.`;
+  }
+
+  // Desugars a shorthand additive op (v±N, p±N) to the same shape the full form
+  // produces in assignmentBody: subtract becomes add-of-negation, add stays add.
+  function shorthandAdditive(parameter, operator, value) {
+    if (operator === "subtract") {
+      return { parameter, operator: "add", expression: { type: "subtract", left: 0, right: value } };
+    }
+    return { parameter, operator, expression: value };
+  }
 
   // Maps transform parameters to their note/audio variable for *= and /= desugaring.
   // timing uses note.start (absolute position) since there is no note.timing offset variable.
@@ -32,7 +73,9 @@
 
 start
   = __ head:assignment? tail:((_ nl _)+ assignment)* __ {
-    const assignments = [head, ...tail.map(t => t[1])].filter(Boolean);
+    // A single shorthand token may desugar to multiple assignments (e.g. the
+    // `vA-B` velocity range emits velocity + deviation), so flatten one level.
+    const assignments = [head, ...tail.map(t => t[1])].filter(Boolean).flat();
     return assignments;
   }
 
@@ -41,19 +84,96 @@ rangeSelector "range selector"
   / timeRange:timeRange _ pitchRange:pitchRange? { return { pitchRange: pitchRange ?? null, timeRange }; }
 
 assignment "parameter assignment"
-  = ranges:(rangeSelector _ ":" _)? parameter:parameter _ operator:operator _ expression:expression {
+  = ranges:(rangeSelector _ ":" _)? body:assignmentBody {
     const pitchRange = ranges?.[0]?.pitchRange ?? null;
     const timeRange = ranges?.[0]?.timeRange ?? null;
-    if (operator === "subtract") {
-      return { pitchRange, timeRange, parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
+    // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
+    // selector to each so a single token's writes share one pitch/time filter.
+    if (Array.isArray(body)) {
+      return body.map(b => ({ pitchRange, timeRange, ...b }));
     }
-    if (operator === "multiply" || operator === "divide") {
-      const varInfo = PARAM_TO_VARIABLE[parameter];
-      const currentValue = { type: "variable", namespace: varInfo.namespace, name: varInfo.name };
-      return { pitchRange, timeRange, parameter, operator: "set", expression: { type: operator, left: currentValue, right: expression } };
-    }
-    return { pitchRange, timeRange, parameter, operator, expression };
+    return { pitchRange, timeRange, ...body };
   }
+
+// The right-hand side of an assignment, after any optional range selector.
+// Full form: `parameter operator expression`. Shorthand: bar|beat-style tokens
+// (v/p/n + bare-pitch) that desugar to the same { parameter, operator, expression }.
+assignmentBody
+  = parameter:parameter _ operator:operator _ expression:expression {
+      if (operator === "subtract") {
+        return { parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
+      }
+      if (operator === "multiply" || operator === "divide") {
+        const varInfo = PARAM_TO_VARIABLE[parameter];
+        const currentValue = { type: "variable", namespace: varInfo.namespace, name: varInfo.name };
+        return { parameter, operator: "set", expression: { type: operator, left: currentValue, right: expression } };
+      }
+      return { parameter, operator, expression };
+    }
+  / shorthand
+
+// Shorthand assignment sugar reusing bar|beat property tokens. Each desugars to
+// the same { parameter, operator, expression } shape as the full forms (the
+// `vA-B` velocity range is the one exception: it emits two assignments —
+// velocity + deviation). velocity/probability also accept additive ops
+// (v±N, p±N) — safe because both domains are non-negative, so a leading sign is
+// unambiguous.
+shorthand "shorthand assignment"
+  = "v" operator:shorthandAddOp value:unsignedInt {
+      return shorthandAdditive("velocity", operator, value);
+    }
+  / "v" min:unsignedInt "-" max:unsignedInt {
+      // Velocity range = humanized random velocity, matching the bar|beat notes
+      // layer's `vA-B`. Desugar to two ordinary assignments (base velocity +
+      // velocity_deviation), mirroring the barbeat interpreter's mapping: clamp
+      // each bound to 0-127, order-independent, deviation = high - low. Must be
+      // tried before plain `vN` (which would match `v80` and strand `-120`).
+      // Kept in lockstep by velocity-range-parity.test.ts (Peggy cannot import
+      // the barbeat helper).
+      const lo = Math.max(0, Math.min(127, Math.min(min, max)));
+      const hi = Math.max(0, Math.min(127, Math.max(min, max)));
+      return [
+        { parameter: "velocity", operator: "set", expression: lo },
+        { parameter: "deviation", operator: "set", expression: hi - lo },
+      ];
+    }
+  / "v" value:unsignedInt {
+      return { parameter: "velocity", operator: "set", expression: value };
+    }
+  / "p" operator:shorthandAddOp value:unsignedDecimal {
+      return shorthandAdditive("probability", operator, value);
+    }
+  / "p" value:unsignedDecimal {
+      return { parameter: "probability", operator: "set", expression: value };
+    }
+  / left:barDuration sign:("+" / "-") right:nDuration {
+      // Mixed `Nbar±n<frac>` shorthand (e.g. `1bar+n/4`, or `1bar-n/16` = almost
+      // a full bar), matching the bar|beat authoring token. Must precede the
+      // bare `barDuration` branch so the ±n tail is consumed here, not stranded.
+      // Desugars to the same add/subtract(barDuration, nDuration) node the full
+      // `duration = 1bar±n/4` form builds via the additive rule, giving bar|beat
+      // <-> transform-shorthand parity for the combined token. The `nDuration`
+      // right operand also inherits its targeted "needs a denominator" error for
+      // `1bar+n2.5`.
+      return {
+        parameter: "duration",
+        operator: "set",
+        expression: { type: sign === "+" ? "add" : "subtract", left, right },
+      };
+    }
+  / expression:barDuration {
+      return { parameter: "duration", operator: "set", expression };
+    }
+  / expression:nDuration {
+      return { parameter: "duration", operator: "set", expression };
+    }
+  / pitch:pitchLiteral {
+      return { parameter: "pitch", operator: "set", expression: pitch };
+    }
+
+shorthandAddOp
+  = "+" { return "add"; }
+  / "-" { return "subtract"; }
 
 pitchRange "pitch range"
   = startPitch:pitch "-" endPitch:pitch {
@@ -79,26 +199,124 @@ pitchLiteral
   = pitchClass:pitchClass octave:signedInt {
     const pitch = (octave + 2) * 12 + pitchClass.value;
     if (pitch >= 0 && pitch <= 127) {
-      return pitch;
+      return { type: "pitchLiteral", value: pitch, name: `${pitchClass.name}${octave}` };
     }
     throw new Error(`MIDI pitch ${pitch} (${pitchClass.name}${octave}) outside valid range 0-127`);
   }
 
 pitchClass
-  = pc:("C#" / "Db" / "D#" / "Eb" / "F#" / "Gb" / "G#" / "Ab" / "A#" / "Bb" /
-        "C" / "D" / "E" / "F" / "G" / "A" / "B") {
-    return { name: pc, value: PITCH_CLASS_VALUES[pc] };
+  = letter:[A-Ga-g] accidental:pitchAccidental? {
+      return pitchClassFromParts(letter, accidental);
+    }
+
+pitchAccidental
+  = "#" / "b" / "B" / "♯" / "♭"
+
+// Whole-bar wildcard (`N|*`) and a span of whole bars (`A|*-B|*`) select every
+// note in the named bar(s). Both desugar to a half-open range [first|1, after|1)
+// — `endBar` is the bar AFTER the last selected bar and `endExclusive` drops a
+// note that lands exactly on that downbeat, so `3|*` is precisely "all of bar 3"
+// with no spill onto 4|1. The `<` marker on a normal range (`3|1-<4|1`) makes
+// only its end bound exclusive; without it ranges stay inclusive on both ends.
+// Wildcard forms come first so the `*` branches win before the beatValue branch.
+timeRange "time range"
+  = startBar:oneOrMoreInt "|" "*" "-" endBar:oneOrMoreInt "|" "*" {
+    return { startBar, startBeat: 1, endBar: endBar + 1, endBeat: 1, endExclusive: true };
+  }
+  / bar:oneOrMoreInt "|" "*" {
+    return { startBar: bar, startBeat: 1, endBar: bar + 1, endBeat: 1, endExclusive: true };
+  }
+  / startBar:oneOrMoreInt "|" startBeat:beatValue "-" excl:"<"? endBar:oneOrMoreInt "|" endBeat:beatValue {
+    const beatsPerBar = options.beatsPerBar ?? 4;
+    const start = borrowBars(startBar, startBeat, beatsPerBar);
+    const end = borrowBars(endBar, endBeat, beatsPerBar);
+    // Reject a descending/inverted range at parse, mirroring pitchRange's
+    // "end is lower than start" guard. Without this, end-before-start silently
+    // selects no notes (a warn-free no-op). Equal bounds stay allowed (a point
+    // range). Compare absolute musical beats so an offset/borrow is respected.
+    const startAbs = (start.bar - 1) * beatsPerBar + (start.beat - 1);
+    const endAbs = (end.bar - 1) * beatsPerBar + (end.beat - 1);
+    if (endAbs < startAbs) {
+      throw new Error(`Invalid time range: end ${endBar}|${endBeat} is before start ${startBar}|${startBeat}`);
+    }
+    const range = {
+      startBar: start.bar,
+      startBeat: start.beat,
+      endBar: end.bar,
+      endBeat: end.beat
+    };
+    // Only the `<` marker makes the end exclusive; otherwise leave the field
+    // absent so a default range serializes to the legacy inclusive shape.
+    if (excl != null) range.endExclusive = true;
+    return range;
   }
 
-timeRange "time range"
-  = startBar:oneOrMoreInt "|" startBeat:oneOrMoreFloat "-" endBar:oneOrMoreInt "|" endBeat:oneOrMoreFloat {
-    return {
-      startBar,
-      startBeat,
-      endBar,
-      endBeat
-    };
-  }
+// A range-bound beat position. Same dialect as bar|beat note positions
+// (`beatValue` in barbeat-grammar.peggy): a 1-based grid beat optionally
+// displaced by an absolute note-value offset (`+n/12` = plus an eighth triplet,
+// `-n/24` = minus a 32nd triplet). The offset is a whole-note fraction — a note
+// value, so it is meter-INVARIANT in absolute time; `options.timeSigDenominator`
+// only multiplies it into musical beats (the grid's unit) to add to the grid
+// beat, a factor that cancels when musical beats convert to Ableton beats.
+// Dyadic sub-beats may use a plain decimal (`1.5`). Bare
+// fractions (`4/3`) and mixed numbers (`1+1/3`) are intentionally rejected so a
+// beat reads the same in a range bound as in a note position. A `-n` offset may
+// resolve below beat 1 ("just before the downbeat"); `timeRange` borrows across
+// the bar line to canonicalize it, and a pull before 1|1 resolves to negative
+// time (the bound sits before the clip start).
+//
+// The sign branches are split (unlike barbeat's combined `("+"/"-")`) because a
+// range's `-` separator collides with a `-` offset sign: `1|1-2|1` is the
+// whole-beat range "beat 1 to bar 2 beat 1", not "beat 1 minus 2". Requiring an
+// `n` after the sign disambiguates — `-` is an offset only in `-n/...`, else it
+// falls through to the separator. The targeted bad-offset error is kept only
+// for `+` (the removed mixed-number form `1+1/3`); negative offsets never
+// existed before this reform, so a malformed `-...` simply fails to parse.
+beatValue
+  = base:oneOrMoreDecimal "+n" frac:unsignedFraction {
+      // The offset base is a decimal beat (`1|1.5+n/4`), not just an integer:
+      // `oneOrMoreDecimal` subsumes integers (and stays >= 1), so the result is
+      // always >= 1. Additive — no existing parse changes.
+      return base + frac * (options.timeSigDenominator ?? 4);
+    }
+  / base:oneOrMoreDecimal "-n" frac:unsignedFraction {
+      // May resolve below beat 1 (e.g. `2|1-n/12`, "just before the downbeat");
+      // `timeRange` borrows across the bar line to canonicalize it. A pull
+      // before 1|1 resolves to negative time. So return the raw beat even < 1.
+      return base - frac * (options.timeSigDenominator ?? 4);
+    }
+  / oneOrMoreDecimal "+" bad:badBeatOffset {
+      // Decimal base (`1|1.5+2`) gets the same targeted steer as the integer
+      // base (`1|1+2`); `oneOrMoreDecimal` subsumes integers, and the valid
+      // `oneOrMoreDecimal "+n" frac` branch above is tried first, so a real
+      // `1.5+n/4` still wins. Without this, a decimal base fell through to a
+      // generic peggy error.
+      throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write +n/3, not +${bad}).`);
+    }
+  / bad:bareFractionBeat {
+      throw new Error(`beat positions are a grid beat with an optional note-value offset (1|1, 1|1+n/12) or a decimal (1|1.5). Got bare fraction ${bad} — write the grid+offset form instead (4/3 → 1+n/12).`);
+    }
+  / badZeroBeat
+  / oneOrMoreDecimal
+
+// A 0-indexed range bound (`1|0-2|1`): beats count from 1 in time ranges too, so
+// a leading 0 can only be this mistake. Raises a targeted error; never returns a
+// value. Mirrors the barbeat note grammar's `badZeroBeat` (Peggy can't share a
+// rule across grammars). The `1|0`-as-pickup reading is deliberately not taught.
+badZeroBeat
+  = "0" [0-9]* ("." [0-9]*)? {
+      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text()}.`);
+    }
+
+// Old bare-fraction beat (`4/3`); matched only to raise a targeted error.
+bareFractionBeat
+  = [1-9] [0-9]* "/" [1-9] [0-9]* { return text(); }
+
+// Tail of an old `int+fraction` mixed beat (`1+1/3`); for targeted errors only.
+badBeatOffset
+  = unsignedMixedNumber { return text(); }
+  / unsignedFraction { return text(); }
+  / unsignedDecimal { return text(); }
 
 operator
   = "*=" { return "multiply"; }
@@ -120,33 +338,74 @@ parameter "parameter name"
 expression "expression"
   = additive
 
+// Left-associative: fold a head term with a list of (op, term) tails so
+// `8/4/2` parses as `(8/4)/2`, not `8/(4/2)`. Matters for the non-associative
+// ops (`-`, `/`, `%`); `+`/`*` give the same value either way.
 additive
-  = left:multiplicative _ "+" _ right:additive {
-    return { type: "add", left, right };
+  = head:multiplicative tail:(_ op:[+\-] _ right:multiplicative { return { op, right }; })* {
+    return tail.reduce(
+      (left, { op, right }) => ({ type: op === "+" ? "add" : "subtract", left, right }),
+      head,
+    );
   }
-  / left:multiplicative _ "-" _ right:additive {
-    return { type: "subtract", left, right };
-  }
-  / multiplicative
 
 multiplicative
-  = left:primary _ "*" _ right:multiplicative {
-    return { type: "multiply", left, right };
+  = head:primary tail:(_ op:[*/%] _ right:primary { return { op, right }; })* {
+    return tail.reduce(
+      (left, { op, right }) => ({ type: MULTIPLICATIVE_OP_TYPES[op], left, right }),
+      head,
+    );
   }
-  / left:primary _ "/" _ right:multiplicative {
-    return { type: "divide", left, right };
-  }
-  / left:primary _ "%" _ right:multiplicative {
-    return { type: "modulo", left, right };
-  }
-  / primary
 
 primary
   = functionCall
   / variable
+  / nDuration
+  / barDuration
   / pitchLiteral
+  / badPeriod
   / number
   / "(" _ expr:expression _ ")" { return expr; }
+
+nDuration "absolute duration value"
+  = badBarDuration
+  / "n" frac:unsignedFraction {
+    return { type: "nDuration", wholeNoteFraction: frac };
+  }
+  / "n" bad:badAbsoluteValue {
+    throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
+  }
+
+// `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error —
+// the `n` sigil marks a note-value fraction (denominator required); bars are the
+// bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
+badBarDuration
+  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
+    throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
+  }
+
+// Meter-aware bar duration (`Nbar`): N bars = N * beats-per-bar musical beats
+// (the same value as `N * clip.barDuration`). Matches the authoring/length-field
+// `Nbar` token so the duration vocabulary is uniform across grammars. The mixed
+// form `Nbar+n<frac>` composes through ordinary addition (e.g. `1bar+n/4` parses
+// as `barDuration(1) + nDuration(1/4)`), so this rule matches only the bar token.
+barDuration "bar duration value"
+  = bars:oneOrMoreInt "bar" "s"? {
+    // A plural `bars` (`2bars`) is accepted as a tolerance alias; output stays `bar`.
+    return { type: "barDuration", bars };
+  }
+
+// Matches values that LOOK like a duration but lack the required denominator.
+// Used only to produce a targeted error message — never returns a value.
+badAbsoluteValue
+  = unsignedMixedNumber { return text(); }
+  / unsignedDecimal { return text(); }
+
+// Matches the removed synced-period syntax (Nt, N:Nt) to throw a targeted error.
+// Synced periods are now note-value expressions gated by the `sync` keyword.
+badPeriod
+  = unsignedInt ":" unsignedFloat "t" { throw new Error(oldPeriodError(text())); }
+  / unsignedFloat "t" { throw new Error(oldPeriodError(text())); }
 
 variable
   = "audio." name:audioPropertyName {
@@ -219,6 +478,7 @@ otherFunctionName
   / "min" { return "min"; }
   / "max" { return "max"; }
   / "rand" { return "rand"; }
+  / "clipseq" { return "clipseq"; }
   / "seq" { return "seq"; }
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
@@ -261,36 +521,10 @@ argumentList
   }
 
 argument
-  = period / expression
-
-period
-  = bars:unsignedInt ":" beats:unsignedFloat "t" {
-    return { type: "period", bars, beats };
-  }
-  / beats:unsignedFloat "t" {
-    return { type: "period", bars: 0, beats };
-  }
+  = expression
 
 number
   = signedDecimal
-
-oneOrMoreFloat
-  = oneOrMoreMixedNumber / oneOrMoreFraction / oneOrMoreDecimal
-
-oneOrMoreMixedNumber
-  = wholeNumber:oneOrMoreInt "+" fraction:unsignedFraction {
-    return wholeNumber + fraction;
-  }
-
-oneOrMoreFraction
-  = [1-9] [0-9]* "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    const result = Number.parseInt(num) / Number.parseInt(den);
-    if (result < 1) {
-      throw new Error(`Value must be 1 or greater (got ${text()})`);
-    }
-    return result;
-  }
 
 oneOrMoreDecimal
   = [1-9] [0-9]* ("." [0-9]*)? {
@@ -306,9 +540,14 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = num:[0-9]* "/" den:[1-9] [0-9]* {
+  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* {
+    // Numerator may be empty (→ 1), an integer, or a DECIMAL: the off-grid escape
+    // `n<beats>/4` (e.g. `n1.9638/4`) the length/duration serializer emits for a
+    // sample-derived value with no clean note-value fraction. The denominator
+    // stays a no-leading-zero integer. Kept in parity with the TS regexes in
+    // barbeat-time.ts by note-value-grammar-parity.test.ts.
     const parts = text().split('/');
-    const numerator = parts[0] === '' ? 1 : Number.parseInt(parts[0]);
+    const numerator = parts[0] === '' ? 1 : Number.parseFloat(parts[0]);
     const denominator = Number.parseInt(parts[1]);
     return numerator / denominator;
   }

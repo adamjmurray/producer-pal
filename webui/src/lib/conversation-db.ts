@@ -9,6 +9,9 @@ import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
 
+/** Distinguishes chat (text) from voice transcripts. Older records are treated as "text". */
+export type SessionType = "text" | "voice";
+
 /** Full conversation record stored in IndexedDB */
 export interface ConversationRecord {
   id: string;
@@ -24,11 +27,18 @@ export interface ConversationRecord {
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
   totalUsage: TokenUsage | null;
+  sessionType: SessionType;
   messages: ChatMessage[];
+  // RealtimeItem[] for voice records, null for text. Typed as unknown[] so the
+  // storage layer stays decoupled from @openai/agents/realtime.
+  voiceHistory: unknown[] | null;
 }
 
-/** Lightweight summary for list display (no messages) */
-export type ConversationSummary = Omit<ConversationRecord, "messages">;
+/** Lightweight summary for list display (no transcript payload) */
+export type ConversationSummary = Omit<
+  ConversationRecord,
+  "messages" | "voiceHistory"
+>;
 
 /** Result of enforcing the conversation limit during save */
 export interface EnforceLimitResult {
@@ -74,20 +84,13 @@ export async function loadConversation(
   id: string,
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
-  const record = await (db.get(STORE_NAME, id) as Promise<
-    ConversationRecord | undefined
-  >);
+  const raw = (await db.get(STORE_NAME, id)) as
+    | Partial<ConversationRecord>
+    | undefined;
 
-  if (!record) return undefined;
+  if (!raw) return undefined;
 
-  // Default new fields for old records that predate these columns
-  record.thinking ??= null;
-  record.temperature ??= null;
-  record.showThoughts ??= null;
-  record.smallModelMode ??= null;
-  record.totalUsage ??= null;
-
-  return record;
+  return normalizeLegacyRecord(raw);
 }
 
 /**
@@ -165,14 +168,15 @@ export async function setBookmark(
 }
 
 /**
- * List all conversations. Bookmarked first, then by createdAt descending.
+ * List all conversations, sorted by updatedAt descending.
  * @returns Array of conversation summaries
  */
 export async function listConversations(): Promise<ConversationSummary[]> {
   const db = await getConversationDb();
-  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
+  const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
 
   return all
+    .map(normalizeLegacyRecord)
     .map(
       ({
         id,
@@ -188,6 +192,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         showThoughts,
         smallModelMode,
         totalUsage,
+        sessionType,
       }) => ({
         id,
         title,
@@ -197,14 +202,49 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         provider,
         model,
         modelLabel,
-        thinking: thinking ?? null,
-        temperature: temperature ?? null,
-        showThoughts: showThoughts ?? null,
-        smallModelMode: smallModelMode ?? null,
-        totalUsage: totalUsage ?? null,
+        thinking,
+        temperature,
+        showThoughts,
+        smallModelMode,
+        totalUsage,
+        sessionType,
       }),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/**
+ * Find conversations whose title, message text, or voice transcript contains
+ * the query (case-insensitive substring). Scans full records because
+ * transcripts are not carried by the summary list; the {@link MAX_CONVERSATIONS}
+ * cap keeps this a cheap linear scan. Text records match on `messages`; voice
+ * records keep their transcript in `voiceHistory`, so both are searched.
+ * @param query - Search text; a blank/whitespace-only query matches nothing
+ * @returns Set of matching conversation IDs
+ */
+export async function searchConversations(query: string): Promise<Set<string>> {
+  const needle = query.trim().toLowerCase();
+  const matches = new Set<string>();
+
+  if (!needle) return matches;
+
+  const db = await getConversationDb();
+  const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
+
+  for (const raw of all) {
+    const record = normalizeLegacyRecord(raw);
+    const inTitle = record.title?.toLowerCase().includes(needle) ?? false;
+    const inMessages = record.messages.some((m) =>
+      m.content.toLowerCase().includes(needle),
+    );
+    const inVoice = extractVoiceTranscriptText(record.voiceHistory)
+      .toLowerCase()
+      .includes(needle);
+
+    if (inTitle || inMessages || inVoice) matches.add(record.id);
+  }
+
+  return matches;
 }
 
 /**
@@ -223,6 +263,76 @@ export async function resetDbCache(): Promise<void> {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Fill in fields missing from records written by earlier schema versions, so
+ * the rest of the code can treat the result as a full {@link ConversationRecord}.
+ * @param raw - Raw record from IndexedDB (possibly missing newer fields)
+ * @returns Record with all fields populated to current shape
+ */
+function normalizeLegacyRecord(
+  raw: Partial<ConversationRecord>,
+): ConversationRecord {
+  raw.thinking ??= null;
+  raw.temperature ??= null;
+  raw.showThoughts ??= null;
+  raw.smallModelMode ??= null;
+  raw.totalUsage ??= null;
+  raw.sessionType ??= "text";
+  raw.voiceHistory ??= null;
+  // Voice records persist messages: [], but a corrupt/older record could lack
+  // the field entirely; default it so callers (e.g. searchConversations) can
+  // treat messages as a guaranteed array.
+  raw.messages ??= [];
+
+  return raw as ConversationRecord;
+}
+
+/**
+ * Extract searchable text from a voice record's transcript history. Voice
+ * conversations keep their spoken/typed text in `voiceHistory` (RealtimeItem[])
+ * rather than `messages`, so this pulls the `text`/`transcript` strings out of
+ * each user and assistant message item. Walks the structure defensively because
+ * the storage layer keeps `voiceHistory` typed as `unknown[]` to stay decoupled
+ * from @openai/agents/realtime. Mirrors `realtimeItemsToUIMessages`, including
+ * its role filter — only `user`/`assistant` messages are searched, so search
+ * never matches `system` text the transcript doesn't render. Keep the two in
+ * sync if the item shape changes.
+ * @param voiceHistory - Raw RealtimeItem list persisted on the record, or null
+ * @returns All transcript text joined by spaces (empty string if none)
+ */
+function extractVoiceTranscriptText(voiceHistory: unknown[] | null): string {
+  if (voiceHistory == null) return "";
+
+  const parts: string[] = [];
+
+  for (const item of voiceHistory) {
+    if (!isRecord(item) || item.type !== "message") continue;
+    // Only search what the transcript renders: `realtimeItemsToUIMessages`
+    // skips system messages, so search must too (don't match hidden text).
+    if (item.role !== "user" && item.role !== "assistant") continue;
+    if (!Array.isArray(item.content)) continue;
+
+    for (const part of item.content) {
+      if (!isRecord(part)) continue;
+      // input_text/output_text carry `.text`; audio items carry `.transcript`.
+      const text = part.text ?? part.transcript;
+
+      if (typeof text === "string" && text) parts.push(text);
+    }
+  }
+
+  return parts.join(" ");
+}
+
+/**
+ * Narrow an unknown value to a plain object for safe property access.
+ * @param value - The value to test
+ * @returns True if value is a non-null object
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null;
+}
 
 /**
  * Enforce the conversation limit by deleting oldest non-bookmarked conversations.

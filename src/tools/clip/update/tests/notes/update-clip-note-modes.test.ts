@@ -56,7 +56,7 @@ function expectNotesCleared(clip: UpdateClipMocks["clip123"]): void {
   );
 }
 
-describe("updateClip - Note update modes", () => {
+describe("updateClip - Note updates", () => {
   let mocks: UpdateClipMocks;
 
   beforeEach(() => {
@@ -69,7 +69,6 @@ describe("updateClip - Note update modes", () => {
     const result = await updateClip({
       ids: "123",
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
-      noteUpdateMode: "replace",
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
@@ -102,27 +101,12 @@ describe("updateClip - Note update modes", () => {
     await updateClip({
       ids: "123",
       notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
-      noteUpdateMode: "replace",
     });
 
     expectNotesClearedOnly(mocks.clip123);
   });
 
-  it("should replace notes when noteUpdateMode is 'replace'", async () => {
-    setupMidiClipMock(mocks.clip123);
-
-    const result = await updateClip({
-      ids: "123",
-      notes: "C3 1|1",
-      noteUpdateMode: "replace",
-    });
-
-    expectNoteReplaceAndAddCalls(mocks.clip123);
-
-    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
-  });
-
-  it("should add to existing notes when noteUpdateMode is 'merge'", async () => {
+  it("should overlay new notes onto a clip (default merge)", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock empty existing notes, then return added notes on subsequent calls
@@ -147,7 +131,6 @@ describe("updateClip - Note update modes", () => {
     const result = await updateClip({
       ids: "123",
       notes: "C3 1|1",
-      noteUpdateMode: "merge",
     });
 
     expectNoteReplaceAndAddCalls(mocks.clip123);
@@ -155,7 +138,7 @@ describe("updateClip - Note update modes", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
-  it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", async () => {
+  it("should not call add_new_notes when the resulting notes array is empty", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock empty existing notes
@@ -172,7 +155,6 @@ describe("updateClip - Note update modes", () => {
     await updateClip({
       ids: "123",
       notes: "v0 C3 1|1", // All notes filtered out
-      noteUpdateMode: "merge",
     });
 
     expectNotesClearedOnly(mocks.clip123);
@@ -231,7 +213,7 @@ describe("updateClip - Note update modes", () => {
     const result = await updateClip({
       ids: "123",
       transforms: "velocity = 50",
-      // No notes param, no noteUpdateMode
+      // No notes param: transforms-only path
     });
 
     // Notes should still exist with modified velocity

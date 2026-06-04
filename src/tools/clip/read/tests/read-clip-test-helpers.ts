@@ -263,7 +263,16 @@ export function expectGetNotesExtendedCall(
   handle: RegisteredMockObject,
   clipLength = 4,
 ): void {
-  const expectedArgs: unknown[] = ["get_notes_extended", 0, 128, 0, clipLength];
+  // Reads one clip-length of margin on each side of the playable region so
+  // out-of-bounds notes (pickups before 1|1, overhang past the end) round-trip;
+  // window is [-clipLength, 2*clipLength].
+  const expectedArgs: unknown[] = [
+    "get_notes_extended",
+    0,
+    128,
+    -clipLength,
+    clipLength * 3,
+  ];
 
   expect(handle.call).toHaveBeenCalledWith(...expectedArgs);
 }

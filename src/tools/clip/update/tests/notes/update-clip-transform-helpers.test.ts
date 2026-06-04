@@ -121,6 +121,7 @@ describe("update-clip-transform-helpers", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        undefined,
         "velocity = 50",
         4,
         4,
@@ -156,6 +157,43 @@ describe("update-clip-transform-helpers", () => {
       }
     });
 
+    it("re-adds notes sorted ascending by start_time", () => {
+      // Live may hand notes back in any order; a transform must re-add them
+      // ascending so an onset overlap can't delete an earlier same-pitch note.
+      const existingNotes = [
+        rawNote(60, 2, 100),
+        rawNote(60, 0, 101),
+        rawNote(60, 1, 102),
+      ];
+      const addedNotes: { start_time: number }[] = [];
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
+        call: vi.fn((method: string, ...args: unknown[]) => {
+          if (method === "get_notes_extended") {
+            return JSON.stringify({ notes: existingNotes });
+          }
+
+          if (method === "add_new_notes") {
+            addedNotes.push(
+              ...(args[0] as { notes: { start_time: number }[] }).notes,
+            );
+          }
+
+          return "[]";
+        }),
+      };
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        undefined,
+        "velocity = 50",
+        4,
+        4,
+      );
+
+      expect(addedNotes.map((n) => n.start_time)).toStrictEqual([0, 1, 2]);
+    });
+
     it("should warn and return 0 when clip has no notes", () => {
       const mockClip = {
         getProperty: vi.fn(() => 4),
@@ -170,6 +208,7 @@ describe("update-clip-transform-helpers", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        undefined,
         "velocity = 50",
         4,
         4,
@@ -204,6 +243,7 @@ describe("update-clip-transform-helpers", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        undefined,
         "velocity = 50",
         4,
         4,

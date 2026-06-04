@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   type TimeRange,
   type NoteProperties,
@@ -11,6 +12,7 @@ import {
   computePhase,
   evaluateArgs,
   evaluateChoose,
+  evaluateClipSeq,
   evaluateCurve,
   evaluateMathFunction,
   evaluateMinMax,
@@ -28,7 +30,6 @@ import {
   evaluateSwing,
 } from "./helpers/transform-functions-timing-helpers.ts";
 import { type ExpressionNode } from "./parser/transform-parser.ts";
-import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 export type EvaluateExpressionFn = (
@@ -44,6 +45,7 @@ export type EvaluateExpressionFn = (
 const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   rand: evaluateRand,
   seq: evaluateSeq,
+  clipseq: evaluateClipSeq,
   choose: evaluateChoose,
   snap: evaluateSnap,
   quant: evaluateQuant,
@@ -241,9 +243,9 @@ function evaluateWaveform(
     throw new Error(`Function ${name}() requires at least a period argument`);
   }
 
-  // First argument is period (either period type with "t" suffix, or a number expression)
+  // First argument is the period: a note-value or numeric expression, in beats
   const period = parsePeriod(
-    args[0] as ExpressionNode | PeriodObject,
+    args[0] as ExpressionNode,
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -260,12 +262,14 @@ function evaluateWaveform(
     const arrangementStart = noteProperties["clip:position"];
 
     if (arrangementStart == null) {
-      throw new Error(
-        "sync requires an arrangement clip (no clip.position available)",
-      );
+      // Session clips have no arrangement origin to anchor phase. Degrade
+      // gracefully to clip-relative (phase resets at clip start) instead of
+      // skipping the whole assignment — mirrors the clip.position variable
+      // fallback. effectivePosition stays at the clip-relative position.
+      console.warn("sync ignored on session clip — LFO is clip-relative");
+    } else {
+      effectivePosition = position + arrangementStart;
     }
-
-    effectivePosition = position + arrangementStart;
   }
 
   // Calculate phase from position and period
@@ -325,8 +329,10 @@ function evaluateWaveform(
 }
 
 /**
- * Parse period argument for waveform functions
- * @param periodArg - Period argument (expression or period object)
+ * Parse period argument for waveform/timing functions.
+ * The period is any numeric expression — a note value (e.g. `n/4`), a variable
+ * (e.g. `clip.barDuration`), or a bare number — evaluated to musical beats.
+ * @param periodArg - Period expression
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -337,7 +343,7 @@ function evaluateWaveform(
  * @returns Period in beats
  */
 export function parsePeriod(
-  periodArg: ExpressionNode | PeriodObject,
+  periodArg: ExpressionNode,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -346,29 +352,17 @@ export function parsePeriod(
   evaluateExpression: EvaluateExpressionFn,
   name: string,
 ): number {
-  let period;
+  const period = evaluateExpression(
+    periodArg,
+    position,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange,
+    noteProperties,
+  );
 
-  // Check if it's a period object (has "period" type)
-  if (
-    typeof periodArg === "object" &&
-    "type" in periodArg &&
-    periodArg.type === "period"
-  ) {
-    period = parseFrequency(periodArg, timeSigNumerator);
-  } else {
-    // Evaluate as expression (e.g., variable or number) - treated as beats
-    period = evaluateExpression(
-      periodArg as ExpressionNode,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    );
-
-    if (period <= 0) {
-      throw new Error(`Function ${name}() period must be > 0, got ${period}`);
-    }
+  if (period <= 0) {
+    throw new Error(`Function ${name}() period must be > 0, got ${period}`);
   }
 
   return period;

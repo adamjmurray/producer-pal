@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Adapter for communication between Node.js MCP server and Max v8 environment
@@ -10,10 +11,19 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
+  type McpErrorCode,
 } from "#src/shared/mcp-response-utils.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
+import { type RequestOverrides } from "./helpers/request-overrides.ts";
 import * as console from "./node-for-max-logger.ts";
+import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
+
+// Re-export for convenience so existing consumers can keep importing from here
+export {
+  MAX_TIMEOUT_MS,
+  type RequestOverrides,
+} from "./helpers/request-overrides.ts";
 
 export interface McpResponseContent {
   type: string;
@@ -23,6 +33,12 @@ export interface McpResponseContent {
 export interface McpResponse {
   content: McpResponseContent[];
   isError?: boolean;
+  /**
+   * Structured error category. Set only at specific error origins (currently
+   * just the tool-call timeout) so transports can distinguish a timeout from
+   * an ordinary tool error without string-matching the message.
+   */
+  errorCode?: McpErrorCode;
 }
 
 interface PendingRequest {
@@ -55,11 +71,22 @@ Max.addHandler("timeoutMs", (input: unknown) => {
  *
  * @param tool - Tool name to call
  * @param args - Arguments for the tool
+ * @param overrides - Optional per-request context overrides (e.g. used by the
+ *   REST `?format=` and `?timeoutMs=` query params)
  * @returns Tool execution result
  */
-function callLiveApi(tool: string, args: object): Promise<McpResponse> {
+function callLiveApi(
+  tool: string,
+  args: object,
+  overrides?: RequestOverrides,
+): Promise<McpResponse> {
   const argsJSON = JSON.stringify(args);
-  const contextJSON = JSON.stringify({ silenceWavPath, timeoutMs });
+  const effectiveTimeoutMs = overrides?.timeoutMs ?? timeoutMs;
+  const contextJSON = JSON.stringify({
+    timeoutMs,
+    ...overrides,
+    silenceWavPath,
+  });
   const requestId = crypto.randomUUID();
 
   console.info(
@@ -86,7 +113,7 @@ function callLiveApi(tool: string, args: object): Promise<McpResponse> {
             msg.length > 0
               ? msg
               : `Error sending message to ${tool}: ${String(error)}`,
-          ) as McpResponse,
+          ),
         );
       },
     );
@@ -96,14 +123,17 @@ function callLiveApi(tool: string, args: object): Promise<McpResponse> {
       timeout: setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          // Always resolve (not reject) with the standard error format
+          // Always resolve (not reject) with the standard error format.
+          // Tag with the "timeout" discriminator so the REST route can map it
+          // to HTTP 504 (other formatErrorResponse calls stay untagged).
           resolve(
             formatErrorResponse(
-              `Tool call '${tool}' timed out after ${timeoutMs}ms`,
-            ) as McpResponse,
+              `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms`,
+              "timeout",
+            ),
           );
         }
-      }, timeoutMs),
+      }, effectiveTimeoutMs),
     });
   });
 }
@@ -180,7 +210,7 @@ function handleLiveApiResult(...args: unknown[]): void {
       resolve(
         formatErrorResponse(
           `Error parsing tool result from Max: ${String(error)}`,
-        ) as McpResponse,
+        ),
       );
     }
   } else {
@@ -196,6 +226,15 @@ Max.addHandler("code_exec_request", (...args: unknown[]) => {
 
   handleCodeExecRequest(requestId, requestJson).catch((error) => {
     console.error(`Error handling code_exec_request: ${String(error)}`);
+  });
+});
+
+// Handler for generic node_request RPC calls from V8
+Max.addHandler("node_request", (...args: unknown[]) => {
+  const [requestId, requestJson] = args as [string, string];
+
+  handleNodeRequest(requestId, requestJson).catch((error) => {
+    console.error(`Error handling node_request: ${String(error)}`);
   });
 });
 

@@ -27,7 +27,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
 
     const result = await updateClip({
       ids: "123",
-      length: "2:0", // 8 beats = 2 bars
+      length: "2bar", // 8 beats = 2 bars
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith(
@@ -47,7 +47,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     const result = await updateClip({
       ids: "123",
       start: "1|1",
-      length: "4:0",
+      length: "4bar",
       firstStart: "3|1",
       looping: true,
     });
@@ -76,7 +76,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     const result = await updateClip({
       ids: "123",
       start: "1|1",
-      length: "4:0",
+      length: "4bar",
       firstStart: "2|1",
       looping: false,
     });
@@ -98,7 +98,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     const result = await updateClip({
       ids: "123",
       start: "1|1",
-      length: "4:0",
+      length: "4bar",
       looping: false,
     });
 
@@ -123,7 +123,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     const result = await updateClip({
       ids: "123",
       start: "2|1",
-      length: "2:0",
+      length: "2bar",
       looping: true,
     });
 
@@ -161,7 +161,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
       length: 5, // derived start = 4 - 5 = -1 !== 0
     });
 
-    await updateClip({ ids: "123", length: "4:0" });
+    await updateClip({ ids: "123", length: "4bar" });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -179,7 +179,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
       length: 0.262, // derived start = 0.131 - 0.262 = -0.131 !== 0
     });
 
-    await updateClip({ ids: "123", length: "1:0" });
+    await updateClip({ ids: "123", length: "1bar" });
 
     expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
   });

@@ -114,7 +114,18 @@ export function defineTool(
               )
             : validated;
 
-        const result = (await callLiveApi(name, finalArgs)) as CallToolResult;
+        const rawResult = (await callLiveApi(
+          name,
+          finalArgs,
+        )) as CallToolResult & {
+          errorCode?: unknown;
+        };
+
+        // Strip the internal `errorCode` discriminator (used by the REST route
+        // to map timeouts to HTTP 504) so it never reaches the MCP SDK wire
+        // result — the MCP/JSON-RPC contract is unchanged (errors ride as
+        // isError in the result body).
+        const { errorCode: _errorCode, ...result } = rawResult;
 
         // Append warning for extra keys so LLMs learn correct usage
         if (extraKeys.length > 0) {

@@ -35,7 +35,7 @@ describe("ppal-update-clip", () => {
         slot: `${emptyMidiTrack}/0`,
         notes: "C3 D3 1|1",
         looping: true,
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
@@ -90,7 +90,7 @@ describe("ppal-update-clip", () => {
     // Test 4: Update start and length
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, start: "1|2", length: "1:0.0" },
+      arguments: { ids: clip.id, start: "1|2", length: "1bar" },
     });
 
     await sleep(100);
@@ -101,7 +101,7 @@ describe("ppal-update-clip", () => {
     const startLengthClip = parseToolResult<ReadClipResult>(verifyStartLength);
 
     expect(startLengthClip.start).toBe("1|2");
-    expect(startLengthClip.length).toBe("1:0");
+    expect(startLengthClip.length).toBe("1bar");
   });
 
   it("updates MIDI clip notes", async () => {
@@ -111,14 +111,14 @@ describe("ppal-update-clip", () => {
       arguments: {
         slot: `${emptyMidiTrack}/1`,
         notes: "C3 D3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
 
     await sleep(100);
 
-    // Test 1: Add notes with merge mode (verify notes increase)
+    // Test 1: Add notes (merges with existing, verify notes increase)
     const beforeMerge = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { clipId: clip.id, include: ["notes"] },
@@ -129,7 +129,7 @@ describe("ppal-update-clip", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "G3 A3 1|3", noteUpdateMode: "merge" },
+      arguments: { ids: clip.id, notes: "G3 A3 1|3" },
     });
 
     await sleep(100);
@@ -142,10 +142,10 @@ describe("ppal-update-clip", () => {
     // After merging G3 A3 into C3 D3, notes should contain all four
     expect(mergedClip.notes).toContain("G3");
 
-    // Test 2: Replace notes with noteUpdateMode: "replace"
+    // Test 2: Clear all existing notes (preTransforms v0) then write new ones
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "C4 1|1", noteUpdateMode: "replace" },
+      arguments: { ids: clip.id, preTransforms: "v0", notes: "C4 1|1" },
     });
 
     await sleep(100);
@@ -156,15 +156,17 @@ describe("ppal-update-clip", () => {
     const replacedClip = parseToolResult<ReadClipResult>(verifyReplace);
 
     expect(replacedClip.notes).toContain("C4");
+    // The cleared notes (e.g. the G3 merged in above) should be gone
+    expect(replacedClip.notes).not.toContain("G3");
 
     // Test 3: Quantize notes
-    // First add some off-grid notes
+    // First clear and add some off-grid notes
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        notes: "1|1.25 C3\n1|2.75 D3",
-        noteUpdateMode: "replace",
+        preTransforms: "v0",
+        notes: "C3 1|1.25\nD3 1|2.75",
       },
     });
 
@@ -182,8 +184,117 @@ describe("ppal-update-clip", () => {
     });
     const quantizedClip = parseToolResult<ReadClipResult>(verifyQuantize);
 
-    // Notes should be quantized (exact positions depend on implementation)
-    expect(quantizedClip.notes).toBeDefined();
+    // Full-strength 1/4 snap: beat 1.25 -> beat 1 (1|1), beat 2.75 -> beat 3
+    // (1|3). The off-grid decimal positions must be gone.
+    expect(quantizedClip.notes).not.toContain("1|1.25");
+    expect(quantizedClip.notes).not.toContain("1|2.75");
+    expect(quantizedClip.notes).toContain("1|1");
+    expect(quantizedClip.notes).toContain("1|3");
+  });
+
+  it("quantizes MIDI notes using n/N grid aliases", async () => {
+    // Setup: a clip with two off-grid notes on the empty MIDI track
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${emptyMidiTrack}/6`,
+        notes: "C3 1|1.25\nD3 1|2.75",
+        length: "1bar",
+      },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    // n/4 is the note-value alias for the native 1/4 grid (bridged in
+    // handleQuantization). Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clip.id, quantize: 1.0, quantizeGrid: "n/4" },
+    });
+
+    await sleep(100);
+    const verifyQuarter = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: clip.id, include: ["notes"] },
+    });
+    const quarterClip = parseToolResult<ReadClipResult>(verifyQuarter);
+
+    expect(quarterClip.notes).not.toContain("1|1.25");
+    expect(quarterClip.notes).not.toContain("1|2.75");
+    expect(quarterClip.notes).toContain("1|1");
+    expect(quarterClip.notes).toContain("1|3");
+
+    // n/12 is the alias for the 1/8T eighth-triplet grid (no decimal spelling).
+    // Reset the off-grid notes, then snap to triplets: 1.25 -> beat 1+1/3
+    // (1|1+n/12), 2.75 -> beat 2+2/3 (1|2+n/6).
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: clip.id,
+        preTransforms: "v0",
+        notes: "C3 1|1.25\nD3 1|2.75",
+      },
+    });
+
+    await sleep(100);
+
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clip.id, quantize: 1.0, quantizeGrid: "n/12" },
+    });
+
+    await sleep(100);
+    const verifyTriplet = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: clip.id, include: ["notes"] },
+    });
+    const tripletClip = parseToolResult<ReadClipResult>(verifyTriplet);
+
+    expect(tripletClip.notes).not.toContain("1|1.25");
+    expect(tripletClip.notes).not.toContain("1|2.75");
+    expect(tripletClip.notes).toContain("1|1+n/12");
+    expect(tripletClip.notes).toContain("1|2+n/6");
+  });
+
+  it("limits quantization to a single pitch with quantizePitch", async () => {
+    // Two off-grid notes at different pitches and positions.
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${emptyMidiTrack}/7`,
+        notes: "C3 1|1.25\nE3 1|2.75",
+        length: "1bar",
+      },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    // Quantize only C3 to the 1/4 grid: C3 snaps from beat 1.25 to beat 1
+    // (1|1); E3 is a different pitch, so it stays off-grid at 1|2.75.
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: clip.id,
+        quantize: 1.0,
+        quantizeGrid: "1/4",
+        quantizePitch: "C3",
+      },
+    });
+
+    await sleep(100);
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: clip.id, include: ["notes"] },
+    });
+    const quantizedClip = parseToolResult<ReadClipResult>(verify);
+
+    // C3 moved onto the grid...
+    expect(quantizedClip.notes).not.toContain("1|1.25");
+    expect(quantizedClip.notes).toContain("1|1");
+    // ...but E3 was left untouched at its off-grid position.
+    expect(quantizedClip.notes).toContain("1|2.75");
   });
 
   it("updates arrangement clip position and length", async () => {
@@ -194,7 +305,7 @@ describe("ppal-update-clip", () => {
         trackIndex: emptyMidiTrack,
         arrangementStart: "41|1",
         notes: "C3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const arrClip = parseToolResult<{ id: string }>(arrCreateResult);
@@ -223,7 +334,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Update arrangement clip length
     const lengthUpdateResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: movedClip.id, arrangementLength: "4:0.0" },
+      arguments: { ids: movedClip.id, arrangementLength: "4bar" },
     });
 
     // arrangementLength can return multiple clips if it tiles

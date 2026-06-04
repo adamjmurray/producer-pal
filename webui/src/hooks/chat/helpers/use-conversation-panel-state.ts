@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useMemo } from "preact/hooks";
-import { type ConversationPanelState } from "#webui/components/chat/ChatScreen";
+import { type ConversationPanelState } from "#webui/components/AppShell";
+import { useConversationSearch } from "#webui/hooks/chat/helpers/use-conversation-search";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { isMobile } from "#webui/utils/is-mobile";
 
 interface ConversationPanelDeps {
@@ -39,11 +40,17 @@ export function useConversationPanelState(
 ): ConversationPanelState {
   const { conversationManager, transfer, viewState, setViewState, handlers } =
     deps;
+  const { searchQuery, setSearchQuery, matchedIds } = useConversationSearch(
+    conversationManager.conversations,
+  );
 
   return useMemo(
     (): ConversationPanelState => ({
       conversations: conversationManager.conversations,
       activeConversationId: conversationManager.activeConversationId,
+      searchQuery,
+      onSearchChange: setSearchQuery,
+      matchedIds,
       isOpen: viewState.historyPanelOpen,
       onToggle: () =>
         setViewState({ historyPanelOpen: !viewState.historyPanelOpen }),
@@ -67,6 +74,15 @@ export function useConversationPanelState(
         ? transfer.dismissNotification
         : conversationManager.dismissLimitNotification,
     }),
-    [conversationManager, transfer, viewState, setViewState, handlers],
+    [
+      conversationManager,
+      transfer,
+      viewState,
+      setViewState,
+      handlers,
+      searchQuery,
+      setSearchQuery,
+      matchedIds,
+    ],
   );
 }

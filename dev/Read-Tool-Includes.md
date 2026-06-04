@@ -236,7 +236,7 @@ Adds timing/loop information. For arrangement clips, also adds
 | `looping`           | `boolean` | Whether looping is enabled                           |
 | `start`             | `string`  | Active start position (bar\|beat)                    |
 | `end`               | `string`  | Active end position (bar\|beat)                      |
-| `length`            | `string`  | Active length (bar:beat duration)                    |
+| `length`            | `string`  | Active length (`4bar`, `n/4`, or `1bar+n/4`)         |
 | `firstStart`        | `string`  | Start marker position, only if different from active |
 | `arrangementLength` | `string`  | Arrangement clips only: total length                 |
 
@@ -254,6 +254,15 @@ Adds formatted MIDI notes for MIDI clips. No effect on audio clips.
 
 The notes string uses compact bar|beat notation. This is an expensive operation
 (calls `get_notes_extended` on the Live API).
+
+All authored notes round-trip on read, including ones outside the clip's
+playable region: pickups before the start (negative time, e.g. a note authored
+as `1|1-n/12`) and overhang past the end. The read window spans one clip-length
+of margin on each side of the playable region `[0, length]` (i.e.
+`[-length, 2*length]`), so out-of-bounds notes are not silently dropped. (The
+`noteCount` reported by create/update tools mirrors this same
+`[-length, 2*length]` read window: it counts stored pickup and overhang notes
+within that finite scan, not only notes in the playable region.)
 
 ### Include: `"sample"`
 
@@ -325,8 +334,8 @@ Result:
   "looping": true,
   "start": "1|1",
   "end": "5|1",
-  "length": "4:0",
-  "notes": "1|1 C1 1:0\n2|1 D1 1:0\n3|1 E1 0:2\n3|3 E1 0:2"
+  "length": "4bar",
+  "notes": "1|1 C1 n/1\n2|1 D1 n/1\n3|1 E1 n/2\n3|3 E1 n/2"
 }
 ```
 
@@ -379,8 +388,8 @@ MIDI clip result:
   "looping": true,
   "start": "1|1",
   "end": "5|1",
-  "length": "4:0",
-  "notes": "1|1 C1 1:0\n2|1 D1 1:0\n3|1 E1 0:2\n3|3 E1 0:2"
+  "length": "4bar",
+  "notes": "1|1 C1 n/1\n2|1 D1 n/1\n3|1 E1 n/2\n3|3 E1 n/2"
 }
 ```
 
@@ -400,7 +409,7 @@ Audio clip result:
   "looping": true,
   "start": "1|1",
   "end": "9|1",
-  "length": "8:0",
+  "length": "8bar",
   "sampleLength": 441000,
   "sampleRate": 44100,
   "warping": true,
@@ -485,13 +494,40 @@ display value, value items for quantized params).
 
 ### Include: `"sample"`
 
-Adds Simpler sample info. No effect on non-Simpler devices.
+A focused discovery view: adds just the Simpler sample file path as a flat
+top-level field, optimized for scanning many devices at once (e.g. every pad in
+a drum rack). No effect on non-Simpler devices. `gainDb`, multi-sample state
+(`multiSampleMode`), and the other Simpler sample params are not in this view —
+use `include: ["params"]` for the full set.
 
-| Field         | Type     | Description                              |
-| ------------- | -------- | ---------------------------------------- |
-| `sample`      | `string` | File path (omitted if no sample loaded)  |
-| `multisample` | `true`   | Only present for multisample instruments |
-| `gainDb`      | `number` | Gain in dB                               |
+| Field    | Type     | Description                                    |
+| -------- | -------- | ---------------------------------------------- |
+| `sample` | `string` | File path (omitted if no single sample loaded) |
+
+### Include: `"actions"`
+
+Adds the device-specific actions available on `ppal-update-device` for the
+device's specialized class (e.g. Simpler's `warpAs`, Wavetable's
+`setModulation`). Lets the model discover what it can do to a device at runtime
+instead of relying on the skills prompt. Devices with no actions (most
+specialized classes and all generic devices) omit the field.
+
+| Field     | Type       | Description                             |
+| --------- | ---------- | --------------------------------------- |
+| `actions` | `Action[]` | Each `{ name, signature, description }` |
+
+### Include: `"options"`
+
+Adds dynamic per-state/per-install catalogs for specialized devices (IR files,
+sidechain sources, current-category wavetables, `modulatableParameters`) plus
+Wavetable's current mod-matrix routes (`modulations`). Opt-in because the scan
+can be expensive. Only devices that contribute add anything; others omit the
+field. See `dev/Specialized-Devices.md` for per-device contents.
+
+| Field         | Type       | Description                                  |
+| ------------- | ---------- | -------------------------------------------- |
+| `options`     | `object`   | Per-device catalogs (omitted when none)      |
+| `modulations` | `object[]` | Wavetable only: `{ target, source, amount }` |
 
 ### `maxDepth` arg
 

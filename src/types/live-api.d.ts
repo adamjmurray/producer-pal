@@ -73,6 +73,12 @@ declare global {
     getProperty(property: string): unknown;
 
     /**
+     * Get a list-valued property as a full array (not unwrapped to the first
+     * element). Use for list properties like wavetable catalogs or IR lists.
+     */
+    getPropertyList(property: string): unknown[];
+
+    /**
      * Set a property value with automatic formatting for special properties.
      * Handles routing properties (JSON format) and ID properties ("id X" format).
      */
@@ -109,6 +115,9 @@ declare global {
 
     /** Extract clip slot index from path */
     readonly clipSlotIndex: number | null;
+
+    /** Extract take lane index from path (0-based), or null if not on a take lane */
+    readonly takeLaneIndex: number | null;
 
     /** Extract device index from path (last device in nested racks) */
     readonly deviceIndex: number | null;

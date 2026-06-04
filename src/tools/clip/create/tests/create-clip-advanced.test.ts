@@ -6,6 +6,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  overrideCall,
+  USE_CALL_FALLBACK,
+} from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
 import {
@@ -17,7 +21,7 @@ import {
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 
-vi.mock(import("#src/tools/control/select.ts"), () => ({
+vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 
@@ -50,7 +54,7 @@ describe("createClip - advanced features", () => {
 
     await createClip({
       slot: "0/0",
-      notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
+      notes: "n/2 C3 1|1 n3/4 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
     });
 
     expectClipCreated(clipSlot, 4);
@@ -119,7 +123,7 @@ describe("createClip - advanced features", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       slot: "0/0",
       noteCount: 2,
-      length: "1:0",
+      length: "1bar",
     }); // C3 and E3, D3 filtered out
   });
 
@@ -272,6 +276,48 @@ describe("createClip - advanced features", () => {
         trackIndex: 0,
         arrangementStart: "1|1",
       });
+    });
+  });
+
+  describe("note ordering and count", () => {
+    it("sorts notes ascending by start_time before add_new_notes", async () => {
+      // Authored out of order: 1|3 (start 2) precedes 1|2.5 (start 1.5). Writing
+      // them as authored would let the later beat-2.5 note overlap the beat-3
+      // onset and make Live delete it. Sorting first leaves only a tail overlap.
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip({
+        slot: "0/0",
+        notes: "n/4 C1 1|3 1|2.5",
+      });
+
+      expectNotesAdded(clip, [
+        note(36, 1.5, 1), // 1|2.5 written first after the sort
+        note(36, 2, 1), // 1|3 second
+      ]);
+    });
+
+    it("reports the actual stored note count, not the interpreted input count", async () => {
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+        clip: { length: 4 },
+      });
+
+      // Simulate Live dropping a note during add_new_notes: 3 interpreted, 2 stored.
+      overrideCall(clip, (method) =>
+        method === "get_notes_extended"
+          ? JSON.stringify({ notes: [{}, {}] })
+          : USE_CALL_FALLBACK,
+      );
+
+      const result = await createClip({
+        slot: "0/0",
+        notes: "C1 D1 E1 1|1",
+      });
+
+      expect(result).toMatchObject({ noteCount: 2 });
     });
   });
 });

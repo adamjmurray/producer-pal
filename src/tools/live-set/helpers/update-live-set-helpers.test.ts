@@ -35,7 +35,7 @@ const g = globalThis as Record<string, unknown>;
 
 function mockLiveSetWithTracks(trackIds: string[] = ["track-1"]): LiveAPI {
   return {
-    get: vi.fn().mockReturnValue([100]),
+    getProperty: vi.fn().mockReturnValue(100),
     getChildIds: vi.fn().mockReturnValue(trackIds),
   } as unknown as LiveAPI;
 }
@@ -48,13 +48,13 @@ describe("update-live-set-helpers", () => {
   describe("extendSongIfNeeded", () => {
     it("should return null if targetBeats is within song_length", () => {
       const mockLiveSet = {
-        get: vi.fn().mockReturnValue([1000]), // song_length = 1000
+        getProperty: vi.fn().mockReturnValue(1000), // song_length = 1000
       } as unknown as LiveAPI;
 
       const result = extendSongIfNeeded(mockLiveSet, 500, {});
 
       expect(result).toBeNull();
-      expect(mockLiveSet.get).toHaveBeenCalledWith("song_length");
+      expect(mockLiveSet.getProperty).toHaveBeenCalledWith("song_length");
     });
 
     it("should throw error if no tracks available", () => {

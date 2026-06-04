@@ -31,13 +31,16 @@ function getChildAtIndex(
 }
 
 /**
- * Navigate through remaining path segments after reaching a device.
- * @param startDevice - Starting device
- * @param segments - Remaining path segments with prefixes (c, d, rc, p)
+ * Navigate through path segments relative to a starting device/rack. Pure
+ * read-only resolution (no auto-creation); used both for nested drum-rack
+ * navigation and to resolve a path-prefixed pseudo-param's target relative to
+ * the rack being created/updated.
+ * @param startDevice - Starting device (or rack)
+ * @param segments - Path segments with prefixes (c, d, rc, p)
  * @returns The resolved target and its type
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- drum pad path navigation requires handling multiple segment types in one loop
-function navigateRemainingSegments(
+export function navigateRemainingSegments(
   startDevice: LiveAPI,
   segments: string[],
 ): DrumPadResolution {

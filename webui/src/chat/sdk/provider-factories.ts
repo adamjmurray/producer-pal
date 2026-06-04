@@ -7,20 +7,27 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { type LanguageModel } from "ai";
 import { type Provider } from "#webui/types/settings";
 
 /**
  * Creates an AI SDK LanguageModel instance for the given provider.
- * OpenAI-compatible providers use @ai-sdk/openai, OpenRouter uses its own SDK,
- * and Gemini uses @ai-sdk/google.
+ * LM Studio and custom OpenAI-compatible endpoints use @ai-sdk/openai-compatible
+ * (which surfaces the `reasoning_content` field local reasoning models emit as
+ * thinking; @ai-sdk/openai's chat model silently drops it). Ollama stays on
+ * @ai-sdk/openai because its thinking control rides on the `openai`
+ * providerOptions namespace. OpenRouter uses its own SDK; Gemini uses
+ * @ai-sdk/google.
  *
  * @param provider - Producer Pal provider identifier
  * @param modelId - Model identifier string
  * @param apiKey - API key for the provider
- * @param baseUrl - Optional base URL override (for local/custom providers)
+ * @param baseUrl - Optional base URL override (for local/custom providers).
+ *   Required for the `custom` provider, which has no default endpoint.
  * @returns AI SDK LanguageModel instance
+ * @throws If the `custom` provider is used without a base URL
  */
 export function createProviderModel(
   provider: Provider,
@@ -46,10 +53,11 @@ export function createProviderModel(
       return createMistral({ apiKey })(`${modelId}`);
 
     case "lmstudio":
-      return createOpenAI({
+      return createOpenAICompatible({
+        name: "lmstudio",
         apiKey: apiKey || "not-needed",
         baseURL: baseUrl ?? "http://localhost:1234/v1",
-      })(`${modelId}`);
+      }).chatModel(`${modelId}`);
 
     case "ollama":
       return createOpenAI({
@@ -57,11 +65,25 @@ export function createProviderModel(
         baseURL: baseUrl ?? "http://localhost:11434/v1",
       }).chat(`${modelId}`);
 
-    case "custom":
-      return createOpenAI({
+    case "custom": {
+      // Unlike lmstudio/ollama, the custom provider has no default endpoint and
+      // its baseUrl setting defaults to "". An empty baseURL makes
+      // @ai-sdk/openai-compatible fail with an opaque request error, so require
+      // it up front with an actionable message.
+      const customBaseUrl = baseUrl?.trim();
+
+      if (!customBaseUrl) {
+        throw new Error(
+          "The custom provider requires a URL. Set the OpenAI-compatible API endpoint URL (e.g. https://api.example.com/v1) in the connection settings.",
+        );
+      }
+
+      return createOpenAICompatible({
+        name: "custom",
         apiKey,
-        baseURL: baseUrl,
-      }).chat(`${modelId}`);
+        baseURL: customBaseUrl,
+      }).chatModel(`${modelId}`);
+    }
 
     case "gemini":
       return createGoogleGenerativeAI({ apiKey })(`${modelId}`);

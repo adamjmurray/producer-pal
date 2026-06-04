@@ -101,11 +101,13 @@ export function buildMultiTrialParts(trials: JsonEvalResult[]): SummaryPart[] {
     });
   }
 
-  // Judge: pass rate
+  // Judge: pass rate (an advisory judge never gates, so count it as passing)
   const judgeTrials = trials.filter((r) => r.judge != null);
 
   if (judgeTrials.length > 0) {
-    const judgePassed = judgeTrials.filter((r) => r.judge?.pass).length;
+    const judgePassed = judgeTrials.filter(
+      (r) => r.judge?.advisory === true || r.judge?.pass,
+    ).length;
 
     parts.push({
       label: "judge",

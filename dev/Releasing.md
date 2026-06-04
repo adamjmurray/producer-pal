@@ -131,12 +131,15 @@ Test the Claude Desktop extension (`Producer_Pal.mcpb`):
 **Automated E2E tests** (requires Ableton Live running with device active):
 
 ```sh
-npm run ui:test
+npm run e2e:webui
 ```
 
 This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
 models. See `e2e/webui/README.md` for details. These tests can be flakey, so
 manually check on anything that fails. Note: Requires `.env` file with API keys.
+
+The separate stubbed suite, `npm run ui:test`, needs no Ableton or keys and runs
+in CI — see `e2e/ui/README.md`.
 
 **Manual checks:**
 
@@ -146,6 +149,14 @@ manually check on anything that fails. Note: Requires `.env` file with API keys.
       Quick Connect (free models are excluded from E2E tests due to rate limits)
 - [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
       and a simple task (not automated due to slow response times)
+- [ ] **LM Studio** - With LM Studio running its local server, select the LM
+      Studio provider in the chat UI, enter a loaded model id, and run a simple
+      task. This exercises the webui → LM Studio path (OpenAI-compatible **Chat
+      Completions** API), which is distinct from using LM Studio as an MCP
+      client (Step 4). Regression-prone: the OpenAI-compatible providers must
+      use the Chat Completions API, not the Responses API (`.chat()` in
+      `provider-factories.ts`), or LM Studio returns a 400 "Invalid type for
+      'input'".
 
 ## Step 4: Publish to npm / test npx
 

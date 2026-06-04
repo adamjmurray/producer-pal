@@ -35,6 +35,9 @@ describe("ToolToggles", () => {
       "ppal-create-track": true,
     },
     setEnabledTools: vi.fn(),
+    liveApiEnabled: false,
+    setLiveApiEnabled: vi.fn(),
+    liveApiForcedOn: false,
   };
 
   describe("basic rendering", () => {
@@ -43,10 +46,10 @@ describe("ToolToggles", () => {
       expect(screen.getByText("Available Tools")).toBeDefined();
     });
 
-    it("renders Enable all button", () => {
+    it("renders Enable default toolset button", () => {
       render(<ToolToggles {...defaultProps} />);
       expect(
-        screen.getByRole("button", { name: "Enable all (default)" }),
+        screen.getByRole("button", { name: "Enable default toolset" }),
       ).toBeDefined();
     });
 
@@ -91,42 +94,63 @@ describe("ToolToggles", () => {
   });
 
   describe("button interactions", () => {
-    it("calls setEnabledTools with all enabled when Enable all is clicked", () => {
-      const setEnabledTools = vi.fn();
+    // Live API is opt-in — never set true by either bulk action — and is
+    // server-mirrored, so it never appears in the enabledTools record.
+    it.each([
+      {
+        button: "Enable default toolset",
+        expectedTools: {
+          "ppal-connect": true,
+          "ppal-read-live-set": true,
+          "ppal-create-track": true,
+        },
+      },
+      {
+        button: "Disable all",
+        expectedTools: {
+          "ppal-connect": true,
+          "ppal-read-live-set": false,
+          "ppal-create-track": false,
+        },
+      },
+    ])(
+      "$button updates tool map and disables Live API",
+      ({ button, expectedTools }) => {
+        const setEnabledTools = vi.fn();
+        const setLiveApiEnabled = vi.fn();
+
+        render(
+          <ToolToggles
+            {...defaultProps}
+            liveApiEnabled={true}
+            setEnabledTools={setEnabledTools}
+            setLiveApiEnabled={setLiveApiEnabled}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: button }));
+
+        expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith(expectedTools);
+        expect(setLiveApiEnabled).toHaveBeenCalledExactlyOnceWith(false);
+      },
+    );
+
+    it("Enable default toolset preserves Live API when forced on", () => {
+      const setLiveApiEnabled = vi.fn();
 
       render(
-        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+          setLiveApiEnabled={setLiveApiEnabled}
+        />,
       );
 
-      const button = screen.getByRole("button", {
-        name: "Enable all (default)",
-      });
-
-      fireEvent.click(button);
-
-      expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
-        "ppal-connect": true,
-        "ppal-read-live-set": true,
-        "ppal-create-track": true,
-      });
-    });
-
-    it("calls setEnabledTools with all disabled except session when Disable all is clicked", () => {
-      const setEnabledTools = vi.fn();
-
-      render(
-        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+      fireEvent.click(
+        screen.getByRole("button", { name: "Enable default toolset" }),
       );
-
-      const button = screen.getByRole("button", { name: "Disable all" });
-
-      fireEvent.click(button);
-
-      expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
-        "ppal-connect": true,
-        "ppal-read-live-set": false,
-        "ppal-create-track": false,
-      });
+      expect(setLiveApiEnabled).not.toHaveBeenCalled();
     });
   });
 
@@ -137,7 +161,9 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      expect(infoButtons).toHaveLength(3); // connect, read-live-set descriptions + header tooltip
+      // connect description + read-live-set description + injected Live API
+      // fallback description + header tooltip = 4
+      expect(infoButtons).toHaveLength(4);
     });
 
     it("does not render info icon for tools without descriptions", () => {
@@ -150,7 +176,8 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      expect(infoButtons).toHaveLength(1); // only the header tooltip, no per-tool tooltips
+      // header tooltip + injected Live API fallback description = 2
+      expect(infoButtons).toHaveLength(2);
     });
   });
 
@@ -236,6 +263,159 @@ describe("ToolToggles", () => {
       fireEvent.click(checkbox);
 
       expect(setEnabledTools).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Live API checkbox", () => {
+    it("renders a Live API checkbox even when not in mcpTools", () => {
+      // tools list with no ppal-live-api entry — covers the server-disabled
+      // case where listTools() filters it out
+      render(<ToolToggles {...defaultProps} />);
+      expect(screen.getByLabelText("Live API")).toBeDefined();
+    });
+
+    it("Live API checkbox reflects liveApiEnabled prop, not enabledTools", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{ "ppal-live-api": false }}
+          liveApiEnabled={true}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it("Live API checkbox unchecked when liveApiEnabled is false", () => {
+      render(<ToolToggles {...defaultProps} liveApiEnabled={false} />);
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(false);
+    });
+
+    it("clicking Live API checkbox calls setLiveApiEnabled, not setEnabledTools", () => {
+      const setEnabledTools = vi.fn();
+      const setLiveApiEnabled = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={false}
+          setEnabledTools={setEnabledTools}
+          setLiveApiEnabled={setLiveApiEnabled}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Live API"));
+
+      expect(setLiveApiEnabled).toHaveBeenCalledExactlyOnceWith(true);
+      expect(setEnabledTools).not.toHaveBeenCalled();
+    });
+
+    it("uses MCP server's Live API tool entry when present", () => {
+      const tools: McpTool[] = [
+        ...TEST_TOOLS,
+        {
+          id: "ppal-live-api",
+          name: "Live API From Server",
+          description: "Server description",
+        },
+      ];
+
+      render(<ToolToggles {...defaultProps} tools={tools} />);
+      // Server entry preferred over the fallback injection
+      expect(screen.getByLabelText("Live API From Server")).toBeDefined();
+      expect(screen.queryByLabelText("Live API")).toBeNull();
+    });
+
+    it("disables the Live API checkbox when liveApiForcedOn is true", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+
+      expect(checkbox.disabled).toBe(true);
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it("announces why the Live API checkbox is disabled when forced on", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+      const reason = "Forced on by ENABLE_LIVE_API build flag";
+
+      expect(checkbox.title).toBe(reason);
+      expect(checkbox.getAttribute("aria-describedby")).toBe(
+        "tool-ppal-live-api-reason",
+      );
+
+      const describer = document.getElementById("tool-ppal-live-api-reason");
+
+      expect(describer?.textContent).toBe(reason);
+    });
+
+    it("omits the disabled-reason hint when Live API is not forced on", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={false}
+          liveApiForcedOn={false}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+
+      expect(checkbox.title).toBe("");
+      expect(checkbox.hasAttribute("aria-describedby")).toBe(false);
+      expect(document.getElementById("tool-ppal-live-api-reason")).toBeNull();
+    });
+
+    it("does not call setLiveApiEnabled when clicking a forced-on checkbox", () => {
+      const setLiveApiEnabled = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+          setLiveApiEnabled={setLiveApiEnabled}
+        />,
+      );
+
+      // disabled inputs don't fire change events on click, but exercise the
+      // handler defensively to pin the guard
+      fireEvent.click(screen.getByLabelText("Live API"));
+      expect(setLiveApiEnabled).not.toHaveBeenCalled();
+    });
+
+    it("Disable all preserves Live API when forced on", () => {
+      const setLiveApiEnabled = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+          setLiveApiEnabled={setLiveApiEnabled}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Disable all" }));
+      expect(setLiveApiEnabled).not.toHaveBeenCalled();
     });
   });
 });

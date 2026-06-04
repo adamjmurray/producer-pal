@@ -7,11 +7,11 @@
  * LLM-as-judge assertion — single-pass pass/fail evaluation
  */
 
-import { callJudge } from "../helpers/judge/judge.ts";
 import {
   parseSimpleJudgeResponse,
   type SimpleJudgeResult,
-} from "../helpers/judge-response-parser.ts";
+} from "../helpers/judge/judge-response-parser.ts";
+import { callJudge } from "../helpers/judge/judge.ts";
 import {
   type LlmJudgeAssertion,
   type EvalTurnResult,

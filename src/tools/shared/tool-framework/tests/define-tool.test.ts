@@ -400,6 +400,38 @@ describe("defineTool", () => {
     ).rejects.toThrow();
   });
 
+  it("should strip the errorCode discriminator before returning to the MCP SDK", async () => {
+    const mockServer = createMockServer();
+    // Simulate a timeout response from callLiveApi: it carries the internal
+    // errorCode discriminator that the REST route uses, but the MCP wire result
+    // must NOT include it (MCP errors ride as isError in the result body).
+    const mockCallLiveApi = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "Tool call 'test-tool' timed out" }],
+      isError: true,
+      errorCode: "timeout",
+    });
+    const toolRegistrar = defineTool("test-tool", {
+      title: "Test Tool",
+      description: "Test",
+      inputSchema: { param: z.string() },
+    });
+
+    toolRegistrar(mockServer, mockCallLiveApi);
+
+    const toolHandler = getRegisteredHandler(mockServer);
+    const result = (await toolHandler({ param: "x" })) as {
+      content: Array<{ type: string; text: string }>;
+      isError?: boolean;
+      errorCode?: unknown;
+    };
+
+    expect(result).toStrictEqual({
+      content: [{ type: "text", text: "Tool call 'test-tool' timed out" }],
+      isError: true,
+    });
+    expect(result).not.toHaveProperty("errorCode");
+  });
+
   it("should coerce number to string when using z.coerce.string()", async () => {
     const { mockServer, mockCallLiveApi } = registerTestTool(
       {

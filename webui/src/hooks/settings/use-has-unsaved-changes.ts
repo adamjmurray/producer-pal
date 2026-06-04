@@ -14,7 +14,11 @@ export interface AppearanceSettings {
 }
 
 /**
- * Build a serializable snapshot string from settings and appearance values
+ * Build a serializable snapshot string from settings and appearance values.
+ * liveApiEnabled is intentionally omitted — it can change out from under
+ * the modal (device Setup-tab toggle, focus refetch), so comparing against
+ * a snapshot taken at open time gives false positives. The dirty flag
+ * tracks user intent for that field instead.
  * @param {UseSettingsReturn} s - Settings hook return value
  * @param {AppearanceSettings} a - Appearance settings
  * @returns {string} JSON snapshot for comparison
@@ -30,6 +34,10 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     showThoughts: s.showThoughts,
     enabledTools: s.enabledTools,
     smallModelMode: s.smallModelMode,
+    realtimeVoice: s.realtimeVoice,
+    voiceSpeed: s.voiceSpeed,
+    voiceVolume: s.voiceVolume,
+    turnDetection: s.turnDetection,
     ...a,
   });
 }
@@ -48,18 +56,24 @@ export function useHasUnsavedChanges(
   settingsOpen: boolean,
 ): boolean {
   const [snapshot, setSnapshot] = useState("");
-  const [wasOpen, setWasOpen] = useState(settingsOpen);
 
-  // Capture snapshot when settings transitions from closed to open
+  // Capture a baseline the first render the modal is open, then clear it on
+  // close so the next open recaptures. Keying off "snapshot is empty" (rather
+  // than a closed→open transition) also covers the modal being open from the
+  // very first render — first-run auto-open, or reloading with the settings
+  // modal still open (persisted view state) — where there is no transition to
+  // detect and edits would otherwise never register as unsaved.
   useEffect(() => {
-    if (settingsOpen && !wasOpen) {
+    if (settingsOpen && snapshot === "") {
       setSnapshot(serialize(settings, appearance));
+    } else if (!settingsOpen && snapshot !== "") {
+      setSnapshot("");
     }
-
-    setWasOpen(settingsOpen);
-  }, [settingsOpen, settings, appearance, wasOpen]);
+  }, [settingsOpen, settings, appearance, snapshot]);
 
   if (!settingsOpen || snapshot === "") return false;
 
-  return serialize(settings, appearance) !== snapshot;
+  return (
+    serialize(settings, appearance) !== snapshot || settings.liveApiEnabledDirty
+  );
 }

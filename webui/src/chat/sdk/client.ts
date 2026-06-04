@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type FinishReason,
   type ModelMessage,
   type TextPart,
   type ToolCallPart,
@@ -26,6 +27,11 @@ const MAX_TOOL_STEPS = 10;
  */
 export class ChatSdkClient {
   chatHistory: ChatMessage[];
+  /**
+   * True when the most recent stream stopped because it hit the tool-step
+   * limit (the model still wanted to call tools). Reset on each sendMessage.
+   */
+  toolLimitReached = false;
   private tools: ToolSet = {};
   private config: ChatClientConfig;
 
@@ -65,6 +71,7 @@ export class ChatSdkClient {
   ): AsyncGenerator<ChatMessage[], void, unknown> {
     const userMsg: ChatMessage = { role: "user", content: message };
 
+    this.toolLimitReached = false;
     stampOverrides(userMsg, overrides);
     this.chatHistory.push(userMsg);
     yield [...this.chatHistory];
@@ -135,6 +142,9 @@ export class ChatSdkClient {
 
     const stream = errorSignal.wrapStream(result.fullStream);
 
+    let completedSteps = 0;
+    let finalFinishReason: FinishReason | undefined;
+
     for await (const part of stream) {
       const handled = handleStreamPart(part.type, part, currentMsg);
 
@@ -151,9 +161,39 @@ export class ChatSdkClient {
         // New step means new assistant turn (after tool results)
         currentMsg = { role: "assistant", content: "" };
         addedCurrentMsg = false;
+      } else if (part.type === "finish-step") {
+        completedSteps++;
+      } else if (part.type === "finish") {
+        finalFinishReason = (part as { finishReason?: FinishReason })
+          .finishReason;
       }
     }
+
+    this.toolLimitReached = detectToolLimitReached(
+      completedSteps,
+      finalFinishReason,
+    );
   }
+}
+
+/**
+ * Decide whether a finished stream hit the multi-step tool-call limit.
+ *
+ * The AI SDK's `stopWhen: stepCountIs(MAX_TOOL_STEPS)` halts the agentic loop
+ * once MAX_TOOL_STEPS steps complete. If the model still wanted to call tools
+ * at that point, the final finishReason is `"tool-calls"` — that combination is
+ * the genuine limit hit. A clean `"stop"`, a user abort (no `finish` part, so
+ * finishReason is undefined), and errors all fail this check and must NOT show
+ * the notice.
+ * @param completedSteps - Number of completed steps (finish-step parts seen)
+ * @param finishReason - Overall finishReason from the finish part, if any
+ * @returns True only when the tool-step limit was reached mid-task
+ */
+export function detectToolLimitReached(
+  completedSteps: number,
+  finishReason: FinishReason | undefined,
+): boolean {
+  return completedSteps >= MAX_TOOL_STEPS && finishReason === "tool-calls";
 }
 
 /**

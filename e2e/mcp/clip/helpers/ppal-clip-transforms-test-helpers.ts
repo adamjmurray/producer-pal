@@ -33,7 +33,7 @@ export async function createMidiClip(
     arguments: {
       slot: `${emptyMidiTrack}/${sceneIndex}`,
       notes,
-      length: "2:0.0",
+      length: "2bar",
     },
   });
   const clip = parseToolResult<CreateClipResult>(result);
@@ -48,7 +48,7 @@ export async function createMidiClip(
  * @param ctx - MCP test context with client
  * @param arrangementStart - Bar|beat position for clip start
  * @param notes - Notation string for notes
- * @param length - Bar:beat duration for clip length
+ * @param length - Clip length as a duration (e.g. "1bar", "n/4", "1bar+n/4")
  * @returns Clip ID
  */
 export async function createArrangementClip(
@@ -122,7 +122,7 @@ export async function applyTransform(
 
 /**
  * Parse a notation duration value that may be decimal, fraction, or mixed number.
- * Examples: "0.75", "11/16", "1+1/2", "/4"
+ * Examples: "0.75", "11/16", "1+1/2", "/4", "0.873/4" (off-grid escape)
  * @param value - Duration string from notation output
  * @returns Numeric duration value
  */
@@ -136,8 +136,8 @@ export function parseNotationDuration(value: string): number {
     );
   }
 
-  // Fraction: "11/16" or "/4"
-  const fracMatch = value.match(/^(\d*)\/(\d+)$/);
+  // Fraction: "11/16", "/4", or off-grid decimal numerator "0.873/4"
+  const fracMatch = value.match(/^(\d+\.\d+|\d*)\/(\d+)$/);
 
   if (fracMatch) {
     const num = fracMatch[1] === "" ? 1 : Number(fracMatch[1]);

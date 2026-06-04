@@ -4,6 +4,20 @@ Essential tools for testing, debugging, and validating Producer Pal
 functionality. Claude Code should use these tools to ensure quality and
 investigate issues.
 
+## Chat & Eval CLIs
+
+`scripts/chat` (interactive chat against the MCP tools) and `scripts/eval` (run
+eval scenarios) select a model with `-m provider/model`. Discover models with
+`--list-models <provider>` (lists a provider's models live) or `--list-models`
+with no value (lists the providers); listing always prints and exits without
+starting a chat or run.
+
+```bash
+scripts/chat --list-models            # list providers
+scripts/chat --list-models openai     # list one provider's models
+scripts/chat -m claude-sonnet-4-5     # start a chat
+```
+
 ## CLI Tool
 
 **Purpose:** Direct MCP server interaction for end-to-end testing. Claude Code
@@ -42,7 +56,7 @@ Claude Code should use the CLI tool to:
 **Important:** Always ask for user permission before using the CLI tool to
 update state in Ableton Live.
 
-## Raw Live API Tool
+## Live API Tool
 
 Available only in debug builds (`npm run build:debug` or `npm run dev:debug`).
 
@@ -62,7 +76,7 @@ Not included in production builds.
 
 ```bash
 # Multiple operation types on live_set tempo
-node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -71,7 +85,7 @@ node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
 }'
 
 # Explore track properties
-node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-live-api '{
   "path": "live_set tracks 0",
   "operations": [
     {"type": "info"},
@@ -80,7 +94,7 @@ node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
 }'
 
 # Navigate and modify
-node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-live-api '{
   "operations": [
     {"type": "goto", "value": "live_set tracks 0"},
     {"type": "set", "property": "name", "value": "My Track"},
@@ -140,6 +154,26 @@ Provides:
 - Request/response inspection
 - Tool testing interface
 - Performance metrics
+
+### CORS and the streamable-http transport
+
+The streamable-http URL above is a browser-origin fetch from the inspector UI to
+the device's MCP server, so it requires CORS headers on `localhost:3350`. Dev
+builds (`npm run build:dev`, `npm run build:debug`, and `npm run dev`) already
+set `ENABLE_DEV_CORS=true`, so this just works during normal development.
+
+Release builds (`npm run build`) intentionally omit CORS headers — production
+users run the chat UI same-origin and shouldn't expose `localhost:3350` to
+arbitrary browser tabs. To debug a release build with the inspector, point it at
+the stdio portal instead:
+
+```bash
+npx @modelcontextprotocol/inspector node /absolute/path/to/producer-pal/npm/producer-pal-portal.js
+```
+
+The portal is a Node-side stdio→HTTP bridge to `localhost:3350/mcp`, so it
+sidesteps CORS entirely (server-to-server fetch, no browser involved). Use an
+absolute path — `npx` resolves relative paths against its own cwd.
 
 ## Build Warnings
 

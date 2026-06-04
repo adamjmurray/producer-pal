@@ -34,7 +34,8 @@ describe("bar|beat interpretNotation() - bar copy range operations", () => {
       ]);
     });
     it("preserves note properties in range copy", () => {
-      const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 @2-3=");
+      // n/8 = eighth = 0.5 quarter
+      const result = interpretNotation("v80 n/8 p0.8 C3 1|1 @2-3=");
 
       expect(result).toStrictEqual([
         createNote({ duration: 0.5, velocity: 80, probability: 0.8 }),
@@ -53,15 +54,16 @@ describe("bar|beat interpretNotation() - bar copy range operations", () => {
       ]);
     });
     it("handles range copy with different time signatures", () => {
+      // Default duration is a quarter note regardless of meter — 1 Ableton beat in 6/8
       const result = interpretNotation("C3 1|1 @2-3=", {
         timeSigNumerator: 6,
         timeSigDenominator: 8,
       });
 
       expect(result).toStrictEqual([
-        createNote({ duration: 0.5 }),
-        createNote({ start_time: 3.0, duration: 0.5 }),
-        createNote({ start_time: 6.0, duration: 0.5 }),
+        createNote({ duration: 1 }),
+        createNote({ start_time: 3.0, duration: 1 }),
+        createNote({ start_time: 6.0, duration: 1 }),
       ]);
     });
     it("can chain range copies with regular copies", () => {

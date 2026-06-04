@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
@@ -38,11 +39,17 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       ),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
-    params: z
-      .string()
+    params: paramsInputSchema.describe(
+      "array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+    ),
+    // Intentionally an array (not the usual comma-separated string): action
+    // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
+    // a delimited string would be ambiguous. One action string per element.
+    actions: z
+      .array(z.string())
       .optional()
       .describe(
-        "name=value per line (display units: enum string, note name, number)",
+        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)"',
       ),
     macroVariation: z
       .enum(["create", "load", "delete", "revert", "randomize"])
@@ -99,6 +106,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
   smallModelModeConfig: {
     excludeParams: [
+      "actions",
       "macroVariation",
       "macroVariationIndex",
       "macroCount",
@@ -111,7 +119,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
       name: "display name (not drum pads)",
-      params: "name=value per line",
+      params: "array of {name, value} (name = param name or id)",
       color: "#RRGGBB (chains only)",
     },
   },

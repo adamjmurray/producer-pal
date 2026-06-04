@@ -48,16 +48,18 @@ export interface AudioArrangementClipResult {
 }
 
 /**
- * Creates an audio clip in arrangement view
+ * Creates an audio clip in arrangement view on a track or take lane
  * @param trackIndex - Track index (0-based)
  * @param arrangementStartBeats - Start position in Ableton beats
  * @param sampleFile - Absolute path to audio file
+ * @param takeLane - Take lane to create on, or null for the track's main lane
  * @returns Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
   trackIndex: number,
   arrangementStartBeats: number | null,
   sampleFile: string,
+  takeLane: LiveAPI | null = null,
 ): AudioArrangementClipResult {
   // Live API limit check
   if (
@@ -69,10 +71,10 @@ export function createAudioArrangementClip(
     );
   }
 
-  const track = LiveAPI.from(livePath.track(trackIndex));
+  const target = takeLane ?? LiveAPI.from(livePath.track(trackIndex));
 
   // Create audio clip at position
-  const newClipResult = track.call(
+  const newClipResult = target.call(
     "create_audio_clip",
     sampleFile,
     arrangementStartBeats,

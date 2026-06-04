@@ -114,8 +114,12 @@ export const drumTransforms: EvalScenario = {
           );
         }
 
-        // Time range should start at 1|1 and end between 2|2.5 and 2|2.99
-        const timeMatch = /(\d+\|\d[\d.]*)-(\d+\|\d[\d.]*)/.exec(selector);
+        // Time range should start at 1|1 and reach the crescendo boundary at
+        // 2|3. Both a closed end just before it (e.g. 1|1-2|2.75) and the
+        // half-open form 1|1-<2|3 ("up to, not including, 2|3") are correct —
+        // the half-open spelling is the more precise way to say "before the
+        // crescendo", so the optional `<` must be tolerated.
+        const timeMatch = /(\d+\|\d[\d.]*)-(<)?(\d+\|\d[\d.]*)/.exec(selector);
 
         if (!timeMatch) {
           throw new Error(`missing time range in selector: ${selector}`);
@@ -127,14 +131,22 @@ export const drumTransforms: EvalScenario = {
           throw new Error(`LFO time range should start at 1|1: ${selector}`);
         }
 
-        const endStr = timeMatch[2] as string;
+        const exclusiveEnd = timeMatch[2] === "<";
+        const endStr = timeMatch[3] as string;
         const endParts = endStr.split("|").map(Number);
         const endBar = endParts[0] as number;
         const endBeat = endParts[1] as number;
+        // A closed end must stop just before the crescendo (2|2.5..2|2.99); a
+        // half-open `-<` end may land exactly on the crescendo start 2|3 (it
+        // excludes that beat, so the LFO still stays before the crescendo).
+        const endOk =
+          endBar === 2 &&
+          endBeat >= 2.5 &&
+          (exclusiveEnd ? endBeat <= 3 : endBeat < 3);
 
-        if (endBar !== 2 || endBeat < 2.5 || endBeat >= 3) {
+        if (!endOk) {
           throw new Error(
-            `LFO time range end should be 2|2.5 to 2|2.99, got ${endStr}`,
+            `LFO time range end should reach ~2|3, got ${exclusiveEnd ? "<" : ""}${endStr}`,
           );
         }
 
@@ -170,9 +182,23 @@ export const drumTransforms: EvalScenario = {
           throw new Error(`E1 (snare) not in selector: ${selector}`);
         }
 
-        // Must use rand() on velocity
-        if (!/velocity\s*\+=\s*.*\brand\b/.test(transforms)) {
-          throw new Error(`expected velocity += ... rand(): ${transforms}`);
+        // Must randomize velocity relative to its current value with rand().
+        // Accept `velocity += rand(...)` and the equivalent (and MIDI-safe)
+        // assignment `velocity = clamp(... note.velocity ... rand(...) ...)`.
+        // The assignment branch is order-independent: `rand(8) + note.velocity`
+        // and `note.velocity + rand(8)` are equally correct, so require only
+        // that the assignment references both note.velocity and rand, in any
+        // order (an order-sensitive regex would re-introduce this commit's bug).
+        const relativeRand =
+          /velocity\s*\+=\s*.*\brand\b/.test(transforms) ||
+          (/velocity\s*=/.test(transforms) &&
+            /note\.velocity/.test(transforms) &&
+            /\brand\b/.test(transforms));
+
+        if (!relativeRand) {
+          throw new Error(
+            `expected velocity randomized with rand() relative to its current value: ${transforms}`,
+          );
         }
 
         return true;

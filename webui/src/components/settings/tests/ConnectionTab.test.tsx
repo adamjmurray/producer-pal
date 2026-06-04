@@ -8,6 +8,7 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ConnectionTab } from "#webui/components/settings/ConnectionTab";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 
 // Mock child components
 vi.mock(import("#webui/components/settings/controls/ProviderSelector"), () => ({
@@ -43,6 +44,17 @@ describe("ConnectionTab", () => {
     setThinking: vi.fn(),
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
+    realtimeVoice: "marin",
+    setRealtimeVoice: vi.fn(),
+    voiceLanguage: "en",
+    setVoiceLanguage: vi.fn(),
+    voiceVolume: 1.0,
+    setVoiceVolume: vi.fn(),
+    voiceSpeed: 1.0,
+    setVoiceSpeed: vi.fn(),
+    turnDetection: DEFAULT_TURN_DETECTION,
+    setTurnDetection: vi.fn(),
+    activeVoice: null as string | null,
   };
 
   describe("cloud providers - API key input", () => {
@@ -148,6 +160,13 @@ describe("ConnectionTab", () => {
       ) as HTMLInputElement;
 
       expect(input.type).toBe("password");
+    });
+
+    it("shows the at-rest encryption transparency note", () => {
+      render(<ConnectionTab {...defaultProps} />);
+      expect(
+        screen.getByText(/encrypted at rest in your browser/i),
+      ).toBeDefined();
     });
   });
 

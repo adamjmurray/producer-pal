@@ -39,7 +39,7 @@ describe("ppal-read-clip", () => {
     expect(midiClip.name).toBe("Beat");
     expect(midiClip.view).toBe("session");
     expect(midiClip.looping).toBe(true);
-    expect(midiClip.length).toBe("1:0");
+    expect(midiClip.length).toBe("1bar");
     expect(midiClip.slot).toBe("0/0");
     expect(midiClip.notes).toBeDefined();
 
@@ -220,8 +220,8 @@ describe("ppal-read-clip compact notation", () => {
     const clip = parseToolResult<ReadClipResult>(result);
     const notes = clip.notes!;
 
-    // Fraction duration for quarter-note hits
-    expect(notes).toMatch(/t\/4/);
+    // Note-value (n<fraction>) duration for the short drum hits
+    expect(notes).toMatch(/n\/16/);
     // Comma-merged beats (e.g. 1|1,3 for kicks on beats 1 and 3)
     expect(notes).toMatch(/\d\|[\d.]+,[\d.]+/);
     expect(notes).toContain("C1");
