@@ -5,6 +5,7 @@
 
 import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
   enumParam,
   writeIntFromSet,
@@ -175,6 +176,19 @@ const [osc2CategoryParam, osc2WavetableParam] = buildOscParams(
 
 export const wavetableSpec: SpecializedDeviceSpec = {
   displayNames: ["Wavetable"],
+
+  // Each LFO keeps a free-running Hz "Rate" and a tempo-synced note-value
+  // "S. Rate"; only one applies per "Sync" mode, but Live reports both active.
+  inactiveWhen: [
+    exclusiveModes("LFO 1 Sync", {
+      Free: "LFO 1 Rate",
+      Tempo: "LFO 1 S. Rate",
+    }),
+    exclusiveModes("LFO 2 Sync", {
+      Free: "LFO 2 Rate",
+      Tempo: "LFO 2 S. Rate",
+    }),
+  ],
 
   params: [
     enumParam("filterRouting", "filter_routing", FILTER_ROUTING),

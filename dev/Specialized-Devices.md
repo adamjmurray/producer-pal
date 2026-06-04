@@ -186,6 +186,37 @@ would either invent ugly composite keys (`mod[Osc 1 Pos][Env 2]`) or collide
 with regular DeviceParameter names. Don't reach for this when `params` already
 handles the shape.
 
+### Mode-gated inactive params (`inactiveWhen`)
+
+`read-device` reports each param's `state` straight from Live's
+`DeviceParameter.state` (active / inactive / disabled), which already greys out
+section params like an off oscillator. But Live is _inconsistent_: when an LFO
+exposes both a free-running Hz `Rate` and a tempo-synced note-value `S. Rate`,
+it leaves **both** active regardless of the sync mode, so the LLM can't tell
+which one is in effect. (Real failure mode: an AI reported a synced LFO's stale
+`6.0 Hz` Rate and couldn't find the synced rate.)
+
+A spec can declare `inactiveWhen` rules to fix this: each rule names a
+_controller_ param and, per controller value, the sibling params that don't
+apply in that mode. After the params are read, `applySpecializedInactiveStates`
+(in `specialized-device-registry.ts`) sets `state: "inactive"` on them — reusing
+the values already read (no extra Live API calls), only when reading param
+values, and never overriding a state Live already set. A controller filtered out
+by a param search just skips its rule. Use the
+`exclusiveModes(controller, activeByValue)` builder (in
+`specialized-device-inactive.ts`) for the common "one mode keeps one param
+active, the rest inactive" shape.
+
+Current rules: **Wavetable** LFO 1 / LFO 2 (`Sync` → Free=Hz `Rate` /
+Tempo=`S. Rate`) and **Drift** LFO / Cyclic Envelope (`Time Mode` Freq / Time /
+Ratio / Sync, four rate params, one active per mode).
+
+Only patch devices Live leaves unmarked — verify against a running Live first
+(e.g. **Echo** already greys out its own delay/mod sync params, so it needs no
+rule). Auto Filter / Auto Pan-Tremolo / Phaser-Flanger also leave their synced
+Hz rate active, but their multi-way modes and normalized 0–1 "Rate" params make
+the mapping ambiguous; left out pending dedicated verification.
+
 ## The `options` include (opt-in discoverability)
 
 `read-device` supports an opt-in `include: ["options"]` parameter that surfaces

@@ -91,4 +91,29 @@ export interface SpecializedDeviceSpec {
   readOptions?: (device: LiveAPI) => Record<string, unknown>;
   /** Structured modulation-matrix state (Wavetable). */
   readModulations?: (device: LiveAPI) => unknown[];
+  /**
+   * Sibling-driven inactivity rules (applied only when reading param values).
+   * Live's own `parameter.state` already greys out some conditional params
+   * (e.g. an off oscillator section), but it inconsistently leaves "alternate
+   * rate" params active: a tempo-synced LFO still reports its free-running Hz
+   * `Rate` as active alongside the synced note-value param, so an LLM can't tell
+   * which one is in effect. Each rule names a controller param and, per
+   * controller value, the sibling params that don't apply in that mode; the
+   * reader marks them `state: "inactive"` (never overriding a state Live already
+   * set). Only patch devices Live leaves unmarked — e.g. Echo handles its own
+   * delay/mod sync, so it needs no rule.
+   */
+  inactiveWhen?: InactiveWhenRule[];
+}
+
+/**
+ * One inactivity rule: when `controller`'s current display value matches a key
+ * in `cases`, the named sibling params are marked inactive. A controller value
+ * with no `cases` entry leaves every sibling untouched.
+ */
+export interface InactiveWhenRule {
+  /** Display name of the controlling param (e.g. "LFO 1 Sync"). */
+  controller: string;
+  /** Controller display value → param names that are inactive at that value. */
+  cases: Record<string, string[]>;
 }

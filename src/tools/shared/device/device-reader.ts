@@ -21,6 +21,7 @@ import {
 import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
+  applySpecializedInactiveStates,
   readSpecializedActions,
   readSpecializedModulations,
   readSpecializedOptions,
@@ -360,8 +361,16 @@ function appendParameters(
     search: paramSearch,
   });
   const pseudoParams = readSpecializedParams(device, paramSearch);
+  const merged = [...pseudoParams, ...parameters];
 
-  deviceInfo.parameters = [...pseudoParams, ...parameters];
+  // Mark mode-gated params inactive where Live leaves them active (e.g. a
+  // synced LFO's free-running Hz rate). Only meaningful with values, since
+  // `state` is value-level.
+  if (includeValues) {
+    applySpecializedInactiveStates(device, merged);
+  }
+
+  deviceInfo.parameters = merged;
 }
 
 /**
