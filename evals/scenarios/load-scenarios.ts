@@ -10,6 +10,8 @@
 import { styleText } from "node:util";
 import { listConfigProfileIds } from "./config-profiles.ts";
 import {
+  arpeggioBracketIdiom,
+  arpeggioMixedDurations,
   arrangementClipWorkflow,
   audioSampleWorkflow,
   barBeatAbsoluteDurationUniformity,
@@ -71,6 +73,8 @@ const allScenarios: EvalScenario[] = [
   negativeCases,
   arrangementClipWorkflow,
   audioSampleWorkflow,
+  arpeggioBracketIdiom,
+  arpeggioMixedDurations,
   sceneAndPlayback,
   updateLiveSet,
   barBeatTriplets,

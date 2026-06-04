@@ -12,6 +12,10 @@
  */
 
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
+export {
+  arpeggioBracketIdiom,
+  arpeggioMixedDurations,
+} from "./clip/notation/arpeggio-bracket-idiom.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,
