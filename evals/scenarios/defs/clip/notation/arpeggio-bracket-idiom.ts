@@ -32,7 +32,6 @@
  */
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -41,6 +40,7 @@ import {
 import {
   clearSessionSlots,
   clipStateAssertion,
+  getCreateClipNotes,
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip-scenario-helpers.ts";
@@ -156,33 +156,12 @@ function makeArpCheck(bars: ArpBar[]): (events: NoteEvent[]) => boolean {
   };
 }
 
-/**
- * Pull the `notes` string from the turn-1 create-clip call. Throws (failing the
- * assertion with a message) when the call or the parameter is missing.
- *
- * @param turns - All turn results
- * @returns The raw notes string passed to ppal-create-clip
- */
-function createClipNotes(turns: EvalTurnResult[]): string {
-  const call = getToolCalls(turns, 1).find((c) => c.name === TOOL_CREATE_CLIP);
-
-  if (!call) throw new Error("ppal-create-clip was not called in turn 1");
-
-  const notes = call.args.notes;
-
-  if (typeof notes !== "string") {
-    throw new Error("create-clip notes parameter is missing or not a string");
-  }
-
-  return notes;
-}
-
 /** PATH (tier 1 vs 2+): the notes must use pitch-bracket cycling `[...]`. */
 const usesBracketCycling: EvalAssertion = {
   type: "custom",
   description: "create-clip notes use pitch-bracket cycling [...] for the arp",
   assert: (turns: EvalTurnResult[]) => {
-    const notes = createClipNotes(turns);
+    const notes = getCreateClipNotes(turns);
 
     if (!/\[[^\]]+]/.test(notes)) {
       throw new Error(
@@ -199,7 +178,7 @@ const usesRepeatNotation: EvalAssertion = {
   type: "custom",
   description: `create-clip notes use repeats (≤${MAX_POSITION_TOKENS} bar|beat anchors), not hand-listed positions`,
   assert: (turns: EvalTurnResult[]) => {
-    const notes = createClipNotes(turns);
+    const notes = getCreateClipNotes(turns);
     const positions = notes.match(/\d+\|\d/g) ?? [];
 
     if (positions.length > MAX_POSITION_TOKENS) {

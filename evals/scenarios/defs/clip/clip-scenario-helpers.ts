@@ -204,6 +204,33 @@ export function getTransforms(
 }
 
 /**
+ * Pull the raw `notes` string from a ppal-create-clip call in the given turn.
+ * Throws (failing the calling assertion with a message) when the call or the
+ * `notes` parameter is missing. Used by scenarios that grade HOW the model
+ * notated a clip — bracket cycling, stream zips — not just the resulting notes,
+ * which read back identically however they were written.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index containing the create-clip call (default 1)
+ * @returns The raw notes string passed to ppal-create-clip
+ */
+export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
+  const call = getToolCalls(turns, turn).find(
+    (c) => c.name === "ppal-create-clip",
+  );
+
+  if (!call) throw new Error(`ppal-create-clip not found in turn ${turn}`);
+
+  const notes = call.args.notes;
+
+  if (typeof notes !== "string") {
+    throw new Error("create-clip notes parameter is missing or not a string");
+  }
+
+  return notes;
+}
+
+/**
  * Parse a clip's notes from the read results in a turn, back into NoteEvents
  * (start_time in musical beats). Scans every `ppal-read-*` result, most recent
  * first — not just `ppal-read-clip`: the model is free to read a clip's notes

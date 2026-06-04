@@ -35,6 +35,7 @@ export {
 export {
   barBeatGallop,
   barBeatVelocityAccent,
+  barBeatZipStreams,
 } from "./clip/notation/bar-beat-value-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
