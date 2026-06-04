@@ -205,17 +205,33 @@ values, and never overriding a state Live already set. A controller filtered out
 by a param search just skips its rule. Use the
 `exclusiveModes(controller, activeByValue)` builder (in
 `specialized-device-inactive.ts`) for the common "one mode keeps one param
-active, the rest inactive" shape.
+active, the rest inactive" shape. Several controller values may map to the same
+active param (the builder dedupes the group) — e.g. Auto Filter's
+Synced/Triplet/Dotted modes all drive the one note-value selector.
 
-Current rules: **Wavetable** LFO 1 / LFO 2 (`Sync` → Free=Hz `Rate` /
-Tempo=`S. Rate`) and **Drift** LFO / Cyclic Envelope (`Time Mode` Freq / Time /
-Ratio / Sync, four rate params, one active per mode).
+Current rules:
+
+- **Wavetable** LFO 1 / LFO 2 — `Sync` → Free=Hz `Rate` / Tempo=`S. Rate`.
+- **Drift** LFO / Cyclic Envelope — `Time Mode` Freq / Time / Ratio / Sync (four
+  rate params, one active per mode).
+- **Auto Filter** — `LFO T Mode`: Rate=Hz `LFO Freq`, Time=ms `LFO Time`,
+  Synced/Triplet/Dotted=note-value `LFO Rate`, Sixteenth=count-of-16ths
+  `LFO 16th`.
+- **Auto Pan-Tremolo** — `Time Mode`: same shape as Auto Filter (`Frequency` /
+  `Time` / `Rate` / `16th`; the synced-count mode is labelled `16th`, not
+  `Sixteenth`).
+- **Phaser-Flanger** — two independent boolean sections: `Mod Sync` (Off=Hz
+  `Mod Freq` / On=note-value `Mod Rate`) and `Mod Sync 2` (`Mod Freq 2` /
+  `Mod Rate 2`).
+
+For the audio FX above, the synced `*Rate` param is a quantized note-value
+selector (raw `0`–`21`, `str_for_value` → `"1/4"` etc.) — its `value`/min/max
+read oddly out of context, which is exactly why surfacing `state: "inactive"` in
+the wrong modes matters.
 
 Only patch devices Live leaves unmarked — verify against a running Live first
 (e.g. **Echo** already greys out its own delay/mod sync params, so it needs no
-rule). Auto Filter / Auto Pan-Tremolo / Phaser-Flanger also leave their synced
-Hz rate active, but their multi-way modes and normalized 0–1 "Rate" params make
-the mapping ambiguous; left out pending dedicated verification.
+rule).
 
 ## The `options` include (opt-in discoverability)
 

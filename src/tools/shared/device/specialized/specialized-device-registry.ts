@@ -9,6 +9,11 @@ import { driftSpec } from "./devices/drift.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";
 import { hybridReverbSpec } from "./devices/hybrid-reverb.ts";
 import { meldSpec } from "./devices/meld.ts";
+import {
+  autoFilterSpec,
+  autoPanTremoloSpec,
+  phaserFlangerSpec,
+} from "./devices/modulation-rate-effects.ts";
 import { roarSpec } from "./devices/roar.ts";
 import { simplerSpec } from "./devices/simpler.ts";
 import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
@@ -33,9 +38,12 @@ const SPECS: SpecializedDeviceSpec[] = [
   simplerSpec,
   wavetableSpec,
   // Audio effects
+  autoFilterSpec,
+  autoPanTremoloSpec,
   compressorSpec,
   eqEightSpec,
   hybridReverbSpec,
+  phaserFlangerSpec,
   roarSpec,
   spectralResonatorSpec,
 ];

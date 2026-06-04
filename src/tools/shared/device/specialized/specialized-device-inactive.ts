@@ -9,8 +9,11 @@ import { type InactiveWhenRule } from "./specialized-device-types.ts";
  * Build an inactivity rule for the common "exclusive modes" shape: a controller
  * whose value selects exactly one param to keep active, leaving every other
  * param in the group inactive. Pass a map of controller value → the param
- * active at that value; for each value, all the other mapped params are listed
- * inactive. Keeps each param name in one place (DRY for the per-mode cases).
+ * active at that value; for each value, all the other params in the group are
+ * listed inactive. Keeps each param name in one place (DRY for the per-mode
+ * cases). Several controller values may map to the same active param (e.g. Auto
+ * Filter's Synced/Triplet/Dotted modes all drive the one note-value selector) —
+ * the group is deduped so the inactive lists stay clean.
  * @param controller - Controller param display name
  * @param activeByValue - Controller value → the one param active at that value
  * @returns The assembled rule
@@ -19,7 +22,7 @@ export function exclusiveModes(
   controller: string,
   activeByValue: Record<string, string>,
 ): InactiveWhenRule {
-  const allParams = Object.values(activeByValue);
+  const allParams = [...new Set(Object.values(activeByValue))];
   const cases: Record<string, string[]> = {};
 
   for (const [value, active] of Object.entries(activeByValue)) {

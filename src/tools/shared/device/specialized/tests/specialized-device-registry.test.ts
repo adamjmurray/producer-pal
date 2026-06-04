@@ -8,6 +8,11 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { driftSpec } from "../devices/drift.ts";
+import {
+  autoFilterSpec,
+  autoPanTremoloSpec,
+  phaserFlangerSpec,
+} from "../devices/modulation-rate-effects.ts";
 import { wavetableSpec } from "../devices/wavetable.ts";
 import {
   applyInactiveStates,
@@ -361,6 +366,28 @@ describe("exclusiveModes", () => {
       },
     });
   });
+
+  it("dedupes the group when several values share one active param", () => {
+    // Auto Filter's Synced/Triplet/Dotted modes all drive "note": the group is
+    // {fast, note} (not {fast, note, note, note}), so inactive lists carry no
+    // duplicates.
+    const rule = exclusiveModes("Mode", {
+      Fast: "fast",
+      Synced: "note",
+      Triplet: "note",
+      Dotted: "note",
+    });
+
+    expect(rule).toStrictEqual({
+      controller: "Mode",
+      cases: {
+        Fast: ["note"],
+        Synced: ["fast"],
+        Triplet: ["fast"],
+        Dotted: ["fast"],
+      },
+    });
+  });
 });
 
 describe("wavetableSpec.inactiveWhen (real rule data)", () => {
@@ -430,6 +457,140 @@ describe("driftSpec.inactiveWhen (real rule data)", () => {
 
       expect(param(params, name).state).toBe(expected);
     }
+  });
+});
+
+describe("modulation-rate-effects specs (real rule data)", () => {
+  /**
+   * Apply rules, then assert exactly one param in the group is active (state
+   * undefined) and every other is inactive.
+   * @param rules - The device's inactiveWhen rules
+   * @param params - Parameter entries (mutated)
+   * @param group - The mutually-exclusive rate params
+   * @param activeName - The one param expected active
+   */
+  function expectOnlyActive(
+    rules: InactiveWhenRule[],
+    params: Record<string, unknown>[],
+    group: string[],
+    activeName: string,
+  ): void {
+    applyInactiveStates(rules, params);
+
+    for (const name of group) {
+      const expected = name === activeName ? undefined : "inactive";
+
+      expect(param(params, name).state).toBe(expected);
+    }
+  }
+
+  describe("autoFilterSpec", () => {
+    const GROUP = ["LFO Freq", "LFO Time", "LFO Rate", "LFO 16th"];
+
+    /**
+     * Build Auto Filter LFO mode + four rate params for a given LFO T Mode.
+     * @param mode - LFO T Mode value
+     * @returns Parameter entries
+     */
+    function build(mode: string): Record<string, unknown>[] {
+      return [
+        { name: "LFO T Mode", value: mode },
+        { name: "LFO Freq", value: 1 },
+        { name: "LFO Time", value: 1000 },
+        { name: "LFO Rate", value: 4 },
+        { name: "LFO 16th", value: 16 },
+      ];
+    }
+
+    it.each([
+      ["Rate", "LFO Freq"],
+      ["Time", "LFO Time"],
+      ["Synced", "LFO Rate"],
+      ["Triplet", "LFO Rate"],
+      ["Dotted", "LFO Rate"],
+      ["Sixteenth", "LFO 16th"],
+    ])("%s mode → only %s active", (mode, active) => {
+      expectOnlyActive(
+        autoFilterSpec.inactiveWhen as InactiveWhenRule[],
+        build(mode),
+        GROUP,
+        active,
+      );
+    });
+  });
+
+  describe("autoPanTremoloSpec", () => {
+    const GROUP = ["Frequency", "Time", "Rate", "16th"];
+
+    /**
+     * Build Auto Pan-Tremolo mode + four rate params for a given Time Mode.
+     * @param mode - Time Mode value
+     * @returns Parameter entries
+     */
+    function build(mode: string): Record<string, unknown>[] {
+      return [
+        { name: "Time Mode", value: mode },
+        { name: "Frequency", value: 1 },
+        { name: "Time", value: 1000 },
+        { name: "Rate", value: 6 },
+        { name: "16th", value: 16 },
+      ];
+    }
+
+    it.each([
+      ["Rate", "Frequency"],
+      ["Time", "Time"],
+      ["Synced", "Rate"],
+      ["Triplet", "Rate"],
+      ["Dotted", "Rate"],
+      ["16th", "16th"],
+    ])("%s mode → only %s active", (mode, active) => {
+      expectOnlyActive(
+        autoPanTremoloSpec.inactiveWhen as InactiveWhenRule[],
+        build(mode),
+        GROUP,
+        active,
+      );
+    });
+  });
+
+  describe("phaserFlangerSpec", () => {
+    /**
+     * Build both Phaser-Flanger mod sections with given sync toggles.
+     * @param sync1 - Mod Sync value
+     * @param sync2 - Mod Sync 2 value
+     * @returns Parameter entries
+     */
+    function build(sync1: string, sync2: string): Record<string, unknown>[] {
+      return [
+        { name: "Mod Sync", value: sync1 },
+        { name: "Mod Freq", value: 0.15 },
+        { name: "Mod Rate", value: 4 },
+        { name: "Mod Sync 2", value: sync2 },
+        { name: "Mod Freq 2", value: 0.5 },
+        { name: "Mod Rate 2", value: 4 },
+      ];
+    }
+
+    const SECTION_1 = ["Mod Freq", "Mod Rate"];
+    const SECTION_2 = ["Mod Freq 2", "Mod Rate 2"];
+
+    // Each section is an independent Hz/sync toggle (Off → Hz freq, On → synced
+    // rate). The cases set the two sections to opposite toggles, proving they
+    // don't interfere.
+    it.each([
+      ["Off", "Mod Freq", "On", "Mod Rate 2"],
+      ["On", "Mod Rate", "Off", "Mod Freq 2"],
+    ])(
+      "Mod Sync %s → %s; Mod Sync 2 %s → %s",
+      (sync1, active1, sync2, active2) => {
+        const rules = phaserFlangerSpec.inactiveWhen as InactiveWhenRule[];
+        const params = build(sync1, sync2);
+
+        expectOnlyActive(rules, params, SECTION_1, active1);
+        expectOnlyActive(rules, params, SECTION_2, active2);
+      },
+    );
   });
 });
 
