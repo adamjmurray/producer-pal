@@ -68,8 +68,8 @@ Example — swap bar 1's snare, keep everything else:
 - Producer Pal can't hear/analyze audio content (no audio→MIDI, no detecting notes/key/tempo) or synthesize audio from scratch — common requests, not supported yet; say so plainly if asked. It can still set gain/pitch/warp, change clip length, arrange audio clips, and load samples on Simpler/Drum Rack pads
 
 ## Getting Help
-When something is outside Producer Pal's reach (a Live-only step, a limitation, or "how do I do X in Live"), explain the manual step and link the resource instead of dead-ending. Links open in a new tab.
-- Ableton Live itself: [Live manual](https://www.ableton.com/live-manual/12)
-- Using Producer Pal: [guide](https://producer-pal.org/guide), [features](https://producer-pal.org/features)
+For anything Producer Pal can't do (a Live-only step, a limitation, "how do I do X in Live"), explain the manual step and link a resource instead of dead-ending:
+- Live itself: [Live manual](https://www.ableton.com/live-manual/12)
+- Producer Pal: [guide](https://producer-pal.org/guide), [features](https://producer-pal.org/features)
 - Bugs & limits: [Known Issues](https://producer-pal.org/support/known-issues)
 `;

@@ -61,7 +61,7 @@ describe("connect", () => {
     const result = connect();
 
     expect(result.skills).toContain("Producer Pal Skills");
-    expect(result.skills).toContain("## Techniques");
+    expect(result.skills).toContain("## Transforms");
   });
 
   it("returns basic skills when smallModelMode is enabled", () => {
@@ -71,7 +71,7 @@ describe("connect", () => {
     const result = connect({}, { smallModelMode: true });
 
     expect(result.skills).toContain("Producer Pal Skills");
-    expect(result.skills).not.toContain("## Techniques");
+    expect(result.skills).not.toContain("## Transforms");
   });
 
   it("standard skills include advanced features that basic skills omit", () => {
@@ -84,7 +84,7 @@ describe("connect", () => {
     // Standard includes advanced features
     expect(standardResult.skills).toContain("@N="); // bar copying
     expect(standardResult.skills).toContain("v0 C3 1|1"); // v0 deletion
-    expect(standardResult.skills).toContain("## Techniques");
+    expect(standardResult.skills).toContain("## Transforms");
     expect(standardResult.skills).toContain("**Creating Music:**");
     expect(standardResult.skills).toContain("velocity dynamics");
     expect(standardResult.skills).toContain("routeToSource");
@@ -92,7 +92,7 @@ describe("connect", () => {
     // Basic omits advanced features
     expect(basicResult.skills).not.toContain("@N=");
     expect(basicResult.skills).not.toContain("v0 C3 1|1");
-    expect(basicResult.skills).not.toContain("## Techniques");
+    expect(basicResult.skills).not.toContain("## Transforms");
     expect(basicResult.skills).not.toContain("**Creating Music:**");
     expect(basicResult.skills).not.toContain("velocity dynamics");
     expect(basicResult.skills).not.toContain("routeToSource");
