@@ -4,8 +4,8 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 ## Requirements
 
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
+
 - [Node.js 20+](https://nodejs.org/en/download)
 - [Claude Code](https://www.anthropic.com/claude-code) (requires Anthropic
   account, and a paid subscription at time of writing)

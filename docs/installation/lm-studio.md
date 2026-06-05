@@ -14,8 +14,8 @@ compelling.
 
 ## Requirements
 
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
+
 - [LM Studio](https://lmstudio.ai/)
 
 ## Installation Steps

@@ -16,8 +16,7 @@ is not recommended for personal use.
 ## What You Need
 
 - A Google account
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Get a Gemini API Key
 
