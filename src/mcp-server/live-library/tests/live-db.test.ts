@@ -38,8 +38,8 @@ describe("openLiveDb", () => {
     rmSync(scratchDir, { recursive: true, force: true });
   });
 
-  it("opens a DB and returns SELECT results", () => {
-    const db = openLiveDb(dbPath);
+  it("opens a DB and returns SELECT results", async () => {
+    const db = await openLiveDb(dbPath);
     const rows = db
       .prepare("SELECT name FROM files ORDER BY file_id")
       .all()
@@ -50,8 +50,8 @@ describe("openLiveDb", () => {
     expect(rows).toStrictEqual([{ name: "kick.wav" }, { name: "snare.wav" }]);
   });
 
-  it("rejects writes (read-only enforcement)", () => {
-    const db = openLiveDb(dbPath);
+  it("rejects writes (read-only enforcement)", async () => {
+    const db = await openLiveDb(dbPath);
 
     expect(() => db.exec("INSERT INTO files VALUES (3, 'crash.wav')")).toThrow(
       /readonly|read[ -]?only/i,
@@ -60,7 +60,7 @@ describe("openLiveDb", () => {
     db.close();
   });
 
-  it("encodes ? and # in path so URI parsing does not eat them", () => {
+  it("encodes ? and # in path so URI parsing does not eat them", async () => {
     const trickyDir = join(scratchDir, "weird?name#here");
 
     mkdirSync(trickyDir, { recursive: true });
@@ -69,7 +69,7 @@ describe("openLiveDb", () => {
 
     createFixtureDb(trickyPath);
 
-    const db = openLiveDb(trickyPath);
+    const db = await openLiveDb(trickyPath);
     const row = db.prepare("SELECT COUNT(*) AS n FROM files").get() as {
       n: number;
     };
@@ -79,8 +79,8 @@ describe("openLiveDb", () => {
     expect(row.n).toBe(2);
   });
 
-  it("throws when the file does not exist", () => {
-    expect(() => openLiveDb(join(scratchDir, "missing.db"))).toThrow();
+  it("throws when the file does not exist", async () => {
+    await expect(openLiveDb(join(scratchDir, "missing.db"))).rejects.toThrow();
   });
 });
 

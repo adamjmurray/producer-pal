@@ -71,7 +71,7 @@ export async function librarySearch(
   // degrade to dbAvailable:false rather than surfacing a raw SQLite error to the
   // LLM. Mirrors listPlugins.
   try {
-    const db = openLiveDb(dbPath);
+    const db = await openLiveDb(dbPath);
 
     try {
       // Treat inFolder="" as "no folder filter" (least-surprise): an empty

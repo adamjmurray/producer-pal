@@ -17,24 +17,99 @@
  * acceptable for read-only library queries the user can re-issue.
  *
  * Hard rules: SELECT-only, no `ATTACH … AS rw`, no write SQL ever.
+ *
+ * `node:sqlite` is resolved via a dynamic import (see {@link openLiveDb}), NOT
+ * a static top-level import. It shipped flag-free only in Node 22.13; older
+ * Node-for-Max runtimes (an older or standalone Max) don't expose it. A static
+ * import would fail at module-link time and crash the entire MCP server on
+ * load — blocking the user from connecting to Ableton at all. Loading it
+ * lazily keeps the failure inside the library code paths: the route guard
+ * ({@link ensureSqliteAvailable}) checks it up front and throws
+ * {@link SqliteUnavailableError}, surfacing as a hard tool error the chat UI
+ * flags and the LLM sees, while connecting and every other tool keep working.
  */
 
-import { DatabaseSync } from "node:sqlite";
+import { type DatabaseSync } from "node:sqlite";
+
+/**
+ * Guidance surfaced to the LLM when the host runtime lacks `node:sqlite`.
+ * Live 12.4 is the first release whose bundled Max ships a Node-for-Max new
+ * enough (Node 22.13+) to provide it. User-facing, so it avoids runtime jargon
+ * and reads naturally after each route's `Failed to read Live database:` prefix.
+ */
+export const SQLITE_UNAVAILABLE_MESSAGE =
+  "you must be running Ableton Live 12.4 or later to use this feature. If you " +
+  "are using standalone Max instead of the Max bundled with Live, make sure " +
+  "Max is up to date.";
+
+/**
+ * Thrown when the host runtime doesn't provide `node:sqlite` (a Max older than
+ * the one bundled with Live 12.4). A distinct type so the route registration
+ * guard ({@link ensureSqliteAvailable}) lets it propagate as a hard tool error,
+ * rather than the soft `dbAvailable: false` degrade the routes use for a
+ * missing DB or schema drift.
+ */
+export class SqliteUnavailableError extends Error {}
 
 /**
  * Open a Live database file read-only with immutable=1.
  *
  * @param dbPath - Absolute filesystem path to the SQLite database
  * @returns A read-only DatabaseSync handle. Caller is responsible for `.close()`.
- * @throws If the file does not exist or cannot be opened
+ * @throws If `node:sqlite` is unavailable on this runtime, or the file cannot
+ *   be opened
  */
-export function openLiveDb(dbPath: string): DatabaseSync {
+export async function openLiveDb(dbPath: string): Promise<DatabaseSync> {
+  const open = await loadOpener();
+
   // SQLite URI format requires the `file:` scheme and percent-encoded path.
   // Backslashes (Windows) and `?`/`#` in the path itself must be encoded so
   // they aren't parsed as URI delimiters.
   const uri = `file:${encodePathForSqliteUri(dbPath)}?mode=ro&immutable=1`;
 
-  return new DatabaseSync(uri);
+  return open(uri);
+}
+
+/**
+ * Confirm the runtime provides `node:sqlite`, throwing
+ * {@link SqliteUnavailableError} if not. Called up front by the library route
+ * guard (before any DB work) so an unsupported runtime surfaces as a hard tool
+ * error instead of being swallowed by a route's schema-drift degrade guard.
+ *
+ * @throws {SqliteUnavailableError} when `node:sqlite` is unavailable
+ */
+export async function ensureSqliteAvailable(): Promise<void> {
+  await loadOpener();
+}
+
+let openerPromise: Promise<(uri: string) => DatabaseSync> | undefined;
+
+/**
+ * Lazily load `node:sqlite` and resolve to a `DatabaseSync` factory, caching
+ * the in-flight/settled promise so the import happens at most once.
+ *
+ * The import is dynamic (not a static top-level `import`) so a runtime without
+ * `node:sqlite` fails here — at call time, inside the library code paths —
+ * rather than at module-link time, which would crash the whole MCP server on
+ * load.
+ *
+ * @returns A promise resolving to a function that opens a DB at the given URI
+ * @throws {SqliteUnavailableError} With {@link SQLITE_UNAVAILABLE_MESSAGE} when
+ *   the runtime does not provide `node:sqlite`
+ */
+function loadOpener(): Promise<(uri: string) => DatabaseSync> {
+  openerPromise ??= import("node:sqlite").then(
+    ({ DatabaseSync }) =>
+      (uri: string) =>
+        new DatabaseSync(uri),
+    (error) => {
+      throw new SqliteUnavailableError(SQLITE_UNAVAILABLE_MESSAGE, {
+        cause: error,
+      });
+    },
+  );
+
+  return openerPromise;
 }
 
 /**

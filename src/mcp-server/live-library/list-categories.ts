@@ -77,7 +77,7 @@ export async function listCategories(
   // rename of the metadata/metadata_values tables or columns would throw a raw
   // SQLite error to the LLM. Degrade to dbAvailable:false. Mirrors librarySearch.
   try {
-    const db = openLiveDb(dbPath);
+    const db = await openLiveDb(dbPath);
 
     try {
       const base = {
