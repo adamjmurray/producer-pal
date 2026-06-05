@@ -323,11 +323,15 @@ bar|beat notes layer's `vA-B` exactly. This is the **persistent base velocity +
 in the clip editor, **not** a one-time `rand(A,B)` baked at transform time. Each
 bound is clamped to 0-127 and the lower becomes the base, so `v120-80` ≡
 `v80-120` and out-of-range bounds clamp before the deviation is computed
-(`v200-250` ≡ velocity 127, deviation 0). A selector applies to both writes, so
+(`v200-250` ≡ velocity 127, deviation 0). A 0 lower bound (`v0-N`, `vN-0`,
+`v0-0`) is a parse error rather than a silent delete: the base would be velocity
+0, which is the delete sentinel, so the range would drop every matched note —
+the `min === 0` check rejects both orderings and equal bounds with the same
+targeted message the barbeat grammar uses. A selector applies to both writes, so
 `C1: v80-120` produces two assignment rows in the parsed AST — still written as
 one token per line. (Because Peggy grammars cannot import a shared helper, this
-mapping is duplicated from the barbeat interpreter and pinned by
-`velocity-range-parity.test.ts`.)
+mapping — including the v0 guard and its error text — is duplicated from the
+barbeat grammar and pinned by `velocity-range-parity.test.ts`.)
 
 ## Units and Time Signatures
 

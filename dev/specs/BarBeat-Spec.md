@@ -97,6 +97,10 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Single value: `v100` (fixed velocity)
   - Range: `v80-120` or `v120-80` (random velocity between min and max,
     auto-ordered)
+  - Range lower bound must be ≥1: a 0 lower bound (`v0-N`, `vN-0`, `v0-0`) is a
+    parse error — `vA-B` desugars to base velocity `min`, and a base velocity of
+    0 is the delete sentinel, so the range would silently delete every note it
+    touches. The `min === 0` check catches both orderings and equal bounds.
   - Special: `v0` deletes earlier notes with matching pitch and time (see Note
     Deletion section)
   - Default: 100

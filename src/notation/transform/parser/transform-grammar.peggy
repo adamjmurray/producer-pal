@@ -130,6 +130,14 @@ shorthand "shorthand assignment"
       // tried before plain `vN` (which would match `v80` and strand `-120`).
       // Kept in lockstep by velocity-range-parity.test.ts (Peggy cannot import
       // the barbeat helper).
+      //
+      // Reject a 0 lower bound (covers `v0-N` / `vN-0` / `v0-0` via the single
+      // `min === 0` check): base velocity 0 is the delete sentinel, so the range
+      // would silently delete every note it touches. Byte-for-byte mirror of the
+      // barbeat-grammar.peggy `velocity` rule's guard.
+      if (Math.min(min, max) === 0) {
+        throw new Error(`"${text()}" is invalid: velocity ranges must start at 1 or higher — v0 is the delete sentinel, not a range floor. Use v1-N for a low humanization floor, or a bare v0 to delete.`);
+      }
       const lo = Math.max(0, Math.min(127, Math.min(min, max)));
       const hi = Math.max(0, Math.min(127, Math.max(min, max)));
       return [

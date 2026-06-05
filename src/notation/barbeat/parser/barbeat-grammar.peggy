@@ -214,6 +214,19 @@ probability "probability value"
 
 velocity "velocity value"
   = "v" start:unsignedInt "-" end:unsignedInt {
+    // Velocity range = humanized random velocity (base velocity + deviation).
+    // Reject a 0 lower bound: `vA-B` desugars to base velocity = min(start,end),
+    // and base velocity 0 is the delete sentinel (applyV0Deletions), so a
+    // `v0-N` / `vN-0` / `v0-0` range would silently delete every note it touches.
+    // The single `min === 0` check covers both orderings and v0-0. Deliberate
+    // exception to the "values clamp+warn in the interpreter; the grammar never
+    // throws on a velocity value" rule above: this is not an out-of-range value
+    // (0 is valid) but a contradictory token whose delete-vs-humanize meaning is
+    // intrinsic, with no per-note recovery. Mirrored byte-for-byte in
+    // transform-grammar.peggy; pinned by velocity-range-parity.test.ts.
+    if (Math.min(start, end) === 0) {
+      throw new Error(`"${text()}" is invalid: velocity ranges must start at 1 or higher — v0 is the delete sentinel, not a range floor. Use v1-N for a low humanization floor, or a bare v0 to delete.`);
+    }
     return {
       velocityMin: Math.min(start, end),
       velocityMax: Math.max(start, end),

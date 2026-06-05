@@ -175,6 +175,19 @@ describe("Transform Parser - shorthand", () => {
       });
     });
 
+    it("rejects a 0 lower bound (v0 is the delete sentinel, not a range floor)", () => {
+      // Mirrors the barbeat grammar guard: base velocity 0 is the delete
+      // sentinel, so a range with a 0 lower bound would silently delete notes.
+      // The single `min === 0` check covers both orderings and equal bounds.
+      const v0Error =
+        /velocity ranges must start at 1 or higher — v0 is the delete sentinel/;
+
+      expect(() => parser.parse("v0-100")).toThrow(v0Error);
+      expect(() => parser.parse("v100-0")).toThrow(v0Error);
+      expect(() => parser.parse("v0-0")).toThrow(v0Error);
+      expect(() => parser.parse("v0-100")).toThrow(/"v0-100" is invalid/);
+    });
+
     it("does not shadow additive shorthand (v-10 stays a subtract)", () => {
       expect(parser.parse("v-10")).toStrictEqual([
         {
