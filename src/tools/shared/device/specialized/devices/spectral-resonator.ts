@@ -4,10 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  enumParam,
   readBoolProp,
-  readEnumByIndex,
   writeBoolProp,
-  writeEnumByIndex,
   writeIntFromSet,
   writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
@@ -62,20 +61,7 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
       write: (device, value, toolName) =>
         writeBoolProp(device, "midi_gate", value, toolName, "midiGate"),
     },
-    {
-      name: "monoPoly",
-      options: MONO_POLY_LABELS,
-      read: (device) => readEnumByIndex(device, "mono_poly", MONO_POLY_LABELS),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "mono_poly",
-          value,
-          MONO_POLY_LABELS,
-          toolName,
-          "monoPoly",
-        ),
-    },
+    enumParam("monoPoly", "mono_poly", MONO_POLY_LABELS),
     {
       name: "pitchBendRange",
       options: "0-24",
@@ -91,34 +77,8 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
           "pitchBendRange",
         ),
     },
-    {
-      name: "modMode",
-      options: MOD_MODES,
-      read: (device) => readEnumByIndex(device, "mod_mode", MOD_MODES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "mod_mode",
-          value,
-          MOD_MODES,
-          toolName,
-          "modMode",
-        ),
-    },
-    {
-      name: "pitchMode",
-      options: PITCH_MODES,
-      read: (device) => readEnumByIndex(device, "pitch_mode", PITCH_MODES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "pitch_mode",
-          value,
-          PITCH_MODES,
-          toolName,
-          "pitchMode",
-        ),
-    },
+    enumParam("modMode", "mod_mode", MOD_MODES),
+    enumParam("pitchMode", "pitch_mode", PITCH_MODES),
     {
       name: "polyphony",
       options: POLYPHONY_COUNTS,

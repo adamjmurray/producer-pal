@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   type BinaryOpNode,
   type FunctionNode,
+  type PitchLiteralNode,
   type VariableNode,
 } from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
@@ -180,85 +181,6 @@ describe("Transform Parser", () => {
     it("throws on invalid pitch (out of range)", () => {
       expect(() => parser.parse("C10: velocity += 10")).toThrow();
       expect(() => parser.parse("C-5: velocity += 10")).toThrow();
-    });
-  });
-
-  describe("time range selectors", () => {
-    it("parses bar|beat-bar|beat range", () => {
-      const result = parser.parse("1|1-3|1: velocity += 10");
-
-      expect(result[0]!.timeRange).toStrictEqual({
-        startBar: 1,
-        startBeat: 1,
-        endBar: 3,
-        endBeat: 1,
-      });
-    });
-
-    it("parses fractional beats in range", () => {
-      const result = parser.parse("1|1.5-2|3.5: velocity += 10");
-
-      expect(result[0]!.timeRange).toStrictEqual({
-        startBar: 1,
-        startBeat: 1.5,
-        endBar: 2,
-        endBeat: 3.5,
-      });
-    });
-
-    it("parses +n note-value offset bounds", () => {
-      const result = parser.parse("1|1+n/12-2|2-n/24: velocity += 10");
-
-      // 4/4 default: n/12 = 1/3 beat, n/24 = 1/6 beat
-      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.3333);
-      expect(result[0]!.timeRange!.endBeat).toBeCloseTo(1.8333);
-    });
-
-    it("resolves n offsets meter-relative to timeSigDenominator", () => {
-      // n/12 = 1/12 whole note → 1/3 beat in 4/4, 2/3 beat in 6/8.
-      const in44 = parser.parse("1|1+n/12-2|1: velocity += 10", {
-        timeSigDenominator: 4,
-      });
-      const in68 = parser.parse("1|1+n/12-2|1: velocity += 10", {
-        timeSigDenominator: 8,
-      });
-
-      expect(in44[0]!.timeRange!.startBeat).toBeCloseTo(1.3333);
-      expect(in68[0]!.timeRange!.startBeat).toBeCloseTo(1.6667);
-    });
-
-    it("rejects bare fractions in a range bound", () => {
-      expect(() => parser.parse("1|4/3-2|1: velocity += 10")).toThrow(
-        /bare fraction/,
-      );
-    });
-
-    it("rejects mixed numbers in a range bound", () => {
-      expect(() => parser.parse("1|1+1/3-2|1: velocity += 10")).toThrow(
-        /note-value form/,
-      );
-    });
-
-    it("borrows across the bar line for a -n bound before the downbeat", () => {
-      // `2|1-n/12` start bound = just before the bar-2 downbeat → bar 1, beat 4⅔
-      // in 4/4. The separator `-` before `3|1` is not consumed as an offset.
-      const result = parser.parse("2|1-n/12-3|1: velocity += 10");
-
-      expect(result[0]!.timeRange!.startBar).toBe(1);
-      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(4.6667);
-      expect(result[0]!.timeRange!.endBar).toBe(3);
-      expect(result[0]!.timeRange!.endBeat).toBe(1);
-    });
-
-    it("resolves a -n bound before 1|1 to a pre-clip-start position (no throw)", () => {
-      // `1|1-n/2` = bar 1 minus a half note → bar 0, beat 3 (negative time when
-      // resolved). Allowed, not rejected.
-      const result = parser.parse("1|1-n/2-2|1: velocity += 10");
-
-      expect(result[0]!.timeRange!.startBar).toBe(0);
-      expect(result[0]!.timeRange!.startBeat).toBe(3);
-      expect(result[0]!.timeRange!.endBar).toBe(2);
-      expect(result[0]!.timeRange!.endBeat).toBe(1);
     });
   });
 
@@ -700,19 +622,23 @@ describe("Transform Parser", () => {
     it("parses pitch literal C3 (middle C)", () => {
       const result = parser.parse("pitch = C3");
 
-      expect(result[0]!.expression).toBe(60);
+      expect(result[0]!.expression).toStrictEqual({
+        type: "pitchLiteral",
+        value: 60,
+        name: "C3",
+      });
     });
 
     it("parses pitch literal with sharp", () => {
       const result = parser.parse("pitch = C#3");
 
-      expect(result[0]!.expression).toBe(61);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(61);
     });
 
     it("parses pitch literal with flat", () => {
       const result = parser.parse("pitch = Db3");
 
-      expect(result[0]!.expression).toBe(61);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(61);
     });
 
     it("parses pitch literal in arithmetic expression", () => {
@@ -720,26 +646,26 @@ describe("Transform Parser", () => {
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("add");
-      expect(expr.left).toBe(60);
+      expect((expr.left as PitchLiteralNode).value).toBe(60);
       expect(expr.right).toBe(7);
     });
 
     it("parses pitch literal with negative octave", () => {
       const result = parser.parse("pitch = C-1");
 
-      expect(result[0]!.expression).toBe(12);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(12);
     });
 
     it("parses lowest valid pitch literal C-2", () => {
       const result = parser.parse("pitch = C-2");
 
-      expect(result[0]!.expression).toBe(0);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(0);
     });
 
     it("parses highest valid pitch literal G8", () => {
       const result = parser.parse("pitch = G8");
 
-      expect(result[0]!.expression).toBe(127);
+      expect((result[0]!.expression as PitchLiteralNode).value).toBe(127);
     });
 
     it("throws on pitch literal out of range (too high)", () => {
@@ -756,8 +682,12 @@ describe("Transform Parser", () => {
 
       expect(expr.type).toBe("divide");
       expect((expr.left as BinaryOpNode).type).toBe("add");
-      expect((expr.left as BinaryOpNode).left).toBe(60);
-      expect((expr.left as BinaryOpNode).right).toBe(67);
+      expect(((expr.left as BinaryOpNode).left as PitchLiteralNode).value).toBe(
+        60,
+      );
+      expect(
+        ((expr.left as BinaryOpNode).right as PitchLiteralNode).value,
+      ).toBe(67);
       expect(expr.right).toBe(2);
     });
 
@@ -766,8 +696,23 @@ describe("Transform Parser", () => {
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("add");
-      expect(expr.left).toBe(60);
+      expect((expr.left as PitchLiteralNode).value).toBe(60);
       expect((expr.right as VariableNode).name).toBe("pitch");
+    });
+
+    it("parses case-insensitive, Unicode, and enharmonic pitch literals", () => {
+      // Same tolerance as the bar|beat note layer, locked across both grammars
+      // by pitch-class-grammar-parity.test.ts. Enharmonics wrap the octave: B#
+      // resolves up to C, Cb down to B.
+      const value = (s: string): number =>
+        (parser.parse(s)[0]!.expression as PitchLiteralNode).value;
+
+      expect(value("pitch = c3")).toBe(60);
+      expect(value("pitch = gb1")).toBe(42);
+      expect(value("pitch = C♯1")).toBe(37);
+      expect(value("pitch = E#3")).toBe(65); // → F3
+      expect(value("pitch = B#3")).toBe(72); // → C4
+      expect(value("pitch = Cb4")).toBe(71); // → B3
     });
   });
 

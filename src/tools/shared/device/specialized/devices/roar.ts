@@ -4,10 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  enumParam,
   readBoolProp,
-  readEnumByIndex,
   writeBoolProp,
-  writeEnumByIndex,
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
@@ -36,21 +35,7 @@ const ROUTING_MODES = [
 export const roarSpec: SpecializedDeviceSpec = {
   displayNames: ["Roar"],
   params: [
-    {
-      name: "routingMode",
-      options: ROUTING_MODES,
-      read: (device) =>
-        readEnumByIndex(device, "routing_mode_index", ROUTING_MODES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "routing_mode_index",
-          value,
-          ROUTING_MODES,
-          toolName,
-          "routingMode",
-        ),
-    },
+    enumParam("routingMode", "routing_mode_index", ROUTING_MODES),
     {
       name: "envListen",
       read: (device) => readBoolProp(device, "env_listen"),

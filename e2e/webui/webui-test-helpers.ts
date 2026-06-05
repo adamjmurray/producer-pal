@@ -77,7 +77,7 @@ export async function navigateToChat(page: Page): Promise<void> {
     throw new Error(
       "Could not connect to Producer Pal. Make sure:\n" +
         "1. Ableton Live is running with the Producer Pal device active\n" +
-        "2. The device is built with `npm run build:all`\n\n" +
+        "2. The device is built with `npm run build:debug`\n\n" +
         `Original error: ${message}`,
       { cause: error },
     );

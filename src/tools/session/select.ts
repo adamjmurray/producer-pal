@@ -8,6 +8,7 @@ import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
   applyDetailView,
+  applyPluginEditorWindow,
   updateClipSelection,
   updateClipSlotSelection,
   updateDeviceSelection,
@@ -39,6 +40,7 @@ interface SelectArgs {
   sceneIndex?: number;
   slot?: string;
   devicePath?: string;
+  openPluginWindow?: boolean;
 
   // Internal-only params (used by other tools calling select() directly)
   trackId?: string;
@@ -58,7 +60,7 @@ export interface SelectResult {
     trackIndex?: number;
     arrangementStart?: string;
   };
-  selectedDevice?: { id: string; path: string };
+  selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
 }
 
 /**
@@ -133,7 +135,22 @@ export function select(
     updateClipSelection({ appView, songView, clipId, requestedView: view });
   }
 
-  updateDeviceSelection({ songView, deviceId, devicePath });
+  const selectedDeviceAPI = updateDeviceSelection({
+    songView,
+    deviceId,
+    devicePath,
+  });
+
+  let pluginWindowOpen: boolean | undefined;
+
+  if (args.openPluginWindow != null) {
+    const applied = applyPluginEditorWindow(
+      selectedDeviceAPI,
+      args.openPluginWindow,
+    );
+
+    if (applied) pluginWindowOpen = args.openPluginWindow;
+  }
 
   const clipSlotHasClip =
     parsedClipSlot != null &&
@@ -159,6 +176,10 @@ export function select(
   addSceneToResponse(result, sceneResult.selectedSceneId);
   addClipToResponse(result, resolved, clipSlotHasClip, effectiveView);
   addDeviceToResponse(result, resolved, args);
+
+  if (pluginWindowOpen != null && result.selectedDevice != null) {
+    result.selectedDevice.pluginWindowOpen = pluginWindowOpen;
+  }
 
   return result;
 }
@@ -251,6 +272,7 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     clipId != null ||
     deviceId != null ||
     args.devicePath != null ||
+    args.openPluginWindow != null ||
     parsedClipSlot != null;
 
   const hasArgs = hasSelectionArgs || args.view != null;

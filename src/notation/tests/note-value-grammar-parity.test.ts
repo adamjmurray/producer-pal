@@ -178,7 +178,9 @@ const OFFSET_SITES = [
 
 describe("note-value grammar parity across all parse sites", () => {
   describe("canonical note-value durations agree across all duration sites", () => {
-    // n<frac> (numerator omitted → 1), Nbar, and the mixed Nbar+n<frac> form.
+    // n<frac> (numerator omitted → 1), Nbar, and the mixed Nbar±n<frac> form
+    // (the minus tail subtracts a sub-bar note value: `1bar-n/16` = almost a
+    // full bar). Tokens stay positive in every meter so the `ref > 0` guard holds.
     const TOKENS = [
       "n/4",
       "n/8",
@@ -190,6 +192,8 @@ describe("note-value grammar parity across all parse sites", () => {
       "2bar",
       "1bar+n/4",
       "3bar+n3/8",
+      "1bar-n/16",
+      "2bar-n3/8",
     ];
 
     for (const [num, den] of METERS) {
@@ -208,8 +212,11 @@ describe("note-value grammar parity across all parse sites", () => {
   });
 
   describe("Nbar is a note value on every duration surface", () => {
-    // Regression lock: the transform grammar once lacked Nbar entirely.
-    for (const token of ["1bar", "4bar", "1bar+n/4"]) {
+    // Regression lock: the transform grammar once lacked Nbar entirely. The
+    // minus tail (`1bar-n/16`) composes as barDuration - nDuration in the
+    // transform grammar, so it must still register as a note value, not bare
+    // arithmetic.
+    for (const token of ["1bar", "4bar", "1bar+n/4", "1bar-n/16"]) {
       it(`transform accepts "${token}" as a note value`, () => {
         expect(transformIsNoteValueDuration(token, 4, 4)).toBe(true);
         expect(() => durationViaTransform(token, 4, 4)).not.toThrow();
@@ -320,9 +327,36 @@ describe("note-value grammar parity across all parse sites", () => {
     }
   });
 
+  describe("leading-zero bar counts are rejected as note values (L2)", () => {
+    // The grammars' bar count is `oneOrMoreInt = [1-9][0-9]*`; the regex now
+    // matches it with `0|[1-9]\d*`. A leading-zero count (`01bar`, `007bar`)
+    // parses on no duration site — previously the regex accepted `01bar` → 4
+    // while both grammars rejected it (the unguarded half of the parity gap).
+    for (const token of ["01bar", "007bar", "01bar+n/4"]) {
+      it(`duration "${token}" is rejected by every duration site`, () => {
+        for (const site of DURATION_SITES) {
+          expect(() => site.fn(token, 4, 4)).toThrow();
+        }
+      });
+    }
+
+    it("`0bar` → 0 on the regex site only (documented intentional divergence)", () => {
+      // A lone `0bar` is the one bar-count value where the sites legitimately
+      // differ: the regex maps it to 0 (the length serializer emits `0bar` for a
+      // zero-length clip, an output-only field never fed back through Peggy),
+      // while both grammars reject it (`oneOrMoreInt` starts at 1). This is the
+      // documented exception the L2 fix deliberately preserves.
+      expect(durationViaRegex("0bar", 4, 4)).toBe(0);
+      expect(() => durationViaBarbeat("0bar", 4, 4)).toThrow();
+      expect(() => durationViaTransform("0bar", 4, 4)).toThrow();
+    });
+  });
+
   describe("±n beat offsets agree across all offset sites", () => {
     // Plain grid beats, dyadic decimals, and `±n` note-value offsets — including
-    // a `-n` that borrows below beat 1 into negative time (a note before 1|1).
+    // a `-n` that borrows below beat 1 into negative time (a note before 1|1),
+    // and a DECIMAL base carrying an offset (`1.5+n/12`): the offset base is an
+    // integer-or-decimal grid beat on every site.
     const TOKENS = [
       "1",
       "1.5",
@@ -333,6 +367,9 @@ describe("note-value grammar parity across all parse sites", () => {
       "1-n/12",
       "2-n3/16",
       "1+n5/12",
+      "1.5+n/12",
+      "2.25-n/24",
+      "1.5+n/8",
     ];
 
     for (const [num, den] of METERS) {

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +10,8 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
+import { skills as basicSkills } from "#src/skills/basic.ts";
+import { skills as standardSkills } from "#src/skills/standard.ts";
 import {
   parseToolResult,
   setConfig,
@@ -51,15 +54,12 @@ describe("ppal-connect", () => {
         /^\d+\/\d+$/.test(parsed.liveSet.timeSignature),
     ).toBe(true);
 
-    // Skills documentation - standard mode has full skills (~7.6K chars)
-    expect(parsed.skills).toBeDefined();
-    expect(parsed.skills).toContain("Producer Pal Skills");
-    expect(parsed.skills!.length).toBeGreaterThan(5000);
-
-    // Standard mode includes advanced features
-    expect(parsed.skills).toContain("@N="); // bar copying
-    expect(parsed.skills).toContain("v0 C3 1|1"); // v0 deletion
-    expect(parsed.skills).toContain("## Techniques"); // advanced section
+    // Standard mode returns the full standard skills verbatim. Asserting
+    // equality with the source module (rather than hand-picked content markers
+    // like section headings) means any future skills reorg flows through
+    // automatically — this test can never silently drift out of sync with the
+    // skills, which is exactly the failure that hardcoded markers caused before.
+    expect(parsed.skills).toBe(standardSkills);
   });
 
   it("returns simplified skills (smallModelMode=true)", async () => {
@@ -71,22 +71,11 @@ describe("ppal-connect", () => {
     expect(parsed.connected).toBe(true);
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
 
-    // Skills documentation - small model mode has simplified skills (~4.2K chars)
-    expect(parsed.skills).toBeDefined();
-    expect(parsed.skills).toContain("Producer Pal Skills");
-    expect(parsed.skills!.length).toBeLessThan(5000);
-
-    // Small model mode excludes the advanced features the standard tier asserts
-    // it contains (see standard-mode test above). The basic tier does document
-    // preTransforms `v0`/`pN`, so only standard-only markers are excluded here.
-    expect(parsed.skills).not.toContain("@N="); // No bar copying
-    expect(parsed.skills).not.toContain("v0 C3 1|1"); // No inline note deletion
-    expect(parsed.skills).not.toContain("## Techniques"); // No advanced section
-    expect(parsed.skills).not.toContain("/d0"); // No device paths
-
-    // Basic features are still present
-    expect(parsed.skills).toContain("bar|beat");
-    expect(parsed.skills).toContain("Melody");
+    // Small model mode returns the simplified basic skills verbatim — and,
+    // crucially, something different from standard mode, proving the mode
+    // switch actually changed what the live server serves.
+    expect(parsed.skills).toBe(basicSkills);
+    expect(parsed.skills).not.toBe(standardSkills);
   });
 
   describe("memory contents", () => {

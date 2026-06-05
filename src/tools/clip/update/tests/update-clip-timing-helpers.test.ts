@@ -64,6 +64,38 @@ describe("update-clip-timing-helpers", () => {
       expect(result.firstStartBeats).toBe(2);
     });
 
+    it("rejects a 0-indexed start with the 1-indexing steer (parity with create-clip)", () => {
+      const mockClip = {
+        getProperty: vi.fn(() => 0),
+      };
+
+      expect(() =>
+        calculateBeatPositions({
+          start: "1|0",
+          timeSigNumerator: 4,
+          timeSigDenominator: 4,
+          clip: mockClip as unknown as LiveAPI,
+          isLooping: true,
+        }),
+      ).toThrow(/beats are 1-indexed/);
+    });
+
+    it("rejects a 0-indexed firstStart with the 1-indexing steer", () => {
+      const mockClip = {
+        getProperty: vi.fn(() => 0),
+      };
+
+      expect(() =>
+        calculateBeatPositions({
+          firstStart: "0|1",
+          timeSigNumerator: 4,
+          timeSigDenominator: 4,
+          clip: mockClip as unknown as LiveAPI,
+          isLooping: true,
+        }),
+      ).toThrow(/bars are 1-indexed/);
+    });
+
     it("should not warn when start exceeds end_marker (silent skip intentional)", () => {
       vi.mocked(outlet).mockClear();
 

@@ -367,6 +367,14 @@ export function evaluateExpression(
     return node;
   }
 
+  // Pitch literal (`C4`, `b2`) — evaluates to its MIDI number. The node stays
+  // tagged through the AST so applyAssignmentToNotes can warn-and-skip a bare
+  // pitch literal assigned to a non-pitch parameter; everywhere else (function
+  // args, `pitch = C4`) it is just its number.
+  if (node.type === "pitchLiteral") {
+    return node.value;
+  }
+
   // Absolute duration (n/4, n/8, etc.) — resolves to musical beats based on meter
   if (node.type === "nDuration") {
     return wholeNoteFractionToMusicalBeats(

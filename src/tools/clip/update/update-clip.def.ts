@@ -115,7 +115,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip — a whole bar ('3|*: v0', the |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: v0'), or everything ('v0'). Works with or without notes",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip. v0 deletes (zero velocity): clear a whole bar ('3|*: v0', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: v0'), or all ('v0'); also remap a drum lane ('C1: C4'). Works with or without notes",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {

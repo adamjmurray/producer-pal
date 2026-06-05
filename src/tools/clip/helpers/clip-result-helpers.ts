@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
   barBeatToAbletonBeats,
   durationToAbletonBeats,
+  validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -67,6 +69,10 @@ export function validateAndParseArrangementParams(
   result.songTimeSigDenominator = denominator;
 
   if (arrangementStart != null) {
+    // Validate the standalone position first so a 0-indexed/zero-bar
+    // arrangement start gets the 1-indexing steer (matching create-clip), not a
+    // silent pre-origin beat.
+    validateBarBeatPosition(arrangementStart);
     result.arrangementStartBeats = barBeatToAbletonBeats(
       arrangementStart,
       numerator,

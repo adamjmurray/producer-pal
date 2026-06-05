@@ -11,8 +11,14 @@ import {
 } from "../../rpc/node-request-protocol.ts";
 import { registerLibraryRoutes } from "../library-routes.ts";
 
-vi.mock(import("../library-search.ts"), () => ({
+vi.mock(import("../query/library-search.ts"), () => ({
   librarySearch: vi.fn(),
+}));
+vi.mock(import("../query/find-similar.ts"), () => ({
+  findSimilar: vi.fn(),
+}));
+vi.mock(import("../query/find-duplicates.ts"), () => ({
+  findDuplicates: vi.fn(),
 }));
 vi.mock(import("../list-tags.ts"), () => ({
   listTags: vi.fn(),
@@ -29,11 +35,20 @@ vi.mock(import("../../node-for-max-logger.ts"), () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+// Keep the real exports (message, error type) but stub the runtime guard so it
+// resolves by default; one test overrides it to reject (unsupported runtime).
+vi.mock(import("../live-db.ts"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  ensureSqliteAvailable: vi.fn(),
+}));
 
-const searchMod = await import("../library-search.ts");
+const searchMod = await import("../query/library-search.ts");
+const similarMod = await import("../query/find-similar.ts");
+const duplicatesMod = await import("../query/find-duplicates.ts");
 const tagsMod = await import("../list-tags.ts");
 const categoriesMod = await import("../list-categories.ts");
 const pluginsMod = await import("../list-plugins.ts");
+const liveDbMod = await import("../live-db.ts");
 
 describe("registerLibraryRoutes", () => {
   beforeEach(() => {
@@ -179,5 +194,99 @@ describe("registerLibraryRoutes", () => {
     );
 
     expect(pluginsMod.listPlugins).toHaveBeenCalledWith({});
+  });
+
+  it("registers library.findSimilar and dispatches with parsed args", async () => {
+    vi.mocked(similarMod.findSimilar).mockResolvedValue({
+      dbAvailable: true,
+      seed: { path: "/x.wav", found: true },
+      items: [],
+    });
+
+    await handleNodeRequest(
+      "req-sim",
+      JSON.stringify({
+        route: "library.findSimilar",
+        args: { similarTo: "/x.wav", tags: "Kick" },
+      }),
+    );
+
+    expect(similarMod.findSimilar).toHaveBeenCalledWith({
+      similarTo: "/x.wav",
+      tags: "Kick",
+    });
+  });
+
+  it("library.findSimilar defaults to empty args when null", async () => {
+    vi.mocked(similarMod.findSimilar).mockResolvedValue({
+      dbAvailable: false,
+      seed: { path: "", found: false },
+      items: [],
+    });
+
+    await handleNodeRequest(
+      "req-sim-null",
+      JSON.stringify({ route: "library.findSimilar", args: null }),
+    );
+
+    expect(similarMod.findSimilar).toHaveBeenCalledWith({});
+  });
+
+  it("registers library.findDuplicates and dispatches with parsed args", async () => {
+    vi.mocked(duplicatesMod.findDuplicates).mockResolvedValue({
+      dbAvailable: true,
+      groups: [],
+    });
+
+    await handleNodeRequest(
+      "req-dup",
+      JSON.stringify({
+        route: "library.findDuplicates",
+        args: { inFolder: "/Drums" },
+      }),
+    );
+
+    expect(duplicatesMod.findDuplicates).toHaveBeenCalledWith({
+      inFolder: "/Drums",
+    });
+  });
+
+  it("library.findDuplicates defaults to empty args when null", async () => {
+    vi.mocked(duplicatesMod.findDuplicates).mockResolvedValue({
+      dbAvailable: false,
+      groups: [],
+    });
+
+    await handleNodeRequest(
+      "req-dup-null",
+      JSON.stringify({ route: "library.findDuplicates", args: null }),
+    );
+
+    expect(duplicatesMod.findDuplicates).toHaveBeenCalledWith({});
+  });
+
+  it("fails the route (not a soft degrade) when the runtime lacks node:sqlite", async () => {
+    vi.mocked(liveDbMod.ensureSqliteAvailable).mockRejectedValueOnce(
+      new liveDbMod.SqliteUnavailableError(
+        liveDbMod.SQLITE_UNAVAILABLE_MESSAGE,
+      ),
+    );
+
+    await handleNodeRequest(
+      "req-no-sqlite",
+      JSON.stringify({ route: "library.search", args: {} }),
+    );
+
+    // Guard runs before the handler, so the route never executes.
+    expect(searchMod.librarySearch).not.toHaveBeenCalled();
+
+    const call = vi.mocked(Max.outlet).mock.calls[0];
+    const response = JSON.parse(call?.[2] as string) as {
+      success: boolean;
+      error?: string;
+    };
+
+    expect(response.success).toBe(false);
+    expect(response.error).toContain("Ableton Live 12.4");
   });
 });

@@ -38,7 +38,9 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
       eighth triplet. Its size measured _in the local beat unit_ changes only
       because the beat unit itself changes (1/3 of a quarter-beat in 4/4, 2/3 of
       an eighth-beat in 6/8 — the same musical duration). The grid beat it
-      displaces, by contrast, **is** meter-relative.
+      displaces, by contrast, **is** meter-relative. The displaced beat may be
+      an **integer or a decimal** — `1|1.5+n/4` is "beat 1.5 plus a quarter
+      note" — so a decimal sub-beat and a note-value offset compose freely.
 
     **The two forms are NOT interchangeable.** The decimal is meter-relative and
     the `±n` offset is absolute, so they denote the same time **only in `x/4`
@@ -69,13 +71,17 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
-    `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`
-    mixed. A bare `@/4` (note value with no `n`) and a bare `@1` (beats) are
-    both rejected — authoring stays note-value-only.
+    `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar±n<fraction>`
+    mixed (the tail may add or subtract, e.g. `@1bar-n/4` = a near-bar advance).
+    A bare `@/4` (note value with no `n`) and a bare `@1` (beats) are both
+    rejected — authoring stays note-value-only. A step that resolves to zero or
+    less (e.g. `@1bar-n4/4` in 4/4) is rejected.
     - Example: `1|1x4@n/4` → 4 positions a quarter note apart: beats 1,2,3,4 in
       4/4
     - Example: `1|1x3@n/12` → eighth-note triplets at beats 1, 4/3, 5/3 in 4/4
     - Example: `1|1x4@1bar` → 4 positions one bar apart
+    - Example: `1|1x3@1bar-n/4` → 3 positions a near-bar apart: beats 1, 4, 7 in
+      4/4
   - Notes are emitted ONLY at time positions
   - Buffered pitches persist and re-emit at subsequent time positions
   - Requires whitespace separation from following elements
@@ -112,26 +118,29 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     note)
   - Meter-independent: `n/4` is always one quarter note, in 4/4, 6/8, 5/4, etc.
   - **Bar durations**: `Nbar` (meter-aware, e.g. `1bar` = hold one bar in any
-    meter) and `Nbar+n<fraction>` mixed (e.g. `1bar+n3/4`) are also valid inline
-    durations. The `bar` term never wears an `n`; the note-value tail keeps its
-    own `n`. So `n1bar` is invalid — write `1bar`. The `n`-prefixed bar forms
-    (`n1bar`, `n/1bar`, `n3/4bar`) are a common model hallucination, so every
-    duration site rejects them with a targeted error ("bar durations don't use
-    the `n` prefix — write Nbar"), not the generic format error. A plural `bars`
-    (`2bars`) is accepted as an input-tolerance alias of `Nbar` on every
-    duration site; serialized output is always singular (`2bar`)
+    meter) and `Nbar±n<fraction>` mixed (e.g. `1bar+n3/4`, or `1bar-n/16` =
+    "almost a full bar") are also valid inline durations. The tail may add or
+    subtract the note value; the `bar` term never wears an `n`, and the
+    note-value tail keeps its own `n`. So `n1bar` is invalid — write `1bar`. The
+    `n`-prefixed bar forms (`n1bar`, `n/1bar`, `n3/4bar`) are a common model
+    hallucination, so every duration site rejects them with a targeted error
+    ("bar durations don't use the `n` prefix — write Nbar"), not the generic
+    format error. A plural `bars` (`2bars`) is accepted as an input-tolerance
+    alias of `Nbar` on every duration site; serialized output is always singular
+    (`2bar`). The minus form is input-tolerance only — the serializer emits the
+    canonical on-grid `n<fraction>`/`Nbar`, never a `-n` tail
   - Default: `n/4` (one quarter note)
   - Requires whitespace separation from following elements
   - NOTE: clip `length` and arrangement durations use this same duration
     grammar: `Nbar` (meter-aware, e.g. `4bar`), `n<fraction>` note value (e.g.
-    `n/4` quarter, `n/8` eighth, `n3/8` dotted quarter), or `Nbar+n<fraction>`
-    mixed (e.g. `1bar+n/4`). Off-grid lengths with no clean note-value form
-    (sample-derived audio lengths) use a **decimal-numerator escape pinned to
-    `/4`**: `n<beats>/4` == `<beats>` Ableton beats (`n1.9638/4` = 1.9638
-    quarters, since `n<x>/4` = x quarters). This keeps the escape under the `n`
-    sigil so the duration vocabulary stays uniform. Bare numbers (e.g.
-    `1.9638`), bare _fractions_ (`1/4`), and bare decimals (`0.5`) are all
-    **invalid** as durations — a duration is always a bar count or an
+    `n/4` quarter, `n/8` eighth, `n3/8` dotted quarter), or `Nbar±n<fraction>`
+    mixed (e.g. `1bar+n/4`, `1bar-n/16`). Off-grid lengths with no clean
+    note-value form (sample-derived audio lengths) use a **decimal-numerator
+    escape pinned to `/4`**: `n<beats>/4` == `<beats>` Ableton beats
+    (`n1.9638/4` = 1.9638 quarters, since `n<x>/4` = x quarters). This keeps the
+    escape under the `n` sigil so the duration vocabulary stays uniform. Bare
+    numbers (e.g. `1.9638`), bare _fractions_ (`1/4`), and bare decimals (`0.5`)
+    are all **invalid** as durations — a duration is always a bar count or an
     `n`-prefixed note value, never a bare scalar; the `n` prefix marks a note
     value everywhere
   - NOTE (read contract): when a clip is serialized back to notation, a MIDI
@@ -146,10 +155,16 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:
-    - A–G (with optional sharp `#` or flat `b`)
-    - Valid pitch classes: C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#,
-      Bb, B
-    - Invalid: `Cb`, `B#`, `Fb`, `E#` (not supported)
+    - A–G (case-insensitive) with an optional accidental: sharp `#`, flat `b`,
+      or the Unicode glyphs `♯` (U+266F) / `♭` (U+266D). An uppercase `B` also
+      reads as a flat, so an all-caps `GB3` parses as `Gb3`.
+    - All twelve pitch classes are spellable both ways: C, C#/Db, D, D#/Eb, E,
+      F, F#/Gb, G, G#/Ab, A, A#/Bb, B.
+    - Enharmonic spellings are accepted and normalized: `E#`→F, `Fb`→E, and the
+      two octave-wrapping edges `B#`→C of the next octave, `Cb`→B of the
+      previous octave (the `(octave+2)*12+value` formula carries the wrap: `B#3`
+      = `C4`, `Cb4` = `B3`).
+    - A double accidental (`Cbb`, `C##`) or a non-letter (`H`) is rejected.
   - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
   - Valid MIDI range is 0–127. Range is **not** enforced by the parser — an
@@ -172,6 +187,34 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Multiple notes at same time separated by whitespace
   - No commas between elements
   - All state (time, probability, velocity, duration) persists across events
+
+- **Targeted parse errors** — a few malformed tokens raise a specific,
+  fix-suggesting error instead of peggy's generic "Expected …", because each is
+  a recognizable model mistake with a single right answer:
+  - `1|0` (and `1|0.x`) — beats are **1-indexed**; the downbeat is beat 1
+    (`1|1`). For a pickup before it, offset from beat 1 (`1|1-n/4`). The
+    `1|0`-as-pickup reading is deliberately **not** taught.
+  - `1.1`, `1:1` — positions use a **pipe** (`1|1`), not `.` or `:`.
+  - a bare integer standing alone (e.g. `60`) — use a **note name** (`C3`), not
+    a raw MIDI number.
+  - `1|1-2|1` — a position is a **single** `bar|beat`; a beat range belongs in a
+    transform time filter, not a bar|beat position.
+
+- **Standalone position fields share the 1-indexing gate.** Bar|beat positions
+  that arrive as their own tool-input field (create-clip `start` / `firstStart`
+  / `arrangementStart`, locator `time`, playback loop start/end) bypass the
+  notes grammar, so they are guarded by `validateBarBeatPosition` at the field
+  boundary. It throws the **same** 1-indexing error as the `1|0` / zero-bar
+  parse-error above, keeping the two surfaces consistent. (The low-level
+  `barBeatToMusicalBeats` / `barBeatToAbletonBeats` conversions stay
+  intentionally **never-throw** — they allow negative time so a `-n` pickup
+  resolves before the origin, and run per-note in transform `timeRange` checks
+  where a throw would spam — so the gate lives at the field boundary, not in the
+  conversion.)
+  - **Negative time is by design, not the zero-index mistake:** a pickup before
+    the downbeat is the offset form `1|1-n/4` (which keeps the beat literal at 1
+    and resolves to a negative beat); it passes the gate. Only a literal `1|0` /
+    `0|1` / `1|01` is the rejected 1-indexing mistake.
 
 ---
 
@@ -239,11 +282,16 @@ When a `v0` note is encountered during interpretation:
    the same pitch AND time (within 0.001 beats tolerance)
 2. **Serial order**: Only affects notes that appear earlier in the notation
    string
-3. **Kept in output**: The `v0` note itself remains in the interpreter output so
-   that tools such as update-clip can make use of the data (to delete notes in
-   existing clips, a separate process from notation interpretation)
-4. **Filtered by tools**: `create-clip` filters out v0 notes; `update-clip` uses
-   them to delete existing clip notes
+3. **Stripped from output**: The `v0` note itself is also removed —
+   `interpretNotation` applies the deletions as its final step and never returns
+   a `velocity: 0` note. The output contains only surviving real notes
+4. **How update-clip deletes**: `update-clip` does NOT read surviving v0 notes
+   from the interpreter output. It serializes the clip's existing notes to
+   notation, concatenates `<existing> <new>` into one string, and interprets
+   that combined string ONCE — so a `v0` in the new notation deletes the
+   matching existing note during that single interpretation pass. `create-clip`
+   has no existing notes to match, so any `v0` simply deletes nothing and is
+   stripped
 
 ### Examples
 
@@ -256,7 +304,8 @@ C3 D3 E3 1|1 v0 C3 1|1  // Result: D3 and E3 at 1|1 (C3 deleted)
 **Order matters:**
 
 ```
-v0 C3 1|1 v100 C3 1|1  // Result: both notes (v0 has nothing to delete)
+v0 C3 1|1 v100 C3 1|1  // Result: one note — v100 C3 (the v0 had nothing earlier
+                       // to delete and is itself stripped from the output)
 ```
 
 **Deletion after bar copy:**
@@ -305,11 +354,14 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 
 - **Time tolerance**: Notes within 0.001 beats are considered at the same time
 - **Processing order**: Applied as final step after all bar copy operations
-- **Output format**: v0 notes appear in interpreter output with `velocity: 0`
+- **Output format**: v0 notes are stripped — interpreter output never contains a
+  `velocity: 0` note (deletions resolve in-pass, leaving only real notes)
 - **Tool behavior**:
-  - `create-clip`: Filters out v0 notes (can't create v0 notes in Live)
-  - `update-clip`: Uses v0 notes to delete matching existing clip notes, then
-    filters them out
+  - `create-clip`: A v0 has no earlier match to delete and is dropped — no v0
+    note reaches Live
+  - `update-clip`: Deletes by interpreting `<existing-notation> <new-notation>`
+    as one combined string, so a v0 in the new notation removes the matching
+    existing note during that pass (it does not consume v0 notes from output)
 
 ---
 
@@ -336,9 +388,9 @@ bar|{start}x{times}@{step}
 ```
 
 - **start**: Starting beat position — the same dialect as note positions: a
-  whole beat, a decimal sub-beat (`1.5`), or a `±n` note-value offset
-  (`1+n/12`). Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`)
-  are rejected
+  whole beat, a decimal sub-beat (`1.5`), or an integer-or-decimal grid beat
+  plus a `±n` note-value offset (`1+n/12`, `1.5+n/12`). Bare fractions (`4/3`)
+  and bar-relative mixed numbers (`1+1/3`) are rejected
 - **times**: Number of repetitions (positive integer)
 - **step**: Interval between repetitions, **same note-value duration grammar as
   `n`** — `@n<fraction>` note value (denominator mandatory, numerator defaults
@@ -415,6 +467,25 @@ C1 1|1x4@n/4,3.5  // Beats 1,2,3,4,3.5 (beat 3.5 listed explicitly)
 C1 1|1x2@n/4,3x2@n/8  // Beats 1,2,3,3.5 in 4/4
 ```
 
+**Sticky per-item `bar|`**: A comma beat-list opens with `bar|`, and any later
+item may **restate its own `bar|`**. An explicit bar updates a running "current
+bar"; bare items inherit the most recent one. This lets a single list span bars
+without splitting it across whitespace:
+
+```
+8|2,8|2.5          // both in bar 8 (the item restates the bar)
+1|1,2|3            // bar 1 beat 1, then bar 2 beat 3
+1|1,2|1,3          // 1|1, 2|1, 2|3  (the bare 3 inherits bar 2)
+1|1,2,2|1,2        // bar 1 beats 1,2 then bar 2 beats 1,2
+```
+
+This is purely input tolerance — the bar-grouped form (`1|1,2 2|1,2`,
+whitespace-separated) still works and serialization is unchanged. **Whitespace
+after a comma is allowed** (`1|1, 2, 3`), and a **single trailing comma** is
+ignored (`1|1,2,`). The comma separator stays on one logical line: a newline is
+not absorbed into the list, so `1|1,2` then a newline then `2|3` remains two
+separate time positions.
+
 ### Interaction with Other Features
 
 **Pitch buffering**: All buffered pitches emit at each expanded position:
@@ -443,6 +514,244 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 **Step size**: Must be greater than 0 (validated in grammar)
 
 **Start position**: Must be ≥ 1 (enforced by grammar)
+
+---
+
+## Pattern Brackets (Streams)
+
+> **Status: design locked 2026-06-01, fully implemented (AJM-482 / AJM-483).**
+> This section is the authoritative design contract for the bracket/stream
+> feature. **Pitch streams (`[C3 E3 G3]`, AJM-482) and value streams for
+> velocity/duration/probability (`[v80 v100]`, `[n/4 n/8]`, `[p1 p0.6]`,
+> AJM-483) ship in v1.4.12, including the cross-event cursor, the zip, and the
+> no-`@step` duration-fold** — streams step across separate time positions,
+> multiple sibling streams cycle independently against a shared emission index,
+> and (with `@step` omitted) a duration stream folds its cycled values into the
+> position spacing as well as each note's length.
+
+### The model: a parameter's current state is a _stream_
+
+A **stream** is an ordered list of values for one parameter (pitch, velocity,
+duration, or probability). Today every parameter holds a single scalar; a
+bracket lets it hold a list. **A scalar — or a bare chord — is just a length-1
+stream.** There is no separate "bracket scope"; brackets only let current state
+be a _cycling list_ instead of a constant.
+
+Emission reads two independent things, both indexed by a per-parameter cursor
+`i`:
+
+- **Value** — each active stream yields `stream[i mod stream.length]`. A bare,
+  unbracketed token is a length-1 (constant) stream, so it yields the same value
+  at every `i` (today's behavior, unchanged).
+- **Position** — a running-sum fold: `pos[0] = start`,
+  `pos[i] = pos[i-1] + advance[i-1]`, where `advance` is `@step` if present,
+  else the just-emitted note's duration. This generalizes the existing "`@step`
+  omitted ⇒ step defaults to the current duration" rule: when `@step` is omitted
+  and a duration stream is active, `advance[i]` is the _cycled_ duration
+  `durStream[(cursor + i) mod len]`, so the duration stream changes spacing as
+  well as length — the duration-fold (see the Gallop example). With no duration
+  stream the no-`@step` advance is the scalar current duration, as before.
+
+When every stream is length-1, the zip reduces **exactly** to today's broadcast
+(each position emits the whole pitch buffer) — full backward compatibility.
+
+#### Pitch LAYERS; velocity/duration/probability are last-wins
+
+Pitch is the one parameter that can hold **multiple voices at once**. Within a
+group, the constant chord (bare pitches) and every pitch bracket are independent
+**voices**, each a stream of chords. At emission `i` the sounding chord is the
+**union over all voices** of `voice[(cursor + i) mod voice.length]` — one shared
+pitch cursor, each voice cycling by its own length, so voices of unequal length
+phase against each other.
+
+```
+C4 [E4 G4 C5] 1|1,2,3,4   // held C4 layered under a moving line:
+                          //   (C4,E4) (C4,G4) (C4,C5) (C4,E4)
+[C3 C4] [E3 G3 E4] 1|1,2,3,4   // two voices (len 2, len 3) phasing:
+                               //   (C3,E3) (C4,G3) (C3,E4) (C4,E3)
+```
+
+Velocity, duration, and probability are **single last-wins streams** — a note
+has exactly one of each, so stacking them is meaningless; a second value bracket
+for the same parameter replaces the first. Stacking _pitches_ is a chord, which
+is musically meaningful, so pitch layers instead. Layering only accumulates
+**within a group** (pitch tokens before the group's first time position); a
+pitch token or bracket after a time position starts a fresh group (see Cursor
+lifetime). A single pitch voice still behaves exactly as before — `[C1] 1|1`
+emits one note, the length-1 == scalar invariant.
+
+### Syntax
+
+```
+[ value value ... ]   // a stream of one parameter's values
+( pitch pitch ... )   // a chord: one element holding simultaneous pitches
+```
+
+- A bracket holds tokens of **one parameter kind**: `[C3 E3 G3]` (pitch),
+  `[v80 v100]` (velocity, ranges allowed: `[v40-80 v100]`), `[n/4 n/8]`
+  (duration, bar forms allowed: `[1bar n/8]`), `[p1 p0.6]` (probability). A
+  bracket mixing kinds (`[v80 C3]`) is an error. First characters are disjoint
+  across kinds, so the bracket's kind is unambiguous.
+- **`(...)` is strictly a chord** — simultaneous pitches at one step.
+  `[(C3 E3) (D3 F3)]` is a 2-element pitch stream whose elements are 2-note
+  chords. A group holds pitches only.
+- Brackets **zip**: write each varying parameter as its own sibling bracket.
+  `[v80 v100] [C3 E3 G3] 1|1x8@n/8` cycles velocity (len 2) against pitch
+  (len 3) against the shared emission index. Each stream mods by its own length,
+  so coprime lengths phase against each other.
+- **Sibling brackets may abut with no separating space** — a leading `[` is a
+  self-delimiting boundary, so `[C3 E3 G3][v80 v100]` parses identically to the
+  space-separated form. This is an input tolerance (like comma-space and
+  sticky-bar); the space is still **required** from a bracket to a non-bracket
+  element (`[C3 E3 G3] 1|1x3@n/4` — the time position needs its space). Other
+  adjacencies (`C3E3`, `v80v100`) remain ambiguous and are rejected.
+
+> **Supersedes the AJM-482 syntax sketch.** 482 originally sketched a group as
+> "whatever's grouped," bundling a velocity with a pitch
+> (`[(v100 C3) (v80 E3)]`). The resolved AJM-483 model **deletes** per-element
+> bundling: parameters vary as **independent zipped streams**, and `(...)` is a
+> chord only. Per-step velocity is `[v100 v80] [C3 E3]`, never `[(v100 C3) …]`.
+
+### Cursor lifetime
+
+- Each `[...]` token **instantiates one cursor** at its lexical position. The
+  cursor advances **once per emitted note-event** — a chord counts as one event.
+  It never rewinds.
+- A stream **persists until its parameter is reassigned**, advancing **globally
+  across separate note events**, not just within one `x<count>` expansion. For
+  **velocity/duration/probability**, a later scalar or a later `[...]` for that
+  parameter replaces the stream with a fresh cursor (index 0). For **pitch**, a
+  later pitch token or bracket _within the same group_ LAYERS (adds a voice); a
+  pitch token or bracket _after a time position_ starts a fresh group, which
+  clears the voices and rewinds the shared pitch cursor to 0. Each cursor
+  carries across separate time positions and comma-separated beat lists,
+  independently.
+- **Identity is lexical, not textual.** The same bracket text written twice is
+  two independent streams, each starting at index 0.
+
+```
+// Pitch cross-event cursor (AJM-482):
+[C3 E3 G3] 1|1 1|2 1|3   // C3@1|1, E3@1|2, G3@1|3 (cursor crosses 3 positions)
+[C3 E3] 1|1 1|2 1|3      // C3, E3, C3 (cursor wraps)
+[C3 E3] 1|1 F3 1|2 1|3   // C3, then F3 rewinds the cursor and broadcasts: F3, F3
+
+// Value stream cross-event cursor (AJM-483):
+[v80 v100] C3 1|1 D3 1|2 E3 1|3   // C3 v80, D3 v100, E3 v80
+                                  // (velocity cursor crosses 3 separate events)
+```
+
+### `x<count>` and partial cycles
+
+`x<count>` is unchanged: it counts **emissions** from a single position token
+and still lives on that token. Brackets also advance across multiple _explicit_
+position tokens (each is one emission), so `x` is required only when one
+position token must emit several notes. If `count` is not a whole number of a
+stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
+
+### Rules and errors
+
+- **Bare token = constant (length-1) stream.** Don't bracket what doesn't vary.
+- **Velocity/duration/probability: one active stream per parameter — last
+  wins.** A second bracket for the same value parameter replaces the first with
+  a fresh cursor (no error). (The locked design floated a parse-time error here;
+  it was dropped — a hard error would abort the whole clip's notation, and
+  last-wins is unambiguous and recoverable, matching the forgiving-parser
+  philosophy.)
+- **Pitch: multiple voices LAYER within a group.** A bare pitch/chord and any
+  number of pitch brackets before the group's first time position stack into one
+  sounding chord, each cycling on its own length against the shared pitch
+  cursor. (Reassignment happens at the group boundary, not per-bracket — a pitch
+  token after a time position starts a fresh group.) This never errors.
+- **Flat two-level grammar; nesting is a parse-time type error.** A stream's
+  element is a value (a bare token or a one-level `(...)` chord), never another
+  stream. `[A [B C] D]` is rejected at parse time (`[B C]` is a schedule, not a
+  value — there is no single value at that index). `(...)` does not nest and
+  cannot contain `[`: `((C3 E3) G3)` and `(C3 [D3 E3])` are errors. **Top-level
+  sibling brackets ARE allowed** — that is the zip; scope "no `[` inside `[`" to
+  _inside a bracket_, not "one bracket per line."
+
+### Interaction with existing features
+
+- **Literal chords** (`C3 E3 G3 1|1`, no brackets) are unchanged: a length-1
+  pitch stream whose single element is the chord. The legacy intra-chord
+  per-pitch capture (`v80 C3 v100 E3 1|1`) still applies when no value stream is
+  active.
+- **Streams follow the same state-capture rules as bare pitches/chords.** Two
+  cases, both identical to the unbracketed behavior:
+  - _Within an open group_ (after the pitch token, before that group's first
+    time position) a scalar can't change the already-captured group:
+    `C3 E3 v80 1|1` and `[C3 E3] v80 1|1` both drop the `v80` and warn (the
+    setting "has no effect … put the setting before" the notes). Put the scalar
+    _before_ the pitch/bracket, or use a value stream, to vary the value.
+  - _Between emitted positions_ a later scalar retroactively updates the
+    _carried_ pitch state: `C1 1|1 v80 1|2` gives the second note velocity 80,
+    and a carried stream behaves identically — `[C1] 1|1 v80 1|2` is
+    **equivalent** (a length-1 stream is exactly a bare pitch). For a
+    multi-value stream every captured value updates, so emissions at and after
+    the scalar reflect it.
+- **Bar copy / `v0` / `@clear`** operate post-emission on real note events, so
+  once notes are emitted they are unaffected by streams. The pre-emission buffer
+  warnings (`N pitch(es) buffered but not emitted`, dangling state) count a
+  _pending stream_ as a new species of un-emitted state (`countBufferedPitches`
+  sums the pending chord and stream).
+- **Read-back is explicit notes, never re-bracketed.** Brackets are author-only
+  sugar; the canonical serialized form is explicit positions (a melodic run
+  serializes to `C3 1|1 E3 1|2 G3 1|3`). This round-trips losslessly because
+  brackets never reach the serializer — it runs over emitted `NoteEvent[]`.
+
+### Worked examples
+
+**Melodic stepping (AJM-482), `@step` grid, meter-safe:**
+
+```
+[C3 E3 G3] 1|1x3@n/4      // C3@1|1, E3@1|2, G3@1|3
+[C3 E3 G3] 1|1 1|2 1|3    // same melody, cursor steps across separate positions
+[C3 E3 G3] 1|1x3          // no @step → advance by current duration (legato run)
+[C3 E3 G3 C4] 1|1x4@n3/8  // four dotted-quarter steps (e.g. felt beats in 12/8)
+```
+
+**Phase pattern (AJM-483), coprime cycling under `@step`:**
+
+```
+[v80 v100] [C3 E3 G3] 1|1x8@n/8
+// C3 v80, E3 v100, G3 v80, C3 v100, E3 v80, G3 v100, C3 v80, E3 v100
+```
+
+**Gallop (AJM-483 duration-fold, no `@step`):**
+
+```
+[n/4 n/8] C3 1|1x8
+// durations cycle [1, 0.5] beats; each note's length also advances the cursor,
+// folding to 1|1, 1|2, 1|2.5, 1|3.5, 1|4, 2|1, 2|1.5, 2|2.5
+```
+
+**Pitch layering (voices stack into chords):**
+
+```
+n/4 C4 [E4 G4 C5] 1|1,2,3,4
+// held C4 under a moving line; equivalent to:
+//   n/4 C4 E4 1|1 C4 G4 1|2 C4 C5 1|3 C4 E4 1|4
+
+n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4
+// two voices (len 2, len 3) phasing; equivalent to:
+//   n/4 C3 E3 1|1 C4 G3 1|2 C3 E4 1|3 C4 E3 1|4
+```
+
+### AST shape
+
+A bracket parses to a single element carrying its parameter kind and the ordered
+value list: `{ stream: { param, values } }`, discriminated by `param`. For
+`"pitch"` each value is a chord (a length-1 array for a bare pitch);
+`"velocity"` values are `{ velocity }` or `{ velocityMin, velocityMax }`,
+`"duration"` values are `{ duration, bars? }`, and `"probability"` values are
+`{ probability }`. The interpreter holds the pitch voices as
+`state.currentPitchStreams` (a `PitchState[][][]` — a list of voices, each a
+list of chords) and each value stream as `state.current<Param>Stream` with a
+per-parameter cursor; at emission `i` a value stream's value
+(`values[(cursor + i) mod length]`) OVERRIDES the per-pitch captured value, and
+the sounding chord is the union over all voices of
+`voice[(cursor + i) mod voice.length]` (the constant chord `currentPitches` is
+the implicit first voice). See the **AST Schema** section for the element type.
 
 ---
 
@@ -607,6 +916,12 @@ Explicitly clear the copy buffer:
 - **Use case**: "Forget" bars and start fresh for next copyable section
 - **Does not update time**: Unlike `@N=`, stays at current bar/beat position
 - **Clears pitch buffer**: Same as `@N=`
+- **Clears carried streams**: `@clear` and `@N=` forget ALL carried stream state
+  symmetrically — the pitch stream AND any carried velocity / duration /
+  probability value stream (`[...]` pattern brackets). A value stream cycles
+  across emitted positions by its own cursor just as a pitch stream does, so a
+  later position after `@clear` resumes neither: it falls back to the last
+  scalar / default for each parameter, not to the middle of a stream.
 
 **Example**:
 
@@ -733,7 +1048,9 @@ C3 D3 E3 1|1  @2=1  v0 D3 2|1  // Bar 1: C3 D3 E3, Bar 2: C3 E3
 5. Multiple notes at same time are whitespace-separated
 6. No commas required between elements
 7. Whitespace required between time positions, probability, velocity, duration,
-   and notes
+   and notes — EXCEPT a pattern bracket may abut the previous element when the
+   next element opens a bracket (`[C3 E3][v80 v100]`); the leading `[` is a
+   self-delimiting boundary
 8. Velocity ranges are auto-ordered: `v120-80` becomes `v80-120`
 9. First pitch after a time position clears the pitch buffer
 10. Subsequent time positions re-emit the last buffered pitches (pitch
@@ -755,6 +1072,10 @@ type Element =
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
   | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for Nbar / Nbar+nA/B
   | { probability: number }                                          // Probability (0.0-1.0)
+  | { stream: { param: "pitch", values: { pitch: number }[][] } }    // Pattern bracket (pitch): each value is a chord (length-1 for a bare pitch)
+  | { stream: { param: "velocity", values: ({ velocity: number } | { velocityMin: number, velocityMax: number })[] } } // Pattern bracket (velocity)
+  | { stream: { param: "duration", values: { duration: number, bars?: number }[] } } // Pattern bracket (duration)
+  | { stream: { param: "probability", values: { probability: number }[] } } // Pattern bracket (probability)
   | { barCopy: number, sourcePrevious: true }                        // @N= (copy previous)
   | { barCopy: number, sourceBar: number }                           // @N=M (copy bar M)
   | { barCopy: number, sourceRange: [number, number] }               // @N=M-P (copy source range)
@@ -818,8 +1139,9 @@ grammar AST to return an array of note events:
     quarter note — only the measuring unit differs. See `Transforms-Spec.md` →
     "Units and Time Signatures".
 - **velocity**: Base velocity (0-127)
-  - `v0` notes appear in output with `velocity: 0` for deletion purposes
-  - Tools filter v0 notes before sending to Live API (see Note Deletion section)
+  - `v0` marks a deletion: it removes matching earlier notes and is then
+    stripped — interpreter output never contains a `velocity: 0` note (see Note
+    Deletion section)
 - **velocity_deviation**: When velocity range is used (e.g., `v80-100`),
   velocity is min value and velocity_deviation is the range (20)
 - **Precision**: Both start_time and duration support floating point for

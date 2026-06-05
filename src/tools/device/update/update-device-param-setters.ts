@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
@@ -11,6 +12,7 @@ import {
   isPanLabel,
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -44,22 +46,106 @@ export function setParamValues(
       continue;
     }
 
-    const inputValue = normalizeParamValue(rawValue);
+    // Isolate each param: a throw resolving one (e.g. a path-prefixed pad param
+    // whose chain auto-create exceeds the cap) must not abort the rest of a
+    // multi-param update. Warn and move on, consistent with update tools'
+    // warn-and-skip contract.
+    try {
+      setOneParam(device, key, rawValue, toolName);
+    } catch (e) {
+      console.warn(
+        `${toolName}: failed to set param "${key}": ${errorMessage(e)}`,
+      );
+    }
+  }
+}
 
-    if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
-      continue;
+/**
+ * Resolve and set a single param entry (path-prefixed pseudo-param, specialized
+ * pseudo-param, or DeviceParameter by name/index). Separated from the loop so
+ * each entry can be try-isolated. Key and value are already trimmed and non-empty.
+ * @param device - LiveAPI device object to update
+ * @param key - Trimmed param name (may be a "/"-path or a slash-named param)
+ * @param rawValue - Trimmed value
+ * @param toolName - Calling tool name for warning prefix
+ */
+function setOneParam(
+  device: LiveAPI,
+  key: string,
+  rawValue: string,
+  toolName: string,
+): void {
+  // A name containing "/" is normally a path-prefixed pseudo-param
+  // (e.g. "pC1/d0/sample"): resolve the prefix relative to this device, then
+  // write the trailing param to the target. But some real DeviceParameters
+  // have a "/" in their name (e.g. "Dry/Wet" on Reverb/Delay/Glue Compressor),
+  // so prefer an exact param-name match first and only fall back to
+  // path-routing when no such param exists — keeping slash-named params
+  // settable by name.
+  if (key.includes("/")) {
+    const namedParam = resolveParamByName(device, key);
+
+    if (namedParam?.exists()) {
+      setParamValue(namedParam, normalizeParamValue(rawValue), toolName);
+    } else {
+      applyNestedParam(device, key, rawValue, toolName);
     }
 
-    const param =
-      resolveParamByName(device, key) ??
-      (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
+    return;
+  }
 
-    if (!param?.exists()) {
-      console.warn(`${toolName}: param "${key}" not found on device`);
-      continue;
-    }
+  const inputValue = normalizeParamValue(rawValue);
 
-    setParamValue(param, inputValue, toolName);
+  if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
+    return;
+  }
+
+  const param =
+    resolveParamByName(device, key) ??
+    (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
+
+  if (!param?.exists()) {
+    console.warn(`${toolName}: param "${key}" not found on device`);
+
+    return;
+  }
+
+  setParamValue(param, inputValue, toolName);
+}
+
+/**
+ * Apply a path-prefixed pseudo-param. The prefix (everything before the last
+ * "/") resolves to a target device relative to `device`; the trailing segment is
+ * the param name, written via a single-entry recursion through setParamValues so
+ * all value interpretation (enum, note, numeric, specialized pseudo-params) is
+ * reused.
+ * @param device - The device the path prefix is relative to (e.g. a Drum Rack)
+ * @param key - Full path-prefixed param name (e.g. "pC1/d0/sample")
+ * @param rawValue - Trimmed value to write
+ * @param toolName - Calling tool name for warning prefix
+ */
+function applyNestedParam(
+  device: LiveAPI,
+  key: string,
+  rawValue: string,
+  toolName: string,
+): void {
+  const slashIndex = key.lastIndexOf("/");
+  const prefix = key.slice(0, slashIndex);
+  const paramName = key.slice(slashIndex + 1).trim();
+
+  if (paramName === "") {
+    console.warn(
+      `${toolName}: skipping param "${key}" with empty name after "/"`,
+    );
+
+    return;
+  }
+
+  const target = resolveNestedParamTarget(device, prefix, paramName, toolName);
+
+  if (target) {
+    setParamValues(target, [{ name: paramName, value: rawValue }], toolName);
   }
 }
 

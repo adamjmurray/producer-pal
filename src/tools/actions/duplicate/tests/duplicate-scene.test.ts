@@ -247,6 +247,16 @@ describe("duplicate - scene duplication", () => {
       ).toBe(true);
     });
 
+    it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
+      setupArrangementSceneMocks();
+
+      // Parity with create-clip: a 0-indexed/zero-bar arrangement start is a
+      // hard error, not a silent pre-origin beat.
+      await expect(
+        duplicate({ type: "scene", id: "scene1", arrangementStart: "0|1" }),
+      ).rejects.toThrow(/1-indexed/);
+    });
+
     it("should duplicate multiple scenes to arrangement view at sequential positions", async () => {
       setupArrangementSceneMocks(1);
 

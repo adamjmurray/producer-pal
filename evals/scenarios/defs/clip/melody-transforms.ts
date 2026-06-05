@@ -8,6 +8,7 @@
  * transposition using scale steps.
  */
 
+import { parseToolResult } from "#evals/chat/mcp.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalScenario } from "../../types.ts";
 import { assertNotesRead, getTransforms } from "./clip-scenario-helpers.ts";
@@ -52,8 +53,10 @@ export const melodyTransforms: EvalScenario = {
         // Must have notes param with bar-copy syntax, or noteCount showing
         // more notes than the original 12
         const notes = String(updateCall.args.notes ?? "");
-        const result = JSON.parse(String(updateCall.result ?? "{}"));
-        const noteCount = result.noteCount as number | undefined;
+        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+          noteCount?: number;
+        };
+        const noteCount = result.noteCount;
 
         if (!notes && (noteCount == null || noteCount <= 12)) {
           throw new Error(
@@ -117,8 +120,10 @@ export const melodyTransforms: EvalScenario = {
         }
 
         // Verify notes were actually transformed (not 0)
-        const result = JSON.parse(String(updateCall.result ?? "{}"));
-        const transformed = result.transformed as number | undefined;
+        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+          transformed?: number;
+        };
+        const transformed = result.transformed;
 
         if (transformed != null && transformed === 0) {
           throw new Error(

@@ -12,6 +12,10 @@
  */
 
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
+export {
+  arpeggioBracketIdiom,
+  arpeggioMixedDurations,
+} from "./clip/notation/arpeggio-bracket-idiom.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,
@@ -19,8 +23,24 @@ export {
   barBeatMeterFill,
   barBeatTriplets,
 } from "./clip/notation/bar-beat-absolute-durations.ts";
+export {
+  barBeatPerBarChord,
+  barBeatPerBarNote,
+} from "./clip/notation/bar-beat-multibar-spread.ts";
+export {
+  barBeatMelodicCompoundStepping,
+  barBeatMelodicLegatoRun,
+  barBeatMelodicStepping,
+} from "./clip/notation/bar-beat-pitch-streams.ts";
+export {
+  barBeatGallop,
+  barBeatVelocityAccent,
+  barBeatZipStreams,
+} from "./clip/notation/bar-beat-value-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
+export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
+export { deviceSoundDesign } from "./workflow/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate } from "./clip/duplicate.ts";
 export {

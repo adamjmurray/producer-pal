@@ -28,6 +28,22 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     ]);
   });
 
+  it("interprets case-insensitive and enharmonic note names", () => {
+    // Lowercase letters, an all-caps flat (GB1 = Gb1), a Unicode ♭, and the two
+    // octave-wrapping enharmonics (E# → F, B# → C of the next octave) resolve to
+    // the same MIDI numbers the canonical spellings would. All five buffer into
+    // one chord at 1|1.
+    const result = interpretNotation("e#3 cb4 gb1 D♭1 B#3 1|1");
+
+    expect(result).toStrictEqual([
+      createNote({ pitch: 65 }), // e#3 → F3
+      createNote({ pitch: 71 }), // cb4 → B3
+      createNote({ pitch: 42 }), // gb1 → Gb1
+      createNote({ pitch: 37 }), // D♭1 → Db1
+      createNote({ pitch: 72 }), // B#3 → C4
+    ]);
+  });
+
   it("handles time state changes", () => {
     const result = interpretNotation("C3 1|1 D3 1|2 E3 2|1");
 

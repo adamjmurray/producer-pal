@@ -131,12 +131,15 @@ Test the Claude Desktop extension (`Producer_Pal.mcpb`):
 **Automated E2E tests** (requires Ableton Live running with device active):
 
 ```sh
-npm run ui:test
+npm run e2e:webui
 ```
 
 This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
 models. See `e2e/webui/README.md` for details. These tests can be flakey, so
 manually check on anything that fails. Note: Requires `.env` file with API keys.
+
+The separate stubbed suite, `npm run ui:test`, needs no Ableton or keys and runs
+in CI — see `e2e/ui/README.md`.
 
 **Manual checks:**
 

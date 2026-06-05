@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { formatParserError } from "./peggy-error-formatter.ts";
-import { type PeggySyntaxError } from "./peggy-parser-types.ts";
+import { formatParserError } from "../peggy-error-formatter.ts";
+import { type PeggySyntaxError } from "../peggy-parser-types.ts";
 
 interface SyntaxErrorOverrides {
   expected?: PeggySyntaxError["expected"];

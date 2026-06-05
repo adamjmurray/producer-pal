@@ -94,7 +94,7 @@ export async function listPlugins(
     // signal sits at the top alongside dbAvailable; omitted when there's no risk.
     // Mirrors librarySearch / listTags / listCategories.
     const stalenessRisk = await detectStalenessRisk(source);
-    const db = openLiveDb(source);
+    const db = await openLiveDb(source);
 
     try {
       // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
@@ -155,7 +155,7 @@ async function selectPluginDb(): Promise<string | null> {
   }
 
   // Probe the files DB: only Live 11 / 12.0–12.1 carry the plugin tables here.
-  const db = openLiveDb(filesDbPath);
+  const db = await openLiveDb(filesDbPath);
 
   try {
     return hasPluginTable(db) ? filesDbPath : null;

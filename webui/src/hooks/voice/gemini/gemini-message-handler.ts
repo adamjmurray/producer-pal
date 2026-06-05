@@ -111,18 +111,7 @@ export async function handleGeminiMessage(
   const sc = message.serverContent;
 
   if (sc) {
-    if (sc.interrupted) {
-      // Barge-in: drop queued audio and close the open model turn.
-      deps.player.flush();
-      deps.builder.completeTurn();
-      deps.setAssistantSpeaking(false);
-      endGeminiHalfDuplexMute(
-        deps.getMic(),
-        deps.autoMutedRef,
-        deps.isMutedRef,
-      );
-      deps.publishHistory();
-    }
+    if (sc.interrupted) handleGeminiInterrupt(deps);
 
     if (sc.inputTranscription?.text) {
       deps.builder.addUserTranscript(sc.inputTranscription.text);
@@ -163,6 +152,31 @@ export async function handleGeminiMessage(
   if (message.toolCall) {
     await handleGeminiToolCall(message.toolCall, deps);
   }
+}
+
+/**
+ * Handle a barge-in `interrupted` signal: drop queued audio, close the open turn,
+ * and lift the half-duplex auto-mute. Exception: under NO_INTERRUPTION
+ * (half-duplex) the model can emit `interrupted` mid-stream and keep sending
+ * audio, so lifting the auto-mute while audio is still queued would let the next
+ * chunk re-mute and flicker the Muted indicator. There, defer the lift to
+ * turnComplete; lift now only when the queue has drained (the turn really ended
+ * here). hasQueued() is read before flush() clears the queue.
+ *
+ * @param deps - Builder, player, mic accessor, and UI setters
+ */
+function handleGeminiInterrupt(deps: GeminiMessageDeps): void {
+  const audioStillQueued = deps.player.hasQueued();
+
+  deps.player.flush();
+  deps.builder.completeTurn();
+  deps.setAssistantSpeaking(false);
+
+  if (!(deps.halfDuplex && audioStillQueued)) {
+    endGeminiHalfDuplexMute(deps.getMic(), deps.autoMutedRef, deps.isMutedRef);
+  }
+
+  deps.publishHistory();
 }
 
 /**

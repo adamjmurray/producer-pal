@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, type vi } from "vitest";
@@ -115,6 +116,36 @@ describe("bar|beat interpretNotation() - timing features", () => {
       expect(result[0]!.duration).toBe(3);
     });
 
+    it("handles minus-tail bar durations (Nbar-nA/B, almost a full bar)", () => {
+      // 1bar-n/16 = a bar minus a 16th = 3.75 quarters in 4/4; 2bar-n3/8 = two
+      // bars minus three 16ths = 6.5 quarters.
+      const result = interpretNotation("1bar-n/16 C4 1|1 2bar-n3/8 D4 1|2");
+
+      expect(result).toHaveLength(2);
+      expect(result[0]!.duration).toBe(3.75);
+      expect(result[1]!.duration).toBe(6.5);
+    });
+
+    it("warn-skips a non-positive resolved duration (bar-minus over-subtraction)", () => {
+      // 1bar-n5/4 = a bar minus five quarters = -1 quarter in 4/4; 1bar-n4/4 = 0.
+      // The grammar can't apply the meter, so a non-positive duration only
+      // surfaces in the interpreter: warn and keep the previous (default)
+      // duration rather than emit a degenerate note. (The @step guard throws;
+      // a per-note duration is recoverable, so it warn-skips instead.)
+      const negative = interpretNotation("1bar-n5/4 C4 1|1");
+
+      expect(negative).toHaveLength(1);
+      expect(negative[0]!.duration).toBe(1); // default quarter, unchanged
+
+      const zero = interpretNotation("1bar-n4/4 C4 1|1");
+
+      expect(zero[0]!.duration).toBe(1);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("non-positive"),
+      );
+    });
+
     it("handles probability updates after time", () => {
       const result = interpretNotation("C4 1|1 p0.8 1|2 p0.5 1|3");
 
@@ -185,7 +216,7 @@ describe("bar|beat interpretNotation() - timing features", () => {
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining(
-          "state change after pitch(es) but before time position won't affect this group",
+          "has no effect: these apply to the notes that follow, so put the setting before them (v1 C4, not C4 v1)",
         ),
       );
     });
@@ -194,7 +225,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
       const result = interpretNotation("v80 C4 v90 G4 1|1");
 
       expect(result).toHaveLength(2);
-      // Should only warn about "state change won't affect group", not about it happening
+      // The interspersed `v90` has a following pitch (G4) to apply to, so this is
+      // the taught per-note form, NOT the wasted-trailing case — no warning here.
       const warningCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls
         .filter((call) => call[0] === 1)
         .filter((call) => !call[1].includes("buffered but no time position"));

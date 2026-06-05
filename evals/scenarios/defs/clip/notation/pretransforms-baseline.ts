@@ -154,6 +154,22 @@ function recordFallbackPath(turn: number): EvalAssertion {
 }
 
 /**
+ * Common assertion head shared by every rewrite scenario below: connect ran,
+ * the model read the notes (turn 1), it issued an update-clip (turn 2), and
+ * the fallback path is classified. Each scenario appends its own llm_judge.
+ *
+ * @returns The leading assertions every rewrite scenario shares
+ */
+function rewriteAssertionHead(): EvalAssertion[] {
+  return [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    assertNotesRead(1),
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    recordFallbackPath(2),
+  ];
+}
+
+/**
  * Replace the lead melody in bars 1–2. The lead clip in
  * basic-with-drum-and-lead-clips is a 2-bar melody — the entire clip is the
  * "region" being rewritten, which simplifies the test (a clean replace works
@@ -179,12 +195,7 @@ export const pretransformsMelodyReplaceBaseline: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    assertNotesRead(1),
-
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-    recordFallbackPath(2),
+    ...rewriteAssertionHead(),
 
     {
       type: "llm_judge",
@@ -225,12 +236,7 @@ export const pretransformsHatFillsBaseline: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    assertNotesRead(1),
-
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-    recordFallbackPath(2),
+    ...rewriteAssertionHead(),
 
     {
       type: "llm_judge",
@@ -269,12 +275,7 @@ export const pretransformsSnareSwapBaseline: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    assertNotesRead(1),
-
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-    recordFallbackPath(2),
+    ...rewriteAssertionHead(),
 
     {
       type: "llm_judge",

@@ -11,6 +11,10 @@ import { type ModeContext } from "#webui/components/mode-context";
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";
 import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
+import {
+  type UseConversationSearchReturn,
+  useConversationSearch,
+} from "#webui/hooks/chat/helpers/use-conversation-search";
 import { type useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
@@ -79,6 +83,8 @@ export function VoiceApp(props: VoiceAppProps) {
   // raw shared saved field — so the controls' pending-change notice is accurate.
   const savedVoice = activeVoiceId;
 
+  const search = useConversationSearch(persistence.conversations);
+
   const conversationPanel = buildConversationPanel({
     isOpen: historyPanelOpen,
     setHistoryPanelOpen,
@@ -88,6 +94,7 @@ export function VoiceApp(props: VoiceAppProps) {
     disconnect: voice.disconnect,
     resetVoiceHistory: voice.resetHistory,
     clearViewingMode,
+    search,
   });
 
   return (
@@ -151,6 +158,7 @@ interface BuildConversationPanelParams {
   disconnect: () => Promise<void>;
   resetVoiceHistory: () => void;
   clearViewingMode: () => void;
+  search: UseConversationSearchReturn;
 }
 
 /**
@@ -169,6 +177,7 @@ function buildConversationPanel(
     persistence,
     transfer,
     isSessionActive,
+    search,
   } = params;
 
   // On phones the panel overlays the screen, so collapse it after picking or
@@ -181,6 +190,9 @@ function buildConversationPanel(
     isOpen,
     conversations: persistence.conversations,
     activeConversationId: persistence.activeConversationId,
+    searchQuery: search.searchQuery,
+    onSearchChange: search.setSearchQuery,
+    matchedIds: search.matchedIds,
     onToggle: () => setHistoryPanelOpen((open) => !open),
     onNew: () => {
       if (isSessionActive) void params.disconnect();

@@ -80,19 +80,23 @@ describe("listCategories", () => {
       expect(result.categories).toBeUndefined();
     });
 
-    it("returns no tags when a category's leaves have no keyword counts", async () => {
+    it("returns no tags (and no not-found reason) when a real category's leaves have no keyword counts", async () => {
       // Sounds|Bass|Synth Bass: "Synth Bass" isn't a keyword in the fixture.
+      // The category exists (it resolves leaves), so this is NOT a typo — the
+      // not-found reason must stay absent to keep the two cases distinguishable.
       const result = await listCategories({ category: "Sounds" });
 
       expect(result.category).toBe("Sounds");
       expect(result.tags).toStrictEqual([]);
+      expect(result.reason).toBeUndefined();
     });
 
-    it("returns an empty tag list for an unknown category", async () => {
+    it("flags an unknown category with a not-found reason", async () => {
       const result = await listCategories({ category: "Nope" });
 
       expect(result.category).toBe("Nope");
       expect(result.tags).toStrictEqual([]);
+      expect(result.reason).toBe("category not found: Nope");
     });
 
     it("escapes LIKE metacharacters in the category name", async () => {

@@ -14,10 +14,14 @@ import { type ConfigProfile } from "./types.ts";
 
 const defaultProfile: ConfigProfile = {
   id: "default",
-  description: "Standard: JSON output, full tools, normal model mode",
+  description: "Standard: compact output, full tools, normal model mode",
   config: {
     smallModelMode: false,
-    jsonOutput: true,
+    // Compact is the server/production default (create-express-app.ts). Evals
+    // run against it so we measure what real users get. The harness parses
+    // tool results with parseToolResult (JSON-or-compact). Use the `json-on`
+    // profile for the explicit-JSON case (MCP Inspector / debugging).
+    jsonOutput: false,
     tools: [...TOOL_NAMES],
   },
 };
@@ -30,18 +34,18 @@ const smallModelProfile: ConfigProfile = {
   },
 };
 
-const jsonOffProfile: ConfigProfile = {
-  id: "json-off",
-  description: "JSON output disabled",
+const jsonOnProfile: ConfigProfile = {
+  id: "json-on",
+  description: "JSON output enabled (matches the MCP Inspector / debugging)",
   config: {
-    jsonOutput: false,
+    jsonOutput: true,
   },
 };
 
 const allProfiles: ConfigProfile[] = [
   defaultProfile,
   smallModelProfile,
-  jsonOffProfile,
+  jsonOnProfile,
 ];
 
 /**

@@ -16,8 +16,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, expect, vi } from "vitest";
 import { fourCC } from "../../library-filters.ts";
+import { type StalenessRisk } from "../../library-types.ts";
 
 export interface LibraryFixture {
   dir: string;
@@ -68,12 +69,18 @@ export function createLibraryFixture(): LibraryFixture {
       id INTEGER PRIMARY KEY,
       value TEXT
     );
+    CREATE TABLE fe_values (
+      file_id INTEGER,
+      data BLOB,
+      hash INTEGER
+    );
   `);
 
   insertFiles(db);
   insertPlaces(db);
   insertKeywords(db);
   insertMetadata(db);
+  insertFeatureVectors(db);
 
   db.close();
 
@@ -82,6 +89,69 @@ export function createLibraryFixture(): LibraryFixture {
     dbPath,
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
   };
+}
+
+/**
+ * Create a temp Live-files DB whose schema lacks the tables the library
+ * queries depend on, so any SELECT throws. Used to exercise the
+ * dbAvailable:false degrade path (the withLiveDb error handler).
+ *
+ * @returns The DB path and a cleanup function removing the temp dir.
+ */
+export function createBrokenLibraryDb(): {
+  dbPath: string;
+  cleanup: () => void;
+} {
+  const dir = mkdtempSync(join(tmpdir(), "ppal-lib-broken-"));
+  const dbPath = join(dir, "Live-files-12300.db");
+  const db = new DatabaseSync(dbPath);
+
+  // `files` (and friends) deliberately omitted → "no such table" on query.
+  db.exec("CREATE TABLE unrelated (id INTEGER PRIMARY KEY);");
+  db.close();
+
+  return {
+    dbPath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}
+
+/**
+ * A representative staleness advisory the DB layer can surface, for asserting
+ * that a query forwards `stalenessRisk` from `detectStalenessRisk`.
+ */
+export const STALENESS_RISK: StalenessRisk = {
+  kind: "wal-pending",
+  dbMtime: 1,
+  walMtime: 2,
+  walSizeMb: 1,
+  ageSeconds: 1,
+};
+
+/**
+ * Force a DB read failure and assert the query degrades to
+ * `dbAvailable: false` rather than throwing.
+ *
+ * @param dbPathMod - The mocked `live-db-path` module
+ * @param dbPathMod.findLiveFilesDbPath - Mocked finder, pointed at a broken DB
+ * @param runQuery - Runs the library query under test and returns its result
+ */
+export async function expectQueryDegradesOnBrokenDb(
+  dbPathMod: { findLiveFilesDbPath: (...args: unknown[]) => unknown },
+  runQuery: () => Promise<{ dbAvailable?: boolean; reason?: string }>,
+): Promise<void> {
+  const broken = createBrokenLibraryDb();
+
+  try {
+    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(broken.dbPath);
+
+    const result = await runQuery();
+
+    expect(result.dbAvailable).toBe(false);
+    expect(result.reason).toContain("Failed to read Live database");
+  } finally {
+    broken.cleanup();
+  }
 }
 
 /**
@@ -315,4 +385,79 @@ function insertMetadata(db: DatabaseSync): void {
   meta.run(2001, META_CKEY, 3); // Type|One Shot
   meta.run(2001, META_CKEY, 4); // Core Library (no pipe → excluded)
   meta.run(1001, META_CKEY, 5); // Sounds|Bass|Synth Bass (leaf has no keyword)
+}
+
+/**
+ * Populate fe_values with 64-float audio feature vectors that exercise
+ * findSimilar + findDuplicates. Two duplicate groups of different sizes let the
+ * group-ordering path run:
+ *
+ *  - user_kick.aif (1001) and pack_kick.wav (2001) get an IDENTICAL vector and
+ *    hash → 2001 is the top similarity match for a 1001 seed (cosine 1.0) AND
+ *    they form duplicate group B (size 2).
+ *  - pack_clap.aif (2002), subfolder_x.wav (211), subfolder_z.wav (221) share
+ *    one vector and hash → duplicate group A (size 3, the larger group).
+ *  - subfolder_y.wav (212) shares group A's hash but stores an INVALID header
+ *    (version 99), so both actions must skip it (version insurance).
+ *  - user_snare.wav (1002) gets a near-int64-max unique hash (…806) that rounds
+ *    to the same JS double as group A's …807; findDuplicates' CAST(hash AS TEXT)
+ *    keeps them distinct so 1002 is never grouped.
+ *  - pack_riff.mid (2003) gets NO row → an un-analyzed seed.
+ *
+ * @param db - Open writable DB
+ */
+function insertFeatureVectors(db: DatabaseSync): void {
+  const kick = makeVector((i) => Math.sin(i * 0.3) + 1.5);
+  const snare = makeVector((i) => Math.cos(i * 1.9) - 0.4);
+  const dup = makeVector((i) => ((i % 6) - 2.5) * 0.7);
+
+  const insert = db.prepare(
+    "INSERT INTO fe_values (file_id, data, hash) VALUES (?, ?, ?)",
+  );
+
+  // Group B (size 2): identical kick → also the similarity seed + top match.
+  insert.run(1001, featureBlob(kick), 700n);
+  insert.run(2001, featureBlob(kick), 700n);
+  // Unique near-max hash for the CAST-precision test (never grouped).
+  insert.run(1002, featureBlob(snare), 9223372036854775806n);
+  // Group A (size 3): identical dup vector + hash.
+  insert.run(2002, featureBlob(dup), 9223372036854775807n);
+  insert.run(211, featureBlob(dup), 9223372036854775807n);
+  insert.run(221, featureBlob(dup), 9223372036854775807n);
+  insert.run(212, featureBlob(dup, 99), 9223372036854775807n); // invalid header
+  // pack_riff.mid (2003): intentionally no row — an un-analyzed sample.
+}
+
+/**
+ * Build a 64-element vector from an index→value function.
+ *
+ * @param fn - Maps a vector index to its float value
+ * @returns A 64-float array
+ */
+function makeVector(fn: (i: number) => number): number[] {
+  return Array.from({ length: 64 }, (_, i) => fn(i));
+}
+
+/**
+ * Encode a feature vector as Live's 268-byte fe_values BLOB: a 12-byte header
+ * [uint32 version][uint32 64][uint32 0] then 64 little-endian float32s.
+ *
+ * @param floats - The 64 feature values
+ * @param version - Header version tag (default 18; pass another to model an
+ *   unknown future format the decoder must reject)
+ * @returns The 268-byte BLOB
+ */
+function featureBlob(floats: number[], version = 18): Uint8Array {
+  const buffer = new ArrayBuffer(268);
+  const view = new DataView(buffer);
+
+  view.setUint32(0, version, true);
+  view.setUint32(4, 64, true);
+  view.setUint32(8, 0, true);
+
+  for (let i = 0; i < 64; i += 1) {
+    view.setFloat32(12 + i * 4, floats[i] ?? 0, true);
+  }
+
+  return new Uint8Array(buffer);
 }

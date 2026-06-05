@@ -231,6 +231,46 @@ describe("formatNotation() core", () => {
     expect(pitchName(-1)).toBe("?-1");
   });
 
+  it("skips a zero-duration note and warns instead of emitting an n0/1 token", () => {
+    // A duration:0 note would serialize to `n0/1`, which re-parses to duration
+    // 1 (not 0) — a silent round-trip corruption. Drop + warn keeps the read
+    // path total and round-trip-safe.
+    expect(formatNotation([createNote({ duration: 0 })] as NoteEvent[])).toBe(
+      "",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("duration must be greater than 0"),
+    );
+  });
+
+  it("skips a negative-duration note and warns instead of emitting n-1/4", () => {
+    // A negative duration would emit an unparseable `n-1/4` token; the read path
+    // must never produce notation that throws on re-parse.
+    expect(formatNotation([createNote({ duration: -1 })] as NoteEvent[])).toBe(
+      "",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("duration must be greater than 0"),
+    );
+  });
+
+  it("serializes valid notes while skipping a non-positive-duration one", () => {
+    const notes = [
+      createNote({ pitch: 60, duration: 1 }),
+      createNote({ pitch: 64, duration: 0 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes);
+
+    expect(result).toBe("C3 1|1");
+    // Round-trips without throwing or inflating the dropped note.
+    expect(interpretNotation(result)).toStrictEqual(
+      interpretNotation("C3 1|1"),
+    );
+  });
+
   it("clamps velocity ranges to MIDI maximum 127", () => {
     const notes = [
       createNote({ velocity: 108, velocity_deviation: 20 }),

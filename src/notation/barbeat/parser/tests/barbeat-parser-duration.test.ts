@@ -82,6 +82,17 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
+  it("parses minus-tail bar durations (Nbar-nA/B, almost a full bar)", () => {
+    // The tail sign subtracts the note value, so the stored `duration` fraction
+    // is negative; the interpreter resolves `1bar-n/16` to "a bar minus a 16th".
+    expect(parser.parse("1bar-n/16 C3 2bar-n3/8 D3")).toStrictEqual([
+      { bars: 1, duration: -1 / 16 },
+      { pitch: 60 },
+      { bars: 2, duration: -3 / 8 },
+      { pitch: 62 },
+    ]);
+  });
+
   it("rejects the n-prefixed bar form with a targeted Nbar steer", () => {
     // `n1bar`/`n/1bar`/`n3/4bar` are a convergent model hallucination — bars are
     // the bare `Nbar` form, the `n` sigil is only for note-value fractions.

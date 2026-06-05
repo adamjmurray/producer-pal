@@ -5,6 +5,7 @@
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -13,7 +14,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
-  getPlayableNoteCount,
+  getClipNoteCount,
   rawNotesToNoteEvents,
 } from "#src/tools/shared/clip-notes.ts";
 import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
@@ -141,17 +142,22 @@ export function handleNoteUpdates(
     clipContext,
   );
 
-  // Remove all notes and add new notes
+  // Remove all notes and add new notes. Dedupe same-pitch+start collisions
+  // (new wins — new notes follow the existing ones in the combined array) then
+  // sort ascending by start_time so Live resolves every same-pitch overlap by
+  // truncation instead of deleting the earlier write. See note-sort.ts.
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
 
-  if (notes.length > 0) {
-    clip.call("add_new_notes", { notes });
+  const mergedNotes = sortNotes(dedupeNotesKeepingLast(notes));
+
+  if (mergedNotes.length > 0) {
+    clip.call("add_new_notes", { notes: mergedNotes });
   }
 
   // Fall back to the preTransform match count when there's no transforms string,
   // so a notes + preTransforms update still reports a count (not undefined).
   return {
-    noteCount: getPlayableNoteCount(clip),
+    noteCount: getClipNoteCount(clip),
     transformed: transformed ?? preTransformCount,
   };
 }
@@ -187,6 +193,31 @@ function applyPreTransformsToExisting(
   );
 
   return { notes: existingNotes, matchCount };
+}
+
+/**
+ * Dedupe notes that share a pitch and start_time (within a 0.001-beat float
+ * tolerance, since existing notes round-trip serialize→re-interpret and can
+ * drift), keeping the LAST occurrence. The combined array is ordered
+ * existing→new, so "last wins" deterministically picks the newly-authored note
+ * over an existing one at the same position — no longer relying on Live's
+ * undocumented add_new_notes last-write-wins behavior. Mirrors the tolerance in
+ * barbeat-apply-v0-deletions.ts.
+ * @param notes - Notes in existing→new insertion order
+ * @returns Notes with same-pitch+start collisions collapsed to the last write
+ */
+function dedupeNotesKeepingLast(notes: NoteEvent[]): NoteEvent[] {
+  return notes.reduce<NoteEvent[]>((result, note) => {
+    const withoutCollision = result.filter(
+      (existing) =>
+        existing.pitch !== note.pitch ||
+        Math.abs(existing.start_time - note.start_time) >= 0.001,
+    );
+
+    withoutCollision.push(note);
+
+    return withoutCollision;
+  }, []);
 }
 
 /**

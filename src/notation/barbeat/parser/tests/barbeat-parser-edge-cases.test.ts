@@ -69,4 +69,54 @@ describe("BarBeatScript Parser - edge cases", () => {
       expect(() => parser.parse("1|1 \x1F")).toThrow();
     });
   });
+
+  // Forms that stay rejected (accepting them would mask a real mistake or is
+  // ambiguous) but get a targeted, fix-suggesting error instead of peggy's
+  // generic "Expected …".
+  describe("targeted errors for kept-rejected forms", () => {
+    it("rejects a 0-indexed beat and never teaches the 1|0 form", () => {
+      expect(() => parser.parse("1|0 C3")).toThrow(
+        /beats are 1-indexed.*for a pickup.*1\|1-n\/4.*Got beat 0/,
+      );
+      expect(() => parser.parse("1|0.5")).toThrow(/Got beat 0\.5/);
+      // A 0 inside a comma beat-list is caught the same way.
+      expect(() => parser.parse("1|1,0")).toThrow(/beats are 1-indexed/);
+      // Steers to 1|1 and the offset pickup form, not the phased-out 1|0 spelling.
+      let message = "";
+
+      try {
+        parser.parse("1|0");
+      } catch (error) {
+        message = (error as Error).message;
+      }
+
+      expect(message).not.toContain("not 1|0");
+      expect(message).toContain("1|1-n/4");
+    });
+
+    it("rejects a range used as a position with a transform-time-filter hint", () => {
+      expect(() => parser.parse("1|1-2|1 C3")).toThrow(
+        /a position is a single bar\|beat.*transform time filter \(1\|1-2\|1: \.{3}\)/,
+      );
+    });
+
+    it("rejects bar.beat / bar:beat (wrong separator) with a pipe hint", () => {
+      expect(() => parser.parse("1.1")).toThrow(
+        /positions use a pipe.*not "\."/,
+      );
+      expect(() => parser.parse("1:1")).toThrow(
+        /positions use a pipe.*Got 1:1/,
+      );
+      expect(() => parser.parse("C3 2.3")).toThrow(
+        /positions use a pipe.*Got 2\.3/,
+      );
+    });
+
+    it("rejects a raw MIDI number used as a pitch", () => {
+      expect(() => parser.parse("60")).toThrow(
+        /use note names like C3.*not MIDI numbers.*Got 60/,
+      );
+      expect(() => parser.parse("C3 60")).toThrow(/use note names like C3/);
+    });
+  });
 });

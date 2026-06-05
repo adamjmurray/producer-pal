@@ -150,6 +150,24 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
+    it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+      registerTrackWithArrangementDup(0);
+      registerArrangementClip(0, 0, 8);
+
+      // Parity with create-clip: a 0-indexed/zero-bar arrangement start is a
+      // hard error, not a silent pre-origin beat. Also covers the per-item check
+      // in a comma-separated list (the bad position is the second one).
+      await expect(
+        duplicate({ type: "clip", id: "clip1", arrangementStart: "1|0" }),
+      ).rejects.toThrow(/1-indexed/);
+      await expect(
+        duplicate({ type: "clip", id: "clip1", arrangementStart: "3|1,1|0" }),
+      ).rejects.toThrow(/1-indexed/);
+    });
+
     it("should duplicate multiple clips to arrangement view with comma-separated positions", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),

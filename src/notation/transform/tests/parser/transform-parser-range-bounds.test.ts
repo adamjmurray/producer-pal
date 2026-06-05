@@ -43,6 +43,18 @@ describe("Transform Parser - half-open range bounds", () => {
     });
   });
 
+  it("composes a decimal-base offset start with the exclusive-end marker", () => {
+    // The `-<` exclusive marker must not be swallowed by the start bound's `+n`
+    // offset: `1|1.5+n/12` is the offset start, then `-<2|1` is the half-open end.
+    const result = parser.parse("1|1.5+n/12-<2|1: velocity = 0");
+
+    expect(result[0]!.timeRange!.startBar).toBe(1);
+    expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.8333);
+    expect(result[0]!.timeRange!.endBar).toBe(2);
+    expect(result[0]!.timeRange!.endBeat).toBe(1);
+    expect(result[0]!.timeRange!.endExclusive).toBe(true);
+  });
+
   it("omits endExclusive for a default (inclusive) range", () => {
     const result = parser.parse("3|1-4|1: velocity = 0");
 

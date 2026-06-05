@@ -8,7 +8,7 @@
  * split. This is the single most important behavioral metric of the v1.4.11
  * duration overhaul.
  *
- * RUN PENDING: needs Ableton (agentic — drives a live model against Live).
+ * Requires Ableton (agentic — drives a live model against Live).
  *
  * When the user says "make these notes a quarter note long", the correct
  * transform is `duration = n/4` (an absolute quarter note, invariant across

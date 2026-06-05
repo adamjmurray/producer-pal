@@ -13,26 +13,26 @@
 
 import { utimesSync, writeFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { librarySearch } from "../library-search.ts";
-import { listCategories } from "../list-categories.ts";
-import { listPlugins } from "../list-plugins.ts";
-import { listTags } from "../list-tags.ts";
+import { librarySearch } from "../../query/library-search.ts";
+import { listCategories } from "../../list-categories.ts";
+import { listPlugins } from "../../list-plugins.ts";
+import { listTags } from "../../list-tags.ts";
 import {
   createLibraryFixture,
   type LibraryFixture,
-} from "./fixtures/library-fixture.ts";
+} from "../fixtures/library-fixture.ts";
 import {
   createPluginsDbFixture,
   type PluginsFixture,
-} from "./fixtures/plugins-fixture.ts";
+} from "../fixtures/plugins-fixture.ts";
 
-vi.mock(import("../live-db-path.ts"), () => ({
+vi.mock(import("../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
 }));
 
-const dbPathMod = await import("../live-db-path.ts");
+const dbPathMod = await import("../../live-db-path.ts");
 
 describe("library stale-WAL advisory (end-to-end)", () => {
   let fixture: LibraryFixture | undefined;

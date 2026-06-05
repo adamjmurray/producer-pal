@@ -13,7 +13,10 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  type CreateClipResult,
+  type CreateTrackResult,
   getToolWarnings,
+  parseToolResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -142,6 +145,44 @@ describe("ppal-clip-transforms (context variables)", () => {
     // clip.count = 2, so 2 * 30 = 60 for both clips
     expect(notes1).toContain("v60");
     expect(notes2).toContain("v60");
+  });
+
+  it("clipseq() varies per clip within a single multi-clip create-clip call", async () => {
+    // Fresh MIDI track so slots 0-2 are empty.
+    const trackResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi", name: "Multi-Clip Create Test" },
+    });
+    const track = parseToolResult<CreateTrackResult>(trackResult);
+
+    await sleep(100);
+
+    // ONE create-clip call making three clips with a per-clip transform.
+    // Before per-clip transform context, this warned "clipseq() needs
+    // clip.index" and every clip got the first value (parseToolResult would
+    // throw on that warning); now the transform runs per clip.
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${track.trackIndex}/0,${track.trackIndex}/1,${track.trackIndex}/2`,
+        notes: "v100 C3 1|1",
+        transforms: "velocity = clipseq(20, 50, 90)",
+      },
+    });
+    const clips = parseToolResult<CreateClipResult[]>(createResult);
+
+    await sleep(100);
+
+    expect(clips).toHaveLength(3);
+
+    const notes0 = await readClipNotes(clips[0]!.id);
+    const notes1 = await readClipNotes(clips[1]!.id);
+    const notes2 = await readClipNotes(clips[2]!.id);
+
+    // clipseq cycles by clip.index: 0 → 20, 1 → 50, 2 → 90
+    expect(notes0).toContain("v20");
+    expect(notes1).toContain("v50");
+    expect(notes2).toContain("v90");
   });
 });
 

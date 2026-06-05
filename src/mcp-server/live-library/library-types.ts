@@ -188,6 +188,57 @@ export interface LibrarySearchResult {
   reason?: string;
 }
 
+/** findSimilar args: the search filter set (candidate constraints) plus the
+ * seed sample whose audio the candidates are ranked against. */
+export interface FindSimilarArgs extends LibrarySearchArgs {
+  /** Absolute path of the seed sample to rank others by similarity. */
+  similarTo?: string;
+}
+
+/** findDuplicates args: the search filter set scopes which files are checked. */
+export type FindDuplicatesArgs = LibrarySearchArgs;
+
+/** findSimilar result item: a normal library item plus its similarity score. */
+export interface LibrarySimilarItem extends LibraryItem {
+  /** Cosine similarity to the seed (−1..1, higher = more alike; typically near 1
+   * for audio that resembles the seed; 3 decimals). */
+  similarity: number;
+}
+
+export interface LibraryFindSimilarResult {
+  /** Echo of the requested seed path and whether it resolved to an analyzed
+   * sample (false ⇒ items is empty and reason explains why). */
+  seed: { path: string; found: boolean };
+  /** Candidates ranked by descending similarity, seed excluded. */
+  items: LibrarySimilarItem[];
+  /** Present when the Live DB was consulted; false if it couldn't be found. */
+  dbAvailable?: boolean;
+  /** Set when the served snapshot may be stale (pending WAL). */
+  stalenessRisk?: StalenessRisk;
+  /** Set when items is empty due to a discoverable cause (seed not in the
+   * library, seed not analyzed, or DB missing). */
+  reason?: string;
+}
+
+/** A set of library files sharing one audio fingerprint — a byte-identical
+ * feature vector, i.e. effectively identical audio content. */
+export interface LibraryDuplicateGroup {
+  /** Files in the group (always ≥ 2). */
+  count: number;
+  items: LibraryItem[];
+}
+
+export interface LibraryFindDuplicatesResult {
+  /** Duplicate groups, most-duplicated first (capped at `limit` groups). */
+  groups: LibraryDuplicateGroup[];
+  /** Present when the Live DB was consulted; false if it couldn't be found. */
+  dbAvailable?: boolean;
+  /** Set when the served snapshot may be stale (pending WAL). */
+  stalenessRisk?: StalenessRisk;
+  /** Set when groups is empty due to a discoverable cause (DB missing). */
+  reason?: string;
+}
+
 /** One query in a searchBatch call: the single-search filter set plus an
  * optional label used to group its results in the response. */
 export interface LibraryBatchQuery extends LibrarySearchArgs {

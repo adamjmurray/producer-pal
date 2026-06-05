@@ -165,19 +165,25 @@ export function evaluateChoose(
 
 /**
  * Build an indexed-sequence evaluator (shared body for seq() and clipseq()).
- * Each picks values from args by a single axis key with no fallback — when the
- * axis is missing, warns and returns the first value.
+ * Picks values from args by a primary axis key, with an optional fallback axis.
+ * seq() passes a clip-axis fallback: a clip-granular property (gain, pitchShift)
+ * has no note.index, and the clip axis is then the only meaningful one, so seq()
+ * cycles by clip.index there (equivalent to clipseq() for those properties).
+ * Note properties always carry note.index, so the fallback only ever bites
+ * clip-granular ones. clipseq() has no fallback — forcing the clip axis onto a
+ * note property must not silently borrow note.index. When no axis is in scope,
+ * warns and returns the first value.
  * @param fnName - Function name for errors/warnings
- * @param axisKey - NoteProperties key supplying the cycle index
- * @param axisDisplay - User-facing variable name for the axis (e.g. "note.index")
- * @param alternativeHint - Sibling function name to point users at when the axis is missing
+ * @param axisKey - Primary NoteProperties key supplying the cycle index
+ * @param missingWarning - Warning emitted when no usable axis is in scope
+ * @param fallbackKey - Optional secondary axis key tried when the primary is absent
  * @returns Evaluator with the standard transform-function signature
  */
 function buildIndexedSeq(
   fnName: string,
   axisKey: string,
-  axisDisplay: string,
-  alternativeHint: string,
+  missingWarning: string,
+  fallbackKey?: string,
 ): typeof evaluateRand {
   return function evaluate(
     args,
@@ -192,13 +198,13 @@ function buildIndexedSeq(
       throw new Error(`Function ${fnName}() requires at least 1 argument`);
     }
 
-    const rawIndex = noteProperties[axisKey];
+    const rawIndex =
+      noteProperties[axisKey] ??
+      (fallbackKey != null ? noteProperties[fallbackKey] : undefined);
     const missing = rawIndex == null;
 
     if (missing) {
-      console.warn(
-        `${fnName}() needs ${axisDisplay} — did you mean ${alternativeHint}? Returning first value.`,
-      );
+      console.warn(missingWarning);
     }
 
     const pick = missing ? 0 : rawIndex % args.length;
@@ -214,20 +220,23 @@ function buildIndexedSeq(
   };
 }
 
-/** seq(a, b, ...) — cycle by note.index (per-note, MIDI). */
+/**
+ * seq(a, b, ...) — cycle by note.index for note properties. Clip-granular
+ * properties (gain, pitchShift) have no note.index, so it falls back to the
+ * clip axis there (== clipseq() for those).
+ */
 export const evaluateSeq = buildIndexedSeq(
   "seq",
   "index",
-  "note.index",
-  "clipseq()",
+  "seq() needs note.index or clip.index. Returning first value.",
+  "clip:index",
 );
 
 /** clipseq(a, b, ...) — cycle by clip.index (per-clip across the batch). */
 export const evaluateClipSeq = buildIndexedSeq(
   "clipseq",
   "clip:index",
-  "clip.index",
-  "seq()",
+  "clipseq() needs clip.index — did you mean seq()? Returning first value.",
 );
 
 /**

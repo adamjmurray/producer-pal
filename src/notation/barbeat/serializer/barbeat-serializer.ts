@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { isValidMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -12,7 +13,6 @@ import {
   type FormatOptions,
   groupNotesByTime,
   resolveFormatConfig,
-  sortNotes,
 } from "./helpers/barbeat-serializer-grouping.ts";
 import { findMergeBatches } from "./helpers/barbeat-serializer-merge.ts";
 import {
@@ -38,9 +38,11 @@ export function formatNotation(
     return "";
   }
 
-  // A read path must never throw: drop any note whose pitch can't be named
-  // (out of 0-127) and warn, rather than aborting serialization.
-  const notes = dropUnnameablePitches(clipNotes);
+  // A read path must never throw and must always round-trip: drop notes that
+  // can't be serialized into re-parseable notation — an unnameable pitch (out
+  // of 0-127), or a non-positive duration (would emit an `n-1/4`/`n0/1` token
+  // that re-parses to a wrong or invalid value). Warn rather than abort.
+  const notes = dropUnserializableNotes(clipNotes);
 
   if (notes.length === 0) {
     return "";
@@ -83,18 +85,28 @@ export function formatNotation(
 }
 
 /**
- * Drop notes whose MIDI pitch is out of range (can't be named), warning once if
- * any were dropped. Keeps the read path total — an out-of-range pitch is
- * skipped, never thrown.
+ * Drop notes that can't be serialized into re-parseable notation, warning once
+ * per reason if any were dropped. Keeps the read path total and round-trip-safe:
+ * an unnameable pitch (outside 0-127) or a non-positive duration is skipped,
+ * never thrown. A duration <= 0 would otherwise emit an `n-1/4`/`n0/1` token
+ * that throws or re-parses to the wrong duration.
  * @param clipNotes - Notes to filter
- * @returns Notes with nameable pitches only
+ * @returns Notes that are safe to serialize
  */
-function dropUnnameablePitches(clipNotes: NoteEvent[]): NoteEvent[] {
-  const notes = clipNotes.filter((note) => isValidMidi(note.pitch));
+function dropUnserializableNotes(clipNotes: NoteEvent[]): NoteEvent[] {
+  const named = clipNotes.filter((note) => isValidMidi(note.pitch));
 
-  if (notes.length < clipNotes.length) {
+  if (named.length < clipNotes.length) {
     console.warn(
-      `${clipNotes.length - notes.length} note(s) skipped: MIDI pitch outside valid range 0-127`,
+      `${clipNotes.length - named.length} note(s) skipped: MIDI pitch outside valid range 0-127`,
+    );
+  }
+
+  const notes = named.filter((note) => note.duration > 0);
+
+  if (notes.length < named.length) {
+    console.warn(
+      `${named.length - notes.length} note(s) skipped: duration must be greater than 0`,
     );
   }
 

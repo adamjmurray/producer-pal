@@ -6,14 +6,25 @@
 import { type NoteEvent } from "#src/notation/types.ts";
 
 /**
- * Get the note count within the playable region of a clip.
+ * Count the notes in a clip using the SAME window read-clip reads:
+ * [-length, 2*length] in beats, pitches 0–127. This includes out-of-bounds
+ * notes (a pickup before the start, overhang past the end), so the count
+ * matches what read-clip returns — what Live actually stored, not just the
+ * playable region [0, length]. Notes more than one clip-length outside the
+ * region are still missed (the same finite-scan bound read-clip uses).
  * @param clip - LiveAPI clip object
- * @returns Number of notes in the playable region
+ * @returns Number of notes in the read window
  */
-export function getPlayableNoteCount(clip: LiveAPI): number {
+export function getClipNoteCount(clip: LiveAPI): number {
   const lengthBeats = clip.getProperty("length") as number;
   const result = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
+    clip.call(
+      "get_notes_extended",
+      0,
+      128,
+      -lengthBeats,
+      lengthBeats * 3,
+    ) as string,
   );
 
   return result?.notes?.length ?? 0;

@@ -11,8 +11,8 @@ saw(frequency, [phase], [sync]); // sawtooth wave — phase 0 starts at zero, ri
 square(frequency, [phase], [pulseWidth], [sync]); // square wave — phase 0 starts high
 rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
 choose(a, b, ...); // random pick from arguments (at least 1)
-seq(a, b, ...); // cycle through arguments by note.index (per note; MIDI only)
-clipseq(a, b, ...); // cycle through arguments by clip.index (per clip across a batch)
+seq(a, b, ...); // cycle by note.index; clip-granular params (gain, pitchShift) have no note axis, so cycles by clip.index there (== clipseq)
+clipseq(a, b, ...); // cycle by clip.index (per clip across a batch); forces the clip axis even on per-note params
 ramp(start, end); // linear ramp over clip/time range
 curve(start, end, exponent); // exponential ramp over clip/time range
 
@@ -49,8 +49,7 @@ pow(base, exponent); // base raised to exponent
     - Meter-invariant in absolute time: `n/4` is one cycle per quarter note in
       any meter.
   - **Bar-length cycle** (`Nbar`): meter-aware bars, e.g. `cos(1bar)` (1 bar) or
-    `cos(4bar)` (4 bars). Equivalent to the `clip.barDuration` variable —
-    `cos(clip.barDuration)` and `cos(clip.barDuration * 4)` still work.
+    `cos(4bar)` (4 bars).
   - **Expressions**: Any numeric expression (including variables)
     - Examples: `note.duration`, `note.start / 4`, `2.5`
     - A bare number is treated as a period in beats
@@ -103,13 +102,13 @@ across clips on the global timeline.
 
 ```
 // Clip-relative (default) — phase resets at each clip start
-velocity += 20 * cos(clip.barDuration * 4);
+velocity += 20 * cos(4bar);
 
 // Timeline-synced — continuous phase from 1|1
-velocity += 20 * cos(clip.barDuration * 4, sync);
+velocity += 20 * cos(4bar, sync);
 
 // With phase offset and sync
-velocity += 20 * cos(clip.barDuration * 4, 0.25, sync);
+velocity += 20 * cos(4bar, 0.25, sync);
 
 // square with all args and sync
 velocity += 20 * square(n/2, 0, 0.75, sync);
@@ -235,11 +234,26 @@ C3-C5: duration = legato()       // legato for melody notes only
     note position (`note.start`), so `timing *= 0.5` compresses all notes toward
     bar 1.
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
-  - Single pitch: `C3 velocity += 10`
-  - Pitch range: `C3-C5 velocity += 10` (applies to all notes from C3 to C5
+  - Single pitch: `C3: velocity += 10`
+  - Pitch range: `C3-C5: velocity += 10` (applies to all notes from C3 to C5
     inclusive)
+  - Note names follow the **same rules as bar|beat notes**: case-insensitive
+    letters, ASCII (`#`/`b`) or Unicode (`♯`/`♭`) accidentals, and enharmonic
+    spellings (`E#`→F, `B#`→C of the next octave, `Cb`→B of the previous octave)
+    — see BarBeat-Spec. (`B` also reads as a flat, so `GB3` = `Gb3`.) The
+    transform grammar shares one `pitchClassFromParts`, locked in parity with
+    the bar|beat note grammar by `pitch-class-grammar-parity.test.ts`.
+  - A bare pitch name is a value only for the `pitch` parameter (`pitch = C4`),
+    as a selector (`C3:`), or as a function argument (`min(C3, C5)`). Assigned
+    to any other parameter it is warned-and-skipped — not silently coerced to a
+    MIDI number:
+
+    ```
+    velocity = b2    // skipped with a warning (b2 is not a velocity)
+    ```
+
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
-  `1|1-2|1 velocity += 10`). Both bounds are **inclusive** by default (matching
+  `1|1-2|1: velocity += 10`). Both bounds are **inclusive** by default (matching
   note start time). Two opt-in forms make the end **exclusive** (half-open), so
   a selection can stop at a bar line without catching the next downbeat:
   - **Whole-bar wildcard:** `N|*` selects all of bar N; `A|*-B|*` selects whole
@@ -254,8 +268,9 @@ C3-C5: duration = legato()       // legato for melody notes only
     the end stays inclusive.
 
   The beat field uses the same dialect as note positions: a whole beat, a
-  decimal sub-beat (`1|1.5`), or a `±n` note-value offset off the grid beat
-  (`1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24` just behind beat 2). The
+  decimal sub-beat (`1|1.5`), or a `±n` note-value offset off an
+  integer-or-decimal grid beat (`1|1+n/12` = beat 1 + an eighth triplet,
+  `1|2-n/24` just behind beat 2, `1|1.5+n/4` = beat 1.5 + a quarter note). The
   offset is a note value (meter-invariant), so a bound resolves to the same
   musical position as a note written that way. A `-n` bound may sit just before
   a downbeat — `2|1-n/12` borrows across the bar line into bar 1 — and a bound
@@ -265,7 +280,9 @@ C3-C5: duration = legato()       // legato for melody notes only
   absolute musical position, not by its bar number, so the bound filters at its
   true position regardless of which bar it overflows into. Bare fractions
   (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the grid+offset
-  form instead.
+  form instead. A **0-indexed bound** (`1|0-2|1`) is rejected too: beats count
+  from 1 in time ranges just as in note positions (the downbeat is beat 1; for a
+  pickup before it, offset from beat 1 — `1|1-n/4`).
 
 - **Range clamping**: Applied after modulation:
   - velocity: 1-127
@@ -289,7 +306,8 @@ applies.
   `vA-B` sets a humanized random velocity range (e.g. `v80-120`)
 - `pN` sets probability · `p+N` / `p-N` adjusts probability (no range form — the
   notes layer has none either, so `p` stays single-valued for parity)
-- `n/4` (or `Nbar`, `Nbar+n/4`) sets duration to that note value
+- `n/4` (or `Nbar`, `Nbar±n/4`, e.g. `1bar-n/16`) sets duration to that note
+  value
 - `C4` (a bare pitch) moves/remaps matched notes to that pitch
 
 Each desugars to the same `{ parameter, operator, expression }` as the full
@@ -345,7 +363,7 @@ time across meters (see Absolute Durations below).
 - `timing += 1` shifts by 1 eighth note
 - `duration = 6` sets to 6 eighth notes (1 bar)
 - `cos(n/4)` still completes one cycle per quarter note (= 2 eighth-note beats)
-- `cos(clip.barDuration)` completes one cycle per bar (6 eighth notes)
+- `cos(1bar)` completes one cycle per bar (6 eighth notes)
 
 **In 2/2 time**:
 
@@ -383,8 +401,8 @@ note value.
 
 For meter-aware durations and periods, use `Nbar` — the same token as the
 `create-clip`/`update-clip` length fields. A bar is the number of musical beats
-in one bar (the time-signature numerator), so `Nbar` evaluates to
-`N * clip.barDuration`:
+in one bar (the time-signature numerator), so `Nbar` evaluates to N times the
+beats-per-bar count:
 
 - `1bar` = one bar (4 musical beats in 4/4, 6 in 6/8, 3 in 3/4)
 - `4bar` = four bars
@@ -476,8 +494,12 @@ Access clip and bar context in expressions:
 - `clip.position` - Arrangement position in musical beats (arrangement clips
   only; on session clips it resolves to 0 with a warning, since session clips
   have no arrangement origin)
-- `clip.barDuration` - Beats per bar from clip time signature (e.g., 4 in 4/4, 3
-  in 3/4, 6 in 6/8)
+- `clip.barDuration` - **Legacy alias**, still accepted by the parser but no
+  longer taught. Equals the beats-per-bar count (e.g., 4 in 4/4, 3 in 3/4, 6 in
+  6/8). Prefer the `Nbar` literal: `1bar` == `clip.barDuration` and `4bar` ==
+  `clip.barDuration * 4`, and it composes in any expression
+  (`note.start % 1bar`), so it fully subsumes the variable while staying uniform
+  with the length/duration fields.
 
 Variables can be used anywhere in expressions: arithmetic, function arguments,
 waveform periods, etc.
@@ -505,25 +527,25 @@ Parentheses for grouping: `(expression)`
 
 ```
 // Basic envelope
-velocity += 20 * cos(clip.barDuration);
+velocity += 20 * cos(1bar);
 
 // Phase-shifted
-velocity += 20 * cos(clip.barDuration, 0.5);
+velocity += 20 * cos(1bar, 0.5);
 
 // Pulse width modulation
 velocity += 20 * square(n/2, 0, 0.25);
 
 // Dynamic PWM (pulse width modulated by another waveform)
-velocity += 20 * square(n/2, 0, cos(clip.barDuration) * 0.25 + 0.5);
+velocity += 20 * square(n/2, 0, cos(1bar) * 0.25 + 0.5);
 
 // Combined functions
-velocity += 20 * cos(clip.barDuration * 4) + 10 * rand();
+velocity += 20 * cos(4bar) + 10 * rand();
 
 // Unipolar envelope (adds 0 to 40)
-velocity += 20 + 20 * cos(clip.barDuration * 2);
+velocity += 20 + 20 * cos(2bar);
 
 // Amplitude modulation
-velocity += 30 * cos(clip.barDuration * 4) * cos(n/4);
+velocity += 30 * cos(4bar) * cos(n/4);
 
 // Set absolute velocity value
 velocity = 80;
@@ -619,24 +641,24 @@ velocity = pow(note.velocity / 127, 2) * 127;
 
 ```
 // Single pitch selector (only affects C3 notes)
-C3 velocity += 20
+C3: velocity += 20
 
 // Pitch range selector (affects C3, C#3, D3, ... up to C5)
-C3-C5 velocity += 20
+C3-C5: velocity += 20
 
 // Accent bass notes (C1 through C2)
-C1-C2 velocity += 30
+C1-C2: velocity += 30
 
 // Different modulation for high notes
-C5-C7 velocity = 100
+C5-C7: velocity = 100
 
 // Combine pitch range with time range
-C3-C5 1|1-2|1 velocity += 10
+C3-C5 1|1-2|1: velocity += 10
 
 // Multiple pitch ranges with different modulations
-C1-C2 velocity += 30
-C3-C5 velocity += 10
-C6-C7 velocity = 100
+C1-C2: velocity += 30
+C3-C5: velocity += 10
+C6-C7: velocity = 100
 ```
 
 ### Note Property Variables
@@ -649,7 +671,7 @@ velocity = note.pitch / 127 * 100
 velocity = note.velocity / 2
 
 // Delay higher notes progressively
-C4-C6 timing += note.pitch * 0.01
+C4-C6: timing += note.pitch * 0.01
 
 // Reduce duration based on probability
 duration = note.duration * note.probability
@@ -680,7 +702,7 @@ velocity += cos(n/4, note.probability);
 ### Multi-Parameter
 
 ```
-transforms: `velocity += 20 * cos(clip.barDuration) + 10 * rand()
+transforms: `velocity += 20 * cos(1bar) + 10 * rand()
 timing += 0.03 * rand()
 probability += 0.2 * cos(n/2)`;
 
@@ -721,8 +743,8 @@ pitch += clip.index * 7;
 // Scale gain by arrangement position
 gain = ramp(-24, 0) * (clip.position/32);
 
-// Use bar duration for rhythmic patterns
-velocity += (20 * (note.start % clip.barDuration)) / clip.barDuration;
+// Position within the bar drives velocity (the bar literal composes in arithmetic)
+velocity += (20 * (note.start % 1bar)) / 1bar;
 ```
 
 ### Audio Clip Transforms

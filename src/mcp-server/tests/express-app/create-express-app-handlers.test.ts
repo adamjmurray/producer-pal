@@ -28,18 +28,6 @@ describe("Handler Registration", () => {
     return config[field];
   }
 
-  it("should set chatUIEnabled with various inputs", () => {
-    const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
-      input: unknown,
-    ) => void;
-
-    expect(chatUIHandler).toBeDefined();
-    chatUIHandler(1);
-    chatUIHandler("true");
-    chatUIHandler(0);
-    chatUIHandler(1); // Re-enable
-  });
-
   it("should set smallModelMode with various inputs", () => {
     const smallModelHandler = mockMax.handlers.get("smallModelMode") as (
       input: unknown,

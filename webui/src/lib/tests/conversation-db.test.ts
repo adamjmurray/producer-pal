@@ -19,6 +19,7 @@ import {
   renameConversation,
   resetDbCache,
   saveConversation,
+  searchConversations,
   setBookmark,
 } from "#webui/lib/conversation-db";
 import { createTestRecord as createRecord } from "#webui/test-utils/conversation-test-helpers";
@@ -302,6 +303,149 @@ describe("conversation-db", () => {
     const list = await listConversations();
 
     expect(list[0]?.modelLabel).toBe("Test Model Label");
+  });
+
+  it("searchConversations matches on title", async () => {
+    const a = createRecord({ title: "Drum patterns", messages: [] });
+    const b = createRecord({ title: "Bass line", messages: [] });
+
+    await saveConversation(a);
+    await saveConversation(b);
+
+    const matches = await searchConversations("drum");
+
+    expect(matches.has(a.id)).toBe(true);
+    expect(matches.has(b.id)).toBe(false);
+  });
+
+  it("searchConversations matches on message content", async () => {
+    const a = createRecord({
+      messages: [
+        { role: "user", content: "make a syncopated groove" },
+        { role: "assistant", content: "done" },
+      ],
+    });
+    const b = createRecord({
+      messages: [{ role: "user", content: "transpose up an octave" }],
+    });
+
+    await saveConversation(a);
+    await saveConversation(b);
+
+    const matches = await searchConversations("syncopated");
+
+    expect(matches.has(a.id)).toBe(true);
+    expect(matches.has(b.id)).toBe(false);
+  });
+
+  it("searchConversations matches on voice transcript text", async () => {
+    const voice = createRecord({
+      sessionType: "voice",
+      messages: [],
+      voiceHistory: [
+        // Malformed entries are tolerated (voiceHistory is unknown[]): a
+        // non-object item, a tool call, and a message with non-array content
+        // are all skipped without throwing.
+        null,
+        { type: "function_call", name: "ppal-create-clip", arguments: "{}" },
+        { type: "message", role: "system", content: "not-an-array" },
+        // A system message IS skipped even with valid array content: search
+        // mirrors the transcript, which doesn't render system text.
+        {
+          type: "message",
+          role: "system",
+          content: [{ type: "input_text", text: "supercalifragilistic" }],
+        },
+        {
+          type: "message",
+          role: "user",
+          content: [
+            "not-an-object",
+            { type: "input_text" }, // no text/transcript yet
+            { type: "input_audio", transcript: "play a shuffle beat" },
+          ],
+        },
+        {
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_audio", transcript: "here you go" }],
+        },
+      ],
+    });
+    const other = createRecord({
+      sessionType: "voice",
+      messages: [],
+      voiceHistory: [
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "make it louder" }],
+        },
+      ],
+    });
+
+    await saveConversation(voice);
+    await saveConversation(other);
+
+    const matches = await searchConversations("shuffle");
+
+    expect(matches.has(voice.id)).toBe(true);
+    expect(matches.has(other.id)).toBe(false);
+
+    // Typed voice input (input_text) is searchable too.
+    const typed = await searchConversations("louder");
+
+    expect(typed.has(other.id)).toBe(true);
+
+    // System-message text is NOT searchable (it isn't rendered in the transcript).
+    const system = await searchConversations("supercalifragilistic");
+
+    expect(system.has(voice.id)).toBe(false);
+  });
+
+  it("searchConversations handles records missing the messages field", async () => {
+    const record = createRecord({ title: "Legacy convo" });
+
+    await saveConversation(record);
+    const db = await getConversationDb();
+    const raw = await db.get("conversations", record.id);
+
+    delete (raw as Record<string, unknown>).messages;
+    await db.put("conversations", raw);
+
+    // Must not throw on the absent messages array; title search still matches.
+    const matches = await searchConversations("legacy");
+
+    expect(matches.has(record.id)).toBe(true);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.messages).toStrictEqual([]);
+  });
+
+  it("searchConversations is case-insensitive", async () => {
+    const record = createRecord({ title: "MixDown Session", messages: [] });
+
+    await saveConversation(record);
+
+    const matches = await searchConversations("mixdown");
+
+    expect(matches.has(record.id)).toBe(true);
+  });
+
+  it("searchConversations returns empty set for a blank query", async () => {
+    await saveConversation(createRecord({ title: "Anything" }));
+
+    expect(await searchConversations("")).toStrictEqual(new Set());
+    expect(await searchConversations("   ")).toStrictEqual(new Set());
+  });
+
+  it("searchConversations returns empty set when nothing matches", async () => {
+    await saveConversation(createRecord({ title: "Hello", messages: [] }));
+
+    const matches = await searchConversations("no-such-text");
+
+    expect(matches.size).toBe(0);
   });
 
   it("sorts all conversations by updatedAt desc regardless of bookmark", async () => {

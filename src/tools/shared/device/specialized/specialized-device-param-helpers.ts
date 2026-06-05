@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
+import { type PseudoParam } from "./specialized-device-types.ts";
 
 // Shared read/write helpers for specialized-device pseudo-params. Most
 // specialized state is a small int that maps to a stable string enum
@@ -60,6 +61,31 @@ export function writeEnumByIndex(
   }
 
   device.set(property, index);
+}
+
+/**
+ * Build a complete enum pseudo-param backed by an int-indexed Live property:
+ * `options` exposes the labels, `read` maps the stored index to its label, and
+ * `write` maps a label back to its index (warn-and-skip on an unknown label).
+ * Collapses the otherwise-identical read/write wiring that every index↔label
+ * control across the specialized device specs would repeat.
+ * @param name - camelCase pseudo-param name
+ * @param property - Live API int-indexed property backing it
+ * @param labels - User-facing labels in internal-index order
+ * @returns A ready-to-use enum PseudoParam
+ */
+export function enumParam(
+  name: string,
+  property: string,
+  labels: readonly string[],
+): PseudoParam {
+  return {
+    name,
+    options: labels,
+    read: (device) => readEnumByIndex(device, property, labels),
+    write: (device, value, toolName) =>
+      writeEnumByIndex(device, property, value, labels, toolName, name),
+  };
 }
 
 /**

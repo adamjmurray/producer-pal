@@ -7,7 +7,7 @@
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { extractToolResultText } from "#evals/chat/mcp.ts";
+import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { type StateAssertion, type EvalAssertionResult } from "../types.ts";
 import { partialMatch } from "./helpers.ts";
 
@@ -32,7 +32,7 @@ export async function assertState(
     let parsed: unknown;
 
     try {
-      parsed = JSON.parse(resultText);
+      parsed = parseToolResult(resultText);
     } catch {
       parsed = resultText;
     }

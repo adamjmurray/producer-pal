@@ -3,13 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { noteNameToMidi } from "#src/shared/pitch.ts";
 import {
-  autoCreateDrumPadChains,
   resolveContainerWithAutoCreate,
+  resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
-import { resolveDrumPadFromPath } from "./device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "./device-path-to-live-api.ts";
 
 // Re-export all functions for backwards compatibility
@@ -64,78 +62,13 @@ function resolveDrumPadContainer(path: string): LiveAPI | null {
 
   // drumPadNote is guaranteed for drum-pad targetType
   const drumPadNote = resolved.drumPadNote as string;
-  const { remainingSegments } = resolved;
+  const rack = LiveAPI.from(resolved.liveApiPath);
 
-  // Try to resolve the drum pad chain
-  const result = resolveDrumPadFromPath(
-    resolved.liveApiPath,
+  return resolveOrCreateDrumPadChain(
+    rack,
     drumPadNote,
-    remainingSegments,
+    resolved.remainingSegments,
   );
-
-  // If found, return it
-  if (result.target) {
-    return result.target;
-  }
-
-  // If not found and we're looking for a chain, try auto-creation
-  if (result.targetType === "chain") {
-    const device = LiveAPI.from(resolved.liveApiPath);
-
-    if (!device.exists()) {
-      return null;
-    }
-
-    // Parse the note to MIDI
-    const targetInNote = drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
-
-    if (targetInNote == null) {
-      return null;
-    }
-
-    // Get chain index from remaining segments (defaults to 0)
-    // Chain index segment uses 'c' prefix: pC1/c2 means chain 2 of drum pad C1
-    let chainIndex = 0;
-
-    if (remainingSegments.length > 0) {
-      const chainSegment = assertDefined(remainingSegments[0], "chain segment");
-
-      chainIndex = chainSegment.startsWith("c")
-        ? Number.parseInt(chainSegment.slice(1))
-        : Number.parseInt(chainSegment);
-    }
-
-    if (Number.isNaN(chainIndex) || chainIndex < 0) {
-      return null;
-    }
-
-    // Find existing chains with this in_note
-    const allChains = device.getChildren("chains");
-    const matchingChains = allChains.filter(
-      (chain) => chain.getProperty("in_note") === targetInNote,
-    );
-
-    // Auto-create chains if needed
-    if (chainIndex >= matchingChains.length) {
-      autoCreateDrumPadChains(
-        device,
-        targetInNote,
-        chainIndex,
-        matchingChains.length,
-      );
-    }
-
-    // Re-resolve after creation
-    const resultAfter = resolveDrumPadFromPath(
-      resolved.liveApiPath,
-      drumPadNote,
-      remainingSegments,
-    );
-
-    return resultAfter.target;
-  }
-
-  return null;
 }
 
 /**

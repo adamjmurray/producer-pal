@@ -60,6 +60,33 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
+  it("parses decimal-base note-value offsets (1|1.5+n/4)", () => {
+    // The offset base may be a decimal beat, not just an integer: `1.5+n/4` =
+    // beat 1.5 + a quarter note; `2.25-n/24` = beat 2.25 − an eighth triplet.
+    expect(
+      parser.parse("1|1.5+n/4 C3 1|2.25-n/24 D3 1|1.5+n/8 E3"),
+    ).toStrictEqual([
+      { bar: 1, beat: obeat(1.5, 1, 4) },
+      { pitch: 60 },
+      { bar: 1, beat: 2.25 - (1 / 24) * 4 },
+      { pitch: 62 },
+      { bar: 1, beat: obeat(1.5, 1, 8) },
+      { pitch: 64 },
+    ]);
+  });
+
+  it("gives the targeted note-value steer for a malformed offset (int and decimal base)", () => {
+    // A malformed offset (`+2`, `-2`) gets the targeted steer whether the base
+    // is an integer (`1|1+2`) or a decimal (`1|1.5+2`); previously a decimal
+    // base fell through to a generic peggy error. The valid `+n/...` form still
+    // wins, and a real `-bar|` span still gets its own range error.
+    expect(() => parser.parse("1|1+2 C3")).toThrow(/note-value form/);
+    expect(() => parser.parse("1|1.5+2 C3")).toThrow(/note-value form/);
+    expect(() => parser.parse("1|1.5-2 C3")).toThrow(/note-value form/);
+    expect(() => parser.parse("1|1.5+n/4 C3")).not.toThrow();
+    expect(() => parser.parse("1|1.5-2|1 C3")).toThrow(/single bar\|beat/);
+  });
+
   it("parses beat lists with note-value offsets", () => {
     expect(parser.parse("1|1,2+n/16,2+n/8,2+n3/16")).toStrictEqual([
       { bar: 1, beat: 1 },
@@ -90,6 +117,12 @@ describe("BarBeatScript Parser - time declarations", () => {
   it("parses repeat pattern with note-value offset start (positions still meter-relative)", () => {
     expect(parser.parse("1|2+n/12x3@n1/3")).toStrictEqual([
       { bar: 1, beat: { start: obeat(2, 1, 12), times: 3, step: 1 / 3 } },
+    ]);
+  });
+
+  it("parses repeat pattern with a decimal-base offset start (1|1.5+n/12x3)", () => {
+    expect(parser.parse("1|1.5+n/12x3@n1/3")).toStrictEqual([
+      { bar: 1, beat: { start: obeat(1.5, 1, 12), times: 3, step: 1 / 3 } },
     ]);
   });
 
@@ -125,6 +158,15 @@ describe("BarBeatScript Parser - time declarations", () => {
   it("parses mixed bar+note-value steps (@Nbar+nA/B)", () => {
     expect(parser.parse("1|1x2@1bar+n/4")).toStrictEqual([
       { bar: 1, beat: { start: 1, times: 2, step: 1 / 4, stepBars: 1 } },
+    ]);
+  });
+
+  it("parses minus-tail bar steps (@Nbar-nA/B)", () => {
+    // The tail sign rides the shared duration grammar: `@1bar-n/4` stores a
+    // negative note-value fraction; the interpreter resolves it to a near-bar
+    // advance (one bar minus a quarter = 3 beats in 4/4).
+    expect(parser.parse("1|1x2@1bar-n/4")).toStrictEqual([
+      { bar: 1, beat: { start: 1, times: 2, step: -1 / 4, stepBars: 1 } },
     ]);
   });
 

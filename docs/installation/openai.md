@@ -15,8 +15,7 @@ OpenAI subscription instead.
 ## What You Need
 
 - An [OpenAI account](https://platform.openai.com) with API credits
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Get an OpenAI API Key
 

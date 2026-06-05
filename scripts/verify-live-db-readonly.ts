@@ -171,7 +171,7 @@ async function runQueryLoop(
   dbPath: string,
   durationSeconds: number,
 ): Promise<QueryResult[]> {
-  const db = openLiveDb(dbPath);
+  const db = await openLiveDb(dbPath);
   const queries = buildQueries();
   const results: QueryResult[] = queries.map((q) => ({
     label: q.label,

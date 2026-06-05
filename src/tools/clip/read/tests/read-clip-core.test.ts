@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -158,6 +159,41 @@ describe("readClip", () => {
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
     expect(result).toHaveLength("1bar"); // 3 Ableton beats = 1 bar in 6/8
+  });
+
+  it("returns notes outside the playable region (pickup before start, overhang past end)", () => {
+    // read-clip reads a window of one clip-length on each side of the playable
+    // region [0, length] so authored out-of-bounds notes round-trip on read
+    // instead of being silently dropped. The window itself ([-4, 8] here, i.e.
+    // get_notes_extended from_time=-4 spanning 12 beats) delegates the filtering
+    // to Live; our code must not drop what comes back.
+    const clip = setupMidiClipMock({
+      clipProps: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+        looping: 0,
+      },
+    });
+
+    setupNotesMock(clip, [
+      createTestNote({ pitch: 60, startTime: -1 }), // pickup, before clip start
+      createTestNote({ pitch: 62, startTime: 0 }), // in the playable region
+      createTestNote({ pitch: 64, startTime: 5 }), // overhang, past the end
+    ]);
+
+    const result = readClip({
+      trackIndex: 1,
+      sceneIndex: 1,
+      include: ["notes"],
+    });
+
+    expectGetNotesExtendedCall(clip);
+    expect(result.notes).toBe("C3 1|1-n/4 D3 1|1 E3 2|2");
   });
 
   it("returns null values and emits warning when no clip exists at valid track/scene", () => {

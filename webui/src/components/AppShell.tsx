@@ -95,6 +95,9 @@ export function AppShell({
           isOpen={conversationPanel.isOpen}
           conversations={conversationPanel.conversations}
           activeConversationId={conversationPanel.activeConversationId}
+          searchQuery={conversationPanel.searchQuery}
+          matchedIds={conversationPanel.matchedIds}
+          onSearchChange={conversationPanel.onSearchChange}
           onSelect={conversationPanel.onSelect}
           onNewConversation={conversationPanel.onNew}
           onDelete={conversationPanel.onDelete}

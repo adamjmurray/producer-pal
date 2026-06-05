@@ -108,7 +108,7 @@ describe("Transform - seq function", () => {
       expect(result2.velocity!.value).toBe(99);
     });
 
-    it("warns and returns first value when note.index is missing", () => {
+    it("warns and returns first value when no axis is in scope", () => {
       const result = evaluateTransform(
         "velocity = seq(60, 80, 100)",
         createContext(),
@@ -121,21 +121,33 @@ describe("Transform - seq function", () => {
       );
     });
 
-    it("does not fall back to clip.index (use clipseq() instead)", () => {
-      // Previously seq() fell back to clip:index on audio. That overload is gone
-      // — clip-axis sequencing now lives in clipseq(). seq() with only
-      // clip:index in scope must warn and return the first value.
+    it("falls back to clip.index when note.index is absent", () => {
+      // Clip-granular properties (gain/pitchShift) have no note.index — the clip
+      // axis is the only meaningful one there, so seq() cycles by clip:index
+      // (equivalent to clipseq() for those). Note properties always carry
+      // note.index in practice, so this fallback only ever bites clip-granular
+      // ones.
       const result = evaluateTransform(
         "velocity = seq(10, 20, 30)",
         createContext(),
         { "clip:index": 2, "clip:count": 3 },
       );
 
-      expect(result.velocity!.value).toBe(10);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("clipseq()"),
+      expect(result.velocity!.value).toBe(30);
+      expect(outlet).not.toHaveBeenCalled();
+    });
+
+    it("prefers note.index over clip.index when both axes are in scope", () => {
+      // The mirror of clipseq's "ignores note.index" test: with both axes
+      // present (typical MIDI scenario), seq() picks by note.index, not
+      // clip:index. note.index=0 → 10; if it used clip:index=2 it would be 30.
+      const result = evaluateTransform(
+        "velocity = seq(10, 20, 30)",
+        createContext(),
+        { index: 0, "clip:index": 2, "clip:count": 3 },
       );
+
+      expect(result.velocity!.value).toBe(10);
     });
   });
 

@@ -8,11 +8,15 @@
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { extractToolResultText } from "#evals/chat/mcp.ts";
+import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
-import { type EvalAssertion, type EvalTurnResult } from "../../types.ts";
+import {
+  type EvalAssertion,
+  type EvalScenario,
+  type EvalTurnResult,
+} from "../../types.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
 export const TOOL_CONNECT = "ppal-connect";
@@ -73,6 +77,101 @@ export function assertNotesRead(turn: number): EvalAssertion {
 }
 
 /**
+ * Build a `state` assertion that re-reads the clip in `slot` and re-interprets
+ * its notation back into NoteEvents, then defers to `check` for the verdict.
+ * Reading the final clip state (not the create/update transcript) grades the
+ * OUTCOME, not the path — immune to tool-error strings and to which of several
+ * tool calls "won". Fails closed before `check` runs: a wrong/absent time
+ * signature, missing notes, or unparseable notation all return false.
+ *
+ * @param slot - Session clip slot to read (trackIndex/sceneIndex)
+ * @param meter - Expected time signature (e.g. "6/8"); also the interpret meter
+ * @param check - Verdict over the re-interpreted notes (start_time in Ableton
+ *   quarter beats); only called once the read succeeded in `meter`
+ * @returns State assertion
+ */
+export function clipStateAssertion(
+  slot: string,
+  meter: string,
+  check: (events: NoteEvent[]) => boolean,
+): EvalAssertion {
+  const [numerator, denominator] = meter.split("/").map(Number);
+
+  return {
+    type: "state",
+    tool: TOOL_READ_CLIP,
+    args: { slot, include: ["notes", "timing"] },
+    expect: (result: unknown): boolean => {
+      const clip = result as { notes?: string; timeSignature?: string };
+
+      if (clip.timeSignature !== meter || !clip.notes) return false;
+
+      let events: NoteEvent[];
+
+      try {
+        events = interpretNotation(clip.notes, {
+          timeSigNumerator: numerator,
+          timeSigDenominator: denominator,
+        });
+      } catch {
+        return false; // unparseable notation — treat as a failed clip
+      }
+
+      return check(events);
+    },
+  };
+}
+
+/** create-clip tool name (turn-1 create assertion in single-clip scenarios). */
+const TOOL_CREATE_CLIP = "ppal-create-clip";
+/** basic-midi-4-track: the 4-track Live Set shared by Lead-track notation scenarios. */
+const LEAD_LIVE_SET = "basic-midi-4-track";
+/** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
+const LEAD_TRACK = 3;
+
+/**
+ * Build a single-create-clip notation scenario on the Lead track of
+ * basic-midi-4-track: connect (turn 0), then one create-clip (turn 1) whose
+ * scene-1 read-back is re-interpreted in 4/4 and graded by `check`, with the LLM
+ * judge advisory. Shared by the value-stream and multi-bar-spread scenarios —
+ * only the prompt, the read-back check, and the judge prompt differ. Grades the
+ * OUTCOME (final clip state), so it is agnostic to how the model placed the
+ * notes (brackets, repeats, or hand-enumerated positions).
+ *
+ * @param config - Scenario specifics
+ * @param config.id - Scenario id
+ * @param config.description - One-line description
+ * @param config.message - User turn after the connect turn
+ * @param config.check - Read-back verdict over the re-interpreted notes (4/4)
+ * @param config.judgePrompt - Advisory LLM-judge prompt
+ * @returns The assembled eval scenario
+ */
+export function leadClipNotationScenario(config: {
+  id: string;
+  description: string;
+  message: string;
+  check: (events: NoteEvent[]) => boolean;
+  judgePrompt: string;
+}): EvalScenario {
+  return {
+    id: config.id,
+    description: config.description,
+    kind: "capability",
+    liveSet: LEAD_LIVE_SET,
+    judgeAdvisory: true,
+    messages: [MSG_CONNECT, config.message],
+    setup: (mcpClient) => clearSessionSlots(mcpClient, [`${LEAD_TRACK}/0`]),
+    assertions: [
+      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+      clipStateAssertion(`${LEAD_TRACK}/0`, "4/4", config.check),
+      { type: "llm_judge", prompt: config.judgePrompt },
+      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    ],
+  };
+}
+
+/**
  * Extract the transforms expressions from a ppal-update-clip call in the given
  * turn. transforms is now a single newline-separated string; a legacy array
  * value is still tolerated and joined with newlines so selector/expression
@@ -105,6 +204,33 @@ export function getTransforms(
 }
 
 /**
+ * Pull the raw `notes` string from a ppal-create-clip call in the given turn.
+ * Throws (failing the calling assertion with a message) when the call or the
+ * `notes` parameter is missing. Used by scenarios that grade HOW the model
+ * notated a clip — bracket cycling, stream zips — not just the resulting notes,
+ * which read back identically however they were written.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index containing the create-clip call (default 1)
+ * @returns The raw notes string passed to ppal-create-clip
+ */
+export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
+  const call = getToolCalls(turns, turn).find(
+    (c) => c.name === "ppal-create-clip",
+  );
+
+  if (!call) throw new Error(`ppal-create-clip not found in turn ${turn}`);
+
+  const notes = call.args.notes;
+
+  if (typeof notes !== "string") {
+    throw new Error("create-clip notes parameter is missing or not a string");
+  }
+
+  return notes;
+}
+
+/**
  * Parse a clip's notes from the read results in a turn, back into NoteEvents
  * (start_time in musical beats). Scans every `ppal-read-*` result, most recent
  * first — not just `ppal-read-clip`: the model is free to read a clip's notes
@@ -134,9 +260,9 @@ export function readClipNotesFromTurn(
     let parsed: unknown;
 
     try {
-      parsed = JSON.parse(String(call.result));
+      parsed = parseToolResult(String(call.result));
     } catch {
-      continue; // non-JSON read result
+      continue; // unparseable read result
     }
 
     for (const clip of clipObjectsFrom(parsed)) {
@@ -232,9 +358,10 @@ export async function clearSessionSlots(
     let id: unknown;
 
     try {
-      id = (JSON.parse(extractToolResultText(result)) as { id?: unknown }).id;
+      id = (parseToolResult(extractToolResultText(result)) as { id?: unknown })
+        .id;
     } catch {
-      id = null; // empty/non-JSON slot read — nothing to delete
+      id = null; // empty/unparseable slot read — nothing to delete
     }
 
     if (id != null) ids.push(String(id));

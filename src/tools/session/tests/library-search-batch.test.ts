@@ -118,6 +118,38 @@ describe("library tool — searchBatch action", () => {
     expect(result.results.map((r) => r.label)).toStrictEqual(["0", "1"]);
   });
 
+  it("suffixes duplicate labels with #N so every entry stays addressable", async () => {
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [
+        { label: "Kicks", tags: "Kick" },
+        { label: "Kicks", tags: "Kick" },
+        { label: "Kicks", tags: "Kick" },
+      ],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results.map((r) => r.label)).toStrictEqual([
+      "Kicks",
+      "Kicks#2",
+      "Kicks#3",
+    ]);
+  });
+
+  it("dedupes a provided label that collides with an index fallback", async () => {
+    mockSearchByFilter({});
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ tags: "Kick" }, { label: "0", tags: "Snare" }],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results.map((r) => r.label)).toStrictEqual(["0", "0#2"]);
+  });
+
   it("yields an empty items entry (not a dropped entry) for a no-match query", async () => {
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
 

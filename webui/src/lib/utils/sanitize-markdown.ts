@@ -42,6 +42,18 @@ const SANITIZE_CONFIG: Config = {
   ALLOWED_ATTR: ["href", "title", "alt", "src", "class", "rel", "target"],
 };
 
+// The chat UI renders assistant markdown inside the Max for Live device's
+// embedded webview. A normal in-window navigation would replace the app, so
+// every rendered link MUST open in a new browser window. marked emits plain
+// `<a href>` tags with no target, so force it here (target/rel are allowlisted
+// above). Registered once at module load; applies to both functions below.
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName === "A" && node.hasAttribute("href")) {
+    node.setAttribute("target", "_blank");
+    node.setAttribute("rel", "noopener noreferrer");
+  }
+});
+
 /**
  * Render markdown to sanitized HTML (block-level).
  * Combines marked rendering with DOMPurify sanitization to prevent XSS.

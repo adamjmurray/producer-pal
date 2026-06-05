@@ -123,7 +123,7 @@ export function musicalBeatsToBarBeat(
  * before the clip start) — allowed, never throws. Bare fractions (`4/3`) and
  * bar-relative mixed numbers (`1+1/3`) are not accepted — note values wear the
  * `n` sigil everywhere.
- * @param barBeat - Bar|beat string like "1|2", "2|3.5", or "1|1+n/12"
+ * @param barBeat - Bar|beat string like "1|2", "2|3.5", "1|1+n/12", or "1|1.5+n/4"
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator (for the `±n` offset unit)
  * @returns Number of beats
@@ -133,8 +133,12 @@ export function barBeatToMusicalBeats(
   beatsPerBar: number,
   timeSigDenominator?: number,
 ): number {
+  // Beat base is an integer or decimal grid beat, optionally displaced by a
+  // `±n<frac>` note-value offset. The base group carries the optional `.\d+` so
+  // a decimal beat can also take an offset (`1|1.5+n/4`); the offset suffix is
+  // its own optional group. Kept in parity with parseBeatValue below.
   const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*)|\.\d+)?)$/,
+    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*))?)$/,
   );
 
   if (!match) {
@@ -224,6 +228,80 @@ export function barBeatToAbletonBeats(
 }
 
 /**
+ * Validate a STANDALONE bar|beat POSITION field (create-clip start/firstStart/
+ * arrangementStart, locator time, playback loop start/end) so it rejects the
+ * same 1-indexing mistakes the `notes` grammar rejects with a targeted steer.
+ *
+ * The low-level {@link barBeatToMusicalBeats} / {@link barBeatToAbletonBeats}
+ * conversions are intentionally never-throw (they allow negative time so pickups
+ * like `1|1-n/4` resolve before the origin, and run per-note in transform
+ * timeRange checks where a throw would spam). That leniency silently accepted
+ * 0-indexed / zero-bar / negative-bar / leading-zero positions (`1|0` → -1,
+ * `0|1` → -4, `1|01` → 0) at these standalone fields — inconsistent with the
+ * notes grammar, which throws `badZeroBeat` for the same strings. This thin
+ * boundary validator restores parity: it throws the IDENTICAL 1-indexing message
+ * for any position the notes grammar would reject with that steer, while letting
+ * everything the grammar accepts (including `-n` pickups) pass through.
+ *
+ * The accept/reject set mirrors the barbeat grammar exactly:
+ *  - bar must be `[1-9][0-9]*` (grammar `oneOrMoreInt`): a bar < 1 or with a
+ *    leading zero (`0|1`, `01|1`) is rejected.
+ *  - the integer part of the beat literal must be 1-indexed: a beat literal that
+ *    starts with `0` (`1|0`, `1|01`, `1|007`, `1|0.5`) is the grammar's
+ *    `badZeroBeat` mistake. A `-n` PICKUP keeps the beat literal at 1
+ *    (`1|1-n/4`) and stays valid.
+ *
+ * Does NOT throw for an unparseable/empty string — callers already guard
+ * `!= null`, and the subsequent {@link barBeatToAbletonBeats} call raises its own
+ * format error for genuinely malformed input. This validator's sole job is the
+ * 1-indexing steer.
+ * @param barBeat - Standalone bar|beat position string
+ * @throws With the `notes` grammar's 1-indexing message when the position is
+ *   0-indexed / zero-bar / negative-bar / leading-zero
+ */
+export function validateBarBeatPosition(barBeat: string): void {
+  // Same regex shape as barBeatToMusicalBeats: capture the bar literal and the
+  // raw beat literal (the integer/decimal base, before any `±n` offset). Keep in
+  // parity with that regex — only the OUTER structure matters here; the offset
+  // suffix is allowed but not inspected (a pickup keeps a valid base).
+  const match = barBeat.match(
+    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*))?)$/,
+  );
+
+  // Not a recognizable bar|beat shape: leave it to barBeatToAbletonBeats's own
+  // format error (this validator only owns the 1-indexing steer).
+  if (!match) {
+    return;
+  }
+
+  const barLiteral = match[1] as string;
+  const beatBaseLiteral = match[3] as string;
+  const bar = Number.parseInt(barLiteral);
+
+  // Bar is grammar `oneOrMoreInt` = [1-9][0-9]*: reject bar < 1 (zero/negative)
+  // or a leading-zero bar (`01|1`). Bars are 1-indexed for the same reason beats
+  // are; reuse the 1-indexing steer, naming the bar that is at fault.
+  const barHasLeadingZero = /^0\d/.test(barLiteral);
+
+  if (bar < 1 || barHasLeadingZero) {
+    throw new Error(
+      `bars are 1-indexed: the first bar is bar 1 (e.g. 1|1). Got bar ${barLiteral}.`,
+    );
+  }
+
+  // Beat is `badZeroBeat` = "0" [0-9]* ("." [0-9]*)?: the literal starts with a
+  // `0` (`1|0`, `1|01`, `1|007`, `1|0.5`). A literal negative beat (`1|-1`) is
+  // also rejected by the notes grammar (a sub-downbeat position is only the `-n`
+  // offset form, which keeps the base at 1). A 1-9 lead (or a `-n` pickup) is
+  // valid. Word-for-word the grammar's badZeroBeat steer.
+  if (beatBaseLiteral.startsWith("0") || beatBaseLiteral.startsWith("-")) {
+    throw new Error(
+      `beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${beatBaseLiteral}.`,
+    );
+  }
+}
+
+/**
  * Convert Ableton beats (quarter notes) to a duration string in the unified
  * duration grammar. Note-value fractions are whole-note based and carry the `n`
  * prefix (`n/4` = quarter, `n/8` = eighth, `n/12` = eighth triplet; numerator
@@ -307,8 +385,9 @@ export function abletonBeatsToDuration(
  *  - `n<fraction>` — note value. The numerator may be an integer (`n3/8` = three
  *    eighths; defaults to 1, so `n/4` == `n1/4`) or a decimal (`n1.9638/4` =
  *    1.9638 quarters), the off-grid escape `abletonBeatsToDuration` emits.
- *  - `Nbar+n<fraction>` — bars plus sub-bar note value (e.g. `1bar+n/4`); the
- *    tail numerator may likewise be a decimal.
+ *  - `Nbar±n<fraction>` — bars plus or minus a sub-bar note value (e.g.
+ *    `1bar+n/4`, or `1bar-n/16` = "almost a full bar"); the tail numerator may
+ *    likewise be a decimal.
  *
  * Bare numbers (`5`, `1.9638`) and bare *fractions* (`1/4`) are both rejected: a
  * duration is always a bar count or an `n`-prefixed note value, never a bare
@@ -330,11 +409,17 @@ export function durationToAbletonBeats(
   // off-grid escape, e.g. `n1.9638/4`). Denominator is a no-leading-zero integer
   // (`0|[1-9]\d*`): a lone `0` flows to the division-by-zero guard, while `08`
   // (leading zero) is rejected outright, matching the peggy grammars' denominator
-  // (`[1-9][0-9]*`). Bars stay `\d+` so `0bar` parses to 0 (rejected downstream
-  // as non-positive, not as a format error). A plural `bars` (`2bars`) is an
-  // accepted tolerance alias (`bars?`), matching the grammars; output stays `bar`.
+  // (`[1-9][0-9]*`). The bar count uses the SAME no-leading-zero shape
+  // (`0|[1-9]\d*`): a lone `0bar` parses to 0 (documented intentional — the
+  // length serializer emits `0bar` for a zero-length clip, never re-parsed by
+  // Peggy), while a leading-zero count (`01bar`, `007bar`) is rejected outright,
+  // matching the grammars' bar count (`oneOrMoreInt = [1-9][0-9]*`). A plural
+  // `bars` (`2bars`) is an accepted tolerance alias (`bars?`), matching the
+  // grammars; output stays `bar`. The mixed tail carries a SIGN (`([+-])n…`):
+  // `1bar-n/16` is "almost a full bar". A leading sign group shifts the capture
+  // indices read below.
   const match = duration.match(
-    /^(?:(\d+)bars?(?:\+n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
+    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
   );
 
   if (!match) {
@@ -350,7 +435,7 @@ export function durationToAbletonBeats(
     }
 
     throw new Error(
-      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar+n<fraction>" (e.g. "1bar+n/4"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
+      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar±n<fraction>" (e.g. "1bar+n/4", "1bar-n/16"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
     );
   }
 
@@ -360,19 +445,25 @@ export function durationToAbletonBeats(
   // is absent for a pure `Nbar` (fractionBeats stays 0).
   let fractionBeats = 0;
 
-  if (match[3] != null) {
-    // Nbar+n<fraction> form (numerator in match[2], denominator in match[3])
+  if (match[4] != null) {
+    // Nbar±n<fraction> mixed form (sign in match[2], numerator in match[3],
+    // denominator in match[4]). A minus tail subtracts the note value from the
+    // bar component, so `1bar-n/16` resolves to "almost a full bar".
     fractionBeats = noteValueFractionToBeats(
-      match[2] as string,
-      match[3],
+      match[3] as string,
+      match[4],
       4,
       divisionByZero,
     );
-  } else if (match[5] != null) {
-    // n<fraction> only (numerator in match[4], denominator in match[5])
+
+    if (match[2] === "-") {
+      fractionBeats = -fractionBeats;
+    }
+  } else if (match[6] != null) {
+    // n<fraction> only (numerator in match[5], denominator in match[6])
     fractionBeats = noteValueFractionToBeats(
-      match[4] as string,
-      match[5],
+      match[5] as string,
+      match[6],
       4,
       divisionByZero,
     );
@@ -387,10 +478,11 @@ export function durationToAbletonBeats(
 }
 
 /**
- * Parse a beat value string: a plain integer/decimal grid beat, or a grid beat
- * displaced by a `±n<fraction>` note-value offset (`1+n/12`, `2-n1/24`). The
- * offset fraction is whole-note based; the denominator converts it to musical
- * beats. Callers pre-validate the string shape with a regex.
+ * Parse a beat value string: a plain integer/decimal grid beat, or an
+ * integer-or-decimal grid beat displaced by a `±n<fraction>` note-value offset
+ * (`1+n/12`, `2-n1/24`, `1.5+n/4`). The offset fraction is whole-note based; the
+ * denominator converts it to musical beats. Callers pre-validate the string
+ * shape with a regex.
  * @param beatsStr - Beat value string
  * @param context - Original string for error messages
  * @param timeSigDenominator - Time signature denominator (for the offset unit)
@@ -402,16 +494,17 @@ function parseBeatValue(
   timeSigDenominator: number | undefined,
 ): number {
   // Grid beat ± a note-value offset: `1+n/12`, `2-n1/24` (numerator omitted = 1),
-  // or the off-grid escape `1-n0.7/4` (decimal numerator). Denominator is a
+  // `1.5+n/4` (decimal base), or the off-grid escape `1-n0.7/4` (decimal
+  // numerator). The base carries an optional `.\d+`; the denominator is a
   // no-leading-zero integer (`0|[1-9]\d*`); a lone `0` reaches the division-by-
   // zero guard. Kept consistent with the outer barBeatToMusicalBeats regex so a denom
   // the outer accepts never silently mis-parses here.
   const offsetMatch = beatsStr.match(
-    /^(-?\d+)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)$/,
+    /^(-?\d+(?:\.\d+)?)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)$/,
   );
 
   if (offsetMatch) {
-    const base = Number.parseInt(offsetMatch[1] as string);
+    const base = Number.parseFloat(offsetMatch[1] as string);
     const sign = offsetMatch[2];
     // Whole-note fraction → musical beats, so scale = timeSigDenominator.
     const offsetBeats = noteValueFractionToBeats(

@@ -374,10 +374,16 @@ function resolvePathToId(
       return target.id;
     }
 
-    // Device nested inside a drum pad (path like 1/0/pC1/0/0)
+    // Device nested inside a drum pad. Two forms resolve to the same device:
+    // the explicit-chain `t0/d0/pC1/c0/d0` (remainingSegments ["c0","d0"]) and
+    // the implicit-chain `t0/d0/pC1/d0` (["d0"], chain 0 implied) — matching the
+    // forms read-device and update-device accept. `>= 1` covers both; a bare pad
+    // (`pC1`, length 0) is the whole-pad case handled as a "drum-pad" delete, and
+    // an explicit chain with no device (`pC1/c0`, ["c0"]) resolves to a chain and
+    // is rejected by the targetType check below.
     if (
       resolved.targetType === "drum-pad" &&
-      resolved.remainingSegments.length >= 2
+      resolved.remainingSegments.length > 0
     ) {
       const result = resolveDrumPadFromPath(
         resolved.liveApiPath,

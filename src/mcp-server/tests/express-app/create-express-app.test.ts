@@ -5,8 +5,6 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { type Server } from "node:http";
-import { type AddressInfo } from "node:net";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
@@ -66,37 +64,6 @@ function setupTestClient(getServerUrl: () => string): TestState {
   });
 
   return state;
-}
-
-/**
- * Disable the chat UI, spin up a fresh Express app on a random port so the
- * disabled flag is picked up, run assertions against its base URL, then
- * close the server and re-enable the chat UI.
- *
- * @param run - Callback receiving the base URL of the temp server
- */
-async function withChatUIDisabledServer(
-  run: (baseUrl: string) => Promise<void>,
-): Promise<void> {
-  const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
-    input: unknown,
-  ) => void;
-
-  chatUIHandler(0);
-
-  const { createExpressApp } = await import("../../create-express-app.ts");
-  const testApp = createExpressApp();
-  const testServer = await new Promise<Server>((resolve) => {
-    const s = testApp.listen(0, () => resolve(s));
-  });
-  const baseUrl = `http://localhost:${(testServer.address() as AddressInfo).port}`;
-
-  try {
-    await run(baseUrl);
-  } finally {
-    await new Promise<void>((resolve) => testServer.close(() => resolve()));
-    chatUIHandler(1);
-  }
 }
 
 describe("MCP Express App", () => {
@@ -530,35 +497,10 @@ describe("MCP Express App", () => {
       expect(response.headers.get("cache-control")).toBe("no-store");
     });
 
-    it("should return 403 when chat UI is disabled", async () => {
-      await withChatUIDisabledServer(async (baseUrl) => {
-        const chatResponse = await fetch(`${baseUrl}/chat`);
-
-        expect(chatResponse.status).toBe(403);
-        expect(await chatResponse.text()).toBe("Chat UI is disabled");
-
-        const contextResponse = await fetch(`${baseUrl}/context`);
-
-        expect(contextResponse.status).toBe(403);
-        expect(await contextResponse.text()).toBe("Chat UI is disabled");
-      });
-    });
-
-    it("should serve the same HTML at /voice when chat UI is enabled", async () => {
+    it("should serve the same HTML at /voice", async () => {
       const voiceUrl = appState.serverUrl.replace("/mcp", "/voice");
 
       await expectHtmlNoStoreResponse(voiceUrl);
-    });
-
-    it("should return 403 at /voice when chat UI is disabled", async () => {
-      await withChatUIDisabledServer(async (baseUrl) => {
-        const response = await fetch(`${baseUrl}/voice`);
-
-        expect(response.status).toBe(403);
-        const text = await response.text();
-
-        expect(text).toBe("Chat UI is disabled");
-      });
     });
   });
 });

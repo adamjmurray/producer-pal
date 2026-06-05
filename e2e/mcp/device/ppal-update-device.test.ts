@@ -141,6 +141,98 @@ describe("ppal-update-device", () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("target not found");
   });
+
+  it("wraps a device in a rack and manages macros and variations", async () => {
+    // Wrapping and rack variation/macro operations mutate real Live rack state
+    // (variation_count, visible_macro_count) that mocked unit tests can't model.
+    const compressorId = await createTestDevice(
+      ctx.client!,
+      "Compressor",
+      "t0",
+    );
+
+    // Wrap the device in an auto-detected Audio Effect Rack
+    const wrapResult = parseToolResult<WrapResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { ids: compressorId, wrapInRack: true },
+      }),
+    );
+
+    expect(wrapResult.id).toBeDefined();
+    expect(wrapResult.deviceCount).toBe(1);
+
+    const rackId = wrapResult.id;
+
+    await sleep(100);
+
+    // The rack should contain the wrapped device in a chain
+    const rackRead = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { deviceId: rackId, include: ["chains"], maxDepth: 1 },
+      }),
+    );
+
+    expect(rackRead.chains?.length).toBeGreaterThan(0);
+
+    // Set visible macro count (macros come in pairs)
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { ids: rackId, macroCount: 4 },
+    });
+
+    await sleep(100);
+    const afterMacroCount = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { deviceId: rackId, include: ["params"] },
+      }),
+    );
+
+    expect(afterMacroCount.macros?.count).toBe(4);
+
+    // Create two macro variations
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { ids: rackId, macroVariation: "create" },
+    });
+    await sleep(100);
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { ids: rackId, macroVariation: "create" },
+    });
+    await sleep(100);
+
+    const afterCreate = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { deviceId: rackId, include: ["params"] },
+      }),
+    );
+
+    expect(afterCreate.variations?.count).toBe(2);
+
+    // Delete the first variation
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        ids: rackId,
+        macroVariation: "delete",
+        macroVariationIndex: 0,
+      },
+    });
+    await sleep(100);
+
+    const afterDelete = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { deviceId: rackId, include: ["params"] },
+      }),
+    );
+
+    expect(afterDelete.variations?.count).toBe(1);
+  });
 });
 
 interface ReadDeviceResult {
@@ -153,8 +245,17 @@ interface ReadDeviceResult {
     name: string;
     value?: number | string;
   }>;
+  chains?: unknown[];
+  macros?: { count: number; hasMappings: boolean };
+  variations?: { count: number; selected: number };
 }
 
 interface UpdateDeviceResult {
   id: string;
+}
+
+interface WrapResult {
+  id: string;
+  type: string;
+  deviceCount: number;
 }

@@ -77,7 +77,7 @@ export async function listCategories(
   // rename of the metadata/metadata_values tables or columns would throw a raw
   // SQLite error to the LLM. Degrade to dbAvailable:false. Mirrors librarySearch.
   try {
-    const db = openLiveDb(dbPath);
+    const db = await openLiveDb(dbPath);
 
     try {
       const base = {
@@ -132,18 +132,28 @@ function listTopCategories(db: DatabaseSync): LibraryTag[] {
  * @param db - Open database handle
  * @param category - Top-level category name (e.g. "Drums")
  * @param limit - Max leaf tags to return
- * @returns Drill-down payload: echoed category plus its leaf tags
+ * @returns Drill-down payload: echoed category plus its leaf tags. Carries a
+ *   `reason` when the category is unknown, so the LLM can tell a typo apart
+ *   from a real-but-empty category.
  */
 function drillIntoCategory(
   db: DatabaseSync,
   category: string,
   limit: number | undefined,
-): { category: string; tags: LibraryTag[] } {
+): { category: string; tags: LibraryTag[]; reason?: string } {
   const leaves = categoryLeafNames(db, category);
-  const cap = clampLibraryLimit(limit, DEFAULT_LIST_TAGS_LIMIT);
-  const tags = leaves.length === 0 ? [] : leafTagCounts(db, leaves, cap);
 
-  return { category, tags };
+  // No leaves means the `<category>|%` membership query matched nothing — the
+  // same signal listTopCategories is built from — so the category doesn't
+  // exist. Distinguish that typo case from a category that resolves leaves but
+  // whose leaves carry no keyword rows (tags empty with leaves non-empty).
+  if (leaves.length === 0) {
+    return { category, tags: [], reason: `category not found: ${category}` };
+  }
+
+  const cap = clampLibraryLimit(limit, DEFAULT_LIST_TAGS_LIMIT);
+
+  return { category, tags: leafTagCounts(db, leaves, cap) };
 }
 
 /**

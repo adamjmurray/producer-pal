@@ -59,6 +59,60 @@ async function createAudioTrackWithClip(trackName: string): Promise<{
   return { trackIndex: track.trackIndex!, clipId: clip.id };
 }
 
+/**
+ * Creates an audio track with two sample clips, applies a gain transform across
+ * both via update-clip ids, and returns each clip's read-back gainDb.
+ */
+async function applyGainTransformToTwoAudioClips(
+  trackName: string,
+  transform: string,
+): Promise<{ gain0: number; gain1: number }> {
+  const trackResult = await ctx.client!.callTool({
+    name: "ppal-create-track",
+    arguments: { type: "audio", name: trackName },
+  });
+  const track = parseToolResult<CreateTrackResult>(trackResult);
+
+  await sleep(100);
+
+  const clip0Result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: { slot: `${track.trackIndex}/0`, sampleFile: SAMPLE_FILE },
+  });
+  const clip0 = parseToolResult<{ id: string }>(clip0Result);
+
+  await sleep(100);
+
+  const clip1Result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: { slot: `${track.trackIndex}/1`, sampleFile: SAMPLE_FILE },
+  });
+  const clip1 = parseToolResult<{ id: string }>(clip1Result);
+
+  await sleep(100);
+
+  await ctx.client!.callTool({
+    name: "ppal-update-clip",
+    arguments: { ids: `${clip0.id},${clip1.id}`, transforms: transform },
+  });
+
+  await sleep(100);
+
+  const read0 = await ctx.client!.callTool({
+    name: "ppal-read-clip",
+    arguments: { clipId: clip0.id, include: ["sample"] },
+  });
+  const read1 = await ctx.client!.callTool({
+    name: "ppal-read-clip",
+    arguments: { clipId: clip1.id, include: ["sample"] },
+  });
+
+  return {
+    gain0: parseToolResult<ReadClipResult>(read0).gainDb!,
+    gain1: parseToolResult<ReadClipResult>(read1).gainDb!,
+  };
+}
+
 /** Reads a sample property (gainDb or pitchShift) from a clip. */
 async function readClipSampleProperty(
   clipId: string,
@@ -878,62 +932,26 @@ describe("ppal-clip-transforms (seq)", () => {
     expect(notes).toContain("v120 C3 1|2,4");
   });
 
-  it("seq() selects gain based on clip.index in multi-clip audio update", async () => {
-    // Create audio track with 2 clips
-    const trackResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "audio", name: "Seq Audio Test" },
-    });
-    const track = parseToolResult<CreateTrackResult>(trackResult);
+  it("clipseq() selects gain based on clip.index in multi-clip audio update", async () => {
+    const { gain0, gain1 } = await applyGainTransformToTwoAudioClips(
+      "Clipseq Audio Test",
+      "gain = clipseq(-6, -12)",
+    );
 
-    await sleep(100);
+    expect(gain0).toBeCloseTo(-6, 0);
+    expect(gain1).toBeCloseTo(-12, 0);
+  });
 
-    const clip0Result = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${track.trackIndex}/0`,
-        sampleFile: SAMPLE_FILE,
-      },
-    });
-    const clip0 = parseToolResult<{ id: string }>(clip0Result);
+  it("seq() cycles gain by clip-axis for audio (no clipseq needed)", async () => {
+    // gain has no note axis, so seq() falls back to clip.index — same result
+    // as clipseq(). Before the fallback, seq() warned + applied the first
+    // value (-6) to both clips.
+    const { gain0, gain1 } = await applyGainTransformToTwoAudioClips(
+      "Gain Seq Audio Test",
+      "gain = seq(-6, -12)",
+    );
 
-    await sleep(100);
-
-    const clip1Result = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${track.trackIndex}/1`,
-        sampleFile: SAMPLE_FILE,
-      },
-    });
-    const clip1 = parseToolResult<{ id: string }>(clip1Result);
-
-    await sleep(100);
-
-    // Apply clipseq(-6, -12) to both clips: clip 0 → -6, clip 1 → -12
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: `${clip0.id},${clip1.id}`,
-        transforms: "gain = clipseq(-6, -12)",
-      },
-    });
-
-    await sleep(100);
-
-    const read0 = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip0.id, include: ["sample"] },
-    });
-    const readClip0 = parseToolResult<ReadClipResult>(read0);
-
-    const read1 = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip1.id, include: ["sample"] },
-    });
-    const readClip1 = parseToolResult<ReadClipResult>(read1);
-
-    expect(readClip0.gainDb).toBeCloseTo(-6, 0);
-    expect(readClip1.gainDb).toBeCloseTo(-12, 0);
+    expect(gain0).toBeCloseTo(-6, 0);
+    expect(gain1).toBeCloseTo(-12, 0);
   });
 });

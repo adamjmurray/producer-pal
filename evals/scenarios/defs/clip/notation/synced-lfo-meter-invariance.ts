@@ -6,7 +6,7 @@
 /**
  * Scenario for synced-LFO note-value period syntax.
  *
- * RUN PENDING: needs Ableton (agentic — drives a live model against Live).
+ * Requires Ableton (agentic — drives a live model against Live).
  *
  * The old synced-period syntax (`1t`, `4t`, `1:0t`) is removed; a timeline-
  * synced LFO is now `sin(n/4, sync)` — a note-value period plus the trailing

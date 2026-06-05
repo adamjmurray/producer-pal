@@ -153,15 +153,10 @@ export async function createClip(
     looping,
   );
 
-  // Parse notation and determine clip length
-  const {
-    notes,
-    clipLength: initialClipLength,
-    transformedCount,
-  } = prepareClipData(
+  // Parse notation and determine clip length (transforms run per clip below)
+  const { notes, clipLength: initialClipLength } = prepareClipData(
     sampleFile,
     notationString,
-    transformString,
     endBeats,
     timeSigNumerator,
     timeSigDenominator,
@@ -210,13 +205,13 @@ export async function createClip(
       timeSigDenominator,
       notationString,
       notes,
+      transformString,
       songTimeSigNumerator,
       songTimeSigDenominator,
       length,
       sampleFile,
       deadline,
       code,
-      transformedCount,
     });
 
   const sessionClips = await clipsForView("session", 0);

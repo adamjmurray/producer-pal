@@ -145,6 +145,20 @@ export function useVoicePersistence(
     setHashId(id);
   }, []);
 
+  // Hydrate refs and saved-items state from a freshly loaded voice record.
+  // Refs and setters are stable, so this callback never changes identity.
+  const adoptRecord = useCallback((record: ConversationRecord) => {
+    createdAtRef.current = record.createdAt;
+    bookmarkedRef.current = record.bookmarked;
+    titleRef.current = record.title;
+    setActiveRecordModel(record.model ?? null);
+    setActiveRecordProvider(record.provider ?? null);
+    const items = (record.voiceHistory ?? []) as RealtimeItem[];
+
+    priorItemsRef.current = items;
+    setSavedItems(items);
+  }, []);
+
   // Initial mount: load active voice record from URL hash, if any
   useEffect(() => {
     void refreshList();
@@ -168,23 +182,7 @@ export function useVoicePersistence(
 
       adoptRecord(record);
     });
-
-    /**
-     * Hydrate refs and saved-items state from a freshly loaded voice record.
-     * @param record - The conversation record to adopt
-     */
-    function adoptRecord(record: ConversationRecord) {
-      createdAtRef.current = record.createdAt;
-      bookmarkedRef.current = record.bookmarked;
-      titleRef.current = record.title;
-      setActiveRecordModel(record.model ?? null);
-      setActiveRecordProvider(record.provider ?? null);
-      const items = (record.voiceHistory ?? []) as RealtimeItem[];
-
-      priorItemsRef.current = items;
-      setSavedItems(items);
-    }
-  }, [refreshList, setActiveId, onForeignRecord]);
+  }, [refreshList, setActiveId, onForeignRecord, adoptRecord]);
 
   // Auto-save: debounce so we don't write IDB on every transcript token.
   useEffect(() => {
@@ -261,18 +259,10 @@ export function useVoicePersistence(
         return;
       }
 
-      createdAtRef.current = record.createdAt;
-      bookmarkedRef.current = record.bookmarked;
-      titleRef.current = record.title;
-      setActiveRecordModel(record.model ?? null);
-      setActiveRecordProvider(record.provider ?? null);
-      const items = (record.voiceHistory ?? []) as RealtimeItem[];
-
-      priorItemsRef.current = items;
-      setSavedItems(items);
+      adoptRecord(record);
       setActiveId(id);
     },
-    [setActiveId, onForeignRecord],
+    [setActiveId, onForeignRecord, adoptRecord],
   );
 
   const startNewConversation = useCallback(() => {

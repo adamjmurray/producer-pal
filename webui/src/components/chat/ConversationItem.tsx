@@ -69,6 +69,7 @@ export function ConversationItem({
 
   return (
     <button
+      data-testid="conversation-item"
       onClick={() => onSelect(conv.id)}
       className={`w-full text-left border-b border-zinc-100 dark:border-zinc-800 transition-colors ${
         isActive
@@ -86,6 +87,7 @@ export function ConversationItem({
             <input
               type="text"
               value={editValue}
+              aria-label="Conversation title"
               onInput={(e) =>
                 onEditChange((e.target as HTMLInputElement).value)
               }

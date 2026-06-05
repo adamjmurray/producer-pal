@@ -30,7 +30,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .optional()
       .describe("name for all, or comma-separated for each"),
     params: paramsInputSchema.describe(
-      "applied after creation — array of {name, value} (name = param name or read-device id; value in display units: enum string, note name, number)",
+      "applied after creation — array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack, prefix the name with a pad path to address a pad's device, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
     ),
   },
 

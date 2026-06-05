@@ -15,7 +15,7 @@ export default defineConfig({
 
   cleanUrls: true,
 
-  srcExclude: ["_generated/**", "public/markdown/**"],
+  srcExclude: ["_generated/**", "_partials/**", "public/markdown/**"],
 
   transformPageData(pageData) {
     const path = pageData.relativePath

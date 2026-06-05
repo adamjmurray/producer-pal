@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import { type BarCopyNote, type NoteEvent } from "#src/notation/types.ts";
 import {
   type InterpreterState,
+  clearCarriedStreams,
   clearPitchBuffer,
+  clearValueStreams,
   trackStateChange,
   updateBufferedPitches,
 } from "./barbeat-interpreter-buffer-helpers.ts";
@@ -58,6 +60,60 @@ describe("barbeat-interpreter-helpers", () => {
       expect(state.pitchesEmitted).toBe(false);
       expect(state.stateChangedSinceLastPitch).toBe(false);
       expect(state.stateChangedAfterEmission).toBe(false);
+    });
+  });
+
+  describe("clearValueStreams", () => {
+    it("nulls every value stream and rewinds its cursor", () => {
+      const state = {
+        currentVelocityStream: [{ velocity: 80, velocityDeviation: 0 }],
+        velocityStreamCursor: 3,
+        currentDurationStream: [1, 2],
+        durationStreamCursor: 5,
+        currentProbabilityStream: [0.5],
+        probabilityStreamCursor: 7,
+      } as unknown as InterpreterState;
+
+      clearValueStreams(state);
+
+      expect(state.currentVelocityStream).toBeNull();
+      expect(state.velocityStreamCursor).toBe(0);
+      expect(state.currentDurationStream).toBeNull();
+      expect(state.durationStreamCursor).toBe(0);
+      expect(state.currentProbabilityStream).toBeNull();
+      expect(state.probabilityStreamCursor).toBe(0);
+    });
+  });
+
+  describe("clearCarriedStreams", () => {
+    it("forgets both the pitch buffer and every value stream", () => {
+      const state = {
+        currentPitches: [{ pitch: 60 }],
+        currentPitchStreams: [[[{ pitch: 60 }]]],
+        pitchStreamCursor: 2,
+        pitchGroupStarted: true,
+        pitchesEmitted: true,
+        stateChangedSinceLastPitch: true,
+        stateChangedAfterEmission: true,
+        currentVelocityStream: [{ velocity: 80, velocityDeviation: 0 }],
+        velocityStreamCursor: 3,
+        currentDurationStream: [1, 2],
+        durationStreamCursor: 5,
+        currentProbabilityStream: [0.5],
+        probabilityStreamCursor: 7,
+      } as unknown as InterpreterState;
+
+      clearCarriedStreams(state);
+
+      expect(state.currentPitches).toStrictEqual([]);
+      expect(state.currentPitchStreams).toStrictEqual([]);
+      expect(state.pitchStreamCursor).toBe(0);
+      expect(state.currentVelocityStream).toBeNull();
+      expect(state.currentDurationStream).toBeNull();
+      expect(state.currentProbabilityStream).toBeNull();
+      expect(state.velocityStreamCursor).toBe(0);
+      expect(state.durationStreamCursor).toBe(0);
+      expect(state.probabilityStreamCursor).toBe(0);
     });
   });
 

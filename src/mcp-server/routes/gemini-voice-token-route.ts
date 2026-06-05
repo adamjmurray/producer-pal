@@ -16,9 +16,9 @@ const GEMINI_KEY_HEADER = "x-gemini-key";
  * browser opens the WebSocket to Google directly (client-to-server, which Google
  * recommends as faster for audio), so the key would reach Google from the
  * browser regardless. This route therefore returns the key as-is
- * (`ephemeral: false`) — it exists to (a) apply the same chatUIEnabled + local-
- * origin gating as the rest of the chat surface and (b) keep one seam the client
- * already calls, so swapping in ephemeral tokens later is a server-only change.
+ * (`ephemeral: false`) — it exists to (a) apply local-origin gating like the
+ * rest of the chat surface and (b) keep one seam the client already calls, so
+ * swapping in ephemeral tokens later is a server-only change.
  *
  * Hardening upgrade (when wanted): mint a short-lived token via the v1alpha
  * `auth_tokens` endpoint and return `{ value: token.name, ephemeral: true }`;
@@ -26,19 +26,9 @@ const GEMINI_KEY_HEADER = "x-gemini-key";
  * long-lived key is never logged here in either case.
  *
  * @param app - Express application
- * @param isChatUIEnabled - Returns whether the chat UI is currently enabled
  */
-export function registerGeminiVoiceTokenRoute(
-  app: Express,
-  isChatUIEnabled: () => boolean,
-): void {
+export function registerGeminiVoiceTokenRoute(app: Express): void {
   app.post("/gemini-voice-token", (req: Request, res: Response): void => {
-    if (!isChatUIEnabled()) {
-      res.status(403).json({ error: "Chat UI is disabled" });
-
-      return;
-    }
-
     const origin = req.get("Origin");
 
     if (origin && !isLocalOrigin(origin)) {

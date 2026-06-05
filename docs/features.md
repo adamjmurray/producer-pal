@@ -56,6 +56,15 @@ It works with virtually any AI, including its
 
 ### 🔧 Library (`ppal-library`) {#ppal-library}
 
+::: warning Requires Live 12.4+
+
+The library tools require Ableton Live 12.4 or later. On older versions they
+return an error explaining the requirement. Use the version of Max bundled with
+Live, or make sure your standalone Max is up to date. See
+[Troubleshooting](/support/troubleshooting) for details.
+
+:::
+
 - Search Live's browser library by name, tags, content kind, device kind, or
   source category (User Library, Pack, Built-in, Cloud, Plugin)
 - Also includes the user-configured sample folder when set, with results merged
@@ -321,8 +330,7 @@ arithmetic or `clipseq()` inside the string for per-clip variation:
 - **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
   arbitrary ranges, choose from sets of values (e.g. chord notes)
 - **Context variables**: Access note order (`note.index`), clip metadata
-  (`clip.duration`, `clip.index`, `clip.position`, `clip.barDuration`) in
-  expressions
+  (`clip.duration`, `clip.index`, `clip.position`) in expressions
 - **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
@@ -360,6 +368,22 @@ required. For fully remote control, use
   create, or edit arrangement automation or clip envelopes — parameter values
   that change over time. Track and device parameters like volume, pan, sends,
   and knobs can be set to static values, but not automated.
+- **VST/AU plug-in internals can't be controlled directly.** Producer Pal can
+  open or close a plug-in's editor window, but it cannot read or set the
+  parameters inside a third-party VST/AU plug-in. To control them, map the
+  parameters onto the Live plug-in device using Live's
+  [Configure mode](https://www.ableton.com/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode)
+  (expand the device, click "Configure", then click the controls you want in the
+  plug-in's window); Producer Pal can then set those mapped parameters like any
+  other device parameter. You map them yourself — up to 128 parameters, and not
+  every plug-in parameter is mappable, so pick the ones that matter most.
+- **Audio content can't be analyzed or generated.** Producer Pal can manage
+  audio clips — set gain, pitch, and warp settings, change clip length, arrange
+  clips in the Arrangement, and load and manage samples on Simpler instruments
+  (including Drum Rack pads) — but it cannot listen to, analyze, or transcribe
+  the audio itself (no detecting notes, key, or tempo from a waveform; no
+  audio-to-MIDI), nor synthesize audio from scratch. These are common requests
+  and are under consideration for a future release.
 - **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
   with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
   per track for predictable results.

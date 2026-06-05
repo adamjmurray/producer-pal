@@ -43,21 +43,6 @@ export function resolveFormatConfig(options: FormatOptions): FormatConfig {
 }
 
 /**
- * Sort notes by start_time (stable sort with pitch as tiebreaker)
- * @param notes - Array of note events
- * @returns Sorted copy of the array
- */
-export function sortNotes(notes: NoteEvent[]): NoteEvent[] {
-  return [...notes].sort((a, b) => {
-    if (a.start_time !== b.start_time) {
-      return a.start_time - b.start_time;
-    }
-
-    return a.pitch - b.pitch;
-  });
-}
-
-/**
  * Calculate bar and beat from start time in Ableton beats
  * @param startTime - Start time in Ableton beats (quarter notes)
  * @param beatsPerBar - Beats per bar
@@ -106,6 +91,12 @@ export function groupNotesByTime(
       timeSigDenominator,
     );
 
+    // This 0.001-beat tolerance IS the serializer's round-trip floor: two
+    // positions closer than a millibeat (e.g. a triplet vs a nearby decimal)
+    // collapse into one time group, so a parse→serialize→parse fixpoint is only
+    // guaranteed at this resolution. Tightening it toward exact equality would
+    // emit visually-redundant adjacent groups and regress the fuzz corpus;
+    // round-trip property tests compare positions at toFixed(3) to respect it.
     if (bar !== currentBar || Math.abs(beat - currentBeat) > 0.001) {
       timeGroups.push({ bar, beat, notes: [] });
       currentBar = bar;

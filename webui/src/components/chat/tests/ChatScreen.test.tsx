@@ -58,6 +58,9 @@ describe("ChatScreen", () => {
     conversationPanel: {
       conversations: [],
       activeConversationId: null,
+      searchQuery: "",
+      matchedIds: null,
+      onSearchChange: vi.fn(),
       isOpen: false,
       onToggle: vi.fn(),
       onSelect: vi.fn(),

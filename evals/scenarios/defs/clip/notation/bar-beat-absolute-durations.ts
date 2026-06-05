@@ -15,13 +15,14 @@
  * 5/4 test sets would tighten the signal — see the eval validation tracker.
  */
 
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
-import { clearSessionSlots } from "../clip-scenario-helpers.ts";
+import {
+  clearSessionSlots,
+  clipStateAssertion,
+} from "../clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";
-const TOOL_READ_CLIP = "ppal-read-clip";
 const LIVE_SET = "basic-midi-4-track";
 const MSG_CONNECT = "Connect to Ableton Live";
 /** Drums is track 0 in basic-midi-4-track; C1 (MIDI 36) is the kick. */
@@ -64,48 +65,40 @@ function assertClipNotes(
   expectedStarts: number[],
   expectedDuration?: number,
 ): EvalAssertion {
-  const [numerator, denominator] = meter.split("/").map(Number);
+  return clipStateAssertion(slot, meter, (events) => {
+    const starts = events.map((e) => e.start_time).sort((a, b) => a - b);
 
-  return {
-    type: "state",
-    tool: TOOL_READ_CLIP,
-    args: { slot, include: ["notes", "timing"] },
-    expect: (result: unknown): boolean => {
-      const clip = result as { notes?: string; timeSignature?: string };
+    if (starts.length !== expectedStarts.length) return false;
 
-      if (clip.timeSignature !== meter || !clip.notes) return false;
+    const positionsMatch = starts.every(
+      (s, i) => Math.abs(s - (expectedStarts[i] as number)) < EPS,
+    );
+    // Every note must be the kick (C1). When a duration is given, pin each
+    // note's length too — that's the absolute-duration invariant `n/4` tests.
+    // When omitted, the spacing alone is the signal (e.g. triplet drum hits).
+    const notesValid = events.every(
+      (e) =>
+        e.pitch === KICK_PITCH &&
+        (expectedDuration == null ||
+          Math.abs(e.duration - expectedDuration) < EPS),
+    );
 
-      let events;
+    return positionsMatch && notesValid;
+  });
+}
 
-      try {
-        events = interpretNotation(clip.notes, {
-          timeSigNumerator: numerator,
-          timeSigDenominator: denominator,
-        });
-      } catch {
-        return false; // unparseable notation — treat as a failed clip
-      }
-
-      const starts = events.map((e) => e.start_time).sort((a, b) => a - b);
-
-      if (starts.length !== expectedStarts.length) return false;
-
-      const positionsMatch = starts.every(
-        (s, i) => Math.abs(s - (expectedStarts[i] as number)) < EPS,
-      );
-      // Every note must be the kick (C1). When a duration is given, pin each
-      // note's length too — that's the absolute-duration invariant `n/4` tests.
-      // When omitted, the spacing alone is the signal (e.g. triplet drum hits).
-      const notesValid = events.every(
-        (e) =>
-          e.pitch === KICK_PITCH &&
-          (expectedDuration == null ||
-            Math.abs(e.duration - expectedDuration) < EPS),
-      );
-
-      return positionsMatch && notesValid;
-    },
-  };
+/**
+ * Common assertion head shared by every create-clip scenario below: connect
+ * ran (turn 0) and the model issued a create-clip (turn 1). Each scenario
+ * appends its own per-clip note assertions and llm_judge.
+ *
+ * @returns The leading assertions every create-clip scenario shares
+ */
+function createClipAssertionHead(): EvalAssertion[] {
+  return [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+  ];
 }
 
 /**
@@ -136,8 +129,7 @@ export const barBeatTriplets: EvalScenario = {
     clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back and assert the kicks land on the triplet grid.
     // Counts alone can't see spacing: 12 notes bunched onto straight 16ths
@@ -189,8 +181,7 @@ export const barBeatMeterFill: EvalScenario = {
     clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back and assert ONE kick at the bar start whose duration
     // fills the bar. Count + timeSignature alone can't see that: a 1-quarter
@@ -246,8 +237,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
     clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back and assert the kicks fall on the dotted-quarter pulse.
     // Count alone is weak — 2 hits in 6/8 could land anywhere — so positions are
@@ -305,9 +295,7 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     ]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back from Live and assert the kicks land on the
     // quarter-note grid with one-quarter durations. Positions — not just

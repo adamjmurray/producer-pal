@@ -1,8 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
@@ -26,6 +30,10 @@ export function resolveArrangementPositions(
   if (locator != null) {
     return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
   }
+
+  // Validate the standalone position first so a 0-indexed/zero-bar arrangement
+  // start gets the 1-indexing steer, not a silent pre-origin beat.
+  validateBarBeatPosition(arrangementStart as string);
 
   return [
     barBeatToAbletonBeats(

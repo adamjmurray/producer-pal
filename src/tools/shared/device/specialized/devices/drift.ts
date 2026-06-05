@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
+  enumParam,
   readEnumByIndex,
   writeEnumByIndex,
   writeIntFromSet,
@@ -49,27 +51,6 @@ const TARGETS = [
 const VOICE_MODES = ["Poly", "Mono", "Stereo", "Unison"] as const;
 
 const VOICE_COUNTS = [4, 8, 16, 24, 32] as const;
-
-/**
- * Build a pseudo-param backed by a stable string enum via an `_index` property.
- * @param name - Camel-case param name
- * @param property - Live API property name (the `_index` int)
- * @param labels - Enum labels in index order
- * @returns A PseudoParam for the slot
- */
-function enumParam(
-  name: string,
-  property: string,
-  labels: readonly string[],
-): PseudoParam {
-  return {
-    name,
-    options: labels,
-    read: (device) => readEnumByIndex(device, property, labels),
-    write: (device, value, toolName) =>
-      writeEnumByIndex(device, property, value, labels, toolName, name),
-  };
-}
 
 /**
  * Build a source pseudo-param for one of the 3 free mod-matrix slots. Reads are
@@ -161,6 +142,26 @@ function readPitchBendRange(device: LiveAPI): number {
 
 export const driftSpec: SpecializedDeviceSpec = {
   displayNames: ["Drift"],
+
+  // The LFO and Cyclic Envelope each expose four rate params (Hz / ms / ratio /
+  // synced note value); the "Time Mode" enum picks which one applies, but Live
+  // reports all four active. Each mode leaves its own value live and the other
+  // three inactive.
+  inactiveWhen: [
+    exclusiveModes("LFO Time Mode", {
+      Freq: "LFO Rate",
+      Time: "LFO Time",
+      Ratio: "LFO Ratio",
+      Sync: "LFO Synced",
+    }),
+    exclusiveModes("Cyc Env Time Mode", {
+      Freq: "Cyc Env Rate",
+      Time: "Cyc Env Time",
+      Ratio: "Cyc Env Ratio",
+      Sync: "Cyc Env Synced",
+    }),
+  ],
+
   params: [
     // Source slots — fixed targets (filter, LFO, pitch, shape)
     enumParam("filterMod1Source", "mod_matrix_filter_source_1_index", SOURCES),

@@ -258,7 +258,7 @@ describe("code-exec-helpers", () => {
   });
 
   describe("getClipNoteCount", () => {
-    it("should return note count within clip length", () => {
+    it("should count notes across read-clip's [-length, 2*length] window", () => {
       const mockClip = {
         getProperty: vi.fn().mockReturnValue(8),
         call: vi.fn().mockReturnValue(JSON.stringify({ notes: [{}, {}, {}] })),
@@ -267,12 +267,14 @@ describe("code-exec-helpers", () => {
       const result = getClipNoteCount(mockClip as unknown as LiveAPI);
 
       expect(mockClip.getProperty).toHaveBeenCalledWith("length");
+      // length=8 → window from -8 spanning 24 beats ([-8, 16]), matching
+      // read-clip so pickups/overhang are counted (not the old [0, 8]).
       expect(mockClip.call).toHaveBeenCalledWith(
         "get_notes_extended",
         0,
         128,
-        0,
-        8,
+        -8,
+        24,
       );
       expect(result).toBe(3);
     });
