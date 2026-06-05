@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -51,6 +52,32 @@ describe("LiveAPI extensions - path index extensions", () => {
       const track = LiveAPI.from(livePath.track(42));
 
       expect(track.trackIndex).toBe(42);
+    });
+  });
+
+  describe("category", () => {
+    it("should return 'regular' for a track path", () => {
+      const track = LiveAPI.from(livePath.track(3));
+
+      expect(track.category).toBe("regular");
+    });
+
+    it("should return 'return' for a return track path", () => {
+      const returnTrack = LiveAPI.from(livePath.returnTrack(0));
+
+      expect(returnTrack.category).toBe("return");
+    });
+
+    it("should return 'master' for the master track path", () => {
+      const master = LiveAPI.from(livePath.masterTrack());
+
+      expect(master.category).toBe("master");
+    });
+
+    it("should return null for a non-track path", () => {
+      const scene = LiveAPI.from(livePath.scene(2));
+
+      expect(scene.category).toBe(null);
     });
   });
 

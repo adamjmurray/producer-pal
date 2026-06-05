@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import preact from "@preact/preset-vite";
@@ -107,8 +108,8 @@ export default defineConfig({
 
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
-        statements: 99,
-        branches: 95.5,
+        statements: 99.2,
+        branches: 95.8,
         functions: 100,
         lines: 99.4,
       },

@@ -91,6 +91,13 @@ describe("checkForUpdate", () => {
     expect(result).toStrictEqual({ version: "2.0.0" });
   });
 
+  it("returns version when tag_name has no v prefix", async () => {
+    mockFetchResponse({ tag_name: "2.0.0" });
+    const result = await checkForUpdate("1.0.0");
+
+    expect(result).toStrictEqual({ version: "2.0.0" });
+  });
+
   it("returns null when the current version matches latest", async () => {
     mockFetchResponse({ tag_name: "v1.0.0" });
     expect(await checkForUpdate("1.0.0")).toBeNull();
