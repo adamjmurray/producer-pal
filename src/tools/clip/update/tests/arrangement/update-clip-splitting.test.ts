@@ -1,19 +1,27 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Smoke tests for update-clip splitting integration.
  * Comprehensive splitting tests are in arrangement-splitting.test.ts
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type RegisteredMockObject,
   registerMockObject,
   lookupMockObject,
+  clearMockRegistry,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/arrangement-splitting-test-helpers.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import {
+  createSplittingCallMock,
+  setupClipSplittingMocks,
+  setupSplittingClipBaseMocks,
+  setupSplittingClipGetMock,
+} from "#src/tools/shared/arrangement/tests/arrangement-splitting-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 function expectDuplicateCalled(trackMock: RegisteredMockObject): void {
@@ -107,5 +115,34 @@ describe("updateClip - splitting smoke tests", () => {
     const resultIds = results.map((r) => r.id);
 
     expect(resultIds).not.toContain("0");
+  });
+
+  it("should warn and skip splitting for a take-lane clip", async () => {
+    const clipId = "take_lane_clip";
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    // A take-lane arrangement clip cannot be split via
+    // duplicate_clip_to_arrangement, so it is warned-and-skipped.
+    clearMockRegistry();
+    setupSplittingClipBaseMocks(clipId, {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+    });
+    setupSplittingClipGetMock(clipId);
+    createSplittingCallMock();
+
+    const result = await updateClip(
+      {
+        ids: clipId,
+        split: "2|1",
+      },
+      { holdingAreaStartBeats: 40000 },
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("split parameter ignored for take-lane clip"),
+    );
+    const results = Array.isArray(result) ? result : [result];
+
+    expect(results.map((r) => r.id)).toContain(clipId);
   });
 });
