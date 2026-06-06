@@ -134,23 +134,47 @@ describe("code-executor", () => {
     });
   });
 
-  describe("sandbox security", () => {
-    it("should not expose require", () => {
+  // These assert the *default execution scope* is small — an ergonomic boundary
+  // that keeps honest user code from reaching host built-ins — NOT a security
+  // boundary. node:vm is not a sandbox; the escape test below documents that
+  // code can still climb back out to the host realm. The real control is the
+  // ENABLE_CODE_EXEC build gate + this being a dev/eval-only feature.
+  describe("default execution scope (not a security boundary)", () => {
+    it("does not put require in the default scope", () => {
       const result = executeSandboxedCode("typeof require");
 
       expect(result).toStrictEqual({ success: true, result: "undefined" });
     });
 
-    it("should not expose process", () => {
+    it("does not put process in the default scope", () => {
       const result = executeSandboxedCode("typeof process");
 
       expect(result).toStrictEqual({ success: true, result: "undefined" });
     });
 
-    it("should not expose global", () => {
+    it("does not put global in the default scope", () => {
       const result = executeSandboxedCode("typeof global");
 
       expect(result).toStrictEqual({ success: true, result: "undefined" });
+    });
+
+    it("is NOT a security sandbox: code can reach the host realm out of scope", () => {
+      // node:vm is explicitly not a security mechanism. The injected built-ins
+      // (Object, etc.) belong to the host realm, so `Object.constructor` is the
+      // host Function constructor and `Function("return process")()` returns the
+      // real process — even though bare `process` is absent from the scope above.
+      // Asserted on purpose so nobody mistakes the limited scope for containment.
+      const escaped = executeSandboxedCode(
+        'typeof Object.constructor("return process")()',
+      );
+
+      expect(escaped).toStrictEqual({ success: true, result: "object" });
+
+      const hostVersion = executeSandboxedCode(
+        'typeof Object.constructor("return process")().version',
+      );
+
+      expect(hostVersion).toStrictEqual({ success: true, result: "string" });
     });
 
     it("should provide Math functions", () => {
