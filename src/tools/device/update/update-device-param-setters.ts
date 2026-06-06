@@ -216,10 +216,16 @@ function setParamValue(
 ): void {
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
-  // 1. Enum - string input with quantized param
-  if (isQuantized && typeof inputValue === "string") {
+  // 1. Enum - quantized param. Resolve the input against value_items by string.
+  // normalizeParamValue turns a numeric-looking label (e.g. "4" on a
+  // "1"/"2"/"4"/"8" or synced note-value selector) into a number, so match
+  // String(inputValue): otherwise a numeric label skips enum dispatch and falls
+  // into the numeric binary-search branch, writing a garbage raw value
+  // (e.g. 2.9999… instead of index 2). Quantized params are discrete enums with
+  // no continuous range to search, so numeric input is always a label lookup.
+  if (isQuantized) {
     const valueItems = param.get("value_items") as string[];
-    const index = valueItems.indexOf(inputValue);
+    const index = valueItems.indexOf(String(inputValue));
 
     if (index === -1) {
       console.warn(

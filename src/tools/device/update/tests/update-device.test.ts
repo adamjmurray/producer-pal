@@ -212,6 +212,44 @@ describe("updateDevice", () => {
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
       expect(result).toStrictEqual({ id: "123" });
     });
+
+    it("resolves a numeric-looking label to its index (M3: no binary-search bypass)", () => {
+      // A quantized selector whose labels are numbers (e.g. a "1"/"2"/"4"/"8"
+      // retrigger/sync selector). normalizeParamValue turns the input "4" into
+      // the number 4, which used to skip the enum branch and binary-search a
+      // garbage raw value (2.9999… instead of index 2). It must resolve to the
+      // index of the "4" label.
+      const numericLabelParam = registerMockObject("793", {
+        properties: {
+          is_quantized: 1,
+          value_items: ["1", "2", "4", "8"],
+        },
+      });
+
+      const result = updateDevice({
+        ids: "123",
+        params: [{ name: "793", value: "4" }],
+      });
+
+      expect(numericLabelParam.set).toHaveBeenCalledWith("value", 2);
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("warns when a numeric input matches no quantized label", () => {
+      // A bare index that isn't a label (value_items are words) must warn with
+      // the options, not silently binary-search a garbage raw value.
+      const result = updateDevice({
+        ids: "123",
+        params: [{ name: "791", value: "1" }],
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'updateDevice: "1" is not valid. Options: Repitch, Fade, Jump',
+      );
+      expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
+      expect(result).toStrictEqual({ id: "123" });
+    });
   });
 
   describe("params - note values", () => {
