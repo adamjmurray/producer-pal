@@ -112,4 +112,38 @@ describe("readLiveSet - locators", () => {
       { id: "locator-0", name: "Bridge", time: "9|1" },
     ]);
   });
+
+  it("assigns positional IDs that shift when an earlier locator is added (M5: IDs are not stable handles)", () => {
+    // Document the foot-gun: a locator ID is the current time-ordered position,
+    // so the SAME locator gets a different ID once another is inserted before
+    // it. A remembered "delete locator-1" can therefore hit the wrong locator —
+    // delete/rename should reference locators by name or time, which are stable.
+    setupLocatorReadMocks({
+      cuePoints: {
+        cue1: { name: "Intro", time: 0 },
+        cue2: { name: "Outro", time: 16 },
+      },
+    });
+
+    expect(readLiveSet({ include: ["locators"] }).locators).toStrictEqual([
+      { id: "locator-0", name: "Intro", time: "1|1" },
+      { id: "locator-1", name: "Outro", time: "5|1" },
+    ]);
+
+    // Insert a Verse before Outro: cue_points reorder, so Outro moves to index 2.
+    setupLocatorReadMocks({
+      cuePoints: {
+        cue1: { name: "Intro", time: 0 },
+        cue3: { name: "Verse", time: 8 },
+        cue2: { name: "Outro", time: 16 },
+      },
+    });
+
+    // Outro kept its name and time but its positional ID changed 1 → 2.
+    expect(readLiveSet({ include: ["locators"] }).locators).toStrictEqual([
+      { id: "locator-0", name: "Intro", time: "1|1" },
+      { id: "locator-1", name: "Verse", time: "3|1" },
+      { id: "locator-2", name: "Outro", time: "5|1" },
+    ]);
+  });
 });
