@@ -15,9 +15,11 @@
  * The LLM judge is advisory; the deterministic idiom + count-direction check is
  * the authoritative grade.
  *
- * Requires Ableton (real device + LLM) — run with the notation eval loop, e.g.
- * `npm run build:debug` then the chat eval with `-m google/gemini-3.5-flash`.
- * Not yet validated against a live run.
+ * Requires Ableton (real device + LLM): `npm run build:debug` then
+ * `./scripts/eval -m google/gemini-3.5-flash -t note-ops-ratchet-roll -t note-ops-merge`.
+ * Validated vs Live 2026-06-06: both PASS 4/4 — the model reached for the exact
+ * idioms (`ratchet(4)` grew 12→48 notes; `merge()` collapsed to one note per
+ * drum pitch), judges pass.
  */
 
 import { parseToolResult } from "#evals/chat/mcp.ts";
