@@ -572,6 +572,93 @@ describe("ChatSdkClient", () => {
         value: "OK",
       });
     });
+
+    it("synthesizes a canceled tool-result for a tool-call stopped mid-execution", async () => {
+      // User pressed Stop after the tool-call streamed but before the result:
+      // toolCalls present, toolResults missing. Sending again must still pair the
+      // tool-call with a result, or Anthropic/OpenAI reject the request (400).
+      const chatHistory: ChatMessage[] = [
+        { role: "user", content: "Connect" },
+        {
+          role: "assistant",
+          content: "Connecting",
+          toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
+          // no toolResults — stopped mid-tool
+        },
+      ];
+
+      const callArgs = await sendWithHistory(chatHistory, "Retry");
+
+      // user, assistant (tool-call), tool (synthesized result), new user
+      expect(callArgs.messages).toHaveLength(4);
+      expect(callArgs.messages[2].role).toBe("tool");
+      expect(callArgs.messages[2].content).toHaveLength(1);
+      expect(callArgs.messages[2].content[0].toolCallId).toBe("tc1");
+      expect(callArgs.messages[2].content[0].output.value).toContain(
+        "Canceled",
+      );
+    });
+
+    it("backfills only the missing result when some tool-calls completed", async () => {
+      // Two tools called; first returned, second interrupted by Stop.
+      const chatHistory: ChatMessage[] = [
+        { role: "user", content: "Do two things" },
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [
+            { id: "tc1", name: "ppal-read-song", args: {} },
+            { id: "tc2", name: "ppal-update-clip", args: {} },
+          ],
+          toolResults: [
+            {
+              id: "tc1",
+              name: "ppal-read-song",
+              args: {},
+              result: "OK",
+              isError: false,
+            },
+            // tc2 interrupted — no result
+          ],
+        },
+      ];
+
+      const callArgs = await sendWithHistory(chatHistory, "continue");
+
+      const toolMsg = callArgs.messages[2];
+
+      expect(toolMsg.role).toBe("tool");
+      // One result per tool-call, in tool-call order, even though only one ran.
+      expect(toolMsg.content).toHaveLength(2);
+      expect(toolMsg.content[0].toolCallId).toBe("tc1");
+      expect(toolMsg.content[0].output.value).toBe("OK");
+      expect(toolMsg.content[1].toolCallId).toBe("tc2");
+      expect(toolMsg.content[1].output.value).toContain("Canceled");
+    });
+
+    it("backfills a canceled result in history when the stream stops mid-tool", async () => {
+      // Stream emits a tool-call then ends with no tool-result (Stop pressed
+      // while the tool was running). The assistant message must not be left with
+      // a dangling tool-call — the in-history reconcile fixes the next send AND
+      // the perpetual-running UI state.
+      const last = await sendWithParts([
+        {
+          type: "tool-call",
+          toolCallId: "tc1",
+          toolName: "ppal-connect",
+          input: {},
+        },
+        // stream ends here — no tool-result arrives
+      ]);
+
+      const assistantMsg = last[1]!;
+
+      expect(assistantMsg.toolCalls).toHaveLength(1);
+      expect(assistantMsg.toolResults).toHaveLength(1);
+      expect(assistantMsg.toolResults![0]!.id).toBe("tc1");
+      expect(assistantMsg.toolResults![0]!.result).toContain("Canceled");
+      expect(assistantMsg.toolResults![0]!.isError).toBe(false);
+    });
   });
 
   describe("per-message overrides", () => {
