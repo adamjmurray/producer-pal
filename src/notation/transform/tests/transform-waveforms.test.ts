@@ -142,6 +142,22 @@ describe("Transform Waveforms", () => {
       expect(tri(2.0)).toBeCloseTo(tri(0.0), 10);
     });
 
+    it("handles negative phase (wraps around, stays in range)", () => {
+      // Regression (M4): a bare `phase % 1` kept the sign, so tri(-0.5) returned
+      // -2.0 — out of [-1, 1], which can drive a velocity negative and silently
+      // drop the note. Negative phase must wrap like positive phase.
+      expect(tri(-0.5)).toBeCloseTo(tri(0.5), 10);
+      expect(tri(-0.25)).toBeCloseTo(tri(0.75), 10);
+      expect(tri(-1.3)).toBeCloseTo(tri(0.7), 10);
+
+      for (let phase = -2; phase < 0; phase += 0.05) {
+        const value = tri(phase);
+
+        expect(value).toBeGreaterThanOrEqual(-1.0);
+        expect(value).toBeLessThanOrEqual(1.0);
+      }
+    });
+
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.05) {
         const value = tri(phase);
@@ -195,6 +211,20 @@ describe("Transform Waveforms", () => {
       expect(saw(2.0)).toBe(saw(0.0));
     });
 
+    it("handles negative phase (wraps around, stays in range)", () => {
+      // Regression (M4): saw(-0.7) returned -1.4 (out of [-1, 1]) before the wrap.
+      expect(saw(-0.7)).toBeCloseTo(saw(0.3), 10);
+      expect(saw(-0.25)).toBeCloseTo(saw(0.75), 10);
+      expect(saw(-1.5)).toBeCloseTo(saw(0.5), 10);
+
+      for (let phase = -2; phase < 0; phase += 0.05) {
+        const value = saw(phase);
+
+        expect(value).toBeGreaterThanOrEqual(-1.0);
+        expect(value).toBeLessThanOrEqual(1.0);
+      }
+    });
+
     it("returns values in range [-1.0, 1.0]", () => {
       for (let phase = 0; phase <= 1; phase += 0.05) {
         const value = saw(phase);
@@ -246,6 +276,18 @@ describe("Transform Waveforms", () => {
     it("handles phase > 1.0 (wraps around)", () => {
       expect(square(1.25, 0.5)).toBe(square(0.25, 0.5));
       expect(square(2.0, 0.5)).toBe(square(0.0, 0.5));
+    });
+
+    it("handles negative phase (wraps around to the correct half)", () => {
+      // Regression (M4): square(-0.3) picked the wrong half (returned 1.0 instead
+      // of -1.0) before the wrap fix.
+      expect(square(-0.3)).toBe(square(0.7));
+      expect(square(-0.7)).toBe(square(0.3));
+      expect(square(-1.25, 0.5)).toBe(square(0.75, 0.5));
+
+      for (let phase = -2; phase < 0; phase += 0.05) {
+        expect([1.0, -1.0]).toContain(square(phase));
+      }
     });
 
     it("returns only 1.0 or -1.0", () => {
