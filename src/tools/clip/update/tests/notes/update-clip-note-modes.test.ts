@@ -51,8 +51,11 @@ function expectNotesCleared(clip: UpdateClipMocks["clip123"]): void {
     "remove_notes_extended",
     0,
     128,
-    0,
-    1000000,
+    // Time window varies with the mock's clip length; the exact [-length,
+    // 2*length] window is pinned by clip-notes.test.ts. Here just assert the
+    // clear spanned the full pitch range.
+    expect.any(Number),
+    expect.any(Number),
   );
 }
 

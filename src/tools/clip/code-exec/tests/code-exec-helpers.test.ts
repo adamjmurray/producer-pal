@@ -137,12 +137,13 @@ describe("code-exec-helpers", () => {
       const result = extractNotesFromClip(mockClip as unknown as LiveAPI);
 
       expect(mockClip.getProperty).toHaveBeenCalledWith("length");
+      // length=8 → read-clip's window [-8, 16) so a pickup/overhang is seen.
       expect(mockClip.call).toHaveBeenCalledWith(
         "get_notes_extended",
         0,
         128,
-        0,
-        8,
+        -8,
+        24,
       );
       expect(result).toHaveLength(2);
       expect(result[0]).toStrictEqual({
@@ -190,8 +191,8 @@ describe("code-exec-helpers", () => {
         "remove_notes_extended",
         0,
         128,
-        0,
-        expect.any(Number),
+        -4,
+        12,
       );
       expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
         notes: [
@@ -293,6 +294,7 @@ describe("code-exec-helpers", () => {
 
     it("should only remove notes when notes array is empty", () => {
       const mockClip = {
+        getProperty: vi.fn().mockReturnValue(4), // length=4 → window [-4, 8)
         call: vi.fn(),
       };
 
@@ -303,8 +305,8 @@ describe("code-exec-helpers", () => {
         "remove_notes_extended",
         0,
         128,
-        0,
-        expect.any(Number),
+        -4,
+        12,
       );
     });
   });

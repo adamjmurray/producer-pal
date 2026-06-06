@@ -22,15 +22,17 @@ function expectNoteUpdateCalls(
     "get_notes_extended",
     0,
     128,
-    0,
-    1000000,
+    // Window varies with mock clip length; clip-notes.test.ts pins the exact
+    // [-length, 2*length] window. Here just assert read+remove spanned pitches.
+    expect.any(Number),
+    expect.any(Number),
   );
   expect(clip.call).toHaveBeenCalledWith(
     "remove_notes_extended",
     0,
     128,
-    0,
-    1000000,
+    expect.any(Number),
+    expect.any(Number),
   );
   expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
     notes: expectedNotes,
@@ -78,13 +80,14 @@ describe("updateClip - Advanced note operations", () => {
       notes: "v0 C3 v100 F3 1|1", // Delete C3 at 1|1, add F3 at 1|1
     });
 
-    // Should call get_notes_extended to read existing notes
+    // Should call get_notes_extended to read existing notes (exact window is
+    // pinned in clip-notes.test.ts; here the length-dependent window varies).
     expect(mocks.clip123.call).toHaveBeenCalledWith(
       "get_notes_extended",
       0,
       128,
-      0,
-      1000000,
+      expect.any(Number),
+      expect.any(Number),
     );
 
     // Should remove all notes
@@ -92,8 +95,8 @@ describe("updateClip - Advanced note operations", () => {
       "remove_notes_extended",
       0,
       128,
-      0,
-      1000000,
+      expect.any(Number),
+      expect.any(Number),
     );
 
     // Should add back filtered existing notes plus new regular notes
