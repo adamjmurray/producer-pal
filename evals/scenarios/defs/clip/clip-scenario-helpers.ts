@@ -16,6 +16,7 @@ import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
+  type ScenarioRequirements,
 } from "../../types.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
@@ -144,6 +145,7 @@ const LEAD_TRACK = 3;
  * @param config.message - User turn after the connect turn
  * @param config.check - Read-back verdict over the re-interpreted notes (4/4)
  * @param config.judgePrompt - Advisory LLM-judge prompt
+ * @param config.requires - Capability requirements (e.g. `{ brackets: true }`)
  * @returns The assembled eval scenario
  */
 export function leadClipNotationScenario(config: {
@@ -152,11 +154,15 @@ export function leadClipNotationScenario(config: {
   message: string;
   check: (events: NoteEvent[]) => boolean;
   judgePrompt: string;
+  /** Capability requirements (e.g. `{ brackets: true }` for stream-notation
+   *  scenarios). Omit for plain bar|beat notation taught in the basic tier. */
+  requires?: ScenarioRequirements;
 }): EvalScenario {
   return {
     id: config.id,
     description: config.description,
     kind: "capability",
+    ...(config.requires && { requires: config.requires }),
     liveSet: LEAD_LIVE_SET,
     judgeAdvisory: true,
     messages: [MSG_CONNECT, config.message],

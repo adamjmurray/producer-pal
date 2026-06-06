@@ -33,8 +33,12 @@ export interface JsonEvalResult {
   trial?: number;
   /** Total number of trials (present when using -r flag) */
   totalTrials?: number;
-  /** Overall pass/fail (checks + judge; efficiency is informational) */
-  result: "pass" | "fail";
+  /** Overall result. `skipped` means the scenario's `requires` weren't
+   *  satisfied by the active config profile, so it never ran (kept out of
+   *  pass/fail counts and score averages). */
+  result: "pass" | "fail" | "skipped";
+  /** Why the scenario was skipped (present only when `result` is `skipped`) */
+  skipReason?: string;
   /** Conversation turns */
   turns: JsonTurnRecord[];
   /** Deterministic check results */

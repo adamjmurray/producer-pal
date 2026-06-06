@@ -18,6 +18,7 @@ export const swingAndQuantize: EvalScenario = {
   id: "swing-and-quantize",
   description: "Apply swing and quantize to existing MIDI clips",
   kind: "capability",
+  requires: { transforms: true },
   liveSet: "basic-with-drum-and-lead-clips",
 
   messages: [

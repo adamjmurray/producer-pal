@@ -110,6 +110,7 @@ function meterSteppingScenario(opts: {
     id: opts.id,
     description: opts.description,
     kind: "capability",
+    requires: { brackets: true },
     liveSet: LIVE_SET,
     judgeAdvisory: true,
     messages: [MSG_CONNECT, ...opts.prompts],

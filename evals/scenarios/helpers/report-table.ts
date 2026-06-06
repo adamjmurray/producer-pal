@@ -73,6 +73,7 @@ export function printResultsTable(
       const results = modelResults.get(col.modelKey)?.get(col.configId);
 
       if (!results || results.length === 0) return "—";
+      if (isSkippedCell(results)) return "skip";
       const pct = getCellPercentage(results);
 
       if (pct == null) return "—";
@@ -81,6 +82,8 @@ export function printResultsTable(
     });
     const colors = columns.map((col) => {
       const results = modelResults.get(col.modelKey)?.get(col.configId);
+
+      if (results && isSkippedCell(results)) return "gray";
       const pct = results ? getCellPercentage(results) : null;
 
       return pct != null ? pctColor(pct) : undefined;
@@ -185,8 +188,20 @@ function printSummaryRow(
 }
 
 /**
+ * Whether a cell represents a skipped scenario. Skipped scenarios never repeat,
+ * so they're always a single `skipped` result.
+ *
+ * @param results - Results for this cell
+ * @returns True if the cell is a single skipped result
+ */
+function isSkippedCell(results: JsonEvalResult[]): boolean {
+  return results.length === 1 && results[0]?.result === "skipped";
+}
+
+/**
  * Get the display percentage for a table cell.
  * Single trial: check pass percentage. Multiple trials: trial pass rate.
+ * Skipped scenarios have no checks, so they return null (excluded from averages).
  *
  * @param results - Array of results (1 for single run, N for repeated trials)
  * @returns Percentage (0-100) or null if no results

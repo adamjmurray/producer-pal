@@ -231,6 +231,7 @@ function formatRunCell(
   const result = runResults.get(runId)?.get(scenarioId);
 
   if (!result) return styleText("gray", "—");
+  if (result.result === "skipped") return styleText("gray", "skip");
 
   const icon = result.result === "pass" ? "✓" : "✗";
   const color = result.result === "pass" ? "green" : "red";

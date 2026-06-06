@@ -17,6 +17,7 @@ export const drumTransforms: EvalScenario = {
   id: "drum-transforms",
   description: "Apply velocity transforms to drum clip notes",
   kind: "capability",
+  requires: { transforms: true },
   liveSet: "basic-with-drum-and-lead-clips",
 
   messages: [

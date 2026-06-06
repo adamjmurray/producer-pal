@@ -72,6 +72,7 @@ function eightNoteCheck(
  */
 export const barBeatVelocityAccent: EvalScenario = leadClipNotationScenario({
   id: "bar-beat-velocity-accent",
+  requires: { brackets: true },
   description:
     "Alternating loud/soft eighth-note line — velocity cycling across a bar",
   message:
@@ -100,6 +101,7 @@ const GALLOP_ONSETS = [0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75];
  */
 export const barBeatGallop: EvalScenario = leadClipNotationScenario({
   id: "bar-beat-gallop",
+  requires: { brackets: true },
   description: "Galloping dotted-8th + 16th rhythm — duration-fold spacing",
   message:
     "On the Lead track, create a 1-bar MIDI clip in scene 1: a galloping rhythm on C3 — a dotted-eighth note followed by a sixteenth note, that pair repeating to fill the 4/4 bar (four pairs, eight notes).",
@@ -227,6 +229,7 @@ export const barBeatZipStreams: EvalScenario = {
   description:
     "Duration stream zipped against a pitch stream (gallop melodic run) — multi-stream bracket idiom, not 16 hand-listed notes",
   kind: "capability",
+  requires: { brackets: true },
   liveSet: LIVE_SET,
   judgeAdvisory: true,
   messages: [MSG_CONNECT, ZIP_MESSAGE],

@@ -154,18 +154,41 @@ export function listScenarioIds(): string[] {
 }
 
 /**
- * List all scenarios with their kind for display
+ * List all scenarios with their kind and capability requirements for display
  *
- * @returns Array of {id, kind} objects
+ * @returns Array of {id, kind, requires} objects
  */
 export function listScenarioSummaries(): Array<{
   id: string;
   kind: "regression" | "capability";
+  requires: string[];
 }> {
   return allScenarios.map((s) => ({
     id: s.id,
     kind: s.kind ?? "regression",
+    requires: requirementLabels(s),
   }));
+}
+
+/**
+ * Format a scenario's capability requirements as short display labels.
+ *
+ * @param scenario - The scenario to inspect
+ * @returns Requirement labels (empty when the scenario has no `requires`)
+ */
+function requirementLabels(scenario: EvalScenario): string[] {
+  const req = scenario.requires;
+
+  if (!req) return [];
+
+  const labels: string[] = [];
+
+  if (req.transforms) labels.push("transforms");
+  if (req.brackets) labels.push("brackets");
+  if (req.largeModel) labels.push("largeModel");
+  if (req.tools?.length) labels.push(`tools:${req.tools.join("+")}`);
+
+  return labels;
 }
 
 /**
@@ -174,10 +197,14 @@ export function listScenarioSummaries(): Array<{
 export function printList(): void {
   console.log("Available scenarios:");
 
-  for (const { id, kind } of listScenarioSummaries()) {
+  for (const { id, kind, requires } of listScenarioSummaries()) {
     const kindLabel = styleText("gray", `[${kind}]`);
+    const requiresLabel =
+      requires.length > 0
+        ? " " + styleText("yellow", `(requires: ${requires.join(", ")})`)
+        : "";
 
-    console.log(`  - ${id} ${kindLabel}`);
+    console.log(`  - ${id} ${kindLabel}${requiresLabel}`);
   }
 
   console.log("\nAvailable config profiles:");

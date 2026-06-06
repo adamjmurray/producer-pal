@@ -143,6 +143,7 @@ export const syncedLfoMeterInvariance: EvalScenario = {
   description:
     "synced LFO → sin(n/4, sync) note-value period, not the removed Nt syntax",
   kind: "capability",
+  requires: { transforms: true },
   liveSet: LIVE_SET,
 
   messages: [

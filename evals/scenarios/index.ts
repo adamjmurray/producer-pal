@@ -24,6 +24,10 @@ import {
   type TrialInfo,
 } from "./helpers/json-results/converter.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
+import {
+  buildSkippedResult,
+  shouldSkipScenario,
+} from "./helpers/json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
 import { writeJsonResult } from "./helpers/json-results/writer.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
@@ -271,6 +275,19 @@ async function runAllScenarios(
       const configResults = new Map<string, JsonEvalResult[]>();
 
       for (const profile of configProfiles) {
+        const skipReason = shouldSkipScenario(scenario, profile);
+
+        if (skipReason != null) {
+          // Skipped before running: no Live Set is opened, so leave
+          // `liveSetOpened` untouched for the next (runnable) profile.
+          configResults.set(
+            profile.id,
+            await emitSkipped(scenario, modelKey, profile, skipReason, ctx),
+          );
+
+          continue;
+        }
+
         const trialResults = await runTrials(
           scenario,
           spec,
@@ -290,6 +307,38 @@ async function runAllScenarios(
   }
 
   return resultsByScenario;
+}
+
+/**
+ * Emit a skipped result for a (scenario, model, config) combination: persist it
+ * (unless --no-json), print it, and return it as a single-element result list.
+ *
+ * @param scenario - The skipped scenario
+ * @param modelKey - Model key (e.g. "google/gemini-3.5-flash")
+ * @param profile - Config profile that triggered the skip
+ * @param reason - Why the scenario was skipped
+ * @param ctx - Shared run context
+ * @returns Single-element array with the skipped result
+ */
+async function emitSkipped(
+  scenario: ReturnType<typeof loadScenarios>[number],
+  modelKey: string,
+  profile: ConfigProfile,
+  reason: string,
+  ctx: RunContext,
+): Promise<JsonEvalResult[]> {
+  const skipped = buildSkippedResult(
+    scenario,
+    ctx.runId,
+    modelKey,
+    profile.id,
+    reason,
+  );
+
+  if (ctx.options.json !== false) await writeJsonResult(skipped);
+  printResultBlock(skipped);
+
+  return [skipped];
 }
 
 /**

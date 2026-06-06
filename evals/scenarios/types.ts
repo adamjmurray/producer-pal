@@ -84,11 +84,42 @@ export interface EvalScenario {
   /** Optional config to apply before running scenario */
   config?: ConfigOptions;
 
+  /** Capability requirements gating this scenario. When the active config
+   *  profile can't satisfy them, the scenario is SKIPPED (reported as
+   *  `skipped`, not `fail`) so e.g. small-model scores stay apples-to-apples —
+   *  the model isn't graded on capabilities it was never given. Evaluated by
+   *  `shouldSkipScenario`. */
+  requires?: ScenarioRequirements;
+
   /** Optional async setup run after the MCP session is created but before the
    *  first message turn. Use to reset Live Set state (e.g. clear stale clip
    *  slots) so repeat trials (`-r N`, which reuse the already-open Live Set)
    *  each start from a clean slate. */
   setup?: (mcpClient: Client) => Promise<void>;
+}
+
+/**
+ * Capability requirements for a scenario. A requirement that the active config
+ * profile cannot satisfy causes the scenario to be skipped (not failed).
+ */
+export interface ScenarioRequirements {
+  /** Tool names that must be available. Skipped when the profile's explicit
+   *  `tools` allow-list excludes any of them. (Deriving the small-model
+   *  excluded tool/param surface from `smallModelModeConfig` is a follow-up;
+   *  for now only an explicit profile allow-list is consulted.) */
+  tools?: string[];
+
+  /** Needs the transforms DSL (functions like `step()`/`swing()`/`legato()`/
+   *  `rand()`, synced LFOs). Not taught in the basic skills tier, so skipped
+   *  under `smallModelMode`. */
+  transforms?: boolean;
+
+  /** Needs `[...]` pitch/value/duration bracket (stream) notation. Not taught
+   *  in the basic skills tier, so skipped under `smallModelMode`. */
+  brackets?: boolean;
+
+  /** Explicit frontier-only escape hatch. Skipped under `smallModelMode`. */
+  largeModel?: boolean;
 }
 
 /**

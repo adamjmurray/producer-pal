@@ -59,12 +59,16 @@ export function printSummary(
 
   let passCount = 0;
   let failCount = 0;
+  let skipCount = 0;
 
   for (const results of allResultGroups) {
     const passed = results.filter((r) => r.result === "pass").length;
+    const skipped = results.filter((r) => r.result === "skipped").length;
 
     passCount += passed;
-    failCount += results.length - passed;
+    skipCount += skipped;
+    // Skipped runs never executed, so they count as neither pass nor fail.
+    failCount += results.length - passed - skipped;
 
     // Show summary for the last trial (or only trial)
     const lastResult = results.at(-1) as JsonEvalResult;
@@ -76,9 +80,12 @@ export function printSummary(
     }
   }
 
-  const totalRuns = passCount + failCount;
+  const totalRuns = passCount + failCount + skipCount;
+  const skipText = skipCount > 0 ? `, ${skipCount} skipped` : "";
 
-  console.log(`\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail`);
+  console.log(
+    `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}`,
+  );
 }
 
 /**
@@ -113,6 +120,15 @@ function formatSummaryLine(
  * @returns Formatted summary line
  */
 function formatSingleTrialLine(result: JsonEvalResult): string {
+  if (result.result === "skipped") {
+    const reason = result.skipReason ? ` — ${result.skipReason}` : "";
+
+    return `${styleText("yellow", result.scenarioId + ":")} ${styleText(
+      "gray",
+      "skipped" + reason,
+    )}`;
+  }
+
   const { checks } = result;
   const passed = checks.results.filter((c) => c.pass).length;
   const total = checks.results.length;
