@@ -8,11 +8,13 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   type ClipContext,
+  isNoteOp,
   type NoteProperties,
 } from "./helpers/transform-evaluator-helpers.ts";
 import {
   type ExpressionNode,
   type TransformAssignment,
+  type TransformStatement,
 } from "./parser/transform-parser.ts";
 import * as parser from "./parser/transform-parser.ts";
 import { evaluateFunction } from "./transform-functions.ts";
@@ -63,7 +65,7 @@ export function applyAudioTransform(
     return { gain: null, pitchShift: null };
   }
 
-  let ast: TransformAssignment[];
+  let ast: TransformStatement[];
 
   try {
     // Audio transforms operate on whole-clip gain/pitchShift and never apply a
@@ -80,7 +82,8 @@ export function applyAudioTransform(
 
   // Filter to audio-only assignments (gain and pitchShift)
   const audioAssignments = ast.filter(
-    (a) => a.parameter === "gain" || a.parameter === "pitchShift",
+    (a): a is TransformAssignment =>
+      !isNoteOp(a) && (a.parameter === "gain" || a.parameter === "pitchShift"),
   );
 
   if (audioAssignments.length === 0) {
@@ -148,14 +151,16 @@ export function applyAudioTransform(
  * apply to the whole clip), so warn rather than silently ignoring them.
  * @param ast - Parsed transform assignments
  */
-function warnIncompatibleAudioSelectors(ast: TransformAssignment[]): void {
-  if (ast.some((a) => MIDI_PARAMETERS.has(a.parameter))) {
+function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
+  const assignments = ast.filter((a): a is TransformAssignment => !isNoteOp(a));
+
+  if (assignments.some((a) => MIDI_PARAMETERS.has(a.parameter))) {
     console.warn(
       "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
     );
   }
 
-  const hasAudioTimeRange = ast.some(
+  const hasAudioTimeRange = assignments.some(
     (a) =>
       (a.parameter === "gain" || a.parameter === "pitchShift") &&
       a.timeRange != null,
@@ -164,6 +169,12 @@ function warnIncompatibleAudioSelectors(ast: TransformAssignment[]): void {
   if (hasAudioTimeRange) {
     console.warn(
       "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+    );
+  }
+
+  if (ast.some(isNoteOp)) {
+    console.warn(
+      "Note-count operations (ratchet, merge) ignored for audio clips",
     );
   }
 }

@@ -36,6 +36,11 @@ reflect(value, min, max); // reflect/bounce value within [min, max] range
 min(a, b, ...); // minimum of 2+ values
 max(a, b, ...); // maximum of 2+ values
 pow(base, exponent); // base raised to exponent
+
+// Note-count operations (statements, NOT expression functions — see below)
+ratchet(count); // divide each matched note into `count` equal pieces (a roll)
+ratchet(noteValue); // divide each matched note into noteValue-sized pieces (grid form, e.g. ratchet(n/16))
+merge(); // span all same-pitch matched notes into one sustained note
 ```
 
 ## Parameters
@@ -182,6 +187,67 @@ same start time are treated as a chord. Useful after humanizing timing.
 duration = legato()              // extend notes to fill gaps
 duration = legato(0.1)           // group notes within 0.1 beats as chords
 C3-C5: duration = legato()       // legato for melody notes only
+```
+
+## Note-Count Operations
+
+Every other transform is a per-note assignment (`parameter operator expression`)
+that maps each note to a new property value — strictly one note in, one note
+out. The note-count operations are different: they change **how many notes
+exist**. They are **statements, not expression functions** — a note op stands on
+its own line (with an optional `selector:` prefix) and may NOT appear inside an
+expression. `velocity = ratchet(2)` is a parse error with a targeted message.
+
+They run in the same sequential, statement-major pipeline as assignments: each
+statement is fully applied before the next one runs, so an assignment after a
+note op sees the rebuilt note list (e.g. `note.index` re-derives over the denser
+or sparser set). The optional selector scopes which notes the op touches; notes
+outside the selector pass through untouched. A note op's selector is
+self-contained — it does NOT participate in sticky pitch-range inheritance
+(neither consuming the prior sticky range nor setting one for later
+assignments). Note ops are MIDI-only; they are ignored (with a warning) on audio
+clips.
+
+### ratchet(count) / ratchet(noteValue)
+
+Divides each matched note into equal end-to-end pieces (a roll/ratchet). Each
+child inherits the parent's pitch, velocity, probability, and deviation; child
+duration = parent duration / count.
+
+- **count** form (a bare number, e.g. `ratchet(4)`): exactly `count` pieces.
+  Rounded to the nearest integer; a count below 2 warns and is skipped (1 piece
+  is a no-op). Counts above the per-note cap (64) are clamped with a warning.
+- **noteValue** form (a note value or `Nbar`, e.g. `ratchet(n/16)`,
+  `ratchet(1bar)`): as many pieces of that size as fit —
+  `count = round(noteDuration / gridSize)`. A note shorter than the grid (count
+  < 2) is left unchanged with a warning.
+- The argument is a constant (no per-note variables); an unusable argument warns
+  and the op is skipped (notes pass through unchanged).
+- Zero/negative-duration notes are left unchanged (and are removed later by the
+  standard zero-duration deletion sweep).
+
+```
+ratchet(2)            // every note becomes two equal pieces (an 8th-note roll on quarters)
+ratchet(4)            // four equal pieces
+ratchet(n/16)         // chop each note into 16th-note pieces
+C1: ratchet(4)        // ratchet only the kick (C1)
+2|*: ratchet(3)       // triplet-roll every note in bar 2
+ratchet(4)            // then accent within each ratchet:
+velocity -= note.index % 4 * 15
+```
+
+### merge()
+
+Collapses all **same-pitch** matched notes into one sustained note spanning from
+the earliest onset to the latest offset (a "span all", not a touching-only
+glue). Velocity, probability, and deviation come from the earliest note in each
+pitch group. Notes of different pitches stay independent — scope the merge with
+a pitch and/or time selector to narrow it. Takes no arguments.
+
+```
+merge()               // span every pitch's notes across the whole clip
+C1: merge()           // glue all the kick hits into one sustained note
+1|1-2|1: merge()      // merge same-pitch notes within bar 1 only
 ```
 
 ## Waveform Behavior

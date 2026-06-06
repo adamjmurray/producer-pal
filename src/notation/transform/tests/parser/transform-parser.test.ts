@@ -10,16 +10,16 @@ import {
   type PitchLiteralNode,
   type VariableNode,
 } from "#src/notation/transform/parser/transform-parser.ts";
-import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "./parse-test-helpers.ts";
 
 describe("Transform Parser", () => {
   describe("basic structure", () => {
     it("parses an empty input", () => {
-      expect(parser.parse("")).toStrictEqual([]);
-      expect(parser.parse("  \t ")).toStrictEqual([]);
+      expect(parseAssignments("")).toStrictEqual([]);
+      expect(parseAssignments("  \t ")).toStrictEqual([]);
     });
     it("parses single parameter assignment with += operator", () => {
-      const result = parser.parse("velocity += 10");
+      const result = parseAssignments("velocity += 10");
 
       expect(result).toStrictEqual([
         {
@@ -32,7 +32,7 @@ describe("Transform Parser", () => {
       ]);
     });
     it("parses single parameter assignment with = operator", () => {
-      const result = parser.parse("velocity = 10");
+      const result = parseAssignments("velocity = 10");
 
       expect(result).toStrictEqual([
         {
@@ -45,7 +45,7 @@ describe("Transform Parser", () => {
       ]);
     });
     it("parses multiple parameter assignments", () => {
-      const result = parser.parse("velocity += 10\ntiming += 0.05");
+      const result = parseAssignments("velocity += 10\ntiming += 0.05");
 
       expect(result).toStrictEqual([
         {
@@ -66,7 +66,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses all parameter types", () => {
-      const result = parser.parse(
+      const result = parseAssignments(
         "velocity += 1\ntiming += 2\nduration += 3\nprobability += 4\ndeviation += 5\npitch += 6",
       );
 
@@ -119,7 +119,7 @@ describe("Transform Parser", () => {
 
   describe("pitch selectors", () => {
     it("parses single note name as pitch range", () => {
-      const result = parser.parse("C1: velocity += 10");
+      const result = parseAssignments("C1: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 36,
@@ -128,7 +128,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses sharp notes", () => {
-      const result = parser.parse("C#1: velocity += 10");
+      const result = parseAssignments("C#1: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 37,
@@ -137,7 +137,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses flat notes", () => {
-      const result = parser.parse("Db1: velocity += 10");
+      const result = parseAssignments("Db1: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 37,
@@ -146,7 +146,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch range with hyphen", () => {
-      const result = parser.parse("C3-C5: velocity += 10");
+      const result = parseAssignments("C3-C5: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 60, // C3 = MIDI 60
@@ -155,7 +155,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch range with different note names", () => {
-      const result = parser.parse("C4-G4: velocity += 10");
+      const result = parseAssignments("C4-G4: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 72, // C4 = MIDI 72
@@ -164,7 +164,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch range with sharps and flats", () => {
-      const result = parser.parse("C#3-Eb4: velocity += 10");
+      const result = parseAssignments("C#3-Eb4: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 61, // C#3 = MIDI 61
@@ -173,20 +173,20 @@ describe("Transform Parser", () => {
     });
 
     it("throws on invalid pitch range (end < start)", () => {
-      expect(() => parser.parse("C5-C3: velocity += 10")).toThrow(
+      expect(() => parseAssignments("C5-C3: velocity += 10")).toThrow(
         /Invalid pitch range/,
       );
     });
 
     it("throws on invalid pitch (out of range)", () => {
-      expect(() => parser.parse("C10: velocity += 10")).toThrow();
-      expect(() => parser.parse("C-5: velocity += 10")).toThrow();
+      expect(() => parseAssignments("C10: velocity += 10")).toThrow();
+      expect(() => parseAssignments("C-5: velocity += 10")).toThrow();
     });
   });
 
   describe("combined selectors", () => {
     it("parses pitch with time range", () => {
-      const result = parser.parse("E3 1|1-2|1: velocity += 10");
+      const result = parseAssignments("E3 1|1-2|1: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 64,
@@ -201,7 +201,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses note name with time range", () => {
-      const result = parser.parse("C1 1|1-4|1: velocity += 10");
+      const result = parseAssignments("C1 1|1-4|1: velocity += 10");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 36,
@@ -215,7 +215,7 @@ describe("Transform Parser", () => {
       ["1|1-2|1 C3-C5", 60, 84, "time range before pitch range"],
       ["1|1-2|1 E3", 64, 64, "time range before single pitch"],
     ])("parses %s (%s)", (input, startPitch, endPitch) => {
-      const result = parser.parse(`${input}: velocity += 10`);
+      const result = parseAssignments(`${input}: velocity += 10`);
 
       expect(result[0]!.pitchRange).toStrictEqual({ startPitch, endPitch });
       expect(result[0]!.timeRange).toStrictEqual({
@@ -229,19 +229,19 @@ describe("Transform Parser", () => {
 
   describe("operators", () => {
     it("parses = operator", () => {
-      const result = parser.parse("velocity = 64");
+      const result = parseAssignments("velocity = 64");
 
       expect(result[0]!.operator).toBe("set");
     });
 
     it("parses += operator", () => {
-      const result = parser.parse("velocity += 10");
+      const result = parseAssignments("velocity += 10");
 
       expect(result[0]!.operator).toBe("add");
     });
 
     it("parses -= operator as add with negated expression", () => {
-      const result = parser.parse("velocity -= 30");
+      const result = parseAssignments("velocity -= 30");
 
       expect(result).toStrictEqual([
         {
@@ -255,7 +255,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses -= with pitch range", () => {
-      const result = parser.parse("F#1: velocity -= 30");
+      const result = parseAssignments("F#1: velocity -= 30");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 42,
@@ -270,37 +270,37 @@ describe("Transform Parser", () => {
     });
 
     it("rejects old : operator", () => {
-      expect(() => parser.parse("velocity: 10")).toThrow();
+      expect(() => parseAssignments("velocity: 10")).toThrow();
     });
   });
 
   describe("numbers", () => {
     it("parses positive integers", () => {
-      const result = parser.parse("velocity += 100");
+      const result = parseAssignments("velocity += 100");
 
       expect(result[0]!.expression).toBe(100);
     });
 
     it("parses negative integers", () => {
-      const result = parser.parse("velocity += -50");
+      const result = parseAssignments("velocity += -50");
 
       expect(result[0]!.expression).toBe(-50);
     });
 
     it("parses positive floats", () => {
-      const result = parser.parse("velocity += 10.5");
+      const result = parseAssignments("velocity += 10.5");
 
       expect(result[0]!.expression).toBe(10.5);
     });
 
     it("parses negative floats", () => {
-      const result = parser.parse("timing += -0.05");
+      const result = parseAssignments("timing += -0.05");
 
       expect(result[0]!.expression).toBe(-0.05);
     });
 
     it("parses floats without leading zero", () => {
-      const result = parser.parse("probability += .5");
+      const result = parseAssignments("probability += .5");
 
       expect(result[0]!.expression).toBe(0.5);
     });
@@ -308,47 +308,47 @@ describe("Transform Parser", () => {
 
   describe("error cases", () => {
     it("throws on invalid parameter name", () => {
-      expect(() => parser.parse("invalid += 10")).toThrow();
+      expect(() => parseAssignments("invalid += 10")).toThrow();
     });
 
     it("throws on missing expression", () => {
-      expect(() => parser.parse("velocity +=")).toThrow();
+      expect(() => parseAssignments("velocity +=")).toThrow();
     });
 
     it("throws on invalid function name", () => {
-      expect(() => parser.parse("velocity += invalid(1)")).toThrow();
+      expect(() => parseAssignments("velocity += invalid(1)")).toThrow();
     });
 
     it("accepts plain number as function argument", () => {
       // Plain numbers are valid (e.g., for phase or pulseWidth)
-      const result = parser.parse("velocity += cos(n/4, 0.5)");
+      const result = parseAssignments("velocity += cos(n/4, 0.5)");
       const expr = result[0]!.expression as FunctionNode;
 
       expect(expr.args[1]).toBe(0.5);
     });
 
     it("throws on unclosed parenthesis", () => {
-      expect(() => parser.parse("velocity += (10 + 5")).toThrow();
+      expect(() => parseAssignments("velocity += (10 + 5")).toThrow();
     });
 
     it("throws on unmatched closing parenthesis", () => {
-      expect(() => parser.parse("velocity += 10 + 5)")).toThrow();
+      expect(() => parseAssignments("velocity += 10 + 5)")).toThrow();
     });
 
     it("provides labeled error for invalid parameter", () => {
       // Labels help identify valid parameters instead of raw character classes
-      expect(() => parser.parse("invalid += 10")).toThrow();
+      expect(() => parseAssignments("invalid += 10")).toThrow();
     });
 
     it("provides labeled error for missing expression", () => {
       // Labels help identify what's expected instead of raw character classes
-      expect(() => parser.parse("velocity +=")).toThrow();
+      expect(() => parseAssignments("velocity +=")).toThrow();
     });
   });
 
   describe("real-world examples from spec", () => {
     it("parses basic envelope", () => {
-      const result = parser.parse("velocity += 20 * cos(n/1)");
+      const result = parseAssignments("velocity += 20 * cos(n/1)");
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(result[0]!.parameter).toBe("velocity");
@@ -356,7 +356,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses phase-shifted envelope", () => {
-      const result = parser.parse("velocity += 20 * cos(n/1, 0.5)");
+      const result = parseAssignments("velocity += 20 * cos(n/1, 0.5)");
       const expr = result[0]!.expression as BinaryOpNode;
       const fn = expr.right as FunctionNode;
 
@@ -365,7 +365,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pulse width transform", () => {
-      const result = parser.parse("velocity += 20 * square(n/2, 0, 0.25)");
+      const result = parseAssignments("velocity += 20 * square(n/2, 0, 0.25)");
       const expr = result[0]!.expression as BinaryOpNode;
       const fn = expr.right as FunctionNode;
 
@@ -375,7 +375,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses multi-parameter transform", () => {
-      const result = parser.parse(
+      const result = parseAssignments(
         "velocity += 20 * cos(n/1) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(n/2)",
       );
 
@@ -388,7 +388,7 @@ describe("Transform Parser", () => {
 
   describe("gain parameter (audio)", () => {
     it("parses gain parameter with set operator", () => {
-      const result = parser.parse("gain = -6");
+      const result = parseAssignments("gain = -6");
 
       expect(result).toStrictEqual([
         {
@@ -402,7 +402,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses gain parameter with add operator", () => {
-      const result = parser.parse("gain += 3");
+      const result = parseAssignments("gain += 3");
 
       expect(result).toStrictEqual([
         {
@@ -416,7 +416,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses gain with expression", () => {
-      const result = parser.parse("gain = -12 + 6");
+      const result = parseAssignments("gain = -12 + 6");
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("add");
@@ -427,7 +427,7 @@ describe("Transform Parser", () => {
 
   describe("variable namespaces", () => {
     it("parses note.velocity with namespace", () => {
-      const result = parser.parse("velocity = note.velocity + 10");
+      const result = parseAssignments("velocity = note.velocity + 10");
       const expr = result[0]!.expression as BinaryOpNode;
       const variable = expr.left as VariableNode;
 
@@ -439,7 +439,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses audio.gain with namespace", () => {
-      const result = parser.parse("gain = audio.gain - 6");
+      const result = parseAssignments("gain = audio.gain - 6");
       const expr = result[0]!.expression as BinaryOpNode;
       const variable = expr.left as VariableNode;
 
@@ -463,7 +463,7 @@ describe("Transform Parser", () => {
       ];
 
       for (const prop of properties) {
-        const result = parser.parse(`velocity = note.${prop}`);
+        const result = parseAssignments(`velocity = note.${prop}`);
         const variable = result[0]!.expression as VariableNode;
 
         expect(variable.namespace).toBe("note");
@@ -472,7 +472,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses clip.duration with namespace", () => {
-      const result = parser.parse("velocity = clip.duration");
+      const result = parseAssignments("velocity = clip.duration");
       const variable = result[0]!.expression as VariableNode;
 
       expect(variable).toStrictEqual({
@@ -486,7 +486,7 @@ describe("Transform Parser", () => {
       const properties = ["duration", "index", "position", "count"];
 
       for (const prop of properties) {
-        const result = parser.parse(`velocity = clip.${prop}`);
+        const result = parseAssignments(`velocity = clip.${prop}`);
         const variable = result[0]!.expression as VariableNode;
 
         expect(variable.namespace).toBe("clip");
@@ -495,7 +495,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses clip.barDuration", () => {
-      const result = parser.parse("velocity = clip.barDuration");
+      const result = parseAssignments("velocity = clip.barDuration");
       const variable = result[0]!.expression as VariableNode;
 
       expect(variable).toStrictEqual({
@@ -506,23 +506,23 @@ describe("Transform Parser", () => {
     });
 
     it("rejects invalid audio property", () => {
-      expect(() => parser.parse("gain = audio.velocity")).toThrow();
+      expect(() => parseAssignments("gain = audio.velocity")).toThrow();
     });
 
     it("rejects invalid note property", () => {
-      expect(() => parser.parse("velocity = note.gain")).toThrow();
+      expect(() => parseAssignments("velocity = note.gain")).toThrow();
     });
 
     it("rejects invalid clip property", () => {
-      expect(() => parser.parse("velocity = clip.invalid")).toThrow();
+      expect(() => parseAssignments("velocity = clip.invalid")).toThrow();
     });
 
     it("rejects invalid bar property", () => {
-      expect(() => parser.parse("velocity = bar.invalid")).toThrow();
+      expect(() => parseAssignments("velocity = bar.invalid")).toThrow();
     });
 
     it("parses next.pitch with namespace", () => {
-      const result = parser.parse("velocity = next.pitch");
+      const result = parseAssignments("velocity = next.pitch");
       const variable = result[0]!.expression as VariableNode;
 
       expect(variable).toStrictEqual({
@@ -543,7 +543,7 @@ describe("Transform Parser", () => {
       ];
 
       for (const prop of properties) {
-        const result = parser.parse(`velocity = next.${prop}`);
+        const result = parseAssignments(`velocity = next.${prop}`);
         const variable = result[0]!.expression as VariableNode;
 
         expect(variable.namespace).toBe("next");
@@ -552,17 +552,17 @@ describe("Transform Parser", () => {
     });
 
     it("rejects next.index (not a valid next property)", () => {
-      expect(() => parser.parse("velocity = next.index")).toThrow();
+      expect(() => parseAssignments("velocity = next.index")).toThrow();
     });
 
     it("rejects next.count (not a valid next property)", () => {
-      expect(() => parser.parse("velocity = next.count")).toThrow();
+      expect(() => parseAssignments("velocity = next.count")).toThrow();
     });
   });
 
   describe("pitch parameter", () => {
     it("parses pitch parameter with set operator", () => {
-      const result = parser.parse("pitch = 60");
+      const result = parseAssignments("pitch = 60");
 
       expect(result).toStrictEqual([
         {
@@ -576,7 +576,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch parameter with add operator", () => {
-      const result = parser.parse("pitch += 12");
+      const result = parseAssignments("pitch += 12");
 
       expect(result).toStrictEqual([
         {
@@ -590,13 +590,13 @@ describe("Transform Parser", () => {
     });
 
     it("parses negative pitch offset", () => {
-      const result = parser.parse("pitch += -12");
+      const result = parseAssignments("pitch += -12");
 
       expect(result[0]!.expression).toBe(-12);
     });
 
     it("parses pitch with pitch range filter", () => {
-      const result = parser.parse("C3: pitch += 12");
+      const result = parseAssignments("C3: pitch += 12");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 60,
@@ -606,7 +606,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch with time range filter", () => {
-      const result = parser.parse("1|1-2|4: pitch += 12");
+      const result = parseAssignments("1|1-2|4: pitch += 12");
 
       expect(result[0]!.timeRange).toStrictEqual({
         startBar: 1,
@@ -620,7 +620,7 @@ describe("Transform Parser", () => {
 
   describe("pitch literals in expressions", () => {
     it("parses pitch literal C3 (middle C)", () => {
-      const result = parser.parse("pitch = C3");
+      const result = parseAssignments("pitch = C3");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "pitchLiteral",
@@ -630,19 +630,19 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch literal with sharp", () => {
-      const result = parser.parse("pitch = C#3");
+      const result = parseAssignments("pitch = C#3");
 
       expect((result[0]!.expression as PitchLiteralNode).value).toBe(61);
     });
 
     it("parses pitch literal with flat", () => {
-      const result = parser.parse("pitch = Db3");
+      const result = parseAssignments("pitch = Db3");
 
       expect((result[0]!.expression as PitchLiteralNode).value).toBe(61);
     });
 
     it("parses pitch literal in arithmetic expression", () => {
-      const result = parser.parse("pitch = C3 + 7");
+      const result = parseAssignments("pitch = C3 + 7");
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("add");
@@ -651,33 +651,37 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch literal with negative octave", () => {
-      const result = parser.parse("pitch = C-1");
+      const result = parseAssignments("pitch = C-1");
 
       expect((result[0]!.expression as PitchLiteralNode).value).toBe(12);
     });
 
     it("parses lowest valid pitch literal C-2", () => {
-      const result = parser.parse("pitch = C-2");
+      const result = parseAssignments("pitch = C-2");
 
       expect((result[0]!.expression as PitchLiteralNode).value).toBe(0);
     });
 
     it("parses highest valid pitch literal G8", () => {
-      const result = parser.parse("pitch = G8");
+      const result = parseAssignments("pitch = G8");
 
       expect((result[0]!.expression as PitchLiteralNode).value).toBe(127);
     });
 
     it("throws on pitch literal out of range (too high)", () => {
-      expect(() => parser.parse("pitch = C9")).toThrow(/outside valid range/);
+      expect(() => parseAssignments("pitch = C9")).toThrow(
+        /outside valid range/,
+      );
     });
 
     it("throws on pitch literal out of range (too low)", () => {
-      expect(() => parser.parse("pitch = C-3")).toThrow(/outside valid range/);
+      expect(() => parseAssignments("pitch = C-3")).toThrow(
+        /outside valid range/,
+      );
     });
 
     it("parses pitch literal in complex expression", () => {
-      const result = parser.parse("pitch = (C3 + G3) / 2");
+      const result = parseAssignments("pitch = (C3 + G3) / 2");
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("divide");
@@ -692,7 +696,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pitch literal with note variable", () => {
-      const result = parser.parse("pitch = C3 + note.pitch");
+      const result = parseAssignments("pitch = C3 + note.pitch");
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(expr.type).toBe("add");
@@ -705,7 +709,7 @@ describe("Transform Parser", () => {
       // by pitch-class-grammar-parity.test.ts. Enharmonics wrap the octave: B#
       // resolves up to C, Cb down to B.
       const value = (s: string): number =>
-        (parser.parse(s)[0]!.expression as PitchLiteralNode).value;
+        (parseAssignments(s)[0]!.expression as PitchLiteralNode).value;
 
       expect(value("pitch = c3")).toBe(60);
       expect(value("pitch = gb1")).toBe(42);
@@ -718,7 +722,7 @@ describe("Transform Parser", () => {
 
   describe("legato function", () => {
     it("parses legato() as a function call with no arguments", () => {
-      const result = parser.parse("duration = legato()");
+      const result = parseAssignments("duration = legato()");
       const fn = result[0]!.expression as FunctionNode;
 
       expect(fn).toStrictEqual({

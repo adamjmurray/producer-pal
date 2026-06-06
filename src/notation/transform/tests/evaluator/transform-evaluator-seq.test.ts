@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "#src/notation/transform/tests/parser/parse-test-helpers.ts";
 import {
   applyTransforms,
   evaluateTransform,
@@ -21,7 +22,7 @@ describe("Transform - seq function", () => {
 
   describe("parser", () => {
     it("parses seq with multiple arguments", () => {
-      const result = parser.parse("velocity = seq(60, 80, 100)");
+      const result = parseAssignments("velocity = seq(60, 80, 100)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -267,7 +268,7 @@ describe("Transform - clipseq function", () => {
 
   describe("parser", () => {
     it("parses clipseq with multiple arguments", () => {
-      const result = parser.parse("pitch += clipseq(0, 5, 7)");
+      const result = parseAssignments("pitch += clipseq(0, 5, 7)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",

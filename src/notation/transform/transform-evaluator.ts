@@ -13,6 +13,7 @@ import {
   type ClipContext,
   evaluateExpression,
   evaluateTransformAST,
+  isNoteOp,
   type NoteContext,
   type NoteProperties,
   resolveEffectivePitchRanges,
@@ -23,8 +24,10 @@ import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.
 import {
   type PitchRange,
   type TransformAssignment,
+  type TransformStatement,
   parse as parseTransform,
 } from "./parser/transform-parser.ts";
+import { applyNoteOp } from "./transform-note-ops.ts";
 
 // Audio-only parameters that should be skipped for MIDI clips
 const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
@@ -56,7 +59,9 @@ export function applyTransforms(
   );
 
   // Check for audio parameters and warn
-  const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
+  const hasAudioParams = ast.some(
+    (a) => !isNoteOp(a) && AUDIO_PARAMETERS.has(a.parameter),
+  );
 
   if (hasAudioParams) {
     console.warn("Audio parameters (gain, pitchShift) ignored for MIDI clips");
@@ -80,20 +85,42 @@ export function applyTransforms(
   // Track which notes had at least one MIDI transform applied
   const transformedIndices = new Set<number>();
 
-  // Process assignments sequentially (assignment-major order).
-  // Each assignment is fully applied before the next one runs.
-  // This enables stacked transforms and pitch-range-filtered note.index.
+  // Process statements sequentially (statement-major order).
+  // Each statement is fully applied before the next one runs.
+  // This enables stacked transforms, pitch-range-filtered note.index, and
+  // note-count ops (ratchet/merge) whose output the next statement sees.
   for (let j = 0; j < ast.length; j++) {
-    const assignment = ast[j] as TransformAssignment;
+    const stmt = ast[j] as TransformStatement;
+
+    // Note-count op (ratchet/merge): rebuilds the note array in place.
+    if (isNoteOp(stmt)) {
+      const produced = applyNoteOp(
+        stmt,
+        notes,
+        timeSigNumerator,
+        timeSigDenominator,
+      );
+
+      // The rebuild invalidates prior index-based tracking, so reseed with the
+      // op's output notes; later assignments add their fresh indices on top.
+      transformedIndices.clear();
+
+      for (const idx of produced) {
+        transformedIndices.add(idx);
+      }
+
+      continue;
+    }
+
     const pitchRange = effectiveRanges[j] ?? null;
 
     // Skip audio parameters for MIDI clips
-    if (AUDIO_PARAMETERS.has(assignment.parameter)) {
+    if (AUDIO_PARAMETERS.has(stmt.parameter)) {
       continue;
     }
 
     applyAssignmentToNotes(
-      assignment,
+      stmt,
       pitchRange,
       notes,
       timeSigNumerator,
