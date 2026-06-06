@@ -277,4 +277,96 @@ describe("note-count operations (ratchet/merge)", () => {
       expect(notes.filter((n) => n.pitch === 62)).toHaveLength(2);
     });
   });
+
+  describe("meter correctness", () => {
+    // start_time/duration are Ableton (quarter-note) beats; a note-value grid is
+    // meter-invariant in absolute time, so the count must come out right whatever
+    // the meter. A dotted quarter is 1.5 Ableton beats = three 8th notes.
+    it("ratchet(n/8) chops a dotted quarter into 3 eighths in 6/8", () => {
+      const notes = createTestNote({ start_time: 0, duration: 1.5 });
+
+      applyTransforms(notes, "ratchet(n/8)", 6, 8);
+
+      expect(notes).toHaveLength(3);
+
+      for (const note of notes) {
+        expect(note.duration).toBeCloseTo(0.5); // an 8th = 0.5 Ableton beats
+      }
+    });
+
+    it("ratchet(count) is meter-agnostic (same result via count form)", () => {
+      const notes = createTestNote({ start_time: 0, duration: 1.5 });
+
+      applyTransforms(notes, "ratchet(3)", 6, 8);
+
+      expect(notes).toHaveLength(3);
+      expect(notes[0]!.duration).toBeCloseTo(0.5);
+    });
+
+    it("honors a time selector against the meter's bar in 6/8", () => {
+      // In 6/8 a bar is 3 Ableton beats. Bar-1 note at 0, bar-2 note at 3.
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 1 },
+        { pitch: 60, start_time: 3, duration: 1 },
+      ]);
+
+      applyTransforms(notes, "2|*: ratchet(2)", 6, 8);
+
+      expect(notes.filter((n) => n.start_time < 3)).toHaveLength(1); // bar 1 untouched
+      expect(notes.filter((n) => n.start_time >= 3)).toHaveLength(2); // bar 2 split
+    });
+  });
+
+  describe("composition with later statements", () => {
+    it("a ratchet after a ratchet stacks (2 then 2 = 4 pieces)", () => {
+      const notes = createTestNote({ start_time: 0, duration: 1 });
+
+      applyTransforms(notes, "ratchet(2)\nratchet(2)", 4, 4);
+
+      expect(notes).toHaveLength(4);
+      expect(notes[0]!.duration).toBeCloseTo(0.25);
+    });
+
+    it("merge after ratchet round-trips back to one note", () => {
+      const notes = createTestNote({ start_time: 0, duration: 1 });
+
+      applyTransforms(notes, "ratchet(4)\nmerge()", 4, 4);
+
+      expect(notes).toStrictEqual([
+        expect.objectContaining({ pitch: 60, start_time: 0, duration: 1 }),
+      ]);
+    });
+
+    it("a transform after merge sees the rebuilt note.count", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 1 },
+        { pitch: 60, start_time: 1, duration: 1 },
+        { pitch: 60, start_time: 2, duration: 1 },
+      ]);
+
+      // 3 same-pitch notes merge to 1, so note.count is 1 afterward
+      applyTransforms(notes, "merge()\nvelocity = note.count * 10", 4, 4);
+
+      expect(notes).toHaveLength(1);
+      expect(notes[0]!.velocity).toBe(10);
+    });
+
+    it("legato after a ratchet resolves next-note gaps over the rebuilt list", () => {
+      // Ratchet only the C3 (into 2), leave the E3; then legato so each note
+      // extends to the next distinct start over the NEW (rebuilt) note list.
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 0.5 },
+        { pitch: 64, start_time: 4, duration: 1 },
+      ]);
+
+      applyTransforms(notes, "C3: ratchet(2)\nduration = legato()", 4, 4);
+
+      // ratchet -> C3 children at 0 and 0.25; legato extends child0 to 0.25,
+      // child1 to 4 (next distinct start, the E3); the E3 is last and keeps its
+      // duration (no clip length to fill to).
+      expect(notes).toHaveLength(3);
+      expect(notes[0]!.duration).toBeCloseTo(0.25); // 0 -> next start 0.25
+      expect(notes[1]!.duration).toBeCloseTo(3.75); // 0.25 -> next start 4
+    });
+  });
 });

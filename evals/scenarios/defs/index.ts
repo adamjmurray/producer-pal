@@ -49,6 +49,10 @@ export {
   durationArgSubBar,
 } from "./clip/notation/duration-arg-grammar.ts";
 export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quarter.ts";
+export {
+  noteOpsMerge,
+  noteOpsRatchetRoll,
+} from "./clip/note-ops-roll-and-merge.ts";
 export { legatoTransforms } from "./clip/legato-transforms.ts";
 export { melodyTransforms } from "./clip/melody-transforms.ts";
 export {
