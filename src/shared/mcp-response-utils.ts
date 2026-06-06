@@ -70,6 +70,28 @@ export function reassembleChunks(rest: unknown[]): string {
   return chunks.map(String).join("");
 }
 
+/**
+ * Guard for a payload sent as a SINGLE unchunked Max IPC string — the code-exec
+ * sub-protocol, unlike node_response which splits with planChunks. Max silently
+ * truncates or drops a string past its ~32,767-char limit, corrupting the
+ * message. Reject at MAX_CHUNK_SIZE (the same conservative bound a single chunk
+ * uses) so the caller fails loudly with a clear message instead.
+ *
+ * @param jsonString - The stringified payload about to be sent
+ * @param label - Human label for the payload (e.g. "code-exec request")
+ * @returns An error message when too large, or null when it fits
+ */
+export function oversizedSingleMessageError(
+  jsonString: string,
+  label: string,
+): string | null {
+  if (jsonString.length <= MAX_CHUNK_SIZE) {
+    return null;
+  }
+
+  return `${label} too large for a single Max IPC message: ${jsonString.length} chars exceeds ${MAX_CHUNK_SIZE} (the code-exec protocol does not chunk). Use fewer notes or a smaller clip.`;
+}
+
 interface McpTextContent {
   type: "text";
   text: string;

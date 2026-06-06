@@ -9,6 +9,7 @@
  */
 
 import Max from "max-api";
+import { oversizedSingleMessageError } from "#src/shared/mcp-response-utils.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
 import * as console from "./node-for-max-logger.ts";
 
@@ -83,7 +84,16 @@ async function sendCodeExecResult(
   result: { success: boolean; result?: unknown; error?: string },
 ): Promise<void> {
   try {
-    await Max.outlet("code_exec_result", requestId, JSON.stringify(result));
+    const json = JSON.stringify(result);
+    // A cardinality-increasing transform (e.g. ratchet) can push the result
+    // past the single-message IPC limit, where Max would silently truncate it.
+    // Replace it with a small, loud error rather than send a corrupt blob.
+    const tooLarge = oversizedSingleMessageError(json, "code-exec result");
+    const payload = tooLarge
+      ? JSON.stringify({ success: false, error: tooLarge })
+      : json;
+
+    await Max.outlet("code_exec_result", requestId, payload);
   } catch (error) {
     console.error(
       `Failed to send code_exec_result: ${String(error)} [requestId=${requestId}]`,
