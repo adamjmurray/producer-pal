@@ -95,6 +95,54 @@ describe("useChat", () => {
       expect(result.current.activeThinking).toBeNull();
       expect(result.current.activeTemperature).toBeNull();
     });
+
+    it("aborts the in-flight stream (browser Back/Forward teardown path)", async () => {
+      // A browser Back/Forward fires hashchange, which switches/clears the
+      // conversation via clearConversation WITHOUT going through stopResponse.
+      // Before the fix the in-flight stream kept running and its setMessages
+      // clobbered the freshly-restored conversation. clearConversation must
+      // abort the active stream's controller.
+      let capturedSignal: AbortSignal | undefined;
+      let resolveGate: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        resolveGate = resolve;
+      });
+
+      const adapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message, signal) {
+            capturedSignal = signal;
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+            await gate; // hold the stream in-flight
+          },
+      );
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      const sendPromise = result.current.handleSend("Hello");
+
+      // Let the stream yield its first chunk and suspend on the gate.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(capturedSignal?.aborted).toBe(false);
+
+      await act(() => {
+        result.current.clearConversation();
+      });
+
+      expect(capturedSignal?.aborted).toBe(true);
+
+      resolveGate();
+      await act(async () => {
+        await sendPromise;
+      });
+    });
   });
 
   describe("stopResponse", () => {
