@@ -9,6 +9,7 @@
  */
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
@@ -57,12 +58,16 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
     return;
   }
 
-  // Convert musical beats back to Ableton beats and add
+  // Convert musical beats back to Ableton beats, then sort ascending by
+  // start_time before adding. User code returns notes in arbitrary order, but
+  // add_new_notes deletes an earlier same-pitch note when a later-written note
+  // overlaps its onset — so an unsorted write silently drops notes. Every other
+  // write path sorts first (see note-sort.ts for the invariant); this one didn't.
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  const noteEvents = notes.map((note) =>
-    codeNoteToNoteEvent(note, timeSigDenominator),
+  const noteEvents = sortNotes(
+    notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
   );
 
   clip.call("add_new_notes", { notes: noteEvents });
