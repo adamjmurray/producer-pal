@@ -371,6 +371,91 @@ describe("clearClipAtDuplicateTarget", () => {
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 201");
   });
 
+  it("returns false and preserves the source when it overlaps its own target", () => {
+    // The data-loss bug: source [8,20] duplicated to target 12 (targetEnd 24).
+    // The source itself is in arrangement_clips and overlaps [12,24], so the old
+    // code right-trimmed/deleted the source *before* the duplicate ran — silent
+    // data loss. The fix detects the self-overlap, warns, and reports that the
+    // duplicate must be skipped (caller warn-and-skips), leaving the source intact.
+    setupClip("100", {
+      properties: {
+        is_arrangement_clip: 1,
+        start_time: 8,
+        end_time: 20,
+      },
+    });
+
+    const trackMock = setupTrack(0, {
+      properties: {
+        // The source clip itself is on the track at an overlapping position —
+        // exactly the case the original tests never registered (they listed only
+        // a non-source overlapping clip, so the source never entered the loop).
+        arrangement_clips: ["id", "100"],
+      },
+      methods: {
+        create_midi_clip: () => ["id", "300"],
+        delete_clip: () => null,
+        duplicate_clip_to_arrangement: () => ["id", "400"],
+      },
+    });
+
+    const safe = clearClipAtDuplicateTarget(
+      LiveAPI.from(trackMock.path),
+      "100",
+      12,
+      true,
+      mockContext,
+    );
+
+    expect(safe).toBe(false);
+    // The source must be untouched: no trim, no delete, no duplicate.
+    expect(trackMock.call).not.toHaveBeenCalled();
+  });
+
+  it("returns true and clears other clips when the source itself does not overlap the target", () => {
+    // Source [0,4] duplicated to target 16 (targetEnd 20). The source is listed
+    // in arrangement_clips but doesn't overlap [16,20]; another clip [16,20] does.
+    // Having the source in the list must not break normal clearing of others.
+    setupClip("100", {
+      properties: {
+        is_arrangement_clip: 1,
+        start_time: 0,
+        end_time: 4,
+      },
+    });
+
+    const otherClip = setupArrangementClip(
+      "200",
+      0,
+      {
+        start_time: 16,
+        end_time: 20,
+      },
+      1,
+    );
+
+    const trackMock = setupTrack(0, {
+      properties: {
+        arrangement_clips: ["id", "100", "id", otherClip.id],
+      },
+      methods: {
+        delete_clip: () => null,
+      },
+    });
+
+    const safe = clearClipAtDuplicateTarget(
+      LiveAPI.from(trackMock.path),
+      "100",
+      16,
+      true,
+      mockContext,
+    );
+
+    expect(safe).toBe(true);
+    // The non-source overlapping clip [16,20] is fully contained → deleted.
+    expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 200");
+  });
+
   it("throws and leaves original intact when dup-to-holding silently fails (after-only)", () => {
     // After-only overlap: existing [10,14], target [8,12].
     // Without protection, the original would be deleted with no replacement

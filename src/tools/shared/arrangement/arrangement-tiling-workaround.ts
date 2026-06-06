@@ -10,6 +10,7 @@
  * clips before duplication and handle moving clips from holding areas.
  */
 
+import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
   createAndDeleteTempClip,
@@ -60,12 +61,19 @@ export function setArrangementDuplicateCrashWorkaround(enabled: boolean): void {
  * the Ableton crash when duplicating an arrangement clip on top of them.
  * Uses the splitting technique (dup-to-holding + edge trims) to preserve
  * portions of overlapping clips outside the target range.
- * No-op when: workaround is disabled or source is a session clip.
+ *
+ * No-op (returns true) when the workaround is disabled or the source is a
+ * session clip. Returns FALSE when the source arrangement clip overlaps its
+ * own target range — in that case the caller must warn-and-skip the duplicate
+ * (see below); otherwise returns true.
+ *
  * @param track - LiveAPI track instance for the target track
  * @param sourceClipId - ID of the source clip being duplicated
  * @param targetPosition - Target position in beats
  * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
  * @param context - Context with silenceWavPath for audio clip operations
+ * @returns true if it is safe to duplicate the source to the target; false if
+ *   the source overlaps its own target and the duplicate must be skipped
  */
 export function clearClipAtDuplicateTarget(
   track: LiveAPI,
@@ -73,20 +81,38 @@ export function clearClipAtDuplicateTarget(
   targetPosition: number,
   isMidiClip: boolean,
   context: TilingContext,
-): void {
-  if (!arrangementDuplicateCrashWorkaround) return;
+): boolean {
+  if (!arrangementDuplicateCrashWorkaround) return true;
 
   const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
 
-  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return;
+  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return true;
 
   const sourceStart = sourceClip.getProperty("start_time") as number;
   const sourceEnd = sourceClip.getProperty("end_time") as number;
   const targetEnd = targetPosition + (sourceEnd - sourceStart);
 
-  // Iterate all arrangement clips and clear any that overlap the target range.
-  // Arrangement clips on the same track never overlap each other, so a single
-  // pass handles all overlapping clips without needing to re-fetch IDs.
+  // The source clip overlapping its own target range is the one clip we must
+  // never clear: trimming/deleting it here would destroy the very content being
+  // duplicated (silent data loss), while leaving it in place would trigger
+  // Ableton's "existing clip overlaps target" crash on the duplicate itself.
+  // Neither is safe, so report that the duplicate must be skipped. (Offset/echo
+  // duplication or an overlapping move of an arrangement clip onto its own
+  // position is unsupported — duplicate to a non-overlapping position instead.)
+  if (sourceStart < targetEnd && sourceEnd > targetPosition) {
+    console.warn(
+      `Cannot duplicate arrangement clip (id ${sourceClip.id}) to a position ` +
+        `overlapping itself; skipped to avoid corrupting the source. Use a ` +
+        `non-overlapping arrangement position.`,
+    );
+
+    return false;
+  }
+
+  // Clear any *other* arrangement clips overlapping the target range. Arrangement
+  // clips on the same track never overlap each other, so a single pass handles
+  // all overlapping clips without needing to re-fetch IDs. The source can never
+  // match here: it doesn't overlap the target range (the check above returned).
   const clipIds = track.getChildIds("arrangement_clips");
 
   for (const clipId of clipIds) {
@@ -106,6 +132,8 @@ export function clearClipAtDuplicateTarget(
       );
     }
   }
+
+  return true;
 }
 
 /**
