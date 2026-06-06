@@ -104,10 +104,19 @@ export interface EvalScenario {
  */
 export interface ScenarioRequirements {
   /** Tool names that must be available. Skipped when the profile's explicit
-   *  `tools` allow-list excludes any of them. (Deriving the small-model
-   *  excluded tool/param surface from `smallModelModeConfig` is a follow-up;
-   *  for now only an explicit profile allow-list is consulted.) */
+   *  `tools` allow-list excludes any of them. NOTE: small-model mode excludes
+   *  no whole standard tools (only the opt-in `ppal-live-api`), so it never
+   *  trips this — its exclusion surface is params, handled by `params` below.
+   *  This field only bites a profile with an explicit `tools` allow-list. */
   tools?: string[];
+
+  /** Param names the scenario depends on. Skipped under `smallModelMode` when
+   *  any is in the small-model excluded-param surface
+   *  (`SMALL_MODEL_EXCLUDED_PARAMS`, derived from each tool's
+   *  `smallModelModeConfig.excludeParams`). Use for scenarios whose deterministic
+   *  checks require a param small models never receive — e.g. update-device
+   *  `actions`, update-clip `split`. */
+  params?: string[];
 
   /** Needs the transforms DSL (functions like `step()`/`swing()`/`legato()`/
    *  `rand()`, synced LFOs). Not taught in the basic skills tier, so skipped
