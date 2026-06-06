@@ -530,4 +530,16 @@ describe("chatAdapter", () => {
       expect(result[1]!.role).toBe("model");
     });
   });
+
+  describe("createCompactionSummary", () => {
+    it("creates a flagged synthetic user message", () => {
+      const msg = chatAdapter.createCompactionSummary("a summary");
+
+      expect(msg).toStrictEqual({
+        role: "user",
+        content: "a summary",
+        isCompactionSummary: true,
+      });
+    });
+  });
 });

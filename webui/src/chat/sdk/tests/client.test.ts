@@ -13,6 +13,7 @@ vi.mock(import("ai"), async (importOriginal) => {
   return {
     ...actual,
     streamText: vi.fn(),
+    generateText: vi.fn(),
   };
 });
 
@@ -26,7 +27,7 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: vi.fn(() => "http://localhost:3000/mcp"),
 }));
 
-import { streamText } from "ai";
+import { generateText, streamText } from "ai";
 import { ChatSdkClient, detectToolLimitReached } from "#webui/chat/sdk/client";
 
 const MAX_TOOL_STEPS = 10;
@@ -697,5 +698,19 @@ describe("detectToolLimitReached", () => {
 
   it("returns false for an error finishReason at the limit", () => {
     expect(detectToolLimitReached(MAX_TOOL_STEPS, "error")).toBe(false);
+  });
+});
+
+describe("ChatSdkClient.summarize", () => {
+  it("returns a trimmed summary from the model", async () => {
+    (generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: "  the summary  ",
+    });
+
+    const client = new ChatSdkClient("key", createConfig());
+    const result = await client.summarize([{ role: "user", content: "hi" }]);
+
+    expect(result).toBe("the summary");
+    expect(generateText).toHaveBeenCalledOnce();
   });
 });

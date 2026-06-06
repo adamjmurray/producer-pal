@@ -64,12 +64,15 @@ export function ChatApp(props: ChatAppProps) {
   return (
     <ChatScreen
       messages={chat.messages}
-      isAssistantResponding={chat.isAssistantResponding}
+      isAssistantResponding={chat.isAssistantResponding || chat.isCompacting}
       rateLimitState={chat.rateLimitState}
       toolLimitReached={chat.toolLimitReached}
       handleSend={wrappedHandleSend}
       handleRetry={chat.handleRetry}
       handleEdit={chat.handleEdit}
+      handleCompact={chat.compact}
+      onUndoCompaction={chat.undoCompaction}
+      canUndoCompaction={chat.canUndoCompaction}
       headerInfo={headerInfo}
       activeThinking={chat.activeThinking}
       defaultThinking={settings.thinking}

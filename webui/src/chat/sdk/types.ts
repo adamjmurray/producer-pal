@@ -39,6 +39,8 @@ export interface ChatMessage {
   thinkingOverride?: string;
   temperatureOverride?: number;
   showThoughtsOverride?: boolean;
+  /** True for a synthetic compaction summary that replaces older turns */
+  isCompactionSummary?: boolean;
 }
 
 /** Token usage summary extracted from LanguageModelUsage */

@@ -46,12 +46,18 @@ export interface UIErrorPart {
   isError: true;
 }
 
+export interface UICompactionPart {
+  type: "compaction";
+  content: string; // the generated compaction summary
+}
+
 export type UIPart =
   | UITextPart
   | UIThoughtPart
   | UIToolPart
   | UIStepUsagePart
-  | UIErrorPart;
+  | UIErrorPart
+  | UICompactionPart;
 
 // UI Message Structure
 // This is the format used throughout the UI for rendering messages

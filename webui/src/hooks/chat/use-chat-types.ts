@@ -26,6 +26,11 @@ export interface ChatClient<TMessage> {
     signal: AbortSignal,
     overrides?: MessageOverrides,
   ) => AsyncIterable<TMessage[]>;
+  /**
+   * Summarize a slice of history into a compaction summary string. Optional:
+   * clients that don't support compaction may omit it.
+   */
+  summarize?: (history: TMessage[]) => Promise<string>;
 }
 
 /**
@@ -60,6 +65,9 @@ export interface ChatAdapter<
 
   /** Create initial user message for error display */
   createUserMessage: (text: string) => TMessage;
+
+  /** Create a synthetic compaction summary message */
+  createCompactionSummary: (summary: string) => TMessage;
 }
 
 /** Model/provider/behavior settings persisted with a conversation */
@@ -92,9 +100,17 @@ export interface UseChatReturn {
   rateLimitState: RateLimitState | null;
   /** True when the last response stopped at the tool-call step limit */
   toolLimitReached: boolean;
+  /** True while a compaction summary is being generated */
+  isCompacting: boolean;
+  /** True when the most recent compaction can still be undone (in-memory) */
+  canUndoCompaction: boolean;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
+  /** Compact the conversation up to and including the given UI message */
+  compact: (mergedMessageIndex: number) => Promise<void>;
+  /** Restore the pre-compaction history (while still available) */
+  undoCompaction: () => void;
   clearConversation: () => void;
   stopResponse: () => void;
   getChatHistory: () => unknown[];

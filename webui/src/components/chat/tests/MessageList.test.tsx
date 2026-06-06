@@ -616,4 +616,54 @@ describe("MessageList", () => {
       expect(screen.getByText(/5.1K new/)).toBeDefined();
     });
   });
+
+  describe("compaction", () => {
+    it("shows a compact button on assistant messages when handleCompact is set", () => {
+      const handleCompact = vi.fn();
+
+      render(
+        <MessageList
+          messages={[createUserMessage("hi", 0), createModelMessage("yo", 1)]}
+          isAssistantResponding={false}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          handleCompact={handleCompact}
+          showTimestamps={false}
+          showTokenUsage={false}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /compact the conversation up to here/i,
+        }),
+      );
+
+      expect(handleCompact).toHaveBeenCalledWith(1);
+    });
+
+    it("renders a divider for a compaction summary message", () => {
+      const summaryMsg: UIMessage = {
+        role: "user",
+        parts: [{ type: "compaction", content: "sum" }],
+        rawHistoryIndex: 0,
+        timestamp: Date.now(),
+      };
+
+      render(
+        <MessageList
+          messages={[summaryMsg]}
+          isAssistantResponding={false}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={false}
+          showTokenUsage={false}
+          canUndoCompaction
+          onUndoCompaction={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByTestId("compaction-divider")).toBeTruthy();
+    });
+  });
 });

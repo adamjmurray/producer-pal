@@ -15,6 +15,7 @@ import {
 } from "ai";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
 import { createStreamErrorSignal } from "./stream-with-error-signal";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
@@ -52,6 +53,16 @@ export class ChatSdkClient {
     const { tools } = await createMcpTools(mcpUrl, this.config.enabledTools);
 
     this.tools = tools;
+  }
+
+  /**
+   * Summarize a slice of chat history into a single compaction summary,
+   * using this conversation's model with no tools.
+   * @param history - Messages to compact (oldest first)
+   * @returns The compaction summary text
+   */
+  async summarize(history: ChatMessage[]): Promise<string> {
+    return await summarizeHistory(this.config.model, history);
   }
 
   /**

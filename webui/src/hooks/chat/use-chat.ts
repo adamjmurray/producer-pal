@@ -19,6 +19,7 @@ import {
   type UseChatProps,
   type UseChatReturn,
 } from "./use-chat-types";
+import { useCompaction } from "./use-compaction";
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -70,6 +71,21 @@ export function useChat<
     setRateLimitState,
   });
 
+  const {
+    isCompacting,
+    canUndoCompaction,
+    compact,
+    undoCompaction,
+    invalidateCompactionUndo,
+  } = useCompaction({
+    clientRef,
+    adapter,
+    autoSaveRef,
+    messages,
+    isAssistantResponding,
+    setMessages,
+  });
+
   const clearConversation = useCallback(() => {
     setMessages([]);
     clientRef.current = null;
@@ -77,8 +93,9 @@ export function useChat<
     clearSettings();
     setRateLimitState(null);
     setToolLimitReached(false);
+    invalidateCompactionUndo();
     abortRetry();
-  }, [clearSettings, abortRetry]);
+  }, [clearSettings, abortRetry, invalidateCompactionUndo]);
 
   const getChatHistory = useCallback(
     (): unknown[] =>
@@ -94,8 +111,9 @@ export function useChat<
       restoreSettings(lockedSettings);
       setRateLimitState(null);
       setToolLimitReached(false);
+      invalidateCompactionUndo();
     },
-    [adapter, restoreSettings],
+    [adapter, restoreSettings, invalidateCompactionUndo],
   );
 
   const stopResponse = useCallback(() => {
@@ -208,6 +226,9 @@ export function useChat<
 
       if (!userMessage) return;
 
+      // Continuing the conversation invalidates the compaction undo snapshot.
+      invalidateCompactionUndo();
+
       const userMessageEntry = adapter.createUserMessage(userMessage);
 
       if (!apiKey) {
@@ -255,7 +276,14 @@ export function useChat<
         });
       }, userMessageEntry);
     },
-    [apiKey, adapter, initializeChat, runWithChat, executeWithRetry],
+    [
+      apiKey,
+      adapter,
+      initializeChat,
+      runWithChat,
+      executeWithRetry,
+      invalidateCompactionUndo,
+    ],
   );
 
   const forkConversation = useCallback(
@@ -271,6 +299,8 @@ export function useChat<
         clientRef.current?.chatHistory ?? pendingHistoryRef.current;
 
       if (!history) return;
+
+      invalidateCompactionUndo();
 
       await runWithChat(async () => {
         const slicedHistory = history.slice(0, rawIndex);
@@ -294,7 +324,14 @@ export function useChat<
         });
       });
     },
-    [apiKey, messages, initializeChat, runWithChat, executeWithRetry],
+    [
+      apiKey,
+      messages,
+      initializeChat,
+      runWithChat,
+      executeWithRetry,
+      invalidateCompactionUndo,
+    ],
   );
 
   const handleRetry = useCallback(
@@ -338,9 +375,13 @@ export function useChat<
     ...active,
     rateLimitState,
     toolLimitReached,
+    isCompacting,
+    canUndoCompaction,
     handleSend,
     handleRetry,
     handleEdit,
+    compact,
+    undoCompaction,
     clearConversation,
     stopResponse,
     getChatHistory,
