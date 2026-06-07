@@ -53,6 +53,28 @@ describe("Transform Parser - note-count operations (ratchet/merge)", () => {
         },
       ]);
     });
+
+    it("parses a literal 0 gap-tolerance argument", () => {
+      expect(parse("merge(0)")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          kind: "noteOp",
+          name: "merge",
+          args: [0],
+        },
+      ]);
+    });
+
+    it("parses a note-value gap-tolerance argument", () => {
+      const result = parse("merge(n/8)");
+
+      expect(result[0]).toMatchObject({
+        kind: "noteOp",
+        name: "merge",
+        args: [{ type: "nDuration", wholeNoteFraction: 0.125 }],
+      });
+    });
   });
 
   describe("selectors", () => {
