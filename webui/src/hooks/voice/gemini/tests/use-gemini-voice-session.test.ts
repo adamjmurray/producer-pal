@@ -606,6 +606,35 @@ describe("useGeminiVoiceSession", () => {
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
   });
 
+  it("half-duplex: manual interrupt during an auto-muted turn restores the mic", async () => {
+    // M9: Gemini Live has no local cancel, so under NO_INTERRUPTION the server
+    // keeps streaming after a manual interrupt and turnComplete/interrupted
+    // don't arrive for seconds. interrupt() must lift the auto-mute itself, or
+    // the mic stays stuck muted while the indicator shows unmuted.
+    const { result } = await renderConnected({
+      turnDetection: HALF_DUPLEX_VAD,
+    });
+    const mic = h.FakeMic.last!;
+
+    mic.setMuted.mockClear();
+
+    // Assistant audio auto-mutes the mic.
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        serverContent: {
+          modelTurn: { parts: [{ inlineData: { data: "AUDIO" } }] },
+        },
+      });
+    });
+    expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
+
+    // Manual interrupt — without any turnComplete — restores the mic.
+    await act(() => {
+      result.current.interrupt();
+    });
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+  });
+
   it("full-duplex (interruptResponse=true): no auto-mute around assistant audio", async () => {
     await renderConnected({
       turnDetection: { ...HALF_DUPLEX_VAD, interruptResponse: true },
