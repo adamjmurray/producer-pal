@@ -28,6 +28,20 @@ function addReasoning(reasoning: string | undefined, parts: UIPart[]): void {
 }
 
 /**
+ * Add a user message's content to parts. Compaction summaries become a single
+ * compaction part (rendered as a divider); normal user text becomes text.
+ * @param msg - User message
+ * @param parts - Parts array to add to
+ */
+function addUserParts(msg: ChatMessage, parts: UIPart[]): void {
+  if (msg.isCompactionSummary) {
+    parts.push({ type: "compaction", content: msg.content });
+  } else {
+    addTextContent(parts, msg.content);
+  }
+}
+
+/**
  * Add tool calls matched with their results to parts.
  * @param msg - AI SDK message containing tool calls and results
  * @param parts - Parts array to add to
@@ -94,7 +108,7 @@ export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
     }
 
     if (msg.role === "user") {
-      addTextContent(currentMessage.parts, msg.content);
+      addUserParts(msg, currentMessage.parts);
     } else if (msg.isError) {
       currentMessage.parts.push({
         type: "error",

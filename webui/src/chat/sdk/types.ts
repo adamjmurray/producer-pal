@@ -37,6 +37,8 @@ export interface ChatMessage {
   usage?: TokenUsage;
   /** Per-message setting override (only present when user overrode the conversation default) */
   thinkingOverride?: string;
+  /** True for a synthetic compaction summary that replaces older turns */
+  isCompactionSummary?: boolean;
 }
 
 /** Token usage summary extracted from LanguageModelUsage */

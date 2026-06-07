@@ -233,4 +233,8 @@ export const chatAdapter: ChatAdapter<
   createUserMessage(text: string): ChatMessage {
     return { role: "user", content: text };
   },
+
+  createCompactionSummary(summary: string): ChatMessage {
+    return { role: "user", content: summary, isCompactionSummary: true };
+  },
 };

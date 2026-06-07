@@ -13,6 +13,7 @@ vi.mock(import("ai"), async (importOriginal) => {
   return {
     ...actual,
     streamText: vi.fn(),
+    generateText: vi.fn(),
   };
 });
 
@@ -26,8 +27,12 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: vi.fn(() => "http://localhost:3000/mcp"),
 }));
 
-import { streamText } from "ai";
-import { ChatSdkClient, detectToolLimitReached } from "#webui/chat/sdk/client";
+import { generateText, streamText } from "ai";
+import {
+  buildModelMessages,
+  ChatSdkClient,
+  detectToolLimitReached,
+} from "#webui/chat/sdk/client";
 
 const MAX_TOOL_STEPS = 10;
 
@@ -535,10 +540,10 @@ describe("ChatSdkClient", () => {
 
       const callArgs = await sendWithHistory(chatHistory, "Try again");
 
-      // 2 messages: user, new user (error skipped)
-      expect(callArgs.messages).toHaveLength(2);
-      expect(callArgs.messages[0].content).toBe("Hi");
-      expect(callArgs.messages[1].content).toBe("Try again");
+      // Skipping the error leaves two user turns adjacent, which Gemini/Mistral
+      // reject — they merge into a single user message.
+      expect(callArgs.messages).toHaveLength(1);
+      expect(callArgs.messages[0].content).toBe("Hi\n\nTry again");
     });
 
     it("converts history with tool calls to model messages", async () => {
@@ -782,5 +787,78 @@ describe("detectToolLimitReached", () => {
 
   it("returns false for an error finishReason at the limit", () => {
     expect(detectToolLimitReached(MAX_TOOL_STEPS, "error")).toBe(false);
+  });
+});
+
+describe("ChatSdkClient.summarize", () => {
+  it("returns a trimmed summary from the model", async () => {
+    (generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: "  the summary  ",
+    });
+
+    const client = new ChatSdkClient("key", createConfig());
+    const result = await client.summarize([{ role: "user", content: "hi" }]);
+
+    expect(result).toBe("the summary");
+    expect(generateText).toHaveBeenCalledOnce();
+  });
+});
+
+describe("buildModelMessages", () => {
+  it("merges consecutive user turns into a single user message", () => {
+    // A compaction summary (synthetic user message) followed by the next real
+    // user message: Gemini and Mistral reject two user turns in a row.
+    const result = buildModelMessages([
+      {
+        role: "user",
+        content: "summary of earlier turns",
+        isCompactionSummary: true,
+      },
+      { role: "user", content: "now add a bass line" },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: "summary of earlier turns\n\nnow add a bass line",
+      },
+    ]);
+  });
+
+  it("keeps alternating turns separate", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+    ]);
+  });
+
+  it("does not merge a user turn across a tool-result message", () => {
+    // An assistant turn with tool calls emits an assistant message plus a tool
+    // message, so a following user turn must not fold into the earlier user.
+    const result = buildModelMessages([
+      { role: "user", content: "u1" },
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "1", name: "read-song", args: {} }],
+        toolResults: [{ id: "1", name: "read-song", args: {}, result: "ok" }],
+      },
+      { role: "user", content: "u2" },
+    ]);
+
+    expect(result.map((m) => m.role)).toStrictEqual([
+      "user",
+      "assistant",
+      "tool",
+      "user",
+    ]);
+    expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
 });

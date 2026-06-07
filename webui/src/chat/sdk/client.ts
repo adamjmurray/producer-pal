@@ -15,6 +15,7 @@ import {
 } from "ai";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
 import { createStreamErrorSignal } from "./stream-with-error-signal";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
@@ -60,6 +61,16 @@ export class ChatSdkClient {
     const { tools } = await createMcpTools(mcpUrl, this.config.enabledTools);
 
     this.tools = tools;
+  }
+
+  /**
+   * Summarize a slice of chat history into a single compaction summary,
+   * using this conversation's model with no tools.
+   * @param history - Messages to compact (oldest first)
+   * @returns The compaction summary text
+   */
+  async summarize(history: ChatMessage[]): Promise<string> {
+    return await summarizeHistory(this.config.model, history);
   }
 
   /**
@@ -308,15 +319,29 @@ function handleStreamPart(
  * Assistant messages with tool calls produce two ModelMessages:
  * 1. assistant message with text + tool-call parts
  * 2. tool message with tool-result parts
+ *
+ * Consecutive user turns are merged into one. A compaction summary is a
+ * synthetic user message, so the next real user message would otherwise sit
+ * directly after it — Gemini and Mistral reject two user turns in a row (only
+ * Anthropic/OpenAI tolerate it). Folding them into a single user turn keeps the
+ * wire format valid for every provider while the UI still renders them
+ * separately (the divider plus the user bubble).
  * @param history - Chat history to convert
  * @returns Array of ModelMessage for streamText
  */
-function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
+export function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
   const messages: ModelMessage[] = [];
 
   for (const msg of history) {
     if (msg.role === "user") {
-      messages.push({ role: "user", content: msg.content });
+      const last = messages.at(-1);
+
+      if (last?.role === "user" && typeof last.content === "string") {
+        last.content = `${last.content}\n\n${msg.content}`;
+      } else {
+        messages.push({ role: "user", content: msg.content });
+      }
+
       continue;
     }
 

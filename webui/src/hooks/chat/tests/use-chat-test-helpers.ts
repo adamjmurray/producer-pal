@@ -36,6 +36,11 @@ export class MockChatClient implements ChatClient<TestMessage> {
     // Initialization logic
   });
 
+  summarize = vi.fn(
+    async (history: TestMessage[]): Promise<string> =>
+      `Summary of ${history.length} messages`,
+  );
+
   /**
    * Simulates sending a message and streaming responses
    * @param message - User message to send
@@ -118,6 +123,10 @@ export function createMockAdapter(): ChatAdapter<
 
     createUserMessage: vi.fn(
       (text: string): TestMessage => ({ role: "user", content: text }),
+    ),
+
+    createCompactionSummary: vi.fn(
+      (summary: string): TestMessage => ({ role: "user", content: summary }),
     ),
   };
 
