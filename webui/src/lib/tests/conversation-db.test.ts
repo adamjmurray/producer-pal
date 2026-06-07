@@ -639,6 +639,31 @@ describe("conversation limit enforcement", () => {
     expect(list.find((c) => c.id === newest.id)).toBeDefined();
   });
 
+  it("does not trim a protected id, deleting the next-oldest instead (#44)", async () => {
+    // An import batch protects every imported record from the per-save trim, so
+    // saving one imported record can't delete another. Fill to the limit, then
+    // save one more while protecting the OLDEST record: it survives and the
+    // next-oldest is trimmed instead.
+    const records: ConversationRecord[] = [];
+
+    for (let i = 0; i < MAX_CONVERSATIONS; i++) {
+      const r = createRecord({ updatedAt: 1000 + i });
+
+      records.push(r);
+      await saveConversation(r);
+    }
+
+    const oldest = records[0]!;
+    const nextOldest = records[1]!;
+    const newest = createRecord({ updatedAt: 99999 });
+    const result = await saveConversation(newest, new Set([oldest.id]));
+
+    expect(result.deletedCount).toBe(1);
+    expect(await loadConversation(oldest.id)).toBeDefined(); // protected → kept
+    expect(await loadConversation(nextOldest.id)).toBeUndefined(); // trimmed
+    expect(await loadConversation(newest.id)).toBeDefined();
+  });
+
   it("skips bookmarked conversations during deletion", async () => {
     // Fill to limit with the oldest being bookmarked
     const bookmarked = createRecord({ updatedAt: 100, bookmarked: true });
