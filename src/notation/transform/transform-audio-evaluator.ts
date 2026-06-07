@@ -10,6 +10,7 @@ import {
   type ClipContext,
   isNoteOp,
   type NoteProperties,
+  operatorDisplay,
 } from "./helpers/transform-evaluator-helpers.ts";
 import {
   type ExpressionNode,
@@ -179,7 +180,7 @@ function warnAndSkipBarePitchLiteral(assignment: TransformAssignment): boolean {
   const example = assignment.parameter === "gain" ? "-6" : "12";
 
   console.warn(
-    `pitch name "${expr.name}" isn't a valid value for ${assignment.parameter}; audio clips have no pitch — gain and pitchShift take numbers (e.g. ${assignment.parameter} = ${example}). Skipping ${assignment.parameter} ${assignment.operator}.`,
+    `pitch name "${expr.name}" isn't a valid value for ${assignment.parameter}; audio clips have no pitch — gain and pitchShift take numbers (e.g. ${assignment.parameter} = ${example}). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
   );
 
   return true;

@@ -238,7 +238,7 @@ function resolveRatchetPlan(
   // is still resolved to a number below.
   if (typeof arg === "object" && arg.type === "pitchLiteral") {
     console.warn(
-      `pitch name "${arg.name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping`,
+      `pitch name "${arg.name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping ratchet(${arg.name}).`,
     );
 
     return null;

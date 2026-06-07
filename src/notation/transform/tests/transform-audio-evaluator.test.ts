@@ -695,6 +695,16 @@ describe("Audio Transform Evaluator", () => {
       );
     });
 
+    it("shows the source operator (+=), not the internal token, in the warning", () => {
+      applyAudioTransform(0, 0, "gain += C3");
+
+      // The skipped assignment is echoed as the user wrote it ("gain +="), not
+      // the internal operator token ("gain add").
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping "gain +=".'),
+      );
+    });
+
     it("still resolves a pitch literal nested in arithmetic to its MIDI number", () => {
       // Only a BARE top-level pitch literal is rejected. Nested in an expression
       // (here `C3 + 0`) it resolves to its MIDI number (60), clamped to the gain

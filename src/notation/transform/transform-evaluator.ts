@@ -16,6 +16,7 @@ import {
   isNoteOp,
   type NoteContext,
   type NoteProperties,
+  operatorDisplay,
   resolveEffectivePitchRanges,
   type TimeRange,
   type TransformResult,
@@ -193,7 +194,7 @@ function applyAssignmentToNotes(
     expr.type === "pitchLiteral"
   ) {
     console.warn(
-      `note name "${expr.name}" isn't a value for ${assignment.parameter}; pitch names set the pitch parameter, act as selectors (C3:), or are function arguments (e.g. min(C3,C5)). Skipping ${assignment.parameter} ${assignment.operator}.`,
+      `note name "${expr.name}" isn't a value for ${assignment.parameter}; pitch names set the pitch parameter, act as selectors (C3:), or are function arguments (e.g. min(C3,C5)). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
     );
 
     return;

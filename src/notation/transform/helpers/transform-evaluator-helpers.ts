@@ -84,6 +84,18 @@ export function isNoteOp(stmt: TransformStatement): stmt is NoteOp {
 }
 
 /**
+ * Map an assignment's internal operator token to the source symbol the user
+ * wrote, for warning messages. The parser normalizes `-=` into `add` (with a
+ * negated expression), so only `set`/`add` reach here; both display forms a user
+ * would recognize.
+ * @param operator - The internal operator token ("set" or "add")
+ * @returns The display symbol ("=" or "+=")
+ */
+export function operatorDisplay(operator: "set" | "add"): string {
+  return operator === "set" ? "=" : "+=";
+}
+
+/**
  * Resolve effective pitch ranges for each statement in the AST.
  * Handles "sticky" pitch range inheritance: once set, a pitch range persists
  * to subsequent assignments until a new one is specified. Note-count ops do not
