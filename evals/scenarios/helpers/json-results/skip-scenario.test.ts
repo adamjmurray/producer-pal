@@ -8,11 +8,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import {
-  type ConfigProfile,
-  type EvalScenario,
-  type ScenarioRequirements,
-} from "../../types.ts";
+import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+import { type EvalScenario, type ScenarioRequirements } from "../../types.ts";
 import { buildSkippedResult, shouldSkipScenario } from "./skip-scenario.ts";
 
 function makeScenario(requires?: ScenarioRequirements): EvalScenario {
@@ -27,39 +24,30 @@ function makeScenario(requires?: ScenarioRequirements): EvalScenario {
   };
 }
 
-const defaultProfile: ConfigProfile = {
-  id: "default",
-  description: "full tools",
-  config: {
-    smallModelMode: false,
-    tools: ["ppal-connect", "ppal-create-clip"],
-  },
-};
+/** Default run env: not small-model, full tool set. */
+const fullEnv = { smallModelMode: false, tools: [...TOOL_NAMES] };
 
-const smallModelProfile: ConfigProfile = {
-  id: "small-model",
-  description: "small model mode",
-  config: { smallModelMode: true },
-};
+/** Small-model run env with the full tool set. */
+const smallModelEnv = { smallModelMode: true, tools: [...TOOL_NAMES] };
 
 describe("shouldSkipScenario", () => {
   it("returns null when the scenario has no requirements", () => {
-    expect(shouldSkipScenario(makeScenario(), smallModelProfile)).toBeNull();
+    expect(shouldSkipScenario(makeScenario(), smallModelEnv)).toBeNull();
   });
 
   describe("transforms requirement", () => {
     it("skips under small-model mode", () => {
       const reason = shouldSkipScenario(
         makeScenario({ transforms: true }),
-        smallModelProfile,
+        smallModelEnv,
       );
 
       expect(reason).toMatch(/transforms DSL/);
     });
 
-    it("does not skip under the default profile", () => {
+    it("does not skip when not in small-model mode", () => {
       expect(
-        shouldSkipScenario(makeScenario({ transforms: true }), defaultProfile),
+        shouldSkipScenario(makeScenario({ transforms: true }), fullEnv),
       ).toBeNull();
     });
   });
@@ -68,15 +56,15 @@ describe("shouldSkipScenario", () => {
     it("skips under small-model mode", () => {
       const reason = shouldSkipScenario(
         makeScenario({ brackets: true }),
-        smallModelProfile,
+        smallModelEnv,
       );
 
       expect(reason).toMatch(/stream notation/);
     });
 
-    it("does not skip under the default profile", () => {
+    it("does not skip when not in small-model mode", () => {
       expect(
-        shouldSkipScenario(makeScenario({ brackets: true }), defaultProfile),
+        shouldSkipScenario(makeScenario({ brackets: true }), fullEnv),
       ).toBeNull();
     });
   });
@@ -85,15 +73,15 @@ describe("shouldSkipScenario", () => {
     it("skips under small-model mode", () => {
       const reason = shouldSkipScenario(
         makeScenario({ largeModel: true }),
-        smallModelProfile,
+        smallModelEnv,
       );
 
       expect(reason).toMatch(/large\/frontier model/);
     });
 
-    it("does not skip under the default profile", () => {
+    it("does not skip when not in small-model mode", () => {
       expect(
-        shouldSkipScenario(makeScenario({ largeModel: true }), defaultProfile),
+        shouldSkipScenario(makeScenario({ largeModel: true }), fullEnv),
       ).toBeNull();
     });
   });
@@ -104,7 +92,7 @@ describe("shouldSkipScenario", () => {
     it("skips under small-model mode when a required param is excluded there", () => {
       const reason = shouldSkipScenario(
         makeScenario({ params: ["actions"] }),
-        smallModelProfile,
+        smallModelEnv,
       );
 
       expect(reason).toMatch(
@@ -116,49 +104,55 @@ describe("shouldSkipScenario", () => {
       // `name` is a descriptionOverride, never an excludeParam, so it stays
       // available even in small-model mode.
       expect(
-        shouldSkipScenario(
-          makeScenario({ params: ["name"] }),
-          smallModelProfile,
-        ),
+        shouldSkipScenario(makeScenario({ params: ["name"] }), smallModelEnv),
       ).toBeNull();
     });
 
-    it("does not skip under the default profile", () => {
+    it("does not skip when not in small-model mode", () => {
       expect(
-        shouldSkipScenario(
-          makeScenario({ params: ["actions"] }),
-          defaultProfile,
-        ),
+        shouldSkipScenario(makeScenario({ params: ["actions"] }), fullEnv),
       ).toBeNull();
     });
   });
 
   describe("tools requirement", () => {
-    it("skips when the profile's tool allow-list excludes a required tool", () => {
+    // A run that restricts --tools below the required set.
+    const restrictedEnv = {
+      smallModelMode: false,
+      tools: ["ppal-connect", "ppal-create-clip"],
+    };
+
+    it("skips when the run's --tools subset excludes a required tool", () => {
       const reason = shouldSkipScenario(
         makeScenario({ tools: ["ppal-update-device"] }),
-        defaultProfile,
+        restrictedEnv,
       );
 
-      expect(reason).toMatch(/excludes required tool\(s\): ppal-update-device/);
+      expect(reason).toMatch(
+        /--tools subset excludes required tool\(s\): ppal-update-device/,
+      );
     });
 
-    it("does not skip when all required tools are in the allow-list", () => {
+    it("resolves short required tool names before comparing", () => {
+      const reason = shouldSkipScenario(
+        makeScenario({ tools: ["update-device"] }),
+        restrictedEnv,
+      );
+
+      expect(reason).toMatch(/ppal-update-device/);
+    });
+
+    it("does not skip when all required tools are in the subset", () => {
       expect(
-        shouldSkipScenario(
-          makeScenario({ tools: ["ppal-connect"] }),
-          defaultProfile,
-        ),
+        shouldSkipScenario(makeScenario({ tools: ["connect"] }), restrictedEnv),
       ).toBeNull();
     });
 
-    it("does not skip on tools when the profile has no explicit allow-list", () => {
-      // small-model profile sets no `tools`; deriving its excluded surface from
-      // smallModelModeConfig is a follow-up, so requires.tools is inert here.
+    it("does not skip when the run has the full tool set", () => {
       expect(
         shouldSkipScenario(
-          makeScenario({ tools: ["ppal-connect"] }),
-          smallModelProfile,
+          makeScenario({ tools: ["ppal-update-device"] }),
+          fullEnv,
         ),
       ).toBeNull();
     });

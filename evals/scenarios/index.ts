@@ -18,7 +18,6 @@ import {
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
-import { loadConfigProfiles } from "./config-profiles.ts";
 import {
   toJsonResult,
   type TrialInfo,
@@ -39,8 +38,8 @@ import {
   printTrialSummary,
 } from "./helpers/trial-helpers.ts";
 import { loadScenarios, printList } from "./load-scenarios.ts";
+import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
 import { runScenario } from "./run-scenario.ts";
-import { type ConfigProfile } from "./types.ts";
 
 collapseStdoutNewlines();
 
@@ -49,7 +48,14 @@ export type { ModelSpec, ModelSpec as JudgeOverride };
 interface CliOptions {
   test: string[];
   model: string[];
-  config: string[];
+  /** Enable small-model mode (basic skills tier + reduced param schemas). */
+  smallModel?: boolean;
+  /** Use JSON tool-result output (default: compact, the product default). */
+  json?: boolean;
+  /** Comma-separated tool subset (short or full names; default: all standard). */
+  tools?: string;
+  /** Enable the opt-in Direct Live API tool on top of the toolset. */
+  liveApi?: boolean;
   judge?: string;
   repeat?: string;
   list?: boolean;
@@ -59,7 +65,8 @@ interface CliOptions {
   skipJudge?: boolean;
   quiet?: boolean;
   usage?: boolean;
-  json?: boolean;
+  /** Whether to write JSON result files to disk (--no-save sets false). */
+  save?: boolean;
   baseUrl?: string;
 }
 
@@ -93,10 +100,20 @@ program
     [],
   )
   .option(
-    "-c, --config <profile-id>",
-    "Config profile(s) to test (default: 'default')",
-    collectValues,
-    [],
+    "--small-model",
+    "Enable small-model mode (basic skills + reduced param schemas)",
+  )
+  .option(
+    "--json",
+    "Use JSON tool-result output (default: compact, the product default)",
+  )
+  .option(
+    "--tools <list>",
+    "Comma-separated tool subset, short or full names (default: all standard tools)",
+  )
+  .option(
+    "--live-api",
+    "Enable the Direct Live API tool (ppal-live-api) on top of the toolset",
   )
   .option(
     "-j, --judge <provider/model>",
@@ -106,7 +123,7 @@ program
     "-r, --repeat <N>",
     "Run each scenario N times to detect flaky results",
   )
-  .option("-l, --list", "List available scenarios and config profiles")
+  .option("-l, --list", "List available scenarios")
   .option(
     "--list-models [provider]",
     "List models for a provider (omit to list providers), then exit",
@@ -121,7 +138,7 @@ program
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-u, --usage", "Show per-step token usage")
-  .option("--no-json", "Skip writing JSON result files to disk")
+  .option("--no-save", "Skip writing JSON result files to disk")
   .option("-a, --all", "Run all scenarios")
   .option(
     "-b, --base-url <url>",
@@ -186,11 +203,19 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     return;
   }
 
-  try {
-    const configProfiles = loadConfigProfiles(
-      options.config.length > 0 ? options.config : undefined,
-    );
+  let runEnv: RunEnv;
 
+  try {
+    runEnv = buildRunEnv(options);
+  } catch (error) {
+    program.error(error instanceof Error ? error.message : String(error));
+
+    return;
+  }
+
+  const label = envLabel(runEnv);
+
+  try {
     const scenarios = loadScenarios({
       testIds: options.all ? undefined : options.test,
     });
@@ -201,20 +226,20 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     }
 
     const repeatCount = parseRepeatCount(options.repeat);
-    const totalRuns =
-      scenarios.length *
-      modelSpecs.length *
-      configProfiles.length *
-      repeatCount;
+    const totalRuns = scenarios.length * modelSpecs.length * repeatCount;
     const repeatLabel = repeatCount > 1 ? ` × ${repeatCount} trial(s)` : "";
 
     console.log(
       styleText(
         "bold",
         `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
-          ` × ${configProfiles.length} config(s)${repeatLabel} = ${totalRuns} run(s)...`,
+          `${repeatLabel} = ${totalRuns} run(s)...`,
       ),
     );
+
+    if (label !== "default") {
+      console.log(styleText("gray", `Environment: ${label}`));
+    }
 
     const runId = generateRunId();
     const runCtx: RunContext = {
@@ -227,11 +252,12 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     const resultsByScenario = await runAllScenarios(
       scenarios,
       modelSpecs,
-      configProfiles,
+      runEnv,
+      label,
       runCtx,
     );
 
-    printSummary(resultsByScenario, modelSpecs, configProfiles);
+    printSummary(resultsByScenario, modelSpecs, label);
   } catch (error) {
     console.error(
       "Error:",
@@ -250,57 +276,55 @@ interface RunContext {
 }
 
 /**
- * Run all scenarios across models and configs, collecting results
+ * Run all scenarios across models in the active run environment, collecting
+ * results. The result map keeps its 3-level shape (scenario → model → label)
+ * for the reporting layer; with a single run environment the innermost map has
+ * exactly one entry, keyed by `label`.
  *
  * @param scenarios - Scenarios to run
  * @param modelSpecs - Models to test
- * @param configProfiles - Config profiles to test
+ * @param runEnv - The active run environment
+ * @param label - The run-environment label (see `envLabel`)
  * @param ctx - Shared run context
  * @returns 3D results map
  */
 async function runAllScenarios(
   scenarios: ReturnType<typeof loadScenarios>,
   modelSpecs: ModelSpec[],
-  configProfiles: ConfigProfile[],
+  runEnv: RunEnv,
+  label: string,
   ctx: RunContext,
 ): Promise<ResultsByScenario> {
   const resultsByScenario: ResultsByScenario = new Map();
 
   for (const scenario of scenarios) {
     const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
+    // The skip decision depends only on the scenario + run env, so it is the
+    // same for every model.
+    const skipReason = shouldSkipScenario(scenario, runEnv);
     let liveSetOpened = false;
 
     for (const spec of modelSpecs) {
       const modelKey = `${spec.provider}/${spec.model}`;
-      const configResults = new Map<string, JsonEvalResult[]>();
+      let results: JsonEvalResult[];
 
-      for (const profile of configProfiles) {
-        const skipReason = shouldSkipScenario(scenario, profile);
-
-        if (skipReason != null) {
-          // Skipped before running: no Live Set is opened, so leave
-          // `liveSetOpened` untouched for the next (runnable) profile.
-          configResults.set(
-            profile.id,
-            await emitSkipped(scenario, modelKey, profile, skipReason, ctx),
-          );
-
-          continue;
-        }
-
-        const trialResults = await runTrials(
+      if (skipReason != null) {
+        // Skipped before running: no Live Set is opened, so leave
+        // `liveSetOpened` untouched for the next model.
+        results = await emitSkipped(scenario, modelKey, label, skipReason, ctx);
+      } else {
+        results = await runTrials(
           scenario,
           spec,
-          profile,
+          runEnv,
+          label,
           ctx,
           liveSetOpened,
         );
-
         liveSetOpened = true;
-        configResults.set(profile.id, trialResults);
       }
 
-      modelResults.set(modelKey, configResults);
+      modelResults.set(modelKey, new Map([[label, results]]));
     }
 
     resultsByScenario.set(scenario.id, modelResults);
@@ -310,12 +334,12 @@ async function runAllScenarios(
 }
 
 /**
- * Emit a skipped result for a (scenario, model, config) combination: persist it
- * (unless --no-json), print it, and return it as a single-element result list.
+ * Emit a skipped result for a (scenario, model) combination: persist it (unless
+ * --no-save), print it, and return it as a single-element result list.
  *
  * @param scenario - The skipped scenario
  * @param modelKey - Model key (e.g. "google/gemini-3.5-flash")
- * @param profile - Config profile that triggered the skip
+ * @param label - Run-environment label (see `envLabel`)
  * @param reason - Why the scenario was skipped
  * @param ctx - Shared run context
  * @returns Single-element array with the skipped result
@@ -323,7 +347,7 @@ async function runAllScenarios(
 async function emitSkipped(
   scenario: ReturnType<typeof loadScenarios>[number],
   modelKey: string,
-  profile: ConfigProfile,
+  label: string,
   reason: string,
   ctx: RunContext,
 ): Promise<JsonEvalResult[]> {
@@ -331,22 +355,23 @@ async function emitSkipped(
     scenario,
     ctx.runId,
     modelKey,
-    profile.id,
+    label,
     reason,
   );
 
-  if (ctx.options.json !== false) await writeJsonResult(skipped);
+  if (ctx.options.save !== false) await writeJsonResult(skipped);
   printResultBlock(skipped);
 
   return [skipped];
 }
 
 /**
- * Run N trials for a single (scenario, model, config) combination
+ * Run N trials for a single (scenario, model) combination in the run environment
  *
  * @param scenario - Scenario to run
  * @param spec - Model spec
- * @param profile - Config profile
+ * @param runEnv - The active run environment
+ * @param label - Run-environment label (see `envLabel`)
  * @param ctx - Shared run context
  * @param liveSetAlreadyOpened - Whether the Live Set is already open
  * @returns Array of JSON results (one per trial)
@@ -354,7 +379,8 @@ async function emitSkipped(
 async function runTrials(
   scenario: ReturnType<typeof loadScenarios>[number],
   spec: ModelSpec,
-  profile: ConfigProfile,
+  runEnv: RunEnv,
+  label: string,
   ctx: RunContext,
   liveSetAlreadyOpened: boolean,
 ): Promise<JsonEvalResult[]> {
@@ -370,7 +396,8 @@ async function runTrials(
       model: spec.model,
       skipLiveSetOpen: skipOpen,
       judgeOverride,
-      configProfile: profile,
+      runEnv,
+      envLabel: label,
       usage: options.usage,
       skipJudge: options.skipJudge,
     });
@@ -382,11 +409,11 @@ async function runTrials(
       scenarioResult,
       runId,
       modelKey,
-      profile.id,
+      label,
       trialInfo,
     );
 
-    if (ctx.options.json !== false) await writeJsonResult(jsonResult);
+    if (ctx.options.save !== false) await writeJsonResult(jsonResult);
     printResultBlock(jsonResult);
     results.push(jsonResult);
   }
