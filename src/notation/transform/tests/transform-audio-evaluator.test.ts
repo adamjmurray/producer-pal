@@ -627,21 +627,41 @@ describe("Audio Transform Evaluator", () => {
   });
 
   describe("pitch literal as a value (#4)", () => {
-    it("evaluates a pitch literal to its MIDI number instead of throwing", () => {
-      // `gain = C3` used to fall through to the function-call branch and throw a
-      // cryptic "args is undefined" error (caught + no-op). C3 → MIDI 60, clamped
-      // to the gain max (24 dB).
+    it("warns and skips a bare pitch literal assigned to gain (no silent coerce)", () => {
+      // `gain = C3` is nonsensical — audio clips have no pitch. It must not
+      // silently coerce to a MIDI number (C3 → 60, clamped to the 24 dB max);
+      // warn clearly and leave gain unchanged. (Previously it threw a cryptic
+      // internal error; the first fix made it silently write the clamped MIDI
+      // number — this asserts warn-and-skip instead.)
       const result = applyAudioTransform(0, 0, "gain = C3");
+
+      expect(result.gain).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'pitch name "C3" isn\'t a valid value for gain',
+        ),
+      );
+    });
+
+    it("warns and skips a bare pitch literal assigned to pitchShift", () => {
+      const result = applyAudioTransform(0, 0, "pitchShift = C3");
+
+      expect(result.pitchShift).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'pitch name "C3" isn\'t a valid value for pitchShift',
+        ),
+      );
+    });
+
+    it("still resolves a pitch literal nested in arithmetic to its MIDI number", () => {
+      // Only a BARE top-level pitch literal is rejected. Nested in an expression
+      // (here `C3 + 0`) it resolves to its MIDI number (60), clamped to the gain
+      // max (24) — mirroring the note evaluator, and avoiding a cryptic throw.
+      const result = applyAudioTransform(0, 0, "gain = C3 + 0");
 
       expect(result.gain).toBe(24);
       expect(console.warn).not.toHaveBeenCalled();
-    });
-
-    it("evaluates a pitch literal in a pitchShift transform", () => {
-      // C3 → MIDI 60, clamped to the pitchShift max (48 semitones).
-      const result = applyAudioTransform(0, 0, "pitchShift = C3");
-
-      expect(result.pitchShift).toBe(48);
     });
   });
 });
