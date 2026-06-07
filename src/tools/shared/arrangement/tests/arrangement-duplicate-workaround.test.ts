@@ -569,9 +569,11 @@ describe("duplicateSelfOverlappingClip", () => {
       properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
     });
 
-    // The holding copy the first duplicate creates (maxEnd 16 + 100 = 116).
+    // The holding copy the first duplicate creates. The holding area clears the
+    // target placement (target 4 + length 16 = 20) as well as the existing clips
+    // (maxEnd 16), so it starts at max(16, 20) + 100 = 120.
     setupClip("400", {
-      properties: { is_arrangement_clip: 1, start_time: 116, end_time: 132 },
+      properties: { is_arrangement_clip: 1, start_time: 120, end_time: 136 },
     });
 
     // The full copy the second duplicate places at the target.
@@ -600,11 +602,12 @@ describe("duplicateSelfOverlappingClip", () => {
       mockContext,
     );
 
-    // Step 1: copy the source to the holding area (maxEnd 16 + 100 = 116).
+    // Step 1: copy the source to the holding area, past both the existing clips
+    // (maxEnd 16) and the target placement (4 + 16 = 20): max(16, 20) + 100 = 120.
     expect(trackMock.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 100",
-      116,
+      120,
     );
 
     // Step 2: trim the ORIGINAL to its "before" portion (right-trim at target 4,
@@ -622,6 +625,72 @@ describe("duplicateSelfOverlappingClip", () => {
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 400");
 
     // The placed full-length copy is returned (never the trimmed original).
+    expect(result.id).toBe("500");
+  });
+
+  it("pushes the holding area past the target placement for a clip longer than the gap", () => {
+    // Regression: a clip longer than HOLDING_AREA_GAP_BEATS (100) moved far
+    // enough forward that its full-length target copy would reach a holding area
+    // pinned only to maxEnd. Source [0,200] (50 bars) duplicated to target 199
+    // self-overlaps [199,399]. With the old `maxEnd + 100` holding position
+    // (300), the placed copy [199,399] overlaps the holding clip [300,500];
+    // moveClipFromHolding's clearClipAtDuplicateTarget would then read the
+    // holding clip as self-overlapping, skip clearing the original [0,200], and
+    // duplicate onto a still-overlapping clip — exactly Ableton's crash. The
+    // holding area must clear the target extent: max(200, 199 + 200) + 100 = 499.
+    setupClip("100", {
+      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 200 },
+    });
+
+    // The holding copy at the corrected position (past the target extent 399).
+    setupClip("400", {
+      properties: { is_arrangement_clip: 1, start_time: 499, end_time: 699 },
+    });
+    setupClip("500", { properties: { is_arrangement_clip: 1 } });
+
+    let dupCount = 0;
+
+    const trackMock = setupTrack(0, {
+      properties: { arrangement_clips: ["id", "100"] },
+      methods: {
+        duplicate_clip_to_arrangement: () => {
+          dupCount++;
+
+          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
+        },
+        create_midi_clip: () => ["id", "300"],
+        delete_clip: () => null,
+      },
+    });
+
+    const result = duplicateSelfOverlappingClip(
+      LiveAPI.from(trackMock.path),
+      "100",
+      199,
+      true,
+      mockContext,
+    );
+
+    // The holding copy lands past the target placement (399), not at maxEnd + 100
+    // (300) — so the holding clip cannot overlap the target copy.
+    expect(trackMock.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id 100",
+      499,
+    );
+
+    // Because the holding area cleared the target, the ORIGINAL is recognized as
+    // an "other" overlapping clip and right-trimmed at 199 (length 200 - 199 = 1)
+    // — it is no longer left in place to overlap the target and crash Ableton.
+    expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 199, 1);
+
+    // The full copy is then placed at the target and the holding clip removed.
+    expect(trackMock.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id 400",
+      199,
+    );
+    expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 400");
     expect(result.id).toBe("500");
   });
 });

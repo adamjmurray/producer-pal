@@ -183,7 +183,11 @@ export function moveClipFromHolding(
   isMidiClip: boolean,
   context: TilingContext,
 ): LiveAPI {
-  // Duplicate holding clip to target position
+  // Clear any *other* clip at the target before placing the holding copy. The
+  // holding clip itself can never overlap the target here: callers position the
+  // holding area past the target placement (see holdingAreaStartFromIds's
+  // minStartBeats), so clearClipAtDuplicateTarget's self-overlap branch is
+  // unreachable for the holding clip and its boolean return is safely ignored.
   clearClipAtDuplicateTarget(
     track,
     holdingClipId,
@@ -238,9 +242,19 @@ export function duplicateSelfOverlappingClip(
 ): LiveAPI {
   // Copy the source to a far holding area FIRST (guaranteed empty → no crash),
   // verified before anything is mutated, so the full content is preserved even
-  // if Ableton returns a silent dup failure.
+  // if Ableton returns a silent dup failure. The holding area must clear the
+  // target placement (targetPosition + sourceLength), not just the existing
+  // clips: a full-length copy of a >100-beat clip placed far forward would
+  // otherwise land on a holding area pinned only to maxEnd, and
+  // moveClipFromHolding would misread that overlap as a self-overlap and skip
+  // clearing the original (re-triggering the Ableton crash).
+  const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
+  const sourceLength =
+    (sourceClip.getProperty("end_time") as number) -
+    (sourceClip.getProperty("start_time") as number);
   const holdingStart = holdingAreaStartFromIds(
     track.getChildIds("arrangement_clips"),
+    targetPosition + sourceLength,
   );
   const holdingResult = track.call(
     "duplicate_clip_to_arrangement",
@@ -360,12 +374,29 @@ function clearOverlappingClip(
 }
 
 /**
- * Compute a safe holding-area start position: 100 beats past the end of the
- * last arrangement clip, guaranteeing an empty region to duplicate into.
+ * Beats of empty space left past the furthest-right real clip (and any planned
+ * target placement) before the holding area begins, guaranteeing the holding
+ * region is empty AND cannot overlap the eventual target.
+ */
+const HOLDING_AREA_GAP_BEATS = 100;
+
+/**
+ * Compute a safe holding-area start position: past both the last arrangement
+ * clip AND any planned target placement, guaranteeing an empty region to
+ * duplicate into that also cannot overlap the eventual target.
+ *
+ * `minStartBeats` lets a caller that will place a full-length copy at a target
+ * push the holding area past that placement's right edge (targetPosition +
+ * length). Without it, a clip longer than HOLDING_AREA_GAP_BEATS duplicated far
+ * enough forward would land its target copy on top of the holding clip — which
+ * moveClipFromHolding's clearClipAtDuplicateTarget would then misread as a
+ * self-overlap, skip clearing the original, and re-trigger the very Ableton
+ * crash this module exists to prevent.
  * @param clipIds - Arrangement clip IDs to consider
+ * @param minStartBeats - Earliest beat the holding area must clear (default 0)
  * @returns Holding-area start position in beats
  */
-function holdingAreaStartFromIds(clipIds: string[]): number {
+function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
   let maxEnd = 0;
 
   for (const id of clipIds) {
@@ -374,5 +405,5 @@ function holdingAreaStartFromIds(clipIds: string[]): number {
     if (end > maxEnd) maxEnd = end;
   }
 
-  return maxEnd + 100;
+  return Math.max(maxEnd, minStartBeats) + HOLDING_AREA_GAP_BEATS;
 }

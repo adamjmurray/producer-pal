@@ -151,10 +151,11 @@ describe("update-clip-arrangement-helpers", () => {
         path: livePath.track(trackIndex).arrangementClip(0),
         properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
       });
-      // Holding copy the first duplicate creates (maxEnd 16 + 100 = 116).
+      // Holding copy the first duplicate creates. The holding area clears the
+      // target placement (4 + 16 = 20) as well as maxEnd 16: max(16, 20) + 100.
       registerMockObject("710", {
         path: livePath.track(trackIndex).arrangementClip(1),
-        properties: { is_arrangement_clip: 1, start_time: 116, end_time: 132 },
+        properties: { is_arrangement_clip: 1, start_time: 120, end_time: 136 },
       });
       // The full copy placed at the target.
       registerMockObject("720", {
@@ -185,11 +186,11 @@ describe("update-clip-arrangement-helpers", () => {
         context: mockContext,
       });
 
-      // Holding round-trip: copy source to holding (116), place full copy at 4.
+      // Holding round-trip: copy source to holding (120), place full copy at 4.
       expect(trackMock.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id 700",
-        116,
+        120,
       );
       expect(trackMock.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
