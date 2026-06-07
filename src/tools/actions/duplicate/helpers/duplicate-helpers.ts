@@ -210,6 +210,17 @@ export async function createClipsForLength(
       isMidiClip,
       context as TilingContext,
     );
+
+    // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
+    // phantom clip, matching the no-length path and the arrangement-tiling guards.
+    if (!newClip.exists()) {
+      console.warn(
+        `Failed to duplicate clip ${sourceClip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+      );
+
+      return duplicatedClips;
+    }
+
     const newClipId = newClip.id;
 
     if (arrangementLengthBeats > sourceClipLength) {

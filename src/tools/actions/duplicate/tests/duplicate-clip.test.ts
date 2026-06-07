@@ -183,6 +183,44 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
     });
 
+    it("skips a silent duplicate failure on the with-length path too (no phantom clip)", async () => {
+      // Sibling of the no-length guard above: the arrangementLength path
+      // (createClipsForLength, Case 2) read newClip.id and proceeded to
+      // lengthen/label it without an exists() check. A silent dup (["id", 0])
+      // must skip here as well rather than push a phantom clip.
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: {
+          length: 4,
+          looping: 1,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop_start: 0,
+          loop_end: 4,
+        },
+      });
+
+      registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+        methods: { duplicate_clip_to_arrangement: () => ["id", 0] },
+      });
+      registerMockObject("live_set", { path: livePath.liveSet });
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        arrangementLength: "1bar", // 4 beats == clip length → Case 2 (exact)
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Failed to duplicate clip"),
+      );
+      expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
+    });
+
     it("routes a self-overlapping duplicate through the holding area instead of skipping", async () => {
       // When the source overlaps its own target, clearClipAtDuplicateTarget
       // reports false. The duplicate must route through duplicateSelfOverlappingClip
