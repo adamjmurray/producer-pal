@@ -102,7 +102,7 @@ statement "statement"
 // than assigning a value to a parameter. They reuse the `selector:` prefix above
 // to scope which notes they touch (no selector = all notes).
 //   ratchet(N)     — divide each matched note into N equal pieces (a roll)
-//   ratchet(n/16)  — divide each matched note into 16th-note pieces (grid form)
+//   ratchet(n/16)  — cut each matched note on the absolute 16th-note grid
 //   merge()        — span all same-pitch matched notes into one sustained note
 // ratchet/merge are NOT expression functions; using one as a value raises a
 // targeted error (see badNoteOpInExpression).

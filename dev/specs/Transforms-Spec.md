@@ -39,7 +39,7 @@ pow(base, exponent); // base raised to exponent
 
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
-ratchet(noteValue); // divide each matched note into noteValue-sized pieces (grid form, e.g. ratchet(n/16))
+ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
 merge(); // span all same-pitch matched notes into one sustained note
 ```
 
@@ -210,17 +210,22 @@ clips.
 
 ### ratchet(count) / ratchet(noteValue)
 
-Divides each matched note into equal end-to-end pieces (a roll/ratchet). Each
-child inherits the parent's pitch, velocity, probability, and deviation; child
-duration = parent duration / count.
+Divides each matched note into end-to-end pieces (a roll/ratchet). Each child
+inherits the parent's pitch, velocity, probability, and deviation. The two
+argument forms differ in geometry:
 
-- **count** form (a bare number, e.g. `ratchet(4)`): exactly `count` pieces.
-  Rounded to the nearest integer; a count below 2 warns and is skipped (1 piece
-  is a no-op). Counts above the per-note cap (64) are clamped with a warning.
+- **count** form (a bare number, e.g. `ratchet(4)`): exactly `count` EQUAL
+  pieces, regardless of where the note sits — child duration = parent duration /
+  count. Rounded to the nearest integer; a count below 2 warns and is skipped (1
+  piece is a no-op). Counts above the per-note cap (64) are clamped with a
+  warning.
 - **noteValue** form (a note value or `Nbar`, e.g. `ratchet(n/16)`,
-  `ratchet(1bar)`): as many pieces of that size as fit —
-  `count = round(noteDuration / gridSize)`. A note shorter than the grid (count
-  < 2) is left unchanged with a warning.
+  `ratchet(1bar)`): cuts the note on the ABSOLUTE grid of that size (multiples
+  of the grid from bar|beat `1|1`), so the pieces line up with bar positions — a
+  true grid ratchet, not an equal division. A note that starts and/or ends
+  off-grid keeps a partial sliver at that end. A note that spans no grid line
+  (it fits within a single grid cell) is left unchanged with a warning. The
+  per-note cap (64) still applies.
 - The argument is a constant (no per-note variables); an unusable argument warns
   and the op is skipped (notes pass through unchanged).
 - Zero/negative-duration notes are left unchanged (and are removed later by the
@@ -229,7 +234,7 @@ duration = parent duration / count.
 ```
 ratchet(2)            // every note becomes two equal pieces (an 8th-note roll on quarters)
 ratchet(4)            // four equal pieces
-ratchet(n/16)         // chop each note into 16th-note pieces
+ratchet(n/16)         // cut every note on the 16th-note grid (pieces align to bar positions)
 C1: ratchet(4)        // ratchet only the kick (C1)
 2|*: ratchet(3)       // triplet-roll every note in bar 2
 ratchet(4)            // then accent within each ratchet:

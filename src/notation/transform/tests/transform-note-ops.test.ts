@@ -82,7 +82,7 @@ describe("note-count operations (ratchet/merge)", () => {
       expect(notes.filter((n) => n.start_time >= 4)).toHaveLength(2);
     });
 
-    it("uses a note-value grid argument (count = duration / grid)", () => {
+    it("cuts a grid-aligned note on the note-value grid", () => {
       const notes = createTestNote({ start_time: 0, duration: 1 }); // a quarter
 
       applyTransforms(notes, "ratchet(n/8)", 4, 4); // 8th-note grid
@@ -91,7 +91,33 @@ describe("note-count operations (ratchet/merge)", () => {
       expect(notes[0]!.duration).toBeCloseTo(0.5);
     });
 
-    it("leaves a note shorter than the grid unchanged (with a warning)", () => {
+    it("aligns cuts to the absolute grid for an off-grid note (slivers at the ends)", () => {
+      // Note from beat 0.5 to 2.5 (Ableton beats), quarter-note grid → cut at the
+      // grid lines 1 and 2, NOT into equal thirds. End pieces are partial.
+      const notes = createTestNote({ start_time: 0.5, duration: 2 });
+
+      applyTransforms(notes, "ratchet(n/4)", 4, 4);
+
+      expect(notes).toStrictEqual([
+        expect.objectContaining({ start_time: 0.5, duration: 0.5 }), // 0.5 → 1
+        expect.objectContaining({ start_time: 1, duration: 1 }), //     1 → 2
+        expect.objectContaining({ start_time: 2, duration: 0.5 }), //   2 → 2.5
+      ]);
+    });
+
+    it("count form stays equal subdivisions for the same off-grid note", () => {
+      // Contrast with the grid form above: ratchet(2) ignores grid position.
+      const notes = createTestNote({ start_time: 0.5, duration: 2 });
+
+      applyTransforms(notes, "ratchet(2)", 4, 4);
+
+      expect(notes).toStrictEqual([
+        expect.objectContaining({ start_time: 0.5, duration: 1 }),
+        expect.objectContaining({ start_time: 1.5, duration: 1 }),
+      ]);
+    });
+
+    it("leaves a note that spans no grid line unchanged (with a warning)", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const notes = createTestNote({ start_time: 0, duration: 0.25 }); // a 16th
 
@@ -99,7 +125,7 @@ describe("note-count operations (ratchet/merge)", () => {
 
       expect(notes).toHaveLength(1);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("shorter than the grid"),
+        expect.stringContaining("spanned no grid line"),
       );
       warn.mockRestore();
     });

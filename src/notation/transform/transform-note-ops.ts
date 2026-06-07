@@ -109,10 +109,14 @@ function noteMatchesSelector(
 }
 
 /**
- * Ratchet matched notes: divide each into equal pieces (a roll). The argument is
- * either a count (`ratchet(4)` → 4 equal pieces) or a note value (`ratchet(n/16)`
- * → as many 16th-note pieces as fit). Invalid args warn-and-skip (notes pass
- * through unchanged), consistent with update-tool error handling.
+ * Ratchet matched notes (a roll). Two argument forms with distinct geometry:
+ *   - count (`ratchet(4)`) → 4 EQUAL end-to-end pieces, regardless of position.
+ *   - note value (`ratchet(n/16)`) → cut on the ABSOLUTE 16th-note grid, so the
+ *     pieces line up with bar positions. The first/last piece can be a partial
+ *     sliver when the note doesn't start/end on a grid line; a note that spans no
+ *     grid line is left unchanged (with a warning).
+ * Invalid args warn-and-skip (notes pass through unchanged), consistent with
+ * update-tool error handling.
  * @param matched - Notes selected by the op
  * @param op - The ratchet operation
  * @param numerator - Time signature numerator
@@ -157,13 +161,29 @@ function ratchetNotes(
       continue;
     }
 
-    let count = plan.grid ? Math.round(note.duration / plan.grid) : plan.count;
+    if (plan.grid != null) {
+      const cuts = gridCutsWithin(
+        note.start_time,
+        note.start_time + note.duration,
+        plan.grid,
+      );
 
-    if (count < 2) {
-      out.push(note); // grid coarser than the note (or count 1) — leave as-is
-      if (plan.grid) shortNotes++;
+      if (cuts.length === 0) {
+        out.push(note); // note spans no grid line — leave as-is
+        shortNotes++;
+        continue;
+      }
+
+      if (cuts.length + 1 > MAX_RATCHET_COUNT) {
+        cuts.length = MAX_RATCHET_COUNT - 1; // keep pieces <= the cap
+        clamped++;
+      }
+
+      out.push(...splitNoteAtCuts(note, cuts));
       continue;
     }
+
+    let count = plan.count; // count form: always >= 2 (resolveRatchetPlan gate)
 
     if (count > MAX_RATCHET_COUNT) {
       count = MAX_RATCHET_COUNT;
@@ -175,7 +195,7 @@ function ratchetNotes(
 
   if (shortNotes > 0) {
     console.warn(
-      `ratchet: ${shortNotes} note(s) shorter than the grid were left unchanged`,
+      `ratchet: ${shortNotes} note(s) spanned no grid line and were left unchanged`,
     );
   }
 
@@ -275,6 +295,59 @@ function splitNoteEqually(note: NoteEvent, count: number): NoteEvent[] {
       start_time: note.start_time + k * childDuration,
       duration: childDuration,
     });
+  }
+
+  return children;
+}
+
+// Floating-point slack for grid-line comparisons (one part in a billion beats).
+const GRID_EPSILON = 1e-9;
+
+/**
+ * Absolute grid-line positions strictly inside the open interval (start, end).
+ * Lines are multiples of `grid` measured from 0 (the clip's bar|beat origin), so
+ * the cuts align a note's pieces to bar positions. A note that starts and/or ends
+ * exactly on a grid line keeps that boundary as its own onset/offset (it is not a
+ * cut), so a grid-aligned note of exactly one grid cell yields no cuts.
+ * @param start - Note onset in the same beat unit as `grid`
+ * @param end - Note offset in the same beat unit as `grid`
+ * @param grid - Grid spacing (> 0)
+ * @returns The interior grid-line positions, ascending
+ */
+function gridCutsWithin(start: number, end: number, grid: number): number[] {
+  const cuts: number[] = [];
+  let line = Math.ceil((start + GRID_EPSILON) / grid) * grid;
+
+  while (line < end - GRID_EPSILON) {
+    cuts.push(line);
+    line += grid;
+  }
+
+  return cuts;
+}
+
+/**
+ * Split a note at the given absolute cut positions into end-to-end pieces, each
+ * inheriting the parent's pitch/velocity/probability/deviation. The boundaries
+ * run [start, ...cuts, end], so end pieces may be partial slivers.
+ * @param note - Note to divide (must have at least one cut)
+ * @param cuts - Interior cut positions, ascending
+ * @returns The child notes, in time order
+ */
+function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
+  const boundaries = [
+    note.start_time,
+    ...cuts,
+    note.start_time + note.duration,
+  ];
+  const children: NoteEvent[] = [];
+
+  for (let k = 0; k < boundaries.length - 1; k++) {
+    // k is bounded by boundaries.length - 1, so both indices are in range.
+    const from = boundaries[k] as number;
+    const to = boundaries[k + 1] as number;
+
+    children.push({ ...note, start_time: from, duration: to - from });
   }
 
   return children;
