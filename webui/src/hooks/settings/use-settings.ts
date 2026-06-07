@@ -308,8 +308,7 @@ export function useSettings(): UseSettingsReturn {
     setThinking(DEFAULT_SETTINGS[provider].thinking);
     setShowThoughts(true);
   }, [provider, setTemperature, setThinking, setShowThoughts]);
-  const hasBaseUrl =
-    provider === "custom" || provider === "lmstudio" || provider === "ollama";
+  const hasBaseUrl = ["custom", "lmstudio", "ollama"].includes(provider);
 
   return {
     provider,
@@ -339,6 +338,7 @@ export function useSettings(): UseSettingsReturn {
     cancelSettings,
     hasApiKey,
     settingsConfigured,
+    settingsLoaded,
     enabledTools,
     setEnabledTools: setEnabledToolsState,
     resetBehaviorToDefaults,
