@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -10,7 +11,10 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
-import { clearClipAtDuplicateTarget } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import {
+  clearClipAtDuplicateTarget,
+  duplicateSelfOverlappingClip,
+} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
@@ -105,7 +109,9 @@ export function handleArrangementStartOperation({
     return null;
   }
 
-  // Clear overlapping clips at target to prevent Ableton crash
+  // Clear overlapping clips at target to prevent Ableton crash. A false result
+  // means the clip overlaps its OWN target — route through the holding area so
+  // the original is overwritten and a full copy lands at the target.
   const safeToMove = clearClipAtDuplicateTarget(
     track,
     clip.id,
@@ -114,19 +120,22 @@ export function handleArrangementStartOperation({
     context,
   );
 
-  // The new position overlaps the clip's current position — clearClipAtDuplicateTarget
-  // already warned. Preserve the clip unchanged rather than corrupt it or crash Ableton.
-  if (!safeToMove) {
-    return clip.id;
-  }
-
   // duplicate_clip_to_arrangement returns ["id", number] array format
-  const newClipResult = track.call(
-    "duplicate_clip_to_arrangement",
-    toLiveApiId(clip.id),
-    arrangementStartBeats,
-  ) as [string, number];
-  const newClip = LiveAPI.from(newClipResult);
+  const newClip = safeToMove
+    ? LiveAPI.from(
+        track.call(
+          "duplicate_clip_to_arrangement",
+          toLiveApiId(clip.id),
+          arrangementStartBeats,
+        ) as [string, number],
+      )
+    : duplicateSelfOverlappingClip(
+        track,
+        clip.id,
+        arrangementStartBeats,
+        isMidiClip,
+        context,
+      );
 
   // Verify duplicate succeeded before deleting original
   if (!newClip.exists()) {
@@ -135,8 +144,12 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  // Delete original clip
-  track.call("delete_clip", toLiveApiId(clip.id));
+  // Delete the original to complete the move. For a self-overlapping move the
+  // holding placement already trimmed it (or fully replaced it on a zero-offset
+  // move), so guard with exists() — leaving a single clip at the new position.
+  if (safeToMove || clip.exists()) {
+    track.call("delete_clip", toLiveApiId(clip.id));
+  }
 
   // Return the new clip ID
   return newClip.id;

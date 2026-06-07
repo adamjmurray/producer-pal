@@ -173,8 +173,9 @@ export function tileClipToRange(
       context,
     );
 
-    // Source overlaps this tile position — clearClipAtDuplicateTarget already
-    // warned; skip the tile rather than corrupt the source or crash Ableton.
+    // Source overlaps this tile position (the source clip already occupies it):
+    // skip this tile rather than corrupt the source or crash Ableton. Tiling
+    // fills the range around the source, so a self-overlapping tile is expected.
     if (!safeToTile) {
       currentPosition += arrangementTileLength;
       currentContentOffset += arrangementTileLength;

@@ -6,6 +6,10 @@
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "./duplicate-mocks-test-helpers.ts";
+import {
+  clearClipAtDuplicateTargetMock,
+  duplicateSelfOverlappingClipMock,
+} from "./setup.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerArrangementClip,
@@ -177,6 +181,28 @@ describe("duplicate - clip duplication", () => {
         expect.stringContaining("Failed to duplicate clip"),
       );
       expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
+    });
+
+    it("routes a self-overlapping duplicate through the holding area instead of skipping", async () => {
+      // When the source overlaps its own target, clearClipAtDuplicateTarget
+      // reports false. The duplicate must route through duplicateSelfOverlappingClip
+      // (holding-area copy → overwrite the original) and return the placed copy —
+      // it must NOT skip with an empty result.
+      clearClipAtDuplicateTargetMock.mockReturnValueOnce(false);
+
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+      registerTrackWithArrangementDup(0);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+      });
+
+      expect(duplicateSelfOverlappingClipMock).toHaveBeenCalled();
+      expect(result).toMatchObject({ trackIndex: 0, arrangementStart: "3|1" });
     });
 
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {

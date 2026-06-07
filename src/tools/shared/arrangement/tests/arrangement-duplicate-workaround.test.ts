@@ -12,6 +12,7 @@ import {
 } from "./arrangement-tiling-test-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
+  duplicateSelfOverlappingClip,
   setArrangementDuplicateCrashWorkaround,
 } from "../arrangement-tiling-workaround.ts";
 
@@ -371,12 +372,13 @@ describe("clearClipAtDuplicateTarget", () => {
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 201");
   });
 
-  it("returns false and preserves the source when it overlaps its own target", () => {
-    // The data-loss bug: source [8,20] duplicated to target 12 (targetEnd 24).
-    // The source itself is in arrangement_clips and overlaps [12,24], so the old
-    // code right-trimmed/deleted the source *before* the duplicate ran — silent
-    // data loss. The fix detects the self-overlap, warns, and reports that the
-    // duplicate must be skipped (caller warn-and-skips), leaving the source intact.
+  it("returns false and leaves the source untouched when it overlaps its own target", () => {
+    // Source [8,20] duplicated to target 12 (targetEnd 24): the source itself is
+    // in arrangement_clips and overlaps [12,24]. clearClipAtDuplicateTarget must
+    // NOT clear it — trimming/deleting it would destroy the content being
+    // duplicated — so it returns false and leaves the source untouched. The
+    // caller then routes the duplicate through the holding area
+    // (duplicateSelfOverlappingClip) instead of corrupting the source.
     setupClip("100", {
       properties: {
         is_arrangement_clip: 1,
@@ -513,6 +515,74 @@ describe("clearClipAtDuplicateTarget", () => {
       expect.anything(),
     );
     expect(trackMock.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
+  });
+});
+
+describe("duplicateSelfOverlappingClip", () => {
+  it("copies the source to holding, then overwrites the original with a full copy", () => {
+    // Source [0,16] (a 4-bar clip in 4/4) duplicated to target 4 — one bar
+    // forward, so it overlaps its own target range [4,20]. Direct duplication is
+    // impossible (Ableton crashes; trimming the source first would truncate the
+    // content). Routing through the holding area trims the original to its first
+    // bar [0,4] and places a full 4-bar copy at [4,20].
+    setupClip("100", {
+      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
+    });
+
+    // The holding copy the first duplicate creates (maxEnd 16 + 100 = 116).
+    setupClip("400", {
+      properties: { is_arrangement_clip: 1, start_time: 116, end_time: 132 },
+    });
+
+    // The full copy the second duplicate places at the target.
+    setupClip("500", { properties: { is_arrangement_clip: 1 } });
+
+    let dupCount = 0;
+
+    const trackMock = setupTrack(0, {
+      properties: { arrangement_clips: ["id", "100"] },
+      methods: {
+        duplicate_clip_to_arrangement: () => {
+          dupCount++;
+
+          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
+        },
+        create_midi_clip: () => ["id", "300"],
+        delete_clip: () => null,
+      },
+    });
+
+    const result = duplicateSelfOverlappingClip(
+      LiveAPI.from(trackMock.path),
+      "100",
+      4,
+      true,
+      mockContext,
+    );
+
+    // Step 1: copy the source to the holding area (maxEnd 16 + 100 = 116).
+    expect(trackMock.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id 100",
+      116,
+    );
+
+    // Step 2: trim the ORIGINAL to its "before" portion (right-trim at target 4,
+    // length clipEnd 16 - target 4 = 12) so the full copy can overwrite [4,20].
+    expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 4, 12);
+
+    // Step 3: place the full copy at the target from the untouched holding clip.
+    expect(trackMock.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id 400",
+      4,
+    );
+
+    // Step 4: clean up the holding clip.
+    expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 400");
+
+    // The placed full-length copy is returned (never the trimmed original).
+    expect(result.id).toBe("500");
   });
 });
 

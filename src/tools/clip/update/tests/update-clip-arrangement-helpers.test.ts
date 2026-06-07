@@ -122,6 +122,86 @@ describe("update-clip-arrangement-helpers", () => {
       expect(tracksWithMovedClips.get(trackIndex)).toBe(1);
     });
 
+    it("routes a self-overlapping move through the holding area and deletes the original", () => {
+      const trackIndex = 3;
+      let dupCount = 0;
+
+      // The real workaround runs here (this file does not mock it). The source
+      // [0,16] moved to beat 4 overlaps its own target [4,20]:
+      // clearClipAtDuplicateTarget returns false, so the move routes through the
+      // holding area — copy to holding, trim/overwrite the original, place a full
+      // copy — then deletes the original, leaving one full-length clip at the new
+      // position.
+      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+        properties: { arrangement_clips: ["id", "700"] },
+        methods: {
+          duplicate_clip_to_arrangement: () => {
+            dupCount++;
+
+            return dupCount === 1 ? ["id", "710"] : ["id", "720"];
+          },
+          create_midi_clip: () => ["id", "730"],
+          delete_clip: () => null,
+        },
+      });
+
+      // Source clip, resolved when the workaround iterates arrangement clips.
+      registerMockObject("700", {
+        path: livePath.track(trackIndex).arrangementClip(0),
+        properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
+      });
+      // Holding copy the first duplicate creates (maxEnd 16 + 100 = 116).
+      registerMockObject("710", {
+        path: livePath.track(trackIndex).arrangementClip(1),
+        properties: { is_arrangement_clip: 1, start_time: 116, end_time: 132 },
+      });
+      // The full copy placed at the target.
+      registerMockObject("720", {
+        path: livePath.track(trackIndex).arrangementClip(2),
+      });
+
+      const mockClip = {
+        id: "700",
+        path: `live_set tracks ${trackIndex} arrangement_clips 0`,
+        getProperty: vi.fn((prop) => {
+          if (prop === "is_arrangement_clip") return 1;
+          if (prop === "start_time") return 0;
+          if (prop === "end_time") return 16;
+
+          return null;
+        }),
+        trackIndex,
+        exists: () => true,
+      };
+
+      const tracksWithMovedClips = new Map<number, number>();
+
+      const result = handleArrangementStartOperation({
+        clip: mockClip as unknown as LiveAPI,
+        arrangementStartBeats: 4,
+        tracksWithMovedClips,
+        isMidiClip: true,
+        context: mockContext,
+      });
+
+      // Holding round-trip: copy source to holding (116), place full copy at 4.
+      expect(trackMock.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 700",
+        116,
+      );
+      expect(trackMock.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 710",
+        4,
+      );
+      // Both the holding clip and the original are removed → one clip at target.
+      expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 710");
+      expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 700");
+      expect(result).toBe("720");
+    });
+
     it("should warn and return original ID when duplication fails", () => {
       const trackIndex = 0;
 
