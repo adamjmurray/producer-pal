@@ -72,19 +72,22 @@
 }}
 
 start
-  = __ head:assignment? tail:((_ nl _)+ assignment)* __ {
+  = __ head:statement? tail:((_ nl _)+ statement)* __ {
     // A single shorthand token may desugar to multiple assignments (e.g. the
     // `vA-B` velocity range emits velocity + deviation), so flatten one level.
-    const assignments = [head, ...tail.map(t => t[1])].filter(Boolean).flat();
-    return assignments;
+    const statements = [head, ...tail.map(t => t[1])].filter(Boolean).flat();
+    return statements;
   }
 
 rangeSelector "range selector"
   = pitchRange:pitchRange _ timeRange:timeRange? { return { pitchRange, timeRange: timeRange ?? null }; }
   / timeRange:timeRange _ pitchRange:pitchRange? { return { pitchRange: pitchRange ?? null, timeRange }; }
 
-assignment "parameter assignment"
-  = ranges:(rangeSelector _ ":" _)? body:assignmentBody {
+// A transform line is either a parameter assignment (the common case) or a
+// note-count operation (ratchet/merge). Both accept the same optional
+// `selector:` prefix and run in the same sequential pipeline.
+statement "statement"
+  = ranges:(rangeSelector _ ":" _)? body:(noteOp / assignmentBody) {
     const pitchRange = ranges?.[0]?.pitchRange ?? null;
     const timeRange = ranges?.[0]?.timeRange ?? null;
     // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
@@ -94,6 +97,23 @@ assignment "parameter assignment"
     }
     return { pitchRange, timeRange, ...body };
   }
+
+// Note-count operations: statements that change how many notes exist, rather
+// than assigning a value to a parameter. They reuse the `selector:` prefix above
+// to scope which notes they touch (no selector = all notes).
+//   ratchet(N)     — divide each matched note into N equal pieces (a roll)
+//   ratchet(n/16)  — cut each matched note on the absolute 16th-note grid
+//   merge()        — span all same-pitch matched notes into one sustained note
+// ratchet/merge are NOT expression functions; using one as a value raises a
+// targeted error (see badNoteOpInExpression).
+noteOp "note-count operation"
+  = name:noteOpName "(" _ args:argumentList? _ ")" {
+    return { kind: "noteOp", name, args: args || [] };
+  }
+
+noteOpName
+  = "ratchet" { return "ratchet"; }
+  / "merge" { return "merge"; }
 
 // The right-hand side of an assignment, after any optional range selector.
 // Full form: `parameter operator expression`. Shorthand: bar|beat-style tokens
@@ -372,8 +392,19 @@ primary
   / barDuration
   / pitchLiteral
   / badPeriod
+  / badNoteOpInExpression
   / number
   / "(" _ expr:expression _ ")" { return expr; }
+
+// ratchet()/merge() are note-count operations (whole statements), not values.
+// Matched here only to raise a targeted error when one is used in an expression
+// (e.g. `velocity = ratchet(2)`). A valid bare statement reaches the noteOp rule
+// first, so this never fires on correct usage.
+badNoteOpInExpression
+  = name:("ratchet" / "merge") _ "(" {
+    const example = name === "ratchet" ? "ratchet(2)" : "merge()";
+    throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
+  }
 
 nDuration "absolute duration value"
   = badBarDuration

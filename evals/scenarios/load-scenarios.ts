@@ -38,6 +38,8 @@ import {
   durationReachForQuarter,
   legatoTransforms,
   melodyTransforms,
+  noteOpsMerge,
+  noteOpsRatchetRoll,
   rangeClearFirstHalf,
   rangeClearWholeBar,
   pretransformsHatFillsBaseline,
@@ -103,6 +105,8 @@ const allScenarios: EvalScenario[] = [
   surgicalNoteDurationEdit,
   rangeClearWholeBar,
   rangeClearFirstHalf,
+  noteOpsRatchetRoll,
+  noteOpsMerge,
 ];
 
 export interface LoadScenariosOptions {

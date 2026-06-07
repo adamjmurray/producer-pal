@@ -97,8 +97,26 @@ export interface TransformAssignment {
   timeRange?: TimeRange;
 }
 
+/**
+ * Note-count operation produced by the parser (`ratchet(...)`, `merge()`).
+ * Unlike an assignment, this changes how many notes exist rather than writing a
+ * value to a parameter. The `kind` discriminant distinguishes it from a
+ * TransformAssignment (which has no `kind` field). The optional selector
+ * (pitchRange/timeRange) scopes which notes the op touches.
+ */
+export interface NoteOp {
+  kind: "noteOp";
+  name: "ratchet" | "merge";
+  args: ExpressionNode[];
+  pitchRange?: PitchRange;
+  timeRange?: TimeRange;
+}
+
+/** A single transform line: either a parameter assignment or a note-count op. */
+export type TransformStatement = TransformAssignment | NoteOp;
+
 /** Parse a transform expression string into an AST */
 export function parse(
   input: string,
   options?: ParseOptions,
-): TransformAssignment[];
+): TransformStatement[];

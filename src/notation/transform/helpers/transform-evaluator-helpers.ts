@@ -9,10 +9,16 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   type ExpressionNode,
-  type TransformAssignment,
+  type NoteOp,
   type PitchRange,
+  type TransformAssignment,
+  type TransformStatement,
 } from "../parser/transform-parser.ts";
 import { evaluateFunction } from "../transform-functions.ts";
+import {
+  noteInTimeRange,
+  timeRangeBoundsInMusicalBeats,
+} from "./transform-time-range-helpers.ts";
 
 export interface TimeRange {
   start: number;
@@ -68,18 +74,35 @@ export type TimeRangeResult =
   | { skip?: false; timeRange: TimeRange };
 
 /**
- * Resolve effective pitch ranges for each assignment in the AST.
+ * Type guard: distinguish a note-count operation from a parameter assignment.
+ * NoteOps carry a `kind: "noteOp"` discriminant; assignments have no `kind`.
+ * @param stmt - A parsed transform statement
+ * @returns True if the statement is a note-count operation
+ */
+export function isNoteOp(stmt: TransformStatement): stmt is NoteOp {
+  return "kind" in stmt;
+}
+
+/**
+ * Resolve effective pitch ranges for each statement in the AST.
  * Handles "sticky" pitch range inheritance: once set, a pitch range persists
- * to subsequent assignments until a new one is specified.
- * @param ast - Transform assignments
- * @returns Array of effective pitch ranges (one per assignment, null if none)
+ * to subsequent assignments until a new one is specified. Note-count ops do not
+ * participate — they neither inherit nor set the sticky range (their selector is
+ * self-contained), so their slot is null and a following assignment still sees
+ * the range that was sticky before the op.
+ * @param ast - Transform statements
+ * @returns Array of effective pitch ranges (one per statement, null if none)
  */
 export function resolveEffectivePitchRanges(
-  ast: TransformAssignment[],
+  ast: TransformStatement[],
 ): (PitchRange | null)[] {
   let current: PitchRange | null = null;
 
   return ast.map((a) => {
+    if (isNoteOp(a)) {
+      return null;
+    }
+
     if (a.pitchRange != null) {
       current = a.pitchRange;
     }
@@ -96,7 +119,7 @@ export function resolveEffectivePitchRanges(
  * @returns Record of transform results keyed by parameter name
  */
 export function evaluateTransformAST(
-  ast: TransformAssignment[],
+  ast: TransformStatement[],
   noteContext: NoteContext,
   noteProperties: NoteProperties = {},
 ): Record<string, TransformResult> {
@@ -107,6 +130,12 @@ export function evaluateTransformAST(
   let currentPitchRange: PitchRange | null = null; // Track persistent pitch range context
 
   for (const assignment of ast) {
+    // Note-count ops (ratchet/merge) act on the whole note list, not a single
+    // note's scalar value — they have no meaning in this per-note evaluation.
+    if (isNoteOp(assignment)) {
+      continue;
+    }
+
     const assignmentResult = processAssignment(
       assignment,
       position,
@@ -233,18 +262,10 @@ export function calculateActiveTimeRange(
   position: number,
 ): TimeRangeResult {
   if (assignment.timeRange) {
-    const { startBar, startBeat, endBar, endBeat } = assignment.timeRange;
-
-    // Normalize the note's bar|beat AND both range bounds to absolute musical
-    // beats through the same conversion, then compare numerically. A bound's beat
-    // field is not clamped to the bar — a `+n` offset can push it past the bar
-    // (e.g. `1|4+n/2` → beat 6 in 4/4) and a `-n` offset can borrow below beat 1
-    // — so deciding membership by a raw per-component bar/beat compare would
-    // disagree with this absolute-beats normalization (the one handed to
-    // ramp/curve). Comparing in those same absolute beats keeps the membership
-    // gate and the normalization in lockstep, and subsumes the cross-bar case.
-    // Musical beats per bar = the numerator (each beat is a denominator note).
-    const musicalBeatsPerBar = numerator;
+    const { start: startBeats, end: endBeats } = timeRangeBoundsInMusicalBeats(
+      assignment.timeRange,
+      numerator,
+    );
     // Note's absolute musical beats. Prefer the bar|beat fields when present
     // (production always supplies them via buildNoteContext); otherwise fall back
     // to `position` — the same value — so a caller that provides only `position`
@@ -252,24 +273,10 @@ export function calculateActiveTimeRange(
     // instead of silently matching the whole clip.
     const noteBeats =
       bar != null && beat != null
-        ? barBeatToMusicalBeats(`${bar}|${beat}`, musicalBeatsPerBar)
+        ? barBeatToMusicalBeats(`${bar}|${beat}`, numerator)
         : position;
-    const startBeats = barBeatToMusicalBeats(
-      `${startBar}|${startBeat}`,
-      musicalBeatsPerBar,
-    );
-    const endBeats = barBeatToMusicalBeats(
-      `${endBar}|${endBeat}`,
-      musicalBeatsPerBar,
-    );
 
-    // End bound is inclusive by default; half-open (`N|*` whole-bar selectors
-    // and the `-<` marker) drops a note that lands exactly on the end downbeat.
-    const pastEnd = assignment.timeRange.endExclusive
-      ? noteBeats >= endBeats
-      : noteBeats > endBeats;
-
-    if (noteBeats < startBeats || pastEnd) {
+    if (!noteInTimeRange(noteBeats, assignment.timeRange, numerator)) {
       return { skip: true }; // Skip this assignment - note outside time range
     }
 

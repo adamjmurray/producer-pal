@@ -194,6 +194,83 @@ describe("update-clip-transform-helpers", () => {
       expect(addedNotes.map((n) => n.start_time)).toStrictEqual([0, 1, 2]);
     });
 
+    it("writes the expanded note list when a ratchet op runs", () => {
+      const existingNotes = [rawNote(60, 0, 100), rawNote(64, 2, 101)];
+      const addedNotes: { start_time: number; duration: number }[] = [];
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
+        call: vi.fn((method: string, ...args: unknown[]) => {
+          if (method === "get_notes_extended") {
+            return JSON.stringify({ notes: existingNotes });
+          }
+
+          if (method === "add_new_notes") {
+            addedNotes.push(
+              ...(
+                args[0] as {
+                  notes: { start_time: number; duration: number }[];
+                }
+              ).notes,
+            );
+          }
+
+          return "[]";
+        }),
+      };
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        undefined,
+        "ratchet(2)",
+        4,
+        4,
+      );
+
+      // each note split into 2 -> 4 written, ascending by start_time
+      expect(addedNotes).toHaveLength(4);
+      expect(addedNotes.map((n) => n.start_time)).toStrictEqual([
+        0, 0.5, 2, 2.5,
+      ]);
+    });
+
+    it("writes the collapsed note list when a merge op runs", () => {
+      const existingNotes = [rawNote(60, 0, 100), rawNote(60, 1, 101)];
+      const addedNotes: { start_time: number; duration: number }[] = [];
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
+        call: vi.fn((method: string, ...args: unknown[]) => {
+          if (method === "get_notes_extended") {
+            return JSON.stringify({ notes: existingNotes });
+          }
+
+          if (method === "add_new_notes") {
+            addedNotes.push(
+              ...(
+                args[0] as {
+                  notes: { start_time: number; duration: number }[];
+                }
+              ).notes,
+            );
+          }
+
+          return "[]";
+        }),
+      };
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        "merge()",
+        undefined,
+        4,
+        4,
+      );
+
+      // two same-pitch notes spanned into one (0..2)
+      expect(addedNotes).toStrictEqual([
+        expect.objectContaining({ start_time: 0, duration: 2 }),
+      ]);
+    });
+
     it("should warn and return 0 when clip has no notes", () => {
       const mockClip = {
         getProperty: vi.fn(() => 4),

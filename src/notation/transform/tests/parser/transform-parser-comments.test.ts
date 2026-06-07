@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - whitespace and comments", () => {
   it("handles whitespace around operators", () => {
-    const result = parser.parse("velocity +=   10   +   5");
+    const result = parseAssignments("velocity +=   10   +   5");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "add",
@@ -18,7 +18,7 @@ describe("Transform Parser - whitespace and comments", () => {
   });
 
   it("handles multiple blank lines between assignments", () => {
-    const result = parser.parse("velocity += 10\n\n\ntiming += 0.05");
+    const result = parseAssignments("velocity += 10\n\n\ntiming += 0.05");
 
     expect(result).toHaveLength(2);
     expect(result[0]!.parameter).toBe("velocity");
@@ -26,19 +26,19 @@ describe("Transform Parser - whitespace and comments", () => {
   });
 
   it("handles line comments", () => {
-    const result = parser.parse("velocity += 10 // this is a comment");
+    const result = parseAssignments("velocity += 10 // this is a comment");
 
     expect(result[0]!.expression).toBe(10);
   });
 
   it("handles hash comments", () => {
-    const result = parser.parse("velocity += 10 # this is a comment");
+    const result = parseAssignments("velocity += 10 # this is a comment");
 
     expect(result[0]!.expression).toBe(10);
   });
 
   it("handles block comments", () => {
-    const result = parser.parse("velocity += 10 /* block comment */");
+    const result = parseAssignments("velocity += 10 /* block comment */");
 
     expect(result[0]!.expression).toBe(10);
   });
@@ -53,7 +53,7 @@ describe("Transform Parser - whitespace and comments", () => {
       "velocity += 10\n/* block\ncomment */\ntiming += 0.05",
     ],
   ])("handles %s (preserves both assignments)", (_label, input) => {
-    const result = parser.parse(input);
+    const result = parseAssignments(input);
 
     expect(result).toHaveLength(2);
     expect(result[0]!.parameter).toBe("velocity");
@@ -61,27 +61,27 @@ describe("Transform Parser - whitespace and comments", () => {
   });
 
   it("handles trailing newline", () => {
-    const result = parser.parse("velocity += 10\n");
+    const result = parseAssignments("velocity += 10\n");
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parameter).toBe("velocity");
   });
 
   it("handles trailing comment on its own line", () => {
-    const result = parser.parse("velocity += 10\n// trailing comment\n");
+    const result = parseAssignments("velocity += 10\n// trailing comment\n");
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parameter).toBe("velocity");
   });
 
   it("handles input that is only comments", () => {
-    const result = parser.parse("// just a comment\n# another comment");
+    const result = parseAssignments("// just a comment\n# another comment");
 
     expect(result).toHaveLength(0);
   });
 
   it("handles inline comment with trailing newline", () => {
-    const result = parser.parse("velocity += 10 // comment\n");
+    const result = parseAssignments("velocity += 10 // comment\n");
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parameter).toBe("velocity");

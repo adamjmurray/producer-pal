@@ -5,12 +5,12 @@
 
 import { describe, expect, it } from "vitest";
 import { type FunctionNode } from "#src/notation/transform/parser/transform-parser.ts";
-import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - Function Keywords", () => {
   describe("sync keyword", () => {
     it("parses cos with note-value period and sync", () => {
-      const result = parser.parse("velocity += cos(n/4, sync)");
+      const result = parseAssignments("velocity += cos(n/4, sync)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -22,7 +22,7 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("parses tri with period, phase, and sync", () => {
-      const result = parser.parse("velocity += tri(n/2, 0.5, sync)");
+      const result = parseAssignments("velocity += tri(n/2, 0.5, sync)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -34,7 +34,7 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("parses square with all args and sync", () => {
-      const result = parser.parse("velocity += square(n/2, 0, 0.75, sync)");
+      const result = parseAssignments("velocity += square(n/2, 0, 0.75, sync)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -46,7 +46,9 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("parses saw with a bar-length period and sync", () => {
-      const result = parser.parse("velocity += saw(clip.barDuration, sync)");
+      const result = parseAssignments(
+        "velocity += saw(clip.barDuration, sync)",
+      );
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -58,23 +60,25 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("rejects sync on swing", () => {
-      expect(() => parser.parse("timing = swing(0.05, sync)")).toThrow();
+      expect(() => parseAssignments("timing = swing(0.05, sync)")).toThrow();
     });
 
     it("rejects sync on rand", () => {
-      expect(() => parser.parse("velocity += rand(sync)")).toThrow();
+      expect(() => parseAssignments("velocity += rand(sync)")).toThrow();
     });
 
     it("rejects sync on ramp", () => {
-      expect(() => parser.parse("velocity += ramp(0, 1, sync)")).toThrow();
+      expect(() => parseAssignments("velocity += ramp(0, 1, sync)")).toThrow();
     });
 
     it("rejects sync on round", () => {
-      expect(() => parser.parse("velocity += round(sync)")).toThrow();
+      expect(() => parseAssignments("velocity += round(sync)")).toThrow();
     });
 
     it("rejects sync on choose", () => {
-      expect(() => parser.parse("velocity += choose(1, 2, sync)")).toThrow();
+      expect(() =>
+        parseAssignments("velocity += choose(1, 2, sync)"),
+      ).toThrow();
     });
   });
 
@@ -88,7 +92,7 @@ describe("Transform Parser - Function Keywords", () => {
       "timing = quant(1/4t)",
       "timing = swing(0.05, 1/2t)",
     ])("rejects %s", (expr) => {
-      expect(() => parser.parse(expr)).toThrow("no longer supported");
+      expect(() => parseAssignments(expr)).toThrow("no longer supported");
     });
   });
 
@@ -107,7 +111,7 @@ describe("Transform Parser - Function Keywords", () => {
         false,
       ],
     ] as const)("parses %s", (expr, expectedArgs, expectedRaw) => {
-      const result = parser.parse(`timing = ${expr}`);
+      const result = parseAssignments(`timing = ${expr}`);
       const node = result[0]!.expression as FunctionNode;
 
       expect(node.name).toBe("swing");
@@ -116,8 +120,8 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("rejects raw on non-swing functions", () => {
-      expect(() => parser.parse("velocity += rand(raw)")).toThrow();
-      expect(() => parser.parse("velocity += cos(n/4, raw)")).toThrow();
+      expect(() => parseAssignments("velocity += rand(raw)")).toThrow();
+      expect(() => parseAssignments("velocity += cos(n/4, raw)")).toThrow();
     });
   });
 });

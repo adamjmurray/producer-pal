@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - barDuration (Nbar)", () => {
   it("parses 1bar as a barDuration node", () => {
-    const result = parser.parse("duration = 1bar");
+    const result = parseAssignments("duration = 1bar");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "barDuration",
@@ -17,7 +17,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
   });
 
   it("parses a multi-bar count (4bar)", () => {
-    const result = parser.parse("duration = 4bar");
+    const result = parseAssignments("duration = 4bar");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "barDuration",
@@ -26,7 +26,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
   });
 
   it("parses Nbar with the += operator", () => {
-    const result = parser.parse("timing += 1bar");
+    const result = parseAssignments("timing += 1bar");
 
     expect(result[0]!.operator).toBe("add");
     expect(result[0]!.expression).toStrictEqual({
@@ -39,7 +39,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
   // a single token, matching the authoring grammar's value while reusing the
   // expression machinery.
   it("parses 1bar+n/4 as add(barDuration, nDuration)", () => {
-    const result = parser.parse("duration = 1bar+n/4");
+    const result = parseAssignments("duration = 1bar+n/4");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "add",
@@ -52,7 +52,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
     // The minus tail needs no dedicated rule here: `additive` already folds
     // `-`, so a near-bar duration composes as barDuration - nDuration. This
     // locks parity with the barbeat grammar's minus-tail support.
-    const result = parser.parse("duration = 1bar-n/16");
+    const result = parseAssignments("duration = 1bar-n/16");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "subtract",
@@ -62,7 +62,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
   });
 
   it("composes in a multiplicative expression", () => {
-    const result = parser.parse("duration = 2 * 1bar");
+    const result = parseAssignments("duration = 2 * 1bar");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "multiply",
@@ -72,7 +72,7 @@ describe("Transform Parser - barDuration (Nbar)", () => {
   });
 
   it("composes inside parentheses", () => {
-    const result = parser.parse("duration = (1bar + n/8) / 2");
+    const result = parseAssignments("duration = (1bar + n/8) / 2");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "divide",
@@ -87,21 +87,21 @@ describe("Transform Parser - barDuration (Nbar)", () => {
 
   describe("bare shorthand", () => {
     it("desugars bare 1bar to duration set (parallel to bare n/4)", () => {
-      expect(parser.parse("1bar")).toStrictEqual(
-        parser.parse("duration = 1bar"),
+      expect(parseAssignments("1bar")).toStrictEqual(
+        parseAssignments("duration = 1bar"),
       );
     });
 
     // The mixed `Nbar+n<frac>` token works as a bare shorthand too, matching the
     // bar|beat authoring grammar. It must desugar identically to the full form.
     it("desugars bare 1bar+n/4 identically to the full duration assignment", () => {
-      expect(parser.parse("1bar+n/4")).toStrictEqual(
-        parser.parse("duration = 1bar+n/4"),
+      expect(parseAssignments("1bar+n/4")).toStrictEqual(
+        parseAssignments("duration = 1bar+n/4"),
       );
     });
 
     it("parses bare 2bar+n3/8 as add(barDuration, nDuration)", () => {
-      const result = parser.parse("2bar+n3/8");
+      const result = parseAssignments("2bar+n3/8");
 
       expect(result[0]!.parameter).toBe("duration");
       expect(result[0]!.operator).toBe("set");
@@ -115,11 +115,11 @@ describe("Transform Parser - barDuration (Nbar)", () => {
     // The minus tail works as a bare shorthand too — it desugars to a subtract
     // node, identical to the full `duration = 1bar-n/16` form.
     it("desugars bare 1bar-n/16 to subtract(barDuration, nDuration)", () => {
-      expect(parser.parse("1bar-n/16")).toStrictEqual(
-        parser.parse("duration = 1bar-n/16"),
+      expect(parseAssignments("1bar-n/16")).toStrictEqual(
+        parseAssignments("duration = 1bar-n/16"),
       );
 
-      expect(parser.parse("1bar-n/16")[0]!.expression).toStrictEqual({
+      expect(parseAssignments("1bar-n/16")[0]!.expression).toStrictEqual({
         type: "subtract",
         left: { type: "barDuration", bars: 1 },
         right: { type: "nDuration", wholeNoteFraction: 0.0625 },
@@ -127,7 +127,9 @@ describe("Transform Parser - barDuration (Nbar)", () => {
     });
 
     it("inherits the denominator error for a bare 1bar+n2.5", () => {
-      expect(() => parser.parse("1bar+n2.5")).toThrow(/needs? a denominator/);
+      expect(() => parseAssignments("1bar+n2.5")).toThrow(
+        /needs? a denominator/,
+      );
     });
   });
 });
