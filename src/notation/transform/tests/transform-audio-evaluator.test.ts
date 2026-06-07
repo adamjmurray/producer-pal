@@ -625,4 +625,23 @@ describe("Audio Transform Evaluator", () => {
       expect(console.warn).not.toHaveBeenCalled();
     });
   });
+
+  describe("pitch literal as a value (#4)", () => {
+    it("evaluates a pitch literal to its MIDI number instead of throwing", () => {
+      // `gain = C3` used to fall through to the function-call branch and throw a
+      // cryptic "args is undefined" error (caught + no-op). C3 → MIDI 60, clamped
+      // to the gain max (24 dB).
+      const result = applyAudioTransform(0, 0, "gain = C3");
+
+      expect(result.gain).toBe(24);
+      expect(console.warn).not.toHaveBeenCalled();
+    });
+
+    it("evaluates a pitch literal in a pitchShift transform", () => {
+      // C3 → MIDI 60, clamped to the pitchShift max (48 semitones).
+      const result = applyAudioTransform(0, 0, "pitchShift = C3");
+
+      expect(result.pitchShift).toBe(48);
+    });
+  });
 });
