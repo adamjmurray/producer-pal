@@ -140,6 +140,37 @@ describe("useCompaction", () => {
     expect(result.current.isCompacting).toBe(false);
   });
 
+  it("ignores a resolved summary after the conversation was switched away", async () => {
+    // Switching conversations mid-summary nulls clientRef (both clearConversation
+    // and restoreChatHistory do). The resolved summary must not overwrite the
+    // newly-loaded conversation's view or arm an undo pointing at old history.
+    const { result, client, clientRef, setMessages, autoSave } = setup();
+    const original = [...client.chatHistory];
+
+    let resolveSummary: (value: string) => void = () => {};
+
+    client.summarize.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        resolveSummary = resolve;
+      }),
+    );
+
+    await act(async () => {
+      const pending = result.current.compact(1);
+
+      // The user switches conversations while the summary is in flight.
+      clientRef.current = null;
+      resolveSummary("Summary");
+      await pending;
+    });
+
+    // The stale (old) client is untouched and nothing leaked into the UI.
+    expect(client.chatHistory).toStrictEqual(original);
+    expect(setMessages).not.toHaveBeenCalled();
+    expect(autoSave).not.toHaveBeenCalled();
+    expect(result.current.canUndoCompaction).toBe(false);
+  });
+
   it("restores the pre-compaction history on undo", async () => {
     const { result, client } = setup();
     const original = [...client.chatHistory];

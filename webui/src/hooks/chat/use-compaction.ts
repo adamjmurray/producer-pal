@@ -99,13 +99,19 @@ export function useCompaction<
       isCompactingRef.current = true;
       setIsCompacting(true);
 
+      // The client we compact against. Captured so the steps after the await can
+      // detect a conversation switch/teardown — clearConversation and
+      // restoreChatHistory null out clientRef — and bail instead of clobbering
+      // the newly-loaded conversation or arming an undo pointing at old history.
+      let client: TClient | null = null;
+
       try {
         // A restored-but-not-yet-sent conversation has no client yet; bootstrap
         // one from its pending history so Compact works instead of no-opping.
         // A bootstrap failure falls through to the catch below.
         if (!clientRef.current) await bootstrapClientRef?.current?.();
 
-        const client = clientRef.current;
+        client = clientRef.current;
 
         if (!client?.summarize) return;
 
@@ -120,12 +126,20 @@ export function useCompaction<
 
         const summary = await client.summarize(toCompact);
 
+        // Switched/torn down while summarizing: the captured client is no longer
+        // active. Applying its summary now would overwrite the conversation the
+        // user moved to and arm an undo pointing at the wrong history.
+        if (clientRef.current !== client) return;
+
         undoRef.current = history.slice();
         client.chatHistory = [adapter.createCompactionSummary(summary)];
         setMessages(adapter.formatMessages(client.chatHistory));
         setCanUndoCompaction(true);
         autoSaveRef?.current?.();
       } catch (error) {
+        // Don't surface the error on a conversation we've since left.
+        if (client && clientRef.current !== client) return;
+
         setMessages(
           adapter.createErrorMessage(
             error,
