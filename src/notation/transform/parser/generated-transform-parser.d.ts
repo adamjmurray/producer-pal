@@ -110,12 +110,15 @@ export interface TransformAssignment {
  * than writing a value to a parameter. The `kind` discriminant distinguishes it
  * from a TransformAssignment (which has no `kind` field). The optional selector
  * (pitchRange/timeRange) scopes which notes the op touches. `ratchet`/`merge`
- * carry expression args; `split` carries `BarBeatPointNode` cut positions.
+ * carry expression args; `split` carries `BarBeatPointNode` cut positions and an
+ * optional `sync` flag (set by a trailing `sync` keyword) that interprets the
+ * positions against the arrangement timeline instead of the clip origin.
  */
 export interface NoteOp {
   kind: "noteOp";
   name: "ratchet" | "merge" | "split";
   args: (ExpressionNode | BarBeatPointNode)[];
+  sync?: boolean;
   pitchRange?: PitchRange;
   timeRange?: TimeRange;
 }

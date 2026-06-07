@@ -104,13 +104,14 @@ statement "statement"
 //   ratchet(N)        — divide each matched note into N equal pieces (a roll)
 //   ratchet(n/16)     — cut each matched note on the absolute 16th-note grid
 //   split(2|1, 2|3)   — cut each matched note at explicit clip bar|beat positions
+//   split(2|1, sync)  — same, but positions are arrangement-timeline absolute
 //   merge()           — span all same-pitch matched notes into one sustained note
 // These are NOT expression functions; using one as a value raises a targeted
 // error (see badNoteOpInExpression). `split` takes a list of bar|beat positions
 // (not expressions), so it has its own rule rather than sharing argumentList.
 noteOp "note-count operation"
-  = "split" "(" _ points:barBeatPointList? _ ")" {
-      return { kind: "noteOp", name: "split", args: points || [] };
+  = "split" "(" _ points:barBeatPointSyncList? _ ")" {
+      return { kind: "noteOp", name: "split", args: points?.args ?? [], sync: points?.sync ?? false };
     }
   / name:noteOpName "(" _ args:argumentList? _ ")" {
       return { kind: "noteOp", name, args: args || [] };
@@ -120,10 +121,16 @@ noteOpName
   = "ratchet" { return "ratchet"; }
   / "merge" { return "merge"; }
 
-// A comma-separated list of clip-relative bar|beat cut positions for `split`.
-barBeatPointList
-  = head:barBeatPoint tail:(_ "," _ barBeatPoint)* {
-    return [head, ...tail.map(t => t[3])];
+// A comma-separated list of bar|beat cut positions for `split`, with an optional
+// trailing `sync` keyword (mirrors the cyclical-function `sin(n/4, sync)` form).
+// Without `sync` the positions are clip-relative (from `1|1`); with `sync` they
+// are interpreted against the arrangement timeline at apply time.
+barBeatPointSyncList
+  = head:barBeatPoint tail:(_ "," _ barBeatPoint)* _ "," _ "sync" {
+    return { args: [head, ...tail.map(t => t[3])], sync: true };
+  }
+  / head:barBeatPoint tail:(_ "," _ barBeatPoint)* {
+    return { args: [head, ...tail.map(t => t[3])], sync: false };
   }
 
 // A single bar|beat position (same dialect as a timeRange bound), resolved to

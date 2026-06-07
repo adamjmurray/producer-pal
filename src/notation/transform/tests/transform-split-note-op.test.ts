@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { splitNotes } from "#src/notation/transform/helpers/note-cut-helpers.ts";
 import { type NoteOp } from "#src/notation/transform/parser/transform-parser.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
@@ -208,6 +209,55 @@ describe("note-count operation: split", () => {
     const result = splitNotes([note], splitOp(0.5), 4);
 
     expect(result).toStrictEqual([note]);
+  });
+
+  describe("sync (arrangement-aligned positions)", () => {
+    // An arrangement clip whose origin sits at bar 5 (4 musical beats/bar →
+    // arrangementStart = 16 musical beats). A note at clip-relative 0 spans the
+    // clip's first two bars.
+    const arrangementCtx: ClipContext = {
+      clipDuration: 8,
+      clipIndex: 0,
+      clipCount: 1,
+      barDuration: 4,
+      arrangementStart: 16,
+    };
+
+    it("interprets positions against the arrangement timeline", () => {
+      const notes = createTestNote({ start_time: 0, duration: 8 });
+
+      // 6|1 is arrangement musical beat 20; the clip starts at beat 16, so the
+      // cut lands at clip-relative beat 4.
+      applyTransforms(notes, "split(6|1, sync)", 4, 4, arrangementCtx);
+
+      expect(notes).toStrictEqual([
+        expect.objectContaining({ start_time: 0, duration: 4 }),
+        expect.objectContaining({ start_time: 4, duration: 4 }),
+      ]);
+    });
+
+    it("falls back to clip-relative (with a warning) on a session clip", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const sessionCtx: ClipContext = {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+      };
+      const notes = createTestNote({ start_time: 0, duration: 8 });
+
+      // No arrangement origin: 1|3 is treated clip-relative (beat 2).
+      applyTransforms(notes, "split(1|3, sync)", 4, 4, sessionCtx);
+
+      expect(notes).toStrictEqual([
+        expect.objectContaining({ start_time: 0, duration: 2 }),
+        expect.objectContaining({ start_time: 2, duration: 6 }),
+      ]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("sync ignored on session clip"),
+      );
+      warn.mockRestore();
+    });
   });
 
   it("clamps an excessive number of pieces and warns", () => {

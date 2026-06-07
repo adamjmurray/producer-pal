@@ -100,6 +100,7 @@ export function applyTransforms(
         notes,
         timeSigNumerator,
         timeSigDenominator,
+        clipContext?.arrangementStart,
       );
 
       // The rebuild invalidates prior index-based tracking, so reseed with the

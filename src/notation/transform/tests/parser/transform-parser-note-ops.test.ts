@@ -86,6 +86,33 @@ describe("Transform Parser - note-count operations (ratchet/split/merge)", () =>
           kind: "noteOp",
           name: "split",
           args: [{ type: "barBeatPoint", musicalBeats: 4 }],
+          sync: false,
+        },
+      ]);
+    });
+
+    it("parses a trailing sync keyword", () => {
+      expect(parse("split(2|1, 2|3, sync)")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          kind: "noteOp",
+          name: "split",
+          args: [
+            { type: "barBeatPoint", musicalBeats: 4 },
+            { type: "barBeatPoint", musicalBeats: 6 },
+          ],
+          sync: true,
+        },
+      ]);
+    });
+
+    it("parses a single position with sync", () => {
+      expect(parse("split(5|1, sync)")).toMatchObject([
+        {
+          name: "split",
+          args: [{ type: "barBeatPoint", musicalBeats: 16 }],
+          sync: true,
         },
       ]);
     });

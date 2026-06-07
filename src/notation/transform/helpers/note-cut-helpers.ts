@@ -55,15 +55,23 @@ export function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
  * of the positions is left unchanged (with a warning). Positions are shared
  * across all matched notes (absolute clip coordinates), so a single position
  * subdivides every note it lands inside.
+ *
+ * With `op.sync`, the positions are absolute arrangement-timeline coordinates;
+ * they are shifted into clip-relative space by the clip's arrangement origin.
+ * Session clips have no origin, so sync degrades to clip-relative (mirrors the
+ * cyclical `sync` keyword's session-clip fallback).
  * @param matched - Notes selected by the op
  * @param op - The split operation (args are bar|beat cut positions)
  * @param denominator - Time signature denominator (musical beats -> Ableton)
+ * @param arrangementStart - Clip's arrangement origin in musical beats, or
+ *   undefined for session clips (only consulted in sync mode)
  * @returns The split note list (children replace each divided note)
  */
 export function splitNotes(
   matched: NoteEvent[],
   op: NoteOp,
   denominator: number,
+  arrangementStart?: number,
 ): NoteEvent[] {
   if (op.args.length === 0) {
     console.warn(
@@ -73,10 +81,22 @@ export function splitNotes(
     return matched;
   }
 
+  // In sync mode the positions are arrangement-absolute; subtract the clip's
+  // origin to bring them into the clip-relative space the notes live in.
+  let originMusicalBeats = 0;
+
+  if (op.sync) {
+    if (arrangementStart == null) {
+      console.warn("sync ignored on session clip — split is clip-relative");
+    } else {
+      originMusicalBeats = arrangementStart;
+    }
+  }
+
   // Cut positions in Ableton beats, ascending and de-duplicated (so a repeated
   // position never makes a zero-width sliver).
   const abletonScale = 4 / denominator; // musical beats -> Ableton beats
-  const points = resolveSplitPoints(op.args, abletonScale);
+  const points = resolveSplitPoints(op.args, originMusicalBeats, abletonScale);
 
   const out: NoteEvent[] = [];
   let uncut = 0;
@@ -127,15 +147,20 @@ export function splitNotes(
  * The grammar guarantees every split arg is a BarBeatPointNode carrying absolute
  * musical beats, so the cast is safe (no other arg shape can reach here).
  * @param args - The split op's arguments (bar|beat points)
+ * @param originMusicalBeats - Origin to subtract (clip's arrangement start in
+ *   musical beats for sync mode; 0 for clip-relative)
  * @param abletonScale - Musical-to-Ableton beat scale (4 / denominator)
  * @returns Cut positions in Ableton beats, ascending and unique
  */
 function resolveSplitPoints(
   args: NoteOp["args"],
+  originMusicalBeats: number,
   abletonScale: number,
 ): number[] {
   const beats = args.map(
-    (arg) => (arg as BarBeatPointNode).musicalBeats * abletonScale,
+    (arg) =>
+      ((arg as BarBeatPointNode).musicalBeats - originMusicalBeats) *
+      abletonScale,
   );
 
   return [...new Set(beats)].sort((a, b) => a - b);

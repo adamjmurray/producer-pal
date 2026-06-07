@@ -40,7 +40,7 @@ pow(base, exponent); // base raised to exponent
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
 ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
-split(barBeat, ...); // cut each matched note at explicit clip-relative bar|beat positions (e.g. split(2|1, 2|3))
+split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
 merge(); // span ALL same-pitch matched notes into one sustained note (default)
 merge(0); // glue only touching/overlapping same-pitch notes
 merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
@@ -270,10 +270,13 @@ probability, and deviation.
 - Zero/negative-duration notes are left unchanged (and are removed later by the
   standard zero-duration deletion sweep). Calling `split()` with no positions
   warns and is skipped.
-
-> Positions are clip-relative even for arrangement clips. Aligning them to the
-> arrangement timeline instead is tracked as a follow-up (arrangement-synced
-> split).
+- **`sync`** (optional trailing keyword, same form as the waveform `sync`): the
+  positions are interpreted against the **arrangement timeline** instead of the
+  clip origin. The clip's arrangement start is subtracted from each position, so
+  e.g. a clip starting at bar 5 cut with `split(6|1, sync)` cuts at
+  clip-relative bar 2. Session clips have no arrangement origin, so `sync` is
+  ignored (warn-and-degrade to clip-relative), mirroring the waveform `sync`
+  fallback.
 
 ```
 split(2|1)            // cut every note that spans bar 2's downbeat
@@ -281,6 +284,7 @@ split(2|1, 2|3, 3|2)  // cut at three explicit (unequal) clip positions
 split(1|1.5)          // cut on the off-beat (an 8th past the downbeat)
 split(2|3+n/8)        // an off-grid cut, an 8th-note past beat 3 — uses the ±n offset dialect
 C1: split(2|2, 2|4)   // split only the kick, at two positions in bar 2
+split(6|1, sync)      // arrangement bar 6's downbeat (clip-relative for session clips)
 ```
 
 ### merge() / merge(gap)
