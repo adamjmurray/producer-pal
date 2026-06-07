@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -186,4 +187,47 @@ export function setupDrumChainMocks({
   }
 
   return { drumRack, chain, extraPads };
+}
+
+/**
+ * Setup mocks for a device nested inside a drum rack's chain (path-based device
+ * deletion). Registers the drum rack, its chain (with the device as a child),
+ * and the nested device itself.
+ * @param trackIndex - Track index holding the drum rack device
+ * @returns The chain handle and the nested device's mock ID
+ */
+export function setupNestedDrumDeviceMocks(trackIndex: number): {
+  chain: RegisteredMockObject;
+  deviceId: string;
+} {
+  const drumRackPath = String(livePath.track(trackIndex).device(0));
+  const chainId = "chain-1";
+  const deviceId = "nested-device";
+  const devicePath = `${drumRackPath} chains 0 devices 0`;
+  const chainPath = `${drumRackPath} chains 0`;
+
+  registerMockObject("drum-rack", {
+    path: drumRackPath,
+    type: "RackDevice",
+    properties: {
+      chains: children(chainId),
+      can_have_drum_pads: 1,
+    },
+  });
+
+  const chain = registerMockObject(chainId, {
+    path: chainPath,
+    type: "DrumChain",
+    properties: {
+      in_note: 36, // C1
+      devices: children(deviceId),
+    },
+  });
+
+  registerMockObject(deviceId, {
+    path: devicePath,
+    type: "Device",
+  });
+
+  return { chain, deviceId };
 }

@@ -28,6 +28,18 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
   return selectSharedUtilsMockBody(await importOriginal());
 });
 
+// Clears the registry and mocks a view with nothing selected anywhere.
+function setupEmptySelection(view: "session" | "arrangement"): void {
+  clearMockRegistry();
+  setupViewStateMock({
+    view,
+    selectedTrack: { exists: false },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}
+
 describe("view", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -601,15 +613,7 @@ describe("view", () => {
     });
 
     it("reads arrangement view with nothing selected", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "arrangement",
-        selectedTrack: { exists: false },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupEmptySelection("arrangement");
 
       const result = select({});
 
@@ -700,15 +704,7 @@ describe("view", () => {
     });
 
     it("omits null fields when nothing is selected", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "arrangement",
-        selectedTrack: { exists: false },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupEmptySelection("arrangement");
 
       const result = select();
 

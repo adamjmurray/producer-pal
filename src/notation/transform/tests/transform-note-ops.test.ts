@@ -11,6 +11,22 @@ import {
   createTestNotes,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
 
+// Asserts a merge tolerance is rejected: the two well-separated notes pass
+// through unchanged and a warning containing `message` is emitted.
+function expectMergeWarnsAndSkips(transform: string, message: string): void {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const notes = createTestNotes([
+    { pitch: 60, start_time: 0, duration: 1 },
+    { pitch: 60, start_time: 3, duration: 1 },
+  ]);
+
+  applyTransforms(notes, transform, 4, 4);
+
+  expect(notes).toHaveLength(2);
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining(message));
+  warn.mockRestore();
+}
+
 describe("note-count operations (ratchet/merge)", () => {
   describe("ratchet", () => {
     it("divides a note into N equal end-to-end pieces", () => {
@@ -377,49 +393,15 @@ describe("note-count operations (ratchet/merge)", () => {
       });
 
       it("warns and skips a non-zero bare-number tolerance", () => {
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0, duration: 1 },
-          { pitch: 60, start_time: 3, duration: 1 },
-        ]);
-
-        applyTransforms(notes, "merge(0.25)", 4, 4);
-
-        expect(notes).toHaveLength(2); // passed through unchanged (not merged)
-        expect(warn).toHaveBeenCalledWith(
-          expect.stringContaining("note value"),
-        );
-        warn.mockRestore();
+        expectMergeWarnsAndSkips("merge(0.25)", "note value");
       });
 
       it("warns and skips an integer beat-count tolerance", () => {
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0, duration: 1 },
-          { pitch: 60, start_time: 3, duration: 1 },
-        ]);
-
-        applyTransforms(notes, "merge(2)", 4, 4);
-
-        expect(notes).toHaveLength(2);
-        expect(warn).toHaveBeenCalledWith(
-          expect.stringContaining("note value"),
-        );
-        warn.mockRestore();
+        expectMergeWarnsAndSkips("merge(2)", "note value");
       });
 
       it("warns and skips a bar-value tolerance (Nbar not accepted)", () => {
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-        const notes = createTestNotes([
-          { pitch: 60, start_time: 0, duration: 1 },
-          { pitch: 60, start_time: 3, duration: 1 },
-        ]);
-
-        applyTransforms(notes, "merge(1bar)", 4, 4);
-
-        expect(notes).toHaveLength(2);
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining("Nbar"));
-        warn.mockRestore();
+        expectMergeWarnsAndSkips("merge(1bar)", "Nbar");
       });
 
       it("warns about extra arguments and uses the first", () => {
