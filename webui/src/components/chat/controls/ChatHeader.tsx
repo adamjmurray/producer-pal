@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { VERSION } from "#src/shared/version";
+import { VERSION } from "#src/shared/config";
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { HeaderActions, type HeaderInfo } from "./header/HeaderActions";

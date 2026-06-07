@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import {
   assertDefined,
   parseCommaSeparatedIds,
@@ -106,7 +108,7 @@ export function findLocator(
     if (timeInBeats != null) {
       const locatorTime = locator.getProperty("time") as number;
 
-      if (Math.abs(locatorTime - timeInBeats) < 0.001) {
+      if (Math.abs(locatorTime - timeInBeats) < SAME_TIME_EPSILON) {
         return { locator, index: i };
       }
     }

@@ -8,7 +8,7 @@
  */
 import { renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { VERSION } from "#src/shared/version";
+import { VERSION } from "#src/shared/config";
 
 const { mockCheckForUpdate } = vi.hoisted(() => ({
   mockCheckForUpdate: vi.fn(),

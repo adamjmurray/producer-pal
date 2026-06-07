@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 
 /**
@@ -47,7 +48,7 @@ export const drumPatternNotation =
  */
 export function sortNotes(notes: NoteEvent[]): NoteEvent[] {
   return [...notes].sort((a, b) => {
-    if (Math.abs(a.start_time - b.start_time) > 0.001)
+    if (Math.abs(a.start_time - b.start_time) > SAME_TIME_EPSILON)
       return a.start_time - b.start_time;
 
     return a.pitch - b.pitch;

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useState } from "preact/hooks";
-import { VERSION } from "#src/shared/version";
+import { VERSION } from "#src/shared/config";
 import { checkForUpdate } from "#src/shared/version-check";
 
 /**

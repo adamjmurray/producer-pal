@@ -15,9 +15,9 @@ import {
   type CallLiveApiFunction,
   createMcpServer,
 } from "#src/mcp-server/create-mcp-server.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
-import { VERSION } from "#src/shared/version.ts";
 import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";

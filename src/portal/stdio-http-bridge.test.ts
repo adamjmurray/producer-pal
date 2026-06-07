@@ -105,7 +105,7 @@ vi.mock(import("./file-logger.ts"), () => ({
 
 // Import the class after mocking
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { VERSION } from "#src/shared/version.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { logger } from "./file-logger.ts";
 import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 

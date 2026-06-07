@@ -2,11 +2,11 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { VERSION } from "#src/shared/config.ts";
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
-import { VERSION } from "#src/shared/version.ts";
 import { skills as basicSkills } from "#src/skills/basic.ts";
 import { skills } from "#src/skills/standard.ts";
 
