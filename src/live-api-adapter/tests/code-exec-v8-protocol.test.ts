@@ -3,8 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { MAX_CHUNK_SIZE } from "#src/shared/mcp-response-utils.ts";
+import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import { requestCodeExecution } from "../code-exec-v8-protocol.ts";
 
 // No v8-max-console mock needed: importing it is side-effect-free and the
@@ -57,5 +60,54 @@ describe("code-exec-v8-protocol requestCodeExecution", () => {
       expect.any(String),
       expect.any(String),
     );
+  });
+});
+
+// This module is deliberately excluded from the coverage THRESHOLD: its core is
+// V8↔Node round-trip glue driven by Max globals (LiveAPI / Task / outlet), not
+// unit-coverable to 100% without reconstructing the async round-trip. The
+// exclusion comment in vitest.config.ts says so — and says the pure paths still
+// carry the unit tests above. Lock both halves of that claim here so the
+// exclusion can't quietly rot into a lie (a coverage-excluded file that is in
+// fact untested, or an exclude entry that names a file that has since moved).
+//
+// Read the config as TEXT, not via import: importing vitest.config.ts would
+// pull it into the src typecheck graph (it isn't today), a far larger change
+// than this guard warrants.
+describe("coverage exclusion honesty", () => {
+  const configText = readFileSync(
+    join(projectRoot, "vitest.config.ts"),
+    "utf8",
+  );
+
+  it("keeps this module in the vitest coverage exclude list", () => {
+    expect(configText).toContain(
+      '"src/live-api-adapter/code-exec-v8-protocol.ts"',
+    );
+  });
+
+  it("names only files that exist in the config (no stale, dead paths)", () => {
+    // Every concrete project-file path the config quotes — exclude entries,
+    // setupFiles, alias targets — must still point at a real file. A renamed
+    // file leaves a silently-dead reference (e.g. a coverage exclude that then
+    // matches nothing, so the file rejoins the threshold unnoticed). Same
+    // dangling-reference class as the smallModelModeConfig param guard.
+    const quoted = [...configText.matchAll(/"([^"]+)"/g)].map(
+      (m) => m[1] ?? "",
+    );
+    const concreteFiles = quoted.filter(
+      (entry) =>
+        /^(src|webui|evals|scripts)\//.test(entry) &&
+        !/[*?[\]{}]/.test(entry) &&
+        /\.[a-z]+$/.test(entry),
+    );
+
+    expect(concreteFiles.length).toBeGreaterThan(0); // guard against a vacuous pass
+
+    const missing = concreteFiles.filter(
+      (entry) => !existsSync(join(projectRoot, entry)),
+    );
+
+    expect(missing).toStrictEqual([]);
   });
 });

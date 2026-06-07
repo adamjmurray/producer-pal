@@ -84,12 +84,22 @@ export default defineConfig({
         // type definition only files (no executable code)
         "src/notation/types.ts",
 
-        // ignore the bundle entry scripts:
+        // Bundle entry scripts: importing them runs module-load side effects
+        // wired to the Max / Node-for-Max runtime (e.g. live-api-adapter.ts
+        // emits outlet(0, "started") and registers message handlers at import
+        // time). They are the wiring, exercised by the e2e suites, not the unit
+        // tests — excluded so the threshold measures the libraries they compose,
+        // not the entry point itself.
         "src/live-api-adapter/live-api-adapter.ts",
         "src/mcp-server/mcp-server.ts",
         "src/portal/producer-pal-portal.ts",
 
-        // ignore V8 protocol code (runs in Max's V8, depends on LiveAPI globals):
+        // V8↔Node code-exec round-trip glue, driven by the Max globals LiveAPI /
+        // Task / outlet. NOT untestable: its pure paths ARE unit-tested (see
+        // tests/code-exec-v8-protocol.test.ts — the oversized-IPC guard). But
+        // covering every function would mean reconstructing the async Node
+        // round-trip for thin orchestration, so it stays threshold-excluded and
+        // is integration-tested via e2e instead.
         "src/live-api-adapter/code-exec-v8-protocol.ts",
 
         // ignore disabled stubs (build-time substitutions, not runtime code):
