@@ -288,7 +288,7 @@ C3-C5: duration = legato()       // legato for melody notes only
   - velocity: 1-127
   - timing: unclamped (can shift notes before/after original position)
   - probability: 0.0-1.0
-  - duration: 0.001 minimum
+  - duration: 0 or below deletes the note (like a v0 velocity), no minimum clamp
   - deviation: -127 to 127
   - pitch: 0-127 (rounded to integer)
   - gain: -70 to 24 dB
