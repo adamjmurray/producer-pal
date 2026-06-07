@@ -77,6 +77,15 @@ export async function importConversations(json: string): Promise<ImportResult> {
     throw new Error("Invalid format: missing conversations array");
   }
 
+  // Protect every conversation in this import from the per-save limit trim, so
+  // saving one imported record can't delete another just-imported record that
+  // carries an older timestamp (imported records keep their original updatedAt).
+  const importIds = new Set(
+    (data.conversations as unknown[])
+      .map((r) => (r as Record<string, unknown>).id)
+      .filter((id): id is string => typeof id === "string"),
+  );
+
   let newCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;
@@ -99,7 +108,7 @@ export async function importConversations(json: string): Promise<ImportResult> {
         continue;
       }
 
-      await saveConversation(normalized);
+      await saveConversation(normalized, importIds);
 
       if (existing) {
         updatedCount++;

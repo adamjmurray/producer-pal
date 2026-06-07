@@ -98,6 +98,41 @@ describe("shouldSkipScenario", () => {
     });
   });
 
+  describe("params requirement", () => {
+    // "actions" is in update-device's small-model excludeParams, so it is part
+    // of the real SMALL_MODEL_EXCLUDED_PARAMS union this branch consults.
+    it("skips under small-model mode when a required param is excluded there", () => {
+      const reason = shouldSkipScenario(
+        makeScenario({ params: ["actions"] }),
+        smallModelProfile,
+      );
+
+      expect(reason).toMatch(
+        /param\(s\) excluded in small-model mode: actions/,
+      );
+    });
+
+    it("does not skip under small-model mode when the param is not excluded", () => {
+      // `name` is a descriptionOverride, never an excludeParam, so it stays
+      // available even in small-model mode.
+      expect(
+        shouldSkipScenario(
+          makeScenario({ params: ["name"] }),
+          smallModelProfile,
+        ),
+      ).toBeNull();
+    });
+
+    it("does not skip under the default profile", () => {
+      expect(
+        shouldSkipScenario(
+          makeScenario({ params: ["actions"] }),
+          defaultProfile,
+        ),
+      ).toBeNull();
+    });
+  });
+
   describe("tools requirement", () => {
     it("skips when the profile's tool allow-list excludes a required tool", () => {
       const reason = shouldSkipScenario(

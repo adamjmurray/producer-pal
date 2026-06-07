@@ -203,13 +203,20 @@ export async function createClipsForLength(
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
-    clearClipAtDuplicateTarget(
+    const safeToDuplicate = clearClipAtDuplicateTarget(
       track,
       sourceClip.id,
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
     );
+
+    // Source overlaps its own target — clearClipAtDuplicateTarget already warned.
+    // Skip the duplicate rather than corrupt the source or crash Ableton.
+    if (!safeToDuplicate) {
+      return duplicatedClips;
+    }
+
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
       toLiveApiId(sourceClip.id),
@@ -421,23 +428,36 @@ export async function duplicateClipToArrangement(
     // No length specified - use original behavior
     const isMidiClip = clip.getProperty("is_midi_clip") === 1;
 
-    clearClipAtDuplicateTarget(
+    const safeToDuplicate = clearClipAtDuplicateTarget(
       track,
       clip.id,
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
     );
-    const newClipResult = track.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(clip.id),
-      arrangementStartBeats,
-    ) as string;
-    const newClip = LiveAPI.from(newClipResult);
 
-    newClip.setAll({ name, color });
+    // Source overlaps its own target — clearClipAtDuplicateTarget already warned.
+    // Skip the duplicate (leaving duplicatedClips empty) rather than corrupt the
+    // source or crash Ableton.
+    if (safeToDuplicate) {
+      const newClipResult = track.call(
+        "duplicate_clip_to_arrangement",
+        toLiveApiId(clip.id),
+        arrangementStartBeats,
+      ) as string;
+      const newClip = LiveAPI.from(newClipResult);
 
-    duplicatedClips.push(getMinimalClipInfo(newClip));
+      // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
+      // clip, matching the guards in arrangement-tiling and update-clip.
+      if (newClip.exists()) {
+        newClip.setAll({ name, color });
+        duplicatedClips.push(getMinimalClipInfo(newClip));
+      } else {
+        console.warn(
+          `Failed to duplicate clip ${clip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+        );
+      }
+    }
   }
 
   // Return single clip info directly, or clips array with trackIndex for multiple

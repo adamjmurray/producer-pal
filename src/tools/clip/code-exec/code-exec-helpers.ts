@@ -9,10 +9,15 @@
  */
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
-import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
+import {
+  readAllClipNotes,
+  rawNotesToNoteEvents,
+  removeAllClipNotes,
+} from "#src/tools/shared/clip-notes.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type CodeClipContext,
@@ -31,14 +36,13 @@ import {
  * @returns Array of notes in code-facing format
  */
 export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
-  const lengthBeats = clip.getProperty("length") as number;
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  const notesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
-  ) as { notes?: NoteEvent[] } | null;
-  const notes: NoteEvent[] = notesResult?.notes ?? [];
+  // Read the same [-length, 2*length] window as read-clip so a pickup before
+  // the clip start (negative start_time) is visible to user code, not silently
+  // dropped because it sits outside the playable region [0, length].
+  const notes = rawNotesToNoteEvents(readAllClipNotes(clip));
 
   return notes.map((note) => noteEventToCodeNote(note, timeSigDenominator));
 }
@@ -50,19 +54,24 @@ export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
  * @param notes - Array of notes in code-facing format
  */
 export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
-  // Remove all existing notes
-  clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
+  // Remove all existing notes (same window readAllClipNotes/read-clip use, so a
+  // pickup before the clip start is cleared too — never orphaned outside it).
+  removeAllClipNotes(clip);
 
   if (notes.length === 0) {
     return;
   }
 
-  // Convert musical beats back to Ableton beats and add
+  // Convert musical beats back to Ableton beats, then sort ascending by
+  // start_time before adding. User code returns notes in arbitrary order, but
+  // add_new_notes deletes an earlier same-pitch note when a later-written note
+  // overlaps its onset — so an unsorted write silently drops notes. Every other
+  // write path sorts first (see note-sort.ts for the invariant); this one didn't.
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  const noteEvents = notes.map((note) =>
-    codeNoteToNoteEvent(note, timeSigDenominator),
+  const noteEvents = sortNotes(
+    notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
   );
 
   clip.call("add_new_notes", { notes: noteEvents });

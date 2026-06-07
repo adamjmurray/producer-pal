@@ -90,6 +90,13 @@ export function useChat<
     setMessages([]);
     clientRef.current = null;
     pendingHistoryRef.current = null;
+    // Abort any in-flight stream on teardown. UI-driven switches call
+    // stopResponse() first, but a browser Back/Forward (hashchange) reaches here
+    // directly — without this, the orphaned stream keeps running and its
+    // setMessages clobbers the freshly-restored conversation (and autosaves the
+    // mixed history under the new ID). Aborting an already-aborted controller is
+    // a no-op, so this is safe for every entry point.
+    abortControllerRef.current?.abort();
     clearSettings();
     setRateLimitState(null);
     setToolLimitReached(false);

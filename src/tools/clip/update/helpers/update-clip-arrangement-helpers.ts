@@ -106,13 +106,19 @@ export function handleArrangementStartOperation({
   }
 
   // Clear overlapping clips at target to prevent Ableton crash
-  clearClipAtDuplicateTarget(
+  const safeToMove = clearClipAtDuplicateTarget(
     track,
     clip.id,
     arrangementStartBeats,
     isMidiClip,
     context,
   );
+
+  // The new position overlaps the clip's current position — clearClipAtDuplicateTarget
+  // already warned. Preserve the clip unchanged rather than corrupt it or crash Ableton.
+  if (!safeToMove) {
+    return clip.id;
+  }
 
   // duplicate_clip_to_arrangement returns ["id", number] array format
   const newClipResult = track.call(

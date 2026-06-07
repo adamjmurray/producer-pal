@@ -35,10 +35,8 @@ export interface ChatMessage {
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */
   usage?: TokenUsage;
-  /** Per-message setting overrides (only present when user overrode conversation defaults) */
+  /** Per-message setting override (only present when user overrode the conversation default) */
   thinkingOverride?: string;
-  temperatureOverride?: number;
-  showThoughtsOverride?: boolean;
   /** True for a synthetic compaction summary that replaces older turns */
   isCompactionSummary?: boolean;
 }

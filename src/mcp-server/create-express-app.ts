@@ -185,6 +185,16 @@ export function createExpressApp(): Express {
   // exceed Express's 100 KB default.
   app.use(express.json({ limit: "2mb" }));
 
+  // No cross-origin (Origin) gate here, intentionally — unlike POST /config.
+  // The chat UI's getMcpUrl() targets the page's own origin, so over a LAN or
+  // tunnel it POSTs /mcp with a NON-localhost Origin (e.g. http://192.168.x:PORT
+  // or https://*.trycloudflare.com). Gating by isLocalOrigin — or any
+  // Origin/Host comparison, which reverse-proxy tunnels defeat by forwarding
+  // Host=localhost while Origin stays the public domain — would 403 the
+  // LAN/tunnel chat's own tool calls and break the documented web-tunnels
+  // feature, which is unauthenticated by design (docs/installation/
+  // web-tunnels.md). The localhost-CSRF surface (a web page POSTing to
+  // http://localhost:PORT/mcp) is accepted as part of that "no auth" model.
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {
       const method =
@@ -304,6 +314,12 @@ function getValidToolNames(liveApiEnabled: boolean): string[] {
 async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   // Block cross-origin writes even when dev CORS is permissive. Same-origin
   // fetches and non-browser clients (curl, scripts/ppal-client) omit Origin.
+  // This localhost gate is deliberately NOT applied to /mcp or /api/tools (see
+  // the /mcp handler): config writes are device-settings changes made from the
+  // local machine, so gating them to localhost is acceptable, whereas the tool
+  // endpoints must stay reachable from the LAN/tunnel chat's non-localhost
+  // origin. Side effect: config writes from a LAN/tunnel browser are blocked —
+  // an accepted limitation, not part of the remote-access feature's contract.
   const origin = req.get("Origin");
 
   if (origin && !isLocalOrigin(origin)) {

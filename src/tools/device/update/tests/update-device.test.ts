@@ -212,6 +212,44 @@ describe("updateDevice", () => {
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
       expect(result).toStrictEqual({ id: "123" });
     });
+
+    it("resolves a numeric-looking label to its index (M3: no binary-search bypass)", () => {
+      // A quantized selector whose labels are numbers (e.g. a "1"/"2"/"4"/"8"
+      // retrigger/sync selector). normalizeParamValue turns the input "4" into
+      // the number 4, which used to skip the enum branch and binary-search a
+      // garbage raw value (2.9999… instead of index 2). It must resolve to the
+      // index of the "4" label.
+      const numericLabelParam = registerMockObject("793", {
+        properties: {
+          is_quantized: 1,
+          value_items: ["1", "2", "4", "8"],
+        },
+      });
+
+      const result = updateDevice({
+        ids: "123",
+        params: [{ name: "793", value: "4" }],
+      });
+
+      expect(numericLabelParam.set).toHaveBeenCalledWith("value", 2);
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("warns when a numeric input matches no quantized label", () => {
+      // A bare index that isn't a label (value_items are words) must warn with
+      // the options, not silently binary-search a garbage raw value.
+      const result = updateDevice({
+        ids: "123",
+        params: [{ name: "791", value: "1" }],
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'updateDevice: "1" is not valid. Options: Repitch, Fade, Jump',
+      );
+      expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
+      expect(result).toStrictEqual({ id: "123" });
+    });
   });
 
   describe("params - note values", () => {
@@ -280,6 +318,42 @@ describe("updateDevice", () => {
 
       // 1 → internal: 1
       expect(param792.set).toHaveBeenCalledWith("value", 1);
+    });
+
+    it("maps directional pan display labels (50L/50R/25L) back to -1..1", () => {
+      // Regression (#14): a directional label like "50L" was reduced to the bare
+      // number 50 by normalizeParamValue (dropping the L), then mapped to a
+      // clamped full-RIGHT value. Each must parse back to its signed -1..1
+      // position via the param's own display max.
+      const panDir = registerMockObject("793", {
+        properties: { is_quantized: 0, value: 0, min: -1, max: 1 },
+        methods: {
+          str_for_value: (v: unknown) =>
+            v === -1 ? "50L" : v === 1 ? "50R" : "C",
+        },
+      });
+
+      updateDevice({ ids: "123", params: [{ name: "793", value: "50L" }] });
+      expect(panDir.set).toHaveBeenCalledWith("value", -1); // full left
+
+      updateDevice({ ids: "123", params: [{ name: "793", value: "50R" }] });
+      expect(panDir.set).toHaveBeenCalledWith("value", 1); // full right
+
+      updateDevice({ ids: "123", params: [{ name: "793", value: "25L" }] });
+      expect(panDir.set).toHaveBeenCalledWith("value", -0.5); // half left
+    });
+
+    it("warns and skips a non-pan string instead of writing NaN", () => {
+      updateDevice({
+        ids: "123",
+        params: [{ name: "792", value: "hard-left" }],
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'updateDevice: "hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
+      );
+      expect(param792.set).not.toHaveBeenCalled();
     });
   });
 

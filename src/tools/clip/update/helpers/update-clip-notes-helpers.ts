@@ -12,10 +12,11 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
   getClipNoteCount,
   rawNotesToNoteEvents,
+  readAllClipNotes,
+  removeAllClipNotes,
 } from "#src/tools/shared/clip-notes.ts";
 import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
 
@@ -103,13 +104,10 @@ export function handleNoteUpdates(
   // preTransforms applied) as bar|beat notation, so v0 in the new notation can
   // delete overlapping existing notes during interpretation.
   let combinedNotationString = notationString;
-  const existingNotesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
-  );
-  const rawExistingNotes = (existingNotesResult?.notes ?? []) as Record<
-    string,
-    unknown
-  >[];
+  // Read the full [-length, 2*length] window (matches read-clip) so a pickup
+  // before the clip start is carried into the merge — not dropped because it
+  // sits outside the playable region [0, length].
+  const rawExistingNotes = readAllClipNotes(clip);
   const { notes: existingNotes, matchCount: preTransformCount } =
     applyPreTransformsToExisting(
       rawNotesToNoteEvents(rawExistingNotes),
@@ -146,7 +144,7 @@ export function handleNoteUpdates(
   // (new wins — new notes follow the existing ones in the combined array) then
   // sort ascending by start_time so Live resolves every same-pitch overlap by
   // truncation instead of deleting the earlier write. See note-sort.ts.
-  clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
+  removeAllClipNotes(clip);
 
   const mergedNotes = sortNotes(dedupeNotesKeepingLast(notes));
 

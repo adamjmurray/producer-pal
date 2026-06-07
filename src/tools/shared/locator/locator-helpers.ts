@@ -34,7 +34,12 @@ interface ResolveLocatorOptions {
 }
 
 /**
- * Generate a stable locator ID from a locator's index
+ * Build a locator ID from its position in the cue_points array. This is a
+ * POSITIONAL/display ID, NOT a stable handle: it reflects the locator's current
+ * time-order, so adding or removing any earlier locator shifts it. For
+ * cross-turn delete/rename, prefer the locator name or time (both stable) over a
+ * remembered locator-N. The positional-shift behavior is locked by
+ * read-live-set-locators.test.ts.
  * @param locatorIndex - The index of the locator in the cue_points array
  * @returns Locator ID in format "locator-{index}"
  */

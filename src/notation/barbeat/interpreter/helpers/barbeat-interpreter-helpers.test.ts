@@ -10,8 +10,6 @@ import {
   clearCarriedStreams,
   clearPitchBuffer,
   clearValueStreams,
-  trackStateChange,
-  updateBufferedPitches,
 } from "./barbeat-interpreter-buffer-helpers.ts";
 import {
   copyNoteToDestination,
@@ -23,24 +21,6 @@ import {
   testSingleCopyFailure,
   testSingleCopyNullResult,
 } from "./barbeat-interpreter-test-helpers.ts";
-
-function makeTrackStateChangeState(pitchGroupStarted: boolean) {
-  return {
-    pitchGroupStarted,
-    currentPitches: [{ pitch: 60 }],
-    stateChangedSinceLastPitch: false,
-    stateChangedAfterEmission: false,
-    velocity: 100,
-  } as unknown as InterpreterState & { velocity: number };
-}
-
-function makeUpdateBufferedPitchesState(pitchGroupStarted: boolean) {
-  return {
-    pitchGroupStarted,
-    currentPitches: [{ velocity: 100 }, { velocity: 100 }],
-    stateChangedAfterEmission: false,
-  } as unknown as InterpreterState;
-}
 
 describe("barbeat-interpreter-helpers", () => {
   describe("clearPitchBuffer", () => {
@@ -195,88 +175,6 @@ describe("barbeat-interpreter-helpers", () => {
       expect(notesByBar.get(destBar)!).toHaveLength(2);
       expect(notesByBar.get(destBar)![0]!.pitch).toBe(64);
       expect(notesByBar.get(destBar)![1]!.pitch).toBe(67);
-    });
-  });
-
-  describe("trackStateChange", () => {
-    it("updates state and sets stateChangedSinceLastPitch when pitch group started", () => {
-      const state = makeTrackStateChangeState(true);
-
-      trackStateChange(state, (s) => {
-        (s as typeof state).velocity = 80;
-      });
-
-      expect(state.velocity).toBe(80);
-      expect(state.stateChangedSinceLastPitch).toBe(true);
-    });
-
-    it("sets stateChangedAfterEmission when no pitches buffered", () => {
-      const state = {
-        pitchGroupStarted: false,
-        currentPitches: [],
-        stateChangedSinceLastPitch: false,
-        stateChangedAfterEmission: false,
-        duration: 1.0,
-      } as unknown as InterpreterState & { duration: number };
-
-      trackStateChange(state, (s) => {
-        (s as typeof state).duration = 0.5;
-      });
-
-      expect(state.duration).toBe(0.5);
-      expect(state.stateChangedAfterEmission).toBe(true);
-    });
-
-    it("does not set flags when pitch group not started and pitches exist", () => {
-      const state = makeTrackStateChangeState(false);
-
-      trackStateChange(state, (s) => {
-        (s as typeof state).velocity = 90;
-      });
-
-      expect(state.velocity).toBe(90);
-      expect(state.stateChangedSinceLastPitch).toBe(false);
-      expect(state.stateChangedAfterEmission).toBe(false);
-    });
-  });
-
-  describe("updateBufferedPitches", () => {
-    it("updates buffered pitches when not in pitch group", () => {
-      const state = makeUpdateBufferedPitchesState(false);
-
-      updateBufferedPitches(state, (pitchState) => {
-        pitchState.velocity = 80;
-      });
-
-      expect(state.currentPitches[0]!.velocity).toBe(80);
-      expect(state.currentPitches[1]!.velocity).toBe(80);
-      expect(state.stateChangedAfterEmission).toBe(true);
-    });
-
-    it("does not update pitches when pitch group started", () => {
-      const state = makeUpdateBufferedPitchesState(true);
-
-      updateBufferedPitches(state, (pitchState) => {
-        pitchState.velocity = 80;
-      });
-
-      expect(state.currentPitches[0]!.velocity).toBe(100);
-      expect(state.currentPitches[1]!.velocity).toBe(100);
-      expect(state.stateChangedAfterEmission).toBe(false);
-    });
-
-    it("does not update when no buffered pitches", () => {
-      const state = {
-        pitchGroupStarted: false,
-        currentPitches: [],
-        stateChangedAfterEmission: false,
-      } as unknown as InterpreterState;
-
-      updateBufferedPitches(state, (pitchState) => {
-        pitchState.velocity = 80;
-      });
-
-      expect(state.stateChangedAfterEmission).toBe(false);
     });
   });
 

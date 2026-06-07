@@ -59,10 +59,13 @@ export function ConversationList({
       : conversations;
   const bookmarked = visible.filter((c) => c.bookmarked);
 
-  const renderItems = (items: ConversationSummary[]) =>
+  // A bookmarked conversation renders in BOTH the Bookmarks and All sections
+  // (bookmarked ⊆ visible), so the key must be namespaced per section — a bare
+  // conv.id would collide across the two sibling lists (duplicate React keys).
+  const renderItems = (items: ConversationSummary[], keyPrefix: string) =>
     items.map((conv) => (
       <ConversationItem
-        key={conv.id}
+        key={`${keyPrefix}-${conv.id}`}
         conv={conv}
         isActive={conv.id === activeConversationId}
         isEditing={conv.id === editingId}
@@ -102,7 +105,7 @@ export function ConversationList({
                 collapsed={bookmarksCollapsed}
                 onToggle={() => setBookmarksCollapsed(!bookmarksCollapsed)}
               />
-              {!bookmarksCollapsed && renderItems(bookmarked)}
+              {!bookmarksCollapsed && renderItems(bookmarked, "bookmark")}
             </>
           )}
 
@@ -112,7 +115,7 @@ export function ConversationList({
             collapsed={allCollapsed}
             onToggle={() => setAllCollapsed(!allCollapsed)}
           />
-          {!allCollapsed && renderItems(visible)}
+          {!allCollapsed && renderItems(visible, "all")}
         </>
       )}
     </div>

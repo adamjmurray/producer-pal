@@ -209,6 +209,14 @@ function evaluateAudioExpression(
     return node.bars * (clipContext?.barDuration ?? 4);
   }
 
+  // Pitch literal (`C3`) — its MIDI number, mirroring the note evaluator. Lets a
+  // pitch literal appear in an audio expression (e.g. `gain = C3` → 60, then
+  // clamped) instead of falling through to the function-call branch below and
+  // throwing a cryptic "args is undefined" internal error.
+  if (node.type === "pitchLiteral") {
+    return node.value;
+  }
+
   // Variable lookup
   if (node.type === "variable") {
     return resolveAudioVariable(node, audioProperties, clipContext);

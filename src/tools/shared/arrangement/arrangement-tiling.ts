@@ -165,13 +165,22 @@ export function tileClipToRange(
     const freshTrack = LiveAPI.from(livePath.track(trackIndex as number));
 
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
-    clearClipAtDuplicateTarget(
+    const safeToTile = clearClipAtDuplicateTarget(
       freshTrack,
       sourceClipId,
       currentPosition,
       isMidiClip,
       context,
     );
+
+    // Source overlaps this tile position — clearClipAtDuplicateTarget already
+    // warned; skip the tile rather than corrupt the source or crash Ableton.
+    if (!safeToTile) {
+      currentPosition += arrangementTileLength;
+      currentContentOffset += arrangementTileLength;
+      continue;
+    }
+
     const result = freshTrack.call(
       "duplicate_clip_to_arrangement",
       toLiveApiId(sourceClipId),

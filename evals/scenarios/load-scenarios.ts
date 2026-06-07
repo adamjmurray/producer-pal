@@ -187,6 +187,7 @@ function requirementLabels(scenario: EvalScenario): string[] {
   if (req.brackets) labels.push("brackets");
   if (req.largeModel) labels.push("largeModel");
   if (req.tools?.length) labels.push(`tools:${req.tools.join("+")}`);
+  if (req.params?.length) labels.push(`params:${req.params.join("+")}`);
 
   return labels;
 }

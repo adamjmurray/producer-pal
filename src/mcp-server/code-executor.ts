@@ -4,8 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * General-purpose sandboxed JavaScript code executor.
- * Uses Node's vm module to run code with timeout and a controlled execution scope.
+ * General-purpose JavaScript code executor for the dev/eval-only code-exec
+ * feature.
+ *
+ * NOT A SECURITY SANDBOX. Code runs in a node:vm context seeded with a small
+ * default global scope (DEFAULT_GLOBALS). That scope is an *ergonomic* boundary
+ * — it keeps honest user code from reaching for host built-ins like
+ * require/process — not a *containment* one. node:vm is explicitly not a
+ * security mechanism: the injected built-ins belong to the host realm, so code
+ * can climb back out (e.g. `Object.constructor("return process")()` returns the
+ * real process). The actual control is that code-exec is gated behind the
+ * ENABLE_CODE_EXEC build flag (checked below) and is never enabled in shipped
+ * builds. code-executor.test.ts documents the escape so the limited scope isn't
+ * mistaken for containment.
  */
 
 import vm from "node:vm";
@@ -15,10 +26,12 @@ import {
 } from "#src/tools/clip/code-exec/code-exec-types.ts";
 
 /**
- * Safe builtins exposed to user code.
- * Excludes: require, process, global, fetch, setTimeout, setInterval, Buffer, etc.
+ * Built-ins seeded into the default execution scope — an ergonomic allow-list
+ * of what honest user code commonly needs, NOT a security boundary. Leaving
+ * require/process/global/fetch/setTimeout/setInterval/Buffer/etc. out of the
+ * default scope does not prevent code from reaching them (see file header).
  */
-const SAFE_GLOBALS = {
+const DEFAULT_GLOBALS = {
   Math,
   Array,
   Object,
@@ -39,10 +52,11 @@ const SAFE_GLOBALS = {
 };
 
 /**
- * Execute JavaScript code in a sandboxed VM context.
+ * Execute JavaScript code in a node:vm context with a limited default global
+ * scope. NOT a security sandbox — see the file header for the real model.
  *
  * @param code - JavaScript code to execute (pre-wrapped by caller)
- * @param globals - Named values to inject into the sandbox scope
+ * @param globals - Named values to inject into the execution scope
  * @param timeoutMs - Timeout in milliseconds (default: CODE_EXEC_TIMEOUT_MS)
  * @returns Raw result or error
  */
@@ -56,14 +70,14 @@ export function executeSandboxedCode(
     return { success: false, error: "Code execution is not enabled" };
   }
 
-  // Create sandbox with safe globals and deep-copied user globals
-  const sandbox: Record<string, unknown> = { ...SAFE_GLOBALS };
+  // Seed the execution scope with the default globals + deep-copied user globals
+  const scope: Record<string, unknown> = { ...DEFAULT_GLOBALS };
 
   for (const [key, value] of Object.entries(globals)) {
-    sandbox[key] = structuredClone(value);
+    scope[key] = structuredClone(value);
   }
 
-  const vmContext = vm.createContext(sandbox);
+  const vmContext = vm.createContext(scope);
 
   let result: unknown;
 

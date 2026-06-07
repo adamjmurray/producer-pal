@@ -133,8 +133,8 @@ describe("update-clip-transform-helpers", () => {
         "remove_notes_extended",
         0,
         128,
-        0,
-        expect.any(Number),
+        -4,
+        12,
       );
       expect(mockClip.call).toHaveBeenCalledWith(
         "add_new_notes",
@@ -250,6 +250,56 @@ describe("update-clip-transform-helpers", () => {
       );
 
       expect(result.noteCount).toBe(0);
+    });
+
+    it("clears a pickup note before the clip start instead of orphaning it", () => {
+      // Regression: preTransforms used to read only the playable region
+      // [0, length], so a pickup at a negative start_time was invisible — `v0`
+      // reported "no notes to transform" and left the pickup orphaned while
+      // lying noteCount: 0. The read AND remove must use read-clip's
+      // [-length, 2*length] window so the pickup is seen, transformed, removed.
+      const pickup = rawNote(60, -0.5, 100); // half a beat before the start
+      const removeCalls: unknown[][] = [];
+      let cleared = false;
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
+        call: vi.fn((method: string, ...args: unknown[]) => {
+          if (method === "get_notes_extended") {
+            // Live only surfaces the pickup when the window reaches before beat 0.
+            const fromTime = args[2] as number;
+
+            return JSON.stringify({
+              notes: fromTime < 0 && !cleared ? [pickup] : [],
+            });
+          }
+
+          if (method === "remove_notes_extended") {
+            removeCalls.push(args);
+            cleared = true;
+          }
+
+          return "[]";
+        }),
+      };
+
+      const result = applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        "v0", // preTransform deletes every matched note
+        undefined,
+        4,
+        4,
+      );
+
+      // The pickup was found and deleted, not skipped as "no notes to transform".
+      expect(result.transformed).toBe(1);
+      expect(result.noteCount).toBe(0);
+      // Remove used the pickup-inclusive window (length 4 → [-4, 8)).
+      expect(removeCalls).toContainEqual([0, 128, -4, 12]);
+      // Nothing re-added: v0 cleared the only note.
+      expect(mockClip.call).not.toHaveBeenCalledWith(
+        "add_new_notes",
+        expect.anything(),
+      );
     });
   });
 

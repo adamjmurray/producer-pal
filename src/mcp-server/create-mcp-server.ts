@@ -65,6 +65,21 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
   STANDARD_TOOL_DEFS.map((td) => td.toolName),
 );
 
+/**
+ * Union of params dropped from tool input schemas under small-model mode,
+ * across all standard tools. Sourced directly from each tool's
+ * `smallModelModeConfig.excludeParams` so it stays a single source of truth.
+ * The eval framework consults this to SKIP (not fail) scenarios that depend on
+ * a param small models never receive — keeping small-model scores
+ * apples-to-apples. Param names are descriptive and, where shared across tools,
+ * are excluded by every tool that has them, so a flat union is unambiguous.
+ */
+export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
+  STANDARD_TOOL_DEFS.flatMap(
+    (td) => td.toolOptions.smallModelModeConfig?.excludeParams ?? [],
+  ),
+);
+
 interface CreateMcpServerOptions {
   smallModelMode?: boolean;
   liveApiEnabled?: boolean;

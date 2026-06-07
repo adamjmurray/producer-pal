@@ -180,49 +180,6 @@ export function validateBufferedState(
 }
 
 /**
- * Track state changes and update buffered pitches
- * @param state - Interpreter state to track
- * @param updateFn - Function to apply state update
- */
-export function trackStateChange(
-  state: InterpreterState,
-  updateFn: (state: InterpreterState) => void,
-): void {
-  // Apply the state update
-  updateFn(state);
-
-  // Track if state changed after pitch in current group
-  if (state.pitchGroupStarted && state.currentPitches.length > 0) {
-    state.stateChangedSinceLastPitch = true;
-  }
-
-  // Track wasted state changes (after emission, before pitches)
-  if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
-    state.stateChangedAfterEmission = true;
-  }
-}
-
-/**
- * Update buffered pitches with new state values
- * @param state - Interpreter state containing buffered pitches
- * @param updateFn - Function to update each pitch state
- */
-export function updateBufferedPitches(
-  state: InterpreterState,
-  updateFn: (pitchState: PitchState) => void,
-): void {
-  // Update buffered pitches if after time position
-  if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
-    for (const pitchState of state.currentPitches) {
-      updateFn(pitchState);
-    }
-
-    // State changes applied to buffered pitches could be wasted if bar copy occurs
-    state.stateChangedAfterEmission = true;
-  }
-}
-
-/**
  * Handle a property update (velocity, duration, probability, etc.)
  * Tracks state changes and updates buffered pitches if needed.
  * @param state - Interpreter state

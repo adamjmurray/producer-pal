@@ -15,6 +15,9 @@ export const arrangementClipWorkflow: EvalScenario = {
   description: "Create arrangement clip, duplicate, and split",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // Turn 3 ("split the clip") needs update-clip's `split` param, which
+  // small-model mode strips from the schema — the split is impossible there.
+  requires: { params: ["split"] },
 
   messages: [
     "Connect to Ableton Live",

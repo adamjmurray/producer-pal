@@ -14,6 +14,7 @@
  * scores stay apples-to-apples.
  */
 
+import { SMALL_MODEL_EXCLUDED_PARAMS } from "#src/mcp-server/create-mcp-server.ts";
 import { type ConfigProfile, type EvalScenario } from "../../types.ts";
 import { type JsonEvalResult } from "./types.ts";
 
@@ -47,9 +48,19 @@ export function shouldSkipScenario(
     return "requires a large/frontier model (small-model mode active)";
   }
 
-  // Only an explicit profile tool allow-list is consulted here. Deriving the
-  // small-model excluded tool/param surface from `smallModelModeConfig` is a
-  // follow-up; until then small-model runs don't skip on `requires.tools`.
+  if (req.params && smallModel) {
+    const excluded = req.params.filter((p) =>
+      SMALL_MODEL_EXCLUDED_PARAMS.has(p),
+    );
+
+    if (excluded.length > 0) {
+      return `requires param(s) excluded in small-model mode: ${excluded.join(", ")}`;
+    }
+  }
+
+  // Small-model mode excludes no whole standard tools, so only an explicit
+  // profile tool allow-list is consulted here (the param surface is handled
+  // by `requires.params` above). Today only the `default` profile sets `tools`.
   if (req.tools && config.tools) {
     const allowed = config.tools;
     const missing = req.tools.filter((tool) => !allowed.includes(tool));

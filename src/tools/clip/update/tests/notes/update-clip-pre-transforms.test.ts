@@ -164,7 +164,8 @@ describe("updateClip - preTransforms", () => {
       "remove_notes_extended",
       0,
       128,
-      0,
+      // Window varies with clip length; clip-notes.test.ts pins it exactly.
+      expect.any(Number),
       expect.any(Number),
     );
     expect(addedNotes(mocks.clip123)).toStrictEqual([]);

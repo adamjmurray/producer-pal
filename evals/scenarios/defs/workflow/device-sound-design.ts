@@ -48,6 +48,10 @@ export const deviceSoundDesign: EvalScenario = {
   kind: "capability",
   liveSet: "basic-midi-4-track",
   judgeAdvisory: true,
+  // The whole task is the update-device `actions` grammar (setModulation),
+  // which small-model mode strips from the schema — so the deterministic checks
+  // can't pass there. Skip rather than score an unfair fail.
+  requires: { params: ["actions"] },
 
   messages: [
     "Connect to Ableton Live",

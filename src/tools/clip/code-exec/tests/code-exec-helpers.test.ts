@@ -137,12 +137,13 @@ describe("code-exec-helpers", () => {
       const result = extractNotesFromClip(mockClip as unknown as LiveAPI);
 
       expect(mockClip.getProperty).toHaveBeenCalledWith("length");
+      // length=8 → read-clip's window [-8, 16) so a pickup/overhang is seen.
       expect(mockClip.call).toHaveBeenCalledWith(
         "get_notes_extended",
         0,
         128,
-        0,
-        8,
+        -8,
+        24,
       );
       expect(result).toHaveLength(2);
       expect(result[0]).toStrictEqual({
@@ -190,14 +191,66 @@ describe("code-exec-helpers", () => {
         "remove_notes_extended",
         0,
         128,
-        0,
-        expect.any(Number),
+        -4,
+        12,
       );
       expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
         notes: [
           {
             pitch: 60,
             start_time: 0,
+            duration: 1,
+            velocity: 100,
+            velocity_deviation: 0,
+            probability: 1,
+          },
+        ],
+      });
+    });
+
+    it("sorts notes ascending by start_time before adding (same-pitch survival)", () => {
+      // User code returned two same-pitch notes later-onset-first. add_new_notes
+      // deletes an earlier same-pitch note when a later-written note overlaps its
+      // onset, so an unsorted write would drop the beat-0 note. The write must be
+      // ascending by start_time so both survive.
+      const mockClip = {
+        getProperty: vi.fn().mockReturnValue(4), // signature_denominator
+        call: vi.fn(),
+      };
+      const notes: CodeNote[] = [
+        {
+          pitch: 60,
+          start: 2,
+          duration: 1,
+          velocity: 100,
+          velocityDeviation: 0,
+          probability: 1,
+        },
+        {
+          pitch: 60,
+          start: 0,
+          duration: 1,
+          velocity: 90,
+          velocityDeviation: 0,
+          probability: 1,
+        },
+      ];
+
+      applyNotesToClip(mockClip as unknown as LiveAPI, notes);
+
+      expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 90,
+            velocity_deviation: 0,
+            probability: 1,
+          },
+          {
+            pitch: 60,
+            start_time: 2,
             duration: 1,
             velocity: 100,
             velocity_deviation: 0,
@@ -241,6 +294,7 @@ describe("code-exec-helpers", () => {
 
     it("should only remove notes when notes array is empty", () => {
       const mockClip = {
+        getProperty: vi.fn().mockReturnValue(4), // length=4 → window [-4, 8)
         call: vi.fn(),
       };
 
@@ -251,8 +305,8 @@ describe("code-exec-helpers", () => {
         "remove_notes_extended",
         0,
         128,
-        0,
-        expect.any(Number),
+        -4,
+        12,
       );
     });
   });

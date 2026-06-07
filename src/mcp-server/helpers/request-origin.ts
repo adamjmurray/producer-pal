@@ -4,9 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Check whether an Origin header value points to localhost. Used to block
- * cross-origin browser requests from proxying writes or API keys through the
- * device while still allowing same-origin and non-browser (Origin-less) clients.
+ * Check whether an Origin header value points to localhost. Used ONLY to gate
+ * cross-origin browser writes to POST /config (device settings), while still
+ * allowing same-origin and non-browser (Origin-less) clients.
+ *
+ * Intentionally NOT used to gate /mcp or /api/tools: the chat UI connects to
+ * those same-origin from the page URL, which over LAN/tunnel is a non-localhost
+ * origin, so a localhost gate there would break the documented unauthenticated
+ * remote-access feature (see the POST /mcp handler in create-express-app.ts).
  *
  * @param origin - Origin header value
  * @returns true if origin hostname is localhost/127.0.0.1/[::1]

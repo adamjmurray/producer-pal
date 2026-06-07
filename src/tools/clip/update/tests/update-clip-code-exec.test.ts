@@ -62,8 +62,9 @@ describe("updateClip - code execution", () => {
       "remove_notes_extended",
       0,
       128,
-      0,
-      1000000,
+      // Window varies with clip length; clip-notes.test.ts pins it exactly.
+      expect.any(Number),
+      expect.any(Number),
     );
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: notes.map(toLiveApiNote),
