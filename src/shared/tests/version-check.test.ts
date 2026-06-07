@@ -56,6 +56,19 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("12.0.1", "12")).toBe(false);
   });
 
+  it("treats a malformed (non-numeric) part as 0, not as equal-to-anything", () => {
+    // A part with no leading digits parses to NaN. NaN must normalize to 0 so the
+    // comparison still resolves at that position — otherwise NaN makes both `l > c`
+    // and `l < c` false, silently treating the part as equal and leaking the
+    // decision to a later part (the wrong answer).
+    // Malformed minor in `latest`: should read as 0 (< current's 5) → not newer.
+    expect(isNewerVersion("1.5.0", "1.x.9")).toBe(false);
+    // Malformed major in `current`: should read as 0 (< latest's 1) → newer.
+    expect(isNewerVersion("x.0.0", "1.0.0")).toBe(true);
+    // Empty part from a double dot reads as 0: "1..0" == "1.0.0".
+    expect(isNewerVersion("1..0", "1.0.0")).toBe(false);
+  });
+
   it("ignores beta suffixes like 12.4b7", () => {
     expect(isNewerVersion("12.4b7", "12.3.0")).toBe(false);
     expect(isNewerVersion("12.2b3", "12.3.0")).toBe(true);

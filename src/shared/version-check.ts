@@ -79,8 +79,15 @@ function parseVersionParts(version: string): number[] {
     cleaned = cleaned.slice(1);
   }
 
-  // parseInt stops at first non-numeric char, handling suffixes like "4b7"
-  return cleaned.split(".").map((part) => Number.parseInt(part, 10));
+  // parseInt stops at first non-numeric char, handling suffixes like "4b7". A
+  // part with no leading digits (e.g. "" from "1..3", or "x") parses to NaN;
+  // normalize it to 0 so every returned part is a finite number — NaN would
+  // make both `l > c` and `l < c` false and silently treat that part as equal.
+  return cleaned.split(".").map((part) => {
+    const parsed = Number.parseInt(part, 10);
+
+    return Number.isNaN(parsed) ? 0 : parsed;
+  });
 }
 
 /**
