@@ -232,6 +232,18 @@ function resolveRatchetPlan(
     typeof arg === "object" &&
     (arg.type === "nDuration" || arg.type === "barDuration");
 
+  // A bare top-level pitch literal (`ratchet(C2)`) is nonsensical as a count and
+  // would silently coerce to its MIDI number. Warn-and-skip it, mirroring the
+  // audio evaluator's pitch-as-value guard. A pitch literal nested in arithmetic
+  // is still resolved to a number below.
+  if (typeof arg === "object" && arg.type === "pitchLiteral") {
+    console.warn(
+      `pitch name "${arg.name}" isn't a valid ratchet count; use a number like ratchet(2) or a note value like ratchet(n/16). Skipping`,
+    );
+
+    return null;
+  }
+
   let value: number;
 
   try {

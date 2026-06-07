@@ -221,6 +221,29 @@ describe("note-count operations (ratchet/merge)", () => {
       warn.mockRestore();
     });
 
+    it("warns and skips a bare pitch literal instead of coercing to MIDI", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNote({ duration: 1 });
+
+      // ratchet(C2) would silently coerce to MIDI 36 pieces — reject it instead
+      applyTransforms(notes, "ratchet(C2)", 4, 4);
+
+      expect(notes).toHaveLength(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("isn't a valid ratchet count"),
+      );
+      warn.mockRestore();
+    });
+
+    it("still resolves a pitch literal nested in arithmetic to a count", () => {
+      const notes = createTestNote({ duration: 1 });
+
+      // C2 - C1 = 36 - 24 = 12 -> a usable count (nested, not bare)
+      applyTransforms(notes, "ratchet(C2 - C1)", 4, 4);
+
+      expect(notes).toHaveLength(12);
+    });
+
     it("re-derives note.index for a transform after the ratchet", () => {
       const notes = createTestNote({ start_time: 0, duration: 1, velocity: 0 });
 

@@ -220,7 +220,9 @@ argument forms differ in geometry:
   pieces, regardless of where the note sits — child duration = parent duration /
   count. Rounded to the nearest integer; a count below 2 warns and is skipped (1
   piece is a no-op). Counts above the per-note cap (64) are clamped with a
-  warning.
+  warning. A bare pitch literal (e.g. `ratchet(C2)`) is not a valid count — it
+  warns and is skipped rather than coercing to its MIDI number (a pitch literal
+  nested in arithmetic, e.g. `ratchet(C2 - C1)`, still resolves to a number).
 - **noteValue** form (a note value or `Nbar`, e.g. `ratchet(n/16)`,
   `ratchet(1bar)`): cuts the note on the ABSOLUTE grid of that size (multiples
   of the grid from bar|beat `1|1`), so the pieces line up with bar positions — a
