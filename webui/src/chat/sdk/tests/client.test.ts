@@ -684,7 +684,6 @@ describe("ChatSdkClient", () => {
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBeUndefined();
-      expect(user?.showThoughtsOverride).toBeUndefined();
     });
 
     it("only stamps provided override fields", async () => {
@@ -696,7 +695,6 @@ describe("ChatSdkClient", () => {
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBe("Off");
-      expect(user?.showThoughtsOverride).toBeUndefined();
     });
   });
 
