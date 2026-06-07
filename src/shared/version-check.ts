@@ -56,8 +56,12 @@ export function isNewerVersion(current: string, latest: string): boolean {
   const latestParts = parseVersionParts(latest);
 
   for (let i = 0; i < 3; i++) {
-    const c = currentParts[i] as number; // bounded by loop
-    const l = latestParts[i] as number; // bounded by loop
+    // A missing part is 0 (standard semver): "12.3" == "12.3.0", and "12.3" is
+    // older than "12.3.1". Defaulting to 0 — not the raw `undefined`, which made
+    // every comparison false and silently treated a missing part as equal to
+    // any value — is what makes a shorter `current` vs a longer `latest` work.
+    const c = currentParts[i] ?? 0;
+    const l = latestParts[i] ?? 0;
 
     if (l > c) return true;
     if (l < c) return false;
