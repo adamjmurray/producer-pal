@@ -82,6 +82,28 @@ describe("transport", () => {
     });
   });
 
+  it("skips a non-positive loop length (loopEnd at/before loopStart) and warns", () => {
+    // Regression (#26): loopStart and loopEnd are independent, so loopEnd before
+    // loopStart produced a negative loop_length written straight to the Live Set.
+    liveSet = setupPlaybackLiveSet({ is_playing: 0, current_song_time: 0 });
+
+    playback({
+      action: "update-arrangement",
+      loop: true,
+      loopStart: "7|1", // beat 24
+      loopEnd: "3|1", // beat 8 → length 8 - 24 = -16
+    });
+
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "loop_length",
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("loopEnd must be after loopStart"),
+    );
+  });
+
   it("should handle different time signatures", () => {
     liveSet = setupPlaybackLiveSet({
       signature_numerator: 3,
