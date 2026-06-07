@@ -39,6 +39,8 @@ import {
   melodyTransforms,
   noteOpsMerge,
   noteOpsRatchetRoll,
+  noteOpsSplit,
+  noteOpsSplitSync,
   rangeClearFirstHalf,
   rangeClearWholeBar,
   pretransformsHatFillsBaseline,
@@ -106,6 +108,8 @@ const allScenarios: EvalScenario[] = [
   rangeClearFirstHalf,
   noteOpsRatchetRoll,
   noteOpsMerge,
+  noteOpsSplit,
+  noteOpsSplitSync,
 ];
 
 export interface LoadScenariosOptions {

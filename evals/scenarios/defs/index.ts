@@ -52,6 +52,8 @@ export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quar
 export {
   noteOpsMerge,
   noteOpsRatchetRoll,
+  noteOpsSplit,
+  noteOpsSplitSync,
 } from "./clip/note-ops-roll-and-merge.ts";
 export { legatoTransforms } from "./clip/legato-transforms.ts";
 export { melodyTransforms } from "./clip/melody-transforms.ts";
