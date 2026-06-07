@@ -36,6 +36,37 @@ function createSessionClipMock(length = 8) {
   };
 }
 
+// Mock clip that returns `existingNotes` from get_notes_extended and captures
+// every note passed to add_new_notes into the returned `addedNotes` array.
+function makeNotesMockClip<T extends object = Record<string, number>>(
+  existingNotes: object[],
+  length = 4,
+): {
+  mockClip: {
+    getProperty: ReturnType<typeof vi.fn>;
+    call: ReturnType<typeof vi.fn>;
+  };
+  addedNotes: T[];
+} {
+  const addedNotes: T[] = [];
+  const mockClip = {
+    getProperty: vi.fn((prop: string) => (prop === "length" ? length : 0)),
+    call: vi.fn((method: string, ...args: unknown[]) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: existingNotes });
+      }
+
+      if (method === "add_new_notes") {
+        addedNotes.push(...(args[0] as { notes: T[] }).notes);
+      }
+
+      return "[]";
+    }),
+  };
+
+  return { mockClip, addedNotes };
+}
+
 describe("update-clip-transform-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,25 +130,7 @@ describe("update-clip-transform-helpers", () => {
         rawNote(67, 2, 102),
       ];
 
-      const addedNotes: unknown[] = [];
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "length") return 4;
-
-          return 0;
-        }),
-        call: vi.fn((method: string, ...args: unknown[]) => {
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          if (method === "add_new_notes") {
-            addedNotes.push(...(args[0] as { notes: unknown[] }).notes);
-          }
-
-          return "[]";
-        }),
-      };
+      const { mockClip, addedNotes } = makeNotesMockClip(existingNotes);
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
@@ -165,23 +178,9 @@ describe("update-clip-transform-helpers", () => {
         rawNote(60, 0, 101),
         rawNote(60, 1, 102),
       ];
-      const addedNotes: { start_time: number }[] = [];
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
-        call: vi.fn((method: string, ...args: unknown[]) => {
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          if (method === "add_new_notes") {
-            addedNotes.push(
-              ...(args[0] as { notes: { start_time: number }[] }).notes,
-            );
-          }
-
-          return "[]";
-        }),
-      };
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        start_time: number;
+      }>(existingNotes);
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
@@ -196,27 +195,10 @@ describe("update-clip-transform-helpers", () => {
 
     it("writes the expanded note list when a ratchet op runs", () => {
       const existingNotes = [rawNote(60, 0, 100), rawNote(64, 2, 101)];
-      const addedNotes: { start_time: number; duration: number }[] = [];
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
-        call: vi.fn((method: string, ...args: unknown[]) => {
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          if (method === "add_new_notes") {
-            addedNotes.push(
-              ...(
-                args[0] as {
-                  notes: { start_time: number; duration: number }[];
-                }
-              ).notes,
-            );
-          }
-
-          return "[]";
-        }),
-      };
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        start_time: number;
+        duration: number;
+      }>(existingNotes);
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
@@ -235,27 +217,10 @@ describe("update-clip-transform-helpers", () => {
 
     it("writes the collapsed note list when a merge op runs", () => {
       const existingNotes = [rawNote(60, 0, 100), rawNote(60, 1, 101)];
-      const addedNotes: { start_time: number; duration: number }[] = [];
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
-        call: vi.fn((method: string, ...args: unknown[]) => {
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          if (method === "add_new_notes") {
-            addedNotes.push(
-              ...(
-                args[0] as {
-                  notes: { start_time: number; duration: number }[];
-                }
-              ).notes,
-            );
-          }
-
-          return "[]";
-        }),
-      };
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        start_time: number;
+        duration: number;
+      }>(existingNotes);
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,

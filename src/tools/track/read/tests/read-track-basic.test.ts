@@ -44,6 +44,20 @@ function mockThisDeviceOnTrack1(): void {
   });
 }
 
+function registerEmptyReturnTrack(): void {
+  registerMockObject("return1", {
+    path: livePath.returnTrack(0),
+    type: "Track",
+    properties: {
+      has_midi_input: 0,
+      name: "Return Track",
+      clip_slots: [],
+      arrangement_clips: [],
+      devices: [],
+    },
+  });
+}
+
 function registerTrackWithSessionSlots(name: string): void {
   registerMockObject("track3", {
     path: livePath.track(2),
@@ -433,17 +447,7 @@ describe("readTrack", () => {
   });
 
   it("returns empty sessionClips for a return track when session-clips is included", () => {
-    registerMockObject("return1", {
-      path: livePath.returnTrack(0),
-      type: "Track",
-      properties: {
-        has_midi_input: 0,
-        name: "Return Track",
-        clip_slots: [],
-        arrangement_clips: [],
-        devices: [],
-      },
-    });
+    registerEmptyReturnTrack();
 
     const result = readTrack({
       trackIndex: 0,
@@ -455,17 +459,7 @@ describe("readTrack", () => {
   });
 
   it("returns empty arrangementClips for a return track when arrangement-clips is included", () => {
-    registerMockObject("return1", {
-      path: livePath.returnTrack(0),
-      type: "Track",
-      properties: {
-        has_midi_input: 0,
-        name: "Return Track",
-        clip_slots: [],
-        arrangement_clips: [],
-        devices: [],
-      },
-    });
+    registerEmptyReturnTrack();
 
     const result = readTrack({
       trackIndex: 0,

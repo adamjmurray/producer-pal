@@ -6,7 +6,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
@@ -16,6 +15,7 @@ import {
   setupDeviceMocks,
   setupDrumChainMocks,
   setupDrumPadMocks,
+  setupNestedDrumDeviceMocks,
 } from "./delete-test-helpers.ts";
 import { deleteObject } from "../delete.ts";
 
@@ -244,34 +244,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete a device nested inside a drum chain by path", () => {
-      const drumRackPath = String(livePath.track(1).device(0));
-      const chainId = "chain-1";
-      const deviceId = "nested-device";
-      const devicePath = `${String(livePath.track(1).device(0))} chains 0 devices 0`;
-      const chainPath = `${String(livePath.track(1).device(0))} chains 0`;
-
-      registerMockObject("drum-rack", {
-        path: drumRackPath,
-        type: "RackDevice",
-        properties: {
-          chains: children(chainId),
-          can_have_drum_pads: 1,
-        },
-      });
-
-      const chain = registerMockObject(chainId, {
-        path: chainPath,
-        type: "DrumChain",
-        properties: {
-          in_note: 36, // C1
-          devices: children(deviceId),
-        },
-      });
-
-      registerMockObject(deviceId, {
-        path: devicePath,
-        type: "Device",
-      });
+      const { chain, deviceId } = setupNestedDrumDeviceMocks(1);
 
       const result = deleteObject({ path: "t1/d0/pC1/c0/d0", type: "device" });
 
@@ -285,34 +258,7 @@ describe("deleteObject device deletion", () => {
     });
 
     it("should delete a device nested in a drum pad via the implicit-chain path (pC1/d0)", () => {
-      const drumRackPath = String(livePath.track(1).device(0));
-      const chainId = "chain-1";
-      const deviceId = "nested-device";
-      const devicePath = `${String(livePath.track(1).device(0))} chains 0 devices 0`;
-      const chainPath = `${String(livePath.track(1).device(0))} chains 0`;
-
-      registerMockObject("drum-rack", {
-        path: drumRackPath,
-        type: "RackDevice",
-        properties: {
-          chains: children(chainId),
-          can_have_drum_pads: 1,
-        },
-      });
-
-      const chain = registerMockObject(chainId, {
-        path: chainPath,
-        type: "DrumChain",
-        properties: {
-          in_note: 36, // C1
-          devices: children(deviceId),
-        },
-      });
-
-      registerMockObject(deviceId, {
-        path: devicePath,
-        type: "Device",
-      });
+      const { chain, deviceId } = setupNestedDrumDeviceMocks(1);
 
       // Implicit chain 0 — the form the skill recommends for clearing a pad's
       // device, and the form read-device/update-device accept.

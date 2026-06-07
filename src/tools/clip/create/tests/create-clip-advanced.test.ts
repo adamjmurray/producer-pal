@@ -25,6 +25,17 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 
+// Registers an empty clip slot (and its clip path) at track 0, the given scene.
+function registerEmptyClipSlot(sceneIndex: number): void {
+  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}`, {
+    path: livePath.track(0).clipSlot(sceneIndex),
+    properties: { has_clip: 0 },
+  });
+  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}/clip`, {
+    path: livePath.track(0).clipSlot(sceneIndex).clip(),
+  });
+}
+
 describe("createClip - advanced features", () => {
   it("should set time signature when provided", async () => {
     const { clip } = setupSessionMocks({
@@ -64,20 +75,8 @@ describe("createClip - advanced features", () => {
     setupSessionMocks({
       liveSet: { signature_numerator: 4 },
     });
-    registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: livePath.track(0).clipSlot(1),
-      properties: { has_clip: 0 },
-    });
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-    registerMockObject("live_set/tracks/0/clip_slots/2", {
-      path: livePath.track(0).clipSlot(2),
-      properties: { has_clip: 0 },
-    });
-    registerMockObject("live_set/tracks/0/clip_slots/2/clip", {
-      path: livePath.track(0).clipSlot(2).clip(),
-    });
+    registerEmptyClipSlot(1);
+    registerEmptyClipSlot(2);
 
     const singleResult = await createClip({
       slot: "0/0",
@@ -212,13 +211,7 @@ describe("createClip - advanced features", () => {
       setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
-      registerMockObject("live_set/tracks/0/clip_slots/1", {
-        path: livePath.track(0).clipSlot(1),
-        properties: { has_clip: 0 },
-      });
-      registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-        path: livePath.track(0).clipSlot(1).clip(),
-      });
+      registerEmptyClipSlot(1);
 
       const result = await createClip({
         slot: "0/0,0/1",
