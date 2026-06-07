@@ -321,6 +321,47 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
+  describe("note-count operation handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns and skips note-count operations on audio clips", () => {
+      const result = applyAudioTransform(0, 0, "ratchet(2)");
+
+      expect(result.gain).toBeNull();
+      expect(result.pitchShift).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        "Note-count operations (ratchet, merge) ignored for audio clips",
+      );
+    });
+  });
+
+  describe("modulo arithmetic", () => {
+    it("evaluates a modulo expression", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.duration % 5", {
+        clipDuration: 16,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+      });
+
+      // 16 % 5 = 1
+      expect(result.gain).toBe(1);
+    });
+
+    it("yields 0 for modulo by zero", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.duration % 0", {
+        clipDuration: 16,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+      });
+
+      expect(result.gain).toBe(0);
+    });
+  });
+
   describe("error handling", () => {
     it("returns nulls for invalid syntax", () => {
       const result = applyAudioTransform(0, 0, "gain = =");
