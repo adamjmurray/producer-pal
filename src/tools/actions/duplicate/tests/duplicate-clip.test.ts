@@ -150,6 +150,35 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
+    it("skips a silent duplicate failure (Ableton returns ['id', 0]) without a phantom clip", async () => {
+      // Regression (#21): the no-length arrangement-duplicate path pushed a
+      // phantom clip when Ableton silently failed the dup (["id", 0]), unlike its
+      // siblings in arrangement-tiling and update-clip which guard with exists().
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+
+      // Same shape as registerTrackWithArrangementDup, but the dup silently fails.
+      registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+        methods: { duplicate_clip_to_arrangement: () => ["id", 0] },
+      });
+
+      registerArrangementClip(0, 0, 8);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Failed to duplicate clip"),
+      );
+      expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
+    });
+
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),

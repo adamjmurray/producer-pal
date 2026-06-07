@@ -447,9 +447,16 @@ export async function duplicateClipToArrangement(
       ) as string;
       const newClip = LiveAPI.from(newClipResult);
 
-      newClip.setAll({ name, color });
-
-      duplicatedClips.push(getMinimalClipInfo(newClip));
+      // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
+      // clip, matching the guards in arrangement-tiling and update-clip.
+      if (newClip.exists()) {
+        newClip.setAll({ name, color });
+        duplicatedClips.push(getMinimalClipInfo(newClip));
+      } else {
+        console.warn(
+          `Failed to duplicate clip ${clip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+        );
+      }
     }
   }
 
