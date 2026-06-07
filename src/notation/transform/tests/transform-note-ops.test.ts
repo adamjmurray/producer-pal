@@ -302,6 +302,144 @@ describe("note-count operations (ratchet/merge)", () => {
       expect(notes.filter((n) => n.pitch === 60)).toHaveLength(1);
       expect(notes.filter((n) => n.pitch === 62)).toHaveLength(2);
     });
+
+    it("keeps the run end when a later note is fully contained", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 3 },
+        { pitch: 60, start_time: 1, duration: 1 }, // sits inside the first
+      ]);
+
+      applyTransforms(notes, "merge()", 4, 4);
+
+      expect(notes).toStrictEqual([
+        expect.objectContaining({ pitch: 60, start_time: 0, duration: 3 }),
+      ]);
+    });
+
+    describe("gap tolerance", () => {
+      it("merge(0) glues touching notes and splits on a gap", () => {
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 1 },
+          { pitch: 60, start_time: 1, duration: 1 }, // touches the first
+          { pitch: 60, start_time: 3, duration: 1 }, // gap from 2..3
+        ]);
+
+        applyTransforms(notes, "merge(0)", 4, 4);
+
+        expect(notes).toStrictEqual([
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2 }),
+          expect.objectContaining({ pitch: 60, start_time: 3, duration: 1 }),
+        ]);
+      });
+
+      it("merge(0) still merges overlapping notes", () => {
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 2 },
+          { pitch: 60, start_time: 1, duration: 2 }, // overlaps, ends at 3
+        ]);
+
+        applyTransforms(notes, "merge(0)", 4, 4);
+
+        expect(notes).toStrictEqual([
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 3 }),
+        ]);
+      });
+
+      it("merge(n/8) glues notes within an eighth-note gap, splits on a wider gap", () => {
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 1 }, // ends at 1
+          { pitch: 60, start_time: 1.5, duration: 1 }, // gap 0.5 (an 8th) -> merges, ends 2.5
+          { pitch: 60, start_time: 4, duration: 1 }, // gap 1.5 -> new run
+        ]);
+
+        applyTransforms(notes, "merge(n/8)", 4, 4);
+
+        expect(notes).toStrictEqual([
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2.5 }),
+          expect.objectContaining({ pitch: 60, start_time: 4, duration: 1 }),
+        ]);
+      });
+
+      it("merge(n/8) tolerance is meter-invariant (same eighth in 6/8)", () => {
+        // n/8 is 0.5 Ableton beats in any meter; a 0.5-beat gap still merges in 6/8.
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 1 }, // ends at 1
+          { pitch: 60, start_time: 1.5, duration: 0.5 }, // gap 0.5 -> merges, ends 2
+          { pitch: 60, start_time: 3, duration: 1 }, // gap 1 -> new run
+        ]);
+
+        applyTransforms(notes, "merge(n/8)", 6, 8);
+
+        expect(notes).toStrictEqual([
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2 }),
+          expect.objectContaining({ pitch: 60, start_time: 3, duration: 1 }),
+        ]);
+      });
+
+      it("warns and skips a non-zero bare-number tolerance", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 1 },
+          { pitch: 60, start_time: 3, duration: 1 },
+        ]);
+
+        applyTransforms(notes, "merge(0.25)", 4, 4);
+
+        expect(notes).toHaveLength(2); // passed through unchanged (not merged)
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining("note value"),
+        );
+        warn.mockRestore();
+      });
+
+      it("warns and skips an integer beat-count tolerance", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 1 },
+          { pitch: 60, start_time: 3, duration: 1 },
+        ]);
+
+        applyTransforms(notes, "merge(2)", 4, 4);
+
+        expect(notes).toHaveLength(2);
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining("note value"),
+        );
+        warn.mockRestore();
+      });
+
+      it("warns and skips a bar-value tolerance (Nbar not accepted)", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 1 },
+          { pitch: 60, start_time: 3, duration: 1 },
+        ]);
+
+        applyTransforms(notes, "merge(1bar)", 4, 4);
+
+        expect(notes).toHaveLength(2);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("Nbar"));
+        warn.mockRestore();
+      });
+
+      it("warns about extra arguments and uses the first", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const notes = createTestNotes([
+          { pitch: 60, start_time: 0, duration: 1 },
+          { pitch: 60, start_time: 1, duration: 1 }, // touches -> merges under merge(0)
+        ]);
+
+        applyTransforms(notes, "merge(0, n/8)", 4, 4);
+
+        expect(notes).toStrictEqual([
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 2 }),
+        ]);
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining("using the first argument"),
+        );
+        warn.mockRestore();
+      });
+    });
   });
 
   describe("meter correctness", () => {

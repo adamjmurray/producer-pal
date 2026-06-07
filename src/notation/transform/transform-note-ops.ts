@@ -53,7 +53,7 @@ export function applyNoteOp(
   const produced =
     op.name === "ratchet"
       ? ratchetNotes(matched, op, timeSigNumerator, timeSigDenominator)
-      : mergeNotes(matched);
+      : mergeNotes(matched, op, timeSigNumerator, timeSigDenominator);
 
   // Rebuild in place: passthrough + produced, re-sorted (ratchet/merge can
   // reorder relative to passthrough notes). sortNotes keeps object identity.
@@ -353,15 +353,41 @@ function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
   return children;
 }
 
+// Message for an unusable merge() gap-tolerance argument (anything other than a
+// note value or literal 0). Shown once, then the merge is skipped.
+const MERGE_TOLERANCE_SKIP_MESSAGE =
+  "merge() gap tolerance must be a note value like n/16, or 0 for touching notes (Nbar and other numbers are not accepted); skipping";
+
 /**
- * Merge matched notes: collapse all same-pitch notes into one spanning note from
- * the earliest onset to the latest offset. Dynamics (velocity/probability/
- * deviation) come from the earliest note in each pitch group. Notes of different
- * pitches are left independent (scope by pitch/time selector to narrow).
+ * Merge matched notes: collapse same-pitch notes into sustained notes. The
+ * optional gap tolerance sets how far apart (edge to edge) two same-pitch notes
+ * may sit and still merge:
+ *   - `merge()` → span ALL same-pitch matched notes into one note (the default)
+ *   - `merge(0)` → glue only touching/overlapping notes (gap <= 0)
+ *   - `merge(n/X)` → glue notes within that note-value gap; a larger gap starts
+ *     a new run
+ * Within each merged run, dynamics (velocity/probability/deviation) come from
+ * its earliest note. Different pitches stay independent (scope by selector to
+ * narrow). An unusable tolerance argument warns and the notes pass through
+ * unchanged.
  * @param matched - Notes selected by the op
- * @returns One spanning note per distinct pitch present in the selection
+ * @param op - The merge operation (may carry a gap-tolerance argument)
+ * @param numerator - Time signature numerator
+ * @param denominator - Time signature denominator
+ * @returns The merged notes (one per run within each pitch group)
  */
-function mergeNotes(matched: NoteEvent[]): NoteEvent[] {
+function mergeNotes(
+  matched: NoteEvent[],
+  op: NoteOp,
+  numerator: number,
+  denominator: number,
+): NoteEvent[] {
+  const tolerance = resolveMergeTolerance(op, numerator, denominator);
+
+  if (tolerance == null) {
+    return matched; // unusable tolerance — warn already emitted, pass through
+  }
+
   const byPitch = new Map<number, NoteEvent[]>();
 
   for (const note of matched) {
@@ -377,26 +403,101 @@ function mergeNotes(matched: NoteEvent[]): NoteEvent[] {
   const out: NoteEvent[] = [];
 
   for (const group of byPitch.values()) {
-    let earliest: NoteEvent | undefined;
-    let maxEnd = -Infinity;
+    out.push(...mergeRuns(group, tolerance));
+  }
 
-    for (const note of group) {
-      if (earliest == null || note.start_time < earliest.start_time) {
-        earliest = note;
-      }
+  return out;
+}
 
-      const end = note.start_time + note.duration;
+/**
+ * Resolve the optional merge gap-tolerance argument to an edge-to-edge gap in
+ * Ableton beats: no arg spans all (Infinity), literal `0` merges only touching/
+ * overlapping notes, and a note value becomes that many Ableton beats. Any other
+ * argument (a non-zero bare number, `Nbar`, a pitch literal, an expression)
+ * warns and returns null so the caller skips the merge.
+ * @param op - The merge operation
+ * @param numerator - Time signature numerator
+ * @param denominator - Time signature denominator
+ * @returns The gap tolerance in Ableton beats, or null to skip
+ */
+function resolveMergeTolerance(
+  op: NoteOp,
+  numerator: number,
+  denominator: number,
+): number | null {
+  if (op.args.length === 0) {
+    return Infinity; // no argument — span all (the default)
+  }
 
-      if (end > maxEnd) {
-        maxEnd = end;
-      }
+  if (op.args.length > 1) {
+    console.warn(
+      "merge() takes a single gap tolerance; using the first argument",
+    );
+  }
+
+  const arg = op.args[0];
+
+  if (typeof arg === "number") {
+    if (arg === 0) {
+      return 0; // touching/overlapping notes only
     }
 
-    // The group is non-empty by construction, so earliest is always set.
-    const base = earliest as NoteEvent;
+    console.warn(MERGE_TOLERANCE_SKIP_MESSAGE);
 
-    out.push({ ...base, duration: maxEnd - base.start_time });
+    return null;
   }
+
+  if (typeof arg === "object" && arg.type === "nDuration") {
+    // A note value is a pure constant — evaluates to musical beats, total.
+    const musicalBeats = evaluateExpression(arg, 0, numerator, denominator, {
+      start: 0,
+      end: 0,
+    });
+
+    return musicalBeats * (4 / denominator); // musical -> Ableton beats
+  }
+
+  console.warn(MERGE_TOLERANCE_SKIP_MESSAGE);
+
+  return null;
+}
+
+/**
+ * Collapse one pitch group into runs separated by gaps larger than the
+ * tolerance. Notes are taken in start-time order; each run carries its earliest
+ * note's dynamics and spans to the latest offset reached before a gap exceeds
+ * the tolerance.
+ * @param group - Same-pitch notes (one merged group, non-empty)
+ * @param tolerance - Max edge-to-edge gap (Ableton beats) that still merges;
+ *   Infinity spans the whole group, 0 merges only touching/overlapping notes
+ * @returns One sustained note per run
+ */
+function mergeRuns(group: NoteEvent[], tolerance: number): NoteEvent[] {
+  const sorted = [...group].sort((a, b) => a.start_time - b.start_time);
+  const out: NoteEvent[] = [];
+
+  // group is non-empty by construction, so index 0 is always present.
+  let runStart = sorted[0] as NoteEvent;
+  let runEnd = runStart.start_time + runStart.duration;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const note = sorted[i] as NoteEvent; // i < length, always present
+    const gap = note.start_time - runEnd;
+
+    if (gap <= tolerance) {
+      const end = note.start_time + note.duration;
+
+      if (end > runEnd) {
+        runEnd = end; // extend the run to the later offset
+      }
+    } else {
+      out.push({ ...runStart, duration: runEnd - runStart.start_time });
+      runStart = note;
+      runEnd = note.start_time + note.duration;
+    }
+  }
+
+  out.push({ ...runStart, duration: runEnd - runStart.start_time });
 
   return out;
 }

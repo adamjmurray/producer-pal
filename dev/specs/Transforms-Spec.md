@@ -40,7 +40,9 @@ pow(base, exponent); // base raised to exponent
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
 ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
-merge(); // span all same-pitch matched notes into one sustained note
+merge(); // span ALL same-pitch matched notes into one sustained note (default)
+merge(0); // glue only touching/overlapping same-pitch notes
+merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
 
 ## Parameters
@@ -241,18 +243,35 @@ ratchet(4)            // then accent within each ratchet:
 velocity -= note.index % 4 * 15
 ```
 
-### merge()
+### merge() / merge(gap)
 
-Collapses all **same-pitch** matched notes into one sustained note spanning from
-the earliest onset to the latest offset (a "span all", not a touching-only
-glue). Velocity, probability, and deviation come from the earliest note in each
-pitch group. Notes of different pitches stay independent — scope the merge with
-a pitch and/or time selector to narrow it. Takes no arguments.
+Collapses **same-pitch** matched notes into sustained notes. Velocity,
+probability, and deviation come from the earliest note in each merged run. Notes
+of different pitches stay independent — scope the merge with a pitch and/or time
+selector to narrow it.
+
+The optional **gap** argument controls how far apart (edge to edge, in beats)
+two same-pitch notes may sit and still merge:
+
+- **no argument** (`merge()`): span ALL same-pitch matched notes into one note,
+  bridging any gaps (the original behavior; the default).
+- **`merge(0)`**: glue only **touching or overlapping** notes (gap ≤ 0). A
+  literal `0` is the one non-note-value the argument accepts.
+- **note value** (`merge(n/8)`): glue same-pitch notes whose gap is within that
+  note value; a wider gap starts a new merged run. The note value is
+  meter-invariant in absolute time (an 8th is always an 8th).
+
+Any other argument — a non-zero bare number (`merge(2)`, `merge(0.25)`), a bar
+value (`merge(1bar)`), a pitch literal, or an expression — warns and the merge
+is skipped (notes pass through unchanged). A second argument warns and is
+ignored (the first is used).
 
 ```
 merge()               // span every pitch's notes across the whole clip
+merge(0)              // glue only same-pitch notes that touch or overlap
+merge(n/8)            // glue same-pitch notes no more than an 8th-note apart
 C1: merge()           // glue all the kick hits into one sustained note
-1|1-2|1: merge()      // merge same-pitch notes within bar 1 only
+1|1-2|1: merge(0)     // glue touching same-pitch notes within bar 1 only
 ```
 
 ## Waveform Behavior
