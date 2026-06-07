@@ -14,6 +14,7 @@ import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
   setArrangementDuplicateCrashWorkaround,
+  sourceOverlapsTarget,
 } from "../arrangement-tiling-workaround.ts";
 
 beforeEach(() => {
@@ -515,6 +516,45 @@ describe("clearClipAtDuplicateTarget", () => {
       expect.anything(),
     );
     expect(trackMock.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
+  });
+});
+
+describe("sourceOverlapsTarget", () => {
+  it("returns false when the crash workaround is disabled", () => {
+    setArrangementDuplicateCrashWorkaround(false);
+    setupClip("100", {
+      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 4 },
+    });
+
+    // Source [0,4] would overlap a placement at [2,6], but with the workaround
+    // off we defer to Live entirely (matches clearClipAtDuplicateTarget's no-op).
+    expect(sourceOverlapsTarget("100", 2, 4)).toBe(false);
+  });
+
+  it("returns false when the source is a session clip", () => {
+    setupClip("100", { properties: { is_arrangement_clip: 0 } });
+
+    expect(sourceOverlapsTarget("100", 0, 4)).toBe(false);
+  });
+
+  it("returns true when the source overlaps the target placement range", () => {
+    // Source [0,16] (4-bar clip); a partial tile of length 4 at position 4
+    // covers [4,8], which is inside the source — placing it would trim the source.
+    setupClip("100", {
+      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
+    });
+
+    expect(sourceOverlapsTarget("100", 4, 4)).toBe(true);
+  });
+
+  it("returns false when the placement abuts the source's end (the tiling case)", () => {
+    // Source [0,4]; tiling always starts at the source's end, so a tile at
+    // position 4 (range [4,8]) is adjacent, not overlapping — the common path.
+    setupClip("100", {
+      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 4 },
+    });
+
+    expect(sourceOverlapsTarget("100", 4, 4)).toBe(false);
   });
 });
 

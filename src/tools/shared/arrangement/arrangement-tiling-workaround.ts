@@ -131,6 +131,41 @@ export function clearClipAtDuplicateTarget(
 }
 
 /**
+ * Read-only check: would placing a clip of `targetLength` beats at
+ * `targetPosition` overlap the source clip's own current range? Used to guard
+ * paths that route through the holding area (e.g. partial tiles), where
+ * `clearClipAtDuplicateTarget` is called with the holding clip — not the source
+ * — and so would treat an overlapping source as an "other" clip and trim it.
+ *
+ * Mirrors the self-overlap geometry in `clearClipAtDuplicateTarget`, but scoped
+ * to the caller's actual placement length rather than the source's full length.
+ * Returns false (no special handling) when the workaround is disabled or the
+ * source is a session clip, matching that function's no-op conditions.
+ *
+ * @param sourceClipId - ID of the source clip being duplicated/tiled
+ * @param targetPosition - Target position in beats
+ * @param targetLength - Length of the clip being placed in beats
+ * @returns true if the source overlaps the target range (caller should skip)
+ */
+export function sourceOverlapsTarget(
+  sourceClipId: string,
+  targetPosition: number,
+  targetLength: number,
+): boolean {
+  if (!arrangementDuplicateCrashWorkaround) return false;
+
+  const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
+
+  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return false;
+
+  const sourceStart = sourceClip.getProperty("start_time") as number;
+  const sourceEnd = sourceClip.getProperty("end_time") as number;
+  const targetEnd = targetPosition + targetLength;
+
+  return sourceStart < targetEnd && sourceEnd > targetPosition;
+}
+
+/**
  * Moves a clip from the holding area to a target position.
  * Duplicates the holding clip to the target, then cleans up the holding clip.
  *
