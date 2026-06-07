@@ -25,28 +25,6 @@ export type EvalProvider =
   | "openrouter";
 
 /**
- * Config values that are orthogonal to scenarios and vary as a matrix dimension.
- * Scenario-bound config (memory, sampleFolder) is not included here.
- */
-export interface MatrixConfigValues {
-  smallModelMode?: boolean;
-  jsonOutput?: boolean;
-  tools?: string[];
-}
-
-/**
- * A named config profile for the eval matrix
- */
-export interface ConfigProfile {
-  /** Unique profile identifier (kebab-case) */
-  id: string;
-  /** Human-readable description */
-  description: string;
-  /** Config values to apply */
-  config: MatrixConfigValues;
-}
-
-/**
  * A test scenario that runs against Ableton Live
  */
 export interface EvalScenario {
@@ -84,11 +62,11 @@ export interface EvalScenario {
   /** Optional config to apply before running scenario */
   config?: ConfigOptions;
 
-  /** Capability requirements gating this scenario. When the active config
-   *  profile can't satisfy them, the scenario is SKIPPED (reported as
-   *  `skipped`, not `fail`) so e.g. small-model scores stay apples-to-apples —
-   *  the model isn't graded on capabilities it was never given. Evaluated by
-   *  `shouldSkipScenario`. */
+  /** Capability requirements gating this scenario. When the active run
+   *  environment (CLI flags — small-model mode, the `--tools` subset) can't
+   *  satisfy them, the scenario is SKIPPED (reported as `skipped`, not `fail`)
+   *  so e.g. small-model scores stay apples-to-apples — the model isn't graded
+   *  on capabilities it was never given. Evaluated by `shouldSkipScenario`. */
   requires?: ScenarioRequirements;
 
   /** Optional async setup run after the MCP session is created but before the
@@ -99,15 +77,16 @@ export interface EvalScenario {
 }
 
 /**
- * Capability requirements for a scenario. A requirement that the active config
- * profile cannot satisfy causes the scenario to be skipped (not failed).
+ * Capability requirements for a scenario. A requirement that the active run
+ * environment cannot satisfy causes the scenario to be skipped (not failed).
  */
 export interface ScenarioRequirements {
-  /** Tool names that must be available. Skipped when the profile's explicit
-   *  `tools` allow-list excludes any of them. NOTE: small-model mode excludes
-   *  no whole standard tools (only the opt-in `ppal-live-api`), so it never
-   *  trips this — its exclusion surface is params, handled by `params` below.
-   *  This field only bites a profile with an explicit `tools` allow-list. */
+  /** Tool names that must be available. Checked against the run's `--tools`
+   *  subset (short or full names accepted); skipped when the subset excludes
+   *  any of them. NOTE: small-model mode excludes no whole standard tools (only
+   *  the opt-in `ppal-live-api`), so it never trips this — its exclusion surface
+   *  is params, handled by `params` below. This field bites only when the run
+   *  restricts `--tools`. */
   tools?: string[];
 
   /** Param names the scenario depends on. Skipped under `smallModelMode` when
@@ -259,7 +238,8 @@ export interface EvalAssertionResult {
  */
 export interface EvalScenarioResult {
   scenario: EvalScenario;
-  /** Config profile used for this run (undefined means default) */
+  /** Run-environment label for this run (e.g. "default", "small-model").
+   *  See `envLabel` in run-env.ts. */
   configProfileId?: string;
   /** Resolved system instructions used for this run */
   instructions?: string;

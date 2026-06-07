@@ -4,37 +4,45 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Decide whether a scenario should be skipped under the active config profile,
+ * Decide whether a scenario should be skipped under the active run environment,
  * and build the synthetic `skipped` result for runs that are.
  *
  * A scenario declares `requires` (transforms DSL, bracket notation, specific
- * tools, a large model). When the active profile can't satisfy a requirement —
- * e.g. the small-model profile doesn't teach the transforms DSL — the scenario
- * is reported as `skipped` instead of being run and failed, so small-model
- * scores stay apples-to-apples.
+ * tools, a small-model-excluded param, a large model). When the run environment
+ * can't satisfy a requirement — e.g. small-model mode doesn't teach the
+ * transforms DSL, or the `--tools` subset omits a needed tool — the scenario is
+ * reported as `skipped` instead of being run and failed, so scores stay
+ * apples-to-apples.
  */
 
 import { SMALL_MODEL_EXCLUDED_PARAMS } from "#src/mcp-server/create-mcp-server.ts";
-import { type ConfigProfile, type EvalScenario } from "../../types.ts";
+import { toFullToolName } from "../../run-env/run-env.ts";
+import { type EvalScenario } from "../../types.ts";
 import { type JsonEvalResult } from "./types.ts";
 
+/** The slice of the run environment that gates scenario requirements. */
+interface SkipEnv {
+  smallModelMode: boolean;
+  /** Full tool names available this run (the resolved `--tools` subset). */
+  tools: string[];
+}
+
 /**
- * Decide whether a scenario should be skipped under the given config profile.
+ * Decide whether a scenario should be skipped under the given run environment.
  *
  * @param scenario - The scenario to check
- * @param profile - The active config profile
+ * @param env - The active run environment (small-model mode + tool subset)
  * @returns A human-readable skip reason, or null if the scenario should run
  */
 export function shouldSkipScenario(
   scenario: EvalScenario,
-  profile: ConfigProfile,
+  env: SkipEnv,
 ): string | null {
   const req = scenario.requires;
 
   if (!req) return null;
 
-  const config = profile.config;
-  const smallModel = config.smallModelMode === true;
+  const smallModel = env.smallModelMode;
 
   if (req.transforms && smallModel) {
     return "requires the transforms DSL (not taught in small-model/basic skills)";
@@ -58,15 +66,17 @@ export function shouldSkipScenario(
     }
   }
 
-  // Small-model mode excludes no whole standard tools, so only an explicit
-  // profile tool allow-list is consulted here (the param surface is handled
-  // by `requires.params` above). Today only the `default` profile sets `tools`.
-  if (req.tools && config.tools) {
-    const allowed = config.tools;
-    const missing = req.tools.filter((tool) => !allowed.includes(tool));
+  // Revived: checked against the run's `--tools` subset (both sides resolved to
+  // full names). Bites only when the operator restricts `--tools` below the
+  // required set. Small-model mode excludes no whole standard tools, so it never
+  // trips this — its exclusion surface is params, handled above.
+  if (req.tools) {
+    const missing = req.tools
+      .map(toFullToolName)
+      .filter((tool) => !env.tools.includes(tool));
 
     if (missing.length > 0) {
-      return `profile excludes required tool(s): ${missing.join(", ")}`;
+      return `run's --tools subset excludes required tool(s): ${missing.join(", ")}`;
     }
   }
 
@@ -79,7 +89,7 @@ export function shouldSkipScenario(
  * @param scenario - The skipped scenario
  * @param runId - Unique run identifier
  * @param model - Model key (e.g. "google/gemini-3.5-flash")
- * @param configProfileId - Active config profile ID
+ * @param configProfileId - Run-environment label (see `envLabel`)
  * @param reason - Why the scenario was skipped
  * @returns A JsonEvalResult with `result: "skipped"`
  */

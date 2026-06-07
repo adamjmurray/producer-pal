@@ -10,10 +10,10 @@
 import { type InspectColor, styleText } from "node:util";
 import { pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { type ConfigProfile } from "../types.ts";
 import { type JsonEvalResult } from "./json-results/types.ts";
 
-/** A composite column in the results table (model + config) */
+/** A column in the results table (one per model). `configId` is the run-env
+ *  label used to look up the cell's results. */
 interface ColumnKey {
   modelKey: string;
   configId: string;
@@ -27,19 +27,19 @@ export type ResultsByScenario = Map<
 >;
 
 /**
- * Print results as a formatted table with composite model/config columns.
- * When a single config profile is used, column labels show model only.
+ * Print results as a formatted table, one column per model. Each run uses a
+ * single run environment, so column labels show the model only.
  *
  * @param resultsByScenario - 3D results map
  * @param modelSpecs - All model specs tested
- * @param configProfiles - All config profiles tested
+ * @param label - The run-environment label (see `envLabel`)
  */
 export function printResultsTable(
   resultsByScenario: ResultsByScenario,
   modelSpecs: ModelSpec[],
-  configProfiles: ConfigProfile[],
+  label: string,
 ): void {
-  const columns = buildColumnKeys(modelSpecs, configProfiles);
+  const columns = buildColumnKeys(modelSpecs, label);
   const scenarioIds = [...resultsByScenario.keys()];
 
   // Calculate column widths
@@ -101,33 +101,22 @@ export function printResultsTable(
 }
 
 /**
- * Build composite column keys from model specs and config profiles.
- * Single config: labels are model-only. Multiple configs: "model (config)".
+ * Build one column key per model. Each run uses a single run environment, so
+ * the column label is the model key and the cell lookup is keyed by the
+ * run-environment label.
  *
  * @param modelSpecs - Model specs
- * @param configProfiles - Config profiles
+ * @param label - The run-environment label (see `envLabel`)
  * @returns Array of column keys
  */
-function buildColumnKeys(
-  modelSpecs: ModelSpec[],
-  configProfiles: ConfigProfile[],
-): ColumnKey[] {
-  const singleConfig = configProfiles.length === 1;
-  const columns: ColumnKey[] = [];
-
-  for (const spec of modelSpecs) {
+function buildColumnKeys(modelSpecs: ModelSpec[], label: string): ColumnKey[] {
+  return modelSpecs.map((spec) => {
     const modelKey = spec.model
       ? `${spec.provider}/${spec.model}`
       : spec.provider;
 
-    for (const profile of configProfiles) {
-      const label = singleConfig ? modelKey : `${modelKey} (${profile.id})`;
-
-      columns.push({ modelKey, configId: profile.id, label });
-    }
-  }
-
-  return columns;
+    return { modelKey, configId: label, label: modelKey };
+  });
 }
 
 /**

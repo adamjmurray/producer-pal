@@ -10,10 +10,12 @@
  *
  * In small-model mode `transforms` is excluded from update-clip but
  * `preTransforms` is KEPT, with a shorthand-only description (`1|1-2|1: v0`
- * clears a region, `v0` clears all, `C1: C4` remaps a drum lane). These
- * scenarios run with `config.smallModelMode = true` and measure whether a
- * model under the reduced schema reaches for the preTransforms shorthand
- * rather than contaminating the `notes` arg with clear/remap intent.
+ * clears a region, `v0` clears all, `C1: C4` remaps a drum lane). Run these
+ * under the `--small-model` run environment to measure whether a model under
+ * the reduced schema reaches for the preTransforms shorthand rather than
+ * contaminating the `notes` arg with clear/remap intent. (Run without
+ * `--small-model`, they exercise the full schema instead — the classifier still
+ * recognizes the equivalent `transforms`-param edit; see `transforms-direct`.)
  *
  * The cross-contamination failure (both directions): putting the *clear* into
  * `notes` (e.g. emitting `v0` notes alongside new content) instead of
@@ -43,7 +45,6 @@ import {
 } from "../clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
-const SLM_CONFIG = { smallModelMode: true };
 
 type SlmPath =
   | "pretransforms-shorthand"
@@ -177,7 +178,6 @@ function buildSlmScenario(spec: {
     description: spec.description,
     kind: "capability",
     liveSet: LIVE_SET,
-    config: SLM_CONFIG,
 
     messages: [MSG_CONNECT, READ_DRUM_NOTES, spec.editInstruction],
 

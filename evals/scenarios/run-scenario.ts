@@ -26,6 +26,7 @@ import {
 import { isQuietMode } from "./helpers/output-config.ts";
 import { maybeInjectReflection } from "./helpers/self-reflection.ts";
 import { openLiveSet } from "./open-live-set.ts";
+import { type RunEnv } from "./run-env/run-env.ts";
 import {
   computeTotalUsage,
   mergeConfigs,
@@ -35,7 +36,6 @@ import {
   validateConfig,
 } from "./run-scenario-helpers.ts";
 import {
-  type ConfigProfile,
   type EvalScenario,
   type EvalScenarioResult,
   type EvalTurnResult,
@@ -54,7 +54,10 @@ export interface RunScenarioOptions {
   model?: string;
   skipLiveSetOpen?: boolean;
   judgeOverride?: JudgeOverride;
-  configProfile?: ConfigProfile;
+  /** The active run environment (CLI-driven), applied via setConfig. */
+  runEnv: RunEnv;
+  /** Label for the run environment (see `envLabel`), used in output/results. */
+  envLabel: string;
   usage?: boolean;
   skipJudge?: boolean;
 }
@@ -91,22 +94,16 @@ export async function runScenario(
       await openLiveSet(liveSetPath);
     }
 
-    // 2. Apply merged config (scenario-bound + profile overrides)
-    const mergedConfig = mergeConfigs(
-      scenario.config,
-      options.configProfile?.config,
-    );
+    // 2. Apply the run environment (CLI-driven) merged with scenario-bound config
+    const mergedConfig = mergeConfigs(scenario.config, options.runEnv);
 
-    if (mergedConfig) {
-      validateConfig(mergedConfig);
-      await setConfig(mergedConfig);
-    }
+    validateConfig(mergedConfig);
+    await setConfig(mergedConfig);
 
     // 3. Create evaluation session
     const effectiveModel = model ?? getDefaultModel(provider);
-    const profileId = options.configProfile?.id;
 
-    logScenarioHeader(scenario, provider, effectiveModel, profileId);
+    logScenarioHeader(scenario, provider, effectiveModel, options.envLabel);
 
     session = await createEvalSession({
       provider,
@@ -146,7 +143,7 @@ export async function runScenario(
 
     return {
       scenario,
-      configProfileId: profileId,
+      configProfileId: options.envLabel,
       instructions,
       turns,
       assertions: assertionResults,
@@ -156,7 +153,7 @@ export async function runScenario(
   } catch (error) {
     return {
       scenario,
-      configProfileId: options.configProfile?.id,
+      configProfileId: options.envLabel,
       instructions,
       turns,
       assertions: [],
@@ -178,18 +175,18 @@ export async function runScenario(
 }
 
 /**
- * Print the scenario header, plus optional config/instructions context lines.
+ * Print the scenario header, plus optional environment/instructions context lines.
  *
  * @param scenario - The scenario being run
  * @param provider - LLM provider being used
  * @param effectiveModel - Resolved model id
- * @param profileId - Active config profile id (undefined/"default" is hidden)
+ * @param label - Active run-environment label ("default" is hidden)
  */
 function logScenarioHeader(
   scenario: EvalScenario,
   provider: EvalProvider,
   effectiveModel: string,
-  profileId: string | undefined,
+  label: string,
 ): void {
   console.log(
     formatScenarioHeader(
@@ -200,8 +197,8 @@ function logScenarioHeader(
     ),
   );
 
-  if (profileId && profileId !== "default") {
-    console.log(`${orange("|")} ${styleText("gray", "Config:")} ${profileId}`);
+  if (label !== "default") {
+    console.log(`${orange("|")} ${styleText("gray", "Environment:")} ${label}`);
   }
 
   const instructionsLabel =

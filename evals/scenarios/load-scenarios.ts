@@ -8,7 +8,6 @@
  */
 
 import { styleText } from "node:util";
-import { listConfigProfileIds } from "./config-profiles.ts";
 import {
   arpeggioBracketIdiom,
   arpeggioMixedDurations,
@@ -197,7 +196,7 @@ function requirementLabels(scenario: EvalScenario): string[] {
 }
 
 /**
- * Print available scenarios and config profiles.
+ * Print available scenarios.
  */
 export function printList(): void {
   console.log("Available scenarios:");
@@ -210,11 +209,5 @@ export function printList(): void {
         : "";
 
     console.log(`  - ${id} ${kindLabel}${requiresLabel}`);
-  }
-
-  console.log("\nAvailable config profiles:");
-
-  for (const id of listConfigProfileIds()) {
-    console.log(`  - ${id}`);
   }
 }

@@ -25,7 +25,7 @@ export interface JsonEvalResult {
   kind?: "regression" | "capability";
   /** Model used: "provider/model" */
   model: string;
-  /** Config profile ID */
+  /** Run-environment label (e.g. "default", "small-model"). See `envLabel`. */
   configProfileId: string;
   /** System instructions used (undefined = none) */
   instructions?: string;
@@ -34,7 +34,7 @@ export interface JsonEvalResult {
   /** Total number of trials (present when using -r flag) */
   totalTrials?: number;
   /** Overall result. `skipped` means the scenario's `requires` weren't
-   *  satisfied by the active config profile, so it never ran (kept out of
+   *  satisfied by the active run environment, so it never ran (kept out of
    *  pass/fail counts and score averages). */
   result: "pass" | "fail" | "skipped";
   /** Why the scenario was skipped (present only when `result` is `skipped`) */

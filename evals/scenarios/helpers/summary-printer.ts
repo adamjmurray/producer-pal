@@ -17,7 +17,6 @@ import {
   efficiencyColor,
 } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { type ConfigProfile } from "../types.ts";
 import { type JsonEvalResult } from "./json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
 import { buildMultiTrialParts, formatParts } from "./trial-helpers.ts";
@@ -27,16 +26,16 @@ import { buildMultiTrialParts, formatParts } from "./trial-helpers.ts";
  *
  * @param resultsByScenario - 3D results map
  * @param modelSpecs - All model specs tested
- * @param configProfiles - All config profiles tested
+ * @param label - The run-environment label (see `envLabel`)
  */
 export function printSummary(
   resultsByScenario: ResultsByScenario,
   modelSpecs: ModelSpec[],
-  configProfiles: ConfigProfile[],
+  label: string,
 ): void {
-  // Use table for multi-model or multi-config runs
-  if (modelSpecs.length > 1 || configProfiles.length > 1) {
-    printResultsTable(resultsByScenario, modelSpecs, configProfiles);
+  // Use the table for multi-model runs (a single run environment per run).
+  if (modelSpecs.length > 1) {
+    printResultsTable(resultsByScenario, modelSpecs, label);
 
     return;
   }

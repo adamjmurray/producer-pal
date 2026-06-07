@@ -21,11 +21,11 @@ import {
   type CheckSummary,
 } from "./assertions/index.ts";
 import { assertionLabel } from "./helpers/json-results/assertion-label.ts";
+import { type RunEnv } from "./run-env/run-env.ts";
 import {
   type EvalAssertion,
   type EvalAssertionResult,
   type EvalTurnResult,
-  type MatrixConfigValues,
 } from "./types.ts";
 
 const LIVE_SETS_DIR = "evals/live-sets";
@@ -81,20 +81,26 @@ export function toCheckSummaries(
 }
 
 /**
- * Merge scenario-bound config with matrix profile config.
- * Profile values override scenario values for any overlapping keys.
+ * Build the config POSTed to the server for a scenario run. The run environment
+ * (CLI flags) is authoritative for its four keys; the scenario still contributes
+ * its bound config (memoryContent, sampleFolder). This mirrors the product: the
+ * operator's settings panel wins, the conversation supplies its own context.
  *
- * @param scenarioConfig - Scenario-bound config (memory, sampleFolder)
- * @param profileConfig - Matrix profile config (smallModelMode, jsonOutput, tools)
- * @returns Merged config, or undefined if both inputs are empty
+ * @param scenarioConfig - Scenario-bound config (memoryContent, sampleFolder)
+ * @param runEnv - The active run environment (CLI-driven)
+ * @returns The merged config to send to the server
  */
 export function mergeConfigs(
-  scenarioConfig?: ConfigOptions,
-  profileConfig?: MatrixConfigValues,
-): ConfigOptions | undefined {
-  if (!scenarioConfig && !profileConfig) return undefined;
-
-  return { ...scenarioConfig, ...profileConfig };
+  scenarioConfig: ConfigOptions | undefined,
+  runEnv: RunEnv,
+): ConfigOptions {
+  return {
+    ...scenarioConfig,
+    smallModelMode: runEnv.smallModelMode,
+    jsonOutput: runEnv.jsonOutput,
+    tools: runEnv.tools,
+    liveApiEnabled: runEnv.liveApiEnabled,
+  };
 }
 
 /**
