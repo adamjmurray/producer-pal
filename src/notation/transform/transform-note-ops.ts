@@ -7,16 +7,18 @@ import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import {
+  GRID_EPSILON,
+  MAX_NOTE_PIECES,
+  splitNoteAtCuts,
+  splitNotes,
+} from "./helpers/note-cut-helpers.ts";
 import { evaluateExpression } from "./helpers/transform-evaluator-helpers.ts";
 import { noteInTimeRange } from "./helpers/transform-time-range-helpers.ts";
 import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
 
-// Per-note ceiling on ratchet pieces — bounds note explosion. A roll of more
-// than this is well past any musical use; counts above it are clamped + warned.
-const MAX_RATCHET_COUNT = 64;
-
 /**
- * Apply a note-count operation (ratchet/merge) to the note list IN PLACE.
+ * Apply a note-count operation (ratchet/split/merge) to the note list IN PLACE.
  *
  * Notes outside the op's selector pass through unchanged; matched notes are
  * replaced by the op's output and the whole list is re-sorted. The caller holds
@@ -51,9 +53,11 @@ export function applyNoteOp(
   }
 
   const produced =
-    op.name === "ratchet"
-      ? ratchetNotes(matched, op, timeSigNumerator, timeSigDenominator)
-      : mergeNotes(matched, op, timeSigNumerator, timeSigDenominator);
+    op.name === "split"
+      ? splitNotes(matched, op, timeSigDenominator)
+      : op.name === "ratchet"
+        ? ratchetNotes(matched, op, timeSigNumerator, timeSigDenominator)
+        : mergeNotes(matched, op, timeSigNumerator, timeSigDenominator);
 
   // Rebuild in place: passthrough + produced, re-sorted (ratchet/merge can
   // reorder relative to passthrough notes). sortNotes keeps object identity.
@@ -129,7 +133,8 @@ function ratchetNotes(
   numerator: number,
   denominator: number,
 ): NoteEvent[] {
-  const arg = op.args[0];
+  // ratchet args are always expressions (bar|beat points only reach `split`).
+  const arg = op.args[0] as ExpressionNode | undefined;
 
   if (op.args.length === 0 || arg == null) {
     console.warn(
@@ -174,8 +179,8 @@ function ratchetNotes(
         continue;
       }
 
-      if (cuts.length + 1 > MAX_RATCHET_COUNT) {
-        cuts.length = MAX_RATCHET_COUNT - 1; // keep pieces <= the cap
+      if (cuts.length + 1 > MAX_NOTE_PIECES) {
+        cuts.length = MAX_NOTE_PIECES - 1; // keep pieces <= the cap
         clamped++;
       }
 
@@ -185,8 +190,8 @@ function ratchetNotes(
 
     let count = plan.count; // count form: always >= 2 (resolveRatchetPlan gate)
 
-    if (count > MAX_RATCHET_COUNT) {
-      count = MAX_RATCHET_COUNT;
+    if (count > MAX_NOTE_PIECES) {
+      count = MAX_NOTE_PIECES;
       clamped++;
     }
 
@@ -201,7 +206,7 @@ function ratchetNotes(
 
   if (clamped > 0) {
     console.warn(
-      `ratchet: ${clamped} note(s) clamped to the max of ${MAX_RATCHET_COUNT} pieces`,
+      `ratchet: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }
 
@@ -312,9 +317,6 @@ function splitNoteEqually(note: NoteEvent, count: number): NoteEvent[] {
   return children;
 }
 
-// Floating-point slack for grid-line comparisons (one part in a billion beats).
-const GRID_EPSILON = 1e-9;
-
 /**
  * Absolute grid-line positions strictly inside the open interval (start, end).
  * Lines are multiples of `grid` measured from 0 (the clip's bar|beat origin), so
@@ -336,33 +338,6 @@ function gridCutsWithin(start: number, end: number, grid: number): number[] {
   }
 
   return cuts;
-}
-
-/**
- * Split a note at the given absolute cut positions into end-to-end pieces, each
- * inheriting the parent's pitch/velocity/probability/deviation. The boundaries
- * run [start, ...cuts, end], so end pieces may be partial slivers.
- * @param note - Note to divide (must have at least one cut)
- * @param cuts - Interior cut positions, ascending
- * @returns The child notes, in time order
- */
-function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
-  const boundaries = [
-    note.start_time,
-    ...cuts,
-    note.start_time + note.duration,
-  ];
-  const children: NoteEvent[] = [];
-
-  for (let k = 0; k < boundaries.length - 1; k++) {
-    // k is bounded by boundaries.length - 1, so both indices are in range.
-    const from = boundaries[k] as number;
-    const to = boundaries[k + 1] as number;
-
-    children.push({ ...note, start_time: from, duration: to - from });
-  }
-
-  return children;
 }
 
 // Message for an unusable merge() gap-tolerance argument (anything other than a
@@ -447,7 +422,8 @@ function resolveMergeTolerance(
     );
   }
 
-  const arg = op.args[0];
+  // merge args are always expressions (bar|beat points only reach `split`).
+  const arg = op.args[0] as ExpressionNode;
 
   if (typeof arg === "number") {
     if (arg === 0) {

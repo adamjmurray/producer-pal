@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "#src/notation/transform/parser/transform-parser.ts";
 
-describe("Transform Parser - note-count operations (ratchet/merge)", () => {
+describe("Transform Parser - note-count operations (ratchet/split/merge)", () => {
   describe("ratchet", () => {
     it("parses a bare count", () => {
       expect(parse("ratchet(2)")).toStrictEqual([
@@ -77,6 +77,60 @@ describe("Transform Parser - note-count operations (ratchet/merge)", () => {
     });
   });
 
+  describe("split", () => {
+    it("parses one bar|beat position as absolute musical beats", () => {
+      expect(parse("split(2|1)")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          kind: "noteOp",
+          name: "split",
+          args: [{ type: "barBeatPoint", musicalBeats: 4 }],
+        },
+      ]);
+    });
+
+    it("parses a comma-separated list of positions", () => {
+      const result = parse("split(2|1, 2|3, 3|2)");
+
+      expect(result[0]).toMatchObject({
+        kind: "noteOp",
+        name: "split",
+        args: [
+          { type: "barBeatPoint", musicalBeats: 4 },
+          { type: "barBeatPoint", musicalBeats: 6 },
+          { type: "barBeatPoint", musicalBeats: 9 },
+        ],
+      });
+    });
+
+    it("folds a decimal beat and a ±n offset into the position", () => {
+      const result = parse("split(1|1.5, 2|3+n/8)");
+
+      expect(result[0]).toMatchObject({
+        kind: "noteOp",
+        name: "split",
+        args: [
+          { type: "barBeatPoint", musicalBeats: 0.5 },
+          { type: "barBeatPoint", musicalBeats: 6.5 },
+        ],
+      });
+    });
+
+    it("uses the meter's beats-per-bar when resolving positions", () => {
+      const result = parse("split(2|1)", { beatsPerBar: 3 });
+
+      expect(result[0]).toMatchObject({
+        name: "split",
+        args: [{ type: "barBeatPoint", musicalBeats: 3 }],
+      });
+    });
+
+    it("rejects a 0 beat with the 1-indexed steer", () => {
+      expect(() => parse("split(2|0)")).toThrow(/beats are 1-indexed/);
+    });
+  });
+
   describe("selectors", () => {
     it("applies a pitch range selector", () => {
       const result = parse("C3-C5: ratchet(4)");
@@ -138,6 +192,12 @@ describe("Transform Parser - note-count operations (ratchet/merge)", () => {
     it("rejects merge() used as a value", () => {
       expect(() => parse("velocity = merge()")).toThrow(
         /merge\(\) is a note-count operation, not a value/,
+      );
+    });
+
+    it("rejects split() used as a value", () => {
+      expect(() => parse("velocity = split(2|1)")).toThrow(
+        /split\(\) is a note-count operation, not a value/,
       );
     });
 

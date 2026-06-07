@@ -101,19 +101,42 @@ statement "statement"
 // Note-count operations: statements that change how many notes exist, rather
 // than assigning a value to a parameter. They reuse the `selector:` prefix above
 // to scope which notes they touch (no selector = all notes).
-//   ratchet(N)     — divide each matched note into N equal pieces (a roll)
-//   ratchet(n/16)  — cut each matched note on the absolute 16th-note grid
-//   merge()        — span all same-pitch matched notes into one sustained note
-// ratchet/merge are NOT expression functions; using one as a value raises a
-// targeted error (see badNoteOpInExpression).
+//   ratchet(N)        — divide each matched note into N equal pieces (a roll)
+//   ratchet(n/16)     — cut each matched note on the absolute 16th-note grid
+//   split(2|1, 2|3)   — cut each matched note at explicit clip bar|beat positions
+//   merge()           — span all same-pitch matched notes into one sustained note
+// These are NOT expression functions; using one as a value raises a targeted
+// error (see badNoteOpInExpression). `split` takes a list of bar|beat positions
+// (not expressions), so it has its own rule rather than sharing argumentList.
 noteOp "note-count operation"
-  = name:noteOpName "(" _ args:argumentList? _ ")" {
-    return { kind: "noteOp", name, args: args || [] };
-  }
+  = "split" "(" _ points:barBeatPointList? _ ")" {
+      return { kind: "noteOp", name: "split", args: points || [] };
+    }
+  / name:noteOpName "(" _ args:argumentList? _ ")" {
+      return { kind: "noteOp", name, args: args || [] };
+    }
 
 noteOpName
   = "ratchet" { return "ratchet"; }
   / "merge" { return "merge"; }
+
+// A comma-separated list of clip-relative bar|beat cut positions for `split`.
+barBeatPointList
+  = head:barBeatPoint tail:(_ "," _ barBeatPoint)* {
+    return [head, ...tail.map(t => t[3])];
+  }
+
+// A single bar|beat position (same dialect as a timeRange bound), resolved to
+// absolute musical beats from the clip's `1|1` origin. `beatValue` is 1-indexed
+// and already folds in any `±n` note-value offset (in musical beats), so the
+// position is linear: (bar - 1) * beatsPerBar + (beat - 1). A pulled offset may
+// land below beat 1 (negative musical beats, before the clip start); that simply
+// falls outside every note at apply time. Consumed by `split` only.
+barBeatPoint "bar|beat position"
+  = bar:oneOrMoreInt "|" beat:beatValue {
+    const beatsPerBar = options.beatsPerBar ?? 4;
+    return { type: "barBeatPoint", musicalBeats: (bar - 1) * beatsPerBar + (beat - 1) };
+  }
 
 // The right-hand side of an assignment, after any optional range selector.
 // Full form: `parameter operator expression`. Shorthand: bar|beat-style tokens
@@ -401,8 +424,8 @@ primary
 // (e.g. `velocity = ratchet(2)`). A valid bare statement reaches the noteOp rule
 // first, so this never fires on correct usage.
 badNoteOpInExpression
-  = name:("ratchet" / "merge") _ "(" {
-    const example = name === "ratchet" ? "ratchet(2)" : "merge()";
+  = name:("ratchet" / "merge" / "split") _ "(" {
+    const example = name === "ratchet" ? "ratchet(2)" : name === "split" ? "split(2|1)" : "merge()";
     throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
   }
 

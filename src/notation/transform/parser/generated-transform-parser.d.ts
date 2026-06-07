@@ -70,6 +70,13 @@ export type ExpressionNode =
   | BarDurationNode
   | PitchLiteralNode;
 
+/** A clip-relative bar|beat cut position for `split`, resolved by the parser to
+ * absolute musical beats from the clip's `1|1` origin. */
+export interface BarBeatPointNode {
+  type: "barBeatPoint";
+  musicalBeats: number;
+}
+
 /** Pitch range filter */
 export interface PitchRange {
   startPitch: number;
@@ -98,16 +105,17 @@ export interface TransformAssignment {
 }
 
 /**
- * Note-count operation produced by the parser (`ratchet(...)`, `merge()`).
- * Unlike an assignment, this changes how many notes exist rather than writing a
- * value to a parameter. The `kind` discriminant distinguishes it from a
- * TransformAssignment (which has no `kind` field). The optional selector
- * (pitchRange/timeRange) scopes which notes the op touches.
+ * Note-count operation produced by the parser (`ratchet(...)`, `split(...)`,
+ * `merge()`). Unlike an assignment, this changes how many notes exist rather
+ * than writing a value to a parameter. The `kind` discriminant distinguishes it
+ * from a TransformAssignment (which has no `kind` field). The optional selector
+ * (pitchRange/timeRange) scopes which notes the op touches. `ratchet`/`merge`
+ * carry expression args; `split` carries `BarBeatPointNode` cut positions.
  */
 export interface NoteOp {
   kind: "noteOp";
-  name: "ratchet" | "merge";
-  args: ExpressionNode[];
+  name: "ratchet" | "merge" | "split";
+  args: (ExpressionNode | BarBeatPointNode)[];
   pitchRange?: PitchRange;
   timeRange?: TimeRange;
 }

@@ -40,6 +40,7 @@ pow(base, exponent); // base raised to exponent
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
 ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
+split(barBeat, ...); // cut each matched note at explicit clip-relative bar|beat positions (e.g. split(2|1, 2|3))
 merge(); // span ALL same-pitch matched notes into one sustained note (default)
 merge(0); // glue only touching/overlapping same-pitch notes
 merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
@@ -243,6 +244,43 @@ C1: ratchet(4)        // ratchet only the kick (C1)
 2|*: ratchet(3)       // triplet-roll every note in bar 2
 ratchet(4)            // then accent within each ratchet:
 velocity -= note.index % 4 * 15
+```
+
+### split(barBeat, ...)
+
+Cuts each matched note at one or more **explicit, possibly unequal** clip
+positions, given as bar|beat tokens. This is the free-form companion to the
+`ratchet(noteValue)` grid form: instead of regularly spaced cut lines, you name
+the exact positions. Each child inherits the parent's pitch, velocity,
+probability, and deviation.
+
+- Positions are **clip-relative** — measured from the clip's `1|1` origin (the
+  same coordinate space as `ratchet`'s grid and a `selector:` time range), not
+  relative to each note. A single position subdivides every matched note it
+  falls inside, so one `split` can cut notes in different bars at once.
+- Each position is the same dialect as a time-range bound: a 1-based bar|beat
+  with an optional decimal sub-beat (`1|1.5`) or `±n` note-value offset
+  (`2|3+n/8`). It is **meter-aware** — `2|1` resolves through the clip's
+  beats-per-bar.
+- A position only cuts a note when it falls **strictly inside** that note's
+  span; a position on a note's own onset/offset is a boundary, not a cut. A note
+  containing none of the positions is left unchanged (with a warning).
+- Positions are de-duplicated, so a repeated position never makes a zero-width
+  sliver. The per-note piece cap (64) still applies.
+- Zero/negative-duration notes are left unchanged (and are removed later by the
+  standard zero-duration deletion sweep). Calling `split()` with no positions
+  warns and is skipped.
+
+> Positions are clip-relative even for arrangement clips. Aligning them to the
+> arrangement timeline instead is tracked as a follow-up (arrangement-synced
+> split).
+
+```
+split(2|1)            // cut every note that spans bar 2's downbeat
+split(2|1, 2|3, 3|2)  // cut at three explicit (unequal) clip positions
+split(1|1.5)          // cut on the off-beat (an 8th past the downbeat)
+split(2|3+n/8)        // an off-grid cut, an 8th-note past beat 3 — uses the ±n offset dialect
+C1: split(2|2, 2|4)   // split only the kick, at two positions in bar 2
 ```
 
 ### merge() / merge(gap)
