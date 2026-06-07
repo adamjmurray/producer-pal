@@ -16,6 +16,12 @@ interface UseCompactionParams<
   TConfig,
 > {
   clientRef: { current: TClient | null };
+  /**
+   * Bootstraps a client from pending history when compaction is requested on a
+   * restored-but-not-yet-sent conversation (no client yet). Optional: callers
+   * without restore support can omit it.
+   */
+  bootstrapClientRef?: { current: (() => Promise<void>) | null };
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   autoSaveRef?: { current: (() => void) | null };
   messages: UIMessage[];
@@ -25,6 +31,12 @@ interface UseCompactionParams<
 
 interface UseCompactionReturn {
   isCompacting: boolean;
+  /**
+   * Ref mirror of isCompacting, set synchronously at the start/end of compact().
+   * Lets sibling handlers (e.g. handleSend) guard against the send-during-
+   * compaction race without waiting for a state-driven re-render.
+   */
+  isCompactingRef: { current: boolean };
   canUndoCompaction: boolean;
   compact: (mergedMessageIndex: number) => Promise<void>;
   undoCompaction: () => void;
@@ -39,6 +51,7 @@ interface UseCompactionReturn {
  * that has been sent at least once this session).
  * @param params - Compaction inputs from useChat
  * @param params.clientRef - Ref to the active chat client
+ * @param params.bootstrapClientRef - Ref to a callback that creates a client from pending history
  * @param params.adapter - Chat adapter (formats messages, builds the summary message)
  * @param params.autoSaveRef - Ref to the conversation auto-save callback
  * @param params.messages - Current UI messages (used to resolve the cut point)
@@ -52,6 +65,7 @@ export function useCompaction<
   TConfig,
 >({
   clientRef,
+  bootstrapClientRef,
   adapter,
   autoSaveRef,
   messages,
@@ -59,6 +73,8 @@ export function useCompaction<
   setMessages,
 }: UseCompactionParams<TClient, TMessage, TConfig>): UseCompactionReturn {
   const [isCompacting, setIsCompacting] = useState(false);
+  // Synchronous mirror of isCompacting for cross-handler race guards.
+  const isCompactingRef = useRef(false);
   const [canUndoCompaction, setCanUndoCompaction] = useState(false);
   const undoRef = useRef<TMessage[] | null>(null);
 
@@ -76,14 +92,23 @@ export function useCompaction<
     async (mergedMessageIndex: number) => {
       if (isCompacting || isAssistantResponding) return;
 
-      const client = clientRef.current;
       const targetMessage = messages[mergedMessageIndex];
 
-      if (!client?.summarize || !targetMessage) return;
+      if (!targetMessage) return;
 
+      isCompactingRef.current = true;
       setIsCompacting(true);
 
       try {
+        // A restored-but-not-yet-sent conversation has no client yet; bootstrap
+        // one from its pending history so Compact works instead of no-opping.
+        // A bootstrap failure falls through to the catch below.
+        if (!clientRef.current) await bootstrapClientRef?.current?.();
+
+        const client = clientRef.current;
+
+        if (!client?.summarize) return;
+
         const history = client.chatHistory;
         const nextMessage = messages[mergedMessageIndex + 1];
         const cutEnd = nextMessage
@@ -108,6 +133,7 @@ export function useCompaction<
           ),
         );
       } finally {
+        isCompactingRef.current = false;
         setIsCompacting(false);
       }
     },
@@ -118,6 +144,7 @@ export function useCompaction<
       adapter,
       autoSaveRef,
       clientRef,
+      bootstrapClientRef,
       setMessages,
     ],
   );
@@ -137,6 +164,7 @@ export function useCompaction<
 
   return {
     isCompacting,
+    isCompactingRef,
     canUndoCompaction,
     compact,
     undoCompaction,

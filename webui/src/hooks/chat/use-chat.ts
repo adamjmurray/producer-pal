@@ -56,6 +56,10 @@ export function useChat<
   const [toolLimitReached, setToolLimitReached] = useState(false);
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
+  // Bootstraps a client from pending history when compaction is requested on a
+  // restored-but-not-yet-sent conversation. Held in a ref because useCompaction
+  // is created before initializeChat is defined below.
+  const bootstrapClientRef = useRef<(() => Promise<void>) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const thinkingRef = useRef(active.activeThinking);
 
@@ -73,12 +77,14 @@ export function useChat<
 
   const {
     isCompacting,
+    isCompactingRef,
     canUndoCompaction,
     compact,
     undoCompaction,
     invalidateCompactionUndo,
   } = useCompaction({
     clientRef,
+    bootstrapClientRef,
     adapter,
     autoSaveRef,
     messages,
@@ -174,6 +180,22 @@ export function useChat<
     ],
   );
 
+  // Bootstrap a client from the restored history (mirrors handleSend's first-
+  // send path). Synced into bootstrapClientRef so compaction — created above,
+  // before initializeChat — can reach it without a forward reference.
+  const bootstrapClient = useCallback(async () => {
+    const pendingHistory = pendingHistoryRef.current;
+
+    if (!pendingHistory || !apiKey) return;
+
+    pendingHistoryRef.current = null;
+    await initializeChat(pendingHistory);
+  }, [apiKey, initializeChat]);
+
+  useEffect(() => {
+    bootstrapClientRef.current = bootstrapClient;
+  }, [bootstrapClient]);
+
   // Stash the user message for retry/edit when an early error (missing API
   // key, MCP init failure) means it never reached client.chatHistory.
   const pendingUserMessageRef = useRef<TMessage | null>(null);
@@ -233,6 +255,12 @@ export function useChat<
 
       if (!userMessage) return;
 
+      // Guard the send-during-compaction race at the hook level, not just via
+      // the disabled input: compact() reassigns client.chatHistory mid-flight,
+      // so a concurrent send would corrupt history. Ref (not state) so a future
+      // caller that bypasses the disabled-input prop is still protected.
+      if (isCompactingRef.current) return;
+
       // Continuing the conversation invalidates the compaction undo snapshot.
       invalidateCompactionUndo();
 
@@ -290,6 +318,7 @@ export function useChat<
       runWithChat,
       executeWithRetry,
       invalidateCompactionUndo,
+      isCompactingRef,
     ],
   );
 

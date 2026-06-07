@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -10,6 +11,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import {
   MockChatClient,
+  RESTORED_HISTORY,
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
@@ -382,6 +384,151 @@ describe("useChat", () => {
         expect.any(Array),
       );
       expect(result.current.isAssistantResponding).toBe(false);
+    });
+  });
+
+  describe("compact (bootstrap + race guard)", () => {
+    it("bootstraps a client from restored history, then compacts", async () => {
+      let created: MockChatClient | undefined;
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          created = new MockChatClient();
+          created.chatHistory = [...RESTORED_HISTORY];
+
+          return created;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      expect(adapter.createClient).toHaveBeenCalledTimes(1);
+      expect(created?.summarize).toHaveBeenCalledWith(RESTORED_HISTORY);
+      expect(created?.chatHistory).toStrictEqual([
+        { role: "user", content: "Summary of 2 messages" },
+      ]);
+      expect(result.current.canUndoCompaction).toBe(true);
+    });
+
+    it("surfaces an error when bootstrap initialization fails", async () => {
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.initialize = vi.fn(async () => {
+            throw new Error("init fail");
+          });
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      expect(adapter.createErrorMessage).toHaveBeenCalled();
+      expect(result.current.messages.at(-1)?.parts[0]?.type).toBe("error");
+    });
+
+    it("compacts the existing client without re-initializing", async () => {
+      let created: MockChatClient | undefined;
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          created = new MockChatClient();
+
+          return created;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+      expect(adapter.createClient).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      // No second client created — compacted the existing one in place.
+      expect(adapter.createClient).toHaveBeenCalledTimes(1);
+      expect(created?.summarize).toHaveBeenCalled();
+    });
+
+    it("ignores a send while a compaction is in flight", async () => {
+      let resolveSummary: (value: string) => void = () => {};
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.summarize = vi.fn(
+            () =>
+              new Promise<string>((resolve) => {
+                resolveSummary = resolve;
+              }),
+          );
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const callsBefore = vi.mocked(adapter.createUserMessage).mock.calls
+        .length;
+
+      let compactPromise: Promise<void> | undefined;
+
+      await act(() => {
+        compactPromise = result.current.compact(1);
+      });
+
+      // Compaction is in flight (summarize pending): a concurrent send must be
+      // dropped before it reaches createUserMessage.
+      await act(async () => {
+        await result.current.handleSend("blocked");
+      });
+
+      expect(vi.mocked(adapter.createUserMessage).mock.calls).toHaveLength(
+        callsBefore,
+      );
+      expect(adapter.createUserMessage).not.toHaveBeenCalledWith("blocked");
+
+      await act(async () => {
+        resolveSummary("done");
+        await compactPromise;
+      });
     });
   });
 });
