@@ -50,6 +50,16 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("1.5 KHZ")).toBe(1500);
     expect(normalizeParamValue("-6 db")).toBe(-6);
   });
+
+  it("keeps directional pan labels as strings but maps centered 'C' to 0", () => {
+    // A directional pan label must NOT reduce to its bare number — that drops the
+    // L/R direction (#14), and a bare pan number is meaningless (pan is -1..1).
+    // The pan-aware setter parses the string form. "C" has no direction → 0.
+    expect(normalizeParamValue("50L")).toBe("50L");
+    expect(normalizeParamValue("50R")).toBe("50R");
+    expect(normalizeParamValue("25L")).toBe("25L");
+    expect(normalizeParamValue("C")).toBe(0);
+  });
 });
 
 describe("paramsInputSchema", () => {

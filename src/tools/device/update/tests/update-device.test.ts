@@ -319,6 +319,42 @@ describe("updateDevice", () => {
       // 1 → internal: 1
       expect(param792.set).toHaveBeenCalledWith("value", 1);
     });
+
+    it("maps directional pan display labels (50L/50R/25L) back to -1..1", () => {
+      // Regression (#14): a directional label like "50L" was reduced to the bare
+      // number 50 by normalizeParamValue (dropping the L), then mapped to a
+      // clamped full-RIGHT value. Each must parse back to its signed -1..1
+      // position via the param's own display max.
+      const panDir = registerMockObject("793", {
+        properties: { is_quantized: 0, value: 0, min: -1, max: 1 },
+        methods: {
+          str_for_value: (v: unknown) =>
+            v === -1 ? "50L" : v === 1 ? "50R" : "C",
+        },
+      });
+
+      updateDevice({ ids: "123", params: [{ name: "793", value: "50L" }] });
+      expect(panDir.set).toHaveBeenCalledWith("value", -1); // full left
+
+      updateDevice({ ids: "123", params: [{ name: "793", value: "50R" }] });
+      expect(panDir.set).toHaveBeenCalledWith("value", 1); // full right
+
+      updateDevice({ ids: "123", params: [{ name: "793", value: "25L" }] });
+      expect(panDir.set).toHaveBeenCalledWith("value", -0.5); // half left
+    });
+
+    it("warns and skips a non-pan string instead of writing NaN", () => {
+      updateDevice({
+        ids: "123",
+        params: [{ name: "792", value: "hard-left" }],
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'updateDevice: "hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
+      );
+      expect(param792.set).not.toHaveBeenCalled();
+    });
   });
 
   describe("params - name-based lookup", () => {
