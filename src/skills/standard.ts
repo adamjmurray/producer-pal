@@ -286,7 +286,7 @@ Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` o
 ### Moving Clips
 
 \`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, both 0-based — scene 1 = index 0) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
-\`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions.
+\`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions measured from the clip's own start (1|1 = clip start, NOT song position).
 
 ### Take Lanes (Arrangement Variations)
 
