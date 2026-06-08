@@ -37,7 +37,7 @@ All times are musical beats (the meter's beat — an eighth in 6/8), matching \`
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number (musical beats per bar)
 
-**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.
+**Processing order:** notes → transforms → code — code receives the notes after parsing and transforms, and can further transform them.
 `;
 
 export const skills = `# Producer Pal Skills
@@ -85,7 +85,7 @@ Create MIDI clips using the bar|beat notation syntax:
 
 ### Editing Existing Notes (update-clip)
 
-\`notes\` MERGES into an existing clip — a new note overwrites the existing note at the *same* pitch+start (restate \`n/8 G3 4|2\` to shorten that G3); other notes are untouched. So **don't rewrite the whole clip to change a few notes** — restate just those. To delete, move, clear a region, or otherwise change notes *already* in the clip, use \`preTransforms\` (see Transforms) — to *replace* a region rather than edit in place, clear it first (\`preTransforms: "1|1-2|1: v0"\`) or the notes you didn't restate stay behind. A \`v0\` in \`notes\` only deletes notes built **within the same string** (inline sculpting after a bar copy).
+\`notes\` MERGES into an existing clip — a new note overwrites the existing note at the *same* pitch+start (restate \`n/8 G3 4|2\` to shorten that G3); other notes are untouched. So **don't rewrite the whole clip to change a few notes** — restate just those. To delete, move, clear a region, or otherwise change notes *already* in the clip, use \`preTransforms\` (see Transforms) — to *replace* a region rather than edit in place, clear it first (\`preTransforms: "1|1-2|1: v0"\`) or the notes you didn't restate stay behind.
 
 ## Examples
 
@@ -204,14 +204,14 @@ merge()                          // span same-pitch notes into sustained notes
 merge(0)                         // ...but only where they touch or overlap
 \`\`\`
 
-swing() auto-quantizes to the swing grid, so changing swing amount is always safe without a separate quant() step. Use \`raw\` to skip auto-quantize: \`swing(0.05, raw)\`
+swing() auto-quantizes, so changing the amount is always safe without a separate quant(). Skip it with \`raw\`: \`swing(0.05, raw)\`
 
 update-clip's \`quantizeGrid\` param uses Live's native grid enum (\`1/4\`,\`1/8\`,\`1/8T\`,\`1/16\`,\`1/16T\`,\`1/32\`) but also accepts the equivalent \`n/N\` note value (\`n/12\`=\`1/8T\`, \`n/24\`=\`1/16T\`, etc.); the mixed grids \`1/8+1/8T\`/\`1/16+1/16T\` are enum-only.
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
-Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
+Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones.
 MIDI params ignored for audio clips, vice versa.
-Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\` (\`pitch += clipseq(0, 5, 7)\`); see Shape above.
+Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.
 
 ### preTransforms (editing notes already in the clip)
 
