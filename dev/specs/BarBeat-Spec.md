@@ -378,6 +378,22 @@ All components are stateful:
   notes until changed
 - **Duration**: Set with `n<value>`, applies to following notes until changed
 
+NOTE (read contract): when a clip is serialized back to notation, the **first
+note always carries an explicit `v` and `n`**, even when they match the format
+defaults (`v100`, `n/4`) — so a reader never has to know the defaults to know
+the opening note's core properties. Velocity and duration after that are emitted
+only on change (the normal stateful behavior). Probability stays change-only: a
+default-probability (`p1`) opener emits no `p` token. This is a serializer
+choice, not a grammar rule — authoring may still omit a leading `v`/`n` and rely
+on the defaults.
+
+NOTE (read contract): serialized output places **one batch per line** — a
+batch's state changes, pitches, and time position(s) on a single line, the next
+batch on the next line. Newlines are whitespace to the parser (an element
+separator like a space), so this is purely a readability choice and round-trips
+unchanged; authoring may use any whitespace, including none-but-required between
+elements. In drum mode each drum pad gets its own line.
+
 ---
 
 ## Repeat Patterns

@@ -120,7 +120,7 @@ describe("readClip", () => {
       end: "2|2", // end_marker (5 beats = 2|2)
       length: "1bar",
       triggered: true,
-      notes: "n/16 C1 1|1,3 v90 D1 1|2,4",
+      notes: "v100 n/16 C1 1|1,3\nv90 D1 1|2,4",
     });
   });
 
@@ -289,7 +289,7 @@ describe("readClip", () => {
     );
 
     // Verify notes are included
-    expect(resultWildcard.notes).toBe("C3 1|1 v80 E3 1|3");
+    expect(resultWildcard.notes).toBe("v100 n/4 C3 1|1\nv80 E3 1|3");
   });
 
   it("reads G8 (MIDI note 127) correctly by calling Live API with pitch range 0-128", () => {
@@ -338,7 +338,7 @@ describe("readClip", () => {
       start: "1|1", // start_marker (0 = 1|1)
       end: "2|1", // end_marker (4 = 2|1)
       length: "1bar",
-      notes: "G8 1|1",
+      notes: "v100 n/4 G8 1|1",
     });
   });
 });

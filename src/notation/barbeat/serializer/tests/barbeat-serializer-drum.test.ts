@@ -40,7 +40,7 @@ describe("drum mode serializer", () => {
     const result = formatNotation(notes, { drumMode: true });
 
     // C1 (kick) positions grouped and comma-merged, then D1 (snare)
-    expect(result).toBe("n/16 C1 1|1,2 v90 D1 1|1.5,2.5");
+    expect(result).toBe("v100 n/16 C1 1|1,2\nv90 D1 1|1.5,2.5");
   });
 
   it("comma-merges beats within same bar", () => {
@@ -53,7 +53,7 @@ describe("drum mode serializer", () => {
 
     const result = formatNotation(notes, { drumMode: true });
 
-    expect(result).toBe("n/16 C1 1|1,3 v90 D1 1|2,4");
+    expect(result).toBe("v100 n/16 C1 1|1,3\nv90 D1 1|2,4");
   });
 
   it("detects repeat patterns (3+ evenly spaced)", () => {
@@ -129,7 +129,7 @@ describe("drum mode serializer", () => {
     const result = formatNotation(notes, { drumMode: true });
 
     // Duration 0.25 quarter = /16; step 2 quarters = /2
-    expect(result).toBe("n/16 C1 1|1x8@n/2");
+    expect(result).toBe("v100 n/16 C1 1|1x8@n/2");
   });
 
   it("splits into state runs when velocity changes", () => {
@@ -154,7 +154,7 @@ describe("drum mode serializer", () => {
 
     const result = formatNotation(notes, { drumMode: true });
 
-    expect(result).toBe("n/16 C1 1|1 Db2 1|1");
+    expect(result).toBe("v100 n/16 C1 1|1\nDb2 1|1");
   });
 
   it("preserves pitch order by first occurrence", () => {
@@ -166,7 +166,7 @@ describe("drum mode serializer", () => {
     const result = formatNotation(notes, { drumMode: true });
 
     // D1 appears first because it has the earlier start_time
-    expect(result).toBe("v90 n/16 D1 1|1 v100 C1 1|1.5");
+    expect(result).toBe("v90 n/16 D1 1|1\nv100 C1 1|1.5");
   });
 
   it("handles multi-bar positions", () => {
@@ -179,7 +179,7 @@ describe("drum mode serializer", () => {
 
     const result = formatNotation(notes, { drumMode: true });
 
-    expect(result).toBe("n/16 C1 1|1 2|1 v90 D1 1|3 2|3");
+    expect(result).toBe("v100 n/16 C1 1|1 2|1\nv90 D1 1|3 2|3");
   });
 
   it("uses fraction formatting for positions and steps", () => {

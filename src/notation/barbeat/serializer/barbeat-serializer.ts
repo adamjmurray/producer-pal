@@ -57,8 +57,8 @@ export function formatNotation(
 
   const timeGroups = groupNotesByTime(sortedNotes, config);
   const batches = findMergeBatches(timeGroups);
-  const state = createInitialState(config.timeSigDenominator);
-  const elements: string[] = [];
+  const state = createInitialState();
+  const lines: string[] = [];
 
   for (const batch of batches) {
     // Use the first group's notes for state changes and pitch names
@@ -70,18 +70,17 @@ export function formatNotation(
       config.timeSigDenominator,
     );
 
-    elements.push(...noteElements);
-
     // Emit time position(s) — comma-separated beats for merged groups
     const bar = firstGroup.bar;
     const beats = batch.groups
       .map((g) => formatBeatPosition(g.beat, config.timeSigDenominator))
       .join(",");
 
-    elements.push(`${bar}|${beats}`);
+    // One batch per line: state changes + pitches + time position(s).
+    lines.push([...noteElements, `${bar}|${beats}`].join(" "));
   }
 
-  return elements.join(" ");
+  return lines.join("\n");
 }
 
 /**

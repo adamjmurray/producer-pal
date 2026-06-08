@@ -25,7 +25,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 D3 E3 1|1");
   });
 
   it("formats notes with time changes", () => {
@@ -35,7 +35,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, start_time: 4 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1 D3 1|2 E3 2|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1\nD3 1|2\nE3 2|1");
   });
 
   it("formats notes with probability changes", () => {
@@ -45,7 +45,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, probability: 0.5 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("p0.8 C3 p0.5 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 p0.8 C3 p0.5 D3 E3 1|1");
   });
 
   it("formats notes with velocity changes", () => {
@@ -55,7 +55,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, velocity: 120 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80 C3 v120 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("v80 n/4 C3 v120 D3 E3 1|1");
   });
 
   it("formats notes with velocity range changes", () => {
@@ -65,7 +65,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, velocity: 60, velocity_deviation: 40 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80-120 C3 v60-100 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("v80-120 n/4 C3 v60-100 D3 E3 1|1");
   });
 
   it("formats notes with mixed velocity and velocity range", () => {
@@ -75,7 +75,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, velocity: 90 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 v80-120 D3 v90 E3 1|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 v80-120 D3 v90 E3 1|1");
   });
 
   it("formats notes with duration changes", () => {
@@ -86,7 +86,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, duration: 2.0 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("n/8 C3 n/2 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("v100 n/8 C3 n/2 D3 E3 1|1");
   });
 
   it("formats sub-beat timing", () => {
@@ -95,7 +95,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 62, start_time: 1.25 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1.5 D3 1|2.25");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1.5\nD3 1|2.25");
   });
 
   it("handles different time signatures with beatsPerBar option (legacy)", () => {
@@ -104,7 +104,9 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 62, start_time: 3 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes, { beatsPerBar: 3 })).toBe("C3 1|1 D3 2|1");
+    expect(formatNotation(notes, { beatsPerBar: 3 })).toBe(
+      "v100 n/4 C3 1|1\nD3 2|1",
+    );
   });
 
   it("handles different time signatures with timeSigNumerator/timeSigDenominator", () => {
@@ -115,7 +117,7 @@ describe("formatNotation() core", () => {
 
     expect(
       formatNotation(notes, { timeSigNumerator: 3, timeSigDenominator: 4 }),
-    ).toBe("C3 1|1 D3 2|1");
+    ).toBe("v100 n/4 C3 1|1\nD3 2|1");
   });
 
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
@@ -130,7 +132,7 @@ describe("formatNotation() core", () => {
         timeSigNumerator: 3,
         timeSigDenominator: 4,
       }),
-    ).toBe("C3 1|1 D3 2|1");
+    ).toBe("v100 n/4 C3 1|1\nD3 2|1");
   });
 
   it("throws error when only timeSigNumerator is provided", () => {
@@ -156,7 +158,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, start_time: 2 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1 D3 1|2 E3 1|3");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1\nD3 1|2\nE3 1|3");
   });
 
   it("sorts notes by time then pitch", () => {
@@ -166,7 +168,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 62 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 D3 E3 1|1");
   });
 
   it("handles notes with missing probability and velocity_deviation properties", () => {
@@ -189,7 +191,7 @@ describe("formatNotation() core", () => {
     ] as NoteEvent[];
 
     expect(formatNotation(notes)).toBe(
-      "v80 C3 v100 p0.7 D3 v100-120 p1 E3 1|1",
+      "v80 n/4 C3 v100 p0.7 D3 v100-120 p1 E3 1|1",
     );
   });
 
@@ -207,7 +209,7 @@ describe("formatNotation() core", () => {
       { pitch: 64, start_time: 0, duration: 1, velocity: 100 },
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("p0.8 C3 p1 E3 1|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 p0.8 C3 p1 E3 1|1");
   });
 
   it("skips out-of-range MIDI pitch and warns instead of throwing", () => {
@@ -224,7 +226,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 200 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1");
   });
 
   it("pitchName returns a fallback for an unnameable pitch (never throws)", () => {
@@ -264,7 +266,7 @@ describe("formatNotation() core", () => {
 
     const result = formatNotation(notes);
 
-    expect(result).toBe("C3 1|1");
+    expect(result).toBe("v100 n/4 C3 1|1");
     // Round-trips without throwing or inflating the dropped note.
     expect(interpretNotation(result)).toStrictEqual(
       interpretNotation("C3 1|1"),
@@ -278,7 +280,9 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 64, velocity: 127, velocity_deviation: 10 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v108-127 C3 v120-127 D3 v127 E3 1|1");
+    expect(formatNotation(notes)).toBe(
+      "v108-127 n/4 C3 v120-127 D3 v127 E3 1|1",
+    );
   });
 
   it("handles edge case: velocity at 126 with deviation 1", () => {
@@ -286,7 +290,7 @@ describe("formatNotation() core", () => {
       createNote({ velocity: 126, velocity_deviation: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v126-127 C3 1|1");
+    expect(formatNotation(notes)).toBe("v126-127 n/4 C3 1|1");
   });
 
   it("handles edge case: velocity at 127 outputs single velocity", () => {
@@ -295,7 +299,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 62, velocity: 127, velocity_deviation: 0 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v127 C3 D3 1|1");
+    expect(formatNotation(notes)).toBe("v127 n/4 C3 D3 1|1");
   });
 
   it("clamps invalid high velocity values defensively", () => {
@@ -304,7 +308,7 @@ describe("formatNotation() core", () => {
       createNote({ pitch: 62, velocity: 150, velocity_deviation: 10 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v127 C3 D3 1|1");
+    expect(formatNotation(notes)).toBe("v127 n/4 C3 D3 1|1");
   });
 
   it("handles complex drum pattern with probability and velocity range", () => {
@@ -329,7 +333,7 @@ describe("formatNotation() per-note state in chords", () => {
       createNote({ pitch: 67, velocity: 80 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80 C3 E3 G3 1|1");
+    expect(formatNotation(notes)).toBe("v80 n/4 C3 E3 G3 1|1");
   });
 
   it("emits per-note velocity when notes differ", () => {
@@ -339,7 +343,7 @@ describe("formatNotation() per-note state in chords", () => {
       createNote({ pitch: 67, velocity: 80 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v127 C3 v100 E3 v80 G3 1|1");
+    expect(formatNotation(notes)).toBe("v127 n/4 C3 v100 E3 v80 G3 1|1");
   });
 
   it("emits per-note state for mixed properties", () => {
@@ -379,6 +383,6 @@ describe("formatNotation() duration-change threshold (meter-correct)", () => {
 
     expect(
       formatNotation(notes, { timeSigNumerator: 4, timeSigDenominator: 1 }),
-    ).toBe("n/1 C3 1|1 D3 1|2");
+    ).toBe("v100 n/1 C3 1|1\nD3 1|2");
   });
 });
