@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render } from "@testing-library/preact";
+import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import {
   ConversationList,
@@ -51,5 +51,25 @@ describe("ConversationList", () => {
     // All Conversations.
     expect(getAllByText("Pinned")).toHaveLength(2);
     expect(queryAllByText("Plain")).toHaveLength(1);
+  });
+
+  it("opens exactly one edit input when renaming a bookmarked conversation", () => {
+    // The bookmarked conversation renders in both sections, so there are two
+    // Rename buttons. Clicking one must open a single edit input — keying edit
+    // mode by bare id put both instances into edit mode (two autoFocus inputs),
+    // which committed the rename before the user could type.
+    const bookmarked = createTestSummary({ title: "Pinned", bookmarked: true });
+
+    const { getAllByLabelText, queryAllByLabelText } = renderList({
+      conversations: [bookmarked],
+    });
+
+    const renameButtons = getAllByLabelText("Rename conversation");
+
+    expect(renameButtons).toHaveLength(2);
+
+    fireEvent.click(renameButtons[0]!);
+
+    expect(queryAllByLabelText("Conversation title")).toHaveLength(1);
   });
 });
