@@ -355,6 +355,53 @@ describe("updateDevice - wrapInRack", () => {
       );
     });
 
+    it("should restore stranded instruments to the source before deleting the temp track on failure", () => {
+      // insert_device throws after the instrument is staged on the temp track
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: {
+          insert_device: () => {
+            throw new Error("insert_device failed");
+          },
+        },
+      });
+
+      liveSet = registerTempTrackMocks();
+
+      // Temp track now holds the staged instrument (one device in slot 0)
+      registerMockObject("temp-track", {
+        path: livePath.track(1),
+        properties: { devices: children("device-3-on-temp") },
+      });
+      registerMockObject("device-3-on-temp", {
+        path: livePath.track(1).device(0),
+        type: "RackDevice",
+        properties: { type: 1 },
+      });
+
+      expect(() =>
+        updateDevice({
+          path: "t0/d3",
+          wrapInRack: true,
+        }),
+      ).toThrow("insert_device failed");
+
+      // The stranded instrument is moved back to its original container
+      // (track 0, position 3) rather than being deleted with the temp track
+      expect(liveSet.call).toHaveBeenCalledWith(
+        "move_device",
+        "id device-3-on-temp",
+        "id track-0",
+        3,
+      );
+
+      // And the temp track is still cleaned up afterward
+      expect(liveSet.call).toHaveBeenCalledWith(
+        "delete_track",
+        expect.any(Number),
+      );
+    });
+
     it("should cleanup temp track when instrument wrap throws and cleanup also fails", () => {
       // Make insert_device throw to trigger the catch block
       track0 = registerMockObject("track-0", {
