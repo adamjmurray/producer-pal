@@ -173,6 +173,17 @@ describe("updateScene", () => {
     );
   });
 
+  it("validates timeSignature before mutating any scene (fail-fast)", () => {
+    // A malformed timeSignature must throw before any scene is touched, so a
+    // multi-scene update can't leave a partial mix of mutated/untouched scenes.
+    expect(() =>
+      updateScene({ ids: "123, 456", name: "Nope", timeSignature: "5" }),
+    ).toThrow("Time signature must be in format");
+
+    expect(scene1.set).not.toHaveBeenCalled();
+    expect(scene2.set).not.toHaveBeenCalled();
+  });
+
   it("should return single object for single ID and array for comma-separated IDs", () => {
     const singleResult = updateScene({ ids: "123", name: "Single" });
     const arrayResult = updateScene({ ids: "123, 456", name: "Multiple" });

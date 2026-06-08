@@ -91,16 +91,20 @@ export async function updateLiveSet(
     id: liveSet.id,
   };
 
+  // Parse timeSignature up front so a malformed format fails before any
+  // property is mutated, instead of throwing after a partial update (e.g. tempo
+  // already applied). Mirrors updateClip's upfront validation.
+  const parsedTimeSignature =
+    timeSignature != null ? parseTimeSignature(timeSignature) : null;
+
   if (tempo != null) {
     applyTempo(liveSet, tempo, result);
   }
 
-  if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-
-    liveSet.set("signature_numerator", parsed.numerator);
-    liveSet.set("signature_denominator", parsed.denominator);
-    result.timeSignature = `${parsed.numerator}/${parsed.denominator}`;
+  if (parsedTimeSignature != null) {
+    liveSet.set("signature_numerator", parsedTimeSignature.numerator);
+    liveSet.set("signature_denominator", parsedTimeSignature.denominator);
+    result.timeSignature = `${parsedTimeSignature.numerator}/${parsedTimeSignature.denominator}`;
   }
 
   if (scale != null) {

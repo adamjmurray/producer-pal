@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
@@ -7,6 +8,7 @@ import { select } from "#src/tools/session/select.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   parseCommaSeparatedIds,
+  parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -68,6 +70,13 @@ export function updateScene(
 
   const parsedNames = parseNames(name, scenes.length, "updateScene");
   const parsedColors = parseCommaSeparatedColors(color, scenes.length);
+
+  // Validate timeSignature format up front so a malformed value fails before
+  // any scene is mutated, instead of throwing mid-loop after partial updates.
+  // "disabled" is a valid sentinel handled per-scene, not a time signature.
+  if (timeSignature != null && timeSignature !== "disabled") {
+    parseTimeSignature(timeSignature);
+  }
 
   const updatedScenes: UpdateSceneResult[] = [];
 

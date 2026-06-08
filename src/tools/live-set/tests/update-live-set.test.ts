@@ -83,6 +83,17 @@ describe("updateLiveSet", () => {
     );
   });
 
+  it("validates timeSignature before applying any property (fail-fast)", async () => {
+    // A malformed timeSignature must throw before tempo (or anything else) is
+    // written, so the call can't leave the Live Set in a partially-updated
+    // state with an error.
+    await expect(
+      updateLiveSet({ tempo: 130, timeSignature: "5" }),
+    ).rejects.toThrow("Time signature must be in format");
+
+    expect(liveSet.set).not.toHaveBeenCalledWith("tempo", 130);
+  });
+
   it("should update multiple properties simultaneously", async () => {
     const result = await updateLiveSet({
       tempo: 125,
