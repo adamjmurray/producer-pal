@@ -222,9 +222,12 @@ function applyAssignmentToNotes(
   const filteredStarts = filteredIndices.map(
     (idx) => (notes[idx] as NoteEvent).start_time * beatScale,
   );
-  const clipEnd = clipContext
-    ? (clipContext.arrangementStart ?? 0) + clipContext.clipDuration
-    : undefined;
+  // clipDuration is the clip-local length in musical beats, matching the
+  // clip-local space of filteredStarts/noteStart (note start_times are
+  // clip-relative). Do NOT add arrangementStart here — legato() computes the
+  // last note's duration as clipEnd - noteStart, so an arrangement-absolute
+  // clipEnd would inflate it by arrangementStart on arrangement clips.
+  const clipEnd = clipContext ? clipContext.clipDuration : undefined;
 
   let filteredCursor = 0;
 
