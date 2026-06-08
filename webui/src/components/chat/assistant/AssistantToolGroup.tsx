@@ -8,6 +8,7 @@ import { DisclosureChevron } from "#webui/components/chat/controls/header/Header
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { type UIStepUsagePart, type UIToolPart } from "#webui/types/messages";
 import { AssistantToolCall } from "./AssistantToolCall";
+import { extractWarnings } from "./helpers/tool-call-warning-helpers";
 
 interface AssistantToolGroupProps {
   parts: (UIToolPart | UIStepUsagePart)[];
@@ -38,6 +39,15 @@ export function AssistantToolGroup({
   const errorCount = toolParts.filter(
     (t) => t.isError ?? (t.result != null && isErrorResult(t.result)),
   ).length;
+  // Surface warn-and-skip warnings at the collapsed level too, mirroring
+  // AssistantToolCall — otherwise a warning in a grouped (3+) run is invisible
+  // until the user expands both the group and the individual call.
+  const warningCount = toolParts.reduce((sum, t) => {
+    const isError = t.isError ?? (t.result != null && isErrorResult(t.result));
+
+    return sum + (!isError && t.result ? extractWarnings(t.result).length : 0);
+  }, 0);
+  const hasWarnings = warningCount > 0;
 
   const firstName = firstTool
     ? (toolNames[firstTool.name] ?? firstTool.name)
@@ -47,7 +57,7 @@ export function AssistantToolGroup({
     <details
       className={`disclosure text-xs p-2 font-mono bg-zinc-400/50 dark:bg-zinc-900 rounded-lg ${
         hasPending ? "animate-pulse" : ""
-      } ${hasError ? "border-l-3 border-red-500" : ""}`}
+      } ${hasError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
       <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
         <DisclosureChevron />
@@ -57,6 +67,12 @@ export function AssistantToolGroup({
           <span className="text-red-700 dark:text-red-400 font-normal">
             {" "}
             — {errorCount} failed
+          </span>
+        )}
+        {hasWarnings && !hasError && !hasPending && (
+          <span className="text-yellow-700 dark:text-yellow-400 font-normal">
+            {" "}
+            — {warningCount} warning{warningCount !== 1 ? "s" : ""}
           </span>
         )}
       </summary>
