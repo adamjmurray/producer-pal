@@ -20,6 +20,7 @@ import {
   type UseChatReturn,
 } from "./use-chat-types";
 import { useCompaction } from "./use-compaction";
+import { useGetChatHistory } from "./use-get-chat-history";
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -67,6 +68,14 @@ export function useChat<
     thinkingRef.current = active.activeThinking;
   }, [active.activeThinking]);
 
+  // Dispose the live MCP client when the hook unmounts. Switching between chat
+  // and voice mode swaps ChatApp out (App.tsx routes one or the other), so
+  // useChat can unmount mid-session with a live client. The dispose() calls in
+  // clearConversation/initializeChat only cover client *replacement*, not
+  // teardown, so without this the final client's MCP connection leaks. dispose()
+  // is idempotent, so this no-ops when the client was already disposed/cleared.
+  useEffect(() => () => clientRef.current?.dispose?.(), []);
+
   const { executeWithRetry, abortRetry } = useExecuteWithRetry({
     adapter,
     autoSaveRef,
@@ -111,11 +120,7 @@ export function useChat<
     abortRetry();
   }, [clearSettings, abortRetry, invalidateCompactionUndo]);
 
-  const getChatHistory = useCallback(
-    (): unknown[] =>
-      clientRef.current?.chatHistory ?? pendingHistoryRef.current ?? [],
-    [],
-  );
+  const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 
   const restoreChatHistory = useCallback(
     (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {

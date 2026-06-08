@@ -127,6 +127,36 @@ describe("useChat", () => {
       expect(created[0]!.dispose).toHaveBeenCalledOnce();
     });
 
+    it("disposes the live client when the hook unmounts (mode-switch teardown)", async () => {
+      // Switching chat<->voice mode unmounts ChatApp (and useChat) mid-session.
+      // The unmount cleanup must dispose the live client so its MCP connection
+      // isn't leaked — clearConversation/initializeChat only cover replacement.
+      const created: MockChatClient[] = [];
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          created.push(client);
+
+          return client;
+        }),
+      };
+
+      const { result, unmount } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      unmount();
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.dispose).toHaveBeenCalledOnce();
+    });
+
     it("aborts the in-flight stream (browser Back/Forward teardown path)", async () => {
       // A browser Back/Forward fires hashchange, which switches/clears the
       // conversation via clearConversation WITHOUT going through stopResponse.
