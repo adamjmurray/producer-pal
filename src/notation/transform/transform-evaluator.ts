@@ -9,7 +9,6 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent } from "../types.ts";
 import {
-  calculateActiveTimeRange,
   type ClipContext,
   evaluateExpression,
   evaluateTransformAST,
@@ -22,6 +21,11 @@ import {
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
 import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
+import {
+  buildNoteContext,
+  selectAssignmentNotes,
+} from "./helpers/transform-evaluator-selection-helpers.ts";
+import { timeRangeBoundsInMusicalBeats } from "./helpers/transform-time-range-helpers.ts";
 import {
   type PitchRange,
   type TransformAssignment,
@@ -161,9 +165,11 @@ export function applyTransforms(
 
 /**
  * Apply a single transform assignment to all matching notes.
- * When a pitch range is active, note.index and note.count reflect only the
- * filtered subset of notes matching that pitch range.
- * Transforms are applied immediately so subsequent assignments see mutations.
+ * note.index, note.count, and the next.* / legato() lookups all describe the
+ * SELECTED notes — those matching both the pitch range AND the time-range
+ * selector — so a note's index is 0-based over exactly what the selector picked,
+ * not the whole pitch-filtered clip. Transforms are applied immediately so
+ * subsequent assignments see mutations.
  * @param assignment - Transform assignment to apply
  * @param pitchRange - Effective pitch range filter (null for no filter)
  * @param notes - Notes to transform
@@ -201,46 +207,44 @@ function applyAssignmentToNotes(
     return;
   }
 
-  // Build array of indices matching the pitch range filter (uses current/mutated pitches)
-  const filteredIndices: number[] = [];
+  // The selected notes are those matching BOTH the pitch range AND the
+  // time-range selector. Indexing and next.*/legato() are scoped to this set,
+  // so a sub-range selector (e.g. one bar of a ratcheted hat run) gets a
+  // 0-based, selection-local index instead of one offset by earlier same-pitch
+  // notes outside the window.
+  const selectedIndices = selectAssignmentNotes(
+    assignment,
+    pitchRange,
+    notes,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipTimeRange,
+  );
 
-  for (let idx = 0; idx < notes.length; idx++) {
-    const n = notes[idx] as NoteEvent;
-
-    if (
-      pitchRange == null ||
-      (n.pitch >= pitchRange.startPitch && n.pitch <= pitchRange.endPitch)
-    ) {
-      filteredIndices.push(idx);
-    }
-  }
-
-  const filteredCount = filteredIndices.length;
+  const selectedCount = selectedIndices.length;
   const beatScale = timeSigDenominator / 4;
 
-  // Pre-compute filtered start times in musical beats for legato() tolerance scan
-  const filteredStarts = filteredIndices.map(
+  // Pre-compute selected start times in musical beats for legato() tolerance scan
+  const selectedStarts = selectedIndices.map(
     (idx) => (notes[idx] as NoteEvent).start_time * beatScale,
   );
   // clipDuration is the clip-local length in musical beats, matching the
-  // clip-local space of filteredStarts/noteStart (note start_times are
+  // clip-local space of selectedStarts/noteStart (note start_times are
   // clip-relative). Do NOT add arrangementStart here — legato() computes the
   // last note's duration as clipEnd - noteStart, so an arrangement-absolute
   // clipEnd would inflate it by arrangementStart on arrangement clips.
   const clipEnd = clipContext ? clipContext.clipDuration : undefined;
 
-  let filteredCursor = 0;
+  // Normalization range for ramp/curve is constant across the assignment's
+  // selected notes: the selector's bounds, or the clip range when unscoped.
+  // Membership (the per-note skip) was already settled in selectAssignmentNotes.
+  const evalTimeRange: TimeRange = assignment.timeRange
+    ? timeRangeBoundsInMusicalBeats(assignment.timeRange, timeSigNumerator)
+    : clipTimeRange;
 
-  for (let i = 0; i < notes.length; i++) {
+  for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
+    const i = selectedIndices[cursor] as number;
     const note = notes[i] as NoteEvent;
-
-    // Pitch range check against current (possibly mutated) pitch
-    if (
-      pitchRange != null &&
-      (note.pitch < pitchRange.startPitch || note.pitch > pitchRange.endPitch)
-    ) {
-      continue;
-    }
 
     const noteContext = buildNoteContext(
       note,
@@ -249,40 +253,21 @@ function applyAssignmentToNotes(
       clipTimeRange,
     );
 
-    // Time range check
-    const activeTimeRange = calculateActiveTimeRange(
-      assignment,
-      noteContext.bar,
-      noteContext.beat,
-      timeSigNumerator,
-      clipTimeRange,
-      noteContext.position,
-    );
-
-    // Note matches pitch range — count it regardless of time range
-    const noteIndex = pitchRange != null ? filteredCursor : i;
-
-    // Find the next note in the filtered sequence for next.* variables
-    const nextNoteIdx = filteredIndices[filteredCursor + 1];
+    // Next note in the selected sequence for next.* variables
+    const nextNoteIdx = selectedIndices[cursor + 1];
     const nextNote =
       nextNoteIdx != null ? (notes[nextNoteIdx] as NoteEvent) : undefined;
 
     const legatoContext = {
-      starts: filteredStarts,
-      cursor: filteredCursor,
+      starts: selectedStarts,
+      cursor,
       clipEnd,
     };
 
-    filteredCursor++;
-
-    if (activeTimeRange.skip) {
-      continue; // Pitch matched but time didn't — counted for index, not applied
-    }
-
     const noteProperties = buildNoteProperties(
       note,
-      noteIndex,
-      filteredCount,
+      cursor,
+      selectedCount,
       timeSigDenominator,
       clipContext,
       nextNote,
@@ -295,7 +280,7 @@ function applyAssignmentToNotes(
         noteContext.position,
         timeSigNumerator,
         timeSigDenominator,
-        activeTimeRange.timeRange,
+        evalTimeRange,
         noteProperties,
       );
 
@@ -315,47 +300,6 @@ function applyAssignmentToNotes(
       );
     }
   }
-}
-
-/**
- * Build note context object
- * @param note - Note event
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param clipTimeRange - Clip time range
- * @returns Note context for transform evaluation
- */
-function buildNoteContext(
-  note: NoteEvent,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  clipTimeRange: TimeRange,
-): NoteContext {
-  // Convert note's Ableton beats start_time to musical beats position
-  const musicalBeats = note.start_time * (timeSigDenominator / 4);
-
-  // Derive bar|beat for time-range filtering numerically from the musical-beats
-  // position. Do NOT serialize-then-reparse: the serializer emits tuplet/off-grid
-  // positions as `±n` offset forms (`1|1+n/12`) that a decimal-only regex cannot
-  // read, which would drop bar/beat to undefined and make calculateActiveTimeRange
-  // skip time-range filtering entirely (the note would match every selector). The
-  // numeric split round-trips exactly through barBeatToMusicalBeats, including negative
-  // time (a note before 1|1, where bar can be 0 and beat > beatsPerBar).
-  const musicalBeatsPerBar = timeSigNumerator;
-  const bar = Math.floor(musicalBeats / musicalBeatsPerBar) + 1;
-  const beat = musicalBeats - (bar - 1) * musicalBeatsPerBar + 1;
-
-  return {
-    position: musicalBeats,
-    pitch: note.pitch,
-    bar,
-    beat,
-    timeSig: {
-      numerator: timeSigNumerator,
-      denominator: timeSigDenominator,
-    },
-    clipTimeRange,
-  };
 }
 
 /**

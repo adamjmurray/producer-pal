@@ -97,6 +97,32 @@ describe("next.* variables", () => {
     expect(notes[2]!.duration).toBe(1);
   });
 
+  it("scopes the next note to the time-selected subset", () => {
+    // The selector defines the working set, so next.* points at the next
+    // SELECTED note, not the next note in the clip. Window 2|1-<2|3 (beats 4-6)
+    // picks the notes at starts 4 and 5; the note at 8 is outside it. The note
+    // at 5 is the last selected one — it has no next-in-selection and is
+    // skipped, rather than reaching past the window to the note at 8.
+    const warn = vi.spyOn(console, "warn");
+    const notes = createTestNotes([
+      { start_time: 4 },
+      { start_time: 5 },
+      { start_time: 8 },
+    ]);
+
+    applyTransforms(
+      notes,
+      "2|1-<2|3: duration = next.start - note.start",
+      4,
+      4,
+    );
+
+    expect(notes[0]!.duration).toBe(1); // 5 - 4
+    expect(notes[1]!.duration).toBe(1); // last selected — skipped, default kept
+    expect(notes[2]!.duration).toBe(1); // outside window — untouched
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("next.start"));
+  });
+
   it("reflects mutations from earlier transforms", () => {
     const notes = createTestNotes([
       { start_time: 0, velocity: 80 },
