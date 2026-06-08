@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -74,11 +74,13 @@ export function applyTransformsToExistingNotes(
   removeAllClipNotes(clip);
 
   if (notes.length > 0) {
-    // Sort ascending by start_time before re-adding: a transform can shift a
-    // note onto an earlier same-pitch note's onset, which Live resolves by
-    // deleting the earlier note unless the write order is ascending. The merge
-    // path is already sorted (via formatNotation); this keeps parity.
-    clip.call("add_new_notes", { notes: sortNotes(notes) });
+    // Dedupe then sort before re-adding, identically to the merge path: a
+    // transform can collapse two notes onto the same pitch+exact-onset (dedupe
+    // keep-last resolves that deterministically instead of letting Live drop
+    // one), and any remaining tail overlap is made safe by ascending order.
+    clip.call("add_new_notes", {
+      notes: sortNotes(dedupeNotesKeepingLast(notes)),
+    });
   }
 
   return {

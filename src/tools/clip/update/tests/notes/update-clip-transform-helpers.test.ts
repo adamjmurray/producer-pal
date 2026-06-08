@@ -236,6 +236,31 @@ describe("update-clip-transform-helpers", () => {
       ]);
     });
 
+    it("dedupes a same-pitch+start collision a transform creates (keep-last)", () => {
+      // Two distinct notes share a start; forcing both onto the same pitch
+      // collides them at the exact same pitch+onset. Without a dedupe both are
+      // written and Live deletes one non-deterministically — the transform path
+      // must dedupe keep-last like the merge path. Before the fix it sorted
+      // without deduping and wrote both.
+      const existingNotes = [rawNote(60, 0, 100), rawNote(64, 0, 101)];
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        pitch: number;
+        start_time: number;
+      }>(existingNotes);
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        undefined,
+        "pitch = 72", // collapse both onto pitch 72 at start 0
+        4,
+        4,
+      );
+
+      expect(addedNotes).toStrictEqual([
+        expect.objectContaining({ pitch: 72, start_time: 0 }),
+      ]);
+    });
+
     it("should warn and return 0 when clip has no notes", () => {
       const mockClip = {
         getProperty: vi.fn(() => 4),

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
+import { LOOKUP_TABLE } from "#src/tools/shared/clip-gain-lookup/lookup-table.ts";
 import { liveGainToDb, dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
 describe("gain-utils", () => {
@@ -218,6 +219,16 @@ describe("gain-utils", () => {
       // Test extreme values
       expect(dbToLiveGain(liveGainToDb(0.001))).toBeGreaterThan(0);
       expect(liveGainToDb(dbToLiveGain(-60))).toBeLessThan(-50);
+    });
+  });
+
+  describe("lookup table size", () => {
+    it("has the documented number of samples (locks the comment count)", () => {
+      // The lookup-table.ts and gain-utils.ts header comments cite this count;
+      // pin it here so adding/removing samples forces a deliberate update
+      // instead of letting the comments drift apart (they previously disagreed:
+      // 529 vs 513, both wrong — the table has always had 528).
+      expect(LOOKUP_TABLE).toHaveLength(528);
     });
   });
 });

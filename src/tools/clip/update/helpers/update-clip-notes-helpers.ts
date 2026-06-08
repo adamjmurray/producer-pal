@@ -5,11 +5,10 @@
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -192,31 +191,6 @@ function applyPreTransformsToExisting(
   );
 
   return { notes: existingNotes, matchCount };
-}
-
-/**
- * Dedupe notes that share a pitch and start_time (within SAME_TIME_EPSILON,
- * since existing notes round-trip serialize→re-interpret and can drift), keeping
- * the LAST occurrence. The combined array is ordered existing→new, so "last
- * wins" deterministically picks the newly-authored note over an existing one at
- * the same position — no longer relying on Live's undocumented add_new_notes
- * last-write-wins behavior. Uses the same shared position tolerance as
- * barbeat-apply-v0-deletions.ts.
- * @param notes - Notes in existing→new insertion order
- * @returns Notes with same-pitch+start collisions collapsed to the last write
- */
-function dedupeNotesKeepingLast(notes: NoteEvent[]): NoteEvent[] {
-  return notes.reduce<NoteEvent[]>((result, note) => {
-    const withoutCollision = result.filter(
-      (existing) =>
-        existing.pitch !== note.pitch ||
-        Math.abs(existing.start_time - note.start_time) >= SAME_TIME_EPSILON,
-    );
-
-    withoutCollision.push(note);
-
-    return withoutCollision;
-  }, []);
 }
 
 /**
