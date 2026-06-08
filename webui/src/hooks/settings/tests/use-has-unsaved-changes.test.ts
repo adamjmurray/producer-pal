@@ -37,6 +37,7 @@ function makeSettings(
     realtimeVoice: "marin",
     voiceSpeed: 1,
     voiceVolume: 1,
+    voiceLanguage: "en",
     turnDetection: DEFAULT_TURN_DETECTION,
     liveApiEnabledDirty: false,
     settingsLoaded: true,
@@ -56,6 +57,22 @@ describe("useHasUnsavedChanges", () => {
     expect(result.current).toBe(false);
 
     rerender({ s: makeSettings({ voiceVolume: 0.5 }), open: true });
+    expect(result.current).toBe(true);
+  });
+
+  it("detects a lone voiceLanguage change (protected on dismiss)", () => {
+    const { result, rerender } = renderHook(
+      ({ s, open }: { s: UseSettingsReturn; open: boolean }) =>
+        useHasUnsavedChanges(s, appearance, open),
+      { initialProps: { s: makeSettings(), open: false } },
+    );
+
+    rerender({ s: makeSettings(), open: true });
+    expect(result.current).toBe(false);
+
+    // Changing only the voice-chat language must register as unsaved, so a
+    // click-outside/Escape shakes-or-confirms instead of silently reverting it.
+    rerender({ s: makeSettings({ voiceLanguage: "es" }), open: true });
     expect(result.current).toBe(true);
   });
 

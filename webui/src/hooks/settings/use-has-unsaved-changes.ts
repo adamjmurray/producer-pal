@@ -37,6 +37,7 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     realtimeVoice: s.realtimeVoice,
     voiceSpeed: s.voiceSpeed,
     voiceVolume: s.voiceVolume,
+    voiceLanguage: s.voiceLanguage,
     turnDetection: s.turnDetection,
     ...a,
   });
