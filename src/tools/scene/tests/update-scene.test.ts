@@ -164,6 +164,29 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("name", "Test");
   });
 
+  it("keeps positional name/color aligned to original ids when one is skipped", () => {
+    mockNonExistentObjects();
+
+    // ids[0] is invalid and skipped, but the positional name/color lists must
+    // still line up with the ORIGINAL id positions: id "123" is position 1 → B,
+    // id "456" is position 2 → C. Before the fix they shifted to A/B.
+    const result = updateScene({
+      ids: "nonexistent,123,456",
+      name: "A,B,C",
+      color: "#FF0000,#00FF00,#0000FF",
+    });
+
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(scene1.set).toHaveBeenCalledWith("name", "B");
+    expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(scene2.set).toHaveBeenCalledWith("name", "C");
+    expect(scene2.set).toHaveBeenCalledWith("color", 255); // #0000FF
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'updateScene: id "nonexistent" does not exist',
+    );
+  });
+
   it("should throw error for invalid time signature format", () => {
     expect(() => updateScene({ ids: "123", timeSignature: "invalid" })).toThrow(
       "Time signature must be in format",

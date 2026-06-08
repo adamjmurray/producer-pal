@@ -13,6 +13,8 @@ import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 
 const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
+const scaleDisabledNote =
+  "Scale disabled for selected clips and defaults for new clips.";
 
 describe("updateLiveSet", () => {
   let liveSet: RegisteredMockObject;
@@ -215,8 +217,20 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
-      $meta: [scaleChangeNote],
+      $meta: [scaleDisabledNote],
     });
+  });
+
+  it("uses a distinct note for scale-disable vs scale-apply", async () => {
+    // Disabling the scale (scale: "") must not claim a scale was "applied" —
+    // the note describes the actual operation so the LLM isn't misled.
+    const disabled = await updateLiveSet({ scale: "" });
+
+    expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
+
+    const applied = await updateLiveSet({ scale: "C Major" });
+
+    expect(applied.$meta).toStrictEqual([scaleChangeNote]);
   });
 
   it("should update complex scale names", async () => {
@@ -323,7 +337,7 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
-      $meta: [scaleChangeNote],
+      $meta: [scaleDisabledNote],
     });
   });
 

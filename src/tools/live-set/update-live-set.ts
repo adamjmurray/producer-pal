@@ -111,13 +111,16 @@ export async function updateLiveSet(
     applyScale(liveSet, scale, result);
 
     // applyScale warns and skips invalid input without setting result.scale.
-    // Only annotate when a change was actually applied (including the
-    // empty-string "disable" case, which sets result.scale = "").
+    // result.scale === "" means the scale was DISABLED (not applied), so the
+    // note must describe that distinctly rather than claiming a scale was
+    // applied.
     if (result.scale != null) {
       result.$meta ??= [];
 
       (result.$meta as string[]).push(
-        "Scale applied to selected clips and defaults for new clips.",
+        result.scale === ""
+          ? "Scale disabled for selected clips and defaults for new clips."
+          : "Scale applied to selected clips and defaults for new clips.",
       );
     }
   }
