@@ -359,6 +359,19 @@ describe("update-live-set-helpers", () => {
       expect(result.scale).toBe("");
     });
 
+    it("should warn and skip without throwing for an invalid scale string", () => {
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      // parseScale throws for these; applyScale must catch, warn, and skip.
+      for (const scale of ["invalid", "H Major", "C Foo"]) {
+        expect(() => applyScale(mockLiveSet, scale, result)).not.toThrow();
+      }
+
+      expect(mockLiveSet.set).not.toHaveBeenCalled();
+      expect(result.scale).toBeUndefined();
+    });
+
     it("should set scale properties for valid scale string", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { scale?: string } = {};

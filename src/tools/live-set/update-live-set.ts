@@ -106,11 +106,16 @@ export async function updateLiveSet(
   if (scale != null) {
     applyScale(liveSet, scale, result);
 
-    result.$meta ??= [];
+    // applyScale warns and skips invalid input without setting result.scale.
+    // Only annotate when a change was actually applied (including the
+    // empty-string "disable" case, which sets result.scale = "").
+    if (result.scale != null) {
+      result.$meta ??= [];
 
-    (result.$meta as string[]).push(
-      "Scale applied to selected clips and defaults for new clips.",
-    );
+      (result.$meta as string[]).push(
+        "Scale applied to selected clips and defaults for new clips.",
+      );
+    }
   }
 
   if (arrangementFollower != null) {
@@ -119,8 +124,9 @@ export async function updateLiveSet(
     result.arrangementFollower = arrangementFollower;
   }
 
-  // Include scalePitches when scale is set to a non-empty value
-  const shouldIncludeScalePitches = scale != null && scale !== "";
+  // Include scalePitches only when a non-empty scale was actually applied
+  // (result.scale is unset when applyScale skipped invalid input).
+  const shouldIncludeScalePitches = result.scale != null && result.scale !== "";
 
   if (shouldIncludeScalePitches) {
     const rootNote = liveSet.getProperty("root_note") as number;

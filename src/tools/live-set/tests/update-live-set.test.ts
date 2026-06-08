@@ -112,19 +112,23 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should throw error for invalid scale format", async () => {
-    await expect(updateLiveSet({ scale: "invalid" })).rejects.toThrow(
-      "Scale must be in format",
-    );
-    await expect(updateLiveSet({ scale: "H Major" })).rejects.toThrow(
-      "Invalid scale root",
-    );
-    await expect(updateLiveSet({ scale: "C Foo" })).rejects.toThrow(
-      "Invalid scale name",
-    );
-    await expect(updateLiveSet({ scale: "Major" })).rejects.toThrow(
-      "Scale must be in format",
-    );
+  it("should warn and skip an invalid scale without throwing", async () => {
+    // Mirrors the update-tool contract: invalid scale is skipped, not thrown,
+    // so other updates in the same call still apply and no scale meta/pitches
+    // are reported.
+    for (const scale of ["invalid", "H Major", "C Foo", "Major"]) {
+      const result = await updateLiveSet({ scale });
+
+      expect(result).toStrictEqual({ id: "live_set_id" });
+      expect(liveSet.set).not.toHaveBeenCalledWith("scale_mode", 1);
+    }
+  });
+
+  it("should apply tempo even when the scale in the same call is invalid", async () => {
+    const result = await updateLiveSet({ tempo: 120, scale: "bad" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("tempo", 120);
+    expect(result).toStrictEqual({ id: "live_set_id", tempo: 120 });
   });
 
   it("should update scale with different root note", async () => {
