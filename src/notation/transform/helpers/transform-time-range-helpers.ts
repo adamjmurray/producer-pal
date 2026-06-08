@@ -6,6 +6,16 @@
 import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type TimeRange as ParserTimeRange } from "../parser/transform-parser.ts";
 
+// Float tolerance for selector membership. Note positions produced by note-ops
+// (ratchet/split via `start + k*duration`) and the selector bounds parsed via
+// barBeatToMusicalBeats reach the same musical beat through different float
+// arithmetic, so equal positions can differ by a few ULPs (~1e-15). Without
+// tolerance an exact-point selector drops the note, and a note on the shared
+// boundary of two adjacent half-open buckets lands in the wrong one. 1e-9
+// swamps the ULP error yet sits far below any musical distance — the same
+// magnitude note-ops uses for grid cuts (GRID_EPSILON).
+const SELECTOR_EPSILON = 1e-9;
+
 /**
  * Convert a parser TimeRange (bar|beat bounds) to absolute musical-beats bounds.
  * Shared by calculateActiveTimeRange and the note-op selector so membership and
@@ -40,6 +50,14 @@ export function timeRangeBoundsInMusicalBeats(
  * selectors and the `-<` marker) drops a note that lands exactly on the end
  * downbeat. Comparing in the same absolute beats as the bounds keeps the
  * membership gate and the ramp/curve normalization in lockstep.
+ *
+ * Comparisons carry SELECTOR_EPSILON so ULP-level float drift between generated
+ * note positions and parsed bounds can't drop or misroute a note. The lower
+ * bound is inclusive at `start - ε`; an inclusive end admits up to `end + ε`; a
+ * half-open end excludes from `end - ε` onward. The half-open end and the next
+ * range's lower bound therefore share the threshold `end - ε`, so a note on the
+ * boundary between two adjacent half-open buckets belongs to exactly one — the
+ * upper bucket.
  * @param noteBeats - Note position in absolute musical beats
  * @param timeRange - Parser time range with bar|beat bounds
  * @param numerator - Time signature numerator (musical beats per bar)
@@ -54,7 +72,9 @@ export function noteInTimeRange(
     timeRange,
     numerator,
   );
-  const pastEnd = endExclusive ? noteBeats >= end : noteBeats > end;
+  const pastEnd = endExclusive
+    ? noteBeats >= end - SELECTOR_EPSILON
+    : noteBeats > end + SELECTOR_EPSILON;
 
-  return noteBeats >= start && !pastEnd;
+  return noteBeats >= start - SELECTOR_EPSILON && !pastEnd;
 }

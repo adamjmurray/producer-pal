@@ -555,3 +555,84 @@ describe("note-count operations (ratchet/merge)", () => {
     });
   });
 });
+
+// Regression: a note at 4|4.5 (Ableton beat 15.5) split into 6 by ratchet(6)
+// produces child starts via `start + k*(0.25/6)`. Selectors written as `n/96`
+// fractions reach the same beats through barBeatToMusicalBeats, but the two
+// float paths differ by ~1 ULP at k=1,2,4,5. Before SELECTOR_EPSILON, exact-
+// point selectors dropped those notes and adjacent half-open buckets misrouted
+// boundary notes. Each test asserts the full intended velocity ramp.
+describe("selector float tolerance over a ratcheted burst", () => {
+  // The original last hi-hat: a single n/16 note at 4|4.5.
+  const lastHat = () =>
+    createTestNote({
+      pitch: 42,
+      start_time: 15.5,
+      duration: 0.25,
+      velocity: 72,
+    });
+  const RAMP = [50, 63, 76, 89, 102, 115];
+  const gbVelocities = (notes: ReturnType<typeof lastHat>): number[] =>
+    notes
+      .filter((n) => n.pitch === 42)
+      .sort((a, b) => a.start_time - b.start_time)
+      .map((n) => Math.round(n.velocity));
+
+  it("matches each ratcheted note with an exact-point selector", () => {
+    const notes = lastHat();
+
+    applyTransforms(
+      notes,
+      [
+        "Gb1 4|4.5: ratchet(6)",
+        "Gb1 4|4.5: velocity = 50",
+        "Gb1 4|4+n13/96: velocity = 63",
+        "Gb1 4|4+n7/48: velocity = 76",
+        "Gb1 4|4.625: velocity = 89",
+        "Gb1 4|4+n/6: velocity = 102",
+        "Gb1 4|4+n17/96: velocity = 115",
+      ].join("\n"),
+      4,
+      4,
+    );
+
+    expect(gbVelocities(notes)).toStrictEqual(RAMP);
+  });
+
+  it("routes each ratcheted note into exactly one adjacent half-open bucket", () => {
+    const notes = lastHat();
+
+    applyTransforms(
+      notes,
+      [
+        "Gb1 4|4.5: ratchet(6)",
+        "Gb1 4|4.5-<4|4+n13/96: velocity = 50",
+        "Gb1 4|4+n13/96-<4|4+n7/48: velocity = 63",
+        "Gb1 4|4+n7/48-<4|4.625: velocity = 76",
+        "Gb1 4|4.625-<4|4+n/6: velocity = 89",
+        "Gb1 4|4+n/6-<4|4+n17/96: velocity = 102",
+        "Gb1 4|4+n17/96-<4|4.75: velocity = 115",
+      ].join("\n"),
+      4,
+      4,
+    );
+
+    expect(gbVelocities(notes)).toStrictEqual(RAMP);
+  });
+
+  it("includes the final note when a closed range ends on its start", () => {
+    // ramp(50,115) over a closed range whose end is the last child's start.
+    // The last child's float start is ~1 ULP past the parsed end bound; the
+    // tolerance keeps it inside so the ramp reaches 115 instead of leaving 72.
+    const notes = lastHat();
+
+    applyTransforms(
+      notes,
+      "Gb1 4|4.5: ratchet(6)\nGb1 4|4.5-4|4.5+n5/96: velocity = ramp(50, 115)",
+      4,
+      4,
+    );
+
+    expect(gbVelocities(notes)).toStrictEqual(RAMP);
+  });
+});
