@@ -12,6 +12,7 @@ import { encryptApiKey, isEncrypted } from "#webui/lib/api-key-crypto";
 import {
   checkHasApiKey,
   loadAllProviderSettingsAsync,
+  loadCurrentProvider,
   loadEnabledTools,
   loadProviderSettings,
   loadProviderSettingsAsync,
@@ -241,6 +242,36 @@ describe("settings-helpers", () => {
       localStorage.setItem("producer_pal_provider_anthropic", "bad-json{");
 
       expect(checkHasApiKey("anthropic")).toBe(false);
+    });
+  });
+
+  describe("loadCurrentProvider", () => {
+    it("returns gemini when nothing is stored", () => {
+      expect(loadCurrentProvider()).toBe("gemini");
+    });
+
+    it("returns a valid stored provider", () => {
+      localStorage.setItem("producer_pal_current_provider", "anthropic");
+
+      expect(loadCurrentProvider()).toBe("anthropic");
+    });
+
+    it("falls back to the legacy 'provider' key", () => {
+      localStorage.setItem("provider", "openai");
+
+      expect(loadCurrentProvider()).toBe("openai");
+    });
+
+    it("falls back to gemini for an unrecognized stored provider", () => {
+      localStorage.setItem("producer_pal_current_provider", "deepmind-9000");
+
+      expect(loadCurrentProvider()).toBe("gemini");
+    });
+
+    it("falls back to gemini for an unrecognized legacy provider", () => {
+      localStorage.setItem("provider", "");
+
+      expect(loadCurrentProvider()).toBe("gemini");
     });
   });
 

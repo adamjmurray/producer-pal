@@ -417,17 +417,28 @@ export async function saveAllProviderSettings(
 }
 
 /**
- * Loads the current provider from localStorage
- * @returns {any} - Hook return value
+ * Loads the current provider from localStorage, falling back to gemini for a
+ * missing OR unrecognized value. A stale/renamed provider name (e.g. a provider
+ * removed in a later release) must not survive: an unvalidated value flows
+ * through to `currentSettings[provider]` → `undefined` → a `.apiKey` read that
+ * crashes the app before the user can reach Settings to recover.
+ * @returns {Provider} - A guaranteed-valid provider
  */
 export function loadCurrentProvider(): Provider {
-  return (
-    (localStorage.getItem(
-      "producer_pal_current_provider",
-    ) as Provider | null) ??
-    (localStorage.getItem("provider") as Provider | null) ??
-    "gemini"
-  );
+  const stored =
+    localStorage.getItem("producer_pal_current_provider") ??
+    localStorage.getItem("provider");
+
+  return isValidProvider(stored) ? stored : "gemini";
+}
+
+/**
+ * Type guard: is the value one of the known providers?
+ * @param {unknown} value - Candidate provider value
+ * @returns {boolean} - True if value is a recognized Provider
+ */
+function isValidProvider(value: unknown): value is Provider {
+  return typeof value === "string" && PROVIDERS.includes(value as Provider);
 }
 
 /**
