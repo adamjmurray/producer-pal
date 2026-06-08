@@ -98,6 +98,35 @@ describe("useChat", () => {
       expect(result.current.activeTemperature).toBeNull();
     });
 
+    it("disposes the client so its MCP connection is released", async () => {
+      const created: MockChatClient[] = [];
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          created.push(client);
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      await act(() => {
+        result.current.clearConversation();
+      });
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.dispose).toHaveBeenCalledOnce();
+    });
+
     it("aborts the in-flight stream (browser Back/Forward teardown path)", async () => {
       // A browser Back/Forward fires hashchange, which switches/clears the
       // conversation via clearConversation WITHOUT going through stopResponse.

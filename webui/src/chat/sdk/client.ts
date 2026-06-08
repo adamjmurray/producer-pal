@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   type FinishReason,
   type ModelMessage,
@@ -43,6 +44,12 @@ export class ChatSdkClient {
   toolLimitReached = false;
   private tools: ToolSet = {};
   private config: ChatClientConfig;
+  /**
+   * The MCP client backing `tools`. Each tool's execute() closure calls
+   * mcpClient.callTool(), so it must stay connected for this client's whole
+   * lifetime and only close when the client is discarded — see dispose().
+   */
+  private mcpClient: Client | null = null;
 
   /**
    * @param _apiKey - API key (handled by the model instance in config)
@@ -58,9 +65,28 @@ export class ChatSdkClient {
    */
   async initialize(): Promise<void> {
     const mcpUrl = this.config.mcpUrl ?? getMcpUrl();
-    const { tools } = await createMcpTools(mcpUrl, this.config.enabledTools);
+    const { tools, mcpClient } = await createMcpTools(
+      mcpUrl,
+      this.config.enabledTools,
+    );
 
     this.tools = tools;
+    this.mcpClient = mcpClient;
+  }
+
+  /**
+   * Close the underlying MCP connection. Idempotent. useChat discards a client
+   * on every new/restored/cleared conversation; without this each discard
+   * leaks the client's open HTTP connection (the connection-test path closes
+   * its client in a finally for the same reason). Fire-and-forget: close() can
+   * reject if connect() never completed, which is harmless on teardown.
+   */
+  dispose(): void {
+    const client = this.mcpClient;
+
+    this.mcpClient = null;
+    this.tools = {};
+    void client?.close().catch(() => {});
   }
 
   /**

@@ -31,6 +31,12 @@ export interface ChatClient<TMessage> {
    * clients that don't support compaction may omit it.
    */
   summarize?: (history: TMessage[]) => Promise<string>;
+  /**
+   * Release any resources held by the client (e.g. an open MCP connection).
+   * Called by useChat whenever the client is discarded. Optional and must be
+   * idempotent: clients that hold no resources may omit it.
+   */
+  dispose?: () => void;
 }
 
 /**

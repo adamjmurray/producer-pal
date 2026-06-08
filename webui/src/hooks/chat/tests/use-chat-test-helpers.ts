@@ -36,6 +36,8 @@ export class MockChatClient implements ChatClient<TestMessage> {
     // Initialization logic
   });
 
+  dispose = vi.fn();
+
   summarize = vi.fn(
     async (history: TestMessage[]): Promise<string> =>
       `Summary of ${history.length} messages`,

@@ -94,6 +94,7 @@ export function useChat<
 
   const clearConversation = useCallback(() => {
     setMessages([]);
+    clientRef.current?.dispose?.();
     clientRef.current = null;
     pendingHistoryRef.current = null;
     // Abort any in-flight stream on teardown. UI-driven switches call
@@ -118,6 +119,11 @@ export function useChat<
 
   const restoreChatHistory = useCallback(
     (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {
+      // No dispose() here: every caller reaches this with no live client —
+      // either on mount (clientRef is still null) or right after
+      // clearConversation() (which already disposed). The two sites that
+      // actually replace a live client — clearConversation and initializeChat —
+      // own the dispose.
       clientRef.current = null;
       pendingHistoryRef.current = chatHistory as TMessage[];
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
@@ -152,6 +158,10 @@ export function useChat<
         extraParams,
       );
 
+      // Dispose any prior client before replacing it — initializeChat is the
+      // fork/retry re-init path, so a live client (with an open MCP connection)
+      // can already be here.
+      clientRef.current?.dispose?.();
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
       lockSettings(
