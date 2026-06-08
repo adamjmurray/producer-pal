@@ -277,6 +277,8 @@ pitchAccidental
 // with no spill onto 4|1. The `<` marker on a normal range (`3|1-<4|1`) makes
 // only its end bound exclusive; without it ranges stay inclusive on both ends.
 // Wildcard forms come first so the `*` branches win before the beatValue branch.
+// A bare bar|beat point (`4|3.5`) comes LAST so the range branch claims a real
+// `start-end` first; only a point with no `-` separator falls through to it.
 timeRange "time range"
   = startBar:oneOrMoreInt "|" "*" "-" endBar:oneOrMoreInt "|" "*" {
     return { startBar, startBeat: 1, endBar: endBar + 1, endBeat: 1, endExclusive: true };
@@ -307,6 +309,19 @@ timeRange "time range"
     // absent so a default range serializes to the legacy inclusive shape.
     if (excl != null) range.endExclusive = true;
     return range;
+  }
+  / bar:oneOrMoreInt "|" beat:beatValue {
+    // Bare bar|beat point (`4|3.5`, or `Gb1 4|3.5` paired with a pitch): target
+    // only the note starting at exactly this position. Desugars to a degenerate
+    // inclusive range [point, point] — the membership gate is inclusive on both
+    // ends, so a zero-width range matches a note whose start equals the point and
+    // nothing else (the same notes the explicit `4|3.5-4|3.5` range already
+    // catches; this is just the sugar). Reached only after the range branch
+    // fails for lack of a `-` separator. Borrows across the bar line like a range
+    // bound so a `-n` offset (`2|1-n/12`) canonicalizes into the previous bar.
+    const beatsPerBar = options.beatsPerBar ?? 4;
+    const point = borrowBars(bar, beat, beatsPerBar);
+    return { startBar: point.bar, startBeat: point.beat, endBar: point.bar, endBeat: point.beat };
   }
 
 // A range-bound beat position. Same dialect as bar|beat note positions

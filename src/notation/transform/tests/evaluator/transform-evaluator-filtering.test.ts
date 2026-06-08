@@ -305,6 +305,69 @@ G4-G5: velocity += 20`;
     });
   });
 
+  // A bare bar|beat point (`4|3.5`) targets only the note starting at exactly
+  // that position — desugars to a degenerate inclusive range [point, point].
+  describe("time point selector (bare bar|beat)", () => {
+    it("applies to a note starting exactly at the point", () => {
+      const result = evaluateTransform("2|3: velocity += 10", {
+        ...createContext(),
+        bar: 2,
+        beat: 3,
+      });
+
+      expect(result.velocity!.value).toBe(10);
+    });
+
+    it("skips a note before the point", () => {
+      const result = evaluateTransform("2|3: velocity += 10", {
+        ...createContext(),
+        bar: 2,
+        beat: 2.5,
+      });
+
+      expect(result).toStrictEqual({});
+    });
+
+    it("skips a note after the point", () => {
+      const result = evaluateTransform("2|3: velocity += 10", {
+        ...createContext(),
+        bar: 2,
+        beat: 3.5,
+      });
+
+      expect(result).toStrictEqual({});
+    });
+
+    it("matches a sub-beat decimal point exactly", () => {
+      const onPoint = evaluateTransform("4|3.5: velocity += 10", {
+        ...createContext(),
+        bar: 4,
+        beat: 3.5,
+      });
+
+      expect(onPoint.velocity!.value).toBe(10);
+
+      const offPoint = evaluateTransform("4|3.5: velocity += 10", {
+        ...createContext(),
+        bar: 4,
+        beat: 3,
+      });
+
+      expect(offPoint).toStrictEqual({});
+    });
+
+    it("pairs with a pitch selector in either order", () => {
+      const ctx = { ...createContext(), pitch: 60, bar: 2, beat: 3 };
+
+      expect(
+        evaluateTransform("C3 2|3: velocity += 10", ctx).velocity!.value,
+      ).toBe(10);
+      expect(
+        evaluateTransform("2|3 C3: velocity += 10", ctx).velocity!.value,
+      ).toBe(10);
+    });
+  });
+
   describe("combined pitch and time filtering", () => {
     it("applies when both pitch and time match", () => {
       const result = evaluateTransform("C3 1|1-2|1: velocity += 10", {

@@ -390,6 +390,13 @@ C1: merge()           // glue all the kick hits into one sustained note
   `1|1-2|1: velocity += 10`). Both bounds are **inclusive** by default (matching
   note start time). Two opt-in forms make the end **exclusive** (half-open), so
   a selection can stop at a bar line without catching the next downbeat:
+  - **Bare bar|beat point:** a single position with no `-` separator (`4|3.5:`,
+    `2|1:`) targets only the note starting at **exactly** that position. It
+    desugars to the degenerate inclusive range `[point, point]` — equivalent to
+    writing `4|3.5-4|3.5` but without restating the bound. The beat uses the
+    full bound dialect (decimals, `±n` offsets, bar-line borrow), so `2|1-n/12:`
+    points just behind the bar-2 downbeat. Pairs with a pitch in either order
+    (`Gb1 4|3.5:` / `4|3.5 Gb1:`).
   - **Whole-bar wildcard:** `N|*` selects all of bar N; `A|*-B|*` selects whole
     bars A through B. Each desugars to the half-open range `[first|1, after|1)`
     (end bar = the bar _after_ the last selected bar, end exclusive), so `3|*`

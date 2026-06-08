@@ -136,4 +136,63 @@ describe("Transform Parser - time range selectors", () => {
     expect(result[0]!.timeRange!.endBar).toBe(2);
     expect(result[0]!.timeRange!.endBeat).toBe(1);
   });
+
+  describe("bare bar|beat point selector", () => {
+    it("desugars a bare point to a degenerate inclusive range", () => {
+      const result = parser.parse("4|3.5: velocity += 10");
+
+      // No `-` separator → a zero-width [point, point] range, inclusive (no
+      // endExclusive), matching only a note starting exactly at 4|3.5.
+      expect(result[0]!.timeRange).toStrictEqual({
+        startBar: 4,
+        startBeat: 3.5,
+        endBar: 4,
+        endBeat: 3.5,
+      });
+    });
+
+    it("parses a point paired with a pitch in either order", () => {
+      const pitchFirst = parser.parse("Gb1 4|3.5: ratchet(4)");
+      const timeFirst = parser.parse("4|3.5 Gb1: ratchet(4)");
+      const expectedTime = {
+        startBar: 4,
+        startBeat: 3.5,
+        endBar: 4,
+        endBeat: 3.5,
+      };
+
+      expect(pitchFirst[0]!.timeRange).toStrictEqual(expectedTime);
+      expect(pitchFirst[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+      expect(timeFirst[0]!.timeRange).toStrictEqual(expectedTime);
+      expect(timeFirst[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+    });
+
+    it("still parses an explicit range as a range, not a point", () => {
+      const result = parser.parse("1|1-2|1: velocity += 10");
+
+      expect(result[0]!.timeRange).toStrictEqual({
+        startBar: 1,
+        startBeat: 1,
+        endBar: 2,
+        endBeat: 1,
+      });
+    });
+
+    it("borrows across the bar line for a -n offset point", () => {
+      // `2|1-n/12` as a bare point (no trailing range) = just before the bar-2
+      // downbeat → bar 1, beat 4⅔ in 4/4, collapsed to a zero-width range.
+      const result = parser.parse("2|1-n/12: velocity += 10");
+
+      expect(result[0]!.timeRange!.startBar).toBe(1);
+      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(4.6667);
+      expect(result[0]!.timeRange!.endBar).toBe(1);
+      expect(result[0]!.timeRange!.endBeat).toBeCloseTo(4.6667);
+    });
+  });
 });

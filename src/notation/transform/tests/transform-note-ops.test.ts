@@ -98,6 +98,22 @@ describe("note-count operations (ratchet/merge)", () => {
       expect(notes.filter((n) => n.start_time >= 4)).toHaveLength(2);
     });
 
+    it("only ratchets the note starting at an exact time point", () => {
+      // The user's real case: a bare bar|beat point targets just the one note
+      // that starts there, leaving an adjacent note at a nearby time alone.
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 4, duration: 0.5 }, // bar 2, beat 1
+        { pitch: 60, start_time: 6, duration: 0.5 }, // bar 2, beat 3 — the target
+      ]);
+
+      applyTransforms(notes, "2|3: ratchet(4)", 4, 4);
+
+      // Only the beat-3 note is split into 4; the beat-1 note is untouched.
+      expect(notes).toHaveLength(5);
+      expect(notes.filter((n) => n.start_time < 6)).toHaveLength(1);
+      expect(notes.filter((n) => n.start_time >= 6)).toHaveLength(4);
+    });
+
     it("cuts a grid-aligned note on the note-value grid", () => {
       const notes = createTestNote({ start_time: 0, duration: 1 }); // a quarter
 

@@ -145,6 +145,7 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
 - **Time filter:** \`1|1-2|4\` (bar|beat range, **ends inclusive**, matches note start time); bounds use the same beat dialect as positions (decimal or \`±n\` offset, e.g. \`1|1+n/12-2|1\`)
+  - **Single point:** a bare bar|beat with no \`-\` (\`4|3.5:\`) targets only the note starting exactly there — e.g. \`Gb1 4|3.5: ratchet(4)\` rolls just that note
   - **Whole bars:** \`3|*\` = all of bar 3, \`1|*-3|*\` = bars 1-3 — half-open, so exactly those bars with no spill onto the next downbeat. Prefer this for "measure N"; \`3|1-4|1\` would also match a note on 4|1
   - **Exclusive end:** append \`-<\` to make only the end bound exclusive — \`3|1-<4|1\` = up to but not including 4|1 (for sub-bar half-open spans)
 - **MIDI parameters:** velocity (1-127; <=0 deletes note), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
