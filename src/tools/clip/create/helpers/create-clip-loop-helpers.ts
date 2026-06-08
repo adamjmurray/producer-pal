@@ -91,7 +91,7 @@ export async function createClips(
       break;
     }
 
-    await createClipAtIndex(params, transformInputs, i, count, createdClips);
+    await createClipAtIndex(params, transformInputs, i, createdClips);
   }
 
   return createdClips;
@@ -112,27 +112,35 @@ interface IterationPosition {
  * @param params - All parameters for clip creation
  * @param transformInputs - Constant transform inputs for this view
  * @param i - 0-based iteration index within the view
- * @param count - Total clips created in this view
  * @param createdClips - Accumulator the created clip is pushed onto
  */
 async function createClipAtIndex(
   params: CreateClipsParams,
   transformInputs: ClipTransformInputs,
   i: number,
-  count: number,
   createdClips: object[],
 ): Promise<void> {
   const { view, baseName, parsedNames, parsedColors, nameStartIndex, code } =
     params;
 
+  // clip.index/clip.count (transforms and code-exec) span the whole create
+  // batch, not just this view: a single call mixing session slots and
+  // arrangement positions runs createClips once per view, so the global index
+  // is nameStartIndex + i (session view starts at 0, arrangement at
+  // sessionSlots.length) and the count is the combined total. This mirrors the
+  // continuous indexing already used for names/colors below.
+  const globalIndex = nameStartIndex + i;
+  const totalCount =
+    params.sessionSlots.length + params.arrangementStarts.length;
+
   const clipName = getNameForIndex(
     baseName ?? undefined,
-    nameStartIndex + i,
+    globalIndex,
     parsedNames,
   );
   const clipColor = getColorForIndex(
     params.color ?? undefined,
-    nameStartIndex + i,
+    globalIndex,
     parsedColors,
   );
   const pos = resolveIterationPosition(params, i);
@@ -145,8 +153,8 @@ async function createClipAtIndex(
     transformedCount,
   } = resolveClipTransform(
     transformInputs,
-    i,
-    count,
+    globalIndex,
+    totalCount,
     pos.arrangementStartBeats,
   );
 
@@ -182,7 +190,12 @@ async function createClipAtIndex(
     const clipId = code != null ? (clipResult as { id?: string }).id : null;
 
     if (clipId != null && code != null) {
-      const noteCount = await applyCodeToSingleClip(clipId, code, i, count);
+      const noteCount = await applyCodeToSingleClip(
+        clipId,
+        code,
+        globalIndex,
+        totalCount,
+      );
 
       if (noteCount != null) {
         (clipResult as { noteCount?: number }).noteCount = noteCount;

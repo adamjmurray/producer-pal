@@ -270,6 +270,25 @@ describe("createClip - advanced features", () => {
         arrangementStart: "1|1",
       });
     });
+
+    it("spans clip.index/clip.count across the full session+arrangement batch", async () => {
+      const { sessionClip, arrangementClip } = setupDualMocks();
+
+      await createClip({
+        slot: "0/0",
+        trackIndex: 0,
+        arrangementStart: "1|1",
+        notes: "C3 1|1",
+        transforms: "velocity = clip.index * 10 + clip.count",
+      });
+
+      // The batch is 2 clips (1 session + 1 arrangement), so clip.count is 2 for
+      // both and the index spans the whole batch: session is index 0,
+      // arrangement index 1. Before the fix each view restarted at index 0 with
+      // its own per-view count of 1, so both clips got velocity 0*10 + 1 = 1.
+      expectNotesAdded(sessionClip, [note(60, 0, 1, 2)]); // 0*10 + 2
+      expectNotesAdded(arrangementClip, [note(60, 0, 1, 12)]); // 1*10 + 2
+    });
   });
 
   describe("note ordering and count", () => {
