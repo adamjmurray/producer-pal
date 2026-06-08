@@ -928,7 +928,8 @@ describe("ppal-clip-transforms (seq)", () => {
     const notes = await readClipNotes(clipId);
 
     // Repeated velocity groups are comma-merged with their positions
-    expect(notes).toContain("v40 C3 1|1,3");
+    // (the opening note carries an explicit n/4 in the serialized output)
+    expect(notes).toContain("v40 n/4 C3 1|1,3");
     expect(notes).toContain("v120 C3 1|2,4");
   });
 
