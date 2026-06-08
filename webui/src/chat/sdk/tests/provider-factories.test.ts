@@ -24,6 +24,14 @@ const getModelId = (model: unknown): string =>
 const getApiProvider = (model: unknown): string =>
   (model as Record<string, unknown>).provider as string;
 
+// @ai-sdk/openai-compatible only emits `stream_options.include_usage` (so the
+// server reports token counts during streaming) when `includeUsage: true` is in
+// the model config. Without it, LM Studio/custom token usage stays undefined and
+// shows as 0 in the UI. The setting lands on the model's runtime `config`.
+const getIncludeUsage = (model: unknown): unknown =>
+  ((model as Record<string, unknown>).config as Record<string, unknown>)
+    .includeUsage;
+
 describe("createProviderModel", () => {
   it("creates a model for anthropic provider", () => {
     const model = createProviderModel(
@@ -167,6 +175,20 @@ describe("createProviderModel", () => {
     const model = createProviderModel("openai", "gpt-5.5", "key");
 
     expect(getApiProvider(model)).toBe("openai.responses");
+  });
+
+  // Regression: without includeUsage, OpenAI-compatible servers (LM Studio,
+  // custom) never report token usage in streaming responses, so the UI shows 0.
+  it("enables usage reporting for lmstudio (includeUsage)", () => {
+    const model = createProviderModel("lmstudio", "local-model", "");
+
+    expect(getIncludeUsage(model)).toBe(true);
+  });
+
+  it("enables usage reporting for custom (includeUsage)", () => {
+    const model = createProviderModel("custom", "m", "k", "https://x/v1");
+
+    expect(getIncludeUsage(model)).toBe(true);
   });
 });
 
