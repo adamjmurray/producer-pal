@@ -239,12 +239,18 @@ export function useChat<
         setMessages(adapter.createErrorMessage(error, errorHistory));
 
         if (clientRef.current) {
-          // createErrorMessage mutates errorHistory. When errorHistory is a
-          // fresh copy (includeStashed path), the error didn't reach
-          // chatHistory, so auto-save would persist the user message
-          // without it. Push the error into chatHistory directly.
+          // The includeStashed path built errorHistory as a fresh array
+          // ([...chatHistory, stashedUserMessage]) and createErrorMessage then
+          // appended the error to it. This is the init-failure case: the client
+          // exists but sendMessage never ran, so its chatHistory is still empty
+          // and has neither the user message nor the error. Assign the whole
+          // array — pushing only the error (the previous behavior) persisted the
+          // error without the user message that prompted it, so a reload showed
+          // a dangling error. Cast is safe: every entry is non-null here
+          // (baseHistory is TMessage[], stashed is non-null when includeStashed).
+          // Reassigning is safe: sendMessage and compact() read chatHistory fresh.
           if (errorHistory !== clientRef.current.chatHistory) {
-            clientRef.current.chatHistory.push(errorHistory.at(-1) as TMessage);
+            clientRef.current.chatHistory = errorHistory;
           }
 
           autoSaveRef?.current?.();

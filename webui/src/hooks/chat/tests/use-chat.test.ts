@@ -342,6 +342,44 @@ describe("useChat", () => {
       expect(lastPart?.type).toBe("error");
     });
 
+    it("persists the user message, not just the error, when init fails", async () => {
+      // createClient runs (so the client exists) but initialize throws before
+      // sendMessage, leaving chatHistory empty. The stashed user message must
+      // still reach the persisted history alongside the error — otherwise a
+      // reload shows a dangling error with no question.
+      const errorAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.initialize = vi.fn(async () => {
+            throw new Error("Initialization failed");
+          });
+
+          return client;
+        }),
+      };
+      const autoSaveRef = { current: vi.fn() };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: errorAdapter, autoSaveRef }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(result.current.getChatHistory()).toStrictEqual([
+        { role: "user", content: "Hello" },
+        {
+          role: "assistant",
+          content: expect.stringContaining("Initialization failed"),
+          isError: true,
+        },
+      ]);
+      expect(autoSaveRef.current).toHaveBeenCalled();
+    });
+
     it("trims whitespace from messages", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
