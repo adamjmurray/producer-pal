@@ -241,6 +241,12 @@ function applyAssignmentToNotes(
     ? timeRangeBoundsInMusicalBeats(assignment.timeRange, timeSigNumerator)
     : clipTimeRange;
 
+  // An evaluation failure (e.g. a wrong function argument count) is usually
+  // note-invariant — it would repeat identically for every selected note. Warn
+  // once per distinct message for this assignment instead of once per note, so a
+  // single malformed line doesn't relay N copies of the same WARNING.
+  const warnedFailures = new Set<string>();
+
   for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
     const i = selectedIndices[cursor] as number;
     const note = notes[i] as NoteEvent;
@@ -294,9 +300,12 @@ function applyAssignmentToNotes(
 
       transformedIndices.add(i);
     } catch (error) {
-      console.warn(
-        `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
-      );
+      const message = `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`;
+
+      if (!warnedFailures.has(message)) {
+        warnedFailures.add(message);
+        console.warn(message);
+      }
     }
   }
 }

@@ -238,9 +238,24 @@ function evaluateWaveform(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  // All waveforms require at least a period argument
+  // All waveforms require at least a period argument. square also takes an
+  // optional pulseWidth (3rd arg); the rest cap at period + phase. sync is a
+  // trailing keyword, not an arg, so it isn't counted here.
   if (args.length === 0) {
     throw new Error(`Function ${name}() requires at least a period argument`);
+  }
+
+  const maxArgs = name === "square" ? 3 : 2;
+
+  if (args.length > maxArgs) {
+    const signature =
+      name === "square"
+        ? `${name}(period, [phase], [pulseWidth])`
+        : `${name}(period, [phase])`;
+
+    throw new Error(
+      `Function ${name}() takes at most ${maxArgs} arguments: ${signature}`,
+    );
   }
 
   // First argument is the period: a note-value or numeric expression, in beats

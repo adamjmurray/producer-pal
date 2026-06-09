@@ -449,8 +449,10 @@ export function evaluateMathFunction(
     return wrapped <= hi - lo ? wrapped + lo : period - wrapped + lo;
   }
 
-  if (args.length === 0) {
-    throw new Error(`Function ${name}() requires one argument`);
+  if (args.length !== 1) {
+    throw new Error(
+      `Function ${name}() requires exactly 1 argument: ${name}(value)`,
+    );
   }
 
   const value = evaluateExpression(

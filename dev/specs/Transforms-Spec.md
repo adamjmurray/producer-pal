@@ -46,6 +46,12 @@ merge(0); // glue only touching/overlapping same-pitch notes
 merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
 
+**Argument counts are enforced uniformly.** A call with too few _or_ too many
+arguments (counting only positional args — the trailing `sync`/`raw` keywords
+are not arguments) warns and skips that assignment line rather than guessing
+intent; later lines still run. Extra arguments are never silently dropped. The
+warning is relayed once per malformed line, not once per affected note.
+
 ## Parameters
 
 - **period** (called `frequency` in the signatures above): the cycle length for
