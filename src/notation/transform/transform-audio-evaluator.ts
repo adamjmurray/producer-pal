@@ -213,6 +213,18 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
     );
   }
 
+  const hasAudioPitchRange = assignments.some(
+    (a) =>
+      (a.parameter === "gain" || a.parameter === "pitchShift") &&
+      a.pitchRange != null,
+  );
+
+  if (hasAudioPitchRange) {
+    console.warn(
+      "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+    );
+  }
+
   const hasAudioPredicate = assignments.some(
     (a) =>
       (a.parameter === "gain" || a.parameter === "pitchShift") &&

@@ -961,3 +961,8 @@ pitchShift = -12;
 // Self-reference: shift relative to current
 pitchShift = audio.pitchShift + 7;
 ```
+
+Audio transforms apply to the whole clip, so any note-level scoping is dropped
+with a relayed warning rather than silently: a pitch selector, a time selector,
+a `where()` predicate, MIDI parameters, and note-count operations all warn and
+are ignored on audio clips.

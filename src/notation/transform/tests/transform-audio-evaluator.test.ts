@@ -321,6 +321,30 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
+  describe("pitch selector handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns when a pitch selector is used on an audio transform", () => {
+      const result = applyAudioTransform(0, 0, "C3-C5: gain += 3");
+
+      // Still applies to the whole clip
+      expect(result.gain).toBe(3);
+      expect(console.warn).toHaveBeenCalledWith(
+        "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+      );
+    });
+
+    it("does not warn when no pitch selector is present", () => {
+      applyAudioTransform(0, 0, "gain += 3");
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+      );
+    });
+  });
+
   describe("where() predicate handling", () => {
     beforeEach(() => {
       vi.mocked(console.warn).mockClear();
