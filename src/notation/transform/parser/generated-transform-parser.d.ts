@@ -77,6 +77,32 @@ export interface BarBeatPointNode {
   musicalBeats: number;
 }
 
+/** Comparison node inside a where() predicate. Operands are arithmetic expressions
+ * (restricted by the parser to the intrinsic note properties + literals). */
+export interface ComparisonNode {
+  type: "comparison";
+  op: ">" | ">=" | "<" | "<=" | "==" | "!=";
+  left: ExpressionNode;
+  right: ExpressionNode;
+}
+
+/** Logical AND/OR of two predicates inside a where() clause. */
+export interface LogicalNode {
+  type: "and" | "or";
+  left: PredicateNode;
+  right: PredicateNode;
+}
+
+/** Logical negation of a predicate inside a where() clause. */
+export interface NotNode {
+  type: "not";
+  operand: PredicateNode;
+}
+
+/** A where() predicate AST: a boolean expression over note properties. Boolean and
+ * comparison operators are legal ONLY here, never on an assignment RHS. */
+export type PredicateNode = ComparisonNode | LogicalNode | NotNode;
+
 /** Pitch range filter */
 export interface PitchRange {
   startPitch: number;
@@ -102,6 +128,10 @@ export interface TransformAssignment {
   expression: ExpressionNode;
   pitchRange?: PitchRange;
   timeRange?: TimeRange;
+  /** Optional where() predicate filter. AND-combined with pitchRange/timeRange:
+   * a note must satisfy the predicate AND the positional selector. Null/absent
+   * when the line has no where() clause. */
+  predicate?: PredicateNode | null;
 }
 
 /**

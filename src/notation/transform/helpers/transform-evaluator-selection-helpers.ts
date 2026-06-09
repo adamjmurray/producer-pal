@@ -4,15 +4,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   type PitchRange,
+  type PredicateNode,
   type TransformAssignment,
 } from "../parser/transform-parser.ts";
 import {
   calculateActiveTimeRange,
+  evaluateExpression,
   type NoteContext,
   type TimeRange,
 } from "./transform-evaluator-helpers.ts";
+import { buildNoteProperties } from "./transform-evaluator-note-helpers.ts";
+import { evaluatePredicate } from "./transform-predicate-helpers.ts";
 
 /**
  * Select the note indices an assignment applies to: those whose current pitch
@@ -68,10 +74,67 @@ export function selectAssignmentNotes(
       continue;
     }
 
+    // where() predicate filter, AND-combined with the pitch/time selectors above.
+    if (
+      assignment.predicate != null &&
+      !noteMatchesPredicate(
+        assignment.predicate,
+        note,
+        noteContext.position,
+        timeSigNumerator,
+        timeSigDenominator,
+        clipTimeRange,
+      )
+    ) {
+      continue;
+    }
+
     selected.push(idx);
   }
 
   return selected;
+}
+
+/**
+ * Evaluate a where() predicate against one note for selection. Predicates may
+ * reference only the intrinsic note properties (enforced at parse time), so the
+ * 0-valued index/count and the absent next/legato context here are never read — the
+ * selected set (and thus those) is not known until selection finishes. A failed
+ * evaluation warns and excludes the note (warn-and-skip), matching the apply path.
+ * @param predicate - where() predicate AST
+ * @param note - Note event to test
+ * @param position - Note position in musical beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range (unused for function-free predicates)
+ * @returns Whether the note satisfies the predicate
+ */
+function noteMatchesPredicate(
+  predicate: PredicateNode,
+  note: NoteEvent,
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+): boolean {
+  const noteProperties = buildNoteProperties(note, 0, 0, timeSigDenominator);
+
+  try {
+    return evaluatePredicate(predicate, {
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    });
+  } catch (error) {
+    console.warn(
+      `Failed to evaluate where() predicate: ${errorMessage(error)}`,
+    );
+
+    return false;
+  }
 }
 
 /**

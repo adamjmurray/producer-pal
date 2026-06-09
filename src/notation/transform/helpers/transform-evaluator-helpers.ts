@@ -14,6 +14,7 @@ import {
   type TransformStatement,
 } from "../parser/transform-parser.ts";
 import { evaluateFunction } from "../transform-functions.ts";
+import { evaluatePredicate } from "./transform-predicate-helpers.ts";
 import {
   noteInTimeRange,
   timeRangeBoundsInMusicalBeats,
@@ -188,6 +189,23 @@ function processAssignment(
     );
 
     if (activeTimeRange.skip) {
+      return { skip: true };
+    }
+
+    // where() predicate filter, AND-combined with the positional selector: the
+    // note must satisfy the predicate too. A throw here (e.g. a missing property)
+    // is caught below and warn-and-skipped like any other eval failure.
+    if (
+      assignment.predicate != null &&
+      !evaluatePredicate(assignment.predicate, {
+        position,
+        timeSigNumerator: numerator,
+        timeSigDenominator: denominator,
+        timeRange: activeTimeRange.timeRange,
+        noteProperties,
+        evaluateExpression,
+      })
+    ) {
       return { skip: true };
     }
 

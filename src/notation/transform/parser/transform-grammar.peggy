@@ -57,6 +57,51 @@
     return { parameter, operator, expression: value };
   }
 
+  // Intrinsic scalar note properties allowed inside a where() predicate. Selection-
+  // derived note props (index, count), the next.* lookahead, and the clip/audio
+  // namespaces are excluded: where() is evaluated during note SELECTION, before the
+  // selected set (and thus index/count/next/legato) exists, so only per-note
+  // intrinsic values are available.
+  const PREDICATE_NOTE_PROPS = new Set([
+    "velocity", "deviation", "duration", "probability", "pitch", "start",
+  ]);
+
+  // Walk a where() predicate AST and reject anything not allowed in 515a: any
+  // variable other than the six intrinsic note properties, and any function call.
+  // Throws a targeted error; returns nothing on success. Number literals are bare
+  // JS numbers (not objects) and pass through; pitch/duration domain literals are
+  // allowed. Functions are a deferred fast-follow (AJM-517).
+  function validatePredicate(node) {
+    if (node == null || typeof node !== "object") {
+      return;
+    }
+    switch (node.type) {
+      case "or":
+      case "and":
+      case "comparison":
+      case "add":
+      case "subtract":
+      case "multiply":
+      case "divide":
+      case "modulo":
+        validatePredicate(node.left);
+        validatePredicate(node.right);
+        return;
+      case "not":
+        validatePredicate(node.operand);
+        return;
+      case "variable":
+        if (node.namespace !== "note" || !PREDICATE_NOTE_PROPS.has(node.name)) {
+          throw new Error(`where() predicates can only reference note properties (note.velocity, note.deviation, note.duration, note.probability, note.pitch, note.start). Got "${node.namespace}.${node.name}" — note.index/count, next.*, and clip.* aren't available while selecting notes.`);
+        }
+        return;
+      case "function":
+        throw new Error(`where() predicates don't support functions yet — compare note properties directly (e.g. note.velocity < 40), combined with && || ! and arithmetic.`);
+      default:
+        return;
+    }
+  }
+
   // Maps transform parameters to their note/audio variable for *= and /= desugaring.
   // timing uses note.start (absolute position) since there is no note.timing offset variable.
   const PARAM_TO_VARIABLE = {
@@ -87,16 +132,43 @@ rangeSelector "range selector"
 // note-count operation (ratchet/merge). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
 statement "statement"
-  = ranges:(rangeSelector _ ":" _)? body:(noteOp / assignmentBody) {
-    const pitchRange = ranges?.[0]?.pitchRange ?? null;
-    const timeRange = ranges?.[0]?.timeRange ?? null;
-    // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
-    // selector to each so a single token's writes share one pitch/time filter.
-    if (Array.isArray(body)) {
-      return body.map(b => ({ pitchRange, timeRange, ...b }));
+  = prefix:selectorPrefix? body:(noteOp / assignmentBody) {
+    const pitchRange = prefix?.pitchRange ?? null;
+    const timeRange = prefix?.timeRange ?? null;
+    const predicate = prefix?.predicate ?? null;
+    const isNoteOpBody = !Array.isArray(body) && body.kind === "noteOp";
+    // Note-count ops (ratchet/merge/split) don't support a where() predicate.
+    // Reject rather than silently ignore so the limitation is visible.
+    if (predicate != null && isNoteOpBody) {
+      throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split) — put the predicate on a parameter assignment line instead.`);
     }
-    return { pitchRange, timeRange, ...body };
+    // Only attach `predicate` when a where() clause is present, so non-predicate
+    // assignments keep their historical shape (just pitchRange/timeRange).
+    const predPart = predicate != null ? { predicate } : {};
+    // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
+    // selector + predicate to each so a single token's writes share one filter.
+    if (Array.isArray(body)) {
+      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...b }));
+    }
+    // Note ops carry only the positional selector (no predicate field).
+    if (isNoteOpBody) {
+      return { pitchRange, timeRange, ...body };
+    }
+    return { pitchRange, timeRange, ...predPart, ...body };
   }
+
+// The optional `selector:` prefix. Combines an optional positional range selector
+// (pitch and/or time) with an optional where() predicate, terminated by `:`. Either
+// part may appear alone; the `:` is required once any prefix is present. The
+// predicate AND-combines with the positional selector at apply time — a note must
+// satisfy both. The predicate is per-line, like the positional selector.
+selectorPrefix
+  = ranges:rangeSelector _ predicate:whereClause? _ ":" _ {
+      return { pitchRange: ranges.pitchRange, timeRange: ranges.timeRange, predicate: predicate ?? null };
+    }
+  / predicate:whereClause _ ":" _ {
+      return { pitchRange: null, timeRange: null, predicate };
+    }
 
 // Note-count operations: statements that change how many notes exist, rather
 // than assigning a value to a parameter. They reuse the `selector:` prefix above
@@ -407,6 +479,56 @@ parameter "parameter name"
   / "probability" { return "probability"; }
   / "deviation" { return "deviation"; }
   / "gain" { return "gain"; }
+
+// A where() predicate: a boolean expression over note properties that filters which
+// notes a statement touches. Boolean/comparison operators are legal ONLY here — an
+// assignment RHS stays purely arithmetic. `validatePredicate` rejects functions and
+// any non-note-property variable with a targeted error.
+whereClause "where() predicate"
+  = "where" _ "(" _ expr:boolOr _ ")" {
+      validatePredicate(expr);
+      return expr;
+    }
+
+// Boolean precedence, lowest-binding first: || < && < ! < comparison. Comparison
+// operands are full arithmetic `expression`s, so arithmetic binds tighter than any
+// comparison. Left-associative folds mirror the arithmetic rules.
+boolOr
+  = head:boolAnd tail:(_ "||" _ boolAnd)* {
+      return tail.reduce((left, t) => ({ type: "or", left, right: t[3] }), head);
+    }
+
+boolAnd
+  = head:boolNot tail:(_ "&&" _ boolNot)* {
+      return tail.reduce((left, t) => ({ type: "and", left, right: t[3] }), head);
+    }
+
+boolNot
+  = "!" _ operand:boolNot { return { type: "not", operand }; }
+  / boolPrimary
+
+// Boolean grouping: parens around a full boolean expression (`a && (b || c)`, or the
+// reflexive `(note.velocity > 80)`). Tried before the bare comparison so a
+// parenthesized predicate groups at the boolean layer; a paren wrapping only
+// arithmetic (`(1 + 2) > 3`) backtracks to the comparison branch, where the
+// arithmetic `expression` rule consumes the parens via its own `( expr )` primary.
+boolPrimary
+  = "(" _ expr:boolOr _ ")" { return expr; }
+  / comparison
+
+comparison
+  = left:expression _ op:comparisonOp _ right:expression {
+      return { type: "comparison", op, left, right };
+    }
+
+// Two-char operators precede their one-char prefixes so `>=`/`<=` win over `>`/`<`.
+comparisonOp
+  = ">=" { return ">="; }
+  / "<=" { return "<="; }
+  / "==" { return "=="; }
+  / "!=" { return "!="; }
+  / ">" { return ">"; }
+  / "<" { return "<"; }
 
 expression "expression"
   = additive
