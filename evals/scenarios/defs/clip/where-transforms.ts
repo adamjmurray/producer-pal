@@ -157,10 +157,11 @@ export const whereTransforms: EvalScenario = {
           );
         }
 
-        // Delete: the v0 shorthand or the longhand velocity = 0.
-        if (!/(\bv0\b|velocity\s*=\s*0\b)/.test(transforms)) {
+        // Delete: the `delete` keyword, the v0 shorthand, or longhand
+        // velocity = 0 (skills now lead with `delete`, but v0 stays valid).
+        if (!/(\bdelete\b|\bv0\b|velocity\s*=\s*0\b)/.test(transforms)) {
           throw new Error(
-            `expected a delete (v0 / velocity = 0): ${transforms}`,
+            `expected a delete (delete / v0 / velocity = 0): ${transforms}`,
           );
         }
 

@@ -29,6 +29,19 @@ describe("where() predicate filtering", () => {
       expect(notes[0]!.velocity).toBe(100);
     });
 
+    it("deletes matched notes via the `delete` shorthand (alias for v0)", () => {
+      const notes = createTestNotes([
+        { start_time: 0, velocity: 30 },
+        { start_time: 1, velocity: 100 },
+      ]);
+
+      applyTransforms(notes, "where(note.velocity < 40): delete", 4, 4);
+
+      // `delete` desugars to velocity = 0, so the quiet note is swept out.
+      expect(notes).toHaveLength(1);
+      expect(notes[0]!.velocity).toBe(100);
+    });
+
     it("accents loud notes with a > threshold", () => {
       const notes = createTestNotes([
         { start_time: 0, velocity: 110 },

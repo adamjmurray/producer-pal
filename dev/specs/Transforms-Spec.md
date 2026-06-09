@@ -493,8 +493,9 @@ clears and simple one-shot sets (this is the form the `preTransforms` examples
 in the skills use). One token per line; an optional pitch/time selector still
 applies.
 
-- `v0` deletes the note · `vN` sets velocity · `v+N` / `v-N` adjusts velocity ·
-  `vA-B` sets a humanized random velocity range (e.g. `v80-120`)
+- `delete` (or `v0`) deletes the note · `vN` sets velocity · `v+N` / `v-N`
+  adjusts velocity · `vA-B` sets a humanized random velocity range (e.g.
+  `v80-120`)
 - `pN` sets probability · `p+N` / `p-N` adjusts probability (no range form — the
   notes layer has none either, so `p` stays single-valued for parity)
 - `n/4` (or `Nbar`, `Nbar±n/4`, e.g. `1bar-n/16`) sets duration to that note
@@ -506,6 +507,13 @@ form: `v0` ≡ `velocity = 0`, `C1: v0` ≡ `C1: velocity = 0`, and `C1: C4` rem
 the C1 lane to C4. The shorthand expresses only set/delete/adjust of one
 property — use the full syntax for anything computed (waveforms, `*=`, ramps,
 cross-note references).
+
+`delete` is a readable alias for `v0` with an identical AST (`velocity = 0`), so
+it deletes the matched note(s) and a selector still applies (`C1: delete`,
+`where(note.velocity < 40): delete`). It is **transform-only** — the bar|beat
+`notes` layer keeps `v0` — and **shorthand-only**: using it as a value
+(`velocity = delete`, `1 + delete`) raises a targeted parse error, mirroring the
+note-count-op-as-value guard.
 
 The one exception is the velocity range `vA-B`, which desugars to **two**
 assignments — `velocity = low` and `deviation = high - low` — matching the

@@ -11,6 +11,8 @@ describe("Transform Parser - shorthand", () => {
     it.each([
       ["v100", "velocity = 100"],
       ["v0", "velocity = 0"],
+      ["delete", "velocity = 0"],
+      ["delete", "v0"],
       ["p0.5", "probability = 0.5"],
       ["p1", "probability = 1"],
       ["n/4", "duration = n/4"],
@@ -115,6 +117,52 @@ describe("Transform Parser - shorthand", () => {
         operator: "set",
         expression: 0,
       });
+    });
+  });
+
+  describe("delete shorthand (alias for v0)", () => {
+    it("parses to the same velocity-set-0 AST as v0", () => {
+      expect(parseAssignments("delete")[0]).toMatchObject({
+        pitchRange: null,
+        timeRange: null,
+        parameter: "velocity",
+        operator: "set",
+        expression: 0,
+      });
+    });
+
+    it("accepts a pitch selector (C1: delete)", () => {
+      expect(parseAssignments("C1: delete")[0]).toMatchObject({
+        pitchRange: { startPitch: 36, endPitch: 36 },
+        parameter: "velocity",
+        operator: "set",
+        expression: 0,
+      });
+    });
+
+    it("composes with a where() predicate", () => {
+      const [assignment] = parseAssignments(
+        "where(note.velocity < 40): delete",
+      );
+
+      expect(assignment).toMatchObject({
+        predicate: { type: "comparison", op: "<" },
+        parameter: "velocity",
+        operator: "set",
+        expression: 0,
+      });
+    });
+
+    it("is rejected as an expression value (velocity = delete)", () => {
+      expect(() => parseAssignments("velocity = delete")).toThrow(
+        /delete is a shorthand action, not a value/,
+      );
+    });
+
+    it("is rejected inside an arithmetic expression (velocity = 1 + delete)", () => {
+      expect(() => parseAssignments("velocity = 1 + delete")).toThrow(
+        /delete is a shorthand action, not a value/,
+      );
     });
   });
 

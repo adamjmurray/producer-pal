@@ -241,7 +241,16 @@ assignmentBody
 // (v±N, p±N) — safe because both domains are non-negative, so a leading sign is
 // unambiguous.
 shorthand "shorthand assignment"
-  = "v" operator:shorthandAddOp value:unsignedInt {
+  = "delete" {
+      // Readable alias for the `v0` delete shorthand: set velocity to 0, which
+      // the deletion sweep removes. Emits the SAME AST as `v0`, so a selector
+      // still applies (`C1: delete`, `where(note.velocity < 40): delete`) and
+      // `preTransforms` accepts it too. Shorthand-only: `velocity = delete` and
+      // any expression use are rejected by badDeleteInExpression. No 'd'-pitch
+      // clash — pitchLiteral requires an octave, so it backtracks off "delete".
+      return { parameter: "velocity", operator: "set", expression: 0 };
+    }
+  / "v" operator:shorthandAddOp value:unsignedInt {
       return shorthandAdditive("velocity", operator, value);
     }
   / "v" min:unsignedInt "-" max:unsignedInt {
@@ -560,6 +569,7 @@ primary
   / pitchLiteral
   / badPeriod
   / badNoteOpInExpression
+  / badDeleteInExpression
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
@@ -571,6 +581,15 @@ badNoteOpInExpression
   = name:("ratchet" / "merge" / "split") _ "(" {
     const example = name === "ratchet" ? "ratchet(2)" : name === "split" ? "split(2|1)" : "merge()";
     throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
+  }
+
+// `delete` is the shorthand delete action (alias for `v0`), not a value. Matched
+// here only to raise a targeted error when used in an expression (e.g.
+// `velocity = delete`). A valid bare `delete` reaches the shorthand rule first,
+// so this never fires on correct usage.
+badDeleteInExpression
+  = "delete" {
+    throw new Error(`delete is a shorthand action, not a value — write it on its own line (optionally with a selector), e.g. "where(note.velocity < 40): delete", not "velocity = delete".`);
   }
 
 nDuration "absolute duration value"
