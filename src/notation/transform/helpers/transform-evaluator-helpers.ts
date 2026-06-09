@@ -10,7 +10,6 @@ import * as console from "#src/shared/v8-max-console.ts";
 import {
   type ExpressionNode,
   type NoteOp,
-  type PitchRange,
   type TransformAssignment,
   type TransformStatement,
 } from "../parser/transform-parser.ts";
@@ -65,9 +64,7 @@ export interface TransformResult {
   value: number;
 }
 
-type ProcessAssignmentResult =
-  | { skip: true }
-  | { skip?: false; value: number; pitchRange: PitchRange | null };
+type ProcessAssignmentResult = { skip: true } | { skip?: false; value: number };
 
 export type TimeRangeResult =
   | { skip: true }
@@ -96,34 +93,6 @@ export function operatorDisplay(operator: "set" | "add"): string {
 }
 
 /**
- * Resolve effective pitch ranges for each statement in the AST.
- * Handles "sticky" pitch range inheritance: once set, a pitch range persists
- * to subsequent assignments until a new one is specified. Note-count ops do not
- * participate — they neither inherit nor set the sticky range (their selector is
- * self-contained), so their slot is null and a following assignment still sees
- * the range that was sticky before the op.
- * @param ast - Transform statements
- * @returns Array of effective pitch ranges (one per statement, null if none)
- */
-export function resolveEffectivePitchRanges(
-  ast: TransformStatement[],
-): (PitchRange | null)[] {
-  let current: PitchRange | null = null;
-
-  return ast.map((a) => {
-    if (isNoteOp(a)) {
-      return null;
-    }
-
-    if (a.pitchRange != null) {
-      current = a.pitchRange;
-    }
-
-    return current;
-  });
-}
-
-/**
  * Evaluate a pre-parsed transform AST for a specific note context
  * @param ast - Pre-parsed transform AST
  * @param noteContext - Note context for evaluation
@@ -139,7 +108,6 @@ export function evaluateTransformAST(
   const { numerator, denominator } = timeSig;
 
   const result: Record<string, TransformResult> = {};
-  let currentPitchRange: PitchRange | null = null; // Track persistent pitch range context
 
   for (const assignment of ast) {
     // Note-count ops (ratchet/merge) act on the whole note list, not a single
@@ -158,15 +126,10 @@ export function evaluateTransformAST(
       denominator,
       clipTimeRange,
       noteProperties,
-      currentPitchRange,
     );
 
     if (assignmentResult.skip) {
       continue;
-    }
-
-    if (assignmentResult.pitchRange != null) {
-      currentPitchRange = assignmentResult.pitchRange;
     }
 
     result[assignment.parameter] = {
@@ -189,7 +152,6 @@ export function evaluateTransformAST(
  * @param denominator - Time signature denominator
  * @param clipTimeRange - Clip time range (optional)
  * @param noteProperties - Note properties for variable access
- * @param currentPitchRange - Current pitch range context
  * @returns Assignment result or skip indicator
  */
 function processAssignment(
@@ -202,20 +164,13 @@ function processAssignment(
   denominator: number,
   clipTimeRange: TimeRange | undefined,
   noteProperties: NoteProperties,
-  currentPitchRange: PitchRange | null,
 ): ProcessAssignmentResult {
   try {
-    // Update persistent pitch range context if specified
-    let pitchRange: PitchRange | null = null;
-
-    if (assignment.pitchRange != null) {
-      pitchRange = assignment.pitchRange;
-      currentPitchRange = pitchRange;
-    }
-
-    // Apply pitch filtering
-    if (currentPitchRange != null && pitch != null) {
-      const { startPitch, endPitch } = currentPitchRange;
+    // Apply pitch filtering. Per-line: a line's pitch selector applies only to
+    // that line (no selector = all pitches); there is no carryover from earlier
+    // lines, mirroring the time-range selector.
+    if (assignment.pitchRange != null && pitch != null) {
+      const { startPitch, endPitch } = assignment.pitchRange;
 
       if (pitch < startPitch || pitch > endPitch) {
         return { skip: true }; // Skip this assignment - note's pitch outside range
@@ -245,7 +200,7 @@ function processAssignment(
       noteProperties,
     );
 
-    return { value, pitchRange };
+    return { value };
   } catch (error) {
     console.warn(
       `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,

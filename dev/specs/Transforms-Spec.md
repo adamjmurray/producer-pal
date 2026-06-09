@@ -205,11 +205,10 @@ They run in the same sequential, statement-major pipeline as assignments: each
 statement is fully applied before the next one runs, so an assignment after a
 note op sees the rebuilt note list (e.g. `note.index` re-derives over the denser
 or sparser set). The optional selector scopes which notes the op touches; notes
-outside the selector pass through untouched. A note op's selector is
-self-contained — it does NOT participate in sticky pitch-range inheritance
-(neither consuming the prior sticky range nor setting one for later
-assignments). Note ops are MIDI-only; they are ignored (with a warning) on audio
-clips.
+outside the selector pass through untouched. A note op's selector — like every
+selector — is **per-line**: it applies to that op only and is not carried to or
+from neighboring statements. Note ops are MIDI-only; they are ignored (with a
+warning) on audio clips.
 
 ### ratchet(count) / ratchet(noteValue)
 
@@ -366,7 +365,11 @@ C1: merge()           // glue all the kick hits into one sustained note
   - Note: `*=` and `/=` desugar to `= currentValue * expr` /
     `= currentValue / expr`. For `timing *=`, the current value is the absolute
     note position (`note.start`), so `timing *= 0.5` compresses all notes toward
-    bar 1.
+    bar 1. Selectors (pitch and time) are **per-line**: a selector applies only
+    to the line it prefixes. It is never carried to or inherited from
+    neighboring lines — a line with no selector applies to all notes. To scope
+    several lines, repeat the selector on each.
+
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3: velocity += 10`
   - Pitch range: `C3-C5: velocity += 10` (applies to all notes from C3 to C5

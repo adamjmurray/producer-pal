@@ -16,7 +16,6 @@ import {
   type NoteContext,
   type NoteProperties,
   operatorDisplay,
-  resolveEffectivePitchRanges,
   type TimeRange,
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
@@ -84,9 +83,6 @@ export function applyTransforms(
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
   const clipTimeRange: TimeRange = { start: clipStartTime, end: clipEndTime };
 
-  // Resolve effective pitch ranges for each assignment (handling inheritance)
-  const effectiveRanges = resolveEffectivePitchRanges(ast);
-
   // Track which notes had at least one MIDI transform applied
   const transformedIndices = new Set<number>();
 
@@ -118,7 +114,10 @@ export function applyTransforms(
       continue;
     }
 
-    const pitchRange = effectiveRanges[j] ?? null;
+    // Pitch selectors are per-line: a line's pitch range applies only to that
+    // line (no selector = all pitches), mirroring the time-range selector. There
+    // is no carryover from earlier lines.
+    const pitchRange = stmt.pitchRange ?? null;
 
     // Skip audio parameters for MIDI clips
     if (AUDIO_PARAMETERS.has(stmt.parameter)) {

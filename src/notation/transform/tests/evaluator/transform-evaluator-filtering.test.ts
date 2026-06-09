@@ -36,13 +36,16 @@ describe("Transform Evaluator", () => {
       expect(result.velocity!.value).toBe(10);
     });
 
-    it("persists pitch across multiple lines", () => {
+    it("does not carry a single-pitch selector to later lines (per-line, no sticky)", () => {
+      // A note OUTSIDE the first line's C3 selector: that line is skipped, but the
+      // unselected second line still applies to every note. Pitch selectors do not
+      // persist across lines — they behave per-line, like time-range selectors.
       const result = evaluateTransform("C3: velocity += 10\ntiming += 0.05", {
         ...createContext(),
-        pitch: 60,
+        pitch: 67, // G3, not C3
       });
 
-      expect(result.velocity!.value).toBe(10);
+      expect(result.velocity).toBeUndefined();
       expect(result.timing!.value).toBe(0.05);
     });
 
@@ -109,16 +112,18 @@ C#3: velocity += 20`;
       expect(result).toStrictEqual({});
     });
 
-    it("persists pitch range across multiple lines", () => {
+    it("does not carry a pitch range to later lines (per-line, no sticky)", () => {
+      // A note OUTSIDE C3-C5: the first line is skipped, but the unselected second
+      // line still applies. A pitch range does not persist to later lines.
       const result = evaluateTransform(
         "C3-C5: velocity += 10\ntiming += 0.05",
         {
           ...createContext(),
-          pitch: 72, // C4 within range
+          pitch: 96, // C7, outside C3-C5
         },
       );
 
-      expect(result.velocity!.value).toBe(10);
+      expect(result.velocity).toBeUndefined();
       expect(result.timing!.value).toBe(0.05);
     });
 
