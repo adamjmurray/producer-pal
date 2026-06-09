@@ -213,6 +213,18 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
     );
   }
 
+  const hasAudioPredicate = assignments.some(
+    (a) =>
+      (a.parameter === "gain" || a.parameter === "pitchShift") &&
+      a.predicate != null,
+  );
+
+  if (hasAudioPredicate) {
+    console.warn(
+      "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+    );
+  }
+
   if (ast.some(isNoteOp)) {
     console.warn(
       "Note-count operations (ratchet, merge) ignored for audio clips",

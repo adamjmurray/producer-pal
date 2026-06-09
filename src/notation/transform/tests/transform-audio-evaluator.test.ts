@@ -321,6 +321,34 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
+  describe("where() predicate handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns and passes through when a where() predicate is used on audio", () => {
+      const result = applyAudioTransform(
+        0,
+        0,
+        "where(note.velocity > 80): gain += 3",
+      );
+
+      // Predicate has no note axis on an audio clip; the gain still applies.
+      expect(result.gain).toBe(3);
+      expect(console.warn).toHaveBeenCalledWith(
+        "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
+    });
+
+    it("does not warn when no where() predicate is present", () => {
+      applyAudioTransform(0, 0, "gain += 3");
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
+    });
+  });
+
   describe("note-count operation handling", () => {
     beforeEach(() => {
       vi.mocked(console.warn).mockClear();

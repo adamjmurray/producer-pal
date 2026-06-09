@@ -107,12 +107,13 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 **Shape:** a single string, broadcast across every clip/copy. Multiple expressions: newline-separated. Per-clip variation: \`clip.index\` arithmetic or \`clipseq()\` inside the string (below). Structurally-distinct edits per clip → separate tool calls.
 
 **Syntax:** \`[selector:] parameter operator expression\` (one per line)
-- **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
+- **Selector:** pitch and/or time filter, optionally a \`where(...)\` value test, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`, \`where(note.velocity < 40):\`
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
 - **Time filter:** \`1|1-2|4\` (bar|beat range, **ends inclusive**, matches note start time); bounds use the same beat dialect as positions (decimal or \`±n\` offset, e.g. \`1|1+n/12-2|1\`)
   - **Single point:** a bare bar|beat with no \`-\` (\`4|3.5:\`) targets only the note starting exactly there — e.g. \`Gb1 4|3.5: ratchet(4)\` rolls just that note
   - **Whole bars:** \`3|*\` = all of bar 3, \`1|*-3|*\` = bars 1-3 — half-open, so exactly those bars with no spill onto the next downbeat. Prefer this for "measure N"; \`3|1-4|1\` would also match a note on 4|1
   - **Exclusive end:** append \`-<\` to make only the end bound exclusive — \`3|1-<4|1\` = up to but not including 4|1 (for sub-bar half-open spans)
+- **Value filter** \`where(...)\`: keep only notes whose properties satisfy a boolean test — \`where(note.velocity < 40): velocity = 0\` deletes quiet notes, \`where(note.velocity > 100): velocity += 20\` accents loud ones, \`where(note.probability < .5): v0\` thins. Build it from comparisons (\`> >= < <= == !=\`), booleans (\`&& || !\`), parens, and arithmetic over note.velocity/deviation/duration/probability/pitch/start (\`note.duration\`/\`note.start\` in musical beats; RHS may be a number, note name, or \`n/8\`). AND-combines with a pitch/time selector: \`C3-C5 where(note.velocity > 80): velocity += 20\`. Per-line (no carry to other lines). Use \`<\`/\`>\` on the float props (duration, probability, start) and reserve \`==\`/\`!=\` for the integer ones (velocity, pitch). Note properties only — no functions, no note.index/count/next, not on note-count ops
 - **MIDI parameters:** velocity (1-127; <=0 deletes note), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
@@ -147,6 +148,9 @@ velocity += 20 * cos(n/2)        // cycle every half note (2 beats in 4/4)
 velocity += 20 * cos(1bar, sync)  // bar-length cycle, continuous across clips
 1|1-4|4.75: velocity = ramp(40, 127) // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30            // accent bass notes
+where(note.velocity < 40): v0    // delete the quiet notes
+where(note.velocity > 100): velocity += 20 // accent the loud ones (clamps at 127)
+C3-C5 where(note.probability < .5): v0 // thin low-probability notes in a pitch band
 1|1-2|4: velocity = 100          // forte in bars 1-2
 velocity = seq(100, 60, 80, 60)  // cycle accents per note (MIDI)
 Gb1: pitch = seq(Gb1, Gb1, Gb1, Gb1, Ab1) // every 5th closed hat → open hat

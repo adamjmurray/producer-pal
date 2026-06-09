@@ -428,6 +428,46 @@ C1: merge()           // glue all the kick hits into one sustained note
   from 1 in time ranges just as in note positions (the downbeat is beat 1; for a
   pickup before it, offset from beat 1 — `1|1-n/4`).
 
+- **`where(...)` predicate filter** (optional): a boolean test on note
+  properties that further narrows which notes a line touches, **AND-combined**
+  with any pitch/time selector —
+  `C3-C5 where(note.velocity > 80): velocity += 20` matches notes that are in
+  `C3-C5` AND louder than 80. It may also stand alone
+  (`where(note.velocity < 40): velocity = 0`). Like the positional selectors it
+  is **per-line** (no carry). This is the value-based selection the positional
+  selectors cannot express (e.g. "delete quiet notes").
+  - **Grammar**: boolean operators with precedence `||` < `&&` < `!` <
+    comparison < arithmetic, plus parenthesized grouping at the boolean layer.
+    Comparison operators: `>`, `>=`, `<`, `<=`, `==`, `!=`. These boolean and
+    comparison operators are legal **only inside `where(...)`** — an assignment
+    RHS stays purely arithmetic, so a comparison there is a parse error (flat
+    type story; no truthiness leaks into values). Boolean grouping
+    (`a && (b || c)`, and the reflexive `(note.velocity > 80)`) is supported; a
+    paren wrapping only arithmetic (`(1 + 2) > note.start`) still groups at the
+    arithmetic layer.
+  - **Operands** are restricted to the six intrinsic scalar note properties —
+    `note.velocity`, `note.deviation`, `note.duration`, `note.probability`,
+    `note.pitch`, `note.start` — combined with arithmetic and the usual literals
+    (numbers, pitch names like `C3`, note values like `n/8`). `note.duration`
+    and `note.start` are in musical beats. `note.deviation` is the
+    velocity-deviation span as a plain scalar (the `vA-B` velocity range is
+    authoring sugar = base velocity + this span), so it compares like any other
+    property.
+  - **Rejected with targeted errors**: selection-derived references
+    (`note.index`, `note.count`, `next.*`, `legato()`) — they are defined over
+    the selected set, which `where()` itself determines, so they are unavailable
+    while selecting; **functions** of any kind (a deferred fast-follow); and
+    `where()` on a note-count op (`ratchet`/`merge`/`split`).
+  - **Float equality**: `==`/`!=` are exact float comparisons (no epsilon).
+    Prefer them on the integer-valued properties (`velocity`, `pitch`) and use
+    `<`/`>` on the float-valued ones (`duration`, `probability`, `start`).
+  - **Evaluation**: the predicate is evaluated during note selection,
+    AND-combined after the pitch/time filters. An evaluation failure (e.g. a
+    note missing the referenced property) warns and excludes the note, matching
+    warn-and-skip on the apply path. On audio clips (gain/pitchShift) a
+    note-property predicate warns and passes through, mirroring noteOp/audio
+    handling.
+
 - **Range clamping**: Applied after modulation:
   - velocity: 1-127
   - timing: unclamped (can shift notes before/after original position)
