@@ -113,6 +113,14 @@ function processStreamElement(
     case "velocity":
       state.currentVelocityStream = buildVelocityStream(stream.values);
       state.velocityStreamCursor = 0;
+      // Keep the three velocity representations mutually exclusive, mirroring the
+      // scalar/range updates that clear the stream when they set a value. A
+      // stream supersedes any prior scalar or range, so drop those captured reps.
+      // Defensive today (applyStreamOverrides always wins while a stream is
+      // active), but it stops a stale range from leaking if that ever changes.
+      state.currentVelocity = null;
+      state.currentVelocityMin = null;
+      state.currentVelocityMax = null;
       break;
     case "duration":
       state.currentDurationStream = buildDurationStream(
