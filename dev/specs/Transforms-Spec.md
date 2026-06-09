@@ -469,7 +469,8 @@ C1: merge()           // glue all the kick hits into one sustained note
     handling.
 
 - **Range clamping**: Applied after modulation:
-  - velocity: 1-127
+  - velocity: capped at a max of 127; `<=0` deletes the note (like duration); no
+    minimum clamp (a positive sub-1 result is left as-is, not floored to 1)
   - timing: unclamped (can shift notes before/after original position)
   - probability: 0.0-1.0
   - duration: 0 or below deletes the note (like a v0 velocity), no minimum clamp
