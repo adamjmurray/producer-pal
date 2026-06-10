@@ -127,6 +127,23 @@ describe("node-request-protocol", () => {
     expect(response.error).toBe("kaboom");
   });
 
+  it("returns failure when handler throws a non-Error value", async () => {
+    registerNodeRoute("boom-string", () => {
+      const nonError: unknown = "plain string failure";
+
+      throw nonError;
+    });
+
+    const request = JSON.stringify({ route: "boom-string", args: {} });
+
+    await handleNodeRequest("req-4b", request);
+
+    const response = parseSentResponse();
+
+    expect(response.success).toBe(false);
+    expect(response.error).toBe("plain string failure");
+  });
+
   it("returns failure when handler rejects", async () => {
     registerNodeRoute("rejects", () => Promise.reject(new Error("nope")));
 

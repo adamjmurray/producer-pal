@@ -298,4 +298,15 @@ describe("formatChatMessages", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.parts.every((p) => p.type !== "step-usage")).toBe(true);
   });
+
+  it("formats a compaction summary as a compaction part", () => {
+    const history: ChatMessage[] = [
+      { role: "user", content: "Earlier summary", isCompactionSummary: true },
+    ];
+    const result = formatChatMessages(history);
+
+    expect(result[0]!.parts).toStrictEqual([
+      { type: "compaction", content: "Earlier summary" },
+    ]);
+  });
 });

@@ -19,6 +19,7 @@ import {
 import {
   clearClipAtDuplicateTarget,
   moveClipFromHolding,
+  sourceOverlapsTarget,
 } from "./arrangement-tiling-workaround.ts";
 
 interface TileClipOptions {
@@ -165,13 +166,23 @@ export function tileClipToRange(
     const freshTrack = LiveAPI.from(livePath.track(trackIndex as number));
 
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
-    clearClipAtDuplicateTarget(
+    const safeToTile = clearClipAtDuplicateTarget(
       freshTrack,
       sourceClipId,
       currentPosition,
       isMidiClip,
       context,
     );
+
+    // Source overlaps this tile position (the source clip already occupies it):
+    // skip this tile rather than corrupt the source or crash Ableton. Tiling
+    // fills the range around the source, so a self-overlapping tile is expected.
+    if (!safeToTile) {
+      currentPosition += arrangementTileLength;
+      currentContentOffset += arrangementTileLength;
+      continue;
+    }
+
     const result = freshTrack.call(
       "duplicate_clip_to_arrangement",
       toLiveApiId(sourceClipId),
@@ -219,19 +230,31 @@ export function tileClipToRange(
 
   // Handle partial final tile if remainder exists
   if (remainder > 0.001) {
-    const partialTile = createPartialTile(
-      sourceClip,
-      track,
-      currentPosition,
-      remainder,
-      holdingAreaStart,
-      isMidiClip,
-      context,
-      adjustPreRoll,
-      currentContentOffset,
-    );
+    // The partial tile routes through the holding area, where
+    // clearClipAtDuplicateTarget runs against the holding clip (not the source)
+    // and would trim the source if it overlapped this position. Today every
+    // caller tiles forward from the source's end, so this never fires — but
+    // guard it so a future caller tiling over the source can't corrupt it
+    // (mirrors the full-tile loop's self-overlap skip above).
+    if (sourceOverlapsTarget(sourceClipId, currentPosition, remainder)) {
+      console.warn(
+        `Source clip overlaps the partial tile at ${currentPosition}; skipping it to avoid corrupting the source`,
+      );
+    } else {
+      const partialTile = createPartialTile(
+        sourceClip,
+        track,
+        currentPosition,
+        remainder,
+        holdingAreaStart,
+        isMidiClip,
+        context,
+        adjustPreRoll,
+        currentContentOffset,
+      );
 
-    createdClips.push({ id: partialTile.id });
+      createdClips.push({ id: partialTile.id });
+    }
   }
 
   return createdClips;

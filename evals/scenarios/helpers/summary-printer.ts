@@ -17,7 +17,6 @@ import {
   efficiencyColor,
 } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { type ConfigProfile } from "../types.ts";
 import { type JsonEvalResult } from "./json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
 import { buildMultiTrialParts, formatParts } from "./trial-helpers.ts";
@@ -27,16 +26,16 @@ import { buildMultiTrialParts, formatParts } from "./trial-helpers.ts";
  *
  * @param resultsByScenario - 3D results map
  * @param modelSpecs - All model specs tested
- * @param configProfiles - All config profiles tested
+ * @param label - The run-environment label (see `envLabel`)
  */
 export function printSummary(
   resultsByScenario: ResultsByScenario,
   modelSpecs: ModelSpec[],
-  configProfiles: ConfigProfile[],
+  label: string,
 ): void {
-  // Use table for multi-model or multi-config runs
-  if (modelSpecs.length > 1 || configProfiles.length > 1) {
-    printResultsTable(resultsByScenario, modelSpecs, configProfiles);
+  // Use the table for multi-model runs (a single run environment per run).
+  if (modelSpecs.length > 1) {
+    printResultsTable(resultsByScenario, modelSpecs, label);
 
     return;
   }
@@ -59,12 +58,16 @@ export function printSummary(
 
   let passCount = 0;
   let failCount = 0;
+  let skipCount = 0;
 
   for (const results of allResultGroups) {
     const passed = results.filter((r) => r.result === "pass").length;
+    const skipped = results.filter((r) => r.result === "skipped").length;
 
     passCount += passed;
-    failCount += results.length - passed;
+    skipCount += skipped;
+    // Skipped runs never executed, so they count as neither pass nor fail.
+    failCount += results.length - passed - skipped;
 
     // Show summary for the last trial (or only trial)
     const lastResult = results.at(-1) as JsonEvalResult;
@@ -76,9 +79,12 @@ export function printSummary(
     }
   }
 
-  const totalRuns = passCount + failCount;
+  const totalRuns = passCount + failCount + skipCount;
+  const skipText = skipCount > 0 ? `, ${skipCount} skipped` : "";
 
-  console.log(`\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail`);
+  console.log(
+    `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}`,
+  );
 }
 
 /**
@@ -113,6 +119,15 @@ function formatSummaryLine(
  * @returns Formatted summary line
  */
 function formatSingleTrialLine(result: JsonEvalResult): string {
+  if (result.result === "skipped") {
+    const reason = result.skipReason ? ` — ${result.skipReason}` : "";
+
+    return `${styleText("yellow", result.scenarioId + ":")} ${styleText(
+      "gray",
+      "skipped" + reason,
+    )}`;
+  }
+
   const { checks } = result;
   const passed = checks.results.filter((c) => c.pass).length;
   const total = checks.results.length;

@@ -29,6 +29,19 @@ function registerLiveSet(): void {
   });
 }
 
+/** Register the live set plus an empty session clip slot at track 0, scene 0. */
+function registerEmptySessionSlot(): void {
+  registerLiveSet();
+  registerMockObject("clip-slot-0-0", {
+    path: livePath.track(0).clipSlot(0),
+    properties: { has_clip: 0 },
+  });
+  registerMockObject("session-clip", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: { length: 4 },
+  });
+}
+
 describe("createClip take lanes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -135,15 +148,7 @@ describe("createClip take lanes", () => {
   });
 
   it("warns and ignores takeLane for session-only requests", async () => {
-    registerLiveSet();
-    registerMockObject("clip-slot-0-0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 0 },
-    });
-    registerMockObject("session-clip", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { length: 4 },
-    });
+    registerEmptySessionSlot();
 
     await createClip({ slot: "0/0", notes: "C3", takeLane: "new" });
 
@@ -153,15 +158,7 @@ describe("createClip take lanes", () => {
   });
 
   it("warns-and-ignores an invalid takeLane for session-only requests (does not throw)", async () => {
-    registerLiveSet();
-    registerMockObject("clip-slot-0-0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 0 },
-    });
-    registerMockObject("session-clip", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { length: 4 },
-    });
+    registerEmptySessionSlot();
 
     // "garbage" would throw if normalized; for session-only it must be dropped
     // (this await would reject if the value were still validated).

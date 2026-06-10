@@ -9,22 +9,29 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent } from "../types.ts";
 import {
-  calculateActiveTimeRange,
   type ClipContext,
   evaluateExpression,
   evaluateTransformAST,
+  isNoteOp,
   type NoteContext,
   type NoteProperties,
-  resolveEffectivePitchRanges,
+  operatorDisplay,
   type TimeRange,
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
 import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
 import {
+  buildNoteContext,
+  selectAssignmentNotes,
+} from "./helpers/transform-evaluator-selection-helpers.ts";
+import { timeRangeBoundsInMusicalBeats } from "./helpers/transform-time-range-helpers.ts";
+import {
   type PitchRange,
   type TransformAssignment,
+  type TransformStatement,
   parse as parseTransform,
 } from "./parser/transform-parser.ts";
+import { applyNoteOp } from "./transform-note-ops.ts";
 
 // Audio-only parameters that should be skipped for MIDI clips
 const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
@@ -56,7 +63,9 @@ export function applyTransforms(
   );
 
   // Check for audio parameters and warn
-  const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
+  const hasAudioParams = ast.some(
+    (a) => !isNoteOp(a) && AUDIO_PARAMETERS.has(a.parameter),
+  );
 
   if (hasAudioParams) {
     console.warn("Audio parameters (gain, pitchShift) ignored for MIDI clips");
@@ -74,26 +83,57 @@ export function applyTransforms(
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
   const clipTimeRange: TimeRange = { start: clipStartTime, end: clipEndTime };
 
-  // Resolve effective pitch ranges for each assignment (handling inheritance)
-  const effectiveRanges = resolveEffectivePitchRanges(ast);
-
   // Track which notes had at least one MIDI transform applied
   const transformedIndices = new Set<number>();
 
-  // Process assignments sequentially (assignment-major order).
-  // Each assignment is fully applied before the next one runs.
-  // This enables stacked transforms and pitch-range-filtered note.index.
+  // Process statements sequentially (statement-major order).
+  // Each statement is fully applied before the next one runs.
+  // This enables stacked transforms, pitch-range-filtered note.index, and
+  // note-count ops (ratchet/merge) whose output the next statement sees.
   for (let j = 0; j < ast.length; j++) {
-    const assignment = ast[j] as TransformAssignment;
-    const pitchRange = effectiveRanges[j] ?? null;
+    const stmt = ast[j] as TransformStatement;
+
+    // A duplicate selector segment (two pitch/time selectors, or two where()
+    // clauses) is warned-and-skipped rather than failing the whole transform:
+    // relay the parser's message and move on so the other lines still apply.
+    if (stmt.selectorWarning != null) {
+      console.warn(stmt.selectorWarning);
+      continue;
+    }
+
+    // Note-count op (ratchet/merge): rebuilds the note array in place.
+    if (isNoteOp(stmt)) {
+      const produced = applyNoteOp(
+        stmt,
+        notes,
+        timeSigNumerator,
+        timeSigDenominator,
+        clipContext?.arrangementStart,
+      );
+
+      // The rebuild invalidates prior index-based tracking, so reseed with the
+      // op's output notes; later assignments add their fresh indices on top.
+      transformedIndices.clear();
+
+      for (const idx of produced) {
+        transformedIndices.add(idx);
+      }
+
+      continue;
+    }
+
+    // Pitch selectors are per-line: a line's pitch range applies only to that
+    // line (no selector = all pitches), mirroring the time-range selector. There
+    // is no carryover from earlier lines.
+    const pitchRange = stmt.pitchRange ?? null;
 
     // Skip audio parameters for MIDI clips
-    if (AUDIO_PARAMETERS.has(assignment.parameter)) {
+    if (AUDIO_PARAMETERS.has(stmt.parameter)) {
       continue;
     }
 
     applyAssignmentToNotes(
-      assignment,
+      stmt,
       pitchRange,
       notes,
       timeSigNumerator,
@@ -132,9 +172,11 @@ export function applyTransforms(
 
 /**
  * Apply a single transform assignment to all matching notes.
- * When a pitch range is active, note.index and note.count reflect only the
- * filtered subset of notes matching that pitch range.
- * Transforms are applied immediately so subsequent assignments see mutations.
+ * note.index, note.count, and the next.* / legato() lookups all describe the
+ * SELECTED notes — those matching both the pitch range AND the time-range
+ * selector — so a note's index is 0-based over exactly what the selector picked,
+ * not the whole pitch-filtered clip. Transforms are applied immediately so
+ * subsequent assignments see mutations.
  * @param assignment - Transform assignment to apply
  * @param pitchRange - Effective pitch range filter (null for no filter)
  * @param notes - Notes to transform
@@ -166,49 +208,56 @@ function applyAssignmentToNotes(
     expr.type === "pitchLiteral"
   ) {
     console.warn(
-      `note name "${expr.name}" isn't a value for ${assignment.parameter}; pitch names set the pitch parameter, act as selectors (C3:), or are function arguments (e.g. min(C3,C5)). Skipping ${assignment.parameter} ${assignment.operator}.`,
+      `note name "${expr.name}" isn't a value for ${assignment.parameter}; pitch names set the pitch parameter, act as selectors (C3:), or are function arguments (e.g. min(C3,C5)). Skipping "${assignment.parameter} ${operatorDisplay(assignment.operator)}".`,
     );
 
     return;
   }
 
-  // Build array of indices matching the pitch range filter (uses current/mutated pitches)
-  const filteredIndices: number[] = [];
+  // The selected notes are those matching BOTH the pitch range AND the
+  // time-range selector. Indexing and next.*/legato() are scoped to this set,
+  // so a sub-range selector (e.g. one bar of a ratcheted hat run) gets a
+  // 0-based, selection-local index instead of one offset by earlier same-pitch
+  // notes outside the window.
+  const selectedIndices = selectAssignmentNotes(
+    assignment,
+    pitchRange,
+    notes,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipTimeRange,
+  );
 
-  for (let idx = 0; idx < notes.length; idx++) {
-    const n = notes[idx] as NoteEvent;
-
-    if (
-      pitchRange == null ||
-      (n.pitch >= pitchRange.startPitch && n.pitch <= pitchRange.endPitch)
-    ) {
-      filteredIndices.push(idx);
-    }
-  }
-
-  const filteredCount = filteredIndices.length;
+  const selectedCount = selectedIndices.length;
   const beatScale = timeSigDenominator / 4;
 
-  // Pre-compute filtered start times in musical beats for legato() tolerance scan
-  const filteredStarts = filteredIndices.map(
+  // Pre-compute selected start times in musical beats for legato() tolerance scan
+  const selectedStarts = selectedIndices.map(
     (idx) => (notes[idx] as NoteEvent).start_time * beatScale,
   );
-  const clipEnd = clipContext
-    ? (clipContext.arrangementStart ?? 0) + clipContext.clipDuration
-    : undefined;
+  // clipDuration is the clip-local length in musical beats, matching the
+  // clip-local space of selectedStarts/noteStart (note start_times are
+  // clip-relative). Do NOT add arrangementStart here — legato() computes the
+  // last note's duration as clipEnd - noteStart, so an arrangement-absolute
+  // clipEnd would inflate it by arrangementStart on arrangement clips.
+  const clipEnd = clipContext ? clipContext.clipDuration : undefined;
 
-  let filteredCursor = 0;
+  // Normalization range for ramp/curve is constant across the assignment's
+  // selected notes: the selector's bounds, or the clip range when unscoped.
+  // Membership (the per-note skip) was already settled in selectAssignmentNotes.
+  const evalTimeRange: TimeRange = assignment.timeRange
+    ? timeRangeBoundsInMusicalBeats(assignment.timeRange, timeSigNumerator)
+    : clipTimeRange;
 
-  for (let i = 0; i < notes.length; i++) {
+  // An evaluation failure (e.g. a wrong function argument count) is usually
+  // note-invariant — it would repeat identically for every selected note. Warn
+  // once per distinct message for this assignment instead of once per note, so a
+  // single malformed line doesn't relay N copies of the same WARNING.
+  const warnedFailures = new Set<string>();
+
+  for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
+    const i = selectedIndices[cursor] as number;
     const note = notes[i] as NoteEvent;
-
-    // Pitch range check against current (possibly mutated) pitch
-    if (
-      pitchRange != null &&
-      (note.pitch < pitchRange.startPitch || note.pitch > pitchRange.endPitch)
-    ) {
-      continue;
-    }
 
     const noteContext = buildNoteContext(
       note,
@@ -217,40 +266,21 @@ function applyAssignmentToNotes(
       clipTimeRange,
     );
 
-    // Time range check
-    const activeTimeRange = calculateActiveTimeRange(
-      assignment,
-      noteContext.bar,
-      noteContext.beat,
-      timeSigNumerator,
-      clipTimeRange,
-      noteContext.position,
-    );
-
-    // Note matches pitch range — count it regardless of time range
-    const noteIndex = pitchRange != null ? filteredCursor : i;
-
-    // Find the next note in the filtered sequence for next.* variables
-    const nextNoteIdx = filteredIndices[filteredCursor + 1];
+    // Next note in the selected sequence for next.* variables
+    const nextNoteIdx = selectedIndices[cursor + 1];
     const nextNote =
       nextNoteIdx != null ? (notes[nextNoteIdx] as NoteEvent) : undefined;
 
     const legatoContext = {
-      starts: filteredStarts,
-      cursor: filteredCursor,
+      starts: selectedStarts,
+      cursor,
       clipEnd,
     };
 
-    filteredCursor++;
-
-    if (activeTimeRange.skip) {
-      continue; // Pitch matched but time didn't — counted for index, not applied
-    }
-
     const noteProperties = buildNoteProperties(
       note,
-      noteIndex,
-      filteredCount,
+      cursor,
+      selectedCount,
       timeSigDenominator,
       clipContext,
       nextNote,
@@ -263,7 +293,7 @@ function applyAssignmentToNotes(
         noteContext.position,
         timeSigNumerator,
         timeSigDenominator,
-        activeTimeRange.timeRange,
+        evalTimeRange,
         noteProperties,
       );
 
@@ -278,52 +308,14 @@ function applyAssignmentToNotes(
 
       transformedIndices.add(i);
     } catch (error) {
-      console.warn(
-        `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
-      );
+      const message = `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`;
+
+      if (!warnedFailures.has(message)) {
+        warnedFailures.add(message);
+        console.warn(message);
+      }
     }
   }
-}
-
-/**
- * Build note context object
- * @param note - Note event
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param clipTimeRange - Clip time range
- * @returns Note context for transform evaluation
- */
-function buildNoteContext(
-  note: NoteEvent,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  clipTimeRange: TimeRange,
-): NoteContext {
-  // Convert note's Ableton beats start_time to musical beats position
-  const musicalBeats = note.start_time * (timeSigDenominator / 4);
-
-  // Derive bar|beat for time-range filtering numerically from the musical-beats
-  // position. Do NOT serialize-then-reparse: the serializer emits tuplet/off-grid
-  // positions as `±n` offset forms (`1|1+n/12`) that a decimal-only regex cannot
-  // read, which would drop bar/beat to undefined and make calculateActiveTimeRange
-  // skip time-range filtering entirely (the note would match every selector). The
-  // numeric split round-trips exactly through barBeatToMusicalBeats, including negative
-  // time (a note before 1|1, where bar can be 0 and beat > beatsPerBar).
-  const musicalBeatsPerBar = timeSigNumerator;
-  const bar = Math.floor(musicalBeats / musicalBeatsPerBar) + 1;
-  const beat = musicalBeats - (bar - 1) * musicalBeatsPerBar + 1;
-
-  return {
-    position: musicalBeats,
-    pitch: note.pitch,
-    bar,
-    beat,
-    timeSig: {
-      numerator: timeSigNumerator,
-      denominator: timeSigDenominator,
-    },
-    clipTimeRange,
-  };
 }
 
 /**

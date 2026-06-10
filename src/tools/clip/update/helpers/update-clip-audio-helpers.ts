@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
@@ -48,11 +49,10 @@ export function setAudioParameters(
   }
 
   if (pitchShift !== undefined) {
-    const pitchCoarse = Math.floor(pitchShift);
-    const pitchFine = Math.round((pitchShift - pitchCoarse) * 100);
+    const { coarse, fine } = pitchShiftToCoarseFine(pitchShift);
 
-    clip.set("pitch_coarse", pitchCoarse);
-    clip.set("pitch_fine", pitchFine);
+    clip.set("pitch_coarse", coarse);
+    clip.set("pitch_fine", fine);
   }
 
   if (warpMode !== undefined) {
@@ -120,11 +120,10 @@ export function applyAudioTransforms(
 
   // Apply pitchShift if changed
   if (result.pitchShift != null && result.pitchShift !== currentPitchShift) {
-    const newPitchCoarse = Math.floor(result.pitchShift);
-    const newPitchFine = Math.round((result.pitchShift - newPitchCoarse) * 100);
+    const { coarse, fine } = pitchShiftToCoarseFine(result.pitchShift);
 
-    clip.set("pitch_coarse", newPitchCoarse);
-    clip.set("pitch_fine", newPitchFine);
+    clip.set("pitch_coarse", coarse);
+    clip.set("pitch_fine", fine);
     modified = true;
   }
 
@@ -192,4 +191,25 @@ export function handleWarpMarkerOperation(
       break;
     }
   }
+}
+
+/**
+ * Decomposes a fractional semitone pitch shift into Live's pitch_coarse
+ * (integer semitones) and pitch_fine (cents).
+ *
+ * Rounds to the nearest semitone so the cents remainder stays within Live's
+ * ±50 range. Flooring (the previous behavior) pushed the remainder up to +99
+ * cents for negative shifts, which Live silently clamps to +50 — turning e.g.
+ * -3.25 into -3.5.
+ * @param pitchShift - Pitch shift in semitones (may be fractional)
+ * @returns Coarse semitones and fine cents (each in [-50, 50])
+ */
+function pitchShiftToCoarseFine(pitchShift: number): {
+  coarse: number;
+  fine: number;
+} {
+  const coarse = Math.round(pitchShift);
+  const fine = Math.round((pitchShift - coarse) * 100);
+
+  return { coarse, fine };
 }

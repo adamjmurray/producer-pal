@@ -32,7 +32,7 @@ describe("readClip", () => {
       expectedStart: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
       expectedEnd: "2|2", // end_marker (5 beats = 2|2)
       expectedLength: "1bar", // 1 bar duration
-      expectedNotes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
+      expectedNotes: "v100 n/4 C3 1|1\nD3 1|2\nE3 1|3", // Real bar|beat output
     },
     {
       timeSig: "6/8",
@@ -41,9 +41,9 @@ describe("readClip", () => {
       expectedStart: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
       expectedLength: "1bar+n/4", // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
-      // Notes default to 1 Ableton beat = a quarter note. The new notation
-      // default is also a quarter (`n/4`), so no `n` prefix is emitted.
-      expectedNotes: "C3 1|1 D3 1|3 E3 1|5",
+      // Notes default to 1 Ableton beat = a quarter note. The opening note
+      // always carries an explicit `v`/`n` so the reader needn't know defaults.
+      expectedNotes: "v100 n/4 C3 1|1\nD3 1|3\nE3 1|5",
     },
   ])(
     "returns clip information when a valid MIDI clip exists ($timeSig time)",
@@ -118,7 +118,7 @@ describe("readClip", () => {
     expectGetNotesExtendedCall(clip);
 
     // In 3/4 time, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
+    expect(result.notes).toBe("v100 n/4 C3 1|1\nD3 2|1\nE3 2|2");
     expect(result.timeSignature).toBe("3/4");
     expect(result).toHaveLength("1bar+n/4"); // 4 Ableton beats in 3/4 = 1 bar + 1 quarter
   });
@@ -156,7 +156,7 @@ describe("readClip", () => {
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1.
     // Notes have default duration of 1 Ableton beat (= a quarter note), which
     // matches the new notation default (`n/4`), so no `n` prefix is emitted.
-    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
+    expect(result.notes).toBe("v100 n/4 C3 1|1\nD3 2|1\nE3 2|2");
     expect(result.timeSignature).toBe("6/8");
     expect(result).toHaveLength("1bar"); // 3 Ableton beats = 1 bar in 6/8
   });
@@ -193,7 +193,7 @@ describe("readClip", () => {
     });
 
     expectGetNotesExtendedCall(clip);
-    expect(result.notes).toBe("C3 1|1-n/4 D3 1|1 E3 2|2");
+    expect(result.notes).toBe("v100 n/4 C3 1|1-n/4\nD3 1|1\nE3 2|2");
   });
 
   it("returns null values and emits warning when no clip exists at valid track/scene", () => {

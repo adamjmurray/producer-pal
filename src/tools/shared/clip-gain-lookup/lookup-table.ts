@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Lookup table from Ableton Live clip gain (529 samples)
+// Lookup table from Ableton Live clip gain (528 samples; count locked by
+// gain-utils.test.ts so this comment can't silently drift again).
 // Extended 2026-02-03 with low-range samples (-69.7 to -65.7 dB)
 // Data lives in the sibling .json file so table diffs stay readable.
 

@@ -8,6 +8,7 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { endGeminiHalfDuplexMute } from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
 import { createGeminiMcpTools } from "#webui/hooks/voice/gemini/gemini-mcp-tools";
 import { buildGeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
@@ -326,6 +327,13 @@ export function useGeminiVoiceSession(
       builderRef.current.completeTurn();
       setHistory(builderRef.current.toRealtimeItems());
     }
+
+    // Lift the half-duplex auto-mute. Gemini Live has no local cancel, so under
+    // NO_INTERRUPTION the server keeps streaming and the mic stays auto-muted
+    // until the next turnComplete/interrupted — seconds of a stuck mic while the
+    // indicator shows unmuted. turnComplete/interrupted normally lift it; the
+    // manual button must too. No-op when not auto-muted.
+    endGeminiHalfDuplexMute(micRef.current, autoMutedRef, isMutedRef);
 
     setAssistantSpeaking(false);
   }, []);

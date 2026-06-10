@@ -36,7 +36,21 @@ reflect(value, min, max); // reflect/bounce value within [min, max] range
 min(a, b, ...); // minimum of 2+ values
 max(a, b, ...); // maximum of 2+ values
 pow(base, exponent); // base raised to exponent
+
+// Note-count operations (statements, NOT expression functions — see below)
+ratchet(count); // divide each matched note into `count` equal pieces (a roll)
+ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
+split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
+merge(); // span ALL same-pitch matched notes into one sustained note (default)
+merge(0); // glue only touching/overlapping same-pitch notes
+merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
+
+**Argument counts are enforced uniformly.** A call with too few _or_ too many
+arguments (counting only positional args — the trailing `sync`/`raw` keywords
+are not arguments) warns and skips that assignment line rather than guessing
+intent; later lines still run. Extra arguments are never silently dropped. The
+warning is relayed once per malformed line, not once per affected note.
 
 ## Parameters
 
@@ -184,6 +198,131 @@ duration = legato(0.1)           // group notes within 0.1 beats as chords
 C3-C5: duration = legato()       // legato for melody notes only
 ```
 
+## Note-Count Operations
+
+Every other transform is a per-note assignment (`parameter operator expression`)
+that maps each note to a new property value — strictly one note in, one note
+out. The note-count operations are different: they change **how many notes
+exist**. They are **statements, not expression functions** — a note op stands on
+its own line (with an optional `selector:` prefix) and may NOT appear inside an
+expression. `velocity = ratchet(2)` is a parse error with a targeted message.
+
+They run in the same sequential, statement-major pipeline as assignments: each
+statement is fully applied before the next one runs, so an assignment after a
+note op sees the rebuilt note list (e.g. `note.index` re-derives over the denser
+or sparser set). The optional selector scopes which notes the op touches; notes
+outside the selector pass through untouched. A note op's selector — like every
+selector — is **per-line**: it applies to that op only and is not carried to or
+from neighboring statements. Note ops are MIDI-only; they are ignored (with a
+warning) on audio clips.
+
+### ratchet(count) / ratchet(noteValue)
+
+Divides each matched note into end-to-end pieces (a roll/ratchet). Each child
+inherits the parent's pitch, velocity, probability, and deviation. The two
+argument forms differ in geometry:
+
+- **count** form (a bare number, e.g. `ratchet(4)`): exactly `count` EQUAL
+  pieces, regardless of where the note sits — child duration = parent duration /
+  count. Rounded to the nearest integer; a count below 2 warns and is skipped (1
+  piece is a no-op). Counts above the per-note cap (64) are clamped with a
+  warning. A bare pitch literal (e.g. `ratchet(C2)`) is not a valid count — it
+  warns and is skipped rather than coercing to its MIDI number (a pitch literal
+  nested in arithmetic, e.g. `ratchet(C2 - C1)`, still resolves to a number).
+- **noteValue** form (a note value or `Nbar`, e.g. `ratchet(n/16)`,
+  `ratchet(1bar)`): cuts the note on the ABSOLUTE grid of that size (multiples
+  of the grid from bar|beat `1|1`), so the pieces line up with bar positions — a
+  true grid ratchet, not an equal division. A note that starts and/or ends
+  off-grid keeps a partial sliver at that end. A note that spans no grid line
+  (it fits within a single grid cell) is left unchanged with a warning. The
+  per-note cap (64) still applies.
+- The argument is a constant (no per-note variables); an unusable argument warns
+  and the op is skipped (notes pass through unchanged).
+- Zero/negative-duration notes are left unchanged (and are removed later by the
+  standard zero-duration deletion sweep).
+
+```
+ratchet(2)            // every note becomes two equal pieces (an 8th-note roll on quarters)
+ratchet(4)            // four equal pieces
+ratchet(n/16)         // cut every note on the 16th-note grid (pieces align to bar positions)
+C1: ratchet(4)        // ratchet only the kick (C1)
+2|*: ratchet(3)       // triplet-roll every note in bar 2
+ratchet(4)            // then accent within each ratchet:
+velocity -= note.index % 4 * 15
+```
+
+### split(barBeat, ...)
+
+Cuts each matched note at one or more **explicit, possibly unequal** clip
+positions, given as bar|beat tokens. This is the free-form companion to the
+`ratchet(noteValue)` grid form: instead of regularly spaced cut lines, you name
+the exact positions. Each child inherits the parent's pitch, velocity,
+probability, and deviation.
+
+- Positions are **clip-relative** — measured from the clip's `1|1` origin (the
+  same coordinate space as `ratchet`'s grid and a `selector:` time range), not
+  relative to each note. A single position subdivides every matched note it
+  falls inside, so one `split` can cut notes in different bars at once.
+- Each position is the same dialect as a time-range bound: a 1-based bar|beat
+  with an optional decimal sub-beat (`1|1.5`) or `±n` note-value offset
+  (`2|3+n/8`). It is **meter-aware** — `2|1` resolves through the clip's
+  beats-per-bar.
+- A position only cuts a note when it falls **strictly inside** that note's
+  span; a position on a note's own onset/offset is a boundary, not a cut. A note
+  containing none of the positions is left unchanged (with a warning).
+- Positions are de-duplicated, so a repeated position never makes a zero-width
+  sliver. The per-note piece cap (64) still applies.
+- Zero/negative-duration notes are left unchanged (and are removed later by the
+  standard zero-duration deletion sweep). Calling `split()` with no positions
+  warns and is skipped.
+- **`sync`** (optional trailing keyword, same form as the waveform `sync`): the
+  positions are interpreted against the **arrangement timeline** instead of the
+  clip origin. The clip's arrangement start is subtracted from each position, so
+  e.g. a clip starting at bar 5 cut with `split(6|1, sync)` cuts at
+  clip-relative bar 2. Session clips have no arrangement origin, so `sync` is
+  ignored (warn-and-degrade to clip-relative), mirroring the waveform `sync`
+  fallback.
+
+```
+split(2|1)            // cut every note that spans bar 2's downbeat
+split(2|1, 2|3, 3|2)  // cut at three explicit (unequal) clip positions
+split(1|1.5)          // cut on the off-beat (an 8th past the downbeat)
+split(2|3+n/8)        // an off-grid cut, an 8th-note past beat 3 — uses the ±n offset dialect
+C1: split(2|2, 2|4)   // split only the kick, at two positions in bar 2
+split(6|1, sync)      // arrangement bar 6's downbeat (clip-relative for session clips)
+```
+
+### merge() / merge(gap)
+
+Collapses **same-pitch** matched notes into sustained notes. Velocity,
+probability, and deviation come from the earliest note in each merged run. Notes
+of different pitches stay independent — scope the merge with a pitch and/or time
+selector to narrow it.
+
+The optional **gap** argument controls how far apart (edge to edge, in beats)
+two same-pitch notes may sit and still merge:
+
+- **no argument** (`merge()`): span ALL same-pitch matched notes into one note,
+  bridging any gaps (the original behavior; the default).
+- **`merge(0)`**: glue only **touching or overlapping** notes (gap ≤ 0). A
+  literal `0` is the one non-note-value the argument accepts.
+- **note value** (`merge(n/8)`): glue same-pitch notes whose gap is within that
+  note value; a wider gap starts a new merged run. The note value is
+  meter-invariant in absolute time (an 8th is always an 8th).
+
+Any other argument — a non-zero bare number (`merge(2)`, `merge(0.25)`), a bar
+value (`merge(1bar)`), a pitch literal, or an expression — warns and the merge
+is skipped (notes pass through unchanged). A second argument warns and is
+ignored (the first is used).
+
+```
+merge()               // span every pitch's notes across the whole clip
+merge(0)              // glue only same-pitch notes that touch or overlap
+merge(n/8)            // glue same-pitch notes no more than an 8th-note apart
+C1: merge()           // glue all the kick hits into one sustained note
+1|1-2|1: merge(0)     // glue touching same-pitch notes within bar 1 only
+```
+
 ## Waveform Behavior
 
 **Period-based waveforms** (cos, sin, tri, saw, square) at phase 0. `cos` and
@@ -218,8 +357,10 @@ C3-C5: duration = legato()       // legato for melody notes only
 
 ## Transform Syntax
 
-- **Format**: `[pitchRange] [timeRange] parameter operator expression` (one per
-  line in `transforms` string)
+- **Format**: `[selectors] parameter operator expression` (one per line in
+  `transforms` string), where `[selectors]` is an optional prefix of a pitch
+  selector, a time selector, and/or a `where()` predicate (see **Selector prefix
+  syntax** below)
 - **Parameters**:
   - MIDI clips: velocity, timing, duration, probability, deviation, pitch
   - Audio clips: gain, pitchShift
@@ -232,7 +373,35 @@ C3-C5: duration = legato()       // legato for melody notes only
   - Note: `*=` and `/=` desugar to `= currentValue * expr` /
     `= currentValue / expr`. For `timing *=`, the current value is the absolute
     note position (`note.start`), so `timing *= 0.5` compresses all notes toward
-    bar 1.
+    bar 1. Selectors (pitch and time) are **per-line**: a selector applies only
+    to the line it prefixes. It is never carried to or inherited from
+    neighboring lines — a line with no selector applies to all notes. To scope
+    several lines, repeat the selector on each.
+
+- **Selector prefix syntax**: a line may carry up to three selector segments — a
+  pitch selector, a time selector, and a `where()` predicate (each detailed
+  below) — terminated by a `:` before the assignment/op body. The segments
+  **AND-combine** (a note must satisfy all). Two conveniences make the prefix
+  forgiving of how an LLM writes it:
+  - **Order-free**: the segments may appear in **any order** —
+    `Gb1 1|1-2|1 where(...):`, `where(...) 1|1-2|1 Gb1:`, etc. all mean the
+    same.
+  - **Optional `:` separators**: segments are normally space-separated
+    (`Gb1 1|1-2|1: body`), but an **optional `:`** between any two segments is
+    also accepted (`Gb1: 1|1-2|1: where(...): body`). A separator `:` is only
+    consumed when another segment follows, so it never collides with the
+    prefix-terminating `:`: in `Gb1: velocity = 120` the `:` terminates a
+    pitch-only selector, and in `C1: C4` it terminates the `C1` pitch selector
+    ahead of the bare-pitch body `C4`.
+  - **No duplicates**: each segment kind may appear **at most once**. A repeated
+    pitch, time, or `where()` (two pitch selectors AND-combine to the empty set)
+    is **warned-and-skipped**, not a hard error: that line is dropped with a
+    relayed `WARNING:` pointing at the fix — span pitches with a range
+    (`C3-E3`), use one time range, or combine predicates with `&&`/`||` inside
+    one `where(...)` — while the **other lines still apply**. (A hard parse
+    error would abort the whole `transforms` string; warn-and-skip preserves
+    partial success, matching the rest of the transform tool.)
+
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3: velocity += 10`
   - Pitch range: `C3-C5: velocity += 10` (applies to all notes from C3 to C5
@@ -256,6 +425,13 @@ C3-C5: duration = legato()       // legato for melody notes only
   `1|1-2|1: velocity += 10`). Both bounds are **inclusive** by default (matching
   note start time). Two opt-in forms make the end **exclusive** (half-open), so
   a selection can stop at a bar line without catching the next downbeat:
+  - **Bare bar|beat point:** a single position with no `-` separator (`4|3.5:`,
+    `2|1:`) targets only the note starting at **exactly** that position. It
+    desugars to the degenerate inclusive range `[point, point]` — equivalent to
+    writing `4|3.5-4|3.5` but without restating the bound. The beat uses the
+    full bound dialect (decimals, `±n` offsets, bar-line borrow), so `2|1-n/12:`
+    points just behind the bar-2 downbeat. Pairs with a pitch in either order
+    (`Gb1 4|3.5:` / `4|3.5 Gb1:`).
   - **Whole-bar wildcard:** `N|*` selects all of bar N; `A|*-B|*` selects whole
     bars A through B. Each desugars to the half-open range `[first|1, after|1)`
     (end bar = the bar _after_ the last selected bar, end exclusive), so `3|*`
@@ -284,11 +460,54 @@ C3-C5: duration = legato()       // legato for melody notes only
   from 1 in time ranges just as in note positions (the downbeat is beat 1; for a
   pickup before it, offset from beat 1 — `1|1-n/4`).
 
+- **`where(...)` predicate filter** (optional): a boolean test on note
+  properties that further narrows which notes a line touches, **AND-combined**
+  with any pitch/time selector —
+  `C3-C5 where(note.velocity > 80): velocity += 20` matches notes that are in
+  `C3-C5` AND louder than 80. It may also stand alone
+  (`where(note.velocity < 40): velocity = 0`). Like the positional selectors it
+  is **per-line** (no carry). This is the value-based selection the positional
+  selectors cannot express (e.g. "delete quiet notes"). It combines freely with
+  the pitch/time selectors in any order and with optional `:` separators (see
+  **Selector prefix syntax** above).
+  - **Grammar**: boolean operators with precedence `||` < `&&` < `!` <
+    comparison < arithmetic, plus parenthesized grouping at the boolean layer.
+    Comparison operators: `>`, `>=`, `<`, `<=`, `==`, `!=`. These boolean and
+    comparison operators are legal **only inside `where(...)`** — an assignment
+    RHS stays purely arithmetic, so a comparison there is a parse error (flat
+    type story; no truthiness leaks into values). Boolean grouping
+    (`a && (b || c)`, and the reflexive `(note.velocity > 80)`) is supported; a
+    paren wrapping only arithmetic (`(1 + 2) > note.start`) still groups at the
+    arithmetic layer.
+  - **Operands** are restricted to the six intrinsic scalar note properties —
+    `note.velocity`, `note.deviation`, `note.duration`, `note.probability`,
+    `note.pitch`, `note.start` — combined with arithmetic and the usual literals
+    (numbers, pitch names like `C3`, note values like `n/8`). `note.duration`
+    and `note.start` are in musical beats. `note.deviation` is the
+    velocity-deviation span as a plain scalar (the `vA-B` velocity range is
+    authoring sugar = base velocity + this span), so it compares like any other
+    property.
+  - **Rejected with targeted errors**: selection-derived references
+    (`note.index`, `note.count`, `next.*`, `legato()`) — they are defined over
+    the selected set, which `where()` itself determines, so they are unavailable
+    while selecting; **functions** of any kind (a deferred fast-follow); and
+    `where()` on a note-count op (`ratchet`/`merge`/`split`).
+  - **Float equality**: `==`/`!=` are exact float comparisons (no epsilon).
+    Prefer them on the integer-valued properties (`velocity`, `pitch`) and use
+    `<`/`>` on the float-valued ones (`duration`, `probability`, `start`).
+  - **Evaluation**: the predicate is evaluated during note selection,
+    AND-combined after the pitch/time filters. An evaluation failure (e.g. a
+    note missing the referenced property) warns and excludes the note, matching
+    warn-and-skip on the apply path. On audio clips (gain/pitchShift) a
+    note-property predicate warns and passes through, mirroring noteOp/audio
+    handling.
+
 - **Range clamping**: Applied after modulation:
-  - velocity: 1-127
+  - velocity: capped at a max of 127; `<=0` deletes the note (like duration); no
+    minimum clamp (a positive sub-1 result is left as-is, not floored to 1)
   - timing: unclamped (can shift notes before/after original position)
   - probability: 0.0-1.0
-  - duration: 0.001 minimum
+  - duration: 0 or below deletes the note (like a v0 velocity), no minimum clamp
   - deviation: -127 to 127
   - pitch: 0-127 (rounded to integer)
   - gain: -70 to 24 dB
@@ -302,8 +521,9 @@ clears and simple one-shot sets (this is the form the `preTransforms` examples
 in the skills use). One token per line; an optional pitch/time selector still
 applies.
 
-- `v0` deletes the note · `vN` sets velocity · `v+N` / `v-N` adjusts velocity ·
-  `vA-B` sets a humanized random velocity range (e.g. `v80-120`)
+- `delete` (or `v0`) deletes the note · `vN` sets velocity · `v+N` / `v-N`
+  adjusts velocity · `vA-B` sets a humanized random velocity range (e.g.
+  `v80-120`)
 - `pN` sets probability · `p+N` / `p-N` adjusts probability (no range form — the
   notes layer has none either, so `p` stays single-valued for parity)
 - `n/4` (or `Nbar`, `Nbar±n/4`, e.g. `1bar-n/16`) sets duration to that note
@@ -316,6 +536,13 @@ the C1 lane to C4. The shorthand expresses only set/delete/adjust of one
 property — use the full syntax for anything computed (waveforms, `*=`, ramps,
 cross-note references).
 
+`delete` is a readable alias for `v0` with an identical AST (`velocity = 0`), so
+it deletes the matched note(s) and a selector still applies (`C1: delete`,
+`where(note.velocity < 40): delete`). It is **transform-only** — the bar|beat
+`notes` layer keeps `v0` — and **shorthand-only**: using it as a value
+(`velocity = delete`, `1 + delete`) raises a targeted parse error, mirroring the
+note-count-op-as-value guard.
+
 The one exception is the velocity range `vA-B`, which desugars to **two**
 assignments — `velocity = low` and `deviation = high - low` — matching the
 bar|beat notes layer's `vA-B` exactly. This is the **persistent base velocity +
@@ -323,11 +550,15 @@ bar|beat notes layer's `vA-B` exactly. This is the **persistent base velocity +
 in the clip editor, **not** a one-time `rand(A,B)` baked at transform time. Each
 bound is clamped to 0-127 and the lower becomes the base, so `v120-80` ≡
 `v80-120` and out-of-range bounds clamp before the deviation is computed
-(`v200-250` ≡ velocity 127, deviation 0). A selector applies to both writes, so
+(`v200-250` ≡ velocity 127, deviation 0). A 0 lower bound (`v0-N`, `vN-0`,
+`v0-0`) is a parse error rather than a silent delete: the base would be velocity
+0, which is the delete sentinel, so the range would drop every matched note —
+the `min === 0` check rejects both orderings and equal bounds with the same
+targeted message the barbeat grammar uses. A selector applies to both writes, so
 `C1: v80-120` produces two assignment rows in the parsed AST — still written as
 one token per line. (Because Peggy grammars cannot import a shared helper, this
-mapping is duplicated from the barbeat interpreter and pinned by
-`velocity-range-parity.test.ts`.)
+mapping — including the v0 guard and its error text — is duplicated from the
+barbeat grammar and pinned by `velocity-range-parity.test.ts`.)
 
 ## Units and Time Signatures
 
@@ -772,3 +1003,8 @@ pitchShift = -12;
 // Self-reference: shift relative to current
 pitchShift = audio.pitchShift + 7;
 ```
+
+Audio transforms apply to the whole clip, so any note-level scoping is dropped
+with a relayed warning rather than silently: a pitch selector, a time selector,
+a `where()` predicate, MIDI parameters, and note-count operations all warn and
+are ignored on audio clips.

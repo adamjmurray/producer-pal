@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   type FinishReason,
   type ModelMessage,
@@ -15,11 +16,20 @@ import {
 } from "ai";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
 import { createStreamErrorSignal } from "./stream-with-error-signal";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
+
+/**
+ * Placeholder result for a tool call the user stopped before it returned.
+ * Used both to keep the model conversation valid (every tool-call needs a
+ * matching tool-result or providers 400) and to render a sensible UI state.
+ */
+const CANCELED_TOOL_RESULT_TEXT =
+  "Canceled by the user before this tool finished.";
 
 /**
  * AI SDK client that wraps streamText for chat with MCP tool support.
@@ -34,6 +44,12 @@ export class ChatSdkClient {
   toolLimitReached = false;
   private tools: ToolSet = {};
   private config: ChatClientConfig;
+  /**
+   * The MCP client backing `tools`. Each tool's execute() closure calls
+   * mcpClient.callTool(), so it must stay connected for this client's whole
+   * lifetime and only close when the client is discarded — see dispose().
+   */
+  private mcpClient: Client | null = null;
 
   /**
    * @param _apiKey - API key (handled by the model instance in config)
@@ -49,9 +65,38 @@ export class ChatSdkClient {
    */
   async initialize(): Promise<void> {
     const mcpUrl = this.config.mcpUrl ?? getMcpUrl();
-    const { tools } = await createMcpTools(mcpUrl, this.config.enabledTools);
+    const { tools, mcpClient } = await createMcpTools(
+      mcpUrl,
+      this.config.enabledTools,
+    );
 
     this.tools = tools;
+    this.mcpClient = mcpClient;
+  }
+
+  /**
+   * Close the underlying MCP connection. Idempotent. useChat discards a client
+   * on every new/restored/cleared conversation; without this each discard
+   * leaks the client's open HTTP connection (the connection-test path closes
+   * its client in a finally for the same reason). Fire-and-forget: close() can
+   * reject if connect() never completed, which is harmless on teardown.
+   */
+  dispose(): void {
+    const client = this.mcpClient;
+
+    this.mcpClient = null;
+    this.tools = {};
+    void client?.close().catch(() => {});
+  }
+
+  /**
+   * Summarize a slice of chat history into a single compaction summary,
+   * using this conversation's model with no tools.
+   * @param history - Messages to compact (oldest first)
+   * @returns The compaction summary text
+   */
+  async summarize(history: ChatMessage[]): Promise<string> {
+    return await summarizeHistory(this.config.model, history);
   }
 
   /**
@@ -141,26 +186,34 @@ export class ChatSdkClient {
     let completedSteps = 0;
     let finalFinishReason: FinishReason | undefined;
 
-    for await (const part of stream) {
-      const handled = handleStreamPart(part.type, part, currentMsg);
+    try {
+      for await (const part of stream) {
+        const handled = handleStreamPart(part.type, part, currentMsg);
 
-      if (handled) {
-        if (!addedCurrentMsg) {
-          this.chatHistory.push(currentMsg);
-          addedCurrentMsg = true;
+        if (handled) {
+          if (!addedCurrentMsg) {
+            this.chatHistory.push(currentMsg);
+            addedCurrentMsg = true;
+          }
+
+          yield [...this.chatHistory];
+        } else if (part.type === "start-step" && addedCurrentMsg) {
+          // New step means new assistant turn (after tool results)
+          currentMsg = { role: "assistant", content: "" };
+          addedCurrentMsg = false;
+        } else if (part.type === "finish-step") {
+          completedSteps++;
+        } else if (part.type === "finish") {
+          finalFinishReason = (part as { finishReason?: FinishReason })
+            .finishReason;
         }
-
-        yield [...this.chatHistory];
-      } else if (part.type === "start-step" && addedCurrentMsg) {
-        // New step means new assistant turn (after tool results)
-        currentMsg = { role: "assistant", content: "" };
-        addedCurrentMsg = false;
-      } else if (part.type === "finish-step") {
-        completedSteps++;
-      } else if (part.type === "finish") {
-        finalFinishReason = (part as { finishReason?: FinishReason })
-          .finishReason;
       }
+    } finally {
+      // If the user pressed Stop mid-tool, the in-flight assistant message holds
+      // a tool-call with no tool-result. Backfill a "canceled" result so the
+      // history stays valid (providers reject an unmatched tool-call) and the UI
+      // doesn't render the tool as perpetually running. No-op on clean finishes.
+      reconcileDanglingToolCalls(this.chatHistory, historyLengthBefore);
     }
 
     this.toolLimitReached = detectToolLimitReached(
@@ -292,15 +345,29 @@ function handleStreamPart(
  * Assistant messages with tool calls produce two ModelMessages:
  * 1. assistant message with text + tool-call parts
  * 2. tool message with tool-result parts
+ *
+ * Consecutive user turns are merged into one. A compaction summary is a
+ * synthetic user message, so the next real user message would otherwise sit
+ * directly after it — Gemini and Mistral reject two user turns in a row (only
+ * Anthropic/OpenAI tolerate it). Folding them into a single user turn keeps the
+ * wire format valid for every provider while the UI still renders them
+ * separately (the divider plus the user bubble).
  * @param history - Chat history to convert
  * @returns Array of ModelMessage for streamText
  */
-function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
+export function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
   const messages: ModelMessage[] = [];
 
   for (const msg of history) {
     if (msg.role === "user") {
-      messages.push({ role: "user", content: msg.content });
+      const last = messages.at(-1);
+
+      if (last?.role === "user" && typeof last.content === "string") {
+        last.content = `${last.content}\n\n${msg.content}`;
+      } else {
+        messages.push({ role: "user", content: msg.content });
+      }
+
       continue;
     }
 
@@ -318,35 +385,85 @@ function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
       content: buildAssistantContent(msg),
     });
 
-    // Tool results message (required by AI SDK for multi-turn)
-    if (msg.toolResults && msg.toolResults.length > 0) {
-      messages.push({
-        role: "tool",
-        content: buildToolResultContent(msg.toolResults),
-      });
-    }
+    // Tool message pairing EVERY tool-call with a result (required by providers
+    // for multi-turn). buildToolResultContent backfills a canceled result for
+    // any call the user stopped before it returned, so a persisted "stopped
+    // mid-tool" history can still be sent without a provider 400. (This runs
+    // before the stream's reconcile, so it must not assume a complete history.)
+    messages.push({
+      role: "tool",
+      content: buildToolResultContent(msg),
+    });
   }
 
   return messages;
 }
 
 /**
- * Build tool result content for the tool role message.
- * @param toolResults - Tool results from the assistant message
- * @returns Array of ToolResultPart for the tool message
+ * Build tool result content for the tool role message, one part per tool-call
+ * (not per recorded result). A call with a recorded result emits it; a call the
+ * user stopped before it returned emits a synthetic "canceled" result. This
+ * guarantees no assistant tool-call is left without a matching tool-result,
+ * which Anthropic/OpenAI reject with a 400.
+ * @param msg - Assistant message with tool calls
+ * @returns Array of ToolResultPart, one per tool-call, in tool-call order
  */
-function buildToolResultContent(
-  toolResults: NonNullable<ChatMessage["toolResults"]>,
-): ToolResultPart[] {
-  return toolResults.map((tr) => ({
-    type: "tool-result" as const,
-    toolCallId: tr.id,
-    toolName: tr.name,
-    output:
-      typeof tr.result === "string"
-        ? { type: "text" as const, value: tr.result }
-        : { type: "text" as const, value: JSON.stringify(tr.result) },
-  }));
+function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
+  const resultsById = new Map(
+    (msg.toolResults ?? []).map((tr) => [tr.id, tr] as const),
+  );
+
+  return (msg.toolCalls ?? []).map((tc) => {
+    const tr = resultsById.get(tc.id);
+    const value =
+      tr == null
+        ? CANCELED_TOOL_RESULT_TEXT
+        : typeof tr.result === "string"
+          ? tr.result
+          : JSON.stringify(tr.result);
+
+    return {
+      type: "tool-result" as const,
+      toolCallId: tc.id,
+      toolName: tc.name,
+      output: { type: "text" as const, value },
+    };
+  });
+}
+
+/**
+ * Backfill a "canceled" tool-result for any tool-call in the streamed assistant
+ * messages that never received one — i.e. the user pressed Stop while a tool was
+ * still running. Without this, the dangling tool-call (a) makes the next request
+ * fail with a provider 400 (unmatched tool_use) and (b) leaves the tool rendered
+ * as perpetually running in the UI. A no-op when every call already has a result.
+ * @param history - The full chat history (mutated in place)
+ * @param fromIndex - Index of the first message added by the current stream
+ */
+function reconcileDanglingToolCalls(
+  history: ChatMessage[],
+  fromIndex: number,
+): void {
+  for (let i = fromIndex; i < history.length; i++) {
+    const msg = history[i] as ChatMessage;
+
+    if (msg.role !== "assistant" || !msg.toolCalls?.length) continue;
+
+    const resultIds = new Set((msg.toolResults ?? []).map((tr) => tr.id));
+
+    for (const tc of msg.toolCalls) {
+      if (resultIds.has(tc.id)) continue;
+
+      msg.toolResults ??= [];
+      msg.toolResults.push({
+        id: tc.id,
+        name: tc.name,
+        args: tc.args,
+        result: CANCELED_TOOL_RESULT_TEXT,
+        isError: false,
+      });
+    }
+  }
 }
 
 /**

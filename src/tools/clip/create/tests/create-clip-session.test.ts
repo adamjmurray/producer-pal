@@ -116,6 +116,22 @@ function setupSessionClip(
   return { clipSlot, clip };
 }
 
+// Sets up the live set, track 0, and `count` length-4 session clips starting at
+// scene 1 (clip ids clip_0_1, clip_0_2, ...). Returns the clip handles in order.
+function setupNumberedSessionClips(count: number): RegisteredMockObject[] {
+  setupLiveSet({ scenes: children("scene0") });
+  setupTrack(0);
+
+  return Array.from({ length: count }, (_, i) => {
+    const sceneIndex = i + 1;
+
+    return setupSessionClip(0, sceneIndex, {
+      clipId: `clip_0_${sceneIndex}`,
+      clipProperties: { length: 4 },
+    }).clip;
+  });
+}
+
 describe("createClip - session view", () => {
   it("should create a single clip with notes", async () => {
     setupLiveSet();
@@ -321,20 +337,7 @@ describe("createClip - session view", () => {
 
 describe("createClip - session view - per-clip transforms", () => {
   it("cycles clipseq() by clip.index across multiple session clips", async () => {
-    setupLiveSet({ scenes: children("scene0") });
-    setupTrack(0);
-    const { clip: clip1 } = setupSessionClip(0, 1, {
-      clipId: "clip_0_1",
-      clipProperties: { length: 4 },
-    });
-    const { clip: clip2 } = setupSessionClip(0, 2, {
-      clipId: "clip_0_2",
-      clipProperties: { length: 4 },
-    });
-    const { clip: clip3 } = setupSessionClip(0, 3, {
-      clipId: "clip_0_3",
-      clipProperties: { length: 4 },
-    });
+    const [clip1, clip2, clip3] = setupNumberedSessionClips(3);
 
     const result = await createClip({
       slot: "0/1,0/2,0/3",
@@ -344,13 +347,13 @@ describe("createClip - session view - per-clip transforms", () => {
 
     // clipseq cycles by clip.index, so each clip gets a different velocity
     // (before the fix, the transform ran once and every clip got 10).
-    expect(clip1.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(clip1!.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [createNote({ velocity: 10 })],
     });
-    expect(clip2.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(clip2!.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [createNote({ velocity: 20 })],
     });
-    expect(clip3.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(clip3!.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [createNote({ velocity: 30 })],
     });
 
@@ -380,16 +383,7 @@ describe("createClip - session view - per-clip transforms", () => {
   });
 
   it("exposes clip.index and clip.count to multi-clip transforms", async () => {
-    setupLiveSet({ scenes: children("scene0") });
-    setupTrack(0);
-    const { clip: clip1 } = setupSessionClip(0, 1, {
-      clipId: "clip_0_1",
-      clipProperties: { length: 4 },
-    });
-    const { clip: clip2 } = setupSessionClip(0, 2, {
-      clipId: "clip_0_2",
-      clipProperties: { length: 4 },
-    });
+    const [clip1, clip2] = setupNumberedSessionClips(2);
 
     await createClip({
       slot: "0/1,0/2",
@@ -398,10 +392,10 @@ describe("createClip - session view - per-clip transforms", () => {
     });
 
     // clip.count = 2 (the +2 base); clip.index steps the *10 term
-    expect(clip1.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(clip1!.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [createNote({ velocity: 2 })],
     });
-    expect(clip2.call).toHaveBeenCalledWith("add_new_notes", {
+    expect(clip2!.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [createNote({ velocity: 12 })],
     });
   });

@@ -76,6 +76,10 @@ export interface UseSettingsReturn {
   cancelSettings: () => void;
   hasApiKey: boolean;
   settingsConfigured: boolean;
+  /** False until the post-mount async decrypt has applied the real apiKeys.
+   * Consumers that snapshot settings (e.g. unsaved-changes detection) must wait
+   * for this so they don't capture the blank pre-decrypt apiKey. */
+  settingsLoaded: boolean;
   /** Message from the last failed saveSettings(), or null. Cleared on the
    * next save attempt and on cancelSettings. The SettingsFooter renders it
    * so the user sees what went wrong instead of closing the modal silently. */

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -10,6 +11,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import {
   MockChatClient,
+  RESTORED_HISTORY,
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
@@ -94,6 +96,113 @@ describe("useChat", () => {
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
       expect(result.current.activeTemperature).toBeNull();
+    });
+
+    it("disposes the client so its MCP connection is released", async () => {
+      const created: MockChatClient[] = [];
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          created.push(client);
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      await act(() => {
+        result.current.clearConversation();
+      });
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.dispose).toHaveBeenCalledOnce();
+    });
+
+    it("disposes the live client when the hook unmounts (mode-switch teardown)", async () => {
+      // Switching chat<->voice mode unmounts ChatApp (and useChat) mid-session.
+      // The unmount cleanup must dispose the live client so its MCP connection
+      // isn't leaked — clearConversation/initializeChat only cover replacement.
+      const created: MockChatClient[] = [];
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          created.push(client);
+
+          return client;
+        }),
+      };
+
+      const { result, unmount } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      unmount();
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.dispose).toHaveBeenCalledOnce();
+    });
+
+    it("aborts the in-flight stream (browser Back/Forward teardown path)", async () => {
+      // A browser Back/Forward fires hashchange, which switches/clears the
+      // conversation via clearConversation WITHOUT going through stopResponse.
+      // Before the fix the in-flight stream kept running and its setMessages
+      // clobbered the freshly-restored conversation. clearConversation must
+      // abort the active stream's controller.
+      let capturedSignal: AbortSignal | undefined;
+      let resolveGate: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        resolveGate = resolve;
+      });
+
+      const adapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message, signal) {
+            capturedSignal = signal;
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+            await gate; // hold the stream in-flight
+          },
+      );
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      const sendPromise = result.current.handleSend("Hello");
+
+      // Let the stream yield its first chunk and suspend on the gate.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(capturedSignal?.aborted).toBe(false);
+
+      await act(() => {
+        result.current.clearConversation();
+      });
+
+      expect(capturedSignal?.aborted).toBe(true);
+
+      resolveGate();
+      await act(async () => {
+        await sendPromise;
+      });
     });
   });
 
@@ -263,6 +372,44 @@ describe("useChat", () => {
       expect(lastPart?.type).toBe("error");
     });
 
+    it("persists the user message, not just the error, when init fails", async () => {
+      // createClient runs (so the client exists) but initialize throws before
+      // sendMessage, leaving chatHistory empty. The stashed user message must
+      // still reach the persisted history alongside the error — otherwise a
+      // reload shows a dangling error with no question.
+      const errorAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.initialize = vi.fn(async () => {
+            throw new Error("Initialization failed");
+          });
+
+          return client;
+        }),
+      };
+      const autoSaveRef = { current: vi.fn() };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: errorAdapter, autoSaveRef }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(result.current.getChatHistory()).toStrictEqual([
+        { role: "user", content: "Hello" },
+        {
+          role: "assistant",
+          content: expect.stringContaining("Initialization failed"),
+          isError: true,
+        },
+      ]);
+      expect(autoSaveRef.current).toHaveBeenCalled();
+    });
+
     it("trims whitespace from messages", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
@@ -334,6 +481,151 @@ describe("useChat", () => {
         expect.any(Array),
       );
       expect(result.current.isAssistantResponding).toBe(false);
+    });
+  });
+
+  describe("compact (bootstrap + race guard)", () => {
+    it("bootstraps a client from restored history, then compacts", async () => {
+      let created: MockChatClient | undefined;
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          created = new MockChatClient();
+          created.chatHistory = [...RESTORED_HISTORY];
+
+          return created;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      expect(adapter.createClient).toHaveBeenCalledTimes(1);
+      expect(created?.summarize).toHaveBeenCalledWith(RESTORED_HISTORY);
+      expect(created?.chatHistory).toStrictEqual([
+        { role: "user", content: "Summary of 2 messages" },
+      ]);
+      expect(result.current.canUndoCompaction).toBe(true);
+    });
+
+    it("surfaces an error when bootstrap initialization fails", async () => {
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.initialize = vi.fn(async () => {
+            throw new Error("init fail");
+          });
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      expect(adapter.createErrorMessage).toHaveBeenCalled();
+      expect(result.current.messages.at(-1)?.parts[0]?.type).toBe("error");
+    });
+
+    it("compacts the existing client without re-initializing", async () => {
+      let created: MockChatClient | undefined;
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          created = new MockChatClient();
+
+          return created;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+      expect(adapter.createClient).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      // No second client created — compacted the existing one in place.
+      expect(adapter.createClient).toHaveBeenCalledTimes(1);
+      expect(created?.summarize).toHaveBeenCalled();
+    });
+
+    it("ignores a send while a compaction is in flight", async () => {
+      let resolveSummary: (value: string) => void = () => {};
+      const adapter = {
+        ...createMockAdapter(),
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.summarize = vi.fn(
+            () =>
+              new Promise<string>((resolve) => {
+                resolveSummary = resolve;
+              }),
+          );
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const callsBefore = vi.mocked(adapter.createUserMessage).mock.calls
+        .length;
+
+      let compactPromise: Promise<void> | undefined;
+
+      await act(() => {
+        compactPromise = result.current.compact(1);
+      });
+
+      // Compaction is in flight (summarize pending): a concurrent send must be
+      // dropped before it reaches createUserMessage.
+      await act(async () => {
+        await result.current.handleSend("blocked");
+      });
+
+      expect(vi.mocked(adapter.createUserMessage).mock.calls).toHaveLength(
+        callsBefore,
+      );
+      expect(adapter.createUserMessage).not.toHaveBeenCalledWith("blocked");
+
+      await act(async () => {
+        resolveSummary("done");
+        await compactPromise;
+      });
     });
   });
 });

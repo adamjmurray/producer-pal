@@ -8,12 +8,12 @@ import {
   type BinaryOpNode,
   type FunctionNode,
 } from "#src/notation/transform/parser/transform-parser.ts";
-import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - Expressions", () => {
   describe("function calls", () => {
     it("parses cos with period", () => {
-      const result = parser.parse("velocity += cos(n/4)");
+      const result = parseAssignments("velocity += cos(n/4)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -25,7 +25,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses cos with period and phase", () => {
-      const result = parser.parse("velocity += cos(n/4, 0.5)");
+      const result = parseAssignments("velocity += cos(n/4, 0.5)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -37,7 +37,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses tri with period", () => {
-      const result = parser.parse("velocity += tri(n/2)");
+      const result = parseAssignments("velocity += tri(n/2)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -49,7 +49,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses saw with period and phase", () => {
-      const result = parser.parse("velocity += saw(n/8, 0.25)");
+      const result = parseAssignments("velocity += saw(n/8, 0.25)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -61,7 +61,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses square with period", () => {
-      const result = parser.parse("velocity += square(n/1)");
+      const result = parseAssignments("velocity += square(n/1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -73,7 +73,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses square with period and phase", () => {
-      const result = parser.parse("velocity += square(n/4, 0.25)");
+      const result = parseAssignments("velocity += square(n/4, 0.25)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -85,7 +85,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses square with period, phase, and pulseWidth", () => {
-      const result = parser.parse("velocity += square(n/2, 0, 0.75)");
+      const result = parseAssignments("velocity += square(n/2, 0, 0.75)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -97,7 +97,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses rand with no arguments", () => {
-      const result = parser.parse("velocity += rand()");
+      const result = parseAssignments("velocity += rand()");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -109,7 +109,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses rand with one argument", () => {
-      const result = parser.parse("velocity += rand(10)");
+      const result = parseAssignments("velocity += rand(10)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -121,7 +121,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses rand with two arguments", () => {
-      const result = parser.parse("velocity += rand(-5, 5)");
+      const result = parseAssignments("velocity += rand(-5, 5)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -133,7 +133,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses choose with multiple arguments", () => {
-      const result = parser.parse("velocity += choose(60, 80, 100)");
+      const result = parseAssignments("velocity += choose(60, 80, 100)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -145,7 +145,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses curve with three arguments", () => {
-      const result = parser.parse("velocity += curve(0, 127, 2)");
+      const result = parseAssignments("velocity += curve(0, 127, 2)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -159,7 +159,7 @@ describe("Transform Parser - Expressions", () => {
 
   describe("period parameters", () => {
     it("parses note-value period (n/4)", () => {
-      const result = parser.parse("velocity += cos(n/4)");
+      const result = parseAssignments("velocity += cos(n/4)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "nDuration",
@@ -168,7 +168,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses note-value period with explicit numerator (n1/4)", () => {
-      const result = parser.parse("velocity += cos(n1/4)");
+      const result = parseAssignments("velocity += cos(n1/4)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "nDuration",
@@ -177,7 +177,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses eighth-note period (n/8)", () => {
-      const result = parser.parse("velocity += cos(n/8)");
+      const result = parseAssignments("velocity += cos(n/8)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "nDuration",
@@ -186,7 +186,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses triplet period (n/12)", () => {
-      const result = parser.parse("velocity += cos(n/12)");
+      const result = parseAssignments("velocity += cos(n/12)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "nDuration",
@@ -195,7 +195,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses dotted-quarter period (n3/8)", () => {
-      const result = parser.parse("velocity += cos(n3/8)");
+      const result = parseAssignments("velocity += cos(n3/8)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "nDuration",
@@ -204,7 +204,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses whole-note period (n/1)", () => {
-      const result = parser.parse("velocity += cos(n/1)");
+      const result = parseAssignments("velocity += cos(n/1)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "nDuration",
@@ -213,13 +213,13 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses a numeric expression period (beats)", () => {
-      const result = parser.parse("velocity += cos(2)");
+      const result = parseAssignments("velocity += cos(2)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toBe(2);
     });
 
     it("parses a variable period (clip.barDuration)", () => {
-      const result = parser.parse("velocity += cos(clip.barDuration)");
+      const result = parseAssignments("velocity += cos(clip.barDuration)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
         type: "variable",
@@ -235,13 +235,13 @@ describe("Transform Parser - Expressions", () => {
       "velocity += cos(1:0t)",
       "velocity += cos(4:0t)",
     ])("rejects removed period syntax: %s", (expr) => {
-      expect(() => parser.parse(expr)).toThrow("no longer supported");
+      expect(() => parseAssignments(expr)).toThrow("no longer supported");
     });
   });
 
   describe("arithmetic operators", () => {
     it("parses addition", () => {
-      const result = parser.parse("velocity += 10 + 5");
+      const result = parseAssignments("velocity += 10 + 5");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -251,7 +251,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses subtraction", () => {
-      const result = parser.parse("velocity += 10 - 5");
+      const result = parseAssignments("velocity += 10 - 5");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "subtract",
@@ -261,7 +261,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses multiplication", () => {
-      const result = parser.parse("velocity += 10 * 2");
+      const result = parseAssignments("velocity += 10 * 2");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -271,7 +271,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses division", () => {
-      const result = parser.parse("velocity += 10 / 2");
+      const result = parseAssignments("velocity += 10 / 2");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "divide",
@@ -281,7 +281,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses multiplication before addition (precedence)", () => {
-      const result = parser.parse("velocity += 10 + 5 * 2");
+      const result = parseAssignments("velocity += 10 + 5 * 2");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -295,7 +295,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses division before subtraction (precedence)", () => {
-      const result = parser.parse("velocity += 20 - 10 / 2");
+      const result = parseAssignments("velocity += 20 - 10 / 2");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "subtract",
@@ -312,7 +312,7 @@ describe("Transform Parser - Expressions", () => {
       ["velocity += 8 / 4 / 2", "divide"],
       ["velocity += 8 - 4 - 2", "subtract"],
     ])("folds non-associative chains left-to-right: %s", (input, type) => {
-      const result = parser.parse(input);
+      const result = parseAssignments(input);
 
       // (8 op 4) op 2, not 8 op (4 op 2) — guards left-associativity
       expect(result[0]!.expression).toStrictEqual({
@@ -323,7 +323,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses left-to-right for same precedence (addition)", () => {
-      const result = parser.parse("velocity += 5 + 3 + 2");
+      const result = parseAssignments("velocity += 5 + 3 + 2");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -339,7 +339,7 @@ describe("Transform Parser - Expressions", () => {
 
   describe("parentheses", () => {
     it("parses parentheses for grouping", () => {
-      const result = parser.parse("velocity += (10 + 5) * 2");
+      const result = parseAssignments("velocity += (10 + 5) * 2");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -353,7 +353,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses nested parentheses", () => {
-      const result = parser.parse("velocity += ((10 + 5) * 2) - 3");
+      const result = parseAssignments("velocity += ((10 + 5) * 2) - 3");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "subtract",
@@ -373,7 +373,7 @@ describe("Transform Parser - Expressions", () => {
 
   describe("complex expressions", () => {
     it("parses function with arithmetic", () => {
-      const result = parser.parse("velocity += 20 * cos(n/1)");
+      const result = parseAssignments("velocity += 20 * cos(n/1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -389,7 +389,9 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses multiple functions combined", () => {
-      const result = parser.parse("velocity += 20 * cos(n4/1) + 10 * rand()");
+      const result = parseAssignments(
+        "velocity += 20 * cos(n4/1) + 10 * rand()",
+      );
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -419,7 +421,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses unipolar envelope (offset + transform)", () => {
-      const result = parser.parse("velocity += 20 + 20 * cos(n2/1)");
+      const result = parseAssignments("velocity += 20 + 20 * cos(n2/1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -439,7 +441,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses amplitude transform", () => {
-      const result = parser.parse("velocity += 30 * cos(n4/1) * cos(n/4)");
+      const result = parseAssignments("velocity += 30 * cos(n4/1) * cos(n/4)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -465,7 +467,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses swing timing with subtraction", () => {
-      const result = parser.parse("timing += 0.05 * (cos(n/4) - 1)");
+      const result = parseAssignments("timing += 0.05 * (cos(n/4) - 1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -487,7 +489,7 @@ describe("Transform Parser - Expressions", () => {
 
   describe("math functions", () => {
     it("parses round with single argument", () => {
-      const result = parser.parse("velocity += round(10.7)");
+      const result = parseAssignments("velocity += round(10.7)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -499,7 +501,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses floor with expression argument", () => {
-      const result = parser.parse("velocity += floor(note.velocity / 10)");
+      const result = parseAssignments("velocity += floor(note.velocity / 10)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -517,7 +519,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses abs with negative number", () => {
-      const result = parser.parse("velocity += abs(-5)");
+      const result = parseAssignments("velocity += abs(-5)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -529,7 +531,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses min with two arguments", () => {
-      const result = parser.parse("velocity = min(127, note.velocity)");
+      const result = parseAssignments("velocity = min(127, note.velocity)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -541,7 +543,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses max with three arguments", () => {
-      const result = parser.parse("velocity = max(60, note.velocity, 100)");
+      const result = parseAssignments("velocity = max(60, note.velocity, 100)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -557,7 +559,9 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses nested math functions", () => {
-      const result = parser.parse("velocity = abs(floor(note.velocity / 2))");
+      const result = parseAssignments(
+        "velocity = abs(floor(note.velocity / 2))",
+      );
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -585,7 +589,7 @@ describe("Transform Parser - Expressions", () => {
 
   describe("modulo operator", () => {
     it("parses basic modulo", () => {
-      const result = parser.parse("velocity += 10 % 3");
+      const result = parseAssignments("velocity += 10 % 3");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "modulo",
@@ -595,7 +599,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses modulo with same precedence as multiply/divide", () => {
-      const result = parser.parse("velocity += 10 + 5 % 3");
+      const result = parseAssignments("velocity += 10 + 5 % 3");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -609,7 +613,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses chained modulo left-to-right", () => {
-      const result = parser.parse("velocity += 10 % 7 % 3");
+      const result = parseAssignments("velocity += 10 % 7 % 3");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "modulo",
@@ -630,7 +634,7 @@ describe("Transform Parser - Expressions", () => {
     ])(
       "parses %s as set %s on current value",
       (input, opType, namespace, name, right) => {
-        const result = parser.parse(input);
+        const result = parseAssignments(input);
 
         expect(result[0]!.operator).toBe("set");
         const expr = result[0]!.expression as BinaryOpNode;
@@ -643,10 +647,10 @@ describe("Transform Parser - Expressions", () => {
 
     it("parses *= for gain using audio namespace, timing using note.start", () => {
       const gainExpr = (
-        parser.parse("gain *= 0.5")[0]!.expression as BinaryOpNode
+        parseAssignments("gain *= 0.5")[0]!.expression as BinaryOpNode
       ).left;
       const timingExpr = (
-        parser.parse("timing *= 0.5")[0]!.expression as BinaryOpNode
+        parseAssignments("timing *= 0.5")[0]!.expression as BinaryOpNode
       ).left;
 
       expect(gainExpr).toStrictEqual({
@@ -662,7 +666,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses *= with pitch range selector", () => {
-      const result = parser.parse("F#1: velocity *= 0.5");
+      const result = parseAssignments("F#1: velocity *= 0.5");
 
       expect(result[0]!.pitchRange).toStrictEqual({
         startPitch: 42,

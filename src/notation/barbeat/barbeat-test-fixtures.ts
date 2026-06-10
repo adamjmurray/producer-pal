@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 
 /**
@@ -37,7 +38,7 @@ export const drumPatternNotes: NoteEvent[] = [
 ] as NoteEvent[];
 
 export const drumPatternNotation =
-  "n/16 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2";
+  "v100 n/16 C1 v80-100 p0.8 Gb1 1|1\np0.6 Gb1 1|1.5\nv90 p1 D1 v100 p0.9 Gb1 1|2";
 
 /**
  * Sort notes by start_time (with epsilon tolerance), then pitch for comparison.
@@ -47,7 +48,7 @@ export const drumPatternNotation =
  */
 export function sortNotes(notes: NoteEvent[]): NoteEvent[] {
   return [...notes].sort((a, b) => {
-    if (Math.abs(a.start_time - b.start_time) > 0.001)
+    if (Math.abs(a.start_time - b.start_time) > SAME_TIME_EPSILON)
       return a.start_time - b.start_time;
 
     return a.pitch - b.pitch;

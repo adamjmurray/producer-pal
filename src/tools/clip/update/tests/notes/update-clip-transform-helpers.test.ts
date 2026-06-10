@@ -36,6 +36,37 @@ function createSessionClipMock(length = 8) {
   };
 }
 
+// Mock clip that returns `existingNotes` from get_notes_extended and captures
+// every note passed to add_new_notes into the returned `addedNotes` array.
+function makeNotesMockClip<T extends object = Record<string, number>>(
+  existingNotes: object[],
+  length = 4,
+): {
+  mockClip: {
+    getProperty: ReturnType<typeof vi.fn>;
+    call: ReturnType<typeof vi.fn>;
+  };
+  addedNotes: T[];
+} {
+  const addedNotes: T[] = [];
+  const mockClip = {
+    getProperty: vi.fn((prop: string) => (prop === "length" ? length : 0)),
+    call: vi.fn((method: string, ...args: unknown[]) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: existingNotes });
+      }
+
+      if (method === "add_new_notes") {
+        addedNotes.push(...(args[0] as { notes: T[] }).notes);
+      }
+
+      return "[]";
+    }),
+  };
+
+  return { mockClip, addedNotes };
+}
+
 describe("update-clip-transform-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,25 +130,7 @@ describe("update-clip-transform-helpers", () => {
         rawNote(67, 2, 102),
       ];
 
-      const addedNotes: unknown[] = [];
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "length") return 4;
-
-          return 0;
-        }),
-        call: vi.fn((method: string, ...args: unknown[]) => {
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          if (method === "add_new_notes") {
-            addedNotes.push(...(args[0] as { notes: unknown[] }).notes);
-          }
-
-          return "[]";
-        }),
-      };
+      const { mockClip, addedNotes } = makeNotesMockClip(existingNotes);
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
@@ -133,8 +146,8 @@ describe("update-clip-transform-helpers", () => {
         "remove_notes_extended",
         0,
         128,
-        0,
-        expect.any(Number),
+        -4,
+        12,
       );
       expect(mockClip.call).toHaveBeenCalledWith(
         "add_new_notes",
@@ -165,23 +178,9 @@ describe("update-clip-transform-helpers", () => {
         rawNote(60, 0, 101),
         rawNote(60, 1, 102),
       ];
-      const addedNotes: { start_time: number }[] = [];
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
-        call: vi.fn((method: string, ...args: unknown[]) => {
-          if (method === "get_notes_extended") {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          if (method === "add_new_notes") {
-            addedNotes.push(
-              ...(args[0] as { notes: { start_time: number }[] }).notes,
-            );
-          }
-
-          return "[]";
-        }),
-      };
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        start_time: number;
+      }>(existingNotes);
 
       applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
@@ -192,6 +191,74 @@ describe("update-clip-transform-helpers", () => {
       );
 
       expect(addedNotes.map((n) => n.start_time)).toStrictEqual([0, 1, 2]);
+    });
+
+    it("writes the expanded note list when a ratchet op runs", () => {
+      const existingNotes = [rawNote(60, 0, 100), rawNote(64, 2, 101)];
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        start_time: number;
+        duration: number;
+      }>(existingNotes);
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        undefined,
+        "ratchet(2)",
+        4,
+        4,
+      );
+
+      // each note split into 2 -> 4 written, ascending by start_time
+      expect(addedNotes).toHaveLength(4);
+      expect(addedNotes.map((n) => n.start_time)).toStrictEqual([
+        0, 0.5, 2, 2.5,
+      ]);
+    });
+
+    it("writes the collapsed note list when a merge op runs", () => {
+      const existingNotes = [rawNote(60, 0, 100), rawNote(60, 1, 101)];
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        start_time: number;
+        duration: number;
+      }>(existingNotes);
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        "merge()",
+        undefined,
+        4,
+        4,
+      );
+
+      // two same-pitch notes spanned into one (0..2)
+      expect(addedNotes).toStrictEqual([
+        expect.objectContaining({ start_time: 0, duration: 2 }),
+      ]);
+    });
+
+    it("dedupes a same-pitch+start collision a transform creates (keep-last)", () => {
+      // Two distinct notes share a start; forcing both onto the same pitch
+      // collides them at the exact same pitch+onset. Without a dedupe both are
+      // written and Live deletes one non-deterministically — the transform path
+      // must dedupe keep-last like the merge path. Before the fix it sorted
+      // without deduping and wrote both.
+      const existingNotes = [rawNote(60, 0, 100), rawNote(64, 0, 101)];
+      const { mockClip, addedNotes } = makeNotesMockClip<{
+        pitch: number;
+        start_time: number;
+      }>(existingNotes);
+
+      applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        undefined,
+        "pitch = 72", // collapse both onto pitch 72 at start 0
+        4,
+        4,
+      );
+
+      expect(addedNotes).toStrictEqual([
+        expect.objectContaining({ pitch: 72, start_time: 0 }),
+      ]);
     });
 
     it("should warn and return 0 when clip has no notes", () => {
@@ -250,6 +317,56 @@ describe("update-clip-transform-helpers", () => {
       );
 
       expect(result.noteCount).toBe(0);
+    });
+
+    it("clears a pickup note before the clip start instead of orphaning it", () => {
+      // Regression: preTransforms used to read only the playable region
+      // [0, length], so a pickup at a negative start_time was invisible — `v0`
+      // reported "no notes to transform" and left the pickup orphaned while
+      // lying noteCount: 0. The read AND remove must use read-clip's
+      // [-length, 2*length] window so the pickup is seen, transformed, removed.
+      const pickup = rawNote(60, -0.5, 100); // half a beat before the start
+      const removeCalls: unknown[][] = [];
+      let cleared = false;
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => (prop === "length" ? 4 : 0)),
+        call: vi.fn((method: string, ...args: unknown[]) => {
+          if (method === "get_notes_extended") {
+            // Live only surfaces the pickup when the window reaches before beat 0.
+            const fromTime = args[2] as number;
+
+            return JSON.stringify({
+              notes: fromTime < 0 && !cleared ? [pickup] : [],
+            });
+          }
+
+          if (method === "remove_notes_extended") {
+            removeCalls.push(args);
+            cleared = true;
+          }
+
+          return "[]";
+        }),
+      };
+
+      const result = applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        "v0", // preTransform deletes every matched note
+        undefined,
+        4,
+        4,
+      );
+
+      // The pickup was found and deleted, not skipped as "no notes to transform".
+      expect(result.transformed).toBe(1);
+      expect(result.noteCount).toBe(0);
+      // Remove used the pickup-inclusive window (length 4 → [-4, 8)).
+      expect(removeCalls).toContainEqual([0, 128, -4, 12]);
+      // Nothing re-added: v0 cleared the only note.
+      expect(mockClip.call).not.toHaveBeenCalledWith(
+        "add_new_notes",
+        expect.anything(),
+      );
     });
   });
 

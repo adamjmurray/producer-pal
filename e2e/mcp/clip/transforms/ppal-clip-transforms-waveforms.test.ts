@@ -57,8 +57,8 @@ describe("ppal-clip-transforms-waveforms", () => {
       "velocity = 64 + 50 * cos(n/1)",
     );
 
-    // Beats 2 and 4 share v64, comma-merged
-    expect(notes).toContain("v114 C3 1|1");
+    // Beats 2 and 4 share v64, comma-merged (first note carries explicit n/4)
+    expect(notes).toContain("v114 n/4 C3 1|1");
     expect(notes).toContain("v64 C3 1|2,4");
     expect(notes).toContain("v14 C3 1|3");
   });
@@ -78,8 +78,8 @@ describe("ppal-clip-transforms-waveforms", () => {
         `velocity = 64 + 50 * ${waveform}(n/1)`,
       );
 
-      // Beats 1 and 3 share v64, comma-merged
-      expect(notes).toContain("v64 C3 1|1,3");
+      // Beats 1 and 3 share v64, comma-merged (first note carries explicit n/4)
+      expect(notes).toContain("v64 n/4 C3 1|1,3");
       expect(notes).toContain("v114 C3 1|2");
       expect(notes).toContain("v14 C3 1|4");
     },

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -194,9 +195,16 @@ export function noteNameToMidi(name: string): number | null {
 
   const pitchClassName = match[1] as string;
   const octaveStr = match[2] as string;
-  // Note: pitchClassToNumber won't return null here because the regex
-  // already validates that pitchClassName is a valid pitch class (A-G with optional #/b)
-  const pitchClass = pitchClassToNumber(pitchClassName) as number;
+  // The accidental group accepts # or b on ANY letter, so the regex admits
+  // names with no value mapping (Cb, Fb, E#, B#). pitchClassToNumber returns
+  // null for those — bail out, otherwise null coerces to 0 in the arithmetic
+  // below and yields a wrong MIDI note (e.g. "Cb3" → 60).
+  const pitchClass = pitchClassToNumber(pitchClassName);
+
+  if (pitchClass == null) {
+    return null;
+  }
+
   const octave = Number.parseInt(octaveStr);
 
   // MIDI note = (octave + 2) * 12 + pitchClass

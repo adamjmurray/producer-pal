@@ -13,6 +13,8 @@ import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 
 const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
+const scaleDisabledNote =
+  "Scale disabled for selected clips and defaults for new clips.";
 
 describe("updateLiveSet", () => {
   let liveSet: RegisteredMockObject;
@@ -83,6 +85,17 @@ describe("updateLiveSet", () => {
     );
   });
 
+  it("validates timeSignature before applying any property (fail-fast)", async () => {
+    // A malformed timeSignature must throw before tempo (or anything else) is
+    // written, so the call can't leave the Live Set in a partially-updated
+    // state with an error.
+    await expect(
+      updateLiveSet({ tempo: 130, timeSignature: "5" }),
+    ).rejects.toThrow("Time signature must be in format");
+
+    expect(liveSet.set).not.toHaveBeenCalledWith("tempo", 130);
+  });
+
   it("should update multiple properties simultaneously", async () => {
     const result = await updateLiveSet({
       tempo: 125,
@@ -112,19 +125,23 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should throw error for invalid scale format", async () => {
-    await expect(updateLiveSet({ scale: "invalid" })).rejects.toThrow(
-      "Scale must be in format",
-    );
-    await expect(updateLiveSet({ scale: "H Major" })).rejects.toThrow(
-      "Invalid scale root",
-    );
-    await expect(updateLiveSet({ scale: "C Foo" })).rejects.toThrow(
-      "Invalid scale name",
-    );
-    await expect(updateLiveSet({ scale: "Major" })).rejects.toThrow(
-      "Scale must be in format",
-    );
+  it("should warn and skip an invalid scale without throwing", async () => {
+    // Mirrors the update-tool contract: invalid scale is skipped, not thrown,
+    // so other updates in the same call still apply and no scale meta/pitches
+    // are reported.
+    for (const scale of ["invalid", "H Major", "C Foo", "Major"]) {
+      const result = await updateLiveSet({ scale });
+
+      expect(result).toStrictEqual({ id: "live_set_id" });
+      expect(liveSet.set).not.toHaveBeenCalledWith("scale_mode", 1);
+    }
+  });
+
+  it("should apply tempo even when the scale in the same call is invalid", async () => {
+    const result = await updateLiveSet({ tempo: 120, scale: "bad" });
+
+    expect(liveSet.set).toHaveBeenCalledWith("tempo", 120);
+    expect(result).toStrictEqual({ id: "live_set_id", tempo: 120 });
   });
 
   it("should update scale with different root note", async () => {
@@ -200,8 +217,20 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
-      $meta: [scaleChangeNote],
+      $meta: [scaleDisabledNote],
     });
+  });
+
+  it("uses a distinct note for scale-disable vs scale-apply", async () => {
+    // Disabling the scale (scale: "") must not claim a scale was "applied" —
+    // the note describes the actual operation so the LLM isn't misled.
+    const disabled = await updateLiveSet({ scale: "" });
+
+    expect(disabled.$meta).toStrictEqual([scaleDisabledNote]);
+
+    const applied = await updateLiveSet({ scale: "C Major" });
+
+    expect(applied.$meta).toStrictEqual([scaleChangeNote]);
   });
 
   it("should update complex scale names", async () => {
@@ -308,7 +337,7 @@ describe("updateLiveSet", () => {
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
-      $meta: [scaleChangeNote],
+      $meta: [scaleDisabledNote],
     });
   });
 

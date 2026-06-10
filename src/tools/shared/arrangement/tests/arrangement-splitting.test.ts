@@ -195,6 +195,17 @@ describe("performSplitting", () => {
 
     // Should not create any duplicates
     expectDuplicateNotCalled(callState.trackMock);
+
+    // Should warn (not silently no-op) so the model can recover. The clip is
+    // 4 beats (1 bar) long, so its clip-local end is 2|1.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("split skipped for clip clip_1"),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("before its end at 2|1"),
+    );
   });
 
   it("should warn and abort when duplication fails", () => {

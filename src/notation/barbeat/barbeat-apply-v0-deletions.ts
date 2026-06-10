@@ -1,7 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type NoteEvent } from "../types.ts";
 
 /**
@@ -21,7 +23,8 @@ export function applyV0Deletions(notes: NoteEvent[]): NoteEvent[] {
       return result.filter(
         (existingNote) =>
           existingNote.pitch !== note.pitch ||
-          Math.abs(existingNote.start_time - note.start_time) >= 0.001,
+          Math.abs(existingNote.start_time - note.start_time) >=
+            SAME_TIME_EPSILON,
       );
     }
 

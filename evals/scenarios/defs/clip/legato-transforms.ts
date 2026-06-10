@@ -18,6 +18,7 @@ export const legatoTransforms: EvalScenario = {
   id: "legato-transforms",
   description: "Add octaves, humanize timing, and apply legato with tolerance",
   kind: "capability",
+  requires: { transforms: true },
   liveSet: "basic-with-drum-and-lead-clips",
 
   messages: [

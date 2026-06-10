@@ -13,6 +13,7 @@ vi.mock(import("ai"), async (importOriginal) => {
   return {
     ...actual,
     streamText: vi.fn(),
+    generateText: vi.fn(),
   };
 });
 
@@ -26,8 +27,12 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: vi.fn(() => "http://localhost:3000/mcp"),
 }));
 
-import { streamText } from "ai";
-import { ChatSdkClient, detectToolLimitReached } from "#webui/chat/sdk/client";
+import { generateText, streamText } from "ai";
+import {
+  buildModelMessages,
+  ChatSdkClient,
+  detectToolLimitReached,
+} from "#webui/chat/sdk/client";
 
 const MAX_TOOL_STEPS = 10;
 
@@ -535,10 +540,10 @@ describe("ChatSdkClient", () => {
 
       const callArgs = await sendWithHistory(chatHistory, "Try again");
 
-      // 2 messages: user, new user (error skipped)
-      expect(callArgs.messages).toHaveLength(2);
-      expect(callArgs.messages[0].content).toBe("Hi");
-      expect(callArgs.messages[1].content).toBe("Try again");
+      // Skipping the error leaves two user turns adjacent, which Gemini/Mistral
+      // reject — they merge into a single user message.
+      expect(callArgs.messages).toHaveLength(1);
+      expect(callArgs.messages[0].content).toBe("Hi\n\nTry again");
     });
 
     it("converts history with tool calls to model messages", async () => {
@@ -572,6 +577,93 @@ describe("ChatSdkClient", () => {
         value: "OK",
       });
     });
+
+    it("synthesizes a canceled tool-result for a tool-call stopped mid-execution", async () => {
+      // User pressed Stop after the tool-call streamed but before the result:
+      // toolCalls present, toolResults missing. Sending again must still pair the
+      // tool-call with a result, or Anthropic/OpenAI reject the request (400).
+      const chatHistory: ChatMessage[] = [
+        { role: "user", content: "Connect" },
+        {
+          role: "assistant",
+          content: "Connecting",
+          toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
+          // no toolResults — stopped mid-tool
+        },
+      ];
+
+      const callArgs = await sendWithHistory(chatHistory, "Retry");
+
+      // user, assistant (tool-call), tool (synthesized result), new user
+      expect(callArgs.messages).toHaveLength(4);
+      expect(callArgs.messages[2].role).toBe("tool");
+      expect(callArgs.messages[2].content).toHaveLength(1);
+      expect(callArgs.messages[2].content[0].toolCallId).toBe("tc1");
+      expect(callArgs.messages[2].content[0].output.value).toContain(
+        "Canceled",
+      );
+    });
+
+    it("backfills only the missing result when some tool-calls completed", async () => {
+      // Two tools called; first returned, second interrupted by Stop.
+      const chatHistory: ChatMessage[] = [
+        { role: "user", content: "Do two things" },
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [
+            { id: "tc1", name: "ppal-read-song", args: {} },
+            { id: "tc2", name: "ppal-update-clip", args: {} },
+          ],
+          toolResults: [
+            {
+              id: "tc1",
+              name: "ppal-read-song",
+              args: {},
+              result: "OK",
+              isError: false,
+            },
+            // tc2 interrupted — no result
+          ],
+        },
+      ];
+
+      const callArgs = await sendWithHistory(chatHistory, "continue");
+
+      const toolMsg = callArgs.messages[2];
+
+      expect(toolMsg.role).toBe("tool");
+      // One result per tool-call, in tool-call order, even though only one ran.
+      expect(toolMsg.content).toHaveLength(2);
+      expect(toolMsg.content[0].toolCallId).toBe("tc1");
+      expect(toolMsg.content[0].output.value).toBe("OK");
+      expect(toolMsg.content[1].toolCallId).toBe("tc2");
+      expect(toolMsg.content[1].output.value).toContain("Canceled");
+    });
+
+    it("backfills a canceled result in history when the stream stops mid-tool", async () => {
+      // Stream emits a tool-call then ends with no tool-result (Stop pressed
+      // while the tool was running). The assistant message must not be left with
+      // a dangling tool-call — the in-history reconcile fixes the next send AND
+      // the perpetual-running UI state.
+      const last = await sendWithParts([
+        {
+          type: "tool-call",
+          toolCallId: "tc1",
+          toolName: "ppal-connect",
+          input: {},
+        },
+        // stream ends here — no tool-result arrives
+      ]);
+
+      const assistantMsg = last[1]!;
+
+      expect(assistantMsg.toolCalls).toHaveLength(1);
+      expect(assistantMsg.toolResults).toHaveLength(1);
+      expect(assistantMsg.toolResults![0]!.id).toBe("tc1");
+      expect(assistantMsg.toolResults![0]!.result).toContain("Canceled");
+      expect(assistantMsg.toolResults![0]!.isError).toBe(false);
+    });
   });
 
   describe("per-message overrides", () => {
@@ -597,7 +689,6 @@ describe("ChatSdkClient", () => {
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBeUndefined();
-      expect(user?.showThoughtsOverride).toBeUndefined();
     });
 
     it("only stamps provided override fields", async () => {
@@ -609,7 +700,6 @@ describe("ChatSdkClient", () => {
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBe("Off");
-      expect(user?.showThoughtsOverride).toBeUndefined();
     });
   });
 
@@ -697,5 +787,78 @@ describe("detectToolLimitReached", () => {
 
   it("returns false for an error finishReason at the limit", () => {
     expect(detectToolLimitReached(MAX_TOOL_STEPS, "error")).toBe(false);
+  });
+});
+
+describe("ChatSdkClient.summarize", () => {
+  it("returns a trimmed summary from the model", async () => {
+    (generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: "  the summary  ",
+    });
+
+    const client = new ChatSdkClient("key", createConfig());
+    const result = await client.summarize([{ role: "user", content: "hi" }]);
+
+    expect(result).toBe("the summary");
+    expect(generateText).toHaveBeenCalledOnce();
+  });
+});
+
+describe("buildModelMessages", () => {
+  it("merges consecutive user turns into a single user message", () => {
+    // A compaction summary (synthetic user message) followed by the next real
+    // user message: Gemini and Mistral reject two user turns in a row.
+    const result = buildModelMessages([
+      {
+        role: "user",
+        content: "summary of earlier turns",
+        isCompactionSummary: true,
+      },
+      { role: "user", content: "now add a bass line" },
+    ]);
+
+    expect(result).toStrictEqual([
+      {
+        role: "user",
+        content: "summary of earlier turns\n\nnow add a bass line",
+      },
+    ]);
+  });
+
+  it("keeps alternating turns separate", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+    ]);
+  });
+
+  it("does not merge a user turn across a tool-result message", () => {
+    // An assistant turn with tool calls emits an assistant message plus a tool
+    // message, so a following user turn must not fold into the earlier user.
+    const result = buildModelMessages([
+      { role: "user", content: "u1" },
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "1", name: "read-song", args: {} }],
+        toolResults: [{ id: "1", name: "read-song", args: {}, result: "ok" }],
+      },
+      { role: "user", content: "u2" },
+    ]);
+
+    expect(result.map((m) => m.role)).toStrictEqual([
+      "user",
+      "assistant",
+      "tool",
+      "user",
+    ]);
+    expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
 });

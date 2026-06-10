@@ -36,13 +36,16 @@ describe("Transform Evaluator", () => {
       expect(result.velocity!.value).toBe(10);
     });
 
-    it("persists pitch across multiple lines", () => {
+    it("does not carry a single-pitch selector to later lines (per-line, no sticky)", () => {
+      // A note OUTSIDE the first line's C3 selector: that line is skipped, but the
+      // unselected second line still applies to every note. Pitch selectors do not
+      // persist across lines — they behave per-line, like time-range selectors.
       const result = evaluateTransform("C3: velocity += 10\ntiming += 0.05", {
         ...createContext(),
-        pitch: 60,
+        pitch: 67, // G3, not C3
       });
 
-      expect(result.velocity!.value).toBe(10);
+      expect(result.velocity).toBeUndefined();
       expect(result.timing!.value).toBe(0.05);
     });
 
@@ -109,16 +112,18 @@ C#3: velocity += 20`;
       expect(result).toStrictEqual({});
     });
 
-    it("persists pitch range across multiple lines", () => {
+    it("does not carry a pitch range to later lines (per-line, no sticky)", () => {
+      // A note OUTSIDE C3-C5: the first line is skipped, but the unselected second
+      // line still applies. A pitch range does not persist to later lines.
       const result = evaluateTransform(
         "C3-C5: velocity += 10\ntiming += 0.05",
         {
           ...createContext(),
-          pitch: 72, // C4 within range
+          pitch: 96, // C7, outside C3-C5
         },
       );
 
-      expect(result.velocity!.value).toBe(10);
+      expect(result.velocity).toBeUndefined();
       expect(result.timing!.value).toBe(0.05);
     });
 
@@ -302,6 +307,69 @@ G4-G5: velocity += 20`;
 
         expect(result.velocity!.value).toBe(10);
       });
+    });
+  });
+
+  // A bare bar|beat point (`4|3.5`) targets only the note starting at exactly
+  // that position — desugars to a degenerate inclusive range [point, point].
+  describe("time point selector (bare bar|beat)", () => {
+    it("applies to a note starting exactly at the point", () => {
+      const result = evaluateTransform("2|3: velocity += 10", {
+        ...createContext(),
+        bar: 2,
+        beat: 3,
+      });
+
+      expect(result.velocity!.value).toBe(10);
+    });
+
+    it("skips a note before the point", () => {
+      const result = evaluateTransform("2|3: velocity += 10", {
+        ...createContext(),
+        bar: 2,
+        beat: 2.5,
+      });
+
+      expect(result).toStrictEqual({});
+    });
+
+    it("skips a note after the point", () => {
+      const result = evaluateTransform("2|3: velocity += 10", {
+        ...createContext(),
+        bar: 2,
+        beat: 3.5,
+      });
+
+      expect(result).toStrictEqual({});
+    });
+
+    it("matches a sub-beat decimal point exactly", () => {
+      const onPoint = evaluateTransform("4|3.5: velocity += 10", {
+        ...createContext(),
+        bar: 4,
+        beat: 3.5,
+      });
+
+      expect(onPoint.velocity!.value).toBe(10);
+
+      const offPoint = evaluateTransform("4|3.5: velocity += 10", {
+        ...createContext(),
+        bar: 4,
+        beat: 3,
+      });
+
+      expect(offPoint).toStrictEqual({});
+    });
+
+    it("pairs with a pitch selector in either order", () => {
+      const ctx = { ...createContext(), pitch: 60, bar: 2, beat: 3 };
+
+      expect(
+        evaluateTransform("C3 2|3: velocity += 10", ctx).velocity!.value,
+      ).toBe(10);
+      expect(
+        evaluateTransform("2|3 C3: velocity += 10", ctx).velocity!.value,
+      ).toBe(10);
     });
   });
 

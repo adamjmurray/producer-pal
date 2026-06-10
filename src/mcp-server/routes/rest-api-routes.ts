@@ -43,6 +43,11 @@ export function registerRestApiRoutes(
       ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
       : [...STANDARD_TOOL_DEFS];
 
+  // Like POST /mcp (see create-express-app.ts), these endpoints are NOT
+  // origin-gated the way POST /config is: the chat UI reaches them same-origin
+  // from the page URL, which over LAN/tunnel is a non-localhost origin, so a
+  // localhost gate would 403 the documented unauthenticated remote-access
+  // feature's own requests.
   app.get("/api/tools", (_req: Request, res: Response): void => {
     const enabledSet = new Set(getConfig().tools);
 

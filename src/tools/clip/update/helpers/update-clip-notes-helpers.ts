@@ -5,17 +5,18 @@
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
   getClipNoteCount,
   rawNotesToNoteEvents,
+  readAllClipNotes,
+  removeAllClipNotes,
 } from "#src/tools/shared/clip-notes.ts";
 import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
 
@@ -103,13 +104,10 @@ export function handleNoteUpdates(
   // preTransforms applied) as bar|beat notation, so v0 in the new notation can
   // delete overlapping existing notes during interpretation.
   let combinedNotationString = notationString;
-  const existingNotesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
-  );
-  const rawExistingNotes = (existingNotesResult?.notes ?? []) as Record<
-    string,
-    unknown
-  >[];
+  // Read the full [-length, 2*length] window (matches read-clip) so a pickup
+  // before the clip start is carried into the merge — not dropped because it
+  // sits outside the playable region [0, length].
+  const rawExistingNotes = readAllClipNotes(clip);
   const { notes: existingNotes, matchCount: preTransformCount } =
     applyPreTransformsToExisting(
       rawNotesToNoteEvents(rawExistingNotes),
@@ -146,7 +144,7 @@ export function handleNoteUpdates(
   // (new wins — new notes follow the existing ones in the combined array) then
   // sort ascending by start_time so Live resolves every same-pitch overlap by
   // truncation instead of deleting the earlier write. See note-sort.ts.
-  clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
+  removeAllClipNotes(clip);
 
   const mergedNotes = sortNotes(dedupeNotesKeepingLast(notes));
 
@@ -193,31 +191,6 @@ function applyPreTransformsToExisting(
   );
 
   return { notes: existingNotes, matchCount };
-}
-
-/**
- * Dedupe notes that share a pitch and start_time (within a 0.001-beat float
- * tolerance, since existing notes round-trip serialize→re-interpret and can
- * drift), keeping the LAST occurrence. The combined array is ordered
- * existing→new, so "last wins" deterministically picks the newly-authored note
- * over an existing one at the same position — no longer relying on Live's
- * undocumented add_new_notes last-write-wins behavior. Mirrors the tolerance in
- * barbeat-apply-v0-deletions.ts.
- * @param notes - Notes in existing→new insertion order
- * @returns Notes with same-pitch+start collisions collapsed to the last write
- */
-function dedupeNotesKeepingLast(notes: NoteEvent[]): NoteEvent[] {
-  return notes.reduce<NoteEvent[]>((result, note) => {
-    const withoutCollision = result.filter(
-      (existing) =>
-        existing.pitch !== note.pitch ||
-        Math.abs(existing.start_time - note.start_time) >= 0.001,
-    );
-
-    withoutCollision.push(note);
-
-    return withoutCollision;
-  }, []);
 }
 
 /**

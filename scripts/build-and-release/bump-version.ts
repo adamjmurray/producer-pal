@@ -66,15 +66,15 @@ try {
 
 console.log("✓ Updated claude-desktop-extension/package-lock.json");
 
-// Update version.ts (replace VERSION value, preserve all other content)
-const versionPath = join(rootDir, "src/shared/version.ts");
+// Update config.ts (replace VERSION value, preserve all other content)
+const versionPath = join(rootDir, "src/shared/config.ts");
 const versionContent = readFileSync(versionPath, "utf8").replace(
   /export const VERSION = ".*"/,
   `export const VERSION = "${newVersion}"`,
 );
 
 writeFileSync(versionPath, versionContent);
-console.log("✓ Updated src/shared/version.ts");
+console.log("✓ Updated src/shared/config.ts");
 
 // Update npm/package.json
 const npmPkgPath = join(rootDir, "npm/package.json");

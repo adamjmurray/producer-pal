@@ -62,12 +62,16 @@ export function getConversationDb(): Promise<IDBPDatabase> {
 /**
  * Save or update a conversation record, enforcing the conversation limit.
  * @param record - The conversation to save
+ * @param protectedIds - Ids that must NOT be trimmed by the limit (e.g. the
+ *   whole batch during an import, so saving one imported record can't delete
+ *   another just-imported record that happens to carry an older timestamp)
  * @returns Result indicating whether old conversations were deleted
  */
 export async function saveConversation(
   record: ConversationRecord,
+  protectedIds?: ReadonlySet<string>,
 ): Promise<EnforceLimitResult> {
-  const result = await enforceConversationLimit(record.id);
+  const result = await enforceConversationLimit(record.id, protectedIds);
   const db = await getConversationDb();
 
   await db.put(STORE_NAME, record);
@@ -337,10 +341,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Enforce the conversation limit by deleting oldest non-bookmarked conversations.
  * @param excludeId - ID of the conversation being saved (excluded from deletion)
+ * @param protectedIds - Additional ids excluded from deletion (e.g. an import
+ *   batch), so trimming for one save can't delete another protected record
  * @returns Result with deletion count and whether the limit is fully consumed by bookmarks
  */
 async function enforceConversationLimit(
   excludeId: string,
+  protectedIds?: ReadonlySet<string>,
 ): Promise<EnforceLimitResult> {
   const db = await getConversationDb();
   const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
@@ -355,7 +362,9 @@ async function enforceConversationLimit(
 
   const excess = totalAfterSave - MAX_CONVERSATIONS;
   const deletable = all
-    .filter((r) => !r.bookmarked && r.id !== excludeId)
+    .filter(
+      (r) => !r.bookmarked && r.id !== excludeId && !protectedIds?.has(r.id),
+    )
     .sort((a, b) => a.updatedAt - b.updatedAt);
 
   const toDelete = deletable.slice(0, excess);

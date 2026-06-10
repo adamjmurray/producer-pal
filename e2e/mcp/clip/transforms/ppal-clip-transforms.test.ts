@@ -916,7 +916,7 @@ describe("ppal-clip-transforms (seq)", () => {
     // to the next note's start (0.5 beats = n/8); the last note has no follower
     // and keeps its default quarter (n/4). Repeated velocity groups comma-merge.
     expect(notes).toBe(
-      "v60 n/8 C3 1|1,2.5 v80 C3 1|1.5,3 v100 C3 1|2 n/4 C3 1|3.5",
+      "v60 n/8 C3 1|1,2.5\nv80 C3 1|1.5,3\nv100 C3 1|2\nn/4 C3 1|3.5",
     );
   });
 
@@ -928,7 +928,8 @@ describe("ppal-clip-transforms (seq)", () => {
     const notes = await readClipNotes(clipId);
 
     // Repeated velocity groups are comma-merged with their positions
-    expect(notes).toContain("v40 C3 1|1,3");
+    // (the opening note carries an explicit n/4 in the serialized output)
+    expect(notes).toContain("v40 n/4 C3 1|1,3");
     expect(notes).toContain("v120 C3 1|2,4");
   });
 

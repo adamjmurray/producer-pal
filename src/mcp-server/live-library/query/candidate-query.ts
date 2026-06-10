@@ -209,11 +209,17 @@ export function resolveFileIdForPath(
   // Find the root row — parent_id = 0, matching the first segment.
   // POSIX root is stored as "/"; Windows drive root as "C:" (or "C:\").
   const rootName = segments[0] === "" ? "/" : (segments[0] as string);
+
+  // The reconstructed path always renders a drive root as "C:" (no trailing
+  // slash), but Live may have stored it as "C:\". Match either form so a
+  // "C:\"-rooted DB still resolves. For a non-drive root the alt equals the
+  // primary, so this is a no-op there.
+  const rootAlt = /^[A-Za-z]:$/.test(rootName) ? `${rootName}\\` : rootName;
   const rootRow = db
     .prepare(
-      "SELECT file_id FROM files WHERE parent_id = 0 AND name = ? COLLATE NOCASE LIMIT 1",
+      "SELECT file_id FROM files WHERE parent_id = 0 AND (name = ? COLLATE NOCASE OR name = ? COLLATE NOCASE) LIMIT 1",
     )
-    .get(rootName) as { file_id: number } | undefined;
+    .get(rootName, rootAlt) as { file_id: number } | undefined;
 
   if (!rootRow) {
     return null;

@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import {
   assertDefined,
   parseCommaSeparatedIds,
@@ -34,7 +36,12 @@ interface ResolveLocatorOptions {
 }
 
 /**
- * Generate a stable locator ID from a locator's index
+ * Build a locator ID from its position in the cue_points array. This is a
+ * POSITIONAL/display ID, NOT a stable handle: it reflects the locator's current
+ * time-order, so adding or removing any earlier locator shifts it. For
+ * cross-turn delete/rename, prefer the locator name or time (both stable) over a
+ * remembered locator-N. The positional-shift behavior is locked by
+ * read-live-set-locators.test.ts.
  * @param locatorIndex - The index of the locator in the cue_points array
  * @returns Locator ID in format "locator-{index}"
  */
@@ -101,7 +108,7 @@ export function findLocator(
     if (timeInBeats != null) {
       const locatorTime = locator.getProperty("time") as number;
 
-      if (Math.abs(locatorTime - timeInBeats) < 0.001) {
+      if (Math.abs(locatorTime - timeInBeats) < SAME_TIME_EPSILON) {
         return { locator, index: i };
       }
     }

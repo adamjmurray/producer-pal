@@ -8,8 +8,10 @@ import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
+  extractMaxPanValue,
   isDivisionLabel,
   isPanLabel,
+  normalizePan,
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
@@ -216,10 +218,16 @@ function setParamValue(
 ): void {
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
-  // 1. Enum - string input with quantized param
-  if (isQuantized && typeof inputValue === "string") {
+  // 1. Enum - quantized param. Resolve the input against value_items by string.
+  // normalizeParamValue turns a numeric-looking label (e.g. "4" on a
+  // "1"/"2"/"4"/"8" or synced note-value selector) into a number, so match
+  // String(inputValue): otherwise a numeric label skips enum dispatch and falls
+  // into the numeric binary-search branch, writing a garbage raw value
+  // (e.g. 2.9999… instead of index 2). Quantized params are discrete enums with
+  // no continuous range to search, so numeric input is always a label lookup.
+  if (isQuantized) {
     const valueItems = param.get("value_items") as string[];
-    const index = valueItems.indexOf(inputValue);
+    const index = valueItems.indexOf(String(inputValue));
 
     if (index === -1) {
       console.warn(
@@ -256,8 +264,39 @@ function setParamValue(
   if (isPanLabel(currentLabel)) {
     const min = param.getProperty("min") as number;
     const max = param.getProperty("max") as number;
+
+    // Input is the -1..1 number read-device reports, OR a directional display
+    // label ("50L"/"50R") the LLM may echo from Live's UI. Parse the label back
+    // to -1..1 via the param's own display max; reject other strings instead of
+    // writing NaN. ("C" already arrives as the number 0.)
+    //
+    // TypeScript narrows inputValue to `number` after the note branch above —
+    // isValidNoteName's `x is string` predicate makes its negative case `number`
+    // — but that's unsound: a non-note string like "50L" reaches here at runtime.
+    // Re-widen to the real union so the label form is handled, not dead-typed.
+    const panInput = inputValue as string | number;
+    let numValue: number;
+
+    if (typeof panInput === "string") {
+      if (!isPanLabel(panInput)) {
+        console.warn(
+          `${toolName}: "${panInput}" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")`,
+        );
+
+        return;
+      }
+
+      const maxLabel = param.call("str_for_value", max) as string;
+      const minLabel = param.call("str_for_value", min) as string;
+      const maxPanValue =
+        extractMaxPanValue(maxLabel) || extractMaxPanValue(minLabel) || 50;
+
+      numValue = normalizePan(panInput, maxPanValue);
+    } else {
+      numValue = panInput;
+    }
+
     // Convert -1 to 1 → internal range
-    const numValue = inputValue;
     const internalValue = ((numValue + 1) / 2) * (max - min) + min;
 
     param.set("value", internalValue);

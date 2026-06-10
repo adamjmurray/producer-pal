@@ -7,6 +7,7 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { waitUntil } from "#src/shared/v8-sleep.ts";
 import {
@@ -73,7 +74,7 @@ export async function waitForPlayheadPosition(
     () =>
       Math.abs(
         (liveSet.getProperty("current_song_time") as number) - targetBeats,
-      ) < 0.001,
+      ) < SAME_TIME_EPSILON,
     { pollingInterval: 10, maxRetries: 10 },
   );
 

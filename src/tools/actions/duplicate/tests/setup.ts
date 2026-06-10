@@ -43,31 +43,60 @@ export const createShortenedClipInHoldingMock = vi.fn(() => ({
 }));
 
 /**
+ * Build a fake placed arrangement clip on a track at a position. Shared by the
+ * moveClipFromHolding and duplicateSelfOverlappingClip mocks.
+ * @param trackPath - Track path (derives the clip id/path and trackIndex)
+ * @param startBeats - Clip start position in beats
+ * @returns Fake LiveAPI-like arrangement clip
+ */
+function makeArrangementClipMock(trackPath: string, startBeats: number) {
+  const clipId = `${trackPath} arrangement_clips 0`;
+
+  return {
+    id: clipId,
+    path: clipId,
+    exists: () => true,
+    set: vi.fn(),
+    setAll: vi.fn(),
+    getProperty: vi.fn((prop: string) => {
+      if (prop === "is_arrangement_clip") return 1;
+      if (prop === "start_time") return startBeats;
+
+      return null;
+    }),
+    get trackIndex() {
+      const match = clipId.match(/tracks (\d+)/);
+
+      return match ? Number.parseInt(match[1] as string) : null;
+    },
+  };
+}
+
+/**
  * Mock implementation for moveClipFromHolding.
  * @param _holdingClipId - Holding clip ID
  * @param track - Track object
- * @param _startBeats - Start position in beats
+ * @param startBeats - Start position in beats
  */
 export const moveClipFromHoldingMock = vi.fn(
-  (_holdingClipId: string, track: MockTrack, _startBeats: number) => {
-    const clipId = `${track.path} arrangement_clips 0`;
+  (_holdingClipId: string, track: MockTrack, startBeats: number) =>
+    makeArrangementClipMock(track.path, startBeats),
+);
 
-    return {
-      id: clipId,
-      path: clipId,
-      set: vi.fn(),
-      setAll: vi.fn(),
-      getProperty: vi.fn((prop: string) => {
-        if (prop === "is_arrangement_clip") return 1;
-        if (prop === "start_time") return _startBeats;
+/**
+ * Mock implementation for clearClipAtDuplicateTarget. Defaults to "safe" (true);
+ * override with mockReturnValueOnce(false) to drive the self-overlap path.
+ */
+export const clearClipAtDuplicateTargetMock = vi.fn(() => true);
 
-        return null;
-      }),
-      get trackIndex() {
-        const match = clipId.match(/tracks (\d+)/);
-
-        return match ? Number.parseInt(match[1] as string) : null;
-      },
-    };
-  },
+/**
+ * Mock implementation for duplicateSelfOverlappingClip. Returns a fake full copy
+ * placed at the target position (arg 2).
+ * @param track - Track object (arg 0)
+ * @param _sourceClipId - Source clip ID (arg 1)
+ * @param targetBeats - Target position in beats (arg 2)
+ */
+export const duplicateSelfOverlappingClipMock = vi.fn(
+  (track: MockTrack, _sourceClipId: string, targetBeats: number) =>
+    makeArrangementClipMock(track.path, targetBeats),
 );

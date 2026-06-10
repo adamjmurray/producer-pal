@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import {
   parseBeatsPerBar,
   splitMusicalBeatsToBarBeat,
@@ -91,13 +92,17 @@ export function groupNotesByTime(
       timeSigDenominator,
     );
 
-    // This 0.001-beat tolerance IS the serializer's round-trip floor: two
-    // positions closer than a millibeat (e.g. a triplet vs a nearby decimal)
-    // collapse into one time group, so a parse→serialize→parse fixpoint is only
-    // guaranteed at this resolution. Tightening it toward exact equality would
+    // This SAME_TIME_EPSILON (0.001-beat) tolerance IS the serializer's
+    // round-trip floor: two positions closer than a millibeat (e.g. a triplet
+    // vs a nearby decimal) collapse into one time group, so a
+    // parse→serialize→parse fixpoint is only guaranteed at this resolution.
+    // Tightening it toward exact equality would
     // emit visually-redundant adjacent groups and regress the fuzz corpus;
     // round-trip property tests compare positions at toFixed(3) to respect it.
-    if (bar !== currentBar || Math.abs(beat - currentBeat) > 0.001) {
+    if (
+      bar !== currentBar ||
+      Math.abs(beat - currentBeat) > SAME_TIME_EPSILON
+    ) {
       timeGroups.push({ bar, beat, notes: [] });
       currentBar = bar;
       currentBeat = beat;

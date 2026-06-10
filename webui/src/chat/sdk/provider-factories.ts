@@ -57,6 +57,10 @@ export function createProviderModel(
         name: "lmstudio",
         apiKey: apiKey || "not-needed",
         baseURL: baseUrl ?? "http://localhost:1234/v1",
+        // Without includeUsage the SDK omits `stream_options.include_usage`, so
+        // OpenAI-compatible servers never emit a usage chunk and token counts
+        // stay undefined (show as 0 in the UI).
+        includeUsage: true,
       }).chatModel(`${modelId}`);
 
     case "ollama":
@@ -82,6 +86,9 @@ export function createProviderModel(
         name: "custom",
         apiKey,
         baseURL: customBaseUrl,
+        // See lmstudio note: required for OpenAI-compatible servers to report
+        // token usage in streaming responses.
+        includeUsage: true,
       }).chatModel(`${modelId}`);
     }
 

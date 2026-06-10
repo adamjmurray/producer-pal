@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
@@ -397,6 +398,15 @@ describe("noteNameToMidi", () => {
   it("returns null for invalid note letters", () => {
     expect(noteNameToMidi("H3")).toBe(null);
     expect(noteNameToMidi("X4")).toBe(null);
+  });
+
+  it("returns null for accidentals with no value mapping", () => {
+    // The regex admits b/# on any letter, but Cb/Fb/E#/B# aren't in the value
+    // map. These must be null, not silently coerced to a wrong MIDI note.
+    expect(noteNameToMidi("Cb3")).toBe(null);
+    expect(noteNameToMidi("Fb3")).toBe(null);
+    expect(noteNameToMidi("E#3")).toBe(null);
+    expect(noteNameToMidi("B#3")).toBe(null);
   });
 
   it("returns null for missing octave", () => {

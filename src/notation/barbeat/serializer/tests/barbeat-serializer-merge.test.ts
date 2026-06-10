@@ -15,7 +15,7 @@ describe("comma merging", () => {
       createNote({ start_time: 2 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1,3");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1,3");
   });
 
   it("merges identical chords at different beats in same bar", () => {
@@ -28,7 +28,7 @@ describe("comma merging", () => {
       createNote({ pitch: 67, start_time: 2 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 E3 G3 1|1,3");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 E3 G3 1|1,3");
   });
 
   it("does not merge notes in different bars", () => {
@@ -37,7 +37,7 @@ describe("comma merging", () => {
       createNote({ start_time: 4 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1 C3 2|1");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1\nC3 2|1");
   });
 
   it("does not merge notes with different pitches", () => {
@@ -46,7 +46,7 @@ describe("comma merging", () => {
       createNote({ pitch: 64, start_time: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1 E3 1|2");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1\nE3 1|2");
   });
 
   it("does not merge notes with different velocities", () => {
@@ -55,7 +55,7 @@ describe("comma merging", () => {
       createNote({ velocity: 100, start_time: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80 C3 1|1 v100 C3 1|2");
+    expect(formatNotation(notes)).toBe("v80 n/4 C3 1|1\nv100 C3 1|2");
   });
 
   it("does not merge notes with different durations", () => {
@@ -65,7 +65,7 @@ describe("comma merging", () => {
     ] as NoteEvent[];
 
     // 0.5 quarter = /8 whole; 1 quarter = /4 whole
-    expect(formatNotation(notes)).toBe("n/8 C3 1|1 n/4 C3 1|2");
+    expect(formatNotation(notes)).toBe("v100 n/8 C3 1|1\nn/4 C3 1|2");
   });
 
   it("does not merge notes with different probabilities", () => {
@@ -74,7 +74,7 @@ describe("comma merging", () => {
       createNote({ probability: 1.0, start_time: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("p0.8 C3 1|1 p1 C3 1|2");
+    expect(formatNotation(notes)).toBe("v100 n/4 p0.8 C3 1|1\np1 C3 1|2");
   });
 
   it("does not merge notes with different velocity deviations", () => {
@@ -83,7 +83,7 @@ describe("comma merging", () => {
       createNote({ velocity: 80, velocity_deviation: 0, start_time: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80-100 C3 1|1 v80 C3 1|2");
+    expect(formatNotation(notes)).toBe("v80-100 n/4 C3 1|1\nv80 C3 1|2");
   });
 
   it("merges notes when both have undefined probability and velocity_deviation", () => {
@@ -93,7 +93,7 @@ describe("comma merging", () => {
       { pitch: 60, start_time: 1, duration: 1, velocity: 100 },
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1,2");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1,2");
   });
 
   it("does not merge when one note has probability and other has undefined", () => {
@@ -108,7 +108,7 @@ describe("comma merging", () => {
       { pitch: 60, start_time: 1, duration: 1, velocity: 100 },
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("p0.5 C3 1|1 p1 C3 1|2");
+    expect(formatNotation(notes)).toBe("v100 n/4 p0.5 C3 1|1\np1 C3 1|2");
   });
 
   it("merges more than 2 groups", () => {
@@ -119,7 +119,7 @@ describe("comma merging", () => {
       createNote({ start_time: 3 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1,2,3,4");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1,2,3,4");
   });
 
   it("handles mixed mergeable and non-mergeable groups", () => {
@@ -130,7 +130,7 @@ describe("comma merging", () => {
       createNote({ pitch: 64, start_time: 3 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 1|1,3 E3 1|4");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1,3\nE3 1|4");
   });
 
   it("merges with non-default state", () => {
@@ -165,7 +165,9 @@ describe("comma merging", () => {
     ] as NoteEvent[];
 
     // C/E/G merges at 1,3 and D/F/A merges at 2,4
-    expect(formatNotation(notes)).toBe("C3 E3 G3 1|1,3 D3 F3 A3 1|2,4");
+    expect(formatNotation(notes)).toBe(
+      "v100 n/4 C3 E3 G3 1|1,3\nD3 F3 A3 1|2,4",
+    );
   });
 
   it("does not merge chords with different note count", () => {
@@ -176,6 +178,6 @@ describe("comma merging", () => {
       createNote({ start_time: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("C3 E3 1|1 C3 1|2");
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 E3 1|1\nC3 1|2");
   });
 });

@@ -1,8 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  abletonBeatsToBarBeat,
+  barBeatToAbletonBeats,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
@@ -182,6 +186,18 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const validPoints = splitPoints.filter((p) => p > 0 && p < clipLength);
 
   if (validPoints.length === 0) {
+    const liveSet = LiveAPI.from(livePath.liveSet);
+    const clipEnd = abletonBeatsToBarBeat(
+      clipLength,
+      liveSet.getProperty("signature_numerator") as number,
+      liveSet.getProperty("signature_denominator") as number,
+    );
+
+    console.warn(
+      `split skipped for clip ${clip.id}: no split points fall inside the clip. ` +
+        `Positions are relative to the clip's start (1|1) and must be before its end at ${clipEnd}.`,
+    );
+
     return false;
   }
 

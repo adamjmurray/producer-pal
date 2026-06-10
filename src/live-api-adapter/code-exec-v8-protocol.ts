@@ -8,6 +8,7 @@
  * V8 sends code + globals to Node, awaits the sandboxed result via Promise.
  */
 
+import { oversizedSingleMessageError } from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   validateCodeNotes,
@@ -62,8 +63,19 @@ export function requestCodeExecution(
   globals: Record<string, unknown> = {},
 ): Promise<SandboxResult> {
   const requestId = generateRequestId();
+  const request = JSON.stringify({ code, globals });
 
   return new Promise((resolve) => {
+    // A large clip's notes can push the request past the single-message IPC
+    // limit, where Max would silently truncate it. Fail loudly before sending.
+    const tooLarge = oversizedSingleMessageError(request, "code-exec request");
+
+    if (tooLarge) {
+      resolve({ success: false, error: tooLarge });
+
+      return;
+    }
+
     // Set up timeout using Max Task
     const timeoutCallback = (): void => {
       if (pendingCodeExecs.has(requestId)) {
@@ -85,8 +97,6 @@ export function requestCodeExecution(
     });
 
     // Send request to Node
-    const request = JSON.stringify({ code, globals });
-
     outlet(0, "code_exec_request", requestId, request);
   });
 }

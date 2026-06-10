@@ -80,6 +80,28 @@ describe("deleteObject device path error cases", () => {
     );
   });
 
+  it("should warn and skip when device path has no parent segment", () => {
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    // A device path that begins with "devices N" has nothing before the last
+    // "devices" match, so the extracted parent path is empty.
+    registerMockObject("orphan-device", {
+      path: "devices 0",
+      type: "Device",
+    });
+
+    const result = deleteObject({ ids: "orphan-device", type: "device" });
+
+    expect(result).toStrictEqual({
+      id: "orphan-device",
+      type: "device",
+      deleted: false,
+    });
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'delete: could not extract parent path from device "orphan-device" (path="devices 0"), skipping',
+    );
+  });
+
   it("should warn when direct device path does not exist", () => {
     const consoleSpy = vi.spyOn(console, "warn");
 

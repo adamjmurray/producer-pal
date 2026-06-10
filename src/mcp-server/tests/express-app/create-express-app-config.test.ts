@@ -236,6 +236,26 @@ describe("MCP Express App - Config", () => {
 
       expect(response.status).toBe(200);
     });
+
+    it("allows cross-origin POST /mcp — intentional asymmetry with /config", async () => {
+      // Unlike /config, /mcp is deliberately NOT localhost-gated: the chat UI's
+      // getMcpUrl() points at the page's own origin, so over LAN/tunnel it POSTs
+      // /mcp with a non-localhost Origin. A localhost gate here would 403 the
+      // LAN/tunnel chat's own tool calls and break the documented web-tunnels
+      // feature. Locked so the gate isn't added by mistake. (403 is returned
+      // only by the /config origin gate, so "not 403" == "not origin-blocked".)
+      const response = await fetch(appState.serverUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          Origin: "https://remote.example.com",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 1 }),
+      });
+
+      expect(response.status).not.toBe(403);
+    });
   });
 
   describe("Tools Whitelist Filtering", () => {

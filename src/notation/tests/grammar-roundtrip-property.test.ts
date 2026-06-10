@@ -56,26 +56,43 @@ const METERS: ReadonlyArray<readonly [number, number]> = [
   [2, 2],
 ];
 
-// Build a canonical note set: positive sixteenth-grid starts/durations,
-// velocities 1-127 (no v0 — v0 is a deletion marker, not a round-trippable note),
-// deduped by (pitch, start) so the source is already what the serializer would
-// collapse it to. This keeps the fixpoint about grammar round-tripping, not about
-// how the serializer merges genuine input collisions.
+// Build a canonical note set deduped by (pitch, start) so the source is already
+// what the serializer would collapse it to (keeping the fixpoint about grammar
+// round-tripping, not about how the serializer merges genuine input collisions).
+// Starts/durations sit on a TWELFTH grid, which spans both the sixteenth grid
+// (1/4 = 3/12) and tuplets/off-grid (1/12, 1/6, 1/3) — so the fixpoint exercises
+// the tuplet and off-grid serializer paths, not just the easy 16th cases. Notes
+// also carry a velocity range (v±N) and a sub-1 probability (pN) about half the
+// time — the "hard math" the earlier generator skipped entirely. No v0 (a
+// deletion marker, not a round-trippable note).
 function randomNotes(rng: () => number): NoteEvent[] {
   const count = randomInt(rng, 1, 8);
   const byKey = new Map<string, NoteEvent>();
 
   for (let i = 0; i < count; i++) {
     const pitch = randomInt(rng, 0, 127);
-    const start_time = randomInt(rng, 0, 64) * 0.25; // 0..16 beats on a 16th grid
+    const start_time = randomInt(rng, 0, 96) / 12; // 0..8 beats on a 12th grid
     const key = `${pitch}@${start_time}`;
 
-    byKey.set(key, {
+    const note: NoteEvent = {
       pitch,
       start_time,
-      duration: randomInt(rng, 1, 16) * 0.25, // 0.25..4 beats, always > 0
+      duration: randomInt(rng, 1, 48) / 12, // 1/12..4 beats, always > 0
       velocity: randomInt(rng, 1, 127),
-    });
+    };
+
+    // Exercise the velocity-deviation (v±N) and probability (pN) paths the
+    // sixteenth-only generator never reached. Deviation is an integer; the
+    // probability grid (0.05 steps) round-trips cleanly (verified).
+    if (rng() < 0.5) {
+      note.velocity_deviation = randomInt(rng, 0, 40);
+    }
+
+    if (rng() < 0.5) {
+      note.probability = randomInt(rng, 0, 20) / 20;
+    }
+
+    byKey.set(key, note);
   }
 
   return [...byKey.values()];

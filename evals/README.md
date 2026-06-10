@@ -18,21 +18,23 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                         | Description                                     |
-| ---------------------------- | ----------------------------------------------- |
-| `-m, --model <model>`        | Model to test (required)                        |
-| `-t, --test <id>`            | Run specific scenario by ID (repeatable)        |
-| `-a, --all`                  | Run all scenarios                               |
-| `-c, --config <profile>`     | Config profile (repeatable, default: `default`) |
-| `-j, --judge <model>`        | Judge model (default: `gemini-3-flash-preview`) |
-| `-s, --skip-setup`           | Skip Live Set setup (reuse existing connection) |
-| `--skip-judge`               | Skip the LLM-as-judge step (checks only)        |
-| `-q, --quiet`                | Suppress detailed AI and judge responses        |
-| `-r, --repeat <N>`           | Run each scenario N times (for flakiness)       |
-| `-u, --usage`                | Show token usage per turn                       |
-| `--no-json`                  | Skip writing JSON result files to disk          |
-| `-I, --default-instructions` | Use default system instructions                 |
-| `-l, --list`                 | List available scenarios and config profiles    |
+| Flag                  | Description                                       |
+| --------------------- | ------------------------------------------------- |
+| `-m, --model <model>` | Model to test (required, repeatable)              |
+| `-t, --test <id>`     | Run specific scenario by ID (repeatable)          |
+| `-a, --all`           | Run all scenarios                                 |
+| `--small-model`       | Enable small-model mode (basic skills + schemas)  |
+| `--json`              | JSON tool-result output (default: compact)        |
+| `--tools <list>`      | Tool subset, comma-separated (default: all)       |
+| `--live-api`          | Enable the Direct Live API tool (`ppal-live-api`) |
+| `-j, --judge <model>` | Judge model (default: `gemini-3-flash-preview`)   |
+| `-s, --skip-setup`    | Skip Live Set setup (reuse existing connection)   |
+| `--skip-judge`        | Skip the LLM-as-judge step (checks only)          |
+| `-q, --quiet`         | Suppress detailed AI and judge responses          |
+| `-r, --repeat <N>`    | Run each scenario N times (for flakiness)         |
+| `-u, --usage`         | Show token usage per turn                         |
+| `--no-save`           | Skip writing JSON result files to disk            |
+| `-l, --list`          | List available scenarios                          |
 
 ### Model format
 
@@ -67,35 +69,51 @@ scripts/eval -t connect-to-ableton -s
 Local models (Ollama, LM Studio, etc.) need special handling:
 
 1. **Always specify the model explicitly** with the `local/` prefix
-2. **Use the `small-model` config profile** (`-c small-model`) to enable
+2. **Enable small-model mode** (`--small-model`) for the basic skills tier and
    simplified tool descriptions
 
 ```bash
 # Test a local model
-scripts/eval -m local/glm-4.7-flash -t connect-to-ableton -c small-model
+scripts/eval -m local/glm-4.7-flash -t connect-to-ableton --small-model
 
 # Test a different local model
-scripts/eval -m local/qwen3-8b -t duplicate -c small-model
+scripts/eval -m local/qwen3-8b -t duplicate --small-model
 ```
 
 The local provider connects to `http://localhost:11434/v1` by default (Ollama).
 Override with `-b` / `--base-url` in the chat CLI, or set `LOCAL_BASE_URL` in
 `.env` for evals.
 
-### Config profiles
+### Run environment
 
-Profiles control server-side settings that are orthogonal to scenarios:
+A run mirrors the device's settings panel: you choose the environment with CLI
+flags, then the scenarios run as conversations against it. The environment is
+server-side state applied before each scenario:
 
-| Profile       | Description                                             |
-| ------------- | ------------------------------------------------------- |
-| `default`     | Standard: compact output, full tools, normal model mode |
-| `small-model` | Enables small model mode (simplified descriptions)      |
-| `json-on`     | Enables JSON output (matches the MCP Inspector)         |
+| Flag             | Effect                                                            |
+| ---------------- | ----------------------------------------------------------------- |
+| _(none)_         | Default: compact output, all standard tools, normal model         |
+| `--small-model`  | Basic skills tier + reduced param schemas (small-model mode)      |
+| `--json`         | JSON tool-result output (default is compact, the product default) |
+| `--tools <list>` | Restrict to a tool subset (short or full names)                   |
+| `--live-api`     | Add the opt-in Direct Live API tool on top of the toolset         |
 
-Test multiple configs in a matrix:
+Tests declare what they need via `requires` (e.g. the transforms DSL, bracket
+notation, a specific tool, a small-model-excluded param). When the active
+environment can't satisfy a requirement — e.g. a transforms scenario under
+`--small-model`, or a scenario needing a tool you left out of `--tools` — the
+scenario is **skipped** (reported as `skipped`, not `fail`) so scores stay
+apples-to-apples.
 
 ```bash
-scripts/eval -t connect-to-ableton -c default -c small-model
+# Default environment
+scripts/eval -t connect-to-ableton -m gemini-3-flash-preview
+
+# Small-model mode (transforms/bracket scenarios will skip)
+scripts/eval -a -m local/qwen3-8b --small-model
+
+# A restricted toolset (scenarios needing other tools will skip)
+scripts/eval -a -m gemini-3-flash-preview --tools connect,read-track,create-clip
 ```
 
 ### Scenarios
@@ -130,16 +148,19 @@ The judge defaults to Gemini 3 Flash. Override with `-j`.
 When using `-r N`, the summary aggregates across trials: checks are totaled,
 efficiency is averaged, and judge shows a pass rate.
 
-### Eval matrix
+### Comparing models
 
-The eval CLI supports running a full matrix of scenarios x models x configs.
-Results are displayed in a comparison table when multiple models or configs are
-tested.
+Pass `-m` multiple times to run the same scenarios across models in one run
+environment. Results are displayed in a comparison table when more than one
+model is tested.
 
 ```bash
-# 2 scenarios x 2 models x 2 configs = 8 runs
-scripts/eval -a -m gemini-3-flash-preview -m claude-sonnet-4-5 -c default -c small-model
+# 2 scenarios x 2 models = 4 runs, one table
+scripts/eval -a -m gemini-3-flash-preview -m claude-sonnet-4-5
 ```
+
+To compare environments (e.g. default vs `--small-model`), do a run per
+environment and diff them with `scripts/eval-report --compare <runId> <runId>`.
 
 ## Chat CLI
 

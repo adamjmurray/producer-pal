@@ -42,6 +42,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { evaluateExpression } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { parse as parseTransform } from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "#src/notation/transform/tests/parser/parse-test-helpers.ts";
 
 // Meters spanning /4, /8, and /2 denominators so the time-sig-denominator factor
 // (whole-note fraction → musical/Ableton beats) is exercised, not just /4.
@@ -78,7 +79,7 @@ function durationViaBarbeat(token: string, num: number, den: number): number {
 }
 
 function durationViaTransform(token: string, num: number, den: number): number {
-  const assigns = parseTransform(`duration = ${token}`, {
+  const assigns = parseAssignments(`duration = ${token}`, {
     beatsPerBar: num,
     timeSigDenominator: den,
   });
@@ -114,7 +115,7 @@ function transformIsNoteValueDuration(
   num: number,
   den: number,
 ): boolean {
-  const assigns = parseTransform(`duration = ${token}`, {
+  const assigns = parseAssignments(`duration = ${token}`, {
     beatsPerBar: num,
     timeSigDenominator: den,
   });

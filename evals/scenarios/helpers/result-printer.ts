@@ -33,6 +33,13 @@ export function printResult(result: JsonEvalResult): void {
     ),
   );
 
+  // Skipped scenarios never ran — no checks/efficiency/judge to print.
+  if (result.result === "skipped") {
+    printResultBlock(result);
+
+    return;
+  }
+
   if (result.error) {
     console.log(styleText("red", "Error: " + result.error));
   }
@@ -147,6 +154,12 @@ function printJudgeSection(result: JsonEvalResult): void {
  * @param result - The eval result
  */
 export function printResultBlock(result: JsonEvalResult): void {
+  if (result.result === "skipped") {
+    printSkippedBlock(result);
+
+    return;
+  }
+
   const overallColor = result.result === "pass" ? "green" : "red";
   const overallLabel = result.result.toUpperCase();
 
@@ -206,5 +219,18 @@ export function printResultBlock(result: JsonEvalResult): void {
 
   if (result.totalUsage) {
     console.log("  " + formatUsageLine(result.totalUsage));
+  }
+}
+
+/**
+ * Print the RESULT block for a skipped scenario (no checks/efficiency/judge)
+ *
+ * @param result - The skipped eval result
+ */
+function printSkippedBlock(result: JsonEvalResult): void {
+  console.log(formatSectionHeader(`RESULT: ${styleText("yellow", "SKIPPED")}`));
+
+  if (result.skipReason) {
+    console.log(`  ${styleText("gray", result.skipReason)}`);
   }
 }

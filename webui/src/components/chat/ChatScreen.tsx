@@ -31,6 +31,9 @@ interface ChatScreenProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
+  handleCompact?: (messageIndex: number) => Promise<void>;
+  onUndoCompaction?: () => void;
+  canUndoCompaction?: boolean;
   headerInfo: HeaderInfo;
   activeThinking: string | null;
   defaultThinking: string;
@@ -57,6 +60,9 @@ interface ChatScreenProps {
  * @param props.handleSend - Send message handler
  * @param props.handleRetry - Retry message handler
  * @param props.handleEdit - Edit message handler
+ * @param props.handleCompact - Compact-up-to-here handler
+ * @param props.onUndoCompaction - Undo the last compaction
+ * @param props.canUndoCompaction - Whether the last compaction can be undone
  * @param props.headerInfo - Header display state
  * @param props.activeThinking - Locked thinking level from conversation
  * @param props.defaultThinking - Default thinking level from settings
@@ -80,6 +86,9 @@ export function ChatScreen(props: ChatScreenProps) {
     handleSend,
     handleRetry,
     handleEdit,
+    handleCompact,
+    onUndoCompaction,
+    canUndoCompaction,
     headerInfo,
     mcpStatus,
     mcpError,
@@ -124,6 +133,9 @@ export function ChatScreen(props: ChatScreenProps) {
             isAssistantResponding={isAssistantResponding}
             handleRetry={handleRetry}
             handleEdit={handleEdit}
+            handleCompact={handleCompact}
+            onUndoCompaction={onUndoCompaction}
+            canUndoCompaction={canUndoCompaction}
             showTimestamps={showTimestamps}
             showTokenUsage={showTokenUsage}
             requestedModel={headerInfo.activeModel}

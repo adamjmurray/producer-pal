@@ -219,7 +219,20 @@ export function applyScale(
     return;
   }
 
-  const { scaleRoot, scaleName } = parseScale(scale);
+  // Warn and skip on an invalid scale rather than throwing, so other updates in
+  // the same call (e.g. tempo) still apply and the tool returns a partial result
+  // instead of a hard error. parseScale's messages are already descriptive.
+  let parsed: { scaleRoot: string; scaleName: string };
+
+  try {
+    parsed = parseScale(scale);
+  } catch (error) {
+    console.warn(error instanceof Error ? error.message : String(error));
+
+    return;
+  }
+
+  const { scaleRoot, scaleName } = parsed;
   const scaleRootNumber = pitchClassToNumber(scaleRoot);
 
   if (scaleRootNumber == null) {

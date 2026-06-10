@@ -28,6 +28,18 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
   return selectSharedUtilsMockBody(await importOriginal());
 });
 
+// Clears the registry and mocks a view with nothing selected anywhere.
+function setupEmptySelection(view: "session" | "arrangement"): void {
+  clearMockRegistry();
+  setupViewStateMock({
+    view,
+    selectedTrack: { exists: false },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}
+
 describe("view", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -498,20 +510,22 @@ describe("view", () => {
       });
       setupSongViewMock();
 
+      // Session clip (clipSlot 0) + scene are session concepts, so request the
+      // matching session view — the clip would force session view regardless.
       const result = select({
-        view: "arrangement",
+        view: "session",
         trackIndex: 1,
         sceneIndex: 3,
         clipId: "id clip_456",
       });
 
-      expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
       expect(appView.call).toHaveBeenCalledWith(
         "focus_view",
         LIVE_API_VIEW_NAMES.DETAIL_CLIP,
       );
       // Response includes all selected items
-      expect(result.view).toBe("arrangement");
+      expect(result.view).toBe("session");
       expect(result.selectedTrack).toBeDefined();
       expect(result.selectedScene).toBeDefined();
       expect(result.selectedClip).toBeDefined();
@@ -601,15 +615,7 @@ describe("view", () => {
     });
 
     it("reads arrangement view with nothing selected", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "arrangement",
-        selectedTrack: { exists: false },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupEmptySelection("arrangement");
 
       const result = select({});
 
@@ -700,15 +706,7 @@ describe("view", () => {
     });
 
     it("omits null fields when nothing is selected", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "arrangement",
-        selectedTrack: { exists: false },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupEmptySelection("arrangement");
 
       const result = select();
 

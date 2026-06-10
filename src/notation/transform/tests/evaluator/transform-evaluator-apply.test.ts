@@ -255,6 +255,22 @@ probability += -0.2`;
       expect(notes[0]!.velocity).toBe(120);
       expect(notes[1]!.velocity).toBe(120);
     });
+
+    it("does not carry a pitch selector to later lines (per-line, no sticky)", () => {
+      // C3 (60) is selected on line 1 only. Line 2 has no selector, so it applies
+      // to every note — including E3 (64), which line 1 skipped. A pitch selector
+      // does NOT persist to following lines; it behaves per-line like a time range.
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0 },
+        { pitch: 64, start_time: 1 },
+      ]);
+
+      applyTransforms(notes, "C3: velocity += 20\nduration = 2", 4, 4);
+      expect(notes[0]!.velocity).toBe(120); // C3: matched line 1
+      expect(notes[1]!.velocity).toBe(100); // E3: skipped line 1 (no carryover)
+      expect(notes[0]!.duration).toBe(2); // line 2 applies to all notes...
+      expect(notes[1]!.duration).toBe(2); // ...including E3
+    });
   });
 
   describe("time range filtering", () => {

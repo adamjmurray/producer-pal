@@ -46,6 +46,22 @@ describe("useContextMemory", () => {
     return ok;
   }
 
+  // Renders the hook with `{ memoryContent: "old" }` as the initial GET (plus any
+  // extra queued responses) and waits for that content to load.
+  async function renderWithLoadedContent(
+    ...extraResponses: Array<object | Response>
+  ): Promise<{ current: ReturnType<typeof useContextMemory> }> {
+    mockResponses({ memoryContent: "old" }, ...extraResponses);
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.status).toMatchObject({ content: "old" });
+    });
+
+    return result;
+  }
+
   it("loads memory content on mount", async () => {
     mockResponses({ memoryContent: "# hi" });
 
@@ -93,13 +109,7 @@ describe("useContextMemory", () => {
   });
 
   it("save() posts content and updates status", async () => {
-    mockResponses({ memoryContent: "old" }, { memoryContent: "new" });
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
-    });
+    const result = await renderWithLoadedContent({ memoryContent: "new" });
 
     const saved = await callAndCapture(() => result.current.save("new"));
 
@@ -138,13 +148,7 @@ describe("useContextMemory", () => {
   });
 
   it("clear() saves empty content", async () => {
-    mockResponses({ memoryContent: "old" }, { memoryContent: "" });
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
-    });
+    const result = await renderWithLoadedContent({ memoryContent: "" });
 
     await act(async () => {
       await result.current.clear();
@@ -160,13 +164,7 @@ describe("useContextMemory", () => {
   });
 
   it("re-fetches on window focus so external writes surface", async () => {
-    mockResponses({ memoryContent: "old" }, { memoryContent: "new" });
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
-    });
+    const result = await renderWithLoadedContent({ memoryContent: "new" });
 
     await act(async () => {
       window.dispatchEvent(new Event("focus"));
@@ -226,13 +224,7 @@ describe("useContextMemory", () => {
   // clobbers status.content with pre-save content. These tests pin
   // each overlap ordering: the save's echo must always win.
   it("does not let an in-flight save's stale focus GET clobber the echo", async () => {
-    mockResponses({ memoryContent: "old" });
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
-    });
+    const result = await renderWithLoadedContent();
 
     const post = deferred<Response>();
     const staleGet = deferred<Response>();
@@ -261,13 +253,7 @@ describe("useContextMemory", () => {
   });
 
   it("defers to a save that starts mid-refresh", async () => {
-    mockResponses({ memoryContent: "old" });
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
-    });
+    const result = await renderWithLoadedContent();
 
     const staleGet = deferred<Response>();
     const post = deferred<Response>();
@@ -295,13 +281,7 @@ describe("useContextMemory", () => {
   });
 
   it("does not let a superseded refresh error override an in-flight save", async () => {
-    mockResponses({ memoryContent: "old" });
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
-    });
+    const result = await renderWithLoadedContent();
 
     const post = deferred<Response>();
     const failingGet = deferred<Response>();

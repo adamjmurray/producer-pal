@@ -70,6 +70,39 @@ export type ExpressionNode =
   | BarDurationNode
   | PitchLiteralNode;
 
+/** A clip-relative bar|beat cut position for `split`, resolved by the parser to
+ * absolute musical beats from the clip's `1|1` origin. */
+export interface BarBeatPointNode {
+  type: "barBeatPoint";
+  musicalBeats: number;
+}
+
+/** Comparison node inside a where() predicate. Operands are arithmetic expressions
+ * (restricted by the parser to the intrinsic note properties + literals). */
+export interface ComparisonNode {
+  type: "comparison";
+  op: ">" | ">=" | "<" | "<=" | "==" | "!=";
+  left: ExpressionNode;
+  right: ExpressionNode;
+}
+
+/** Logical AND/OR of two predicates inside a where() clause. */
+export interface LogicalNode {
+  type: "and" | "or";
+  left: PredicateNode;
+  right: PredicateNode;
+}
+
+/** Logical negation of a predicate inside a where() clause. */
+export interface NotNode {
+  type: "not";
+  operand: PredicateNode;
+}
+
+/** A where() predicate AST: a boolean expression over note properties. Boolean and
+ * comparison operators are legal ONLY here, never on an assignment RHS. */
+export type PredicateNode = ComparisonNode | LogicalNode | NotNode;
+
 /** Pitch range filter */
 export interface PitchRange {
   startPitch: number;
@@ -95,10 +128,44 @@ export interface TransformAssignment {
   expression: ExpressionNode;
   pitchRange?: PitchRange;
   timeRange?: TimeRange;
+  /** Optional where() predicate filter. AND-combined with pitchRange/timeRange:
+   * a note must satisfy the predicate AND the positional selector. Null/absent
+   * when the line has no where() clause. */
+  predicate?: PredicateNode | null;
+  /** Set when the selector prefix had a duplicate segment kind (two pitch/time
+   * selectors, or two where() clauses). The evaluator relays this as a WARNING
+   * and skips the line so the remaining lines still apply. Absent on well-formed
+   * lines. */
+  selectorWarning?: string | null;
 }
+
+/**
+ * Note-count operation produced by the parser (`ratchet(...)`, `split(...)`,
+ * `merge()`). Unlike an assignment, this changes how many notes exist rather
+ * than writing a value to a parameter. The `kind` discriminant distinguishes it
+ * from a TransformAssignment (which has no `kind` field). The optional selector
+ * (pitchRange/timeRange) scopes which notes the op touches. `ratchet`/`merge`
+ * carry expression args; `split` carries `BarBeatPointNode` cut positions and an
+ * optional `sync` flag (set by a trailing `sync` keyword) that interprets the
+ * positions against the arrangement timeline instead of the clip origin.
+ */
+export interface NoteOp {
+  kind: "noteOp";
+  name: "ratchet" | "merge" | "split";
+  args: (ExpressionNode | BarBeatPointNode)[];
+  sync?: boolean;
+  pitchRange?: PitchRange;
+  timeRange?: TimeRange;
+  /** Set when the selector prefix had a duplicate segment kind. The evaluator
+   * relays it as a WARNING and skips the line. Absent on well-formed lines. */
+  selectorWarning?: string | null;
+}
+
+/** A single transform line: either a parameter assignment or a note-count op. */
+export type TransformStatement = TransformAssignment | NoteOp;
 
 /** Parse a transform expression string into an AST */
 export function parse(
   input: string,
   options?: ParseOptions,
-): TransformAssignment[];
+): TransformStatement[];

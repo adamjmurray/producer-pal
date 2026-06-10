@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+
 /**
  * Sort notes ascending by start_time, with pitch as a stable tiebreaker.
  *
@@ -24,4 +26,33 @@ export function sortNotes<T extends { start_time: number; pitch: number }>(
 
     return a.pitch - b.pitch;
   });
+}
+
+/**
+ * Collapse notes that share a pitch and start_time (within SAME_TIME_EPSILON,
+ * since round-tripped notes can drift) down to the LAST occurrence in the array.
+ *
+ * Both clip write paths need this: a transform can mutate pitch/start_time and
+ * push two distinct notes onto the same pitch+exact-onset, which Live's
+ * add_new_notes resolves by deleting the earlier write — non-deterministic data
+ * loss. Deduping keep-last makes the resolution explicit and order-independent.
+ * Sorting alone only saves tail overlaps, not exact collisions. Pair with
+ * {@link sortNotes} (dedupe first, then sort).
+ * @param notes - Notes in insertion order (e.g. existing→new, or pre-transform)
+ * @returns Notes with same-pitch+start collisions collapsed to the last write
+ */
+export function dedupeNotesKeepingLast<
+  T extends { start_time: number; pitch: number },
+>(notes: T[]): T[] {
+  return notes.reduce<T[]>((result, note) => {
+    const withoutCollision = result.filter(
+      (existing) =>
+        existing.pitch !== note.pitch ||
+        Math.abs(existing.start_time - note.start_time) >= SAME_TIME_EPSILON,
+    );
+
+    withoutCollision.push(note);
+
+    return withoutCollision;
+  }, []);
 }

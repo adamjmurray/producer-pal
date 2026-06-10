@@ -47,8 +47,8 @@ export function formatDrumNotation(
   config: FormatConfig,
 ): string {
   const pitchGroups = groupByPitch(sortedNotes);
-  const state = createInitialState(config.timeSigDenominator);
-  const elements: string[] = [];
+  const state = createInitialState();
+  const lines: string[] = [];
 
   for (const { pitch, notes } of pitchGroups) {
     const positions = notes.map((n) =>
@@ -59,6 +59,7 @@ export function formatDrumNotation(
       ),
     );
     const runs = splitIntoStateRuns(notes, positions);
+    const elements: string[] = [];
 
     for (const run of runs) {
       emitStateChanges(
@@ -77,9 +78,14 @@ export function formatDrumNotation(
         ),
       );
     }
+
+    // One drum pad per line. State (velocity/duration) carries across lines —
+    // newlines are whitespace to the parser — so a pad only re-emits v/n on
+    // change, exactly like the regular per-batch path.
+    lines.push(elements.join(" "));
   }
 
-  return elements.join(" ");
+  return lines.join("\n");
 }
 
 /**

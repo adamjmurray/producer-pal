@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  ANTHROPIC_MODELS,
   GEMINI_MODELS,
   MISTRAL_MODELS,
   OLLAMA_MODELS,
@@ -15,6 +16,7 @@ export { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction";
 export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
 
 const ALL_MODELS = [
+  ...ANTHROPIC_MODELS,
   ...GEMINI_MODELS,
   ...OPENAI_MODELS,
   ...MISTRAL_MODELS,

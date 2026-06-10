@@ -7,9 +7,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import {
   DEFAULT_PROBABILITY,
-  DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
-  defaultDurationMusicalBeats,
   musicalBeatsToWholeNoteFraction,
 } from "../../barbeat-config.ts";
 import {
@@ -27,18 +25,18 @@ export interface SerializerState {
 }
 
 /**
- * Create initial serializer state with default values.
- * The default duration depends on time signature (quarter note in any meter).
- * @param timeSigDenominator - Time signature denominator
+ * Create initial serializer state. Velocity and duration are seeded to an
+ * impossible sentinel (-1) so the FIRST note always emits an explicit `v` and
+ * `n` token — the reader never has to know the format's defaults to know the
+ * opening note's core properties. Probability is seeded to its default so it
+ * stays change-only (a default-probability opener emits no `p` token).
  * @returns Fresh serializer state
  */
-export function createInitialState(
-  timeSigDenominator: number | undefined,
-): SerializerState {
+export function createInitialState(): SerializerState {
   return {
-    velocity: DEFAULT_VELOCITY,
+    velocity: -1,
     velocityDeviation: DEFAULT_VELOCITY_DEVIATION,
-    duration: defaultDurationMusicalBeats(timeSigDenominator),
+    duration: -1,
     probability: DEFAULT_PROBABILITY,
   };
 }

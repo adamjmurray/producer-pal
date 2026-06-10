@@ -56,8 +56,12 @@ export function isNewerVersion(current: string, latest: string): boolean {
   const latestParts = parseVersionParts(latest);
 
   for (let i = 0; i < 3; i++) {
-    const c = currentParts[i] as number; // bounded by loop
-    const l = latestParts[i] as number; // bounded by loop
+    // A missing part is 0 (standard semver): "12.3" == "12.3.0", and "12.3" is
+    // older than "12.3.1". Defaulting to 0 — not the raw `undefined`, which made
+    // every comparison false and silently treated a missing part as equal to
+    // any value — is what makes a shorter `current` vs a longer `latest` work.
+    const c = currentParts[i] ?? 0;
+    const l = latestParts[i] ?? 0;
 
     if (l > c) return true;
     if (l < c) return false;
@@ -75,8 +79,15 @@ function parseVersionParts(version: string): number[] {
     cleaned = cleaned.slice(1);
   }
 
-  // parseInt stops at first non-numeric char, handling suffixes like "4b7"
-  return cleaned.split(".").map((part) => Number.parseInt(part, 10));
+  // parseInt stops at first non-numeric char, handling suffixes like "4b7". A
+  // part with no leading digits (e.g. "" from "1..3", or "x") parses to NaN;
+  // normalize it to 0 so every returned part is a finite number — NaN would
+  // make both `l > c` and `l < c` false and silently treat that part as equal.
+  return cleaned.split(".").map((part) => {
+    const parsed = Number.parseInt(part, 10);
+
+    return Number.isNaN(parsed) ? 0 : parsed;
+  });
 }
 
 /**

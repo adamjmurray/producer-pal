@@ -37,6 +37,7 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     realtimeVoice: s.realtimeVoice,
     voiceSpeed: s.voiceSpeed,
     voiceVolume: s.voiceVolume,
+    voiceLanguage: s.voiceLanguage,
     turnDetection: s.turnDetection,
     ...a,
   });
@@ -63,8 +64,14 @@ export function useHasUnsavedChanges(
   // very first render — first-run auto-open, or reloading with the settings
   // modal still open (persisted view state) — where there is no transition to
   // detect and edits would otherwise never register as unsaved.
+  //
+  // Gate the capture on settingsLoaded: the apiKey is decrypted asynchronously
+  // after mount, so snapshotting before it lands (modal open from the first
+  // render) would record the blank pre-decrypt key and then falsely flag
+  // unsaved changes the moment the real key arrives. The effect re-runs when
+  // settingsLoaded flips true and captures the loaded values.
   useEffect(() => {
-    if (settingsOpen && snapshot === "") {
+    if (settingsOpen && snapshot === "" && settings.settingsLoaded) {
       setSnapshot(serialize(settings, appearance));
     } else if (!settingsOpen && snapshot !== "") {
       setSnapshot("");

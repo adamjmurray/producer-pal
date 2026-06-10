@@ -3,12 +3,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { type ZodType } from "zod";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { toolDefReadScene } from "../read-scene.def.ts";
 import { readScene } from "../read-scene.ts";
 
 // Helper to create default Scene mock config
@@ -358,5 +360,18 @@ describe("readScene", () => {
       expect(result.sceneIndex).toBe(7);
       expect(result.name).toBe("Priority Test Scene");
     });
+  });
+});
+
+describe("read-scene include schema", () => {
+  it("accepts 'warp' in the include enum (parity with read-clip)", () => {
+    // warp clip detail must be requestable explicitly through the tool, not
+    // only via "*" — the handler already forwards it correctly to readClip.
+    // "include" is a declared schema key, so it is always present.
+    const includeSchema = toolDefReadScene.toolOptions.inputSchema
+      .include as ZodType;
+
+    expect(() => includeSchema.parse(["clips", "warp"])).not.toThrow();
+    expect(includeSchema.parse(["warp"])).toStrictEqual(["warp"]);
   });
 });

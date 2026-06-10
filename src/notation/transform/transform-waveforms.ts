@@ -44,8 +44,9 @@ export function sin(phase: number): number {
  * @returns Value in range [-1.0, 1.0]
  */
 export function tri(phase: number): number {
-  // Normalize phase to 0-1 range
-  const normalizedPhase = phase % 1.0;
+  // Wrap into [0, 1) — a bare modulo keeps the sign, putting a negative phase in
+  // the wrong branch and out of [-1, 1] (e.g. tri(-0.5) = -2.0). See normalizePhase.
+  const normalizedPhase = normalizePhase(phase);
 
   // Starts at 0.0, rises to 1.0 at 0.25, descends to -1.0 at 0.75, returns to 0.0 at 1.0
   if (normalizedPhase <= 0.25) {
@@ -68,8 +69,8 @@ export function tri(phase: number): number {
  * @returns Value in range [-1.0, 1.0]
  */
 export function saw(phase: number): number {
-  // Normalize phase to 0-1 range
-  const normalizedPhase = phase % 1.0;
+  // Wrap into [0, 1) so a negative phase stays in [-1, 1] (see normalizePhase).
+  const normalizedPhase = normalizePhase(phase);
 
   // Starts at 0.0, rises to 1.0 at ~0.5, jumps to -1.0, rises back to 0.0
   if (normalizedPhase < 0.5) {
@@ -86,8 +87,8 @@ export function saw(phase: number): number {
  * @returns Value in range [-1.0, 1.0]
  */
 export function square(phase: number, pulseWidth = 0.5): number {
-  // Normalize phase to 0-1 range
-  const normalizedPhase = phase % 1.0;
+  // Wrap into [0, 1) so a negative phase picks the correct half (see normalizePhase).
+  const normalizedPhase = normalizePhase(phase);
 
   // Starts high (1.0) for first pulseWidth fraction, then low (-1.0)
   return normalizedPhase < pulseWidth ? 1.0 : -1.0;
@@ -153,4 +154,21 @@ export function curve(
   const curvedPhase = Math.pow(clampedPhase, exponent);
 
   return start + (end - start) * curvedPhase;
+}
+
+// --- Private helpers ---
+
+/**
+ * Map any real phase into [0, 1). Plain `phase % 1.0` keeps the sign in JS, so a
+ * negative phase — an explicit negative offset like `tri(n/4, -0.5)`, or a
+ * pickup note at a negative position — would land in the wrong piecewise branch
+ * and return a value outside [-1, 1] (e.g. tri(-0.5) = -2.0). That out-of-range
+ * value can drive a velocity negative, after which the note is silently dropped
+ * by the survivor filter. cos/sin are immune (Math.cos/sin are periodic) and
+ * keep the bare modulo.
+ * @param phase - Phase in cycles (any real number)
+ * @returns Phase wrapped into [0, 1)
+ */
+function normalizePhase(phase: number): number {
+  return ((phase % 1.0) + 1.0) % 1.0;
 }

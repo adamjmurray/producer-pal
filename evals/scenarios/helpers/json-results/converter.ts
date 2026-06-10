@@ -160,8 +160,12 @@ function buildJudge(
 }
 
 /**
- * Derive overall pass/fail from checks and judge. An advisory judge never gates:
- * its issues are reported but the deterministic checks alone decide pass/fail.
+ * Derive overall pass/fail from checks and judge. Every gating signal that is
+ * present must pass, and at least one must exist. A non-advisory judge IS a
+ * gating signal: a judge-only scenario (no deterministic checks) is decided by
+ * the judge alone. An advisory judge never gates — its issues are reported but
+ * the checks alone decide. A scenario with neither a check nor a gating judge
+ * asserts nothing and cannot be a pass.
  *
  * @param checks - Checks result
  * @param judge - Judge result (if any)
@@ -171,9 +175,23 @@ function derivePassFail(
   checks: JsonChecks,
   judge: JsonJudge | undefined,
 ): "pass" | "fail" {
-  const judgePassed = judge == null || judge.advisory === true || judge.pass;
+  const hasChecks = checks.results.length > 0;
+  const judgeGates = judge != null && judge.advisory !== true;
+  // judge.pass narrows to a definite boolean inside this chain — avoids `=== true`,
+  // which a lint autofix strips into a nullable boolean and then breaks typing.
+  const judgeFails = judge != null && judge.advisory !== true && !judge.pass;
 
-  return checks.pass && judgePassed ? "pass" : "fail";
+  // Need at least one gating signal; otherwise the scenario asserts nothing (an
+  // empty scenario, or a judge-only one whose judge was skipped) — not a pass.
+  if (!hasChecks && !judgeGates) return "fail";
+
+  // Every gating signal that is present must pass: the checks when there are any
+  // (checks.pass is false when there are none, so guard on hasChecks), and a
+  // non-advisory judge.
+  if (hasChecks && !checks.pass) return "fail";
+  if (judgeFails) return "fail";
+
+  return "pass";
 }
 
 /**

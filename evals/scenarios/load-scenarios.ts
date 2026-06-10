@@ -8,7 +8,6 @@
  */
 
 import { styleText } from "node:util";
-import { listConfigProfileIds } from "./config-profiles.ts";
 import {
   arpeggioBracketIdiom,
   arpeggioMixedDurations,
@@ -38,6 +37,10 @@ import {
   durationReachForQuarter,
   legatoTransforms,
   melodyTransforms,
+  noteOpsMerge,
+  noteOpsRatchetRoll,
+  noteOpsSplit,
+  noteOpsSplitSync,
   rangeClearFirstHalf,
   rangeClearWholeBar,
   pretransformsHatFillsBaseline,
@@ -48,6 +51,7 @@ import {
   surgicalNoteDurationEdit,
   swingAndQuantize,
   syncedLfoMeterInvariance,
+  whereTransforms,
   memoryWorkflow,
   negativeCases,
   sceneAndPlayback,
@@ -63,6 +67,7 @@ const allScenarios: EvalScenario[] = [
   connectToAbleton,
   createAndEditClip,
   swingAndQuantize,
+  whereTransforms,
   drumTransforms,
   legatoTransforms,
   melodyTransforms,
@@ -103,6 +108,10 @@ const allScenarios: EvalScenario[] = [
   surgicalNoteDurationEdit,
   rangeClearWholeBar,
   rangeClearFirstHalf,
+  noteOpsRatchetRoll,
+  noteOpsMerge,
+  noteOpsSplit,
+  noteOpsSplitSync,
 ];
 
 export interface LoadScenariosOptions {
@@ -154,35 +163,57 @@ export function listScenarioIds(): string[] {
 }
 
 /**
- * List all scenarios with their kind for display
+ * List all scenarios with their kind and capability requirements for display
  *
- * @returns Array of {id, kind} objects
+ * @returns Array of {id, kind, requires} objects
  */
 export function listScenarioSummaries(): Array<{
   id: string;
   kind: "regression" | "capability";
+  requires: string[];
 }> {
   return allScenarios.map((s) => ({
     id: s.id,
     kind: s.kind ?? "regression",
+    requires: requirementLabels(s),
   }));
 }
 
 /**
- * Print available scenarios and config profiles.
+ * Format a scenario's capability requirements as short display labels.
+ *
+ * @param scenario - The scenario to inspect
+ * @returns Requirement labels (empty when the scenario has no `requires`)
+ */
+function requirementLabels(scenario: EvalScenario): string[] {
+  const req = scenario.requires;
+
+  if (!req) return [];
+
+  const labels: string[] = [];
+
+  if (req.transforms) labels.push("transforms");
+  if (req.brackets) labels.push("brackets");
+  if (req.largeModel) labels.push("largeModel");
+  if (req.tools?.length) labels.push(`tools:${req.tools.join("+")}`);
+  if (req.params?.length) labels.push(`params:${req.params.join("+")}`);
+
+  return labels;
+}
+
+/**
+ * Print available scenarios.
  */
 export function printList(): void {
   console.log("Available scenarios:");
 
-  for (const { id, kind } of listScenarioSummaries()) {
+  for (const { id, kind, requires } of listScenarioSummaries()) {
     const kindLabel = styleText("gray", `[${kind}]`);
+    const requiresLabel =
+      requires.length > 0
+        ? " " + styleText("yellow", `(requires: ${requires.join(", ")})`)
+        : "";
 
-    console.log(`  - ${id} ${kindLabel}`);
-  }
-
-  console.log("\nAvailable config profiles:");
-
-  for (const id of listConfigProfileIds()) {
-    console.log(`  - ${id}`);
+    console.log(`  - ${id} ${kindLabel}${requiresLabel}`);
   }
 }

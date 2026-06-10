@@ -12,7 +12,10 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "../duplicate-helpers.ts";
-import { findRoutingOptionForDuplicateNames } from "../duplicate-routing-helpers.ts";
+import {
+  findRoutingOptionForDuplicateNames,
+  type RoutingType,
+} from "../duplicate-routing-helpers.ts";
 
 interface TrackNameMapping {
   [path: string]: string;
@@ -79,6 +82,21 @@ function createMockLiveAPI(
   }
 
   return MockLiveAPI;
+}
+
+// Builds a stub source track with the given id and resolves its routing option.
+function findRouting(
+  sourceId: string,
+  targetName: string,
+  availableTypes: RoutingType[],
+): RoutingType | undefined {
+  const sourceTrack = { id: sourceId, getProperty: () => {} };
+
+  return findRoutingOptionForDuplicateNames(
+    sourceTrack as unknown as LiveAPI,
+    targetName,
+    availableTypes,
+  );
 }
 
 describe("duplicate-helpers", () => {
@@ -293,20 +311,10 @@ describe("duplicate-helpers", () => {
 
   describe("findRoutingOptionForDuplicateNames", () => {
     it("returns single match when no duplicates exist", () => {
-      const sourceTrack = {
-        id: "1",
-        getProperty: () => {},
-      };
-      const availableTypes = [
+      const result = findRouting("1", "Track 1", [
         { display_name: "Track 1", identifier: "track1" },
         { display_name: "Track 2", identifier: "track2" },
-      ];
-
-      const result = findRoutingOptionForDuplicateNames(
-        sourceTrack as unknown as LiveAPI,
-        "Track 1",
-        availableTypes,
-      );
+      ]);
 
       expect(result).toStrictEqual({
         display_name: "Track 1",
@@ -315,19 +323,9 @@ describe("duplicate-helpers", () => {
     });
 
     it("returns undefined when no matches found", () => {
-      const sourceTrack = {
-        id: "1",
-        getProperty: () => {},
-      };
-      const availableTypes = [
+      const result = findRouting("1", "Track 1", [
         { display_name: "Track 2", identifier: "track2" },
-      ];
-
-      const result = findRoutingOptionForDuplicateNames(
-        sourceTrack as unknown as LiveAPI,
-        "Track 1",
-        availableTypes,
-      );
+      ]);
 
       expect(result).toBeUndefined();
     });
@@ -336,29 +334,14 @@ describe("duplicate-helpers", () => {
       // Mock LiveAPI for global access
       (global as Record<string, unknown>).LiveAPI = createMockLiveAPI(
         ["id1", "id2", "id3"],
-        {
-          id1: "Drums",
-          id2: "Drums",
-          id3: "Bass",
-        },
+        { id1: "Drums", id2: "Drums", id3: "Bass" },
       );
 
-      const sourceTrack = {
-        id: "id1",
-        getProperty: () => {},
-      };
-
-      const availableTypes = [
+      const result = findRouting("id1", "Drums", [
         { display_name: "Drums", identifier: "drums1" },
         { display_name: "Drums", identifier: "drums2" },
         { display_name: "Bass", identifier: "bass" },
-      ];
-
-      const result = findRoutingOptionForDuplicateNames(
-        sourceTrack as unknown as LiveAPI,
-        "Drums",
-        availableTypes,
-      );
+      ]);
 
       // Should return the first "Drums" option since sourceTrack is id1 (first Drums track)
       expect(result).toStrictEqual({
@@ -370,28 +353,13 @@ describe("duplicate-helpers", () => {
     it("finds correct option for second track with duplicate name", () => {
       (global as Record<string, unknown>).LiveAPI = createMockLiveAPI(
         ["id1", "id2", "id3"],
-        {
-          id1: "Drums",
-          id2: "Drums",
-          id3: "Bass",
-        },
+        { id1: "Drums", id2: "Drums", id3: "Bass" },
       );
 
-      const sourceTrack = {
-        id: "id2",
-        getProperty: () => {},
-      };
-
-      const availableTypes = [
+      const result = findRouting("id2", "Drums", [
         { display_name: "Drums", identifier: "drums1" },
         { display_name: "Drums", identifier: "drums2" },
-      ];
-
-      const result = findRoutingOptionForDuplicateNames(
-        sourceTrack as unknown as LiveAPI,
-        "Drums",
-        availableTypes,
-      );
+      ]);
 
       // Should return the second "Drums" option since sourceTrack is id2 (second Drums track)
       expect(result).toStrictEqual({
@@ -403,27 +371,14 @@ describe("duplicate-helpers", () => {
     it("returns undefined when source track not found in duplicate list", () => {
       (global as Record<string, unknown>).LiveAPI = createMockLiveAPI(
         ["id1", "id2"],
-        {
-          id1: "Drums",
-          id2: "Drums",
-        },
+        { id1: "Drums", id2: "Drums" },
       );
 
-      const sourceTrack = {
-        id: "id999", // Non-existent track
-        getProperty: () => {},
-      };
-
-      const availableTypes = [
+      const result = findRouting("id999", "Drums", [
+        // id999: non-existent track
         { display_name: "Drums", identifier: "drums1" },
         { display_name: "Drums", identifier: "drums2" },
-      ];
-
-      const result = findRoutingOptionForDuplicateNames(
-        sourceTrack as unknown as LiveAPI,
-        "Drums",
-        availableTypes,
-      );
+      ]);
 
       expect(result).toBeUndefined();
     });
