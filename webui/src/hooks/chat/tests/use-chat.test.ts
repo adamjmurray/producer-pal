@@ -609,7 +609,9 @@ describe("useChat", () => {
 
       expect(adapter.createClient).toHaveBeenCalledTimes(1);
       expect(created?.summarize).toHaveBeenCalledWith(RESTORED_HISTORY);
+      // Non-destructive: restored turns are kept, summary marker appended.
       expect(created?.chatHistory).toStrictEqual([
+        ...RESTORED_HISTORY,
         { role: "user", content: "Summary of 2 messages" },
       ]);
       expect(result.current.canUndoCompaction).toBe(true);

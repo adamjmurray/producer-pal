@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
@@ -126,6 +127,13 @@ function AssistantRow({
   const previousUserMessageIdx = canRetry
     ? findPreviousUserMessageIndex(messages, originalIdx)
     : -1;
+  // Compaction is gated to the last assistant message: "compact up to here" only
+  // ever means "compact everything." Compacting from an earlier message (the
+  // small-model recovery flow that also discards the tail) is deferred, because
+  // keeping prior turns visible (the current behavior) conflicts with discarding
+  // the tail.
+  const isLastAssistantMessage =
+    messages.findLastIndex((m) => m.role === "model") === originalIdx;
   const timestamp = renderTimestamp(message.timestamp, showTimestamps);
   const prevModelUsage = getPrevModelUsage(messages, originalIdx);
 
@@ -149,7 +157,9 @@ function AssistantRow({
         timestamp={timestamp}
         showRetry={canRetry && previousUserMessageIdx >= 0}
         onRetry={() => void handleRetry(previousUserMessageIdx)}
-        showCompact={canRetry && handleCompact != null}
+        showCompact={
+          canRetry && handleCompact != null && isLastAssistantMessage
+        }
         onCompact={() => {
           if (handleCompact) void handleCompact(originalIdx);
         }}

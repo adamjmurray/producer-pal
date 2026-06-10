@@ -45,10 +45,11 @@ interface UseCompactionReturn {
 }
 
 /**
- * Manual conversation compaction: summarize the history up to (and including) a
- * chosen UI message into a single synthetic message and continue from it,
- * dropping everything after the cut. Requires an active client (a conversation
- * that has been sent at least once this session).
+ * Manual conversation compaction: summarize the visible history into a single
+ * synthetic summary marker appended to the end of the history. The prior turns
+ * are KEPT for display — buildModelMessages starts the model payload from the
+ * marker, so they are dropped from the model view only. Requires an active
+ * client (a conversation that has been sent at least once this session).
  * @param params - Compaction inputs from useChat
  * @param params.clientRef - Ref to the active chat client
  * @param params.bootstrapClientRef - Ref to a callback that creates a client from pending history
@@ -84,10 +85,11 @@ export function useCompaction<
     setCanUndoCompaction(false);
   }, []);
 
-  // Summarize the conversation up to (and including) the given UI message into a
-  // single synthetic message and continue from it. Everything after the cut is
-  // dropped — clicking an earlier message both compacts and discards the broken
-  // tail (the small-model recovery flow).
+  // Summarize the entire visible history into a single synthetic summary marker
+  // appended to the end. Prior turns are kept for display; the model boundary
+  // (buildModelMessages) starts at the marker, so the model only sees the
+  // summary going forward. The compact button is gated to the last assistant
+  // message, so there is never a tail after the cut to discard.
   const compact = useCallback(
     async (mergedMessageIndex: number) => {
       if (isCompacting || isAssistantResponding) return;
@@ -116,23 +118,25 @@ export function useCompaction<
         if (!client?.summarize) return;
 
         const history = client.chatHistory;
-        const nextMessage = messages[mergedMessageIndex + 1];
-        const cutEnd = nextMessage
-          ? nextMessage.rawHistoryIndex - 1
-          : history.length - 1;
-        const toCompact = history.slice(0, cutEnd + 1);
 
-        if (toCompact.length === 0) return;
+        if (history.length === 0) return;
 
-        const summary = await client.summarize(toCompact);
+        const summary = await client.summarize(history);
 
         // Switched/torn down while summarizing: the captured client is no longer
         // active. Applying its summary now would overwrite the conversation the
         // user moved to and arm an undo pointing at the wrong history.
         if (clientRef.current !== client) return;
 
+        // Non-destructive: keep the prior turns for display and append the
+        // summary marker. The model boundary in buildModelMessages drops the
+        // earlier turns from the model payload only. Undo restores the snapshot
+        // (the history without the marker).
         undoRef.current = history.slice();
-        client.chatHistory = [adapter.createCompactionSummary(summary)];
+        client.chatHistory = [
+          ...history,
+          adapter.createCompactionSummary(summary),
+        ];
         setMessages(adapter.formatMessages(client.chatHistory));
         setCanUndoCompaction(true);
         autoSaveRef?.current?.();

@@ -72,7 +72,10 @@ describe("useCompaction", () => {
       { role: "user", content: "u1" },
       { role: "assistant", content: "a1" },
     ]);
+    // Non-destructive: prior turns are kept and the summary marker is appended.
     expect(client.chatHistory).toStrictEqual([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
       { role: "user", content: "Summary of 2 messages" },
     ]);
     expect(setMessages).toHaveBeenCalled();
@@ -80,7 +83,9 @@ describe("useCompaction", () => {
     expect(result.current.canUndoCompaction).toBe(true);
   });
 
-  it("drops the tail when an earlier message is targeted", async () => {
+  it("compacts the full history regardless of the targeted index", async () => {
+    // The compact button is gated to the last assistant message, so there is no
+    // tail to drop — compaction always summarizes the entire visible history.
     const { result, client } = setup({
       chatHistory: [
         { role: "user", content: "u1" },
@@ -98,8 +103,16 @@ describe("useCompaction", () => {
     expect(client.summarize).toHaveBeenCalledWith([
       { role: "user", content: "u1" },
       { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+      { role: "assistant", content: "a2" },
     ]);
-    expect(client.chatHistory).toHaveLength(1);
+    expect(client.chatHistory).toStrictEqual([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+      { role: "assistant", content: "a2" },
+      { role: "user", content: "Summary of 4 messages" },
+    ]);
   });
 
   it("does nothing while the assistant is responding", async () => {

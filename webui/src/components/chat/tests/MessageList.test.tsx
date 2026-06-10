@@ -658,6 +658,34 @@ describe("MessageList", () => {
       expect(handleCompact).toHaveBeenCalledWith(1);
     });
 
+    it("only shows the compact button on the last assistant message", () => {
+      render(
+        <MessageList
+          messages={[
+            createUserMessage("hi", 0),
+            createModelMessage("first", 1),
+            createUserMessage("more", 2),
+            createModelMessage("last", 3),
+          ]}
+          queuedMessages={[]}
+          onRemoveQueued={vi.fn()}
+          isAssistantResponding={false}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          handleCompact={vi.fn()}
+          showTimestamps={false}
+          showTokenUsage={false}
+        />,
+      );
+
+      // Two assistant messages, but compaction is gated to the last one.
+      expect(
+        screen.getAllByRole("button", {
+          name: /compact the conversation up to here/i,
+        }),
+      ).toHaveLength(1);
+    });
+
     it("renders a divider for a compaction summary message", () => {
       const summaryMsg: UIMessage = {
         role: "user",
