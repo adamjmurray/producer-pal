@@ -226,6 +226,7 @@ function applyAssignmentToNotes(
     timeSigNumerator,
     timeSigDenominator,
     clipTimeRange,
+    clipContext,
   );
 
   const selectedCount = selectedIndices.length;

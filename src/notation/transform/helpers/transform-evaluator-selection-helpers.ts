@@ -13,12 +13,14 @@ import {
 } from "../parser/transform-parser.ts";
 import {
   calculateActiveTimeRange,
+  type ClipContext,
   evaluateExpression,
   type NoteContext,
   type TimeRange,
 } from "./transform-evaluator-helpers.ts";
 import { buildNoteProperties } from "./transform-evaluator-note-helpers.ts";
 import { evaluatePredicate } from "./transform-predicate-helpers.ts";
+import { timeRangeBoundsInMusicalBeats } from "./transform-time-range-helpers.ts";
 
 /**
  * Select the note indices an assignment applies to: those whose current pitch
@@ -31,6 +33,7 @@ import { evaluatePredicate } from "./transform-predicate-helpers.ts";
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipTimeRange - Clip time range used when no selector is present
+ * @param clipContext - Optional clip-level context, threaded into where() function eval
  * @returns Indices into `notes` of the selected notes, in note order
  */
 export function selectAssignmentNotes(
@@ -40,8 +43,17 @@ export function selectAssignmentNotes(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipTimeRange: TimeRange,
+  clipContext?: ClipContext,
 ): number[] {
   const selected: number[] = [];
+
+  // The where() predicate's normalization window for ramp/curve-style functions:
+  // the line's selector bounds, or the clip range when unscoped. Matches the
+  // evalTimeRange the apply path uses, so a waveform reads the same phase whether
+  // it gates selection or computes a value. Constant across notes — compute once.
+  const predicateTimeRange: TimeRange = assignment.timeRange
+    ? timeRangeBoundsInMusicalBeats(assignment.timeRange, timeSigNumerator)
+    : clipTimeRange;
 
   for (let idx = 0; idx < notes.length; idx++) {
     const note = notes[idx] as NoteEvent;
@@ -83,7 +95,8 @@ export function selectAssignmentNotes(
         noteContext.position,
         timeSigNumerator,
         timeSigDenominator,
-        clipTimeRange,
+        predicateTimeRange,
+        clipContext,
       )
     ) {
       continue;
@@ -96,17 +109,21 @@ export function selectAssignmentNotes(
 }
 
 /**
- * Evaluate a where() predicate against one note for selection. Predicates may
- * reference only the intrinsic note properties (enforced at parse time), so the
- * 0-valued index/count and the absent next/legato context here are never read — the
- * selected set (and thus those) is not known until selection finishes. A failed
+ * Evaluate a where() predicate against one note for selection. Predicate variables
+ * are restricted at parse time to the six intrinsic note properties, and the two
+ * selection-derived functions (legato/seq) are rejected there too — so the 0-valued
+ * index/count and the absent next/legato context here are never read. Other
+ * functions (math, waveforms, ramp/curve, quant/swing, snap/step, clipseq,
+ * rand/choose) resolve from `position`, `timeRange` (the line's selector bounds),
+ * and the threaded `clipContext` (scale mask, clip index/position). A failed
  * evaluation warns and excludes the note (warn-and-skip), matching the apply path.
  * @param predicate - where() predicate AST
  * @param note - Note event to test
  * @param position - Note position in musical beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range (unused for function-free predicates)
+ * @param timeRange - Predicate normalization window (line's selector bounds or clip range)
+ * @param clipContext - Optional clip-level context for clip-axis functions
  * @returns Whether the note satisfies the predicate
  */
 function noteMatchesPredicate(
@@ -116,8 +133,15 @@ function noteMatchesPredicate(
   timeSigNumerator: number,
   timeSigDenominator: number,
   timeRange: TimeRange,
+  clipContext?: ClipContext,
 ): boolean {
-  const noteProperties = buildNoteProperties(note, 0, 0, timeSigDenominator);
+  const noteProperties = buildNoteProperties(
+    note,
+    0,
+    0,
+    timeSigDenominator,
+    clipContext,
+  );
 
   try {
     return evaluatePredicate(predicate, {

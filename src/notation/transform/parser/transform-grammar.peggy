@@ -66,11 +66,20 @@
     "velocity", "deviation", "duration", "probability", "pitch", "start",
   ]);
 
-  // Walk a where() predicate AST and reject anything not allowed in 515a: any
-  // variable other than the six intrinsic note properties, and any function call.
-  // Throws a targeted error; returns nothing on success. Number literals are bare
-  // JS numbers (not objects) and pass through; pitch/duration domain literals are
-  // allowed. Functions are a deferred fast-follow (AJM-517).
+  // Functions rejected inside a where() predicate: they need the finalized note
+  // SELECTION, which doesn't exist yet while selecting. legato() resolves to the
+  // next distinct start / clip cursor of the selected set; seq() cycles by
+  // note.index. Every other function (math, waveforms, ramp/curve, quant/swing,
+  // snap/step, clipseq, rand/choose) resolves from per-note + clip context, which
+  // selectAssignmentNotes threads into the predicate evaluator.
+  const PREDICATE_REJECTED_FUNCTIONS = new Set(["legato", "seq"]);
+
+  // Walk a where() predicate AST and reject anything that can't resolve during note
+  // SELECTION: any variable other than the six intrinsic note properties, and the
+  // two selection-derived functions (legato/seq). Throws a targeted error; returns
+  // nothing on success. Number literals are bare JS numbers (not objects) and pass
+  // through; pitch/duration domain literals are allowed. Allowed functions recurse
+  // into their args so a rejected variable nested in an arg is still caught.
   function validatePredicate(node) {
     if (node == null || typeof node !== "object") {
       return;
@@ -96,7 +105,12 @@
         }
         return;
       case "function":
-        throw new Error(`where() predicates don't support functions yet — compare note properties directly (e.g. note.velocity < 40), combined with && || ! and arithmetic.`);
+        if (PREDICATE_REJECTED_FUNCTIONS.has(node.name)) {
+          const dep = node.name === "legato" ? "the legato target (next distinct start)" : "note.index";
+          throw new Error(`where() predicates can't use ${node.name}() — it depends on ${dep}, which isn't known while selecting notes. Use note properties, math (abs/min/max/clamp/round/…), waveforms (sin/tri/…), or clipseq instead.`);
+        }
+        node.args.forEach(validatePredicate);
+        return;
       default:
         return;
     }
@@ -578,8 +592,9 @@ parameter "parameter name"
 
 // A where() predicate: a boolean expression over note properties that filters which
 // notes a statement touches. Boolean/comparison operators are legal ONLY here — an
-// assignment RHS stays purely arithmetic. `validatePredicate` rejects functions and
-// any non-note-property variable with a targeted error.
+// assignment RHS stays purely arithmetic. `validatePredicate` rejects any
+// non-note-property variable and the two selection-derived functions (legato/seq)
+// with a targeted error; other functions are allowed (resolved at selection time).
 whereClause "where() predicate"
   = "where" _ "(" _ expr:boolOr _ ")" {
       validatePredicate(expr);
