@@ -479,19 +479,29 @@ C1: merge()           // glue all the kick hits into one sustained note
     (`a && (b || c)`, and the reflexive `(note.velocity > 80)`) is supported; a
     paren wrapping only arithmetic (`(1 + 2) > note.start`) still groups at the
     arithmetic layer.
-  - **Operands** are restricted to the six intrinsic scalar note properties —
-    `note.velocity`, `note.deviation`, `note.duration`, `note.probability`,
-    `note.pitch`, `note.start` — combined with arithmetic and the usual literals
-    (numbers, pitch names like `C3`, note values like `n/8`). `note.duration`
-    and `note.start` are in musical beats. `note.deviation` is the
-    velocity-deviation span as a plain scalar (the `vA-B` velocity range is
+  - **Operands** are the six intrinsic scalar note properties — `note.velocity`,
+    `note.deviation`, `note.duration`, `note.probability`, `note.pitch`,
+    `note.start` — combined with arithmetic, **functions**, and the usual
+    literals (numbers, pitch names like `C3`, note values like `n/8`).
+    `note.duration` and `note.start` are in musical beats. `note.deviation` is
+    the velocity-deviation span as a plain scalar (the `vA-B` velocity range is
     authoring sugar = base velocity + this span), so it compares like any other
     property.
+  - **Functions in operands**: every transform function is allowed in a
+    predicate except the two that need the finalized selection — `legato()` (the
+    next distinct start / clip cursor) and `seq()` (cycles by `note.index`). So
+    math (`abs`, `min`, `max`, `clamp`, `round`/`floor`/`ceil`, `pow`, `wrap`,
+    `reflect`), waveforms (`sin`/`cos`/`tri`/`saw`/`square`), `ramp`/`curve`,
+    `quant`/`swing`, `snap`/`step`, and `clipseq` all resolve from the per-note
+    position, the line's selector-bounds time range, and the clip context — e.g.
+    `where(abs(note.start - 4) < 1): velocity += 20` (near beat 4, either side),
+    `where(min(note.velocity, note.deviation) > 80): ...`. `rand()`/`choose()`
+    are allowed but non-deterministic (random thinning).
   - **Rejected with targeted errors**: selection-derived references
-    (`note.index`, `note.count`, `next.*`, `legato()`) — they are defined over
-    the selected set, which `where()` itself determines, so they are unavailable
-    while selecting; **functions** of any kind (a deferred fast-follow); and
-    `where()` on a note-count op (`ratchet`/`merge`/`split`).
+    (`note.index`, `note.count`, `next.*`, `legato()`, `seq()`) — they are
+    defined over the selected set, which `where()` itself determines, so they
+    are unavailable while selecting; the `clip.*`/`audio.*` namespaces as bare
+    variables; and `where()` on a note-count op (`ratchet`/`merge`/`split`).
   - **Float equality**: `==`/`!=` are exact float comparisons (no epsilon).
     Prefer them on the integer-valued properties (`velocity`, `pitch`) and use
     `<`/`>` on the float-valued ones (`duration`, `probability`, `start`).

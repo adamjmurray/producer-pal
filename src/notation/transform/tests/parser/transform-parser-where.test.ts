@@ -121,6 +121,54 @@ describe("Transform Parser - where() predicate", () => {
     });
   });
 
+  describe("function operands (AJM-517)", () => {
+    it("allows a math function on either side", () => {
+      const result = parseAssignments("where(abs(note.start - 4) < 1): v0");
+
+      expect(result[0]!.predicate).toStrictEqual({
+        type: "comparison",
+        op: "<",
+        left: {
+          type: "function",
+          name: "abs",
+          sync: false,
+          raw: false,
+          args: [
+            {
+              type: "subtract",
+              left: { type: "variable", namespace: "note", name: "start" },
+              right: 4,
+            },
+          ],
+        },
+        right: 1,
+      });
+    });
+
+    it("allows a variadic math function with note-property args", () => {
+      const result = parseAssignments(
+        "where(min(note.velocity, note.deviation) > 80): v0",
+      );
+      const predicate = result[0]!.predicate as { left: { name: string } };
+
+      expect(predicate.left.name).toBe("min");
+    });
+
+    it("allows a waveform function", () => {
+      const result = parseAssignments("where(sin(n/4) > 0): v0");
+      const predicate = result[0]!.predicate as { left: { name: string } };
+
+      expect(predicate.left.name).toBe("sin");
+    });
+
+    it("allows clipseq() (clip axis is available at selection time)", () => {
+      const result = parseAssignments("where(clipseq(0, 1) == 1): v0");
+      const predicate = result[0]!.predicate as { left: { name: string } };
+
+      expect(predicate.left.name).toBe("clipseq");
+    });
+  });
+
   describe("boolean operators and grouping", () => {
     it("gives DNF precedence: && binds tighter than ||", () => {
       const result = parseAssignments(
@@ -370,9 +418,21 @@ describe("Transform Parser - where() predicate", () => {
       );
     });
 
-    it("rejects a function call (deferred to a fast-follow)", () => {
-      expect(() => parser.parse("where(abs(note.start) < 1): v0")).toThrow(
-        /don't support functions yet/,
+    it("rejects legato() — it needs the finalized selection", () => {
+      expect(() => parser.parse("where(legato() > 1): v0")).toThrow(
+        /can't use legato\(\).*legato target/,
+      );
+    });
+
+    it("rejects seq() — it cycles by note.index", () => {
+      expect(() => parser.parse("where(seq(0, 1) == 1): v0")).toThrow(
+        /can't use seq\(\).*note\.index/,
+      );
+    });
+
+    it("rejects a selection-derived variable nested in a function arg", () => {
+      expect(() => parser.parse("where(abs(note.index) < 2): v0")).toThrow(
+        /can only reference note properties/,
       );
     });
 
