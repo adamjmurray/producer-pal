@@ -47,7 +47,9 @@ describe("config", () => {
     });
 
     it("strips [Free] tag from OpenRouter model labels", () => {
-      expect(getModelName("z-ai/glm-4.5-air:free")).toBe("Z.AI GLM 4.5 Air");
+      expect(getModelName("moonshotai/kimi-k2.6:free")).toBe(
+        "Moonshot AI Kimi K2.6",
+      );
     });
 
     it("returns the modelId unchanged for unknown models", () => {
