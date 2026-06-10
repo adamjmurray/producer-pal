@@ -93,6 +93,14 @@ export function applyTransforms(
   for (let j = 0; j < ast.length; j++) {
     const stmt = ast[j] as TransformStatement;
 
+    // A duplicate selector segment (two pitch/time selectors, or two where()
+    // clauses) is warned-and-skipped rather than failing the whole transform:
+    // relay the parser's message and move on so the other lines still apply.
+    if (stmt.selectorWarning != null) {
+      console.warn(stmt.selectorWarning);
+      continue;
+    }
+
     // Note-count op (ratchet/merge): rebuilds the note array in place.
     if (isNoteOp(stmt)) {
       const produced = applyNoteOp(

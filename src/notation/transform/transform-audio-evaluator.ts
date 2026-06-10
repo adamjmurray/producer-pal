@@ -103,6 +103,13 @@ export function applyAudioTransform(
   let pitchShiftModified = false;
 
   for (const assignment of audioAssignments) {
+    // A duplicate selector segment is warned-and-skipped, consistent with the
+    // MIDI evaluator: relay the parser's message and skip just this line.
+    if (assignment.selectorWarning != null) {
+      console.warn(assignment.selectorWarning);
+      continue;
+    }
+
     // A bare top-level pitch literal (`gain = C3`) is nonsensical for audio and
     // is warned-and-skipped here (a nested pitch literal is still resolved to
     // its MIDI number in evaluateAudioExpression).

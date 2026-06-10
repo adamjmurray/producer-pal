@@ -192,6 +192,22 @@ describe("where() predicate filtering", () => {
       );
       warnSpy.mockRestore();
     });
+
+    it("warns and skips a duplicate-selector line but applies the others", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNotes([{ start_time: 0, velocity: 50 }]);
+
+      // First line has two pitch selectors (invalid) — it is warned-and-skipped.
+      // The second line is well-formed and still applies, proving one bad line
+      // does not abort the whole transforms string.
+      applyTransforms(notes, "C3: E3: velocity = 120\nvelocity += 10", 4, 4);
+
+      expect(notes[0]!.velocity).toBe(60); // only the second line ran (50 + 10)
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("duplicate pitch selector"),
+      );
+      warnSpy.mockRestore();
+    });
   });
 
   describe("evaluateTransform (scalar path)", () => {

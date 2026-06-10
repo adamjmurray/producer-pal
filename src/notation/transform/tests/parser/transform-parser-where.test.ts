@@ -310,22 +310,38 @@ describe("Transform Parser - where() predicate", () => {
   });
 
   describe("duplicate selector segments", () => {
-    it("rejects two pitch selectors with guidance to use a range", () => {
-      expect(() => parser.parse("C3: E3: velocity = 120")).toThrow(
-        /Duplicate pitch selector .*range like C3-E3/,
+    // A duplicate is warn-and-skipped, not a hard parse error: the line carries a
+    // `selectorWarning` the evaluator relays before skipping just that line, so
+    // the other lines still apply. (Evaluator behavior is covered in
+    // transform-where.test.ts.)
+    it("flags two pitch selectors with guidance to use a range", () => {
+      const result = parseAssignments("C3: E3: velocity = 120");
+
+      expect(result[0]!.selectorWarning).toMatch(
+        /duplicate pitch selector .*range like C3-E3/,
       );
     });
 
-    it("rejects two time selectors", () => {
-      expect(() => parser.parse("1|1-2|1: 3|1-4|1: v0")).toThrow(
-        /Duplicate time selector/,
+    it("flags two time selectors", () => {
+      const result = parseAssignments("1|1-2|1: 3|1-4|1: v0");
+
+      expect(result[0]!.selectorWarning).toMatch(/duplicate time selector/);
+    });
+
+    it("flags two where() clauses with guidance to use &&/||", () => {
+      const result = parseAssignments(
+        "where(note.pitch > 60): where(note.pitch < 70): v0",
+      );
+
+      expect(result[0]!.selectorWarning).toMatch(
+        /duplicate where\(\).*&& \/ \|\|/,
       );
     });
 
-    it("rejects two where() clauses with guidance to use &&/||", () => {
-      expect(() =>
-        parser.parse("where(note.pitch > 60): where(note.pitch < 70): v0"),
-      ).toThrow(/Duplicate where\(\).*&& \/ \|\|/);
+    it("leaves well-formed lines without a selectorWarning", () => {
+      const result = parseAssignments("C3-C5 where(note.velocity > 80): v0");
+
+      expect(result[0]!.selectorWarning).toBeUndefined();
     });
   });
 

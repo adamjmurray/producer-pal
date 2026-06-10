@@ -390,13 +390,17 @@ C1: merge()           // glue all the kick hits into one sustained note
     (`Gb1 1|1-2|1: body`), but an **optional `:`** between any two segments is
     also accepted (`Gb1: 1|1-2|1: where(...): body`). A separator `:` is only
     consumed when another segment follows, so it never collides with the
-    prefix-terminating `:`: `Gb1: velocity = 120` still parses as pitch selector
-    - body, and `C1: C4` as pitch selector `C1` + bare-pitch body `C4`.
+    prefix-terminating `:`: in `Gb1: velocity = 120` the `:` terminates a
+    pitch-only selector, and in `C1: C4` it terminates the `C1` pitch selector
+    ahead of the bare-pitch body `C4`.
   - **No duplicates**: each segment kind may appear **at most once**. A repeated
-    pitch, time, or `where()` raises a targeted parse error (two pitch selectors
-    AND-combine to the empty set), pointing at the fix — span pitches with a
-    range (`C3-E3`), use one time range, or combine predicates with `&&`/`||`
-    inside one `where(...)`.
+    pitch, time, or `where()` (two pitch selectors AND-combine to the empty set)
+    is **warned-and-skipped**, not a hard error: that line is dropped with a
+    relayed `WARNING:` pointing at the fix — span pitches with a range
+    (`C3-E3`), use one time range, or combine predicates with `&&`/`||` inside
+    one `where(...)` — while the **other lines still apply**. (A hard parse
+    error would abort the whole `transforms` string; warn-and-skip preserves
+    partial success, matching the rest of the transform tool.)
 
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3: velocity += 10`

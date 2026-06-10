@@ -118,33 +118,51 @@
   // Fold a list of selector segments (each a pitch / time / where piece, parsed in
   // any order) into the single { pitchRange, timeRange, predicate } shape the
   // statement rule consumes. Each kind may appear at most once — a duplicate is a
-  // user mistake (two pitch selectors AND-combine to the empty set), so throw a
-  // targeted error pointing at the fix (a range, or && inside one where()) rather
-  // than silently dropping one. `matched` is the raw prefix text, for the message.
+  // user mistake (two pitch selectors AND-combine to the empty set). Rather than
+  // throw (which would abort the WHOLE transforms string, killing the other
+  // lines), keep the first occurrence and record a `selectorWarning`. The
+  // evaluator relays it as a WARNING and skips just this line, so the remaining
+  // lines still apply — the warn-and-skip pattern used across the transform tool.
+  // `matched` is the raw prefix text, for the message.
   function combineSelectorSegments(segments, matched) {
     let pitchRange = null;
     let timeRange = null;
     let predicate = null;
     const label = matched.trim();
+    const reasons = [];
+    const warnedKinds = new Set();
+    // Note a duplicate kind once (a pitch appearing 3x is still one message).
+    function noteDuplicate(kind, reason) {
+      if (!warnedKinds.has(kind)) {
+        warnedKinds.add(kind);
+        reasons.push(reason);
+      }
+    }
     for (const seg of segments) {
       if (seg.kind === "pitch") {
         if (pitchRange != null) {
-          throw new Error(`Duplicate pitch selector in "${label}": a line takes at most one pitch selector — span multiple pitches with a range like C3-E3, not two separate selectors.`);
+          noteDuplicate("pitch", "duplicate pitch selector (span multiple pitches with a range like C3-E3)");
+          continue;
         }
         pitchRange = seg.pitchRange;
       } else if (seg.kind === "time") {
         if (timeRange != null) {
-          throw new Error(`Duplicate time selector in "${label}": a line takes at most one time selector — use a single range like 1|1-3|1.`);
+          noteDuplicate("time", "duplicate time selector (use a single range like 1|1-3|1)");
+          continue;
         }
         timeRange = seg.timeRange;
       } else {
         if (predicate != null) {
-          throw new Error(`Duplicate where() in "${label}": combine conditions with && / || inside one where(...), not two separate clauses.`);
+          noteDuplicate("where", "duplicate where() (combine conditions with && / || inside one where(...))");
+          continue;
         }
         predicate = seg.predicate;
       }
     }
-    return { pitchRange, timeRange, predicate };
+    const selectorWarning = reasons.length
+      ? `Skipping "${label}": ${reasons.join("; ")}.`
+      : null;
+    return { pitchRange, timeRange, predicate, selectorWarning };
   }
 }}
 
@@ -165,25 +183,32 @@ statement "statement"
     const pitchRange = prefix?.pitchRange ?? null;
     const timeRange = prefix?.timeRange ?? null;
     const predicate = prefix?.predicate ?? null;
+    const selectorWarning = prefix?.selectorWarning ?? null;
     const isNoteOpBody = !Array.isArray(body) && body.kind === "noteOp";
-    // Note-count ops (ratchet/merge/split) don't support a where() predicate.
-    // Reject rather than silently ignore so the limitation is visible.
-    if (predicate != null && isNoteOpBody) {
+    // A duplicate-selector line is already destined to be warn-and-skipped by the
+    // evaluator (selectorWarning set), so don't hard-fail it on the where()-on-
+    // noteOp rule below — let the skip take precedence.
+    if (predicate != null && isNoteOpBody && selectorWarning == null) {
+      // Note-count ops (ratchet/merge/split) don't support a where() predicate.
+      // Reject rather than silently ignore so the limitation is visible.
       throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split) — put the predicate on a parameter assignment line instead.`);
     }
     // Only attach `predicate` when a where() clause is present, so non-predicate
     // assignments keep their historical shape (just pitchRange/timeRange).
     const predPart = predicate != null ? { predicate } : {};
+    // A duplicate-selector line carries a warning for the evaluator to relay
+    // before skipping; absent on well-formed lines so they keep their shape.
+    const warnPart = selectorWarning != null ? { selectorWarning } : {};
     // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
     // selector + predicate to each so a single token's writes share one filter.
     if (Array.isArray(body)) {
-      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...b }));
+      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...warnPart, ...b }));
     }
     // Note ops carry only the positional selector (no predicate field).
     if (isNoteOpBody) {
-      return { pitchRange, timeRange, ...body };
+      return { pitchRange, timeRange, ...warnPart, ...body };
     }
-    return { pitchRange, timeRange, ...predPart, ...body };
+    return { pitchRange, timeRange, ...predPart, ...warnPart, ...body };
   }
 
 // The optional `selector:` prefix. A list of selector segments — a pitch
