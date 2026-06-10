@@ -442,6 +442,13 @@ C1: merge()           // glue all the kick hits into one sustained note
   (`where(note.velocity < 40): velocity = 0`). Like the positional selectors it
   is **per-line** (no carry). This is the value-based selection the positional
   selectors cannot express (e.g. "delete quiet notes").
+  - **Separator**: the positional selector and `where(...)` are normally
+    space-separated (`Gb1 where(...): body`), but an **optional `:` separator**
+    between them is also accepted (`Gb1: where(...): body`) — a common LLM
+    habit. The separator colon is only consumed when a `where(...)` clause
+    follows, so it never collides with the prefix-terminating colon of a
+    positional-only selector (`Gb1: body` still parses as pitch selector +
+    body).
   - **Grammar**: boolean operators with precedence `||` < `&&` < `!` <
     comparison < arithmetic, plus parenthesized grouping at the boolean layer.
     Comparison operators: `>`, `>=`, `<`, `<=`, `==`, `!=`. These boolean and

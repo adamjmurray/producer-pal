@@ -162,13 +162,27 @@ statement "statement"
 // part may appear alone; the `:` is required once any prefix is present. The
 // predicate AND-combines with the positional selector at apply time — a note must
 // satisfy both. The predicate is per-line, like the positional selector.
+//
+// An OPTIONAL `:` may also separate the positional selector from the where()
+// clause (`Gb1: where(...): body`), in addition to the canonical space-separated
+// form (`Gb1 where(...): body`). LLMs reliably reach for the colon between
+// segments, so we accept it (`whereSeparator` below). The colon is only consumed
+// when a where() clause follows, so it never collides with the prefix-terminating
+// `:` of a positional-only selector (`Gb1: body`).
 selectorPrefix
-  = ranges:rangeSelector _ predicate:whereClause? _ ":" _ {
+  = ranges:rangeSelector _ predicate:whereSeparated? _ ":" _ {
       return { pitchRange: ranges.pitchRange, timeRange: ranges.timeRange, predicate: predicate ?? null };
     }
   / predicate:whereClause _ ":" _ {
       return { pitchRange: null, timeRange: null, predicate };
     }
+
+// A where() clause optionally preceded by a `:` separator. Because the whole rule
+// requires the where() clause, a lone `:` before the prefix terminator (the
+// positional-only `Gb1: body` case) backtracks out cleanly rather than greedily
+// eating the terminating colon.
+whereSeparated
+  = (":" _)? predicate:whereClause { return predicate; }
 
 // Note-count operations: statements that change how many notes exist, rather
 // than assigning a value to a parameter. They reuse the `selector:` prefix above

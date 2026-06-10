@@ -221,6 +221,46 @@ describe("Transform Parser - where() predicate", () => {
       expect(result[0]!.predicate!.type).toBe("comparison");
       expect(result[1]!.predicate!.type).toBe("comparison");
     });
+
+    it("accepts an optional colon between the selector and where() (LLM habit)", () => {
+      // `Gb1: where(...): body` — a colon separator between the positional
+      // selector and the predicate, in addition to the canonical space form.
+      const result = parseAssignments(
+        "Gb1: where(note.velocity > 90): velocity = 120",
+      );
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+      expect(result[0]!.predicate).toStrictEqual({
+        type: "comparison",
+        op: ">",
+        left: { type: "variable", namespace: "note", name: "velocity" },
+        right: 90,
+      });
+    });
+
+    it("accepts the colon separator after a time range too", () => {
+      const result = parseAssignments(
+        "1|1-2|1: where(note.probability < .5): v0",
+      );
+
+      expect(result[0]!.timeRange).not.toBeNull();
+      expect(result[0]!.predicate!.type).toBe("comparison");
+    });
+
+    it("still parses a positional-only colon selector (no where())", () => {
+      // The optional separator must not swallow the prefix-terminating colon when
+      // no where() follows.
+      const result = parseAssignments("Gb1: velocity = 120");
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+      expect(result[0]!.predicate).toBeUndefined();
+    });
   });
 
   describe("rejected forms", () => {
