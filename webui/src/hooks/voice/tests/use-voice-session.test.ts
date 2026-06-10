@@ -507,8 +507,9 @@ describe("useVoiceSession transport event handling", () => {
     expect(result.current.rateLimitedUntil).toBeNull();
   });
 
-  it("rate_limit_exceeded without a 'try again in Xs' pattern keeps rateLimitedUntil=null", async () => {
+  it("rate_limit_exceeded without a 'try again in Xs' pattern still sets a fallback countdown", async () => {
     const { result, session } = await connectAndGetSession();
+    const before = Date.now();
 
     await emitResponseFailure(
       session,
@@ -516,8 +517,11 @@ describe("useVoiceSession transport event handling", () => {
       "Rate limit exceeded (no retry hint).",
     );
 
+    // A rate limit with no parseable wait must still arm the retry path rather
+    // than leaving a dead error banner with no way forward.
     expect(result.current.error).toMatch(/rate limit/i);
-    expect(result.current.rateLimitedUntil).toBeNull();
+    expect(result.current.rateLimitedUntil).not.toBeNull();
+    expect(result.current.rateLimitedUntil!).toBeGreaterThan(before);
   });
 
   it("a successful response.done clears a prior rate-limit indicator", async () => {

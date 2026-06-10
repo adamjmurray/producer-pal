@@ -11,8 +11,10 @@ interface RateLimitRetryProps {
 }
 
 /**
- * Countdown until an OpenAI rate-limit window expires, with a retry button
- * that becomes enabled when the countdown reaches zero.
+ * Countdown until an OpenAI rate-limit window expires. The session auto-retries
+ * once it elapses (see useVoiceSession), so this is primarily a status display;
+ * the button is a manual fallback that becomes enabled when the countdown
+ * reaches zero (e.g. if an auto-retry itself gets re-limited).
  *
  * @param props - component props
  * @param props.until - Epoch ms when the rate limit clears
@@ -42,7 +44,7 @@ export function RateLimitRetry({ until, onRetry }: RateLimitRetryProps) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs text-zinc-600 dark:text-zinc-400">
-        {ready ? "Ready to retry." : `Retry available in ${seconds}s…`}
+        {ready ? "Retrying…" : `Auto-retrying in ${seconds}s…`}
       </span>
       <button
         type="button"
@@ -50,7 +52,7 @@ export function RateLimitRetry({ until, onRetry }: RateLimitRetryProps) {
         disabled={!ready}
         className="text-sm px-3 py-1 rounded border border-red-400 dark:border-red-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-100 dark:hover:bg-red-900/40"
       >
-        Retry
+        Retry now
       </button>
     </div>
   );
