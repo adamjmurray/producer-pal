@@ -114,6 +114,38 @@
     "gain":        { namespace: "audio", name: "gain"        },
     "pitchShift":  { namespace: "audio", name: "pitchShift"  },
   };
+
+  // Fold a list of selector segments (each a pitch / time / where piece, parsed in
+  // any order) into the single { pitchRange, timeRange, predicate } shape the
+  // statement rule consumes. Each kind may appear at most once — a duplicate is a
+  // user mistake (two pitch selectors AND-combine to the empty set), so throw a
+  // targeted error pointing at the fix (a range, or && inside one where()) rather
+  // than silently dropping one. `matched` is the raw prefix text, for the message.
+  function combineSelectorSegments(segments, matched) {
+    let pitchRange = null;
+    let timeRange = null;
+    let predicate = null;
+    const label = matched.trim();
+    for (const seg of segments) {
+      if (seg.kind === "pitch") {
+        if (pitchRange != null) {
+          throw new Error(`Duplicate pitch selector in "${label}": a line takes at most one pitch selector — span multiple pitches with a range like C3-E3, not two separate selectors.`);
+        }
+        pitchRange = seg.pitchRange;
+      } else if (seg.kind === "time") {
+        if (timeRange != null) {
+          throw new Error(`Duplicate time selector in "${label}": a line takes at most one time selector — use a single range like 1|1-3|1.`);
+        }
+        timeRange = seg.timeRange;
+      } else {
+        if (predicate != null) {
+          throw new Error(`Duplicate where() in "${label}": combine conditions with && / || inside one where(...), not two separate clauses.`);
+        }
+        predicate = seg.predicate;
+      }
+    }
+    return { pitchRange, timeRange, predicate };
+  }
 }}
 
 start
@@ -124,9 +156,6 @@ start
     return statements;
   }
 
-rangeSelector "range selector"
-  = pitchRange:pitchRange _ timeRange:timeRange? { return { pitchRange, timeRange: timeRange ?? null }; }
-  / timeRange:timeRange _ pitchRange:pitchRange? { return { pitchRange: pitchRange ?? null, timeRange }; }
 
 // A transform line is either a parameter assignment (the common case) or a
 // note-count operation (ratchet/merge). Both accept the same optional
@@ -157,32 +186,51 @@ statement "statement"
     return { pitchRange, timeRange, ...predPart, ...body };
   }
 
-// The optional `selector:` prefix. Combines an optional positional range selector
-// (pitch and/or time) with an optional where() predicate, terminated by `:`. Either
-// part may appear alone; the `:` is required once any prefix is present. The
-// predicate AND-combines with the positional selector at apply time — a note must
-// satisfy both. The predicate is per-line, like the positional selector.
+// The optional `selector:` prefix. A list of selector segments — a pitch
+// selector, a time selector, and/or a where() predicate — in ANY order, each
+// separated by whitespace and/or an optional `:`, and terminated by a required
+// `:`. Every combination AND-combines at apply time (a note must satisfy all),
+// and each is per-line (no carry to neighboring lines).
 //
-// An OPTIONAL `:` may also separate the positional selector from the where()
-// clause (`Gb1: where(...): body`), in addition to the canonical space-separated
-// form (`Gb1 where(...): body`). LLMs reliably reach for the colon between
-// segments, so we accept it (`whereSeparator` below). The colon is only consumed
-// when a where() clause follows, so it never collides with the prefix-terminating
-// `:` of a positional-only selector (`Gb1: body`).
+// Order-free and colon-tolerant because LLMs reach for both freely: `Gb1 1|1-2|1
+// where(...):`, `where(...): Gb1:`, and `Gb1: 1|1-2|1: where(...):` all parse the
+// same. Each segment kind may appear at most once; a duplicate throws a targeted
+// error (see combineSelectorSegments). The separating/terminating colon is only
+// consumed where a segment or body genuinely follows, so a positional-only
+// `Gb1: body` still parses (the body is not a segment, so the trailing `:` lands
+// as the terminator, not a separator).
+// Enumerated 1/2/3-segment forms (a selector has at most three distinct kinds).
+// Listed longest-first so PEG tries the most segments and BACKTRACKS to fewer
+// when the trailing `:` is missing — a possessive `*` can't give a segment back,
+// which matters because a bare pitch is also a valid BODY (`C1: C4` = pitch
+// selector C1, body "set pitch to C4"). With the longest-first ladder, the
+// 2-segment parse of `C1: C4` finds no terminating `:` after C4 and falls through
+// to the 1-segment parse, leaving C4 as the body.
 selectorPrefix
-  = ranges:rangeSelector _ predicate:whereSeparated? _ ":" _ {
-      return { pitchRange: ranges.pitchRange, timeRange: ranges.timeRange, predicate: predicate ?? null };
+  = a:selectorSegment selectorSep b:selectorSegment selectorSep c:selectorSegment _ ":" _ {
+      return combineSelectorSegments([a, b, c], text());
     }
-  / predicate:whereClause _ ":" _ {
-      return { pitchRange: null, timeRange: null, predicate };
+  / a:selectorSegment selectorSep b:selectorSegment _ ":" _ {
+      return combineSelectorSegments([a, b], text());
+    }
+  / a:selectorSegment _ ":" _ {
+      return combineSelectorSegments([a], text());
     }
 
-// A where() clause optionally preceded by a `:` separator. Because the whole rule
-// requires the where() clause, a lone `:` before the prefix terminator (the
-// positional-only `Gb1: body` case) backtracks out cleanly rather than greedily
-// eating the terminating colon.
-whereSeparated
-  = (":" _)? predicate:whereClause { return predicate; }
+// One piece of a selector prefix. Pitch starts with a note letter, time with a
+// digit, where() with `w` — mutually exclusive first chars, so the ordered choice
+// is unambiguous and order-free at the prefix level.
+selectorSegment
+  = pitchRange:pitchRange { return { kind: "pitch", pitchRange }; }
+  / timeRange:timeRange { return { kind: "time", timeRange }; }
+  / predicate:whereClause { return { kind: "where", predicate }; }
+
+// Separator between two selector segments: an optional `:` (with surrounding
+// space), or bare whitespace. Always consumes at least one character (a `:` or a
+// space), so two segments never silently abut.
+selectorSep
+  = _ ":" _
+  / [ \t]+
 
 // Note-count operations: statements that change how many notes exist, rather
 // than assigning a value to a parameter. They reuse the `selector:` prefix above

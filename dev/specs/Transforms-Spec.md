@@ -357,8 +357,10 @@ C1: merge()           // glue all the kick hits into one sustained note
 
 ## Transform Syntax
 
-- **Format**: `[pitchRange] [timeRange] parameter operator expression` (one per
-  line in `transforms` string)
+- **Format**: `[selectors] parameter operator expression` (one per line in
+  `transforms` string), where `[selectors]` is an optional prefix of a pitch
+  selector, a time selector, and/or a `where()` predicate (see **Selector prefix
+  syntax** below)
 - **Parameters**:
   - MIDI clips: velocity, timing, duration, probability, deviation, pitch
   - Audio clips: gain, pitchShift
@@ -375,6 +377,26 @@ C1: merge()           // glue all the kick hits into one sustained note
     to the line it prefixes. It is never carried to or inherited from
     neighboring lines — a line with no selector applies to all notes. To scope
     several lines, repeat the selector on each.
+
+- **Selector prefix syntax**: a line may carry up to three selector segments — a
+  pitch selector, a time selector, and a `where()` predicate (each detailed
+  below) — terminated by a `:` before the assignment/op body. The segments
+  **AND-combine** (a note must satisfy all). Two conveniences make the prefix
+  forgiving of how an LLM writes it:
+  - **Order-free**: the segments may appear in **any order** —
+    `Gb1 1|1-2|1 where(...):`, `where(...) 1|1-2|1 Gb1:`, etc. all mean the
+    same.
+  - **Optional `:` separators**: segments are normally space-separated
+    (`Gb1 1|1-2|1: body`), but an **optional `:`** between any two segments is
+    also accepted (`Gb1: 1|1-2|1: where(...): body`). A separator `:` is only
+    consumed when another segment follows, so it never collides with the
+    prefix-terminating `:`: `Gb1: velocity = 120` still parses as pitch selector
+    - body, and `C1: C4` as pitch selector `C1` + bare-pitch body `C4`.
+  - **No duplicates**: each segment kind may appear **at most once**. A repeated
+    pitch, time, or `where()` raises a targeted parse error (two pitch selectors
+    AND-combine to the empty set), pointing at the fix — span pitches with a
+    range (`C3-E3`), use one time range, or combine predicates with `&&`/`||`
+    inside one `where(...)`.
 
 - **Pitch selectors** (optional): Filter by MIDI pitch or note name
   - Single pitch: `C3: velocity += 10`
@@ -441,14 +463,9 @@ C1: merge()           // glue all the kick hits into one sustained note
   `C3-C5` AND louder than 80. It may also stand alone
   (`where(note.velocity < 40): velocity = 0`). Like the positional selectors it
   is **per-line** (no carry). This is the value-based selection the positional
-  selectors cannot express (e.g. "delete quiet notes").
-  - **Separator**: the positional selector and `where(...)` are normally
-    space-separated (`Gb1 where(...): body`), but an **optional `:` separator**
-    between them is also accepted (`Gb1: where(...): body`) — a common LLM
-    habit. The separator colon is only consumed when a `where(...)` clause
-    follows, so it never collides with the prefix-terminating colon of a
-    positional-only selector (`Gb1: body` still parses as pitch selector +
-    body).
+  selectors cannot express (e.g. "delete quiet notes"). It combines freely with
+  the pitch/time selectors in any order and with optional `:` separators (see
+  **Selector prefix syntax** above).
   - **Grammar**: boolean operators with precedence `||` < `&&` < `!` <
     comparison < arithmetic, plus parenthesized grouping at the boolean layer.
     Comparison operators: `>`, `>=`, `<`, `<=`, `==`, `!=`. These boolean and

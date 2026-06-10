@@ -261,6 +261,72 @@ describe("Transform Parser - where() predicate", () => {
       });
       expect(result[0]!.predicate).toBeUndefined();
     });
+
+    it("accepts where() BEFORE the positional selector (order-free)", () => {
+      // The segment list is order-free: where() may lead, with or without a colon.
+      for (const input of [
+        "where(note.velocity > 90) Gb1: velocity = 120",
+        "where(note.velocity > 90): Gb1: velocity = 120",
+      ]) {
+        const result = parseAssignments(input);
+
+        expect(result[0]!.pitchRange).toStrictEqual({
+          startPitch: 42,
+          endPitch: 42,
+        });
+        expect(result[0]!.predicate!.type).toBe("comparison");
+      }
+    });
+
+    it("accepts all three segments (pitch, time, where) in any order", () => {
+      const result = parseAssignments(
+        "where(note.velocity > 90) 1|1-2|1 Gb1: velocity = 120",
+      );
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+      expect(result[0]!.timeRange).not.toBeNull();
+      expect(result[0]!.predicate!.type).toBe("comparison");
+    });
+
+    it("leaves a bare-pitch body intact after a pitch selector (C1: C4)", () => {
+      // A bare pitch is also a valid body (set pitch). The selector C1 must not
+      // swallow the body C4 as a second pitch segment.
+      const result = parseAssignments("C1: C4");
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 36,
+        endPitch: 36,
+      });
+      expect(result[0]!.parameter).toBe("pitch");
+      expect(result[0]!.expression).toStrictEqual({
+        type: "pitchLiteral",
+        value: 72,
+        name: "C4",
+      });
+    });
+  });
+
+  describe("duplicate selector segments", () => {
+    it("rejects two pitch selectors with guidance to use a range", () => {
+      expect(() => parser.parse("C3: E3: velocity = 120")).toThrow(
+        /Duplicate pitch selector .*range like C3-E3/,
+      );
+    });
+
+    it("rejects two time selectors", () => {
+      expect(() => parser.parse("1|1-2|1: 3|1-4|1: v0")).toThrow(
+        /Duplicate time selector/,
+      );
+    });
+
+    it("rejects two where() clauses with guidance to use &&/||", () => {
+      expect(() =>
+        parser.parse("where(note.pitch > 60): where(note.pitch < 70): v0"),
+      ).toThrow(/Duplicate where\(\).*&& \/ \|\|/);
+    });
   });
 
   describe("rejected forms", () => {
