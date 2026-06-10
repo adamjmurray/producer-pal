@@ -12,6 +12,7 @@ import {
   createPlaybackAudioElement,
   endHalfDuplexMute,
   extractResponseFailure,
+  parseRetrySeconds,
   setAudioVolume,
   teardownAudioElement,
 } from "#webui/hooks/voice/use-voice-session-helpers";
@@ -86,6 +87,36 @@ describe("extractResponseFailure", () => {
     expect(
       extractResponseFailure(doneEvent({ status: "incomplete" })),
     ).toBeNull();
+  });
+});
+
+describe("parseRetrySeconds", () => {
+  it("parses a fractional seconds wait", () => {
+    expect(
+      parseRetrySeconds("Rate limit reached. Please try again in 3.057s."),
+    ).toBeCloseTo(3.057);
+  });
+
+  it("parses a millisecond wait and normalizes to seconds", () => {
+    expect(
+      parseRetrySeconds("Rate limit reached. Please try again in 166ms."),
+    ).toBeCloseTo(0.166);
+  });
+
+  it("parses a minutes wait and normalizes to seconds", () => {
+    expect(parseRetrySeconds("Please try again in 2m.")).toBe(120);
+  });
+
+  it("tolerates whitespace between the value and unit", () => {
+    expect(parseRetrySeconds("Please try again in 5 s")).toBe(5);
+  });
+
+  it("does not match a bare unit inside a word like 'seconds'", () => {
+    expect(parseRetrySeconds("Please try again in 5 seconds")).toBeNull();
+  });
+
+  it("returns null when there is no parseable wait", () => {
+    expect(parseRetrySeconds("Rate limit reached. Try later.")).toBeNull();
   });
 });
 

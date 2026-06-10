@@ -36,6 +36,13 @@ import {
   getVoiceLanguage,
 } from "#webui/lib/constants/voice-language";
 
+// Auto-retry timing. Fire a touch past the server-indicated wait (buffer), but
+// never spin faster than the floor even when the server reports a sub-second
+// wait (or none), so a rate-limit storm can't become a tight retry loop. The
+// server's wait — which grows on repeated limits — is the primary throttle.
+const AUTO_RETRY_SAFETY_BUFFER_MS = 300;
+const AUTO_RETRY_MIN_DELAY_MS = 1000;
+
 export type VoiceStatus =
   | "idle"
   | "connecting"
@@ -449,6 +456,10 @@ export function useVoiceSession(
     }
   }, []);
 
+  // Auto-nudge the model to continue once a rate-limit window elapses, so
+  // hands-free voice recovers without a manual click or the user speaking again.
+  useRateLimitAutoRetry(rateLimitedUntil, retryResponse);
+
   // Push live volume changes mid-session (no Stop → Talk needed, unlike speed):
   // drive the GainNode (active path, can boost above unity) and keep element
   // .volume in sync for the no-Web-Audio fallback (capped at 1.0).
@@ -476,6 +487,34 @@ export function useVoiceSession(
     resetHistory: () => setHistory([]),
     activeVoice,
   };
+}
+
+/**
+ * Auto-retry a rate-limited response once its window elapses. Fires a touch past
+ * the server-indicated wait, but never faster than a floor, so a sub-second (or
+ * unparseable, fallback) wait can't spin into a tight retry loop — the server's
+ * wait, which grows on repeated limits, is the primary throttle. retryResponse()
+ * no-ops once the session is torn down, so a timer that outlives the session is
+ * harmless (and the effect clears it on unmount / re-arm anyway).
+ *
+ * @param rateLimitedUntil - Epoch ms the limit clears, or null when not limited
+ * @param retryResponse - Nudges the server to generate the next response
+ */
+function useRateLimitAutoRetry(
+  rateLimitedUntil: number | null,
+  retryResponse: () => void,
+): void {
+  useEffect(() => {
+    if (rateLimitedUntil == null) return;
+
+    const delay = Math.max(
+      AUTO_RETRY_MIN_DELAY_MS,
+      rateLimitedUntil - Date.now() + AUTO_RETRY_SAFETY_BUFFER_MS,
+    );
+    const id = setTimeout(() => retryResponse(), delay);
+
+    return () => clearTimeout(id);
+  }, [rateLimitedUntil, retryResponse]);
 }
 
 /**

@@ -134,19 +134,36 @@ export function extractResponseFailure(event: unknown): ResponseFailure | null {
   return null;
 }
 
+// How many seconds each rate-limit unit normalizes to. OpenAI reports the wait
+// as "166ms", "3.057s", or (rarely) "2m"; all three flow through the same
+// countdown/auto-retry path once normalized to seconds.
+const RETRY_UNIT_SECONDS: Record<string, number> = { ms: 0.001, s: 1, m: 60 };
+
+// Fallback wait when a rate_limit_exceeded message carries no parseable time, so
+// the retry UI still renders and auto-retry still arms instead of leaving a dead
+// error banner with no path forward.
+export const DEFAULT_RATE_LIMIT_BACKOFF_SECONDS = 2;
+
 /**
- * Parse "...Please try again in 15.796s..." from an OpenAI rate-limit message.
+ * Parse the wait from an OpenAI rate-limit message — "...Please try again in
+ * 15.796s...", "...in 166ms...", or "...in 2m..." — and normalize to seconds.
+ * The unit alternation is ordered ms|m|s so the two-char "ms" wins over a bare
+ * "s"/"m", and the trailing \b stops "s"/"m" from matching inside a word like
+ * "seconds".
  *
  * @param message - The rate-limit error message
  * @returns Seconds to wait, or null if not parseable
  */
 export function parseRetrySeconds(message: string): number | null {
-  const match = /try again in ([\d.]+)s/i.exec(message);
+  const match = /try again in ([\d.]+)\s*(ms|m|s)\b/i.exec(message);
 
   if (!match?.[1]) return null;
-  const seconds = Number.parseFloat(match[1]);
+  const value = Number.parseFloat(match[1]);
 
-  return Number.isFinite(seconds) ? seconds : null;
+  if (!Number.isFinite(value)) return null;
+  const multiplier = RETRY_UNIT_SECONDS[match[2]?.toLowerCase() ?? "s"] ?? 1;
+
+  return value * multiplier;
 }
 
 /** Minimal session surface the transport helpers need (mic mute control). */
@@ -281,11 +298,13 @@ function applyResponseFailure(
   deps.setError(failure.message);
 
   if (failure.code === "rate_limit_exceeded") {
-    const seconds = parseRetrySeconds(failure.message);
+    // Always set the window — fall back to a default when the wait can't be
+    // parsed — so the retry UI renders and auto-retry arms even for a
+    // sub-second/unparseable wait (no dead banner).
+    const seconds =
+      parseRetrySeconds(failure.message) ?? DEFAULT_RATE_LIMIT_BACKOFF_SECONDS;
 
-    if (seconds != null) {
-      deps.setRateLimitedUntil(Date.now() + seconds * 1000);
-    }
+    deps.setRateLimitedUntil(Date.now() + seconds * 1000);
   }
 }
 

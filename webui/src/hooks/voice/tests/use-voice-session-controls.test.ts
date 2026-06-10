@@ -228,6 +228,65 @@ describe("useVoiceSession mute / interrupt / retry", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("sets a fallback retry window when the rate-limit wait is unparseable", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    // No "try again in …" in the message — without a fallback this would leave a
+    // dead error banner with no retry path.
+    await act(() => {
+      session.emit("transport_event", {
+        type: "response.done",
+        response: {
+          status: "failed",
+          status_details: {
+            error: {
+              code: "rate_limit_exceeded",
+              message: "Rate limit reached. Please slow down.",
+            },
+          },
+        },
+      });
+    });
+    expect(result.current.rateLimitedUntil).not.toBeNull();
+  });
+
+  it("auto-retries once the rate-limit window elapses", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    vi.useFakeTimers();
+
+    try {
+      await act(() => {
+        session.emit("transport_event", {
+          type: "response.done",
+          response: {
+            status: "failed",
+            status_details: {
+              error: {
+                code: "rate_limit_exceeded",
+                message: "Please try again in 166ms",
+              },
+            },
+          },
+        });
+      });
+      expect(result.current.rateLimitedUntil).not.toBeNull();
+      expect(session.transport.sendEvent).not.toHaveBeenCalled();
+
+      // Past the floor + safety buffer the session nudges itself to continue,
+      // no manual Retry click or user speech needed.
+      await act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(session.transport.sendEvent).toHaveBeenCalledWith({
+        type: "response.create",
+      });
+      expect(result.current.rateLimitedUntil).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("retryResponse surfaces SDK errors", async () => {
     const { result, session } = await connectAndGetSession();
 
