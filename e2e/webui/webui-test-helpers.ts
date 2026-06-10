@@ -40,7 +40,22 @@ export function setupConsoleCapture(): ConsoleLogs {
           captured.errors.push(text);
         }
       } else if (type === "warning") {
-        captured.warnings.push(text);
+        // Filter a benign warning emitted by @openrouter/ai-sdk-provider
+        // itself during the AI SDK's multi-step tool-call loop: when reasoning
+        // is enabled and the model emits reasoning blocks lacking signatures,
+        // the SDK strips them before re-sending on the next step and logs this.
+        // It is benign (the SDK drops the unsigned reasoning and continues).
+        // The real fix lives upstream; drop this allowlist once it lands. See
+        // https://github.com/OpenRouterTeam/ai-sdk-provider/issues/423 and
+        // https://github.com/OpenRouterTeam/ai-sdk-provider/issues/418
+        if (
+          !(
+            text.includes("reasoning_details") &&
+            text.includes("missing signatures")
+          )
+        ) {
+          captured.warnings.push(text);
+        }
       } else if (type === "log") {
         captured.logs.push(text);
       }
