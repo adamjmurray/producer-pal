@@ -10,6 +10,10 @@
  *    with a pitch/time selector.
  *  - `delete` desugars to `velocity = 0` (swept out by the deletion pass) and
  *    composes with selectors and where().
+ *  - where() comparisons carry the same float tolerance as the positional
+ *    selectors, so a predicate over a ratcheted note.start matches the boundary
+ *    piece after the Live round-trip (companion to
+ *    ppal-clip-transforms-ratchet.test.ts).
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -17,7 +21,11 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-where
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import {
+  parseToolResult,
+  setupMcpTestContext,
+  type UpdateClipResult,
+} from "../../mcp-test-helpers.ts";
 import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
@@ -73,6 +81,33 @@ describe("ppal-update-clip where() predicate", () => {
     expect(notes).toContain("G3");
     expect(notes).toContain("E3");
     expect(notes).toContain("B3");
+  });
+});
+
+describe("ppal-update-clip where() float tolerance over a ratcheted burst", () => {
+  it("matches the boundary piece with where(note.start >= n/8)", async () => {
+    // One 1-beat hat at 1|1. ratchet(6) splits it into pieces every 1/6 beat:
+    // beats 0, 1/6, 2/6, 3/6, 4/6, 5/6. The k=3 piece is `3 * (1/6)` =
+    // 0.49999999999999994 in IEEE-754 — a hair under the 0.5 beat that n/8
+    // names. Without the shared comparison tolerance, `note.start >= n/8` drops
+    // that piece (0.4999… >= 0.5 is false), accenting only 2 of the 3 pieces in
+    // the window. The ratchet and the where() run as separate calls so the
+    // second reads the ratcheted positions back from Live.
+    const clipId = await createMidiClip(5, "v72 n/4 Gb1 1|1");
+
+    await applyTransform(clipId, "ratchet(6)");
+
+    const windowed = parseToolResult<UpdateClipResult>(
+      await applyTransform(clipId, "where(note.start >= n/8): velocity = 127"),
+    );
+
+    // Pieces k=3,4,5 fall at beats >= 0.5 — all three accented.
+    expect(windowed.transformed).toBe(3);
+
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("v127"); // boundary + later pieces accented
+    expect(notes).toContain("v72"); // earlier pieces untouched
   });
 });
 

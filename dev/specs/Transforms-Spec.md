@@ -502,9 +502,14 @@ C1: merge()           // glue all the kick hits into one sustained note
     defined over the selected set, which `where()` itself determines, so they
     are unavailable while selecting; the `clip.*`/`audio.*` namespaces as bare
     variables; and `where()` on a note-count op (`ratchet`/`merge`/`split`).
-  - **Float equality**: `==`/`!=` are exact float comparisons (no epsilon).
-    Prefer them on the integer-valued properties (`velocity`, `pitch`) and use
-    `<`/`>` on the float-valued ones (`duration`, `probability`, `start`).
+  - **Float tolerance**: all six comparisons carry `SELECTOR_EPSILON` (1e-9, the
+    same tolerance the pitch/time selectors use), so ULP-level drift in a
+    note-op-generated `note.start`/`note.duration` can't drop a note that names
+    a boundary. Ordering operators widen by ε on the admitting side (`>=`/`>`
+    accept down to `right - ε`, `<=`/`<` up to `right + ε`); `==`/`!=` compare
+    within ε. 1e-9 sits far below any musical distance, so distinct integer
+    values (velocity, pitch) are never bridged. `<`/`>` remain the natural fit
+    for ranges on the float-valued props (`duration`, `probability`, `start`).
   - **Evaluation**: the predicate is evaluated during note selection,
     AND-combined after the pitch/time filters. An evaluation failure (e.g. a
     note missing the referenced property) warns and excludes the note, matching

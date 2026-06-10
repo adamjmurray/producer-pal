@@ -11,6 +11,7 @@ import {
   type NoteProperties,
   type TimeRange,
 } from "./transform-evaluator-helpers.ts";
+import { SELECTOR_EPSILON } from "./transform-selector-epsilon.ts";
 
 /** Evaluates an arithmetic expression node to a number. Injected (rather than
  * imported) so this module only takes a type dependency on the evaluator helpers,
@@ -38,8 +39,9 @@ export interface PredicateContext {
  * Evaluate a where() predicate to a boolean for one note. Boolean/comparison nodes
  * resolve here; comparison operands bottom out in the injected evaluateExpression
  * (the same arithmetic the parser restricted to note properties + literals).
- * Equality is exact float comparison — no epsilon (skills steer ==/!= toward integer
- * properties like velocity/pitch).
+ * Comparisons carry SELECTOR_EPSILON (see compareValues) so float drift in note
+ * positions/durations can't drop a note that names a boundary — the same tolerance
+ * the time/pitch selectors use.
  * @param node - Predicate AST node
  * @param ctx - Per-note evaluation context
  * @returns Whether the note satisfies the predicate
@@ -84,7 +86,13 @@ export function evaluatePredicate(
 }
 
 /**
- * Apply a comparison operator to two evaluated operands.
+ * Apply a comparison operator to two evaluated operands, carrying SELECTOR_EPSILON
+ * so ULP-level float drift can't flip a comparison against a value that names a
+ * boundary (e.g. a ratcheted note.start a hair below the beat an n/8 literal names).
+ * Ordering operators widen by ε on the admitting side (`>=`/`>` accept down to
+ * `right - ε`, `<=`/`<` accept up to `right + ε`); equality compares within ε.
+ * 1e-9 sits far below any musical distance, so genuinely distinct values (velocity
+ * steps of 1, etc.) are never bridged.
  * @param op - Comparison operator
  * @param left - Left operand value
  * @param right - Right operand value
@@ -97,16 +105,16 @@ function compareValues(
 ): boolean {
   switch (op) {
     case ">":
-      return left > right;
+      return left > right + SELECTOR_EPSILON;
     case ">=":
-      return left >= right;
+      return left >= right - SELECTOR_EPSILON;
     case "<":
-      return left < right;
+      return left < right - SELECTOR_EPSILON;
     case "<=":
-      return left <= right;
+      return left <= right + SELECTOR_EPSILON;
     case "==":
-      return left === right;
+      return Math.abs(left - right) <= SELECTOR_EPSILON;
     case "!=":
-      return left !== right;
+      return Math.abs(left - right) > SELECTOR_EPSILON;
   }
 }

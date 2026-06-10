@@ -246,6 +246,61 @@ describe("where() predicate filtering", () => {
       expect(notes[2]!.velocity).toBe(100); // outside selector → untouched
     });
 
+    // where() comparisons over note.start / note.duration carry the same
+    // SELECTOR_EPSILON tolerance as the time selector (the time-selector fix is
+    // guarded by transform-note-ops "selector float tolerance over a ratcheted
+    // burst"). note-ops like ratchet generate positions/durations via float
+    // division that can land ~1 ULP off the round beat a note-value literal
+    // names, so an exact comparison would silently drop a note on the boundary.
+    // These reproduce that drift deterministically with a value 1 ULP off the
+    // bound; the realistic ratchet round-trip is covered in
+    // e2e/mcp/clip/transforms/ppal-clip-transforms-where.test.ts.
+    it("includes a note 1 ULP below the bound via where(note.start >= n/8)", () => {
+      // n/8 = 0.5 musical beats. justBelowHalf is the next float down from 0.5.
+      const justBelowHalf = 0.5 - Number.EPSILON / 2;
+      const notes = createTestNotes([
+        { start_time: justBelowHalf, velocity: 100 },
+      ]);
+
+      applyTransforms(notes, "where(note.start >= n/8): velocity = 64", 4, 4);
+
+      // The drifted note names beat 0.5; tolerance keeps it in. Exact float
+      // comparison (0.4999… >= 0.5 is false) would leave it untouched at 100.
+      expect(notes[0]!.velocity).toBe(64);
+    });
+
+    it("includes a note 1 ULP above the bound via where(note.duration <= n/16)", () => {
+      // n/16 = 0.25 musical beats. justAboveQuarter is the next float up.
+      const justAboveQuarter = 0.25 + Number.EPSILON / 4;
+      const notes = createTestNotes([
+        { start_time: 0, duration: justAboveQuarter, velocity: 100 },
+      ]);
+
+      applyTransforms(
+        notes,
+        "where(note.duration <= n/16): velocity = 64",
+        4,
+        4,
+      );
+
+      // The drifted duration names an n/16; tolerance keeps it in. Exact float
+      // comparison (0.2500…06 <= 0.25 is false) would leave it untouched at 100.
+      expect(notes[0]!.velocity).toBe(64);
+    });
+
+    it("matches a near-boundary note with where(note.start == n/8)", () => {
+      // Tolerant equality: a note 1 ULP off the 0.5-beat bound still satisfies
+      // `== n/8`. Exact float == would miss it, leaving velocity at 100.
+      const justBelowHalf = 0.5 - Number.EPSILON / 2;
+      const notes = createTestNotes([
+        { start_time: justBelowHalf, velocity: 100 },
+      ]);
+
+      applyTransforms(notes, "where(note.start == n/8): velocity = 64", 4, 4);
+
+      expect(notes[0]!.velocity).toBe(64);
+    });
+
     it("warns and excludes a note whose predicate property is unavailable", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       const notes = createTestNotes([
