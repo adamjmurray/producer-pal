@@ -16,10 +16,12 @@ interface VoiceTranscriptProps {
 }
 
 // Voice transcripts are read-only — the user can't edit past turns or retry
-// individual responses (the underlying audio is gone). MessageList still
-// requires these handlers; provide a shared no-op.
+// individual responses (the underlying audio is gone), and there's no message
+// queue. MessageList still requires these handlers; provide shared no-ops.
 /* v8 ignore next 1 -- no-op for read-only voice transcript */
 const noopAsync = async (): Promise<void> => undefined;
+/* v8 ignore next 1 -- no-op for read-only voice transcript */
+const noop = (): void => undefined;
 
 /**
  * Scrollable transcript area for the voice page. Renders the unsupported-browser
@@ -74,6 +76,8 @@ export function VoiceTranscript({
       ) : (
         <MessageList
           messages={messages}
+          queuedMessages={[]}
+          onRemoveQueued={noop}
           isAssistantResponding={assistantThinking}
           handleRetry={noopAsync}
           handleEdit={noopAsync}

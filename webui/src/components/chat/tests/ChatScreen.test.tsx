@@ -40,6 +40,9 @@ describe("ChatScreen", () => {
     rateLimitState: null,
     toolLimitReached: false,
     handleSend: mockHandleSend,
+    enqueueMessage: vi.fn(),
+    queuedMessages: [],
+    onRemoveQueued: vi.fn(),
     handleRetry: mockHandleRetry,
     handleEdit: vi.fn(),
     headerInfo: defaultHeaderInfo,
@@ -262,13 +265,13 @@ describe("ChatScreen", () => {
 
     it("passes isAssistantResponding to ChatInput", () => {
       render(<ChatScreen {...defaultProps} isAssistantResponding={true} />);
-      // When responding, Send button should be disabled
-      const sendButton = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.textContent === "...",
+      // When responding, Queue button appears (disabled until user types)
+      const queueButton = Array.from(document.querySelectorAll("button")).find(
+        (btn) => btn.textContent === "Queue",
       );
 
-      expect(sendButton).toBeDefined();
-      expect(sendButton!.disabled).toBe(true);
+      expect(queueButton).toBeDefined();
+      expect(queueButton!.disabled).toBe(true);
     });
   });
 

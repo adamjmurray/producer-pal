@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
@@ -25,6 +26,7 @@ export interface ChatClient<TMessage> {
     message: string,
     signal: AbortSignal,
     overrides?: MessageOverrides,
+    shouldInterrupt?: () => boolean,
   ) => AsyncIterable<TMessage[]>;
   /**
    * Summarize a slice of history into a compaction summary string. Optional:
@@ -104,6 +106,9 @@ export interface UseChatReturn {
   activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   rateLimitState: RateLimitState | null;
+  queuedMessages: QueuedMessage[];
+  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  removeMessage: (id: number) => void;
   /** True when the last response stopped at the tool-call step limit */
   toolLimitReached: boolean;
   /** True while a compaction summary is being generated */

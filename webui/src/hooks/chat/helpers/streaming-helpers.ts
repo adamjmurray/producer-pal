@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
+import {
+  type ChatAdapter,
+  type ChatClient,
+  type MessageOverrides,
+} from "#webui/hooks/chat/use-chat-types";
 import { type UIMessage } from "#webui/types/messages";
 
 /**
@@ -76,4 +80,34 @@ export function filterOverrides(
   }
 
   return undefined;
+}
+
+/**
+ * Show error when API key is not configured. Stashes the user message to
+ * pendingHistoryRef so retry/edit can recover after the user fixes settings.
+ * @param adapter - Chat adapter for formatting
+ * @param userMessage - The user's message text
+ * @param setMessages - State setter for messages
+ * @param pendingHistoryRef - Ref to stash the user message entry for retry/edit
+ * @param pendingHistoryRef.current - The stashed history (set by this function)
+ */
+export function showMissingApiKeyError<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+>(
+  adapter: ChatAdapter<TClient, TMessage, TConfig>,
+  userMessage: string,
+  setMessages: (msgs: UIMessage[]) => void,
+  pendingHistoryRef: { current: TMessage[] | null },
+): void {
+  const entry = adapter.createUserMessage(userMessage);
+
+  pendingHistoryRef.current = [entry];
+  setMessages(
+    adapter.createErrorMessage(
+      new Error("No API key configured. Please add your API key in Settings."),
+      [entry],
+    ),
+  );
 }

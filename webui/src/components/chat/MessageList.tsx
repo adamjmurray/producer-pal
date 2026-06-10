@@ -1,17 +1,22 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useRef, useState } from "preact/hooks";
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
 import { MessageRow } from "./assistant/MessageRow";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
+import { QueuedMessages } from "./controls/QueuedMessages";
 
 const STILL_THINKING_DELAY_MS = 4000;
 
 interface MessageListProps {
   messages: UIMessage[];
+  queuedMessages: QueuedMessage[];
+  onRemoveQueued: (id: number) => void;
   isAssistantResponding: boolean;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
@@ -28,6 +33,8 @@ interface MessageListProps {
  * List of chat messages with auto-scroll
  * @param {MessageListProps} root0 - Component props
  * @param {UIMessage[]} root0.messages - Chat messages
+ * @param {QueuedMessage[]} root0.queuedMessages - Messages queued during a response
+ * @param {Function} root0.onRemoveQueued - Remove a queued message by id
  * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
  * @param {Function} root0.handleRetry - Retry callback
  * @param {Function} root0.handleEdit - Edit and fork callback
@@ -41,6 +48,8 @@ interface MessageListProps {
  */
 export function MessageList({
   messages,
+  queuedMessages,
+  onRemoveQueued,
   isAssistantResponding,
   handleRetry,
   handleEdit,
@@ -117,6 +126,12 @@ export function MessageList({
           />
         );
       })}
+
+      <QueuedMessages
+        queuedMessages={queuedMessages}
+        onRemove={onRemoveQueued}
+        scrollRef={messagesEndRef}
+      />
 
       <StreamingFooter
         isResponding={isAssistantResponding}

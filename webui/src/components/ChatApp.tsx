@@ -68,6 +68,9 @@ export function ChatApp(props: ChatAppProps) {
       rateLimitState={chat.rateLimitState}
       toolLimitReached={chat.toolLimitReached}
       handleSend={wrappedHandleSend}
+      enqueueMessage={chat.enqueueMessage}
+      queuedMessages={chat.queuedMessages}
+      onRemoveQueued={chat.removeMessage}
       handleRetry={chat.handleRetry}
       handleEdit={chat.handleEdit}
       handleCompact={chat.compact}

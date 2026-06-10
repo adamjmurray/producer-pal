@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
+  showMissingApiKeyError,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import { useActiveSettings } from "./helpers/use-active-settings";
@@ -20,7 +21,9 @@ import {
   type UseChatReturn,
 } from "./use-chat-types";
 import { useCompaction } from "./use-compaction";
+import { useConversationActions } from "./use-conversation-actions";
 import { useGetChatHistory } from "./use-get-chat-history";
+import { useMessageQueue } from "./use-message-queue";
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -54,6 +57,14 @@ export function useChat<
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
+  const {
+    queuedMessages,
+    queueRef,
+    enqueueMessage,
+    removeMessage,
+    drainQueue,
+    clearQueue,
+  } = useMessageQueue();
   const [toolLimitReached, setToolLimitReached] = useState(false);
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
@@ -118,7 +129,8 @@ export function useChat<
     setToolLimitReached(false);
     invalidateCompactionUndo();
     abortRetry();
-  }, [clearSettings, abortRetry, invalidateCompactionUndo]);
+    clearQueue();
+  }, [clearSettings, abortRetry, invalidateCompactionUndo, clearQueue]);
 
   const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 
@@ -146,7 +158,8 @@ export function useChat<
     setIsAssistantResponding(false);
     setRateLimitState(null);
     setToolLimitReached(false);
-  }, [abortRetry]);
+    clearQueue();
+  }, [abortRetry, clearQueue]);
 
   const initializeChat = useCallback(
     async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
@@ -216,16 +229,22 @@ export function useChat<
   const pendingUserMessageRef = useRef<TMessage | null>(null);
 
   const runWithChat = useCallback(
-    async (fn: () => Promise<void>, userMessage?: TMessage) => {
+    async <T>(
+      fn: () => Promise<T>,
+      userMessage?: TMessage,
+    ): Promise<T | undefined> => {
       setIsAssistantResponding(true);
       // A new request clears any prior tool-limit notice before streaming.
       setToolLimitReached(false);
       pendingUserMessageRef.current = userMessage ?? null;
 
       try {
-        await fn();
+        const result = await fn();
+
         pendingUserMessageRef.current = null;
         setToolLimitReached(clientRef.current?.toolLimitReached ?? false);
+
+        return result;
       } catch (error) {
         const baseHistory = clientRef.current?.chatHistory ?? [];
         const stashed = pendingUserMessageRef.current;
@@ -260,6 +279,8 @@ export function useChat<
 
           autoSaveRef?.current?.();
         }
+
+        return undefined;
       } finally {
         pendingUserMessageRef.current = null;
         abortControllerRef.current = null;
@@ -272,65 +293,82 @@ export function useChat<
 
   const handleSend = useCallback(
     async (message: string, options?: MessageOverrides) => {
-      const userMessage = message.trim();
+      let currentMessage = message;
+      let currentOptions = options;
 
-      if (!userMessage) return;
+      while (true) {
+        const userMessage = currentMessage.trim();
 
-      // Guard the send-during-compaction race at the hook level, not just via
-      // the disabled input: compact() reassigns client.chatHistory mid-flight,
-      // so a concurrent send would corrupt history. Ref (not state) so a future
-      // caller that bypasses the disabled-input prop is still protected.
-      if (isCompactingRef.current) return;
+        if (!userMessage) return;
 
-      // Continuing the conversation invalidates the compaction undo snapshot.
-      invalidateCompactionUndo();
+        // Guard the send-during-compaction race at the hook level, not just via
+        // the disabled input: compact() reassigns client.chatHistory mid-flight,
+        // so a concurrent send would corrupt history. Ref (not state) so a future
+        // caller that bypasses the disabled-input prop is still protected.
+        if (isCompactingRef.current) return;
 
-      const userMessageEntry = adapter.createUserMessage(userMessage);
+        // Continuing the conversation invalidates the compaction undo snapshot.
+        invalidateCompactionUndo();
 
-      if (!apiKey) {
-        // Stash so retry/edit can recover after the user fixes settings.
-        pendingHistoryRef.current = [userMessageEntry];
-        setMessages(
-          adapter.createErrorMessage(
-            new Error(
-              "No API key configured. Please add your API key in Settings.",
-            ),
-            [userMessageEntry],
-          ),
-        );
+        if (!apiKey) {
+          showMissingApiKeyError(
+            adapter,
+            userMessage,
+            setMessages,
+            pendingHistoryRef,
+          );
 
-        return;
+          return;
+        }
+
+        const userMessageEntry = adapter.createUserMessage(userMessage);
+        const sendOptions = currentOptions;
+
+        const succeeded = await runWithChat(async () => {
+          if (!clientRef.current) {
+            const pendingHistory = pendingHistoryRef.current ?? undefined;
+
+            pendingHistoryRef.current = null;
+            await initializeChat(pendingHistory, sendOptions);
+          }
+
+          const client = clientRef.current;
+
+          if (!client) {
+            throw new Error("Failed to initialize chat client");
+          }
+
+          const controller = new AbortController();
+
+          abortControllerRef.current = controller;
+
+          const filtered = filterOverrides(sendOptions, {
+            thinking: thinkingRef.current,
+          });
+          const shouldInterrupt = () => queueRef.current.length > 0;
+
+          return await executeWithRetry({
+            executeStream: (msg) =>
+              client.sendMessage(
+                msg,
+                controller.signal,
+                filtered,
+                shouldInterrupt,
+              ),
+            getHistory: () => client.chatHistory,
+            originalMessage: userMessage,
+          });
+        }, userMessageEntry);
+
+        if (!succeeded) return;
+
+        const queued = drainQueue();
+
+        if (queued.length === 0) return;
+
+        currentMessage = queued.map((m) => m.text).join("\n\n");
+        currentOptions = queued[0]?.overrides;
       }
-
-      await runWithChat(async () => {
-        if (!clientRef.current) {
-          const pendingHistory = pendingHistoryRef.current ?? undefined;
-
-          pendingHistoryRef.current = null;
-          await initializeChat(pendingHistory, options);
-        }
-
-        const client = clientRef.current;
-
-        if (!client) {
-          throw new Error("Failed to initialize chat client");
-        }
-
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
-
-        const filtered = filterOverrides(options, {
-          thinking: thinkingRef.current,
-        });
-
-        await executeWithRetry({
-          executeStream: (msg) =>
-            client.sendMessage(msg, controller.signal, filtered),
-          getHistory: () => client.chatHistory,
-          originalMessage: userMessage,
-        });
-      }, userMessageEntry);
     },
     [
       apiKey,
@@ -340,97 +378,33 @@ export function useChat<
       executeWithRetry,
       invalidateCompactionUndo,
       isCompactingRef,
+      queueRef,
+      drainQueue,
     ],
   );
 
-  const forkConversation = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      if (!apiKey) return;
-
-      const message = messages[mergedMessageIndex];
-
-      if (message?.role !== "user") return;
-
-      const rawIndex = message.rawHistoryIndex;
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      invalidateCompactionUndo();
-
-      await runWithChat(async () => {
-        const slicedHistory = history.slice(0, rawIndex);
-
-        pendingHistoryRef.current = null;
-
-        await initializeChat(slicedHistory);
-
-        const client = clientRef.current as NonNullable<
-          typeof clientRef.current
-        >;
-
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
-
-        await executeWithRetry({
-          executeStream: (msg) => client.sendMessage(msg, controller.signal),
-          getHistory: () => client.chatHistory,
-          originalMessage: newMessage,
-        });
-      });
-    },
-    [
-      apiKey,
-      messages,
-      initializeChat,
-      runWithChat,
-      executeWithRetry,
-      invalidateCompactionUndo,
-    ],
-  );
-
-  const handleRetry = useCallback(
-    async (mergedMessageIndex: number) => {
-      const message = messages[mergedMessageIndex];
-
-      if (message?.role !== "user") return;
-
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      const rawMessage = history[message.rawHistoryIndex];
-
-      if (!rawMessage) return;
-
-      const userMessage = adapter.extractUserMessage(rawMessage);
-
-      if (!userMessage) return;
-
-      await forkConversation(mergedMessageIndex, userMessage);
-    },
-    [messages, adapter, forkConversation],
-  );
-
-  const handleEdit = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      const trimmed = newMessage.trim();
-
-      if (!trimmed) return;
-
-      await forkConversation(mergedMessageIndex, trimmed);
-    },
-    [forkConversation],
-  );
+  const { handleRetry, handleEdit } = useConversationActions({
+    apiKey,
+    messages,
+    adapter,
+    clientRef,
+    pendingHistoryRef,
+    abortControllerRef,
+    initializeChat,
+    runWithChat,
+    executeWithRetry,
+    invalidateCompactionUndo,
+    clearQueue,
+  });
 
   return {
     messages,
     isAssistantResponding,
     ...active,
     rateLimitState,
+    queuedMessages,
+    enqueueMessage,
+    removeMessage,
     toolLimitReached,
     isCompacting,
     canUndoCompaction,

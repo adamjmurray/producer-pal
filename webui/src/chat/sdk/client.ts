@@ -105,12 +105,14 @@ export class ChatSdkClient {
    * @param message - User message text
    * @param abortSignal - Signal to abort the stream
    * @param overrides - Per-message overrides for thinking
+   * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
    * @yields Complete chat history after each stream update
    */
   async *sendMessage(
     message: string,
     abortSignal?: AbortSignal,
     overrides?: MessageOverrides,
+    shouldInterrupt?: () => boolean,
   ): AsyncGenerator<ChatMessage[], void, unknown> {
     const userMsg: ChatMessage = { role: "user", content: message };
 
@@ -124,7 +126,7 @@ export class ChatSdkClient {
         ? this.config.buildProviderOptions(overrides.thinking)
         : this.config.providerOptions;
 
-    yield* this.processStream(providerOptions, abortSignal);
+    yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
     // Final yield to ensure last step's usage (attached by onStepFinish) is emitted
     yield [...this.chatHistory];
   }
@@ -135,11 +137,13 @@ export class ChatSdkClient {
    * CORS/network errors (which hang fullStream) surface immediately.
    * @param providerOptions - Provider-specific options for streamText
    * @param abortSignal - Signal to abort the stream
+   * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
    * @yields Updated chat history after each meaningful stream event
    */
   private async *processStream(
     providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
     abortSignal?: AbortSignal,
+    shouldInterrupt?: () => boolean,
   ): AsyncGenerator<ChatMessage[]> {
     let currentMsg: ChatMessage = { role: "assistant", content: "" };
     let addedCurrentMsg = false;
@@ -198,6 +202,8 @@ export class ChatSdkClient {
 
           yield [...this.chatHistory];
         } else if (part.type === "start-step" && addedCurrentMsg) {
+          // Between tool steps: check if a queued user message should interrupt
+          if (shouldInterrupt?.()) return;
           // New step means new assistant turn (after tool results)
           currentMsg = { role: "assistant", content: "" };
           addedCurrentMsg = false;

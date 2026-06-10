@@ -12,6 +12,7 @@ import {
   type MessageOverrides,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat-types";
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatStart } from "./ChatStart";
 import { ChatInput } from "./controls/ChatInput";
@@ -29,6 +30,9 @@ interface ChatScreenProps {
   rateLimitState: RateLimitState | null;
   toolLimitReached: boolean;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  queuedMessages: QueuedMessage[];
+  onRemoveQueued: (id: number) => void;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   handleCompact?: (messageIndex: number) => Promise<void>;
@@ -84,6 +88,9 @@ export function ChatScreen(props: ChatScreenProps) {
     rateLimitState,
     toolLimitReached,
     handleSend,
+    enqueueMessage,
+    queuedMessages,
+    onRemoveQueued,
     handleRetry,
     handleEdit,
     handleCompact,
@@ -130,6 +137,8 @@ export function ChatScreen(props: ChatScreenProps) {
         ) : (
           <MessageList
             messages={messages}
+            queuedMessages={queuedMessages}
+            onRemoveQueued={onRemoveQueued}
             isAssistantResponding={isAssistantResponding}
             handleRetry={handleRetry}
             handleEdit={handleEdit}
@@ -166,6 +175,7 @@ export function ChatScreen(props: ChatScreenProps) {
 
       <ChatInput
         handleSend={handleSend}
+        onEnqueue={enqueueMessage}
         isAssistantResponding={isAssistantResponding}
         hasError={conversationHasError(messages)}
         onStop={onStop}

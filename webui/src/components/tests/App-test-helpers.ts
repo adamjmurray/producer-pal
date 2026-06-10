@@ -24,6 +24,9 @@ export const mockChatHook = {
   activeThinking: null,
   activeTemperature: 1.0,
   activeSmallModelMode: null,
+  queuedMessages: [],
+  enqueueMessage: vi.fn(),
+  removeMessage: vi.fn(),
 };
 
 export const mockSettingsHook = {
