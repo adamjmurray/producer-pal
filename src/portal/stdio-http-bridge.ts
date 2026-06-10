@@ -8,6 +8,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
+  ErrorCode,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -15,9 +16,9 @@ import {
   type CallLiveApiFunction,
   createMcpServer,
 } from "#src/mcp-server/create-mcp-server.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
-import { VERSION } from "#src/shared/version.ts";
 import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";
@@ -291,9 +292,17 @@ Tell the user to check ${SETUP_URL} for configuration help.
               ? error.code
               : undefined;
 
-          // Check if this is an MCP protocol error (has numeric code) vs connectivity error
-          // Any numeric code means we connected and got a structured JSON-RPC response
-          if (typeof errorCode === "number") {
+          // A numeric code normally means we connected and got a structured
+          // JSON-RPC error — return it to the client. The exception is
+          // ConnectionClosed (-32000), which the SDK throws when the transport
+          // drops mid-request (Ableton quit/restarted, device unloaded): that is
+          // a connectivity failure, so fall through to reset isConnected and
+          // return the setup guidance. RequestTimeout (-32001) stays here — a
+          // timeout on a still-alive connection must not reset isConnected.
+          if (
+            typeof errorCode === "number" &&
+            errorCode !== ErrorCode.ConnectionClosed
+          ) {
             logger.debug(
               `[Bridge] MCP protocol error detected (code ${errorCode}), returning the error to the client`,
             );

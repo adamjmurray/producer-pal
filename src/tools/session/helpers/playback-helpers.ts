@@ -9,6 +9,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { resolveLocatorRefToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
 interface LoopState {
@@ -216,6 +217,17 @@ export function resolveLoopEnd(
     const actualLoopStartBeats =
       loopStartBeats ?? (liveSet.getProperty("loop_start") as number);
     const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
+
+    // loopStart and loopEnd are independent params, so loopEnd can land at or
+    // before loopStart. A non-positive loop_length is invalid in Live; warn and
+    // skip rather than writing it.
+    if (loopLengthBeats <= 0) {
+      console.warn(
+        `loopEnd must be after loopStart: loop length ${loopLengthBeats} beats (loopStart ${actualLoopStartBeats}, loopEnd ${loopEndBeats}) — skipping loop length update`,
+      );
+
+      return;
+    }
 
     liveSet.set("loop_length", loopLengthBeats);
   }

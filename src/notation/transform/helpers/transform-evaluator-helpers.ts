@@ -9,10 +9,16 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   type ExpressionNode,
+  type NoteOp,
   type TransformAssignment,
-  type PitchRange,
+  type TransformStatement,
 } from "../parser/transform-parser.ts";
 import { evaluateFunction } from "../transform-functions.ts";
+import { evaluatePredicate } from "./transform-predicate-helpers.ts";
+import {
+  noteInTimeRange,
+  timeRangeBoundsInMusicalBeats,
+} from "./transform-time-range-helpers.ts";
 
 export interface TimeRange {
   start: number;
@@ -59,33 +65,32 @@ export interface TransformResult {
   value: number;
 }
 
-type ProcessAssignmentResult =
-  | { skip: true }
-  | { skip?: false; value: number; pitchRange: PitchRange | null };
+type ProcessAssignmentResult = { skip: true } | { skip?: false; value: number };
 
 export type TimeRangeResult =
   | { skip: true }
   | { skip?: false; timeRange: TimeRange };
 
 /**
- * Resolve effective pitch ranges for each assignment in the AST.
- * Handles "sticky" pitch range inheritance: once set, a pitch range persists
- * to subsequent assignments until a new one is specified.
- * @param ast - Transform assignments
- * @returns Array of effective pitch ranges (one per assignment, null if none)
+ * Type guard: distinguish a note-count operation from a parameter assignment.
+ * NoteOps carry a `kind: "noteOp"` discriminant; assignments have no `kind`.
+ * @param stmt - A parsed transform statement
+ * @returns True if the statement is a note-count operation
  */
-export function resolveEffectivePitchRanges(
-  ast: TransformAssignment[],
-): (PitchRange | null)[] {
-  let current: PitchRange | null = null;
+export function isNoteOp(stmt: TransformStatement): stmt is NoteOp {
+  return "kind" in stmt;
+}
 
-  return ast.map((a) => {
-    if (a.pitchRange != null) {
-      current = a.pitchRange;
-    }
-
-    return current;
-  });
+/**
+ * Map an assignment's internal operator token to the source symbol the user
+ * wrote, for warning messages. The parser normalizes `-=` into `add` (with a
+ * negated expression), so only `set`/`add` reach here; both display forms a user
+ * would recognize.
+ * @param operator - The internal operator token ("set" or "add")
+ * @returns The display symbol ("=" or "+=")
+ */
+export function operatorDisplay(operator: "set" | "add"): string {
+  return operator === "set" ? "=" : "+=";
 }
 
 /**
@@ -96,7 +101,7 @@ export function resolveEffectivePitchRanges(
  * @returns Record of transform results keyed by parameter name
  */
 export function evaluateTransformAST(
-  ast: TransformAssignment[],
+  ast: TransformStatement[],
   noteContext: NoteContext,
   noteProperties: NoteProperties = {},
 ): Record<string, TransformResult> {
@@ -104,9 +109,14 @@ export function evaluateTransformAST(
   const { numerator, denominator } = timeSig;
 
   const result: Record<string, TransformResult> = {};
-  let currentPitchRange: PitchRange | null = null; // Track persistent pitch range context
 
   for (const assignment of ast) {
+    // Note-count ops (ratchet/merge) act on the whole note list, not a single
+    // note's scalar value — they have no meaning in this per-note evaluation.
+    if (isNoteOp(assignment)) {
+      continue;
+    }
+
     const assignmentResult = processAssignment(
       assignment,
       position,
@@ -117,15 +127,10 @@ export function evaluateTransformAST(
       denominator,
       clipTimeRange,
       noteProperties,
-      currentPitchRange,
     );
 
     if (assignmentResult.skip) {
       continue;
-    }
-
-    if (assignmentResult.pitchRange != null) {
-      currentPitchRange = assignmentResult.pitchRange;
     }
 
     result[assignment.parameter] = {
@@ -148,7 +153,6 @@ export function evaluateTransformAST(
  * @param denominator - Time signature denominator
  * @param clipTimeRange - Clip time range (optional)
  * @param noteProperties - Note properties for variable access
- * @param currentPitchRange - Current pitch range context
  * @returns Assignment result or skip indicator
  */
 function processAssignment(
@@ -161,20 +165,13 @@ function processAssignment(
   denominator: number,
   clipTimeRange: TimeRange | undefined,
   noteProperties: NoteProperties,
-  currentPitchRange: PitchRange | null,
 ): ProcessAssignmentResult {
   try {
-    // Update persistent pitch range context if specified
-    let pitchRange: PitchRange | null = null;
-
-    if (assignment.pitchRange != null) {
-      pitchRange = assignment.pitchRange;
-      currentPitchRange = pitchRange;
-    }
-
-    // Apply pitch filtering
-    if (currentPitchRange != null && pitch != null) {
-      const { startPitch, endPitch } = currentPitchRange;
+    // Apply pitch filtering. Per-line: a line's pitch selector applies only to
+    // that line (no selector = all pitches); there is no carryover from earlier
+    // lines, mirroring the time-range selector.
+    if (assignment.pitchRange != null && pitch != null) {
+      const { startPitch, endPitch } = assignment.pitchRange;
 
       if (pitch < startPitch || pitch > endPitch) {
         return { skip: true }; // Skip this assignment - note's pitch outside range
@@ -195,6 +192,23 @@ function processAssignment(
       return { skip: true };
     }
 
+    // where() predicate filter, AND-combined with the positional selector: the
+    // note must satisfy the predicate too. A throw here (e.g. a missing property)
+    // is caught below and warn-and-skipped like any other eval failure.
+    if (
+      assignment.predicate != null &&
+      !evaluatePredicate(assignment.predicate, {
+        position,
+        timeSigNumerator: numerator,
+        timeSigDenominator: denominator,
+        timeRange: activeTimeRange.timeRange,
+        noteProperties,
+        evaluateExpression,
+      })
+    ) {
+      return { skip: true };
+    }
+
     const value = evaluateExpression(
       assignment.expression,
       position,
@@ -204,7 +218,7 @@ function processAssignment(
       noteProperties,
     );
 
-    return { value, pitchRange };
+    return { value };
   } catch (error) {
     console.warn(
       `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
@@ -233,18 +247,10 @@ export function calculateActiveTimeRange(
   position: number,
 ): TimeRangeResult {
   if (assignment.timeRange) {
-    const { startBar, startBeat, endBar, endBeat } = assignment.timeRange;
-
-    // Normalize the note's bar|beat AND both range bounds to absolute musical
-    // beats through the same conversion, then compare numerically. A bound's beat
-    // field is not clamped to the bar — a `+n` offset can push it past the bar
-    // (e.g. `1|4+n/2` → beat 6 in 4/4) and a `-n` offset can borrow below beat 1
-    // — so deciding membership by a raw per-component bar/beat compare would
-    // disagree with this absolute-beats normalization (the one handed to
-    // ramp/curve). Comparing in those same absolute beats keeps the membership
-    // gate and the normalization in lockstep, and subsumes the cross-bar case.
-    // Musical beats per bar = the numerator (each beat is a denominator note).
-    const musicalBeatsPerBar = numerator;
+    const { start: startBeats, end: endBeats } = timeRangeBoundsInMusicalBeats(
+      assignment.timeRange,
+      numerator,
+    );
     // Note's absolute musical beats. Prefer the bar|beat fields when present
     // (production always supplies them via buildNoteContext); otherwise fall back
     // to `position` — the same value — so a caller that provides only `position`
@@ -252,24 +258,10 @@ export function calculateActiveTimeRange(
     // instead of silently matching the whole clip.
     const noteBeats =
       bar != null && beat != null
-        ? barBeatToMusicalBeats(`${bar}|${beat}`, musicalBeatsPerBar)
+        ? barBeatToMusicalBeats(`${bar}|${beat}`, numerator)
         : position;
-    const startBeats = barBeatToMusicalBeats(
-      `${startBar}|${startBeat}`,
-      musicalBeatsPerBar,
-    );
-    const endBeats = barBeatToMusicalBeats(
-      `${endBar}|${endBeat}`,
-      musicalBeatsPerBar,
-    );
 
-    // End bound is inclusive by default; half-open (`N|*` whole-bar selectors
-    // and the `-<` marker) drops a note that lands exactly on the end downbeat.
-    const pastEnd = assignment.timeRange.endExclusive
-      ? noteBeats >= endBeats
-      : noteBeats > endBeats;
-
-    if (noteBeats < startBeats || pastEnd) {
+    if (!noteInTimeRange(noteBeats, assignment.timeRange, numerator)) {
       return { skip: true }; // Skip this assignment - note outside time range
     }
 

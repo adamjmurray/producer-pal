@@ -3,46 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-const codeTransformsSkills = `
-
-### Code Transforms
-
-For complex logic beyond transforms, use the \`code\` parameter with JavaScript. \`code\` is a single string (function body only), broadcast across every clip/copy. It runs as:
-\`(function(notes, context) { <code> })(notes, context)\`
-
-For per-clip variation, branch on \`context.clip.index\` (0-based) and \`context.clip.count\` (batch size). For structurally-distinct edits per clip, make separate tool calls.
-
-Example \`code\`:
-\`\`\`javascript
-return notes.filter(n => n.pitch >= 60).map(n => ({
-  ...n,
-  velocity: Math.min(127, n.velocity + 20 + context.clip.index * 5)
-}));
-\`\`\`
-
-All times are musical beats (the meter's beat — an eighth in 6/8), matching \`beatsPerBar\`; \`start / beatsPerBar\` is the bar offset in any meter.
-
-**Note properties (required: pitch, start):**
-- \`pitch\`: 0-127 (60 = C3)
-- \`start\`: musical beats from clip start
-- \`duration\`: musical beats (default: 1)
-- \`velocity\`: 1-127 (default: 100)
-- \`velocityDeviation\`: 0-127 (default: 0)
-- \`probability\`: 0-1 (default: 1)
-
-**Context properties:**
-- \`track\`: { index, name, type, color }
-- \`clip\`: { id, name, length, timeSignature, looping, index, count } (length in musical beats)
-- \`location\`: { view, slot?, arrangementStart? }
-- \`liveSet\`: { tempo, scale?, timeSignature }
-- \`beatsPerBar\`: number (musical beats per bar)
-
-**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.
-`;
+import { codeTransformsSkills } from "#src/skills/code-transforms.ts";
 
 export const skills = `# Producer Pal Skills
 
-## Time in Ableton Live
+## Time & Note Values
 
 **Units:** a plain "beat" is your meter's beat — the *musical beat* (a quarter in x/4, an eighth in x/8). It's what the bar|beat grid, sub-beat decimals, and bare numbers in transform expressions count. **Note values** (\`n/4\`, \`n/8\`, \`±n\` offsets, durations, \`@step\`) are absolute and meter-invariant: a quarter is a quarter in any meter. \`Nbar\` = N of your meter's bars. (Live's internal API unit is the quarter-note "Ableton beat"; you never write it directly.) Bare numbers are valid ONLY in transform expressions — position/duration/length/offset fields require the \`n\` form.
 
@@ -69,9 +34,9 @@ Create MIDI clips using the bar|beat notation syntax:
     - \`@step\` uses the same note-value form as \`n\` — \`@n/4\`, \`@1bar\` (bare \`@/4\` or \`@1\` is invalid). Defaults to the current duration (legato)
     - \`1|1x4@n/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
     - \`1|1x3@n/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
-    - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter (in 6/8, \`n/4 C1 1|1x3\` = quarters on beats 1, 3, 5; \`1|1,2,3\` would be eighths)
+    - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter (see Time & Note Values for the meter trap this avoids)
     - **Pattern brackets** \`[...]\`: a *cycle* of one parameter's values, stepped across notes instead of repeated. **Pitch**: \`[C3 E3 G3] 1|1x3@n/4\` (or across separate beats, \`[C3 E3 G3] 1|1 1|2 1|3\`) plays C3, E3, G3 (a melodic line, not 3× one pitch); \`(...)\` is a chord step (\`[(C3 E3) (D3 F3)] 1|1x2@n/4\`). Multiple pitch brackets (or a bare pitch + a bracket) **layer** into chords: \`C4 [E4 G4 C5] 1|1,2,3,4\` is a held C4 under a moving line; \`[C3 C4] [E3 G3 E4] 1|1,2,3,4\` stacks two voices that phase (only pitch layers — v/n/p are last-wins). **Velocity/duration/probability**: \`[v100 v60]\`, \`[n/4 n/8]\`, \`[p1 p0.5]\` cycle that value (e.g. \`[v100 v60 v60 v60] C1 1|1x16@n/16\` = accent every 4th hat). A duration bracket with **no** \`@step\` also sets the spacing — the notes gallop (\`[n/4 n/8] C3 1|1x8\` = long-short long-short). One kind per bracket. **Zip** sibling brackets to vary several at once against the same step: \`[v80 v100] [C3 E3 G3] 1|1x8@n/8\` → eight 8th notes C3 v80, E3 v100, G3 v80, C3 v100, E3 v80, G3 v100, C3 v80, E3 v100 (velocity cycles every 2, pitch every 3 — coprime lengths phase against each other). Each cycle wraps at its own length and persists until you reassign that parameter
-- v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization (start the low bound ≥1: \`v0-N\` sets a base velocity of 0, which triggers the v0 delete and drops the notes)
+- v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization (low bound ≥1; \`v0-N\` is an error — v0 is the delete sentinel, not a range floor)
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. It applies to notes **after** it — put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length and overlaps A3). For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always). Opt-in — if any note uses probability, set it on every note (a stray p otherwise rides along)
@@ -82,12 +47,10 @@ Create MIDI clips using the bar|beat notation syntax:
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
   - Copies capture each note's v/n/p at the time it was written, not the current state
-- **Editing notes already in the clip** (update-clip): \`notes\` MERGES — a new note overwrites the existing note at the *same* pitch+start (restate \`n/8 G3 4|2\` to shorten that G3); other notes are untouched. So **don't rewrite the whole clip to change a few notes** — restate just those. To *replace* a region (not edit in place), clear it first with \`preTransforms\` (\`1|1-2|1: v0\`) or the notes you didn't restate stay behind. Use \`preTransforms\` (see Transforms) to delete, move, or shift pre-existing notes; a \`v0\` in \`notes\` only deletes notes built **within the same string** (inline sculpting after a bar copy)
 
-## Audio Clips
-\`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
-Audio params ignored when updating MIDI clips.
-What Producer Pal **can** do with audio: set gain/pitch/warp settings, change clip length, place and arrange audio clips in the Arrangement, and load/manage samples on Simpler instruments (including Drum Rack pads). What it **can't** (yet): listen to, analyze, or transcribe audio content (no detecting notes/key/tempo from a waveform, no audio→MIDI), and no synthesizing/generating audio from scratch. Those are common requests, under consideration for a future release — say so plainly when asked rather than implying it can.
+### Editing Existing Notes (update-clip)
+
+\`notes\` MERGES into an existing clip — a new note overwrites the existing note at the *same* pitch+start (restate \`n/8 G3 4|2\` to shorten that G3); other notes are untouched. So **don't rewrite the whole clip to change a few notes** — restate just those. To delete, move, clear a region, or otherwise change notes *already* in the clip, use \`preTransforms\` (see Transforms) — to *replace* a region rather than edit in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind.
 
 ## Examples
 
@@ -107,7 +70,7 @@ n/16 Gb1 1|1,1.5,2,2.5 n/4 C1 1|1 // re-set n/4 for kick, else hat's n/16 leaks 
 p0.5 n/4 C1 1|1,2,3,4 // 50% chance each kick plays
 \`\`\`
 
-## Techniques
+### Bar Copying
 
 Complete bars before copying. Use beat lists for irregular patterns.
 
@@ -132,25 +95,33 @@ C1 9|3.5                // add extra kick to bar 9
 v0 C1 13|3 v100 D1 13|3 // replace kick with snare in bar 13
 \`\`\`
 
-### Transforms
+## Audio Clips
+\`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
+Audio params ignored when updating MIDI clips.
+What Producer Pal **can** do with audio: set gain/pitch/warp settings, change clip length, place and arrange audio clips in the Arrangement, and load/manage samples on Simpler instruments (including Drum Rack pads). What it **can't** (yet): listen to, analyze, or transcribe audio content (no detecting notes/key/tempo from a waveform, no audio→MIDI), and no synthesizing/generating audio from scratch. Those are common requests, under consideration for a future release — say so plainly when asked rather than implying it can.
+
+## Transforms
 
 Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 
 **Shape:** a single string, broadcast across every clip/copy. Multiple expressions: newline-separated. Per-clip variation: \`clip.index\` arithmetic or \`clipseq()\` inside the string (below). Structurally-distinct edits per clip → separate tool calls.
 
 **Syntax:** \`[selector:] parameter operator expression\` (one per line)
-- **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
+- **Selector:** pitch and/or time filter, optionally a \`where(...)\` value test, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`, \`where(note.velocity < 40):\`. **Per-line:** every selector (pitch, time, where) applies only to its own line — never carried to or inherited from neighbors; a line with no selector hits all notes. Repeat the selector to scope several lines
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
 - **Time filter:** \`1|1-2|4\` (bar|beat range, **ends inclusive**, matches note start time); bounds use the same beat dialect as positions (decimal or \`±n\` offset, e.g. \`1|1+n/12-2|1\`)
+  - **Single point:** a bare bar|beat with no \`-\` (\`4|3.5:\`) targets only the note starting exactly there — e.g. \`Gb1 4|3.5: ratchet(4)\` rolls just that note
   - **Whole bars:** \`3|*\` = all of bar 3, \`1|*-3|*\` = bars 1-3 — half-open, so exactly those bars with no spill onto the next downbeat. Prefer this for "measure N"; \`3|1-4|1\` would also match a note on 4|1
   - **Exclusive end:** append \`-<\` to make only the end bound exclusive — \`3|1-<4|1\` = up to but not including 4|1 (for sub-bar half-open spans)
-- **MIDI parameters:** velocity (1-127; <=0 deletes note), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
+- **Value filter** \`where(...)\`: keep only notes whose properties satisfy a boolean test — \`where(note.velocity < 40): delete\` deletes quiet notes, \`where(note.velocity > 100): velocity += 20\` accents loud ones, \`where(note.probability < .5): delete\` thins. Build it from comparisons (\`> >= < <= == !=\`), booleans (\`&& || !\`), parens, and arithmetic over note.velocity/deviation/duration/probability/pitch/start (\`note.duration\`/\`note.start\` in musical beats; RHS may be a number, note name, or \`n/8\`). AND-combines with a pitch/time selector: \`C3-C5 where(note.velocity > 80): velocity += 20\`. Use \`<\`/\`>\` on the float props (duration, probability, start) and reserve \`==\`/\`!=\` for the integer ones (velocity, pitch). Note properties only — no functions, no note.index/count/next, not on note-count ops
+- **MIDI parameters:** velocity (<=0 deletes note, else capped at 127), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
-- **Shorthand** (clears/simple sets): a single bar|beat-style token instead of \`param = value\` — \`v0\` delete · \`vN\`/\`v±N\`/\`vA-B\` velocity (range = humanized random, same as notes) · \`pN\`/\`p±N\` probability · \`n/4\`/\`Nbar\`/\`1bar+n/4\` duration · \`C4\` remap pitch (one per line; a selector still applies, e.g. \`C1: v0\`). Preferred for clearing/deleting; use the full \`param op expr\` form for computed changes (\`+=\`, \`*=\`, waveforms, ramps). Note \`vA-B\` is the one shorthand with no \`param = ...\` longhand — it sets velocity AND velocity_deviation together, so write it as the shorthand (\`velocity = vA-B\` errors)
+- **Shorthand** (clears/simple sets): a single bar|beat-style token instead of \`param = value\` — \`delete\` (or \`v0\`) delete a note · \`vN\`/\`v±N\`/\`vA-B\` velocity (range = humanized random, same as notes) · \`pN\`/\`p±N\` probability · \`n/4\`/\`Nbar\`/\`1bar+n/4\` duration · \`C4\` remap pitch (one per line; a selector still applies, e.g. \`C1: delete\`). \`delete\` is a transforms/preTransforms alias only — bar|beat \`notes\` strings still use \`v0\`. Preferred for clearing/deleting; use the full \`param op expr\` form for computed changes (\`+=\`, \`*=\`, waveforms, ramps). Note \`vA-B\` is the one shorthand with no \`param = ...\` longhand — it sets velocity AND velocity_deviation together, so write it as the shorthand (\`velocity = vA-B\` errors)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and durations: \`n<dur>\` note values (e.g. \`n/4\` = a quarter in any meter) and \`Nbar\` meter-aware bars (e.g. \`1bar\`, \`1bar+n/4\`) — same grammar as bar|beat and length fields. Both evaluate to musical beats and compose in any math expression (so in a non-time param like \`velocity\` a bare \`1bar\` resolves to its beat count — e.g. 4 in 4/4 — rarely what you want there)
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms), legato([tolerance]) (set duration to reach next note's start time; optional tolerance in musical beats groups nearby starts as chords, e.g. legato(0.1) after humanizing)
 - **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in musical beats — meter-relative, so these hints assume a quarter-note beat and scale up in x/8: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default = half the meter's beat (8th-note swing in x/4, 16th in x/8); override e.g. n/16; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: n/4=quarter, n/8=8th, n/16=16th, n/12=triplet. swing()/quant() return an *absolute* position, so assign them with \`timing =\` (not \`+=\`). Relative nudges use \`+=\`/\`-=\` with a note value — \`timing += n/8\` shifts every note an eighth later
+- **Note-count operations** (change how many notes exist — write on their own line, NOT as a value: \`velocity = ratchet(2)\` errors): \`ratchet(N)\` divides each matched note into N equal pieces (a roll); \`ratchet(n/16)\` instead cuts on the absolute 16th-note grid (pieces align to bar positions, partial slivers at the ends); \`split(2|1, 2|3)\` cuts at explicit, possibly unequal clip bar|beat positions (each position cuts whichever matched note spans it; add a trailing \`sync\` — \`split(6|1, sync)\` — to read positions on the arrangement timeline instead, ignored with a warning on session clips); \`merge()\` spans all same-pitch matched notes into one sustained note (optional gap tolerance: \`merge(0)\` glues only touching/overlapping notes, \`merge(n/8)\` glues notes within an 8th-note gap). A selector scopes them (\`C1: ratchet(4)\`, \`2|*: merge()\`); a transform after a note op sees the rebuilt notes (so \`note.index\` re-derives). MIDI only
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
@@ -177,6 +148,9 @@ velocity += 20 * cos(n/2)        // cycle every half note (2 beats in 4/4)
 velocity += 20 * cos(1bar, sync)  // bar-length cycle, continuous across clips
 1|1-4|4.75: velocity = ramp(40, 127) // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30            // accent bass notes
+where(note.velocity < 40): delete // delete the quiet notes
+where(note.velocity > 100): velocity += 20 // accent the loud ones (clamps at 127)
+C3-C5 where(note.probability < .5): delete // thin low-probability notes in a pitch band
 1|1-2|4: velocity = 100          // forte in bars 1-2
 velocity = seq(100, 60, 80, 60)  // cycle accents per note (MIDI)
 Gb1: pitch = seq(Gb1, Gb1, Gb1, Gb1, Ab1) // every 5th closed hat → open hat
@@ -191,18 +165,27 @@ duration = n/8                   // every note → an eighth note (any meter)
 duration += n/16                 // lengthen every note by a sixteenth
 duration = legato()              // extend each note to reach the next
 duration = legato(0.1)           // legato with tolerance (after humanizing timing)
+ratchet(2)                       // split each note into two equal pieces (a roll)
+ratchet(n/16)                    // cut each note on the 16th-note grid instead
+C1: ratchet(4)                   // 4-stroke roll on the kick only
+split(2|1, 2|3)                  // cut notes at explicit (unequal) clip positions
+split(6|1, sync)                 // cut at an arrangement-timeline position
+merge()                          // span same-pitch notes into sustained notes
+merge(0)                         // ...but only where they touch or overlap
 \`\`\`
 
-swing() auto-quantizes to the swing grid, so changing swing amount is always safe without a separate quant() step. Use \`raw\` to skip auto-quantize: \`swing(0.05, raw)\`
+swing() auto-quantizes, so changing the amount is always safe without a separate quant(). Skip it with \`raw\`: \`swing(0.05, raw)\`
 
 update-clip's \`quantizeGrid\` param uses Live's native grid enum (\`1/4\`,\`1/8\`,\`1/8T\`,\`1/16\`,\`1/16T\`,\`1/32\`) but also accepts the equivalent \`n/N\` note value (\`n/12\`=\`1/8T\`, \`n/24\`=\`1/16T\`, etc.); the mixed grids \`1/8+1/8T\`/\`1/16+1/16T\` are enum-only.
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
-Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
+Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones.
 MIDI params ignored for audio clips, vice versa.
-Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\` (\`pitch += clipseq(0, 5, 7)\`); see Shape above.
+Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.
 
-**Editing existing notes (update-clip):** \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. \`preTransforms\` runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: v0\`), a region (\`1|1-2|1: v0\`), a lane (\`C1: v0\`), everything (\`v0\`), or remap (\`C1: C4\`) — the \`v0\` shorthand is preferred for clearing (\`velocity = 0\` is the longhand equivalent); works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`v0\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)
+### preTransforms (editing notes already in the clip)
+
+\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`delete\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 
@@ -222,23 +205,7 @@ Use \`ppal-library\` to search Live's browser library and the user's configured 
 - Each result includes \`folder\` (its immediate parent folder name). Use it to sanity-check tag hits: Live's tags are noisy, so a \`Kick\`-tagged file under an \`IR Library\` folder is probably a reverb impulse, not a drum.
 - Pass an absolute \`path\` from a result to \`ppal-create-clip\` / \`ppal-update-clip\` (audio clips) or \`ppal-create-device\` / \`ppal-update-device\` (Simpler \`sample\`).
 
-## Working with Ableton Live
-
-**Views and Playback:**
-- Session View: Jam, try ideas, build scenes
-  - Use auto:"play-scene" when generating clips; warn user about clip restarts
-- Arrangement View: Structure songs on a timeline
-  - Session clips override Arrangement; use "play-arrangement" for arrangement playback
-
-**Creating Music:**
-- For drum tracks, read the track with \`drum-map\` include for correct pitches - don't assume General MIDI
-- Drums: set \`n<dur>\` explicitly and re-set it per drum/pitch (duration is stateful — a hat's \`n/16\` leaks onto the next lane otherwise); space repeated hits with \`1|1xN\` repeats, not hand-listed beats
-- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
-- Keep harmonic rhythm in sync across tracks
-
-**Layering:** To layer tracks on one instrument, duplicate with routeToSource=true. New track controls the same instrument.
-
-**Locators:** Use ppal-update-live-set to create/rename/delete locators at bar|beat positions. Use locator names with ppal-playback to start or loop from named positions.
+## Devices & Instruments
 
 ### Device Paths
 
@@ -252,6 +219,8 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 - \`t0/d0/pC1/d0\` = first device in Drum Rack's C1 pad
 
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
+
+### Simpler & Drum Racks
 
 **Simpler sample:** Load a sample with \`params: [{name: "sample", value: "<absolute file path>"}]\` on ppal-create-device or ppal-update-device; set its level with \`{name: "gainDb", value: <dB>}\` (0 = unity). \`sample\` is always a \`params\` entry — there is no top-level \`sample\` argument. Read-device: \`include: ["sample"]\` returns just the sample file path as a flat top-level \`sample\` field (ideal for scanning every pad's sample in a drum rack); \`include: ["params"]\` returns the full set including \`sample\`, \`gainDb\`, and \`multiSampleMode\`. Writes are skipped with a warning on non-Simpler devices and on Simpler in multi-sample mode.
 
@@ -282,10 +251,12 @@ Audio effects:
 
 Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` on ppal-select) but **cannot control anything inside a VST/AU plug-in directly** — its internal parameters aren't exposed to the Live API. To make a plug-in's parameters controllable, the user maps them onto the Live plug-in device in Live's Configure mode (expand the device, click "Configure", then click the controls in the plug-in to expose); Producer Pal can then read and set those mapped parameters like any other device parameter. You cannot do the mapping for the user — explain the steps and point them to the [Configure mode manual](https://www.ableton.com/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode). Limits: up to 128 parameters can be mapped (so pick the most important ones), and not every plug-in parameter is mappable.
 
+## Arrangement
+
 ### Moving Clips
 
 \`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, both 0-based — scene 1 = index 0) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
-\`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions.
+\`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions measured from the clip's own start (1|1 = clip start, NOT song position).
 
 ### Take Lanes (Arrangement Variations)
 
@@ -296,9 +267,26 @@ Stack alternate takes of an arrangement clip at the same position; only the acti
 - 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
 - Take-lane clips are append-only: \`update-clip\` (\`split\`, \`arrangementStart\`, \`arrangementLength\`) and \`ppal-delete\` warn+skip on them. Main→take duplicate recreates the clip from notes and drops envelope automation; take→main promote isn't supported. For any of these, ask the user to do it in Live's UI.
 
+## Working with Ableton Live
+
+**Views and Playback:**
+- Session View: Jam, try ideas, build scenes
+  - Use auto:"play-scene" when generating clips; warn user about clip restarts
+- Arrangement View: Structure songs on a timeline
+  - Session clips override Arrangement; use "play-arrangement" for arrangement playback
+
+**Creating Music:**
+- For drum tracks, read the track with \`drum-map\` include for correct pitches (don't assume General MIDI); set \`n\` per drum/pitch and space repeated hits with \`1|1xN\` repeats, not hand-listed beats (see Time & Note Values)
+- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
+- Keep harmonic rhythm in sync across tracks
+
+**Layering:** To layer tracks on one instrument, duplicate with routeToSource=true. New track controls the same instrument.
+
+**Locators:** Use ppal-update-live-set to create/rename/delete locators at bar|beat positions. Use locator names with ppal-playback to start or loop from named positions.
+
 ## Getting Help
 
-When something is outside Producer Pal's reach — a Live feature it can't drive (automation, comping take lanes, mapping plug-in/macro params), a known limitation, or just "how do I do X in Live" — don't dead-end the user. Explain the manual step and link the right resource (links open in a new browser tab). Prefer a relevant link over a bare apology.
+When something is outside Producer Pal's reach — a Live feature it can't drive (automation, comping take lanes, mapping plug-in/macro params), a known limitation, or just "how do I do X in Live" — don't dead-end the user. Explain the manual step and link the right resource.
 
 - **Live itself** (Configure mode, comping, racks, MIDI, anything in Ableton): the [Ableton Live manual](https://www.ableton.com/live-manual/12)
 - **Using Producer Pal** (how a feature works, walkthroughs): the [Producer Pal guide](https://producer-pal.org/guide) and [feature list](https://producer-pal.org/features)

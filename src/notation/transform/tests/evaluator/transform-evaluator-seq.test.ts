@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "#src/notation/transform/tests/parser/parse-test-helpers.ts";
 import {
   applyTransforms,
   evaluateTransform,
@@ -21,7 +22,7 @@ describe("Transform - seq function", () => {
 
   describe("parser", () => {
     it("parses seq with multiple arguments", () => {
-      const result = parser.parse("velocity = seq(60, 80, 100)");
+      const result = parseAssignments("velocity = seq(60, 80, 100)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
@@ -258,6 +259,59 @@ describe("Transform - seq function", () => {
       expect(notes[6]!.pitch).toBe(42); // Gb1
     });
   });
+
+  describe("time-range-scoped index in applyTransforms", () => {
+    it("indexes seq from 0 over the time-selected subset, not the whole pitch run", () => {
+      // 6 C3 notes across two 4/4 bars: starts 0..3 in bar 1, 4..5 in bar 2.
+      // A bar-2 selector picks only the last two; seq must start at index 0 for
+      // them (40, 80), not continue the clip-wide count (which would give 80,
+      // 120 from cursor 4, 5). This is the ratcheted-burst sub-range bug.
+      const notes = createTestNotes(
+        Array.from({ length: 6 }, (_, i) => ({ pitch: 60, start_time: i })),
+      );
+
+      applyTransforms(notes, "C3 2|1-<3|1: velocity = seq(40, 80, 120)", 4, 4);
+
+      expect(notes[0]!.velocity).toBe(100); // bar 1 — not selected
+      expect(notes[1]!.velocity).toBe(100);
+      expect(notes[2]!.velocity).toBe(100);
+      expect(notes[3]!.velocity).toBe(100);
+      expect(notes[4]!.velocity).toBe(40); // selection index 0
+      expect(notes[5]!.velocity).toBe(80); // selection index 1
+    });
+
+    it("provides note.count scoped to the time-selected subset", () => {
+      const notes = createTestNotes(
+        Array.from({ length: 6 }, (_, i) => ({ pitch: 60, start_time: i })),
+      );
+
+      // Only the two bar-2 notes are selected → note.count is 2, not 6.
+      applyTransforms(notes, "C3 2|1-<3|1: velocity = note.count * 10", 4, 4);
+
+      expect(notes[0]!.velocity).toBe(100); // not selected
+      expect(notes[4]!.velocity).toBe(20); // 2 * 10
+      expect(notes[5]!.velocity).toBe(20);
+    });
+
+    it("scopes index to the time window even without a pitch range", () => {
+      // Mixed pitches, no pitch filter. Bar-2 selector picks starts 4 and 5
+      // (sorted indices 2 and 3). Selection-local index → 40, 80; the old
+      // global index (i=2, 3) would have produced 120, 40.
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0 },
+        { pitch: 62, start_time: 1 },
+        { pitch: 64, start_time: 4 },
+        { pitch: 67, start_time: 5 },
+      ]);
+
+      applyTransforms(notes, "2|1-<3|1: velocity = seq(40, 80, 120)", 4, 4);
+
+      expect(notes[0]!.velocity).toBe(100); // bar 1 — not selected
+      expect(notes[1]!.velocity).toBe(100);
+      expect(notes[2]!.velocity).toBe(40); // selection index 0
+      expect(notes[3]!.velocity).toBe(80); // selection index 1
+    });
+  });
 });
 
 describe("Transform - clipseq function", () => {
@@ -267,7 +321,7 @@ describe("Transform - clipseq function", () => {
 
   describe("parser", () => {
     it("parses clipseq with multiple arguments", () => {
-      const result = parser.parse("pitch += clipseq(0, 5, 7)");
+      const result = parseAssignments("pitch += clipseq(0, 5, 7)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",

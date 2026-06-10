@@ -123,7 +123,7 @@ describe("ppal-clip-transforms (context variables)", () => {
     const notes = await readClipNotes(clipId);
 
     // 4 notes * 20 = 80 (sticky velocity, all same → comma-merged)
-    expect(notes).toBe("v80 C3 1|1,2,3,4");
+    expect(notes).toBe("v80 n/4 C3 1|1,2,3,4");
   });
 
   it("clip.count reflects number of clips in multi-clip operation", async () => {

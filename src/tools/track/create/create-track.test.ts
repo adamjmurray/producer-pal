@@ -215,6 +215,20 @@ describe("createTrack", () => {
     ).toThrow(/would exceed the maximum allowed tracks/);
   });
 
+  it("should cap an append (default-index) count, not just inserts", () => {
+    // Regression (#10): append mode (-1 index) bypassed the index-reach cap, so
+    // a huge count created tracks unbounded.
+    expect(() => createTrack({ count: MAX_AUTO_CREATED_TRACKS + 1 })).toThrow(
+      /exceeds the maximum allowed/,
+    );
+  });
+
+  it("should cap a return-track count", () => {
+    expect(() =>
+      createTrack({ type: "return", count: MAX_AUTO_CREATED_TRACKS + 1 }),
+    ).toThrow(/exceeds the maximum allowed/);
+  });
+
   it("should handle single track name without incrementing", () => {
     const track = registerMockObject("midi_track_0", {});
 

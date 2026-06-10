@@ -8,6 +8,7 @@ import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
 
 import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
+import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
   formatErrorResponse,
   formatSuccessResponse,
@@ -17,7 +18,6 @@ import {
 } from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
-import { MIN_LIVE_VERSION, VERSION } from "#src/shared/version.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { liveApi } from "#src/tools/advanced/live-api.ts";

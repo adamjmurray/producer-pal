@@ -69,7 +69,11 @@ interface UpdateTrackResult {
 }
 
 /**
- * Apply routing properties to a track
+ * Apply routing properties to a track. Input routing exists only on regular,
+ * non-group tracks, so it is warn-and-skipped on group/return/master tracks —
+ * mirroring the read-side guard in track-routing-helpers.ts processCurrentRouting
+ * (`!isGroup && category === "regular"`). Output routing applies to the tracks
+ * that expose it (regular and return).
  * @param track - Track object
  * @param params - Routing properties
  */
@@ -81,16 +85,27 @@ function applyRoutingProperties(track: LiveAPI, params: RoutingParams): void {
     outputRoutingChannelId,
   } = params;
 
-  if (inputRoutingTypeId != null) {
-    track.setProperty("input_routing_type", {
-      identifier: Number(inputRoutingTypeId),
-    });
-  }
+  if (inputRoutingTypeId != null || inputRoutingChannelId != null) {
+    const category = (track.category as string | undefined) ?? "regular";
+    const isGroup = (track.getProperty("is_foldable") as number) > 0;
 
-  if (inputRoutingChannelId != null) {
-    track.setProperty("input_routing_channel", {
-      identifier: Number(inputRoutingChannelId),
-    });
+    if (isGroup || category !== "regular") {
+      console.warn(
+        `updateTrack: input routing is only available on regular non-group tracks; skipping for track ${track.id}`,
+      );
+    } else {
+      if (inputRoutingTypeId != null) {
+        track.setProperty("input_routing_type", {
+          identifier: Number(inputRoutingTypeId),
+        });
+      }
+
+      if (inputRoutingChannelId != null) {
+        track.setProperty("input_routing_channel", {
+          identifier: Number(inputRoutingChannelId),
+        });
+      }
+    }
   }
 
   if (outputRoutingTypeId != null) {
@@ -107,7 +122,9 @@ function applyRoutingProperties(track: LiveAPI, params: RoutingParams): void {
 }
 
 /**
- * Apply monitoring state to a track
+ * Apply monitoring state to a track. Monitoring exists only on armable tracks,
+ * so it is warn-and-skipped on non-armable tracks (return/master) — mirroring
+ * the read-side `canBeArmed` guard in track-routing-helpers.ts.
  * @param track - Track object
  * @param monitoringState - Monitoring state value (in, auto, off)
  */
@@ -116,6 +133,16 @@ function applyMonitoringState(
   monitoringState: string | undefined,
 ): void {
   if (monitoringState == null) {
+    return;
+  }
+
+  const canBeArmed = (track.getProperty("can_be_armed") as number) > 0;
+
+  if (!canBeArmed) {
+    console.warn(
+      `updateTrack: monitoringState is only available on armable tracks; skipping for track ${track.id}`,
+    );
+
     return;
   }
 

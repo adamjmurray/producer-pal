@@ -6,28 +6,47 @@
 import { type NoteEvent } from "#src/notation/types.ts";
 
 /**
- * Count the notes in a clip using the SAME window read-clip reads:
- * [-length, 2*length] in beats, pitches 0–127. This includes out-of-bounds
- * notes (a pickup before the start, overhang past the end), so the count
- * matches what read-clip returns — what Live actually stored, not just the
- * playable region [0, length]. Notes more than one clip-length outside the
- * region are still missed (the same finite-scan bound read-clip uses).
+ * Count the notes in a clip across the same window read-clip reads (see
+ * {@link readAllClipNotes}), so the count matches what read-clip returns —
+ * including a pickup before the start and overhang past the end, not just the
+ * playable region [0, length].
  * @param clip - LiveAPI clip object
  * @returns Number of notes in the read window
  */
 export function getClipNoteCount(clip: LiveAPI): number {
-  const lengthBeats = clip.getProperty("length") as number;
+  return readAllClipNotes(clip).length;
+}
+
+/**
+ * Read every note in a clip's scan window as raw Live API note objects (each
+ * still carries note_id, mute, release_velocity — run through
+ * {@link rawNotesToNoteEvents} before re-adding). Uses the same
+ * [-length, 2*length] window as read-clip and {@link getClipNoteCount}, so a
+ * pickup before the clip start (negative start_time) and overhang past the end
+ * are seen — not just the playable region [0, length].
+ * @param clip - LiveAPI clip object
+ * @returns Raw note objects, or [] when the window holds no notes
+ */
+export function readAllClipNotes(clip: LiveAPI): Record<string, unknown>[] {
+  const [fromTime, timeSpan] = clipNoteScanWindow(clip);
   const result = JSON.parse(
-    clip.call(
-      "get_notes_extended",
-      0,
-      128,
-      -lengthBeats,
-      lengthBeats * 3,
-    ) as string,
+    clip.call("get_notes_extended", 0, 128, fromTime, timeSpan) as string,
   );
 
-  return result?.notes?.length ?? 0;
+  return (result?.notes ?? []) as Record<string, unknown>[];
+}
+
+/**
+ * Remove every note in a clip's scan window. MUST mirror
+ * {@link readAllClipNotes}' window: a write path reads all notes, mutates them,
+ * removes, then re-adds — so removing a WIDER range than was read would delete
+ * notes (a far pickup/overhang) that were never read back and re-added.
+ * @param clip - LiveAPI clip object
+ */
+export function removeAllClipNotes(clip: LiveAPI): void {
+  const [fromTime, timeSpan] = clipNoteScanWindow(clip);
+
+  clip.call("remove_notes_extended", 0, 128, fromTime, timeSpan);
 }
 
 /**
@@ -49,4 +68,23 @@ export function rawNotesToNoteEvents(
     probability: rawNote.probability as number,
     velocity_deviation: rawNote.velocity_deviation as number,
   }));
+}
+
+// --- Private helpers ---
+
+/**
+ * The (from_time, time_span) pair for read-clip's note-scan window:
+ * [-length, 2*length] in beats. Centered to include a pickup before the clip
+ * start and overhang past the end. Read AND remove share this single source so
+ * the two windows can never drift — an asymmetry would either miss notes (too
+ * narrow a read) or destroy unread notes (too wide a remove). Notes more than
+ * one clip-length outside the region are still missed (the finite-scan bound
+ * read-clip documents).
+ * @param clip - LiveAPI clip object
+ * @returns [fromTime, timeSpan] for get_notes_extended / remove_notes_extended
+ */
+function clipNoteScanWindow(clip: LiveAPI): [number, number] {
+  const lengthBeats = clip.getProperty("length") as number;
+
+  return [-lengthBeats, lengthBeats * 3];
 }

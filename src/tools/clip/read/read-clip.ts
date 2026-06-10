@@ -8,6 +8,7 @@ import {
   abletonBeatsToBarBeat,
   abletonBeatsToDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import {
@@ -235,7 +236,7 @@ function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
     timeSigDenominator,
   );
 
-  if (Math.abs(startMarkerBeats - startBeats) > 0.001) {
+  if (Math.abs(startMarkerBeats - startBeats) > SAME_TIME_EPSILON) {
     result.firstStart = abletonBeatsToBarBeat(
       startMarkerBeats,
       timeSigNumerator,

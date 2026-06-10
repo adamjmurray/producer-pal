@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/v8-max-console.ts";
 import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockContext,
@@ -175,6 +176,38 @@ describe("tileClipToRange", () => {
     );
 
     expect(result.length).toBeGreaterThan(2);
+  });
+
+  it("skips the partial tile when the source overlaps its target", () => {
+    // Defensive guard: no current caller tiles over the source (they start at
+    // the source's end), but a future one could. Source [100,104] is the only
+    // arrangement clip; a remainder-2 partial would land at [100,102], inside
+    // the source. It must be skipped, not routed through the holding area where
+    // it would trim the source.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      is_arrangement_clip: 1,
+      start_time: 100,
+      end_time: 104,
+    });
+    const track = setupTrackWithQueuedMethods(0, {});
+
+    // totalLength 2 < clipLength 4 → zero full tiles, a 2-beat partial at 100.
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      2,
+      1000,
+      mockContext,
+    );
+
+    expect(result).toStrictEqual([]);
+    expect(track.call).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("overlaps the partial tile"),
+    );
+    warn.mockRestore();
   });
 
   it("does not create partial tile when remainder is negligible", () => {

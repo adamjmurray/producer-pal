@@ -12,6 +12,10 @@
  */
 
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
+export {
+  arpeggioBracketIdiom,
+  arpeggioMixedDurations,
+} from "./clip/notation/arpeggio-bracket-idiom.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,
@@ -31,6 +35,7 @@ export {
 export {
   barBeatGallop,
   barBeatVelocityAccent,
+  barBeatZipStreams,
 } from "./clip/notation/bar-beat-value-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
@@ -44,6 +49,12 @@ export {
   durationArgSubBar,
 } from "./clip/notation/duration-arg-grammar.ts";
 export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quarter.ts";
+export {
+  noteOpsMerge,
+  noteOpsRatchetRoll,
+  noteOpsSplit,
+  noteOpsSplitSync,
+} from "./clip/note-ops-roll-and-merge.ts";
 export { legatoTransforms } from "./clip/legato-transforms.ts";
 export { melodyTransforms } from "./clip/melody-transforms.ts";
 export {
@@ -61,6 +72,7 @@ export {
 } from "./clip/notation/pretransforms-slm.ts";
 export { surgicalNoteDurationEdit } from "./clip/notation/surgical-note-duration-edit.ts";
 export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
+export { whereTransforms } from "./clip/where-transforms.ts";
 export { syncedLfoMeterInvariance } from "./clip/notation/synced-lfo-meter-invariance.ts";
 export { memoryWorkflow } from "./workflow/memory-workflow.ts";
 export { negativeCases } from "./workflow/negative-cases.ts";

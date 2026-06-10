@@ -91,26 +91,38 @@ export async function updateLiveSet(
     id: liveSet.id,
   };
 
+  // Parse timeSignature up front so a malformed format fails before any
+  // property is mutated, instead of throwing after a partial update (e.g. tempo
+  // already applied). Mirrors updateClip's upfront validation.
+  const parsedTimeSignature =
+    timeSignature != null ? parseTimeSignature(timeSignature) : null;
+
   if (tempo != null) {
     applyTempo(liveSet, tempo, result);
   }
 
-  if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-
-    liveSet.set("signature_numerator", parsed.numerator);
-    liveSet.set("signature_denominator", parsed.denominator);
-    result.timeSignature = `${parsed.numerator}/${parsed.denominator}`;
+  if (parsedTimeSignature != null) {
+    liveSet.set("signature_numerator", parsedTimeSignature.numerator);
+    liveSet.set("signature_denominator", parsedTimeSignature.denominator);
+    result.timeSignature = `${parsedTimeSignature.numerator}/${parsedTimeSignature.denominator}`;
   }
 
   if (scale != null) {
     applyScale(liveSet, scale, result);
 
-    result.$meta ??= [];
+    // applyScale warns and skips invalid input without setting result.scale.
+    // result.scale === "" means the scale was DISABLED (not applied), so the
+    // note must describe that distinctly rather than claiming a scale was
+    // applied.
+    if (result.scale != null) {
+      result.$meta ??= [];
 
-    (result.$meta as string[]).push(
-      "Scale applied to selected clips and defaults for new clips.",
-    );
+      (result.$meta as string[]).push(
+        result.scale === ""
+          ? "Scale disabled for selected clips and defaults for new clips."
+          : "Scale applied to selected clips and defaults for new clips.",
+      );
+    }
   }
 
   if (arrangementFollower != null) {
@@ -119,8 +131,9 @@ export async function updateLiveSet(
     result.arrangementFollower = arrangementFollower;
   }
 
-  // Include scalePitches when scale is set to a non-empty value
-  const shouldIncludeScalePitches = scale != null && scale !== "";
+  // Include scalePitches only when a non-empty scale was actually applied
+  // (result.scale is unset when applyScale skipped invalid input).
+  const shouldIncludeScalePitches = result.scale != null && result.scale !== "";
 
   if (shouldIncludeScalePitches) {
     const rootNote = liveSet.getProperty("root_note") as number;

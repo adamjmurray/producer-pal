@@ -44,6 +44,20 @@ function mockThisDeviceOnTrack1(): void {
   });
 }
 
+function registerEmptyReturnTrack(): void {
+  registerMockObject("return1", {
+    path: livePath.returnTrack(0),
+    type: "Track",
+    properties: {
+      has_midi_input: 0,
+      name: "Return Track",
+      clip_slots: [],
+      arrangement_clips: [],
+      devices: [],
+    },
+  });
+}
+
 function registerTrackWithSessionSlots(name: string): void {
   registerMockObject("track3", {
     path: livePath.track(2),
@@ -430,6 +444,30 @@ describe("readTrack", () => {
     const result = readTrack({ trackIndex: 0 });
 
     expect(result.instrument).toBeUndefined();
+  });
+
+  it("returns empty sessionClips for a return track when session-clips is included", () => {
+    registerEmptyReturnTrack();
+
+    const result = readTrack({
+      trackIndex: 0,
+      trackType: "return",
+      include: ["session-clips"],
+    });
+
+    expect(result.sessionClips).toStrictEqual([]);
+  });
+
+  it("returns empty arrangementClips for a return track when arrangement-clips is included", () => {
+    registerEmptyReturnTrack();
+
+    const result = readTrack({
+      trackIndex: 0,
+      trackType: "return",
+      include: ["arrangement-clips"],
+    });
+
+    expect(result.arrangementClips).toStrictEqual([]);
   });
 });
 

@@ -35,6 +35,12 @@ vi.mock(import("../../node-for-max-logger.ts"), () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+// Keep the real exports (message, error type) but stub the runtime guard so it
+// resolves by default; one test overrides it to reject (unsupported runtime).
+vi.mock(import("../live-db.ts"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  ensureSqliteAvailable: vi.fn(),
+}));
 
 const searchMod = await import("../query/library-search.ts");
 const similarMod = await import("../query/find-similar.ts");
@@ -42,6 +48,7 @@ const duplicatesMod = await import("../query/find-duplicates.ts");
 const tagsMod = await import("../list-tags.ts");
 const categoriesMod = await import("../list-categories.ts");
 const pluginsMod = await import("../list-plugins.ts");
+const liveDbMod = await import("../live-db.ts");
 
 describe("registerLibraryRoutes", () => {
   beforeEach(() => {
@@ -256,5 +263,30 @@ describe("registerLibraryRoutes", () => {
     );
 
     expect(duplicatesMod.findDuplicates).toHaveBeenCalledWith({});
+  });
+
+  it("fails the route (not a soft degrade) when the runtime lacks node:sqlite", async () => {
+    vi.mocked(liveDbMod.ensureSqliteAvailable).mockRejectedValueOnce(
+      new liveDbMod.SqliteUnavailableError(
+        liveDbMod.SQLITE_UNAVAILABLE_MESSAGE,
+      ),
+    );
+
+    await handleNodeRequest(
+      "req-no-sqlite",
+      JSON.stringify({ route: "library.search", args: {} }),
+    );
+
+    // Guard runs before the handler, so the route never executes.
+    expect(searchMod.librarySearch).not.toHaveBeenCalled();
+
+    const call = vi.mocked(Max.outlet).mock.calls[0];
+    const response = JSON.parse(call?.[2] as string) as {
+      success: boolean;
+      error?: string;
+    };
+
+    expect(response.success).toBe(false);
+    expect(response.error).toContain("Ableton Live 12.4");
   });
 });

@@ -8,6 +8,7 @@ import {
   durationToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 
@@ -122,7 +123,10 @@ export function calculateBeatPositions({
         startBeats = currentEndMarker - lengthBeats;
 
         // Sanity check for MIDI clips only - audio clips have length based on sample duration
-        if (isMidiClip && Math.abs(startBeats - currentStartMarker) > 0.001) {
+        if (
+          isMidiClip &&
+          Math.abs(startBeats - currentStartMarker) > SAME_TIME_EPSILON
+        ) {
           console.warn(
             `Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
           );

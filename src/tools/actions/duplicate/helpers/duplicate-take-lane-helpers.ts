@@ -6,12 +6,14 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
   resolveTakeLane,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { rawNotesToNoteEvents } from "#src/tools/shared/clip-notes.ts";
+import {
+  rawNotesToNoteEvents,
+  readAllClipNotes,
+} from "#src/tools/shared/clip-notes.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
@@ -143,19 +145,11 @@ function copyMidiClipToTakeLane(
     throw new Error("failed to create Arrangement clip");
   }
 
-  // Read all notes (not just within `length`): markers below can expose content
-  // beyond the visible length, so capture it to faithfully copy the source.
-  const notesJson = sourceClip.call(
-    "get_notes_extended",
-    0,
-    128,
-    0,
-    MAX_CLIP_BEATS,
-  ) as string;
-  const rawNotes = (JSON.parse(notesJson).notes ?? []) as Record<
-    string,
-    unknown
-  >[];
+  // Read the full [-length, 2*length] scan window (not just [0, length]) so a
+  // pickup (negative start_time) before the clip start and any overhang past
+  // the end are copied — same window every other clip-copy path uses. Reading
+  // only from time 0 (the prior behavior) silently dropped pickups.
+  const rawNotes = readAllClipNotes(sourceClip);
 
   if (rawNotes.length > 0) {
     // Strip Live's extra note properties (note_id, mute, release_velocity) so

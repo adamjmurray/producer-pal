@@ -4,8 +4,8 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 
 ## Requirements
 
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
+
 - [Claude account](https://claude.ai)
 - [Web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
 

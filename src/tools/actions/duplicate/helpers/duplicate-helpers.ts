@@ -12,12 +12,10 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
-import {
-  clearClipAtDuplicateTarget,
-  moveClipFromHolding,
-} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
@@ -203,19 +201,26 @@ export async function createClipsForLength(
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
-    clearClipAtDuplicateTarget(
+    // Routes a self-overlapping source through the holding area (overwrite
+    // semantics) instead of skipping; clears other overlapping clips otherwise.
+    const newClip = duplicateToArrangementTarget(
       track,
       sourceClip.id,
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
     );
-    const newClipResult = track.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(sourceClip.id),
-      arrangementStartBeats,
-    ) as string;
-    const newClip = LiveAPI.from(newClipResult);
+
+    // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
+    // phantom clip, matching the no-length path and the arrangement-tiling guards.
+    if (!newClip.exists()) {
+      console.warn(
+        `Failed to duplicate clip ${sourceClip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+      );
+
+      return duplicatedClips;
+    }
+
     const newClipId = newClip.id;
 
     if (arrangementLengthBeats > sourceClipLength) {
@@ -418,26 +423,29 @@ export async function duplicateClipToArrangement(
 
     duplicatedClips.push(...clipsCreated);
   } else {
-    // No length specified - use original behavior
+    // No length specified - use original behavior. Routes a self-overlapping
+    // source through the holding area (overwrite semantics) instead of skipping;
+    // clears other overlapping clips otherwise.
     const isMidiClip = clip.getProperty("is_midi_clip") === 1;
 
-    clearClipAtDuplicateTarget(
+    const newClip = duplicateToArrangementTarget(
       track,
       clip.id,
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
     );
-    const newClipResult = track.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(clip.id),
-      arrangementStartBeats,
-    ) as string;
-    const newClip = LiveAPI.from(newClipResult);
 
-    newClip.setAll({ name, color });
-
-    duplicatedClips.push(getMinimalClipInfo(newClip));
+    // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
+    // clip, matching the guards in arrangement-tiling and update-clip.
+    if (newClip.exists()) {
+      newClip.setAll({ name, color });
+      duplicatedClips.push(getMinimalClipInfo(newClip));
+    } else {
+      console.warn(
+        `Failed to duplicate clip ${clip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+      );
+    }
   }
 
   // Return single clip info directly, or clips array with trackIndex for multiple

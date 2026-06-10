@@ -16,6 +16,7 @@ import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
+  type ScenarioRequirements,
 } from "../../types.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
@@ -144,6 +145,7 @@ const LEAD_TRACK = 3;
  * @param config.message - User turn after the connect turn
  * @param config.check - Read-back verdict over the re-interpreted notes (4/4)
  * @param config.judgePrompt - Advisory LLM-judge prompt
+ * @param config.requires - Capability requirements (e.g. `{ brackets: true }`)
  * @returns The assembled eval scenario
  */
 export function leadClipNotationScenario(config: {
@@ -152,11 +154,15 @@ export function leadClipNotationScenario(config: {
   message: string;
   check: (events: NoteEvent[]) => boolean;
   judgePrompt: string;
+  /** Capability requirements (e.g. `{ brackets: true }` for stream-notation
+   *  scenarios). Omit for plain bar|beat notation taught in the basic tier. */
+  requires?: ScenarioRequirements;
 }): EvalScenario {
   return {
     id: config.id,
     description: config.description,
     kind: "capability",
+    ...(config.requires && { requires: config.requires }),
     liveSet: LEAD_LIVE_SET,
     judgeAdvisory: true,
     messages: [MSG_CONNECT, config.message],
@@ -201,6 +207,33 @@ export function getTransforms(
   }
 
   return transforms;
+}
+
+/**
+ * Pull the raw `notes` string from a ppal-create-clip call in the given turn.
+ * Throws (failing the calling assertion with a message) when the call or the
+ * `notes` parameter is missing. Used by scenarios that grade HOW the model
+ * notated a clip — bracket cycling, stream zips — not just the resulting notes,
+ * which read back identically however they were written.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index containing the create-clip call (default 1)
+ * @returns The raw notes string passed to ppal-create-clip
+ */
+export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
+  const call = getToolCalls(turns, turn).find(
+    (c) => c.name === "ppal-create-clip",
+  );
+
+  if (!call) throw new Error(`ppal-create-clip not found in turn ${turn}`);
+
+  const notes = call.args.notes;
+
+  if (typeof notes !== "string") {
+    throw new Error("create-clip notes parameter is missing or not a string");
+  }
+
+  return notes;
 }
 
 /**

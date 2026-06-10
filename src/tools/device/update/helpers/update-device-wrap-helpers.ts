@@ -259,13 +259,24 @@ function wrapInstrumentsInRack(
   const { container: sourceContainer, position: devicePosition } =
     getDeviceInsertionPoint(firstDevice);
 
-  // 2. Create temp MIDI track (appended)
+  // 2. Resolve and validate the destination BEFORE moving anything. A bad
+  // toPath must fail here, while the instruments are still safely on their
+  // source track — never after they've been staged on the temp track.
+  const { container, position } = toPath
+    ? resolveInsertionPath(toPath)
+    : { container: sourceContainer, position: devicePosition };
+
+  if (!container?.exists()) {
+    throw new Error(`wrapInRack: target container does not exist`);
+  }
+
+  // 3. Create temp MIDI track (appended)
   const tempTrackId = liveSet.call("create_midi_track", -1) as string;
   const tempTrack = LiveAPI.from(tempTrackId);
   const tempTrackIndex = tempTrack.trackIndex;
 
   try {
-    // 3. Move ALL instruments to temp track
+    // 4. Move ALL instruments to temp track
     const tempTrackIdForMove = toLiveApiId(tempTrack.id);
 
     for (const device of devices) {
@@ -277,15 +288,7 @@ function wrapInstrumentsInRack(
       );
     }
 
-    // 4. Create Instrument Rack on source track (or toPath)
-    const { container, position } = toPath
-      ? resolveInsertionPath(toPath)
-      : { container: sourceContainer, position: devicePosition };
-
-    if (!container?.exists()) {
-      throw new Error(`wrapInRack: target container does not exist`);
-    }
-
+    // 5. Create Instrument Rack on source track (or toPath)
     const rackId = container.call(
       "insert_device",
       "Instrument Rack",
@@ -297,7 +300,7 @@ function wrapInstrumentsInRack(
       rack.set("name", name);
     }
 
-    // 5. Move each instrument from temp into rack's chains
+    // 6. Move each instrument from temp into rack's chains
     // Instruments are now at devices 0, 1, 2... on temp track (in reverse order)
     // We need to process them in reverse to maintain original order
     for (let i = devices.length - 1; i >= 0; i--) {
@@ -317,7 +320,7 @@ function wrapInstrumentsInRack(
       );
     }
 
-    // 6. Delete temp track
+    // 7. Delete temp track
     liveSet.call("delete_track", tempTrackIndex);
 
     return {
@@ -326,6 +329,16 @@ function wrapInstrumentsInRack(
       deviceCount: devices.length,
     };
   } catch (error) {
+    // The instruments were staged on the temp track before/while the rack was
+    // built. Move any that are still on it back to the source container FIRST,
+    // so deleting the temp track can never destroy the user's instruments.
+    restoreStrandedInstruments(
+      liveSet,
+      tempTrack,
+      sourceContainer,
+      devicePosition,
+    );
+
     // Cleanup: delete temp track if it still exists
     try {
       liveSet.call("delete_track", tempTrackIndex);
@@ -334,5 +347,39 @@ function wrapInstrumentsInRack(
     }
 
     throw error;
+  }
+}
+
+/**
+ * Move any instruments still staged on the temp track back to their original
+ * container. Used on the wrap failure path so deleting the temp track never
+ * takes instruments down with it. Best-effort: a failed move on one device does
+ * not stop the others.
+ * @param liveSet - The live_set LiveAPI object (owns move_device)
+ * @param tempTrack - Temp track instruments were staged on
+ * @param sourceContainer - Original container to restore instruments into
+ * @param position - Original device position within the source container
+ */
+function restoreStrandedInstruments(
+  liveSet: LiveAPI,
+  tempTrack: LiveAPI,
+  sourceContainer: LiveAPI,
+  position: number,
+): void {
+  const sourceId = toLiveApiId(sourceContainer.id);
+  // Bounded by the initial count: each move removes device 0, so re-reading
+  // slot 0 walks the list; the cap guards against a move that silently no-ops.
+  const count = tempTrack.getChildren("devices").length;
+
+  for (let i = 0; i < count; i++) {
+    const stranded = tempTrack.child("devices", "0");
+
+    if (!stranded.exists()) break;
+
+    try {
+      liveSet.call("move_device", toLiveApiId(stranded.id), sourceId, position);
+    } catch {
+      // Best-effort restore; continue with the remaining instruments.
+    }
   }
 }

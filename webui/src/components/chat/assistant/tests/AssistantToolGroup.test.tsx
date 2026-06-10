@@ -166,6 +166,59 @@ describe("AssistantToolGroup", () => {
     });
   });
 
+  describe("warning state", () => {
+    const warn = (text: string): string =>
+      JSON.stringify([{ type: "text", text: `WARNING: ${text}` }]);
+
+    it("shows a yellow border and warning count when a grouped tool warns", () => {
+      // A warn-and-skip warning in a collapsed (3+) group must be visible
+      // without expanding, like AssistantToolCall. Before the fix the group
+      // ignored warnings entirely.
+      const parts = [
+        tool("ppal-create-track"),
+        tool("ppal-update-track", warn("quantize ignored for audio clip")),
+        tool("ppal-create-track"),
+      ];
+
+      renderWithToolNames(
+        <AssistantToolGroup parts={parts} indices={[0, 1, 2]} />,
+      );
+      const details = document.querySelector("details")!;
+      const summary = document.querySelector("summary")!;
+
+      expect(details.className).toContain("border-yellow-500");
+      expect(summary.textContent).toContain("1 warning");
+    });
+
+    it("does not show a yellow border when there are no warnings", () => {
+      render(<AssistantToolGroup parts={defaultParts} indices={[0, 1, 2]} />);
+      const details = document.querySelector("details")!;
+
+      expect(details.className).not.toContain("border-yellow-500");
+    });
+
+    it("prioritizes the error affordance over warnings", () => {
+      // With both a failure and a warning, the red error border/summary wins
+      // (warnings show only when there's no error), matching the single call.
+      const parts = [
+        tool("ppal-create-track", "Error", true),
+        tool("ppal-update-track", warn("skipped invalid scale")),
+        tool("ppal-create-track"),
+      ];
+
+      renderWithToolNames(
+        <AssistantToolGroup parts={parts} indices={[0, 1, 2]} />,
+      );
+      const details = document.querySelector("details")!;
+      const summary = document.querySelector("summary")!;
+
+      expect(details.className).toContain("border-red-500");
+      expect(details.className).not.toContain("border-yellow-500");
+      expect(summary.textContent).toContain("1 failed");
+      expect(summary.textContent).not.toContain("warning");
+    });
+  });
+
   describe("expanded content", () => {
     it("renders individual AssistantToolCall components inside", () => {
       render(<AssistantToolGroup parts={defaultParts} indices={[0, 1, 2]} />);

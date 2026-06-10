@@ -277,12 +277,12 @@ describe("view", () => {
   });
 
   describe("clip selection - view conflict", () => {
-    it("warns when requested view conflicts with clip type", () => {
+    it("warns and reports the clip's required view when the requested view conflicts", () => {
       const { clip } = setupSessionClipMock("session_clip_456", 1, 2);
 
       setupSongViewMock();
 
-      select({ id: `id ${clip.id}`, view: "arrangement" });
+      const result = select({ id: `id ${clip.id}`, view: "arrangement" });
 
       const outletMock = (globalThis as Record<string, unknown>)
         .outlet as ReturnType<typeof vi.fn>;
@@ -291,6 +291,9 @@ describe("view", () => {
         1,
         expect.stringContaining("ignoring view="),
       );
+      // Live switches to the clip's required (session) view, so the response
+      // must report that — not the overridden requested "arrangement" view.
+      expect(result.view).toBe("session");
     });
   });
 

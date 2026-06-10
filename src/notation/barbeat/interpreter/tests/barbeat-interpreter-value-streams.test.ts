@@ -32,6 +32,20 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
       ]);
     });
 
+    it("does not leak a prior velocity range into stream-driven notes", () => {
+      // A velocity stream supersedes an earlier scalar/range (here v40-80): every
+      // streamed note takes the stream's own velocity + deviation, and the range
+      // never resurfaces. Guards the stream/scalar/range mutual exclusion.
+      const result = interpretNotation("v40-80 [v100 v110] C3 1|1x2@n/4");
+
+      expect(
+        result.map((n) => [n.velocity, n.velocity_deviation]),
+      ).toStrictEqual([
+        [100, 0],
+        [110, 0],
+      ]);
+    });
+
     it("applies one streamed velocity to the whole chord per emission", () => {
       const result = interpretNotation("[v80 v100] C3 E3 1|1x2@n/4");
 

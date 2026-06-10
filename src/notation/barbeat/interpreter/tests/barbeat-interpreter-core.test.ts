@@ -377,13 +377,13 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     ]);
   });
 
-  it("treats velocity range starting at 0 as v0 deletion", () => {
-    // Live API rejects velocity 0 even with deviation, so v0-50 becomes a deletion marker
-    const result = interpretNotation("v0-50 C3 v50-100 D3 1|1");
-
-    expect(result).toStrictEqual([
-      createNote({ pitch: 62, velocity: 50, velocity_deviation: 50 }),
-    ]);
+  it("rejects a velocity range starting at 0 (v0 is the delete sentinel)", () => {
+    // `vA-B` desugars to base velocity = min(start,end); a base velocity of 0 is
+    // the delete sentinel, so a 0 lower bound would silently delete every note.
+    // Rejected at parse time rather than silently dropping notes.
+    expect(() => interpretNotation("v0-50 C3 v50-100 D3 1|1")).toThrow(
+      /velocity ranges must start at 1 or higher — v0 is the delete sentinel/,
+    );
   });
 
   it("preserves all v0 notes for deletion logic", () => {

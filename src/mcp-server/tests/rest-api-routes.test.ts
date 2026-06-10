@@ -150,6 +150,18 @@ describe("REST API Routes", () => {
 
       expect(names).toStrictEqual(["ppal-connect"]);
     });
+
+    it("allows cross-origin requests (LAN/tunnel chat uses a non-localhost origin)", async () => {
+      // /api/tools is intentionally NOT localhost-gated like /config: the chat
+      // UI reaches it same-origin from the page URL, which over LAN/tunnel is a
+      // non-localhost origin. A localhost gate would break that documented
+      // remote-access feature. Locked so the gate isn't added by mistake.
+      const response = await fetch(`${appState.baseUrl}/api/tools`, {
+        headers: { Origin: "https://remote.example.com" },
+      });
+
+      expect(response.status).toBe(200);
+    });
   });
 
   describe("ppal-live-api gating", () => {
@@ -193,6 +205,26 @@ describe("REST API Routes", () => {
       const body = await response.json();
 
       expect(body.error).toContain("Unknown or disabled tool");
+    });
+
+    it("allows cross-origin tool calls (LAN/tunnel chat uses a non-localhost origin)", async () => {
+      // Tool execution is intentionally NOT localhost-gated like /config (a gate
+      // would break the documented LAN/tunnel chat). A cross-origin POST reaches
+      // normal tool lookup — 404 for an unknown tool — rather than a 403 origin
+      // block. Locked so the gate isn't added by mistake.
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/nonexistent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Origin: "https://remote.example.com",
+          },
+          body: "{}",
+        },
+      );
+
+      expect(response.status).toBe(404);
     });
 
     it("should return 404 for disabled tool", async () => {

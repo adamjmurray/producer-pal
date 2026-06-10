@@ -126,7 +126,6 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
   { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
-  { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
   { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   OTHER_MODEL_OPTION,
 ];
@@ -191,15 +190,21 @@ export const OPENROUTER_MODELS = [
   { value: "qwen/qwen3.7-max", label: "[Paid] Qwen 3.7 Max" },
   { value: "moonshotai/kimi-k2.6", label: "[Paid] Moonshot AI Kimi K2.6" },
   // Free models
-  { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
-  { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
   {
-    value: "arcee-ai/trinity-large-preview:free",
-    label: "[Free] Arcee Trinity Large",
+    value: "google/gemma-4-26b-a4b-it:free",
+    label: "[Free] Google Gemma 4 26B",
   },
   {
-    value: "nvidia/nemotron-3-nano-30b-a3b:free",
-    label: "[Free] Nvidia Nemotron 3 Nano",
+    value: "qwen/qwen3-next-80b-a3b-instruct:free",
+    label: "[Free] Qwen3 Next 80B",
+  },
+  {
+    value: "moonshotai/kimi-k2.6:free",
+    label: "[Free] Moonshot AI Kimi K2.6",
+  },
+  {
+    value: "nvidia/nemotron-3-super-120b-a12b:free",
+    label: "[Free] Nvidia Nemotron 3 Super 120B",
   },
   OTHER_MODEL_OPTION,
 ];
@@ -211,9 +216,9 @@ export const OLLAMA_MODELS = [
   { value: "qwen3-coder", label: "qwen3-coder" },
   { value: "mistral", label: "mistral" },
   { value: "devstral-small-2", label: "devstral-small-2" },
+  { value: "lfm2.5", label: "lfm2.5" },
   { value: "nemotron-cascade-2", label: "nemotron-cascade-2" },
   { value: "glm-4.7-flash", label: "glm-4.7-flash" },
-  { value: "lfm2", label: "lfm2" },
   OTHER_MODEL_OPTION,
 ];
 

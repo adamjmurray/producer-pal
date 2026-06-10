@@ -56,6 +56,15 @@ It works with virtually any AI, including its
 
 ### 🔧 Library (`ppal-library`) {#ppal-library}
 
+::: warning Requires Live 12.4+
+
+The library tools require Ableton Live 12.4 or later. On older versions they
+return an error explaining the requirement. Use the version of Max bundled with
+Live, or make sure your standalone Max is up to date. See
+[Troubleshooting](/support/troubleshooting) for details.
+
+:::
+
 - Search Live's browser library by name, tags, content kind, device kind, or
   source category (User Library, Pack, Built-in, Cloud, Plugin)
 - Also includes the user-configured sample folder when set, with results merged

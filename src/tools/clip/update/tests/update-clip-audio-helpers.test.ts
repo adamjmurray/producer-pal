@@ -41,18 +41,28 @@ describe("setAudioParameters", () => {
   });
 
   it("should set pitchShift with coarse and fine values", () => {
-    setAudioParameters(mockClip, { pitchShift: 5.5 });
+    setAudioParameters(mockClip, { pitchShift: 5.25 });
 
     expect(mockClip.set).toHaveBeenCalledWith("pitch_coarse", 5);
-    expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", 50);
+    expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", 25);
+  });
+
+  it("should keep pitch_fine within ±50 for fractions over half a semitone", () => {
+    // round(5.75) = 6, fine = round((5.75 - 6) * 100) = -25 → 6 - 0.25 = 5.75.
+    // The old Math.floor gave fine = 75, which Live clamps to 50 (→ 5.5).
+    setAudioParameters(mockClip, { pitchShift: 5.75 });
+
+    expect(mockClip.set).toHaveBeenCalledWith("pitch_coarse", 6);
+    expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", -25);
   });
 
   it("should set pitchShift with negative values", () => {
-    // Math.floor(-3.25) = -4, fine = round((-3.25 - -4) * 100) = round(0.75 * 100) = 75
+    // round(-3.25) = -3, fine = round((-3.25 - -3) * 100) = -25 → -3.25.
+    // The old Math.floor gave coarse -4 / fine 75, which Live clamps to 50.
     setAudioParameters(mockClip, { pitchShift: -3.25 });
 
-    expect(mockClip.set).toHaveBeenCalledWith("pitch_coarse", -4);
-    expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", 75);
+    expect(mockClip.set).toHaveBeenCalledWith("pitch_coarse", -3);
+    expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", -25);
   });
 
   it("should set pitchShift for whole number negative values", () => {
@@ -211,11 +221,11 @@ describe("applyAudioTransforms", () => {
       return null;
     });
 
-    const result = applyAudioTransforms(mockClip, "pitchShift = 5.5");
+    const result = applyAudioTransforms(mockClip, "pitchShift = 5.25");
 
     expect(result).toBe(true);
     expect(mockClip.set).toHaveBeenCalledWith("pitch_coarse", 5);
-    expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", 50);
+    expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", 25);
   });
 
   it("should return false when pitchShift is unchanged", () => {

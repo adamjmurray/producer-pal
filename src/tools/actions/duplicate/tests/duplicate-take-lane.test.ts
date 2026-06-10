@@ -141,6 +141,61 @@ describe("duplicate take lane", () => {
     });
   });
 
+  it("captures a pickup note (negative start_time) when copying to a take lane", async () => {
+    registerLiveSet();
+
+    // A pickup sits just before the clip start. The source's get_notes_extended
+    // honors the requested [from_time, from_time + span) window, so reading only
+    // from time 0 (the old behavior) dropped the pickup; the scan window must
+    // start at -length to capture it.
+    const pickup = { ...SOURCE_NOTE, start_time: -0.5 };
+    const allNotes = [pickup, SOURCE_NOTE];
+
+    registerMockObject("src_clip", {
+      path: livePath.track(0).arrangementClip(0),
+      type: "Clip",
+      properties: {
+        is_midi_clip: 1,
+        is_arrangement_clip: 1,
+        length: 4,
+        loop_start: 0,
+        loop_end: 4,
+        start_marker: 0,
+        end_marker: 4,
+        looping: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+      methods: {
+        get_notes_extended: (_pitch, _pitchSpan, fromTime, span) =>
+          JSON.stringify({
+            notes: allNotes.filter(
+              (n) =>
+                n.start_time >= (fromTime as number) &&
+                n.start_time < (fromTime as number) + (span as number),
+            ),
+          }),
+      },
+    });
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      arrangementStart: "1|1",
+      takeLane: "new",
+    });
+
+    const newClip = lookupMockObject(
+      undefined,
+      livePath.track(0).takeLane(0).arrangementClip(0),
+    );
+
+    expect(newClip?.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [pickup, SOURCE_NOTE],
+    });
+  });
+
   it("warns and ignores arrangementLength for take-lane duplication", async () => {
     await duplicateToFreshLane({ arrangementLength: "2bar" });
 

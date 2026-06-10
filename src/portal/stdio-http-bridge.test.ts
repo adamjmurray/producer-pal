@@ -61,6 +61,7 @@ vi.mock(import("@modelcontextprotocol/sdk/server/stdio.js"), () => ({
 vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
   CallToolRequestSchema: "CallToolRequestSchema",
   ListToolsRequestSchema: "ListToolsRequestSchema",
+  ErrorCode: { ConnectionClosed: -32000 },
 }));
 
 const mockMcpServer = {
@@ -105,7 +106,7 @@ vi.mock(import("./file-logger.ts"), () => ({
 
 // Import the class after mocking
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { VERSION } from "#src/shared/version.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { logger } from "./file-logger.ts";
 import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 
@@ -646,6 +647,25 @@ describe("StdioHttpBridge", () => {
       );
 
       expect(result.content[0]?.text).toBe("Invalid parameters");
+    });
+
+    it("treats ConnectionClosed (-32000) as a connectivity failure, not a protocol error", async () => {
+      // The SDK rejects the in-flight request with ConnectionClosed when the
+      // transport drops mid-call (Ableton quit/restarted, device unloaded). That
+      // must return setup guidance and reset isConnected — not pass the cryptic
+      // "Connection closed" text to the client while leaving isConnected stuck.
+      // _ensureHttpConnection() sets isConnected true during the call, so the
+      // observed false afterwards proves the catch reset it (old code left true).
+      const callToolHandler = await startAndGetCallHandler(bridge);
+
+      const result = await callToolWithMcpError(
+        callToolHandler,
+        "Connection closed",
+        -32000, // ErrorCode.ConnectionClosed
+      );
+
+      expect(result).toStrictEqual(bridge._createSetupErrorResponse());
+      expect(bridge.isConnected).toBe(false);
     });
 
     it("returns misconfigured URL error for ERR_INVALID_URL", async () => {

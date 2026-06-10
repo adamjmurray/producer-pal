@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
@@ -7,6 +8,7 @@ import { select } from "#src/tools/session/select.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   parseCommaSeparatedIds,
+  parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -61,18 +63,36 @@ export function updateScene(
   // Parse comma-separated string into array
   const sceneIds = parseCommaSeparatedIds(ids);
 
-  // Validate all IDs are scenes, skip invalid ones
-  const scenes = validateIdTypes(sceneIds, "scene", "updateScene", {
-    skipInvalid: true,
-  });
+  // Parse names/colors against the original id count so the positional mapping
+  // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
+  // mid-list — otherwise every later name/color shifts onto the wrong scene.
+  const parsedNames = parseNames(name, sceneIds.length, "updateScene");
+  const parsedColors = parseCommaSeparatedColors(color, sceneIds.length);
 
-  const parsedNames = parseNames(name, scenes.length, "updateScene");
-  const parsedColors = parseCommaSeparatedColors(color, scenes.length);
+  // Validate timeSignature format up front so a malformed value fails before
+  // any scene is mutated, instead of throwing mid-loop after partial updates.
+  // "disabled" is a valid sentinel handled per-scene, not a time signature.
+  if (timeSignature != null && timeSignature !== "disabled") {
+    parseTimeSignature(timeSignature);
+  }
 
   const updatedScenes: UpdateSceneResult[] = [];
 
-  for (let i = 0; i < scenes.length; i++) {
-    const scene = scenes[i] as LiveAPI;
+  for (let i = 0; i < sceneIds.length; i++) {
+    // Validate one id at a time (skip invalid) so the loop index stays aligned
+    // to the original ids: a skipped id must not pull later names/colors forward
+    // onto the wrong scene.
+    const [scene] = validateIdTypes(
+      [sceneIds[i] as string],
+      "scene",
+      "updateScene",
+      {
+        skipInvalid: true,
+      },
+    );
+
+    if (scene == null) continue;
+
     const sceneName = getNameForIndex(name, i, parsedNames);
     const sceneColor = getColorForIndex(color, i, parsedColors);
 

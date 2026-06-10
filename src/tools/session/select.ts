@@ -174,7 +174,7 @@ export function select(
 
   addTrackToResponse(result, trackResult.selectedTrackId);
   addSceneToResponse(result, sceneResult.selectedSceneId);
-  addClipToResponse(result, resolved, clipSlotHasClip, effectiveView);
+  addClipToResponse(result, resolved, clipSlotHasClip);
   addDeviceToResponse(result, resolved, args);
 
   if (pluginWindowOpen != null && result.selectedDevice != null) {
@@ -326,13 +326,11 @@ function addSceneToResponse(
  * @param result - Response being built
  * @param resolved - Resolved args
  * @param clipSlotHasClip - Whether clipSlot had a clip
- * @param effectiveView - View that was set (explicit or auto-switched)
  */
 function addClipToResponse(
   result: SelectResult,
   resolved: ResolvedArgs,
   clipSlotHasClip: boolean,
-  effectiveView: string | undefined,
 ): void {
   if (resolved.clipId != null) {
     const info = buildClipResponseFromId(resolved.clipId);
@@ -340,9 +338,10 @@ function addClipToResponse(
     if (info) {
       result.selectedClip = info;
 
-      if (effectiveView == null) {
-        result.view = info.slot != null ? "session" : "arrangement";
-      }
+      // A clip selection always switches Live to the clip's required view
+      // (session for slotted clips, arrangement otherwise), so report that view
+      // even when it overrides an explicitly requested, conflicting view.
+      result.view = info.slot != null ? "session" : "arrangement";
     }
   } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
     const info = buildClipResponseFromSlot(resolved.parsedClipSlot);

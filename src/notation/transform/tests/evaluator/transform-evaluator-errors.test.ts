@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   applyTransforms,
   evaluateTransform,
@@ -15,6 +15,7 @@ import { type TransformAssignment } from "#src/notation/transform/parser/transfo
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 import {
   createTestNote,
+  createTestNotes,
   DEFAULT_CONTEXT,
   expectTransformError,
 } from "./transform-evaluator-test-helpers.ts";
@@ -266,6 +267,10 @@ describe("Transform Evaluator Error Handling", () => {
       ["floor()", "floor with no arguments"],
       ["abs()", "abs with no arguments"],
       ["ceil()", "ceil with no arguments"],
+      ["round(1.5, 99)", "round with an extra argument"],
+      ["floor(1.5, 2)", "floor with an extra argument"],
+      ["abs(-1, 2)", "abs with an extra argument"],
+      ["ceil(1.5, 2)", "ceil with an extra argument"],
       ["pow(2)", "pow with only one argument"],
       ["pow(0, -1)", "pow producing Infinity"],
       ["pow(-1, 0.5)", "pow producing NaN"],
@@ -282,6 +287,51 @@ describe("Transform Evaluator Error Handling", () => {
       ["reflect(50, 0, 100, 200)", "reflect with four arguments"],
     ])("handles %s error", (expr) => {
       expectTransformError(`velocity = ${expr}`);
+    });
+  });
+
+  describe("waveform argument validation", () => {
+    // sin/cos/tri/saw take period + optional phase (sync is a trailing keyword,
+    // not an arg); square also takes an optional pulseWidth. A further positional
+    // arg is now rejected rather than silently dropped.
+    it.each([
+      ["cos(n/4, 0, 0.9)", "cos with a 3rd positional argument"],
+      ["sin(n/4, 0, 0.9)", "sin with a 3rd positional argument"],
+      ["tri(n/4, 0, 0.9)", "tri with a 3rd positional argument"],
+      ["saw(n/4, 0, 0.9)", "saw with a 3rd positional argument"],
+      ["square(n/4, 0, 0.5, 0.9)", "square with a 4th positional argument"],
+    ])("handles %s error", (expr) => {
+      expectTransformError(`velocity = ${expr}`);
+    });
+  });
+
+  describe("malformed-line warning deduplication", () => {
+    it("relays one warning per malformed line, not one per note", () => {
+      vi.mocked(outlet).mockClear();
+
+      const notes = createTestNotes([
+        { start_time: 0 },
+        { start_time: 1 },
+        { start_time: 2 },
+        { start_time: 3 },
+      ]);
+
+      // round() rejects the extra arg for every selected note; the failure is
+      // note-invariant, so it must surface exactly once.
+      applyTransforms(notes, "velocity = round(1, 2)", 4, 4);
+
+      const failureWarnings = vi
+        .mocked(outlet)
+        .mock.calls.filter(
+          (call) =>
+            call[0] === 1 &&
+            typeof call[1] === "string" &&
+            call[1].includes("Failed to evaluate transform"),
+        );
+
+      expect(failureWarnings).toHaveLength(1);
+      // The whole assignment is skipped, so velocities are untouched.
+      expect(notes.every((note) => note.velocity === 100)).toBe(true);
     });
   });
 });

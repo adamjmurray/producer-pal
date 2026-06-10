@@ -54,9 +54,13 @@ describe("transport", () => {
   });
 
   it("should handle update-arrangement action with loop settings", () => {
+    // loop_start/loop_length mirror the values this call sets (the mock's set()
+    // doesn't feed back into get), so the reported loop reflects actual state.
     liveSet = setupPlaybackLiveSet({
       is_playing: 1,
       current_song_time: 10,
+      loop_start: 8, // bar 3
+      loop_length: 16, // bars 3–7
     });
 
     const result = playback({
@@ -79,6 +83,57 @@ describe("transport", () => {
         start: "3|1",
         end: "7|1",
       },
+    });
+  });
+
+  it("skips a non-positive loop length (loopEnd at/before loopStart) and warns", () => {
+    // Regression (#26): loopStart and loopEnd are independent, so loopEnd before
+    // loopStart produced a negative loop_length written straight to the Live Set.
+    liveSet = setupPlaybackLiveSet({ is_playing: 0, current_song_time: 0 });
+
+    playback({
+      action: "update-arrangement",
+      loop: true,
+      loopStart: "7|1", // beat 24
+      loopEnd: "3|1", // beat 8 → length 8 - 24 = -16
+    });
+
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "loop_length",
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("loopEnd must be after loopStart"),
+    );
+  });
+
+  it("reports the actual loop bounds, not the rejected loopEnd, when loop length is non-positive", () => {
+    // The Live Set's real loop is bars 1–2. A loopEnd at/before loopStart is
+    // rejected (loop_length not written), so the response must echo the
+    // unchanged actual loop — not the rejected request. Before the fix it
+    // returned the rejected loopEnd, disagreeing with Live.
+    liveSet = setupPlaybackLiveSet({
+      loop: 1,
+      loop_start: 0,
+      loop_length: 4,
+      is_playing: 0,
+      current_song_time: 0,
+    });
+
+    const result = playback({
+      action: "update-arrangement",
+      loopStart: "2|1", // beat 4
+      loopEnd: "1|1", // beat 0 → length 0 - 4 = -4, rejected
+    });
+
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "loop_length",
+      expect.anything(),
+    );
+    expect(result.arrangementLoop).toStrictEqual({
+      start: "1|1",
+      end: "2|1",
     });
   });
 

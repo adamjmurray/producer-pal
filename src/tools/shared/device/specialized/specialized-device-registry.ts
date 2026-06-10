@@ -9,11 +9,17 @@ import { driftSpec } from "./devices/drift.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";
 import { hybridReverbSpec } from "./devices/hybrid-reverb.ts";
 import { meldSpec } from "./devices/meld.ts";
+import {
+  autoFilterSpec,
+  autoPanTremoloSpec,
+  phaserFlangerSpec,
+} from "./devices/modulation-rate-effects.ts";
 import { roarSpec } from "./devices/roar.ts";
 import { simplerSpec } from "./devices/simpler.ts";
 import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
 import { wavetableSpec } from "./devices/wavetable.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
+import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {
   type ActionDef,
   type PseudoParam,
@@ -32,9 +38,12 @@ const SPECS: SpecializedDeviceSpec[] = [
   simplerSpec,
   wavetableSpec,
   // Audio effects
+  autoFilterSpec,
+  autoPanTremoloSpec,
   compressorSpec,
   eqEightSpec,
   hybridReverbSpec,
+  phaserFlangerSpec,
   roarSpec,
   spectralResonatorSpec,
 ];
@@ -218,6 +227,24 @@ function collectParamOptions(
   }
 
   return result;
+}
+
+/**
+ * Mark a device's parameters inactive per its specialized `inactiveWhen` rules
+ * (no-op for generic devices or specs without rules). Mutates `parameters` in
+ * place; call only when reading param values, since `state` is value-level.
+ * @param device - LiveAPI device object
+ * @param parameters - Parameter entries to annotate (mutated in place)
+ */
+export function applySpecializedInactiveStates(
+  device: LiveAPI,
+  parameters: Record<string, unknown>[],
+): void {
+  const spec = getSpecForDevice(device);
+
+  if (spec?.inactiveWhen) {
+    applyInactiveStates(spec.inactiveWhen, parameters);
+  }
 }
 
 /**

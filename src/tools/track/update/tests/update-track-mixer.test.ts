@@ -262,6 +262,48 @@ describe("updateTrack - mixer properties", () => {
     expect(leftSplitParam1.set).toHaveBeenCalledWith("value", -1);
     expect(rightSplitParam1.set).toHaveBeenCalledWith("value", 1);
   });
+
+  it("should skip gain when the volume parameter does not exist", () => {
+    // Mixer exists but its volume child does not.
+    registerMockObject("id 0", {
+      path: `${livePath.track(0).mixerDevice()} volume`,
+    });
+
+    updateTrack({ ids: "123", gainDb: -6 });
+
+    expect(volumeParam1.set).not.toHaveBeenCalled();
+  });
+
+  it("should skip pan when the panning parameter does not exist", () => {
+    // Mixer exists but its panning child does not.
+    registerMockObject("id 0", {
+      path: `${livePath.track(0).mixerDevice()} panning`,
+    });
+
+    updateTrack({ ids: "123", pan: 0.5 });
+
+    expect(panningParam1.set).not.toHaveBeenCalled();
+  });
+
+  it("should skip split panning when split parameters do not exist", () => {
+    // Mixer is in split mode but the split stereo children do not exist.
+    mixer1.get.mockImplementation((prop: string) => {
+      if (prop === "panning_mode") return [1]; // Split mode
+
+      return [0];
+    });
+    const leftSplitParam1 = registerMockObject("id 0", {
+      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
+    });
+    const rightSplitParam1 = registerMockObject("id 0", {
+      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
+    });
+
+    updateTrack({ ids: "123", leftPan: -0.75, rightPan: 0.5 });
+
+    expect(leftSplitParam1.set).not.toHaveBeenCalled();
+    expect(rightSplitParam1.set).not.toHaveBeenCalled();
+  });
 });
 
 /**

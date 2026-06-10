@@ -48,6 +48,30 @@ support tools.
 - Restart your AI interface
 - Check the Max console for error messages
 
+## Library Features Require Live 12.4+
+
+Producer Pal's library and plugin browsing (the `ppal-library` tool) requires
+**Ableton Live 12.4 or later**. It relies on capabilities in the version of Max
+that ships with Live 12.4 and up.
+
+Symptoms on older Live versions:
+
+- The AI reports it can't read your Live library and says you need Live 12.4 or
+  later.
+- On older Producer Pal versions the device may fail to start, with an error
+  mentioning `node:sqlite` in the Max console.
+
+What to do:
+
+- **Update Ableton Live to 12.4 or later** (recommended).
+- **If you use a standalone Max** (for example, for Max development) instead of
+  the Max bundled with Live, make sure it is updated to the latest version. You
+  can also turn off the "Use Max Application" option in Live's preferences so
+  Live uses its own bundled Max.
+
+On current versions of Producer Pal, only library/plugin browsing is affected —
+connecting to Ableton and the other tools keep working.
+
 ## After Upgrading
 
 If Producer Pal stops working after installing a new version:

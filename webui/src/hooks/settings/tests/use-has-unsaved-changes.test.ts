@@ -37,8 +37,10 @@ function makeSettings(
     realtimeVoice: "marin",
     voiceSpeed: 1,
     voiceVolume: 1,
+    voiceLanguage: "en",
     turnDetection: DEFAULT_TURN_DETECTION,
     liveApiEnabledDirty: false,
+    settingsLoaded: true,
     ...over,
   } as UseSettingsReturn;
 }
@@ -55,6 +57,22 @@ describe("useHasUnsavedChanges", () => {
     expect(result.current).toBe(false);
 
     rerender({ s: makeSettings({ voiceVolume: 0.5 }), open: true });
+    expect(result.current).toBe(true);
+  });
+
+  it("detects a lone voiceLanguage change (protected on dismiss)", () => {
+    const { result, rerender } = renderHook(
+      ({ s, open }: { s: UseSettingsReturn; open: boolean }) =>
+        useHasUnsavedChanges(s, appearance, open),
+      { initialProps: { s: makeSettings(), open: false } },
+    );
+
+    rerender({ s: makeSettings(), open: true });
+    expect(result.current).toBe(false);
+
+    // Changing only the voice-chat language must register as unsaved, so a
+    // click-outside/Escape shakes-or-confirms instead of silently reverting it.
+    rerender({ s: makeSettings({ voiceLanguage: "es" }), open: true });
     expect(result.current).toBe(true);
   });
 
@@ -96,6 +114,37 @@ describe("useHasUnsavedChanges", () => {
     );
 
     rerender({ s: makeSettings({ apiKey: "changed" }) });
+    expect(result.current).toBe(true);
+  });
+
+  it("does not flag the async apiKey decrypt as an unsaved change (#41)", () => {
+    // Modal open from the first render with settings not yet loaded (apiKey
+    // still blank pre-decrypt). The baseline must wait for settingsLoaded, so
+    // the decrypted key landing isn't mistaken for a user edit.
+    const { result, rerender } = renderHook(
+      ({ s }: { s: UseSettingsReturn }) =>
+        useHasUnsavedChanges(s, appearance, true),
+      {
+        initialProps: {
+          s: makeSettings({ apiKey: "", settingsLoaded: false }),
+        },
+      },
+    );
+
+    // Not loaded yet → no baseline captured, so nothing reads as unsaved.
+    expect(result.current).toBe(false);
+
+    // Decrypt lands: apiKey populated AND settingsLoaded flips true. This is the
+    // baseline, not a user edit → still no unsaved changes.
+    rerender({
+      s: makeSettings({ apiKey: "decrypted-key", settingsLoaded: true }),
+    });
+    expect(result.current).toBe(false);
+
+    // A subsequent real edit IS detected.
+    rerender({
+      s: makeSettings({ apiKey: "user-typed", settingsLoaded: true }),
+    });
     expect(result.current).toBe(true);
   });
 });

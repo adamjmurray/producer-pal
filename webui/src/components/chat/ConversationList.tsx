@@ -47,7 +47,12 @@ export function ConversationList({
   onRename,
   onToggleBookmark,
 }: ConversationListProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Section-namespaced (`${keyPrefix}-${conv.id}`), not the bare id: a
+  // bookmarked conversation renders in BOTH the Bookmarks and All sections, so
+  // keying edit mode by id alone put both instances into edit mode at once —
+  // two autoFocus inputs fought for focus, and the blur committed the rename
+  // before the user could type. Keying by the section makes exactly one edit.
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [bookmarksCollapsed, setBookmarksCollapsed] = useState(false);
   const [allCollapsed, setAllCollapsed] = useState(false);
@@ -59,32 +64,39 @@ export function ConversationList({
       : conversations;
   const bookmarked = visible.filter((c) => c.bookmarked);
 
-  const renderItems = (items: ConversationSummary[]) =>
-    items.map((conv) => (
-      <ConversationItem
-        key={conv.id}
-        conv={conv}
-        isActive={conv.id === activeConversationId}
-        isEditing={conv.id === editingId}
-        editValue={editValue}
-        onSelect={onSelect}
-        onDelete={onDelete}
-        onExport={onExportItem}
-        onToggleBookmark={onToggleBookmark}
-        onEditStart={() => {
-          setEditingId(conv.id);
-          setEditValue(conv.title ?? "");
-        }}
-        onEditChange={setEditValue}
-        onEditCommit={() => {
-          const trimmed = editValue.trim();
+  // A bookmarked conversation renders in BOTH the Bookmarks and All sections
+  // (bookmarked ⊆ visible), so the key must be namespaced per section — a bare
+  // conv.id would collide across the two sibling lists (duplicate React keys).
+  const renderItems = (items: ConversationSummary[], keyPrefix: string) =>
+    items.map((conv) => {
+      const itemKey = `${keyPrefix}-${conv.id}`;
 
-          onRename(conv.id, trimmed || null);
-          setEditingId(null);
-        }}
-        onEditCancel={() => setEditingId(null)}
-      />
-    ));
+      return (
+        <ConversationItem
+          key={itemKey}
+          conv={conv}
+          isActive={conv.id === activeConversationId}
+          isEditing={itemKey === editingKey}
+          editValue={editValue}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onExport={onExportItem}
+          onToggleBookmark={onToggleBookmark}
+          onEditStart={() => {
+            setEditingKey(itemKey);
+            setEditValue(conv.title ?? "");
+          }}
+          onEditChange={setEditValue}
+          onEditCommit={() => {
+            const trimmed = editValue.trim();
+
+            onRename(conv.id, trimmed || null);
+            setEditingKey(null);
+          }}
+          onEditCancel={() => setEditingKey(null)}
+        />
+      );
+    });
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -102,7 +114,7 @@ export function ConversationList({
                 collapsed={bookmarksCollapsed}
                 onToggle={() => setBookmarksCollapsed(!bookmarksCollapsed)}
               />
-              {!bookmarksCollapsed && renderItems(bookmarked)}
+              {!bookmarksCollapsed && renderItems(bookmarked, "bookmark")}
             </>
           )}
 
@@ -112,7 +124,7 @@ export function ConversationList({
             collapsed={allCollapsed}
             onToggle={() => setAllCollapsed(!allCollapsed)}
           />
-          {!allCollapsed && renderItems(visible)}
+          {!allCollapsed && renderItems(visible, "all")}
         </>
       )}
     </div>

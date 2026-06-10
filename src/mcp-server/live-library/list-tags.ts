@@ -61,7 +61,7 @@ export async function listTags(
   // rename of the keywords/files tables or columns would throw a raw SQLite error
   // to the LLM. Degrade to dbAvailable:false instead. Mirrors librarySearch.
   try {
-    const db = openLiveDb(dbPath);
+    const db = await openLiveDb(dbPath);
 
     try {
       const rows = db

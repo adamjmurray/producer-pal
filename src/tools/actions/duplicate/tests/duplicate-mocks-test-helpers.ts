@@ -31,7 +31,8 @@ vi.mock(
     const s = await import("./setup.ts");
 
     return {
-      clearClipAtDuplicateTarget: vi.fn(),
+      clearClipAtDuplicateTarget: s.clearClipAtDuplicateTargetMock,
+      duplicateSelfOverlappingClip: s.duplicateSelfOverlappingClipMock,
       moveClipFromHolding: s.moveClipFromHoldingMock,
     };
   },

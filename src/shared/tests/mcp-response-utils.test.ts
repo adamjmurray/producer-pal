@@ -10,6 +10,7 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
+  oversizedSingleMessageError,
   planChunks,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
@@ -218,6 +219,27 @@ describe("mcp-response-utils", () => {
       expect(reassembleChunks([...plan.chunks, MAX_ERROR_DELIMITER])).toBe(
         original,
       );
+    });
+  });
+
+  describe("oversizedSingleMessageError", () => {
+    it("returns null when the payload fits in one IPC message", () => {
+      expect(oversizedSingleMessageError("x".repeat(100), "x")).toBeNull();
+      // Exactly MAX_CHUNK_SIZE is the boundary and still allowed.
+      expect(
+        oversizedSingleMessageError("x".repeat(MAX_CHUNK_SIZE), "x"),
+      ).toBeNull();
+    });
+
+    it("returns a labeled error when the payload exceeds MAX_CHUNK_SIZE", () => {
+      const error = oversizedSingleMessageError(
+        "x".repeat(MAX_CHUNK_SIZE + 1),
+        "code-exec request",
+      );
+
+      expect(error).toContain("code-exec request too large");
+      expect(error).toContain(String(MAX_CHUNK_SIZE + 1));
+      expect(error).toContain(String(MAX_CHUNK_SIZE));
     });
   });
 });

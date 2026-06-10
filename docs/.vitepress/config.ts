@@ -1,5 +1,5 @@
 import { defineConfig } from "vitepress";
-import { VERSION } from "../../src/shared/version.ts";
+import { VERSION } from "../../src/shared/config.ts";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -15,7 +15,7 @@ export default defineConfig({
 
   cleanUrls: true,
 
-  srcExclude: ["_generated/**", "public/markdown/**"],
+  srcExclude: ["_generated/**", "_partials/**", "public/markdown/**"],
 
   transformPageData(pageData) {
     const path = pageData.relativePath

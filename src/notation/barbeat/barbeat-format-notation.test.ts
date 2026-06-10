@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -38,7 +39,7 @@ describe("bar|beat formatNotation() re-export shim", () => {
     ] as NoteEvent[];
 
     expect(formatNotation(notes)).toBe(
-      "v80 n/8 p0.8 C3 1|1 v120 n/2 p0.6 D3 1|2",
+      "v80 n/8 p0.8 C3 1|1\nv120 n/2 p0.6 D3 1|2",
     );
   });
 

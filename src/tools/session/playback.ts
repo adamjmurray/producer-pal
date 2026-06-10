@@ -53,8 +53,6 @@ interface BuildPlaybackResultParams {
   isPlaying: boolean;
   currentTime: string;
   loop?: boolean;
-  loopStart?: string;
-  loopEnd?: string;
   currentLoopStart: string;
   currentLoopEnd: string;
   liveSet: LiveAPI;
@@ -189,8 +187,6 @@ export function playback(
     isPlaying,
     currentTime,
     loop,
-    loopStart,
-    loopEnd,
     currentLoopStart: currentLoop.start,
     currentLoopEnd: currentLoop.end,
     liveSet,
@@ -218,10 +214,8 @@ function handleFocus(action: string, focus?: boolean): void {
  * @param params.isPlaying - Whether playback is active
  * @param params.currentTime - Current time in bar|beat format
  * @param params.loop - Loop enabled state
- * @param params.loopStart - Loop start in bar|beat format
- * @param params.loopEnd - Loop end in bar|beat format
- * @param params.currentLoopStart - Current loop start
- * @param params.currentLoopEnd - Current loop end
+ * @param params.currentLoopStart - Current loop start (post-set actual value)
+ * @param params.currentLoopEnd - Current loop end (post-set actual value)
  * @param params.liveSet - The live_set LiveAPI object
  * @returns Playback result
  */
@@ -229,8 +223,6 @@ function buildPlaybackResult({
   isPlaying,
   currentTime,
   loop,
-  loopStart,
-  loopEnd,
   currentLoopStart,
   currentLoopEnd,
   liveSet,
@@ -243,9 +235,12 @@ function buildPlaybackResult({
   const loopEnabled = loop ?? (liveSet.getProperty("loop") as number) > 0;
 
   if (loopEnabled) {
+    // Report the actual loop bounds read back after the sets, not the requested
+    // loopStart/loopEnd — a loopEnd at/before loopStart is rejected (loop_length
+    // unchanged), so echoing the request would disagree with the real Live Set.
     result.arrangementLoop = {
-      start: loopStart ?? currentLoopStart,
-      end: loopEnd ?? currentLoopEnd,
+      start: currentLoopStart,
+      end: currentLoopEnd,
     };
   }
 

@@ -284,6 +284,74 @@ describe("updateTrack", () => {
 
       expect(result).toStrictEqual({ id: "123" });
     });
+
+    describe("type-guarded routing and monitoring", () => {
+      it("warns and skips input routing on a return track but still applies output routing", () => {
+        const returnTrack = registerMockObject("ret1", {
+          path: livePath.returnTrack(0),
+          properties: { can_be_armed: 0 },
+        });
+
+        updateTrack({
+          ids: "ret1",
+          inputRoutingTypeId: "17",
+          outputRoutingTypeId: "25",
+        });
+
+        // Input routing exists only on regular non-group tracks: warn-and-skip.
+        expect(returnTrack.set).not.toHaveBeenCalledWith(
+          "input_routing_type",
+          expect.anything(),
+        );
+        // Output routing is valid on return tracks and is still applied.
+        expect(returnTrack.set).toHaveBeenCalledWith(
+          "output_routing_type",
+          '{"output_routing_type":{"identifier":25}}',
+        );
+        expect(outlet).toHaveBeenCalledWith(
+          1,
+          expect.stringContaining("input routing is only available"),
+        );
+      });
+
+      it("warns and skips input routing on a group track", () => {
+        const groupTrack = registerMockObject("grp1", {
+          path: livePath.track(5),
+          properties: { is_foldable: 1 },
+        });
+
+        updateTrack({ ids: "grp1", inputRoutingTypeId: "17" });
+
+        expect(groupTrack.set).not.toHaveBeenCalledWith(
+          "input_routing_type",
+          expect.anything(),
+        );
+        expect(outlet).toHaveBeenCalledWith(
+          1,
+          expect.stringContaining("input routing is only available"),
+        );
+      });
+
+      it("warns and skips monitoring state on a non-armable track", () => {
+        const returnTrack = registerMockObject("ret1", {
+          path: livePath.returnTrack(0),
+          properties: { can_be_armed: 0 },
+        });
+
+        updateTrack({ ids: "ret1", monitoringState: MONITORING_STATE.IN });
+
+        expect(returnTrack.set).not.toHaveBeenCalledWith(
+          "current_monitoring_state",
+          expect.anything(),
+        );
+        expect(outlet).toHaveBeenCalledWith(
+          1,
+          expect.stringContaining(
+            "monitoringState is only available on armable",
+          ),
+        );
+      });
+    });
   });
 
   describe("arrangementFollower parameter", () => {

@@ -33,6 +33,14 @@ export function normalizeParamValue(rawValue: string): string | number {
   // recognized unit so strings like "1/16" or "On"/"Off" keep their string form.
   const parsed = parseLabel(rawValue);
 
+  // A directional pan label ("50L"/"50R") must NOT reduce to its bare number:
+  // that silently drops the L/R direction, and a bare pan number is meaningless
+  // (pan is -1..1, not 0..50). Keep it a string so the pan-aware setter parses
+  // it with normalizePan. "C" carries no direction and already maps to 0.
+  if (parsed.unit === "pan" && parsed.direction != null) {
+    return rawValue;
+  }
+
   return typeof parsed.value === "number" && parsed.unit != null
     ? parsed.value
     : rawValue;

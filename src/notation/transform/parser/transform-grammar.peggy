@@ -57,6 +57,51 @@
     return { parameter, operator, expression: value };
   }
 
+  // Intrinsic scalar note properties allowed inside a where() predicate. Selection-
+  // derived note props (index, count), the next.* lookahead, and the clip/audio
+  // namespaces are excluded: where() is evaluated during note SELECTION, before the
+  // selected set (and thus index/count/next/legato) exists, so only per-note
+  // intrinsic values are available.
+  const PREDICATE_NOTE_PROPS = new Set([
+    "velocity", "deviation", "duration", "probability", "pitch", "start",
+  ]);
+
+  // Walk a where() predicate AST and reject anything not allowed in 515a: any
+  // variable other than the six intrinsic note properties, and any function call.
+  // Throws a targeted error; returns nothing on success. Number literals are bare
+  // JS numbers (not objects) and pass through; pitch/duration domain literals are
+  // allowed. Functions are a deferred fast-follow (AJM-517).
+  function validatePredicate(node) {
+    if (node == null || typeof node !== "object") {
+      return;
+    }
+    switch (node.type) {
+      case "or":
+      case "and":
+      case "comparison":
+      case "add":
+      case "subtract":
+      case "multiply":
+      case "divide":
+      case "modulo":
+        validatePredicate(node.left);
+        validatePredicate(node.right);
+        return;
+      case "not":
+        validatePredicate(node.operand);
+        return;
+      case "variable":
+        if (node.namespace !== "note" || !PREDICATE_NOTE_PROPS.has(node.name)) {
+          throw new Error(`where() predicates can only reference note properties (note.velocity, note.deviation, note.duration, note.probability, note.pitch, note.start). Got "${node.namespace}.${node.name}" — note.index/count, next.*, and clip.* aren't available while selecting notes.`);
+        }
+        return;
+      case "function":
+        throw new Error(`where() predicates don't support functions yet — compare note properties directly (e.g. note.velocity < 40), combined with && || ! and arithmetic.`);
+      default:
+        return;
+    }
+  }
+
   // Maps transform parameters to their note/audio variable for *= and /= desugaring.
   // timing uses note.start (absolute position) since there is no note.timing offset variable.
   const PARAM_TO_VARIABLE = {
@@ -69,30 +114,194 @@
     "gain":        { namespace: "audio", name: "gain"        },
     "pitchShift":  { namespace: "audio", name: "pitchShift"  },
   };
+
+  // Fold a list of selector segments (each a pitch / time / where piece, parsed in
+  // any order) into the single { pitchRange, timeRange, predicate } shape the
+  // statement rule consumes. Each kind may appear at most once — a duplicate is a
+  // user mistake (two pitch selectors AND-combine to the empty set). Rather than
+  // throw (which would abort the WHOLE transforms string, killing the other
+  // lines), keep the first occurrence and record a `selectorWarning`. The
+  // evaluator relays it as a WARNING and skips just this line, so the remaining
+  // lines still apply — the warn-and-skip pattern used across the transform tool.
+  // `matched` is the raw prefix text, for the message.
+  function combineSelectorSegments(segments, matched) {
+    let pitchRange = null;
+    let timeRange = null;
+    let predicate = null;
+    const label = matched.trim();
+    const reasons = [];
+    const warnedKinds = new Set();
+    // Note a duplicate kind once (a pitch appearing 3x is still one message).
+    function noteDuplicate(kind, reason) {
+      if (!warnedKinds.has(kind)) {
+        warnedKinds.add(kind);
+        reasons.push(reason);
+      }
+    }
+    for (const seg of segments) {
+      if (seg.kind === "pitch") {
+        if (pitchRange != null) {
+          noteDuplicate("pitch", "duplicate pitch selector (span multiple pitches with a range like C3-E3)");
+          continue;
+        }
+        pitchRange = seg.pitchRange;
+      } else if (seg.kind === "time") {
+        if (timeRange != null) {
+          noteDuplicate("time", "duplicate time selector (use a single range like 1|1-3|1)");
+          continue;
+        }
+        timeRange = seg.timeRange;
+      } else {
+        if (predicate != null) {
+          noteDuplicate("where", "duplicate where() (combine conditions with && / || inside one where(...))");
+          continue;
+        }
+        predicate = seg.predicate;
+      }
+    }
+    const selectorWarning = reasons.length
+      ? `Skipping "${label}": ${reasons.join("; ")}.`
+      : null;
+    return { pitchRange, timeRange, predicate, selectorWarning };
+  }
 }}
 
 start
-  = __ head:assignment? tail:((_ nl _)+ assignment)* __ {
+  = __ head:statement? tail:((_ nl _)+ statement)* __ {
     // A single shorthand token may desugar to multiple assignments (e.g. the
     // `vA-B` velocity range emits velocity + deviation), so flatten one level.
-    const assignments = [head, ...tail.map(t => t[1])].filter(Boolean).flat();
-    return assignments;
+    const statements = [head, ...tail.map(t => t[1])].filter(Boolean).flat();
+    return statements;
   }
 
-rangeSelector "range selector"
-  = pitchRange:pitchRange _ timeRange:timeRange? { return { pitchRange, timeRange: timeRange ?? null }; }
-  / timeRange:timeRange _ pitchRange:pitchRange? { return { pitchRange: pitchRange ?? null, timeRange }; }
 
-assignment "parameter assignment"
-  = ranges:(rangeSelector _ ":" _)? body:assignmentBody {
-    const pitchRange = ranges?.[0]?.pitchRange ?? null;
-    const timeRange = ranges?.[0]?.timeRange ?? null;
-    // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
-    // selector to each so a single token's writes share one pitch/time filter.
-    if (Array.isArray(body)) {
-      return body.map(b => ({ pitchRange, timeRange, ...b }));
+// A transform line is either a parameter assignment (the common case) or a
+// note-count operation (ratchet/merge). Both accept the same optional
+// `selector:` prefix and run in the same sequential pipeline.
+statement "statement"
+  = prefix:selectorPrefix? body:(noteOp / assignmentBody) {
+    const pitchRange = prefix?.pitchRange ?? null;
+    const timeRange = prefix?.timeRange ?? null;
+    const predicate = prefix?.predicate ?? null;
+    const selectorWarning = prefix?.selectorWarning ?? null;
+    const isNoteOpBody = !Array.isArray(body) && body.kind === "noteOp";
+    // A duplicate-selector line is already destined to be warn-and-skipped by the
+    // evaluator (selectorWarning set), so don't hard-fail it on the where()-on-
+    // noteOp rule below — let the skip take precedence.
+    if (predicate != null && isNoteOpBody && selectorWarning == null) {
+      // Note-count ops (ratchet/merge/split) don't support a where() predicate.
+      // Reject rather than silently ignore so the limitation is visible.
+      throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split) — put the predicate on a parameter assignment line instead.`);
     }
-    return { pitchRange, timeRange, ...body };
+    // Only attach `predicate` when a where() clause is present, so non-predicate
+    // assignments keep their historical shape (just pitchRange/timeRange).
+    const predPart = predicate != null ? { predicate } : {};
+    // A duplicate-selector line carries a warning for the evaluator to relay
+    // before skipping; absent on well-formed lines so they keep their shape.
+    const warnPart = selectorWarning != null ? { selectorWarning } : {};
+    // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
+    // selector + predicate to each so a single token's writes share one filter.
+    if (Array.isArray(body)) {
+      return body.map(b => ({ pitchRange, timeRange, ...predPart, ...warnPart, ...b }));
+    }
+    // Note ops carry only the positional selector (no predicate field).
+    if (isNoteOpBody) {
+      return { pitchRange, timeRange, ...warnPart, ...body };
+    }
+    return { pitchRange, timeRange, ...predPart, ...warnPart, ...body };
+  }
+
+// The optional `selector:` prefix. A list of selector segments — a pitch
+// selector, a time selector, and/or a where() predicate — in ANY order, each
+// separated by whitespace and/or an optional `:`, and terminated by a required
+// `:`. Every combination AND-combines at apply time (a note must satisfy all),
+// and each is per-line (no carry to neighboring lines).
+//
+// Order-free and colon-tolerant because LLMs reach for both freely: `Gb1 1|1-2|1
+// where(...):`, `where(...): Gb1:`, and `Gb1: 1|1-2|1: where(...):` all parse the
+// same. Each segment kind may appear at most once; a duplicate throws a targeted
+// error (see combineSelectorSegments). The separating/terminating colon is only
+// consumed where a segment or body genuinely follows, so a positional-only
+// `Gb1: body` still parses (the body is not a segment, so the trailing `:` lands
+// as the terminator, not a separator).
+// Enumerated 1/2/3-segment forms (a selector has at most three distinct kinds).
+// Listed longest-first so PEG tries the most segments and BACKTRACKS to fewer
+// when the trailing `:` is missing — a possessive `*` can't give a segment back,
+// which matters because a bare pitch is also a valid BODY (`C1: C4` = pitch
+// selector C1, body "set pitch to C4"). With the longest-first ladder, the
+// 2-segment parse of `C1: C4` finds no terminating `:` after C4 and falls through
+// to the 1-segment parse, leaving C4 as the body.
+selectorPrefix
+  = a:selectorSegment selectorSep b:selectorSegment selectorSep c:selectorSegment _ ":" _ {
+      return combineSelectorSegments([a, b, c], text());
+    }
+  / a:selectorSegment selectorSep b:selectorSegment _ ":" _ {
+      return combineSelectorSegments([a, b], text());
+    }
+  / a:selectorSegment _ ":" _ {
+      return combineSelectorSegments([a], text());
+    }
+
+// One piece of a selector prefix. Pitch starts with a note letter, time with a
+// digit, where() with `w` — mutually exclusive first chars, so the ordered choice
+// is unambiguous and order-free at the prefix level.
+selectorSegment
+  = pitchRange:pitchRange { return { kind: "pitch", pitchRange }; }
+  / timeRange:timeRange { return { kind: "time", timeRange }; }
+  / predicate:whereClause { return { kind: "where", predicate }; }
+
+// Separator between two selector segments: an optional `:` (with surrounding
+// space), or bare whitespace. Always consumes at least one character (a `:` or a
+// space), so two segments never silently abut.
+selectorSep
+  = _ ":" _
+  / [ \t]+
+
+// Note-count operations: statements that change how many notes exist, rather
+// than assigning a value to a parameter. They reuse the `selector:` prefix above
+// to scope which notes they touch (no selector = all notes).
+//   ratchet(N)        — divide each matched note into N equal pieces (a roll)
+//   ratchet(n/16)     — cut each matched note on the absolute 16th-note grid
+//   split(2|1, 2|3)   — cut each matched note at explicit clip bar|beat positions
+//   split(2|1, sync)  — same, but positions are arrangement-timeline absolute
+//   merge()           — span all same-pitch matched notes into one sustained note
+// These are NOT expression functions; using one as a value raises a targeted
+// error (see badNoteOpInExpression). `split` takes a list of bar|beat positions
+// (not expressions), so it has its own rule rather than sharing argumentList.
+noteOp "note-count operation"
+  = "split" "(" _ points:barBeatPointSyncList? _ ")" {
+      return { kind: "noteOp", name: "split", args: points?.args ?? [], sync: points?.sync ?? false };
+    }
+  / name:noteOpName "(" _ args:argumentList? _ ")" {
+      return { kind: "noteOp", name, args: args || [] };
+    }
+
+noteOpName
+  = "ratchet" { return "ratchet"; }
+  / "merge" { return "merge"; }
+
+// A comma-separated list of bar|beat cut positions for `split`, with an optional
+// trailing `sync` keyword (mirrors the cyclical-function `sin(n/4, sync)` form).
+// Without `sync` the positions are clip-relative (from `1|1`); with `sync` they
+// are interpreted against the arrangement timeline at apply time.
+barBeatPointSyncList
+  = head:barBeatPoint tail:(_ "," _ barBeatPoint)* _ "," _ "sync" {
+    return { args: [head, ...tail.map(t => t[3])], sync: true };
+  }
+  / head:barBeatPoint tail:(_ "," _ barBeatPoint)* {
+    return { args: [head, ...tail.map(t => t[3])], sync: false };
+  }
+
+// A single bar|beat position (same dialect as a timeRange bound), resolved to
+// absolute musical beats from the clip's `1|1` origin. `beatValue` is 1-indexed
+// and already folds in any `±n` note-value offset (in musical beats), so the
+// position is linear: (bar - 1) * beatsPerBar + (beat - 1). A pulled offset may
+// land below beat 1 (negative musical beats, before the clip start); that simply
+// falls outside every note at apply time. Consumed by `split` only.
+barBeatPoint "bar|beat position"
+  = bar:oneOrMoreInt "|" beat:beatValue {
+    const beatsPerBar = options.beatsPerBar ?? 4;
+    return { type: "barBeatPoint", musicalBeats: (bar - 1) * beatsPerBar + (beat - 1) };
   }
 
 // The right-hand side of an assignment, after any optional range selector.
@@ -119,7 +328,16 @@ assignmentBody
 // (v±N, p±N) — safe because both domains are non-negative, so a leading sign is
 // unambiguous.
 shorthand "shorthand assignment"
-  = "v" operator:shorthandAddOp value:unsignedInt {
+  = "delete" {
+      // Readable alias for the `v0` delete shorthand: set velocity to 0, which
+      // the deletion sweep removes. Emits the SAME AST as `v0`, so a selector
+      // still applies (`C1: delete`, `where(note.velocity < 40): delete`) and
+      // `preTransforms` accepts it too. Shorthand-only: `velocity = delete` and
+      // any expression use are rejected by badDeleteInExpression. No 'd'-pitch
+      // clash — pitchLiteral requires an octave, so it backtracks off "delete".
+      return { parameter: "velocity", operator: "set", expression: 0 };
+    }
+  / "v" operator:shorthandAddOp value:unsignedInt {
       return shorthandAdditive("velocity", operator, value);
     }
   / "v" min:unsignedInt "-" max:unsignedInt {
@@ -130,6 +348,14 @@ shorthand "shorthand assignment"
       // tried before plain `vN` (which would match `v80` and strand `-120`).
       // Kept in lockstep by velocity-range-parity.test.ts (Peggy cannot import
       // the barbeat helper).
+      //
+      // Reject a 0 lower bound (covers `v0-N` / `vN-0` / `v0-0` via the single
+      // `min === 0` check): base velocity 0 is the delete sentinel, so the range
+      // would silently delete every note it touches. Byte-for-byte mirror of the
+      // barbeat-grammar.peggy `velocity` rule's guard.
+      if (Math.min(min, max) === 0) {
+        throw new Error(`"${text()}" is invalid: velocity ranges must start at 1 or higher — v0 is the delete sentinel, not a range floor. Use v1-N for a low humanization floor, or a bare v0 to delete.`);
+      }
       const lo = Math.max(0, Math.min(127, Math.min(min, max)));
       const hi = Math.max(0, Math.min(127, Math.max(min, max)));
       return [
@@ -219,6 +445,8 @@ pitchAccidental
 // with no spill onto 4|1. The `<` marker on a normal range (`3|1-<4|1`) makes
 // only its end bound exclusive; without it ranges stay inclusive on both ends.
 // Wildcard forms come first so the `*` branches win before the beatValue branch.
+// A bare bar|beat point (`4|3.5`) comes LAST so the range branch claims a real
+// `start-end` first; only a point with no `-` separator falls through to it.
 timeRange "time range"
   = startBar:oneOrMoreInt "|" "*" "-" endBar:oneOrMoreInt "|" "*" {
     return { startBar, startBeat: 1, endBar: endBar + 1, endBeat: 1, endExclusive: true };
@@ -249,6 +477,19 @@ timeRange "time range"
     // absent so a default range serializes to the legacy inclusive shape.
     if (excl != null) range.endExclusive = true;
     return range;
+  }
+  / bar:oneOrMoreInt "|" beat:beatValue {
+    // Bare bar|beat point (`4|3.5`, or `Gb1 4|3.5` paired with a pitch): target
+    // only the note starting at exactly this position. Desugars to a degenerate
+    // inclusive range [point, point] — the membership gate is inclusive on both
+    // ends, so a zero-width range matches a note whose start equals the point and
+    // nothing else (the same notes the explicit `4|3.5-4|3.5` range already
+    // catches; this is just the sugar). Reached only after the range branch
+    // fails for lack of a `-` separator. Borrows across the bar line like a range
+    // bound so a `-n` offset (`2|1-n/12`) canonicalizes into the previous bar.
+    const beatsPerBar = options.beatsPerBar ?? 4;
+    const point = borrowBars(bar, beat, beatsPerBar);
+    return { startBar: point.bar, startBeat: point.beat, endBar: point.bar, endBeat: point.beat };
   }
 
 // A range-bound beat position. Same dialect as bar|beat note positions
@@ -335,6 +576,56 @@ parameter "parameter name"
   / "deviation" { return "deviation"; }
   / "gain" { return "gain"; }
 
+// A where() predicate: a boolean expression over note properties that filters which
+// notes a statement touches. Boolean/comparison operators are legal ONLY here — an
+// assignment RHS stays purely arithmetic. `validatePredicate` rejects functions and
+// any non-note-property variable with a targeted error.
+whereClause "where() predicate"
+  = "where" _ "(" _ expr:boolOr _ ")" {
+      validatePredicate(expr);
+      return expr;
+    }
+
+// Boolean precedence, lowest-binding first: || < && < ! < comparison. Comparison
+// operands are full arithmetic `expression`s, so arithmetic binds tighter than any
+// comparison. Left-associative folds mirror the arithmetic rules.
+boolOr
+  = head:boolAnd tail:(_ "||" _ boolAnd)* {
+      return tail.reduce((left, t) => ({ type: "or", left, right: t[3] }), head);
+    }
+
+boolAnd
+  = head:boolNot tail:(_ "&&" _ boolNot)* {
+      return tail.reduce((left, t) => ({ type: "and", left, right: t[3] }), head);
+    }
+
+boolNot
+  = "!" _ operand:boolNot { return { type: "not", operand }; }
+  / boolPrimary
+
+// Boolean grouping: parens around a full boolean expression (`a && (b || c)`, or the
+// reflexive `(note.velocity > 80)`). Tried before the bare comparison so a
+// parenthesized predicate groups at the boolean layer; a paren wrapping only
+// arithmetic (`(1 + 2) > 3`) backtracks to the comparison branch, where the
+// arithmetic `expression` rule consumes the parens via its own `( expr )` primary.
+boolPrimary
+  = "(" _ expr:boolOr _ ")" { return expr; }
+  / comparison
+
+comparison
+  = left:expression _ op:comparisonOp _ right:expression {
+      return { type: "comparison", op, left, right };
+    }
+
+// Two-char operators precede their one-char prefixes so `>=`/`<=` win over `>`/`<`.
+comparisonOp
+  = ">=" { return ">="; }
+  / "<=" { return "<="; }
+  / "==" { return "=="; }
+  / "!=" { return "!="; }
+  / ">" { return ">"; }
+  / "<" { return "<"; }
+
 expression "expression"
   = additive
 
@@ -364,8 +655,29 @@ primary
   / barDuration
   / pitchLiteral
   / badPeriod
+  / badNoteOpInExpression
+  / badDeleteInExpression
   / number
   / "(" _ expr:expression _ ")" { return expr; }
+
+// ratchet()/merge() are note-count operations (whole statements), not values.
+// Matched here only to raise a targeted error when one is used in an expression
+// (e.g. `velocity = ratchet(2)`). A valid bare statement reaches the noteOp rule
+// first, so this never fires on correct usage.
+badNoteOpInExpression
+  = name:("ratchet" / "merge" / "split") _ "(" {
+    const example = name === "ratchet" ? "ratchet(2)" : name === "split" ? "split(2|1)" : "merge()";
+    throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
+  }
+
+// `delete` is the shorthand delete action (alias for `v0`), not a value. Matched
+// here only to raise a targeted error when used in an expression (e.g.
+// `velocity = delete`). A valid bare `delete` reaches the shorthand rule first,
+// so this never fires on correct usage.
+badDeleteInExpression
+  = "delete" {
+    throw new Error(`delete is a shorthand action, not a value — write it on its own line (optionally with a selector), e.g. "where(note.velocity < 40): delete", not "velocity = delete".`);
+  }
 
 nDuration "absolute duration value"
   = badBarDuration

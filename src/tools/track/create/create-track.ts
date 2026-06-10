@@ -76,6 +76,16 @@ function validateTrackCreation(
     throw new Error("createTrack failed: count must be at least 1");
   }
 
+  // The count alone must not exceed the cap, in ANY mode. The index-reach check
+  // below only fires for an insert at a non-negative index, so append (the
+  // default -1 index) and return tracks would otherwise create an unbounded
+  // number of tracks (e.g. count: 9999).
+  if (count > MAX_AUTO_CREATED_TRACKS) {
+    throw new Error(
+      `createTrack failed: creating ${count} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
+    );
+  }
+
   if (type === "return" && trackIndex != null) {
     console.warn(
       "createTrack: trackIndex is ignored for return tracks (always added at end)",

@@ -157,6 +157,11 @@ describe("toJsonResult", () => {
     expect(result.judge).toBeDefined();
     expect(result.judge?.pass).toBe(true);
     expect(result.judge?.issues).toStrictEqual([]);
+    // #54: a judge-only scenario (no deterministic checks) must let a passing
+    // judge gate the verdict. Before the fix, checks.pass was false whenever
+    // there were zero checks, so the overall result hard-failed even though the
+    // judge passed — a judge-only scenario could never report pass.
+    expect(result.result).toBe("pass");
   });
 
   it("derives judge from llm_judge assertion (failing)", () => {

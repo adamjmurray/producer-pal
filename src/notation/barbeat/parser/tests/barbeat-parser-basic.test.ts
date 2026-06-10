@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -120,12 +121,26 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("accepts valid velocity ranges", () => {
-      expect(parser.parse("v80-120 C3 v0-127 D3")).toStrictEqual([
+      expect(parser.parse("v80-120 C3 v1-127 D3")).toStrictEqual([
         { velocityMin: 80, velocityMax: 120 },
         { pitch: 60 },
-        { velocityMin: 0, velocityMax: 127 },
+        { velocityMin: 1, velocityMax: 127 },
         { pitch: 62 },
       ]);
+    });
+
+    it("rejects velocity ranges with a 0 lower bound (v0 is the delete sentinel)", () => {
+      // `vA-B` desugars to base velocity = min(start,end); base velocity 0 is the
+      // delete sentinel, so a 0 lower bound would silently delete every note.
+      // The single `min === 0` guard covers both orderings and equal bounds.
+      const v0Error =
+        /velocity ranges must start at 1 or higher — v0 is the delete sentinel/;
+
+      expect(() => parser.parse("v0-100 C3")).toThrow(v0Error);
+      expect(() => parser.parse("v100-0 C3")).toThrow(v0Error);
+      expect(() => parser.parse("v0-0 C3")).toThrow(v0Error);
+      // The message echoes the offending token verbatim.
+      expect(() => parser.parse("v0-100 C3")).toThrow(/"v0-100" is invalid/);
     });
 
     it("parses out-of-range velocity (range enforced in interpreter)", () => {
@@ -140,8 +155,8 @@ describe("BarBeatScript Parser - basic tests", () => {
         { velocityMin: 128, velocityMax: 130 },
         { pitch: 60 },
       ]);
-      expect(parser.parse("v0-128 C3")).toStrictEqual([
-        { velocityMin: 0, velocityMax: 128 },
+      expect(parser.parse("v1-128 C3")).toStrictEqual([
+        { velocityMin: 1, velocityMax: 128 },
         { pitch: 60 },
       ]);
     });

@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import * as parser from "#src/notation/transform/parser/transform-parser.ts";
+import { parseAssignments } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - nDuration", () => {
   it("parses n<fraction> with explicit numerator", () => {
-    const result = parser.parse("duration = n1/4");
+    const result = parseAssignments("duration = n1/4");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "nDuration",
@@ -17,7 +17,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses n/<denominator> with implicit numerator of 1", () => {
-    const result = parser.parse("duration = n/8");
+    const result = parseAssignments("duration = n/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "nDuration",
@@ -26,7 +26,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses dotted-quarter n3/8", () => {
-    const result = parser.parse("duration = n3/8");
+    const result = parseAssignments("duration = n3/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "nDuration",
@@ -35,7 +35,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses triplet n/12", () => {
-    const result = parser.parse("duration = n/12");
+    const result = parseAssignments("duration = n/12");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "nDuration",
@@ -44,7 +44,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses nDuration in additive expression", () => {
-    const result = parser.parse("duration = n/4 + n/8");
+    const result = parseAssignments("duration = n/4 + n/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "add",
@@ -54,7 +54,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses nDuration in multiplicative expression", () => {
-    const result = parser.parse("duration = 2 * n/8");
+    const result = parseAssignments("duration = 2 * n/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "multiply",
@@ -64,7 +64,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses nDuration with += operator", () => {
-    const result = parser.parse("timing += n/16");
+    const result = parseAssignments("timing += n/16");
 
     expect(result[0]!.operator).toBe("add");
     expect(result[0]!.expression).toStrictEqual({
@@ -74,7 +74,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses nDuration mixed with variable", () => {
-    const result = parser.parse("duration = note.duration + n/8");
+    const result = parseAssignments("duration = note.duration + n/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "add",
@@ -84,7 +84,7 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("parses nDuration inside parentheses", () => {
-    const result = parser.parse("duration = (n/4 + n/8) * 2");
+    const result = parseAssignments("duration = (n/4 + n/8) * 2");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "multiply",
@@ -98,33 +98,35 @@ describe("Transform Parser - nDuration", () => {
   });
 
   it("throws on bare integer after n (missing denominator)", () => {
-    expect(() => parser.parse("duration = n4")).toThrow(/denominator/);
+    expect(() => parseAssignments("duration = n4")).toThrow(/denominator/);
   });
 
   it("throws on bare decimal after n (missing denominator)", () => {
-    expect(() => parser.parse("duration = n0.5")).toThrow(/denominator/);
+    expect(() => parseAssignments("duration = n0.5")).toThrow(/denominator/);
   });
 
   it("throws on mixed-number after n (missing denominator)", () => {
-    expect(() => parser.parse("duration = n1+1/4")).toThrow(/denominator/);
+    expect(() => parseAssignments("duration = n1+1/4")).toThrow(/denominator/);
   });
 
   // Malformed denominators must error, never silently produce garbage. The
   // grammar requires a denominator starting [1-9]; numerator is [0-9]*.
   it("throws on zero denominator (n/0)", () => {
-    expect(() => parser.parse("duration = n/0")).toThrow();
+    expect(() => parseAssignments("duration = n/0")).toThrow();
   });
 
   it("throws on double slash (n//4)", () => {
-    expect(() => parser.parse("duration = n//4")).toThrow();
+    expect(() => parseAssignments("duration = n//4")).toThrow();
   });
 
   it("throws on a numerator with zero denominator (n3/0)", () => {
-    expect(() => parser.parse("duration = n3/0")).toThrow(/denominator/);
+    expect(() => parseAssignments("duration = n3/0")).toThrow(/denominator/);
   });
 
   it("parses a large numerator without overflow (n999999/4)", () => {
-    expect(parser.parse("duration = n999999/4")[0]!.expression).toStrictEqual({
+    expect(
+      parseAssignments("duration = n999999/4")[0]!.expression,
+    ).toStrictEqual({
       type: "nDuration",
       wholeNoteFraction: 999999 / 4,
     });

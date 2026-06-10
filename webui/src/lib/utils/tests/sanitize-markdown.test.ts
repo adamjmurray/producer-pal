@@ -61,6 +61,21 @@ describe("sanitizeMarkdown", () => {
     expect(result).toContain("text");
   });
 
+  it("strips javascript: URLs from links (the threat this sanitizer exists to stop)", () => {
+    // DOMPurify's default URI allowlist blocks javascript:, but the config pins
+    // ALLOWED_ATTR (incl. href) and nothing tested that the scheme is rejected.
+    const fromMarkdown = sanitizeMarkdown("[click](javascript:alert)");
+
+    expect(fromMarkdown).not.toContain("javascript:");
+    expect(fromMarkdown).toContain("click"); // link text is preserved
+
+    const fromHtml = sanitizeMarkdown(
+      '<a href="javascript:alert(1)">click</a>',
+    );
+
+    expect(fromHtml).not.toContain("javascript:");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeMarkdown("")).toBe("");
   });
@@ -86,6 +101,12 @@ describe("sanitizeMarkdownInline", () => {
 
     expect(result).toContain('target="_blank"');
     expect(result).toContain('rel="noopener noreferrer"');
+  });
+
+  it("strips javascript: URLs in inline mode", () => {
+    expect(sanitizeMarkdownInline("[click](javascript:alert)")).not.toContain(
+      "javascript:",
+    );
   });
 
   it("handles empty string", () => {

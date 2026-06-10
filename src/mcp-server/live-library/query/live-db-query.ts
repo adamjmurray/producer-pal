@@ -47,7 +47,7 @@ export async function withLiveDb<T>(handlers: LiveDbHandlers<T>): Promise<T> {
   const stalenessRisk = await detectStalenessRisk(dbPath);
 
   try {
-    const db = openLiveDb(dbPath);
+    const db = await openLiveDb(dbPath);
 
     try {
       return handlers.run(db, stalenessRisk);

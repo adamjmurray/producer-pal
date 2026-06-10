@@ -69,8 +69,12 @@ export function setupExpressAppServer(
     },
   };
 
+  const prevEnv: Partial<Record<DevFeatureEnvVar, string | undefined>> = {};
+
   beforeAll(async () => {
     if (options.enableDevFeatures) {
+      prevEnv.ENABLE_CODE_EXEC = process.env.ENABLE_CODE_EXEC;
+      prevEnv.ENABLE_DEV_CORS = process.env.ENABLE_DEV_CORS;
       process.env.ENABLE_CODE_EXEC = "true";
       process.env.ENABLE_DEV_CORS = "true";
     }
@@ -102,9 +106,32 @@ export function setupExpressAppServer(
         state.server?.close(() => resolve()),
       );
     }
+
+    // Restore env so a thread-pool run can't leak these into another test file.
+    if (options.enableDevFeatures) {
+      restoreEnv("ENABLE_CODE_EXEC", prevEnv.ENABLE_CODE_EXEC);
+      restoreEnv("ENABLE_DEV_CORS", prevEnv.ENABLE_DEV_CORS);
+    }
   });
 
   return state;
+}
+
+type DevFeatureEnvVar = "ENABLE_CODE_EXEC" | "ENABLE_DEV_CORS";
+
+/**
+ * Restore an env var to its prior value, deleting it if it was unset before.
+ *
+ * @param name - The env var to restore
+ * @param prev - The value captured before the test overwrote it
+ * @returns Nothing
+ */
+function restoreEnv(name: DevFeatureEnvVar, prev: string | undefined): void {
+  if (prev == null) {
+    delete process.env[name];
+  } else {
+    process.env[name] = prev;
+  }
 }
 
 interface RestRoutesTestState {

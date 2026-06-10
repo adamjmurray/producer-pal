@@ -321,6 +321,99 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
+  describe("pitch selector handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns when a pitch selector is used on an audio transform", () => {
+      const result = applyAudioTransform(0, 0, "C3-C5: gain += 3");
+
+      // Still applies to the whole clip
+      expect(result.gain).toBe(3);
+      expect(console.warn).toHaveBeenCalledWith(
+        "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+      );
+    });
+
+    it("does not warn when no pitch selector is present", () => {
+      applyAudioTransform(0, 0, "gain += 3");
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        "pitch selector ignored for audio clip transform (audio clips have no pitch)",
+      );
+    });
+  });
+
+  describe("where() predicate handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns and passes through when a where() predicate is used on audio", () => {
+      const result = applyAudioTransform(
+        0,
+        0,
+        "where(note.velocity > 80): gain += 3",
+      );
+
+      // Predicate has no note axis on an audio clip; the gain still applies.
+      expect(result.gain).toBe(3);
+      expect(console.warn).toHaveBeenCalledWith(
+        "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
+    });
+
+    it("does not warn when no where() predicate is present", () => {
+      applyAudioTransform(0, 0, "gain += 3");
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        "where() predicate ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
+    });
+  });
+
+  describe("note-count operation handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns and skips note-count operations on audio clips", () => {
+      const result = applyAudioTransform(0, 0, "ratchet(2)");
+
+      expect(result.gain).toBeNull();
+      expect(result.pitchShift).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        "Note-count operations (ratchet, merge) ignored for audio clips",
+      );
+    });
+  });
+
+  describe("modulo arithmetic", () => {
+    it("evaluates a modulo expression", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.duration % 5", {
+        clipDuration: 16,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+      });
+
+      // 16 % 5 = 1
+      expect(result.gain).toBe(1);
+    });
+
+    it("yields 0 for modulo by zero", () => {
+      const result = applyAudioTransform(0, 0, "gain = clip.duration % 0", {
+        clipDuration: 16,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+      });
+
+      expect(result.gain).toBe(0);
+    });
+  });
+
   describe("error handling", () => {
     it("returns nulls for invalid syntax", () => {
       const result = applyAudioTransform(0, 0, "gain = =");
@@ -622,6 +715,55 @@ describe("Audio Transform Evaluator", () => {
       // axis is the only meaning. seq() falls back to clip:index here (== the
       // clipseq() result) instead of warning.
       expect(result.gain).toBe(-9);
+      expect(console.warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("pitch literal as a value (#4)", () => {
+    it("warns and skips a bare pitch literal assigned to gain (no silent coerce)", () => {
+      // `gain = C3` is nonsensical — audio clips have no pitch. It must not
+      // silently coerce to a MIDI number (C3 → 60, clamped to the 24 dB max);
+      // warn clearly and leave gain unchanged. (Previously it threw a cryptic
+      // internal error; the first fix made it silently write the clamped MIDI
+      // number — this asserts warn-and-skip instead.)
+      const result = applyAudioTransform(0, 0, "gain = C3");
+
+      expect(result.gain).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'pitch name "C3" isn\'t a valid value for gain',
+        ),
+      );
+    });
+
+    it("warns and skips a bare pitch literal assigned to pitchShift", () => {
+      const result = applyAudioTransform(0, 0, "pitchShift = C3");
+
+      expect(result.pitchShift).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'pitch name "C3" isn\'t a valid value for pitchShift',
+        ),
+      );
+    });
+
+    it("shows the source operator (+=), not the internal token, in the warning", () => {
+      applyAudioTransform(0, 0, "gain += C3");
+
+      // The skipped assignment is echoed as the user wrote it ("gain +="), not
+      // the internal operator token ("gain add").
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping "gain +=".'),
+      );
+    });
+
+    it("still resolves a pitch literal nested in arithmetic to its MIDI number", () => {
+      // Only a BARE top-level pitch literal is rejected. Nested in an expression
+      // (here `C3 + 0`) it resolves to its MIDI number (60), clamped to the gain
+      // max (24) — mirroring the note evaluator, and avoiding a cryptic throw.
+      const result = applyAudioTransform(0, 0, "gain = C3 + 0");
+
+      expect(result.gain).toBe(24);
       expect(console.warn).not.toHaveBeenCalled();
     });
   });

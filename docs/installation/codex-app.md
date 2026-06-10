@@ -13,8 +13,8 @@ Linux support is coming. For other platforms, see [Codex CLI](./codex-cli) or
 
 ## Requirements
 
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
+
 - [Node.js 22+](https://nodejs.org/en/download)
 - [Codex app](https://chatgpt.com/codex/get-started) (requires OpenAI account
   with ChatGPT subscription plan)

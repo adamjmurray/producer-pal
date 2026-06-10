@@ -186,6 +186,53 @@ would either invent ugly composite keys (`mod[Osc 1 Pos][Env 2]`) or collide
 with regular DeviceParameter names. Don't reach for this when `params` already
 handles the shape.
 
+### Mode-gated inactive params (`inactiveWhen`)
+
+`read-device` reports each param's `state` straight from Live's
+`DeviceParameter.state` (active / inactive / disabled), which already greys out
+section params like an off oscillator. But Live is _inconsistent_: when an LFO
+exposes both a free-running Hz `Rate` and a tempo-synced note-value `S. Rate`,
+it leaves **both** active regardless of the sync mode, so the LLM can't tell
+which one is in effect. (Real failure mode: an AI reported a synced LFO's stale
+`6.0 Hz` Rate and couldn't find the synced rate.)
+
+A spec can declare `inactiveWhen` rules to fix this: each rule names a
+_controller_ param and, per controller value, the sibling params that don't
+apply in that mode. After the params are read, `applySpecializedInactiveStates`
+(in `specialized-device-registry.ts`) sets `state: "inactive"` on them — reusing
+the values already read (no extra Live API calls), only when reading param
+values, and never overriding a state Live already set. A controller filtered out
+by a param search just skips its rule. Use the
+`exclusiveModes(controller, activeByValue)` builder (in
+`specialized-device-inactive.ts`) for the common "one mode keeps one param
+active, the rest inactive" shape. Several controller values may map to the same
+active param (the builder dedupes the group) — e.g. Auto Filter's
+Synced/Triplet/Dotted modes all drive the one note-value selector.
+
+Current rules:
+
+- **Wavetable** LFO 1 / LFO 2 — `Sync` → Free=Hz `Rate` / Tempo=`S. Rate`.
+- **Drift** LFO / Cyclic Envelope — `Time Mode` Freq / Time / Ratio / Sync (four
+  rate params, one active per mode).
+- **Auto Filter** — `LFO T Mode`: Rate=Hz `LFO Freq`, Time=ms `LFO Time`,
+  Synced/Triplet/Dotted=note-value `LFO Rate`, Sixteenth=count-of-16ths
+  `LFO 16th`.
+- **Auto Pan-Tremolo** — `Time Mode`: same shape as Auto Filter (`Frequency` /
+  `Time` / `Rate` / `16th`; the synced-count mode is labelled `16th`, not
+  `Sixteenth`).
+- **Phaser-Flanger** — two independent boolean sections: `Mod Sync` (Off=Hz
+  `Mod Freq` / On=note-value `Mod Rate`) and `Mod Sync 2` (`Mod Freq 2` /
+  `Mod Rate 2`).
+
+For the audio FX above, the synced `*Rate` param is a quantized note-value
+selector (raw `0`–`21`, `str_for_value` → `"1/4"` etc.) — its `value`/min/max
+read oddly out of context, which is exactly why surfacing `state: "inactive"` in
+the wrong modes matters.
+
+Only patch devices Live leaves unmarked — verify against a running Live first
+(e.g. **Echo** already greys out its own delay/mod sync params, so it needs no
+rule).
+
 ## The `options` include (opt-in discoverability)
 
 `read-device` supports an opt-in `include: ["options"]` parameter that surfaces

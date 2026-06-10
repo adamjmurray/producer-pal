@@ -34,6 +34,7 @@ interface PseudoParam {
   name: string;
   value: unknown;
   unit?: string;
+  state?: string;
 }
 
 interface ModulationRoute {
@@ -660,5 +661,118 @@ describe("specialized devices: Spectral Resonator", () => {
     expect(paramValue(after, "modMode")).toBe("Chorus");
     expect(paramValue(after, "pitchMode")).toBe("MIDI Note");
     expect(paramValue(after, "polyphony")).toBe(4);
+  });
+});
+
+describe("specialized devices: modulation-rate effects (inactiveWhen)", () => {
+  // Auto Filter / Auto Pan-Tremolo / Phaser-Flanger each expose several
+  // mutually-exclusive rate params (Hz / ms / synced note value / count-of-16ths)
+  // and a mode enum picks which one applies — but Live leaves them ALL active in
+  // `state`. These specs mark the non-applicable ones state:"inactive" per mode
+  // so the LLM can tell which rate is in effect. This round-trips each mode
+  // against real Live and asserts exactly one rate param stays active; a Live
+  // enum reorder or a renamed param would break it (the unit tests can't, since
+  // they run the same hardcoded mappings against mocks). See
+  // dev/Specialized-Devices.md.
+
+  /**
+   * Assert that, of the mutually-exclusive `group`, only `active` has no `state`
+   * and every other is marked inactive.
+   * @param device - read-device result (param-values)
+   * @param group - the mutually-exclusive rate params
+   * @param active - the one param expected active
+   */
+  function expectOnlyActive(
+    device: ReadDeviceResult,
+    group: string[],
+    active: string,
+  ): void {
+    for (const name of group) {
+      const entry = device.parameters?.find((p) => p.name === name);
+
+      expect(entry, `param "${name}" missing`).toBeDefined();
+      expect(entry?.state, `param "${name}"`).toBe(
+        name === active ? undefined : "inactive",
+      );
+    }
+  }
+
+  /** Set a controller param and read the device's param values. */
+  async function setModeAndRead(
+    id: string,
+    controller: string,
+    mode: string,
+  ): Promise<ReadDeviceResult> {
+    await updateDevice(id, { params: [{ name: controller, value: mode }] });
+
+    return readDevice(id, ["param-values"]);
+  }
+
+  it("Auto Filter: LFO T Mode gates LFO Freq/Time/Rate/16th", async () => {
+    const id = await createEffect("Auto Filter");
+    const group = ["LFO Freq", "LFO Time", "LFO Rate", "LFO 16th"];
+    const cases: Array<[string, string]> = [
+      ["Rate", "LFO Freq"],
+      ["Time", "LFO Time"],
+      ["Synced", "LFO Rate"],
+      ["Triplet", "LFO Rate"],
+      ["Dotted", "LFO Rate"],
+      ["Sixteenth", "LFO 16th"],
+    ];
+
+    for (const [mode, active] of cases) {
+      const device = await setModeAndRead(id, "LFO T Mode", mode);
+
+      expectOnlyActive(device, group, active);
+    }
+  });
+
+  it("Auto Pan-Tremolo: Time Mode gates Frequency/Time/Rate/16th", async () => {
+    const id = await createEffect("Auto Pan-Tremolo");
+    const group = ["Frequency", "Time", "Rate", "16th"];
+    const cases: Array<[string, string]> = [
+      ["Rate", "Frequency"],
+      ["Time", "Time"],
+      ["Synced", "Rate"],
+      ["Triplet", "Rate"],
+      ["Dotted", "Rate"],
+      ["16th", "16th"],
+    ];
+
+    for (const [mode, active] of cases) {
+      const device = await setModeAndRead(id, "Time Mode", mode);
+
+      expectOnlyActive(device, group, active);
+    }
+  });
+
+  it("Phaser-Flanger: each Mod Sync section gates its Hz vs synced rate", async () => {
+    const id = await createEffect("Phaser-Flanger");
+
+    // Opposite toggles on the two independent sections prove they don't
+    // interfere: Off → Hz freq active, On → synced rate active.
+    await updateDevice(id, {
+      params: [
+        { name: "Mod Sync", value: "Off" },
+        { name: "Mod Sync 2", value: "On" },
+      ],
+    });
+
+    const offOn = await readDevice(id, ["param-values"]);
+
+    expectOnlyActive(offOn, ["Mod Freq", "Mod Rate"], "Mod Freq");
+    expectOnlyActive(offOn, ["Mod Freq 2", "Mod Rate 2"], "Mod Rate 2");
+
+    await updateDevice(id, {
+      params: [
+        { name: "Mod Sync", value: "On" },
+        { name: "Mod Sync 2", value: "Off" },
+      ],
+    });
+
+    const onOff = await readDevice(id, ["param-values"]);
+
+    expectOnlyActive(onOff, ["Mod Freq", "Mod Rate"], "Mod Rate");
+    expectOnlyActive(onOff, ["Mod Freq 2", "Mod Rate 2"], "Mod Freq 2");
   });
 });

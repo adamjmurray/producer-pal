@@ -4,8 +4,8 @@ Use Producer Pal with Mistral's open-source command line coding assistant.
 
 ## Requirements
 
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
+
 - [Node.js 20+](https://nodejs.org/en/download)
 - [Mistral Vibe](https://github.com/mistralai/mistral-vibe) (requires Mistral
   API key)

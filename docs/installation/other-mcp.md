@@ -6,8 +6,8 @@ Use `npx producer-pal` to connect to Producer Pal's MCP server.
 
 ## Requirements
 
-- [Ableton Live 12.3+](https://www.ableton.com/live/) with
-  [Max for Live](https://www.ableton.com/live/max-for-live/)
+<!--@include: ../_partials/live-requirement.md-->
+
 - AI that supports [MCP](https://modelcontextprotocol.io)
 - Potentially: [Node.js 20+](https://nodejs.org/en/download)
 

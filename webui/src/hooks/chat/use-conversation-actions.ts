@@ -31,6 +31,7 @@ interface ConversationActionsDeps<
     getHistory: () => TMessage[];
     originalMessage: string;
   }) => Promise<boolean>;
+  invalidateCompactionUndo: () => void;
   clearQueue: () => void;
 }
 
@@ -66,6 +67,7 @@ export function useConversationActions<
     initializeChat,
     runWithChat,
     executeWithRetry,
+    invalidateCompactionUndo,
     clearQueue,
   } = deps;
 
@@ -84,6 +86,8 @@ export function useConversationActions<
         clientRef.current?.chatHistory ?? pendingHistoryRef.current;
 
       if (!history) return;
+
+      invalidateCompactionUndo();
 
       await runWithChat(async () => {
         const slicedHistory = history.slice(0, rawIndex);
@@ -113,6 +117,7 @@ export function useConversationActions<
       initializeChat,
       runWithChat,
       executeWithRetry,
+      invalidateCompactionUndo,
       clearQueue,
       clientRef,
       pendingHistoryRef,

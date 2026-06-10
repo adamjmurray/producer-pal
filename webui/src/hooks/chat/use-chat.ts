@@ -20,7 +20,9 @@ import {
   type UseChatProps,
   type UseChatReturn,
 } from "./use-chat-types";
+import { useCompaction } from "./use-compaction";
 import { useConversationActions } from "./use-conversation-actions";
+import { useGetChatHistory } from "./use-get-chat-history";
 import { useMessageQueue } from "./use-message-queue";
 
 /**
@@ -66,12 +68,24 @@ export function useChat<
   const [toolLimitReached, setToolLimitReached] = useState(false);
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
+  // Bootstraps a client from pending history when compaction is requested on a
+  // restored-but-not-yet-sent conversation. Held in a ref because useCompaction
+  // is created before initializeChat is defined below.
+  const bootstrapClientRef = useRef<(() => Promise<void>) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const thinkingRef = useRef(active.activeThinking);
 
   useEffect(() => {
     thinkingRef.current = active.activeThinking;
   }, [active.activeThinking]);
+
+  // Dispose the live MCP client when the hook unmounts. Switching between chat
+  // and voice mode swaps ChatApp out (App.tsx routes one or the other), so
+  // useChat can unmount mid-session with a live client. The dispose() calls in
+  // clearConversation/initializeChat only cover client *replacement*, not
+  // teardown, so without this the final client's MCP connection leaks. dispose()
+  // is idempotent, so this no-ops when the client was already disposed/cleared.
+  useEffect(() => () => clientRef.current?.dispose?.(), []);
 
   const { executeWithRetry, abortRetry } = useExecuteWithRetry({
     adapter,
@@ -81,33 +95,61 @@ export function useChat<
     setRateLimitState,
   });
 
+  const {
+    isCompacting,
+    isCompactingRef,
+    canUndoCompaction,
+    compact,
+    undoCompaction,
+    invalidateCompactionUndo,
+  } = useCompaction({
+    clientRef,
+    bootstrapClientRef,
+    adapter,
+    autoSaveRef,
+    messages,
+    isAssistantResponding,
+    setMessages,
+  });
+
   const clearConversation = useCallback(() => {
     setMessages([]);
+    clientRef.current?.dispose?.();
     clientRef.current = null;
     pendingHistoryRef.current = null;
+    // Abort any in-flight stream on teardown. UI-driven switches call
+    // stopResponse() first, but a browser Back/Forward (hashchange) reaches here
+    // directly — without this, the orphaned stream keeps running and its
+    // setMessages clobbers the freshly-restored conversation (and autosaves the
+    // mixed history under the new ID). Aborting an already-aborted controller is
+    // a no-op, so this is safe for every entry point.
+    abortControllerRef.current?.abort();
     clearSettings();
     setRateLimitState(null);
     setToolLimitReached(false);
+    invalidateCompactionUndo();
     abortRetry();
     clearQueue();
-  }, [clearSettings, abortRetry, clearQueue]);
+  }, [clearSettings, abortRetry, invalidateCompactionUndo, clearQueue]);
 
-  const getChatHistory = useCallback(
-    (): unknown[] =>
-      clientRef.current?.chatHistory ?? pendingHistoryRef.current ?? [],
-    [],
-  );
+  const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 
   const restoreChatHistory = useCallback(
     (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {
+      // No dispose() here: every caller reaches this with no live client —
+      // either on mount (clientRef is still null) or right after
+      // clearConversation() (which already disposed). The two sites that
+      // actually replace a live client — clearConversation and initializeChat —
+      // own the dispose.
       clientRef.current = null;
       pendingHistoryRef.current = chatHistory as TMessage[];
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
       restoreSettings(lockedSettings);
       setRateLimitState(null);
       setToolLimitReached(false);
+      invalidateCompactionUndo();
     },
-    [adapter, restoreSettings],
+    [adapter, restoreSettings, invalidateCompactionUndo],
   );
 
   const stopResponse = useCallback(() => {
@@ -134,6 +176,10 @@ export function useChat<
         extraParams,
       );
 
+      // Dispose any prior client before replacing it — initializeChat is the
+      // fork/retry re-init path, so a live client (with an open MCP connection)
+      // can already be here.
+      clientRef.current?.dispose?.();
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
       lockSettings(
@@ -161,6 +207,22 @@ export function useChat<
       lockSettings,
     ],
   );
+
+  // Bootstrap a client from the restored history (mirrors handleSend's first-
+  // send path). Synced into bootstrapClientRef so compaction — created above,
+  // before initializeChat — can reach it without a forward reference.
+  const bootstrapClient = useCallback(async () => {
+    const pendingHistory = pendingHistoryRef.current;
+
+    if (!pendingHistory || !apiKey) return;
+
+    pendingHistoryRef.current = null;
+    await initializeChat(pendingHistory);
+  }, [apiKey, initializeChat]);
+
+  useEffect(() => {
+    bootstrapClientRef.current = bootstrapClient;
+  }, [bootstrapClient]);
 
   // Stash the user message for retry/edit when an early error (missing API
   // key, MCP init failure) means it never reached client.chatHistory.
@@ -201,12 +263,18 @@ export function useChat<
         setMessages(adapter.createErrorMessage(error, errorHistory));
 
         if (clientRef.current) {
-          // createErrorMessage mutates errorHistory. When errorHistory is a
-          // fresh copy (includeStashed path), the error didn't reach
-          // chatHistory, so auto-save would persist the user message
-          // without it. Push the error into chatHistory directly.
+          // The includeStashed path built errorHistory as a fresh array
+          // ([...chatHistory, stashedUserMessage]) and createErrorMessage then
+          // appended the error to it. This is the init-failure case: the client
+          // exists but sendMessage never ran, so its chatHistory is still empty
+          // and has neither the user message nor the error. Assign the whole
+          // array — pushing only the error (the previous behavior) persisted the
+          // error without the user message that prompted it, so a reload showed
+          // a dangling error. Cast is safe: every entry is non-null here
+          // (baseHistory is TMessage[], stashed is non-null when includeStashed).
+          // Reassigning is safe: sendMessage and compact() read chatHistory fresh.
           if (errorHistory !== clientRef.current.chatHistory) {
-            clientRef.current.chatHistory.push(errorHistory.at(-1) as TMessage);
+            clientRef.current.chatHistory = errorHistory;
           }
 
           autoSaveRef?.current?.();
@@ -232,6 +300,15 @@ export function useChat<
         const userMessage = currentMessage.trim();
 
         if (!userMessage) return;
+
+        // Guard the send-during-compaction race at the hook level, not just via
+        // the disabled input: compact() reassigns client.chatHistory mid-flight,
+        // so a concurrent send would corrupt history. Ref (not state) so a future
+        // caller that bypasses the disabled-input prop is still protected.
+        if (isCompactingRef.current) return;
+
+        // Continuing the conversation invalidates the compaction undo snapshot.
+        invalidateCompactionUndo();
 
         if (!apiKey) {
           showMissingApiKeyError(
@@ -299,6 +376,8 @@ export function useChat<
       initializeChat,
       runWithChat,
       executeWithRetry,
+      invalidateCompactionUndo,
+      isCompactingRef,
       queueRef,
       drainQueue,
     ],
@@ -314,6 +393,7 @@ export function useChat<
     initializeChat,
     runWithChat,
     executeWithRetry,
+    invalidateCompactionUndo,
     clearQueue,
   });
 
@@ -326,9 +406,13 @@ export function useChat<
     enqueueMessage,
     removeMessage,
     toolLimitReached,
+    isCompacting,
+    canUndoCompaction,
     handleSend,
     handleRetry,
     handleEdit,
+    compact,
+    undoCompaction,
     clearConversation,
     stopResponse,
     getChatHistory,

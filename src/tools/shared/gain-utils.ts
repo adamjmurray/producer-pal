@@ -7,7 +7,7 @@
  * Utilities for converting between Ableton Live's normalized gain parameter (0-1)
  * and decibel (dB) values.
  *
- * Uses a pre-collected lookup table with 513 samples and linear interpolation
+ * Uses a pre-collected lookup table (see LOOKUP_TABLE) and linear interpolation
  * for accurate conversion throughout the entire range.
  *
  * @module gain-utils

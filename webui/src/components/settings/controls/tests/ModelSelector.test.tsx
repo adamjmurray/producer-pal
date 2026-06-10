@@ -132,23 +132,23 @@ describe("ModelSelector", () => {
     it("renders OpenRouter models", () => {
       renderModelSelector({
         provider: "openrouter",
-        model: "qwen/qwen3-coder:free",
+        model: "moonshotai/kimi-k2.6:free",
       });
       expect(
-        screen.getByRole("option", { name: /\[Free] Qwen3 Coder/ }),
+        screen.getByRole("option", { name: /\[Free] Moonshot AI Kimi K2\.6/ }),
       ).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /\[Free] Z\.AI GLM/ }),
+        screen.getByRole("option", { name: /\[Free] Google Gemma 4 26B/ }),
       ).toBeDefined();
     });
 
     it("calls setModel when OpenRouter model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openrouter",
-        model: "qwen/qwen3-coder:free",
+        model: "moonshotai/kimi-k2.6:free",
       });
 
-      expectModelSelected("z-ai/glm-4.5-air:free", setModel);
+      expectModelSelected("google/gemma-4-26b-a4b-it:free", setModel);
     });
   });
 
