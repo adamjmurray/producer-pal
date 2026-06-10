@@ -352,6 +352,12 @@ function handleStreamPart(
  * 1. assistant message with text + tool-call parts
  * 2. tool message with tool-result parts
  *
+ * Compaction keeps the prior turns in `history` for display but inserts a
+ * synthetic summary marker (`isCompactionSummary`). The model only needs the
+ * most recent summary plus everything after it, so we start the payload at the
+ * last summary marker — earlier turns are dropped from the model view only,
+ * while the UI still renders them above the divider.
+ *
  * Consecutive user turns are merged into one. A compaction summary is a
  * synthetic user message, so the next real user message would otherwise sit
  * directly after it — Gemini and Mistral reject two user turns in a row (only
@@ -364,7 +370,21 @@ function handleStreamPart(
 export function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
   const messages: ModelMessage[] = [];
 
-  for (const msg of history) {
+  // Start from the most recent compaction summary; everything before it is
+  // display-only history that the model should not see.
+  let lastSummaryIndex = -1;
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i]?.isCompactionSummary) {
+      lastSummaryIndex = i;
+      break;
+    }
+  }
+
+  const modelHistory =
+    lastSummaryIndex > 0 ? history.slice(lastSummaryIndex) : history;
+
+  for (const msg of modelHistory) {
     if (msg.role === "user") {
       const last = messages.at(-1);
 

@@ -63,4 +63,48 @@ describe("buildModelMessages", () => {
     ]);
     expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
+
+  it("starts the model payload at the compaction summary, dropping prior turns", () => {
+    // Compaction keeps the prior turns in history for display, but the model
+    // should only see the summary and everything after it.
+    const result = buildModelMessages([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2" },
+      { role: "assistant", content: "a2" },
+      { role: "user", content: "summary", isCompactionSummary: true },
+      { role: "user", content: "continue from here" },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: "summary\n\ncontinue from here" },
+    ]);
+  });
+
+  it("uses the most recent summary when the history is compacted twice", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "u1" },
+      { role: "user", content: "first summary", isCompactionSummary: true },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "second summary", isCompactionSummary: true },
+      { role: "assistant", content: "a2" },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: "second summary" },
+      { role: "assistant", content: "a2" },
+    ]);
+  });
+
+  it("returns the full history when there is no compaction summary", () => {
+    const result = buildModelMessages([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+    ]);
+
+    expect(result).toStrictEqual([
+      { role: "user", content: "u1" },
+      { role: "assistant", content: "a1" },
+    ]);
+  });
 });
