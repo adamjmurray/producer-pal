@@ -21,10 +21,10 @@ Quick options:
   more
 - **[Claude Desktop](/installation/claude-desktop)** - Recommended for Anthropic
   users
-- **[Command Line Tools](/installation#command-line-interfaces)** - Gemini CLI,
-  Codex CLI, Claude Code, and other MCP-compatible coding agents
-- **[Local Models](/installation#local-offline-options)** - Run completely
-  offline with Ollama, LM Studio, and other MCP-compatible platforms
+- **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,
+  Claude Code, and other MCP-compatible coding agents
+- **[Local Models](/installation/lm-studio)** - Run completely offline with
+  Ollama, LM Studio, and other MCP-compatible platforms
 
 Already have an MCP-compatible client? Connect with `npx producer-pal`
 ([details](/installation/other-mcp))
