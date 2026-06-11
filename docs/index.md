@@ -17,7 +17,10 @@ hero:
     alt: Producer Pal
   actions:
     - theme: brand
-      text: Install Now
+      text: Download for Ableton Live
+      link: https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd
+    - theme: alt
+      text: Installation Guide
       link: /installation
     - theme: alt
       text: User Guide
@@ -48,6 +51,26 @@ features:
     link: https://github.com/adamjmurray/producer-pal
     linkText: View on GitHub
 ---
+
+<div class="download-band">
+  <h2 class="download-title">Get Producer Pal</h2>
+  <p class="download-subtitle">The Max for Live device is all you need to start — drop it onto a track in Ableton Live and it links you to the docs, the chat UI, and everything else.</p>
+  <div class="download-actions">
+    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
+      <span class="download-btn-label">Download Max for Live Device</span>
+      <span class="download-btn-sub">Producer_Pal.amxd · v{{ $frontmatter.version }}</span>
+    </a>
+    <a class="download-btn" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb">
+      <span class="download-btn-label">Claude Desktop Extension</span>
+      <span class="download-btn-sub">Producer_Pal.mcpb</span>
+    </a>
+    <a class="download-btn" href="https://www.npmjs.com/package/producer-pal" target="_blank" rel="noreferrer">
+      <span class="download-btn-label">npx producer-pal</span>
+      <span class="download-btn-sub">npm — for any MCP client</span>
+    </a>
+  </div>
+  <p class="download-next">Then choose how you want to use it below, or follow the <a href="/installation">full Installation Guide</a>.</p>
+</div>
 
 <div class="get-started-wrapper">
   <section class="get-started-container">

@@ -5,8 +5,25 @@ use Producer Pal.
 
 ## Requirements
 
-<!--@include: ../_partials/live-requirement.md-->
+<div class="download-band download-band-compact download-band-dual">
+  <p class="download-subtitle">Grab both downloads, then follow the steps below:</p>
+  <div class="download-actions">
+    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
+      <span class="download-btn-label">1. Max for Live Device</span>
+      <span class="download-btn-sub">Producer_Pal.amxd — for Ableton Live</span>
+    </a>
+    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb">
+      <span class="download-btn-label">2. Claude Desktop Extension</span>
+      <span class="download-btn-sub">Producer_Pal.mcpb — for Claude Desktop</span>
+    </a>
+  </div>
+</div>
 
+- [Ableton Live 12.3+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/). Live 12.4 or later
+  is recommended — some features don't work on older versions of Live. Use the
+  version of Max bundled with Live, or make sure your standalone Max is up to
+  date.
 - [Claude Desktop](https://claude.ai/download) (requires Anthropic account)
 
 ## Installation Steps
