@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { buildModelMessages } from "#webui/chat/sdk/client";
+import { buildModelMessages } from "#webui/chat/sdk/build-model-messages";
 
 describe("buildModelMessages", () => {
   it("merges consecutive user turns into a single user message", () => {
@@ -106,5 +106,100 @@ describe("buildModelMessages", () => {
       { role: "user", content: "u1" },
       { role: "assistant", content: "a1" },
     ]);
+  });
+
+  describe("reasoning re-emission", () => {
+    const withReasoning = {
+      role: "assistant" as const,
+      content: "answer",
+      reasoningParts: [{ text: "thinking", signature: "sig-1" }],
+    };
+
+    it("re-emits a signed reasoning block before the text when enabled", () => {
+      const result = buildModelMessages([withReasoning], true);
+
+      expect(result[0]!.content).toStrictEqual([
+        {
+          type: "reasoning",
+          text: "thinking",
+          providerOptions: { anthropic: { signature: "sig-1" } },
+        },
+        { type: "text", text: "answer" },
+      ]);
+    });
+
+    it("re-emits reasoning before tool calls", () => {
+      const result = buildModelMessages(
+        [
+          {
+            role: "assistant",
+            content: "",
+            toolCalls: [{ id: "t1", name: "read-song", args: {} }],
+            toolResults: [
+              { id: "t1", name: "read-song", args: {}, result: "ok" },
+            ],
+            reasoningParts: [{ text: "plan", signature: "sig-2" }],
+          },
+        ],
+        true,
+      );
+
+      expect(result[0]!.content).toStrictEqual([
+        {
+          type: "reasoning",
+          text: "plan",
+          providerOptions: { anthropic: { signature: "sig-2" } },
+        },
+        {
+          type: "tool-call",
+          toolCallId: "t1",
+          toolName: "read-song",
+          input: {},
+        },
+      ]);
+    });
+
+    it("re-emits redacted reasoning as an empty block", () => {
+      const result = buildModelMessages(
+        [
+          {
+            role: "assistant",
+            content: "answer",
+            reasoningParts: [{ text: "", redactedData: "redacted-blob" }],
+          },
+        ],
+        true,
+      );
+
+      expect(result[0]!.content).toStrictEqual([
+        {
+          type: "reasoning",
+          text: "",
+          providerOptions: { anthropic: { redactedData: "redacted-blob" } },
+        },
+        { type: "text", text: "answer" },
+      ]);
+    });
+
+    it("keeps plain string content when reasoning is not requested", () => {
+      const result = buildModelMessages([withReasoning], false);
+
+      expect(result[0]!.content).toBe("answer");
+    });
+
+    it("keeps plain string content when a block has no signature", () => {
+      const result = buildModelMessages(
+        [
+          {
+            role: "assistant",
+            content: "answer",
+            reasoningParts: [{ text: "t" }],
+          },
+        ],
+        true,
+      );
+
+      expect(result[0]!.content).toBe("answer");
+    });
   });
 });
