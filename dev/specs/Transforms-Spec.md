@@ -40,7 +40,7 @@ pow(base, exponent); // base raised to exponent
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
 ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
-repeat(count, offset); // echo matched notes: `count` total copies, each shifted a further `offset` (a note value or Nbar); does NOT resize the clip
+repeat(offset, [copies]); // echo matched notes forward by `offset` (a note value or Nbar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
 split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
 merge(); // span ALL same-pitch matched notes into one sustained note (default)
 merge(0); // glue only touching/overlapping same-pitch notes
@@ -252,25 +252,26 @@ ratchet(4)            // then accent within each ratchet:
 velocity -= note.index % 4 * 15
 ```
 
-### repeat(count, offset)
+### repeat(offset, [copies])
 
-Echoes each matched note forward in time: keeps the original and emits
-`count − 1` time-shifted copies, the k-th copy displaced by `k × offset`. Each
-copy inherits the parent's pitch, velocity, probability, and deviation, and its
-duration is unchanged — `repeat` translates notes, it does not stretch them.
+Echoes each matched note forward in time: keeps the original and emits `copies`
+time-shifted copies, the k-th copy displaced by `k × offset`. Each copy inherits
+the parent's pitch, velocity, probability, and deviation, and its duration is
+unchanged — `repeat` translates notes, it does not stretch them.
 
-- **count** (first argument): the TOTAL number of instances, including the
-  original. Rounded to the nearest integer; a count below 2 warns and is skipped
-  (1 instance is a no-op). Counts above the per-note cap (64) are clamped with a
-  warning. A bare pitch literal (e.g. `repeat(C2, n/8)`) is not a valid count —
+- **offset** (first argument, required): a **note value** (`n/8`, `n/4`, …) or a
+  bar duration (`Nbar`). This is the only dialect accepted here — a bare number,
+  a pitch, or any other expression warns and the op is skipped. The offset must
+  be greater than 0. It is meter-aware: `1bar` resolves through the clip's
+  beats-per-bar (one bar in 6/8 is three Ableton beats).
+- **copies** (second argument, optional, default 1): the number of echoes to
+  add. Rounded to the nearest integer; a count below 1 warns and is skipped (0
+  echoes is a no-op). Counts above the per-note cap (64) are clamped with a
+  warning. A bare pitch literal (e.g. `repeat(n/8, C2)`) is not a valid count —
   it warns and is skipped rather than coercing to its MIDI number (a pitch
   literal nested in arithmetic still resolves to a number). An arithmetic count
-  (e.g. `repeat(2 * 2, n/4)`) is fine.
-- **offset** (second argument): a **note value** (`n/8`, `n/4`, …) or a bar
-  duration (`Nbar`). It is the only argument dialect — a bare number, a pitch,
-  or any other expression warns and the op is skipped. The offset must be
-  greater than 0. It is meter-aware: `1bar` resolves through the clip's
-  beats-per-bar (one bar in 6/8 is three Ableton beats).
+  (e.g. `repeat(n/4, 1 + 2)`) is fine. Omit it for the common single-echo case:
+  `repeat(n/8)`.
 - **Does NOT resize the clip.** Unlike `update-clip`'s `duplicateLoop` (which
   doubles clip length via Live's native Duplicate Loop), `repeat` only adds
   notes — like every transform, it never changes clip length. Copies that land
@@ -289,10 +290,10 @@ echoes the merged note. `ratchet` and `repeat` commute (one subdivides in place,
 the other translates), so their order does not matter.
 
 ```
-repeat(2, 1bar)       // echo every note one bar later (a 2-bar loop's worth, in place)
-repeat(4, n/8)        // a 4-instance 8th-note echo (original + 3 copies)
-C1: repeat(2, n/4)    // echo only the kick (C1), a quarter later
-2|*: repeat(3, n/16)  // a 3-hit 16th-note flam on every note in bar 2
+repeat(1bar)          // echo every note one bar later (a 2-bar loop's worth, in place)
+repeat(n/8, 3)        // three 8th-note echoes (original + 3 copies)
+C1: repeat(n/4)       // echo only the kick (C1), a quarter later
+2|*: repeat(n/16, 2)  // a 2-echo 16th-note flam on every note in bar 2
 ```
 
 (To reveal echoes that land past the clip end, grow the clip with

@@ -5,8 +5,8 @@
 
 /**
  * E2E tests for the `repeat` note-count transform, verified through the Live
- * round-trip. `repeat(count, offset)` echoes each matched note forward: it keeps
- * the original and emits `count - 1` time-shifted copies, each a further
+ * round-trip. `repeat(offset, copies)` echoes each matched note forward: it keeps
+ * the original and emits `copies` time-shifted copies (default 1), each a further
  * `offset` apart. Unlike duplicateLoop it does NOT resize the clip.
  *
  * These create real notes in Live, store them, and read them back, so they
@@ -29,12 +29,12 @@ const { createMidiClip, readClipNotes, applyTransform } =
   createClipTransformHelpers(ctx);
 
 describe("ppal-clip-transforms (repeat round-trip)", () => {
-  it("echoes every note one bar later with repeat(2, 1bar)", async () => {
+  it("echoes every note one bar later with repeat(1bar)", async () => {
     // Two quarter notes in bar 1; echo a bar later puts copies in bar 2.
     const clipId = await createMidiClip(60, "v100 n/4 C3 1|1 E3 1|3");
 
     const result = parseToolResult<UpdateClipResult>(
-      await applyTransform(clipId, "repeat(2, 1bar)"),
+      await applyTransform(clipId, "repeat(1bar)"),
     );
 
     // 2 originals + 2 echoes, all inside the 2-bar clip.
@@ -57,7 +57,7 @@ describe("ppal-clip-transforms (repeat round-trip)", () => {
     const clipId = await createMidiClip(61, "v100 n/4 C3 1|1 D3 1|1");
 
     const result = parseToolResult<UpdateClipResult>(
-      await applyTransform(clipId, "C3: repeat(2, n/4)"),
+      await applyTransform(clipId, "C3: repeat(n/4)"),
     );
 
     // C3 -> 2 notes, D3 untouched -> 1 note.

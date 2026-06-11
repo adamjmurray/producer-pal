@@ -42,35 +42,35 @@ describe("Transform Parser - note-count operations (ratchet/repeat/split/merge)"
   });
 
   describe("repeat", () => {
-    it("parses a count and a note-value offset", () => {
-      const result = parse("repeat(3, n/8)");
+    it("parses a lone note-value offset (copies default)", () => {
+      const result = parse("repeat(n/8)");
 
       expect(result[0]).toMatchObject({
         kind: "noteOp",
         name: "repeat",
-        args: [3, { type: "nDuration", wholeNoteFraction: 0.125 }],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.125 }],
       });
     });
 
-    it("parses a count and a bar-duration offset", () => {
-      expect(parse("repeat(2, 1bar)")).toStrictEqual([
+    it("parses a bar-duration offset and a copy count", () => {
+      expect(parse("repeat(1bar, 3)")).toStrictEqual([
         {
           pitchRange: null,
           timeRange: null,
           kind: "noteOp",
           name: "repeat",
-          args: [2, { type: "barDuration", bars: 1 }],
+          args: [{ type: "barDuration", bars: 1 }, 3],
         },
       ]);
     });
 
     it("carries a selector prefix", () => {
-      const result = parse("C3: repeat(2, n/4)");
+      const result = parse("C3: repeat(n/4, 2)");
 
       expect(result[0]).toMatchObject({
         kind: "noteOp",
         name: "repeat",
-        args: [2, { type: "nDuration", wholeNoteFraction: 0.25 }],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.25 }, 2],
         pitchRange: { startPitch: 60, endPitch: 60 },
       });
     });
@@ -252,7 +252,7 @@ describe("Transform Parser - note-count operations (ratchet/repeat/split/merge)"
     });
 
     it("rejects repeat() used as a value", () => {
-      expect(() => parse("velocity = repeat(2, 1bar)")).toThrow(
+      expect(() => parse("velocity = repeat(n/8)")).toThrow(
         /repeat\(\) is a note-count operation, not a value/,
       );
     });

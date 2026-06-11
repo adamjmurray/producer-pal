@@ -31,8 +31,9 @@
  * `split(1|3, 2|1)` clip-relative and `split(7|1, 8|1, sync)` for an arrangement
  * clip starting at bar 5 (one held note → 3 pieces, proving the sync coordinate
  * math end-to-end), judges pass.
- * Validated vs Live 2026-06-11: repeat PASS 4/4 — the model emitted
- * `repeat(2, n/8)` (4 notes → 8, clip length unchanged), judge pass.
+ * Validated vs Live 2026-06-11: repeat PASS 4/4 — the model reached for
+ * `repeat(n/8)` (offset-first; copies defaults to 1), 4 notes → 8, clip length
+ * unchanged, judge pass.
  */
 
 import { parseToolResult } from "#evals/chat/mcp.ts";
@@ -214,7 +215,7 @@ function assertRepeatGrew(createTurn: number, editTurn: number): EvalAssertion {
   return {
     type: "custom",
     description:
-      "used repeat(count, offset) and the note count grew (no resize)",
+      "used repeat(offset, copies) and the note count grew (no resize)",
     assert: (turns) => {
       const editCall = getToolCalls(turns, editTurn).find(
         (c) => c.name === TOOL_UPDATE_CLIP,
@@ -360,7 +361,7 @@ export const noteOpsRepeat: EvalScenario = {
     assertRepeatGrew(1, 2),
     {
       type: "llm_judge",
-      prompt: `Evaluate turn 2: every note was echoed an eighth note later at the same pitch using the repeat() note-count transform (e.g. repeat(2, n/8)) — NOT by hand-listing the echoed notes, and NOT by using update-clip's duplicateLoop flag (which would double the clip's length). The clip length should be unchanged and the note count should roughly double.`,
+      prompt: `Evaluate turn 2: every note was echoed an eighth note later at the same pitch using the repeat() note-count transform (e.g. repeat(n/8)) — NOT by hand-listing the echoed notes, and NOT by using update-clip's duplicateLoop flag (which would double the clip's length). The clip length should be unchanged and the note count should roughly double.`,
     },
     // Three turns (connect + create + update), each carrying the full skills
     // blob; ~122k is the validated baseline (2026-06-11, gemini-3.5-flash).

@@ -26,10 +26,11 @@ function expectRepeatWarnsAndSkips(transform: string, message: string): void {
 }
 
 describe("note-count operation: repeat", () => {
-  it("echoes a note one bar later with repeat(2, 1bar) in 4/4", () => {
+  it("echoes a note one bar later with repeat(1bar) in 4/4", () => {
     const notes = createTestNote({ start_time: 0, duration: 1 });
 
-    applyTransforms(notes, "repeat(2, 1bar)", 4, 4);
+    // Default copy count is 1 — a single echo.
+    applyTransforms(notes, "repeat(1bar)", 4, 4);
 
     expect(notes).toStrictEqual([
       expect.objectContaining({ start_time: 0, duration: 1, pitch: 60 }),
@@ -37,11 +38,11 @@ describe("note-count operation: repeat", () => {
     ]);
   });
 
-  it("emits count-1 copies, each a further offset apart", () => {
+  it("emits `copies` copies, each a further offset apart", () => {
     const notes = createTestNote({ start_time: 0, duration: 0.5 });
 
-    // repeat(3, n/8) -> original + 2 copies at +0.5 and +1 Ableton beats.
-    applyTransforms(notes, "repeat(3, n/8)", 4, 4);
+    // repeat(n/8, 2) -> original + 2 copies at +0.5 and +1 Ableton beats.
+    applyTransforms(notes, "repeat(n/8, 2)", 4, 4);
 
     expect(notes.map((n) => n.start_time)).toStrictEqual([0, 0.5, 1]);
     // Duration is unchanged — repeat translates, it does not resize notes.
@@ -57,7 +58,7 @@ describe("note-count operation: repeat", () => {
       velocity_deviation: 12,
     });
 
-    applyTransforms(notes, "repeat(2, n/4)", 4, 4);
+    applyTransforms(notes, "repeat(n/4)", 4, 4);
 
     expect(notes).toHaveLength(2);
     expect(notes[1]).toMatchObject({
@@ -74,7 +75,7 @@ describe("note-count operation: repeat", () => {
       { pitch: 64, start_time: 2, duration: 1 },
     ]);
 
-    applyTransforms(notes, "repeat(2, 1bar)", 4, 4);
+    applyTransforms(notes, "repeat(1bar)", 4, 4);
 
     expect(notes.map((n) => [n.pitch, n.start_time])).toStrictEqual([
       [60, 0],
@@ -85,27 +86,29 @@ describe("note-count operation: repeat", () => {
   });
 
   it("emits copies past the clip end (transforms never resize)", () => {
-    // A 2-bar-ish note near the end echoed forward lands well past any current
-    // clip length; the copy is still emitted (hidden in Live until lengthened).
+    // A note near the end echoed forward lands well past any current clip
+    // length; the copies are still emitted (hidden in Live until lengthened).
     const notes = createTestNote({ start_time: 6, duration: 1 });
 
-    applyTransforms(notes, "repeat(3, 1bar)", 4, 4);
+    applyTransforms(notes, "repeat(1bar, 2)", 4, 4);
 
     expect(notes.map((n) => n.start_time)).toStrictEqual([6, 10, 14]);
   });
 
-  it("rounds a fractional count", () => {
+  it("rounds a fractional copy count", () => {
     const notes = createTestNote({ start_time: 0, duration: 1 });
 
-    applyTransforms(notes, "repeat(2.4, n/4)", 4, 4);
+    // round(2.4) -> 2 copies -> 3 instances.
+    applyTransforms(notes, "repeat(n/4, 2.4)", 4, 4);
 
-    expect(notes).toHaveLength(2);
+    expect(notes).toHaveLength(3);
   });
 
-  it("accepts an arithmetic count expression", () => {
+  it("accepts an arithmetic copy-count expression", () => {
     const notes = createTestNote({ start_time: 0, duration: 1 });
 
-    applyTransforms(notes, "repeat(2 * 2, n/4)", 4, 4);
+    // 1 + 2 = 3 copies -> 4 instances.
+    applyTransforms(notes, "repeat(n/4, 1 + 2)", 4, 4);
 
     expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1, 2, 3]);
   });
@@ -117,7 +120,7 @@ describe("note-count operation: repeat", () => {
         { pitch: 62, start_time: 0, duration: 1 }, // D3
       ]);
 
-      applyTransforms(notes, "C3: repeat(2, n/4)", 4, 4);
+      applyTransforms(notes, "C3: repeat(n/4)", 4, 4);
 
       // C3 echoes (2 instances), D3 untouched (1).
       expect(notes.filter((n) => n.pitch === 60)).toHaveLength(2);
@@ -131,7 +134,7 @@ describe("note-count operation: repeat", () => {
       ]);
 
       // Select only bar 1 (1|1-<2|1) and echo a quarter later.
-      applyTransforms(notes, "1|1-<2|1: repeat(2, n/4)", 4, 4);
+      applyTransforms(notes, "1|1-<2|1: repeat(n/4)", 4, 4);
 
       expect(
         notes.map((n) => n.start_time).sort((a, b) => a - b),
@@ -147,7 +150,7 @@ describe("note-count operation: repeat", () => {
       ]);
 
       // Echo one bar later, then span all same-pitch into one sustained note.
-      applyTransforms(notes, "repeat(2, 1bar)\nmerge()", 4, 4);
+      applyTransforms(notes, "repeat(1bar)\nmerge()", 4, 4);
 
       expect(notes).toHaveLength(1);
       expect(notes[0]).toMatchObject({ start_time: 0, pitch: 60 });
@@ -161,7 +164,7 @@ describe("note-count operation: repeat", () => {
         { pitch: 60, start_time: 2, duration: 1 },
       ]);
 
-      applyTransforms(notes, "merge()\nrepeat(2, 1bar)", 4, 4);
+      applyTransforms(notes, "merge()\nrepeat(1bar)", 4, 4);
 
       // One long note (0..3), echoed one bar later -> two long notes.
       expect(notes).toHaveLength(2);
@@ -177,65 +180,66 @@ describe("note-count operation: repeat", () => {
       const notes = createTestNote({ start_time: 0, duration: 1 });
 
       // 6/8: one bar = 6 eighth notes = 3 Ableton (quarter) beats.
-      applyTransforms(notes, "repeat(2, 1bar)", 6, 8);
+      applyTransforms(notes, "repeat(1bar)", 6, 8);
 
       expect(notes.map((n) => n.start_time)).toStrictEqual([0, 3]);
     });
   });
 
   describe("warn-and-skip", () => {
-    it("skips when the offset is missing", () => {
-      expectRepeatWarnsAndSkips("repeat(3)", "needs a count and an offset");
-    });
-
-    it("skips when the count is below 2", () => {
-      expectRepeatWarnsAndSkips("repeat(1, n/4)", "count of 2 or more");
+    it("skips when no offset is given", () => {
+      expectRepeatWarnsAndSkips("repeat()", "needs an offset");
     });
 
     it("skips a bare number offset (must be a note value or bar)", () => {
       expectRepeatWarnsAndSkips(
-        "repeat(3, 2)",
+        "repeat(2)",
         "offset must be a note value like n/8 or a bar duration",
-      );
-    });
-
-    it("skips a pitch-literal count", () => {
-      expectRepeatWarnsAndSkips(
-        "repeat(C3, n/8)",
-        "isn't a valid repeat count",
-      );
-    });
-
-    it("skips a count that fails to evaluate (audio var in note context)", () => {
-      expectRepeatWarnsAndSkips(
-        "repeat(audio.gain, n/4)",
-        "count could not be evaluated",
-      );
-    });
-
-    it("skips a count that overflows to non-finite", () => {
-      // pow(10, 400) overflows a double — evaluateExpression throws, so it lands
-      // in the same "could not be evaluated" skip path.
-      expectRepeatWarnsAndSkips(
-        "repeat(pow(10, 400), n/4)",
-        "count could not be evaluated",
       );
     });
 
     it("skips a zero offset", () => {
       expectRepeatWarnsAndSkips(
-        "repeat(2, n0/4)",
+        "repeat(n0/4)",
         "offset must be greater than 0",
       );
     });
 
-    it("clamps a count above the piece cap and still echoes", () => {
+    it("skips when the copy count is below 1", () => {
+      expectRepeatWarnsAndSkips("repeat(n/4, 0)", "copy count of 1 or more");
+    });
+
+    it("skips a pitch-literal copy count", () => {
+      expectRepeatWarnsAndSkips(
+        "repeat(n/8, C3)",
+        "isn't a valid repeat copy count",
+      );
+    });
+
+    it("skips a copy count that fails to evaluate (audio var in note context)", () => {
+      expectRepeatWarnsAndSkips(
+        "repeat(n/4, audio.gain)",
+        "copy count could not be evaluated",
+      );
+    });
+
+    it("skips a copy count that overflows to non-finite", () => {
+      // pow(10, 400) overflows a double — evaluateExpression throws, so it lands
+      // in the same "could not be evaluated" skip path.
+      expectRepeatWarnsAndSkips(
+        "repeat(n/4, pow(10, 400))",
+        "copy count could not be evaluated",
+      );
+    });
+
+    it("clamps a copy count above the cap and still echoes", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const notes = createTestNote({ start_time: 0, duration: 0.1 });
 
-      applyTransforms(notes, "repeat(100, n/16)", 4, 4);
+      applyTransforms(notes, "repeat(n/16, 100)", 4, 4);
 
-      expect(notes).toHaveLength(64);
+      // 64 copies + the original = 65 instances.
+      expect(notes).toHaveLength(65);
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("clamped to the max"),
       );
@@ -246,9 +250,9 @@ describe("note-count operation: repeat", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const notes = createTestNote({ start_time: 0, duration: 1 });
 
-      applyTransforms(notes, "repeat(2, n/4, n/8)", 4, 4);
+      applyTransforms(notes, "repeat(n/4, 2, n/8)", 4, 4);
 
-      expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1]);
+      expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1, 2]);
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("using the first two arguments"),
       );

@@ -14,20 +14,21 @@ import { MAX_NOTE_PIECES } from "./note-cut-helpers.ts";
 import { evaluateExpression } from "./transform-evaluator-helpers.ts";
 
 /**
- * Repeat (echo) matched notes: keep the originals and emit `count - 1`
- * time-shifted copies of each, the k-th copy displaced by `k * offset`.
+ * Repeat (echo) matched notes: keep the originals and emit `copies` time-shifted
+ * copies of each, the k-th copy displaced by `k * offset`.
  *
  * Unlike duplicateLoop this does NOT resize the clip — copies landing past the
  * clip's end are still emitted (hidden in Live until the clip is lengthened),
  * consistent with transforms never changing clip length.
- *   - repeat(3, n/8)  → original + 2 copies at +1 and +2 eighth notes
- *   - repeat(2, 1bar) → original + 1 copy one bar later
- * `count` is the TOTAL number of instances (>= 2, clamped to MAX_NOTE_PIECES);
- * `offset` is a note value (n/X) or bar duration (Nbar), greater than 0. Invalid
- * args warn-and-skip (notes pass through unchanged), consistent with update-tool
- * error handling.
+ *   - repeat(n/8)     → original + 1 echo an eighth note later
+ *   - repeat(n/8, 2)  → original + 2 copies at +1 and +2 eighth notes
+ *   - repeat(1bar, 3) → original + 3 copies, each a further bar on
+ * `offset` (first arg, required) is a note value (n/X) or bar duration (Nbar),
+ * greater than 0. `copies` (second arg, optional, default 1) is the number of
+ * echoes (>= 1, clamped to MAX_NOTE_PIECES). Invalid args warn-and-skip (notes
+ * pass through unchanged), consistent with update-tool error handling.
  * @param matched - Notes selected by the op
- * @param op - The repeat operation (args: count expression, offset duration)
+ * @param op - The repeat operation (args: offset duration, optional copy count)
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator
  * @returns The originals plus their time-shifted copies
@@ -39,12 +40,12 @@ export function repeatNotes(
   denominator: number,
 ): NoteEvent[] {
   // repeat args are always expressions (bar|beat points only reach `split`).
-  const countArg = op.args[0] as ExpressionNode | undefined;
-  const offsetArg = op.args[1] as ExpressionNode | undefined;
+  const offsetArg = op.args[0] as ExpressionNode | undefined;
+  const copiesArg = op.args[1] as ExpressionNode | undefined;
 
-  if (op.args.length < 2 || countArg == null || offsetArg == null) {
+  if (op.args.length === 0 || offsetArg == null) {
     console.warn(
-      "repeat() needs a count and an offset, e.g. repeat(3, n/8) or repeat(2, 1bar); skipping",
+      "repeat() needs an offset, e.g. repeat(n/8) or repeat(1bar); skipping",
     );
 
     return matched;
@@ -52,14 +53,8 @@ export function repeatNotes(
 
   if (op.args.length > 2) {
     console.warn(
-      "repeat() takes a count and an offset; using the first two arguments",
+      "repeat() takes an offset and an optional copy count; using the first two arguments",
     );
-  }
-
-  const count = resolveRepeatCount(countArg, numerator, denominator);
-
-  if (count == null) {
-    return matched; // count invalid — warn already emitted, pass through
   }
 
   const offset = resolveRepeatOffset(offsetArg, numerator, denominator);
@@ -68,75 +63,21 @@ export function repeatNotes(
     return matched; // offset invalid — warn already emitted, pass through
   }
 
+  const copies = resolveRepeatCopies(copiesArg, numerator, denominator);
+
+  if (copies == null) {
+    return matched; // copy count invalid — warn already emitted, pass through
+  }
+
   const out: NoteEvent[] = [...matched];
 
   for (const note of matched) {
-    for (let k = 1; k < count; k++) {
+    for (let k = 1; k <= copies; k++) {
       out.push({ ...note, start_time: note.start_time + k * offset });
     }
   }
 
   return out;
-}
-
-/**
- * Resolve the repeat count argument to a whole instance total (>= 2), clamped to
- * MAX_NOTE_PIECES. Returns null and warns when the argument is unusable.
- * @param arg - The (already-parsed) count argument node
- * @param numerator - Time signature numerator
- * @param denominator - Time signature denominator
- * @returns The instance count, or null to skip
- */
-function resolveRepeatCount(
-  arg: ExpressionNode,
-  numerator: number,
-  denominator: number,
-): number | null {
-  // A bare pitch literal (`repeat(C2, n/8)`) is nonsensical as a count and would
-  // silently coerce to its MIDI number — warn-and-skip, mirroring ratchet.
-  if (typeof arg === "object" && arg.type === "pitchLiteral") {
-    console.warn(
-      `pitch name "${arg.name}" isn't a valid repeat count; use a number like repeat(3, n/8). Skipping repeat.`,
-    );
-
-    return null;
-  }
-
-  let value: number;
-
-  try {
-    // Args are constants (no per-note context); a count evaluates to a number.
-    // evaluateExpression throws on a non-finite result (e.g. an overflow), so a
-    // returned value is always finite here.
-    value = evaluateExpression(arg, 0, numerator, denominator, {
-      start: 0,
-      end: 0,
-    });
-  } catch (error) {
-    console.warn(
-      `repeat() count could not be evaluated (${errorMessage(error)}); skipping`,
-    );
-
-    return null;
-  }
-
-  const count = Math.round(value);
-
-  if (count < 2) {
-    console.warn(`repeat(${value}, …) needs a count of 2 or more; skipping`);
-
-    return null;
-  }
-
-  if (count > MAX_NOTE_PIECES) {
-    console.warn(
-      `repeat: count clamped to the max of ${MAX_NOTE_PIECES} instances`,
-    );
-
-    return MAX_NOTE_PIECES;
-  }
-
-  return count;
 }
 
 /**
@@ -179,4 +120,69 @@ function resolveRepeatOffset(
   }
 
   return abletonBeats;
+}
+
+/**
+ * Resolve the optional copy-count argument to a whole number of echoes (>= 1),
+ * clamped to MAX_NOTE_PIECES. A missing argument defaults to 1 (a single echo).
+ * Returns null and warns when an explicit argument is unusable.
+ * @param arg - The (already-parsed) copy-count node, or undefined for the default
+ * @param numerator - Time signature numerator
+ * @param denominator - Time signature denominator
+ * @returns The number of copies, or null to skip
+ */
+function resolveRepeatCopies(
+  arg: ExpressionNode | undefined,
+  numerator: number,
+  denominator: number,
+): number | null {
+  if (arg == null) {
+    return 1; // default — a single echo
+  }
+
+  // A bare pitch literal (`repeat(n/8, C2)`) is nonsensical as a count and would
+  // silently coerce to its MIDI number — warn-and-skip, mirroring ratchet.
+  if (typeof arg === "object" && arg.type === "pitchLiteral") {
+    console.warn(
+      `pitch name "${arg.name}" isn't a valid repeat copy count; use a number like repeat(n/8, 3). Skipping repeat.`,
+    );
+
+    return null;
+  }
+
+  let value: number;
+
+  try {
+    // Args are constants (no per-note context); a count evaluates to a number.
+    // evaluateExpression throws on a non-finite result (e.g. an overflow), so a
+    // returned value is always finite here.
+    value = evaluateExpression(arg, 0, numerator, denominator, {
+      start: 0,
+      end: 0,
+    });
+  } catch (error) {
+    console.warn(
+      `repeat() copy count could not be evaluated (${errorMessage(error)}); skipping`,
+    );
+
+    return null;
+  }
+
+  const copies = Math.round(value);
+
+  if (copies < 1) {
+    console.warn(
+      `repeat(offset, ${value}) needs a copy count of 1 or more; skipping`,
+    );
+
+    return null;
+  }
+
+  if (copies > MAX_NOTE_PIECES) {
+    console.warn(`repeat: copy count clamped to the max of ${MAX_NOTE_PIECES}`);
+
+    return MAX_NOTE_PIECES;
+  }
+
+  return copies;
 }
