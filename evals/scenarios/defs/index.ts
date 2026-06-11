@@ -52,6 +52,7 @@ export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quar
 export {
   noteOpsMerge,
   noteOpsRatchetRoll,
+  noteOpsRepeat,
   noteOpsSplit,
   noteOpsSplitSync,
 } from "./clip/note-ops-roll-and-merge.ts";

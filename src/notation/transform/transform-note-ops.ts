@@ -14,11 +14,13 @@ import {
   splitNotes,
 } from "./helpers/note-cut-helpers.ts";
 import { evaluateExpression } from "./helpers/transform-evaluator-helpers.ts";
+import { repeatNotes } from "./helpers/transform-repeat-helpers.ts";
 import { noteInTimeRange } from "./helpers/transform-time-range-helpers.ts";
 import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
 
 /**
- * Apply a note-count operation (ratchet/split/merge) to the note list IN PLACE.
+ * Apply a note-count operation (ratchet/repeat/split/merge) to the note list IN
+ * PLACE.
  *
  * Notes outside the op's selector pass through unchanged; matched notes are
  * replaced by the op's output and the whole list is re-sorted. The caller holds
@@ -60,7 +62,9 @@ export function applyNoteOp(
       ? splitNotes(matched, op, timeSigDenominator, arrangementStart)
       : op.name === "ratchet"
         ? ratchetNotes(matched, op, timeSigNumerator, timeSigDenominator)
-        : mergeNotes(matched, op, timeSigNumerator, timeSigDenominator);
+        : op.name === "repeat"
+          ? repeatNotes(matched, op, timeSigNumerator, timeSigDenominator)
+          : mergeNotes(matched, op, timeSigNumerator, timeSigDenominator);
 
   // Rebuild in place: passthrough + produced, re-sorted (ratchet/merge can
   // reorder relative to passthrough notes). sortNotes keeps object identity.

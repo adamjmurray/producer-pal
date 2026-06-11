@@ -276,6 +276,8 @@ selectorSep
 // to scope which notes they touch (no selector = all notes).
 //   ratchet(N)        — divide each matched note into N equal pieces (a roll)
 //   ratchet(n/16)     — cut each matched note on the absolute 16th-note grid
+//   repeat(N, n/8)    — echo matched notes: N total copies, each +n/8 apart
+//   repeat(2, 1bar)   — echo matched notes one bar later (does NOT resize clip)
 //   split(2|1, 2|3)   — cut each matched note at explicit clip bar|beat positions
 //   split(2|1, sync)  — same, but positions are arrangement-timeline absolute
 //   merge()           — span all same-pitch matched notes into one sustained note
@@ -292,6 +294,7 @@ noteOp "note-count operation"
 
 noteOpName
   = "ratchet" { return "ratchet"; }
+  / "repeat" { return "repeat"; }
   / "merge" { return "merge"; }
 
 // A comma-separated list of bar|beat cut positions for `split`, with an optional
@@ -675,13 +678,13 @@ primary
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
-// ratchet()/merge() are note-count operations (whole statements), not values.
-// Matched here only to raise a targeted error when one is used in an expression
-// (e.g. `velocity = ratchet(2)`). A valid bare statement reaches the noteOp rule
-// first, so this never fires on correct usage.
+// ratchet()/repeat()/merge() are note-count operations (whole statements), not
+// values. Matched here only to raise a targeted error when one is used in an
+// expression (e.g. `velocity = ratchet(2)`). A valid bare statement reaches the
+// noteOp rule first, so this never fires on correct usage.
 badNoteOpInExpression
-  = name:("ratchet" / "merge" / "split") _ "(" {
-    const example = name === "ratchet" ? "ratchet(2)" : name === "split" ? "split(2|1)" : "merge()";
+  = name:("ratchet" / "repeat" / "merge" / "split") _ "(" {
+    const example = name === "ratchet" ? "ratchet(2)" : name === "repeat" ? "repeat(2, 1bar)" : name === "split" ? "split(2|1)" : "merge()";
     throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
   }
 

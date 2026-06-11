@@ -40,6 +40,7 @@ pow(base, exponent); // base raised to exponent
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
 ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
+repeat(count, offset); // echo matched notes: `count` total copies, each shifted a further `offset` (a note value or Nbar); does NOT resize the clip
 split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
 merge(); // span ALL same-pitch matched notes into one sustained note (default)
 merge(0); // glue only touching/overlapping same-pitch notes
@@ -250,6 +251,52 @@ C1: ratchet(4)        // ratchet only the kick (C1)
 ratchet(4)            // then accent within each ratchet:
 velocity -= note.index % 4 * 15
 ```
+
+### repeat(count, offset)
+
+Echoes each matched note forward in time: keeps the original and emits
+`count − 1` time-shifted copies, the k-th copy displaced by `k × offset`. Each
+copy inherits the parent's pitch, velocity, probability, and deviation, and its
+duration is unchanged — `repeat` translates notes, it does not stretch them.
+
+- **count** (first argument): the TOTAL number of instances, including the
+  original. Rounded to the nearest integer; a count below 2 warns and is skipped
+  (1 instance is a no-op). Counts above the per-note cap (64) are clamped with a
+  warning. A bare pitch literal (e.g. `repeat(C2, n/8)`) is not a valid count —
+  it warns and is skipped rather than coercing to its MIDI number (a pitch
+  literal nested in arithmetic still resolves to a number). An arithmetic count
+  (e.g. `repeat(2 * 2, n/4)`) is fine.
+- **offset** (second argument): a **note value** (`n/8`, `n/4`, …) or a bar
+  duration (`Nbar`). It is the only argument dialect — a bare number, a pitch,
+  or any other expression warns and the op is skipped. The offset must be
+  greater than 0. It is meter-aware: `1bar` resolves through the clip's
+  beats-per-bar (one bar in 6/8 is three Ableton beats).
+- **Does NOT resize the clip.** Unlike `update-clip`'s `duplicateLoop` (which
+  doubles clip length via Live's native Duplicate Loop), `repeat` only adds
+  notes — like every transform, it never changes clip length. Copies that land
+  past the clip's end are still emitted; in Live they sit beyond the loop/end
+  marker, hidden until the clip is lengthened. To grow the clip to fit the
+  echoes, set `length` on the same `update-clip` call (or a follow-up).
+- The arguments are constants (no per-note variables); an unusable argument
+  warns and the op is skipped (notes pass through unchanged). A third positional
+  argument warns and is ignored (the first two are used).
+
+`repeat` runs in the same statement-major pipeline as the other note ops, so
+**order matters** when it composes with a `merge`. `repeat` then `merge` first
+lays down the echoes and then collapses same-pitch runs (the copies can be
+swallowed into one sustained note); `merge` then `repeat` collapses first and
+echoes the merged note. `ratchet` and `repeat` commute (one subdivides in place,
+the other translates), so their order does not matter.
+
+```
+repeat(2, 1bar)       // echo every note one bar later (a 2-bar loop's worth, in place)
+repeat(4, n/8)        // a 4-instance 8th-note echo (original + 3 copies)
+C1: repeat(2, n/4)    // echo only the kick (C1), a quarter later
+2|*: repeat(3, n/16)  // a 3-hit 16th-note flam on every note in bar 2
+```
+
+(To reveal echoes that land past the clip end, grow the clip with
+`update-clip`'s `length` argument — `repeat` itself never resizes.)
 
 ### split(barBeat, ...)
 

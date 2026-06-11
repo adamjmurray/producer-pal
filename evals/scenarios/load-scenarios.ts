@@ -40,6 +40,7 @@ import {
   melodyTransforms,
   noteOpsMerge,
   noteOpsRatchetRoll,
+  noteOpsRepeat,
   noteOpsSplit,
   noteOpsSplitSync,
   rangeClearFirstHalf,
@@ -112,6 +113,7 @@ const allScenarios: EvalScenario[] = [
   rangeClearFirstHalf,
   noteOpsRatchetRoll,
   noteOpsMerge,
+  noteOpsRepeat,
   noteOpsSplit,
   noteOpsSplitSync,
 ];
