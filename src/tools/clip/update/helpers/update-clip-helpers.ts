@@ -12,6 +12,7 @@ import {
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
 import {
+  handleDuplicateLoop,
   handleNoteUpdates,
   handleQuantization,
 } from "./update-clip-notes-helpers.ts";
@@ -57,6 +58,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   length?: string;
   firstStart?: string;
   looping?: boolean;
+  duplicateLoop?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
   toSlot?: { trackIndex: number; sceneIndex: number } | null;
@@ -80,6 +82,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params.length - Clip length
  * @param params.firstStart - First start position
  * @param params.looping - Looping enabled
+ * @param params.duplicateLoop - Double the loop via native Clip.duplicate_loop
  * @param params.gainDb - Gain in decibels
  * @param params.pitchShift - Pitch shift amount
  * @param params.warpMode - Warp mode
@@ -114,6 +117,7 @@ export function processSingleClipUpdate(
     length,
     firstStart,
     looping,
+    duplicateLoop,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -185,7 +189,7 @@ export function processSingleClipUpdate(
   }
 
   // Handle note updates (transforms already applied for audio clips above)
-  const noteResult = handleNoteUpdates(
+  const noteUpdateResult = handleNoteUpdates(
     clip,
     notationString,
     isAudioClip ? undefined : transformString,
@@ -194,6 +198,13 @@ export function processSingleClipUpdate(
     timeSigDenominator,
     clipContext,
   );
+
+  // duplicateLoop is validated up front as mutually exclusive with notes/length/
+  // transforms, so it never competes with the merge above (noteUpdateResult is
+  // null here). Live does the doubling + note/envelope copy natively.
+  const noteResult = duplicateLoop
+    ? handleDuplicateLoop(clip)
+    : noteUpdateResult;
 
   // Handle quantization (after notes so newly merged notes get quantized)
   handleQuantization(clip, {

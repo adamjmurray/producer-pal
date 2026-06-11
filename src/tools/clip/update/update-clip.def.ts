@@ -45,6 +45,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or Nbar+n<fraction> (e.g., '1bar+n/4'); clip meter",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
+    duplicateLoop: z
+      .boolean()
+      .optional()
+      .describe(
+        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only; standalone op - cannot combine with length/notes/transforms/preTransforms",
+      ),
     firstStart: z
       .string()
       .optional()

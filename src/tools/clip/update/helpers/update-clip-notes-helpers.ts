@@ -161,6 +161,34 @@ export function handleNoteUpdates(
 }
 
 /**
+ * Double the clip's loop via Live's native Clip.duplicate_loop. Live extends the
+ * loop (looped clips move loop_end; unlooped clips duplicate the start/end range)
+ * and copies the existing notes AND automation envelopes into the new half - the
+ * envelope copy is something the manual length+notes path can't do. MIDI clips
+ * only: audio clips warn-and-skip so a mixed comma-separated batch keeps going.
+ * @param clip - The clip to double
+ * @returns Note update result with the post-duplicate note count, or null when
+ *   skipped (audio clip)
+ */
+export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
+  if ((clip.getProperty("is_midi_clip") as number) <= 0) {
+    console.warn(
+      `duplicateLoop parameter ignored for audio clip (id ${clip.id})`,
+    );
+
+    return null;
+  }
+
+  clip.call("duplicate_loop");
+
+  // duplicate_loop mutates the clip in place (same id). Recreate from id to dodge
+  // LiveAPI staleness - matters for arrangement clips - before reading the count.
+  const freshClip = LiveAPI.from(clip.id);
+
+  return { noteCount: getClipNoteCount(freshClip) };
+}
+
+/**
  * Apply preTransforms to existing notes in-place (mutates and filters v=0/d=0).
  * Returns the surviving notes plus the preTransform match count (undefined when
  * no preTransformString); no-ops when preTransformString is missing.

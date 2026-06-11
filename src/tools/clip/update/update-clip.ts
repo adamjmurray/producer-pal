@@ -55,6 +55,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   length?: string;
   firstStart?: string;
   looping?: boolean;
+  duplicateLoop?: boolean;
   arrangementStart?: string;
   arrangementLength?: string;
   toSlot?: string;
@@ -83,6 +84,7 @@ interface ClipResult {
  * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only; mutually exclusive with length/notes/transforms/preTransforms)
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
@@ -116,6 +118,7 @@ export async function updateClip(
     length,
     firstStart,
     looping,
+    duplicateLoop,
     arrangementStart,
     arrangementLength,
     toSlot,
@@ -143,6 +146,14 @@ export async function updateClip(
 
     return [];
   }
+
+  validateDuplicateLoopExclusivity({
+    duplicateLoop,
+    length,
+    notationString,
+    transforms,
+    preTransforms,
+  });
 
   const mutableClips = applySplittingIfNeeded(
     validateIdTypes(parseCommaSeparatedIds(ids), "clip", "updateClip", {
@@ -193,6 +204,7 @@ export async function updateClip(
       length,
       firstStart,
       looping,
+      duplicateLoop,
       gainDb,
       pitchShift,
       warpMode,
@@ -224,6 +236,45 @@ export async function updateClip(
   }
 
   return unwrapSingleResult(updatedClips);
+}
+
+/**
+ * Fail loud when duplicateLoop is combined with note/length edits. duplicateLoop
+ * is a standalone op (Live doubles the loop and copies notes + envelopes
+ * natively); combining it with edits is an ordering footgun - whether the edits
+ * land before or after the double is ambiguous. Validated up front so the error
+ * reaches the caller instead of being swallowed by the per-clip warn-and-skip.
+ * @param args - The mutually-exclusive parameters
+ * @param args.duplicateLoop - Whether the loop-double was requested
+ * @param args.length - The length edit (mutually exclusive)
+ * @param args.notationString - The notes edit (mutually exclusive)
+ * @param args.transforms - The transforms edit (mutually exclusive)
+ * @param args.preTransforms - The preTransforms edit (mutually exclusive)
+ */
+function validateDuplicateLoopExclusivity({
+  duplicateLoop,
+  length,
+  notationString,
+  transforms,
+  preTransforms,
+}: {
+  duplicateLoop?: boolean;
+  length?: string;
+  notationString?: string;
+  transforms?: string;
+  preTransforms?: string;
+}): void {
+  if (
+    duplicateLoop &&
+    (length != null ||
+      notationString != null ||
+      transforms != null ||
+      preTransforms != null)
+  ) {
+    throw new Error(
+      "duplicateLoop cannot be combined with length, notes, transforms, or preTransforms - it is a standalone operation. Run the edit and the loop-double as separate update-clip calls.",
+    );
+  }
 }
 
 /**
