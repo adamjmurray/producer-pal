@@ -193,7 +193,164 @@
   }
 }
 
+/* Download band on homepage */
+.vp-doc {
+  .download-band {
+    max-width: 1152px;
+    margin: 0 auto;
+    padding: 40px 24px 8px;
+    text-align: center;
+  }
+
+  /* Compact variant for use inside content pages (e.g. /installation) */
+  .download-band-compact {
+    padding: 12px 6px 20px;
+    text-align: left;
+
+    .download-actions {
+      justify-content: flex-start;
+    }
+
+    .download-title {
+      font-size: 22px;
+    }
+
+    .download-subtitle {
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+  }
+
+  /* Two equally-required downloads (e.g. Claude Desktop): drop the double-border
+     ring so it's not overwhelming, keep a single solid border, widen the gap. */
+  .download-band-dual {
+    .download-actions {
+      gap: 24px;
+    }
+
+    .download-btn-primary,
+    .download-btn-primary:hover {
+      outline: none;
+    }
+  }
+
+  .download-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--vp-c-text-1);
+    margin: 0 0 8px;
+    border: none;
+  }
+
+  .download-subtitle {
+    font-size: 17px;
+    color: var(--vp-c-text-2);
+    margin: 0 0 24px;
+  }
+
+  .download-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  .download-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 220px;
+    padding: 14px 22px;
+    border-radius: 10px;
+    text-decoration: none;
+    background-color: var(--vp-c-bg-soft);
+    border: 1px solid var(--vp-c-divider);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+      border-color: var(--vp-c-brand-2);
+    }
+  }
+
+  .download-btn-primary {
+    padding: 18px 28px;
+    background: linear-gradient(
+      135deg,
+      var(--vp-c-brand-soft) 0%,
+      var(--vp-c-bg-soft) 100%
+    );
+    /* Resting "double border" in the lighter brand shade — subtle. */
+    border: 2px solid var(--vp-c-brand-2);
+    outline: 2px solid var(--vp-c-brand-2);
+    outline-offset: 3px;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease,
+      outline-color 0.2s ease,
+      outline-offset 0.2s ease;
+  }
+
+  /* Hover intensifies both rings to full brand + a bigger lift. */
+  .download-btn-primary:hover {
+    border-color: var(--vp-c-brand-1);
+    outline-color: var(--vp-c-brand-1);
+    outline-offset: 4px;
+    transform: translateY(-4px);
+    box-shadow: 0 16px 30px -8px rgba(0, 0, 0, 0.22);
+  }
+
+  .download-btn-primary .download-btn-label {
+    font-size: 18px;
+  }
+
+  .download-btn-primary .download-btn-sub {
+    font-size: 14px;
+  }
+
+  .download-btn-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--vp-c-brand-1);
+  }
+
+  .download-btn-sub {
+    font-size: 13px;
+    color: var(--vp-c-text-2);
+  }
+
+  .download-next {
+    font-size: 15px;
+    color: var(--vp-c-text-2);
+    margin: 24px 0 0;
+  }
+
+  @media (max-width: 600px) {
+    .download-band {
+      padding: 32px 16px 0;
+    }
+
+    .download-title {
+      font-size: 24px;
+    }
+
+    .download-btn {
+      width: 100%;
+    }
+  }
+}
+
 /* Dark mode overrides - must be outside .vp-doc nesting */
+.dark .vp-doc .download-btn:hover {
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.4);
+}
+
 .dark .vp-doc .arrow-path {
   stroke: var(--vp-c-text-3);
 }

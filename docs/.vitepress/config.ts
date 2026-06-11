@@ -140,33 +140,6 @@ export default defineConfig({
           { text: "Overview", link: "/installation" },
           { text: "Upgrading", link: "/installation/upgrading" },
           {
-            text: "Choose by Provider",
-            collapsed: false,
-            items: [
-              {
-                text: "Claude / Anthropic",
-                link: "/installation/choose-claude",
-              },
-              {
-                text: "ChatGPT / OpenAI",
-                link: "/installation/choose-openai",
-              },
-              {
-                text: "Gemini / Google",
-                link: "/installation/choose-gemini",
-              },
-              {
-                text: "Mistral / Mistral AI",
-                link: "/installation/choose-mistral",
-              },
-              { text: "Local / Offline", link: "/installation/choose-local" },
-              {
-                text: "Multiple Providers",
-                link: "/installation/choose-multi",
-              },
-            ],
-          },
-          {
             text: "Built-in Chat UI",
             collapsed: false,
             items: [
@@ -212,6 +185,33 @@ export default defineConfig({
               { text: "claude.ai", link: "/installation/claude-web" },
               { text: "ChatGPT", link: "/installation/chatgpt-web" },
               { text: "Le Chat", link: "/installation/mistral-le-chat" },
+            ],
+          },
+          {
+            text: "Choose by Provider",
+            collapsed: true,
+            items: [
+              {
+                text: "Claude / Anthropic",
+                link: "/installation/choose-claude",
+              },
+              {
+                text: "ChatGPT / OpenAI",
+                link: "/installation/choose-openai",
+              },
+              {
+                text: "Gemini / Google",
+                link: "/installation/choose-gemini",
+              },
+              {
+                text: "Mistral / Mistral AI",
+                link: "/installation/choose-mistral",
+              },
+              { text: "Local / Offline", link: "/installation/choose-local" },
+              {
+                text: "Multiple Providers",
+                link: "/installation/choose-multi",
+              },
             ],
           },
           {

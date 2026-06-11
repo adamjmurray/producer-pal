@@ -8,14 +8,21 @@ description:
 # Installation Guide
 
 Producer Pal is a free, open-source Ableton MCP server that brings AI to Ableton
-Live. Choose your preferred AI platform to get started. Note that some AI
-services charge for usage.
+Live. It works with many AI providers — use whichever you prefer. Note that some
+AI services charge for usage.
 
-::: tip Prerequisites
+<div class="download-band download-band-compact">
+  <h2 class="download-title">Step 1: Get the Max for Live Device</h2>
+  <p class="download-subtitle">Required for every setup — add it to a MIDI track in Ableton Live.</p>
+  <div class="download-actions">
+    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
+      <span class="download-btn-label">Download Max for Live Device</span>
+      <span class="download-btn-sub">Producer_Pal.amxd · v{{ $frontmatter.version }}</span>
+    </a>
+  </div>
+</div>
 
-**Download** v{{ $frontmatter.version }}**:**&nbsp;
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-(the Producer Pal Max for Live device)
+::: tip Requirements
 
 **Requires:** [Ableton Live 12.3+](https://www.ableton.com/live/) with
 [Max for Live](https://www.ableton.com/live/max-for-live/). Live 12.4 or later
@@ -28,74 +35,68 @@ Upgrading from a previous version? See the
 
 :::
 
-## Which AI Do You Use?
+## Choose How You Want to Use It
 
-Pick your preferred AI provider:
+Producer Pal works the same with any provider — the main choice is _how_ you
+want to interact with it. Every group below supports multiple AI providers, so
+pick the experience you like best.
 
-- **[Anthropic / Claude](./installation/choose-claude)** — Claude Desktop,
-  claude.ai, or Claude Code
-- **[OpenAI / ChatGPT](./installation/choose-openai)** — Codex app, ChatGPT web
-  app, or Codex CLI
-- **[Google / Gemini](./installation/choose-gemini)** — Built-in Chat UI or
-  Gemini CLI
-- **[Mistral / Mistral AI](./installation/choose-mistral)** — Le Chat or Mistral
-  Vibe
-- **[Local / Offline](./installation/choose-local)** — Ollama or LM Studio
-- **[Multiple Providers](./installation/choose-multi)** — OpenRouter,
-  flexibility across providers
+### Desktop Apps
 
-## Recommended Options
-
-These are the easiest and most reliable ways to use Producer Pal:
+Dedicated AI apps — the easiest setup for most people:
 
 - **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
-  (easiest setup, subscription required)
-- **[Codex App](./installation/codex-app)** — OpenAI's desktop app (easy setup,
-  macOS only, subscription required)
-- **[Built-in Chat UI](./installation/chat-ui)** — Integrated chat interface
-  supporting cloud providers and local models
+  (subscription required)
+- **[Codex App](./installation/codex-app)** — OpenAI's desktop app (macOS only,
+  subscription required)
+- **[LM Studio](./installation/lm-studio)** — runs models fully offline, no
+  account needed
 
-Looking for offline/local options? See
-[Desktop Apps](./installation/desktop-apps) for LM Studio or
-[Ollama](./installation/ollama) via the built-in chat UI.
+### Built-in Chat UI
 
-Already have an MCP-compatible client? Connect with
-[`npx producer-pal`](https://www.npmjs.com/package/producer-pal) (see
-[Other MCP LLMs](./installation/other-mcp) and
-[CLI options](#command-line-interfaces))
+Producer Pal's own browser-based chat — bring an API key for any supported
+provider:
 
-## Command Line Interfaces
+- **[Chat UI overview](./installation/chat-ui)** — supported providers and setup
+- **[Gemini](./installation/gemini)**, **[OpenAI](./installation/openai)**,
+  **[Ollama](./installation/ollama)** (offline), or
+  **[OpenRouter, Mistral & more](./installation/chat-ui-other-providers)**
+
+### Command Line
 
 For users comfortable with the terminal:
 
-- **[Gemini CLI](./installation/gemini-cli)** - Google's command line agent
-  (free tier has strict rate limits)
-- **[Codex CLI](./installation/codex-cli)** - OpenAI's command line agent
-  (subscription required)
-- **[Claude Code](./installation/claude-code)** - Anthropic's command line agent
-  (subscription required)
-- **[Mistral Vibe](./installation/mistral-vibe)** - Mistral's command line agent
-  (API key required)
+- **[Claude Code](./installation/claude-code)** — Anthropic (subscription
+  required)
+- **[Codex CLI](./installation/codex-cli)** — OpenAI (subscription required)
+- **[Gemini CLI](./installation/gemini-cli)** — Google (free tier has strict
+  rate limits)
+- **[Mistral Vibe](./installation/mistral-vibe)** — Mistral (API key required)
 
-## Web Applications
+### Web Apps
 
-Use Producer Pal in your browser:
+Use a provider's website in your browser — each requires a
+[web tunnel](./installation/web-tunnels):
 
-- **[claude.ai Web App](./installation/claude-web)** - Anthropic's web app
-  (requires [web tunnel](./installation/web-tunnels))
-- **[ChatGPT Web App](./installation/chatgpt-web)** - OpenAI's web app (requires
-  [web tunnel](./installation/web-tunnels))
-- **[Le Chat](./installation/mistral-le-chat)** - Mistral's web app (requires
-  [web tunnel](./installation/web-tunnels))
+- **[claude.ai](./installation/claude-web)** — Anthropic
+- **[ChatGPT](./installation/chatgpt-web)** — OpenAI
+- **[Le Chat](./installation/mistral-le-chat)** — Mistral
 
-## Local & Offline Options
+### Any MCP Client
 
-Run models completely offline:
+Already have an MCP-compatible app? Connect directly with
+[`npx producer-pal`](https://www.npmjs.com/package/producer-pal) — see
+[Other MCP LLMs](./installation/other-mcp).
 
-- **[Ollama](./installation/ollama)** - Using the built-in chat interface
-- **[LM Studio](./installation/lm-studio)** - Alternative local model server
-- **[Other MCP-compatible LLMs](./installation/other-mcp)** - Any LLM supporting
-  MCP
+## Prefer to Pick by AI Provider?
+
+If you already know which AI you use, jump straight to its provider guide:
+[Claude / Anthropic](./installation/choose-claude) ·
+[OpenAI / ChatGPT](./installation/choose-openai) ·
+[Google / Gemini](./installation/choose-gemini) ·
+[Mistral](./installation/choose-mistral) ·
+[Local / Offline](./installation/choose-local) ·
+[Multiple Providers](./installation/choose-multi)
 
 ## Additional Resources
 
