@@ -31,6 +31,19 @@ export interface ChatMessage {
     isError?: boolean;
   }>;
   reasoning?: string;
+  /**
+   * Structured reasoning blocks with provider signatures, captured from the
+   * stream so they can be re-emitted verbatim on later turns. Re-sending the
+   * signed thinking blocks keeps the Anthropic request prefix byte-stable across
+   * turns, so the conversation history (incl. the ppal-connect skills result)
+   * stays prompt-cached when adaptive thinking is on. `reasoning` holds the same
+   * text flattened for display.
+   */
+  reasoningParts?: Array<{
+    text: string;
+    signature?: string;
+    redactedData?: string;
+  }>;
   /** Model ID from the API response (assistant messages only) */
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */
