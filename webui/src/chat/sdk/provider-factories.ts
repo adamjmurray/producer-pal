@@ -47,7 +47,10 @@ export function createProviderModel(
       return createOpenAI({ apiKey })(`${modelId}`);
 
     case "openrouter":
-      return createOpenRouter({ apiKey }).chat(`${modelId}`);
+      return createOpenRouter({
+        apiKey,
+        fetch: transformOpenRouterRequest,
+      }).chat(`${modelId}`);
 
     case "mistral":
       return createMistral({ apiKey })(`${modelId}`);
@@ -162,6 +165,129 @@ export async function transformAnthropicRequest(
   return await fetch(input, init);
 }
 
+/** Minimal shape of one OpenAI/OpenRouter chat message we mutate. */
+interface OpenRouterMessage {
+  role?: string;
+  content?: string | Array<Record<string, unknown>>;
+}
+
+/** Minimal shape of the OpenAI/OpenRouter chat-completions body we mutate. */
+interface OpenRouterRequestBody {
+  model?: string;
+  messages?: OpenRouterMessage[];
+}
+
+/**
+ * Custom fetch wrapper for the OpenRouter provider that injects `cache_control`
+ * breakpoints for Anthropic and Gemini models. OpenRouter is a pass-through:
+ * OpenAI/Grok/DeepSeek-family models cache automatically, but Anthropic and
+ * Gemini require explicit breakpoints (the same as the direct Anthropic SDK
+ * path) — without them, Claude/Gemini via OpenRouter get no prompt caching.
+ *
+ * Mirrors {@link transformAnthropicRequest}, but the body is OpenAI-chat-shaped
+ * (a `messages` array with a `system`-role message; no separate `system`/`tools`
+ * cache target), so breakpoints land on message content blocks. OpenRouter wants
+ * `cache_control` inside content blocks; for Gemini only the LAST breakpoint is
+ * honored (extra ones are safe), so the rolling tail covers the whole prefix.
+ *
+ * The body is only re-serialized when something changed, so non-Anthropic/Gemini
+ * requests (and any that need no transform) pass through byte-for-byte.
+ *
+ * @param input - Fetch input (URL or Request)
+ * @param init - Fetch init options
+ * @returns Fetch response
+ */
+export async function transformOpenRouterRequest(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  if (init?.body && typeof init.body === "string") {
+    try {
+      const body = JSON.parse(init.body) as OpenRouterRequestBody;
+
+      if (addOpenRouterCacheControl(body)) {
+        init = { ...init, body: JSON.stringify(body) };
+      }
+    } catch {
+      // Not JSON — pass through unchanged
+    }
+  }
+
+  return await fetch(input, init);
+}
+
+/**
+ * Add `cache_control` breakpoints to an OpenRouter (OpenAI-shaped) request body
+ * for Anthropic/Gemini models only. OpenAI/Grok/DeepSeek auto-cache, and Gemma
+ * (an open model, not hosted Gemini) does not take these breakpoints — so gate
+ * narrowly on the `anthropic/` and `google/gemini` model-id prefixes.
+ *
+ * Two breakpoints, both on message content:
+ * 1. Static head — the system-role message (caches the system prefix; on
+ *    Anthropic the upstream tool definitions render before it and are covered).
+ * 2. Rolling tail — the last message (caches the full conversation prefix,
+ *    including the ~9k-token ppal-connect skills tool result). For Gemini only
+ *    this final breakpoint is used; for Anthropic both apply.
+ *
+ * @param body - Parsed OpenRouter request body (mutated in place)
+ * @returns True if any breakpoint was added
+ */
+function addOpenRouterCacheControl(body: OpenRouterRequestBody): boolean {
+  const model = body.model ?? "";
+  const cacheable =
+    model.startsWith("anthropic/") || model.startsWith("google/gemini");
+
+  if (
+    !cacheable ||
+    !Array.isArray(body.messages) ||
+    body.messages.length === 0
+  ) {
+    return false;
+  }
+
+  let changed = false;
+
+  // 1. Static head: the system message.
+  const systemMessage = body.messages.find((m) => m.role === "system");
+
+  if (systemMessage && markMessageContent(systemMessage)) changed = true;
+
+  // 2. Rolling tail: the last message (may also be the system message — marking
+  // the same content twice is idempotent).
+  const lastMessage = body.messages.at(-1);
+
+  if (lastMessage && markMessageContent(lastMessage)) changed = true;
+
+  return changed;
+}
+
+/**
+ * Add a cache_control breakpoint to a chat message's content: promote a non-empty
+ * string to a single cached text block, or mark the last block of a non-empty
+ * content array. No-op (returns false) for empty/absent content.
+ * @param message - Chat message whose content is marked in place
+ * @returns True if a breakpoint was added
+ */
+function markMessageContent(message: OpenRouterMessage): boolean {
+  const content = message.content;
+
+  if (typeof content === "string" && content.length > 0) {
+    message.content = [
+      { type: "text", text: content, cache_control: ephemeral() },
+    ];
+
+    return true;
+  }
+
+  if (Array.isArray(content) && content.length > 0) {
+    markLastBlock(content);
+
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Build a fresh ephemeral cache_control marker (5-minute TTL).
  * @returns A new `{ type: "ephemeral" }` object
@@ -184,17 +310,13 @@ function ephemeral(): Record<string, unknown> {
  *    It also degrades gracefully across compaction: the static head stays cached
  *    while only the tail re-caches from the new boundary forward.
  *
- * Known limitation with adaptive thinking (the common case): the assistant turn
- * that calls a tool carries a thinking block that Anthropic requires in-turn but
- * the SDK drops on later turns (buildModelMessages omits reasoning). That makes
- * the prefix diverge right after that turn, so cross-turn reads stop at the
- * static head — content after it, notably the ppal-connect skills blob, is
- * re-written each turn rather than read. The head (tools + system, the larger
- * static chunk) still caches on every request; with thinking off the full prefix
- * incl. the skills blob caches. Fully recovering the tail for thinking-on
- * conversations would need re-sending signed thinking blocks across turns, or
- * delivering the skills inside the cached head region instead of as a tool
- * result — verified empirically in e2e/webui/prompt-caching.spec.ts.
+ * Cross-turn note (adaptive thinking, the common case): the assistant turn that
+ * calls a tool carries a signed thinking block. The SDK used to drop it on later
+ * turns, diverging the prefix right after that turn so reads stopped at the
+ * static head. That is now recovered: build-model-messages re-emits the signed
+ * thinking block (gated on thinking being enabled), keeping the prefix byte-
+ * stable so the rolling tail — including the ppal-connect skills blob — stays
+ * cached. The head (tools + system) caches on every request regardless.
  *
  * @param body - Parsed Anthropic request body (mutated in place)
  * @returns True if any breakpoint was added
