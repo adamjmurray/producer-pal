@@ -184,6 +184,18 @@ function ephemeral(): Record<string, unknown> {
  *    It also degrades gracefully across compaction: the static head stays cached
  *    while only the tail re-caches from the new boundary forward.
  *
+ * Known limitation with adaptive thinking (the common case): the assistant turn
+ * that calls a tool carries a thinking block that Anthropic requires in-turn but
+ * the SDK drops on later turns (buildModelMessages omits reasoning). That makes
+ * the prefix diverge right after that turn, so cross-turn reads stop at the
+ * static head — content after it, notably the ppal-connect skills blob, is
+ * re-written each turn rather than read. The head (tools + system, the larger
+ * static chunk) still caches on every request; with thinking off the full prefix
+ * incl. the skills blob caches. Fully recovering the tail for thinking-on
+ * conversations would need re-sending signed thinking blocks across turns, or
+ * delivering the skills inside the cached head region instead of as a tool
+ * result — verified empirically in e2e/webui/prompt-caching.spec.ts.
+ *
  * @param body - Parsed Anthropic request body (mutated in place)
  * @returns True if any breakpoint was added
  */
