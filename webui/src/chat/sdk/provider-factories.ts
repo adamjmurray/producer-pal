@@ -40,7 +40,7 @@ export function createProviderModel(
       return createAnthropic({
         apiKey,
         headers: { "anthropic-dangerous-direct-browser-access": "true" },
-        fetch: injectThinkingDisplay,
+        fetch: transformAnthropicRequest,
       })(modelId);
 
     case "openai":
@@ -105,28 +105,53 @@ export function createProviderModel(
   }
 }
 
+/** Minimal shape of the Anthropic Messages API request body we mutate. */
+interface AnthropicRequestBody {
+  thinking?: { type?: string; display?: string };
+  system?: string | Array<Record<string, unknown>>;
+  tools?: Array<Record<string, unknown>>;
+  messages?: Array<{
+    role?: string;
+    content?: string | Array<Record<string, unknown>>;
+  }>;
+}
+
 /**
- * Custom fetch wrapper that injects `display: "summarized"` into Anthropic API
- * requests using adaptive thinking. Without this, Opus 4.7 defaults to
- * `display: "omitted"` which returns empty thinking text.
+ * Custom fetch wrapper that rewrites the outgoing Anthropic Messages API request
+ * body to (1) inject `display: "summarized"` for adaptive thinking and (2) add
+ * prompt-caching breakpoints over the static prefix.
  *
- * Workaround until @ai-sdk/anthropic adds native `display` support.
- * Only modifies requests that already have `thinking.type === "adaptive"`.
+ * Both are wire-level workarounds applied here rather than via AI SDK
+ * providerOptions: the thinking `display` field isn't natively supported yet,
+ * and placing `cache_control` precisely (system string, MCP-sourced tools,
+ * generically-built messages) is far simpler on the final request than threading
+ * it through the provider-agnostic message builder. Only Anthropic needs this —
+ * OpenAI/Gemini/OpenRouter cache automatically and we never reorder their prefix.
+ *
+ * The body is only re-serialized when something actually changed, so requests
+ * that need no transform pass through byte-for-byte.
  *
  * @param input - Fetch input (URL or Request)
  * @param init - Fetch init options
  * @returns Fetch response
  */
-export async function injectThinkingDisplay(
+export async function transformAnthropicRequest(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
   if (init?.body && typeof init.body === "string") {
     try {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init.body) as AnthropicRequestBody;
+      let modified = false;
 
       if (body.thinking?.type === "adaptive" && !body.thinking.display) {
         body.thinking.display = "summarized";
+        modified = true;
+      }
+
+      if (addCacheControl(body)) modified = true;
+
+      if (modified) {
         init = { ...init, body: JSON.stringify(body) };
       }
     } catch {
@@ -135,4 +160,92 @@ export async function injectThinkingDisplay(
   }
 
   return await fetch(input, init);
+}
+
+/**
+ * Build a fresh ephemeral cache_control marker (5-minute TTL).
+ * @returns A new `{ type: "ephemeral" }` object
+ */
+function ephemeral(): Record<string, unknown> {
+  return { type: "ephemeral" };
+}
+
+/**
+ * Add `cache_control` breakpoints to an Anthropic request body so the large
+ * static prefix (tools + system prompt + the ppal-connect skills blob) isn't
+ * re-billed every turn. Two breakpoints, within Anthropic's limit of four:
+ *
+ * 1. Static head — on the system block. Anthropic renders `tools → system`, so a
+ *    breakpoint here caches the tool definitions AND the system prompt together.
+ *    Falls back to the last tool when there's no system prompt.
+ * 2. Rolling tail — on the last content block of the last message. This caches
+ *    the whole conversation prefix (including the ~9k-token ppal-connect skills
+ *    result that lives in the message history) and grows incrementally each turn.
+ *    It also degrades gracefully across compaction: the static head stays cached
+ *    while only the tail re-caches from the new boundary forward.
+ *
+ * Known limitation with adaptive thinking (the common case): the assistant turn
+ * that calls a tool carries a thinking block that Anthropic requires in-turn but
+ * the SDK drops on later turns (buildModelMessages omits reasoning). That makes
+ * the prefix diverge right after that turn, so cross-turn reads stop at the
+ * static head — content after it, notably the ppal-connect skills blob, is
+ * re-written each turn rather than read. The head (tools + system, the larger
+ * static chunk) still caches on every request; with thinking off the full prefix
+ * incl. the skills blob caches. Fully recovering the tail for thinking-on
+ * conversations would need re-sending signed thinking blocks across turns, or
+ * delivering the skills inside the cached head region instead of as a tool
+ * result — verified empirically in e2e/webui/prompt-caching.spec.ts.
+ *
+ * @param body - Parsed Anthropic request body (mutated in place)
+ * @returns True if any breakpoint was added
+ */
+function addCacheControl(body: AnthropicRequestBody): boolean {
+  let changed = false;
+
+  // 1. Static head: tools + system.
+  if (typeof body.system === "string" && body.system.length > 0) {
+    body.system = [
+      { type: "text", text: body.system, cache_control: ephemeral() },
+    ];
+    changed = true;
+  } else if (Array.isArray(body.system) && body.system.length > 0) {
+    markLastBlock(body.system);
+    changed = true;
+  } else if (Array.isArray(body.tools) && body.tools.length > 0) {
+    markLastBlock(body.tools);
+    changed = true;
+  }
+
+  // 2. Rolling tail: the full conversation prefix up to the latest turn.
+  // at(-1) of an empty/absent array is undefined, so no separate length guard.
+  const lastMessage = Array.isArray(body.messages)
+    ? body.messages.at(-1)
+    : undefined;
+
+  if (lastMessage) {
+    const content = lastMessage.content;
+
+    if (Array.isArray(content) && content.length > 0) {
+      markLastBlock(content);
+      changed = true;
+    } else if (typeof content === "string" && content.length > 0) {
+      lastMessage.content = [
+        { type: "text", text: content, cache_control: ephemeral() },
+      ];
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+/**
+ * Mark the last block of a non-empty array with an ephemeral cache_control.
+ * Callers guarantee the array is non-empty, so the last element is defined.
+ * @param blocks - Non-empty array of content/tool/system blocks
+ */
+function markLastBlock(blocks: Array<Record<string, unknown>>): void {
+  const last = blocks.at(-1) as Record<string, unknown>;
+
+  last.cache_control = ephemeral();
 }

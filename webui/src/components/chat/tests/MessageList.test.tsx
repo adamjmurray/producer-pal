@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -609,6 +610,23 @@ describe("MessageList", () => {
       renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
 
       expect(screen.getByText(/101 reasoning/)).toBeDefined();
+    });
+
+    it("shows cached tokens when present", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: {
+            inputTokens: 9496,
+            outputTokens: 178,
+            cacheReadTokens: 9000,
+          },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.getByText(/9K cached/)).toBeDefined();
     });
 
     it("shows new content tokens when previous model message exists", () => {

@@ -111,6 +111,27 @@ describe("sumMessageUsage", () => {
     });
   });
 
+  it("sums cache read tokens when present", () => {
+    const history = [
+      {
+        role: "assistant",
+        content: "first",
+        usage: { inputTokens: 100, outputTokens: 20, cacheReadTokens: 9000 },
+      },
+      {
+        role: "assistant",
+        content: "second",
+        usage: { inputTokens: 50, outputTokens: 10, cacheReadTokens: 9500 },
+      },
+    ];
+
+    expect(sumMessageUsage(history)).toStrictEqual({
+      inputTokens: 150,
+      outputTokens: 30,
+      cacheReadTokens: 18500,
+    });
+  });
+
   it("omits reasoningTokens when all are zero", () => {
     const history = [
       {

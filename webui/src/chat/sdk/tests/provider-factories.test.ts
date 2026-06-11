@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createProviderModel,
-  injectThinkingDisplay,
+  transformAnthropicRequest,
 } from "#webui/chat/sdk/provider-factories";
 
 // The LanguageModel type is a union — cast to access runtime modelId property
@@ -192,7 +192,20 @@ describe("createProviderModel", () => {
   });
 });
 
-describe("injectThinkingDisplay", () => {
+/** Minimal typed view of the parsed Anthropic request body for assertions. */
+interface CacheBlock {
+  type?: string;
+  text?: string;
+  cache_control?: { type: string };
+}
+interface ParsedBody {
+  thinking?: { display?: string };
+  system?: CacheBlock[] | string;
+  tools?: CacheBlock[];
+  messages?: Array<{ role?: string; content?: CacheBlock[] }>;
+}
+
+describe("transformAnthropicRequest", () => {
   const url = "https://api.anthropic.com/v1/messages";
 
   /**
@@ -206,61 +219,174 @@ describe("injectThinkingDisplay", () => {
     return init.body as string;
   }
 
-  it("injects display: summarized for adaptive thinking", async () => {
-    const body = JSON.stringify({ thinking: { type: "adaptive" } });
+  /**
+   * Send a request body through the transform and return the parsed result.
+   * @param body - Request body object
+   * @returns Parsed body the transform forwarded to fetch
+   */
+  async function transform(body: unknown): Promise<ParsedBody> {
     const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
 
     globalThis.fetch = mockFetch;
-    await injectThinkingDisplay(url, { method: "POST", body });
-
-    const parsedBody = JSON.parse(getCallBody(mockFetch));
-
-    expect(parsedBody.thinking.display).toBe("summarized");
-  });
-
-  it("does not modify enabled thinking (Haiku 4.5)", async () => {
-    const body = JSON.stringify({
-      thinking: { type: "enabled", budget_tokens: 10240 },
+    await transformAnthropicRequest(url, {
+      method: "POST",
+      body: JSON.stringify(body),
     });
-    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
 
-    globalThis.fetch = mockFetch;
-    await injectThinkingDisplay(url, { method: "POST", body });
+    return JSON.parse(getCallBody(mockFetch)) as ParsedBody;
+  }
 
-    const parsedBody = JSON.parse(getCallBody(mockFetch));
+  describe("thinking display", () => {
+    it("injects display: summarized for adaptive thinking", async () => {
+      const parsed = await transform({ thinking: { type: "adaptive" } });
 
-    expect(parsedBody.thinking.display).toBeUndefined();
-  });
-
-  it("does not modify requests without thinking", async () => {
-    const original = JSON.stringify({ model: "claude-opus-4-7", messages: [] });
-    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
-
-    globalThis.fetch = mockFetch;
-    await injectThinkingDisplay(url, { method: "POST", body: original });
-
-    expect(getCallBody(mockFetch)).toBe(original);
-  });
-
-  it("does not override existing display value", async () => {
-    const body = JSON.stringify({
-      thinking: { type: "adaptive", display: "omitted" },
+      expect(parsed.thinking?.display).toBe("summarized");
     });
-    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
 
-    globalThis.fetch = mockFetch;
-    await injectThinkingDisplay(url, { method: "POST", body });
+    it("does not modify enabled thinking (Haiku 4.5)", async () => {
+      const parsed = await transform({
+        thinking: { type: "enabled", budget_tokens: 10240 },
+      });
 
-    const parsedBody = JSON.parse(getCallBody(mockFetch));
+      expect(parsed.thinking?.display).toBeUndefined();
+    });
 
-    expect(parsedBody.thinking.display).toBe("omitted");
+    it("does not override existing display value", async () => {
+      const parsed = await transform({
+        thinking: { type: "adaptive", display: "omitted" },
+      });
+
+      expect(parsed.thinking?.display).toBe("omitted");
+    });
+  });
+
+  describe("prompt caching", () => {
+    it("caches the system prompt (tools + system) and the last message", async () => {
+      const parsed = await transform({
+        system: "You are a helpful assistant.",
+        tools: [{ name: "a" }, { name: "b" }],
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      });
+
+      // String system is promoted to a cached text block
+      expect(parsed.system).toStrictEqual([
+        {
+          type: "text",
+          text: "You are a helpful assistant.",
+          cache_control: { type: "ephemeral" },
+        },
+      ]);
+      // Tools are not separately marked — they render before system and are
+      // covered by the system breakpoint
+      expect(parsed.tools?.[1]?.cache_control).toBeUndefined();
+      // Rolling tail breakpoint on the last message's last content block
+      expect(parsed.messages?.[0]?.content?.[0]?.cache_control).toStrictEqual({
+        type: "ephemeral",
+      });
+    });
+
+    it("marks the last block of an array-form system prompt", async () => {
+      const parsed = await transform({
+        system: [
+          { type: "text", text: "preamble" },
+          { type: "text", text: "rules" },
+        ],
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      });
+
+      const system = parsed.system as CacheBlock[];
+
+      expect(system[0]?.cache_control).toBeUndefined();
+      expect(system[1]?.cache_control).toStrictEqual({ type: "ephemeral" });
+    });
+
+    it("falls back to the last tool when there is no system prompt", async () => {
+      const parsed = await transform({
+        tools: [{ name: "a" }, { name: "b" }],
+        messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      });
+
+      expect(parsed.tools?.[0]?.cache_control).toBeUndefined();
+      expect(parsed.tools?.[1]?.cache_control).toStrictEqual({
+        type: "ephemeral",
+      });
+    });
+
+    it("marks the last block of the last message, not earlier blocks", async () => {
+      const parsed = await transform({
+        system: "sys",
+        messages: [
+          { role: "user", content: [{ type: "text", text: "first" }] },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "a" },
+              { type: "text", text: "b" },
+            ],
+          },
+        ],
+      });
+
+      expect(parsed.messages?.[0]?.content?.[0]?.cache_control).toBeUndefined();
+      expect(parsed.messages?.[1]?.content?.[0]?.cache_control).toBeUndefined();
+      expect(parsed.messages?.[1]?.content?.[1]?.cache_control).toStrictEqual({
+        type: "ephemeral",
+      });
+    });
+
+    it("promotes a string message content to a cached block", async () => {
+      const parsed = await transform({
+        system: "sys",
+        messages: [{ role: "user", content: "hello" }],
+      });
+
+      expect(parsed.messages?.[0]?.content).toStrictEqual([
+        { type: "text", text: "hello", cache_control: { type: "ephemeral" } },
+      ]);
+    });
+
+    it("does not add a tail breakpoint for empty message content", async () => {
+      // Defensive: a final message with empty/absent content gets no tail
+      // breakpoint, but the static head is still cached.
+      const emptyArray = await transform({
+        system: "sys",
+        messages: [{ role: "user", content: [] }],
+      });
+      const emptyString = await transform({
+        system: "sys",
+        messages: [{ role: "user", content: "" }],
+      });
+
+      expect(emptyArray.messages?.[0]?.content).toStrictEqual([]);
+      expect(emptyString.messages?.[0]?.content).toBe("");
+      // Head still cached in both cases
+      expect(
+        (emptyArray.system as CacheBlock[])[0]?.cache_control,
+      ).toStrictEqual({ type: "ephemeral" });
+    });
+
+    it("leaves a request with no cacheable prefix untouched", async () => {
+      const original = JSON.stringify({
+        model: "claude-opus-4-7",
+        messages: [],
+      });
+      const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+      globalThis.fetch = mockFetch;
+      await transformAnthropicRequest(url, { method: "POST", body: original });
+
+      expect(getCallBody(mockFetch)).toBe(original);
+    });
   });
 
   it("passes through non-JSON bodies unchanged", async () => {
     const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
 
     globalThis.fetch = mockFetch;
-    await injectThinkingDisplay(url, { method: "POST", body: "not json" });
+    await transformAnthropicRequest(url, {
+      method: "POST",
+      body: "not json",
+    });
 
     expect(getCallBody(mockFetch)).toBe("not json");
   });

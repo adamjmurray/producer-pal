@@ -46,6 +46,10 @@ export interface TokenUsage {
   inputTokens?: number;
   outputTokens?: number;
   reasoningTokens?: number;
+  /** Cached input tokens read from a prompt cache (Anthropic + auto-caching providers) */
+  cacheReadTokens?: number;
+  /** Input tokens written to a prompt cache this request */
+  cacheWriteTokens?: number;
 }
 
 /**
@@ -55,11 +59,16 @@ export interface TokenUsage {
  */
 export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
   const reasoning = sdkUsage.outputTokenDetails.reasoningTokens;
+  const cacheRead = sdkUsage.inputTokenDetails.cacheReadTokens;
+  const cacheWrite = sdkUsage.inputTokenDetails.cacheWriteTokens;
 
   return {
     inputTokens: sdkUsage.inputTokens ?? undefined,
     outputTokens: sdkUsage.outputTokens ?? undefined,
     ...(reasoning != null && reasoning > 0 && { reasoningTokens: reasoning }),
+    ...(cacheRead != null && cacheRead > 0 && { cacheReadTokens: cacheRead }),
+    ...(cacheWrite != null &&
+      cacheWrite > 0 && { cacheWriteTokens: cacheWrite }),
   };
 }
 
