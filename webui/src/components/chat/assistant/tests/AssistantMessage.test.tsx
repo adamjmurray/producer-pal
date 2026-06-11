@@ -279,6 +279,22 @@ describe("AssistantMessage", () => {
       expect(container.textContent).toContain("225 reasoning");
     });
 
+    it("shows cached tokens in step-usage when present", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t", args: {}, result: "ok" },
+        {
+          type: "step-usage",
+          usage: { inputTokens: 9100, outputTokens: 40, cacheReadTokens: 9000 },
+        },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).toContain("9K cached");
+    });
+
     it("shows new content tokens when prevStepUsage is provided", () => {
       const parts: UIPart[] = [
         { type: "tool", name: "t", args: {}, result: "ok" },

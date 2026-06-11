@@ -133,6 +133,7 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
   let inputTokens = 0;
   let outputTokens = 0;
   let reasoningTokens = 0;
+  let cacheReadTokens = 0;
 
   for (const msg of messages) {
     if (msg.role !== "assistant" || !msg.usage) continue;
@@ -141,6 +142,7 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
     inputTokens += msg.usage.inputTokens ?? 0;
     outputTokens += msg.usage.outputTokens ?? 0;
     reasoningTokens += msg.usage.reasoningTokens ?? 0;
+    cacheReadTokens += msg.usage.cacheReadTokens ?? 0;
   }
 
   if (!hasUsage) return null;
@@ -149,6 +151,7 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
     inputTokens,
     outputTokens,
     ...(reasoningTokens > 0 && { reasoningTokens }),
+    ...(cacheReadTokens > 0 && { cacheReadTokens }),
   };
 }
 

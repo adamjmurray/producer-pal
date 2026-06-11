@@ -28,8 +28,9 @@ export function StepUsageLabel({
   return (
     <div className="text-xs text-zinc-400 dark:text-zinc-500 text-right -mt-1">
       tokens: {compactNumber(usage.inputTokens ?? 0)}
-      {newContentTokens != null &&
-        ` (${compactNumber(newContentTokens)} new)`}{" "}
+      {newContentTokens != null && ` (${compactNumber(newContentTokens)} new)`}
+      {(usage.cacheReadTokens ?? 0) > 0 &&
+        ` (${compactNumber(usage.cacheReadTokens ?? 0)} cached)`}{" "}
       → {compactNumber(usage.outputTokens ?? 0)}
       {(usage.reasoningTokens ?? 0) > 0 &&
         ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
