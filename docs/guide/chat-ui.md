@@ -143,6 +143,22 @@ overrides it for individual messages.
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
 
+### Message Queue
+
+You don't have to wait for the AI to finish. Keep typing and pressing **Send**
+while it's working and your messages line up in a queue, shown as faded bubbles
+at the end of the conversation. Each one has an **✕** to remove it before it's
+sent.
+
+When the current response finishes, the queued messages are sent together as
+your next turn, in the order you added them. Queuing a message can also
+interrupt a long, tool-heavy response so the AI gets to what you said next
+sooner.
+
+Pressing **Stop** clears the queue along with the response in progress. If a
+response fails, your queued messages are kept (not lost) and go out with your
+next send.
+
 ## Voice Mode
 
 Producer Pal includes an experimental hands-free voice mode for talking with the
