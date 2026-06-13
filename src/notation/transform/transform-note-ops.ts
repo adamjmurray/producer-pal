@@ -66,8 +66,8 @@ export function applyNoteOp(
           ? repeatNotes(matched, op, timeSigNumerator, timeSigDenominator)
           : mergeNotes(matched, op, timeSigNumerator, timeSigDenominator);
 
-  // Rebuild in place: passthrough + produced, re-sorted (ratchet/merge can
-  // reorder relative to passthrough notes). sortNotes keeps object identity.
+  // Rebuild in place: passthrough + produced, re-sorted (a note-count op's
+  // output can reorder relative to passthrough notes). sortNotes keeps identity.
   const rebuilt = sortNotes([...passthrough, ...produced]);
 
   notes.length = 0;

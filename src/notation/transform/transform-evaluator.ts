@@ -89,7 +89,7 @@ export function applyTransforms(
   // Process statements sequentially (statement-major order).
   // Each statement is fully applied before the next one runs.
   // This enables stacked transforms, pitch-range-filtered note.index, and
-  // note-count ops (ratchet/merge) whose output the next statement sees.
+  // note-count ops (ratchet/merge/split/repeat) whose output the next statement sees.
   for (let j = 0; j < ast.length; j++) {
     const stmt = ast[j] as TransformStatement;
 
@@ -101,7 +101,7 @@ export function applyTransforms(
       continue;
     }
 
-    // Note-count op (ratchet/merge): rebuilds the note array in place.
+    // Note-count op (ratchet/merge/split/repeat): rebuilds the note array in place.
     if (isNoteOp(stmt)) {
       const produced = applyNoteOp(
         stmt,

@@ -553,8 +553,10 @@ C1: merge()           // glue all the kick hits into one sustained note
   - **Float tolerance**: all six comparisons carry `SELECTOR_EPSILON` (1e-9, the
     same tolerance the pitch/time selectors use), so ULP-level drift in a
     note-op-generated `note.start`/`note.duration` can't drop a note that names
-    a boundary. Ordering operators widen by ε on the admitting side (`>=`/`>`
-    accept down to `right - ε`, `<=`/`<` up to `right + ε`); `==`/`!=` compare
+    a boundary. Inclusive operators widen by ε so a boundary value isn't missed
+    (`>=` accepts down to `right - ε`, `<=` up to `right + ε`); strict operators
+    narrow by ε so a boundary value isn't spuriously admitted (`>` requires
+    `left > right + ε`, `<` requires `left < right - ε`); `==`/`!=` compare
     within ε. 1e-9 sits far below any musical distance, so distinct integer
     values (velocity, pitch) are never bridged. `<`/`>` remain the natural fit
     for ranges on the float-valued props (`duration`, `probability`, `start`).

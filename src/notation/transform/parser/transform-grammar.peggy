@@ -190,7 +190,7 @@ start
 
 
 // A transform line is either a parameter assignment (the common case) or a
-// note-count operation (ratchet/merge). Both accept the same optional
+// note-count operation (ratchet/merge/split/repeat). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
 statement "statement"
   = prefix:selectorPrefix? body:(noteOp / assignmentBody) {
@@ -203,9 +203,9 @@ statement "statement"
     // evaluator (selectorWarning set), so don't hard-fail it on the where()-on-
     // noteOp rule below — let the skip take precedence.
     if (predicate != null && isNoteOpBody && selectorWarning == null) {
-      // Note-count ops (ratchet/merge/split) don't support a where() predicate.
-      // Reject rather than silently ignore so the limitation is visible.
-      throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split) — put the predicate on a parameter assignment line instead.`);
+      // Note-count ops (ratchet/merge/split/repeat) don't support a where()
+      // predicate. Reject rather than silently ignore so the limitation is visible.
+      throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split/repeat) — put the predicate on a parameter assignment line instead.`);
     }
     // Only attach `predicate` when a where() clause is present, so non-predicate
     // assignments keep their historical shape (just pitchRange/timeRange).

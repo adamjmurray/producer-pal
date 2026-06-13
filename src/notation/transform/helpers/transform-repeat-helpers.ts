@@ -82,8 +82,9 @@ export function repeatNotes(
 
 /**
  * Resolve the repeat offset argument (a note value or bar duration) to an
- * edge-to-edge displacement in Ableton beats. Any other argument warns and
- * returns null so the caller skips the repeat.
+ * onset-to-onset (start-to-start) displacement in Ableton beats — each copy is
+ * shifted by k × offset from the original note's start, keeping its duration.
+ * Any other argument warns and returns null so the caller skips the repeat.
  * @param arg - The (already-parsed) offset argument node
  * @param numerator - Time signature numerator
  * @param denominator - Time signature denominator

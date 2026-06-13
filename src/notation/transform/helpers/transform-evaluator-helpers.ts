@@ -111,8 +111,8 @@ export function evaluateTransformAST(
   const result: Record<string, TransformResult> = {};
 
   for (const assignment of ast) {
-    // Note-count ops (ratchet/merge) act on the whole note list, not a single
-    // note's scalar value — they have no meaning in this per-note evaluation.
+    // Note-count ops (ratchet/merge/split/repeat) act on the whole note list,
+    // not a single note's scalar value — no meaning in this per-note evaluation.
     if (isNoteOp(assignment)) {
       continue;
     }

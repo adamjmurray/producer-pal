@@ -89,10 +89,12 @@ export function evaluatePredicate(
  * Apply a comparison operator to two evaluated operands, carrying SELECTOR_EPSILON
  * so ULP-level float drift can't flip a comparison against a value that names a
  * boundary (e.g. a ratcheted note.start a hair below the beat an n/8 literal names).
- * Ordering operators widen by ε on the admitting side (`>=`/`>` accept down to
- * `right - ε`, `<=`/`<` accept up to `right + ε`); equality compares within ε.
- * 1e-9 sits far below any musical distance, so genuinely distinct values (velocity
- * steps of 1, etc.) are never bridged.
+ * Inclusive operators widen by ε so a boundary value is never missed (`>=` accepts
+ * down to `right - ε`, `<=` accepts up to `right + ε`); strict operators narrow by
+ * ε so a boundary value is never spuriously admitted (`>` requires `left > right + ε`,
+ * `<` requires `left < right - ε`). Equality compares within ε. 1e-9 sits far below
+ * any musical distance, so genuinely distinct values (velocity steps of 1, etc.) are
+ * never bridged.
  * @param op - Comparison operator
  * @param left - Left operand value
  * @param right - Right operand value
