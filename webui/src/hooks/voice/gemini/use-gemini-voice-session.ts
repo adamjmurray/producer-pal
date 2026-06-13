@@ -23,11 +23,11 @@ import {
   type ResumeState,
   seedGeminiContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 import {
   type UseVoiceSessionReturn,
   type VoiceStatus,
 } from "#webui/hooks/voice/use-voice-session";
-import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
 
 export interface UseGeminiVoiceSessionParams {
   mcpUrl: string;

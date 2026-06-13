@@ -15,7 +15,7 @@ import {
   parseRetrySeconds,
   setAudioVolume,
   teardownAudioElement,
-} from "#webui/hooks/voice/use-voice-session-helpers";
+} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 
 const doneEvent = (response: unknown) => ({ type: "response.done", response });
 

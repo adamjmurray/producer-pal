@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
   deriveVoiceTitle,
   mergeVoiceHistory,
-} from "#webui/hooks/voice/use-voice-persistence-helpers";
+} from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
 import {
   isGeminiRealtimeModelId,
   OPENAI_REALTIME_MODEL,

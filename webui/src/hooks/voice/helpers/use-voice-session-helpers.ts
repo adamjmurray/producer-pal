@@ -190,6 +190,9 @@ export interface TransportEventDeps {
   setAssistantSpeaking: (value: boolean) => void;
   setError: (value: string | null) => void;
   setRateLimitedUntil: (value: number | null) => void;
+  /** Consecutive-auto-retry counter, reset to 0 on a successful response so the
+   *  rate-limit auto-retry budget refreshes (see useRateLimitAutoRetry). */
+  autoRetryAttemptsRef: { current: number };
 }
 
 /**
@@ -285,11 +288,14 @@ export function endHalfDuplexMute(
  */
 function applyResponseFailure(
   event: TransportEvent,
-  deps: Pick<TransportEventDeps, "setError" | "setRateLimitedUntil">,
+  deps: TransportEventDeps,
 ): void {
   const failure = extractResponseFailure(event);
 
   if (!failure) {
+    // A clean response (or a benign interruption) ends any rate-limit streak, so
+    // refresh the auto-retry budget.
+    deps.autoRetryAttemptsRef.current = 0;
     deps.setRateLimitedUntil(null);
 
     return;

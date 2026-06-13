@@ -13,7 +13,6 @@ import {
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import {
   applyLiveVolume,
   bailIfStale,
@@ -25,7 +24,9 @@ import {
   seedInitialHistory,
   teardownAudioElement,
   type TransportEventDeps,
-} from "#webui/hooks/voice/use-voice-session-helpers";
+} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
+import { useVoiceRetry } from "#webui/hooks/voice/use-voice-retry";
 import {
   createVoiceAudioGraph,
   teardownVoiceAudioGraph,
@@ -35,13 +36,6 @@ import {
   buildOpenAIVoiceInstructions,
   getVoiceLanguage,
 } from "#webui/lib/constants/voice-language";
-
-// Auto-retry timing. Fire a touch past the server-indicated wait (buffer), but
-// never spin faster than the floor even when the server reports a sub-second
-// wait (or none), so a rate-limit storm can't become a tight retry loop. The
-// server's wait — which grows on repeated limits — is the primary throttle.
-const AUTO_RETRY_SAFETY_BUFFER_MS = 300;
-const AUTO_RETRY_MIN_DELAY_MS = 1000;
 
 export type VoiceStatus =
   | "idle"
@@ -194,6 +188,9 @@ export function useVoiceSession(
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
   const [activeVoice, setActiveVoice] = useState<string | null>(null);
+  // Consecutive auto-retries since the last successful response (or connect),
+  // capped by useRateLimitAutoRetry and reset on success in handleTransportEvent.
+  const autoRetryAttemptsRef = useRef(0);
 
   const cleanup = useCallback(async () => {
     // Mark this as an expected close so the transport's "disconnected" event
@@ -264,6 +261,7 @@ export function useVoiceSession(
       setStatus("connecting");
       setError(null);
       setRateLimitedUntil(null);
+      autoRetryAttemptsRef.current = 0;
       setHistory([]);
 
       try {
@@ -339,6 +337,7 @@ export function useVoiceSession(
           setAssistantSpeaking,
           setError,
           setRateLimitedUntil,
+          autoRetryAttemptsRef,
         });
 
         // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
@@ -403,6 +402,11 @@ export function useVoiceSession(
     setStatus("disconnecting");
     await cleanup();
     setStatus("idle");
+    // Clear any lingering rate-limit/error banner on an explicit Stop so it
+    // doesn't persist into the idle screen. (A dropped connection routes through
+    // cleanup() instead and sets its own "Connection lost" message, which stays.)
+    setError(null);
+    setRateLimitedUntil(null);
   }, [cleanup]);
 
   const toggleMute = useCallback(async () => {
@@ -437,28 +441,16 @@ export function useVoiceSession(
     }
   }, []);
 
-  /**
-   * Nudge the server to generate the next response. After a rate-limit
-   * failure the conversation already has the latest user/tool message; we
-   * just need to tell the API to run another response cycle.
-   */
-  const retryResponse = useCallback(() => {
-    const session = sessionRef.current;
-
-    if (!session) return;
-
-    try {
-      session.transport.sendEvent({ type: "response.create" });
-      setError(null);
-      setRateLimitedUntil(null);
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    }
-  }, []);
-
-  // Auto-nudge the model to continue once a rate-limit window elapses, so
-  // hands-free voice recovers without a manual click or the user speaking again.
-  useRateLimitAutoRetry(rateLimitedUntil, retryResponse);
+  // Manual "Retry now" handler plus the auto-retry that nudges the model to
+  // continue once a rate-limit window elapses, so hands-free voice recovers
+  // without a click or the user speaking again (capped — see useVoiceRetry).
+  const { retryResponse } = useVoiceRetry({
+    sessionRef,
+    rateLimitedUntil,
+    setError,
+    setRateLimitedUntil,
+    attemptsRef: autoRetryAttemptsRef,
+  });
 
   // Push live volume changes mid-session (no Stop → Talk needed, unlike speed):
   // drive the GainNode (active path, can boost above unity) and keep element
@@ -487,34 +479,6 @@ export function useVoiceSession(
     resetHistory: () => setHistory([]),
     activeVoice,
   };
-}
-
-/**
- * Auto-retry a rate-limited response once its window elapses. Fires a touch past
- * the server-indicated wait, but never faster than a floor, so a sub-second (or
- * unparseable, fallback) wait can't spin into a tight retry loop — the server's
- * wait, which grows on repeated limits, is the primary throttle. retryResponse()
- * no-ops once the session is torn down, so a timer that outlives the session is
- * harmless (and the effect clears it on unmount / re-arm anyway).
- *
- * @param rateLimitedUntil - Epoch ms the limit clears, or null when not limited
- * @param retryResponse - Nudges the server to generate the next response
- */
-function useRateLimitAutoRetry(
-  rateLimitedUntil: number | null,
-  retryResponse: () => void,
-): void {
-  useEffect(() => {
-    if (rateLimitedUntil == null) return;
-
-    const delay = Math.max(
-      AUTO_RETRY_MIN_DELAY_MS,
-      rateLimitedUntil - Date.now() + AUTO_RETRY_SAFETY_BUFFER_MS,
-    );
-    const id = setTimeout(() => retryResponse(), delay);
-
-    return () => clearTimeout(id);
-  }, [rateLimitedUntil, retryResponse]);
 }
 
 /**

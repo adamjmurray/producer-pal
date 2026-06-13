@@ -16,7 +16,10 @@ import {
   it,
   vi,
 } from "vitest";
-import { createVoiceSessionTestKit } from "./use-voice-session-test-helpers";
+import {
+  createVoiceSessionTestKit,
+  type FakeRealtimeSession,
+} from "./use-voice-session-test-helpers";
 
 /* jscpd:ignore-start -- vitest mock harness must be defined inline per file
    (vi.hoisted runs before imports, so the doubles can't be shared); identical
@@ -103,8 +106,23 @@ import {
 } from "#webui/hooks/settings/turn-detection-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
-const { defaultParams, stubFetchOk, connectAndGetSession } =
-  createVoiceSessionTestKit(mocks);
+const {
+  defaultParams,
+  stubFetchOk,
+  connectAndGetSession,
+  emitResponseFailure,
+} = createVoiceSessionTestKit(mocks);
+
+/**
+ * Count the `response.create` nudges the auto-retry sent on the session.
+ * @param session - Fake session whose recorded transport events are scanned
+ * @returns Number of response.create events sent
+ */
+function countAutoRetries(session: FakeRealtimeSession): number {
+  return session.transport.sendEvent.mock.calls.filter(
+    ([event]) => (event as { type?: string }).type === "response.create",
+  ).length;
+}
 
 const REAL_FETCH = globalThis.fetch;
 
@@ -285,6 +303,88 @@ describe("useVoiceSession mute / interrupt / retry", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("stops auto-retrying after a run of consecutive rate limits", async () => {
+    const { session } = await connectAndGetSession();
+
+    vi.useFakeTimers();
+
+    try {
+      // Seven consecutive rate-limited windows, advancing past each retry delay.
+      // A persistent limit must not loop forever — auto-retry caps and gives up.
+      for (let i = 0; i < 7; i++) {
+        await emitResponseFailure(
+          session,
+          "rate_limit_exceeded",
+          "Please try again in 0.1s",
+        );
+        await act(() => {
+          vi.advanceTimersByTime(2000);
+        });
+      }
+
+      expect(countAutoRetries(session)).toBe(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refreshes the auto-retry budget after a successful response", async () => {
+    const { session } = await connectAndGetSession();
+
+    vi.useFakeTimers();
+
+    try {
+      const burst = async () => {
+        await emitResponseFailure(
+          session,
+          "rate_limit_exceeded",
+          "Please try again in 0.1s",
+        );
+        await act(() => {
+          vi.advanceTimersByTime(2000);
+        });
+      };
+
+      for (let i = 0; i < 3; i++) await burst();
+
+      // A clean response ends the streak, so the budget resets to full.
+      await act(() => {
+        session.emit("transport_event", {
+          type: "response.done",
+          response: { status: "completed" },
+        });
+      });
+      session.transport.sendEvent.mockClear();
+
+      // Three more limits all auto-retry again (budget was refreshed, not spent).
+      for (let i = 0; i < 3; i++) await burst();
+
+      expect(countAutoRetries(session)).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears the rate-limit and error banner on an explicit disconnect", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Please try again in 3s",
+    );
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.rateLimitedUntil).not.toBeNull();
+
+    await act(async () => {
+      await result.current.disconnect();
+    });
+
+    // Stop is a clean exit — the banner must not linger into the idle screen.
+    expect(result.current.error).toBeNull();
+    expect(result.current.rateLimitedUntil).toBeNull();
   });
 
   it("retryResponse surfaces SDK errors", async () => {
