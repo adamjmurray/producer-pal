@@ -9,6 +9,7 @@ import {
   type MessageOverrides,
 } from "#webui/hooks/chat/use-chat-types";
 import { type UIMessage } from "#webui/types/messages";
+import { type Provider } from "#webui/types/settings";
 
 /**
  * Generic streaming handler for chat messages.
@@ -110,4 +111,52 @@ export function showMissingApiKeyError<
       [entry],
     ),
   );
+}
+
+/** Effective connection used to (re)build a chat client at init time. */
+export interface InitConnection {
+  provider: Provider;
+  model: string;
+  apiKey: string;
+  extraParams: Record<string, unknown>;
+}
+
+/**
+ * Resolve the provider/model/connection to (re)build a client with.
+ *
+ * Honors the conversation's locked provider+model when continuing a restored
+ * conversation (locked values are non-null), falling back to current settings
+ * for a brand-new conversation. The key + base URL always come from the user's
+ * *current* settings for the effective provider — no API key is ever persisted
+ * with the conversation.
+ *
+ * @param locked - Conversation's locked provider/model (null fields if unset)
+ * @param locked.activeProvider - Locked provider, or null when not locked
+ * @param locked.activeModel - Locked model, or null when not locked
+ * @param fallback - Current-settings provider/model (used when not locked)
+ * @param fallback.provider - Current-settings provider
+ * @param fallback.model - Current-settings model
+ * @param resolveConnection - Resolves a provider's current key + base URL
+ * @param extraParams - Base extra params to merge the connection into
+ * @returns Effective provider, model, key, and merged extra params
+ */
+export function resolveInitConnection(
+  locked: { activeProvider: Provider | null; activeModel: string | null },
+  fallback: { provider: Provider; model: string },
+  resolveConnection: (provider: Provider) => {
+    apiKey: string;
+    baseUrl?: string;
+  },
+  extraParams?: Record<string, unknown>,
+): InitConnection {
+  const provider = locked.activeProvider ?? fallback.provider;
+  const model = locked.activeModel ?? fallback.model;
+  const { apiKey, baseUrl } = resolveConnection(provider);
+
+  return {
+    provider,
+    model,
+    apiKey,
+    extraParams: { ...extraParams, provider, apiKey, baseUrl },
+  };
 }

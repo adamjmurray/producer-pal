@@ -119,6 +119,7 @@ describe("SettingsScreen", () => {
     setApiKey: vi.fn(),
     openaiApiKey: "",
     geminiApiKey: "",
+    getProviderConnection: vi.fn(() => ({ apiKey: "", baseUrl: undefined })),
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
     savedModel: "gemini-2.5-pro",

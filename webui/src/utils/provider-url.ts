@@ -6,6 +6,22 @@
 /** Placeholder API key for local providers that don't require authentication */
 export const LOCAL_PROVIDER_API_KEY = "not-needed";
 
+/**
+ * Resolve the API key to send for a provider, substituting the placeholder key
+ * for local providers (lmstudio/ollama) that don't require authentication.
+ * @param provider - Provider identifier
+ * @param apiKey - The stored API key (may be empty for local providers)
+ * @returns The API key to use for requests
+ */
+export function resolveProviderApiKey(
+  provider: string,
+  apiKey: string,
+): string {
+  return provider === "lmstudio" || provider === "ollama"
+    ? apiKey || LOCAL_PROVIDER_API_KEY
+    : apiKey;
+}
+
 /** Base URLs for each provider */
 const PROVIDER_BASE_URLS = {
   openai: "https://api.openai.com/v1",

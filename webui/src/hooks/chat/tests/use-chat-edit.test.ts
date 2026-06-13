@@ -20,7 +20,7 @@ import {
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
   const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
 
-  return streamingHelpersMockBody();
+  return await streamingHelpersMockBody();
 });
 
 describe("useChat handleEdit", () => {

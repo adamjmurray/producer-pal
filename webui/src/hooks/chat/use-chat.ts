@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
+  resolveInitConnection,
   showMissingApiKeyError,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
@@ -46,6 +47,7 @@ export function useChat<
   mcpStatus,
   mcpError,
   checkMcpConnection,
+  resolveConnection,
   adapter,
   extraParams,
   autoSaveRef,
@@ -167,25 +169,35 @@ export function useChat<
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
       const effectiveThinking = overrides?.thinking ?? thinking;
+      // Continue a restored conversation on its locked provider+model (see
+      // resolveInitConnection); brand-new conversations fall back to current
+      // settings. Rebuilding from current settings here is what previously
+      // switched restored conversations to the selected model on the next send.
+      const init = resolveInitConnection(
+        active,
+        { provider, model },
+        resolveConnection,
+        extraParams,
+      );
 
       const config = adapter.buildConfig(
-        model,
+        init.model,
         temperature,
         effectiveThinking,
         enabledTools,
         chatHistory,
-        extraParams,
+        init.extraParams,
       );
 
       // Dispose any prior client before replacing it — initializeChat is the
       // fork/retry re-init path, so a live client (with an open MCP connection)
       // can already be here.
       clientRef.current?.dispose?.();
-      clientRef.current = adapter.createClient(apiKey, config);
+      clientRef.current = adapter.createClient(init.apiKey, config);
       await clientRef.current.initialize();
       lockSettings(
-        model,
-        provider,
+        init.model,
+        init.provider,
         effectiveThinking,
         temperature,
         null,
@@ -202,7 +214,8 @@ export function useChat<
       temperature,
       thinking,
       enabledTools,
-      apiKey,
+      resolveConnection,
+      active,
       adapter,
       extraParams,
       lockSettings,

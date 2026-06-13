@@ -168,16 +168,29 @@ export function useSettings(): UseSettingsReturn {
     [],
   );
 
-  const currentSettings = {
-    anthropic: anthropicSettings,
-    gemini: geminiSettings,
-    openai: openaiSettings,
-    mistral: mistralSettings,
-    openrouter: openrouterSettings,
-    lmstudio: lmstudioSettings,
-    ollama: ollamaSettings,
-    custom: customSettings,
-  }[provider];
+  const providerSettings = buildAllProviderSettings(
+    anthropicSettings,
+    geminiSettings,
+    openaiSettings,
+    mistralSettings,
+    openrouterSettings,
+    lmstudioSettings,
+    ollamaSettings,
+    customSettings,
+  );
+
+  const currentSettings = providerSettings[provider];
+
+  // Read a specific provider's stored connection (decrypted key + base URL)
+  // regardless of which provider is currently active. Lets a restored
+  // conversation locked to provider X keep using X with the user's *current*
+  // key/baseUrl for X, without persisting any key in conversation storage.
+  const getProviderConnection = (
+    target: Provider,
+  ): { apiKey: string; baseUrl?: string } => ({
+    apiKey: providerSettings[target].apiKey,
+    baseUrl: providerSettings[target].baseUrl,
+  });
 
   const applyLoadedSettings = useCallback(
     (allSettings: typeof DEFAULT_SETTINGS) => {
@@ -203,17 +216,6 @@ export function useSettings(): UseSettingsReturn {
   const saveSettings = useCallback(async (): Promise<boolean> => {
     if (!warnIfNotLoaded(settingsLoaded)) return false;
 
-    const allSettings = buildAllProviderSettings(
-      anthropicSettings,
-      geminiSettings,
-      openaiSettings,
-      mistralSettings,
-      openrouterSettings,
-      lmstudioSettings,
-      ollamaSettings,
-      customSettings,
-    );
-
     setSaveError(null);
 
     // Persist FIRST and only commit the in-memory saved* snapshots after the
@@ -226,7 +228,7 @@ export function useSettings(): UseSettingsReturn {
       await persistAllSettings(
         provider,
         enabledTools,
-        allSettings,
+        providerSettings,
         smallModelMode,
       );
     } catch (err) {
@@ -237,9 +239,9 @@ export function useSettings(): UseSettingsReturn {
     }
 
     voiceModeSettings.commit();
-    setSavedModel(allSettings[provider].model);
+    setSavedModel(providerSettings[provider].model);
     setSavedProvider(provider);
-    setSavedThinking(allSettings[provider].thinking);
+    setSavedThinking(providerSettings[provider].thinking);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
 
@@ -250,14 +252,7 @@ export function useSettings(): UseSettingsReturn {
     enabledTools,
     smallModelMode,
     voiceModeSettings,
-    anthropicSettings,
-    geminiSettings,
-    openaiSettings,
-    mistralSettings,
-    openrouterSettings,
-    lmstudioSettings,
-    ollamaSettings,
-    customSettings,
+    providerSettings,
   ]);
 
   const cancelSettings = useCallback(() => {
@@ -321,6 +316,7 @@ export function useSettings(): UseSettingsReturn {
     // "key required". `currentSettings.apiKey` only reflects the active one.
     openaiApiKey: openaiSettings.apiKey,
     geminiApiKey: geminiSettings.apiKey,
+    getProviderConnection,
     baseUrl: hasBaseUrl ? currentSettings.baseUrl : undefined,
     setBaseUrl: hasBaseUrl ? setBaseUrl : undefined,
     model: currentSettings.model,

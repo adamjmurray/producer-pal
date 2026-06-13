@@ -162,6 +162,18 @@ export interface UseChatProps<
   checkMcpConnection: () => Promise<void>;
   smallModelMode: boolean;
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
+  /**
+   * Resolve the connection (key + base URL) for a given provider from the
+   * user's *current* settings. Used at client-init time so a restored
+   * conversation locked to provider X reconnects with the current X credentials,
+   * rather than the currently-selected provider's. Returns the same values as
+   * the top-level `apiKey`/`extraParams.baseUrl` when asked for the active
+   * provider, so new conversations are unaffected.
+   */
+  resolveConnection: (provider: Provider) => {
+    apiKey: string;
+    baseUrl?: string;
+  };
   extraParams?: Record<string, unknown>;
   autoSaveRef?: { current: (() => void) | null };
   /** Shared signal set when an edit/retry should branch the conversation. */

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-reporting";
@@ -32,8 +32,8 @@ import {
   type ConversationRecord,
   listAllConversationSummaries,
 } from "#webui/lib/conversation-db";
-import { type UseSettingsReturn } from "#webui/types/settings";
-import { getBaseUrl, LOCAL_PROVIDER_API_KEY } from "#webui/utils/provider-url";
+import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
+import { getBaseUrl, resolveProviderApiKey } from "#webui/utils/provider-url";
 
 export interface UseChatModeStateParams {
   settings: UseSettingsReturn;
@@ -78,16 +78,35 @@ export function useChatModeState(params: UseChatModeStateParams) {
     setModeContext,
   } = params;
 
-  const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
   const autoSaveRef = useRef<(() => void) | null>(null);
   // Bridges the fork action (in useChat) to the conversation save (in
   // useConversations): set right before a forked turn streams, consumed by the
   // next save to branch the record instead of overwriting it.
   const pendingForkRef = useRef<PendingFork | null>(null);
-  const resolvedApiKey =
-    settings.provider === "lmstudio" || settings.provider === "ollama"
-      ? settings.apiKey || LOCAL_PROVIDER_API_KEY
-      : settings.apiKey;
+
+  const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
+  const resolvedApiKey = resolveProviderApiKey(
+    settings.provider,
+    settings.apiKey,
+  );
+
+  // Resolve a provider's connection (key + base URL) from current settings.
+  // useChat calls this at client-init time with the conversation's *locked*
+  // provider so a restored conversation reconnects with the current credentials
+  // for its own provider — not whichever provider is selected right now. For the
+  // active provider it returns the same values as the new-conversation path.
+  const { getProviderConnection } = settings;
+  const resolveConnection = useCallback(
+    (targetProvider: Provider): { apiKey: string; baseUrl?: string } => {
+      const conn = getProviderConnection(targetProvider);
+
+      return {
+        apiKey: resolveProviderApiKey(targetProvider, conn.apiKey),
+        baseUrl: getBaseUrl(targetProvider, conn.baseUrl),
+      };
+    },
+    [getProviderConnection],
+  );
 
   const aiSdkChat = useChat({
     provider: settings.provider,
@@ -100,6 +119,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     mcpStatus,
     mcpError,
     checkMcpConnection,
+    resolveConnection,
     adapter: chatAdapter,
     extraParams: {
       baseUrl,

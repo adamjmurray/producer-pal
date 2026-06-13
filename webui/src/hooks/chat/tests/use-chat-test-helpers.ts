@@ -160,6 +160,12 @@ export function createDefaultProps(
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: vi.fn(),
+    // Mirrors the default `apiKey` prop for the active provider; tests that
+    // exercise the locked-provider path override this with a per-provider map.
+    resolveConnection: vi.fn((_provider: string) => ({
+      apiKey: "test-key",
+      baseUrl: undefined as string | undefined,
+    })),
     adapter,
   };
 }
@@ -178,8 +184,17 @@ export const RESTORED_HISTORY: TestMessage[] = [
  *
  * @returns The mocked streaming-helpers module exports
  */
-export function streamingHelpersMockBody(): Partial<typeof StreamingHelpers> {
+export async function streamingHelpersMockBody(): Promise<
+  Partial<typeof StreamingHelpers>
+> {
+  const actual = await vi.importActual<typeof StreamingHelpers>(
+    "#webui/hooks/chat/helpers/streaming-helpers",
+  );
+
   return {
+    // Pure helper (no streaming side effects) — keep the real implementation so
+    // client (re)init still resolves the locked provider/model correctly.
+    resolveInitConnection: actual.resolveInitConnection,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
         onUpdate(formatter(chatHistory));
