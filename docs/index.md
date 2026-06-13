@@ -158,13 +158,40 @@ features:
     </div>
   </div>
   <div>
-    <p class="demo-video-label">Producer Pal Walk-through with Claude Desktop</p>
+    <p class="demo-video-label">Claude Desktop vs Ableton Live in 2026</p>
     <div class="demo-video">
       <iframe
-        src="https://www.youtube.com/embed/IB19LqTZQDU?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s"
-        title="Producer Pal walk-through with Claude Desktop"
+        src="https://www.youtube.com/embed/_p6Qll5Mqcs"
+        title="Claude Desktop vs Ableton Live in 2026"
         frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+  <div>
+    <p class="demo-video-label">Transforming MIDI with AI in Ableton via Producer Pal</p>
+    <div class="demo-video">
+      <iframe
+        src="https://www.youtube.com/embed/2T_w5Roe6jY"
+        title="Transforming MIDI with AI in Ableton via Producer Pal"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+  <div>
+    <p class="demo-video-label">Talking to Ableton Live with AI (via OpenAI Realtime 2)</p>
+    <div class="demo-video">
+      <iframe
+        src="https://www.youtube.com/embed/iz2dyftiSFU"
+        title="Talking to Ableton Live with AI (via OpenAI Realtime 2)"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
         allowfullscreen>
       </iframe>
     </div>
