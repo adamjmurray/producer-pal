@@ -9,14 +9,17 @@ import {
   type ActiveMeta,
   type ActiveRefs,
   DEFAULT_META,
+  buildConversationSaveRecord,
   buildLockedSettings,
-  buildSaveRecord,
   getHashConversationId,
   setLocationHash,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
 import { useSyncActiveMeta } from "#webui/hooks/chat/helpers/use-sync-active-meta";
-import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
+import {
+  type ConversationLockedSettings,
+  type PendingForkRef,
+} from "#webui/hooks/chat/use-chat-types";
 import {
   type ConversationRecord,
   type ConversationSummary,
@@ -48,6 +51,9 @@ interface UseConversationsProps {
    * modes so the voice hook can pick the conversation up from the URL hash.
    * When omitted, the hook falls back to clearing the active id. */
   onForeignRecord?: (record: ConversationRecord) => void;
+  /** Shared signal set by an edit/retry fork; consumed on the next save to
+   * branch the conversation into a new record instead of overwriting it. */
+  pendingForkRef?: PendingForkRef;
 }
 
 export interface UseConversationsReturn {
@@ -80,6 +86,7 @@ export interface UseConversationsReturn {
  * @param props.activeShowThoughts - Active showThoughts setting for the current conversation
  * @param props.activeSmallModelMode - Active smallModelMode setting for the current conversation
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
+ * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
  * @returns Conversation management state and handlers
  */
 export function useConversations({
@@ -93,6 +100,7 @@ export function useConversations({
   activeShowThoughts: activeShowThoughtsProp,
   activeSmallModelMode: activeSmallModelModeProp,
   onForeignRecord,
+  pendingForkRef,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
@@ -192,20 +200,31 @@ export function useConversations({
 
       if (chatHistory.length === 0) return;
 
-      const isNew = activeIdRef.current == null;
-      const id = activeIdRef.current ?? crypto.randomUUID();
+      // Consume the fork signal up front so only this save branches. Forking
+      // needs a saved source (the active record) to preserve; with no active id
+      // it degrades to a normal save of the forked history as a fresh chat.
+      const fork = pendingForkRef?.current ?? null;
 
-      // Set active ID synchronously before any async operations
+      if (pendingForkRef) pendingForkRef.current = null;
+
+      const reuseId = activeIdRef.current;
+      // A fork mints a new id and switches to it (leaving the source intact); a
+      // normal save reuses the active id, minting one only for a brand-new chat.
+      // Set synchronously before any async work so concurrent saves hit this id.
+      const id =
+        fork != null || reuseId == null ? crypto.randomUUID() : reuseId;
+
       setActiveId(id);
 
       try {
-        const existing = isNew ? undefined : await loadConversation(id);
-        const record = buildSaveRecord(
-          getActiveRefs(id),
-          existing,
+        const record = await buildConversationSaveRecord({
+          id,
+          reuseId,
+          fork,
+          refs: getActiveRefs(id),
           chatHistory,
           updatedAt,
-        );
+        });
 
         syncActiveMeta(record);
 
@@ -220,7 +239,7 @@ export function useConversations({
         limit.showSaveError(error);
       }
     },
-    [getChatHistory, refreshList, setActiveId, limit],
+    [getChatHistory, refreshList, setActiveId, limit, pendingForkRef],
   );
 
   const switchConversation = useCallback(

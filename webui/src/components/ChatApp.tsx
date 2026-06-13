@@ -58,8 +58,13 @@ export function ChatApp(props: ChatAppProps) {
     onOpenContext,
   } = props;
 
-  const { chat, wrappedHandleSend, conversationPanelState, headerInfo } =
-    useChatModeState(props);
+  const {
+    chat,
+    wrappedHandleSend,
+    conversationPanelState,
+    headerInfo,
+    branchNav,
+  } = useChatModeState(props);
 
   return (
     <ChatScreen
@@ -90,6 +95,7 @@ export function ChatApp(props: ChatAppProps) {
       showTimestamps={display.showTimestamps}
       showTokenUsage={display.showTokenUsage}
       conversationPanel={conversationPanelState}
+      branchNav={branchNav}
     />
   );
 }

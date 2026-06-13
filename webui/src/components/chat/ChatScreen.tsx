@@ -13,6 +13,7 @@ import {
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat-types";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
+import { type BranchNavState } from "#webui/lib/conversation-branch-helpers";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatStart } from "./ChatStart";
 import { ChatInput } from "./controls/ChatInput";
@@ -52,6 +53,7 @@ interface ChatScreenProps {
   showTimestamps: boolean;
   showTokenUsage: boolean;
   conversationPanel: ConversationPanelState;
+  branchNav?: BranchNavState;
 }
 
 /**
@@ -108,6 +110,7 @@ export function ChatScreen(props: ChatScreenProps) {
     showTimestamps,
     showTokenUsage,
     conversationPanel,
+    branchNav,
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
@@ -148,6 +151,7 @@ export function ChatScreen(props: ChatScreenProps) {
             showTimestamps={showTimestamps}
             showTokenUsage={showTokenUsage}
             requestedModel={headerInfo.activeModel}
+            branchNav={branchNav}
           />
         )}
       </div>

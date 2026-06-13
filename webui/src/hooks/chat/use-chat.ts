@@ -49,6 +49,7 @@ export function useChat<
   adapter,
   extraParams,
   autoSaveRef,
+  pendingForkRef,
 }: UseChatProps<TClient, TMessage, TConfig>): UseChatReturn {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
@@ -395,6 +396,7 @@ export function useChat<
     executeWithRetry,
     invalidateCompactionUndo,
     clearQueue,
+    pendingForkRef,
   });
 
   return {

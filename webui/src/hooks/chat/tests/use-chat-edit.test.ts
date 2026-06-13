@@ -8,6 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import {
   createMockAdapter,
@@ -78,6 +79,26 @@ describe("useChat handleEdit", () => {
     });
 
     expect(result.current.isAssistantResponding).toBe(false);
+  });
+
+  it("signals a pending fork before streaming when a fork ref is provided", async () => {
+    const pendingForkRef = { current: null as PendingFork | null };
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, pendingForkRef }),
+    );
+
+    await act(async () => {
+      await result.current.handleSend("Original message");
+    });
+
+    const userIdx = result.current.messages.findIndex((m) => m.role === "user");
+
+    await act(async () => {
+      await result.current.handleEdit(userIdx, "Edited message");
+    });
+
+    // The consumer (useConversations) clears this; useChat alone leaves it set.
+    expect(pendingForkRef.current).toStrictEqual({ anchorIndex: userIdx });
   });
 
   it("does nothing if message at index is not user role", async () => {

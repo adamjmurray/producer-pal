@@ -5,6 +5,7 @@
 
 import { type IDBPDatabase } from "idb";
 import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
+import { collapseBranchFamilies } from "#webui/lib/conversation-branch-helpers";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
@@ -32,6 +33,15 @@ export interface ConversationRecord {
   // RealtimeItem[] for voice records, null for text. Typed as unknown[] so the
   // storage layer stays decoupled from @openai/agents/realtime.
   voiceHistory: unknown[] | null;
+  // --- Conversation branching (edit/retry forks) ---
+  // Set on records created by forking an earlier turn. The fork stores a pointer
+  // back to the record it diverged from (its "trunk") plus the UI message index
+  // the ‹ n/m › arrows sit under. Absent on non-forked records. Schemaless: these
+  // are optional, so legacy records read fine without a DB_VERSION bump.
+  /** Id of the record this was forked from (the trunk of its divergence set). */
+  forkParentId?: string;
+  /** UI message index where this fork's arrows anchor (the fork-point message). */
+  forkedAtIndex?: number;
 }
 
 /** Lightweight summary for list display (no transcript payload) */
@@ -172,10 +182,26 @@ export async function setBookmark(
 }
 
 /**
- * List all conversations, sorted by updatedAt descending.
- * @returns Array of conversation summaries
+ * List conversations for display, sorted by updatedAt descending. Branch
+ * families (edit/retry forks linked by {@link ConversationRecord.forkParentId})
+ * are collapsed to a single most-recently-updated representative so forks don't
+ * clutter the list. Use {@link listAllConversationSummaries} when every sibling
+ * is needed (e.g. branch-arrow navigation).
+ * @returns Array of conversation summaries, one per branch family
  */
 export async function listConversations(): Promise<ConversationSummary[]> {
+  return collapseBranchFamilies(await listAllConversationSummaries());
+}
+
+/**
+ * List every conversation summary (no branch collapsing), sorted by updatedAt
+ * descending. Branch-arrow navigation needs all siblings, not just the
+ * collapsed representatives that {@link listConversations} returns.
+ * @returns Array of all conversation summaries
+ */
+export async function listAllConversationSummaries(): Promise<
+  ConversationSummary[]
+> {
   const db = await getConversationDb();
   const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
 
@@ -197,6 +223,8 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         smallModelMode,
         totalUsage,
         sessionType,
+        forkParentId,
+        forkedAtIndex,
       }) => ({
         id,
         title,
@@ -212,6 +240,10 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         smallModelMode,
         totalUsage,
         sessionType,
+        // Only carried on forked records — kept off plain summaries so callers
+        // (and equality assertions) see the unchanged shape for normal chats.
+        ...(forkParentId != null && { forkParentId }),
+        ...(forkedAtIndex != null && { forkedAtIndex }),
       }),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt);

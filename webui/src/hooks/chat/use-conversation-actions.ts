@@ -7,6 +7,7 @@ import { type MutableRef, useCallback } from "preact/hooks";
 import {
   type ChatAdapter,
   type ChatClient,
+  type PendingForkRef,
 } from "#webui/hooks/chat/use-chat-types";
 import { type UIMessage } from "#webui/types/messages";
 
@@ -33,6 +34,8 @@ interface ConversationActionsDeps<
   }) => Promise<boolean>;
   invalidateCompactionUndo: () => void;
   clearQueue: () => void;
+  /** Set right before streaming a fork so the next save branches the record. */
+  pendingForkRef?: PendingForkRef;
 }
 
 interface ConversationActionsReturn {
@@ -69,6 +72,7 @@ export function useConversationActions<
     executeWithRetry,
     invalidateCompactionUndo,
     clearQueue,
+    pendingForkRef,
   } = deps;
 
   const forkConversation = useCallback(
@@ -104,6 +108,14 @@ export function useConversationActions<
 
         abortControllerRef.current = controller;
 
+        // Signal the branch now that init has succeeded and streaming is about
+        // to start: the imminent save (during/after this turn) consumes it and
+        // writes a new sibling record. Set here — not before initializeChat — so
+        // a failed init never leaves a stale signal for a later normal save.
+        if (pendingForkRef) {
+          pendingForkRef.current = { anchorIndex: mergedMessageIndex };
+        }
+
         await executeWithRetry({
           executeStream: (msg) => client.sendMessage(msg, controller.signal),
           getHistory: () => client.chatHistory,
@@ -122,6 +134,7 @@ export function useConversationActions<
       clientRef,
       pendingHistoryRef,
       abortControllerRef,
+      pendingForkRef,
     ],
   );
 

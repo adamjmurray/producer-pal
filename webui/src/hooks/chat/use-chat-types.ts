@@ -88,6 +88,21 @@ export interface ConversationLockedSettings {
   smallModelMode: boolean | null;
 }
 
+/**
+ * Signal that the next conversation save should branch (fork) into a new record
+ * instead of overwriting the active one. Set by the fork action right before it
+ * streams the new turn, and consumed by the conversation save. Lives in a ref
+ * shared across hooks because the fork action (in useChat) and the save (in
+ * useConversations) are otherwise decoupled.
+ */
+export interface PendingFork {
+  /** UI message index the fork diverges at (where the ‹ n/m › arrows anchor). */
+  anchorIndex: number;
+}
+
+/** Mutable ref carrying the pending-fork signal (null when no fork is pending). */
+export type PendingForkRef = { current: PendingFork | null };
+
 /** Rate limit retry state for UI display */
 export interface RateLimitState {
   isRetrying: boolean;
@@ -149,4 +164,6 @@ export interface UseChatProps<
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   extraParams?: Record<string, unknown>;
   autoSaveRef?: { current: (() => void) | null };
+  /** Shared signal set when an edit/retry should branch the conversation. */
+  pendingForkRef?: PendingForkRef;
 }

@@ -3,12 +3,18 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
+import {
+  type BranchNavState,
+  type BranchPoint,
+} from "#webui/lib/conversation-branch-helpers";
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
 import { MessageRow } from "./assistant/MessageRow";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
+import { BranchNav } from "./controls/BranchNav";
 import { QueuedMessages } from "./controls/QueuedMessages";
 
 const STILL_THINKING_DELAY_MS = 4000;
@@ -27,6 +33,8 @@ interface MessageListProps {
   showTimestamps: boolean;
   showTokenUsage: boolean;
   requestedModel?: string | null;
+  /** Sibling-branch navigation for the active conversation (edit/retry forks). */
+  branchNav?: BranchNavState;
 }
 
 /**
@@ -59,12 +67,26 @@ export function MessageList({
   showTimestamps,
   showTokenUsage,
   requestedModel,
+  branchNav,
 }: MessageListProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const prevMessageCountRef = useRef(0);
+  // Index to scroll to after a branch switch replaces the transcript; consumed
+  // by the effect below once the new messages render.
+  const pendingBranchScrollRef = useRef<number | null>(null);
   const [showStillThinking, setShowStillThinking] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+
+  const branchByIndex = new Map(
+    (branchNav?.points ?? []).map((point) => [point.anchorIndex, point]),
+  );
+
+  const switchToSibling = (siblingId: string, anchorIndex: number) => {
+    pendingBranchScrollRef.current = anchorIndex;
+    void branchNav?.onSwitch(siblingId);
+  };
 
   // Show "Still thinking..." after delay; clear editing when responding starts
   useEffect(() => {
@@ -80,11 +102,22 @@ export function MessageList({
   }, [isAssistantResponding, messages]);
 
   // Auto-scroll to bottom only when a new user message is added (not during
-  // AI streaming), so the user can read without being interrupted.
-  useScrollOnUserMessage(messages, messagesEndRef, prevMessageCountRef);
+  // AI streaming), so the user can read without being interrupted. Suppressed
+  // when a branch switch is pending so scroll-to-fork wins.
+  useScrollOnUserMessage(
+    messages,
+    messagesEndRef,
+    prevMessageCountRef,
+    pendingBranchScrollRef,
+  );
+
+  // After a branch switch swaps in the sibling transcript, scroll the shared
+  // fork-point message into view (its index lines up across siblings).
+  useScrollToForkPoint(messages, containerRef, pendingBranchScrollRef);
 
   return (
     <div
+      ref={containerRef}
       className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-4 items-start p-4"
       data-testid="message-list"
     >
@@ -106,24 +139,30 @@ export function MessageList({
           );
         }
 
+        const branch = branchByIndex.get(originalIdx);
+
         return (
-          <MessageRow
-            key={originalIdx}
-            message={message}
-            originalIdx={originalIdx}
-            messages={messages}
-            isAssistantResponding={isAssistantResponding}
-            showTimestamps={showTimestamps}
-            showTokenUsage={showTokenUsage}
-            requestedModel={requestedModel}
-            handleRetry={handleRetry}
-            handleEdit={handleEdit}
-            handleCompact={handleCompact}
-            editingIndex={editingIndex}
-            setEditingIndex={setEditingIndex}
-            editText={editText}
-            setEditText={setEditText}
-          />
+          <Fragment key={originalIdx}>
+            <MessageRow
+              message={message}
+              originalIdx={originalIdx}
+              messages={messages}
+              isAssistantResponding={isAssistantResponding}
+              showTimestamps={showTimestamps}
+              showTokenUsage={showTokenUsage}
+              requestedModel={requestedModel}
+              handleRetry={handleRetry}
+              handleEdit={handleEdit}
+              handleCompact={handleCompact}
+              editingIndex={editingIndex}
+              setEditingIndex={setEditingIndex}
+              editText={editText}
+              setEditText={setEditText}
+            />
+            {branch && (
+              <BranchNavRow point={branch} onSwitch={switchToSibling} />
+            )}
+          </Fragment>
         );
       })}
 
@@ -144,23 +183,70 @@ export function MessageList({
 }
 
 /**
+ * Full-width row holding the ‹ n/m › sibling-branch arrows, shown under the
+ * message a fork diverged at. An arrow is omitted (disabled) at the ends of the
+ * set so there is never an out-of-range switch.
+ * @param props - Component props
+ * @param props.point - The branch point to render arrows for
+ * @param props.onSwitch - Switches to a sibling (remembers scroll target + loads it)
+ * @returns The branch-nav row
+ */
+function BranchNavRow({
+  point,
+  onSwitch,
+}: {
+  point: BranchPoint;
+  onSwitch: (siblingId: string, anchorIndex: number) => void;
+}) {
+  const prevSibling = point.siblingIds[point.currentIndex - 1];
+  const nextSibling = point.siblingIds[point.currentIndex + 1];
+
+  return (
+    <div className="col-span-3 flex justify-end pr-1 -mt-2">
+      <BranchNav
+        current={point.currentIndex + 1}
+        total={point.siblingIds.length}
+        onPrev={
+          prevSibling != null
+            ? () => onSwitch(prevSibling, point.anchorIndex)
+            : undefined
+        }
+        onNext={
+          nextSibling != null
+            ? () => onSwitch(nextSibling, point.anchorIndex)
+            : undefined
+        }
+      />
+    </div>
+  );
+}
+
+/**
  * Scrolls to bottom only when new user messages are added, not during AI
- * streaming. This prevents auto-scroll from interfering with reading.
+ * streaming. This prevents auto-scroll from interfering with reading. Skips
+ * entirely when a branch switch is pending, so the whole-transcript swap doesn't
+ * yank the view to the bottom before scroll-to-fork can run.
  * @param messages - Current messages array
  * @param endRef - Ref to the scroll target element
  * @param endRef.current - The scroll target DOM element
  * @param prevCountRef - Ref tracking previous message count
  * @param prevCountRef.current - Previous message count value
+ * @param pendingBranchScrollRef - Ref holding a pending branch-scroll target
+ * @param pendingBranchScrollRef.current - The pending fork-point index, or null
  */
 function useScrollOnUserMessage(
   messages: UIMessage[],
   endRef: { current: HTMLDivElement | null },
   prevCountRef: { current: number },
+  pendingBranchScrollRef: { current: number | null },
 ): void {
   useEffect(() => {
     const prevCount = prevCountRef.current;
 
     prevCountRef.current = messages.length;
+
+    // A branch switch replaces the transcript; let scroll-to-fork handle it.
+    if (pendingBranchScrollRef.current != null) return;
 
     if (messages.length <= prevCount) return;
 
@@ -171,7 +257,37 @@ function useScrollOnUserMessage(
     if (hasNewUserMessage) {
       endRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, endRef, prevCountRef]);
+  }, [messages, endRef, prevCountRef, pendingBranchScrollRef]);
+}
+
+/**
+ * After a branch switch swaps in a sibling transcript, scroll the fork-point
+ * message into view. The shared prefix is identical across siblings, so the
+ * stored anchor index lines up with the message element in the new transcript.
+ * @param messages - Current messages array (changes when the sibling loads)
+ * @param containerRef - Ref to the message-list container
+ * @param containerRef.current - The container DOM element
+ * @param pendingRef - Ref holding the fork-point index to scroll to, or null
+ * @param pendingRef.current - The pending index, consumed on scroll
+ */
+function useScrollToForkPoint(
+  messages: UIMessage[],
+  containerRef: { current: HTMLDivElement | null },
+  pendingRef: { current: number | null },
+): void {
+  useEffect(() => {
+    const target = pendingRef.current;
+
+    if (target == null) return;
+
+    pendingRef.current = null;
+
+    const element = containerRef.current?.querySelector(
+      `[data-message-index="${target}"]`,
+    );
+
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [messages, containerRef, pendingRef]);
 }
 
 /**

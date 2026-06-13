@@ -76,7 +76,10 @@ function UserRow({
   return (
     <>
       {timestamp}
-      <div className="text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-blue-700/40 min-w-0 rounded-lg py-0.5 px-3">
+      <div
+        className="text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-blue-700/40 min-w-0 rounded-lg py-0.5 px-3"
+        data-message-index={originalIdx}
+      >
         {isEditing ? (
           <UserMessageEditor
             text={editText}
@@ -142,6 +145,7 @@ function AssistantRow({
       <div
         className="col-span-2 bg-zinc-50 dark:bg-zinc-800 shadow-sm dark:shadow-white/10 dark:border dark:border-zinc-700 min-w-0 rounded-lg py-0.5 px-3"
         data-testid="assistant-message-bubble"
+        data-message-index={originalIdx}
       >
         <ErrorBoundary fallback={<RenderErrorFallback />}>
           <AssistantBubble

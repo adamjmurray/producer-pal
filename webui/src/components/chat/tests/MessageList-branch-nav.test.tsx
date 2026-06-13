@@ -1,0 +1,155 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * @vitest-environment happy-dom
+ */
+import { fireEvent, render, screen } from "@testing-library/preact";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MessageList } from "#webui/components/chat/MessageList";
+import {
+  type BranchNavState,
+  type BranchPoint,
+} from "#webui/lib/conversation-branch-helpers";
+import { type UIMessage } from "#webui/types/messages";
+
+vi.mock(import("#webui/components/chat/assistant/AssistantMessage"), () => ({
+  AssistantMessage: ({ parts }: { parts: unknown[] }) => (
+    <div data-testid="assistant-message">
+      {parts.map((p) => (p as { content?: string }).content ?? "")}
+    </div>
+  ),
+}));
+
+function user(content: string, idx: number): UIMessage {
+  return {
+    role: "user",
+    parts: [{ type: "text", content }],
+    rawHistoryIndex: idx,
+    timestamp: 0,
+  };
+}
+
+function model(content: string, idx: number): UIMessage {
+  return {
+    role: "model",
+    parts: [{ type: "text", content }],
+    rawHistoryIndex: idx,
+    timestamp: 0,
+  };
+}
+
+function renderList(messages: UIMessage[], branchNav?: BranchNavState) {
+  return render(
+    <MessageList
+      messages={messages}
+      queuedMessages={[]}
+      onRemoveQueued={vi.fn()}
+      isAssistantResponding={false}
+      handleRetry={vi.fn()}
+      handleEdit={vi.fn()}
+      showTimestamps={false}
+      showTokenUsage={false}
+      branchNav={branchNav}
+    />,
+  );
+}
+
+const FORK_AT_0: BranchPoint = {
+  anchorIndex: 0,
+  siblingIds: ["A", "B"],
+  currentIndex: 0,
+};
+
+describe("MessageList branch navigation", () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("renders no branch nav without branch points", () => {
+    renderList([user("hi", 0), model("yo", 1)]);
+
+    expect(screen.queryByTestId("branch-nav")).toBeNull();
+  });
+
+  it("renders the ‹ n/m › control under the fork-point message", () => {
+    renderList([user("hi", 0), model("yo", 1)], {
+      points: [FORK_AT_0],
+      onSwitch: vi.fn(),
+    });
+
+    expect(screen.getByTestId("branch-nav-position").textContent).toBe("1 / 2");
+    // First branch: previous disabled, next switches to the sibling.
+    const prev = screen.getByRole("button", {
+      name: /previous version/i,
+    }) as HTMLButtonElement;
+    const next = screen.getByRole("button", {
+      name: /next version/i,
+    }) as HTMLButtonElement;
+
+    expect(prev.disabled).toBe(true);
+    expect(next.disabled).toBe(false);
+  });
+
+  it("switches to the next sibling when the arrow is clicked", () => {
+    const onSwitch = vi.fn();
+
+    renderList([user("hi", 0), model("yo", 1)], {
+      points: [FORK_AT_0],
+      onSwitch,
+    });
+    fireEvent.click(screen.getByRole("button", { name: /next version/i }));
+
+    expect(onSwitch).toHaveBeenCalledExactlyOnceWith("B");
+  });
+
+  it("switches to the previous sibling from the last branch", () => {
+    const onSwitch = vi.fn();
+
+    renderList([user("hi", 0), model("yo", 1)], {
+      points: [{ anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 }],
+      onSwitch,
+    });
+    fireEvent.click(screen.getByRole("button", { name: /previous version/i }));
+
+    expect(onSwitch).toHaveBeenCalledExactlyOnceWith("A");
+  });
+
+  it("scrolls the fork-point message into view after the transcript swaps", () => {
+    const onSwitch = vi.fn();
+    const { rerender } = renderList([user("first", 0), model("a1", 1)], {
+      points: [FORK_AT_0],
+      onSwitch,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /next version/i }));
+
+    // Simulate the sibling conversation loading: the transcript is replaced.
+    const scrollSpy = vi.fn();
+
+    Element.prototype.scrollIntoView = scrollSpy;
+    rerender(
+      <MessageList
+        messages={[user("first", 0), model("a2", 1)]}
+        queuedMessages={[]}
+        onRemoveQueued={vi.fn()}
+        isAssistantResponding={false}
+        handleRetry={vi.fn()}
+        handleEdit={vi.fn()}
+        showTimestamps={false}
+        showTokenUsage={false}
+        branchNav={{
+          points: [{ anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 }],
+          onSwitch,
+        }}
+      />,
+    );
+
+    expect(scrollSpy).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
+  });
+});

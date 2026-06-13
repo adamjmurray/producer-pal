@@ -1,0 +1,168 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * @vitest-environment happy-dom
+ */
+import "fake-indexeddb/auto";
+import { renderHook, act } from "@testing-library/preact";
+import { beforeEach, describe, expect, it } from "vitest";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
+import {
+  listConversations,
+  loadConversation,
+} from "#webui/lib/conversation-db";
+import {
+  createConversationsProps,
+  resetConversationsTestState,
+  waitForEffects,
+} from "./use-conversations-test-helpers";
+
+/**
+ * Render useConversations with an injectable pending-fork signal.
+ * @returns Hook result, the mutable chat-history state, and the fork ref
+ */
+async function setupForkHook() {
+  const { props, state } = createConversationsProps();
+  const pendingForkRef = { current: null as PendingFork | null };
+  const { result } = renderHook(() =>
+    useConversations({ ...props, pendingForkRef }),
+  );
+
+  await waitForEffects();
+
+  return { result, state, pendingForkRef };
+}
+
+/**
+ * Save the current chat history through the hook.
+ * @param result - Hook result ref
+ * @param state - Mutable chat-history state
+ * @param history - Chat history to persist
+ */
+async function save(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose test typing
+  result: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose test typing
+  state: any,
+  history: { role: string; content: string }[],
+): Promise<void> {
+  state.chatHistory = history;
+  await act(() => result.current.saveCurrentConversation());
+}
+
+const ORIGINAL = [
+  { role: "user", content: "original question" },
+  { role: "assistant", content: "original answer" },
+];
+const FORKED = [
+  { role: "user", content: "edited question" },
+  { role: "assistant", content: "new answer" },
+];
+
+describe("useConversations branching", () => {
+  beforeEach(resetConversationsTestState);
+
+  it("forks into a new record and leaves the original intact", async () => {
+    const { result, state, pendingForkRef } = await setupForkHook();
+
+    await save(result, state, ORIGINAL);
+    const originalId = result.current.activeConversationId!;
+
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, FORKED);
+    const forkId = result.current.activeConversationId!;
+
+    expect(forkId).not.toBe(originalId);
+    expect(pendingForkRef.current).toBeNull(); // signal consumed
+
+    const original = await loadConversation(originalId);
+    const fork = await loadConversation(forkId);
+
+    expect(original?.messages).toStrictEqual(ORIGINAL);
+    expect(original?.forkParentId).toBeUndefined();
+    expect(fork?.messages).toStrictEqual(FORKED);
+    expect(fork?.forkParentId).toBe(originalId);
+    expect(fork?.forkedAtIndex).toBe(0);
+  });
+
+  it("keeps branch linkage on a later (post-response) save", async () => {
+    const { result, state, pendingForkRef } = await setupForkHook();
+
+    await save(result, state, ORIGINAL);
+    const originalId = result.current.activeConversationId!;
+
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, FORKED);
+    const forkId = result.current.activeConversationId!;
+
+    // A normal save follows with no fork pending (e.g. the autosave after the
+    // assistant finishes responding). It must not strip the branch fields.
+    await save(result, state, [
+      ...FORKED,
+      { role: "assistant", content: "more" },
+    ]);
+
+    expect(result.current.activeConversationId).toBe(forkId);
+
+    const fork = await loadConversation(forkId);
+
+    expect(fork?.forkParentId).toBe(originalId);
+    expect(fork?.forkedAtIndex).toBe(0);
+    expect(await listConversations()).toHaveLength(1);
+  });
+
+  it("collapses the branch family to one list entry", async () => {
+    const { result, state, pendingForkRef } = await setupForkHook();
+
+    await save(result, state, ORIGINAL);
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, FORKED);
+
+    const list = await listConversations();
+
+    expect(list).toHaveLength(1);
+    expect(list[0]?.id).toBe(result.current.activeConversationId);
+  });
+
+  it("attaches a re-fork at the same point to the original trunk", async () => {
+    const { result, state, pendingForkRef } = await setupForkHook();
+
+    await save(result, state, ORIGINAL);
+    const trunkId = result.current.activeConversationId!;
+
+    // First fork.
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, FORKED);
+    const firstForkId = result.current.activeConversationId!;
+
+    // Re-fork the first fork at the same point: should share the trunk, not
+    // chain off the first fork.
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, [{ role: "user", content: "third take" }]);
+    const secondForkId = result.current.activeConversationId!;
+
+    const secondFork = await loadConversation(secondForkId);
+
+    expect(secondForkId).not.toBe(firstForkId);
+    expect(secondFork?.forkParentId).toBe(trunkId);
+    expect(await listConversations()).toHaveLength(1);
+  });
+
+  it("degrades to a normal save when there is no source to fork from", async () => {
+    const { result, state, pendingForkRef } = await setupForkHook();
+
+    // Fork signal set with no active conversation (nothing saved yet).
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, ORIGINAL);
+
+    const saved = await loadConversation(result.current.activeConversationId!);
+
+    expect(saved?.forkParentId).toBeUndefined();
+    expect(saved?.forkedAtIndex).toBeUndefined();
+    expect(pendingForkRef.current).toBeNull();
+  });
+});
