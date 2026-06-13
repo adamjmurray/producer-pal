@@ -9,6 +9,7 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import {
   MockChatClient,
   createDefaultProps,
@@ -301,6 +302,29 @@ describe("useChat", () => {
 
       expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
       expect(mockAdapter.formatMessages).toHaveBeenCalled();
+    });
+
+    it("does not signal a fork (retry regenerates in place)", async () => {
+      const pendingForkRef = { current: null as PendingFork | null };
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, pendingForkRef }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("First message");
+      });
+
+      const userMessageIndex = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      await act(async () => {
+        await result.current.handleRetry(userMessageIndex);
+      });
+
+      // Retry must not branch: the signal stays unset so the next save
+      // overwrites the active record in place (unlike edit, which branches).
+      expect(pendingForkRef.current).toBeNull();
     });
 
     it("slices history to exclude retry point and everything after", async () => {

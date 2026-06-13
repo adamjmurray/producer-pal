@@ -104,21 +104,21 @@ sections to see the AI's reasoning process:
 
 ### Editing, Retrying & Branches
 
-You can revise a conversation without losing where it was:
-
 - **Edit** a message you sent — hover over it and click the pencil icon, change
-  the text, and send.
-- **Retry** an AI response — click the ↻ icon to generate a different response.
+  the text, and send. Editing **branches** the conversation: Producer Pal keeps
+  the original and starts a new version from that point forward, so the path you
+  came from is never lost.
+- **Retry** an AI response — click the ↻ icon to regenerate it. Retry replaces
+  the response **in place** and does not create a branch (the previous response
+  is discarded).
 
-Either action **branches** the conversation: Producer Pal keeps the original and
-starts a new version from that point forward, so the path you came from is never
-lost. When a turn has more than one version, **‹ n/m › arrows** appear beneath
-it (for example, "2 / 2"). Click them to move between versions — the
+When an edited message has more than one version, **‹ n/m › arrows** appear
+beneath it (for example, "2 / 2"). Click them to move between versions — the
 conversation switches to that branch and scrolls to the point where it diverged.
 
 All branches of one conversation share a **single entry** in the
 [history panel](#conversation-history) (showing the most recently used version),
-so branching often won't clutter your history.
+so branching won't clutter your history.
 
 ## Message Input
 

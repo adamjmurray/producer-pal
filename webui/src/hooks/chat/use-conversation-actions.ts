@@ -42,6 +42,7 @@ interface ConversationActionsReturn {
   forkConversation: (
     mergedMessageIndex: number,
     newMessage: string,
+    createBranch?: boolean,
   ) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
@@ -76,7 +77,11 @@ export function useConversationActions<
   } = deps;
 
   const forkConversation = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
+    async (
+      mergedMessageIndex: number,
+      newMessage: string,
+      createBranch = true,
+    ) => {
       if (!apiKey) return;
 
       clearQueue();
@@ -108,11 +113,13 @@ export function useConversationActions<
 
         abortControllerRef.current = controller;
 
-        // Signal the branch now that init has succeeded and streaming is about
-        // to start: the imminent save (during/after this turn) consumes it and
-        // writes a new sibling record. Set here — not before initializeChat — so
-        // a failed init never leaves a stale signal for a later normal save.
-        if (pendingForkRef) {
+        // Signal the branch only for edits (createBranch). Retry passes
+        // createBranch = false and leaves the signal unset, so the next save
+        // overwrites the active record in place — a plain regenerate, no sibling
+        // (the previous response is discarded). Set here — not before
+        // initializeChat — so a failed init never leaves a stale signal for a
+        // later normal save.
+        if (createBranch && pendingForkRef) {
           pendingForkRef.current = { anchorIndex: mergedMessageIndex };
         }
 
@@ -157,7 +164,9 @@ export function useConversationActions<
 
       if (!userMessage) return;
 
-      await forkConversation(mergedMessageIndex, userMessage);
+      // Retry regenerates in place — pass createBranch = false so the active
+      // conversation's response is replaced rather than forked into a sibling.
+      await forkConversation(mergedMessageIndex, userMessage, false);
     },
     [messages, adapter, forkConversation, clientRef, pendingHistoryRef],
   );
