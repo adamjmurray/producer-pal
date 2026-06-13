@@ -33,7 +33,6 @@ interface ConversationActionsDeps<
     originalMessage: string;
   }) => Promise<boolean>;
   invalidateCompactionUndo: () => void;
-  clearQueue: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
   pendingForkRef?: PendingForkRef;
 }
@@ -72,7 +71,6 @@ export function useConversationActions<
     runWithChat,
     executeWithRetry,
     invalidateCompactionUndo,
-    clearQueue,
     pendingForkRef,
   } = deps;
 
@@ -84,8 +82,9 @@ export function useConversationActions<
     ) => {
       if (!apiKey) return;
 
-      clearQueue();
-
+      // Don't discard queued follow-ups on a retry/edit fork — they're the
+      // user's words. They stay in the queue (visible) and flush on the next
+      // successful send rather than vanishing silently here.
       const message = messages[mergedMessageIndex];
 
       if (message?.role !== "user") return;
@@ -137,7 +136,6 @@ export function useConversationActions<
       runWithChat,
       executeWithRetry,
       invalidateCompactionUndo,
-      clearQueue,
       clientRef,
       pendingHistoryRef,
       abortControllerRef,

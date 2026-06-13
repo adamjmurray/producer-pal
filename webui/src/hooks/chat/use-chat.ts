@@ -359,7 +359,13 @@ export function useChat<
           const filtered = filterOverrides(sendOptions, {
             thinking: thinkingRef.current,
           });
-          const shouldInterrupt = () => queueRef.current.length > 0;
+          // Interrupt this turn only when the user enqueues a NEW message while
+          // it streams — measured against the queue length at send start, not
+          // "queue is non-empty". A queue carried over from a prior failed turn
+          // (the error path below preserves it) must not self-interrupt this
+          // send; it drains normally once this turn completes.
+          const queueBaseline = queueRef.current.length;
+          const shouldInterrupt = () => queueRef.current.length > queueBaseline;
 
           return await executeWithRetry({
             executeStream: (msg) =>
@@ -374,12 +380,19 @@ export function useChat<
           });
         }, userMessageEntry);
 
+        // A failed turn leaves any queued messages untouched rather than
+        // dropping them: they stay visible and flush on the next successful
+        // send (the queueBaseline above keeps that next send from being
+        // truncated by the carryover).
         if (!succeeded) return;
 
         const queued = drainQueue();
 
         if (queued.length === 0) return;
 
+        // Queued follow-ups coalesce into a single user turn (joined by blank
+        // lines); the first message's overrides (currently just `thinking`)
+        // apply to the merged turn.
         currentMessage = queued.map((m) => m.text).join("\n\n");
         currentOptions = queued[0]?.overrides;
       }
@@ -408,7 +421,6 @@ export function useChat<
     runWithChat,
     executeWithRetry,
     invalidateCompactionUndo,
-    clearQueue,
     pendingForkRef,
   });
 

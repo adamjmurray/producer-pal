@@ -74,6 +74,29 @@ function createRecordingAdapter(
   );
 }
 
+/**
+ * Render useChat with the given recording adapter, hand its enqueueMessage to
+ * `captureEnqueue` (so an adapter closure can queue a follow-up mid-stream),
+ * then send an opening "Hello" turn.
+ * @param adapter - Recording adapter under test
+ * @param captureEnqueue - Receives enqueueMessage before the send starts
+ * @returns The renderHook result for further assertions
+ */
+async function renderAndSendHello(
+  adapter: ReturnType<typeof createRecordingAdapter>,
+  captureEnqueue: (enqueue: (text: string) => void) => void,
+) {
+  const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+  captureEnqueue(result.current.enqueueMessage);
+
+  await act(async () => {
+    await result.current.handleSend("Hello");
+  });
+
+  return result;
+}
+
 describe("useChat message queuing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -104,24 +127,29 @@ describe("useChat message queuing", () => {
     expect(result.current.queuedMessages).toStrictEqual([]);
   });
 
-  it("reports the pending queue to the SDK via shouldInterrupt", async () => {
+  it("requests interrupt only when a message is queued during the streaming send", async () => {
     const sent: string[] = [];
     const interruptByMessage: Record<string, boolean | undefined> = {};
+    let enqueue: ((text: string) => void) | null = null;
     const adapter = createRecordingAdapter(
       sent,
       ({ message, shouldInterrupt }) => {
+        // Queue a follow-up WHILE "Hello" streams (the real flow), then read
+        // the flag the SDK sees.
+        if (message === "Hello" && enqueue) {
+          enqueue("Q");
+          enqueue = null;
+        }
+
         interruptByMessage[message] = shouldInterrupt?.();
       },
     );
 
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
-
-    await act(() => result.current.enqueueMessage("Q"));
-    await act(async () => {
-      await result.current.handleSend("Hello");
+    await renderAndSendHello(adapter, (fn) => {
+      enqueue = fn;
     });
 
-    // During "Hello" the queue still held "Q", so an interrupt was requested.
+    // "Q" was enqueued mid-stream, so "Hello" reported an interrupt request.
     expect(interruptByMessage.Hello).toBe(true);
     // The drained "Q" send saw an empty queue, so no interrupt was requested.
     expect(interruptByMessage.Q).toBe(false);
@@ -129,21 +157,28 @@ describe("useChat message queuing", () => {
 
   it("auto-sends a queued message after the SDK interrupts a tool loop", async () => {
     const sent: string[] = [];
-    // Mirror the real client: abandon a multi-step tool loop the moment a
-    // follow-up is queued, emitting no further assistant content.
-    const adapter = createRecordingAdapter(sent, ({ shouldInterrupt }) =>
-      shouldInterrupt?.() ? "interrupt" : undefined,
+    let enqueue: ((text: string) => void) | null = null;
+    // Mirror the real client: once a follow-up is queued mid-stream, abandon
+    // the multi-step tool loop immediately, emitting no further content.
+    const adapter = createRecordingAdapter(
+      sent,
+      ({ message, shouldInterrupt }) => {
+        if (message === "Hello" && enqueue) {
+          enqueue("follow up");
+          enqueue = null;
+        }
+
+        return shouldInterrupt?.() ? "interrupt" : undefined;
+      },
     );
 
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
-
-    await act(() => result.current.enqueueMessage("follow up"));
-    await act(async () => {
-      await result.current.handleSend("Hello");
+    const result = await renderAndSendHello(adapter, (fn) => {
+      enqueue = fn;
     });
 
-    // "Hello" bailed out early (queue held "follow up"); the drain loop then
-    // sent "follow up", which ran to completion against an empty queue.
+    // "Hello" bailed out early (a follow-up was queued mid-stream); the drain
+    // loop then sent "follow up", which ran to completion against an empty
+    // queue.
     expect(sent).toStrictEqual(["Hello", "follow up"]);
     expect(result.current.queuedMessages).toStrictEqual([]);
   });
@@ -185,5 +220,77 @@ describe("useChat message queuing", () => {
     expect(result.current.messages.at(-1)?.parts[0]?.type).toBe("error");
     expect(result.current.queuedMessages).toStrictEqual([]);
     expect(result.current.isAssistantResponding).toBe(false);
+  });
+
+  it("preserves a queued message on an initial-send error, then flushes it without truncating the next send", async () => {
+    const sent: string[] = [];
+    const interruptByMessage: Record<string, boolean | undefined> = {};
+    let failHello = true;
+    const adapter = createRecordingAdapter(
+      sent,
+      ({ message, shouldInterrupt }) => {
+        interruptByMessage[message] = shouldInterrupt?.();
+
+        if (message === "Hello" && failHello) {
+          failHello = false;
+          throw new Error("initial send failed");
+        }
+      },
+    );
+
+    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+    // A follow-up is queued (e.g. typed while the turn streamed) and the first
+    // send then fails before the queue can drain.
+    await act(() => result.current.enqueueMessage("B"));
+    await act(async () => {
+      await result.current.handleSend("Hello");
+    });
+
+    // The error surfaces and we're idle, but "B" is NOT discarded — it stays
+    // queued, ready to flush on the next successful send.
+    expect(result.current.messages.at(-1)?.parts[0]?.type).toBe("error");
+    expect(result.current.isAssistantResponding).toBe(false);
+    expect(result.current.queuedMessages.map((m) => m.text)).toStrictEqual([
+      "B",
+    ]);
+
+    // A brand-new send must run to completion despite "B" sitting in the queue.
+    await act(async () => {
+      await result.current.handleSend("C");
+    });
+
+    // "C" was not self-interrupted by the carried-over "B" ...
+    expect(interruptByMessage.C).toBe(false);
+    // ... and "B" flushed only after "C" completed.
+    expect(sent).toStrictEqual(["Hello", "C", "B"]);
+    expect(result.current.queuedMessages).toStrictEqual([]);
+  });
+
+  it("keeps queued messages across a retry fork instead of discarding them", async () => {
+    const sent: string[] = [];
+    const adapter = createRecordingAdapter(sent);
+
+    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+    await act(async () => {
+      await result.current.handleSend("Hello");
+    });
+
+    const userIndex = result.current.messages.findIndex(
+      (m) => m.role === "user",
+    );
+
+    // A follow-up is queued (e.g. it was stranded by an earlier failed turn),
+    // then the user retries the prior message. A retry/edit fork must not be an
+    // excuse to silently drop the user's words.
+    await act(() => result.current.enqueueMessage("B"));
+    await act(async () => {
+      await result.current.handleRetry(userIndex);
+    });
+
+    expect(result.current.queuedMessages.map((m) => m.text)).toStrictEqual([
+      "B",
+    ]);
   });
 });
