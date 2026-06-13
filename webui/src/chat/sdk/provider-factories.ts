@@ -148,6 +148,12 @@ export async function transformAnthropicRequest(
       let modified = false;
 
       if (body.thinking?.type === "adaptive" && !body.thinking.display) {
+        // "summarized" returns a human-readable summary of the thinking, but the
+        // block's signature still covers the full underlying reasoning. The
+        // signature — not the visible summary text — is Anthropic's source of
+        // truth, so replaying a captured summarized block verbatim with its
+        // original signature on later turns is supported (see build-model-messages
+        // buildAssistantContent, which re-emits the signed block as-is).
         body.thinking.display = "summarized";
         modified = true;
       }

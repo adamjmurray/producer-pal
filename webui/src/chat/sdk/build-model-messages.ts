@@ -81,9 +81,17 @@ export function buildModelMessages(
     // Persisted UI error messages are not part of the model conversation
     if (msg.isError) continue;
 
+    // All-or-nothing: only re-emit reasoning when EVERY captured part is signed
+    // or redacted. A message that mixes signed and unsigned parts (e.g. reasoning
+    // carried over from a different provider, or a partial capture) would
+    // otherwise emit just the signed subset — a partial thinking sequence whose
+    // signature no longer matches its (truncated) content, which Anthropic
+    // rejects. Falling back to plain content sends a valid non-thinking turn.
+    const reasoningParts = msg.reasoningParts ?? [];
     const emitReasoning =
       includeReasoning &&
-      (msg.reasoningParts ?? []).some(
+      reasoningParts.length > 0 &&
+      reasoningParts.every(
         (p) => p.signature != null || p.redactedData != null,
       );
 

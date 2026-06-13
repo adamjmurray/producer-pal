@@ -201,5 +201,26 @@ describe("buildModelMessages", () => {
 
       expect(result[0]!.content).toBe("answer");
     });
+
+    it("falls back to plain content when reasoning mixes signed and unsigned blocks", () => {
+      // Emitting only the signed subset would be a partial thinking sequence
+      // whose signature no longer matches its truncated content (Anthropic
+      // rejects it), so the whole turn degrades to plain (non-thinking) content.
+      const result = buildModelMessages(
+        [
+          {
+            role: "assistant",
+            content: "answer",
+            reasoningParts: [
+              { text: "signed", signature: "sig-1" },
+              { text: "unsigned" },
+            ],
+          },
+        ],
+        true,
+      );
+
+      expect(result[0]!.content).toBe("answer");
+    });
   });
 });
