@@ -7,7 +7,6 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import {
   type AllProviderSettings,
-  buildAllProviderSettings,
   checkHasApiKey,
   DEFAULT_SETTINGS,
   loadAllProviderSettingsAsync,
@@ -20,6 +19,7 @@ import {
   saveCurrentSettings,
   saveSmallModelMode,
 } from "./settings-helpers";
+import { useProviderConnections } from "./use-provider-connections";
 import { useVoiceModeSettings } from "./use-voice-mode-settings";
 
 type ProviderStateSetters = Record<
@@ -168,7 +168,10 @@ export function useSettings(): UseSettingsReturn {
     [],
   );
 
-  const providerSettings = buildAllProviderSettings(
+  // Memoized providerSettings + a stable getProviderConnection (see the hook):
+  // keeps identities stable so consumers like resolveConnection in
+  // useChatModeState don't churn the chat hook's callbacks/effects every render.
+  const { providerSettings, getProviderConnection } = useProviderConnections(
     anthropicSettings,
     geminiSettings,
     openaiSettings,
@@ -180,17 +183,6 @@ export function useSettings(): UseSettingsReturn {
   );
 
   const currentSettings = providerSettings[provider];
-
-  // Read a specific provider's stored connection (decrypted key + base URL)
-  // regardless of which provider is currently active. Lets a restored
-  // conversation locked to provider X keep using X with the user's *current*
-  // key/baseUrl for X, without persisting any key in conversation storage.
-  const getProviderConnection = (
-    target: Provider,
-  ): { apiKey: string; baseUrl?: string } => ({
-    apiKey: providerSettings[target].apiKey,
-    baseUrl: providerSettings[target].baseUrl,
-  });
 
   const applyLoadedSettings = useCallback(
     (allSettings: typeof DEFAULT_SETTINGS) => {
