@@ -182,15 +182,20 @@ export async function setBookmark(
 }
 
 /**
- * List conversations for display, sorted by updatedAt descending. Branch
- * families (edit/retry forks linked by {@link ConversationRecord.forkParentId})
- * are collapsed to a single most-recently-updated representative so forks don't
- * clutter the list. Use {@link listAllConversationSummaries} when every sibling
- * is needed (e.g. branch-arrow navigation).
+ * List conversations for display, ordered by recency. Branch families (edit/retry
+ * forks linked by {@link ConversationRecord.forkParentId}) are collapsed to a
+ * single representative so forks don't clutter the list. The active conversation,
+ * when passed, represents its family — so the sidebar can highlight the sibling
+ * being viewed even if it isn't the most recent one. Use
+ * {@link listAllConversationSummaries} when every sibling is needed (e.g.
+ * branch-arrow navigation).
+ * @param activeId - Active conversation id, promoted to represent its family
  * @returns Array of conversation summaries, one per branch family
  */
-export async function listConversations(): Promise<ConversationSummary[]> {
-  return collapseBranchFamilies(await listAllConversationSummaries());
+export async function listConversations(
+  activeId?: string | null,
+): Promise<ConversationSummary[]> {
+  return collapseBranchFamilies(await listAllConversationSummaries(), activeId);
 }
 
 /**

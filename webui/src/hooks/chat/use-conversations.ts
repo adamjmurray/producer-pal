@@ -123,7 +123,10 @@ export function useConversations({
   });
 
   const refreshList = useCallback(async () => {
-    const list = await listConversations();
+    // Pass the active id so its branch family is represented by the conversation
+    // being viewed — keeps the sidebar highlight (and bookmark state) on the
+    // active sibling even when it isn't the family's most recent member.
+    const list = await listConversations(activeIdRef.current);
 
     setConversations(list);
   }, []);
@@ -153,10 +156,6 @@ export function useConversations({
 
   const syncActiveMeta = (record: ConversationRecord) =>
     syncMetaRef(activeMetaRef, record);
-  const getActiveRefs = (id: string): ActiveRefs => ({
-    id,
-    ...(activeMetaRef.current ?? DEFAULT_META),
-  });
 
   // Load conversation from URL hash and conversation list on mount
   useEffect(() => {
@@ -221,14 +220,19 @@ export function useConversations({
           id,
           reuseId,
           fork,
-          refs: getActiveRefs(id),
+          refs: buildActiveRefs(activeMetaRef, id),
           chatHistory,
           updatedAt,
         });
 
         syncActiveMeta(record);
 
-        const result = await saveConversation(record);
+        // When saving a fork, protect the records it descends from (its trunk
+        // and the sibling it was forked from) so the conversation-cap LRU can't
+        // evict the very trunk this new branch points back to.
+        const protectedIds =
+          fork != null ? forkProtectedIds(record, reuseId) : undefined;
+        const result = await saveConversation(record, protectedIds);
 
         limit.showLimitNotification(result);
         await refreshList();
@@ -269,6 +273,9 @@ export function useConversations({
       restoreChatHistory(record.messages, buildLockedSettings(record));
       setActiveId(id);
       syncActiveMeta(record);
+      // Re-collapse with the new active id so its family's row reflects — and
+      // highlights — the sibling just switched to (e.g. via the branch arrows).
+      await refreshList();
     },
     [
       clearConversation,
@@ -276,6 +283,7 @@ export function useConversations({
       restoreChatHistory,
       setActiveId,
       onForeignRecord,
+      refreshList,
     ],
   );
 
@@ -392,6 +400,38 @@ export function useConversations({
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Build the active-refs snapshot (id plus the cached active metadata) used to
+ * carry settings/title/bookmark onto a save record.
+ * @param activeMetaRef - Ref holding the active conversation's metadata
+ * @param activeMetaRef.current - Current metadata, or null when none is active
+ * @param id - Id to stamp on the refs
+ * @returns Active refs for buildConversationSaveRecord
+ */
+function buildActiveRefs(
+  activeMetaRef: { current: ActiveMeta | null },
+  id: string,
+): ActiveRefs {
+  return { id, ...(activeMetaRef.current ?? DEFAULT_META) };
+}
+
+/**
+ * Records a fork save must shield from the conversation-cap LRU: the trunk it
+ * points back to and the sibling it was forked from, so trimming to make room
+ * for this new branch can't evict the records it depends on.
+ * @param record - The fork record being saved
+ * @param reuseId - The active id the fork was created from, if any
+ * @returns Ids to protect from limit-based deletion
+ */
+function forkProtectedIds(
+  record: ConversationRecord,
+  reuseId: string | null,
+): ReadonlySet<string> {
+  return new Set(
+    [record.forkParentId, reuseId].filter((id): id is string => id != null),
+  );
+}
 
 /**
  * Overwrite the active-meta ref from a freshly loaded conversation record.

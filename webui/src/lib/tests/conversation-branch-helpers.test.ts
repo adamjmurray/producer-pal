@@ -129,6 +129,71 @@ describe("collapseBranchFamilies", () => {
 
     expect(collapseBranchFamilies([a]).map((r) => r.id)).toStrictEqual(["A"]);
   });
+
+  it("promotes the active member to represent its family", () => {
+    const trunk = rec("A", { updatedAt: 10 });
+    const fork = rec("B", {
+      forkParentId: "A",
+      forkedAtIndex: 1,
+      updatedAt: 30,
+    });
+
+    // Viewing the older trunk A: it represents the family, not the newer fork B.
+    expect(
+      collapseBranchFamilies([trunk, fork], "A").map((r) => r.id),
+    ).toStrictEqual(["A"]);
+    // With no active id, the newest member still represents it.
+    expect(
+      collapseBranchFamilies([trunk, fork]).map((r) => r.id),
+    ).toStrictEqual(["B"]);
+  });
+
+  it("prefers a bookmarked member over a newer unbookmarked fork", () => {
+    const trunk = rec("A", { updatedAt: 10, bookmarked: true });
+    const fork = rec("B", {
+      forkParentId: "A",
+      forkedAtIndex: 1,
+      updatedAt: 30,
+    });
+
+    // Regardless of input order, the bookmarked trunk represents the family.
+    expect(
+      collapseBranchFamilies([trunk, fork]).map((r) => r.id),
+    ).toStrictEqual(["A"]);
+    expect(
+      collapseBranchFamilies([fork, trunk]).map((r) => r.id),
+    ).toStrictEqual(["A"]);
+  });
+
+  it("prefers the active member even over a bookmarked sibling", () => {
+    const trunk = rec("A", { updatedAt: 10, bookmarked: true });
+    const fork = rec("B", {
+      forkParentId: "A",
+      forkedAtIndex: 1,
+      updatedAt: 30,
+    });
+
+    // Viewing fork B promotes it despite the bookmarked trunk A.
+    expect(
+      collapseBranchFamilies([trunk, fork], "B").map((r) => r.id),
+    ).toStrictEqual(["B"]);
+  });
+
+  it("orders families by their newest member, not the chosen representative", () => {
+    const trunk = rec("A", { updatedAt: 10 });
+    const fork = rec("B", {
+      forkParentId: "A",
+      forkedAtIndex: 1,
+      updatedAt: 90,
+    });
+    const x = rec("X", { updatedAt: 50 });
+
+    // Viewing the old trunk A makes it the representative, but its family still
+    // sorts by B's recency (90) — ahead of X (50) — so the row doesn't drop.
+    expect(
+      collapseBranchFamilies([trunk, fork, x], "A").map((r) => r.id),
+    ).toStrictEqual(["A", "X"]);
+  });
 });
 
 describe("computeBranchPoints", () => {

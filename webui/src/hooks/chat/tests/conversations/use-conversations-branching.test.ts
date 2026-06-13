@@ -115,14 +115,18 @@ describe("useConversations branching", () => {
     expect(await listConversations()).toHaveLength(1);
   });
 
-  it("collapses the branch family to one list entry", async () => {
+  it("collapses the branch family to one list entry, represented by the active sibling", async () => {
     const { result, state, pendingForkRef } = await setupForkHook();
 
     await save(result, state, ORIGINAL);
     pendingForkRef.current = { anchorIndex: 0 };
     await save(result, state, FORKED);
 
-    const list = await listConversations();
+    // Pass the active id (as the hook's refreshList does) so the family is
+    // represented by the sibling being viewed. This is also deterministic when
+    // both saves land in the same millisecond — without it, equal timestamps
+    // would let record insertion order pick the representative.
+    const list = await listConversations(result.current.activeConversationId);
 
     expect(list).toHaveLength(1);
     expect(list[0]?.id).toBe(result.current.activeConversationId);

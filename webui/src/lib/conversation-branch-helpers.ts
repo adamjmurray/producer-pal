@@ -23,6 +23,9 @@ export interface BranchRecord {
   forkedAtIndex?: number;
   createdAt: number;
   updatedAt: number;
+  /** Whether this record is bookmarked. Lets a bookmarked family member be
+   *  preferred as the representative so it isn't hidden behind a newer fork. */
+  bookmarked?: boolean;
 }
 
 /** A point in the active conversation that has sibling branches to page through. */
@@ -49,30 +52,47 @@ export interface BranchNavState {
 /**
  * Collapse each branch family down to a single representative for list display,
  * so forks don't each get their own row. Records sharing a root (followed up the
- * `forkParentId` chain) are one family; the most-recently-updated member
- * represents it (ties broken by newest creation, so a just-made fork wins over
- * its original). Records with no branch links pass through unchanged.
+ * `forkParentId` chain) are one family. The representative is chosen by, in
+ * order of precedence:
+ *   1. the active conversation (`activeId`) — so the sidebar highlights the
+ *      sibling you're viewing, even when it isn't the most recent one;
+ *   2. a bookmarked member — so a bookmarked trunk stays visible (and editable)
+ *      instead of hiding behind a newer unbookmarked fork;
+ *   3. the most-recently-updated member (ties broken by newest creation).
+ * Families are ordered by their most recent member, so promoting an older active
+ * or bookmarked representative never moves the row. Records with no branch links
+ * pass through unchanged.
  * @param items - Conversation summaries (or any records carrying branch fields)
- * @returns One record per family, sorted by `updatedAt` descending
+ * @param activeId - Id of the active conversation, promoted to represent its
+ *   family when present (defaults to none)
+ * @returns One record per family, ordered by family recency descending
  */
 export function collapseBranchFamilies<T extends BranchRecord>(
   items: T[],
+  activeId: string | null = null,
 ): T[] {
   const byId = new Map(items.map((item) => [item.id, item]));
-  const representatives = new Map<string, T>();
+  // root -> chosen representative plus the family's most recent updatedAt, kept
+  // together so ordering by family recency doesn't move the row when an older
+  // active/bookmarked member is promoted to represent it.
+  const families = new Map<string, { rep: T; latest: number }>();
 
   for (const item of items) {
     const root = branchRootId(item.id, byId);
-    const current = representatives.get(root);
+    const family = families.get(root);
 
-    if (!current || isNewer(item, current)) {
-      representatives.set(root, item);
+    if (!family) {
+      families.set(root, { rep: item, latest: item.updatedAt });
+    } else {
+      family.latest = Math.max(family.latest, item.updatedAt);
+
+      if (preferRepresentative(item, family.rep, activeId)) family.rep = item;
     }
   }
 
-  return [...representatives.values()].sort(
-    (a, b) => b.updatedAt - a.updatedAt,
-  );
+  return [...families.values()]
+    .sort((a, b) => b.latest - a.latest)
+    .map((family) => family.rep);
 }
 
 /**
@@ -135,6 +155,32 @@ export function computeBranchPoints<T extends BranchRecord>(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Whether `candidate` should replace `current` as its family's representative.
+ * The active conversation always wins (so its row highlights); otherwise a
+ * bookmarked member outranks an unbookmarked one (so a bookmarked trunk isn't
+ * hidden behind a newer fork); ties fall back to {@link isNewer}.
+ * @param candidate - Member being considered
+ * @param current - Current representative for the family
+ * @param activeId - Active conversation id, or null
+ * @returns True if `candidate` should become the representative
+ */
+function preferRepresentative<T extends BranchRecord>(
+  candidate: T,
+  current: T,
+  activeId: string | null,
+): boolean {
+  if (candidate.id === activeId) return true;
+  if (current.id === activeId) return false;
+
+  const candidateBookmarked = candidate.bookmarked ?? false;
+  const currentBookmarked = current.bookmarked ?? false;
+
+  if (candidateBookmarked !== currentBookmarked) return candidateBookmarked;
+
+  return isNewer(candidate, current);
+}
 
 /**
  * Whether record `a` should outrank `b` as a family representative: newer
