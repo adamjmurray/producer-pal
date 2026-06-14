@@ -157,6 +157,33 @@ the underlying provider implementation is swappable):
 - `restoreChatHistory(chatHistory)` - Loads saved history into state without
   creating an AI client (lazy — avoids MCP connection until next send)
 
+### Message Queue
+
+Users can keep sending while the AI is responding. `use-message-queue.ts` is a
+small FIFO holding `QueuedMessage[]` (`enqueueMessage`, `removeMessage`,
+`drainQueue`, `clearQueue`). It keeps both a `useState` array (for rendering the
+faded queued bubbles) and a `useRef` mirror (`queueRef`) so the send loop can
+read the queue **synchronously** mid-stream. The notable behaviors live in the
+`handleSend` loop in `use-chat.ts`, not the hook:
+
+- **Interrupt-on-new-message:** the loop snapshots
+  `queueBaseline = queueRef.current.length` at send start and passes
+  `shouldInterrupt = () => queueRef.current.length > queueBaseline` down to
+  `client.sendMessage`. The SDK client checks it **between tool steps** and
+  stops early, so enqueuing a message can cut a long tool-running turn short and
+  get to the new input sooner. It triggers only on a _newly added_ message —
+  comparing against the baseline, not "queue non-empty" — so a queue carried
+  over from a prior failed turn doesn't self-interrupt the next send.
+- **Drain-and-coalesce:** after a successful turn, `drainQueue()` returns all
+  queued messages, which are joined with blank lines into a **single** next user
+  turn (the first message's overrides apply to the merged turn).
+- **Stop clears, failure keeps:** `stopResponse`/`clearConversation` call
+  `clearQueue`; a _failed_ turn deliberately leaves the queue intact so the
+  messages stay visible and flush on the next successful send.
+
+A fork (edit/retry) does **not** drain or clear the queue — the queued messages
+are the user's words and flush on the next normal send.
+
 ### Conversation Persistence
 
 Conversations are persisted to IndexedDB so they survive page reloads. Covers
