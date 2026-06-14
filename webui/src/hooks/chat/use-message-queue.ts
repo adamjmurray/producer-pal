@@ -11,7 +11,6 @@ export interface QueuedMessage {
   id: number;
   text: string;
   overrides?: MessageOverrides;
-  timestamp: number;
 }
 
 /**
@@ -30,7 +29,6 @@ export function useMessageQueue() {
         id: nextIdRef.current++,
         text,
         overrides,
-        timestamp: Date.now(),
       };
 
       queueRef.current = [...queueRef.current, msg];

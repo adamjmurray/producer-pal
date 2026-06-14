@@ -250,7 +250,7 @@ function ConversationMeta({ conv }: { conv: ConversationSummary }) {
       {conv.totalUsage && (
         <div
           className="hidden @min-[20rem]:block truncate ml-2"
-          title="token usage (input → output)"
+          title="token usage (input [cached] → output)"
         >
           tokens: {compactNumber(conv.totalUsage.inputTokens ?? 0)}
           {(conv.totalUsage.cacheReadTokens ?? 0) > 0 &&

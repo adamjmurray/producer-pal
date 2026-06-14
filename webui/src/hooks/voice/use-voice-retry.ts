@@ -16,7 +16,10 @@ const AUTO_RETRY_MIN_DELAY_MS = 1000;
 // Cap consecutive auto-retries so a persistent rate limit can't loop forever
 // (the server's growing wait throttles the rate, but not the count). Resets on a
 // successful response or a fresh connect; once hit, the manual "Retry now"
-// button stays the escape hatch. Mirrors the chat path's retry ceiling.
+// button stays the escape hatch. Same value as the chat path's MAX_RETRY_ATTEMPTS
+// but kept as a separate constant on purpose: the semantics differ (consecutive
+// rate-limited responses here vs. per-operation retries there), so the two
+// ceilings are free to diverge.
 const MAX_AUTO_RETRY_ATTEMPTS = 5;
 
 /** A mutable numeric ref (the consecutive-auto-retry counter). */

@@ -28,8 +28,8 @@ describe("QueuedMessages", () => {
 
   it("renders queued messages with text and label", () => {
     const messages = [
-      { id: 0, text: "Follow up", timestamp: 1000 },
-      { id: 1, text: "Another", timestamp: 2000 },
+      { id: 0, text: "Follow up" },
+      { id: 1, text: "Another" },
     ];
 
     render(
@@ -50,7 +50,7 @@ describe("QueuedMessages", () => {
 
     render(
       <QueuedMessages
-        queuedMessages={[{ id: 0, text: "hi", timestamp: 1 }]}
+        queuedMessages={[{ id: 0, text: "hi" }]}
         onRemove={onRemove}
         scrollRef={ref as never}
       />,
@@ -61,11 +61,39 @@ describe("QueuedMessages", () => {
     });
   });
 
+  it("does not scroll again when a queued message is removed", () => {
+    const ref = { current: { scrollIntoView: vi.fn() } };
+    const { rerender } = render(
+      <QueuedMessages
+        queuedMessages={[
+          { id: 0, text: "First" },
+          { id: 1, text: "Second" },
+        ]}
+        onRemove={onRemove}
+        scrollRef={ref as never}
+      />,
+    );
+
+    // Initial mount with a non-empty queue scrolls once (a message arrived).
+    expect(ref.current.scrollIntoView).toHaveBeenCalledTimes(1);
+
+    // Removing one (length 2 -> 1) must not yank the view back to the bottom.
+    rerender(
+      <QueuedMessages
+        queuedMessages={[{ id: 0, text: "First" }]}
+        onRemove={onRemove}
+        scrollRef={ref as never}
+      />,
+    );
+
+    expect(ref.current.scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
   it("renders a remove button for each queued message", () => {
     const messages = [
-      { id: 0, text: "First", timestamp: 1000 },
-      { id: 1, text: "Second", timestamp: 2000 },
-      { id: 2, text: "Third", timestamp: 3000 },
+      { id: 0, text: "First" },
+      { id: 1, text: "Second" },
+      { id: 2, text: "Third" },
     ];
 
     render(
@@ -86,8 +114,8 @@ describe("QueuedMessages", () => {
   it("calls onRemove with message id when X button is clicked", () => {
     const remove = vi.fn();
     const messages = [
-      { id: 5, text: "First", timestamp: 1000 },
-      { id: 8, text: "Second", timestamp: 2000 },
+      { id: 5, text: "First" },
+      { id: 8, text: "Second" },
     ];
 
     render(

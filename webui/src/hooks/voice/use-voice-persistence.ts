@@ -136,7 +136,10 @@ export function useVoicePersistence(
   }, [activeConversationId]);
 
   const refreshList = useCallback(async () => {
-    setConversations(await listConversations());
+    // Pass the active id (as the chat path does) so its branch family is
+    // represented by the conversation being viewed, keeping the list highlight
+    // on the active sibling.
+    setConversations(await listConversations(activeIdRef.current));
   }, []);
 
   const setActiveId = useCallback((id: string | null) => {

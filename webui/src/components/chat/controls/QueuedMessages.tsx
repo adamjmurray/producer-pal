@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Fragment } from "preact";
-import { useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 
 interface QueuedMessagesProps {
@@ -27,8 +27,18 @@ export function QueuedMessages({
   onRemove,
   scrollRef,
 }: QueuedMessagesProps) {
+  const prevCountRef = useRef(0);
+
   useEffect(() => {
-    if (queuedMessages.length > 0) {
+    // Scroll only when a message was ADDED, not when one is removed. Removing a
+    // queued bubble (length decreases) must not yank a user who scrolled up to
+    // read history back to the bottom. Mirrors useScrollOnUserMessage.
+    const count = queuedMessages.length;
+    const grew = count > prevCountRef.current;
+
+    prevCountRef.current = count;
+
+    if (grew) {
       scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [queuedMessages, scrollRef]);

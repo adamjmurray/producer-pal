@@ -38,11 +38,6 @@ interface ConversationActionsDeps<
 }
 
 interface ConversationActionsReturn {
-  forkConversation: (
-    mergedMessageIndex: number,
-    newMessage: string,
-    anchorIndex?: number,
-  ) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
 }
@@ -187,5 +182,8 @@ export function useConversationActions<
     [forkConversation],
   );
 
-  return { forkConversation, handleRetry, handleEdit };
+  // forkConversation is intentionally not exported: it's the lower-level
+  // primitive that handleRetry/handleEdit wrap with the correct anchor. Callers
+  // should go through those so the ‹ n/m › arrows always anchor consistently.
+  return { handleRetry, handleEdit };
 }

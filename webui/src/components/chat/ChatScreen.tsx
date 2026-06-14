@@ -64,6 +64,9 @@ interface ChatScreenProps {
  * @param props.rateLimitState - Rate limit retry state
  * @param props.toolLimitReached - Whether the last response hit the tool-call limit
  * @param props.handleSend - Send message handler
+ * @param props.enqueueMessage - Queue a message while the assistant is responding
+ * @param props.queuedMessages - Messages waiting to be sent
+ * @param props.onRemoveQueued - Remove a queued message by id
  * @param props.handleRetry - Retry message handler
  * @param props.handleEdit - Edit message handler
  * @param props.handleCompact - Compact-up-to-here handler
@@ -81,6 +84,7 @@ interface ChatScreenProps {
  * @param props.onStop - Stop response callback
  * @param props.showTimestamps - Whether to show message timestamps
  * @param props.conversationPanel - Conversation history panel state
+ * @param props.branchNav - Sibling-branch paging state for the ‹ n/m › arrows
  * @returns Chat screen element
  */
 export function ChatScreen(props: ChatScreenProps) {

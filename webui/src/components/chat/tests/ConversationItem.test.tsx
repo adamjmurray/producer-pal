@@ -49,7 +49,7 @@ describe("ConversationItem", () => {
       });
 
       const usageDiv = container.querySelector(
-        '[title="token usage (input → output)"]',
+        '[title="token usage (input [cached] → output)"]',
       );
 
       const usage = usageDiv as HTMLElement;
@@ -72,7 +72,7 @@ describe("ConversationItem", () => {
       });
 
       const usage = container.querySelector(
-        '[title="token usage (input → output)"]',
+        '[title="token usage (input [cached] → output)"]',
       ) as HTMLElement;
 
       expect(usage.textContent).toContain("9K cached");
