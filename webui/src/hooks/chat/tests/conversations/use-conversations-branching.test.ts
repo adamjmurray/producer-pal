@@ -169,4 +169,31 @@ describe("useConversations branching", () => {
     expect(saved?.forkedAtIndex).toBeUndefined();
     expect(pendingForkRef.current).toBeNull();
   });
+
+  it("consumes a leaked fork signal on an empty-history save so a later save isn't mis-branched", async () => {
+    const { result, state, pendingForkRef } = await setupForkHook();
+
+    await save(result, state, ORIGINAL);
+    const originalId = result.current.activeConversationId!;
+
+    // A fork aborted before streaming any content (e.g. edit the first message,
+    // then Stop) reaches the save with empty history. The signal must be
+    // consumed here even though there's nothing to persist...
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, []);
+
+    expect(pendingForkRef.current).toBeNull(); // consumed despite empty history
+    expect(result.current.activeConversationId).toBe(originalId); // no new record
+
+    // ...so the next, unrelated save continues the original conversation rather
+    // than consuming the stale signal and branching a spurious sibling.
+    await save(result, state, [...ORIGINAL, { role: "user", content: "more" }]);
+
+    expect(result.current.activeConversationId).toBe(originalId);
+
+    const saved = await loadConversation(originalId);
+
+    expect(saved?.forkParentId).toBeUndefined();
+    expect(await listConversations()).toHaveLength(1);
+  });
 });
