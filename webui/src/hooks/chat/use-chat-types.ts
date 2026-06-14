@@ -133,7 +133,12 @@ export interface UseChatReturn {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
-  /** Compact the conversation up to and including the given UI message */
+  /**
+   * Compact the conversation: summarize the full visible history into a single
+   * appended summary marker. Prior turns stay visible but drop out of the model
+   * payload. The index only validates the trigger (the gating UI message), not a
+   * cut point.
+   */
   compact: (mergedMessageIndex: number) => Promise<void>;
   /** Restore the pre-compaction history (while still available) */
   undoCompaction: () => void;
