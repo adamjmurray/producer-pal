@@ -438,6 +438,8 @@ Rules:
 - `dev/Arrangement-Operations.md` - Live API constraints, arrangement
   algorithms, and edge cases
 - `dev/Chat-UI.md` - Web UI architecture and development
+- `dev/Conversation-Branching.md` - Conversation forking (edit/retry), sibling
+  branch navigation, and history-panel family collapse
 - `dev/Coding-Standards.md` - Code style, patterns, and rules
 - `dev/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
 - `dev/Documentation-Site.md` - VitePress documentation site setup and

@@ -160,7 +160,13 @@ the underlying provider implementation is swappable):
 ### Conversation Persistence
 
 Conversations are persisted to IndexedDB so they survive page reloads. Covers
-save, load, switch, rename, delete, and auto-titling.
+save, load, switch, rename, delete, and auto-titling. Forked conversations
+(edit/retry branches) add `forkParentId`/`forkedAtIndex` linkage and a
+sibling-navigation UI — see
+[Conversation-Branching.md](./Conversation-Branching.md) for that model. The
+`ConversationRecord` definition in `lib/conversation-db.ts` is the source of
+truth for the full field list (the snippet below is illustrative, not
+exhaustive).
 
 **Storage**: IndexedDB via `idb` library. Database:
 `producer-pal-conversations`, single `conversations` object store with
