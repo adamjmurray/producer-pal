@@ -304,7 +304,7 @@ describe("useChat", () => {
       expect(mockAdapter.formatMessages).toHaveBeenCalled();
     });
 
-    it("does not signal a fork (retry regenerates in place)", async () => {
+    it("signals a fork anchored under the assistant response", async () => {
       const pendingForkRef = { current: null as PendingFork | null };
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, pendingForkRef }),
@@ -322,9 +322,12 @@ describe("useChat", () => {
         await result.current.handleRetry(userMessageIndex);
       });
 
-      // Retry must not branch: the signal stays unset so the next save
-      // overwrites the active record in place (unlike edit, which branches).
-      expect(pendingForkRef.current).toBeNull();
+      // Retry branches like an edit, but the ‹ n/m › arrows anchor under the
+      // assistant response (user index + 1) — the prompt is unchanged across
+      // retries, only the response varies.
+      expect(pendingForkRef.current).toStrictEqual({
+        anchorIndex: userMessageIndex + 1,
+      });
     });
 
     it("slices history to exclude retry point and everything after", async () => {

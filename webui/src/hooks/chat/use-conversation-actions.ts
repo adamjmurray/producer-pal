@@ -41,7 +41,7 @@ interface ConversationActionsReturn {
   forkConversation: (
     mergedMessageIndex: number,
     newMessage: string,
-    createBranch?: boolean,
+    anchorIndex?: number,
   ) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
@@ -78,7 +78,7 @@ export function useConversationActions<
     async (
       mergedMessageIndex: number,
       newMessage: string,
-      createBranch = true,
+      anchorIndex = mergedMessageIndex,
     ) => {
       if (!apiKey) return;
 
@@ -112,14 +112,15 @@ export function useConversationActions<
 
         abortControllerRef.current = controller;
 
-        // Signal the branch only for edits (createBranch). Retry passes
-        // createBranch = false and leaves the signal unset, so the next save
-        // overwrites the active record in place — a plain regenerate, no sibling
-        // (the previous response is discarded). Set here — not before
-        // initializeChat — so a failed init never leaves a stale signal for a
-        // later normal save.
-        if (createBranch && pendingForkRef) {
-          pendingForkRef.current = { anchorIndex: mergedMessageIndex };
+        // Signal the branch now that init has succeeded and streaming is about
+        // to start: the imminent save consumes it and writes a new sibling
+        // record. anchorIndex is where the ‹ n/m › arrows sit — the user message
+        // for an edit (its default), or the assistant response for a retry (so
+        // the arrows page through alternate responses, not the unchanged
+        // prompt). Set here — not before initializeChat — so a failed init never
+        // leaves a stale signal for a later normal save.
+        if (pendingForkRef) {
+          pendingForkRef.current = { anchorIndex };
         }
 
         await executeWithRetry({
@@ -162,9 +163,15 @@ export function useConversationActions<
 
       if (!userMessage) return;
 
-      // Retry regenerates in place — pass createBranch = false so the active
-      // conversation's response is replaced rather than forked into a sibling.
-      await forkConversation(mergedMessageIndex, userMessage, false);
+      // Retry forks like an edit, but anchors the ‹ n/m › arrows under the
+      // assistant response (mergedMessageIndex + 1) rather than the user message:
+      // the prompt is unchanged across retries, only the response varies. One
+      // assistant turn is a single UIMessage, so +1 is always that response.
+      await forkConversation(
+        mergedMessageIndex,
+        userMessage,
+        mergedMessageIndex + 1,
+      );
     },
     [messages, adapter, forkConversation, clientRef, pendingHistoryRef],
   );
