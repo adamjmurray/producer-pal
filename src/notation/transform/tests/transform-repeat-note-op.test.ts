@@ -232,6 +232,19 @@ describe("note-count operation: repeat", () => {
       );
     });
 
+    it("skips a copy count that arithmetic-evaluates to NaN", () => {
+      // A ~400-digit literal parses to Infinity; Infinity - Infinity = NaN.
+      // Plain arithmetic (unlike pow) doesn't throw, so the explicit finite
+      // guard in resolveRepeatCopies is what turns this into a warn-and-skip
+      // rather than a silent zero-copy no-op.
+      const big = "1" + "0".repeat(400);
+
+      expectRepeatWarnsAndSkips(
+        `repeat(n/4, ${big} - ${big})`,
+        "must be a finite number",
+      );
+    });
+
     it("clamps a copy count above the cap and still echoes", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const notes = createTestNote({ start_time: 0, duration: 0.1 });

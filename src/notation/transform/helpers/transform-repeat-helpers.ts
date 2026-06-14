@@ -155,8 +155,8 @@ function resolveRepeatCopies(
 
   try {
     // Args are constants (no per-note context); a count evaluates to a number.
-    // evaluateExpression throws on a non-finite result (e.g. an overflow), so a
-    // returned value is always finite here.
+    // evaluateExpression only throws on non-finite for pow(); plain arithmetic
+    // can still overflow to ±Infinity or yield NaN, so guard explicitly below.
     value = evaluateExpression(arg, 0, numerator, denominator, {
       start: 0,
       end: 0,
@@ -165,6 +165,16 @@ function resolveRepeatCopies(
     console.warn(
       `repeat() copy count could not be evaluated (${errorMessage(error)}); skipping`,
     );
+
+    return null;
+  }
+
+  // A non-finite count (e.g. Infinity - Infinity = NaN) would slip past both
+  // guards below — NaN < 1 and NaN > MAX are both false — and the caller's
+  // `k <= NaN` loop would silently emit zero copies. Warn-and-skip instead,
+  // mirroring resolveRatchetPlan.
+  if (!Number.isFinite(value)) {
+    console.warn(`repeat() copy count must be a finite number; skipping`);
 
     return null;
   }
