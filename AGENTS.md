@@ -331,7 +331,8 @@ functions for clarity.
   (verifies the AI can use tools correctly, not just that tools work):
   - Run `scripts/chat --help` to see available options
   - Always use `-1` (or `--once`) to exit after one response
-  - Example: `scripts/chat -p gemini -1 "list tracks in the set"`
+  - Example:
+    `scripts/chat -m google/gemini-2.0-flash -1 "list tracks in the set"`
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.ts"`

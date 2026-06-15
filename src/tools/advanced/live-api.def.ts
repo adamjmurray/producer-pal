@@ -60,7 +60,7 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
             .union([z.string(), z.number(), z.boolean(), z.array(z.number())])
             .optional()
             .describe(
-              "Value for set_property/set operations, path for goto operations, or color for setColor operations (color is array of numbers)",
+              'Value for set_property/set operations, path for goto operations, or color for setColor operations (a "#RRGGBB" hex string)',
             ),
         }),
       )
