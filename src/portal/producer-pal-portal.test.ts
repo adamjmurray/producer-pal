@@ -33,9 +33,11 @@ vi.mock(import("./file-logger.ts"), () => ({
 describe("producer-pal-portal", () => {
   const originalArgv = process.argv;
   const originalSmallModelMode = process.env.SMALL_MODEL_MODE;
+  const originalOrigin = process.env.MCP_SERVER_ORIGIN;
 
   beforeEach(() => {
     delete process.env.SMALL_MODEL_MODE;
+    delete process.env.MCP_SERVER_ORIGIN;
   });
 
   afterEach(() => {
@@ -45,6 +47,12 @@ describe("producer-pal-portal", () => {
       process.env.SMALL_MODEL_MODE = originalSmallModelMode;
     } else {
       delete process.env.SMALL_MODEL_MODE;
+    }
+
+    if (originalOrigin !== undefined) {
+      process.env.MCP_SERVER_ORIGIN = originalOrigin;
+    } else {
+      delete process.env.MCP_SERVER_ORIGIN;
     }
   });
 
@@ -63,6 +71,14 @@ describe("producer-pal-portal", () => {
 
     expect(mockBridge.start).toHaveBeenCalled();
     expect(calls[0]?.[0]).toMatch(/^http:\/\/localhost:\d+\/mcp$/);
+  });
+
+  it("strips a trailing slash from MCP_SERVER_ORIGIN to avoid //mcp", async () => {
+    process.env.MCP_SERVER_ORIGIN = "http://localhost:3350/";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[0]).toBe("http://localhost:3350/mcp");
   });
 
   it("passes smallModelMode: false when no flag or env var", async () => {
