@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - "docs/**"
-      - "src/shared/version.ts"
+      - "src/shared/config.ts"
       - "src/tools/**"
       - "src/skills/**"
       - "scripts/build-and-release/generate-tool-schema-docs.ts"
