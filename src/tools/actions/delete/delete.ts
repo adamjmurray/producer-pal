@@ -85,12 +85,26 @@ export function deleteObject(
 
   const deletedObjects: DeleteResult[] = [];
 
-  // Validate all objects exist and are the correct type before deleting any
+  // Validate all objects exist and are the correct type before deleting any.
+  // De-dup by resolved id: a repeated id (or an id and a path pointing at the
+  // same object) must be deleted once. A second positional delete would shift
+  // onto and remove a different object.
+  const seenIds = new Set<string>();
   const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
     skipInvalid: true,
-  }).map((object) => ({ id: object.id, object }));
+  })
+    .map((object) => ({ id: object.id, object }))
+    .filter(({ id }) => {
+      if (seenIds.has(id)) return false;
 
-  // Now delete all objects (in reverse order for tracks/scenes to maintain indices)
+      seenIds.add(id);
+
+      return true;
+    });
+
+  // Tracks, scenes, and devices delete by position, so an earlier delete shifts
+  // later siblings. Sort highest-index-first so each delete targets the right
+  // object.
   if (type === "track" || type === "scene") {
     // Sort by index in descending order to delete from highest to lowest index
     objectsToDelete.sort((a, b) => {
@@ -104,6 +118,10 @@ export function deleteObject(
 
       return indexB - indexA; // Descending order
     });
+  } else if (type === "device") {
+    objectsToDelete.sort((a, b) =>
+      compareDevicesForDeletion(a.object, b.object),
+    );
   }
 
   for (const { id, object } of objectsToDelete) {
@@ -218,6 +236,53 @@ function deleteClipObject(id: string, object: LiveAPI): boolean {
   track.call("delete_clip", toLiveApiId(object.id));
 
   return true;
+}
+
+/**
+ * Orders devices for safe positional deletion. `delete_device N` removes by
+ * index within a parent, so two rules keep an earlier delete from shifting a
+ * later target onto the wrong device: descendants before ancestors (deleting an
+ * ancestor rack invalidates a nested device's parent path), then highest index
+ * first among siblings sharing a parent.
+ * @param a - First device
+ * @param b - Second device
+ * @returns Negative if a deletes first, positive if b deletes first
+ */
+function compareDevicesForDeletion(a: LiveAPI, b: LiveAPI): number {
+  const keyA = getDeviceDeleteKey(a);
+  const keyB = getDeviceDeleteKey(b);
+
+  if (keyA.parentPath !== keyB.parentPath) {
+    // A descendant's parent path strictly contains its ancestor's full path, so
+    // it is always longer — deeper (longer) parent first deletes the nested
+    // device before the rack that holds it.
+    return keyB.parentPath.length - keyA.parentPath.length;
+  }
+
+  return keyB.deviceIndex - keyA.deviceIndex; // Descending index among siblings
+}
+
+/**
+ * Extracts a device's deletion sort key: the parent path it is deleted from and
+ * its positional index within that parent (the last `devices N` segment).
+ * @param object - The device LiveAPI object
+ * @returns Parent path and device index (NaN index when the path has no device segment)
+ */
+function getDeviceDeleteKey(object: LiveAPI): {
+  parentPath: string;
+  deviceIndex: number;
+} {
+  const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];
+  const lastMatch = deviceMatches.at(-1);
+
+  if (!lastMatch) {
+    return { parentPath: object.path, deviceIndex: Number.NaN };
+  }
+
+  return {
+    parentPath: object.path.substring(0, lastMatch.index).trim(),
+    deviceIndex: Number(lastMatch[1]),
+  };
 }
 
 /**

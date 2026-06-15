@@ -88,6 +88,86 @@ describe("deleteObject device deletion", () => {
     );
   });
 
+  it("should delete sibling devices on the same parent highest-index-first", () => {
+    // Regression: delete_device is positional, so removing index 0 first shifts
+    // index 1 down to 0 — the second delete would then hit the wrong device.
+    const { parents } = setupDeviceMocks(["device_0_0", "device_0_1"], {
+      device_0_0: String(livePath.track(0).device(0)),
+      device_0_1: String(livePath.track(0).device(1)),
+    });
+
+    const result = deleteObject({
+      ids: "device_0_0,device_0_1",
+      type: "device",
+    });
+
+    const parent = parents.get(String(livePath.track(0)));
+
+    expect(parent?.call).toHaveBeenNthCalledWith(1, "delete_device", 1);
+    expect(parent?.call).toHaveBeenNthCalledWith(2, "delete_device", 0);
+
+    expect(result).toStrictEqual([
+      { id: "device_0_1", type: "device", deleted: true },
+      { id: "device_0_0", type: "device", deleted: true },
+    ]);
+  });
+
+  it("should delete a device referenced by a duplicate id only once", () => {
+    const { parents } = setupDeviceMocks(
+      "dupe_device",
+      String(livePath.track(0).device(1)),
+    );
+
+    const result = deleteObject({
+      ids: "dupe_device, dupe_device",
+      type: "device",
+    });
+
+    const parent = parents.get(String(livePath.track(0)));
+
+    // De-duped to one delete; a second positional delete would remove the
+    // neighbor that shifted down into index 1.
+    expect(parent?.call).toHaveBeenCalledTimes(1);
+    expect(parent?.call).toHaveBeenCalledWith("delete_device", 1);
+    expect(result).toStrictEqual({
+      id: "dupe_device",
+      type: "device",
+      deleted: true,
+    });
+  });
+
+  it("should skip a malformed device path while still deleting valid ones", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { parents } = setupDeviceMocks(["good_device", "bad_device"], {
+      good_device: String(livePath.track(0).device(0)),
+      bad_device: "invalid_path_without_devices",
+    });
+
+    const result = deleteObject({
+      ids: "good_device,bad_device",
+      type: "device",
+    });
+
+    expect(result).toStrictEqual(
+      expect.arrayContaining([
+        { id: "good_device", type: "device", deleted: true },
+        { id: "bad_device", type: "device", deleted: false },
+      ]),
+    );
+    expect(result).toHaveLength(2);
+    expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
+      "delete_device",
+      0,
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'could not find device index in path "invalid_path_without_devices"',
+      ),
+    );
+    warnSpy.mockRestore();
+  });
+
   it("should warn and skip when device path is malformed", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const id = "device_0";
