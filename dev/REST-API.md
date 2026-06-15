@@ -80,7 +80,7 @@ MCP client  → MCP server   → Zod validation → callLiveApi() → Max V8 →
 
 Key files:
 
-- `src/mcp-server/rest-api-routes.ts` — REST route handlers
+- `src/mcp-server/routes/rest-api-routes.ts` — REST route handlers
 - `src/mcp-server/create-express-app.ts` — Express app setup (wires in REST
   routes)
 - `src/mcp-server/max-api-adapter.ts` — `callLiveApi()` implementation

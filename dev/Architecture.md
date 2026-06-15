@@ -153,7 +153,7 @@ point for the V8 Max object.
 
 Musical notation parser and utilities for creating and manipulating MIDI clips.
 
-**Grammar:** `src/notation/barbeat/barbeat-grammar.peggy`
+**Grammar:** `src/notation/barbeat/parser/barbeat-grammar.peggy`
 
 ## Build System
 
@@ -177,7 +177,8 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
 ### Portal Bundle
 
 - **Entry:** `src/portal/producer-pal-portal.ts`
-- **Output:** `release/producer-pal-portal.js`
+- **Output:** `claude-desktop-extension/producer-pal-portal.js` and
+  `npm/producer-pal-portal.js`
 - **Target:** Node.js (standalone process)
 - **Dependencies:** Bundled for distribution (zero runtime dependencies)
 - **Purpose:** stdio-to-HTTP adapter for Claude Desktop Extension
@@ -246,7 +247,7 @@ changes yet.
 
 ## Versioning
 
-Semantic versioning (major.minor.patch) maintained in `src/shared/version.ts`:
+Semantic versioning (major.minor.patch) maintained in `src/shared/config.ts`:
 
 - Displayed in server startup logs
 - Sent to MCP SDK as server version
