@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -691,6 +692,20 @@ describe("parseTimeSignature", () => {
     );
     expect(() => parseTimeSignature("4/-4")).toThrow(
       'Time signature must be in format "n/m" (e.g. "4/4")',
+    );
+  });
+
+  it("throws error for a zero numerator or denominator", () => {
+    // "4/0" matches the format regex but a zero denominator is NaN/div-by-zero
+    // downstream; "0/4" is meaningless. Both must be rejected as positive.
+    expect(() => parseTimeSignature("4/0")).toThrow(
+      "numerator and denominator must be positive",
+    );
+    expect(() => parseTimeSignature("0/4")).toThrow(
+      "numerator and denominator must be positive",
+    );
+    expect(() => parseTimeSignature("0/0")).toThrow(
+      "numerator and denominator must be positive",
     );
   });
 

@@ -120,10 +120,19 @@ export function parseTimeSignature(timeSignature: string): {
     throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
   }
 
-  return {
-    numerator: Number.parseInt(match[1] as string),
-    denominator: Number.parseInt(match[2] as string),
-  };
+  const numerator = Number.parseInt(match[1] as string);
+  const denominator = Number.parseInt(match[2] as string);
+
+  // Guard against zero: "4/0" matches the format regex but a zero denominator
+  // yields NaN/divide-by-zero downstream (beats-per-bar math), and "0/4" is
+  // meaningless. The regex already excludes negatives and decimals.
+  if (numerator < 1 || denominator < 1) {
+    throw new Error(
+      `Time signature numerator and denominator must be positive (got "${timeSignature}")`,
+    );
+  }
+
+  return { numerator, denominator };
 }
 
 /**
