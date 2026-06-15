@@ -506,7 +506,10 @@ C1: merge()           // glue all the kick hits into one sustained note
   (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the grid+offset
   form instead. A **0-indexed bound** (`1|0-2|1`) is rejected too: beats count
   from 1 in time ranges just as in note positions (the downbeat is beat 1; for a
-  pickup before it, offset from beat 1 — `1|1-n/4`).
+  pickup before it, offset from beat 1 — `1|1-n/4`). A **descending range** (end
+  before start) is rejected for both ordinary ranges (`2|1-1|1`) and whole-bar
+  spans (`3|*-1|*`), mirroring the pitch-range guard; equal bounds (a point
+  range or single-bar span like `3|*-3|*`) stay valid.
 
 - **`where(...)` predicate filter** (optional): a boolean test on note
   properties that further narrows which notes a line touches, **AND-combined**

@@ -466,6 +466,12 @@ pitchAccidental
 // `start-end` first; only a point with no `-` separator falls through to it.
 timeRange "time range"
   = startBar:oneOrMoreInt "|" "*" "-" endBar:oneOrMoreInt "|" "*" {
+    // Reject a descending span, mirroring the beatValue range guard below: an
+    // end bar before the start bar silently selected nothing (a warn-free no-op).
+    // Equal bars stay valid (`3|*-3|*` == `3|*`).
+    if (endBar < startBar) {
+      throw new Error(`Invalid time range: end ${endBar}|* is before start ${startBar}|*`);
+    }
     return { startBar, startBeat: 1, endBar: endBar + 1, endBeat: 1, endExclusive: true };
   }
   / bar:oneOrMoreInt "|" "*" {
