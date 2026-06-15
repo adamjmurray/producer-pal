@@ -3,17 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  barBeatToAbletonBeats,
-  validateBarBeatPosition,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   isTakeLaneClip,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
@@ -23,15 +18,13 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import {
-  parseArrangementStartList,
-  parseSlotList,
-} from "#src/tools/shared/validation/position-parsing.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.ts";
 import { duplicateClipsToTakeLane } from "./duplicate-take-lane-helpers.ts";
+import { resolveArrangementPositions } from "./duplicate-validation-helpers.ts";
 
 /**
  * Duplicates a clip to explicit positions
@@ -108,8 +101,9 @@ export async function duplicateClipWithPositions(
       "signature_denominator",
     ) as number;
 
-    // Resolve positions from locator (single) or bar|beat (multiple)
-    const positionsInBeats = resolveClipArrangementPositions(
+    // Resolve positions from locator or bar|beat (both comma-separated for
+    // multiple); shared with scene duplication.
+    const positionsInBeats = resolveArrangementPositions(
       liveSet,
       arrangementStart,
       locator,
@@ -173,37 +167,4 @@ export async function duplicateClipWithPositions(
   }
 
   return createdObjects;
-}
-
-/**
- * Resolves clip arrangement positions from bar|beat or locator
- * @param liveSet - The live_set LiveAPI object
- * @param arrangementStart - Comma-separated bar|beat positions
- * @param locator - Arrangement locator ID(s) or name(s) for position
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @returns Array of positions in beats
- */
-function resolveClipArrangementPositions(
-  liveSet: LiveAPI,
-  arrangementStart: string | undefined,
-  locator: string | undefined,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): number[] {
-  // Locator-based: supports comma-separated for multiple positions
-  if (locator != null) {
-    return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
-  }
-
-  // Bar|beat positions: multiple positions supported. Validate each standalone
-  // position first so a 0-indexed/zero-bar one gets the 1-indexing steer, not a
-  // silent pre-origin beat.
-  const positions = parseArrangementStartList(arrangementStart);
-
-  return positions.map((pos) => {
-    validateBarBeatPosition(pos);
-
-    return barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator);
-  });
 }

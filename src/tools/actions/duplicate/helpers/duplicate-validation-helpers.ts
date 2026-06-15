@@ -9,12 +9,15 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
+import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
- * Resolves arrangement positions from bar|beat or locator(s).
- * Supports comma-separated locator IDs and names for multiple positions.
+ * Resolves arrangement positions from bar|beat or locator(s). Supports
+ * comma-separated bar|beat positions and comma-separated locator IDs/names for
+ * multiple positions. Shared by clip and scene duplication so both honor the
+ * schema's comma-separated promise (scenes previously threw on a list).
  * @param liveSet - The live_set LiveAPI object
- * @param arrangementStart - Bar|beat position
+ * @param arrangementStart - Bar|beat position(s), comma-separated for multiple
  * @param locator - Arrangement locator ID(s) or name(s), comma-separated
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -31,17 +34,13 @@ export function resolveArrangementPositions(
     return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
   }
 
-  // Validate the standalone position first so a 0-indexed/zero-bar arrangement
+  // Validate each standalone position first so a 0-indexed/zero-bar arrangement
   // start gets the 1-indexing steer, not a silent pre-origin beat.
-  validateBarBeatPosition(arrangementStart as string);
+  return parseArrangementStartList(arrangementStart).map((pos) => {
+    validateBarBeatPosition(pos);
 
-  return [
-    barBeatToAbletonBeats(
-      arrangementStart as string,
-      timeSigNumerator,
-      timeSigDenominator,
-    ),
-  ];
+    return barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator);
+  });
 }
 
 /**

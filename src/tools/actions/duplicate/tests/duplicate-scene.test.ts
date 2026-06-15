@@ -32,6 +32,24 @@ interface DuplicateSceneResult {
   clips: DuplicateClipResult[];
 }
 
+const SCENE_CLIP_ID = "id live_set/tracks/0/clip_slots/0/clip";
+
+/**
+ * Assert the scene's source clip was duplicated to the arrangement at a beat.
+ * @param track - Track mock holding the duplicate_clip_to_arrangement method
+ * @param beat - Expected arrangement start beat
+ */
+function expectSceneDupAtBeat(
+  track: ReturnType<typeof registerTrackWithArrangementDup>,
+  beat: number,
+): void {
+  expect(track.call).toHaveBeenCalledWith(
+    "duplicate_clip_to_arrangement",
+    SCENE_CLIP_ID,
+    beat,
+  );
+}
+
 describe("duplicate - scene duplication", () => {
   it("should duplicate a single scene to session view (default behavior)", async () => {
     const liveSet = setupSessionSceneMocks();
@@ -328,6 +346,34 @@ describe("duplicate - scene duplication", () => {
             },
           ],
         },
+      ]);
+    });
+
+    it("places a single scene at comma-separated arrangementStart positions", async () => {
+      setupArrangementSceneMocks(1);
+
+      registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+      const track0 = registerTrackWithArrangementDup(0);
+
+      registerArrangementClip(0, 0, 16);
+      registerArrangementClip(0, 1, 32);
+
+      // Regression: a comma-separated arrangementStart threw for scenes while it
+      // worked for clips. Both explicit positions are now honored: 5|1 -> beat
+      // 16, 9|1 -> beat 32 (count defaults to 1, so no sequential expansion).
+      const result = (await duplicate({
+        type: "scene",
+        id: "scene1",
+        arrangementStart: "5|1, 9|1",
+        name: "Scene Copy",
+      })) as DuplicateSceneResult[];
+
+      expectSceneDupAtBeat(track0, 16);
+      expectSceneDupAtBeat(track0, 32);
+      expect(result.map((r) => r.arrangementStart)).toStrictEqual([
+        "5|1",
+        "9|1",
       ]);
     });
 
