@@ -47,11 +47,21 @@ merge(0); // glue only touching/overlapping same-pitch notes
 merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
 
-**Argument counts are enforced uniformly.** A call with too few _or_ too many
-arguments (counting only positional args — the trailing `sync`/`raw` keywords
-are not arguments) warns and skips that assignment line rather than guessing
-intent; later lines still run. Extra arguments are never silently dropped. The
-warning is relayed once per malformed line, not once per affected note.
+**Bad argument counts warn rather than fail silently** (counting only positional
+args — the trailing `sync`/`raw` keywords are not arguments), and the warning is
+relayed once per malformed line, not once per affected note. Handling differs by
+call kind:
+
+- **Expression functions** (`cos`, `ramp`, the math helpers, …): too few _or_
+  too many arguments makes the assignment apply no change — the matched notes
+  pass through unchanged rather than the call guessing intent — and later lines
+  still run.
+- **Note-count operations** (`ratchet`, `repeat`, `split`, `merge`): a missing
+  required argument skips the operation (matched notes pass through), but
+  **extra** arguments warn and the call proceeds using the leading argument(s)
+  it expects — `ratchet`/`merge` use the first, `repeat` uses the first two.
+  `split` is variadic (any number of cut positions, so no "too many" case) and
+  `merge()` with no argument is its valid span-all default.
 
 ## Parameters
 
