@@ -186,12 +186,19 @@ export function processSingleClipUpdate(
 
   if (isAudioClip) {
     handleAudioClipUpdate(clip, clipContext, params);
+
+    // Audio clips can't hold MIDI notes. Warn-and-skip rather than letting the
+    // note write throw (mirrors create-clip's guard) so a multi-clip batch
+    // keeps going. Transforms are still applied above by handleAudioClipUpdate.
+    if (notationString != null) {
+      console.warn("notes parameter ignored for audio clip");
+    }
   }
 
   // Handle note updates (transforms already applied for audio clips above)
   const noteUpdateResult = handleNoteUpdates(
     clip,
-    notationString,
+    isAudioClip ? undefined : notationString,
     isAudioClip ? undefined : transformString,
     isAudioClip ? undefined : preTransformString,
     timeSigNumerator,
