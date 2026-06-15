@@ -275,9 +275,16 @@ export async function searchConversations(query: string): Promise<Set<string>> {
   for (const raw of all) {
     const record = normalizeLegacyRecord(raw);
     const inTitle = record.title?.toLowerCase().includes(needle) ?? false;
-    const inMessages = record.messages.some((m) =>
-      m.content.toLowerCase().includes(needle),
-    );
+    // Cast to unknown per element: a corrupt/imported record can carry a
+    // malformed message (null, or no string content) despite the static type,
+    // and `m.content.toLowerCase()` would throw. Skip such entries.
+    const inMessages = (record.messages as unknown[]).some((m) => {
+      const content = (m as { content?: unknown } | null)?.content;
+
+      return (
+        typeof content === "string" && content.toLowerCase().includes(needle)
+      );
+    });
     const inVoice = extractVoiceTranscriptText(record.voiceHistory)
       .toLowerCase()
       .includes(needle);

@@ -338,6 +338,23 @@ describe("conversation-db", () => {
     expect(matches.has(b.id)).toBe(false);
   });
 
+  it("searchConversations tolerates a message lacking string content (no crash)", async () => {
+    // A corrupt record (older build / direct DB write) whose message has no
+    // string content must be skipped by search, not throw on
+    // m.content.toLowerCase().
+    const corrupt = createRecord({
+      // an object without string content, and a null element
+      messages: [
+        { role: "user" },
+        null,
+      ] as unknown as ConversationRecord["messages"],
+    });
+
+    await saveConversation(corrupt);
+
+    await expect(searchConversations("anything")).resolves.toBeInstanceOf(Set);
+  });
+
   it("searchConversations matches on voice transcript text", async () => {
     const voice = createRecord({
       sessionType: "voice",

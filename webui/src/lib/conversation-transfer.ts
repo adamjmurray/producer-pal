@@ -134,7 +134,24 @@ function validateRecord(record: Record<string, unknown>): boolean {
   return (
     typeof record.id === "string" &&
     typeof record.createdAt === "number" &&
-    Array.isArray(record.messages)
+    Array.isArray(record.messages) &&
+    record.messages.every(isValidImportedMessage)
+  );
+}
+
+/**
+ * Validate a single imported message has the minimum shape search relies on.
+ * Without this, a message lacking a string `content` is saved and later crashes
+ * `searchConversations` (`m.content.toLowerCase()`). Voice records have an empty
+ * messages array (transcript lives in voiceHistory), so they pass vacuously.
+ * @param message - Raw parsed message element
+ * @returns Whether the message has a string content field
+ */
+function isValidImportedMessage(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    typeof (message as { content?: unknown }).content === "string"
   );
 }
 

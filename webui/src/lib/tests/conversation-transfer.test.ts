@@ -131,13 +131,17 @@ describe("conversation-transfer", () => {
     );
   });
 
-  it("skips records missing required fields", async () => {
+  it("skips records missing required fields or with malformed messages", async () => {
     const data = {
       version: 1,
       conversations: [
         { id: "valid", createdAt: 123, messages: [] },
         { title: "no-id" },
         { id: "no-created", messages: [] },
+        // messages is an array, but an element lacks string content / is null —
+        // these would crash searchConversations if imported, so they're skipped
+        { id: "bad-msg", createdAt: 2, messages: [{ role: "user" }] },
+        { id: "bad-msg-2", createdAt: 3, messages: [null] },
       ],
     };
 
@@ -146,7 +150,7 @@ describe("conversation-transfer", () => {
     );
 
     expect(newCount).toBe(1);
-    expect(skippedCount).toBe(2);
+    expect(skippedCount).toBe(4);
   });
 
   it("exports a single conversation by ID", async () => {
