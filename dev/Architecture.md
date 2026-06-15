@@ -92,6 +92,38 @@ UI from the MCP server's Express app and connects directly to the LLM API.
              +-----------------------------+
 ```
 
+### Voice Mode
+
+The chat UI also has a realtime **voice mode**: speech-to-speech conversation
+with the model, with the same MCP tools and conversation store as text chat. The
+browser selects voice mode by choosing a realtime model; the provider is derived
+from the model id (`gpt-realtime-2` → OpenAI, `gemini-3.1-flash-live-preview` →
+Gemini). Two backends are supported behind one interface:
+
+- **OpenAI** uses the `@openai/agents` Realtime SDK over **WebRTC**. The SDK
+  owns mic capture, voice-activity detection, and audio playback.
+- **Gemini** uses the Gemini Live **WebSocket** with manual audio handling: 16
+  kHz PCM captured via an AudioWorklet on the way up, 24 kHz PCM scheduled
+  gaplessly on the way down.
+
+The browser never holds the long-lived API key for the realtime connection. Two
+Express routes on the MCP server mint/relay credentials server-side, both gated
+to local origins:
+
+- `POST /voice-token`
+  ([routes/voice-token-route.ts](../src/mcp-server/routes/voice-token-route.ts))
+  forwards the user's OpenAI key to OpenAI's `client_secrets` endpoint
+  server-to-server and returns only the short-lived `ek_...` ephemeral token.
+- `POST /gemini-voice-token`
+  ([routes/gemini-voice-token-route.ts](../src/mcp-server/routes/gemini-voice-token-route.ts))
+  currently returns the Gemini key as-is (`ephemeral: false`) — Gemini Live
+  accepts the API key directly from the browser — with a server-only upgrade
+  path to v1alpha ephemeral tokens (the client already honors the `ephemeral`
+  flag).
+
+The webui hook graph that drives all of this is documented in
+[Chat-UI.md](./Chat-UI.md#voice-mode).
+
 ## Language Choices
 
 The entire codebase uses TypeScript (`src/`, `scripts/`, and `webui/`).
