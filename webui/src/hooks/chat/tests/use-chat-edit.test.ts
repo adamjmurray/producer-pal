@@ -13,6 +13,7 @@ import { useChat } from "#webui/hooks/chat/use-chat";
 import {
   createMockAdapter,
   createDefaultProps,
+  MockChatClient,
   RESTORED_HISTORY,
 } from "./use-chat-test-helpers";
 
@@ -99,6 +100,54 @@ describe("useChat handleEdit", () => {
 
     // The consumer (useConversations) clears this; useChat alone leaves it set.
     expect(pendingForkRef.current).toStrictEqual({ anchorIndex: userIdx });
+  });
+
+  it("keeps the fork branch signal set when initializeChat fails (no source overwrite)", async () => {
+    // Regression: the branch signal must be set BEFORE initializeChat. init
+    // builds a client carrying the truncated fork history, so if it throws the
+    // recovery autosave needs the signal already set to mint a new sibling — set
+    // it after init and that save instead reuses the source id and overwrites it
+    // with the truncated history (data loss).
+    const pendingForkRef = { current: null as PendingFork | null };
+    let signalWhenForkInitFailed: PendingFork | null | undefined;
+    let firstInitDone = false;
+
+    const failingInitAdapter = {
+      ...mockAdapter,
+      createClient: vi.fn(() => {
+        const client = new MockChatClient();
+
+        client.initialize = vi.fn(async () => {
+          // Let the original send's init succeed; fail the fork's re-init and
+          // capture whether the branch signal was already set at that point.
+          if (firstInitDone) {
+            signalWhenForkInitFailed = pendingForkRef.current;
+
+            throw new Error("MCP connection failed");
+          }
+
+          firstInitDone = true;
+        });
+
+        return client;
+      }),
+    };
+
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, adapter: failingInitAdapter, pendingForkRef }),
+    );
+
+    await act(async () => {
+      await result.current.handleSend("Original message");
+    });
+
+    const userIdx = result.current.messages.findIndex((m) => m.role === "user");
+
+    await act(async () => {
+      await result.current.handleEdit(userIdx, "Edited message");
+    });
+
+    expect(signalWhenForkInitFailed).toStrictEqual({ anchorIndex: userIdx });
   });
 
   it("does nothing if message at index is not user role", async () => {

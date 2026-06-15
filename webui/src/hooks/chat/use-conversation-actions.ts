@@ -97,6 +97,23 @@ export function useConversationActions<
 
         pendingHistoryRef.current = null;
 
+        // Signal the branch BEFORE initializeChat replaces the client. init
+        // builds the new client with slicedHistory baked in, so from that point
+        // clientRef holds the truncated history while activeId still points at
+        // the source. If init then throws (MCP/network), runWithChat's catch
+        // autosaves — and without the signal already set, that save reuses the
+        // source id and overwrites it with the truncated history (data loss).
+        // With it set, the save mints a new sibling id and the source survives.
+        // The failed-fork autosave consumes the signal, and saveCurrentConversation
+        // also consumes it before its empty-history early-return, so it can't
+        // linger and mis-branch a later save. anchorIndex is where the ‹ n/m ›
+        // arrows sit — the user message for an edit (its default), or the
+        // assistant response for a retry (so the arrows page through alternate
+        // responses, not the unchanged prompt).
+        if (pendingForkRef) {
+          pendingForkRef.current = { anchorIndex };
+        }
+
         await initializeChat(slicedHistory);
 
         const client = clientRef.current as NonNullable<
@@ -106,17 +123,6 @@ export function useConversationActions<
         const controller = new AbortController();
 
         abortControllerRef.current = controller;
-
-        // Signal the branch now that init has succeeded and streaming is about
-        // to start: the imminent save consumes it and writes a new sibling
-        // record. anchorIndex is where the ‹ n/m › arrows sit — the user message
-        // for an edit (its default), or the assistant response for a retry (so
-        // the arrows page through alternate responses, not the unchanged
-        // prompt). Set here — not before initializeChat — so a failed init never
-        // leaves a stale signal for a later normal save.
-        if (pendingForkRef) {
-          pendingForkRef.current = { anchorIndex };
-        }
 
         await executeWithRetry({
           executeStream: (msg) => client.sendMessage(msg, controller.signal),
