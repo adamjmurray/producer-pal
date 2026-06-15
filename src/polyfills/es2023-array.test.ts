@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -168,6 +169,13 @@ describe("ES2023 array polyfills", () => {
 
       expect(() => polyfillWith(arr, 5, 99)).toThrow(RangeError);
       expect(() => polyfillWith(arr, -5, 99)).toThrow(RangeError);
+    });
+
+    it("should truncate a fractional index toward zero like native with()", () => {
+      // Native [1,2,3].with(1.9, 99) -> [1, 99, 3]; the polyfill must match,
+      // not write a bogus "1.9" property and no-op.
+      expect(polyfillWith([1, 2, 3], 1.9, 99)).toStrictEqual([1, 99, 3]);
+      expect(polyfillWith([1, 2, 3], -1.9, 99)).toStrictEqual([1, 2, 99]);
     });
 
     it("should return a new array instance", () => {
