@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -14,6 +15,7 @@ export default class MinimalReporter {
     this.testCount++;
     // Check task.result.state for the actual test state
     const state = testCase.task?.result?.state;
+
     if (state === "fail") {
       this.failures.push(testCase);
     }
@@ -26,9 +28,11 @@ export default class MinimalReporter {
     for (const test of this.failures) {
       process.stdout.write(`\n❌ ${test.fullName}\n`);
       const errors = test.task?.result?.errors;
+
       if (errors?.length) {
         for (const error of errors) {
           const msg = error.message || error.stack || String(error);
+
           process.stdout.write(`   ${msg}\n`);
         }
       }
@@ -38,6 +42,7 @@ export default class MinimalReporter {
     const status = this.failures.length > 0 ? "❌" : "✓";
     const failedCount = this.failures.length;
     const passedCount = this.testCount - failedCount;
+
     process.stdout.write(
       `\n${status} ${files} files, ${passedCount} passed, ${failedCount} failed\n`,
     );

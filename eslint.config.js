@@ -328,7 +328,7 @@ export default [
     ignores: [
       ".claude/**",
       "claude-desktop-extension/**",
-      "config/**",
+      "config/report/**",
       "coverage/**",
       "dist/**",
       "docs/.vitepress/cache/**",
@@ -550,6 +550,66 @@ export default [
       globals: {
         ...globals.node,
       },
+    },
+  },
+
+  // Build/test config files (config/ + root vitest.config.ts): TypeScript build
+  // tooling. Type-aware lint for real bugs; JSDoc is not required here.
+  {
+    files: ["config/**/*.ts", "vitest.config.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ...tsParserOptionsBase,
+        project: ["./config/tsconfig.json"],
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: importResolverSettings,
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      "import-x": importPlugin,
+      sonarjs,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
+      "no-undef": "off", // TypeScript handles undefined variable checks
+    },
+  },
+
+  // Build config files (JS/MJS): rollup configs, vitest reporters. Lint for real
+  // bugs (baseRules, sonarjs, unicorn) without TypeScript or JSDoc requirements.
+  {
+    files: ["config/**/*.{js,mjs}"],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: importResolverSettings,
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "import-x": importPlugin,
+      sonarjs,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
     },
   },
 
