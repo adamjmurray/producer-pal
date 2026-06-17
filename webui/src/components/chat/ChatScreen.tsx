@@ -28,6 +28,8 @@ import { MessageList } from "./MessageList";
 interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
+  /** Whether a manual compaction is in progress (drives the "Compacting…" footer) */
+  isCompacting?: boolean;
   rateLimitState: RateLimitState | null;
   toolLimitReached: boolean;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
@@ -61,6 +63,7 @@ interface ChatScreenProps {
  * @param props - ChatScreenProps
  * @param props.messages - Chat messages
  * @param props.isAssistantResponding - Whether assistant is currently responding
+ * @param props.isCompacting - Whether a manual compaction is in progress
  * @param props.rateLimitState - Rate limit retry state
  * @param props.toolLimitReached - Whether the last response hit the tool-call limit
  * @param props.handleSend - Send message handler
@@ -91,6 +94,7 @@ export function ChatScreen(props: ChatScreenProps) {
   const {
     messages,
     isAssistantResponding,
+    isCompacting,
     rateLimitState,
     toolLimitReached,
     handleSend,
@@ -147,6 +151,7 @@ export function ChatScreen(props: ChatScreenProps) {
             queuedMessages={queuedMessages}
             onRemoveQueued={onRemoveQueued}
             isAssistantResponding={isAssistantResponding}
+            isCompacting={isCompacting}
             handleRetry={handleRetry}
             handleEdit={handleEdit}
             handleCompact={handleCompact}

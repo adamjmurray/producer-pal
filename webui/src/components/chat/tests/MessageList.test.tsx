@@ -511,6 +511,27 @@ describe("MessageList", () => {
     });
   });
 
+  describe("compacting indicator", () => {
+    it("shows 'Compacting...' immediately while compacting", () => {
+      render(
+        <MessageList
+          messages={[]}
+          queuedMessages={[]}
+          onRemoveQueued={vi.fn()}
+          isAssistantResponding={true}
+          isCompacting={true}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={true}
+          showTokenUsage={false}
+        />,
+      );
+
+      expect(screen.getByText("Compacting...")).toBeDefined();
+      expect(screen.queryByText("Still thinking...")).toBeNull();
+    });
+  });
+
   describe("ModelMismatchLabel", () => {
     it("shows mismatch label when response model differs from requested", () => {
       const messages = [

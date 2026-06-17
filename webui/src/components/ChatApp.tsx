@@ -70,6 +70,7 @@ export function ChatApp(props: ChatAppProps) {
     <ChatScreen
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding || chat.isCompacting}
+      isCompacting={chat.isCompacting}
       rateLimitState={chat.rateLimitState}
       toolLimitReached={chat.toolLimitReached}
       handleSend={wrappedHandleSend}

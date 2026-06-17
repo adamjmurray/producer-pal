@@ -24,6 +24,8 @@ interface MessageListProps {
   queuedMessages: QueuedMessage[];
   onRemoveQueued: (id: number) => void;
   isAssistantResponding: boolean;
+  /** Whether a manual compaction is in progress (footer shows "Compacting…") */
+  isCompacting?: boolean;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   /** Compact-up-to-here; omitted in surfaces that don't support compaction (voice/demo) */
@@ -44,6 +46,7 @@ interface MessageListProps {
  * @param {QueuedMessage[]} root0.queuedMessages - Messages queued during a response
  * @param {Function} root0.onRemoveQueued - Remove a queued message by id
  * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
+ * @param {boolean} root0.isCompacting - Whether a manual compaction is in progress
  * @param {Function} root0.handleRetry - Retry callback
  * @param {Function} root0.handleEdit - Edit and fork callback
  * @param {Function} root0.handleCompact - Compact-up-to-here callback
@@ -59,6 +62,7 @@ export function MessageList({
   queuedMessages,
   onRemoveQueued,
   isAssistantResponding,
+  isCompacting = false,
   handleRetry,
   handleEdit,
   handleCompact,
@@ -176,6 +180,7 @@ export function MessageList({
 
       <StreamingFooter
         isResponding={isAssistantResponding}
+        isCompacting={isCompacting}
         showStillThinking={showStillThinking}
       />
 
@@ -303,26 +308,37 @@ function hasContent(message: UIMessage): boolean {
 }
 
 /**
- * Footer shown while assistant is streaming a response.
+ * Footer shown while the assistant is streaming a response or a compaction is
+ * running. Compaction shows "Compacting…" immediately; the "Still thinking…"
+ * label for normal responses stays gated behind the slow-response delay.
  * @param props - Component props
  * @param props.isResponding - Whether assistant is responding
+ * @param props.isCompacting - Whether a manual compaction is in progress
  * @param props.showStillThinking - Whether to show "Still thinking..." text
  * @returns Footer element or null
  */
 function StreamingFooter({
   isResponding,
+  isCompacting,
   showStillThinking,
 }: {
   isResponding: boolean;
+  isCompacting: boolean;
   showStillThinking: boolean;
 }) {
   if (!isResponding) return null;
 
+  const status = isCompacting
+    ? "Compacting..."
+    : showStillThinking
+      ? "Still thinking..."
+      : null;
+
   return (
     <>
-      {showStillThinking && (
+      {status && (
         <div className="col-span-3 text-center text-sm text-zinc-400 animate-pulse">
-          Still thinking...
+          {status}
         </div>
       )}
       <div className="col-span-3">
