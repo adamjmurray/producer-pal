@@ -88,11 +88,13 @@ export function MessageList({
     void branchNav?.onSwitch(siblingId);
   };
 
-  // Show "Still thinking..." after delay; clear editing when responding starts
+  // Show "Still thinking..." after delay. Clear any open editor on every
+  // transcript change (branch switch, conversation select, new chat) so a stale
+  // editor from the prior transcript can't linger with the wrong message's text.
   useEffect(() => {
     setShowStillThinking(false);
-    if (!isAssistantResponding) return;
     setEditingIndex(null);
+    if (!isAssistantResponding) return;
     const timer = setTimeout(
       () => setShowStillThinking(true),
       STILL_THINKING_DELAY_MS,
