@@ -150,15 +150,16 @@ describe("conversation-transfer", () => {
     );
   });
 
-  it("skips records missing required fields or with malformed messages", async () => {
+  it("skips records missing required fields or with only malformed messages", async () => {
     const data = {
       version: 1,
       conversations: [
         { id: "valid", createdAt: 123, messages: [] },
         { title: "no-id" },
         { id: "no-created", messages: [] },
-        // messages is an array, but an element lacks string content / is null —
-        // these would crash searchConversations if imported, so they're skipped
+        // Every message lacks string content / is null — nothing survives the
+        // filter (and importing the husk would crash searchConversations), so
+        // these records are skipped wholesale.
         { id: "bad-msg", createdAt: 2, messages: [{ role: "user" }] },
         { id: "bad-msg-2", createdAt: 3, messages: [null] },
       ],
@@ -170,6 +171,34 @@ describe("conversation-transfer", () => {
 
     expect(newCount).toBe(1);
     expect(skippedCount).toBe(4);
+  });
+
+  it("imports a record with mixed messages, dropping only the malformed ones", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "mixed",
+          createdAt: 1,
+          // One bad entry between two good ones must not strand the whole
+          // conversation — only the bad entry is dropped.
+          messages: [
+            { role: "user", content: "keep me" },
+            { role: "user" },
+            { role: "assistant", content: "and me" },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "mixed");
+
+    // The record survived (not skipped wholesale) and kept only its good
+    // messages.
+    expect(imported.messages.map((m) => m.content)).toStrictEqual([
+      "keep me",
+      "and me",
+    ]);
   });
 
   it("exports a single conversation by ID", async () => {

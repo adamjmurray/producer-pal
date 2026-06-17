@@ -126,7 +126,11 @@ export async function importConversations(json: string): Promise<ImportResult> {
 // --- Helpers below main exports ---
 
 /**
- * Validate that a raw record has the minimum required fields.
+ * Validate that a raw record has the minimum required fields and something
+ * worth importing. A record with a mix of good and malformed messages is still
+ * valid — the bad ones are dropped in {@link normalizeRecord} rather than the
+ * whole conversation being discarded — but one whose messages are *all*
+ * malformed has nothing to keep and is skipped.
  * @param record - Raw parsed object
  * @returns Whether the record is valid for import
  */
@@ -135,15 +139,27 @@ function validateRecord(record: Record<string, unknown>): boolean {
     typeof record.id === "string" &&
     typeof record.createdAt === "number" &&
     Array.isArray(record.messages) &&
-    record.messages.every(isValidImportedMessage)
+    hasUsableMessages(record.messages)
   );
+}
+
+/**
+ * Whether a record's messages are worth importing: either intentionally empty
+ * (voice records store their transcript in voiceHistory) or carrying at least
+ * one valid message. A record with no usable message is dropped wholesale.
+ * @param messages - Raw parsed messages array
+ * @returns Whether the record has importable messages
+ */
+function hasUsableMessages(messages: unknown[]): boolean {
+  return messages.length === 0 || messages.some(isValidImportedMessage);
 }
 
 /**
  * Validate a single imported message has the minimum shape search relies on.
  * Without this, a message lacking a string `content` is saved and later crashes
- * `searchConversations` (`m.content.toLowerCase()`). Voice records have an empty
- * messages array (transcript lives in voiceHistory), so they pass vacuously.
+ * `searchConversations` (`m.content.toLowerCase()`). Used both to gate a record
+ * (see {@link hasUsableMessages}) and to filter individual bad messages out of
+ * an otherwise-usable record in {@link normalizeRecord}.
  * @param message - Raw parsed message element
  * @returns Whether the message has a string content field
  */
@@ -182,7 +198,12 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
     sessionType:
       (record.sessionType as ConversationRecord["sessionType"] | undefined) ??
       "text",
-    messages: record.messages as ConversationRecord["messages"],
+    // Drop any individually malformed messages (validateRecord already ensured
+    // at least one survives, or the array was intentionally empty) so one bad
+    // entry can't strand the rest of the conversation.
+    messages: (record.messages as unknown[]).filter(
+      isValidImportedMessage,
+    ) as ConversationRecord["messages"],
     voiceHistory:
       (record.voiceHistory as ConversationRecord["voiceHistory"] | undefined) ??
       null,
