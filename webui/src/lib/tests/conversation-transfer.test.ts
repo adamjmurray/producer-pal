@@ -30,6 +30,25 @@ const makeRecord = (id: string, title: string | null = null) =>
     messages: [{ role: "user", content: `hello from ${id}` }],
   });
 
+/**
+ * Import export-shaped data, then re-export and return the record with the given
+ * id — proving a value survived the import normalize round-trip.
+ * @param data - Export-format payload to import
+ * @param id - Id of the record to read back
+ * @returns The re-exported record
+ */
+const importThenReread = async (
+  data: unknown,
+  id: string,
+): Promise<ConversationRecord> => {
+  await importConversations(JSON.stringify(data));
+
+  const { json } = await exportConversations();
+  const parsed = JSON.parse(json) as { conversations: ConversationRecord[] };
+
+  return parsed.conversations.find((c) => c.id === id)!;
+};
+
 describe("conversation-transfer", () => {
   beforeEach(async () => {
     await resetDbCache();
@@ -181,13 +200,7 @@ describe("conversation-transfer", () => {
       conversations: [{ id: "minimal", createdAt: 100, messages: [] }],
     };
 
-    await importConversations(JSON.stringify(data));
-
-    const { json } = await exportConversations();
-    const parsed = JSON.parse(json) as {
-      conversations: ConversationRecord[];
-    };
-    const imported = parsed.conversations.find((c) => c.id === "minimal")!;
+    const imported = await importThenReread(data, "minimal");
 
     expect(imported.bookmarked).toBe(false);
     expect(imported.provider).toBeNull();
@@ -197,6 +210,41 @@ describe("conversation-transfer", () => {
     expect(imported.updatedAt).toBe(100);
     expect(imported.sessionType).toBe("text");
     expect(imported.voiceHistory).toBeNull();
+  });
+
+  it("round-trips fork pointers so branch families re-import linked", async () => {
+    // Mirror what exportConversations serializes for a fork record: a real
+    // export carries forkParentId/forkedAtIndex, so import must preserve them or
+    // the re-imported fork is orphaned out of its divergence set.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "fork",
+          createdAt: 100,
+          messages: [{ role: "user", content: "forked" }],
+          forkParentId: "trunk",
+          forkedAtIndex: 2,
+        },
+      ],
+    };
+
+    const importedFork = await importThenReread(data, "fork");
+
+    expect(importedFork.forkParentId).toBe("trunk");
+    expect(importedFork.forkedAtIndex).toBe(2);
+  });
+
+  it("leaves non-forked records without branch pointers on import", async () => {
+    const data = {
+      version: 1,
+      conversations: [{ id: "plain", createdAt: 100, messages: [] }],
+    };
+
+    const imported = await importThenReread(data, "plain");
+
+    expect(imported).not.toHaveProperty("forkParentId");
+    expect(imported).not.toHaveProperty("forkedAtIndex");
   });
 
   it("preserves sessionType and voiceHistory on import", async () => {
@@ -214,13 +262,7 @@ describe("conversation-transfer", () => {
       ],
     };
 
-    await importConversations(JSON.stringify(data));
-
-    const { json } = await exportConversations();
-    const parsed = JSON.parse(json) as {
-      conversations: ConversationRecord[];
-    };
-    const imported = parsed.conversations.find((c) => c.id === "voice-record")!;
+    const imported = await importThenReread(data, "voice-record");
 
     expect(imported.sessionType).toBe("voice");
     expect(imported.voiceHistory).toStrictEqual(voiceItems);

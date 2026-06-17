@@ -186,5 +186,14 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
     voiceHistory:
       (record.voiceHistory as ConversationRecord["voiceHistory"] | undefined) ??
       null,
+    // Round-trip the branching pointers so exported fork families re-import as a
+    // linked set. Both are optional; only carry them when present and well-typed
+    // so a plain (non-forked) record keeps its shape.
+    ...(typeof record.forkParentId === "string" && {
+      forkParentId: record.forkParentId,
+    }),
+    ...(typeof record.forkedAtIndex === "number" && {
+      forkedAtIndex: record.forkedAtIndex,
+    }),
   };
 }
