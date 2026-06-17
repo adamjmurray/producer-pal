@@ -239,6 +239,10 @@ export function useVoiceSession(
     setIsMuted(false);
     isMutedRef.current = false;
     autoMutedRef.current = false;
+    // Same reasoning for the rate-limit banner: a drop mid-rate-limit would
+    // otherwise render the countdown + a dead "Retry now" under the
+    // "Connection lost" message until the next connect resets it.
+    setRateLimitedUntil(null);
   }, []);
 
   const connect = useCallback(
@@ -402,11 +406,11 @@ export function useVoiceSession(
     setStatus("disconnecting");
     await cleanup();
     setStatus("idle");
-    // Clear any lingering rate-limit/error banner on an explicit Stop so it
-    // doesn't persist into the idle screen. (A dropped connection routes through
-    // cleanup() instead and sets its own "Connection lost" message, which stays.)
+    // Clear any lingering error banner on an explicit Stop so it doesn't persist
+    // into the idle screen. (cleanup() already cleared the rate-limit banner; a
+    // dropped connection routes through cleanup() too but sets its own
+    // "Connection lost" message, which stays.)
     setError(null);
-    setRateLimitedUntil(null);
   }, [cleanup]);
 
   const toggleMute = useCallback(async () => {

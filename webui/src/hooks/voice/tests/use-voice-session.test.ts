@@ -424,6 +424,28 @@ describe("useVoiceSession connection drop", () => {
     expect(result.current.status).toBe("idle");
     expect(result.current.error).toBeNull();
   });
+
+  it("clears the rate-limit banner when the connection drops mid-rate-limit", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Please try again in 3s",
+    );
+    expect(result.current.rateLimitedUntil).not.toBeNull();
+
+    // Network drop while the rate-limit countdown is showing: cleanup() must
+    // clear it so the banner + dead "Retry now" don't linger under the
+    // "Connection lost" message.
+    await act(async () => {
+      fireTransportDisconnect();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(result.current.error).toMatch(/connection lost/i);
+    expect(result.current.rateLimitedUntil).toBeNull();
+  });
 });
 
 describe("useVoiceSession transport event handling", () => {
