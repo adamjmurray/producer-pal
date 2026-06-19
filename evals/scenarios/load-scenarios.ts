@@ -13,6 +13,21 @@ import {
   memoryWorkflow,
   jambalayaSamplerPlate,
   trackAndDeviceWorkflow,
+  playbackControl,
+  setTempoAndTimeSignature,
+  readAndAnalyzeSet,
+  analyzeClipContent,
+  inspectTrackDevices,
+  createMultipleTracks,
+  renameAndColorTrack,
+  deleteTrack,
+  sceneManagement,
+  fireScene,
+  addAndConfigureDevice,
+  loadInstrument,
+  midiMelody,
+  midiChordProgression,
+  midiBassline,
 } from "./defs/index.ts";
 import { type EvalScenario } from "./types.ts";
 
@@ -26,6 +41,21 @@ const allScenarios: EvalScenario[] = [
   memoryWorkflow,
   duplicate,
   jambalayaSamplerPlate,
+  playbackControl,
+  setTempoAndTimeSignature,
+  readAndAnalyzeSet,
+  analyzeClipContent,
+  inspectTrackDevices,
+  createMultipleTracks,
+  renameAndColorTrack,
+  deleteTrack,
+  sceneManagement,
+  fireScene,
+  addAndConfigureDevice,
+  loadInstrument,
+  midiMelody,
+  midiChordProgression,
+  midiBassline,
 ];
 
 export interface LoadScenariosOptions {

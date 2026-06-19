@@ -21,6 +21,7 @@ import {
   type ResultsByScenario,
 } from "./helpers/report-table.ts";
 import { printResult } from "./helpers/result-printer.ts";
+import { saveResults } from "./helpers/save-results.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import { type ConfigProfile, type EvalScenarioResult } from "./types.ts";
@@ -36,6 +37,7 @@ interface CliOptions {
   all?: boolean;
   skipSetup?: boolean;
   quiet?: boolean;
+  save?: boolean;
 }
 
 /**
@@ -84,6 +86,7 @@ program
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-a, --all", "Run all scenarios")
+  .option("--no-save", "Do not save results to eval-results/")
   .action(async (options: CliOptions) => {
     if (options.list) {
       printList();
@@ -192,6 +195,12 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     }
 
     printSummary(resultsByScenario, modelSpecs, configProfiles);
+
+    if (options.save !== false) {
+      const outDir = saveResults(resultsByScenario, modelSpecs, configProfiles);
+
+      console.log(`\nResults saved to ${outDir}/ (results.json, report.md)`);
+    }
   } catch (error) {
     console.error(
       "Error:",

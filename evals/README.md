@@ -103,13 +103,28 @@ scripts/eval -l
 
 Current scenarios:
 
-| ID                          | Description                                 | Turns |
-| --------------------------- | ------------------------------------------- | ----- |
-| `connect-to-ableton`        | Connect and retrieve Producer Pal skills    | 1     |
-| `create-and-edit-clip`      | Create drum clip, add notes, quantize       | 4     |
-| `track-and-device-workflow` | Create track, add device, update properties | 4     |
-| `memory-workflow`           | Write and read project memory               | 3     |
-| `duplicate`                 | Duplicate a track                           | 2     |
+| ID                             | Description                                 | Turns |
+| ------------------------------ | ------------------------------------------- | ----- |
+| `connect-to-ableton`           | Connect and retrieve Producer Pal skills    | 1     |
+| `create-and-edit-clip`         | Create drum clip, add notes, quantize       | 4     |
+| `track-and-device-workflow`    | Create track, add device, update properties | 4     |
+| `memory-workflow`              | Write and read project memory               | 3     |
+| `duplicate`                    | Duplicate a track                           | 2     |
+| `playback-control`             | Start and stop playback                     | 3     |
+| `set-tempo-and-time-signature` | Set tempo and time signature                | 3     |
+| `read-and-analyze-set`         | Read and summarize the Live Set             | 3     |
+| `analyze-clip-content`         | Create a clip then read back its notes      | 3     |
+| `inspect-track-devices`        | Inspect the devices on a track              | 2     |
+| `create-multiple-tracks`       | Create several new MIDI tracks              | 2     |
+| `rename-and-color-track`       | Rename and recolor a track                  | 2     |
+| `delete-track`                 | Delete a track                              | 2     |
+| `scene-management`             | Create and rename scenes                    | 3     |
+| `fire-scene`                   | Launch a scene                              | 2     |
+| `add-and-configure-device`     | Add a device and adjust a parameter         | 3     |
+| `load-instrument`              | Create a track and load an instrument       | 2     |
+| `midi-melody`                  | Generate a 4-bar melody in A minor          | 2     |
+| `midi-chord-progression`       | Generate a chord progression in A minor     | 2     |
+| `midi-bassline`                | Generate a 2-bar bassline in A minor        | 2     |
 
 ### Scoring
 

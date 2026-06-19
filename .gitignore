@@ -40,6 +40,9 @@ docs/.vitepress/cache
 test-results
 report/
 
+# Eval matrix results (saved by scripts/eval)
+eval-results/
+
 # Live project backups
 **/live-sets/**/Backup
 
