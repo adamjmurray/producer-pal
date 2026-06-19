@@ -47,4 +47,5 @@ export { midiChordProgression } from "./midi/midi-chord-progression.ts";
 export { midiBassline } from "./midi/midi-bassline.ts";
 
 // complex workflow
+export { arrangementWorkflow } from "./workflow/arrangement-workflow.ts";
 export { jambalayaSamplerPlate } from "./workflow/jambalaya-sampler-plate.ts";

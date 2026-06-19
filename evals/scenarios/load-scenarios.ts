@@ -11,6 +11,7 @@ import {
   createAndEditClip,
   duplicate,
   memoryWorkflow,
+  arrangementWorkflow,
   jambalayaSamplerPlate,
   trackAndDeviceWorkflow,
   playbackControl,
@@ -56,6 +57,7 @@ const allScenarios: EvalScenario[] = [
   midiMelody,
   midiChordProgression,
   midiBassline,
+  arrangementWorkflow,
 ];
 
 export interface LoadScenariosOptions {

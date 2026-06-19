@@ -18,7 +18,7 @@ powerful paid AI models ... and fall apart with small, local models."
 
 ## Goal
 
-1. A solid suite of **21 basic-to-moderate scenarios** covering Producer Pal's
+1. A solid suite of **22 basic-to-moderate scenarios** covering Producer Pal's
    core surface area.
 2. Run them across a **matrix of models × config profiles** and produce a
    comparison we can analyze.
@@ -58,9 +58,9 @@ scripts/eval -a -m <modelA> -m <modelB> -c default -c small-model
 machine running the evals. That's why execution happens on Taylor's computer,
 not in the cloud dev environment.
 
-## The 21-scenario suite
+## The 22-scenario suite
 
-Six scenarios pre-existed; fifteen were added for broad coverage of Adam's
+Six scenarios pre-existed; sixteen were added for broad coverage of Adam's
 priority areas. All run against the `basic-midi-4-track` Live Set (tracks:
 Drums, Bass, Chords + 2 more; A minor; 120 BPM; 4/4; 8 scenes).
 
@@ -73,6 +73,7 @@ Drums, Bass, Chords + 2 more; A minor; 120 BPM; 4/4; 8 scenes).
 | Scene management   | `scene-management`, `fire-scene`                                                                             |
 | Device handling    | `add-and-configure-device`, `load-instrument`                                                                |
 | MIDI generation    | `create-and-edit-clip`, `midi-melody`, `midi-chord-progression`, `midi-bassline`                             |
+| Arranging          | `arrangement-workflow`                                                                                       |
 | Workflow (complex) | `jambalaya-sampler-plate`                                                                                    |
 
 List them anytime with `scripts/eval -l`.
@@ -156,7 +157,7 @@ scripts/eval -t midi-chord-progression \
   -m gemini-3-flash-preview \
   -m local/qwen3:8b -c small-model
 
-# The full matrix: all 21 scenarios × several models × both configs
+# The full matrix: all 22 scenarios × several models × both configs
 scripts/eval -a \
   -m claude-sonnet-4-5 \
   -m gemini-3-flash-preview \
@@ -214,7 +215,7 @@ models, spot which scenarios separate the tiers, and decide what to tune.
 
 **Done in the cloud session (no Ableton needed):**
 
-- 21 scenarios authored, registered, type-checked, linted.
+- 22 scenarios authored, registered, type-checked, linted.
 - Results persistence (`eval-results/` JSON + markdown report).
 - Results analyzer (`scripts/eval-analyze`) with unit tests.
 - `scripts/eval-comparison` one-command matrix + analysis wrapper.
@@ -233,5 +234,6 @@ models, spot which scenarios separate the tiers, and decide what to tune.
   Kimi K2 / GLM / Qwen / DeepSeek candidates Taylor mentioned).
 - Decide the judge model (Gemini 3 Flash default vs. a paid judge for fairness).
 - After a first run: which scenarios best separate the tiers? Trim/extend.
-- Stretch: an `arrangement-workflow` scenario (Adam listed "arranging"), and
-  investigating whether description tuning in small-model mode measurably helps.
+- Stretch: investigate whether description tuning in small-model mode measurably
+  helps, and add token/cost capture so the leaderboard can rank by
+  cost-per-point.
