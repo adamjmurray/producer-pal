@@ -4,19 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenario: Generate a 4-bar melody in A minor
+ * Scenario: Generate a 2-bar bassline in A minor
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
-export const midiMelody: EvalScenario = {
-  id: "midi-melody",
-  description: "Generate a 4-bar melody in A minor",
+export const midiBassline: EvalScenario = {
+  id: "midi-bassline",
+  description: "Generate a 2-bar bassline in A minor",
   liveSet: "basic-midi-4-track",
 
   messages: [
     "Connect to Ableton Live",
-    "Write a catchy 4-bar melody in A minor on a new MIDI track",
+    "Write a 2-bar bassline on the Bass track that outlines an A minor progression",
   ],
 
   assertions: [
@@ -24,17 +24,17 @@ export const midiMelody: EvalScenario = {
     { type: "tool_called", tool: "ppal-create-clip", turn: "any", score: 5 },
     {
       type: "response_contains",
-      pattern: /melody|a minor/i,
+      pattern: /bass|a minor/i,
       turn: "any",
       score: 2,
     },
     {
       type: "llm_judge",
-      prompt: `Evaluate the assistant's melody:
-1. Created a 4-bar MIDI clip
-2. The notes fit A minor
-3. The melody is musically reasonable (sensible contour and rhythm, not random)
-4. Confirmed what it made`,
+      prompt: `Evaluate the assistant's bassline:
+1. Created a 2-bar clip on the Bass track
+2. The notes sit in a bass register
+3. They outline A minor harmony sensibly
+4. Confirmed`,
       score: 10,
     },
   ],

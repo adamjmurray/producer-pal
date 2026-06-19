@@ -7,7 +7,7 @@
  * Scenario: Set tempo and time signature
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const setTempoAndTimeSignature: EvalScenario = {
   id: "set-tempo-and-time-signature",

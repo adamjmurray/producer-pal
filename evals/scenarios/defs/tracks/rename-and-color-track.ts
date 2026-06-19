@@ -7,7 +7,7 @@
  * Scenario: Rename and recolor a track
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const renameAndColorTrack: EvalScenario = {
   id: "rename-and-color-track",

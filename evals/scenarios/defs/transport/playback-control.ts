@@ -7,7 +7,7 @@
  * Scenario: Start and stop playback
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const playbackControl: EvalScenario = {
   id: "playback-control",

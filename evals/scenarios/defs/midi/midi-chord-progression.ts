@@ -7,7 +7,7 @@
  * Scenario: Generate a chord progression in A minor
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const midiChordProgression: EvalScenario = {
   id: "midi-chord-progression",

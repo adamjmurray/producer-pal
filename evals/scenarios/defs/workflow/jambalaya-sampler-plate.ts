@@ -8,9 +8,9 @@
  */
 
 import { resolve } from "node:path";
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
-const sampleFolder = resolve(import.meta.dirname, "../../sample_bag");
+const sampleFolder = resolve(import.meta.dirname, "../../../sample_bag");
 
 export const jambalayaSamplerPlate: EvalScenario = {
   id: "jambalaya-sampler-plate",

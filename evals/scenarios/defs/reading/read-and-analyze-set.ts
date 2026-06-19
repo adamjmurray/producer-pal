@@ -7,7 +7,7 @@
  * Scenario: Read and summarize the Live Set
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const readAndAnalyzeSet: EvalScenario = {
   id: "read-and-analyze-set",

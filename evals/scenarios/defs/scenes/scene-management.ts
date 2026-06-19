@@ -7,7 +7,7 @@
  * Scenario: Create and rename scenes
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const sceneManagement: EvalScenario = {
   id: "scene-management",

@@ -7,7 +7,7 @@
  * Scenario: Delete a track
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const deleteTrack: EvalScenario = {
   id: "delete-track",

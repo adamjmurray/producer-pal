@@ -7,7 +7,7 @@
  * Scenario: Launch a scene
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const fireScene: EvalScenario = {
   id: "fire-scene",

@@ -7,7 +7,7 @@
  * Scenario: Inspect the devices on a track
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const inspectTrackDevices: EvalScenario = {
   id: "inspect-track-devices",

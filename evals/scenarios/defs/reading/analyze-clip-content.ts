@@ -7,7 +7,7 @@
  * Scenario: Create a clip then read back its notes
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const analyzeClipContent: EvalScenario = {
   id: "analyze-clip-content",

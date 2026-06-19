@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Analyze saved eval results - delegates to evals/scenarios/analyze.ts
+# Reads results.json files; does NOT need Ableton Live or API keys.
+#
+# Usage:
+#   ./scripts/eval-analyze                       # newest run under eval-results/
+#   ./scripts/eval-analyze eval-results/<stamp>  # a specific run directory
+#   ./scripts/eval-analyze path/to/results.json  # a specific results file
+
+exec npx tsx evals/scenarios/analyze.ts "$@"

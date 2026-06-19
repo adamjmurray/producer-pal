@@ -7,7 +7,7 @@
  * Scenario: Write and read project memory
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 const TOOL_CONNECT = "ppal-connect";
 const TOOL_CONTEXT = "ppal-context";

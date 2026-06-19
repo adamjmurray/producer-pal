@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Run the standard model-comparison matrix, then analyze it.
+#
+# Prerequisites (see dev/Model-Comparison-Evals.md):
+#   - Ableton Live running with the Producer Pal device loaded
+#   - .env filled with keys for the providers/models below
+#   - local models pulled in Ollama (e.g. `ollama pull qwen3:8b`)
+#
+# Edit the MODELS list for the lineup you want to compare. Confirm OpenRouter
+# slugs at https://openrouter.ai/models (they change over time).
+set -euo pipefail
+
+# --- Edit me: the model lineup (one per tier is a good start) ---
+MODELS=(
+  "claude-sonnet-4-5"            # frontier paid (ceiling)
+  "gemini-3-flash-preview"      # cheap cloud
+  # "gpt-5-nano"                # cheap cloud (uncomment if you have OPENAI_KEY)
+  # "openrouter/qwen/qwen3-..." # hosted open-source (set a real slug)
+  "local/qwen3:8b"              # local (requires Ollama)
+)
+
+# Config profiles to compare (default vs small-model is the key contrast).
+CONFIGS=(default small-model)
+
+# --- Build CLI args ---
+model_args=()
+for m in "${MODELS[@]}"; do model_args+=(-m "$m"); done
+config_args=()
+for c in "${CONFIGS[@]}"; do config_args+=(-c "$c"); done
+
+echo "Running matrix: ${#MODELS[@]} model(s) x ${#CONFIGS[@]} config(s) x all scenarios..."
+./scripts/eval -a "${model_args[@]}" "${config_args[@]}"
+
+echo ""
+echo "Analyzing latest results..."
+./scripts/eval-analyze

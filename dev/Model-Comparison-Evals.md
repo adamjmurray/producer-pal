@@ -164,6 +164,9 @@ scripts/eval -a \
   -m openrouter/qwen/qwen3-... \
   -m local/qwen3:8b \
   -c default -c small-model
+
+# Or: run the standard lineup + auto-analyze in one go (edit the lineup inside)
+scripts/eval-comparison
 ```
 
 Tips:
@@ -180,9 +183,32 @@ By default the runner saves every run to `eval-results/<timestamp>/` as:
 - `results.json` — full structured data (scores, per-assertion, tool calls).
 - `report.md` — a human-readable comparison table + per-scenario breakdown.
 
-(Use `--no-save` to skip.) Bring those files back here and we can analyze them —
-diff models, spot which scenarios separate the tiers, and see whether
-`small-model` mode rescues the cheap/local models.
+(Use `--no-save` to skip.)
+
+### Analyzing results
+
+`scripts/eval-analyze` turns a saved run into insights (no Ableton or API keys
+needed — it just reads `results.json`):
+
+```bash
+scripts/eval-analyze                       # newest run under eval-results/
+scripts/eval-analyze eval-results/<stamp>  # a specific run
+scripts/eval-analyze path/to/results.json  # a specific file
+```
+
+It prints (and writes `analysis.md` beside the results):
+
+- **Leaderboard** — models/configs ranked by average score %, with totals, avg
+  latency, and error counts.
+- **Most discriminating scenarios** — ranked by score spread (which tests best
+  separate strong from weak models).
+- **Small-model mode impact** — for any model run under both `default` and
+  `small-model`, the score delta (does the simplified-description mode help?).
+- **Tool usage** — per-model tool-call tallies (spot models that skip tools).
+- **Errors** — every errored run.
+
+Bring the `eval-results/` files back here and we can dig in together — diff
+models, spot which scenarios separate the tiers, and decide what to tune.
 
 ## Status: done vs. needs Taylor's machine
 
@@ -190,6 +216,8 @@ diff models, spot which scenarios separate the tiers, and see whether
 
 - 21 scenarios authored, registered, type-checked, linted.
 - Results persistence (`eval-results/` JSON + markdown report).
+- Results analyzer (`scripts/eval-analyze`) with unit tests.
+- `scripts/eval-comparison` one-command matrix + analysis wrapper.
 - This runbook + an improved `.env.example`.
 
 **Needs Taylor's machine:**

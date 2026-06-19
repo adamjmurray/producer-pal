@@ -7,7 +7,7 @@
  * Scenario: Add a device and adjust a parameter
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const addAndConfigureDevice: EvalScenario = {
   id: "add-and-configure-device",

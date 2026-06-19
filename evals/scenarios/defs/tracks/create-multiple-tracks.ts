@@ -7,7 +7,7 @@
  * Scenario: Create several new MIDI tracks
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const createMultipleTracks: EvalScenario = {
   id: "create-multiple-tracks",

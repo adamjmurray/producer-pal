@@ -7,7 +7,7 @@
  * Scenario: Create a track and load an instrument
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const loadInstrument: EvalScenario = {
   id: "load-instrument",
