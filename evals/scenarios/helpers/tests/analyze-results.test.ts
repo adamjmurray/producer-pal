@@ -14,7 +14,7 @@ import {
   parseResultsPayload,
   type SavedPayload,
   type SavedResult,
-} from "./analyze-results.ts";
+} from "../analyze-results.ts";
 
 /**
  * Build a minimal SavedResult for tests.
@@ -23,6 +23,7 @@ import {
  * @param maxScore - Max points
  * @param toolNames - Tool names called (one call each)
  * @param error - Optional error string
+ * @param usage - Optional token usage for the run
  * @returns A SavedResult
  */
 function makeResult(
@@ -30,12 +31,14 @@ function makeResult(
   maxScore: number,
   toolNames: string[] = [],
   error: string | null = null,
+  usage: SavedResult["usage"] = null,
 ): SavedResult {
   return {
     earnedScore,
     maxScore,
     percentage: maxScore > 0 ? (earnedScore / maxScore) * 100 : null,
     durationMs: 1000,
+    usage,
     error,
     assertions: [],
     turns: [
@@ -146,5 +149,64 @@ describe("analyzeResults", () => {
     expect(analysis.errors).toStrictEqual([
       { scenario: "scenario-b", label: "local/weak (default)", error: "boom" },
     ]);
+  });
+});
+
+const MILLION_EACH = {
+  inputTokens: 1_000_000,
+  outputTokens: 1_000_000,
+  totalTokens: 2_000_000,
+};
+
+const COST_PAYLOAD: SavedPayload = {
+  timestamp: "t",
+  columns: [
+    "anthropic/claude-sonnet-4-5 (default)",
+    "openai/gpt-5-nano (default)",
+  ],
+  scenarios: {
+    s1: {
+      "anthropic/claude-sonnet-4-5 (default)": makeResult(
+        10,
+        10,
+        [],
+        null,
+        MILLION_EACH,
+      ),
+      "openai/gpt-5-nano (default)": makeResult(8, 10, [], null, MILLION_EACH),
+    },
+  },
+};
+
+describe("analyzeResults cost", () => {
+  const analysis = analyzeResults(COST_PAYLOAD);
+
+  it("computes token totals and estimated cost per model", () => {
+    const sonnet = analysis.leaderboard.find(
+      (r) => r.modelKey === "anthropic/claude-sonnet-4-5",
+    );
+
+    expect(sonnet?.totalTokens).toBe(2_000_000);
+    // 1M input * $3 + 1M output * $15 = $18
+    expect(sonnet?.costUsd).toBeCloseTo(18, 6);
+    expect(sonnet?.costPerPoint).toBeCloseTo(1.8, 6);
+  });
+
+  it("ranks best value (lowest cost per point) first", () => {
+    expect(analysis.costRanking[0]?.modelKey).toBe("openai/gpt-5-nano");
+    expect(analysis.costRanking[1]?.modelKey).toBe(
+      "anthropic/claude-sonnet-4-5",
+    );
+  });
+
+  it("honors pricing overrides", () => {
+    const overridden = analyzeResults(COST_PAYLOAD, {
+      "claude-sonnet": { inputPer1M: 0, outputPer1M: 0 },
+    });
+    const sonnet = overridden.leaderboard.find(
+      (r) => r.modelKey === "anthropic/claude-sonnet-4-5",
+    );
+
+    expect(sonnet?.costUsd).toBe(0);
   });
 });

@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it, beforeEach } from "vitest";
-import { setQuietMode, isQuietMode } from "./output-config.ts";
+import { setQuietMode, isQuietMode } from "../output-config.ts";
 
 describe("output-config", () => {
   beforeEach(() => {

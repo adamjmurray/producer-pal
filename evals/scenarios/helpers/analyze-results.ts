@@ -12,12 +12,20 @@
  * module stays easy to unit test.
  */
 
+import { type TokenUsage } from "#evals/chat/shared/types.ts";
+import {
+  computeCostUsd,
+  lookupPricing,
+  type PricingTable,
+} from "./model-pricing.ts";
+
 /** A single serialized scenario run (matches save-results.ts output). */
 export interface SavedResult {
   earnedScore: number;
   maxScore: number;
   percentage: number | null;
   durationMs: number;
+  usage?: TokenUsage | null;
   error: string | null;
   assertions: Array<{
     type: string;
@@ -52,6 +60,13 @@ export interface LeaderboardRow {
   totalMax: number;
   avgDurationMs: number;
   errorCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  /** Estimated total cost in USD, or null when pricing is unknown */
+  costUsd: number | null;
+  /** Estimated USD per earned point, or null when unknown / zero points */
+  costPerPoint: number | null;
 }
 
 /** Per-scenario score spread across all columns. */
@@ -93,6 +108,8 @@ export interface ResultsAnalysis {
   spread: SpreadRow[];
   smallModelDeltas: DeltaRow[];
   toolUsage: ToolUsageRow[];
+  /** Columns with known cost and >0 points, ranked by cost-per-point ascending */
+  costRanking: LeaderboardRow[];
   errors: ErrorRow[];
 }
 
@@ -103,15 +120,22 @@ const SMALL_MODEL_CONFIG_ID = "small-model";
  * Analyze a saved results payload into structured insights.
  *
  * @param payload - The parsed results.json payload
+ * @param pricingOverrides - Optional pricing overrides (merged over defaults)
  * @returns The structured analysis
  */
-export function analyzeResults(payload: SavedPayload): ResultsAnalysis {
+export function analyzeResults(
+  payload: SavedPayload,
+  pricingOverrides?: PricingTable,
+): ResultsAnalysis {
+  const leaderboard = buildLeaderboard(payload, pricingOverrides);
+
   return {
     timestamp: payload.timestamp,
-    leaderboard: buildLeaderboard(payload),
+    leaderboard,
     spread: computeSpread(payload),
     smallModelDeltas: computeSmallModelDeltas(payload),
     toolUsage: computeToolUsage(payload),
+    costRanking: buildCostRanking(leaderboard),
     errors: collectErrors(payload),
   };
 }
@@ -162,13 +186,29 @@ export function parseColumnLabel(label: string): {
  * Build the leaderboard: one row per column, sorted by average % descending.
  *
  * @param payload - The results payload
+ * @param pricingOverrides - Optional pricing overrides
  * @returns Leaderboard rows
  */
-function buildLeaderboard(payload: SavedPayload): LeaderboardRow[] {
+function buildLeaderboard(
+  payload: SavedPayload,
+  pricingOverrides?: PricingTable,
+): LeaderboardRow[] {
   const rows = payload.columns.map((label) => {
     const { modelKey, configId } = parseColumnLabel(label);
     const results = collectColumn(payload, label);
     const pcts = results.map(resultPct).filter((p): p is number => p != null);
+    const totalEarned = sum(results.map((r) => r.earnedScore));
+
+    const inputTokens = sum(results.map((r) => r.usage?.inputTokens ?? 0));
+    const outputTokens = sum(results.map((r) => r.usage?.outputTokens ?? 0));
+    const pricing = lookupPricing(modelKey, pricingOverrides);
+    const costUsd =
+      pricing == null
+        ? null
+        : computeCostUsd(
+            { inputTokens, outputTokens, totalTokens: 0 },
+            pricing,
+          );
 
     return {
       label,
@@ -176,14 +216,35 @@ function buildLeaderboard(payload: SavedPayload): LeaderboardRow[] {
       configId,
       runCount: results.length,
       avgPct: average(pcts),
-      totalEarned: sum(results.map((r) => r.earnedScore)),
+      totalEarned,
       totalMax: sum(results.map((r) => r.maxScore)),
       avgDurationMs: Math.round(average(results.map((r) => r.durationMs)) ?? 0),
       errorCount: results.filter((r) => r.error != null).length,
+      inputTokens,
+      outputTokens,
+      totalTokens: inputTokens + outputTokens,
+      costUsd,
+      costPerPoint:
+        costUsd == null || totalEarned <= 0 ? null : costUsd / totalEarned,
     };
   });
 
   return rows.sort((a, b) => (b.avgPct ?? -1) - (a.avgPct ?? -1));
+}
+
+/**
+ * Rank columns by cost-per-point (best value first).
+ * Only includes columns with a known cost and at least one earned point.
+ *
+ * @param leaderboard - The computed leaderboard rows
+ * @returns Rows sorted by cost-per-point ascending
+ */
+function buildCostRanking(leaderboard: LeaderboardRow[]): LeaderboardRow[] {
+  return leaderboard
+    .filter((r) => r.costPerPoint != null)
+    .sort(
+      (a, b) => (a.costPerPoint ?? Infinity) - (b.costPerPoint ?? Infinity),
+    );
 }
 
 /**

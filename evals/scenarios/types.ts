@@ -6,10 +6,15 @@
  * Type definitions for the Producer Pal evaluation system
  */
 
+import { type TokenUsage } from "#evals/chat/shared/types.ts";
 import { type ConfigOptions } from "#evals/shared/config.ts";
 
 // Re-export types from chat for convenience
-export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
+export type {
+  TurnResult,
+  ToolCall,
+  TokenUsage,
+} from "#evals/chat/shared/types.ts";
 
 // Re-export ConfigOptions for convenience
 export type { ConfigOptions };
@@ -162,6 +167,8 @@ export interface EvalTurnResult {
     result?: string;
   }>;
   durationMs: number;
+  /** Token usage for this turn, when the provider reports it */
+  usage?: TokenUsage;
 }
 
 /**
@@ -191,5 +198,7 @@ export interface EvalScenarioResult {
   /** Total max possible points across all assertions */
   maxScore: number;
   totalDurationMs: number;
+  /** Aggregated token usage across all turns, when available */
+  usage?: TokenUsage;
   error?: string;
 }

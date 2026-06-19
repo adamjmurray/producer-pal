@@ -181,10 +181,13 @@ Tips:
 
 By default the runner saves every run to `eval-results/<timestamp>/` as:
 
-- `results.json` — full structured data (scores, per-assertion, tool calls).
+- `results.json` — full structured data (scores, per-assertion, tool calls, and
+  **token usage** per turn and per run).
 - `report.md` — a human-readable comparison table + per-scenario breakdown.
 
-(Use `--no-save` to skip.)
+(Use `--no-save` to skip.) Token usage is captured automatically from the AI SDK
+(`totalUsage`, summed across tool-call steps); providers that don't report usage
+simply leave it blank.
 
 ### Analyzing results
 
@@ -199,8 +202,11 @@ scripts/eval-analyze path/to/results.json  # a specific file
 
 It prints (and writes `analysis.md` beside the results):
 
-- **Leaderboard** — models/configs ranked by average score %, with totals, avg
-  latency, and error counts.
+- **Leaderboard** — models/configs ranked by average score %, with token totals,
+  estimated **cost**, **cost-per-point**, latency, and error counts.
+- **Best value (cost per point)** — models ranked by USD per earned point
+  (cheapest-per-point first) — the answer to "what's the best bang for the
+  buck?"
 - **Most discriminating scenarios** — ranked by score spread (which tests best
   separate strong from weak models).
 - **Small-model mode impact** — for any model run under both `default` and
@@ -208,8 +214,27 @@ It prints (and writes `analysis.md` beside the results):
 - **Tool usage** — per-model tool-call tallies (spot models that skip tools).
 - **Errors** — every errored run.
 
+#### Cost / pricing
+
+Cost is estimated from per-1M-token prices in
+`evals/scenarios/helpers/model-pricing.ts`. **These are best-effort defaults and
+drift** — local models are treated as free, and unknown models show blank cost.
+To use exact current prices without editing code, drop an `eval-pricing.json` in
+the repo root and the analyzer merges it over the defaults:
+
+```json
+{
+  "claude-sonnet": { "inputPer1M": 3, "outputPer1M": 15 },
+  "gpt-5-nano": { "inputPer1M": 0.05, "outputPer1M": 0.4 }
+}
+```
+
+Keys are matched as case-insensitive substrings of the `provider/model` key
+(longest match wins). `eval-pricing.json` is gitignored.
+
 Bring the `eval-results/` files back here and we can dig in together — diff
-models, spot which scenarios separate the tiers, and decide what to tune.
+models, spot which scenarios separate the tiers, weigh score against cost, and
+decide what to tune.
 
 ## Status: done vs. needs Taylor's machine
 
@@ -217,6 +242,8 @@ models, spot which scenarios separate the tiers, and decide what to tune.
 
 - 22 scenarios authored, registered, type-checked, linted.
 - Results persistence (`eval-results/` JSON + markdown report).
+- Token usage capture (per turn + per run) and cost/cost-per-point analysis,
+  with an editable pricing table + `eval-pricing.json` override.
 - Results analyzer (`scripts/eval-analyze`) with unit tests.
 - `scripts/eval-comparison` one-command matrix + analysis wrapper.
 - This runbook + an improved `.env.example`.
@@ -234,6 +261,6 @@ models, spot which scenarios separate the tiers, and decide what to tune.
   Kimi K2 / GLM / Qwen / DeepSeek candidates Taylor mentioned).
 - Decide the judge model (Gemini 3 Flash default vs. a paid judge for fairness).
 - After a first run: which scenarios best separate the tiers? Trim/extend.
+- Drop in an `eval-pricing.json` with current prices for accurate cost numbers.
 - Stretch: investigate whether description tuning in small-model mode measurably
-  helps, and add token/cost capture so the leaderboard can rank by
-  cost-per-point.
+  helps; consider per-scenario cost breakdowns and judge-token accounting.

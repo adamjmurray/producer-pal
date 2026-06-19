@@ -38,6 +38,7 @@ import {
   type EvalAssertionResult,
   type EvalProvider,
   type MatrixConfigValues,
+  type TokenUsage,
 } from "./types.ts";
 
 /**
@@ -52,6 +53,47 @@ function sumField(
   field: "earned" | "maxScore",
 ): number {
   return results.reduce((sum, r) => sum + r[field], 0);
+}
+
+/**
+ * Aggregate token usage across turns.
+ *
+ * @param turns - Completed conversation turns
+ * @returns Summed usage, or undefined if no turn reported usage
+ */
+function sumTurnUsage(turns: EvalTurnResult[]): TokenUsage | undefined {
+  const total: TokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  let any = false;
+  let reasoning = 0;
+  let cached = 0;
+  let hasReasoning = false;
+  let hasCached = false;
+
+  for (const turn of turns) {
+    const u = turn.usage;
+
+    if (u == null) continue;
+    any = true;
+    total.inputTokens += u.inputTokens;
+    total.outputTokens += u.outputTokens;
+    total.totalTokens += u.totalTokens;
+
+    if (u.reasoningTokens != null) {
+      reasoning += u.reasoningTokens;
+      hasReasoning = true;
+    }
+
+    if (u.cachedInputTokens != null) {
+      cached += u.cachedInputTokens;
+      hasCached = true;
+    }
+  }
+
+  if (!any) return undefined;
+  if (hasReasoning) total.reasoningTokens = reasoning;
+  if (hasCached) total.cachedInputTokens = cached;
+
+  return total;
 }
 
 const LIVE_SETS_DIR = "evals/live-sets";
@@ -140,6 +182,7 @@ export async function runScenario(
         assistantResponse: turnResult.text,
         toolCalls: turnResult.toolCalls,
         durationMs: Date.now() - turnStart,
+        usage: turnResult.usage,
       });
     }
 
@@ -194,6 +237,7 @@ export async function runScenario(
       earnedScore,
       maxScore,
       totalDurationMs: Date.now() - startTime,
+      usage: sumTurnUsage(turns),
     };
   } catch (error) {
     return {
@@ -204,6 +248,7 @@ export async function runScenario(
       earnedScore: 0,
       maxScore: 0,
       totalDurationMs: Date.now() - startTime,
+      usage: sumTurnUsage(turns),
       error: error instanceof Error ? error.message : String(error),
     };
   } finally {

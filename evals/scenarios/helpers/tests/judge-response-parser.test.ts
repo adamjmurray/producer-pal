@@ -6,7 +6,7 @@
  * Tests for judge-response-parser.ts
  */
 import { describe, it, expect } from "vitest";
-import { parseJudgeResponse } from "./judge-response-parser.ts";
+import { parseJudgeResponse } from "../judge-response-parser.ts";
 
 const VALID_RESPONSE = {
   accuracy: { score: 1.0, reasoning: "Correct" },

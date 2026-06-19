@@ -43,6 +43,9 @@ report/
 # Eval matrix results (saved by scripts/eval)
 eval-results/
 
+# Local pricing overrides for scripts/eval-analyze
+eval-pricing.json
+
 # Live project backups
 **/live-sets/**/Backup
 

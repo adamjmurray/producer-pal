@@ -17,7 +17,7 @@ import {
   formatToolResult,
   startThought,
 } from "./shared/formatting.ts";
-import { type TurnResult } from "./shared/types.ts";
+import { type TokenUsage, type TurnResult } from "./shared/types.ts";
 
 /** Mutable state tracked during stream processing */
 interface StreamState {
@@ -44,7 +44,37 @@ export async function processCliStream(
 
   finishStream(state);
 
-  return { text: state.text, toolCalls: state.toolCalls };
+  return {
+    text: state.text,
+    toolCalls: state.toolCalls,
+    usage: await collectUsage(result),
+  };
+}
+
+/**
+ * Collect total token usage across all steps of a streamText result.
+ * Returns undefined if usage is unavailable (e.g., provider didn't report it).
+ *
+ * @param result - The streamText result (stream already fully consumed)
+ * @returns Aggregated token usage, or undefined
+ */
+async function collectUsage(
+  result: ReturnType<typeof streamText>,
+): Promise<TokenUsage | undefined> {
+  try {
+    const usage = await result.totalUsage;
+    const inputTokens = usage.inputTokens ?? 0;
+    const outputTokens = usage.outputTokens ?? 0;
+
+    return {
+      inputTokens,
+      outputTokens,
+      totalTokens: usage.totalTokens ?? inputTokens + outputTokens,
+    };
+  } catch {
+    // Usage is best-effort; never fail a turn over it.
+    return undefined;
+  }
 }
 
 /**

@@ -17,8 +17,8 @@ import {
   type EvalScenario,
   type EvalScenarioResult,
 } from "#evals/scenarios/types.ts";
-import { saveResults } from "./save-results.ts";
-import { type ResultsByScenario } from "./report-table.ts";
+import { saveResults } from "../save-results.ts";
+import { type ResultsByScenario } from "../report-table.ts";
 
 const tmpBase = mkdtempSync(join(tmpdir(), "ppal-eval-"));
 
@@ -43,6 +43,7 @@ const result: EvalScenarioResult = {
       assistantResponse: "Connected.",
       toolCalls: [{ name: "ppal-connect", args: {}, result: "ok" }],
       durationMs: 500,
+      usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
     },
   ],
   assertions: [
@@ -56,6 +57,7 @@ const result: EvalScenarioResult = {
   earnedScore: 5,
   maxScore: 5,
   totalDurationMs: 500,
+  usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
 };
 
 const resultsByScenario: ResultsByScenario = new Map([
@@ -95,6 +97,8 @@ describe("saveResults", () => {
     expect(run.maxScore).toBe(5);
     expect(run.percentage).toBe(100);
     expect(run.turns[0].toolCalls[0].name).toBe("ppal-connect");
+    expect(run.usage.inputTokens).toBe(100);
+    expect(run.turns[0].usage.outputTokens).toBe(50);
   });
 
   it("includes the scenario score in the Markdown report", () => {

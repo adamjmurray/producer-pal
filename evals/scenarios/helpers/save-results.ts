@@ -143,6 +143,7 @@ function serializeResult(result: EvalScenarioResult): unknown {
     maxScore: result.maxScore,
     percentage: pct,
     durationMs: result.totalDurationMs,
+    usage: result.usage ?? null,
     error: result.error ?? null,
     assertions: result.assertions.map((a) => ({
       type: a.assertion.type,
@@ -156,6 +157,7 @@ function serializeResult(result: EvalScenarioResult): unknown {
       assistantResponse: t.assistantResponse,
       toolCalls: t.toolCalls.map((c) => ({ name: c.name, args: c.args })),
       durationMs: t.durationMs,
+      usage: t.usage ?? null,
     })),
   };
 }

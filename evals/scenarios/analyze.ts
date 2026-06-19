@@ -33,9 +33,11 @@ import {
   type SpreadRow,
   type ToolUsageRow,
 } from "./helpers/analyze-results.ts";
+import { type PricingTable } from "./helpers/model-pricing.ts";
 
 const DEFAULT_BASE_DIR = "eval-results";
 const RESULTS_FILE = "results.json";
+const PRICING_FILE = "eval-pricing.json";
 
 main();
 
@@ -46,7 +48,7 @@ function main(): void {
   try {
     const file = resolveResultsFile(process.argv[2]);
     const payload = parseResultsPayload(JSON.parse(readFileSync(file, "utf8")));
-    const analysis = analyzeResults(payload);
+    const analysis = analyzeResults(payload, loadPricingOverrides());
     const report = formatAnalysis(analysis);
 
     console.log(report);
@@ -89,6 +91,29 @@ function resolveResultsFile(arg?: string): string {
   }
 
   return target;
+}
+
+/**
+ * Load optional pricing overrides from `eval-pricing.json` in the cwd.
+ *
+ * @returns A pricing table, or undefined if the file is absent or invalid
+ */
+function loadPricingOverrides(): PricingTable | undefined {
+  const file = resolve(PRICING_FILE);
+
+  if (!existsSync(file)) return undefined;
+
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8"));
+
+    console.log(`Using pricing overrides from ${PRICING_FILE}`);
+
+    return parsed as PricingTable;
+  } catch {
+    console.warn(`Ignoring ${PRICING_FILE}: could not parse JSON`);
+
+    return undefined;
+  }
 }
 
 /**
@@ -136,6 +161,10 @@ function formatAnalysis(analysis: ResultsAnalysis): string {
     "",
     ...formatLeaderboard(analysis.leaderboard),
     "",
+    "## Best value (cost per point)",
+    "",
+    ...formatCostRanking(analysis.costRanking),
+    "",
     "## Most discriminating scenarios (score spread)",
     "",
     ...formatSpread(analysis.spread),
@@ -163,14 +192,40 @@ function formatAnalysis(analysis: ResultsAnalysis): string {
  */
 function formatLeaderboard(rows: LeaderboardRow[]): string[] {
   const lines = [
-    "| Rank | Model (config) | Avg % | Score | Avg ms | Errors |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| Rank | Model (config) | Avg % | Score | Tokens | Cost | $/pt | Avg ms | Errors |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
   ];
 
   for (const [i, r] of rows.entries()) {
     lines.push(
       `| ${i + 1} | ${r.label} | ${pct(r.avgPct)} | ${r.totalEarned}/${r.totalMax}` +
+        ` | ${tokens(r.totalTokens)} | ${usd(r.costUsd)} | ${usd(r.costPerPoint)}` +
         ` | ${r.avgDurationMs} | ${r.errorCount} |`,
+    );
+  }
+
+  return lines;
+}
+
+/**
+ * Format the cost-per-point (best value) ranking.
+ *
+ * @param rows - Cost-ranked leaderboard rows (best value first)
+ * @returns Markdown lines
+ */
+function formatCostRanking(rows: LeaderboardRow[]): string[] {
+  if (rows.length === 0) {
+    return ["_No cost data (no token usage captured, or pricing unknown)._"];
+  }
+
+  const lines = [
+    "| Rank | Model (config) | $/point | Cost | Avg % |",
+    "| --- | --- | --- | --- | --- |",
+  ];
+
+  for (const [i, r] of rows.entries()) {
+    lines.push(
+      `| ${i + 1} | ${r.label} | ${usd(r.costPerPoint)} | ${usd(r.costUsd)} | ${pct(r.avgPct)} |`,
     );
   }
 
@@ -272,4 +327,31 @@ function formatErrors(rows: ErrorRow[]): string[] {
  */
 function pct(value: number | null): string {
   return value == null ? "—" : `${value.toFixed(0)}%`;
+}
+
+/**
+ * Format a USD amount with adaptive precision, or em-dash for null.
+ *
+ * @param value - Amount in USD or null
+ * @returns Display string
+ */
+function usd(value: number | null): string {
+  if (value == null) return "—";
+
+  const decimals = value < 0.1 ? 4 : value < 10 ? 3 : 2;
+
+  return `$${value.toFixed(decimals)}`;
+}
+
+/**
+ * Format a token count compactly (k/M).
+ *
+ * @param value - Token count
+ * @returns Display string
+ */
+function tokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+
+  return String(value);
 }
