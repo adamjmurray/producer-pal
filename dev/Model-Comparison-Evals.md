@@ -177,6 +177,36 @@ Tips:
 - `-s` / `--skip-setup` reuses the current Live Set instead of reopening it.
 - `-q` / `--quiet` trims the per-run chatter.
 
+### Claude-only runs (and a note on Pro/Max plans)
+
+The harness calls the Anthropic **API** (via the AI SDK), which needs an
+`ANTHROPIC_KEY` from console.anthropic.com and is billed per token. A **Claude
+Pro/Max subscription does not work here** — those are OAuth subscriptions scoped
+to Claude.ai and Claude Code, and Anthropic disallows using subscription auth
+with the SDK. So Claude-model evals are pay-as-you-go API usage (a Sonnet +
+Haiku full matrix is typically low single-digit dollars; Opus output is much
+pricier).
+
+To run across Claude models only — judged by Claude, so `ANTHROPIC_KEY` is the
+only key you need:
+
+```bash
+# Smoke test first (one scenario, cheap model + cheap judge)
+scripts/eval -t connect-to-ableton -m claude-haiku-4-5 -j claude-haiku-4-5
+
+# Full Claude matrix, judged by Claude
+scripts/eval -a \
+  -m claude-sonnet-4-5 \
+  -m claude-haiku-4-5 \
+  -c default -c small-model \
+  -j claude-haiku-4-5
+scripts/eval-analyze
+```
+
+`-j claude-haiku-4-5` overrides the default Gemini judge (no `GEMINI_KEY`
+needed). Confirm exact model IDs at docs.anthropic.com — they version over time;
+the harness just needs the `claude-` prefix to route to Anthropic.
+
 ## Results workflow
 
 By default the runner saves every run to `eval-results/<timestamp>/` as:
