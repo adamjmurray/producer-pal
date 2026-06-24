@@ -159,7 +159,7 @@
     "happy-dom": "20.10.3",
     "jscpd": "4.2.5",
     "peggy": "5.1.0",
-    "prettier": "3.8.3",
+    "prettier": "3.8.4",
     "rollup": "4.62.0",
     "rollup-plugin-copy": "3.5.0",
     "rollup-plugin-esbuild": "6.2.1",
