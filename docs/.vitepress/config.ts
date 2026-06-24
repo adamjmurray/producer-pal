@@ -119,6 +119,19 @@ export default defineConfig({
         ],
       },
       {
+        text: "How Producer Pal Works",
+        items: [
+          {
+            text: "Running Inside Ableton Live",
+            link: "/how-it-works/running-inside-live",
+          },
+          {
+            text: "Why Not an Ableton Extension?",
+            link: "/how-it-works/why-not-an-extension",
+          },
+        ],
+      },
+      {
         text: "Features",
         items: [
           { text: "Feature List", link: "/features" },
