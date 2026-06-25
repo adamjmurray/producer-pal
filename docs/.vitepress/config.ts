@@ -126,6 +126,10 @@ export default defineConfig({
             link: "/how-it-works/running-inside-live",
           },
           {
+            text: "The Bridge: JSON Over Patch Cables",
+            link: "/how-it-works/the-bridge",
+          },
+          {
             text: "Why Not an Ableton Extension?",
             link: "/how-it-works/why-not-an-extension",
           },

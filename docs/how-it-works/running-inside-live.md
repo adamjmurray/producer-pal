@@ -86,7 +86,10 @@ real-time control of Live, fused into one tool.
 Getting these two engines to talk to each other reliably is the fiddly part, and
 it's why you don't see this approach often. It took a lot of time in Max, Max
 for Live, and the Live API to get right. But once it's there, the payoff is
-exactly the combination an AI assistant needs.
+exactly the combination an AI assistant needs. If you'd like to see how the
+bridge actually moves data between the two engines — JSON sent over Max patch
+cables, with a chunking scheme for big messages — see
+[The Bridge: JSON Over Patch Cables](/how-it-works/the-bridge).
 
 ## How this compares to an extension
 
