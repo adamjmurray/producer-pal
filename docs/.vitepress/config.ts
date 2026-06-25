@@ -165,7 +165,6 @@ export default defineConfig({
           {
             text: "Built-in Chat UI",
             link: "/installation/chat-ui",
-            collapsed: false,
             items: [
               { text: "Gemini", link: "/installation/gemini" },
               { text: "OpenAI", link: "/installation/openai" },
@@ -179,7 +178,6 @@ export default defineConfig({
           {
             text: "Desktop Apps",
             link: "/installation/desktop-apps",
-            collapsed: false,
             items: [
               {
                 text: "Claude Desktop",
@@ -192,7 +190,6 @@ export default defineConfig({
           {
             text: "Command Line",
             link: "/installation/cli",
-            collapsed: false,
             items: [
               { text: "Gemini CLI", link: "/installation/gemini-cli" },
               { text: "Codex CLI", link: "/installation/codex-cli" },
@@ -203,7 +200,6 @@ export default defineConfig({
           {
             text: "Web Apps",
             link: "/installation/web-apps",
-            collapsed: false,
             items: [
               { text: "claude.ai", link: "/installation/claude-web" },
               { text: "ChatGPT", link: "/installation/chatgpt-web" },
@@ -212,7 +208,7 @@ export default defineConfig({
           },
           {
             text: "Choose by Provider",
-            collapsed: true,
+            link: "/installation/choose-by-provider",
             items: [
               {
                 text: "Claude / Anthropic",
@@ -239,7 +235,7 @@ export default defineConfig({
           },
           {
             text: "Advanced",
-            collapsed: false,
+            link: "/installation/advanced",
             items: [
               { text: "Other MCP LLMs", link: "/installation/other-mcp" },
               { text: "Web Tunnels", link: "/installation/web-tunnels" },
