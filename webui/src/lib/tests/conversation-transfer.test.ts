@@ -7,6 +7,9 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, beforeEach } from "vitest";
 import {
   type ConversationRecord,
+  MAX_CONVERSATIONS,
+  deleteAllConversations,
+  loadConversation,
   saveConversation,
   resetDbCache,
   searchConversations,
@@ -287,6 +290,43 @@ describe("conversation-transfer", () => {
 
     expect(importedFork.forkParentId).toBe("trunk");
     expect(importedFork.forkedAtIndex).toBe(2);
+  });
+
+  it("protects a pre-existing trunk from the import trim when a fork of it is imported", async () => {
+    // Fill to the cap. "trunk" is the oldest, unbookmarked record; "second" is
+    // the next oldest. Importing a fork of the trunk pushes one over the cap and
+    // triggers a trim. The trunk belongs to the imported fork's family, so the
+    // trim must spare it and evict the next-oldest unprotected record instead —
+    // otherwise importing a fork would silently delete its local trunk.
+    await deleteAllConversations(); // earlier tests leave records (resetDbCache only closes)
+    await saveConversation(createTestRecord({ id: "trunk", updatedAt: 1 }));
+    await saveConversation(createTestRecord({ id: "second", updatedAt: 2 }));
+
+    for (let i = 2; i < MAX_CONVERSATIONS; i++) {
+      await saveConversation(
+        createTestRecord({ id: `filler-${i}`, updatedAt: 1000 + i }),
+      );
+    }
+
+    await importConversations(
+      JSON.stringify({
+        version: 1,
+        conversations: [
+          {
+            id: "imported-fork",
+            createdAt: 5000,
+            updatedAt: 5000,
+            messages: [{ role: "user", content: "forked" }],
+            forkParentId: "trunk",
+            forkedAtIndex: 0,
+          },
+        ],
+      }),
+    );
+
+    expect(await loadConversation("trunk")).toBeDefined(); // protected family
+    expect(await loadConversation("second")).toBeUndefined(); // trimmed instead
+    expect(await loadConversation("imported-fork")).toBeDefined();
   });
 
   it("leaves non-forked records without branch pointers on import", async () => {

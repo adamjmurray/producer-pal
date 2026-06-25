@@ -4,7 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type BranchRecord,
+  branchFamilyIds,
+} from "#webui/lib/conversation-branch-helpers";
+import {
   type ConversationRecord,
+  listAllConversationSummaries,
   loadConversation,
   saveConversation,
   getConversationDb,
@@ -86,6 +91,33 @@ export async function importConversations(json: string): Promise<ImportResult> {
       .filter((id): id is string => typeof id === "string"),
   );
 
+  // Extend that protection to the whole branch family each imported fork joins,
+  // including pre-existing local trunks/siblings. Otherwise importing a fork
+  // whose trunk already exists locally (old and unbookmarked) could let the
+  // per-save trim evict that trunk — losing its transcript and orphaning the
+  // imported branch's ‹ n/m › navigation. The walk needs both the imported
+  // records (for their parent pointers) and the existing summaries.
+  const importedBranchRecords: BranchRecord[] = (
+    data.conversations as unknown[]
+  )
+    .map((r) => r as Record<string, unknown>)
+    .filter((r) => typeof r.id === "string")
+    .map((r) => ({
+      id: r.id as string,
+      createdAt: (r.createdAt as number | undefined) ?? 0,
+      updatedAt: (r.updatedAt as number | undefined) ?? 0,
+      ...(typeof r.forkParentId === "string" && {
+        forkParentId: r.forkParentId,
+      }),
+      ...(typeof r.forkedAtIndex === "number" && {
+        forkedAtIndex: r.forkedAtIndex,
+      }),
+    }));
+  const protectedIds = branchFamilyIds(
+    [...importIds],
+    [...(await listAllConversationSummaries()), ...importedBranchRecords],
+  );
+
   let newCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;
@@ -108,7 +140,7 @@ export async function importConversations(json: string): Promise<ImportResult> {
         continue;
       }
 
-      await saveConversation(normalized, importIds);
+      await saveConversation(normalized, protectedIds);
 
       if (existing) {
         updatedCount++;
