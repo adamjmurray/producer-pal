@@ -6,6 +6,7 @@
 import {
   type BranchRecord,
   branchFamilyIds,
+  forkPointerCreatesCycle,
 } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
@@ -113,9 +114,29 @@ export async function importConversations(json: string): Promise<ImportResult> {
         forkedAtIndex: r.forkedAtIndex,
       }),
     }));
+  const existingSummaries = await listAllConversationSummaries();
   const protectedIds = branchFamilyIds(
     [...importIds],
-    [...(await listAllConversationSummaries()), ...importedBranchRecords],
+    [...existingSummaries, ...importedBranchRecords],
+  );
+
+  // Combined parent graph (imported pointers win over existing for the same id)
+  // used to reject a fork pointer that would make a record its own ancestor.
+  // branchRootId tolerates such a cycle without looping, but it still splits one
+  // family across roots and breaks the ‹ n/m › arrows, so drop those pointers.
+  const parentOf = new Map<string, string | undefined>();
+
+  for (const r of existingSummaries) parentOf.set(r.id, r.forkParentId);
+  for (const r of importedBranchRecords) parentOf.set(r.id, r.forkParentId);
+
+  const cyclicForkIds = new Set(
+    importedBranchRecords
+      .filter(
+        (r) =>
+          r.forkParentId != null &&
+          forkPointerCreatesCycle(r.id, r.forkParentId, parentOf),
+      )
+      .map((r) => r.id),
   );
 
   let newCount = 0;
@@ -132,7 +153,10 @@ export async function importConversations(json: string): Promise<ImportResult> {
     }
 
     try {
-      const normalized = normalizeRecord(record);
+      const normalized = normalizeRecord(
+        record,
+        cyclicForkIds.has(record.id as string),
+      );
       const existing = await loadConversation(normalized.id);
 
       if (existing && existing.updatedAt >= normalized.updatedAt) {
@@ -206,9 +230,14 @@ function isValidImportedMessage(message: unknown): boolean {
 /**
  * Normalize a raw record into a full ConversationRecord with defaults.
  * @param record - Raw parsed object with validated required fields
+ * @param dropForkPointers - Drop forkParentId/forkedAtIndex (the import detected
+ *   they would make this record its own ancestor — see {@link forkPointerCreatesCycle})
  * @returns Normalized conversation record
  */
-function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
+function normalizeRecord(
+  record: Record<string, unknown>,
+  dropForkPointers = false,
+): ConversationRecord {
   return {
     id: record.id as string,
     // Coerce a non-string title to null: search does `title.toLowerCase()`, so a
@@ -244,12 +273,16 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
       null,
     // Round-trip the branching pointers so exported fork families re-import as a
     // linked set. Both are optional; only carry them when present and well-typed
-    // so a plain (non-forked) record keeps its shape.
-    ...(typeof record.forkParentId === "string" && {
-      forkParentId: record.forkParentId,
-    }),
-    ...(typeof record.forkedAtIndex === "number" && {
-      forkedAtIndex: record.forkedAtIndex,
-    }),
+    // so a plain (non-forked) record keeps its shape. Dropped entirely when the
+    // pointer would make this record its own ancestor (a corrupt/hand-edited
+    // cycle), so the family collapses cleanly instead of splitting across roots.
+    ...(!dropForkPointers &&
+      typeof record.forkParentId === "string" && {
+        forkParentId: record.forkParentId,
+      }),
+    ...(!dropForkPointers &&
+      typeof record.forkedAtIndex === "number" && {
+        forkedAtIndex: record.forkedAtIndex,
+      }),
   };
 }

@@ -329,6 +329,80 @@ describe("conversation-transfer", () => {
     expect(await loadConversation("imported-fork")).toBeDefined();
   });
 
+  it("drops a self-referential fork pointer on import", async () => {
+    // A corrupt/hand-edited export naming itself as its own trunk would split
+    // its family across roots and confuse the ‹ n/m › arrows; import strips it.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "self",
+          createdAt: 100,
+          messages: [{ role: "user", content: "loop" }],
+          forkParentId: "self",
+          forkedAtIndex: 1,
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "self");
+
+    expect(imported).not.toHaveProperty("forkParentId");
+    expect(imported).not.toHaveProperty("forkedAtIndex");
+  });
+
+  it("drops the pointers of a two-node fork cycle on import", async () => {
+    // A↔B each name the other as trunk. Both pointers are cyclic, so both are
+    // stripped, leaving two independent (un-linked) records rather than a broken
+    // family that never collapses.
+    await importConversations(
+      JSON.stringify({
+        version: 1,
+        conversations: [
+          {
+            id: "cyc-a",
+            createdAt: 100,
+            messages: [{ role: "user", content: "a" }],
+            forkParentId: "cyc-b",
+            forkedAtIndex: 1,
+          },
+          {
+            id: "cyc-b",
+            createdAt: 101,
+            messages: [{ role: "user", content: "b" }],
+            forkParentId: "cyc-a",
+            forkedAtIndex: 1,
+          },
+        ],
+      }),
+    );
+
+    expect(await loadConversation("cyc-a")).not.toHaveProperty("forkParentId");
+    expect(await loadConversation("cyc-b")).not.toHaveProperty("forkParentId");
+  });
+
+  it("keeps a valid fork pointer to a missing trunk on import", async () => {
+    // A pointer whose trunk doesn't exist is orphaned, not cyclic, so it must
+    // survive (orphaned siblings still collapse via the referenced root).
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "orphan",
+          createdAt: 100,
+          messages: [{ role: "user", content: "x" }],
+          forkParentId: "deleted-trunk",
+          forkedAtIndex: 3,
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "orphan");
+
+    expect(imported.forkParentId).toBe("deleted-trunk");
+    expect(imported.forkedAtIndex).toBe(3);
+  });
+
   it("leaves non-forked records without branch pointers on import", async () => {
     const data = {
       version: 1,

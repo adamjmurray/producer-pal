@@ -180,6 +180,41 @@ export function branchFamilyIds<T extends BranchRecord>(
   return family;
 }
 
+/**
+ * Whether storing `forkParentId` on `id` would make `id` its own ancestor (a
+ * self-parent, or a longer A→B→…→A loop). A corrupt or hand-edited import can
+ * carry such a pointer; {@link branchRootId} already guards against an infinite
+ * loop, but a surviving cycle still splits one family across multiple roots
+ * (duplicate sidebar rows) and confuses the ‹ n/m › arrows, so import drops the
+ * pointer when this returns true. A pointer to a missing/deleted parent is NOT a
+ * cycle (the chain just ends), so orphaned forks keep their linkage.
+ * @param id - The record that would store the pointer
+ * @param forkParentId - The proposed parent id
+ * @param parentOf - Lookup from record id to its `forkParentId` (the combined
+ *   imported + existing graph, with imported pointers taking precedence)
+ * @returns True if following the chain from `forkParentId` reaches `id` again
+ */
+export function forkPointerCreatesCycle(
+  id: string,
+  forkParentId: string,
+  parentOf: ReadonlyMap<string, string | undefined>,
+): boolean {
+  let current: string | undefined = forkParentId;
+  const seen = new Set<string>();
+
+  while (current != null) {
+    if (current === id) return true;
+    // A pre-existing cycle that doesn't pass through `id` ends the walk without
+    // implicating this pointer (those records are corrupt independently).
+    if (seen.has(current)) return false;
+
+    seen.add(current);
+    current = parentOf.get(current);
+  }
+
+  return false;
+}
+
 // --- Helpers below main exports ---
 
 /**

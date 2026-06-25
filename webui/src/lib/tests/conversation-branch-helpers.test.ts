@@ -10,6 +10,7 @@ import {
   collapseBranchFamilies,
   computeBranchPoints,
   deriveForkParentId,
+  forkPointerCreatesCycle,
 } from "#webui/lib/conversation-branch-helpers";
 
 /**
@@ -381,5 +382,64 @@ describe("branchFamilyIds", () => {
     const a = rec("A");
 
     expect(branchFamilyIds([], [a]).size).toBe(0);
+  });
+});
+
+describe("forkPointerCreatesCycle", () => {
+  /**
+   * Build a parent-pointer lookup from id→forkParentId pairs.
+   * @param pairs - Tuples of [id, forkParentId | undefined]
+   * @returns A parentOf map
+   */
+  const parents = (pairs: [string, string | undefined][]) =>
+    new Map<string, string | undefined>(pairs);
+
+  it("flags a self-parent", () => {
+    expect(forkPointerCreatesCycle("A", "A", parents([["A", "A"]]))).toBe(true);
+  });
+
+  it("flags a two-node cycle (A↔B)", () => {
+    const parentOf = parents([
+      ["A", "B"],
+      ["B", "A"],
+    ]);
+
+    expect(forkPointerCreatesCycle("A", "B", parentOf)).toBe(true);
+  });
+
+  it("flags a longer loop (A→B→C→A)", () => {
+    const parentOf = parents([
+      ["A", "B"],
+      ["B", "C"],
+      ["C", "A"],
+    ]);
+
+    expect(forkPointerCreatesCycle("A", "B", parentOf)).toBe(true);
+  });
+
+  it("allows a valid chain that bottoms out at a root", () => {
+    const parentOf = parents([
+      ["A", "B"],
+      ["B", "C"],
+    ]);
+
+    expect(forkPointerCreatesCycle("A", "B", parentOf)).toBe(false);
+  });
+
+  it("allows a pointer to a missing/deleted parent", () => {
+    expect(forkPointerCreatesCycle("A", "gone", parents([["A", "gone"]]))).toBe(
+      false,
+    );
+  });
+
+  it("does not implicate a pre-existing cycle that doesn't include id", () => {
+    // B↔C loop; A merely points into it without being part of the loop.
+    const parentOf = parents([
+      ["A", "B"],
+      ["B", "C"],
+      ["C", "B"],
+    ]);
+
+    expect(forkPointerCreatesCycle("A", "B", parentOf)).toBe(false);
   });
 });
