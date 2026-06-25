@@ -20,12 +20,14 @@ import {
   type ConversationLockedSettings,
   type PendingForkRef,
 } from "#webui/hooks/chat/use-chat-types";
+import { branchFamilyIds } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
   type ConversationSummary,
   deleteAllConversations as dbDeleteAllConversations,
   deleteConversation as dbDeleteConversation,
   deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
+  listAllConversationSummaries,
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
@@ -231,11 +233,11 @@ export function useConversations({
 
         syncActiveMeta(record);
 
-        // When saving a fork, protect the records it descends from (its trunk
-        // and the sibling it was forked from) so the conversation-cap LRU can't
-        // evict the very trunk this new branch points back to.
+        // When saving a fork, protect the whole branch family it joins so the
+        // conversation-cap LRU can't evict the trunk this branch points back to
+        // — or any sibling, which would orphan the family's ‹ n/m › navigation.
         const protectedIds =
-          fork != null ? forkProtectedIds(record, reuseId) : undefined;
+          fork != null ? await forkProtectedIds(record, reuseId) : undefined;
         const result = await saveConversation(record, protectedIds);
 
         limit.showLimitNotification(result);
@@ -421,20 +423,23 @@ function buildActiveRefs(
 }
 
 /**
- * Records a fork save must shield from the conversation-cap LRU: the trunk it
- * points back to and the sibling it was forked from, so trimming to make room
- * for this new branch can't evict the records it depends on.
+ * Ids a fork save must shield from the conversation-cap LRU: the entire branch
+ * family the new fork joins (its trunk, the sibling it was forked from, and
+ * every other sibling), so trimming to make room can't evict a member and orphan
+ * the family's ‹ n/m › navigation.
  * @param record - The fork record being saved
  * @param reuseId - The active id the fork was created from, if any
  * @returns Ids to protect from limit-based deletion
  */
-function forkProtectedIds(
+async function forkProtectedIds(
   record: ConversationRecord,
   reuseId: string | null,
-): ReadonlySet<string> {
-  return new Set(
-    [record.forkParentId, reuseId].filter((id): id is string => id != null),
+): Promise<ReadonlySet<string>> {
+  const seeds = [record.forkParentId, reuseId].filter(
+    (id): id is string => id != null,
   );
+
+  return branchFamilyIds(seeds, await listAllConversationSummaries());
 }
 
 /**

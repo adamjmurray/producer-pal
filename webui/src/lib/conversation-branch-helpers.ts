@@ -154,6 +154,32 @@ export function computeBranchPoints<T extends BranchRecord>(
   return [...byAnchor.values()].sort((a, b) => a.anchorIndex - b.anchorIndex);
 }
 
+/**
+ * Every id in the branch families the given seeds belong to: each record whose
+ * `forkParentId` chain bottoms out at the same root as some seed. Used to shield
+ * a whole family from the conversation-cap LRU when saving a new branch, so
+ * trimming to make room for the fork can't silently evict a sibling and orphan
+ * that family's ‹ n/m › navigation. The earlier protection covered only the
+ * trunk and immediate source, leaving other siblings exposed.
+ * @param seedIds - Known family-member ids (a fork's trunk and immediate source)
+ * @param items - All conversation summaries (uncollapsed, every sibling present)
+ * @returns Set of every id sharing a seed's family root (seeds always included)
+ */
+export function branchFamilyIds<T extends BranchRecord>(
+  seedIds: readonly string[],
+  items: T[],
+): ReadonlySet<string> {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const roots = new Set(seedIds.map((id) => branchRootId(id, byId)));
+  const family = new Set<string>(seedIds);
+
+  for (const item of items) {
+    if (roots.has(branchRootId(item.id, byId))) family.add(item.id);
+  }
+
+  return family;
+}
+
 // --- Helpers below main exports ---
 
 /**

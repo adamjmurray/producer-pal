@@ -7,6 +7,7 @@
 
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { branchFamilyIds } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
   MAX_CONVERSATIONS,
@@ -679,6 +680,49 @@ describe("conversation limit enforcement", () => {
     expect(await loadConversation(oldest.id)).toBeDefined(); // protected → kept
     expect(await loadConversation(nextOldest.id)).toBeUndefined(); // trimmed
     expect(await loadConversation(newest.id)).toBeDefined();
+  });
+
+  it("shields a whole branch family so saving a new sibling can't evict an old one", async () => {
+    // A fork save protects its family via branchFamilyIds. Make the family's
+    // siblings the OLDEST records so they'd be trimmed first, then save a new
+    // sibling at the cap: the family survives and an unrelated record is trimmed.
+    const trunk = createRecord({ updatedAt: 100 });
+    const oldSibling = createRecord({
+      updatedAt: 101,
+      forkParentId: trunk.id,
+      forkedAtIndex: 1,
+    });
+
+    await saveConversation(trunk);
+    await saveConversation(oldSibling);
+
+    const filler: ConversationRecord[] = [];
+
+    for (let i = 2; i < MAX_CONVERSATIONS; i++) {
+      const r = createRecord({ updatedAt: 1000 + i });
+
+      filler.push(r);
+      await saveConversation(r);
+    }
+
+    // New sibling forked off the same trunk — protect the family it joins.
+    const newSibling = createRecord({
+      updatedAt: 99999,
+      forkParentId: trunk.id,
+      forkedAtIndex: 1,
+    });
+    const protectedIds = branchFamilyIds(
+      [trunk.id],
+      [trunk, oldSibling, newSibling, ...filler],
+    );
+    const result = await saveConversation(newSibling, protectedIds);
+
+    expect(result.deletedCount).toBe(1);
+    // The family's old members survived despite being the oldest records...
+    expect(await loadConversation(trunk.id)).toBeDefined();
+    expect(await loadConversation(oldSibling.id)).toBeDefined();
+    // ...and an unrelated filler record was trimmed instead.
+    expect(await loadConversation(filler[0]!.id)).toBeUndefined();
   });
 
   it("skips bookmarked conversations during deletion", async () => {

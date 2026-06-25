@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type BranchRecord,
+  branchFamilyIds,
   collapseBranchFamilies,
   computeBranchPoints,
   deriveForkParentId,
@@ -318,5 +319,67 @@ describe("computeBranchPoints", () => {
       { anchorIndex: 2, siblingIds: ["A", "B"], currentIndex: 1 },
       { anchorIndex: 4, siblingIds: ["B", "C"], currentIndex: 0 },
     ]);
+  });
+});
+
+describe("branchFamilyIds", () => {
+  it("returns just the seeds when nothing else shares their root", () => {
+    const a = rec("A");
+    const other = rec("Z");
+
+    const family = branchFamilyIds(["A"], [a, other]);
+
+    expect([...family].sort()).toStrictEqual(["A"]);
+  });
+
+  it("includes every sibling sharing a seed's family root", () => {
+    // Seeding with only the trunk must still protect both forks off it — the
+    // gap the earlier trunk+source-only protection left open.
+    const a = rec("A");
+    const b = rec("B", { forkParentId: "A", forkedAtIndex: 1 });
+    const c = rec("C", { forkParentId: "A", forkedAtIndex: 1 });
+
+    const family = branchFamilyIds(["A"], [a, b, c]);
+
+    expect([...family].sort()).toStrictEqual(["A", "B", "C"]);
+  });
+
+  it("walks the fork chain so a nested family collapses to one root", () => {
+    // A → B → C. Seeding with the deepest member protects the whole chain.
+    const a = rec("A");
+    const b = rec("B", { forkParentId: "A", forkedAtIndex: 1 });
+    const c = rec("C", { forkParentId: "B", forkedAtIndex: 3 });
+
+    const family = branchFamilyIds(["C"], [a, b, c]);
+
+    expect([...family].sort()).toStrictEqual(["A", "B", "C"]);
+  });
+
+  it("keeps a referenced-but-deleted trunk seed protected", () => {
+    // The trunk A is already gone; its orphaned siblings still resolve to root A
+    // and the seed A itself stays in the set so a concurrent re-save is shielded.
+    const b = rec("B", { forkParentId: "A", forkedAtIndex: 1 });
+    const c = rec("C", { forkParentId: "A", forkedAtIndex: 1 });
+
+    const family = branchFamilyIds(["A"], [b, c]);
+
+    expect([...family].sort()).toStrictEqual(["A", "B", "C"]);
+  });
+
+  it("excludes unrelated families", () => {
+    const a = rec("A");
+    const b = rec("B", { forkParentId: "A", forkedAtIndex: 1 });
+    const x = rec("X");
+    const y = rec("Y", { forkParentId: "X", forkedAtIndex: 1 });
+
+    const family = branchFamilyIds(["A"], [a, b, x, y]);
+
+    expect([...family].sort()).toStrictEqual(["A", "B"]);
+  });
+
+  it("returns an empty set for no seeds", () => {
+    const a = rec("A");
+
+    expect(branchFamilyIds([], [a]).size).toBe(0);
   });
 });
