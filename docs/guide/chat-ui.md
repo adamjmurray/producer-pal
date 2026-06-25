@@ -219,6 +219,18 @@ revisit them later.
 If OpenAI rate-limits your account mid-session, an error banner shows a
 countdown and a **Retry** button that activates once the limit clears.
 
+::: tip Hitting rate limits?
+
+Voice sessions re-send the full conversation context — including Producer Pal's
+skills and tool definitions — to the model on every turn, so a context-heavy
+session can reach rate limits sooner. If you run into limits, try enabling
+[**Small model mode**](#connection): it loads a compact skill set and trims tool
+descriptions, substantially shrinking what's sent each turn. The tradeoff is
+that it's a global setting (it also applies to text chat) and reduces some tool
+detail, so leave it off unless you need it.
+
+:::
+
 ## Settings
 
 Settings open as a modal overlay. Press Escape or click outside to close (if
