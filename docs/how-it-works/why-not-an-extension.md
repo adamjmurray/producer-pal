@@ -85,12 +85,18 @@ point at something else. For a quick one-shot menu command that's no problem.
 For an AI holding a mental map of your whole project across a conversation, it
 becomes an ongoing source of "wait, which clip did you mean?" mix-ups.
 
-### It works inside a sandbox, away from your sample folders
+### It can't browse your sample folders
 
-Extensions run in a restricted sandbox and can only touch their own private
-storage, not your Documents, your sample library, or other folders on disk. And
-Ableton has said that sandbox will tighten over time. Producer Pal's ability to
-reach your sample folders wherever they live wouldn't survive those rules.
+An extension _can_ import a specific file from any path — the host does that on
+its behalf and copies the file into the project. What it can't do is **find**
+files on its own: its code is confined to its private storage and a temp folder,
+with no way to list or scan your Documents, your sample library, or anywhere
+else (and Ableton has said today's permission model will harden into a stricter
+sandbox). There isn't even a native file picker — selecting a file would mean
+building one yourself in a webview. So the AI couldn't browse your library and
+pick the right loop; at best you'd point it at specific files by hand. Producer
+Pal instead scans and reads your sample folders directly, wherever they live,
+and references files in place rather than copying them in.
 
 ## What the SDK _can_ do that Max for Live can't, and how I weigh it
 
@@ -149,8 +155,7 @@ It's the most tempting reason to want one: surely an extension, with no Max for
 Live needed, would let _everyone_ on Live run Producer Pal? I assumed the same
 thing, until I checked. Per
 [Ableton's own FAQ](https://www.ableton.com/live/extensions/), extensions
-require **Live Suite** (currently the 12.4.5+ beta) and are "not available in
-Live Standard, Intro, or Lite."
+require **Live Suite** and are "not available in Live Standard, Intro, or Lite."
 
 That's the same audience that can already run Max for Live, if not _narrower_:
 Max for Live comes with Suite, but it can also be added to **Live Standard** as
@@ -169,10 +174,8 @@ part of how Producer Pal is designed to grow.
 
 ## What would change my mind
 
-The Extensions SDK is still in **beta**, available only in pre-release builds of
-Live, so most people on a stable Live release can't run extensions yet anyway.
-It's improving quickly, and I'm genuinely glad it exists. I'd happily build on
-it the day it can:
+The SDK is improving quickly, and I'm genuinely glad it exists. I'd happily
+build on it the day it can:
 
 1. **Render a MIDI instrument to audio** (resample / freeze / bounce), the piece
    that would make an audio add-on worth it.
