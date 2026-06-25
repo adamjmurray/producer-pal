@@ -96,6 +96,23 @@ If the model responds with garbled text like `<|tool_call_start|>...` or says it
 can't connect to Ableton, the model doesn't support tools. Try a different model
 from the [tools category](https://ollama.com/search?c=tools).
 
+## Local Model Tips
+
+- **Set the context length high enough.** When you connect, Producer Pal sends a
+  sizable set of instructions (roughly 9,000 tokens). Ollama's default context
+  window (`num_ctx`, 4096) is too small and silently truncates them, which
+  breaks tool use. Use **16k (16000) or higher** — set it per model in a
+  Modelfile, or globally with the `OLLAMA_CONTEXT_LENGTH=16384` environment
+  variable. Larger windows use more memory and can run slower, so experiment to
+  find the balance.
+- **Follow-up turns are often much faster.** The local engine automatically
+  reuses its cached prompt prefix (your instructions and earlier messages)
+  between turns, so it usually only has to process your newest message. The
+  first turn after connecting is the slow one; later turns in the same
+  conversation can be dramatically quicker. There's nothing to configure. The
+  size of the speedup depends on the model — some keep the prefix stable across
+  turns and benefit fully, while others reprocess each turn and see little gain.
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).
