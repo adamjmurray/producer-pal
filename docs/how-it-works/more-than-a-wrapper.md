@@ -21,8 +21,9 @@ smoothed over. The result is a set of tools designed to be intuitive for **both
 the AI and the human**, and in some cases to offer features the Live API doesn't
 provide at all.
 
-Two examples show the range: one small and tidy, one deep and full of Max-level
-trickery.
+Three examples show the range: one small and tidy, one deep and full of
+arrangement trickery, and one that reaches a feature the API doesn't even admit
+exists.
 
 ## A small example: colors as `#RRGGBB`
 
@@ -142,12 +143,42 @@ threaded into every tool request as part of the request context
 MIDI clips none of this is needed — `create_midi_clip` happily makes an empty
 clip of any length directly in the arrangement.)
 
+## A feature the API doesn't admit to
+
+Both examples so far started from something the Live API _tells_ you about. The
+most surprising refinement came from the opposite case — a capability the API
+doesn't advertise at all.
+
+Every object in the Live API can describe itself: ask a track for its `info` and
+it reports its properties and functions. That self-description, plus Ableton's
+reference documentation, is the map almost every tool builds from. A track's map
+lists `arm`, `mute`, `solo`, its routing — but **not** input monitoring, the
+**In / Auto / Off** switch sitting on every track in Live's mixer. It's absent
+from the introspection dump _and_ from the
+[official documentation](https://docs.cycling74.com/apiref/lom/track/). By every
+signal the API gives you, there is simply no way to set it.
+
+While chasing exactly that feature — which appeared not to exist — Producer
+Pal's development resorted to **guessing plausible property names** anyway.
+`current_monitoring_state` turned out to be real: read it and you get back a
+number (`0` = In, `1` = Auto, `2` = Off); write it and the track's monitoring
+actually changes. It just isn't listed anywhere. That undocumented,
+un-introspectable property is now the `monitoringState` control on Producer
+Pal's update-track tool.
+
+A thin wrapper could never have offered it, because a thin wrapper only knows
+what the API admits to. (And it's _still_ missing from both the docs and the
+reflection today — I re-probed a running Live Set while writing this page, and
+the property works exactly as before while remaining invisible to
+introspection.)
+
 ## Why this matters
 
-None of this — the bit math, the holding area, the generated silent WAV — is
-visible when you use Producer Pal. You just ask for a split, or a color, and it
-happens. That's the point. Every one of these refinements exists so the AI meets
-a clean, predictable interface instead of the Live API's raw edges, and so you
-get capabilities a thin wrapper simply can't offer. It's the accumulated result
-of more than a year of smoothing rough edges, and it's most of what separates a
-genuinely usable tool from a quick API bridge.
+None of this — the bit math, the holding area, the generated silent WAV, the
+property Live never told us about — is visible when you use Producer Pal. You
+just ask for a split, or a color, and it happens. That's the point. Every one of
+these refinements exists so the AI meets a clean, predictable interface instead
+of the Live API's raw edges, and so you get capabilities a thin wrapper simply
+can't offer. It's the accumulated result of more than a year of smoothing rough
+edges, and it's most of what separates a genuinely usable tool from a quick API
+bridge.
