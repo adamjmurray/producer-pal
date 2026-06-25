@@ -96,9 +96,10 @@ export default defineConfig({
     logo: "/producer-pal-logo.svg",
 
     nav: [
-      { text: "Features", link: "/features" },
       { text: "Installation", link: "/installation" },
       { text: "Guide", link: "/guide" },
+      { text: "Features", link: "/features" },
+      { text: "How It Works", link: "/how-it-works" },
       { text: "Support", link: "/support" },
       {
         text: "GitHub",
@@ -119,8 +120,17 @@ export default defineConfig({
         ],
       },
       {
-        text: "How Producer Pal Works",
+        text: "Features",
         items: [
+          { text: "Feature List", link: "/features" },
+          { text: "Extending", link: "/extending" },
+          { text: "Roadmap", link: "/roadmap" },
+        ],
+      },
+      {
+        text: "How It Works",
+        items: [
+          { text: "Overview", link: "/how-it-works" },
           {
             text: "Running Inside Ableton Live",
             link: "/how-it-works/running-inside-live",
@@ -137,14 +147,6 @@ export default defineConfig({
             text: "Why Not an Ableton Extension?",
             link: "/how-it-works/why-not-an-extension",
           },
-        ],
-      },
-      {
-        text: "Features",
-        items: [
-          { text: "Feature List", link: "/features" },
-          { text: "Extending", link: "/extending" },
-          { text: "Roadmap", link: "/roadmap" },
         ],
       },
       {
