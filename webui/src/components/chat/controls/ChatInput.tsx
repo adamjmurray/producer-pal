@@ -13,6 +13,14 @@ interface ChatInputProps extends ThinkingToggleProps {
   isAssistantResponding: boolean;
   /** Conversation ended with an error — user must retry or edit to continue */
   hasError: boolean;
+  /**
+   * A manual compaction is in progress. compact() reassigns chatHistory
+   * mid-flight, and unlike a streaming response it is NOT a queueable state
+   * (nothing drains the queue when it ends), so the input is disabled outright
+   * until it completes — otherwise a send is silently dropped by handleSend's
+   * compaction guard, losing the typed message.
+   */
+  isCompacting?: boolean;
   onStop: () => void;
 }
 
@@ -24,6 +32,7 @@ interface ChatInputProps extends ThinkingToggleProps {
  * @param props.onEnqueue - Callback to queue message while AI is responding
  * @param props.isAssistantResponding - Whether assistant is currently responding
  * @param props.hasError - Whether conversation ended with an error
+ * @param props.isCompacting - Whether a manual compaction is in progress
  * @param props.onStop - Callback to stop assistant response
  * @param props.thinking - Current thinking mode
  * @param props.onThinkingChange - Callback for thinking change
@@ -34,14 +43,16 @@ export function ChatInput({
   onEnqueue,
   isAssistantResponding,
   hasError,
+  isCompacting,
   onStop,
   thinking,
   onThinkingChange,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
+  const disabled = hasError || isCompacting === true;
 
   const submitMessage = () => {
-    if (!input.trim() || hasError) return;
+    if (!input.trim() || disabled) return;
 
     const overrides: MessageOverrides = { thinking };
 
@@ -72,9 +83,11 @@ export function ChatInput({
             placeholder={
               hasError
                 ? "Retry or edit a message to continue..."
-                : "Type a message... (Shift+Enter for new line)"
+                : isCompacting
+                  ? "Compacting…"
+                  : "Type a message... (Shift+Enter for new line)"
             }
-            disabled={hasError}
+            disabled={disabled}
             className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500 disabled:opacity-50"
             rows={2}
           />
@@ -94,7 +107,7 @@ export function ChatInput({
             )}
             <button
               onClick={submitMessage}
-              disabled={hasError || !input.trim()}
+              disabled={disabled || !input.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
             >
               {isAssistantResponding ? "Queue" : "Send"}

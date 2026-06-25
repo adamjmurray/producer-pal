@@ -191,6 +191,7 @@ export function ChatScreen(props: ChatScreenProps) {
         onEnqueue={enqueueMessage}
         isAssistantResponding={isAssistantResponding}
         hasError={conversationHasError(messages)}
+        isCompacting={isCompacting}
         onStop={onStop}
         thinking={thinking}
         onThinkingChange={setThinking}

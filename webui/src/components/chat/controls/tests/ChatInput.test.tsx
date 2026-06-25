@@ -279,6 +279,58 @@ describe("ChatInput", () => {
     });
   });
 
+  describe("compaction", () => {
+    it("shows the compacting placeholder while compacting", () => {
+      render(<ChatInput {...defaultProps} isCompacting={true} />);
+
+      expect(screen.getByRole("textbox").getAttribute("placeholder")).toBe(
+        "Compacting…",
+      );
+    });
+
+    it("disables the textarea while compacting", () => {
+      render(<ChatInput {...defaultProps} isCompacting={true} />);
+
+      expect(
+        (screen.getByRole("textbox") as HTMLTextAreaElement).disabled,
+      ).toBe(true);
+    });
+
+    it("disables Send while compacting even with content", () => {
+      render(<ChatInput {...defaultProps} isCompacting={true} />);
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+
+      expect(
+        (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+    });
+
+    it("does not send or enqueue on Enter while compacting (no silent drop)", () => {
+      const handleSend = vi.fn();
+      const onEnqueue = vi.fn();
+
+      render(
+        <ChatInput
+          {...defaultProps}
+          handleSend={handleSend}
+          onEnqueue={onEnqueue}
+          isCompacting={true}
+        />,
+      );
+
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+      expect(handleSend).not.toHaveBeenCalled();
+      expect(onEnqueue).not.toHaveBeenCalled();
+    });
+  });
+
   describe("thinking toggle", () => {
     it("calls onThinkingChange with next level when button is clicked", () => {
       const onThinkingChange = vi.fn();
