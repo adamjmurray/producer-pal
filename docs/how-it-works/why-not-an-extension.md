@@ -1,12 +1,12 @@
 ---
-title: Why Isn't Producer Pal an Ableton Extension?
+title: Why Not an Ableton Extension?
 description:
   Ableton's new Extensions SDK looks like a natural home for Producer Pal.
   Here's an honest, under-the-hood look at how I weighed it, what the SDK can
   and can't do today, and where things would have to change.
 ---
 
-# Why Isn't Producer Pal an Ableton Extension?
+# Why Not an Ableton Extension?
 
 Ableton's new **Extensions SDK** lets developers extend Live with JavaScript,
 and it's genuinely exciting. So it's a natural thing to wonder: _"Will there be

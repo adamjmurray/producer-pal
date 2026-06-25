@@ -168,8 +168,8 @@ Pal's update-track tool.
 
 A thin wrapper could never have offered it, because a thin wrapper only knows
 what the API admits to. (And it's _still_ missing from both the docs and the
-reflection today — I re-probed a running Live Set while writing this page, and
-the property works exactly as before while remaining invisible to
+reflection today — a re-probe of a running Live Set while writing this page
+found the property works exactly as before while remaining invisible to
 introspection.)
 
 ## A language for music, not just API calls
@@ -207,3 +207,6 @@ of the Live API's raw edges, and so you get capabilities a thin wrapper simply
 can't offer. It's the accumulated result of more than a year of smoothing rough
 edges, and it's most of what separates a genuinely usable tool from a quick API
 bridge.
+
+For how the two engines underneath actually carry this work back and forth, see
+[The Bridge](/how-it-works/the-bridge).

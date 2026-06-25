@@ -21,9 +21,9 @@ fiddly details.
 ## Start here
 
 - **[Running Inside Ableton Live](/how-it-works/running-inside-live)** — the big
-  picture: two engines that usually live apart — a modern Node.js runtime and
-  Live's full API — fused into one device, and why that combination is what an
-  AI music assistant actually needs.
+  picture: two superpowers that usually live apart — a modern Node.js runtime
+  and Live's full API — fused into one device, and why that combination is what
+  an AI music assistant actually needs.
 
 ## Going deeper
 

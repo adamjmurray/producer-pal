@@ -9,11 +9,11 @@ description:
 
 # The Bridge: JSON Over Patch Cables
 
-[Running Inside Ableton Live](/how-it-works/running-inside-live) explains _why_
-Producer Pal fuses two engines — a modern Node.js server and Live's API — into a
-single Max for Live device. This page is the deeper, more technical look at
-_how_ that bridge actually works: two separate JavaScript runtimes, talking to
-each other by sending **JSON over Max patch cables**.
+[Running Inside Ableton Live](/how-it-works/running-inside-live) covers _why_
+Producer Pal fuses a Node.js server and Live's full API into one Max for Live
+device. This page is the deeper, more technical look at _how_ they actually talk
+to each other: two separate JavaScript runtimes sending **JSON over Max patch
+cables**.
 
 It's a fun corner of the project, with a couple of real problems that had to be
 solved along the way.
