@@ -1,0 +1,9 @@
+/* Show the global footer (license + copyright) on every page, not just the
+   home page. By default VitePress hides .VPFooter whenever a sidebar is
+   present, so it only appeared on the sidebar-less home page. That hide rule is
+   Vue-scoped (`.VPFooter.has-sidebar[data-v-...]{display:none}`) and so
+   outranks a plain selector; !important is needed to win without depending on
+   the build-specific scope hash. */
+.VPFooter.has-sidebar {
+  display: block !important;
+}

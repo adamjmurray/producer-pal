@@ -2,6 +2,7 @@ import DefaultTheme from "vitepress/theme";
 import { h } from "vue";
 import DownloadMarkdown from "./DownloadMarkdown.vue";
 import "./demo.css";
+import "./footer.css";
 import "./get-started.css";
 import "./screenshots.css";
 import "./tool-schemas.css";
