@@ -295,7 +295,11 @@ function handleStreamPart(
     msg.reasoningParts.push({ text: "" });
     captureReasoningSignature(part, msg);
 
-    return false;
+    // A fully-redacted thinking block can be a turn's ONLY content (no
+    // reasoning-delta/text-delta/tool-call follows). Treat the captured
+    // redactedData as content-bearing so the message is pushed to history
+    // instead of being silently dropped along with its reasoning.
+    return msg.reasoningParts.at(-1)?.redactedData != null;
   }
 
   if (type === "reasoning-delta") {

@@ -81,48 +81,71 @@ export function buildModelMessages(
     // Persisted UI error messages are not part of the model conversation
     if (msg.isError) continue;
 
-    // All-or-nothing: only re-emit reasoning when EVERY captured part is signed
-    // or redacted. A message that mixes signed and unsigned parts (e.g. reasoning
-    // carried over from a different provider, or a partial capture) would
-    // otherwise emit just the signed subset — a partial thinking sequence whose
-    // signature no longer matches its (truncated) content, which Anthropic
-    // rejects. Falling back to plain content sends a valid non-thinking turn.
-    const reasoningParts = msg.reasoningParts ?? [];
-    const emitReasoning =
-      includeReasoning &&
-      reasoningParts.length > 0 &&
-      reasoningParts.every(
-        (p) => p.signature != null || p.redactedData != null,
-      );
-
-    if (!msg.toolCalls || msg.toolCalls.length === 0) {
-      // Plain string unless we need to carry reasoning blocks (which require the
-      // structured content form).
-      messages.push({
-        role: "assistant",
-        content: emitReasoning ? buildAssistantContent(msg, true) : msg.content,
-      });
-      continue;
-    }
-
-    // Assistant message with tool calls
-    messages.push({
-      role: "assistant",
-      content: buildAssistantContent(msg, emitReasoning),
-    });
-
-    // Tool message pairing EVERY tool-call with a result (required by providers
-    // for multi-turn). buildToolResultContent backfills a canceled result for
-    // any call the user stopped before it returned, so a persisted "stopped
-    // mid-tool" history can still be sent without a provider 400. (This runs
-    // before the stream's reconcile, so it must not assume a complete history.)
-    messages.push({
-      role: "tool",
-      content: buildToolResultContent(msg),
-    });
+    appendAssistantMessages(messages, msg, includeReasoning);
   }
 
   return messages;
+}
+
+/**
+ * Append the ModelMessage(s) for one assistant turn. A turn with tool calls
+ * produces an assistant message plus a paired tool message; a plain turn
+ * produces a single assistant message (or nothing, for a degenerate empty turn).
+ * @param messages - The output array to append to
+ * @param msg - The assistant chat message to convert
+ * @param includeReasoning - Whether re-emitting captured reasoning blocks is allowed
+ */
+function appendAssistantMessages(
+  messages: ModelMessage[],
+  msg: ChatMessage,
+  includeReasoning: boolean,
+): void {
+  // All-or-nothing: only re-emit reasoning when EVERY captured part is signed
+  // or redacted. A message that mixes signed and unsigned parts (e.g. reasoning
+  // carried over from a different provider, or a partial capture) would
+  // otherwise emit just the signed subset — a partial thinking sequence whose
+  // signature no longer matches its (truncated) content, which Anthropic
+  // rejects. Falling back to plain content sends a valid non-thinking turn.
+  const reasoningParts = msg.reasoningParts ?? [];
+  const emitReasoning =
+    includeReasoning &&
+    reasoningParts.length > 0 &&
+    reasoningParts.every((p) => p.signature != null || p.redactedData != null);
+
+  if (!msg.toolCalls || msg.toolCalls.length === 0) {
+    // Plain string unless we need to carry reasoning blocks (which require the
+    // structured content form).
+    const content = emitReasoning
+      ? buildAssistantContent(msg, true)
+      : msg.content;
+
+    // A redacted-reasoning-only turn has no text and no tool calls, so it
+    // yields empty content when reasoning isn't re-emitted (thinking off).
+    // Providers reject an empty assistant message, so drop it from the model
+    // view — the UI still renders the turn from history. (.length covers both
+    // the string and structured-array forms.)
+    if (content.length === 0) return;
+
+    messages.push({ role: "assistant", content });
+
+    return;
+  }
+
+  // Assistant message with tool calls
+  messages.push({
+    role: "assistant",
+    content: buildAssistantContent(msg, emitReasoning),
+  });
+
+  // Tool message pairing EVERY tool-call with a result (required by providers
+  // for multi-turn). buildToolResultContent backfills a canceled result for
+  // any call the user stopped before it returned, so a persisted "stopped
+  // mid-tool" history can still be sent without a provider 400. (This runs
+  // before the stream's reconcile, so it must not assume a complete history.)
+  messages.push({
+    role: "tool",
+    content: buildToolResultContent(msg),
+  });
 }
 
 /**

@@ -128,7 +128,22 @@ export function MessageList({
       data-testid="message-list"
     >
       {messages.map((message, originalIdx) => {
-        if (!hasContent(message)) return null;
+        const branch = branchByIndex.get(originalIdx);
+
+        // A retry fork anchors its arrows on the assistant response index. If
+        // this sibling's response renders empty (e.g. a fully-redacted thinking
+        // block), still emit the branch arrows so the user can page back to a
+        // sibling that does have content — navigability must not depend on the
+        // divergent message's content.
+        if (!hasContent(message)) {
+          return branch ? (
+            <BranchNavRow
+              key={originalIdx}
+              point={branch}
+              onSwitch={switchToSibling}
+            />
+          ) : null;
+        }
 
         const compactionPart = message.parts.find(
           (p) => p.type === "compaction",
@@ -144,8 +159,6 @@ export function MessageList({
             />
           );
         }
-
-        const branch = branchByIndex.get(originalIdx);
 
         return (
           <Fragment key={originalIdx}>

@@ -117,6 +117,25 @@ describe("MessageList branch navigation", () => {
     expect(onSwitch).toHaveBeenCalledExactlyOnceWith("A");
   });
 
+  it("renders branch arrows even when the anchor message is empty", () => {
+    // A retry fork anchors arrows on the assistant response (index 1). If this
+    // sibling's response renders with no parts, the arrows must still show so
+    // the user can page back to a sibling that has content.
+    const empty: UIMessage = {
+      role: "model",
+      parts: [],
+      rawHistoryIndex: 1,
+      timestamp: 0,
+    };
+
+    renderList([user("hi", 0), empty], {
+      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 1 }],
+      onSwitch: vi.fn(),
+    });
+
+    expect(screen.getByTestId("branch-nav-position").textContent).toBe("2 / 2");
+  });
+
   it("scrolls the fork-point message into view after the transcript swaps", () => {
     const onSwitch = vi.fn();
     const { rerender } = renderList([user("first", 0), model("a1", 1)], {

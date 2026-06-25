@@ -154,6 +154,37 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
       ]);
     });
 
+    it("retains a turn whose only content is a redacted thinking block", async () => {
+      // reasoning-start with redactedData then finish, no deltas/text/tool-calls.
+      // The redacted block must keep the assistant turn in history rather than
+      // being silently dropped with its captured redactedData.
+      const last = await sendWithParts([
+        {
+          type: "reasoning-start",
+          providerMetadata: { anthropic: { redactedData: "blob" } },
+        },
+        { type: "finish" },
+      ]);
+
+      expect(last).toHaveLength(2);
+      expect(last[1]!.role).toBe("assistant");
+      expect(last[1]!.reasoningParts).toStrictEqual([
+        { text: "", redactedData: "blob" },
+      ]);
+    });
+
+    it("does not retain an empty turn from a bare reasoning-start", async () => {
+      // reasoning-start with no redactedData and nothing following must NOT push
+      // an empty assistant message (a normal start is followed by deltas/text).
+      const last = await sendWithParts([
+        { type: "reasoning-start" },
+        { type: "finish" },
+      ]);
+
+      expect(last).toHaveLength(1);
+      expect(last[0]!.role).toBe("user");
+    });
+
     it("ignores reasoning metadata when there is no reasoning block yet", async () => {
       // reasoning-end with no preceding start/delta: nothing to attach to, no throw.
       const last = await sendWithParts([

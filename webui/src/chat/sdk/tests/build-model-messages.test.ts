@@ -202,6 +202,29 @@ describe("buildModelMessages", () => {
       expect(result[0]!.content).toBe("answer");
     });
 
+    it("drops a redacted-only turn from the model view when reasoning is not re-emitted", () => {
+      // A turn whose only content is a redacted thinking block has empty text
+      // and no tool calls. With thinking off the reasoning isn't re-emitted, so
+      // sending it would be an empty assistant message (providers reject it).
+      // It must be omitted from the payload while staying in the UI history.
+      const result = buildModelMessages(
+        [
+          { role: "user", content: "hi" },
+          {
+            role: "assistant",
+            content: "",
+            reasoningParts: [{ text: "", redactedData: "redacted-blob" }],
+          },
+          { role: "user", content: "still there?" },
+        ],
+        false,
+      );
+
+      expect(result).toStrictEqual([
+        { role: "user", content: "hi\n\nstill there?" },
+      ]);
+    });
+
     it("falls back to plain content when reasoning mixes signed and unsigned blocks", () => {
       // Emitting only the signed subset would be a partial thinking sequence
       // whose signature no longer matches its truncated content (Anthropic
