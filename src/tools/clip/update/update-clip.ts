@@ -84,7 +84,7 @@ interface ClipResult {
  * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only; mutually exclusive with length/notes/transforms/preTransforms)
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only; mutually exclusive with length/notes/transforms/preTransforms/code)
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
@@ -153,6 +153,7 @@ export async function updateClip(
     notationString,
     transforms,
     preTransforms,
+    code,
   });
 
   const mutableClips = applySplittingIfNeeded(
@@ -250,6 +251,7 @@ export async function updateClip(
  * @param args.notationString - The notes edit (mutually exclusive)
  * @param args.transforms - The transforms edit (mutually exclusive)
  * @param args.preTransforms - The preTransforms edit (mutually exclusive)
+ * @param args.code - The JS note-transform edit (mutually exclusive)
  */
 function validateDuplicateLoopExclusivity({
   duplicateLoop,
@@ -257,22 +259,25 @@ function validateDuplicateLoopExclusivity({
   notationString,
   transforms,
   preTransforms,
+  code,
 }: {
   duplicateLoop?: boolean;
   length?: string;
   notationString?: string;
   transforms?: string;
   preTransforms?: string;
+  code?: string;
 }): void {
   if (
     duplicateLoop &&
     (length != null ||
       notationString != null ||
       transforms != null ||
-      preTransforms != null)
+      preTransforms != null ||
+      code != null)
   ) {
     throw new Error(
-      "duplicateLoop cannot be combined with length, notes, transforms, or preTransforms - it is a standalone operation. Run the edit and the loop-double as separate update-clip calls.",
+      "duplicateLoop cannot be combined with length, notes, transforms, preTransforms, or code - it is a standalone operation. Run the edit and the loop-double as separate update-clip calls.",
     );
   }
 }

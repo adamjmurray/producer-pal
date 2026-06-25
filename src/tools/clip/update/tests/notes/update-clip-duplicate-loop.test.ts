@@ -97,6 +97,7 @@ describe("updateClip - duplicateLoop", () => {
     ["notes", "1|1 C3"],
     ["transforms", "v0"],
     ["preTransforms", "v0"],
+    ["code", "return notes;"],
   ])(
     "throws (fails loud) when combined with %s — it is a standalone op",
     async (param, value) => {
