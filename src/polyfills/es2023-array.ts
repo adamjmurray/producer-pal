@@ -64,9 +64,11 @@ export function polyfillToSpliced<T>(
 export function polyfillWith<T>(arr: T[], index: number, value: T): T[] {
   const copy = [...arr];
   // Match native Array.prototype.with, which converts the index with
-  // ToIntegerOrInfinity (truncates toward zero, so 1.9 -> 1). Without this a
-  // fractional index writes a non-index "1.9" property and silently no-ops.
-  const truncated = Math.trunc(index);
+  // ToIntegerOrInfinity: truncate toward zero (1.9 -> 1) and map NaN/undefined
+  // to 0. Without this a fractional index writes a non-index "1.9" property and
+  // a NaN index slips past the range guards (NaN < 0 and NaN >= length are both
+  // false), silently no-opping instead of replacing index 0.
+  const truncated = Math.trunc(index) || 0;
   const actualIndex = truncated < 0 ? copy.length + truncated : truncated;
 
   if (actualIndex < 0 || actualIndex >= copy.length) {

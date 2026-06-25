@@ -34,9 +34,20 @@ export function resolveArrangementPositions(
     return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
   }
 
+  // A malformed list (e.g. "," or only whitespace) survives the earlier
+  // trim-only checks but parses to zero positions; throw instead of silently
+  // producing no duplicates.
+  const positions = parseArrangementStartList(arrangementStart);
+
+  if (positions.length === 0) {
+    throw new Error(
+      "duplicate failed: arrangementStart has no valid bar|beat positions",
+    );
+  }
+
   // Validate each standalone position first so a 0-indexed/zero-bar arrangement
   // start gets the 1-indexing steer, not a silent pre-origin beat.
-  return parseArrangementStartList(arrangementStart).map((pos) => {
+  return positions.map((pos) => {
     validateBarBeatPosition(pos);
 
     return barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator);

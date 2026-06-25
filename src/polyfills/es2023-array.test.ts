@@ -178,6 +178,16 @@ describe("ES2023 array polyfills", () => {
       expect(polyfillWith([1, 2, 3], -1.9, 99)).toStrictEqual([1, 2, 99]);
     });
 
+    it("should coerce a NaN/undefined index to 0 like native with()", () => {
+      // Native ToIntegerOrInfinity maps NaN/undefined -> 0, so
+      // [1,2,3].with(NaN, 99) -> [99, 2, 3]. Without the coercion the NaN index
+      // passes both range guards and silently no-ops.
+      expect(polyfillWith([1, 2, 3], Number.NaN, 99)).toStrictEqual([99, 2, 3]);
+      expect(
+        polyfillWith([1, 2, 3], undefined as unknown as number, 99),
+      ).toStrictEqual([99, 2, 3]);
+    });
+
     it("should return a new array instance", () => {
       const arr = [1, 2, 3];
       const result = polyfillWith(arr, 0, 1);

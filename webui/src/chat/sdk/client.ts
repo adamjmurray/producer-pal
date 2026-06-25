@@ -243,6 +243,12 @@ export function detectToolLimitReached(
  * Whether the request's provider options enable Anthropic thinking. Only then is
  * it valid to re-send signed reasoning blocks (the API rejects reasoning content
  * when thinking is disabled), and only then does re-sending help caching.
+ *
+ * Note: this keys off the `anthropic` provider namespace, so it is intentionally
+ * false on the OpenRouter→Claude path (those options live under the `openrouter`
+ * namespace). Reasoning re-emission therefore does not run for OpenRouter; its
+ * cache prefix is stabilized separately by transformOpenRouterRequest. This is an
+ * intended asymmetry, not a missed case — don't "fix" it by widening the check.
  * @param providerOptions - Provider options passed to streamText
  * @returns True when Anthropic thinking is enabled for this request
  */
