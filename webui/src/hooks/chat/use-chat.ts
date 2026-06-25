@@ -115,25 +115,34 @@ export function useChat<
     setMessages,
   });
 
+  const stopResponse = useCallback(() => {
+    abortControllerRef.current?.abort();
+    // Drop any pending-fork signal on teardown. A fork aborted before it streamed
+    // assistant content never autosaves, so the signal would otherwise linger and
+    // mis-branch the next, unrelated conversation's save into a spurious sibling.
+    if (pendingForkRef) pendingForkRef.current = null;
+    abortRetry();
+    setIsAssistantResponding(false);
+    setRateLimitState(null);
+    setToolLimitReached(false);
+    clearQueue();
+  }, [abortRetry, clearQueue, pendingForkRef]);
+
   const clearConversation = useCallback(() => {
     setMessages([]);
     clientRef.current?.dispose?.();
     clientRef.current = null;
     pendingHistoryRef.current = null;
-    // Abort any in-flight stream on teardown. UI-driven switches call
-    // stopResponse() first, but a browser Back/Forward (hashchange) reaches here
-    // directly — without this, the orphaned stream keeps running and its
-    // setMessages clobbers the freshly-restored conversation (and autosaves the
-    // mixed history under the new ID). Aborting an already-aborted controller is
-    // a no-op, so this is safe for every entry point.
-    abortControllerRef.current?.abort();
+    // stopResponse aborts any in-flight stream and resets the transient response
+    // state (incl. the pending-fork signal). A UI-driven switch already called it,
+    // but a browser Back/Forward (hashchange) reaches here directly — without the
+    // abort the orphaned stream's setMessages clobbers the freshly-restored
+    // conversation and autosaves the mixed history under the new id. Idempotent,
+    // so safe for every entry point.
+    stopResponse();
     clearSettings();
-    setRateLimitState(null);
-    setToolLimitReached(false);
     invalidateCompactionUndo();
-    abortRetry();
-    clearQueue();
-  }, [clearSettings, abortRetry, invalidateCompactionUndo, clearQueue]);
+  }, [stopResponse, clearSettings, invalidateCompactionUndo]);
 
   const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 
@@ -154,15 +163,6 @@ export function useChat<
     },
     [adapter, restoreSettings, invalidateCompactionUndo],
   );
-
-  const stopResponse = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortRetry();
-    setIsAssistantResponding(false);
-    setRateLimitState(null);
-    setToolLimitReached(false);
-    clearQueue();
-  }, [abortRetry, clearQueue]);
 
   const initializeChat = useCallback(
     async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {

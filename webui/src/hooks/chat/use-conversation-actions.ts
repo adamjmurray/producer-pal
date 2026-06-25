@@ -104,9 +104,11 @@ export function useConversationActions<
         // autosaves — and without the signal already set, that save reuses the
         // source id and overwrites it with the truncated history (data loss).
         // With it set, the save mints a new sibling id and the source survives.
-        // The failed-fork autosave consumes the signal, and saveCurrentConversation
-        // also consumes it before its empty-history early-return, so it can't
-        // linger and mis-branch a later save. anchorIndex is where the ‹ n/m ›
+        // The failed-fork autosave consumes the signal, saveCurrentConversation
+        // also consumes it before its empty-history early-return, and the chat
+        // teardown paths (stopResponse/clearConversation) clear it on abort — so a
+        // fork that streams no content can't linger and mis-branch a later,
+        // unrelated save. anchorIndex is where the ‹ n/m ›
         // arrows sit — the user message for an edit (its default), or the
         // assistant response for a retry (so the arrows page through alternate
         // responses, not the unchanged prompt).

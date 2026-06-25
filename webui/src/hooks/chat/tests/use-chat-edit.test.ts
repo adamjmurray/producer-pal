@@ -150,6 +150,41 @@ describe("useChat handleEdit", () => {
     expect(signalWhenForkInitFailed).toStrictEqual({ anchorIndex: userIdx });
   });
 
+  it("clears a pending fork signal on stopResponse", async () => {
+    // A fork aborted (Stop) before it streamed assistant content never autosaves,
+    // so the signal must be dropped here or it mis-branches the next save.
+    const pendingForkRef = {
+      current: { anchorIndex: 2 } as PendingFork | null,
+    };
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, pendingForkRef }),
+    );
+
+    await act(async () => {
+      result.current.stopResponse();
+    });
+
+    expect(pendingForkRef.current).toBeNull();
+  });
+
+  it("clears a pending fork signal on clearConversation", async () => {
+    // Every switch/new/delete/back-forward funnels through clearConversation; a
+    // fork abandoned by navigating away must not leave a signal for a later,
+    // unrelated conversation's save to consume.
+    const pendingForkRef = {
+      current: { anchorIndex: 2 } as PendingFork | null,
+    };
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, pendingForkRef }),
+    );
+
+    await act(async () => {
+      result.current.clearConversation();
+    });
+
+    expect(pendingForkRef.current).toBeNull();
+  });
+
   it("does nothing if message at index is not user role", async () => {
     const { result } = renderHook(() => useChat(defaultProps));
 
