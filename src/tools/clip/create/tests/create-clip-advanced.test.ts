@@ -311,6 +311,29 @@ describe("createClip - advanced features", () => {
       ]);
     });
 
+    it("dedupes same-pitch+exact-onset collisions a transform produces", async () => {
+      // C3 at 1|1 (start 0) and 1|2 (start 1). repeat(n/4) echoes each note one
+      // beat later, so the echo of the beat-0 note lands exactly on the beat-1
+      // note: two C3s at start 1. Without dedupe both are written and Live's
+      // add_new_notes drops one nondeterministically; dedupe collapses them to a
+      // single note (keeping last), matching the update and merge write paths.
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip({
+        slot: "0/0",
+        notes: "C3 1|1 1|2",
+        transforms: "repeat(n/4)",
+      });
+
+      expectNotesAdded(clip, [
+        note(60, 0, 1), // original beat 0
+        note(60, 1, 1), // collision at beat 1 collapsed to one note
+        note(60, 2, 1), // echo of the beat-1 note
+      ]);
+    });
+
     it("reports the actual stored note count, not the interpreted input count", async () => {
       const { clip } = setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
