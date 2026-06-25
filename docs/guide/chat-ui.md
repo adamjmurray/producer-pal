@@ -128,11 +128,11 @@ so branching often won't clutter your history.
 The thinking toggle next to the text area controls how much reasoning effort the
 AI uses for the next message. Click it to cycle through three levels:
 
-- <img src="/img/thinking-off.png" alt="Off" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+- <img src="/img/thinking-off.png" alt="Off" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Off** - No thinking
-- <img src="/img/thinking-default.png" alt="Default" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+- <img src="/img/thinking-default.png" alt="Default" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Default** - Let the AI decide
-- <img src="/img/thinking-max.png" alt="Max" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+- <img src="/img/thinking-max.png" alt="Max" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Max** - Maximum thinking effort
 
 The default thinking level for new conversations is set in

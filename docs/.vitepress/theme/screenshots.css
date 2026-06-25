@@ -4,3 +4,40 @@
   border-radius: 8px;
   margin-top: 12px;
 }
+
+/* Small/simple screenshots that shouldn't stretch to fill the content column */
+.vp-doc img.screenshot-narrow {
+  max-width: 340px;
+}
+
+/* Click-to-zoom: tap any content screenshot to inspect it, tap again to close.
+   Inline icons and other images opt out with the .no-zoom class. */
+.vp-doc img:not(.no-zoom) {
+  cursor: zoom-in;
+}
+
+.vp-doc img.zoomed {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
+  border: none;
+  border-radius: 0;
+  cursor: zoom-out;
+  z-index: 100;
+}
+
+.zoom-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 99;
+  cursor: zoom-out;
+}
+
+html.zoom-active {
+  overflow: hidden;
+}

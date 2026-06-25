@@ -130,7 +130,11 @@ Producer Pal does this in two halves — the V8 code and the Max patch cooperate
 **In the Max patch**, a small subpatcher named **`route-results-and-warnings`**
 recombines those two separate streams into a single message:
 
-![The route-results-and-warnings subpatcher: inlet 1 and inlet 2 feeding a t l b zlclear, a list.group 1000, and a list.join](/img/main-patch-route-results-and-warnings.png)
+<img
+  class="screenshot-narrow"
+  src="/img/main-patch-route-results-and-warnings.png"
+  alt="The route-results-and-warnings subpatcher: inlet 1 and inlet 2 feeding a t l b zlclear, a list.group 1000, and a list.join"
+/>
 
 Inlet 1 receives the result (the chunked JSON and its delimiter); inlet 2
 receives warnings. The `list.group 1000` object **buffers warnings** as they
