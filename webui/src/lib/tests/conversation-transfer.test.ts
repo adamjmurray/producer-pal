@@ -9,6 +9,7 @@ import {
   type ConversationRecord,
   saveConversation,
   resetDbCache,
+  searchConversations,
 } from "#webui/lib/conversation-db";
 import {
   exportConversation,
@@ -199,6 +200,30 @@ describe("conversation-transfer", () => {
       "keep me",
       "and me",
     ]);
+  });
+
+  it("coerces a non-string title to null so search can't crash", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "bad-title",
+          createdAt: 1,
+          // A hand-edited/corrupt import can carry a non-string title; it must
+          // not be persisted as-is or search's `title.toLowerCase()` throws.
+          title: 42,
+          messages: [{ role: "user", content: "hello" }],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "bad-title");
+
+    expect(imported.title).toBeNull();
+    // Search over the whole list must not throw on the poisoned record.
+    const matches = await searchConversations("hello");
+
+    expect(matches.has("bad-title")).toBe(true);
   });
 
   it("exports a single conversation by ID", async () => {

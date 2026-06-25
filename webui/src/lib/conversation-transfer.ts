@@ -179,7 +179,10 @@ function isValidImportedMessage(message: unknown): boolean {
 function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
   return {
     id: record.id as string,
-    title: (record.title as string | null | undefined) ?? null,
+    // Coerce a non-string title to null: search does `title.toLowerCase()`, so a
+    // numeric/object title (from a hand-edited or corrupt import) would otherwise
+    // be persisted and crash searchConversations for the whole list.
+    title: typeof record.title === "string" ? record.title : null,
     createdAt: record.createdAt as number,
     updatedAt:
       (record.updatedAt as number | undefined) ?? (record.createdAt as number),

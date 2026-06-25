@@ -274,7 +274,12 @@ export async function searchConversations(query: string): Promise<Set<string>> {
 
   for (const raw of all) {
     const record = normalizeLegacyRecord(raw);
-    const inTitle = record.title?.toLowerCase().includes(needle) ?? false;
+    // Guard the title type as well: a corrupt/imported record can carry a
+    // non-string title despite the static type, and `title.toLowerCase()` would
+    // throw, breaking search for the whole list.
+    const inTitle =
+      typeof record.title === "string" &&
+      record.title.toLowerCase().includes(needle);
     // Cast to unknown per element: a corrupt/imported record can carry a
     // malformed message (null, or no string content) despite the static type,
     // and `m.content.toLowerCase()` would throw. Skip such entries.
