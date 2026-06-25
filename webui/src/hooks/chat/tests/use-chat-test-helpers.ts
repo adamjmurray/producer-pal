@@ -192,9 +192,11 @@ export async function streamingHelpersMockBody(): Promise<
   );
 
   return {
-    // Pure helper (no streaming side effects) — keep the real implementation so
-    // client (re)init still resolves the locked provider/model correctly.
+    // Pure helpers (no streaming side effects) — keep the real implementations
+    // so client (re)init still resolves the locked provider/model correctly and
+    // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
     resolveInitConnection: actual.resolveInitConnection,
+    recoverFromChatError: actual.recoverFromChatError,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
         onUpdate(formatter(chatHistory));

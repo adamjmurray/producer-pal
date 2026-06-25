@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
+  recoverFromChatError,
   resolveInitConnection,
   showMissingApiKeyError,
   validateMcpConnection,
@@ -260,39 +261,16 @@ export function useChat<
 
         return result;
       } catch (error) {
-        const baseHistory = clientRef.current?.chatHistory ?? [];
-        const stashed = pendingUserMessageRef.current;
-        // When init fails before client.sendMessage, the user message never
-        // reached chatHistory. Surface it in the error UI and stash it for
-        // retry/edit so the user isn't stranded if there's no usable client.
-        const includeStashed = stashed && !baseHistory.includes(stashed);
-        const errorHistory = includeStashed
-          ? [...baseHistory, stashed]
-          : baseHistory;
-
-        if (!clientRef.current && includeStashed) {
-          pendingHistoryRef.current = [stashed] as TMessage[];
-        }
-
-        setMessages(adapter.createErrorMessage(error, errorHistory));
-
-        if (clientRef.current) {
-          // The includeStashed path built errorHistory as a fresh array
-          // ([...chatHistory, stashedUserMessage]) and createErrorMessage then
-          // appended the error to it. This is the init-failure case: the client
-          // exists but sendMessage never ran, so its chatHistory is still empty
-          // and has neither the user message nor the error. Assign the whole
-          // array — pushing only the error (the previous behavior) persisted the
-          // error without the user message that prompted it, so a reload showed
-          // a dangling error. Cast is safe: every entry is non-null here
-          // (baseHistory is TMessage[], stashed is non-null when includeStashed).
-          // Reassigning is safe: sendMessage and compact() read chatHistory fresh.
-          if (errorHistory !== clientRef.current.chatHistory) {
-            clientRef.current.chatHistory = errorHistory;
-          }
-
-          autoSaveRef?.current?.();
-        }
+        recoverFromChatError({
+          error,
+          adapter,
+          clientRef,
+          pendingHistoryRef,
+          stashed: pendingUserMessageRef.current,
+          setMessages,
+          autoSaveRef,
+          pendingForkRef,
+        });
 
         return undefined;
       } finally {
@@ -302,7 +280,7 @@ export function useChat<
         setRateLimitState(null);
       }
     },
-    [adapter, autoSaveRef],
+    [adapter, autoSaveRef, pendingForkRef],
   );
 
   const handleSend = useCallback(

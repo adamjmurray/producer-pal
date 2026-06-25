@@ -8,6 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import {
@@ -148,6 +149,47 @@ describe("useChat handleEdit", () => {
     });
 
     expect(signalWhenForkInitFailed).toStrictEqual({ anchorIndex: userIdx });
+  });
+
+  it("clears the fork signal and keeps restored history when a restored-conversation fork fails to init before a client exists", async () => {
+    // Regression: forking a restored-but-not-yet-sent conversation while MCP is
+    // down throws in initializeChat *before* a client is built, so clientRef
+    // stays null. The recovery autosave (the only fork-signal consumer) is gated
+    // on a live client, so without an explicit cleanup the signal would linger
+    // and mis-branch the user's next, unrelated send. The restored conversation
+    // must also stay visible rather than collapsing to an empty error view.
+    const pendingForkRef = { current: null as PendingFork | null };
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, pendingForkRef }),
+    );
+
+    await act(async () => {
+      result.current.restoreChatHistory(RESTORED_HISTORY);
+    });
+
+    // Restoring doesn't init, so clear createClient's call count and arm the
+    // next init (the fork's) to fail before any client is built.
+    vi.clearAllMocks();
+    vi.mocked(validateMcpConnection).mockRejectedValueOnce(
+      new Error("MCP connection failed"),
+    );
+
+    await act(async () => {
+      await result.current.handleEdit(0, "Edited text");
+    });
+
+    // Init threw before createClient, so no client was ever built.
+    expect(mockAdapter.createClient).not.toHaveBeenCalled();
+    // The stale fork signal must not survive to mis-branch the next save.
+    expect(pendingForkRef.current).toBeNull();
+    // The restored conversation stays visible alongside the error.
+    const hasRestored = result.current.messages.some((m) =>
+      m.parts.some(
+        (p) => (p as { content?: string }).content === "restored msg",
+      ),
+    );
+
+    expect(hasRestored).toBe(true);
   });
 
   it("clears a pending fork signal on stopResponse", async () => {
