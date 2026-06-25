@@ -142,17 +142,12 @@ threaded into every tool request as part of the request context
 MIDI clips none of this is needed — `create_midi_clip` happily makes an empty
 clip of any length directly in the arrangement.)
 
-## Why this matters — and why an extension couldn't do it
+## Why this matters
 
-That silent-WAV trick is a good lens on the whole approach. It only works
-because Producer Pal can **write a file to disk and read it back**, and can
-reach **any file path** when loading audio. Ableton's forthcoming Extensions SDK
-is planned to run inside a **sandbox** that walls extensions off from arbitrary
-file access — which would very likely make a workaround like this impossible.
-It's one more reason Producer Pal is built the way it is, explored further in
-[Why isn't Producer Pal an extension?](/how-it-works/why-not-an-extension).
-
-None of this is visible when you use Producer Pal — you just ask for a split, or
-a color, and it happens. That's the point. Every one of these refinements exists
-so the AI meets a clean, predictable interface instead of the Live API's raw
-edges, and so you get capabilities that a thin wrapper simply can't offer.
+None of this — the bit math, the holding area, the generated silent WAV — is
+visible when you use Producer Pal. You just ask for a split, or a color, and it
+happens. That's the point. Every one of these refinements exists so the AI meets
+a clean, predictable interface instead of the Live API's raw edges, and so you
+get capabilities a thin wrapper simply can't offer. It's the accumulated result
+of more than a year of smoothing rough edges, and it's most of what separates a
+genuinely usable tool from a quick API bridge.
