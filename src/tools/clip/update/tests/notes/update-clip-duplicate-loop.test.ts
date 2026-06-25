@@ -99,11 +99,43 @@ describe("updateClip - duplicateLoop", () => {
     ["preTransforms", "v0"],
     ["code", "return notes;"],
   ])(
-    "throws (fails loud) when combined with %s — it is a standalone op",
+    "still doubles, warns, and ignores %s when combined (standalone op wins)",
     async (param, value) => {
-      await expect(
-        updateClip({ ids: "123", duplicateLoop: true, [param]: value }),
-      ).rejects.toThrow("duplicateLoop cannot be combined");
+      setupMidiClipMock(mocks.clip123);
+      mockNoteCount(mocks.clip123, 8);
+
+      const result = await updateClip({
+        ids: "123",
+        duplicateLoop: true,
+        [param]: value,
+      });
+
+      expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("duplicateLoop is a standalone operation"),
+      );
+      expect(result).toStrictEqual({ id: "123", noteCount: 8 });
     },
   );
+
+  it("names every skipped edit in the warning when several are combined", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    await updateClip({
+      ids: "123",
+      duplicateLoop: true,
+      length: "4bar",
+      notes: "1|1 C3",
+      transforms: "v0",
+      preTransforms: "v0",
+      code: "return notes;",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "duplicateLoop is a standalone operation - ignoring length, notes, transforms, preTransforms, code. Run the loop-double and these edits as separate update-clip calls.",
+    );
+  });
 });

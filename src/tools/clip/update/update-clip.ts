@@ -84,7 +84,7 @@ interface ClipResult {
  * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only; mutually exclusive with length/notes/transforms/preTransforms/code)
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only; takes precedence over length/notes/transforms/preTransforms/code, which are ignored with a warning if passed alongside it)
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
@@ -147,7 +147,7 @@ export async function updateClip(
     return [];
   }
 
-  validateDuplicateLoopExclusivity({
+  const edits = resolveDuplicateLoopConflicts({
     duplicateLoop,
     length,
     notationString,
@@ -195,14 +195,14 @@ export async function updateClip(
       clip,
       clipIndex: i,
       clipCount: mutableClips.length,
-      notationString,
-      transformString: transforms,
-      preTransformString: preTransforms,
+      notationString: edits.notationString,
+      transformString: edits.transforms,
+      preTransformString: edits.preTransforms,
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       timeSignature,
       start,
-      length,
+      length: edits.length,
       firstStart,
       looping,
       duplicateLoop,
@@ -224,7 +224,7 @@ export async function updateClip(
       context,
       updatedClips,
       tracksWithMovedClips,
-      code,
+      code: edits.code,
     });
   }
 
@@ -240,20 +240,23 @@ export async function updateClip(
 }
 
 /**
- * Fail loud when duplicateLoop is combined with note/length edits. duplicateLoop
- * is a standalone op (Live doubles the loop and copies notes + envelopes
- * natively); combining it with edits is an ordering footgun - whether the edits
- * land before or after the double is ambiguous. Validated up front so the error
- * reaches the caller instead of being swallowed by the per-clip warn-and-skip.
- * @param args - The mutually-exclusive parameters
+ * Resolve the duplicateLoop exclusivity conflict by preferring the standalone
+ * loop-double over any note/length edits passed alongside it. duplicateLoop is a
+ * standalone op (Live doubles the loop and copies notes + envelopes natively);
+ * combining it with edits is an ordering footgun - whether the edits land before
+ * or after the double is ambiguous. Rather than guess (or abort the whole batch
+ * with a throw), keep duplicateLoop, drop the conflicting edits, and warn naming
+ * everything skipped so the caller can re-run those edits separately.
+ * @param args - The duplicateLoop flag plus the mutually-exclusive edit params
  * @param args.duplicateLoop - Whether the loop-double was requested
- * @param args.length - The length edit (mutually exclusive)
- * @param args.notationString - The notes edit (mutually exclusive)
- * @param args.transforms - The transforms edit (mutually exclusive)
- * @param args.preTransforms - The preTransforms edit (mutually exclusive)
- * @param args.code - The JS note-transform edit (mutually exclusive)
+ * @param args.length - The length edit (dropped when duplicateLoop wins)
+ * @param args.notationString - The notes edit (dropped when duplicateLoop wins)
+ * @param args.transforms - The transforms edit (dropped when duplicateLoop wins)
+ * @param args.preTransforms - The preTransforms edit (dropped when duplicateLoop wins)
+ * @param args.code - The JS note-transform edit (dropped when duplicateLoop wins)
+ * @returns The edit params, blanked out when duplicateLoop took precedence
  */
-function validateDuplicateLoopExclusivity({
+function resolveDuplicateLoopConflicts({
   duplicateLoop,
   length,
   notationString,
@@ -267,19 +270,32 @@ function validateDuplicateLoopExclusivity({
   transforms?: string;
   preTransforms?: string;
   code?: string;
-}): void {
-  if (
-    duplicateLoop &&
-    (length != null ||
-      notationString != null ||
-      transforms != null ||
-      preTransforms != null ||
-      code != null)
-  ) {
-    throw new Error(
-      "duplicateLoop cannot be combined with length, notes, transforms, preTransforms, or code - it is a standalone operation. Run the edit and the loop-double as separate update-clip calls.",
+}): {
+  length?: string;
+  notationString?: string;
+  transforms?: string;
+  preTransforms?: string;
+  code?: string;
+} {
+  if (!duplicateLoop) {
+    return { length, notationString, transforms, preTransforms, code };
+  }
+
+  const skipped: string[] = [];
+
+  if (length != null) skipped.push("length");
+  if (notationString != null) skipped.push("notes");
+  if (transforms != null) skipped.push("transforms");
+  if (preTransforms != null) skipped.push("preTransforms");
+  if (code != null) skipped.push("code");
+
+  if (skipped.length > 0) {
+    console.warn(
+      `duplicateLoop is a standalone operation - ignoring ${skipped.join(", ")}. Run the loop-double and these edits as separate update-clip calls.`,
     );
   }
+
+  return {};
 }
 
 /**
