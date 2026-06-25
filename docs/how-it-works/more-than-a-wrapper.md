@@ -172,6 +172,31 @@ reflection today — I re-probed a running Live Set while writing this page, and
 the property works exactly as before while remaining invisible to
 introspection.)
 
+## A language for music, not just API calls
+
+The three examples above are all about meeting the **Live API** where it is. The
+single largest investment in Producer Pal sits a level _above_ the API entirely:
+the notation the AI actually composes in.
+
+Asked to write MIDI directly, an LLM has to emit raw note data — pitch numbers
+and times in abstract beats — which is error-prone and unmusical. So Producer
+Pal gives it two purpose-built notations to think in instead:
+
+- **[`bar|beat` notation](/features#custom-music-notation)** — a text-based
+  music notation where time is counted the way musicians count it (`1|1` = bar
+  1, beat 1), pitches are names (`C3`, `F#4`), and durations are note values
+  (`n/4`, `n/8`), mapped onto exact positions in clips and the arrangement
+  across any time signature.
+- **[Transforms](/features#transforms)** — a small expression language for
+  _shaping_ notes and audio with math: LFO shapes, ramps, randomized ranges, and
+  per-note or per-clip variation, where a single string can broadcast across
+  many clips at once.
+
+Both are full domain-specific languages with their own grammars and parsers —
+the kind of thing nobody builds for a thin wrapper. They're a big enough topic
+to deserve their own deep-dive here someday; for now, see the
+[features page](/features#custom-music-notation) for more on both.
+
 ## Why this matters
 
 None of this — the bit math, the holding area, the generated silent WAV, the
