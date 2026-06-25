@@ -267,7 +267,7 @@ describe("useChat message queuing", () => {
     expect(result.current.queuedMessages).toStrictEqual([]);
   });
 
-  it("keeps queued messages across a retry fork instead of discarding them", async () => {
+  it("flushes queued messages after a successful retry fork", async () => {
     const sent: string[] = [];
     const adapter = createRecordingAdapter(sent);
 
@@ -281,14 +281,46 @@ describe("useChat message queuing", () => {
       (m) => m.role === "user",
     );
 
-    // A follow-up is queued (e.g. it was stranded by an earlier failed turn),
-    // then the user retries the prior message. A retry/edit fork must not be an
-    // excuse to silently drop the user's words.
+    // A follow-up is queued, then the user retries the prior message. The fork
+    // must neither drop the queued words nor strand them: once it streams a
+    // response, the follow-up flushes through the normal send path.
     await act(() => result.current.enqueueMessage("B"));
     await act(async () => {
       await result.current.handleRetry(userIndex);
     });
 
+    expect(result.current.queuedMessages).toStrictEqual([]);
+    expect(sent).toContain("B");
+    expect(sent.at(-1)).toBe("B"); // flushed after the fork response
+  });
+
+  it("preserves queued messages when the retry fork fails", async () => {
+    const sent: string[] = [];
+    let calls = 0;
+    // First send ("Hello") succeeds; the retry fork's send throws.
+    const adapter = createRecordingAdapter(sent, () => {
+      calls += 1;
+
+      if (calls > 1) throw new Error("fork stream failed");
+    });
+
+    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+    await act(async () => {
+      await result.current.handleSend("Hello");
+    });
+
+    const userIndex = result.current.messages.findIndex(
+      (m) => m.role === "user",
+    );
+
+    await act(() => result.current.enqueueMessage("B"));
+    await act(async () => {
+      await result.current.handleRetry(userIndex);
+    });
+
+    // The fork errored mid-stream, so the follow-up must stay queued to flush on
+    // a later send rather than being drained into the failed fork.
     expect(result.current.queuedMessages.map((m) => m.text)).toStrictEqual([
       "B",
     ]);

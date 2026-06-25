@@ -35,6 +35,9 @@ interface ConversationActionsDeps<
   invalidateCompactionUndo: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
   pendingForkRef?: PendingForkRef;
+  /** Flush any queued follow-ups through the normal send path. Called after a
+   *  successful fork so queued messages don't strand until the next manual send. */
+  drainQueuedFollowUps: () => Promise<void>;
 }
 
 interface ConversationActionsReturn {
@@ -67,6 +70,7 @@ export function useConversationActions<
     executeWithRetry,
     invalidateCompactionUndo,
     pendingForkRef,
+    drainQueuedFollowUps,
   } = deps;
 
   const forkConversation = useCallback(
@@ -78,8 +82,8 @@ export function useConversationActions<
       if (!apiKey) return;
 
       // Don't discard queued follow-ups on a retry/edit fork — they're the
-      // user's words. They stay in the queue (visible) and flush on the next
-      // successful send rather than vanishing silently here.
+      // user's words. They stay queued through the fork and flush afterward (via
+      // drainQueuedFollowUps on success), rather than vanishing silently here.
       const message = messages[mergedMessageIndex];
 
       if (message?.role !== "user") return;
@@ -92,7 +96,7 @@ export function useConversationActions<
 
       invalidateCompactionUndo();
 
-      await runWithChat(async () => {
+      const succeeded = await runWithChat(async () => {
         const slicedHistory = history.slice(0, rawIndex);
 
         // Signal the branch BEFORE initializeChat replaces the client. init
@@ -134,12 +138,17 @@ export function useConversationActions<
 
         abortControllerRef.current = controller;
 
-        await executeWithRetry({
+        return await executeWithRetry({
           executeStream: (msg) => client.sendMessage(msg, controller.signal),
           getHistory: () => client.chatHistory,
           originalMessage: newMessage,
         });
       });
+
+      // Only flush queued follow-ups when the fork actually streamed a response.
+      // A failed/aborted fork (runWithChat catch -> undefined, or a false retry
+      // result) leaves the queue intact to flush on a later send.
+      if (succeeded === true) await drainQueuedFollowUps();
     },
     [
       apiKey,
@@ -152,6 +161,7 @@ export function useConversationActions<
       pendingHistoryRef,
       abortControllerRef,
       pendingForkRef,
+      drainQueuedFollowUps,
     ],
   );
 

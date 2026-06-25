@@ -388,6 +388,19 @@ export function useChat<
     ],
   );
 
+  // After a successful fork, flush any queued follow-ups through the normal send
+  // path so they don't strand in the queue until the user sends again. handleSend
+  // gives them proper user bubbles, override handling, and its own drain loop.
+  const drainQueuedFollowUps = useCallback(async () => {
+    const queued = drainQueue();
+
+    if (queued.length === 0) return;
+
+    const merged = queued.map((m) => m.text).join("\n\n");
+
+    await handleSend(merged, queued[0]?.overrides);
+  }, [drainQueue, handleSend]);
+
   const { handleRetry, handleEdit } = useConversationActions({
     apiKey,
     messages,
@@ -400,6 +413,7 @@ export function useChat<
     executeWithRetry,
     invalidateCompactionUndo,
     pendingForkRef,
+    drainQueuedFollowUps,
   });
 
   return {
