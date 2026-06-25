@@ -110,8 +110,8 @@ export default defineConfig({
     sidebar: [
       {
         text: "Guide",
+        link: "/guide",
         items: [
-          { text: "User Guide", link: "/guide" },
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
@@ -121,16 +121,16 @@ export default defineConfig({
       },
       {
         text: "Features",
+        link: "/features",
         items: [
-          { text: "Feature List", link: "/features" },
           { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },
       {
         text: "How It Works",
+        link: "/how-it-works",
         items: [
-          { text: "Overview", link: "/how-it-works" },
           {
             text: "Running Inside Ableton Live",
             link: "/how-it-works/running-inside-live",
@@ -151,22 +151,22 @@ export default defineConfig({
       },
       {
         text: "Support",
+        link: "/support",
         items: [
-          { text: "Overview", link: "/support" },
           { text: "Troubleshooting", link: "/support/troubleshooting" },
           { text: "Known Issues", link: "/support/known-issues" },
         ],
       },
       {
         text: "Installation",
+        link: "/installation",
         items: [
-          { text: "Overview", link: "/installation" },
           { text: "Upgrading", link: "/installation/upgrading" },
           {
             text: "Built-in Chat UI",
+            link: "/installation/chat-ui",
             collapsed: false,
             items: [
-              { text: "Overview", link: "/installation/chat-ui" },
               { text: "Gemini", link: "/installation/gemini" },
               { text: "OpenAI", link: "/installation/openai" },
               { text: "Ollama", link: "/installation/ollama" },
@@ -178,9 +178,9 @@ export default defineConfig({
           },
           {
             text: "Desktop Apps",
+            link: "/installation/desktop-apps",
             collapsed: false,
             items: [
-              { text: "Overview", link: "/installation/desktop-apps" },
               {
                 text: "Claude Desktop",
                 link: "/installation/claude-desktop",
@@ -191,9 +191,9 @@ export default defineConfig({
           },
           {
             text: "Command Line",
+            link: "/installation/cli",
             collapsed: false,
             items: [
-              { text: "Overview", link: "/installation/cli" },
               { text: "Gemini CLI", link: "/installation/gemini-cli" },
               { text: "Codex CLI", link: "/installation/codex-cli" },
               { text: "Claude Code", link: "/installation/claude-code" },
@@ -202,9 +202,9 @@ export default defineConfig({
           },
           {
             text: "Web Apps",
+            link: "/installation/web-apps",
             collapsed: false,
             items: [
-              { text: "Overview", link: "/installation/web-apps" },
               { text: "claude.ai", link: "/installation/claude-web" },
               { text: "ChatGPT", link: "/installation/chatgpt-web" },
               { text: "Le Chat", link: "/installation/mistral-le-chat" },
