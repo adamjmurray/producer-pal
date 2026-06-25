@@ -180,6 +180,13 @@ export function useVoiceSession(
   // True while a half-duplex (barge-in disabled) response has the mic
   // auto-muted, so response.done knows to lift it back to the manual state.
   const autoMutedRef = useRef(false);
+  // True between response.created and response.done (mirrors assistantThinking,
+  // kept in a ref the retry path can read synchronously). Gates retryResponse()
+  // so a manual/auto retry never fires response.create over an in-flight response
+  // — the server rejects that as "active response in progress", which on
+  // stop→restart surfaced as a spurious error banner. Also lets cleanup() cancel
+  // a response still running when the session is torn down.
+  const activeResponseRef = useRef(false);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RealtimeItem[]>([]);
@@ -214,13 +221,8 @@ export function useVoiceSession(
     // will see a changed generation and abort.
     connectGenRef.current++;
 
-    if (session) {
-      try {
-        session.close();
-      } catch {
-        // swallow — best-effort teardown
-      }
-    }
+    if (session) closeRealtimeSession(session, activeResponseRef.current);
+    activeResponseRef.current = false;
 
     if (mcpClient) {
       try {
@@ -337,7 +339,13 @@ export function useVoiceSession(
           halfDuplex,
           autoMutedRef,
           isMutedRef,
-          setAssistantThinking,
+          // Track the active-response window in a ref synchronously alongside the
+          // assistantThinking state (set true on response.created, false on
+          // response.done) so retryResponse() can gate on it without a render lag.
+          setAssistantThinking: (value: boolean) => {
+            activeResponseRef.current = value;
+            setAssistantThinking(value);
+          },
           setAssistantSpeaking,
           setError,
           setRateLimitedUntil,
@@ -454,6 +462,7 @@ export function useVoiceSession(
     setError,
     setRateLimitedUntil,
     attemptsRef: autoRetryAttemptsRef,
+    activeResponseRef,
   });
 
   // Push live volume changes mid-session (no Stop → Talk needed, unlike speed):
@@ -483,6 +492,35 @@ export function useVoiceSession(
     resetHistory: () => setHistory([]),
     activeVoice,
   };
+}
+
+/**
+ * Tear a realtime session down: cancel a still-running response first (so the
+ * server isn't left holding/billing an orphaned response and a stop→restart
+ * can't race a lingering one), then close. Both steps are best-effort — a throw
+ * from either must not abort teardown.
+ *
+ * @param session - The session to close
+ * @param cancelInFlight - Whether a response is active and should be cancelled
+ *   (via interrupt) before closing
+ */
+function closeRealtimeSession(
+  session: RealtimeSession,
+  cancelInFlight: boolean,
+): void {
+  if (cancelInFlight) {
+    try {
+      session.interrupt();
+    } catch {
+      // swallow — best-effort cancel
+    }
+  }
+
+  try {
+    session.close();
+  } catch {
+    // swallow — best-effort teardown
+  }
 }
 
 /**

@@ -35,6 +35,11 @@ export interface UseVoiceRetryDeps {
   setRateLimitedUntil: (value: number | null) => void;
   /** Consecutive-auto-retry counter, capped here and reset on success/connect. */
   attemptsRef: NumberRef;
+  /** True while a response is in progress. A retry nudge is skipped when set so
+   *  we never send response.create over an active response — the server would
+   *  reject it ("active response in progress"), which on stop→restart surfaced
+   *  as a spurious error banner. */
+  activeResponseRef: { current: boolean };
 }
 
 /**
@@ -53,15 +58,20 @@ export function useVoiceRetry(deps: UseVoiceRetryDeps): {
     setError,
     setRateLimitedUntil,
     attemptsRef,
+    activeResponseRef,
   } = deps;
 
   // Nudge the server to generate the next response. After a rate-limit failure
   // the conversation already has the latest user/tool message; we just tell the
-  // API to run another response cycle. No-op (and clears nothing) when idle.
+  // API to run another response cycle. No-op (and clears nothing) when idle, or
+  // when a response is already in progress — sending response.create over an
+  // active response is rejected by the server ("active response in progress"),
+  // and a stale auto-retry timer firing into a freshly restarted session is the
+  // path that surfaced that rejection as an error banner.
   const retryResponse = useCallback(() => {
     const session = sessionRef.current;
 
-    if (!session) return;
+    if (!session || activeResponseRef.current) return;
 
     try {
       session.transport.sendEvent({ type: "response.create" });
@@ -70,7 +80,7 @@ export function useVoiceRetry(deps: UseVoiceRetryDeps): {
     } catch (err) {
       setError(extractErrorMessage(err));
     }
-  }, [sessionRef, setError, setRateLimitedUntil]);
+  }, [sessionRef, setError, setRateLimitedUntil, activeResponseRef]);
 
   useRateLimitAutoRetry(rateLimitedUntil, retryResponse, attemptsRef);
 

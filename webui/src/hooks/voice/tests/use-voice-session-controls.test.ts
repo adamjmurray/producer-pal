@@ -439,6 +439,50 @@ describe("useVoiceSession mute / interrupt / retry", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("retryResponse does not fire response.create while a response is in progress", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    // A response is underway (created, not yet done). Sending response.create now
+    // would be rejected by the server as "active response in progress" — the
+    // rejection that surfaced as a spurious banner on stop→restart.
+    await act(() => {
+      session.emit("transport_event", { type: "response.created" });
+    });
+
+    await act(() => {
+      result.current.retryResponse();
+    });
+    expect(countAutoRetries(session)).toBe(0);
+
+    // Once the response completes the gate lifts and a retry goes through again.
+    await act(() => {
+      session.emit("transport_event", {
+        type: "response.done",
+        response: { status: "completed" },
+      });
+    });
+    await act(() => {
+      result.current.retryResponse();
+    });
+    expect(countAutoRetries(session)).toBe(1);
+  });
+
+  it("disconnect cancels an in-flight response before closing the session", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    // Response in progress when the user hits Stop — teardown should cancel it so
+    // the server doesn't keep billing/holding an orphaned response.
+    await act(() => {
+      session.emit("transport_event", { type: "response.created" });
+    });
+
+    await act(async () => {
+      await result.current.disconnect();
+    });
+    expect(session.interrupt).toHaveBeenCalled();
+    expect(session.close).toHaveBeenCalled();
+  });
+
   it("non-Error throws from mute/interrupt/sendEvent are stringified into error state", async () => {
     const { result, session } = await connectAndGetSession();
 
