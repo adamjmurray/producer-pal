@@ -91,30 +91,6 @@ bridge actually moves data between the two engines — JSON sent over Max patch
 cables, with a chunking scheme for big messages — see
 [The Bridge: JSON Over Patch Cables](/how-it-works/the-bridge).
 
-## How this compares to an extension
-
-An Ableton extension gives you the modern-Node.js half of the picture. What it
-doesn't have today is the rest: it can't start playback, can't launch clips,
-sees only part of the Live Set, can't keep a stable reference to a clip once you
-move it, and works inside a sandbox away from your sample folders. (The details,
-and how I weigh them, are in
-[Why isn't Producer Pal an extension?](/how-it-works/why-not-an-extension).)
-
-Producer Pal's bridge gives you **both halves at once**:
-
-| Capability                               | Producer Pal (Max for Live + bridge) | Ableton extension |
-| ---------------------------------------- | :----------------------------------: | :---------------: |
-| Modern Node.js + npm + network           |                  ✅                  |        ✅         |
-| Start/stop playback, launch clips/scenes |                  ✅                  |        ❌         |
-| Read & write the **full** Live Set       |                  ✅                  |   partial only    |
-| Stable references that survive edits     |                  ✅                  |        ❌         |
-| Reach your sample folders anywhere       |                  ✅                  |   sandboxed out   |
-| Runs on stable Live releases today       |                  ✅                  |     beta only     |
-
-That last row matters too: Producer Pal works on
-[shipping versions of Ableton Live](/installation), while the Extensions SDK is
-still a beta available only in pre-release builds.
-
 ## One device, nothing extra to wire up
 
 Because everything lives in a single Max for Live device, there's nothing for
