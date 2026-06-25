@@ -143,6 +143,21 @@ top wouldn't unlock anything new; it would just be a second thing to install,
 with the more limited piece out front.
 ([Curious how that works? Here's the hood open. →](/how-it-works/running-inside-live))
 
+## "Wouldn't an extension reach more people?"
+
+It's the most tempting reason to want one: surely an extension, with no Max for
+Live needed, would let _everyone_ on Live run Producer Pal? I assumed the same
+thing, until I checked. Per
+[Ableton's own FAQ](https://www.ableton.com/live/extensions/), extensions
+require **Live Suite** (currently the 12.4.5+ beta) and are "not available in
+Live Standard, Intro, or Lite."
+
+That's the same audience that can already run Max for Live, if not _narrower_:
+Max for Live comes with Suite, but it can also be added to **Live Standard** as
+a paid add-on, so today's Producer Pal can in theory reach a few people an
+extension couldn't. So an extension wouldn't widen who can use Producer Pal,
+which removes the one upside that might have offset everything above.
+
 ## How Producer Pal _does_ grow new capabilities
 
 When Producer Pal does need something Live itself can't do (audio analysis,
