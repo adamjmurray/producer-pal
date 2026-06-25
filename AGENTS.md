@@ -30,6 +30,7 @@ npm run docs:build   # Build static site
 npm run docs:preview # Preview production build
 # When editing docs, use clean URLs: /chat-ui not /chat-ui.html (no trailing slash)
 # Page files named after folder: docs/guide.md not docs/guide/index.md (except top-level docs/index.md)
+# Callouts: use VitePress containers (::: tip Title / ::: warning / ::: info / ::: details ... :::), NOT plain "> **Tip:**" blockquotes
 ```
 
 ## Architecture
