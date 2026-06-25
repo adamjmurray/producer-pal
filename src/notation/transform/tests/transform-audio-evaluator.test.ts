@@ -384,7 +384,7 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBeNull();
       expect(result.pitchShift).toBeNull();
       expect(console.warn).toHaveBeenCalledWith(
-        "Note-count operations (ratchet, merge) ignored for audio clips",
+        "Note-count operations (ratchet, repeat, merge, split) ignored for audio clips",
       );
     });
   });
