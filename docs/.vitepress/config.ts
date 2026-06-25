@@ -130,6 +130,10 @@ export default defineConfig({
             link: "/how-it-works/the-bridge",
           },
           {
+            text: "More Than a Live API Wrapper",
+            link: "/how-it-works/more-than-a-wrapper",
+          },
+          {
             text: "Why Not an Ableton Extension?",
             link: "/how-it-works/why-not-an-extension",
           },
