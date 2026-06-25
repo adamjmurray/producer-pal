@@ -11,6 +11,7 @@ import {
   DEFAULT_META,
   buildConversationSaveRecord,
   buildLockedSettings,
+  chainSave,
   getHashConversationId,
   setLocationHash,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
@@ -114,6 +115,9 @@ export function useConversations({
   const activeIdRef = useRef(activeConversationId);
   const activeMetaRef = useRef<ActiveMeta | null>(null);
   const programmaticHashRef = useRef(false);
+  // Serializes conversation saves so a later save's read-back can't race ahead
+  // of an earlier save's write (see saveCurrentConversation).
+  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useSyncActiveMeta(activeMetaRef, {
     activeModel: activeModelProp,
@@ -156,9 +160,6 @@ export function useConversations({
     setLocationHash(null);
   }, []);
 
-  const syncActiveMeta = (record: ConversationRecord) =>
-    syncMetaRef(activeMetaRef, record);
-
   // Load conversation from URL hash and conversation list on mount
   useEffect(() => {
     const init = async () => {
@@ -178,7 +179,7 @@ export function useConversations({
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
           restoreChatHistory(record.messages, buildLockedSettings(record));
-          syncActiveMeta(record);
+          syncMetaRef(activeMetaRef, record);
         } else {
           // Hash ID no longer exists in DB
           clearActiveId();
@@ -196,7 +197,7 @@ export function useConversations({
   ]);
 
   const saveCurrentConversation = useCallback(
-    async (updatedAt?: number) => {
+    (updatedAt?: number): Promise<void> => {
       // Consume the fork signal first — before the empty-history early-return
       // below. A fork aborted before it streamed any content (Stop, or a browser
       // Back/Forward tearing the conversation down) reaches here with empty
@@ -210,7 +211,7 @@ export function useConversations({
 
       const chatHistory = getChatHistory();
 
-      if (chatHistory.length === 0) return;
+      if (chatHistory.length === 0) return Promise.resolve();
 
       const reuseId = activeIdRef.current;
       // A fork mints a new id and switches to it (leaving the source intact); a
@@ -221,33 +222,43 @@ export function useConversations({
 
       setActiveId(id);
 
-      try {
-        const record = await buildConversationSaveRecord({
-          id,
-          reuseId,
-          fork,
-          refs: buildActiveRefs(activeMetaRef, id),
-          chatHistory,
-          updatedAt,
-        });
+      // Serialize the DB work behind any in-flight save. A fork's first save
+      // persists the branch linkage; later saves of that id recover it by reading
+      // the record back. Run concurrently, a later save's read could resolve
+      // before the fork save's write landed — dropping the linkage and orphaning
+      // the branch. Chaining makes the read-after-write ordering deterministic;
+      // the fork signal is still consumed synchronously above, at call time.
+      // chainSave runs this body after any in-flight save; its errors are
+      // swallowed below so the chain never rejects.
+      return chainSave(saveChainRef, async () => {
+        try {
+          const record = await buildConversationSaveRecord({
+            id,
+            reuseId,
+            fork,
+            refs: buildActiveRefs(activeMetaRef, id),
+            chatHistory,
+            updatedAt,
+          });
 
-        syncActiveMeta(record);
+          syncMetaRef(activeMetaRef, record);
 
-        // When saving a fork, protect the whole branch family it joins so the
-        // conversation-cap LRU can't evict the trunk this branch points back to
-        // — or any sibling, which would orphan the family's ‹ n/m › navigation.
-        const protectedIds =
-          fork != null ? await forkProtectedIds(record, reuseId) : undefined;
-        const result = await saveConversation(record, protectedIds);
+          // When saving a fork, protect the whole branch family it joins so the
+          // conversation-cap LRU can't evict the trunk this branch points back to
+          // — or any sibling, which would orphan the family's ‹ n/m › navigation.
+          const protectedIds =
+            fork != null ? await forkProtectedIds(record, reuseId) : undefined;
+          const result = await saveConversation(record, protectedIds);
 
-        limit.showLimitNotification(result);
-        await refreshList();
-      } catch (error) {
-        // App.tsx fire-and-forgets this call, so surface the failure here
-        // instead of letting it become an unhandled rejection
-        console.error("Failed to save conversation", error);
-        limit.showSaveError(error);
-      }
+          limit.showLimitNotification(result);
+          await refreshList();
+        } catch (error) {
+          // App.tsx fire-and-forgets this call, so surface the failure here
+          // instead of letting it become an unhandled rejection
+          console.error("Failed to save conversation", error);
+          limit.showSaveError(error);
+        }
+      });
     },
     [getChatHistory, refreshList, setActiveId, limit, pendingForkRef],
   );
@@ -278,7 +289,7 @@ export function useConversations({
       clearConversation();
       restoreChatHistory(record.messages, buildLockedSettings(record));
       setActiveId(id);
-      syncActiveMeta(record);
+      syncMetaRef(activeMetaRef, record);
       // Re-collapse with the new active id so its family's row reflects — and
       // highlights — the sibling just switched to (e.g. via the branch arrows).
       await refreshList();

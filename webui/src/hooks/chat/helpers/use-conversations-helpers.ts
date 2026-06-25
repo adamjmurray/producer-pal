@@ -295,3 +295,24 @@ export function deriveTitle(
 
   return firstUserLine || null;
 }
+
+/**
+ * Chain `work` after the ref's current promise and store the new tail, so
+ * successive conversation saves run strictly in order. This keeps a later
+ * save's read-back from racing ahead of an earlier save's write (which would
+ * drop a freshly-forked record's branch linkage).
+ * @param ref - Ref holding the in-flight save chain
+ * @param ref.current - The current tail promise
+ * @param work - Save work to run once prior saves settle
+ * @returns The new tail promise
+ */
+export function chainSave(
+  ref: { current: Promise<void> },
+  work: () => Promise<void>,
+): Promise<void> {
+  const next = ref.current.then(work);
+
+  ref.current = next;
+
+  return next;
+}

@@ -115,6 +115,43 @@ describe("useConversations branching", () => {
     expect(await listConversations()).toHaveLength(1);
   });
 
+  it("preserves branch linkage when a follow-up save is fired before the fork save resolves", async () => {
+    const { result, state, pendingForkRef } = await setupForkHook();
+
+    await save(result, state, ORIGINAL);
+    const originalId = result.current.activeConversationId!;
+
+    // Fire the fork save and an immediate follow-up without awaiting the fork
+    // save first. Serialized saves keep the read-after-write ordering, so the
+    // follow-up still sees the persisted fork record and carries its linkage;
+    // run concurrently, the follow-up's read could beat the fork save's write
+    // and strip forkParentId/forkedAtIndex.
+    pendingForkRef.current = { anchorIndex: 0 };
+    await act(async () => {
+      state.chatHistory = FORKED;
+      const forkSave = result.current.saveCurrentConversation();
+
+      state.chatHistory = [...FORKED, { role: "assistant", content: "more" }];
+      const followUp = result.current.saveCurrentConversation();
+
+      await Promise.all([forkSave, followUp]);
+    });
+
+    const forkId = result.current.activeConversationId!;
+
+    expect(forkId).not.toBe(originalId);
+
+    const fork = await loadConversation(forkId);
+
+    expect(fork?.forkParentId).toBe(originalId);
+    expect(fork?.forkedAtIndex).toBe(0);
+    expect(fork?.messages).toStrictEqual([
+      ...FORKED,
+      { role: "assistant", content: "more" },
+    ]);
+    expect(await listConversations()).toHaveLength(1);
+  });
+
   it("collapses the branch family to one list entry, represented by the active sibling", async () => {
     const { result, state, pendingForkRef } = await setupForkHook();
 
