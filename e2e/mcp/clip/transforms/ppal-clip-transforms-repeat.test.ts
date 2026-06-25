@@ -70,4 +70,28 @@ describe("ppal-clip-transforms (repeat round-trip)", () => {
     expect(notes).toContain("C3");
     expect(notes).toContain("D3");
   });
+
+  it("stamps multiple echoes with the copies argument", async () => {
+    // One note at the downbeat; repeat(n/8, 3) adds THREE echoes an eighth
+    // (n/8 = 0.5 beat) apart, landing on 1|1.5, 1|2, 1|2.5 — all inside bar 1.
+    const clipId = await createMidiClip(62, "v100 C3 1|1");
+
+    const result = parseToolResult<UpdateClipResult>(
+      await applyTransform(clipId, "repeat(n/8, 3)"),
+    );
+
+    // 1 original + 3 copies = 4 notes (this is what the default copies=1 cases
+    // above do NOT exercise).
+    expect(result.noteCount).toBe(4);
+
+    const notes = await readClipNotes(clipId);
+
+    // State-based notation compresses the same-pitch run into a comma list of
+    // beats, and the overlapping earlier copies get tail-truncated by Live, so
+    // assert on the beat positions rather than standalone "1|X" tokens. The 2.5
+    // beat is only reachable with three copies — copies=1 would stop at 1.5.
+    expect(notes).toContain("C3");
+    expect(notes).toContain("1.5"); // 1st echo
+    expect(notes).toContain("2.5"); // 3rd echo
+  });
 });

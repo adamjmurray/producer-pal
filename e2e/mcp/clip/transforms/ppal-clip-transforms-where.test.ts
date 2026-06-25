@@ -111,6 +111,37 @@ describe("ppal-update-clip where() float tolerance over a ratcheted burst", () =
   });
 });
 
+describe("ppal-update-clip where() function operand", () => {
+  it("selects notes with a function call in the predicate (abs)", async () => {
+    // Velocities 50, 95, 105, 40. `abs(note.velocity - 100) <= 10` picks the
+    // notes within 10 of 100 — E3 (95) and G3 (105) — and leaves C3/B3 out.
+    const clipId = await createMidiClip(
+      6,
+      "v50 C3 1|1 v95 E3 1|2 v105 G3 1|3 v40 B3 1|4",
+    );
+
+    const result = parseToolResult<UpdateClipResult>(
+      await applyTransform(
+        clipId,
+        "where(abs(note.velocity - 100) <= 10): velocity = 127",
+      ),
+    );
+
+    // Only the two near-100 notes matched.
+    expect(result.transformed).toBe(2);
+
+    const notes = await readClipNotes(clipId);
+
+    // E3 and G3 pushed to 127; the out-of-band notes keep their velocities.
+    expect(notes).toContain("v127");
+    expect(notes).toContain("v50");
+    expect(notes).toContain("v40");
+    // 95/105 were the matched values — gone now that they read back as 127.
+    expect(notes).not.toContain("v95");
+    expect(notes).not.toContain("v105");
+  });
+});
+
 describe("ppal-update-clip delete shorthand (alias for v0)", () => {
   it("clears a single lane with a pitch selector", async () => {
     const clipId = await createMidiClip(3, "v100 C3 E3 G3 1|1");

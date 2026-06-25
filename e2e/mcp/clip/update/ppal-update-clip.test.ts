@@ -19,7 +19,7 @@ import {
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 

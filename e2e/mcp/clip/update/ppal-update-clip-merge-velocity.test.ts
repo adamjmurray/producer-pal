@@ -18,7 +18,7 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
