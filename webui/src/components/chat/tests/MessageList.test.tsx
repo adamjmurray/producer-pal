@@ -13,6 +13,7 @@ import {
   render,
   screen,
 } from "@testing-library/preact";
+import { type ComponentProps } from "preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { MessageList } from "#webui/components/chat/MessageList";
@@ -63,6 +64,27 @@ function createErrorMessage(content: string, rawHistoryIndex = 0): UIMessage {
   };
 }
 
+type MessageListProps = ComponentProps<typeof MessageList>;
+
+// Builds a complete MessageList props object with sensible defaults so tests can
+// pass `<MessageList {...messageListProps({ ... })} />` instead of repeating the
+// full prop list (avoids large render/rerender JSX clones).
+function messageListProps(
+  overrides: Partial<MessageListProps> = {},
+): MessageListProps {
+  return {
+    messages: [],
+    queuedMessages: [],
+    onRemoveQueued: vi.fn(),
+    isAssistantResponding: false,
+    handleRetry: vi.fn(),
+    handleEdit: vi.fn(),
+    showTimestamps: true,
+    showTokenUsage: false,
+    ...overrides,
+  };
+}
+
 function renderMessageList(
   messages: UIMessage[] = [],
   isAssistantResponding = false,
@@ -76,14 +98,14 @@ function renderMessageList(
 } {
   const result = render(
     <MessageList
-      messages={messages}
-      queuedMessages={[]}
-      onRemoveQueued={vi.fn()}
-      isAssistantResponding={isAssistantResponding}
-      handleRetry={handleRetry}
-      handleEdit={handleEdit}
-      showTimestamps={showTimestamps}
-      showTokenUsage={showTokenUsage}
+      {...messageListProps({
+        messages,
+        isAssistantResponding,
+        handleRetry,
+        handleEdit,
+        showTimestamps,
+        showTokenUsage,
+      })}
     />,
   );
 
@@ -384,14 +406,10 @@ describe("MessageList", () => {
 
       rerender(
         <MessageList
-          messages={[createUserMessage("Hello", 0)]}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: [createUserMessage("Hello", 0)],
+            isAssistantResponding: true,
+          })}
         />,
       );
 
@@ -437,14 +455,7 @@ describe("MessageList", () => {
 
         rerender(
           <MessageList
-            messages={messages}
-            queuedMessages={[]}
-            onRemoveQueued={vi.fn()}
-            isAssistantResponding={isAssistantResponding}
-            handleRetry={vi.fn()}
-            handleEdit={vi.fn()}
-            showTimestamps={true}
-            showTokenUsage={false}
+            {...messageListProps({ messages, isAssistantResponding })}
           />,
         );
         expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -460,14 +471,10 @@ describe("MessageList", () => {
 
       rerender(
         <MessageList
-          messages={[createModelMessage("Fast response")]}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: [createModelMessage("Fast response")],
+            isAssistantResponding: true,
+          })}
         />,
       );
 
@@ -491,14 +498,10 @@ describe("MessageList", () => {
 
       rerender(
         <MessageList
-          messages={messagesWithContent}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: messagesWithContent,
+            isAssistantResponding: true,
+          })}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -515,15 +518,10 @@ describe("MessageList", () => {
     it("shows 'Compacting...' immediately while compacting", () => {
       render(
         <MessageList
-          messages={[]}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={true}
-          isCompacting={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
+          {...messageListProps({
+            isAssistantResponding: true,
+            isCompacting: true,
+          })}
         />,
       );
 
@@ -543,15 +541,11 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={messages}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={false}
-          showTokenUsage={false}
-          requestedModel="gpt-4o"
+          {...messageListProps({
+            messages,
+            showTimestamps: false,
+            requestedModel: "gpt-4o",
+          })}
         />,
       );
 
@@ -568,15 +562,11 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={messages}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={false}
-          showTokenUsage={false}
-          requestedModel="gpt-4o"
+          {...messageListProps({
+            messages,
+            showTimestamps: false,
+            requestedModel: "gpt-4o",
+          })}
         />,
       );
 
@@ -676,15 +666,11 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={[createUserMessage("hi", 0), createModelMessage("yo", 1)]}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          handleCompact={handleCompact}
-          showTimestamps={false}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: [createUserMessage("hi", 0), createModelMessage("yo", 1)],
+            handleCompact,
+            showTimestamps: false,
+          })}
         />,
       );
 
@@ -700,20 +686,16 @@ describe("MessageList", () => {
     it("only shows the compact button on the last assistant message", () => {
       render(
         <MessageList
-          messages={[
-            createUserMessage("hi", 0),
-            createModelMessage("first", 1),
-            createUserMessage("more", 2),
-            createModelMessage("last", 3),
-          ]}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          handleCompact={vi.fn()}
-          showTimestamps={false}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: [
+              createUserMessage("hi", 0),
+              createModelMessage("first", 1),
+              createUserMessage("more", 2),
+              createModelMessage("last", 3),
+            ],
+            handleCompact: vi.fn(),
+            showTimestamps: false,
+          })}
         />,
       );
 
@@ -735,16 +717,12 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={[summaryMsg]}
-          queuedMessages={[]}
-          onRemoveQueued={vi.fn()}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={false}
-          showTokenUsage={false}
-          canUndoCompaction
-          onUndoCompaction={vi.fn()}
+          {...messageListProps({
+            messages: [summaryMsg],
+            showTimestamps: false,
+            canUndoCompaction: true,
+            onUndoCompaction: vi.fn(),
+          })}
         />,
       );
 

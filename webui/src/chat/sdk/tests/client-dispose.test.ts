@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type ChatClientConfig } from "#webui/chat/sdk/types";
 
 vi.mock(import("ai"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -21,21 +20,7 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { ChatSdkClient } from "#webui/chat/sdk/client";
-
-/**
- * Create a minimal config for a client under test.
- * @returns Mock ChatClientConfig
- */
-function createConfig(): ChatClientConfig {
-  return {
-    model: {
-      modelId: "test",
-      provider: "openai",
-      specificationVersion: "v3",
-    } as never,
-    showThoughts: false,
-  };
-}
+import { createConfig } from "#webui/chat/sdk/tests/client-test-helpers";
 
 /**
  * Make createMcpTools resolve with an MCP client exposing the given close spy.

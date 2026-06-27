@@ -36,22 +36,26 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 
 import { streamText } from "ai";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
+import {
+  createConfig as createBaseConfig,
+  mockStreamParts,
+} from "#webui/chat/sdk/tests/client-test-helpers";
 
 /**
- * Create a mock config.
+ * Create a mock config defaulting to the anthropic provider (reasoning is
+ * anthropic-specific).
  * @param overrides - Config overrides
  * @returns Mock ChatClientConfig
  */
 function createConfig(overrides?: Partial<ChatClientConfig>): ChatClientConfig {
-  return {
+  return createBaseConfig({
     model: {
       modelId: "test",
       provider: "anthropic",
       specificationVersion: "v3",
     } as never,
-    showThoughts: false,
     ...overrides,
-  };
+  });
 }
 
 /**
@@ -62,13 +66,7 @@ function createConfig(overrides?: Partial<ChatClientConfig>): ChatClientConfig {
 async function sendWithParts(
   parts: Record<string, unknown>[],
 ): Promise<ChatMessage[]> {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
-  }
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
-  });
+  mockStreamParts(parts);
 
   const client = new ChatSdkClient("key", createConfig());
   let last: ChatMessage[] = [];
@@ -92,11 +90,7 @@ async function sendWithHistory(
   providerOptions?: ChatClientConfig["providerOptions"],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper accessing mock internals
 ): Promise<Record<string, any>> {
-  async function* empty(): AsyncIterable<Record<string, unknown>> {}
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: empty(),
-  });
+  mockStreamParts([]);
 
   const client = new ChatSdkClient(
     "key",

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import { type ChatMessage } from "#webui/chat/sdk/types";
 
 // Mock streamText from ai
 vi.mock(import("ai"), async (importOriginal) => {
@@ -29,6 +29,10 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 
 import { generateText, streamText } from "ai";
 import { ChatSdkClient, detectToolLimitReached } from "#webui/chat/sdk/client";
+import {
+  createConfig,
+  mockStreamParts,
+} from "#webui/chat/sdk/tests/client-test-helpers";
 
 const MAX_TOOL_STEPS = 10;
 
@@ -41,13 +45,7 @@ const MAX_TOOL_STEPS = 10;
 async function sendAndGetClient(
   parts: Record<string, unknown>[],
 ): Promise<ChatSdkClient> {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
-  }
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
-  });
+  mockStreamParts(parts);
 
   const client = new ChatSdkClient("key", createConfig());
 
@@ -81,23 +79,6 @@ function buildSteppedStream(
 }
 
 /**
- * Create a mock config.
- * @param overrides - Config overrides
- * @returns Mock ChatClientConfig
- */
-function createConfig(overrides?: Partial<ChatClientConfig>): ChatClientConfig {
-  return {
-    model: {
-      modelId: "test",
-      provider: "openai",
-      specificationVersion: "v3",
-    } as never,
-    showThoughts: false,
-    ...overrides,
-  };
-}
-
-/**
  * Send a message through a new client with mocked stream parts.
  * Returns the final chat history snapshot.
  * @param parts - Stream parts to emit
@@ -108,13 +89,7 @@ async function sendWithParts(
   parts: Record<string, unknown>[],
   message = "Hello",
 ): Promise<ChatMessage[]> {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
-  }
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
-  });
+  mockStreamParts(parts);
 
   const client = new ChatSdkClient("key", createConfig());
   let last: ChatMessage[] = [];

@@ -6,7 +6,10 @@
 import { describe, expect, it } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
-import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
+import {
+  drumPatternNotes,
+  kickSnareNotes,
+} from "../../barbeat-test-fixtures.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 import { expectRoundTripNotes } from "./barbeat-serializer-test-helpers.ts";
 
@@ -44,12 +47,7 @@ describe("drum mode serializer", () => {
   });
 
   it("comma-merges beats within same bar", () => {
-    const notes: NoteEvent[] = [
-      createNote({ pitch: 36, start_time: 0, duration: 0.25 }),
-      createNote({ pitch: 36, start_time: 2, duration: 0.25 }),
-      createNote({ pitch: 38, start_time: 1, duration: 0.25, velocity: 90 }),
-      createNote({ pitch: 38, start_time: 3, duration: 0.25, velocity: 90 }),
-    ] as NoteEvent[];
+    const notes = kickSnareNotes();
 
     const result = formatNotation(notes, { drumMode: true });
 
@@ -201,14 +199,7 @@ describe("drum mode serializer", () => {
 
   describe("round-trip tests", () => {
     it("round-trips simple kick/snare pattern", () => {
-      const notes: NoteEvent[] = [
-        createNote({ pitch: 36, start_time: 0, duration: 0.25 }),
-        createNote({ pitch: 36, start_time: 2, duration: 0.25 }),
-        createNote({ pitch: 38, start_time: 1, duration: 0.25, velocity: 90 }),
-        createNote({ pitch: 38, start_time: 3, duration: 0.25, velocity: 90 }),
-      ] as NoteEvent[];
-
-      expectDrumRoundTrip(notes);
+      expectDrumRoundTrip(kickSnareNotes());
     });
 
     it("round-trips repeat pattern", () => {

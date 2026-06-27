@@ -10,7 +10,7 @@
  * already-streamed content or leaving a dangling tool-call.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import { type ChatMessage } from "#webui/chat/sdk/types";
 
 // Mock streamText from ai
 vi.mock(import("ai"), async (importOriginal) => {
@@ -33,25 +33,11 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: vi.fn(() => "http://localhost:3000/mcp"),
 }));
 
-import { streamText } from "ai";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
-
-/**
- * Create a mock config.
- * @param overrides - Config overrides
- * @returns Mock ChatClientConfig
- */
-function createConfig(overrides?: Partial<ChatClientConfig>): ChatClientConfig {
-  return {
-    model: {
-      modelId: "test",
-      provider: "openai",
-      specificationVersion: "v3",
-    } as never,
-    showThoughts: false,
-    ...overrides,
-  };
-}
+import {
+  createConfig,
+  mockStreamParts,
+} from "#webui/chat/sdk/tests/client-test-helpers";
 
 /**
  * Stream the given parts through a fresh client, passing a shouldInterrupt
@@ -64,13 +50,7 @@ async function sendWithInterrupt(
   parts: Record<string, unknown>[],
   shouldInterrupt: () => boolean,
 ): Promise<ChatMessage[]> {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
-  }
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
-  });
+  mockStreamParts(parts);
 
   const client = new ChatSdkClient("key", createConfig());
   let last: ChatMessage[] = [];
