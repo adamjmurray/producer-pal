@@ -125,8 +125,8 @@ describe("updateClip - duplicateLoop", () => {
 
   it.each([
     ["notes", "1|1 C3"],
-    ["transforms", "p+12"],
-    ["preTransforms", "p+12"],
+    ["transforms", "pitch += 12"],
+    ["preTransforms", "pitch += 12"],
   ])(
     "doubles and composes %s without warning (no length conflict)",
     async (param, value) => {
@@ -177,9 +177,9 @@ describe("updateClip - duplicateLoop", () => {
     await updateClip({
       ids: "123",
       duplicateLoop: true,
-      preTransforms: "p+12",
+      preTransforms: "pitch += 12",
       notes: "1|1 C3",
-      transforms: "p-12",
+      transforms: "pitch -= 12",
     });
 
     // preTransforms flushes a write, then the native double, then the post-merge

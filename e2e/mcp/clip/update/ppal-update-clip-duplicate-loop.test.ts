@@ -11,6 +11,11 @@
  * note doubling and the loop-length growth that the in-memory unit tests can't
  * observe (envelope copy isn't surfaced by read-clip, so it stays unit-only).
  *
+ * They also pin the composition contract on real Live geometry: preTransforms
+ * edit the source BEFORE the double, then notes/transforms apply across the FULL
+ * doubled clip. Only length is ignored (the double sets it). The unit tests pin
+ * the call ordering; these confirm the resulting notes land in the right bars.
+ *
  * Uses: e2e-test-set - t8 is the empty MIDI track.
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -92,11 +97,11 @@ describe("ppal-update-clip duplicateLoop", () => {
     expect(clip.notes).toContain("E3");
   });
 
-  it("ignores edits passed alongside duplicateLoop (standalone op wins) and still doubles", async () => {
+  it("ignores length passed alongside duplicateLoop (the double sets the length) and still doubles", async () => {
     const clipId = await createLoopingClip(1, "v100 C3 1|1 E3 2|1");
 
-    // length is mutually exclusive with duplicateLoop: the loop-double wins and
-    // the length edit is dropped with a warning instead of resizing to 8 bars.
+    // length conflicts with duplicateLoop: the double sets the new length, so the
+    // length edit is dropped with a warning instead of resizing to 8 bars.
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: { ids: clipId, duplicateLoop: true, length: "8bar" },
@@ -105,7 +110,7 @@ describe("ppal-update-clip duplicateLoop", () => {
       parseToolResultWithWarnings<UpdateClipResult>(result);
 
     expect(data.noteCount).toBe(4);
-    expect(warnings.join("\n")).toContain("duplicateLoop is a standalone");
+    expect(warnings.join("\n")).toContain("duplicateLoop sets the clip length");
 
     await sleep(100);
 
@@ -113,5 +118,89 @@ describe("ppal-update-clip duplicateLoop", () => {
 
     // Doubled to 4 bars by the loop op, NOT resized to the ignored 8bar length.
     expect(clip.length).toBe("4bar");
+  });
+
+  it("applies preTransforms to the source BEFORE doubling", async () => {
+    const clipId = await createLoopingClip(2, "v100 C3 1|1 E3 2|1");
+
+    // preTransforms transposes the source up an octave first, so the native copy
+    // carries the transposed notes into the new half: all four end up an octave up.
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: clipId,
+        duplicateLoop: true,
+        preTransforms: "pitch += 12",
+      },
+    });
+    const { data } = parseToolResultWithWarnings<UpdateClipResult>(result);
+
+    expect(data.noteCount).toBe(4);
+
+    await sleep(100);
+
+    const clip = await readClip(clipId);
+
+    expect(clip.length).toBe("4bar");
+    // Every note an octave up across all four bars; originals (C3/E3) are gone.
+    expect(clip.notes).toContain("C4");
+    expect(clip.notes).toContain("E4");
+    expect(clip.notes).not.toContain("C3");
+    expect(clip.notes).toContain("3|1");
+    expect(clip.notes).toContain("4|1");
+  });
+
+  it("merges notes into the doubled clip AFTER the double", async () => {
+    const clipId = await createLoopingClip(3, "v100 C3 1|1 E3 2|1");
+
+    // The new note targets bar 3, which only exists after the double. It merges
+    // into the new half alongside the copied C3 there.
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clipId, duplicateLoop: true, notes: "v100 G3 3|1" },
+    });
+    const { data } = parseToolResultWithWarnings<UpdateClipResult>(result);
+
+    // 4 doubled notes + 1 merged G3 (no pitch+start collision) = 5.
+    expect(data.noteCount).toBe(5);
+
+    await sleep(100);
+
+    const clip = await readClip(clipId);
+
+    expect(clip.length).toBe("4bar");
+    expect(clip.notes).toContain("G3");
+    expect(clip.notes).toContain("3|1");
+    expect(clip.notes).toContain("4|1");
+  });
+
+  it("applies transforms across the FULL doubled clip AFTER the double", async () => {
+    const clipId = await createLoopingClip(5, "v100 C3 1|1 E3 2|1");
+
+    // The clip is doubled first, then the transform hits all four notes (both the
+    // originals and the copies in the new half).
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: clipId,
+        duplicateLoop: true,
+        transforms: "pitch += 12",
+      },
+    });
+    const { data } = parseToolResultWithWarnings<UpdateClipResult>(result);
+
+    expect(data.noteCount).toBe(4);
+
+    await sleep(100);
+
+    const clip = await readClip(clipId);
+
+    expect(clip.length).toBe("4bar");
+    // All four (incl. the copies in bars 3-4) transposed up an octave.
+    expect(clip.notes).toContain("C4");
+    expect(clip.notes).toContain("E4");
+    expect(clip.notes).not.toContain("C3");
+    expect(clip.notes).toContain("3|1");
+    expect(clip.notes).toContain("4|1");
   });
 });
