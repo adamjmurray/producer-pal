@@ -12,7 +12,7 @@ import {
 } from "#webui/lib/conversation-branch-helpers";
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
-import { MessageRow } from "./assistant/MessageRow";
+import { MessageRow, type MessageRowProps } from "./assistant/MessageRow";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { BranchNav } from "./controls/BranchNav";
 import { QueuedMessages } from "./controls/QueuedMessages";
@@ -126,63 +126,29 @@ export function MessageList({
       className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-4 items-start p-4"
       data-testid="message-list"
     >
-      {messages.map((message, originalIdx) => {
-        const branch = branchByIndex.get(originalIdx);
-
-        // A retry fork anchors its arrows on the assistant response index. If
-        // this sibling's response renders empty (e.g. a fully-redacted thinking
-        // block), still emit the branch arrows so the user can page back to a
-        // sibling that does have content — navigability must not depend on the
-        // divergent message's content.
-        if (!hasContent(message)) {
-          return branch ? (
-            <BranchNavRow
-              key={originalIdx}
-              point={branch}
-              onSwitch={switchToSibling}
-            />
-          ) : null;
-        }
-
-        const compactionPart = message.parts.find(
-          (p) => p.type === "compaction",
-        );
-
-        if (compactionPart?.type === "compaction") {
-          return (
-            <CompactionDivider
-              key={originalIdx}
-              summary={compactionPart.content}
-              canUndo={canUndoCompaction}
-              onUndo={onUndoCompaction}
-            />
-          );
-        }
-
-        return (
-          <Fragment key={originalIdx}>
-            <MessageRow
-              message={message}
-              originalIdx={originalIdx}
-              messages={messages}
-              isAssistantResponding={isAssistantResponding}
-              showTimestamps={showTimestamps}
-              showTokenUsage={showTokenUsage}
-              requestedModel={requestedModel}
-              handleRetry={handleRetry}
-              handleEdit={handleEdit}
-              handleCompact={handleCompact}
-              editingIndex={editingIndex}
-              setEditingIndex={setEditingIndex}
-              editText={editText}
-              setEditText={setEditText}
-            />
-            {branch && (
-              <BranchNavRow point={branch} onSwitch={switchToSibling} />
-            )}
-          </Fragment>
-        );
-      })}
+      {messages.map((message, originalIdx) => (
+        <MessageListRow
+          key={originalIdx}
+          message={message}
+          originalIdx={originalIdx}
+          branch={branchByIndex.get(originalIdx)}
+          onSwitch={switchToSibling}
+          messages={messages}
+          isAssistantResponding={isAssistantResponding}
+          showTimestamps={showTimestamps}
+          showTokenUsage={showTokenUsage}
+          requestedModel={requestedModel}
+          handleRetry={handleRetry}
+          handleEdit={handleEdit}
+          handleCompact={handleCompact}
+          canUndoCompaction={canUndoCompaction}
+          onUndoCompaction={onUndoCompaction}
+          editingIndex={editingIndex}
+          setEditingIndex={setEditingIndex}
+          editText={editText}
+          setEditText={setEditText}
+        />
+      ))}
 
       <QueuedMessages
         queuedMessages={queuedMessages}
@@ -198,6 +164,67 @@ export function MessageList({
 
       <div ref={messagesEndRef} className="col-span-3" />
     </div>
+  );
+}
+
+/** A {@link MessageRow}'s inputs plus the per-row branch/compaction context. */
+interface MessageListRowProps extends MessageRowProps {
+  /** Branch point anchored at this row's index, if any. */
+  branch: BranchPoint | undefined;
+  /** Switches to a sibling branch (remembers the scroll target, then loads it). */
+  onSwitch: (siblingId: string, anchorIndex: number) => void;
+  canUndoCompaction: boolean;
+  onUndoCompaction?: () => void;
+}
+
+/**
+ * Renders one transcript row: a message bubble, a compaction divider, or — when
+ * the row is an empty anchor — just its branch arrows. Every variant that anchors
+ * a branch point still emits the ‹ n/m › arrows, because navigability must not
+ * depend on what the divergent message renders as (an empty redacted-thinking
+ * sibling, or a compaction divider, must stay pageable).
+ * @param props - Row inputs plus branch/compaction context
+ * @param props.branch - Branch point anchored at this row, if any
+ * @param props.onSwitch - Switches to a sibling branch
+ * @param props.canUndoCompaction - Whether a compaction divider can still be undone
+ * @param props.onUndoCompaction - Undo callback for a compaction divider
+ * @returns The rendered row, or null for an empty non-anchor message
+ */
+function MessageListRow({
+  branch,
+  onSwitch,
+  canUndoCompaction,
+  onUndoCompaction,
+  ...row
+}: MessageListRowProps) {
+  const { message, originalIdx } = row;
+  const branchNav = branch && (
+    <BranchNavRow point={branch} onSwitch={onSwitch} />
+  );
+
+  if (!hasContent(message)) return branchNav ?? null;
+
+  const compactionPart = message.parts.find((p) => p.type === "compaction");
+
+  if (compactionPart?.type === "compaction") {
+    return (
+      <Fragment>
+        <CompactionDivider
+          messageIndex={originalIdx}
+          summary={compactionPart.content}
+          canUndo={canUndoCompaction}
+          onUndo={onUndoCompaction}
+        />
+        {branchNav}
+      </Fragment>
+    );
+  }
+
+  return (
+    <Fragment>
+      <MessageRow {...row} />
+      {branchNav}
+    </Fragment>
   );
 }
 
@@ -277,7 +304,10 @@ function BranchNavRow({
   const nextSibling = point.siblingIds[point.currentIndex + 1];
 
   return (
-    <div className="col-span-3 flex justify-end pr-1 -mt-2">
+    <div
+      className="col-span-3 flex justify-end pr-1 -mt-2"
+      data-message-index={point.anchorIndex}
+    >
       <BranchNav
         current={point.currentIndex + 1}
         total={point.siblingIds.length}
@@ -339,6 +369,9 @@ function useScrollOnUserMessage(
  * After a branch switch swaps in a sibling transcript, scroll the fork-point
  * message into view. The shared prefix is identical across siblings, so the
  * stored anchor index lines up with the message element in the new transcript.
+ * Every render path that can host an anchor carries `data-message-index`
+ * (message bubbles, the empty-content `BranchNavRow`, the `CompactionDivider`),
+ * so the lookup resolves regardless of what the anchor message renders as.
  * @param messages - Current messages array (changes when the sibling loads)
  * @param containerRef - Ref to the message-list container
  * @param containerRef.current - The container DOM element

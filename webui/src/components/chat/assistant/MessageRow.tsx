@@ -23,7 +23,7 @@ import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
 import { RenderErrorFallback, SafeMarkdown } from "./message-list-helpers";
 
-interface MessageRowProps {
+export interface MessageRowProps {
   message: UIMessage;
   originalIdx: number;
   messages: UIMessage[];

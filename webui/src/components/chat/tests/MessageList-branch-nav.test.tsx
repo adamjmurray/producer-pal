@@ -41,6 +41,15 @@ function model(content: string, idx: number): UIMessage {
   };
 }
 
+function compaction(content: string, idx: number): UIMessage {
+  return {
+    role: "user",
+    parts: [{ type: "compaction", content }],
+    rawHistoryIndex: idx,
+    timestamp: 0,
+  };
+}
+
 function renderList(messages: UIMessage[], branchNav?: BranchNavState) {
   return render(
     <MessageList
@@ -134,6 +143,69 @@ describe("MessageList branch navigation", () => {
     });
 
     expect(screen.getByTestId("branch-nav-position").textContent).toBe("2 / 2");
+  });
+
+  it("indexes the empty-anchor branch row so scroll-to-fork can locate it", () => {
+    const empty: UIMessage = {
+      role: "model",
+      parts: [],
+      rawHistoryIndex: 1,
+      timestamp: 0,
+    };
+
+    const { container } = renderList([user("hi", 0), empty], {
+      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 1 }],
+      onSwitch: vi.fn(),
+    });
+
+    expect(container.querySelector('[data-message-index="1"]')).not.toBeNull();
+  });
+
+  it("renders branch arrows alongside a compaction-divider anchor", () => {
+    // A branch point whose anchor index lands on a compaction divider must keep
+    // its ‹ n/m › arrows: navigability can't depend on what the anchor renders as.
+    renderList([user("hi", 0), compaction("sum", 1)], {
+      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 0 }],
+      onSwitch: vi.fn(),
+    });
+
+    expect(screen.getByTestId("compaction-divider")).toBeTruthy();
+    expect(screen.getByTestId("branch-nav-position").textContent).toBe("1 / 2");
+  });
+
+  it("scrolls a compaction-divider anchor into view after the transcript swaps", () => {
+    const onSwitch = vi.fn();
+    const { rerender } = renderList([user("first", 0), compaction("s1", 1)], {
+      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 0 }],
+      onSwitch,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /next version/i }));
+
+    const scrollSpy = vi.fn();
+
+    Element.prototype.scrollIntoView = scrollSpy;
+    rerender(
+      <MessageList
+        messages={[user("first", 0), compaction("s2", 1)]}
+        queuedMessages={[]}
+        onRemoveQueued={vi.fn()}
+        isAssistantResponding={false}
+        handleRetry={vi.fn()}
+        handleEdit={vi.fn()}
+        showTimestamps={false}
+        showTokenUsage={false}
+        branchNav={{
+          points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 1 }],
+          onSwitch,
+        }}
+      />,
+    );
+
+    expect(scrollSpy).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
   });
 
   it("scrolls the fork-point message into view after the transcript swaps", () => {
