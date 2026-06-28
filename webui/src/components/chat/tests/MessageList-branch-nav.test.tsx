@@ -171,4 +171,48 @@ describe("MessageList branch navigation", () => {
       block: "center",
     });
   });
+
+  it("clears the pending scroll after a no-op switch so the next user message still auto-scrolls", async () => {
+    // A switch that doesn't replace the transcript (deleted sibling / voice
+    // record) resolves without changing `messages`. The pending fork-scroll ref
+    // must be cleared so it can't suppress the next new-user-message scroll.
+    let resolveSwitch: () => void = () => {};
+    const onSwitch = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSwitch = resolve;
+        }),
+    );
+    const messages = [user("first", 0), model("a1", 1)];
+    const { rerender } = renderList(messages, {
+      points: [FORK_AT_0],
+      onSwitch,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /next version/i }));
+
+    // The switch is a no-op: the transcript array identity is unchanged.
+    resolveSwitch();
+    await Promise.resolve();
+
+    const scrollSpy = vi.fn();
+
+    Element.prototype.scrollIntoView = scrollSpy;
+    rerender(
+      <MessageList
+        messages={[...messages, user("second", 2)]}
+        queuedMessages={[]}
+        onRemoveQueued={vi.fn()}
+        isAssistantResponding={false}
+        handleRetry={vi.fn()}
+        handleEdit={vi.fn()}
+        showTimestamps={false}
+        showTokenUsage={false}
+        branchNav={{ points: [FORK_AT_0], onSwitch }}
+      />,
+    );
+
+    // The new user message scrolls to the bottom (endRef), not the fork point.
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: "smooth" });
+  });
 });

@@ -83,14 +83,13 @@ export function MessageList({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
 
-  const branchByIndex = new Map(
-    (branchNav?.points ?? []).map((point) => [point.anchorIndex, point]),
-  );
+  const branchByIndex = buildBranchIndex(branchNav);
 
-  const switchToSibling = (siblingId: string, anchorIndex: number) => {
-    pendingBranchScrollRef.current = anchorIndex;
-    void branchNav?.onSwitch(siblingId);
-  };
+  const switchToSibling = useBranchSwitch(
+    messages,
+    pendingBranchScrollRef,
+    branchNav?.onSwitch,
+  );
 
   // Show "Still thinking..." after delay. Clear any open editor on every
   // transcript change (branch switch, conversation select, new chat) so a stale
@@ -200,6 +199,62 @@ export function MessageList({
       <div ref={messagesEndRef} className="col-span-3" />
     </div>
   );
+}
+
+/**
+ * Indexes branch points by the message index their arrows anchor on, so each
+ * rendered row can look up its branch point in O(1).
+ * @param branchNav - Sibling-branch navigation state, if any
+ * @returns Map from anchor message index to its branch point
+ */
+function buildBranchIndex(
+  branchNav: BranchNavState | undefined,
+): Map<number, BranchPoint> {
+  return new Map(
+    (branchNav?.points ?? []).map((point) => [point.anchorIndex, point]),
+  );
+}
+
+/**
+ * Builds the sibling-switch handler: remembers the fork-point scroll target,
+ * loads the sibling, then clears the target if the switch turned out to be a
+ * no-op. A switch that doesn't replace the transcript (the sibling was
+ * concurrently deleted, or it's a voice record that leaves the text transcript
+ * untouched) never changes `messages`, so useScrollToForkPoint never fires to
+ * consume the pending ref — clearing it here stops the stranded value from
+ * suppressing the next new-user-message auto-scroll.
+ * @param messages - Current messages array (tracked to detect a transcript swap)
+ * @param pendingBranchScrollRef - Ref holding the pending fork-point index
+ * @param pendingBranchScrollRef.current - The pending index, or null
+ * @param onSwitch - Loads a sibling conversation by id
+ * @returns A handler that switches to the given sibling
+ */
+function useBranchSwitch(
+  messages: UIMessage[],
+  pendingBranchScrollRef: { current: number | null },
+  onSwitch: BranchNavState["onSwitch"] | undefined,
+): (siblingId: string, anchorIndex: number) => void {
+  // Tracks the latest committed transcript so the handler can tell whether an
+  // awaited branch switch actually swapped it.
+  const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  return (siblingId, anchorIndex) => {
+    const before = messagesRef.current;
+
+    pendingBranchScrollRef.current = anchorIndex;
+
+    void (async () => {
+      await onSwitch?.(siblingId);
+
+      if (messagesRef.current === before) {
+        pendingBranchScrollRef.current = null;
+      }
+    })();
+  };
 }
 
 /**
