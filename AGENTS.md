@@ -448,6 +448,8 @@ Rules:
 - `dev/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
 - `dev/Documentation-Site.md` - VitePress documentation site setup and
   deployment
+- `dev/Mutation-Testing.md` - Stryker mutation testing: how to run, baseline,
+  interpreting survivors
 - `dev/Read-Tool-Includes.md` - Read tool include parameter system and
   conventions
 - `dev/Specialized-Devices.md` - Specialized device LOM classes, pseudo-param
