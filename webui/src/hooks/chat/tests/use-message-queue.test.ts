@@ -28,16 +28,41 @@ describe("useMessageQueue", () => {
     expect(result.current.queuedMessages[1]?.text).toBe("world");
   });
 
-  it("preserves overrides on enqueued messages", async () => {
+  it("captures the override once from the first queued message of a turn", async () => {
     const { result } = renderHook(() => useMessageQueue());
 
-    await act(() =>
-      result.current.enqueueMessage("test", { thinking: "high" }),
-    );
+    // The first message defines the turn's override; later messages in the same
+    // turn cannot change it (AJM-552), so the second message's override is
+    // ignored even when it differs.
+    await act(() => result.current.enqueueMessage("a", { thinking: "high" }));
+    await act(() => result.current.enqueueMessage("b", { thinking: "off" }));
 
-    expect(result.current.queuedMessages[0]?.overrides).toStrictEqual({
-      thinking: "high",
+    let drained: ReturnType<typeof result.current.drainQueue>;
+
+    await act(() => {
+      drained = result.current.drainQueue();
     });
+
+    expect(drained!.overrides).toStrictEqual({ thinking: "high" });
+  });
+
+  it("recaptures the override on the next turn after draining", async () => {
+    const { result } = renderHook(() => useMessageQueue());
+
+    await act(() => result.current.enqueueMessage("a", { thinking: "high" }));
+    await act(() => {
+      result.current.drainQueue();
+    });
+
+    await act(() => result.current.enqueueMessage("b", { thinking: "off" }));
+
+    let drained: ReturnType<typeof result.current.drainQueue>;
+
+    await act(() => {
+      drained = result.current.drainQueue();
+    });
+
+    expect(drained!.overrides).toStrictEqual({ thinking: "off" });
   });
 
   it("drains all messages in FIFO order and clears queue", async () => {
@@ -52,13 +77,13 @@ describe("useMessageQueue", () => {
       drained = result.current.drainQueue();
     });
 
-    expect(drained!).toHaveLength(2);
-    expect(drained![0]?.text).toBe("first");
-    expect(drained![1]?.text).toBe("second");
+    expect(drained!.messages).toHaveLength(2);
+    expect(drained!.messages[0]?.text).toBe("first");
+    expect(drained!.messages[1]?.text).toBe("second");
     expect(result.current.queuedMessages).toStrictEqual([]);
   });
 
-  it("returns empty array when draining empty queue", async () => {
+  it("returns an empty result when draining empty queue", async () => {
     const { result } = renderHook(() => useMessageQueue());
 
     let drained: ReturnType<typeof result.current.drainQueue>;
@@ -67,7 +92,8 @@ describe("useMessageQueue", () => {
       drained = result.current.drainQueue();
     });
 
-    expect(drained!).toStrictEqual([]);
+    expect(drained!.messages).toStrictEqual([]);
+    expect(drained!.overrides).toBeUndefined();
   });
 
   it("clears all queued messages", async () => {
@@ -126,6 +152,27 @@ describe("useMessageQueue", () => {
 
     expect(result.current.queuedMessages).toHaveLength(1);
     expect(result.current.queuedMessages[0]?.text).toBe("only");
+  });
+
+  it("resets the captured override when removeMessage empties the queue", async () => {
+    const { result } = renderHook(() => useMessageQueue());
+
+    await act(() => result.current.enqueueMessage("a", { thinking: "high" }));
+
+    const onlyId = result.current.queuedMessages[0]!.id;
+
+    await act(() => result.current.removeMessage(onlyId));
+
+    // Next message starts a fresh turn and recaptures its own override.
+    await act(() => result.current.enqueueMessage("b", { thinking: "off" }));
+
+    let drained: ReturnType<typeof result.current.drainQueue>;
+
+    await act(() => {
+      drained = result.current.drainQueue();
+    });
+
+    expect(drained!.overrides).toStrictEqual({ thinking: "off" });
   });
 
   it("keeps queueRef in sync after removeMessage", async () => {

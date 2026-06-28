@@ -370,15 +370,15 @@ export function useChat<
         // truncated by the carryover).
         if (!succeeded) return;
 
-        const queued = drainQueue();
+        const { messages: queued, overrides } = drainQueue();
 
         if (queued.length === 0) return;
 
         // Queued follow-ups coalesce into a single user turn (joined by blank
-        // lines); the first message's overrides (currently just `thinking`)
-        // apply to the merged turn.
+        // lines); the overrides (currently just `thinking`) were captured once
+        // from the first queued message and apply to the merged turn (AJM-552).
         currentMessage = queued.map((m) => m.text).join("\n\n");
-        currentOptions = queued[0]?.overrides;
+        currentOptions = overrides;
       }
     },
     [
@@ -398,13 +398,13 @@ export function useChat<
   // path so they don't strand in the queue until the user sends again. handleSend
   // gives them proper user bubbles, override handling, and its own drain loop.
   const drainQueuedFollowUps = useCallback(async () => {
-    const queued = drainQueue();
+    const { messages: queued, overrides } = drainQueue();
 
     if (queued.length === 0) return;
 
     const merged = queued.map((m) => m.text).join("\n\n");
 
-    await handleSend(merged, queued[0]?.overrides);
+    await handleSend(merged, overrides);
   }, [drainQueue, handleSend]);
 
   const { handleRetry, handleEdit } = useConversationActions({

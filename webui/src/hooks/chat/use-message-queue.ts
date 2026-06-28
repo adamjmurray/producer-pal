@@ -10,6 +10,15 @@ import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 export interface QueuedMessage {
   id: number;
   text: string;
+}
+
+/** A drained queue: the coalesced messages plus the turn-level overrides. */
+export interface DrainedQueue {
+  messages: QueuedMessage[];
+  /**
+   * Overrides for the whole coalesced turn, captured once from the message that
+   * started the queue (see `enqueueMessage`). Undefined when the queue is empty.
+   */
   overrides?: MessageOverrides;
 }
 
@@ -22,13 +31,23 @@ export function useMessageQueue() {
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
   const queueRef = useRef<QueuedMessage[]>([]);
   const nextIdRef = useRef(0);
+  // Overrides (currently just `thinking`) are stamped ONCE per turn — captured
+  // from the first message that starts the queue — rather than per message.
+  // Queued follow-ups coalesce into a single turn that can carry only one
+  // thinking setting, and the toggle is hidden mid-response anyway, so a
+  // per-message override would only ever be silently dropped on coalesce
+  // (AJM-552). Capturing once makes the data model match what is actually sent.
+  const queueOverridesRef = useRef<MessageOverrides | undefined>(undefined);
 
   const enqueueMessage = useCallback(
     (text: string, overrides?: MessageOverrides) => {
+      if (queueRef.current.length === 0) {
+        queueOverridesRef.current = overrides;
+      }
+
       const msg: QueuedMessage = {
         id: nextIdRef.current++,
         text,
-        overrides,
       };
 
       queueRef.current = [...queueRef.current, msg];
@@ -39,20 +58,29 @@ export function useMessageQueue() {
 
   const removeMessage = useCallback((id: number) => {
     queueRef.current = queueRef.current.filter((m) => m.id !== id);
+
+    // Emptying the queue by hand resets the turn so the next message recaptures.
+    if (queueRef.current.length === 0) {
+      queueOverridesRef.current = undefined;
+    }
+
     setQueuedMessages(queueRef.current);
   }, []);
 
-  const drainQueue = useCallback((): QueuedMessage[] => {
-    const all = queueRef.current;
+  const drainQueue = useCallback((): DrainedQueue => {
+    const messages = queueRef.current;
+    const overrides = queueOverridesRef.current;
 
     queueRef.current = [];
+    queueOverridesRef.current = undefined;
     setQueuedMessages([]);
 
-    return all;
+    return { messages, overrides };
   }, []);
 
   const clearQueue = useCallback(() => {
     queueRef.current = [];
+    queueOverridesRef.current = undefined;
     setQueuedMessages([]);
   }, []);
 
