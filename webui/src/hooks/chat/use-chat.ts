@@ -126,8 +126,10 @@ export function useChat<
     setIsAssistantResponding(false);
     setRateLimitState(null);
     setToolLimitReached(false);
-    clearQueue();
-  }, [abortRetry, clearQueue, pendingForkRef]);
+    // Deliberately leave the queue intact: aborting a turn is the same as a
+    // failed turn, so queued follow-ups stay visible and flush on the next send.
+    // Tearing down for a conversation switch clears the queue in clearConversation.
+  }, [abortRetry, pendingForkRef]);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -141,9 +143,13 @@ export function useChat<
     // conversation and autosaves the mixed history under the new id. Idempotent,
     // so safe for every entry point.
     stopResponse();
+    // Switching/clearing a conversation drops any queued follow-ups so they
+    // can't leak into the next conversation (stopResponse leaves them intact
+    // for the abort-the-current-turn case).
+    clearQueue();
     clearSettings();
     invalidateCompactionUndo();
-  }, [stopResponse, clearSettings, invalidateCompactionUndo]);
+  }, [stopResponse, clearQueue, clearSettings, invalidateCompactionUndo]);
 
   const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 

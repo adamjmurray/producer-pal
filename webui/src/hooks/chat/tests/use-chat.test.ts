@@ -223,7 +223,7 @@ describe("useChat", () => {
       expect(result.current.isAssistantResponding).toBe(false);
     });
 
-    it("clears queued messages when stop is pressed", async () => {
+    it("keeps queued messages when stop is pressed so they flush on the next send", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
       await act(() => result.current.enqueueMessage("queued msg"));
@@ -234,6 +234,25 @@ describe("useChat", () => {
         result.current.stopResponse();
       });
 
+      // Aborting a turn is the same as a failed turn: the queue stays intact and
+      // flushes on the next successful send rather than being silently dropped.
+      expect(result.current.queuedMessages).toHaveLength(1);
+      expect(result.current.queuedMessages[0]?.text).toBe("queued msg");
+    });
+
+    it("clears queued messages when the conversation is cleared", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(() => result.current.enqueueMessage("queued msg"));
+
+      expect(result.current.queuedMessages).toHaveLength(1);
+
+      await act(() => {
+        result.current.clearConversation();
+      });
+
+      // Switching/clearing a conversation must drop the queue so follow-ups
+      // can't leak into the next conversation.
       expect(result.current.queuedMessages).toStrictEqual([]);
     });
   });
