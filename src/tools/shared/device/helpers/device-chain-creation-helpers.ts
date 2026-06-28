@@ -7,9 +7,9 @@
  * Helpers for auto-creating chains when resolving container paths
  */
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
 import { resolveDrumPadFromPath } from "./path/device-drumpad-navigation.ts";
 
 // Maximum chains that can be auto-created to prevent runaway creation

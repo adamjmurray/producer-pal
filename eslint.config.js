@@ -852,6 +852,78 @@ export default [
     },
   },
 
+  // Architectural layering contract (see dev/Architecture.md). Turns the
+  // documented module boundaries into a CI-checked rule so the architecture
+  // diagram is an executable contract, not just prose. Scoped to production
+  // src only — test infrastructure (mocks, fixtures, helpers) legitimately
+  // reaches across layers and is excluded below.
+  {
+    files: ["src/**/*.ts"],
+    ignores: [
+      "**/*.test.ts",
+      "**/*-test-helpers.ts",
+      "**/*-test-case.ts",
+      "**/*-test-fixtures.ts",
+      "src/**/tests/**",
+      "src/**/test-cases/**",
+      "src/**/test-utils/**",
+      "src/test/**",
+    ],
+    settings: importResolverSettings,
+    plugins: {
+      "import-x": importPlugin,
+    },
+    rules: {
+      "import-x/no-restricted-paths": [
+        "error",
+        {
+          zones: [
+            // shared/ is the foundational leaf: utilities depended on by every
+            // other layer, so it must not depend on any of them.
+            {
+              target: "./src/shared",
+              from: [
+                "./src/tools",
+                "./src/mcp-server",
+                "./src/live-api-adapter",
+                "./src/notation",
+                "./src/portal",
+              ],
+              message:
+                "src/shared is a leaf layer: it must not import from higher layers (tools, mcp-server, live-api-adapter, notation, portal).",
+            },
+            // notation/ (the bar|beat + transform parsers) is a leaf: it may
+            // only depend on shared.
+            {
+              target: "./src/notation",
+              from: [
+                "./src/tools",
+                "./src/mcp-server",
+                "./src/live-api-adapter",
+                "./src/portal",
+              ],
+              message:
+                "src/notation is a leaf layer: it may only import from src/shared (not tools, mcp-server, live-api-adapter, or portal).",
+            },
+            // tools/ is the domain layer that the server/adapter entry points
+            // compose; the dependency must not run the other way.
+            // Documented exception: live-library/library-types.ts is the
+            // shared ppal-library data contract, consumed by both the tool
+            // (tools/session/library.ts) and its mcp-server-side
+            // implementation (mcp-server/live-library/*).
+            {
+              target: "./src/tools",
+              from: "./src/mcp-server",
+              except: ["./live-library/library-types.ts"],
+              message:
+                "src/tools must not import from src/mcp-server (the server composes tools, not the reverse). The only grandfathered import is mcp-server/live-library/library-types.ts, the shared ppal-library data contract.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}", "**/test-setup.ts"],

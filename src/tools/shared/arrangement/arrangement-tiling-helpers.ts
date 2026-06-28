@@ -9,8 +9,9 @@
  * and arrangement-splitting.ts.
  */
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { assertDefined, toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 export interface TilingContext {
   /** Path to silence WAV file for audio clip operations */

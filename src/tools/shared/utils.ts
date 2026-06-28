@@ -172,20 +172,6 @@ export function fromLiveApiView(liveApiView: string): string {
 }
 
 /**
- * Asserts a value is defined, throwing if null/undefined. Used for type narrowing.
- * @param value - Value to check
- * @param msg - Error message if undefined
- * @returns The value, narrowed to exclude null/undefined
- */
-export function assertDefined<T>(value: T, msg: string): NonNullable<T> {
-  if (value == null) {
-    throw new Error(`Bug: ${msg}`);
-  }
-
-  return value;
-}
-
-/**
  * Formats an ID for Live API calls that expect "id X" format.
  * Handles bare numeric IDs, already-prefixed IDs, and number inputs.
  * @param id - ID to format (e.g., "25", "id 25", or 25)

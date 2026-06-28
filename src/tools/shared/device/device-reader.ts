@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   DEVICE_TYPE,
@@ -10,7 +11,6 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
   isRedundantDeviceClassName,
   processDeviceChains,

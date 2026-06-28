@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
 

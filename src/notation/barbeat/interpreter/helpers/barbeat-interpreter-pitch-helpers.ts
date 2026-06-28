@@ -8,8 +8,8 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
   wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
+import { assertDefined } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 import {
   type PitchState,

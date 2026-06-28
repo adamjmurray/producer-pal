@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
 import {
@@ -13,7 +14,6 @@ import {
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 
 // ============================================================================

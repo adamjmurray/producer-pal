@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { assertDefined } from "#src/shared/error-utils.ts";
 import {
-  assertDefined,
   fromLiveApiView,
   parseCommaSeparatedFloats,
   parseCommaSeparatedIds,
