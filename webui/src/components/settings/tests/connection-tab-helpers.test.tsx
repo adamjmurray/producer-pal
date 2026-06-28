@@ -13,11 +13,11 @@ import {
   ThinkingSelector,
   VoiceSettings,
 } from "#webui/components/settings/connection-tab-helpers";
-import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 import {
   GEMINI_REALTIME_MODEL,
   OPENAI_REALTIME_MODEL,
 } from "#webui/lib/constants/models";
+import { makeVoiceSettingsProps } from "./settings-voice-props-test-helpers";
 
 describe("ThinkingSelector", () => {
   it("calls setThinking when a new option is selected", () => {
@@ -81,17 +81,7 @@ describe("VoiceSettings", () => {
   const realtimeProps = {
     provider: "openai" as const,
     model: OPENAI_REALTIME_MODEL,
-    realtimeVoice: "marin",
-    setRealtimeVoice: vi.fn(),
-    voiceLanguage: "en",
-    setVoiceLanguage: vi.fn(),
-    voiceVolume: 1.0,
-    setVoiceVolume: vi.fn(),
-    voiceSpeed: 1.0,
-    setVoiceSpeed: vi.fn(),
-    turnDetection: DEFAULT_TURN_DETECTION,
-    setTurnDetection: vi.fn(),
-    activeVoice: null as string | null,
+    ...makeVoiceSettingsProps(),
   };
 
   it("renders nothing for a non-realtime selection", () => {

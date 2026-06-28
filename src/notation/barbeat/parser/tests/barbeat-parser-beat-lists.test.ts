@@ -5,11 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
-
-// Resolve a ±n offset beat the way the grammar does: base + (num/den)*denom.
-// Mirrors the float arithmetic so toStrictEqual matches bit-for-bit.
-const obeat = (base: number, num: number, den: number, denom = 4): number =>
-  base + (num / den) * denom;
+import { obeat } from "./barbeat-parser-test-helpers.ts";
 
 describe("BarBeatScript Parser - beat lists", () => {
   describe("comma-separated beat lists", () => {
