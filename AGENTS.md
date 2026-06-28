@@ -443,6 +443,8 @@ Rules:
 - `dev/Conversation-Branching.md` - Conversation forking (edit/retry), sibling
   branch navigation, and history-panel family collapse
 - `dev/Coding-Standards.md` - Code style, patterns, and rules
+- `dev/decisions/` - Architecture Decision Records: the "why" behind settled
+  choices, especially deliberate rejections ("won't fix" / "cancelled")
 - `dev/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
 - `dev/Documentation-Site.md` - VitePress documentation site setup and
   deployment
