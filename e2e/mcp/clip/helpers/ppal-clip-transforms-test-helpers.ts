@@ -11,6 +11,7 @@ import {
   type CreateClipResult,
   parseToolResult,
   type ReadClipResult,
+  setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
 
@@ -121,6 +122,29 @@ export async function applyTransform(
 }
 
 /**
+ * Applies a transform to a batch of clips (comma-joined ids) and returns the
+ * raw result. Used by clip-axis (clipseq) tests that act on multiple clips.
+ * @param ctx - MCP test context with client
+ * @param clipIds - Clip IDs to transform together
+ * @param transform - Transform expression string
+ * @returns Raw tool result (for warning inspection)
+ */
+export async function applyTransformToClips(
+  ctx: { client: { callTool: CallToolFn } | null },
+  clipIds: string[],
+  transform: string,
+): Promise<unknown> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-update-clip",
+    arguments: { ids: clipIds.join(","), transforms: transform },
+  });
+
+  await sleep(100);
+
+  return result;
+}
+
+/**
  * Parse a notation duration value that may be decimal, fraction, or mixed number.
  * Examples: "0.75", "11/16", "1+1/2", "/4", "0.873/4" (off-grid escape)
  * @param value - Duration string from notation output
@@ -171,6 +195,10 @@ export function createClipTransformHelpers(ctx: McpTestContext): {
   ) => Promise<string>;
   readClipNotes: (clipId: string) => Promise<string>;
   applyTransform: (clipId: string, transform: string) => Promise<unknown>;
+  applyTransformToClips: (
+    clipIds: string[],
+    transform: string,
+  ) => Promise<unknown>;
 } {
   return {
     createMidiClip: (sceneIndex, notes) =>
@@ -180,5 +208,19 @@ export function createClipTransformHelpers(ctx: McpTestContext): {
     readClipNotes: (clipId) => readClipNotes(ctx, clipId),
     applyTransform: (clipId, transform) =>
       applyTransform(ctx, clipId, transform),
+    applyTransformToClips: (clipIds, transform) =>
+      applyTransformToClips(ctx, clipIds, transform),
   };
+}
+
+/**
+ * Registers the MCP test hooks and returns the bound clip-transform helpers in
+ * one call, collapsing the per-file setup+destructure boilerplate that the
+ * transform round-trip suites share.
+ * @returns Bound { createMidiClip, createArrangementClip, readClipNotes, applyTransform }
+ */
+export function setupClipTransformTest(): ReturnType<
+  typeof createClipTransformHelpers
+> {
+  return createClipTransformHelpers(setupMcpTestContext());
 }

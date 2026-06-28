@@ -19,14 +19,12 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
-  setupMcpTestContext,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { setupClipTransformTest } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
-const ctx = setupMcpTestContext();
 const { createMidiClip, readClipNotes, applyTransform } =
-  createClipTransformHelpers(ctx);
+  setupClipTransformTest();
 
 describe("ppal-clip-transforms (repeat round-trip)", () => {
   it("echoes every note one bar later with repeat(1bar)", async () => {

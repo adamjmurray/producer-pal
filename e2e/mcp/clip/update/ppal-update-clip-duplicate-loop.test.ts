@@ -68,6 +68,45 @@ async function readClip(clipId: string): Promise<ReadClipResult> {
   return parseToolResultWithWarnings<ReadClipResult>(result).data;
 }
 
+/**
+ * Run a duplicateLoop update with extra edits, then read the doubled clip back.
+ * Returns the parsed update result, its warnings, and the round-tripped clip.
+ */
+async function duplicateLoopAndRead(
+  clipId: string,
+  edits: Record<string, unknown>,
+): Promise<{
+  data: UpdateClipResult;
+  warnings: string[];
+  clip: ReadClipResult;
+}> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-update-clip",
+    arguments: { ids: clipId, duplicateLoop: true, ...edits },
+  });
+  const { data, warnings } =
+    parseToolResultWithWarnings<UpdateClipResult>(result);
+
+  await sleep(100);
+
+  const clip = await readClip(clipId);
+
+  return { data, warnings, clip };
+}
+
+/**
+ * Assert a doubled clip transposed up an octave: the originals (C3) are gone,
+ * the octave-up pitches are present, and copies landed in the new bars 3-4.
+ */
+function expectOctaveUpDoubledClip(clip: ReadClipResult): void {
+  expect(clip.length).toBe("4bar");
+  expect(clip.notes).toContain("C4");
+  expect(clip.notes).toContain("E4");
+  expect(clip.notes).not.toContain("C3");
+  expect(clip.notes).toContain("3|1");
+  expect(clip.notes).toContain("4|1");
+}
+
 describe("ppal-update-clip duplicateLoop", () => {
   it("doubles a looping MIDI clip: copies notes into the new half and doubles the length", async () => {
     // One note per bar in a 2-bar loop.
@@ -125,29 +164,13 @@ describe("ppal-update-clip duplicateLoop", () => {
 
     // preTransforms transposes the source up an octave first, so the native copy
     // carries the transposed notes into the new half: all four end up an octave up.
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clipId,
-        duplicateLoop: true,
-        preTransforms: "pitch += 12",
-      },
+    const { data, clip } = await duplicateLoopAndRead(clipId, {
+      preTransforms: "pitch += 12",
     });
-    const { data } = parseToolResultWithWarnings<UpdateClipResult>(result);
 
     expect(data.noteCount).toBe(4);
-
-    await sleep(100);
-
-    const clip = await readClip(clipId);
-
-    expect(clip.length).toBe("4bar");
     // Every note an octave up across all four bars; originals (C3/E3) are gone.
-    expect(clip.notes).toContain("C4");
-    expect(clip.notes).toContain("E4");
-    expect(clip.notes).not.toContain("C3");
-    expect(clip.notes).toContain("3|1");
-    expect(clip.notes).toContain("4|1");
+    expectOctaveUpDoubledClip(clip);
   });
 
   it("merges notes into the doubled clip AFTER the double", async () => {
@@ -179,28 +202,12 @@ describe("ppal-update-clip duplicateLoop", () => {
 
     // The clip is doubled first, then the transform hits all four notes (both the
     // originals and the copies in the new half).
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clipId,
-        duplicateLoop: true,
-        transforms: "pitch += 12",
-      },
+    const { data, clip } = await duplicateLoopAndRead(clipId, {
+      transforms: "pitch += 12",
     });
-    const { data } = parseToolResultWithWarnings<UpdateClipResult>(result);
 
     expect(data.noteCount).toBe(4);
-
-    await sleep(100);
-
-    const clip = await readClip(clipId);
-
-    expect(clip.length).toBe("4bar");
     // All four (incl. the copies in bars 3-4) transposed up an octave.
-    expect(clip.notes).toContain("C4");
-    expect(clip.notes).toContain("E4");
-    expect(clip.notes).not.toContain("C3");
-    expect(clip.notes).toContain("3|1");
-    expect(clip.notes).toContain("4|1");
+    expectOctaveUpDoubledClip(clip);
   });
 });

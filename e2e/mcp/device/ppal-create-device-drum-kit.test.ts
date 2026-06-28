@@ -49,6 +49,18 @@ async function createMidiTrack(): Promise<number> {
   return track.trackIndex;
 }
 
+/** Read a device's chains (maxDepth 0) and return how many chains it has. */
+async function readChainCount(path: string): Promise<number> {
+  const device = parseToolResult<{ chains?: unknown[] }>(
+    await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path, include: ["chains"], maxDepth: 0 },
+    }),
+  );
+
+  return device.chains?.length ?? 0;
+}
+
 describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
   it("builds a kit in one call: auto-creates each pad's Simpler and loads its sample", async () => {
     const t = await createMidiTrack();
@@ -211,13 +223,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     await sleep(150);
 
-    const before = parseToolResult<{ chains?: unknown[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-device",
-        arguments: { path: `t${t}/d0`, include: ["chains"], maxDepth: 0 },
-      }),
-    );
-    const beforeChainCount = before.chains?.length ?? 0;
+    const beforeChainCount = await readChainCount(`t${t}/d0`);
 
     const { warnings } = parseToolResultWithWarnings(
       await ctx.client!.callTool({
@@ -235,14 +241,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     await sleep(150);
 
-    const after = parseToolResult<{ chains?: unknown[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-device",
-        arguments: { path: `t${t}/d0`, include: ["chains"], maxDepth: 0 },
-      }),
-    );
-
     // No stray chain: the guard refused before insert_chain.
-    expect(after.chains?.length ?? 0).toBe(beforeChainCount);
+    expect(await readChainCount(`t${t}/d0`)).toBe(beforeChainCount);
   });
 });

@@ -174,6 +174,53 @@ export function assertClipDetails(
   }
 }
 
+type LengthenResult = {
+  trackType: "midi" | "audio";
+  initialClips: ReadClipResult[];
+  resultClips: ReadClipResult[];
+  warnings: string[];
+};
+
+/**
+ * Assert a lengthening that tiles to a full 4-bar arrangement length.
+ * Used by looped clip types (MIDI looped, audio looped warped): the operation
+ * emits no warnings and the resulting clips span exactly 4 bars (±EPSILON).
+ */
+export function assertLengthenedToFullLength(
+  { resultClips, warnings }: LengthenResult,
+  expectedClips: ExpectedClip[],
+): void {
+  expect(warnings).toHaveLength(0);
+
+  const totalLength = calculateTotalLengthInBars(resultClips);
+
+  expect(totalLength).toBeGreaterThanOrEqual(4 - EPSILON);
+  expect(totalLength).toBeLessThanOrEqual(4 + EPSILON);
+  assertClipDetails(resultClips, expectedClips);
+}
+
+/**
+ * Assert a lengthening that extends a single clip in place (no tiles).
+ * Used by unlooped clip types: the clip keeps its ID and stays a single clip.
+ * `expectWarnings` selects whether warnings are required (capped/skipped audio)
+ * or forbidden (MIDI unlooped, which extends cleanly via loop_end).
+ */
+export function assertLengthenedInPlace(
+  { initialClips, resultClips, warnings }: LengthenResult,
+  expectedClips: ExpectedClip[],
+  expectWarnings: boolean,
+): void {
+  if (expectWarnings) {
+    expect(warnings.length).toBeGreaterThanOrEqual(1);
+  } else {
+    expect(warnings).toHaveLength(0);
+  }
+
+  expect(resultClips).toHaveLength(1);
+  expect(resultClips[0]!.id).toBe(initialClips[0]!.id);
+  assertClipDetails(resultClips, expectedClips);
+}
+
 /**
  * Test helper that performs the full lengthening test workflow.
  * Returns result clips and warnings for assertions.

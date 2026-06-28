@@ -25,12 +25,18 @@ import {
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
+  readClipWithNotes,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 const emptyMidiTrack = 8;
+
+/** Read a clip's notes back from Live and return the parsed result. */
+function readClipNotes(clipId: string): Promise<ReadClipResult> {
+  return readClipWithNotes(ctx.client!, clipId);
+}
 
 // Skip unless built and run with ENABLE_CODE_EXEC=true (requires a code-exec-enabled build).
 describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
@@ -52,11 +58,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
 
       await sleep(100);
 
-      const readResult = await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { clipId: clip.id, include: ["notes"] },
-      });
-      const readClip = parseToolResult<ReadClipResult>(readResult);
+      const readClip = await readClipNotes(clip.id);
 
       expect(readClip.notes).toBeDefined();
       expect(readClip.notes).toContain("C3");
@@ -79,11 +81,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       await sleep(100);
 
       // Verify initial state
-      const initialRead = await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { clipId: clip.id, include: ["notes"] },
-      });
-      const initialClip = parseToolResult<ReadClipResult>(initialRead);
+      const initialClip = await readClipNotes(clip.id);
 
       expect(initialClip.notes).toContain("C3");
 
@@ -100,11 +98,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
 
       await sleep(100);
 
-      const afterFilter = await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { clipId: clip.id, include: ["notes"] },
-      });
-      const filteredClip = parseToolResult<ReadClipResult>(afterFilter);
+      const filteredClip = await readClipNotes(clip.id);
 
       expect(filteredClip.notes).toContain("D3");
       expect(filteredClip.notes).toContain("E3");
@@ -121,11 +115,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
 
       await sleep(100);
 
-      const afterTransform = await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { clipId: clip.id, include: ["notes"] },
-      });
-      const transformedClip = parseToolResult<ReadClipResult>(afterTransform);
+      const transformedClip = await readClipNotes(clip.id);
 
       expect(transformedClip.notes).toContain("v127");
 
@@ -140,11 +130,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
 
       await sleep(100);
 
-      const afterClear = await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { clipId: clip.id, include: ["notes"] },
-      });
-      const clearedClip = parseToolResult<ReadClipResult>(afterClear);
+      const clearedClip = await readClipNotes(clip.id);
 
       // After clearing, notes should be empty (no notes to format)
       expect(clearedClip.notes).toBeUndefined();
@@ -206,11 +192,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
         await sleep(50);
 
         // Clip should have 0 notes (code failed, no notes applied)
-        const readResult = await ctx.client!.callTool({
-          name: "ppal-read-clip",
-          arguments: { clipId: clip.id, include: ["notes"] },
-        });
-        const readClip = parseToolResult<ReadClipResult>(readResult);
+        const readClip = await readClipNotes(clip.id);
 
         expect(
           readClip.notes,
@@ -275,11 +257,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
 
       await sleep(100);
 
-      const readMixed = await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { clipId: mixedClip.id, include: ["notes"] },
-      });
-      const mixed = parseToolResult<ReadClipResult>(readMixed);
+      const mixed = await readClipNotes(mixedClip.id);
 
       // Only the 2 valid notes should survive (pitch 60 and pitch 72)
       expect(mixed.notes).toContain("C3");
@@ -304,11 +282,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
 
       await sleep(100);
 
-      const readClamped = await ctx.client!.callTool({
-        name: "ppal-read-clip",
-        arguments: { clipId: clampClip.id, include: ["notes"] },
-      });
-      const clamped = parseToolResult<ReadClipResult>(readClamped);
+      const clamped = await readClipNotes(clampClip.id);
 
       // Pitch -10 → 0 = C-2, Pitch 200 → 127 = G8
       expect(clamped.notes).toContain("C-2");

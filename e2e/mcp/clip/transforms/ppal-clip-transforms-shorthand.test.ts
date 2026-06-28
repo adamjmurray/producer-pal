@@ -16,12 +16,10 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-shorthand
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { setupClipTransformTest } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
-const ctx = setupMcpTestContext();
-const { createMidiClip, readClipNotes, applyTransform } =
-  createClipTransformHelpers(ctx);
+const { createMidiClip, readClipNotes, applyTransform, applyTransformToClips } =
+  setupClipTransformTest();
 
 describe("ppal-update-clip v±N / p±N shorthand", () => {
   it("v+N adds to existing velocity", async () => {
@@ -65,13 +63,7 @@ describe("ppal-update-clip clipseq() (clip-axis cycling)", () => {
     const id1 = await createMidiClip(1, "C3 1|1");
     const id2 = await createMidiClip(2, "C3 1|1");
 
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: `${id0},${id1},${id2}`,
-        transforms: "pitch += clipseq(0, 5, 7)",
-      },
-    });
+    await applyTransformToClips([id0, id1, id2], "pitch += clipseq(0, 5, 7)");
 
     expect(await readClipNotes(id0)).toContain("C3"); // 60 + 0
     expect(await readClipNotes(id1)).toContain("F3"); // 60 + 5
@@ -84,13 +76,7 @@ describe("ppal-update-clip clipseq() (clip-axis cycling)", () => {
     const id1 = await createMidiClip(1, "C3 1|1");
     const id2 = await createMidiClip(2, "C3 1|1");
 
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: `${id0},${id1},${id2}`,
-        transforms: "pitch += clipseq(0, 12)",
-      },
-    });
+    await applyTransformToClips([id0, id1, id2], "pitch += clipseq(0, 12)");
 
     expect(await readClipNotes(id0)).toContain("C3"); // 60 + 0
     expect(await readClipNotes(id1)).toContain("C4"); // 60 + 12

@@ -13,8 +13,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  parseToolResult,
   type ReadClipResult,
+  readClipWithNotes,
   setupMcpTestContext,
 } from "../../mcp-test-helpers.ts";
 import {
@@ -59,13 +59,8 @@ function extractDurations(notes: string): number[] {
 }
 
 /** Read clip with full details including notes. */
-async function readClipFull(clipId: string): Promise<ReadClipResult> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId, include: ["notes"] },
-  });
-
-  return parseToolResult<ReadClipResult>(result);
+function readClipFull(clipId: string): Promise<ReadClipResult> {
+  return readClipWithNotes(ctx.client!, clipId);
 }
 
 // =============================================================================
