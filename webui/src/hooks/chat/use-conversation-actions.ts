@@ -35,6 +35,10 @@ interface ConversationActionsDeps<
   invalidateCompactionUndo: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
   pendingForkRef?: PendingForkRef;
+  /** Streaming autosave (saveCurrentConversation). Force-fired after a
+   *  content-less successful fork to mint its sibling and consume the fork
+   *  signal before queued follow-ups drain. */
+  autoSaveRef?: { current: (() => void) | null };
   /** Flush any queued follow-ups through the normal send path. Called after a
    *  successful fork so queued messages don't strand until the next manual send. */
   drainQueuedFollowUps: () => Promise<void>;
@@ -70,6 +74,7 @@ export function useConversationActions<
     executeWithRetry,
     invalidateCompactionUndo,
     pendingForkRef,
+    autoSaveRef,
     drainQueuedFollowUps,
   } = deps;
 
@@ -148,7 +153,18 @@ export function useConversationActions<
       // Only flush queued follow-ups when the fork actually streamed a response.
       // A failed/aborted fork (runWithChat catch -> undefined, or a false retry
       // result) leaves the queue intact to flush on a later send.
-      if (succeeded === true) await drainQueuedFollowUps();
+      if (succeeded === true) {
+        // A successful fork that streamed zero assistant content AND recorded no
+        // usage never fired the streaming autosave, so pendingForkRef is still
+        // set and the forked turn was never persisted. Force the save now: it
+        // consumes the fork signal synchronously (saveCurrentConversation clears
+        // it before any async work) and mints the content-less turn as its own
+        // sibling. Without this, drainQueuedFollowUps below sends the follow-up,
+        // whose autosave inherits the lingering signal and mis-branches under it
+        // instead of appending to the fork.
+        if (pendingForkRef?.current != null) autoSaveRef?.current?.();
+        await drainQueuedFollowUps();
+      }
     },
     [
       apiKey,
@@ -161,6 +177,7 @@ export function useConversationActions<
       pendingHistoryRef,
       abortControllerRef,
       pendingForkRef,
+      autoSaveRef,
       drainQueuedFollowUps,
     ],
   );

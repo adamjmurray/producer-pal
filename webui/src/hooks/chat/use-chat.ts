@@ -413,6 +413,7 @@ export function useChat<
     executeWithRetry,
     invalidateCompactionUndo,
     pendingForkRef,
+    autoSaveRef,
     drainQueuedFollowUps,
   });
 

@@ -8,9 +8,11 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import {
   type TestMessage,
+  MockChatClient,
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
@@ -292,6 +294,90 @@ describe("useChat message queuing", () => {
     expect(result.current.queuedMessages).toStrictEqual([]);
     expect(sent).toContain("B");
     expect(sent.at(-1)).toBe("B"); // flushed after the fork response
+  });
+
+  it("force-saves a content-less fork as its own sibling so the queued follow-up doesn't inherit the fork signal", async () => {
+    // The narrow AJM-539 case: a fork that completes SUCCESSFULLY but streams
+    // zero assistant content (no text/thought/tool) and records no usage never
+    // fires the streaming autosave, so the fork signal would otherwise linger and
+    // get consumed by the queued follow-up's save — mis-branching the follow-up
+    // under the fork anchor instead of persisting the empty fork turn as its own
+    // sibling.
+    const sent: string[] = [];
+    let clientCount = 0;
+    const adapter = {
+      ...mockAdapter,
+      createClient: vi.fn(() => {
+        const client = new MockChatClient();
+
+        clientCount += 1;
+        // The fork re-inits a fresh client (the 2nd one). Its first turn streams
+        // no assistant content; its later drained follow-up streams normally.
+        const isForkClient = clientCount === 2;
+        let sendCount = 0;
+
+        client.sendMessage = async function* send(
+          message: string,
+        ): AsyncIterable<TestMessage[]> {
+          sent.push(message);
+          sendCount += 1;
+          client.chatHistory.push({ role: "user", content: message });
+          yield [...client.chatHistory];
+
+          if (isForkClient && sendCount === 1) return; // content-less fork turn
+
+          client.chatHistory.push({
+            role: "assistant",
+            content: `Response to: ${message}`,
+          });
+          yield [...client.chatHistory];
+        };
+
+        return client;
+      }),
+    };
+
+    // Mirror saveCurrentConversation's consume: record the fork signal each save
+    // observes (in order), then clear it — exactly what the real save does.
+    const pendingForkRef = { current: null as PendingFork | null };
+    const savedForkSignals: (PendingFork | null)[] = [];
+    const autoSaveRef = {
+      current: () => {
+        savedForkSignals.push(pendingForkRef.current);
+        pendingForkRef.current = null;
+      },
+    };
+
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, adapter, pendingForkRef, autoSaveRef }),
+    );
+
+    await act(async () => {
+      await result.current.handleSend("Hello");
+    });
+
+    const userIndex = result.current.messages.findIndex(
+      (m) => m.role === "user",
+    );
+
+    // Ignore the opening turn's save; only the fork+drain saves matter here.
+    savedForkSignals.length = 0;
+
+    await act(() => result.current.enqueueMessage("B"));
+    await act(async () => {
+      await result.current.handleRetry(userIndex);
+    });
+
+    // Exactly two saves ran: the forced save of the content-less fork (carrying
+    // the fork anchor — a retry anchors under the response, userIndex + 1) and
+    // the drained "B" turn (no inherited fork signal). The follow-up appended to
+    // the fork instead of mis-branching under it.
+    expect(savedForkSignals).toStrictEqual([
+      { anchorIndex: userIndex + 1 },
+      null,
+    ]);
+    expect(pendingForkRef.current).toBeNull();
+    expect(sent.at(-1)).toBe("B");
   });
 
   it("preserves queued messages when the retry fork fails", async () => {
