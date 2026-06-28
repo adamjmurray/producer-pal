@@ -186,6 +186,73 @@ describe("note-count operation: repeat", () => {
     });
   });
 
+  describe("onset-collision warning", () => {
+    it("warns when a copy lands on an existing same-pitch onset", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 1 },
+        { pitch: 60, start_time: 1, duration: 1 },
+      ]);
+
+      // The copy of the beat-0 note lands at beat 1, colliding with the
+      // existing beat-1 note (the write path collapses it keep-last).
+      applyTransforms(notes, "repeat(n/4)", 4, 4);
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "repeat collapsed 1 same-pitch onset collision",
+        ),
+      );
+      warn.mockRestore();
+    });
+
+    it("does not warn when copies land on distinct onsets", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 1 },
+        { pitch: 60, start_time: 2, duration: 1 },
+      ]);
+
+      applyTransforms(notes, "repeat(1bar)", 4, 4);
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it("does not warn when a same-onset copy is a different pitch", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 1 },
+        { pitch: 64, start_time: 1, duration: 1 }, // different pitch at beat 1
+      ]);
+
+      applyTransforms(notes, "repeat(n/4)", 4, 4);
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it("pluralizes the count when multiple collisions collapse", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, duration: 1 },
+        { pitch: 60, start_time: 1, duration: 1 },
+        { pitch: 60, start_time: 2, duration: 1 },
+      ]);
+
+      // Each copy lands a quarter later: 0->1, 1->2, 2->3. The first two copies
+      // collide with the existing beat-1 and beat-2 notes (2 collisions).
+      applyTransforms(notes, "repeat(n/4)", 4, 4);
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "repeat collapsed 2 same-pitch onset collisions",
+        ),
+      );
+      warn.mockRestore();
+    });
+  });
+
   describe("warn-and-skip", () => {
     it("skips when no offset is given", () => {
       expectRepeatWarnsAndSkips("repeat()", "needs an offset");

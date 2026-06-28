@@ -50,6 +50,9 @@ export function ChatInput({
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const disabled = hasError || isCompacting === true;
+  // Compaction is genuinely non-cancelable (no abort path), so don't offer Stop
+  // while it runs — it would be a no-op against the in-flight summarize().
+  const canStop = isAssistantResponding && isCompacting !== true;
 
   const submitMessage = () => {
     if (!input.trim() || disabled) return;
@@ -92,7 +95,7 @@ export function ChatInput({
             rows={2}
           />
           <div className="flex flex-col gap-2">
-            {isAssistantResponding ? (
+            {canStop ? (
               <button
                 onClick={onStop}
                 className="px-4 py-1 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700"

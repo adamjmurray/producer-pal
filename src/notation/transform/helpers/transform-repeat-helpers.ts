@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
@@ -70,14 +71,50 @@ export function repeatNotes(
   }
 
   const out: NoteEvent[] = [...matched];
+  let collisions = 0;
 
   for (const note of matched) {
     for (let k = 1; k <= copies; k++) {
-      out.push({ ...note, start_time: note.start_time + k * offset });
+      const copy = { ...note, start_time: note.start_time + k * offset };
+
+      // A copy landing on an existing note's exact onset+pitch is collapsed
+      // keep-last by the write path's dedupe — deterministic, but it silently
+      // replaces a note (with its own velocity/probability). Count it so we can
+      // warn, consistent with the project's warn-and-skip convention.
+      if (collidesWithPlacedNote(copy, out)) {
+        collisions++;
+      }
+
+      out.push(copy);
     }
   }
 
+  if (collisions > 0) {
+    console.warn(
+      `repeat collapsed ${collisions} same-pitch onset ${
+        collisions === 1 ? "collision" : "collisions"
+      } (keeping the last copy at each spot)`,
+    );
+  }
+
   return out;
+}
+
+/**
+ * Whether a generated copy lands on the same pitch and onset (within
+ * SAME_TIME_EPSILON) as a note already placed in the output — i.e. a collision
+ * the write-path dedupe will collapse keep-last. Mirrors the comparison in
+ * dedupeNotesKeepingLast so the warning count matches what gets dropped.
+ * @param copy - The candidate copy about to be pushed
+ * @param placed - Notes already in the output (originals plus earlier copies)
+ * @returns True when `copy` collides with an already-placed note
+ */
+function collidesWithPlacedNote(copy: NoteEvent, placed: NoteEvent[]): boolean {
+  return placed.some(
+    (existing) =>
+      existing.pitch === copy.pitch &&
+      Math.abs(existing.start_time - copy.start_time) < SAME_TIME_EPSILON,
+  );
 }
 
 /**

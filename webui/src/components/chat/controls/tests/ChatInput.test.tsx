@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -306,6 +307,21 @@ describe("ChatInput", () => {
         (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
           .disabled,
       ).toBe(true);
+    });
+
+    it("hides Stop while compacting since compaction can't be canceled", () => {
+      render(
+        <ChatInput
+          {...defaultProps}
+          isAssistantResponding={true}
+          isCompacting={true}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+      expect(
+        screen.getByRole("button", { name: /Thinking level/ }),
+      ).toBeDefined();
     });
 
     it("does not send or enqueue on Enter while compacting (no silent drop)", () => {

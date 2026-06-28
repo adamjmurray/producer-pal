@@ -291,6 +291,12 @@ unchanged — `repeat` translates notes, it does not stretch them.
 - The arguments are constants (no per-note variables); an unusable argument
   warns and the op is skipped (notes pass through unchanged). A third positional
   argument warns and is ignored (the first two are used).
+- **Same-pitch onset collisions collapse keep-last.** When a copy lands on the
+  exact onset of another same-pitch note (an existing note or an earlier copy,
+  within `SAME_TIME_EPSILON`), the write-path dedupe keeps the last write and
+  drops the other — deterministic, but the displaced note (with its own
+  velocity/probability) is replaced. `repeat` emits a warning counting how many
+  collisions collapsed; the op is not skipped.
 
 `repeat` runs in the same statement-major pipeline as the other note ops, so
 **order matters** when it composes with a `merge`. `repeat` then `merge` first
