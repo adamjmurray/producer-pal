@@ -18,7 +18,10 @@ import {
   readAllClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip-notes.ts";
-import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
+import {
+  applyTransformsToExistingNotes,
+  buildClipContext,
+} from "./update-clip-transform-helpers.ts";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
@@ -186,6 +189,93 @@ export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
   const freshClip = LiveAPI.from(clip.id);
 
   return { noteCount: getClipNoteCount(freshClip) };
+}
+
+/**
+ * MIDI duplicateLoop pipeline: edits compose with the native double on a defined
+ * timeline. (1) Flush preTransforms onto the existing notes first, so Live's copy
+ * carries the edited source into the new half. (2) Double the loop. (3) Merge new
+ * notes and apply transforms across the full doubled clip. The clip is re-read
+ * from its id and its context rebuilt after the double so transform variables
+ * (bar.*, clip.*) see the doubled length. Caller guarantees a MIDI clip.
+ * @param params - The clip plus the edit strings and per-clip context indices
+ * @param params.clip - The MIDI clip to double and edit
+ * @param params.notationString - New notes to merge after the double, or undefined
+ * @param params.transformString - Transforms to apply after the double, or undefined
+ * @param params.preTransformString - Transforms to apply before the double, or undefined
+ * @param params.timeSigNumerator - Time signature numerator
+ * @param params.timeSigDenominator - Time signature denominator
+ * @param params.clipIndex - 0-based index in the multi-clip batch
+ * @param params.clipCount - Total clips in the batch
+ * @returns Note update result with the final post-edit note count
+ */
+export function handleDuplicateLoopWithEdits({
+  clip,
+  notationString,
+  transformString,
+  preTransformString,
+  timeSigNumerator,
+  timeSigDenominator,
+  clipIndex,
+  clipCount,
+}: {
+  clip: LiveAPI;
+  notationString: string | undefined;
+  transformString: string | undefined;
+  preTransformString: string | undefined;
+  timeSigNumerator: number;
+  timeSigDenominator: number;
+  clipIndex: number;
+  clipCount: number;
+}): NoteUpdateResult | null {
+  // Stage 1: flush preTransforms onto the existing notes before doubling.
+  if (preTransformString != null) {
+    const preContext = buildClipContext(
+      clip,
+      clipIndex,
+      clipCount,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+
+    applyTransformsToExistingNotes(
+      clip,
+      preTransformString,
+      undefined,
+      timeSigNumerator,
+      timeSigDenominator,
+      preContext,
+    );
+  }
+
+  // Stage 2: native double (MIDI guaranteed by the caller).
+  const dupResult = handleDuplicateLoop(clip);
+
+  // Stage 3: merge notes + transforms across the doubled clip. Re-read from id
+  // (duplicate_loop mutates in place) and rebuild context for the doubled length.
+  if (notationString == null && transformString == null) {
+    return dupResult;
+  }
+
+  const freshClip = LiveAPI.from(clip.id);
+  const postContext = buildClipContext(
+    freshClip,
+    clipIndex,
+    clipCount,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  const mergeResult = handleNoteUpdates(
+    freshClip,
+    notationString,
+    transformString,
+    undefined,
+    timeSigNumerator,
+    timeSigDenominator,
+    postContext,
+  );
+
+  return mergeResult ?? dupResult;
 }
 
 /**

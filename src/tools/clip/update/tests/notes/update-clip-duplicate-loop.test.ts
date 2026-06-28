@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  codeExecSuccess,
+  codeNote,
+} from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
 import {
   setupArrangementMidiClipMock,
   setupAudioClipMock,
@@ -12,6 +16,15 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+
+vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
+  executeNoteCode: vi.fn(),
+  executeNoteCodeWithData: vi.fn(),
+  requestCodeExecution: vi.fn(),
+  handleCodeExecResult: vi.fn(),
+}));
+
+import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
 
 /**
  * Make a clip's call mock report `noteCount` notes from get_notes_extended, so
@@ -92,14 +105,30 @@ describe("updateClip - duplicateLoop", () => {
     expect(result).toStrictEqual([{ id: "123", noteCount: 6 }, { id: "456" }]);
   });
 
+  it("still doubles and warns when length is combined (the double sets length)", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = await updateClip({
+      ids: "123",
+      duplicateLoop: true,
+      length: "4bar",
+    });
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("duplicateLoop sets the clip length itself"),
+    );
+    expect(result).toStrictEqual({ id: "123", noteCount: 8 });
+  });
+
   it.each([
-    ["length", "4bar"],
     ["notes", "1|1 C3"],
-    ["transforms", "v0"],
-    ["preTransforms", "v0"],
-    ["code", "return notes;"],
+    ["transforms", "p+12"],
+    ["preTransforms", "p+12"],
   ])(
-    "still doubles, warns, and ignores %s when combined (standalone op wins)",
+    "doubles and composes %s without warning (no length conflict)",
     async (param, value) => {
       setupMidiClipMock(mocks.clip123);
       mockNoteCount(mocks.clip123, 8);
@@ -111,31 +140,56 @@ describe("updateClip - duplicateLoop", () => {
       });
 
       expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-      expect(outlet).toHaveBeenCalledWith(
+      expect(outlet).not.toHaveBeenCalledWith(
         1,
-        expect.stringContaining("duplicateLoop is a standalone operation"),
+        expect.stringContaining("duplicateLoop sets the clip length"),
       );
-      expect(result).toStrictEqual({ id: "123", noteCount: 8 });
+      expect(result).toMatchObject({ id: "123", noteCount: 8 });
     },
   );
 
-  it("names every skipped edit in the warning when several are combined", async () => {
+  it("composes code: doubles the loop, then runs code on the doubled clip", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(60, 0)]),
+    );
+
+    const result = await updateClip({
+      ids: "123",
+      duplicateLoop: true,
+      code: "return notes;",
+    });
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
+    expect(executeNoteCode).toHaveBeenCalledOnce();
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("duplicateLoop sets the clip length"),
+    );
+    expect(result).toMatchObject({ id: "123" });
+  });
+
+  it("applies preTransforms before the double and notes/transforms after", async () => {
     setupMidiClipMock(mocks.clip123);
     mockNoteCount(mocks.clip123, 8);
 
     await updateClip({
       ids: "123",
       duplicateLoop: true,
-      length: "4bar",
+      preTransforms: "p+12",
       notes: "1|1 C3",
-      transforms: "v0",
-      preTransforms: "v0",
-      code: "return notes;",
+      transforms: "p-12",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "duplicateLoop is a standalone operation - ignoring length, notes, transforms, preTransforms, code. Run the loop-double and these edits as separate update-clip calls.",
-    );
+    // preTransforms flushes a write, then the native double, then the post-merge
+    // write all hit the same clip in order.
+    const order = mocks.clip123.call.mock.calls.map((c) => c[0]);
+    const firstAdd = order.indexOf("add_new_notes");
+    const dup = order.indexOf("duplicate_loop");
+
+    expect(firstAdd).toBeGreaterThanOrEqual(0);
+    expect(dup).toBeGreaterThan(firstAdd);
+    expect(order.lastIndexOf("add_new_notes")).toBeGreaterThan(dup);
   });
 });

@@ -5,6 +5,7 @@
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   applyAudioTransforms,
@@ -13,6 +14,7 @@ import {
 } from "./update-clip-audio-helpers.ts";
 import {
   handleDuplicateLoop,
+  handleDuplicateLoopWithEdits,
   handleNoteUpdates,
   handleQuantization,
 } from "./update-clip-notes-helpers.ts";
@@ -108,8 +110,6 @@ export function processSingleClipUpdate(
     clipIndex,
     clipCount,
     notationString,
-    transformString,
-    preTransformString,
     name,
     color,
     timeSignature,
@@ -117,7 +117,6 @@ export function processSingleClipUpdate(
     length,
     firstStart,
     looping,
-    duplicateLoop,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -195,23 +194,12 @@ export function processSingleClipUpdate(
     }
   }
 
-  // Handle note updates (transforms already applied for audio clips above)
-  const noteUpdateResult = handleNoteUpdates(
-    clip,
-    isAudioClip ? undefined : notationString,
-    isAudioClip ? undefined : transformString,
-    isAudioClip ? undefined : preTransformString,
+  const noteResult = resolveNoteResult(params, {
+    isAudioClip,
+    clipContext,
     timeSigNumerator,
     timeSigDenominator,
-    clipContext,
-  );
-
-  // duplicateLoop is validated up front as mutually exclusive with notes/length/
-  // transforms, so it never competes with the merge above (noteUpdateResult is
-  // null here). Live does the doubling + note/envelope copy natively.
-  const noteResult = duplicateLoop
-    ? handleDuplicateLoop(clip)
-    : noteUpdateResult;
+  });
 
   // Handle quantization (after notes so newly merged notes get quantized)
   handleQuantization(clip, {
@@ -244,6 +232,72 @@ export function processSingleClipUpdate(
     noteResult,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
+}
+
+/**
+ * Resolve the clip's note update: notes/transforms/preTransforms and the loop
+ * double. duplicateLoop on a MIDI clip runs its own pipeline (preTransforms edit
+ * the source, Live doubles the loop, then notes/transforms apply across the full
+ * doubled clip). Audio clips take the normal path, where handleDuplicateLoop
+ * warns-and-skips (no MIDI to double) and audio transforms were already applied
+ * in handleAudioClipUpdate.
+ * @param params - The full single-clip update params
+ * @param resolved - Derived per-clip values not present on params
+ * @param resolved.isAudioClip - Whether the clip is an audio clip
+ * @param resolved.clipContext - Clip-level context for transform variables
+ * @param resolved.timeSigNumerator - Resolved time signature numerator
+ * @param resolved.timeSigDenominator - Resolved time signature denominator
+ * @returns Note update result, or null if notes were not modified
+ */
+function resolveNoteResult(
+  params: ProcessSingleClipUpdateParams,
+  {
+    isAudioClip,
+    clipContext,
+    timeSigNumerator,
+    timeSigDenominator,
+  }: {
+    isAudioClip: boolean;
+    clipContext: ClipContext;
+    timeSigNumerator: number;
+    timeSigDenominator: number;
+  },
+): NoteUpdateResult | null {
+  const {
+    clip,
+    clipIndex,
+    clipCount,
+    notationString,
+    transformString,
+    preTransformString,
+    duplicateLoop,
+  } = params;
+
+  if (duplicateLoop && !isAudioClip) {
+    return handleDuplicateLoopWithEdits({
+      clip,
+      notationString,
+      transformString,
+      preTransformString,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipIndex,
+      clipCount,
+    });
+  }
+
+  // Handle note updates (transforms already applied for audio clips above)
+  const noteUpdateResult = handleNoteUpdates(
+    clip,
+    isAudioClip ? undefined : notationString,
+    isAudioClip ? undefined : transformString,
+    isAudioClip ? undefined : preTransformString,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipContext,
+  );
+
+  return duplicateLoop ? handleDuplicateLoop(clip) : noteUpdateResult;
 }
 
 /**

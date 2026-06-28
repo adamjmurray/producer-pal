@@ -84,7 +84,7 @@ interface ClipResult {
  * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only; takes precedence over length/notes/transforms/preTransforms/code, which are ignored with a warning if passed alongside it)
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: preTransforms edit the source before the double; notes, transforms, and code then apply across the full doubled clip. Only length is ignored (with a warning), since the double sets the length itself
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
@@ -240,21 +240,20 @@ export async function updateClip(
 }
 
 /**
- * Resolve the duplicateLoop exclusivity conflict by preferring the standalone
- * loop-double over any note/length edits passed alongside it. duplicateLoop is a
- * standalone op (Live doubles the loop and copies notes + envelopes natively);
- * combining it with edits is an ordering footgun - whether the edits land before
- * or after the double is ambiguous. Rather than guess (or abort the whole batch
- * with a throw), keep duplicateLoop, drop the conflicting edits, and warn naming
- * everything skipped so the caller can re-run those edits separately.
- * @param args - The duplicateLoop flag plus the mutually-exclusive edit params
+ * Resolve the one duplicateLoop conflict that survives: `length`. duplicateLoop
+ * sets the new clip length itself (Live doubles the loop), so an explicit length
+ * passed alongside it is contradictory - drop it and warn. The remaining edits
+ * compose with the double on a defined timeline (preTransforms edit the source
+ * before the double; notes/transforms/code apply across the full doubled clip),
+ * so they are NOT dropped here - see processSingleClipUpdate for the ordering.
+ * @param args - The duplicateLoop flag plus the edit params it may pass through
  * @param args.duplicateLoop - Whether the loop-double was requested
- * @param args.length - The length edit (dropped when duplicateLoop wins)
- * @param args.notationString - The notes edit (dropped when duplicateLoop wins)
- * @param args.transforms - The transforms edit (dropped when duplicateLoop wins)
- * @param args.preTransforms - The preTransforms edit (dropped when duplicateLoop wins)
- * @param args.code - The JS note-transform edit (dropped when duplicateLoop wins)
- * @returns The edit params, blanked out when duplicateLoop took precedence
+ * @param args.length - The length edit (dropped when duplicateLoop is set)
+ * @param args.notationString - The notes edit (passed through)
+ * @param args.transforms - The transforms edit (passed through)
+ * @param args.preTransforms - The preTransforms edit (passed through)
+ * @param args.code - The JS note-transform edit (passed through)
+ * @returns The edit params, with length blanked out when duplicateLoop is set
  */
 function resolveDuplicateLoopConflicts({
   duplicateLoop,
@@ -277,25 +276,15 @@ function resolveDuplicateLoopConflicts({
   preTransforms?: string;
   code?: string;
 } {
-  if (!duplicateLoop) {
-    return { length, notationString, transforms, preTransforms, code };
-  }
-
-  const skipped: string[] = [];
-
-  if (length != null) skipped.push("length");
-  if (notationString != null) skipped.push("notes");
-  if (transforms != null) skipped.push("transforms");
-  if (preTransforms != null) skipped.push("preTransforms");
-  if (code != null) skipped.push("code");
-
-  if (skipped.length > 0) {
+  if (duplicateLoop && length != null) {
     console.warn(
-      `duplicateLoop is a standalone operation - ignoring ${skipped.join(", ")}. Run the loop-double and these edits as separate update-clip calls.`,
+      "duplicateLoop sets the clip length itself - ignoring the length parameter. preTransforms apply before the loop-double; notes, transforms, and code apply across the full doubled clip.",
     );
+
+    return { notationString, transforms, preTransforms, code };
   }
 
-  return {};
+  return { length, notationString, transforms, preTransforms, code };
 }
 
 /**

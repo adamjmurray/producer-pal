@@ -49,7 +49,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .boolean()
       .optional()
       .describe(
-        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only; standalone op - takes precedence over length/notes/transforms/preTransforms/code, which are ignored if passed alongside it (run them as separate calls)",
+        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Composes with edits in a defined order: preTransforms edit the source before the double; notes/transforms/code then apply across the full doubled clip. Only length is ignored (the double sets it)",
       ),
     firstStart: z
       .string()
