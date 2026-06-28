@@ -186,6 +186,52 @@ describe("note-count operations (ratchet/merge)", () => {
       warn.mockRestore();
     });
 
+    it("clamps the grid form when the cuts would exceed the max pieces", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      // A 40-beat note on a 16th-note grid would yield far more than 64 pieces.
+      const notes = createTestNote({ start_time: 0, duration: 40 });
+
+      applyTransforms(notes, "ratchet(n/16)", 4, 4);
+
+      expect(notes).toHaveLength(64); // capped at MAX_NOTE_PIECES
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
+      warn.mockRestore();
+    });
+
+    it("warns and skips a zero-length grid (n0/4)", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNote({ duration: 1 });
+
+      applyTransforms(notes, "ratchet(n0/4)", 4, 4);
+
+      expect(notes).toHaveLength(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("grid must be greater than 0"),
+      );
+      warn.mockRestore();
+    });
+
+    it("warns and skips when the argument overflows to a non-finite value", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNote({ duration: 1 });
+      const big = "9".repeat(62);
+
+      // A product of huge decimals overflows to Infinity, which is not a usable
+      // count -> warn-and-skip distinct from the could-not-evaluate (throw) path.
+      applyTransforms(
+        notes,
+        `ratchet(${big} * ${big} * ${big} * ${big} * ${big} * ${big})`,
+        4,
+        4,
+      );
+
+      expect(notes).toHaveLength(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("is not a number"),
+      );
+      warn.mockRestore();
+    });
+
     it("warns and skips when no argument is given", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const notes = createTestNote({ duration: 1 });

@@ -533,6 +533,22 @@ describe("updateDevice - wrapInRack", () => {
     expect(result).toBeNull();
   });
 
+  it("should warn and return null when an id resolves to a non-device object", () => {
+    // The object exists but its type doesn't end in "Device" (e.g. a Chain),
+    // so resolveDevices warns "is not a device" and skips it -> no devices.
+    registerMockObject("not-a-device", {
+      path: "some/path",
+      type: "Chain",
+    });
+
+    const result = updateDevice({
+      ids: "not-a-device",
+      wrapInRack: true,
+    });
+
+    expect(result).toBeNull();
+  });
+
   it("should warn but continue when insert_chain fails", () => {
     // Override rack to have no pre-existing chains and fail on insert_chain
     newRack.get.mockImplementation((prop: string) => {
