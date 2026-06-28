@@ -303,6 +303,9 @@ function applyResponseFailure(
 
   deps.setError(failure.message);
 
+  // A non-rate-limit failure (failed/max_output_tokens/content_filter) also ends
+  // the streak, so the else resets the budget too — otherwise a later streak
+  // would start mid-count and give up early.
   if (failure.code === "rate_limit_exceeded") {
     // Always set the window — fall back to a default when the wait can't be
     // parsed — so the retry UI renders and auto-retry arms even for a
@@ -311,7 +314,7 @@ function applyResponseFailure(
       parseRetrySeconds(failure.message) ?? DEFAULT_RATE_LIMIT_BACKOFF_SECONDS;
 
     deps.setRateLimitedUntil(Date.now() + seconds * 1000);
-  }
+  } else deps.autoRetryAttemptsRef.current = 0;
 }
 
 /**

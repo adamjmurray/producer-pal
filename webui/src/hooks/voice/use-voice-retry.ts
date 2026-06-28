@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type RealtimeSession } from "@openai/agents/realtime";
-import { useCallback, useEffect } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 
 // Auto-retry timing. Fire a touch past the server-indicated wait (buffer), but
@@ -47,10 +47,12 @@ export interface UseVoiceRetryDeps {
  * both the manual "Retry now" button and the auto-retry timer) and arms the
  * auto-retry once a rate-limit window elapses.
  * @param deps - Session ref, rate-limit state, and the attempt counter
- * @returns The manual/auto retry handler
+ * @returns The manual/auto retry handler and whether auto-retry has given up
+ *   (the cap was hit) so the UI can stop promising an auto-retry
  */
 export function useVoiceRetry(deps: UseVoiceRetryDeps): {
-  retryResponse: () => void;
+  retryResponse: () => boolean;
+  autoRetryExhausted: boolean;
 } {
   const {
     sessionRef,
@@ -60,6 +62,7 @@ export function useVoiceRetry(deps: UseVoiceRetryDeps): {
     attemptsRef,
     activeResponseRef,
   } = deps;
+  const [autoRetryExhausted, setAutoRetryExhausted] = useState(false);
 
   // Nudge the server to generate the next response. After a rate-limit failure
   // the conversation already has the latest user/tool message; we just tell the
@@ -67,24 +70,35 @@ export function useVoiceRetry(deps: UseVoiceRetryDeps): {
   // when a response is already in progress — sending response.create over an
   // active response is rejected by the server ("active response in progress"),
   // and a stale auto-retry timer firing into a freshly restarted session is the
-  // path that surfaced that rejection as an error banner.
-  const retryResponse = useCallback(() => {
+  // path that surfaced that rejection as an error banner. Returns true only when
+  // it actually sent response.create, so the auto-retry timer can avoid burning
+  // a capped attempt on a no-op (idle/active-response) call.
+  const retryResponse = useCallback((): boolean => {
     const session = sessionRef.current;
 
-    if (!session || activeResponseRef.current) return;
+    if (!session || activeResponseRef.current) return false;
 
     try {
       session.transport.sendEvent({ type: "response.create" });
       setError(null);
       setRateLimitedUntil(null);
+
+      return true;
     } catch (err) {
       setError(extractErrorMessage(err));
+
+      return false;
     }
   }, [sessionRef, setError, setRateLimitedUntil, activeResponseRef]);
 
-  useRateLimitAutoRetry(rateLimitedUntil, retryResponse, attemptsRef);
+  useRateLimitAutoRetry(
+    rateLimitedUntil,
+    retryResponse,
+    attemptsRef,
+    setAutoRetryExhausted,
+  );
 
-  return { retryResponse };
+  return { retryResponse, autoRetryExhausted };
 }
 
 /**
@@ -98,30 +112,49 @@ export function useVoiceRetry(deps: UseVoiceRetryDeps): {
  * Gives up after {@link MAX_AUTO_RETRY_ATTEMPTS} consecutive rate limits so a
  * persistent limit can't loop forever; the manual "Retry now" button (live once
  * the countdown elapses) remains the escape hatch. The counter resets on connect
- * and on any successful response (see handleTransportEvent).
+ * and on any successful response (see handleTransportEvent). When the cap is hit
+ * it flips setExhausted(true) so the UI can stop promising an auto-retry that
+ * won't come, and only the manual button remains.
  *
  * @param rateLimitedUntil - Epoch ms the limit clears, or null when not limited
- * @param retryResponse - Nudges the server to generate the next response
- * @param attemptsRef - Consecutive-auto-retry counter, incremented per retry
+ * @param retryResponse - Nudges the server; returns true only when it fired
+ * @param attemptsRef - Consecutive-auto-retry counter, incremented per fired retry
+ * @param setExhausted - Reports whether the auto-retry cap has been hit
  */
 function useRateLimitAutoRetry(
   rateLimitedUntil: number | null,
-  retryResponse: () => void,
+  retryResponse: () => boolean,
   attemptsRef: NumberRef,
+  setExhausted: (value: boolean) => void,
 ): void {
   useEffect(() => {
-    if (rateLimitedUntil == null) return;
-    if (attemptsRef.current >= MAX_AUTO_RETRY_ATTEMPTS) return;
+    if (rateLimitedUntil == null) {
+      setExhausted(false);
 
+      return;
+    }
+
+    if (attemptsRef.current >= MAX_AUTO_RETRY_ATTEMPTS) {
+      // Cap hit: no timer is armed, so the countdown would otherwise keep
+      // promising an auto-retry that will never fire. Flag it so the UI switches
+      // to "retry manually".
+      setExhausted(true);
+
+      return;
+    }
+
+    setExhausted(false);
     const delay = Math.max(
       AUTO_RETRY_MIN_DELAY_MS,
       rateLimitedUntil - Date.now() + AUTO_RETRY_SAFETY_BUFFER_MS,
     );
     const id = setTimeout(() => {
-      attemptsRef.current += 1;
-      retryResponse();
+      // Count the attempt only if the nudge actually fired. A no-op return
+      // (idle/active-response) must not burn a capped attempt — otherwise a
+      // single stray tick could exhaust the budget without ever retrying.
+      if (retryResponse()) attemptsRef.current += 1;
     }, delay);
 
     return () => clearTimeout(id);
-  }, [rateLimitedUntil, retryResponse, attemptsRef]);
+  }, [rateLimitedUntil, retryResponse, attemptsRef, setExhausted]);
 }

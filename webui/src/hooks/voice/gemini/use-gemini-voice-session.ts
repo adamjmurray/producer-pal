@@ -311,11 +311,10 @@ export function useGeminiVoiceSession(
     const mic = micRef.current;
 
     if (!mic) return;
-    const next = !isMuted;
 
-    mic.setMuted(next);
-    isMutedRef.current = next;
-    setIsMuted(next);
+    mic.setMuted(!isMuted);
+    isMutedRef.current = !isMuted;
+    setIsMuted(!isMuted);
   }, [isMuted]);
 
   // Manual interrupt: flush local playback and close the open model turn. (Gemini
@@ -364,6 +363,8 @@ export function useGeminiVoiceSession(
     assistantSpeaking,
     assistantThinking,
     rateLimitedUntil: null,
+    // Gemini has no rate-limit auto-retry path, so it never reaches the cap.
+    autoRetryExhausted: false,
     connect,
     disconnect,
     toggleMute,

@@ -136,6 +136,7 @@ export interface VoiceSessionStub {
   assistantSpeaking: boolean;
   assistantThinking: boolean;
   rateLimitedUntil: number | null;
+  autoRetryExhausted: boolean;
   connect: ReturnType<typeof vi.fn>;
   disconnect: ReturnType<typeof vi.fn>;
   toggleMute: ReturnType<typeof vi.fn>;
@@ -161,6 +162,7 @@ export function baseSession(
     assistantSpeaking: false,
     assistantThinking: false,
     rateLimitedUntil: null,
+    autoRetryExhausted: false,
     connect: vi.fn(),
     disconnect: vi.fn(),
     toggleMute: vi.fn(),

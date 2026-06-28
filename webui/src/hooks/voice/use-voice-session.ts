@@ -85,6 +85,10 @@ export interface UseVoiceSessionReturn {
   assistantThinking: boolean;
   /** Epoch ms when the current rate-limit clears, or null if not rate-limited. */
   rateLimitedUntil: number | null;
+  /** True once auto-retry has hit its cap for the current rate-limit streak: the
+   * countdown is still shown but no auto-retry will fire, so the UI should point
+   * the user at the manual button instead. */
+  autoRetryExhausted: boolean;
   /**
    * Open the realtime connection. If `initialHistory` is provided, message
    * items from it are seeded onto the server's conversation after connect so
@@ -328,15 +332,13 @@ export function useVoiceSession(
           }),
         );
 
-        // Barge-in disabled (interrupt_response off, the default) → run
-        // half-duplex: handleTransportEvent mutes the mic for the duration of
-        // each response. When turnDetection is undefined, OpenAI's default
-        // (barge-in on) applies, so we stay full-duplex. turnDetection is fixed
-        // for the session (changes apply on the next Stop → Talk).
-        const halfDuplex = turnDetection?.interruptResponse === false;
-
         wireSessionEvents(session, setHistory, {
-          halfDuplex,
+          // Barge-in disabled (interrupt_response off, the default) → run
+          // half-duplex: handleTransportEvent mutes the mic for the duration of
+          // each response. When turnDetection is undefined, OpenAI's default
+          // (barge-in on) applies, so we stay full-duplex. turnDetection is fixed
+          // for the session (changes apply on the next Stop → Talk).
+          halfDuplex: turnDetection?.interruptResponse === false,
           autoMutedRef,
           isMutedRef,
           // Track the active-response window in a ref synchronously alongside the
@@ -456,7 +458,7 @@ export function useVoiceSession(
   // Manual "Retry now" handler plus the auto-retry that nudges the model to
   // continue once a rate-limit window elapses, so hands-free voice recovers
   // without a click or the user speaking again (capped — see useVoiceRetry).
-  const { retryResponse } = useVoiceRetry({
+  const { retryResponse, autoRetryExhausted } = useVoiceRetry({
     sessionRef,
     rateLimitedUntil,
     setError,
@@ -484,6 +486,7 @@ export function useVoiceSession(
     assistantSpeaking,
     assistantThinking,
     rateLimitedUntil,
+    autoRetryExhausted,
     connect,
     disconnect,
     toggleMute,
