@@ -123,6 +123,33 @@ describe("updateClip - duplicateLoop", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 8 });
   });
 
+  it("keeps length on the audio clip in a mixed batch (resolved per-clip)", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupAudioClipMock(mocks.clip456, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 2,
+    });
+    mockNoteCount(mocks.clip123, 8);
+
+    await updateClip({
+      ids: "123, 456",
+      duplicateLoop: true,
+      start: "1|1",
+      length: "4bar",
+    });
+
+    // MIDI clip: duplicateLoop runs and length is skipped (the double sets it),
+    // so no length-driven loop_end is written for it.
+    expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
+    expect(mocks.clip123.set).not.toHaveBeenCalledWith("loop_end", 16);
+    // Audio clip: duplicateLoop warn-skips, so the length edit still applies
+    // (loop_end = start 0 + 4 bars = 16). Previously length was stripped
+    // batch-wide and silently lost here.
+    expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
+    expect(mocks.clip456.set).toHaveBeenCalledWith("loop_end", 16);
+  });
+
   it.each([
     ["notes", "1|1 C3"],
     ["transforms", "pitch += 12"],

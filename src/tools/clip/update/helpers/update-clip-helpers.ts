@@ -117,6 +117,7 @@ export function processSingleClipUpdate(
     length,
     firstStart,
     looping,
+    duplicateLoop,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -142,10 +143,26 @@ export function processSingleClipUpdate(
     console.warn("firstStart parameter ignored for non-looping clips");
   }
 
+  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
+
+  // duplicateLoop sets the clip length itself (Live doubles the loop), so an
+  // explicit length is contradictory - but only on a MIDI clip, where the
+  // loop-double actually runs. On an audio clip duplicateLoop warns-and-skips,
+  // so length still applies normally. Resolving this per-clip (not batch-wide)
+  // keeps length for the audio clips in a mixed MIDI/audio batch.
+  let effectiveLength = length;
+
+  if (duplicateLoop && !isAudioClip && length != null) {
+    console.warn(
+      "duplicateLoop sets the clip length itself - ignoring the length parameter. preTransforms apply before the loop-double; notes, transforms, and code apply across the full doubled clip.",
+    );
+    effectiveLength = undefined;
+  }
+
   // Calculate beat positions (includes end_marker bounds check for start_marker)
   const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
     start,
-    length,
+    length: effectiveLength,
     firstStart,
     timeSigNumerator,
     timeSigDenominator,
@@ -179,7 +196,6 @@ export function processSingleClipUpdate(
   }
 
   // Build context for transform variables (clip.*, bar.*)
-  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
   // prettier-ignore
   const clipContext = buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator);
 

@@ -147,15 +147,6 @@ export async function updateClip(
     return [];
   }
 
-  const edits = resolveDuplicateLoopConflicts({
-    duplicateLoop,
-    length,
-    notationString,
-    transforms,
-    preTransforms,
-    code,
-  });
-
   const mutableClips = applySplittingIfNeeded(
     validateIdTypes(parseCommaSeparatedIds(ids), "clip", "updateClip", {
       skipInvalid: true,
@@ -195,14 +186,14 @@ export async function updateClip(
       clip,
       clipIndex: i,
       clipCount: mutableClips.length,
-      notationString: edits.notationString,
-      transformString: edits.transforms,
-      preTransformString: edits.preTransforms,
+      notationString,
+      transformString: transforms,
+      preTransformString: preTransforms,
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       timeSignature,
       start,
-      length: edits.length,
+      length,
       firstStart,
       looping,
       duplicateLoop,
@@ -224,7 +215,7 @@ export async function updateClip(
       context,
       updatedClips,
       tracksWithMovedClips,
-      code: edits.code,
+      code,
     });
   }
 
@@ -237,54 +228,6 @@ export async function updateClip(
   }
 
   return unwrapSingleResult(updatedClips);
-}
-
-/**
- * Resolve the one duplicateLoop conflict that survives: `length`. duplicateLoop
- * sets the new clip length itself (Live doubles the loop), so an explicit length
- * passed alongside it is contradictory - drop it and warn. The remaining edits
- * compose with the double on a defined timeline (preTransforms edit the source
- * before the double; notes/transforms/code apply across the full doubled clip),
- * so they are NOT dropped here - see processSingleClipUpdate for the ordering.
- * @param args - The duplicateLoop flag plus the edit params it may pass through
- * @param args.duplicateLoop - Whether the loop-double was requested
- * @param args.length - The length edit (dropped when duplicateLoop is set)
- * @param args.notationString - The notes edit (passed through)
- * @param args.transforms - The transforms edit (passed through)
- * @param args.preTransforms - The preTransforms edit (passed through)
- * @param args.code - The JS note-transform edit (passed through)
- * @returns The edit params, with length blanked out when duplicateLoop is set
- */
-function resolveDuplicateLoopConflicts({
-  duplicateLoop,
-  length,
-  notationString,
-  transforms,
-  preTransforms,
-  code,
-}: {
-  duplicateLoop?: boolean;
-  length?: string;
-  notationString?: string;
-  transforms?: string;
-  preTransforms?: string;
-  code?: string;
-}): {
-  length?: string;
-  notationString?: string;
-  transforms?: string;
-  preTransforms?: string;
-  code?: string;
-} {
-  if (duplicateLoop && length != null) {
-    console.warn(
-      "duplicateLoop sets the clip length itself - ignoring the length parameter. preTransforms apply before the loop-double; notes, transforms, and code apply across the full doubled clip.",
-    );
-
-    return { notationString, transforms, preTransforms, code };
-  }
-
-  return { length, notationString, transforms, preTransforms, code };
 }
 
 /**
