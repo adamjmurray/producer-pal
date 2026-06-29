@@ -11,10 +11,11 @@
  * note doubling and the loop-length growth that the in-memory unit tests can't
  * observe (envelope copy isn't surfaced by read-clip, so it stays unit-only).
  *
- * They also pin the composition contract on real Live geometry: preTransforms
- * edit the source BEFORE the double, then notes/transforms apply across the FULL
- * doubled clip. Only length is ignored (the double sets it). The unit tests pin
- * the call ordering; these confirm the resulting notes land in the right bars.
+ * They also pin the composition contract on real Live geometry: start/length/
+ * firstStart select the loop region first, preTransforms edit the source, then
+ * the double, then notes/transforms apply across the FULL doubled clip. The unit
+ * tests pin the call ordering; these confirm the resulting notes land in the
+ * right bars.
  *
  * Uses: e2e-test-set - t8 is the empty MIDI track.
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -35,17 +36,18 @@ const ctx = setupMcpTestContext();
 // t8 "9-MIDI" is empty in e2e-test-set.
 const emptyMidiTrack = 8;
 
-/** Create a 2-bar looping MIDI clip and return its id. */
+/** Create a looping MIDI clip (default 2 bars) and return its id. */
 async function createLoopingClip(
   sceneIndex: number,
   notes: string,
+  length = "2bar",
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
       slot: `${emptyMidiTrack}/${sceneIndex}`,
       notes,
-      length: "2bar",
+      length,
       looping: true,
     },
   });
@@ -136,27 +138,58 @@ describe("ppal-update-clip duplicateLoop", () => {
     expect(clip.notes).toContain("E3");
   });
 
-  it("ignores length passed alongside duplicateLoop (the double sets the length) and still doubles", async () => {
-    const clipId = await createLoopingClip(1, "v100 C3 1|1 E3 2|1");
+  it("applies length to select the loop region BEFORE doubling (composes instead of ignoring length)", async () => {
+    // 1-bar looping clip with a single note in bar 1.
+    const clipId = await createLoopingClip(1, "v100 C3 1|1", "1bar");
 
-    // length conflicts with duplicateLoop: the double sets the new length, so the
-    // length edit is dropped with a warning instead of resizing to 8 bars.
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { ids: clipId, duplicateLoop: true, length: "8bar" },
+    // length selects a 2-bar loop region first (growing into the empty bar 2),
+    // THEN the native double extends that selection to 4 bars - the two compose.
+    // Previously length was dropped with a warning and the 1-bar loop just
+    // doubled to 2 bars; now there is no warning and the selection is honored.
+    const { data, warnings, clip } = await duplicateLoopAndRead(clipId, {
+      length: "2bar",
     });
-    const { data, warnings } =
-      parseToolResultWithWarnings<UpdateClipResult>(result);
 
-    expect(data.noteCount).toBe(4);
-    expect(warnings.join("\n")).toContain("duplicateLoop sets the clip length");
+    // bar 1 C3 + its copy one loop-length (2 bars) later = 2 notes.
+    expect(data.noteCount).toBe(2);
+    expect(warnings.join("\n")).not.toContain(
+      "duplicateLoop sets the clip length",
+    );
 
-    await sleep(100);
-
-    const clip = await readClip(clipId);
-
-    // Doubled to 4 bars by the loop op, NOT resized to the ignored 8bar length.
+    // Selected 2-bar region doubled to 4 bars (NOT the old 2-bar result the
+    // ignored-length path produced).
     expect(clip.length).toBe("4bar");
+    // Original note in bar 1, its copy in bar 3 (one 2-bar loop later).
+    expect(clip.notes).toContain("C3");
+    expect(clip.notes).toContain("1|1");
+    expect(clip.notes).toContain("3|1");
+  });
+
+  it("selects a sub-region smaller than the content, then doubles it (insert pushes the rest out)", async () => {
+    // 2-bar clip: C3 in bar 1, E3 in bar 2.
+    const clipId = await createLoopingClip(4, "v100 C3 1|1 E3 2|1", "2bar");
+
+    // length selects ONLY bar 1 (loop region [0, 1bar]); the bar-2 E3 falls
+    // outside the loop. Then duplicate_loop doubles that 1-bar region to 2 bars.
+    // Live's duplicate_loop INSERTS the copy at loop_end (it does not overwrite),
+    // so material after the loop is shifted forward by the loop length.
+    const { data, warnings, clip } = await duplicateLoopAndRead(clipId, {
+      length: "1bar",
+    });
+
+    expect(warnings.join("\n")).not.toContain(
+      "duplicateLoop sets the clip length",
+    );
+    // 3 notes: the in-region C3, its inserted copy, and the pushed-out E3.
+    expect(data.noteCount).toBe(3);
+    // The selected 1-bar region doubled to a 2-bar loop.
+    expect(clip.length).toBe("2bar");
+    // Bar 1 C3 (original) + bar 2 C3 (the inserted copy of the 1-bar region).
+    expect(clip.notes).toContain("C3 1|1");
+    expect(clip.notes).toContain("C3 2|1");
+    // The original bar-2 E3 was pushed forward one loop-length to bar 3, landing
+    // beyond the new 2-bar loop (overhang, read but not played by the loop).
+    expect(clip.notes).toContain("E3 3|1");
   });
 
   it("applies preTransforms to the source BEFORE doubling", async () => {

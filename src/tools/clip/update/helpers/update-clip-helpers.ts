@@ -117,7 +117,6 @@ export function processSingleClipUpdate(
     length,
     firstStart,
     looping,
-    duplicateLoop,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -145,24 +144,16 @@ export function processSingleClipUpdate(
 
   const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
 
-  // duplicateLoop sets the clip length itself (Live doubles the loop), so an
-  // explicit length is contradictory - but only on a MIDI clip, where the
-  // loop-double actually runs. On an audio clip duplicateLoop warns-and-skips,
-  // so length still applies normally. Resolving this per-clip (not batch-wide)
-  // keeps length for the audio clips in a mixed MIDI/audio batch.
-  let effectiveLength = length;
-
-  if (duplicateLoop && !isAudioClip && length != null) {
-    console.warn(
-      "duplicateLoop sets the clip length itself - ignoring the length parameter. preTransforms apply before the loop-double; notes, transforms, and code apply across the full doubled clip.",
-    );
-    effectiveLength = undefined;
-  }
+  // start/length/firstStart are applied to the loop region BEFORE duplicateLoop
+  // runs (clip.setAll below precedes resolveNoteResult), so they compose: set
+  // the region to select a portion, then Live's native duplicate_loop doubles
+  // exactly that selected region. No length suppression - the selection drives
+  // what gets doubled.
 
   // Calculate beat positions (includes end_marker bounds check for start_marker)
   const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
     start,
-    length: effectiveLength,
+    length,
     firstStart,
     timeSigNumerator,
     timeSigDenominator,

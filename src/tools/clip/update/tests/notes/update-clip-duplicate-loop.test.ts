@@ -105,26 +105,38 @@ describe("updateClip - duplicateLoop", () => {
     expect(result).toStrictEqual([{ id: "123", noteCount: 6 }, { id: "456" }]);
   });
 
-  it("still doubles and warns when length is combined (the double sets length)", async () => {
-    setupMidiClipMock(mocks.clip123);
+  it("applies length to select the region before doubling (no warning)", async () => {
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 2,
+    });
     mockNoteCount(mocks.clip123, 8);
 
     const result = await updateClip({
       ids: "123",
       duplicateLoop: true,
+      start: "1|1",
       length: "4bar",
     });
 
+    // length selects the loop region (loop_end = start 0 + 4 bars = 16) first,
+    // THEN the native double extends it - the two compose, no warning.
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_end", 16);
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(outlet).toHaveBeenCalledWith(
+    expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("duplicateLoop sets the clip length itself"),
+      expect.stringContaining("duplicateLoop sets the clip length"),
     );
     expect(result).toStrictEqual({ id: "123", noteCount: 8 });
   });
 
-  it("keeps length on the audio clip in a mixed batch (resolved per-clip)", async () => {
-    setupMidiClipMock(mocks.clip123);
+  it("applies length on both MIDI and audio clips in a mixed batch", async () => {
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 2,
+    });
     setupAudioClipMock(mocks.clip456, {
       looping: 1,
       loop_start: 0,
@@ -139,13 +151,12 @@ describe("updateClip - duplicateLoop", () => {
       length: "4bar",
     });
 
-    // MIDI clip: duplicateLoop runs and length is skipped (the double sets it),
-    // so no length-driven loop_end is written for it.
+    // MIDI clip: length selects the region (loop_end = start 0 + 4 bars = 16)
+    // first, then the native double extends it.
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_end", 16);
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(mocks.clip123.set).not.toHaveBeenCalledWith("loop_end", 16);
-    // Audio clip: duplicateLoop warn-skips, so the length edit still applies
-    // (loop_end = start 0 + 4 bars = 16). Previously length was stripped
-    // batch-wide and silently lost here.
+    // Audio clip: duplicateLoop warn-skips (no MIDI to double), but the length
+    // edit still applies normally (loop_end = 16).
     expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
     expect(mocks.clip456.set).toHaveBeenCalledWith("loop_end", 16);
   });

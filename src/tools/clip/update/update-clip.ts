@@ -84,7 +84,7 @@ interface ClipResult {
  * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: preTransforms edit the source before the double; notes, transforms, and code then apply across the full doubled clip. Only length is ignored (with a warning), since the double sets the length itself
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: start/length/firstStart set the loop region first (select the portion to double), preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
