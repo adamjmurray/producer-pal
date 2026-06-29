@@ -74,9 +74,11 @@ describe("deleteObject device deletion", () => {
 
     const result = deleteObject({ ids, type: "device" });
 
+    // Results come back in deletion order (highest track index first), matching
+    // how track/scene deletes already report their results.
     expect(result).toStrictEqual([
-      { id: "device_1", type: "device", deleted: true },
       { id: "device_2", type: "device", deleted: true },
+      { id: "device_1", type: "device", deleted: true },
     ]);
     expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
       "delete_device",
@@ -216,6 +218,73 @@ describe("deleteObject device deletion", () => {
         2,
       );
     });
+
+    it("should delete same-chain siblings highest-index-first when a sibling-chain device interposes", () => {
+      // Regression: two devices in chains 0 must delete index 1 before index 0
+      // (positional delete_device shifts the survivor down otherwise). A device
+      // in chains 1 has an equal-length parent path; the old length-based
+      // comparator treated it as sort-equal to both siblings, so with this input
+      // order it interposed and flipped the siblings into ascending order —
+      // deleting chains-0 index 0 first, shifting index 1 down, then no-op'ing
+      // the second delete. Order the ids so a buggy comparator misorders them.
+      const rack = String(livePath.track(2).device(0));
+      const { parents } = setupDeviceMocks(["c0_d0", "c1_d0", "c0_d1"], {
+        c0_d0: `${rack} chains 0 devices 0`,
+        c1_d0: `${rack} chains 1 devices 0`,
+        c0_d1: `${rack} chains 0 devices 1`,
+      });
+
+      const result = deleteObject({
+        ids: "c0_d0, c1_d0, c0_d1",
+        type: "device",
+      });
+
+      // chains 0: index 1 must be deleted before index 0.
+      const chain0 = parents.get(`${rack} chains 0`);
+
+      expect(chain0?.call).toHaveBeenNthCalledWith(1, "delete_device", 1);
+      expect(chain0?.call).toHaveBeenNthCalledWith(2, "delete_device", 0);
+
+      // chains 1: its lone device is deleted once, unaffected by chains 0.
+      const chain1 = parents.get(`${rack} chains 1`);
+
+      expect(chain1?.call).toHaveBeenCalledTimes(1);
+      expect(chain1?.call).toHaveBeenCalledWith("delete_device", 0);
+
+      // All three deleted (result order is deletion order, asserted above via
+      // call order; here we only care that every target succeeded).
+      expect(result).toStrictEqual(
+        expect.arrayContaining([
+          { id: "c0_d0", type: "device", deleted: true },
+          { id: "c1_d0", type: "device", deleted: true },
+          { id: "c0_d1", type: "device", deleted: true },
+        ]),
+      );
+      expect(result).toHaveLength(3);
+    });
+
+    it("should delete a nested device before the rack that contains it", () => {
+      // Descendant-before-ancestor: deleting the rack first would invalidate the
+      // nested device's parent path. The nested device must delete first.
+      const { devices, parents } = setupDeviceMocks(["rack", "nested"], {
+        rack: String(livePath.track(0).device(0)),
+        nested: "live_set tracks 0 devices 0 chains 0 devices 1",
+      });
+
+      deleteObject({ ids: "rack, nested", type: "device" });
+
+      const nestedParent = parents.get("live_set tracks 0 devices 0 chains 0");
+      const trackParent = parents.get(String(livePath.track(0)));
+
+      // Nested device (via its chain) deletes before the rack (via the track).
+      const nestedOrder = nestedParent?.call.mock.invocationCallOrder[0] ?? 0;
+      const rackOrder = trackParent?.call.mock.invocationCallOrder[0] ?? 0;
+
+      expect(nestedOrder).toBeLessThan(rackOrder);
+      expect(nestedParent?.call).toHaveBeenCalledWith("delete_device", 1);
+      expect(trackParent?.call).toHaveBeenCalledWith("delete_device", 0);
+      expect(devices.size).toBe(2);
+    });
   });
 
   describe("path-based deletion", () => {
@@ -246,9 +315,10 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "t0/d0, t1/d1", type: "device" });
 
+      // Deletion order: highest track index first.
       expect(result).toStrictEqual([
-        { id: "dev_0_0", type: "device", deleted: true },
         { id: "dev_1_1", type: "device", deleted: true },
+        { id: "dev_0_0", type: "device", deleted: true },
       ]);
     });
 
