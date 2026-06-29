@@ -50,13 +50,17 @@ function compaction(content: string, idx: number): UIMessage {
   };
 }
 
-function renderList(messages: UIMessage[], branchNav?: BranchNavState) {
+function renderList(
+  messages: UIMessage[],
+  branchNav?: BranchNavState,
+  isAssistantResponding = false,
+) {
   return render(
     <MessageList
       messages={messages}
       queuedMessages={[]}
       onRemoveQueued={vi.fn()}
-      isAssistantResponding={false}
+      isAssistantResponding={isAssistantResponding}
       handleRetry={vi.fn()}
       handleEdit={vi.fn()}
       showTimestamps={false}
@@ -124,6 +128,36 @@ describe("MessageList branch navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: /previous version/i }));
 
     expect(onSwitch).toHaveBeenCalledExactlyOnceWith("A");
+  });
+
+  it("disables both arrows while the assistant is responding", () => {
+    // Switching siblings mid-stream aborts and truncates the streaming fork, so
+    // the arrows are gated on isAssistantResponding (like edit/retry). The ‹ n/m ›
+    // position still renders so the user can see where they are.
+    const onSwitch = vi.fn();
+
+    renderList(
+      [user("hi", 0), model("yo", 1)],
+      {
+        points: [{ anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 }],
+        onSwitch,
+      },
+      true,
+    );
+
+    const prev = screen.getByRole("button", {
+      name: /previous version/i,
+    }) as HTMLButtonElement;
+    const next = screen.getByRole("button", {
+      name: /next version/i,
+    }) as HTMLButtonElement;
+
+    expect(prev.disabled).toBe(true);
+    expect(next.disabled).toBe(true);
+    expect(screen.getByTestId("branch-nav-position").textContent).toBe("2 / 2");
+
+    fireEvent.click(prev);
+    expect(onSwitch).not.toHaveBeenCalled();
   });
 
   it("renders branch arrows even when the anchor message is empty", () => {

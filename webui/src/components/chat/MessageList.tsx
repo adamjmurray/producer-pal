@@ -199,7 +199,11 @@ function MessageListRow({
 }: MessageListRowProps) {
   const { message, originalIdx } = row;
   const branchNav = branch && (
-    <BranchNavRow point={branch} onSwitch={onSwitch} />
+    <BranchNavRow
+      point={branch}
+      onSwitch={onSwitch}
+      disabled={row.isAssistantResponding}
+    />
   );
 
   if (!hasContent(message)) return branchNav ?? null;
@@ -287,18 +291,25 @@ function useBranchSwitch(
 /**
  * Full-width row holding the ‹ n/m › sibling-branch arrows, shown under the
  * message a fork diverged at. An arrow is omitted (disabled) at the ends of the
- * set so there is never an out-of-range switch.
+ * set so there is never an out-of-range switch. Both arrows are disabled while
+ * the assistant is responding: switching siblings tears down and aborts the
+ * in-flight stream (clearConversation → stopResponse), so navigating mid-stream
+ * would silently truncate the streaming fork. Mirrors the edit/retry buttons,
+ * which are likewise gated on `isAssistantResponding`.
  * @param props - Component props
  * @param props.point - The branch point to render arrows for
  * @param props.onSwitch - Switches to a sibling (remembers scroll target + loads it)
+ * @param props.disabled - Whether to disable both arrows (assistant responding)
  * @returns The branch-nav row
  */
 function BranchNavRow({
   point,
   onSwitch,
+  disabled,
 }: {
   point: BranchPoint;
   onSwitch: (siblingId: string, anchorIndex: number) => void;
+  disabled: boolean;
 }) {
   const prevSibling = point.siblingIds[point.currentIndex - 1];
   const nextSibling = point.siblingIds[point.currentIndex + 1];
@@ -312,12 +323,12 @@ function BranchNavRow({
         current={point.currentIndex + 1}
         total={point.siblingIds.length}
         onPrev={
-          prevSibling != null
+          !disabled && prevSibling != null
             ? () => onSwitch(prevSibling, point.anchorIndex)
             : undefined
         }
         onNext={
-          nextSibling != null
+          !disabled && nextSibling != null
             ? () => onSwitch(nextSibling, point.anchorIndex)
             : undefined
         }
