@@ -424,6 +424,28 @@ describe("useVoiceSession connection drop", () => {
     expect(result.current.status).toBe("idle");
     expect(result.current.error).toBeNull();
   });
+
+  it("clears the rate-limit banner when the connection drops mid-rate-limit", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Please try again in 3s",
+    );
+    expect(result.current.rateLimitedUntil).not.toBeNull();
+
+    // Network drop while the rate-limit countdown is showing: cleanup() must
+    // clear it so the banner + dead "Retry now" don't linger under the
+    // "Connection lost" message.
+    await act(async () => {
+      fireTransportDisconnect();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(result.current.error).toMatch(/connection lost/i);
+    expect(result.current.rateLimitedUntil).toBeNull();
+  });
 });
 
 describe("useVoiceSession transport event handling", () => {
@@ -507,8 +529,9 @@ describe("useVoiceSession transport event handling", () => {
     expect(result.current.rateLimitedUntil).toBeNull();
   });
 
-  it("rate_limit_exceeded without a 'try again in Xs' pattern keeps rateLimitedUntil=null", async () => {
+  it("rate_limit_exceeded without a 'try again in Xs' pattern still sets a fallback countdown", async () => {
     const { result, session } = await connectAndGetSession();
+    const before = Date.now();
 
     await emitResponseFailure(
       session,
@@ -516,8 +539,11 @@ describe("useVoiceSession transport event handling", () => {
       "Rate limit exceeded (no retry hint).",
     );
 
+    // A rate limit with no parseable wait must still arm the retry path rather
+    // than leaving a dead error banner with no way forward.
     expect(result.current.error).toMatch(/rate limit/i);
-    expect(result.current.rateLimitedUntil).toBeNull();
+    expect(result.current.rateLimitedUntil).not.toBeNull();
+    expect(result.current.rateLimitedUntil!).toBeGreaterThan(before);
   });
 
   it("a successful response.done clears a prior rate-limit indicator", async () => {

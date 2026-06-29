@@ -3,8 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
+import {
+  type ChatAdapter,
+  type ChatClient,
+  type MessageOverrides,
+  type PendingForkRef,
+} from "#webui/hooks/chat/use-chat-types";
 import { type UIMessage } from "#webui/types/messages";
+import { type Provider } from "#webui/types/settings";
 
 /**
  * Generic streaming handler for chat messages.
@@ -76,4 +82,168 @@ export function filterOverrides(
   }
 
   return undefined;
+}
+
+/**
+ * Show error when API key is not configured. Stashes the user message to
+ * pendingHistoryRef so retry/edit can recover after the user fixes settings.
+ * @param adapter - Chat adapter for formatting
+ * @param userMessage - The user's message text
+ * @param setMessages - State setter for messages
+ * @param pendingHistoryRef - Ref to stash the user message entry for retry/edit
+ * @param pendingHistoryRef.current - The stashed history (set by this function)
+ */
+export function showMissingApiKeyError<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+>(
+  adapter: ChatAdapter<TClient, TMessage, TConfig>,
+  userMessage: string,
+  setMessages: (msgs: UIMessage[]) => void,
+  pendingHistoryRef: { current: TMessage[] | null },
+): void {
+  const entry = adapter.createUserMessage(userMessage);
+
+  pendingHistoryRef.current = [entry];
+  setMessages(
+    adapter.createErrorMessage(
+      new Error("No API key configured. Please add your API key in Settings."),
+      [entry],
+    ),
+  );
+}
+
+/** Dependencies for {@link recoverFromChatError}. */
+export interface RecoverFromChatErrorArgs<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+> {
+  error: unknown;
+  adapter: ChatAdapter<TClient, TMessage, TConfig>;
+  clientRef: { current: TClient | null };
+  pendingHistoryRef: { current: TMessage[] | null };
+  /** The user message stashed before this turn, or null (fork passes none). */
+  stashed: TMessage | null;
+  setMessages: (msgs: UIMessage[]) => void;
+  autoSaveRef?: { current: (() => void) | null };
+  pendingForkRef?: PendingForkRef;
+}
+
+/**
+ * Render a chat turn failure and recover transient state. Surfaces the error in
+ * the message list (against the live client history, or the restored-but-not-
+ * yet-sent history when init threw before a client existed), stashes a user
+ * message that never reached the client for retry/edit, autosaves when a client
+ * exists, and otherwise drops any pending-fork signal so it can't linger and
+ * mis-branch a later, unrelated save.
+ *
+ * @param args - Error and the chat refs/adapter needed to recover
+ */
+export function recoverFromChatError<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+>(args: RecoverFromChatErrorArgs<TClient, TMessage, TConfig>): void {
+  const {
+    error,
+    adapter,
+    clientRef,
+    pendingHistoryRef,
+    stashed,
+    setMessages,
+    autoSaveRef,
+    pendingForkRef,
+  } = args;
+
+  // Fall back to the restored-but-not-yet-sent history when no client was built
+  // (init threw early, e.g. MCP down) so a failed fork/send renders the existing
+  // conversation instead of an empty view. Copy it — createErrorMessage mutates
+  // the array, and pendingHistoryRef must stay clean for a later send to
+  // bootstrap from.
+  const baseHistory =
+    clientRef.current?.chatHistory ??
+    (pendingHistoryRef.current ? [...pendingHistoryRef.current] : []);
+  // When init fails before client.sendMessage, the user message never reached
+  // chatHistory. Surface it in the error UI and stash it for retry/edit so the
+  // user isn't stranded if there's no usable client.
+  const includeStashed = stashed && !baseHistory.includes(stashed);
+  const errorHistory = includeStashed ? [...baseHistory, stashed] : baseHistory;
+
+  if (!clientRef.current && includeStashed) {
+    pendingHistoryRef.current = [stashed];
+  }
+
+  setMessages(adapter.createErrorMessage(error, errorHistory));
+
+  if (clientRef.current) {
+    // The includeStashed path built errorHistory as a fresh array
+    // ([...chatHistory, stashedUserMessage]) and createErrorMessage then
+    // appended the error to it. This is the init-failure case: the client exists
+    // but sendMessage never ran, so its chatHistory is still empty and has
+    // neither the user message nor the error. Assign the whole array — pushing
+    // only the error (the previous behavior) persisted the error without the
+    // user message that prompted it, so a reload showed a dangling error.
+    // Reassigning is safe: sendMessage and compact() read chatHistory fresh.
+    if (errorHistory !== clientRef.current.chatHistory) {
+      clientRef.current.chatHistory = errorHistory;
+    }
+
+    autoSaveRef?.current?.();
+  } else if (pendingForkRef) {
+    // No client means init threw before one was built (e.g. MCP down), so the
+    // recovery autosave above — the only consumer of a pending fork signal —
+    // never runs. Drop the signal here or it lingers and mis-branches the next,
+    // unrelated save into a spurious sibling.
+    pendingForkRef.current = null;
+  }
+}
+
+/** Effective connection used to (re)build a chat client at init time. */
+export interface InitConnection {
+  provider: Provider;
+  model: string;
+  apiKey: string;
+  extraParams: Record<string, unknown>;
+}
+
+/**
+ * Resolve the provider/model/connection to (re)build a client with.
+ *
+ * Honors the conversation's locked provider+model when continuing a restored
+ * conversation (locked values are non-null), falling back to current settings
+ * for a brand-new conversation. The key + base URL always come from the user's
+ * *current* settings for the effective provider — no API key is ever persisted
+ * with the conversation.
+ *
+ * @param locked - Conversation's locked provider/model (null fields if unset)
+ * @param locked.activeProvider - Locked provider, or null when not locked
+ * @param locked.activeModel - Locked model, or null when not locked
+ * @param fallback - Current-settings provider/model (used when not locked)
+ * @param fallback.provider - Current-settings provider
+ * @param fallback.model - Current-settings model
+ * @param resolveConnection - Resolves a provider's current key + base URL
+ * @param extraParams - Base extra params to merge the connection into
+ * @returns Effective provider, model, key, and merged extra params
+ */
+export function resolveInitConnection(
+  locked: { activeProvider: Provider | null; activeModel: string | null },
+  fallback: { provider: Provider; model: string },
+  resolveConnection: (provider: Provider) => {
+    apiKey: string;
+    baseUrl?: string;
+  },
+  extraParams?: Record<string, unknown>,
+): InitConnection {
+  const provider = locked.activeProvider ?? fallback.provider;
+  const model = locked.activeModel ?? fallback.model;
+  const { apiKey, baseUrl } = resolveConnection(provider);
+
+  return {
+    provider,
+    model,
+    apiKey,
+    extraParams: { ...extraParams, provider, apiKey, baseUrl },
+  };
 }

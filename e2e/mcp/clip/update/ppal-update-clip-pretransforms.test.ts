@@ -24,8 +24,8 @@ import {
   setupMcpTestContext,
   sleep,
   type UpdateClipResult,
-} from "../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
+import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, readClipNotes } = createClipTransformHelpers(ctx);

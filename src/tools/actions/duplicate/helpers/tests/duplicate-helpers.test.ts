@@ -389,6 +389,30 @@ describe("duplicate-helpers", () => {
       vi.clearAllMocks();
     });
 
+    it("throws error when source clip slot does not exist", () => {
+      (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+        sourceExists: false,
+        sourceHasClip: false,
+        destExists: true,
+      });
+
+      expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
+        "duplicate failed: source clip slot at track 0, scene 0 does not exist",
+      );
+    });
+
+    it("throws error when source clip slot has no clip", () => {
+      (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
+        sourceExists: true,
+        sourceHasClip: false,
+        destExists: true,
+      });
+
+      expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
+        "duplicate failed: no clip in source clip slot at track 0, scene 0",
+      );
+    });
+
     it("throws error when destination clip slot does not exist", () => {
       // Mock source clip slot exists with clip
       (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({

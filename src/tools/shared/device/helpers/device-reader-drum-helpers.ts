@@ -2,9 +2,9 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
   buildChainInfo,
   hasInstrumentInDevices,

@@ -9,6 +9,7 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import {
   MockChatClient,
   createDefaultProps,
@@ -21,7 +22,7 @@ import {
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
   const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
 
-  return streamingHelpersMockBody();
+  return await streamingHelpersMockBody();
 });
 
 // Shrink retry backoff so tests don't sit through real seconds-long delays.
@@ -303,6 +304,32 @@ describe("useChat", () => {
       expect(mockAdapter.formatMessages).toHaveBeenCalled();
     });
 
+    it("signals a fork anchored under the assistant response", async () => {
+      const pendingForkRef = { current: null as PendingFork | null };
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, pendingForkRef }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("First message");
+      });
+
+      const userMessageIndex = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      await act(async () => {
+        await result.current.handleRetry(userMessageIndex);
+      });
+
+      // Retry branches like an edit, but the ‹ n/m › arrows anchor under the
+      // assistant response (user index + 1) — the prompt is unchanged across
+      // retries, only the response varies.
+      expect(pendingForkRef.current).toStrictEqual({
+        anchorIndex: userMessageIndex + 1,
+      });
+    });
+
     it("slices history to exclude retry point and everything after", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
@@ -461,6 +488,55 @@ describe("useChat", () => {
       expect(result.current.activeProvider).toBe("gemini");
     });
 
+    it("continues a restored conversation on its locked provider+model, using the current key for that provider", async () => {
+      // Current settings select gemini/test-model, but the restored conversation
+      // is locked to anthropic/claude-x. Continuing it must rebuild the client
+      // for the locked provider — with the current anthropic key — and must NOT
+      // overwrite the lock with the currently-selected provider/model.
+      const resolveConnection = vi.fn((provider: string) => ({
+        apiKey: provider === "anthropic" ? "anthropic-key" : "test-key",
+        baseUrl: undefined as string | undefined,
+      }));
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, resolveConnection }),
+      );
+
+      await act(async () => {
+        result.current.restoreChatHistory([{ role: "user", content: "hi" }], {
+          model: "claude-x",
+          provider: "anthropic",
+          thinking: null,
+          temperature: null,
+          showThoughts: null,
+          smallModelMode: null,
+        });
+      });
+
+      await act(async () => {
+        await result.current.handleSend("continue");
+      });
+
+      expect(resolveConnection).toHaveBeenCalledWith("anthropic");
+      expect(mockAdapter.buildConfig).toHaveBeenCalledWith(
+        "claude-x",
+        1.0,
+        "Default",
+        {},
+        expect.anything(),
+        expect.objectContaining({
+          provider: "anthropic",
+          apiKey: "anthropic-key",
+        }),
+      );
+      expect(mockAdapter.createClient).toHaveBeenCalledWith(
+        "anthropic-key",
+        expect.anything(),
+      );
+      // The lock survives the send instead of switching to current settings.
+      expect(result.current.activeModel).toBe("claude-x");
+      expect(result.current.activeProvider).toBe("anthropic");
+    });
+
     it("resets active state", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
@@ -493,14 +569,15 @@ describe("useChat", () => {
         await result.current.handleSend("New message");
       });
 
-      // buildConfig should have been called with the pending history
+      // buildConfig should have been called with the pending history, and with
+      // the resolved connection for the (unlocked → current) provider.
       expect(mockAdapter.buildConfig).toHaveBeenCalledWith(
         "test-model",
         1.0,
         "Default",
         {},
         history,
-        undefined,
+        { provider: "gemini", apiKey: "test-key", baseUrl: undefined },
       );
     });
 

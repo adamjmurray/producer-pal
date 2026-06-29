@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
@@ -22,7 +23,7 @@ import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
 import { RenderErrorFallback, SafeMarkdown } from "./message-list-helpers";
 
-interface MessageRowProps {
+export interface MessageRowProps {
   message: UIMessage;
   originalIdx: number;
   messages: UIMessage[];
@@ -75,7 +76,10 @@ function UserRow({
   return (
     <>
       {timestamp}
-      <div className="text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-blue-700/40 min-w-0 rounded-lg py-0.5 px-3">
+      <div
+        className="text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-blue-700/40 min-w-0 rounded-lg py-0.5 px-3"
+        data-message-index={originalIdx}
+      >
         {isEditing ? (
           <UserMessageEditor
             text={editText}
@@ -126,6 +130,13 @@ function AssistantRow({
   const previousUserMessageIdx = canRetry
     ? findPreviousUserMessageIndex(messages, originalIdx)
     : -1;
+  // Compaction is gated to the last assistant message: "compact up to here" only
+  // ever means "compact everything." Compacting from an earlier message (the
+  // small-model recovery flow that also discards the tail) is deferred, because
+  // keeping prior turns visible (the current behavior) conflicts with discarding
+  // the tail.
+  const isLastAssistantMessage =
+    messages.findLastIndex((m) => m.role === "model") === originalIdx;
   const timestamp = renderTimestamp(message.timestamp, showTimestamps);
   const prevModelUsage = getPrevModelUsage(messages, originalIdx);
 
@@ -134,6 +145,7 @@ function AssistantRow({
       <div
         className="col-span-2 bg-zinc-50 dark:bg-zinc-800 shadow-sm dark:shadow-white/10 dark:border dark:border-zinc-700 min-w-0 rounded-lg py-0.5 px-3"
         data-testid="assistant-message-bubble"
+        data-message-index={originalIdx}
       >
         <ErrorBoundary fallback={<RenderErrorFallback />}>
           <AssistantBubble
@@ -149,7 +161,9 @@ function AssistantRow({
         timestamp={timestamp}
         showRetry={canRetry && previousUserMessageIdx >= 0}
         onRetry={() => void handleRetry(previousUserMessageIdx)}
-        showCompact={canRetry && handleCompact != null}
+        showCompact={
+          canRetry && handleCompact != null && isLastAssistantMessage
+        }
         onCompact={() => {
           if (handleCompact) void handleCompact(originalIdx);
         }}
@@ -288,8 +302,10 @@ function TokenUsageLabel({
   return (
     <div className="text-xs text-zinc-400 dark:text-zinc-500 pb-1 text-right">
       tokens: {compactNumber(usage.inputTokens ?? 0)}
-      {newContent != null && ` (${compactNumber(newContent)} new)`} →{" "}
-      {compactNumber(usage.outputTokens ?? 0)}
+      {newContent != null && ` (${compactNumber(newContent)} new)`}
+      {(usage.cacheReadTokens ?? 0) > 0 &&
+        ` (${compactNumber(usage.cacheReadTokens ?? 0)} cached)`}{" "}
+      → {compactNumber(usage.outputTokens ?? 0)}
       {(usage.reasoningTokens ?? 0) > 0 &&
         ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
     </div>

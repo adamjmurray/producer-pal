@@ -47,11 +47,15 @@ export class MockChatClient implements ChatClient<TestMessage> {
    * Simulates sending a message and streaming responses
    * @param message - User message to send
    * @param signal - Abort signal
+   * @param _overrides - Unused overrides parameter
+   * @param shouldInterrupt - Optional interrupt callback (invoked for coverage)
    * @yields Chat history snapshots
    */
   async *sendMessage(
     message: string,
     signal: AbortSignal,
+    _overrides?: unknown,
+    shouldInterrupt?: () => boolean,
   ): AsyncIterable<TestMessage[]> {
     if (signal.aborted) {
       throw new Error("AbortError");
@@ -59,6 +63,8 @@ export class MockChatClient implements ChatClient<TestMessage> {
 
     this.chatHistory.push({ role: "user", content: message });
     yield [...this.chatHistory];
+
+    shouldInterrupt?.();
 
     this.chatHistory.push({
       role: "assistant",
@@ -154,6 +160,12 @@ export function createDefaultProps(
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: vi.fn(),
+    // Mirrors the default `apiKey` prop for the active provider; tests that
+    // exercise the locked-provider path override this with a per-provider map.
+    resolveConnection: vi.fn((_provider: string) => ({
+      apiKey: "test-key",
+      baseUrl: undefined as string | undefined,
+    })),
     adapter,
   };
 }
@@ -172,8 +184,19 @@ export const RESTORED_HISTORY: TestMessage[] = [
  *
  * @returns The mocked streaming-helpers module exports
  */
-export function streamingHelpersMockBody(): Partial<typeof StreamingHelpers> {
+export async function streamingHelpersMockBody(): Promise<
+  Partial<typeof StreamingHelpers>
+> {
+  const actual = await vi.importActual<typeof StreamingHelpers>(
+    "#webui/hooks/chat/helpers/streaming-helpers",
+  );
+
   return {
+    // Pure helpers (no streaming side effects) — keep the real implementations
+    // so client (re)init still resolves the locked provider/model correctly and
+    // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
+    resolveInitConnection: actual.resolveInitConnection,
+    recoverFromChatError: actual.recoverFromChatError,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
         onUpdate(formatter(chatHistory));
@@ -183,6 +206,17 @@ export function streamingHelpersMockBody(): Partial<typeof StreamingHelpers> {
     }),
     validateMcpConnection: vi.fn(),
     filterOverrides: vi.fn((overrides) => overrides),
+    showMissingApiKeyError: vi.fn(
+      (adapter, msg, setMessages, pendingHistoryRef) => {
+        const entry = adapter.createUserMessage(msg);
+        const error = new Error(
+          "No API key configured. Please add your API key in Settings.",
+        );
+
+        pendingHistoryRef.current = [entry];
+        setMessages(adapter.createErrorMessage(error, [entry]));
+      },
+    ) as typeof StreamingHelpers.showMissingApiKeyError,
   };
 }
 

@@ -249,7 +249,7 @@ describe("VoiceApp", () => {
     renderVoiceApp();
 
     expect(screen.getByText(/rate limit exceeded/i)).toBeDefined();
-    const retryBtn = screen.getByRole("button", { name: "Retry" });
+    const retryBtn = screen.getByRole("button", { name: "Retry now" });
 
     expect((retryBtn as HTMLButtonElement).disabled).toBe(false);
   });
@@ -266,10 +266,10 @@ describe("VoiceApp", () => {
     renderVoiceApp();
 
     expect(
-      (screen.getByRole("button", { name: "Retry" }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: "Retry now" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
-    expect(screen.getByText(/retry available in/i)).toBeDefined();
+    expect(screen.getByText(/auto-retrying in/i)).toBeDefined();
   });
 
   it("clicking Retry while ready calls retryResponse()", () => {
@@ -283,7 +283,7 @@ describe("VoiceApp", () => {
 
     renderVoiceApp();
 
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry now" }));
     expect(session.retryResponse).toHaveBeenCalledOnce();
   });
 
@@ -302,7 +302,7 @@ describe("VoiceApp", () => {
     try {
       renderVoiceApp();
       const retryBtn = screen.getByRole("button", {
-        name: "Retry",
+        name: "Retry now",
       }) as HTMLButtonElement;
 
       expect(retryBtn.disabled).toBe(true);

@@ -4,9 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type TokenUsage } from "#webui/chat/sdk/types";
-import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
+import {
+  type ConversationLockedSettings,
+  type PendingFork,
+} from "#webui/hooks/chat/use-chat-types";
 import { getModelName } from "#webui/lib/config";
-import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { deriveForkParentId } from "#webui/lib/conversation-branch-helpers";
+import {
+  type ConversationRecord,
+  loadConversation,
+} from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
 
 /** Mutable metadata for the active conversation (excludes ID which is tracked separately) */
@@ -119,7 +126,95 @@ export function buildSaveRecord(
     sessionType: "text",
     messages: chatHistory as ConversationRecord["messages"],
     voiceHistory: null,
+    // Carry branch linkage across updates. A fork's later saves (e.g. the
+    // post-response autosave) route through here too; without this they would
+    // strip the fields that make it a sibling, so its ‹ n/m › arrows vanish and
+    // the list stops collapsing it into its family.
+    ...(existing?.forkParentId != null && {
+      forkParentId: existing.forkParentId,
+    }),
+    ...(existing?.forkedAtIndex != null && {
+      forkedAtIndex: existing.forkedAtIndex,
+    }),
   };
+}
+
+/**
+ * Build a ConversationRecord for a new branch forked from an earlier turn. It is
+ * a fresh record (new id, own createdAt, no inherited title/bookmark) carrying
+ * the forked chat history plus the parent-pointer linkage. Conversation settings
+ * (model/provider/etc.) are inherited from the active refs.
+ * @param refs - Active ref values to inherit settings from
+ * @param chatHistory - The forked chat history (shared prefix + the new turn)
+ * @param fork - Linkage for the new branch
+ * @param fork.newId - Freshly allocated id for the branch record
+ * @param fork.parentId - Trunk id the branch attaches to (its `forkParentId`)
+ * @param fork.anchorIndex - UI message index the branch arrows sit under
+ * @returns Record ready for saveConversation
+ */
+export function buildForkedRecord(
+  refs: ActiveRefs,
+  chatHistory: unknown[],
+  fork: { newId: string; parentId: string; anchorIndex: number },
+): ConversationRecord {
+  const base = buildSaveRecord(
+    {
+      ...refs,
+      id: fork.newId,
+      createdAt: null,
+      title: null,
+      bookmarked: false,
+    },
+    undefined,
+    chatHistory,
+  );
+
+  return {
+    ...base,
+    forkParentId: fork.parentId,
+    forkedAtIndex: fork.anchorIndex,
+  };
+}
+
+/**
+ * Resolve the record to persist for the current save: a new branch when a fork
+ * is pending (and there is a saved source to diverge from), otherwise a normal
+ * create/update of the active record.
+ * @param args - Save inputs
+ * @param args.id - Id to save under (freshly minted for a fork or new chat)
+ * @param args.reuseId - The active conversation id, or null for a brand-new chat
+ * @param args.fork - Pending fork signal, or null for a normal save
+ * @param args.refs - Active refs supplying conversation settings
+ * @param args.chatHistory - Current chat history to persist
+ * @param args.updatedAt - Explicit updatedAt for a normal save (ignored for forks)
+ * @returns The conversation record to save
+ */
+export async function buildConversationSaveRecord(args: {
+  id: string;
+  reuseId: string | null;
+  fork: PendingFork | null;
+  refs: ActiveRefs;
+  chatHistory: unknown[];
+  updatedAt: number | undefined;
+}): Promise<ConversationRecord> {
+  const { id, reuseId, fork, refs, chatHistory, updatedAt } = args;
+
+  if (fork != null && reuseId != null) {
+    const source = await loadConversation(reuseId);
+    const parentId = source
+      ? deriveForkParentId(source, fork.anchorIndex)
+      : reuseId;
+
+    return buildForkedRecord(refs, chatHistory, {
+      newId: id,
+      parentId,
+      anchorIndex: fork.anchorIndex,
+    });
+  }
+
+  const existing = reuseId == null ? undefined : await loadConversation(id);
+
+  return buildSaveRecord(refs, existing, chatHistory, updatedAt);
 }
 
 /**
@@ -133,6 +228,7 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
   let inputTokens = 0;
   let outputTokens = 0;
   let reasoningTokens = 0;
+  let cacheReadTokens = 0;
 
   for (const msg of messages) {
     if (msg.role !== "assistant" || !msg.usage) continue;
@@ -141,6 +237,7 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
     inputTokens += msg.usage.inputTokens ?? 0;
     outputTokens += msg.usage.outputTokens ?? 0;
     reasoningTokens += msg.usage.reasoningTokens ?? 0;
+    cacheReadTokens += msg.usage.cacheReadTokens ?? 0;
   }
 
   if (!hasUsage) return null;
@@ -149,6 +246,7 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
     inputTokens,
     outputTokens,
     ...(reasoningTokens > 0 && { reasoningTokens }),
+    ...(cacheReadTokens > 0 && { cacheReadTokens }),
   };
 }
 
@@ -196,4 +294,25 @@ export function deriveTitle(
   }
 
   return firstUserLine || null;
+}
+
+/**
+ * Chain `work` after the ref's current promise and store the new tail, so
+ * successive conversation saves run strictly in order. This keeps a later
+ * save's read-back from racing ahead of an earlier save's write (which would
+ * drop a freshly-forked record's branch linkage).
+ * @param ref - Ref holding the in-flight save chain
+ * @param ref.current - The current tail promise
+ * @param work - Save work to run once prior saves settle
+ * @returns The new tail promise
+ */
+export function chainSave(
+  ref: { current: Promise<void> },
+  work: () => Promise<void>,
+): Promise<void> {
+  const next = ref.current.then(work);
+
+  ref.current = next;
+
+  return next;
 }

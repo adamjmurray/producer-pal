@@ -333,6 +333,53 @@ describe("filterSchemaForSmallModel", () => {
       filterSchemaForSmallModel(schema, [], {}, { include: ["a", "b"] }),
     ).toThrow("at least one must remain");
   });
+
+  it("should skip excludeEnumValues for a param that is not present", () => {
+    const schema = {
+      include: z.array(z.enum(["a", "b", "c"])).default([]),
+    };
+
+    // "missing" isn't a key in the schema, so it is silently skipped while the
+    // present "include" param is still filtered as usual.
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      [],
+      {},
+      { missing: ["x"], include: ["b"] },
+    );
+
+    expect(Object.keys(filtered)).toStrictEqual(["include"]);
+    expect(getEnumOptions(filtered.include)).toStrictEqual(["a", "c"]);
+  });
+
+  it("should skip excludeEnumValues for a param removed by excludeParams", () => {
+    const schema = {
+      include: z.array(z.enum(["a", "b", "c"])).default([]),
+      other: z.string(),
+    };
+
+    // "include" is excluded entirely, so the enum exclusion targeting it has no
+    // remaining key to act on and is skipped without throwing.
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      ["include"],
+      {},
+      { include: ["b"] },
+    );
+
+    expect(Object.keys(filtered)).toStrictEqual(["other"]);
+  });
+
+  it("should throw when the default wraps an unsupported inner type", () => {
+    const schema = {
+      // ZodDefault > ZodString — a default at the top, but no enum inside.
+      kind: z.string().default("x"),
+    };
+
+    expect(() =>
+      filterSchemaForSmallModel(schema, [], {}, { kind: ["x"] }),
+    ).toThrow("unsupported schema shape");
+  });
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Zod v4 internal type access for inspecting rebuilt schemas */

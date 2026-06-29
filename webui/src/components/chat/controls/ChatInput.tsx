@@ -9,18 +9,30 @@ import { ThinkingToggle, type ThinkingToggleProps } from "./ThinkingToggle";
 
 interface ChatInputProps extends ThinkingToggleProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  onEnqueue: (text: string, overrides?: MessageOverrides) => void;
   isAssistantResponding: boolean;
   /** Conversation ended with an error — user must retry or edit to continue */
   hasError: boolean;
+  /**
+   * A manual compaction is in progress. compact() reassigns chatHistory
+   * mid-flight, and unlike a streaming response it is NOT a queueable state
+   * (nothing drains the queue when it ends), so the input is disabled outright
+   * until it completes — otherwise a send is silently dropped by handleSend's
+   * compaction guard, losing the typed message.
+   */
+  isCompacting?: boolean;
   onStop: () => void;
 }
 
 /**
- * Input component for chat messages
+ * Input component for chat messages.
+ * When the AI is responding, messages are queued instead of sent directly.
  * @param props - Component props
- * @param props.handleSend - Callback to send message
+ * @param props.handleSend - Callback to send message directly
+ * @param props.onEnqueue - Callback to queue message while AI is responding
  * @param props.isAssistantResponding - Whether assistant is currently responding
  * @param props.hasError - Whether conversation ended with an error
+ * @param props.isCompacting - Whether a manual compaction is in progress
  * @param props.onStop - Callback to stop assistant response
  * @param props.thinking - Current thinking mode
  * @param props.onThinkingChange - Callback for thinking change
@@ -28,29 +40,39 @@ interface ChatInputProps extends ThinkingToggleProps {
  */
 export function ChatInput({
   handleSend,
+  onEnqueue,
   isAssistantResponding,
   hasError,
+  isCompacting,
   onStop,
   thinking,
   onThinkingChange,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
-  const sendDisabled = isAssistantResponding || hasError || !input.trim();
+  const disabled = hasError || isCompacting === true;
+  // Compaction is genuinely non-cancelable (no abort path), so don't offer Stop
+  // while it runs — it would be a no-op against the in-flight summarize().
+  const canStop = isAssistantResponding && isCompacting !== true;
+
+  const submitMessage = () => {
+    if (!input.trim() || disabled) return;
+
+    const overrides: MessageOverrides = { thinking };
+
+    if (isAssistantResponding) {
+      onEnqueue(input, overrides);
+    } else {
+      void handleSend(input, overrides);
+    }
+
+    setInput("");
+  };
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-
-      if (!sendDisabled) {
-        void handleSend(input, { thinking });
-        setInput("");
-      }
+      submitMessage();
     }
-  };
-
-  const handleSendClick = () => {
-    void handleSend(input, { thinking });
-    setInput("");
   };
 
   return (
@@ -64,14 +86,16 @@ export function ChatInput({
             placeholder={
               hasError
                 ? "Retry or edit a message to continue..."
-                : "Type a message... (Shift+Enter for new line)"
+                : isCompacting
+                  ? "Compacting…"
+                  : "Type a message... (Shift+Enter for new line)"
             }
-            disabled={hasError}
+            disabled={disabled}
             className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500 disabled:opacity-50"
             rows={2}
           />
           <div className="flex flex-col gap-2">
-            {isAssistantResponding ? (
+            {canStop ? (
               <button
                 onClick={onStop}
                 className="px-4 py-1 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700"
@@ -85,11 +109,11 @@ export function ChatInput({
               />
             )}
             <button
-              onClick={handleSendClick}
-              disabled={sendDisabled}
+              onClick={submitMessage}
+              disabled={disabled || !input.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
             >
-              {isAssistantResponding ? "..." : "Send"}
+              {isAssistantResponding ? "Queue" : "Send"}
             </button>
           </div>
         </div>

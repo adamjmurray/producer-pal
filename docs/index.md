@@ -151,7 +151,7 @@ features:
         src="https://www.youtube.com/embed/_pB3qESiIhw?si=6vrojGs5YENHtHDS"
         title="Ableton Live Project Management with Producer Pal"
         frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; compute-pressure"
         referrerpolicy="strict-origin-when-cross-origin"
         allowfullscreen>
       </iframe>
@@ -164,7 +164,7 @@ features:
         src="https://www.youtube.com/embed/_p6Qll5Mqcs"
         title="Claude Desktop vs Ableton Live in 2026"
         frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; compute-pressure"
         referrerpolicy="strict-origin-when-cross-origin"
         allowfullscreen>
       </iframe>
@@ -177,7 +177,7 @@ features:
         src="https://www.youtube.com/embed/2T_w5Roe6jY"
         title="Transforming MIDI with AI in Ableton via Producer Pal"
         frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; compute-pressure"
         referrerpolicy="strict-origin-when-cross-origin"
         allowfullscreen>
       </iframe>
@@ -190,7 +190,7 @@ features:
         src="https://www.youtube.com/embed/iz2dyftiSFU"
         title="Talking to Ableton Live with AI (via OpenAI Realtime 2)"
         frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; compute-pressure"
         referrerpolicy="strict-origin-when-cross-origin"
         allowfullscreen>
       </iframe>

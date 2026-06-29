@@ -31,6 +31,10 @@ export interface SeedConversation {
   modelLabel: string | null;
   sessionType: "text" | "voice";
   messages: Array<{ role: "user" | "assistant"; content: string }>;
+  /** Branch linkage (edit/retry forks); mirrors ConversationRecord. Omitted on
+   * non-forked records. */
+  forkParentId?: string;
+  forkedAtIndex?: number;
 }
 
 /**

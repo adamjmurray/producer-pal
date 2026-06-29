@@ -409,6 +409,101 @@ describe("updateDevice - param value conversion", () => {
     });
   });
 
+  describe("pan param with non-standard scale labels", () => {
+    it("falls back to a 50 pan scale when neither min nor max label is parseable", () => {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("pan-param") },
+      });
+      const param = registerMockObject("pan-param", {
+        properties: {
+          name: "Pan",
+          original_name: "Pan",
+          is_quantized: 0,
+          value: 0,
+          min: -1,
+          max: 1,
+        },
+        methods: {
+          // Current label "C" makes this a pan param, but the min/max labels
+          // read "0L"/"0R" (extractMaxPanValue → 0, falsy), forcing the
+          // `|| extractMaxPanValue(minLabel) || 50` chain down to the 50 default.
+          str_for_value: (v: unknown) => {
+            const n = Number(v);
+
+            if (n === 1) return "0R";
+            if (n === -1) return "0L";
+
+            return "C";
+          },
+        },
+      });
+
+      updateDevice({ ids: "dev1", params: [{ name: "Pan", value: "25R" }] });
+
+      // normalizePan("25R", 50) = 0.5 → internal ((0.5+1)/2)*2 - 1 = 0.5
+      expect(expectValueSet(param)).toBeCloseTo(0.5, 5);
+    });
+  });
+
+  describe("division param with numeric str_for_value labels", () => {
+    it("matches a division option when str_for_value returns a number", () => {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("div-param") },
+      });
+      const param = registerMockObject("div-param", {
+        properties: {
+          name: "Div",
+          original_name: "Div",
+          is_quantized: 0,
+          value: 1,
+          min: 0,
+          max: 4,
+        },
+        methods: {
+          // min label "1/16" routes to the division branch; other values return
+          // raw NUMBERs (not strings), exercising the number→String coercion in
+          // findDivisionRawValue.
+          str_for_value: (v: unknown) => (Number(v) === 0 ? "1/16" : Number(v)),
+        },
+      });
+
+      updateDevice({ ids: "dev1", params: [{ name: "Div", value: "2" }] });
+
+      expect(param.set).toHaveBeenCalledWith("value", 2);
+    });
+  });
+
+  describe("numeric param with zero raw range", () => {
+    it("uses the flat tolerance and sets the display value directly", () => {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("fixed-param") },
+      });
+      const param = registerMockObject("fixed-param", {
+        properties: {
+          name: "Fixed",
+          original_name: "Fixed",
+          is_quantized: 0,
+          value: 5,
+          min: 5,
+          max: 5, // min === max → raw range 0 → tolerance falls back to 0.01
+        },
+        methods: {
+          str_for_value: (v: unknown) => `${Number(v)} Hz`,
+        },
+      });
+
+      updateDevice({ ids: "dev1", params: [{ name: "Fixed", value: "5" }] });
+
+      expect(param.set).toHaveBeenCalledWith("value", 5);
+    });
+  });
+
   describe("param not found warning", () => {
     it("should warn when param name does not match any device parameter", () => {
       registerMockObject("dev1", {

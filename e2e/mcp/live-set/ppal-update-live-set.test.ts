@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -17,16 +18,27 @@ import {
 
 const ctx = setupMcpTestContext();
 
+/** Read the live set and return its original tempo + time signature. */
+async function readLiveSetOriginals(): Promise<{
+  originalTempo: number;
+  originalTimeSig: string;
+}> {
+  const initialRead = await ctx.client!.callTool({
+    name: "ppal-read-live-set",
+    arguments: {},
+  });
+  const initial = parseToolResult<ReadResult>(initialRead);
+
+  return {
+    originalTempo: initial.tempo,
+    originalTimeSig: initial.timeSignature,
+  };
+}
+
 describe("ppal-update-live-set", () => {
   it("updates tempo and time signature", async () => {
     // Store original values to restore later
-    const initialRead = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: {},
-    });
-    const initial = parseToolResult<ReadResult>(initialRead);
-    const originalTempo = initial.tempo;
-    const originalTimeSig = initial.timeSignature;
+    const { originalTempo, originalTimeSig } = await readLiveSetOriginals();
 
     // Test 1: Update tempo
     const newTempo = originalTempo === 120 ? 130 : 120;
@@ -82,13 +94,7 @@ describe("ppal-update-live-set", () => {
 
   it("updates scale and multiple parameters", async () => {
     // Store original values to restore later
-    const initialRead = await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: {},
-    });
-    const initial = parseToolResult<ReadResult>(initialRead);
-    const originalTempo = initial.tempo;
-    const originalTimeSig = initial.timeSignature;
+    const { originalTempo, originalTimeSig } = await readLiveSetOriginals();
 
     // Test 1: Set scale
     const scaleUpdate = await ctx.client!.callTool({

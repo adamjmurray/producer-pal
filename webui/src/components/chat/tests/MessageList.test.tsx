@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -12,6 +13,7 @@ import {
   render,
   screen,
 } from "@testing-library/preact";
+import { type ComponentProps } from "preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { MessageList } from "#webui/components/chat/MessageList";
@@ -62,6 +64,27 @@ function createErrorMessage(content: string, rawHistoryIndex = 0): UIMessage {
   };
 }
 
+type MessageListProps = ComponentProps<typeof MessageList>;
+
+// Builds a complete MessageList props object with sensible defaults so tests can
+// pass `<MessageList {...messageListProps({ ... })} />` instead of repeating the
+// full prop list (avoids large render/rerender JSX clones).
+function messageListProps(
+  overrides: Partial<MessageListProps> = {},
+): MessageListProps {
+  return {
+    messages: [],
+    queuedMessages: [],
+    onRemoveQueued: vi.fn(),
+    isAssistantResponding: false,
+    handleRetry: vi.fn(),
+    handleEdit: vi.fn(),
+    showTimestamps: true,
+    showTokenUsage: false,
+    ...overrides,
+  };
+}
+
 function renderMessageList(
   messages: UIMessage[] = [],
   isAssistantResponding = false,
@@ -75,12 +98,14 @@ function renderMessageList(
 } {
   const result = render(
     <MessageList
-      messages={messages}
-      isAssistantResponding={isAssistantResponding}
-      handleRetry={handleRetry}
-      handleEdit={handleEdit}
-      showTimestamps={showTimestamps}
-      showTokenUsage={showTokenUsage}
+      {...messageListProps({
+        messages,
+        isAssistantResponding,
+        handleRetry,
+        handleEdit,
+        showTimestamps,
+        showTokenUsage,
+      })}
     />,
   );
 
@@ -381,12 +406,10 @@ describe("MessageList", () => {
 
       rerender(
         <MessageList
-          messages={[createUserMessage("Hello", 0)]}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: [createUserMessage("Hello", 0)],
+            isAssistantResponding: true,
+          })}
         />,
       );
 
@@ -432,12 +455,7 @@ describe("MessageList", () => {
 
         rerender(
           <MessageList
-            messages={messages}
-            isAssistantResponding={isAssistantResponding}
-            handleRetry={vi.fn()}
-            handleEdit={vi.fn()}
-            showTimestamps={true}
-            showTokenUsage={false}
+            {...messageListProps({ messages, isAssistantResponding })}
           />,
         );
         expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -453,12 +471,10 @@ describe("MessageList", () => {
 
       rerender(
         <MessageList
-          messages={[createModelMessage("Fast response")]}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: [createModelMessage("Fast response")],
+            isAssistantResponding: true,
+          })}
         />,
       );
 
@@ -482,12 +498,10 @@ describe("MessageList", () => {
 
       rerender(
         <MessageList
-          messages={messagesWithContent}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: messagesWithContent,
+            isAssistantResponding: true,
+          })}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -497,6 +511,22 @@ describe("MessageList", () => {
         vi.advanceTimersByTime(4000);
       });
       expect(screen.getByText("Still thinking...")).toBeDefined();
+    });
+  });
+
+  describe("compacting indicator", () => {
+    it("shows 'Compacting...' immediately while compacting", () => {
+      render(
+        <MessageList
+          {...messageListProps({
+            isAssistantResponding: true,
+            isCompacting: true,
+          })}
+        />,
+      );
+
+      expect(screen.getByText("Compacting...")).toBeDefined();
+      expect(screen.queryByText("Still thinking...")).toBeNull();
     });
   });
 
@@ -511,13 +541,11 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={messages}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={false}
-          showTokenUsage={false}
-          requestedModel="gpt-4o"
+          {...messageListProps({
+            messages,
+            showTimestamps: false,
+            requestedModel: "gpt-4o",
+          })}
         />,
       );
 
@@ -534,13 +562,11 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={messages}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={false}
-          showTokenUsage={false}
-          requestedModel="gpt-4o"
+          {...messageListProps({
+            messages,
+            showTimestamps: false,
+            requestedModel: "gpt-4o",
+          })}
         />,
       );
 
@@ -597,6 +623,23 @@ describe("MessageList", () => {
       expect(screen.getByText(/101 reasoning/)).toBeDefined();
     });
 
+    it("shows cached tokens when present", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: {
+            inputTokens: 9496,
+            outputTokens: 178,
+            cacheReadTokens: 9000,
+          },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.getByText(/9K cached/)).toBeDefined();
+    });
+
     it("shows new content tokens when previous model message exists", () => {
       const messages = [
         {
@@ -623,13 +666,11 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={[createUserMessage("hi", 0), createModelMessage("yo", 1)]}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          handleCompact={handleCompact}
-          showTimestamps={false}
-          showTokenUsage={false}
+          {...messageListProps({
+            messages: [createUserMessage("hi", 0), createModelMessage("yo", 1)],
+            handleCompact,
+            showTimestamps: false,
+          })}
         />,
       );
 
@@ -642,6 +683,30 @@ describe("MessageList", () => {
       expect(handleCompact).toHaveBeenCalledWith(1);
     });
 
+    it("only shows the compact button on the last assistant message", () => {
+      render(
+        <MessageList
+          {...messageListProps({
+            messages: [
+              createUserMessage("hi", 0),
+              createModelMessage("first", 1),
+              createUserMessage("more", 2),
+              createModelMessage("last", 3),
+            ],
+            handleCompact: vi.fn(),
+            showTimestamps: false,
+          })}
+        />,
+      );
+
+      // Two assistant messages, but compaction is gated to the last one.
+      expect(
+        screen.getAllByRole("button", {
+          name: /compact the conversation up to here/i,
+        }),
+      ).toHaveLength(1);
+    });
+
     it("renders a divider for a compaction summary message", () => {
       const summaryMsg: UIMessage = {
         role: "user",
@@ -652,14 +717,12 @@ describe("MessageList", () => {
 
       render(
         <MessageList
-          messages={[summaryMsg]}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={false}
-          showTokenUsage={false}
-          canUndoCompaction
-          onUndoCompaction={vi.fn()}
+          {...messageListProps({
+            messages: [summaryMsg],
+            showTimestamps: false,
+            canUndoCompaction: true,
+            onUndoCompaction: vi.fn(),
+          })}
         />,
       );
 

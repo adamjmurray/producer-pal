@@ -126,6 +126,11 @@ _See below for tips on using a subset of tools._
 
   Try disabling all the other tools and add back when you miss features.
 
+- **Follow-up turns are often faster.** LM Studio automatically reuses its
+  cached prompt prefix between turns, so later messages in a conversation can be
+  much quicker than the first. There's nothing to configure, and the size of the
+  benefit varies by model.
+
 - Experiment with empty or extremely simple Live projects
 - Only work with very simple material (e.g. basic MIDI patterns in clips 4 bars
   or shorter)

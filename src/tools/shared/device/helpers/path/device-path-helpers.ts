@@ -2,12 +2,12 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
 import { resolvePathToLiveApi } from "./device-path-to-live-api.ts";
 
 // Re-export all functions for backwards compatibility

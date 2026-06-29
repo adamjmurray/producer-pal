@@ -66,11 +66,20 @@
     "velocity", "deviation", "duration", "probability", "pitch", "start",
   ]);
 
-  // Walk a where() predicate AST and reject anything not allowed in 515a: any
-  // variable other than the six intrinsic note properties, and any function call.
-  // Throws a targeted error; returns nothing on success. Number literals are bare
-  // JS numbers (not objects) and pass through; pitch/duration domain literals are
-  // allowed. Functions are a deferred fast-follow (AJM-517).
+  // Functions rejected inside a where() predicate: they need the finalized note
+  // SELECTION, which doesn't exist yet while selecting. legato() resolves to the
+  // next distinct start / clip cursor of the selected set; seq() cycles by
+  // note.index. Every other function (math, waveforms, ramp/curve, quant/swing,
+  // snap/step, clipseq, rand/choose) resolves from per-note + clip context, which
+  // selectAssignmentNotes threads into the predicate evaluator.
+  const PREDICATE_REJECTED_FUNCTIONS = new Set(["legato", "seq"]);
+
+  // Walk a where() predicate AST and reject anything that can't resolve during note
+  // SELECTION: any variable other than the six intrinsic note properties, and the
+  // two selection-derived functions (legato/seq). Throws a targeted error; returns
+  // nothing on success. Number literals are bare JS numbers (not objects) and pass
+  // through; pitch/duration domain literals are allowed. Allowed functions recurse
+  // into their args so a rejected variable nested in an arg is still caught.
   function validatePredicate(node) {
     if (node == null || typeof node !== "object") {
       return;
@@ -96,7 +105,12 @@
         }
         return;
       case "function":
-        throw new Error(`where() predicates don't support functions yet — compare note properties directly (e.g. note.velocity < 40), combined with && || ! and arithmetic.`);
+        if (PREDICATE_REJECTED_FUNCTIONS.has(node.name)) {
+          const dep = node.name === "legato" ? "the legato target (next distinct start)" : "note.index";
+          throw new Error(`where() predicates can't use ${node.name}() — it depends on ${dep}, which isn't known while selecting notes. Use note properties, math (abs/min/max/clamp/round/…), waveforms (sin/tri/…), or clipseq instead.`);
+        }
+        node.args.forEach(validatePredicate);
+        return;
       default:
         return;
     }
@@ -176,7 +190,7 @@ start
 
 
 // A transform line is either a parameter assignment (the common case) or a
-// note-count operation (ratchet/merge). Both accept the same optional
+// note-count operation (ratchet/merge/split/repeat). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
 statement "statement"
   = prefix:selectorPrefix? body:(noteOp / assignmentBody) {
@@ -189,9 +203,9 @@ statement "statement"
     // evaluator (selectorWarning set), so don't hard-fail it on the where()-on-
     // noteOp rule below — let the skip take precedence.
     if (predicate != null && isNoteOpBody && selectorWarning == null) {
-      // Note-count ops (ratchet/merge/split) don't support a where() predicate.
-      // Reject rather than silently ignore so the limitation is visible.
-      throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split) — put the predicate on a parameter assignment line instead.`);
+      // Note-count ops (ratchet/merge/split/repeat) don't support a where()
+      // predicate. Reject rather than silently ignore so the limitation is visible.
+      throw new Error(`where(...) is not supported on note-count operations (ratchet/merge/split/repeat) — put the predicate on a parameter assignment line instead.`);
     }
     // Only attach `predicate` when a where() clause is present, so non-predicate
     // assignments keep their historical shape (just pitchRange/timeRange).
@@ -262,6 +276,8 @@ selectorSep
 // to scope which notes they touch (no selector = all notes).
 //   ratchet(N)        — divide each matched note into N equal pieces (a roll)
 //   ratchet(n/16)     — cut each matched note on the absolute 16th-note grid
+//   repeat(n/8)       — echo matched notes an 8th later (1 copy; does NOT resize clip)
+//   repeat(1bar, 3)   — three echoes, each a further bar on
 //   split(2|1, 2|3)   — cut each matched note at explicit clip bar|beat positions
 //   split(2|1, sync)  — same, but positions are arrangement-timeline absolute
 //   merge()           — span all same-pitch matched notes into one sustained note
@@ -278,6 +294,7 @@ noteOp "note-count operation"
 
 noteOpName
   = "ratchet" { return "ratchet"; }
+  / "repeat" { return "repeat"; }
   / "merge" { return "merge"; }
 
 // A comma-separated list of bar|beat cut positions for `split`, with an optional
@@ -449,6 +466,12 @@ pitchAccidental
 // `start-end` first; only a point with no `-` separator falls through to it.
 timeRange "time range"
   = startBar:oneOrMoreInt "|" "*" "-" endBar:oneOrMoreInt "|" "*" {
+    // Reject a descending span, mirroring the beatValue range guard below: an
+    // end bar before the start bar silently selected nothing (a warn-free no-op).
+    // Equal bars stay valid (`3|*-3|*` == `3|*`).
+    if (endBar < startBar) {
+      throw new Error(`Invalid time range: end ${endBar}|* is before start ${startBar}|*`);
+    }
     return { startBar, startBeat: 1, endBar: endBar + 1, endBeat: 1, endExclusive: true };
   }
   / bar:oneOrMoreInt "|" "*" {
@@ -578,8 +601,9 @@ parameter "parameter name"
 
 // A where() predicate: a boolean expression over note properties that filters which
 // notes a statement touches. Boolean/comparison operators are legal ONLY here — an
-// assignment RHS stays purely arithmetic. `validatePredicate` rejects functions and
-// any non-note-property variable with a targeted error.
+// assignment RHS stays purely arithmetic. `validatePredicate` rejects any
+// non-note-property variable and the two selection-derived functions (legato/seq)
+// with a targeted error; other functions are allowed (resolved at selection time).
 whereClause "where() predicate"
   = "where" _ "(" _ expr:boolOr _ ")" {
       validatePredicate(expr);
@@ -660,13 +684,13 @@ primary
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
-// ratchet()/merge() are note-count operations (whole statements), not values.
-// Matched here only to raise a targeted error when one is used in an expression
-// (e.g. `velocity = ratchet(2)`). A valid bare statement reaches the noteOp rule
-// first, so this never fires on correct usage.
+// ratchet()/repeat()/merge() are note-count operations (whole statements), not
+// values. Matched here only to raise a targeted error when one is used in an
+// expression (e.g. `velocity = ratchet(2)`). A valid bare statement reaches the
+// noteOp rule first, so this never fires on correct usage.
 badNoteOpInExpression
-  = name:("ratchet" / "merge" / "split") _ "(" {
-    const example = name === "ratchet" ? "ratchet(2)" : name === "split" ? "split(2|1)" : "merge()";
+  = name:("ratchet" / "repeat" / "merge" / "split") _ "(" {
+    const example = name === "ratchet" ? "ratchet(2)" : name === "repeat" ? "repeat(1bar)" : name === "split" ? "split(2|1)" : "merge()";
     throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
   }
 

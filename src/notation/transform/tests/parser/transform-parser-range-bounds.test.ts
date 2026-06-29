@@ -31,6 +31,15 @@ describe("Transform Parser - half-open range bounds", () => {
     });
   });
 
+  it("rejects a descending whole-bar span B|*-A|*", () => {
+    // Mirrors the beatValue range descending guard: an end bar before the start
+    // bar is a parse error, not a silent no-op. Equal bars stay valid.
+    expect(() => parser.parse("3|*-1|*: velocity = 0")).toThrow(
+      /end .* is before start/,
+    );
+    expect(() => parser.parse("3|*-3|*: velocity = 0")).not.toThrow();
+  });
+
   it("marks the end bound exclusive with -<", () => {
     const result = parser.parse("3|1-<4|1: velocity = 0");
 

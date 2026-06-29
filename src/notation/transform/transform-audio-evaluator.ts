@@ -246,7 +246,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
 
   if (ast.some(isNoteOp)) {
     console.warn(
-      "Note-count operations (ratchet, merge) ignored for audio clips",
+      "Note-count operations (ratchet, repeat, merge, split) ignored for audio clips",
     );
   }
 }

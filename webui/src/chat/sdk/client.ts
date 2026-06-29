@@ -4,32 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import {
-  type FinishReason,
-  type ModelMessage,
-  type TextPart,
-  type ToolCallPart,
-  type ToolResultPart,
-  type ToolSet,
-  stepCountIs,
-  streamText,
-} from "ai";
+import { type FinishReason, type ToolSet, stepCountIs, streamText } from "ai";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import {
+  buildModelMessages,
+  reconcileDanglingToolCalls,
+} from "./build-model-messages";
 import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
 import { createStreamErrorSignal } from "./stream-with-error-signal";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
-
-/**
- * Placeholder result for a tool call the user stopped before it returned.
- * Used both to keep the model conversation valid (every tool-call needs a
- * matching tool-result or providers 400) and to render a sensible UI state.
- */
-const CANCELED_TOOL_RESULT_TEXT =
-  "Canceled by the user before this tool finished.";
 
 /**
  * AI SDK client that wraps streamText for chat with MCP tool support.
@@ -105,12 +92,14 @@ export class ChatSdkClient {
    * @param message - User message text
    * @param abortSignal - Signal to abort the stream
    * @param overrides - Per-message overrides for thinking
+   * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
    * @yields Complete chat history after each stream update
    */
   async *sendMessage(
     message: string,
     abortSignal?: AbortSignal,
     overrides?: MessageOverrides,
+    shouldInterrupt?: () => boolean,
   ): AsyncGenerator<ChatMessage[], void, unknown> {
     const userMsg: ChatMessage = { role: "user", content: message };
 
@@ -124,7 +113,7 @@ export class ChatSdkClient {
         ? this.config.buildProviderOptions(overrides.thinking)
         : this.config.providerOptions;
 
-    yield* this.processStream(providerOptions, abortSignal);
+    yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
     // Final yield to ensure last step's usage (attached by onStepFinish) is emitted
     yield [...this.chatHistory];
   }
@@ -135,11 +124,13 @@ export class ChatSdkClient {
    * CORS/network errors (which hang fullStream) surface immediately.
    * @param providerOptions - Provider-specific options for streamText
    * @param abortSignal - Signal to abort the stream
+   * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
    * @yields Updated chat history after each meaningful stream event
    */
   private async *processStream(
     providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
     abortSignal?: AbortSignal,
+    shouldInterrupt?: () => boolean,
   ): AsyncGenerator<ChatMessage[]> {
     let currentMsg: ChatMessage = { role: "assistant", content: "" };
     let addedCurrentMsg = false;
@@ -153,7 +144,10 @@ export class ChatSdkClient {
       model: this.config.model,
       maxRetries: 0, // Disable SDK-level retry so app-level retry (executeWithRetry) handles 429s with UI feedback
       system: this.config.systemInstruction,
-      messages: buildModelMessages(this.chatHistory),
+      messages: buildModelMessages(
+        this.chatHistory,
+        isAnthropicThinkingEnabled(providerOptions),
+      ),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
       stopWhen: stepCountIs(MAX_TOOL_STEPS),
       temperature: this.config.temperature,
@@ -198,6 +192,8 @@ export class ChatSdkClient {
 
           yield [...this.chatHistory];
         } else if (part.type === "start-step" && addedCurrentMsg) {
+          // Between tool steps: check if a queued user message should interrupt
+          if (shouldInterrupt?.()) return;
           // New step means new assistant turn (after tool results)
           currentMsg = { role: "assistant", content: "" };
           addedCurrentMsg = false;
@@ -244,6 +240,29 @@ export function detectToolLimitReached(
 }
 
 /**
+ * Whether the request's provider options enable Anthropic thinking. Only then is
+ * it valid to re-send signed reasoning blocks (the API rejects reasoning content
+ * when thinking is disabled), and only then does re-sending help caching.
+ *
+ * Note: this keys off the `anthropic` provider namespace, so it is intentionally
+ * false on the OpenRouter→Claude path (those options live under the `openrouter`
+ * namespace). Reasoning re-emission therefore does not run for OpenRouter; its
+ * cache prefix is stabilized separately by transformOpenRouterRequest. This is an
+ * intended asymmetry, not a missed case — don't "fix" it by widening the check.
+ * @param providerOptions - Provider options passed to streamText
+ * @returns True when Anthropic thinking is enabled for this request
+ */
+function isAnthropicThinkingEnabled(
+  providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
+): boolean {
+  const anthropic = providerOptions?.anthropic as
+    | { thinking?: unknown }
+    | undefined;
+
+  return anthropic?.thinking != null;
+}
+
+/**
  * Stamp per-message setting overrides onto a user message.
  * Only sets fields that are present in the overrides.
  * @param msg - User message to stamp
@@ -273,10 +292,42 @@ function handleStreamPart(
     return true;
   }
 
+  // Reasoning arrives as start → delta(s) → end. We keep the flattened text in
+  // `reasoning` for display AND capture each block (text + signature) in
+  // `reasoningParts` so the signed thinking block can be re-sent on later turns
+  // (see buildAssistantContent — keeps the Anthropic cache prefix stable).
+  if (type === "reasoning-start") {
+    msg.reasoningParts ??= [];
+    msg.reasoningParts.push({ text: "" });
+    captureReasoningSignature(part, msg);
+
+    // A fully-redacted thinking block can be a turn's ONLY content (no
+    // reasoning-delta/text-delta/tool-call follows). Treat the captured
+    // redactedData as content-bearing so the message is pushed to history
+    // instead of being silently dropped along with its reasoning.
+    return msg.reasoningParts.at(-1)?.redactedData != null;
+  }
+
   if (type === "reasoning-delta") {
-    msg.reasoning = (msg.reasoning ?? "") + (part.text as string);
+    const text = part.text as string;
+
+    msg.reasoning = (msg.reasoning ?? "") + text;
+    msg.reasoningParts ??= [];
+
+    if (msg.reasoningParts.length === 0) msg.reasoningParts.push({ text: "" });
+
+    const last = msg.reasoningParts.at(-1) as { text: string };
+
+    last.text += text;
+    captureReasoningSignature(part, msg);
 
     return true;
+  }
+
+  if (type === "reasoning-end") {
+    captureReasoningSignature(part, msg);
+
+    return false;
   }
 
   if (type === "tool-call") {
@@ -341,155 +392,28 @@ function handleStreamPart(
 }
 
 /**
- * Convert chat history to AI SDK ModelMessage format.
- * Assistant messages with tool calls produce two ModelMessages:
- * 1. assistant message with text + tool-call parts
- * 2. tool message with tool-result parts
- *
- * Consecutive user turns are merged into one. A compaction summary is a
- * synthetic user message, so the next real user message would otherwise sit
- * directly after it — Gemini and Mistral reject two user turns in a row (only
- * Anthropic/OpenAI tolerate it). Folding them into a single user turn keeps the
- * wire format valid for every provider while the UI still renders them
- * separately (the divider plus the user bubble).
- * @param history - Chat history to convert
- * @returns Array of ModelMessage for streamText
+ * Capture an Anthropic reasoning block's signature (or redacted data) from a
+ * stream part's provider metadata onto the message's current reasoning block.
+ * @param part - Stream part (reasoning-start/delta/end)
+ * @param msg - Message whose last reasoning block receives the signature
  */
-export function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
-  const messages: ModelMessage[] = [];
-
-  for (const msg of history) {
-    if (msg.role === "user") {
-      const last = messages.at(-1);
-
-      if (last?.role === "user" && typeof last.content === "string") {
-        last.content = `${last.content}\n\n${msg.content}`;
-      } else {
-        messages.push({ role: "user", content: msg.content });
-      }
-
-      continue;
-    }
-
-    // Persisted UI error messages are not part of the model conversation
-    if (msg.isError) continue;
-
-    if (!msg.toolCalls || msg.toolCalls.length === 0) {
-      messages.push({ role: "assistant", content: msg.content });
-      continue;
-    }
-
-    // Assistant message with tool calls
-    messages.push({
-      role: "assistant",
-      content: buildAssistantContent(msg),
-    });
-
-    // Tool message pairing EVERY tool-call with a result (required by providers
-    // for multi-turn). buildToolResultContent backfills a canceled result for
-    // any call the user stopped before it returned, so a persisted "stopped
-    // mid-tool" history can still be sent without a provider 400. (This runs
-    // before the stream's reconcile, so it must not assume a complete history.)
-    messages.push({
-      role: "tool",
-      content: buildToolResultContent(msg),
-    });
-  }
-
-  return messages;
-}
-
-/**
- * Build tool result content for the tool role message, one part per tool-call
- * (not per recorded result). A call with a recorded result emits it; a call the
- * user stopped before it returned emits a synthetic "canceled" result. This
- * guarantees no assistant tool-call is left without a matching tool-result,
- * which Anthropic/OpenAI reject with a 400.
- * @param msg - Assistant message with tool calls
- * @returns Array of ToolResultPart, one per tool-call, in tool-call order
- */
-function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
-  const resultsById = new Map(
-    (msg.toolResults ?? []).map((tr) => [tr.id, tr] as const),
-  );
-
-  return (msg.toolCalls ?? []).map((tc) => {
-    const tr = resultsById.get(tc.id);
-    const value =
-      tr == null
-        ? CANCELED_TOOL_RESULT_TEXT
-        : typeof tr.result === "string"
-          ? tr.result
-          : JSON.stringify(tr.result);
-
-    return {
-      type: "tool-result" as const,
-      toolCallId: tc.id,
-      toolName: tc.name,
-      output: { type: "text" as const, value },
-    };
-  });
-}
-
-/**
- * Backfill a "canceled" tool-result for any tool-call in the streamed assistant
- * messages that never received one — i.e. the user pressed Stop while a tool was
- * still running. Without this, the dangling tool-call (a) makes the next request
- * fail with a provider 400 (unmatched tool_use) and (b) leaves the tool rendered
- * as perpetually running in the UI. A no-op when every call already has a result.
- * @param history - The full chat history (mutated in place)
- * @param fromIndex - Index of the first message added by the current stream
- */
-function reconcileDanglingToolCalls(
-  history: ChatMessage[],
-  fromIndex: number,
-): void {
-  for (let i = fromIndex; i < history.length; i++) {
-    const msg = history[i] as ChatMessage;
-
-    if (msg.role !== "assistant" || !msg.toolCalls?.length) continue;
-
-    const resultIds = new Set((msg.toolResults ?? []).map((tr) => tr.id));
-
-    for (const tc of msg.toolCalls) {
-      if (resultIds.has(tc.id)) continue;
-
-      msg.toolResults ??= [];
-      msg.toolResults.push({
-        id: tc.id,
-        name: tc.name,
-        args: tc.args,
-        result: CANCELED_TOOL_RESULT_TEXT,
-        isError: false,
-      });
-    }
-  }
-}
-
-/**
- * Build typed AI SDK content parts for an assistant message with tool calls.
- * @param msg - Assistant message with tool calls
- * @returns Structured content array
- */
-function buildAssistantContent(
+function captureReasoningSignature(
+  part: Record<string, unknown>,
   msg: ChatMessage,
-): Array<TextPart | ToolCallPart> {
-  const parts: Array<TextPart | ToolCallPart> = [];
+): void {
+  const providerMetadata = part.providerMetadata as
+    | { anthropic?: { signature?: unknown; redactedData?: unknown } }
+    | undefined;
+  const meta = providerMetadata?.anthropic;
+  const last = msg.reasoningParts?.at(-1);
 
-  if (msg.content) {
-    parts.push({ type: "text", text: msg.content });
+  if (!meta || !last) return;
+
+  if (typeof meta.signature === "string") last.signature = meta.signature;
+
+  if (typeof meta.redactedData === "string") {
+    last.redactedData = meta.redactedData;
   }
-
-  for (const tc of msg.toolCalls ?? []) {
-    parts.push({
-      type: "tool-call",
-      toolCallId: tc.id,
-      toolName: tc.name,
-      input: tc.args,
-    });
-  }
-
-  return parts;
 }
 
 /**

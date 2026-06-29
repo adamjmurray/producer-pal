@@ -675,6 +675,34 @@ describe("App", () => {
       render(<App />);
       expect(getExtraParams().baseUrl).toBeUndefined();
     });
+
+    it("resolveConnection resolves any provider's key + baseUrl from current settings", () => {
+      // The locked-conversation path calls resolveConnection with the
+      // conversation's provider — which may differ from the active one — and
+      // must read that provider's stored connection (key + normalized baseUrl).
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "gemini",
+        getProviderConnection: vi.fn((p: string) =>
+          p === "lmstudio"
+            ? { apiKey: "", baseUrl: "http://localhost:9999" }
+            : { apiKey: "anthropic-key", baseUrl: undefined },
+        ),
+      });
+      render(<App />);
+      const { resolveConnection } = (useChat as ReturnType<typeof vi.fn>).mock
+        .calls[0]![0];
+
+      expect(resolveConnection("anthropic")).toStrictEqual({
+        apiKey: "anthropic-key",
+        baseUrl: undefined,
+      });
+      // Local provider: empty key → placeholder, baseUrl gets the /v1 suffix.
+      expect(resolveConnection("lmstudio")).toStrictEqual({
+        apiKey: "not-needed",
+        baseUrl: "http://localhost:9999/v1",
+      });
+    });
   });
 
   describe("URL normalization for local providers", () => {

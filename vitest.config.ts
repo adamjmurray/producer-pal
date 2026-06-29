@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { join } from "node:path";
 import preact from "@preact/preset-vite";
-import { join } from "path";
 import { defineConfig } from "vitest/config";
 
 const __dirname = import.meta.dirname;
@@ -12,7 +12,11 @@ const __dirname = import.meta.dirname;
 // Node 25+ enables webstorage by default, which conflicts with happy-dom's mock.
 // Disable it for tests. The flag doesn't exist in Node 24, so only add it for 25+.
 // See: https://github.com/vitest-dev/vitest/issues/8757
-const nodeMajorVersion = parseInt(process.versions.node.split(".")[0], 10);
+// split(".") on a non-empty version string always yields at least one element.
+const nodeMajorVersion = Number.parseInt(
+  process.versions.node.split(".")[0] as string,
+  10,
+);
 const execArgv = nodeMajorVersion >= 25 ? ["--no-webstorage"] : [];
 
 export default defineConfig({
@@ -118,10 +122,10 @@ export default defineConfig({
 
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
-        statements: 99.2,
-        branches: 96,
+        statements: 99.3,
+        branches: 96.25,
         functions: 100,
-        lines: 99.4,
+        lines: 99.55,
       },
     },
   },

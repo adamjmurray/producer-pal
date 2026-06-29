@@ -55,6 +55,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   length?: string;
   firstStart?: string;
   looping?: boolean;
+  duplicateLoop?: boolean;
   arrangementStart?: string;
   arrangementLength?: string;
   toSlot?: string;
@@ -83,6 +84,7 @@ interface ClipResult {
  * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: start/length/firstStart set the loop region first (select the portion to double; duplicate_loop inserts the copy, so content past the region is pushed later, not deleted), preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
@@ -116,6 +118,7 @@ export async function updateClip(
     length,
     firstStart,
     looping,
+    duplicateLoop,
     arrangementStart,
     arrangementLength,
     toSlot,
@@ -193,6 +196,7 @@ export async function updateClip(
       length,
       firstStart,
       looping,
+      duplicateLoop,
       gainDb,
       pitchShift,
       warpMode,

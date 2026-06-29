@@ -5,6 +5,7 @@
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   applyAudioTransforms,
@@ -12,6 +13,8 @@ import {
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
 import {
+  handleDuplicateLoop,
+  handleDuplicateLoopWithEdits,
   handleNoteUpdates,
   handleQuantization,
 } from "./update-clip-notes-helpers.ts";
@@ -57,6 +60,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   length?: string;
   firstStart?: string;
   looping?: boolean;
+  duplicateLoop?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
   toSlot?: { trackIndex: number; sceneIndex: number } | null;
@@ -80,6 +84,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params.length - Clip length
  * @param params.firstStart - First start position
  * @param params.looping - Looping enabled
+ * @param params.duplicateLoop - Double the loop via native Clip.duplicate_loop
  * @param params.gainDb - Gain in decibels
  * @param params.pitchShift - Pitch shift amount
  * @param params.warpMode - Warp mode
@@ -105,8 +110,6 @@ export function processSingleClipUpdate(
     clipIndex,
     clipCount,
     notationString,
-    transformString,
-    preTransformString,
     name,
     color,
     timeSignature,
@@ -138,6 +141,14 @@ export function processSingleClipUpdate(
   if (firstStart != null && !isLooping) {
     console.warn("firstStart parameter ignored for non-looping clips");
   }
+
+  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
+
+  // start/length/firstStart are applied to the loop region BEFORE duplicateLoop
+  // runs (clip.setAll below precedes resolveNoteResult), so they compose: set
+  // the region to select a portion, then Live's native duplicate_loop doubles
+  // exactly that selected region. No length suppression - the selection drives
+  // what gets doubled.
 
   // Calculate beat positions (includes end_marker bounds check for start_marker)
   const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
@@ -176,24 +187,26 @@ export function processSingleClipUpdate(
   }
 
   // Build context for transform variables (clip.*, bar.*)
-  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
   // prettier-ignore
   const clipContext = buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator);
 
   if (isAudioClip) {
     handleAudioClipUpdate(clip, clipContext, params);
+
+    // Audio clips can't hold MIDI notes. Warn-and-skip rather than letting the
+    // note write throw (mirrors create-clip's guard) so a multi-clip batch
+    // keeps going. Transforms are still applied above by handleAudioClipUpdate.
+    if (notationString != null) {
+      console.warn("notes parameter ignored for audio clip");
+    }
   }
 
-  // Handle note updates (transforms already applied for audio clips above)
-  const noteResult = handleNoteUpdates(
-    clip,
-    notationString,
-    isAudioClip ? undefined : transformString,
-    isAudioClip ? undefined : preTransformString,
+  const noteResult = resolveNoteResult(params, {
+    isAudioClip,
+    clipContext,
     timeSigNumerator,
     timeSigDenominator,
-    clipContext,
-  );
+  });
 
   // Handle quantization (after notes so newly merged notes get quantized)
   handleQuantization(clip, {
@@ -226,6 +239,72 @@ export function processSingleClipUpdate(
     noteResult,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
+}
+
+/**
+ * Resolve the clip's note update: notes/transforms/preTransforms and the loop
+ * double. duplicateLoop on a MIDI clip runs its own pipeline (preTransforms edit
+ * the source, Live doubles the loop, then notes/transforms apply across the full
+ * doubled clip). Audio clips take the normal path, where handleDuplicateLoop
+ * warns-and-skips (no MIDI to double) and audio transforms were already applied
+ * in handleAudioClipUpdate.
+ * @param params - The full single-clip update params
+ * @param resolved - Derived per-clip values not present on params
+ * @param resolved.isAudioClip - Whether the clip is an audio clip
+ * @param resolved.clipContext - Clip-level context for transform variables
+ * @param resolved.timeSigNumerator - Resolved time signature numerator
+ * @param resolved.timeSigDenominator - Resolved time signature denominator
+ * @returns Note update result, or null if notes were not modified
+ */
+function resolveNoteResult(
+  params: ProcessSingleClipUpdateParams,
+  {
+    isAudioClip,
+    clipContext,
+    timeSigNumerator,
+    timeSigDenominator,
+  }: {
+    isAudioClip: boolean;
+    clipContext: ClipContext;
+    timeSigNumerator: number;
+    timeSigDenominator: number;
+  },
+): NoteUpdateResult | null {
+  const {
+    clip,
+    clipIndex,
+    clipCount,
+    notationString,
+    transformString,
+    preTransformString,
+    duplicateLoop,
+  } = params;
+
+  if (duplicateLoop && !isAudioClip) {
+    return handleDuplicateLoopWithEdits({
+      clip,
+      notationString,
+      transformString,
+      preTransformString,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipIndex,
+      clipCount,
+    });
+  }
+
+  // Handle note updates (transforms already applied for audio clips above)
+  const noteUpdateResult = handleNoteUpdates(
+    clip,
+    isAudioClip ? undefined : notationString,
+    isAudioClip ? undefined : transformString,
+    isAudioClip ? undefined : preTransformString,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipContext,
+  );
+
+  return duplicateLoop ? handleDuplicateLoop(clip) : noteUpdateResult;
 }
 
 /**

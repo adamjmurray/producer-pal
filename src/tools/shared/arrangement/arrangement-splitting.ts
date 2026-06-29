@@ -327,14 +327,19 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
       toLiveApiId(sourceClipId),
       workPos,
     ) as [string, string | number];
-    const workClipId = LiveAPI.from(workResult).id;
+    const workClip = LiveAPI.from(workResult);
 
-    if (workClipId === "0") {
+    // Use exists() rather than `id === "0"`: a non-existent object's id can be
+    // "id 0", "0", or 0 (number), so the string-only check missed two of the
+    // three failure shapes.
+    if (!workClip.exists()) {
       console.warn(
         `Failed to duplicate source for middle segment ${i}, skipping`,
       );
       continue;
     }
+
+    const workClipId = workClip.id;
 
     // Left-trim to remove content before this segment
     if (segStart > EPSILON) {

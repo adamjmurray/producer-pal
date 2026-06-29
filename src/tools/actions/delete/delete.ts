@@ -85,12 +85,26 @@ export function deleteObject(
 
   const deletedObjects: DeleteResult[] = [];
 
-  // Validate all objects exist and are the correct type before deleting any
+  // Validate all objects exist and are the correct type before deleting any.
+  // De-dup by resolved id: a repeated id (or an id and a path pointing at the
+  // same object) must be deleted once. A second positional delete would shift
+  // onto and remove a different object.
+  const seenIds = new Set<string>();
   const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
     skipInvalid: true,
-  }).map((object) => ({ id: object.id, object }));
+  })
+    .map((object) => ({ id: object.id, object }))
+    .filter(({ id }) => {
+      if (seenIds.has(id)) return false;
 
-  // Now delete all objects (in reverse order for tracks/scenes to maintain indices)
+      seenIds.add(id);
+
+      return true;
+    });
+
+  // Tracks, scenes, and devices delete by position, so an earlier delete shifts
+  // later siblings. Sort highest-index-first so each delete targets the right
+  // object.
   if (type === "track" || type === "scene") {
     // Sort by index in descending order to delete from highest to lowest index
     objectsToDelete.sort((a, b) => {
@@ -104,6 +118,10 @@ export function deleteObject(
 
       return indexB - indexA; // Descending order
     });
+  } else if (type === "device") {
+    objectsToDelete.sort((a, b) =>
+      compareDevicesForDeletion(a.object, b.object),
+    );
   }
 
   for (const { id, object } of objectsToDelete) {
@@ -218,6 +236,73 @@ function deleteClipObject(id: string, object: LiveAPI): boolean {
   track.call("delete_clip", toLiveApiId(object.id));
 
   return true;
+}
+
+interface PathSegment {
+  collection: string;
+  index: number;
+}
+
+/**
+ * Orders devices for safe positional deletion. `delete_device N` removes by
+ * index within a parent, so an earlier delete shifts every later sibling down.
+ * Comparing the full `(collection, index)` segment lists gives one consistent
+ * total order satisfying both safety rules:
+ *
+ * - **Siblings** (same parent) sort highest-index-first, so an earlier delete
+ *   never shifts a later sibling onto the wrong index.
+ * - **Descendants before ancestors**: when one path is a prefix of the other,
+ *   the longer (nested) device deletes first, before the rack whose deletion
+ *   would invalidate its path.
+ *
+ * Comparing segments — rather than the old parent-path *string length* — avoids
+ * a non-transitive comparator: two devices in sibling chains of the same rack
+ * have equal-length parent paths, which the length heuristic treated as
+ * sort-equal, letting one interpose between two true siblings and flip their
+ * delete order (deleting the lower index first, shifting the higher target).
+ * @param a - First device
+ * @param b - Second device
+ * @returns Negative if a deletes first, positive if b deletes first
+ */
+function compareDevicesForDeletion(a: LiveAPI, b: LiveAPI): number {
+  const segsA = parsePathSegments(a.path);
+  const segsB = parsePathSegments(b.path);
+  const sharedDepth = Math.min(segsA.length, segsB.length);
+
+  for (let i = 0; i < sharedDepth; i++) {
+    const segA = segsA[i] as PathSegment;
+    const segB = segsB[i] as PathSegment;
+
+    if (segA.collection !== segB.collection) {
+      // Different sub-collections of a shared parent (e.g. chains vs
+      // return_chains) — independent deletes, so order is irrelevant to
+      // correctness; a stable name comparison just keeps the sort consistent.
+      return segA.collection < segB.collection ? -1 : 1;
+    }
+
+    if (segA.index !== segB.index) {
+      return segB.index - segA.index; // Siblings: highest index first
+    }
+  }
+
+  // One path is a prefix of the other: the longer one is nested inside the
+  // shorter (its ancestor). Delete the descendant first.
+  return segsB.length - segsA.length;
+}
+
+/**
+ * Splits a Live API path into its ordered `(collection, index)` segments, e.g.
+ * `live_set tracks 0 devices 1 chains 0 devices 2` →
+ * `[(tracks,0), (devices,1), (chains,0), (devices,2)]`. The leading `live_set`
+ * token has no index and is skipped.
+ * @param path - The Live API path
+ * @returns Ordered path segments
+ */
+function parsePathSegments(path: string): PathSegment[] {
+  return [...path.matchAll(/(\w+) (\d+)/g)].map((match) => ({
+    collection: match[1] as string,
+    index: Number(match[2]),
+  }));
 }
 
 /**

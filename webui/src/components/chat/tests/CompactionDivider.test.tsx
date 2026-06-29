@@ -23,6 +23,7 @@ describe("CompactionDivider", () => {
   it("toggles the summary visibility", () => {
     render(
       <CompactionDivider
+        messageIndex={0}
         summary="my summary"
         canUndo={false}
         onUndo={vi.fn()}
@@ -36,14 +37,29 @@ describe("CompactionDivider", () => {
     expect(screen.queryByText("my summary")).toBeNull();
   });
 
+  it("tags the divider with its message index so scroll-to-fork can locate it", () => {
+    const { container } = render(
+      <CompactionDivider messageIndex={3} summary="s" canUndo={false} />,
+    );
+
+    expect(container.querySelector('[data-message-index="3"]')).not.toBeNull();
+  });
+
   it("hides the undo action when undo is unavailable", () => {
-    render(<CompactionDivider summary="s" canUndo={false} onUndo={vi.fn()} />);
+    render(
+      <CompactionDivider
+        messageIndex={0}
+        summary="s"
+        canUndo={false}
+        onUndo={vi.fn()}
+      />,
+    );
 
     expect(screen.queryByText("undo")).toBeNull();
   });
 
   it("hides the undo action when no onUndo handler is provided", () => {
-    render(<CompactionDivider summary="s" canUndo={true} />);
+    render(<CompactionDivider messageIndex={0} summary="s" canUndo={true} />);
 
     expect(screen.queryByText("undo")).toBeNull();
   });
@@ -51,7 +67,14 @@ describe("CompactionDivider", () => {
   it("calls onUndo when undo is clicked", () => {
     const onUndo = vi.fn();
 
-    render(<CompactionDivider summary="s" canUndo={true} onUndo={onUndo} />);
+    render(
+      <CompactionDivider
+        messageIndex={0}
+        summary="s"
+        canUndo={true}
+        onUndo={onUndo}
+      />,
+    );
     fireEvent.click(screen.getByText("undo"));
 
     expect(onUndo).toHaveBeenCalledOnce();

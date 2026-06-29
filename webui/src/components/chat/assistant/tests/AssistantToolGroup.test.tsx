@@ -43,7 +43,29 @@ function renderWithToolNames(ui: preact.JSX.Element) {
   );
 }
 
-const defaultParts: (UIToolPart | UIStepUsagePart)[] = [
+type GroupParts = (UIToolPart | UIStepUsagePart)[];
+
+/**
+ * Renders a group over indices [0..n) and returns the rendered DOM plus the
+ * group's <details>/<summary> elements (the assertion targets shared by most
+ * tests). Pass `withToolNames` to wrap in the ToolNamesContext provider.
+ * @param parts - Tool/step parts to render
+ * @param withToolNames - Whether to wrap in ToolNamesContext
+ * @returns Render result plus the group details and summary elements
+ */
+function renderGroup(parts: GroupParts, withToolNames = false) {
+  const indices = parts.map((_, i) => i);
+  const ui = <AssistantToolGroup parts={parts} indices={indices} />;
+  const result = withToolNames ? renderWithToolNames(ui) : render(ui);
+
+  return {
+    ...result,
+    details: document.querySelector("details")!,
+    summary: document.querySelector("summary")!,
+  };
+}
+
+const defaultParts: GroupParts = [
   tool("ppal-create-track"),
   tool("ppal-create-track"),
   tool("ppal-create-track"),
@@ -52,10 +74,7 @@ const defaultParts: (UIToolPart | UIStepUsagePart)[] = [
 describe("AssistantToolGroup", () => {
   describe("summary text", () => {
     it("shows first tool name and count of other tools", () => {
-      renderWithToolNames(
-        <AssistantToolGroup parts={defaultParts} indices={[0, 1, 2]} />,
-      );
-      const summary = document.querySelector("summary")!;
+      const { summary } = renderGroup(defaultParts, true);
 
       expect(summary.textContent).toContain("Create Track");
       expect(summary.textContent).toContain("and 2 other tools");
@@ -64,29 +83,21 @@ describe("AssistantToolGroup", () => {
     it("uses singular 'tool' when only 1 other", () => {
       // Though min group is 3, test with 2 tools for singular grammar
       // (Component doesn't enforce minimum — groupToolParts does)
-      const parts = [tool("ppal-create-track"), tool("ppal-update-track")];
-
-      renderWithToolNames(
-        <AssistantToolGroup parts={parts} indices={[0, 1]} />,
+      const { summary } = renderGroup(
+        [tool("ppal-create-track"), tool("ppal-update-track")],
+        true,
       );
-      const summary = document.querySelector("summary")!;
 
       expect(summary.textContent).toContain("and 1 other tool");
       expect(summary.textContent).not.toContain("tools");
     });
 
     it("falls back to raw name when not in tool names context", () => {
-      render(
-        <AssistantToolGroup
-          parts={[
-            tool("unknown-tool"),
-            tool("unknown-tool"),
-            tool("unknown-tool"),
-          ]}
-          indices={[0, 1, 2]}
-        />,
-      );
-      const summary = document.querySelector("summary")!;
+      const { summary } = renderGroup([
+        tool("unknown-tool"),
+        tool("unknown-tool"),
+        tool("unknown-tool"),
+      ]);
 
       expect(summary.textContent).toContain("unknown-tool");
     });
@@ -94,36 +105,30 @@ describe("AssistantToolGroup", () => {
 
   describe("pending state", () => {
     it("shows animate-pulse when any tool is pending", () => {
-      const parts = [
+      const { details } = renderGroup([
         tool("ppal-create-track"),
         tool("ppal-create-track", null),
         tool("ppal-create-track"),
-      ];
-
-      render(<AssistantToolGroup parts={parts} indices={[0, 1, 2]} />);
-      const details = document.querySelector("details")!;
+      ]);
 
       expect(details.className).toContain("animate-pulse");
     });
 
     it("does not show animate-pulse when all tools have results", () => {
-      render(<AssistantToolGroup parts={defaultParts} indices={[0, 1, 2]} />);
-      const details = document.querySelector("details")!;
+      const { details } = renderGroup(defaultParts);
 
       expect(details.className).not.toContain("animate-pulse");
     });
 
     it("shows 'using tools:' prefix when pending", () => {
-      const parts = [
-        tool("ppal-create-track", null),
-        tool("ppal-create-track", null),
-        tool("ppal-create-track", null),
-      ];
-
-      renderWithToolNames(
-        <AssistantToolGroup parts={parts} indices={[0, 1, 2]} />,
+      const { summary } = renderGroup(
+        [
+          tool("ppal-create-track", null),
+          tool("ppal-create-track", null),
+          tool("ppal-create-track", null),
+        ],
+        true,
       );
-      const summary = document.querySelector("summary")!;
 
       expect(summary.textContent).toContain("using tools:");
     });
@@ -131,36 +136,30 @@ describe("AssistantToolGroup", () => {
 
   describe("error state", () => {
     it("shows red border when any tool has error", () => {
-      const parts = [
+      const { details } = renderGroup([
         tool("ppal-create-track"),
         tool("ppal-create-track", "Error", true),
         tool("ppal-create-track"),
-      ];
-
-      render(<AssistantToolGroup parts={parts} indices={[0, 1, 2]} />);
-      const details = document.querySelector("details")!;
+      ]);
 
       expect(details.className).toContain("border-red-500");
     });
 
     it("shows error count in summary", () => {
-      const parts = [
-        tool("ppal-create-track", "Error", true),
-        tool("ppal-create-track", "Error", true),
-        tool("ppal-create-track"),
-      ];
-
-      renderWithToolNames(
-        <AssistantToolGroup parts={parts} indices={[0, 1, 2]} />,
+      const { summary } = renderGroup(
+        [
+          tool("ppal-create-track", "Error", true),
+          tool("ppal-create-track", "Error", true),
+          tool("ppal-create-track"),
+        ],
+        true,
       );
-      const summary = document.querySelector("summary")!;
 
       expect(summary.textContent).toContain("2 failed");
     });
 
     it("does not show red border when no errors", () => {
-      render(<AssistantToolGroup parts={defaultParts} indices={[0, 1, 2]} />);
-      const details = document.querySelector("details")!;
+      const { details } = renderGroup(defaultParts);
 
       expect(details.className).not.toContain("border-red-500");
     });
@@ -174,25 +173,21 @@ describe("AssistantToolGroup", () => {
       // A warn-and-skip warning in a collapsed (3+) group must be visible
       // without expanding, like AssistantToolCall. Before the fix the group
       // ignored warnings entirely.
-      const parts = [
-        tool("ppal-create-track"),
-        tool("ppal-update-track", warn("quantize ignored for audio clip")),
-        tool("ppal-create-track"),
-      ];
-
-      renderWithToolNames(
-        <AssistantToolGroup parts={parts} indices={[0, 1, 2]} />,
+      const { details, summary } = renderGroup(
+        [
+          tool("ppal-create-track"),
+          tool("ppal-update-track", warn("quantize ignored for audio clip")),
+          tool("ppal-create-track"),
+        ],
+        true,
       );
-      const details = document.querySelector("details")!;
-      const summary = document.querySelector("summary")!;
 
       expect(details.className).toContain("border-yellow-500");
       expect(summary.textContent).toContain("1 warning");
     });
 
     it("does not show a yellow border when there are no warnings", () => {
-      render(<AssistantToolGroup parts={defaultParts} indices={[0, 1, 2]} />);
-      const details = document.querySelector("details")!;
+      const { details } = renderGroup(defaultParts);
 
       expect(details.className).not.toContain("border-yellow-500");
     });
@@ -200,17 +195,14 @@ describe("AssistantToolGroup", () => {
     it("prioritizes the error affordance over warnings", () => {
       // With both a failure and a warning, the red error border/summary wins
       // (warnings show only when there's no error), matching the single call.
-      const parts = [
-        tool("ppal-create-track", "Error", true),
-        tool("ppal-update-track", warn("skipped invalid scale")),
-        tool("ppal-create-track"),
-      ];
-
-      renderWithToolNames(
-        <AssistantToolGroup parts={parts} indices={[0, 1, 2]} />,
+      const { details, summary } = renderGroup(
+        [
+          tool("ppal-create-track", "Error", true),
+          tool("ppal-update-track", warn("skipped invalid scale")),
+          tool("ppal-create-track"),
+        ],
+        true,
       );
-      const details = document.querySelector("details")!;
-      const summary = document.querySelector("summary")!;
 
       expect(details.className).toContain("border-red-500");
       expect(details.className).not.toContain("border-yellow-500");
@@ -221,7 +213,7 @@ describe("AssistantToolGroup", () => {
 
   describe("expanded content", () => {
     it("renders individual AssistantToolCall components inside", () => {
-      render(<AssistantToolGroup parts={defaultParts} indices={[0, 1, 2]} />);
+      renderGroup(defaultParts);
 
       // Outer group + 3 inner tool calls + 3 result disclosures
       const allDetails = document.querySelectorAll("details");
@@ -230,16 +222,12 @@ describe("AssistantToolGroup", () => {
     });
 
     it("skips step-usage parts in rendered content", () => {
-      const parts: (UIToolPart | UIStepUsagePart)[] = [
+      const { container } = renderGroup([
         tool("ppal-create-track"),
         { type: "step-usage", usage: { inputTokens: 100, outputTokens: 50 } },
         tool("ppal-create-track"),
         tool("ppal-create-track"),
-      ];
-
-      const { container } = render(
-        <AssistantToolGroup parts={parts} indices={[0, 1, 2, 3]} />,
-      );
+      ]);
 
       // Step-usage rendered by parent, not by this component
       expect(container.textContent).not.toContain("tokens:");

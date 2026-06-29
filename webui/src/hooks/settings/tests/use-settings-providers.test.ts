@@ -105,4 +105,35 @@ describe("useSettings - provider-specific settings", () => {
       },
     );
   });
+  describe("getProviderConnection", () => {
+    it("returns a provider's stored key + baseUrl regardless of the active provider", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setProvider("anthropic");
+      });
+      await act(() => {
+        result.current.setApiKey("anthropic-key");
+      });
+      await act(() => {
+        result.current.setProvider("ollama");
+      });
+      await act(() => {
+        result.current.setBaseUrl!("http://192.168.1.50:11434/v1");
+      });
+      // Switch the active provider away — getProviderConnection must still read
+      // the other providers' stored connections.
+      await act(() => {
+        result.current.setProvider("gemini");
+      });
+
+      expect(result.current.getProviderConnection("anthropic")).toStrictEqual({
+        apiKey: "anthropic-key",
+        baseUrl: undefined,
+      });
+      expect(result.current.getProviderConnection("ollama").baseUrl).toBe(
+        "http://192.168.1.50:11434/v1",
+      );
+    });
+  });
 });

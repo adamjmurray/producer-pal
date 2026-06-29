@@ -12,6 +12,8 @@ import {
   type MessageOverrides,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat-types";
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
+import { type BranchNavState } from "#webui/lib/conversation-branch-helpers";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatStart } from "./ChatStart";
 import { ChatInput } from "./controls/ChatInput";
@@ -26,9 +28,14 @@ import { MessageList } from "./MessageList";
 interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
+  /** Whether a manual compaction is in progress (drives the "Compacting…" footer) */
+  isCompacting?: boolean;
   rateLimitState: RateLimitState | null;
   toolLimitReached: boolean;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  queuedMessages: QueuedMessage[];
+  onRemoveQueued: (id: number) => void;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   handleCompact?: (messageIndex: number) => Promise<void>;
@@ -48,6 +55,7 @@ interface ChatScreenProps {
   showTimestamps: boolean;
   showTokenUsage: boolean;
   conversationPanel: ConversationPanelState;
+  branchNav?: BranchNavState;
 }
 
 /**
@@ -55,9 +63,13 @@ interface ChatScreenProps {
  * @param props - ChatScreenProps
  * @param props.messages - Chat messages
  * @param props.isAssistantResponding - Whether assistant is currently responding
+ * @param props.isCompacting - Whether a manual compaction is in progress
  * @param props.rateLimitState - Rate limit retry state
  * @param props.toolLimitReached - Whether the last response hit the tool-call limit
  * @param props.handleSend - Send message handler
+ * @param props.enqueueMessage - Queue a message while the assistant is responding
+ * @param props.queuedMessages - Messages waiting to be sent
+ * @param props.onRemoveQueued - Remove a queued message by id
  * @param props.handleRetry - Retry message handler
  * @param props.handleEdit - Edit message handler
  * @param props.handleCompact - Compact-up-to-here handler
@@ -75,15 +87,20 @@ interface ChatScreenProps {
  * @param props.onStop - Stop response callback
  * @param props.showTimestamps - Whether to show message timestamps
  * @param props.conversationPanel - Conversation history panel state
+ * @param props.branchNav - Sibling-branch paging state for the ‹ n/m › arrows
  * @returns Chat screen element
  */
 export function ChatScreen(props: ChatScreenProps) {
   const {
     messages,
     isAssistantResponding,
+    isCompacting,
     rateLimitState,
     toolLimitReached,
     handleSend,
+    enqueueMessage,
+    queuedMessages,
+    onRemoveQueued,
     handleRetry,
     handleEdit,
     handleCompact,
@@ -101,6 +118,7 @@ export function ChatScreen(props: ChatScreenProps) {
     showTimestamps,
     showTokenUsage,
     conversationPanel,
+    branchNav,
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
@@ -130,7 +148,10 @@ export function ChatScreen(props: ChatScreenProps) {
         ) : (
           <MessageList
             messages={messages}
+            queuedMessages={queuedMessages}
+            onRemoveQueued={onRemoveQueued}
             isAssistantResponding={isAssistantResponding}
+            isCompacting={isCompacting}
             handleRetry={handleRetry}
             handleEdit={handleEdit}
             handleCompact={handleCompact}
@@ -139,6 +160,7 @@ export function ChatScreen(props: ChatScreenProps) {
             showTimestamps={showTimestamps}
             showTokenUsage={showTokenUsage}
             requestedModel={headerInfo.activeModel}
+            branchNav={branchNav}
           />
         )}
       </div>
@@ -166,8 +188,10 @@ export function ChatScreen(props: ChatScreenProps) {
 
       <ChatInput
         handleSend={handleSend}
+        onEnqueue={enqueueMessage}
         isAssistantResponding={isAssistantResponding}
         hasError={conversationHasError(messages)}
+        isCompacting={isCompacting}
         onStop={onStop}
         thinking={thinking}
         onThinkingChange={setThinking}

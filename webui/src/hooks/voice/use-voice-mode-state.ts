@@ -17,10 +17,10 @@ import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings"
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { useGeminiVoiceSession } from "#webui/hooks/voice/gemini/use-gemini-voice-session";
+import { mergeVoiceHistory } from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { useVoiceModeReporting } from "#webui/hooks/voice/use-voice-mode-reporting";
 import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
-import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import {
   DEFAULT_GEMINI_REALTIME_VOICE,

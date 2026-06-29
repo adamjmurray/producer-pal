@@ -42,7 +42,7 @@ export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
 export { deviceSoundDesign } from "./workflow/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
-export { duplicate } from "./clip/duplicate.ts";
+export { duplicate, duplicateLoop } from "./clip/duplicate.ts";
 export {
   durationArgBarLength,
   durationArgMixedCombiner,
@@ -52,6 +52,7 @@ export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quar
 export {
   noteOpsMerge,
   noteOpsRatchetRoll,
+  noteOpsRepeat,
   noteOpsSplit,
   noteOpsSplitSync,
 } from "./clip/note-ops-roll-and-merge.ts";

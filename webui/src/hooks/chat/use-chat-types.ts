@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
@@ -25,6 +26,7 @@ export interface ChatClient<TMessage> {
     message: string,
     signal: AbortSignal,
     overrides?: MessageOverrides,
+    shouldInterrupt?: () => boolean,
   ) => AsyncIterable<TMessage[]>;
   /**
    * Summarize a slice of history into a compaction summary string. Optional:
@@ -86,6 +88,21 @@ export interface ConversationLockedSettings {
   smallModelMode: boolean | null;
 }
 
+/**
+ * Signal that the next conversation save should branch (fork) into a new record
+ * instead of overwriting the active one. Set by the fork action right before it
+ * streams the new turn, and consumed by the conversation save. Lives in a ref
+ * shared across hooks because the fork action (in useChat) and the save (in
+ * useConversations) are otherwise decoupled.
+ */
+export interface PendingFork {
+  /** UI message index the fork diverges at (where the ‹ n/m › arrows anchor). */
+  anchorIndex: number;
+}
+
+/** Mutable ref carrying the pending-fork signal (null when no fork is pending). */
+export type PendingForkRef = { current: PendingFork | null };
+
 /** Rate limit retry state for UI display */
 export interface RateLimitState {
   isRetrying: boolean;
@@ -104,6 +121,9 @@ export interface UseChatReturn {
   activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   rateLimitState: RateLimitState | null;
+  queuedMessages: QueuedMessage[];
+  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  removeMessage: (id: number) => void;
   /** True when the last response stopped at the tool-call step limit */
   toolLimitReached: boolean;
   /** True while a compaction summary is being generated */
@@ -113,7 +133,12 @@ export interface UseChatReturn {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
-  /** Compact the conversation up to and including the given UI message */
+  /**
+   * Compact the conversation: summarize the full visible history into a single
+   * appended summary marker. Prior turns stay visible but drop out of the model
+   * payload. The index only validates the trigger (the gating UI message), not a
+   * cut point.
+   */
   compact: (mergedMessageIndex: number) => Promise<void>;
   /** Restore the pre-compaction history (while still available) */
   undoCompaction: () => void;
@@ -142,6 +167,20 @@ export interface UseChatProps<
   checkMcpConnection: () => Promise<void>;
   smallModelMode: boolean;
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
+  /**
+   * Resolve the connection (key + base URL) for a given provider from the
+   * user's *current* settings. Used at client-init time so a restored
+   * conversation locked to provider X reconnects with the current X credentials,
+   * rather than the currently-selected provider's. Returns the same values as
+   * the top-level `apiKey`/`extraParams.baseUrl` when asked for the active
+   * provider, so new conversations are unaffected.
+   */
+  resolveConnection: (provider: Provider) => {
+    apiKey: string;
+    baseUrl?: string;
+  };
   extraParams?: Record<string, unknown>;
   autoSaveRef?: { current: (() => void) | null };
+  /** Shared signal set when an edit/retry should branch the conversation. */
+  pendingForkRef?: PendingForkRef;
 }

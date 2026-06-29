@@ -5,7 +5,12 @@
 
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveFileIdForPath } from "../../query/candidate-query.ts";
+import {
+  buildLibraryItem,
+  resolveFileIdForPath,
+  type SearchRow,
+} from "../../query/candidate-query.ts";
+import { type ResolvedPath } from "../../reconstruct-path.ts";
 
 describe("resolveFileIdForPath", () => {
   let db: DatabaseSync;
@@ -58,5 +63,60 @@ describe("resolveFileIdForPath", () => {
     insert(1, 0, "C:\\");
 
     expect(resolveFileIdForPath(db, "C:/Missing/file.wav")).toBeNull();
+  });
+
+  it("returns null when the root element is not in the DB", () => {
+    // Empty files table -> the root row lookup misses entirely.
+    expect(resolveFileIdForPath(db, "/Users/kick.wav")).toBeNull();
+  });
+
+  it("skips empty interior segments from collapsed slashes", () => {
+    // A "//" in the middle yields an empty segment that must be skipped rather
+    // than treated as a (never-matching) child name.
+    insert(1, 0, "/");
+    insert(2, 1, "Users");
+    insert(3, 2, "clap.wav");
+
+    expect(resolveFileIdForPath(db, "/Users//clap.wav")).toBe(3);
+  });
+});
+
+describe("buildLibraryItem", () => {
+  function makeRow(overrides: Partial<SearchRow> = {}): SearchRow {
+    return {
+      file_id: 1,
+      parent_id: 0,
+      name: "kick.wav",
+      use_count: 0,
+      file_type: 0,
+      subtype: null,
+      folder_kind: null,
+      ...overrides,
+    };
+  }
+
+  it("uses the resolved path, folder, and truncation flag when present", () => {
+    const resolved: ResolvedPath = {
+      path: "/Samples/Drums/kick.wav",
+      folder: "Drums",
+      truncated: true,
+    };
+    const paths = new Map([[1, resolved]]);
+
+    const item = buildLibraryItem(makeRow(), paths, new Map());
+
+    expect(item.path).toBe("/Samples/Drums/kick.wav");
+    expect(item.folder).toBe("Drums");
+    expect(item.pathTruncated).toBe(true);
+  });
+
+  it("falls back to /<name> when the path was not resolved", () => {
+    // No entry in the paths map -> resolved is undefined, so the path,
+    // folder, and truncation flag all take their absent branches.
+    const item = buildLibraryItem(makeRow(), new Map(), new Map());
+
+    expect(item.path).toBe("/kick.wav");
+    expect(item.folder).toBeUndefined();
+    expect(item.pathTruncated).toBeUndefined();
   });
 });

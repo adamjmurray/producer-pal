@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -19,12 +20,38 @@ import {
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 
 // Use t8 "9-MIDI" which is empty in e2e-test-set
 const emptyMidiTrack = 8;
+
+// Two off-grid notes used by the quantization tests.
+const OFF_GRID_NOTES = "C3 1|1.25\nD3 1|2.75";
+
+/**
+ * Resets a clip back to the off-grid notes (clearing existing notes with a v0
+ * preTransform), then applies a full-strength quantize on the given grid.
+ */
+async function resetOffGridAndQuantize(
+  clipId: string,
+  quantizeGrid: string,
+): Promise<void> {
+  await ctx.client!.callTool({
+    name: "ppal-update-clip",
+    arguments: { ids: clipId, preTransforms: "v0", notes: OFF_GRID_NOTES },
+  });
+
+  await sleep(100);
+
+  await ctx.client!.callTool({
+    name: "ppal-update-clip",
+    arguments: { ids: clipId, quantize: 1.0, quantizeGrid },
+  });
+
+  await sleep(100);
+}
 
 describe("ppal-update-clip", () => {
   it("updates MIDI clip basic properties", async () => {
@@ -160,24 +187,9 @@ describe("ppal-update-clip", () => {
     expect(replacedClip.notes).not.toContain("G3");
 
     // Test 3: Quantize notes
-    // First clear and add some off-grid notes
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clip.id,
-        preTransforms: "v0",
-        notes: "C3 1|1.25\nD3 1|2.75",
-      },
-    });
+    // First clear and add some off-grid notes, then snap to a 1/4 grid
+    await resetOffGridAndQuantize(clip.id, "1/4");
 
-    await sleep(100);
-
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { ids: clip.id, quantize: 1.0, quantizeGrid: "1/4" },
-    });
-
-    await sleep(100);
     const verifyQuantize = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { clipId: clip.id, include: ["notes"] },
@@ -228,23 +240,8 @@ describe("ppal-update-clip", () => {
     // n/12 is the alias for the 1/8T eighth-triplet grid (no decimal spelling).
     // Reset the off-grid notes, then snap to triplets: 1.25 -> beat 1+1/3
     // (1|1+n/12), 2.75 -> beat 2+2/3 (1|2+n/6).
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clip.id,
-        preTransforms: "v0",
-        notes: "C3 1|1.25\nD3 1|2.75",
-      },
-    });
+    await resetOffGridAndQuantize(clip.id, "n/12");
 
-    await sleep(100);
-
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { ids: clip.id, quantize: 1.0, quantizeGrid: "n/12" },
-    });
-
-    await sleep(100);
     const verifyTriplet = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { clipId: clip.id, include: ["notes"] },

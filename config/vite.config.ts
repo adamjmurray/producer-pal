@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import preact from "@preact/preset-vite";
-import tailwindcss from "@tailwindcss/vite";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import preact from "@preact/preset-vite";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
@@ -15,6 +15,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -32,6 +33,7 @@ export default defineConfig({
         const outDir = join(rootDir, "max-for-live-device");
         const oldPath = join(outDir, "index.html");
         const newPath = join(outDir, "chat-ui.html");
+
         try {
           renameSync(oldPath, newPath);
           console.log(
@@ -39,6 +41,7 @@ export default defineConfig({
           );
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
+
           console.error("Error renaming file:", message);
         }
       },
@@ -74,12 +77,14 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
 `;
 
           const contentWithHeader = licenseHeader + content;
+
           writeFileSync(filePath, contentWithHeader, "utf-8");
           console.log(
             `Added license header to ${filePath.replace(rootDir + "/", "")}`,
           );
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
+
           console.error("Error adding license header:", message);
         }
       },

@@ -5,6 +5,7 @@
 
 import { type IDBPDatabase } from "idb";
 import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
+import { collapseBranchFamilies } from "#webui/lib/conversation-branch-helpers";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
@@ -32,6 +33,15 @@ export interface ConversationRecord {
   // RealtimeItem[] for voice records, null for text. Typed as unknown[] so the
   // storage layer stays decoupled from @openai/agents/realtime.
   voiceHistory: unknown[] | null;
+  // --- Conversation branching (edit/retry forks) ---
+  // Set on records created by forking an earlier turn. The fork stores a pointer
+  // back to the record it diverged from (its "trunk") plus the UI message index
+  // the ‹ n/m › arrows sit under. Absent on non-forked records. Schemaless: these
+  // are optional, so legacy records read fine without a DB_VERSION bump.
+  /** Id of the record this was forked from (the trunk of its divergence set). */
+  forkParentId?: string;
+  /** UI message index where this fork's arrows anchor (the fork-point message). */
+  forkedAtIndex?: number;
 }
 
 /** Lightweight summary for list display (no transcript payload) */
@@ -172,10 +182,31 @@ export async function setBookmark(
 }
 
 /**
- * List all conversations, sorted by updatedAt descending.
- * @returns Array of conversation summaries
+ * List conversations for display, ordered by recency. Branch families (edit/retry
+ * forks linked by {@link ConversationRecord.forkParentId}) are collapsed to a
+ * single representative so forks don't clutter the list. The active conversation,
+ * when passed, represents its family — so the sidebar can highlight the sibling
+ * being viewed even if it isn't the most recent one. Use
+ * {@link listAllConversationSummaries} when every sibling is needed (e.g.
+ * branch-arrow navigation).
+ * @param activeId - Active conversation id, promoted to represent its family
+ * @returns Array of conversation summaries, one per branch family
  */
-export async function listConversations(): Promise<ConversationSummary[]> {
+export async function listConversations(
+  activeId?: string | null,
+): Promise<ConversationSummary[]> {
+  return collapseBranchFamilies(await listAllConversationSummaries(), activeId);
+}
+
+/**
+ * List every conversation summary (no branch collapsing), sorted by updatedAt
+ * descending. Branch-arrow navigation needs all siblings, not just the
+ * collapsed representatives that {@link listConversations} returns.
+ * @returns Array of all conversation summaries
+ */
+export async function listAllConversationSummaries(): Promise<
+  ConversationSummary[]
+> {
   const db = await getConversationDb();
   const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
 
@@ -197,6 +228,8 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         smallModelMode,
         totalUsage,
         sessionType,
+        forkParentId,
+        forkedAtIndex,
       }) => ({
         id,
         title,
@@ -212,6 +245,10 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         smallModelMode,
         totalUsage,
         sessionType,
+        // Only carried on forked records — kept off plain summaries so callers
+        // (and equality assertions) see the unchanged shape for normal chats.
+        ...(forkParentId != null && { forkParentId }),
+        ...(forkedAtIndex != null && { forkedAtIndex }),
       }),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt);
@@ -237,10 +274,22 @@ export async function searchConversations(query: string): Promise<Set<string>> {
 
   for (const raw of all) {
     const record = normalizeLegacyRecord(raw);
-    const inTitle = record.title?.toLowerCase().includes(needle) ?? false;
-    const inMessages = record.messages.some((m) =>
-      m.content.toLowerCase().includes(needle),
-    );
+    // Guard the title type as well: a corrupt/imported record can carry a
+    // non-string title despite the static type, and `title.toLowerCase()` would
+    // throw, breaking search for the whole list.
+    const inTitle =
+      typeof record.title === "string" &&
+      record.title.toLowerCase().includes(needle);
+    // Cast to unknown per element: a corrupt/imported record can carry a
+    // malformed message (null, or no string content) despite the static type,
+    // and `m.content.toLowerCase()` would throw. Skip such entries.
+    const inMessages = (record.messages as unknown[]).some((m) => {
+      const content = (m as { content?: unknown } | null)?.content;
+
+      return (
+        typeof content === "string" && content.toLowerCase().includes(needle)
+      );
+    });
     const inVoice = extractVoiceTranscriptText(record.voiceHistory)
       .toLowerCase()
       .includes(needle);

@@ -328,7 +328,7 @@ export default [
     ignores: [
       ".claude/**",
       "claude-desktop-extension/**",
-      "config/**",
+      "config/report/**",
       "coverage/**",
       "dist/**",
       "docs/.vitepress/cache/**",
@@ -550,6 +550,66 @@ export default [
       globals: {
         ...globals.node,
       },
+    },
+  },
+
+  // Build/test config files (config/ + root vitest.config.ts): TypeScript build
+  // tooling. Type-aware lint for real bugs; JSDoc is not required here.
+  {
+    files: ["config/**/*.ts", "vitest.config.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ...tsParserOptionsBase,
+        project: ["./config/tsconfig.json"],
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: importResolverSettings,
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "@typescript-eslint": tsPlugin,
+      "import-x": importPlugin,
+      sonarjs,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
+      "no-undef": "off", // TypeScript handles undefined variable checks
+    },
+  },
+
+  // Build config files (JS/MJS): rollup configs, vitest reporters. Lint for real
+  // bugs (baseRules, sonarjs, unicorn) without TypeScript or JSDoc requirements.
+  {
+    files: ["config/**/*.{js,mjs}"],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: importResolverSettings,
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "import-x": importPlugin,
+      sonarjs,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
     },
   },
 
@@ -787,6 +847,78 @@ export default [
           selector: "NewExpression[callee.name='LiveAPI']",
           message:
             "Use LiveAPI.from() instead of new LiveAPI() for safer ID handling",
+        },
+      ],
+    },
+  },
+
+  // Architectural layering contract (see dev/Architecture.md). Turns the
+  // documented module boundaries into a CI-checked rule so the architecture
+  // diagram is an executable contract, not just prose. Scoped to production
+  // src only — test infrastructure (mocks, fixtures, helpers) legitimately
+  // reaches across layers and is excluded below.
+  {
+    files: ["src/**/*.ts"],
+    ignores: [
+      "**/*.test.ts",
+      "**/*-test-helpers.ts",
+      "**/*-test-case.ts",
+      "**/*-test-fixtures.ts",
+      "src/**/tests/**",
+      "src/**/test-cases/**",
+      "src/**/test-utils/**",
+      "src/test/**",
+    ],
+    settings: importResolverSettings,
+    plugins: {
+      "import-x": importPlugin,
+    },
+    rules: {
+      "import-x/no-restricted-paths": [
+        "error",
+        {
+          zones: [
+            // shared/ is the foundational leaf: utilities depended on by every
+            // other layer, so it must not depend on any of them.
+            {
+              target: "./src/shared",
+              from: [
+                "./src/tools",
+                "./src/mcp-server",
+                "./src/live-api-adapter",
+                "./src/notation",
+                "./src/portal",
+              ],
+              message:
+                "src/shared is a leaf layer: it must not import from higher layers (tools, mcp-server, live-api-adapter, notation, portal).",
+            },
+            // notation/ (the bar|beat + transform parsers) is a leaf: it may
+            // only depend on shared.
+            {
+              target: "./src/notation",
+              from: [
+                "./src/tools",
+                "./src/mcp-server",
+                "./src/live-api-adapter",
+                "./src/portal",
+              ],
+              message:
+                "src/notation is a leaf layer: it may only import from src/shared (not tools, mcp-server, live-api-adapter, or portal).",
+            },
+            // tools/ is the domain layer that the server/adapter entry points
+            // compose; the dependency must not run the other way.
+            // Documented exception: live-library/library-types.ts is the
+            // shared ppal-library data contract, consumed by both the tool
+            // (tools/session/library.ts) and its mcp-server-side
+            // implementation (mcp-server/live-library/*).
+            {
+              target: "./src/tools",
+              from: "./src/mcp-server",
+              except: ["./live-library/library-types.ts"],
+              message:
+                "src/tools must not import from src/mcp-server (the server composes tools, not the reverse). The only grandfathered import is mcp-server/live-library/library-types.ts, the shared ppal-library data contract.",
+            },
+          ],
         },
       ],
     },

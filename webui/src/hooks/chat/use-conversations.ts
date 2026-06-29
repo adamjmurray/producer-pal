@@ -9,20 +9,26 @@ import {
   type ActiveMeta,
   type ActiveRefs,
   DEFAULT_META,
+  buildConversationSaveRecord,
   buildLockedSettings,
-  buildSaveRecord,
+  chainSave,
   getHashConversationId,
   setLocationHash,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
 import { useSyncActiveMeta } from "#webui/hooks/chat/helpers/use-sync-active-meta";
-import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
+import {
+  type ConversationLockedSettings,
+  type PendingForkRef,
+} from "#webui/hooks/chat/use-chat-types";
+import { branchFamilyIds } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
   type ConversationSummary,
   deleteAllConversations as dbDeleteAllConversations,
   deleteConversation as dbDeleteConversation,
   deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
+  listAllConversationSummaries,
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
@@ -48,6 +54,9 @@ interface UseConversationsProps {
    * modes so the voice hook can pick the conversation up from the URL hash.
    * When omitted, the hook falls back to clearing the active id. */
   onForeignRecord?: (record: ConversationRecord) => void;
+  /** Shared signal set by an edit/retry fork; consumed on the next save to
+   * branch the conversation into a new record instead of overwriting it. */
+  pendingForkRef?: PendingForkRef;
 }
 
 export interface UseConversationsReturn {
@@ -80,6 +89,7 @@ export interface UseConversationsReturn {
  * @param props.activeShowThoughts - Active showThoughts setting for the current conversation
  * @param props.activeSmallModelMode - Active smallModelMode setting for the current conversation
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
+ * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
  * @returns Conversation management state and handlers
  */
 export function useConversations({
@@ -93,6 +103,7 @@ export function useConversations({
   activeShowThoughts: activeShowThoughtsProp,
   activeSmallModelMode: activeSmallModelModeProp,
   onForeignRecord,
+  pendingForkRef,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
@@ -104,6 +115,9 @@ export function useConversations({
   const activeIdRef = useRef(activeConversationId);
   const activeMetaRef = useRef<ActiveMeta | null>(null);
   const programmaticHashRef = useRef(false);
+  // Serializes conversation saves so a later save's read-back can't race ahead
+  // of an earlier save's write (see saveCurrentConversation).
+  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useSyncActiveMeta(activeMetaRef, {
     activeModel: activeModelProp,
@@ -115,7 +129,10 @@ export function useConversations({
   });
 
   const refreshList = useCallback(async () => {
-    const list = await listConversations();
+    // Pass the active id so its branch family is represented by the conversation
+    // being viewed — keeps the sidebar highlight (and bookmark state) on the
+    // active sibling even when it isn't the family's most recent member.
+    const list = await listConversations(activeIdRef.current);
 
     setConversations(list);
   }, []);
@@ -143,13 +160,6 @@ export function useConversations({
     setLocationHash(null);
   }, []);
 
-  const syncActiveMeta = (record: ConversationRecord) =>
-    syncMetaRef(activeMetaRef, record);
-  const getActiveRefs = (id: string): ActiveRefs => ({
-    id,
-    ...(activeMetaRef.current ?? DEFAULT_META),
-  });
-
   // Load conversation from URL hash and conversation list on mount
   useEffect(() => {
     const init = async () => {
@@ -169,7 +179,7 @@ export function useConversations({
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
           restoreChatHistory(record.messages, buildLockedSettings(record));
-          syncActiveMeta(record);
+          syncMetaRef(activeMetaRef, record);
         } else {
           // Hash ID no longer exists in DB
           clearActiveId();
@@ -187,40 +197,70 @@ export function useConversations({
   ]);
 
   const saveCurrentConversation = useCallback(
-    async (updatedAt?: number) => {
+    (updatedAt?: number): Promise<void> => {
+      // Consume the fork signal first — before the empty-history early-return
+      // below. A fork aborted before it streamed any content (Stop, or a browser
+      // Back/Forward tearing the conversation down) reaches here with empty
+      // history; consuming the signal here rather than after the return keeps it
+      // from lingering and mis-branching the next, unrelated save. Forking needs
+      // a saved source (the active record) to preserve; with no active id it
+      // degrades to a normal save of the forked history as a fresh chat.
+      const fork = pendingForkRef?.current ?? null;
+
+      if (pendingForkRef) pendingForkRef.current = null;
+
       const chatHistory = getChatHistory();
 
-      if (chatHistory.length === 0) return;
+      if (chatHistory.length === 0) return Promise.resolve();
 
-      const isNew = activeIdRef.current == null;
-      const id = activeIdRef.current ?? crypto.randomUUID();
+      const reuseId = activeIdRef.current;
+      // A fork mints a new id and switches to it (leaving the source intact); a
+      // normal save reuses the active id, minting one only for a brand-new chat.
+      // Set synchronously before any async work so concurrent saves hit this id.
+      const id =
+        fork != null || reuseId == null ? crypto.randomUUID() : reuseId;
 
-      // Set active ID synchronously before any async operations
       setActiveId(id);
 
-      try {
-        const existing = isNew ? undefined : await loadConversation(id);
-        const record = buildSaveRecord(
-          getActiveRefs(id),
-          existing,
-          chatHistory,
-          updatedAt,
-        );
+      // Serialize the DB work behind any in-flight save. A fork's first save
+      // persists the branch linkage; later saves of that id recover it by reading
+      // the record back. Run concurrently, a later save's read could resolve
+      // before the fork save's write landed — dropping the linkage and orphaning
+      // the branch. Chaining makes the read-after-write ordering deterministic;
+      // the fork signal is still consumed synchronously above, at call time.
+      // chainSave runs this body after any in-flight save; its errors are
+      // swallowed below so the chain never rejects.
+      return chainSave(saveChainRef, async () => {
+        try {
+          const record = await buildConversationSaveRecord({
+            id,
+            reuseId,
+            fork,
+            refs: buildActiveRefs(activeMetaRef, id),
+            chatHistory,
+            updatedAt,
+          });
 
-        syncActiveMeta(record);
+          syncMetaRef(activeMetaRef, record);
 
-        const result = await saveConversation(record);
+          // When saving a fork, protect the whole branch family it joins so the
+          // conversation-cap LRU can't evict the trunk this branch points back to
+          // — or any sibling, which would orphan the family's ‹ n/m › navigation.
+          const protectedIds =
+            fork != null ? await forkProtectedIds(record, reuseId) : undefined;
+          const result = await saveConversation(record, protectedIds);
 
-        limit.showLimitNotification(result);
-        await refreshList();
-      } catch (error) {
-        // App.tsx fire-and-forgets this call, so surface the failure here
-        // instead of letting it become an unhandled rejection
-        console.error("Failed to save conversation", error);
-        limit.showSaveError(error);
-      }
+          limit.showLimitNotification(result);
+          await refreshList();
+        } catch (error) {
+          // App.tsx fire-and-forgets this call, so surface the failure here
+          // instead of letting it become an unhandled rejection
+          console.error("Failed to save conversation", error);
+          limit.showSaveError(error);
+        }
+      });
     },
-    [getChatHistory, refreshList, setActiveId, limit],
+    [getChatHistory, refreshList, setActiveId, limit, pendingForkRef],
   );
 
   const switchConversation = useCallback(
@@ -249,7 +289,10 @@ export function useConversations({
       clearConversation();
       restoreChatHistory(record.messages, buildLockedSettings(record));
       setActiveId(id);
-      syncActiveMeta(record);
+      syncMetaRef(activeMetaRef, record);
+      // Re-collapse with the new active id so its family's row reflects — and
+      // highlights — the sibling just switched to (e.g. via the branch arrows).
+      await refreshList();
     },
     [
       clearConversation,
@@ -257,6 +300,7 @@ export function useConversations({
       restoreChatHistory,
       setActiveId,
       onForeignRecord,
+      refreshList,
     ],
   );
 
@@ -373,6 +417,41 @@ export function useConversations({
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Build the active-refs snapshot (id plus the cached active metadata) used to
+ * carry settings/title/bookmark onto a save record.
+ * @param activeMetaRef - Ref holding the active conversation's metadata
+ * @param activeMetaRef.current - Current metadata, or null when none is active
+ * @param id - Id to stamp on the refs
+ * @returns Active refs for buildConversationSaveRecord
+ */
+function buildActiveRefs(
+  activeMetaRef: { current: ActiveMeta | null },
+  id: string,
+): ActiveRefs {
+  return { id, ...(activeMetaRef.current ?? DEFAULT_META) };
+}
+
+/**
+ * Ids a fork save must shield from the conversation-cap LRU: the entire branch
+ * family the new fork joins (its trunk, the sibling it was forked from, and
+ * every other sibling), so trimming to make room can't evict a member and orphan
+ * the family's ‹ n/m › navigation.
+ * @param record - The fork record being saved
+ * @param reuseId - The active id the fork was created from, if any
+ * @returns Ids to protect from limit-based deletion
+ */
+async function forkProtectedIds(
+  record: ConversationRecord,
+  reuseId: string | null,
+): Promise<ReadonlySet<string>> {
+  const seeds = [record.forkParentId, reuseId].filter(
+    (id): id is string => id != null,
+  );
+
+  return branchFamilyIds(seeds, await listAllConversationSummaries());
+}
 
 /**
  * Overwrite the active-meta ref from a freshly loaded conversation record.

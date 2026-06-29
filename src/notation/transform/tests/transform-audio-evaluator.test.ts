@@ -343,6 +343,18 @@ describe("Audio Transform Evaluator", () => {
         "pitch selector ignored for audio clip transform (audio clips have no pitch)",
       );
     });
+
+    it("warns and skips a gain line carrying a duplicate-selector warning", () => {
+      // Two pitch selectors on one line is invalid; the parser keeps the line
+      // but attaches a selectorWarning. The audio evaluator relays that warning
+      // and skips the assignment (gain stays unchanged -> null).
+      const result = applyAudioTransform(0, 0, "C3: E3: gain = -6");
+
+      expect(result.gain).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("duplicate pitch selector"),
+      );
+    });
   });
 
   describe("where() predicate handling", () => {
@@ -384,7 +396,7 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBeNull();
       expect(result.pitchShift).toBeNull();
       expect(console.warn).toHaveBeenCalledWith(
-        "Note-count operations (ratchet, merge) ignored for audio clips",
+        "Note-count operations (ratchet, repeat, merge, split) ignored for audio clips",
       );
     });
   });
@@ -428,6 +440,17 @@ describe("Audio Transform Evaluator", () => {
 
       // Returns null since evaluation fails (no successful transforms applied)
       expect(result.gain).toBeNull();
+    });
+
+    it("warns and skips legato() in audio context (no legato context)", () => {
+      vi.mocked(console.warn).mockClear();
+      const result = applyAudioTransform(0, 0, "gain = legato()");
+
+      // legato() has no MIDI legato context in a whole-clip audio transform.
+      expect(result.gain).toBeNull();
+      expect(vi.mocked(console.warn)).toHaveBeenCalledWith(
+        expect.stringContaining("not available in this context"),
+      );
     });
   });
 

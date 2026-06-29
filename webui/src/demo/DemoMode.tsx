@@ -17,6 +17,7 @@ import { DEMO_TOOL_NAMES, demoMessages } from "./demo-fixtures";
 
 /* v8 ignore start -- no-op stub: passed as unused callback props */
 const NO_OP = async () => {};
+const NO_OP_SYNC = () => {};
 /* v8 ignore stop */
 
 // The last fixture message has a pending tool call (result: null)
@@ -46,6 +47,8 @@ export function DemoMode() {
         <div className="flex-1 overflow-y-auto">
           <MessageList
             messages={demoMessages}
+            queuedMessages={[]}
+            onRemoveQueued={NO_OP_SYNC}
             isAssistantResponding={hasPendingTool}
             handleRetry={NO_OP}
             handleEdit={NO_OP}

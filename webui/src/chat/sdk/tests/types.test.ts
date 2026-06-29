@@ -69,4 +69,40 @@ describe("toTokenUsage", () => {
       outputTokens: 15,
     });
   });
+
+  it("extracts cache read/write tokens when present", () => {
+    const raw = makeUsage({
+      inputTokens: 1200,
+      outputTokens: 40,
+      inputTokenDetails: {
+        noCacheTokens: 200,
+        cacheReadTokens: 900,
+        cacheWriteTokens: 100,
+      },
+    });
+
+    expect(toTokenUsage(raw)).toStrictEqual({
+      inputTokens: 1200,
+      outputTokens: 40,
+      cacheReadTokens: 900,
+      cacheWriteTokens: 100,
+    });
+  });
+
+  it("omits zero cache tokens", () => {
+    const raw = makeUsage({
+      inputTokens: 100,
+      outputTokens: 15,
+      inputTokenDetails: {
+        noCacheTokens: 100,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+      },
+    });
+
+    expect(toTokenUsage(raw)).toStrictEqual({
+      inputTokens: 100,
+      outputTokens: 15,
+    });
+  });
 });

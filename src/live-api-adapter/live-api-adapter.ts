@@ -143,6 +143,14 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
 /**
+ * Names of every tool the V8 adapter can dispatch. Exported so a parity test can
+ * assert this hand-maintained map stays in sync with the registered tool defs
+ * (STANDARD_TOOL_DEFS + the opt-in ppal-live-api) — a missing entry would make a
+ * shipped tool fail at runtime with "Unknown tool".
+ */
+export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(tools);
+
+/**
  * Call a tool by name with the given arguments and per-request context.
  *
  * @param toolName - Name of the tool to call

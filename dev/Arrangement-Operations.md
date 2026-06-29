@@ -120,6 +120,40 @@ Returns an array like `["id", 726]`. The codebase casts the return
 inconsistently (sometimes `as string`, sometimes `as [string, number]`).
 `LiveAPI.from()` handles both formats via `parseIdOrPath`.
 
+### `duplicate_loop` Inserts (Does Not Overwrite)
+
+Live's native `Clip.duplicate_loop` (exposed by `update-clip`'s `duplicateLoop`)
+copies the current **loop region** content immediately after `loop_end`, doubles
+the loop length, and **shifts any material past the old loop forward by one
+loop-length**. It inserts — it does not overwrite what already sits after the
+loop.
+
+This matters when you select a sub-region smaller than the clip's content and
+then double it. `update-clip` applies `start`/`length`/`firstStart` to the loop
+region _before_ calling `duplicate_loop` (in `processSingleClipUpdate`,
+`clip.setAll` runs before `resolveNoteResult`), so the flow is "select the
+portion, then Live doubles exactly that."
+
+Empirical example (e2e, real Live, 2026-06-28): a 2-bar looping MIDI clip with
+`C3` at bar 1 and `E3` at bar 2, updated with
+`{ duplicateLoop: true, length: "1bar" }`:
+
+1. `length: "1bar"` sets the loop region to bar 1 only — the bar-2 `E3` is now
+   outside the loop.
+2. `duplicate_loop` inserts a copy of bar 1 at `loop_end` and doubles to a 2-bar
+   loop.
+3. Result (`length: "2bar"`, 3 notes): `C3 1|1` (original), `C3 2|1` (inserted
+   copy), and `E3 3|1` — the orphaned bar-2 note **pushed forward** to bar 3,
+   landing beyond the new loop (overhang; read-clip's `[-length, 2*length]` scan
+   sees it, but the loop does not play it).
+
+So selecting a smaller sub-region and doubling is non-destructive: out-of-loop
+notes are displaced forward, never deleted or overwritten. The envelope/
+automation copy `duplicate_loop` also performs is invisible to read-clip (so it
+stays unit-test-only); the note insert/shift geometry can only be observed in
+e2e (`e2e/mcp/clip/update/ppal-update-clip-duplicate-loop.test.ts`), since mocks
+can't reproduce Live's native shift.
+
 ---
 
 ## Core Techniques

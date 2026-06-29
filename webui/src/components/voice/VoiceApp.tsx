@@ -125,6 +125,7 @@ export function VoiceApp(props: VoiceAppProps) {
             <RateLimitRetry
               until={voice.rateLimitedUntil}
               onRetry={voice.retryResponse}
+              exhausted={voice.autoRetryExhausted}
             />
           )}
         </div>

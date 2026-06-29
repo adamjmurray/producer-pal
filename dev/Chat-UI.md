@@ -47,16 +47,26 @@ webui/
 └── src/
     ├── main.tsx            # Preact entry point, renders App
     ├── components/
-    │   ├── App.tsx         # Root component, manages screens
+    │   ├── App.tsx         # Root component; routes to ChatApp or VoiceApp
+    │   ├── ChatApp.tsx     # Text-chat mode shell (wires the chat hooks)
     │   ├── chat/           # Chat interface components
     │   │   ├── ChatScreen.tsx
     │   │   ├── MessageList.tsx
     │   │   └── ...         # Message rendering components
+    │   ├── voice/          # Voice-mode components
+    │   │   ├── VoiceApp.tsx        # Voice mode shell
+    │   │   ├── VoiceControls.tsx   # Talk/stop, voice picker, status
+    │   │   └── VoiceTranscript.tsx # Read-only transcript (reuses MessageList)
     │   └── settings/       # Settings screen components
     ├── hooks/              # Custom React hooks (kebab-case)
     │   ├── chat/
     │   │   ├── use-chat.ts       # Core chat logic, streaming, retry
     │   │   └── ai-sdk-adapter.ts # Provider config + error handling
+    │   ├── voice/
+    │   │   ├── use-voice-mode-state.ts  # Orchestrates the voice hook graph
+    │   │   ├── use-voice-session.ts     # OpenAI Realtime (WebRTC) backend
+    │   │   ├── use-voice-persistence.ts # Voice conversation storage
+    │   │   └── gemini/                  # Gemini Live (WebSocket) backend
     │   ├── settings/
     │   │   └── use-settings.ts   # Settings + localStorage
     │   └── ...
@@ -76,22 +86,28 @@ webui/
 
 - Screen Management
   - Shows SettingsScreen if no API key saved
-  - Otherwise shows ChatScreen
+  - Otherwise routes by the selected model: **VoiceApp** for a realtime model
+    (`isRealtimeSelection`), **ChatApp** otherwise — both get the same shared
+    mode props and settings modal
   - Manages settings modal state
 - State Management and Event Handling
   - Manages use of all hooks
   - Passes all state and callbacks to subcomponent props
 - Data Flow
   ```
-  App.tsx
+  App.tsx                          (owns shared, cross-mode state)
     ├─> useSettings()              → localStorage persistence
     ├─> useTheme()                 → dark/light mode
     ├─> useMcpConnection()         → MCP health check
-    ├─> useChat(aiSdkAdapter)      → chat state machine
-    │     ├─> ChatSdkClient        → streamText() + stream processing
-    │     └─> formatChatMessages() → UI-friendly format
-    ├─> useConversationLock()      → provider lock during chat
-    └─> useConversations()         → IndexedDB persistence + panel state
+    ├─> useViewState()             → panel/modal view state
+    └─> routes to one mode shell:
+          ├─> ChatApp → useChatModeState()
+          │     ├─> useChat(aiSdkAdapter)     → chat state machine
+          │     │     ├─> ChatSdkClient        → streamText() + processing
+          │     │     └─> formatChatMessages() → UI-friendly format
+          │     ├─> useConversationLock()     → provider lock during chat
+          │     └─> useConversations()        → IndexedDB + panel state
+          └─> VoiceApp → useVoiceModeState()  → see Voice Mode below
   ```
 
 **ConversationPanel.tsx** - Slide-out sidebar:
@@ -157,10 +173,43 @@ the underlying provider implementation is swappable):
 - `restoreChatHistory(chatHistory)` - Loads saved history into state without
   creating an AI client (lazy — avoids MCP connection until next send)
 
+### Message Queue
+
+Users can keep sending while the AI is responding. `use-message-queue.ts` is a
+small FIFO holding `QueuedMessage[]` (`enqueueMessage`, `removeMessage`,
+`drainQueue`, `clearQueue`). It keeps both a `useState` array (for rendering the
+faded queued bubbles) and a `useRef` mirror (`queueRef`) so the send loop can
+read the queue **synchronously** mid-stream. The notable behaviors live in the
+`handleSend` loop in `use-chat.ts`, not the hook:
+
+- **Interrupt-on-new-message:** the loop snapshots
+  `queueBaseline = queueRef.current.length` at send start and passes
+  `shouldInterrupt = () => queueRef.current.length > queueBaseline` down to
+  `client.sendMessage`. The SDK client checks it **between tool steps** and
+  stops early, so enqueuing a message can cut a long tool-running turn short and
+  get to the new input sooner. It triggers only on a _newly added_ message —
+  comparing against the baseline, not "queue non-empty" — so a queue carried
+  over from a prior failed turn doesn't self-interrupt the next send.
+- **Drain-and-coalesce:** after a successful turn, `drainQueue()` returns all
+  queued messages, which are joined with blank lines into a **single** next user
+  turn (the first message's overrides apply to the merged turn).
+- **Stop clears, failure keeps:** `stopResponse`/`clearConversation` call
+  `clearQueue`; a _failed_ turn deliberately leaves the queue intact so the
+  messages stay visible and flush on the next successful send.
+
+A fork (edit/retry) does **not** drain or clear the queue — the queued messages
+are the user's words and flush on the next normal send.
+
 ### Conversation Persistence
 
 Conversations are persisted to IndexedDB so they survive page reloads. Covers
-save, load, switch, rename, delete, and auto-titling.
+save, load, switch, rename, delete, and auto-titling. Forked conversations
+(edit/retry branches) add `forkParentId`/`forkedAtIndex` linkage and a
+sibling-navigation UI — see
+[Conversation-Branching.md](./Conversation-Branching.md) for that model. The
+`ConversationRecord` definition in `lib/conversation-db.ts` is the source of
+truth for the full field list (the snippet below is illustrative, not
+exhaustive).
 
 **Storage**: IndexedDB via `idb` library. Database:
 `producer-pal-conversations`, single `conversations` object store with
@@ -281,6 +330,49 @@ always triggers the mismatch indicator.
 - Converts to typed parts: `text`, `thought`, `tool`, `error`
 - Matches tool results to tool calls by ID
 - Tracks original indices for retry functionality
+
+## Voice Mode
+
+Voice mode is a realtime speech-to-speech conversation with the model, reached
+by selecting a realtime model (`App.tsx` routes to `VoiceApp` via
+`isRealtimeSelection`). It reuses the chat conversation store, transcript
+rendering, and MCP tools — only the transport and audio handling are new.
+
+**Hook orchestration:** `use-voice-mode-state.ts` composes the whole voice hook
+graph and picks the backend from the selected model, exposing a single
+`UseVoiceSessionReturn` interface so `VoiceApp` is provider-agnostic:
+
+```
+VoiceApp.tsx
+  └─> useVoiceModeState()                  → orchestrates + routes by provider
+        ├─> useVoiceSession()              → OpenAI Realtime over WebRTC
+        │     (@openai/agents SDK owns mic capture, VAD, playback)
+        ├─> useGeminiVoiceSession()        → Gemini Live over WebSocket
+        │     ├─> GeminiMicCapture         → getUserMedia → AudioWorklet → 16 kHz PCM
+        │     ├─> GeminiPcmPlayer          → gapless 24 kHz PCM playback
+        │     └─> GeminiHistoryBuilder     → WS deltas → RealtimeItem[]
+        └─> useVoicePersistence()          → IndexedDB autosave (shared store)
+```
+
+**Two backends, one interface.** OpenAI leans on the `@openai/agents` Realtime
+SDK (the SDK owns the audio path); Gemini Live is handled explicitly because the
+WebSocket transport carries raw PCM — mic audio is captured through an
+AudioWorklet and posted as 16 kHz PCM, and the model's 24 kHz PCM replies are
+scheduled gaplessly by `GeminiPcmPlayer`. Both backends return the same shape so
+the rest of voice mode doesn't branch on provider.
+
+**Reused from chat:** voice history is converted to chat `UIMessage`s by
+`realtime-items-to-ui-messages.ts` and rendered with the same `MessageList`;
+conversations persist to the same IndexedDB store with a `sessionType: "voice"`
+discriminant and use the shared `ConversationPanel`; MCP tools are dispatched
+through `voice-mcp-call.ts` (a 30s-timeout wrapper that returns errors as text
+rather than throwing), wrapped per provider by `realtime-mcp-tools.ts` (OpenAI)
+and `gemini-mcp-tools.ts` (Gemini).
+
+**Credentials** are minted/relayed by two server routes (`POST /voice-token`,
+`POST /gemini-voice-token`) so the long-lived key stays off the browser for the
+OpenAI path; see [Architecture.md](./Architecture.md#voice-mode) for the server
+side.
 
 ## Build and Development
 

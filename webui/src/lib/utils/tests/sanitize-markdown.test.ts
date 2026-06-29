@@ -3,14 +3,43 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/**
- * @vitest-environment happy-dom
- */
-import { describe, expect, it } from "vitest";
+// Runs in the default node environment (no DOM): marked is a pure string->string
+// renderer, and DOMPurify is mocked to a pass-through here so these tests verify
+// OUR pipeline (marked rendering, the sanitize config wiring, and the link
+// hardening hook) without a DOM. The real sanitization (stripping <script>,
+// javascript: URLs, etc.) is DOMPurify's job and is exercised against a real
+// browser DOM in the Playwright suite (e2e/ui/assistant-markdown.spec.ts) — the
+// only environment DOMPurify supports (happy-dom is explicitly unsupported and
+// mis-walks the DOM, which is why these tests do not run there).
+import DOMPurify from "dompurify";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  hardenLink,
   sanitizeMarkdown,
   sanitizeMarkdownInline,
 } from "#webui/lib/utils/sanitize-markdown";
+
+// Override only sanitize (pass-through) and addHook (no-op); keep the rest of
+// the real module so the typed mock factory satisfies the full DOMPurify shape.
+vi.mock(import("dompurify"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    default: {
+      ...actual.default,
+      sanitize: vi.fn((html: string) => html),
+      addHook: vi.fn(),
+      // Cast past DOMPurify's overloaded sanitize signature (string | TrustedHTML);
+      // the pass-through returns a plain string, which is all these tests need.
+    } as unknown as typeof actual.default,
+  };
+});
+
+const mockSanitize = vi.mocked(DOMPurify.sanitize);
+
+beforeEach(() => {
+  mockSanitize.mockClear();
+});
 
 describe("sanitizeMarkdown", () => {
   it("renders bold markdown", () => {
@@ -21,8 +50,19 @@ describe("sanitizeMarkdown", () => {
     expect(sanitizeMarkdown("*italic*")).toContain("<em>italic</em>");
   });
 
-  it("renders code blocks", () => {
+  it("renders code", () => {
     expect(sanitizeMarkdown("`code`")).toContain("<code>code</code>");
+  });
+
+  it("renders headings", () => {
+    expect(sanitizeMarkdown("# Heading")).toContain("<h1>Heading</h1>");
+  });
+
+  it("renders lists", () => {
+    const result = sanitizeMarkdown("- item 1\n- item 2");
+
+    expect(result).toContain("<ul>");
+    expect(result).toContain("<li>item 1</li>");
   });
 
   it("renders links", () => {
@@ -32,48 +72,21 @@ describe("sanitizeMarkdown", () => {
     expect(result).toContain('href="https://example.com"');
   });
 
-  it("opens links in a new window (target + rel hardening)", () => {
-    const result = sanitizeMarkdown("[link](https://example.com)");
+  it("passes marked output through DOMPurify with the pinned allowlist", () => {
+    sanitizeMarkdown("# Heading");
 
-    expect(result).toContain('target="_blank"');
-    expect(result).toContain('rel="noopener noreferrer"');
-  });
+    expect(mockSanitize).toHaveBeenCalledTimes(1);
+    const [html, config] = mockSanitize.mock.calls[0]!;
 
-  it("strips script tags", () => {
-    const result = sanitizeMarkdown('<script>alert("xss")</script>safe text');
-
-    expect(result).not.toContain("<script");
-    expect(result).not.toContain("alert");
-    expect(result).toContain("safe text");
-  });
-
-  it("strips onerror attributes", () => {
-    const result = sanitizeMarkdown('<img src=x onerror="alert(1)">');
-
-    expect(result).not.toContain("onerror");
-    expect(result).not.toContain("alert");
-  });
-
-  it("strips onclick attributes", () => {
-    const result = sanitizeMarkdown('<div onclick="alert(1)">text</div>');
-
-    expect(result).not.toContain("onclick");
-    expect(result).toContain("text");
-  });
-
-  it("strips javascript: URLs from links (the threat this sanitizer exists to stop)", () => {
-    // DOMPurify's default URI allowlist blocks javascript:, but the config pins
-    // ALLOWED_ATTR (incl. href) and nothing tested that the scheme is rejected.
-    const fromMarkdown = sanitizeMarkdown("[click](javascript:alert)");
-
-    expect(fromMarkdown).not.toContain("javascript:");
-    expect(fromMarkdown).toContain("click"); // link text is preserved
-
-    const fromHtml = sanitizeMarkdown(
-      '<a href="javascript:alert(1)">click</a>',
+    expect(html).toContain("<h1>Heading</h1>");
+    expect(config).toMatchObject({
+      ALLOWED_TAGS: expect.arrayContaining(["a", "strong", "h1", "ul", "li"]),
+      ALLOWED_ATTR: expect.arrayContaining(["href", "rel", "target"]),
+    });
+    // The allowlist must NOT permit script or event-handler vectors.
+    expect((config as { ALLOWED_TAGS: string[] }).ALLOWED_TAGS).not.toContain(
+      "script",
     );
-
-    expect(fromHtml).not.toContain("javascript:");
   });
 
   it("handles empty string", () => {
@@ -89,27 +102,64 @@ describe("sanitizeMarkdownInline", () => {
     expect(result).not.toMatch(/^<p>/);
   });
 
-  it("strips script tags in inline mode", () => {
-    const result = sanitizeMarkdownInline('<script>alert("xss")</script>safe');
+  it("passes inline marked output through DOMPurify with the pinned allowlist", () => {
+    sanitizeMarkdownInline("**bold**");
 
-    expect(result).not.toContain("<script");
-    expect(result).toContain("safe");
-  });
+    expect(mockSanitize).toHaveBeenCalledTimes(1);
+    const [html, config] = mockSanitize.mock.calls[0]!;
 
-  it("opens inline links in a new window", () => {
-    const result = sanitizeMarkdownInline("[link](https://example.com)");
-
-    expect(result).toContain('target="_blank"');
-    expect(result).toContain('rel="noopener noreferrer"');
-  });
-
-  it("strips javascript: URLs in inline mode", () => {
-    expect(sanitizeMarkdownInline("[click](javascript:alert)")).not.toContain(
-      "javascript:",
-    );
+    expect(html).toContain("<strong>bold</strong>");
+    expect(config).toMatchObject({
+      ALLOWED_ATTR: expect.arrayContaining(["href", "rel", "target"]),
+    });
   });
 
   it("handles empty string", () => {
     expect(sanitizeMarkdownInline("")).toBe("");
+  });
+});
+
+describe("hardenLink", () => {
+  /**
+   * Build a minimal fake element exposing only the DOM surface hardenLink
+   * touches, so the hook can be tested without a DOM. Records setAttribute calls.
+   * @param tagName - The element's tagName (e.g. "A", "P")
+   * @param hasHref - Whether the element reports an href attribute
+   * @returns A fake node plus its setAttribute spy
+   */
+  function makeNode(tagName: string, hasHref: boolean) {
+    const setAttribute = vi.fn();
+    const node = {
+      tagName,
+      hasAttribute: (name: string) => name === "href" && hasHref,
+      setAttribute,
+    } as unknown as Element;
+
+    return { node, setAttribute };
+  }
+
+  it("forces links with an href to open in a new window", () => {
+    const { node, setAttribute } = makeNode("A", true);
+
+    hardenLink(node);
+
+    expect(setAttribute).toHaveBeenCalledWith("target", "_blank");
+    expect(setAttribute).toHaveBeenCalledWith("rel", "noopener noreferrer");
+  });
+
+  it("ignores anchors without an href", () => {
+    const { node, setAttribute } = makeNode("A", false);
+
+    hardenLink(node);
+
+    expect(setAttribute).not.toHaveBeenCalled();
+  });
+
+  it("ignores non-anchor elements", () => {
+    const { node, setAttribute } = makeNode("P", true);
+
+    hardenLink(node);
+
+    expect(setAttribute).not.toHaveBeenCalled();
   });
 });

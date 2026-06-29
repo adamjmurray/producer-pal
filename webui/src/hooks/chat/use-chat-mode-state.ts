@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useRef } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-reporting";
@@ -11,6 +11,7 @@ import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversat
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useConversationPanelState } from "#webui/hooks/chat/helpers/use-conversation-panel-state";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
@@ -22,9 +23,17 @@ import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-mo
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
-import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { type UseSettingsReturn } from "#webui/types/settings";
-import { getBaseUrl, LOCAL_PROVIDER_API_KEY } from "#webui/utils/provider-url";
+import {
+  type BranchNavState,
+  type BranchPoint,
+  computeBranchPoints,
+} from "#webui/lib/conversation-branch-helpers";
+import {
+  type ConversationRecord,
+  listAllConversationSummaries,
+} from "#webui/lib/conversation-db";
+import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
+import { getBaseUrl, resolveProviderApiKey } from "#webui/utils/provider-url";
 
 export interface UseChatModeStateParams {
   settings: UseSettingsReturn;
@@ -69,12 +78,35 @@ export function useChatModeState(params: UseChatModeStateParams) {
     setModeContext,
   } = params;
 
-  const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
   const autoSaveRef = useRef<(() => void) | null>(null);
-  const resolvedApiKey =
-    settings.provider === "lmstudio" || settings.provider === "ollama"
-      ? settings.apiKey || LOCAL_PROVIDER_API_KEY
-      : settings.apiKey;
+  // Bridges the fork action (in useChat) to the conversation save (in
+  // useConversations): set right before a forked turn streams, consumed by the
+  // next save to branch the record instead of overwriting it.
+  const pendingForkRef = useRef<PendingFork | null>(null);
+
+  const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
+  const resolvedApiKey = resolveProviderApiKey(
+    settings.provider,
+    settings.apiKey,
+  );
+
+  // Resolve a provider's connection (key + base URL) from current settings.
+  // useChat calls this at client-init time with the conversation's *locked*
+  // provider so a restored conversation reconnects with the current credentials
+  // for its own provider — not whichever provider is selected right now. For the
+  // active provider it returns the same values as the new-conversation path.
+  const { getProviderConnection } = settings;
+  const resolveConnection = useCallback(
+    (targetProvider: Provider): { apiKey: string; baseUrl?: string } => {
+      const conn = getProviderConnection(targetProvider);
+
+      return {
+        apiKey: resolveProviderApiKey(targetProvider, conn.apiKey),
+        baseUrl: getBaseUrl(targetProvider, conn.baseUrl),
+      };
+    },
+    [getProviderConnection],
+  );
 
   const aiSdkChat = useChat({
     provider: settings.provider,
@@ -87,6 +119,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     mcpStatus,
     mcpError,
     checkMcpConnection,
+    resolveConnection,
     adapter: chatAdapter,
     extraParams: {
       baseUrl,
@@ -95,6 +128,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
       apiKey: resolvedApiKey,
     },
     autoSaveRef,
+    pendingForkRef,
   });
 
   const { chat, wrappedHandleSend, wrappedClearConversation } =
@@ -118,6 +152,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     activeShowThoughts: chat.activeShowThoughts,
     activeSmallModelMode: chat.activeSmallModelMode,
     onForeignRecord,
+    pendingForkRef,
   });
 
   useEffect(() => {
@@ -168,5 +203,63 @@ export function useChatModeState(params: UseChatModeStateParams) {
     setModeContext,
   });
 
-  return { chat, wrappedHandleSend, conversationPanelState, headerInfo };
+  // Sibling-branch arrows for the active conversation. Recomputes when the
+  // active conversation or the list changes (a fork was created/deleted).
+  const branchPoints = useBranchNav(
+    conversationManager.activeConversationId,
+    conversationManager.conversations,
+  );
+  const branchNav: BranchNavState = {
+    points: branchPoints,
+    onSwitch: conversationManager.switchConversation,
+  };
+
+  return {
+    chat,
+    wrappedHandleSend,
+    conversationPanelState,
+    headerInfo,
+    branchNav,
+  };
+}
+
+/**
+ * Compute the branch points (sibling-paging arrow positions) for the active
+ * conversation. Reads the full, uncollapsed conversation list so every sibling
+ * is visible, and recomputes whenever the active conversation changes or the
+ * list refreshes (a fork was created or deleted). The branch family is small and
+ * the list is capped, so the read is cheap.
+ * @param activeConversationId - Id of the conversation currently being viewed
+ * @param refreshSignal - Any value that changes when the conversation list does;
+ *   used only to retrigger the computation (e.g. the collapsed summary array)
+ * @returns Branch points for the active conversation (empty when none)
+ */
+export function useBranchNav(
+  activeConversationId: string | null,
+  refreshSignal: unknown,
+): BranchPoint[] {
+  const [points, setPoints] = useState<BranchPoint[]>([]);
+
+  useEffect(() => {
+    if (activeConversationId == null) {
+      setPoints([]);
+
+      return;
+    }
+
+    let cancelled = false;
+
+    void listAllConversationSummaries().then((summaries) => {
+      if (cancelled) return;
+
+      setPoints(computeBranchPoints(activeConversationId, summaries));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // refreshSignal is a deliberate retrigger input, not read in the body.
+  }, [activeConversationId, refreshSignal]);
+
+  return points;
 }

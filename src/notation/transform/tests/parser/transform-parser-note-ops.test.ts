@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "#src/notation/transform/parser/transform-parser.ts";
 
-describe("Transform Parser - note-count operations (ratchet/split/merge)", () => {
+describe("Transform Parser - note-count operations (ratchet/repeat/split/merge)", () => {
   describe("ratchet", () => {
     it("parses a bare count", () => {
       expect(parse("ratchet(2)")).toStrictEqual([
@@ -37,6 +37,41 @@ describe("Transform Parser - note-count operations (ratchet/split/merge)", () =>
         kind: "noteOp",
         name: "ratchet",
         args: [{ type: "barDuration", bars: 1 }],
+      });
+    });
+  });
+
+  describe("repeat", () => {
+    it("parses a lone note-value offset (copies default)", () => {
+      const result = parse("repeat(n/8)");
+
+      expect(result[0]).toMatchObject({
+        kind: "noteOp",
+        name: "repeat",
+        args: [{ type: "nDuration", wholeNoteFraction: 0.125 }],
+      });
+    });
+
+    it("parses a bar-duration offset and a copy count", () => {
+      expect(parse("repeat(1bar, 3)")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          kind: "noteOp",
+          name: "repeat",
+          args: [{ type: "barDuration", bars: 1 }, 3],
+        },
+      ]);
+    });
+
+    it("carries a selector prefix", () => {
+      const result = parse("C3: repeat(n/4, 2)");
+
+      expect(result[0]).toMatchObject({
+        kind: "noteOp",
+        name: "repeat",
+        args: [{ type: "nDuration", wholeNoteFraction: 0.25 }, 2],
+        pitchRange: { startPitch: 60, endPitch: 60 },
       });
     });
   });
@@ -213,6 +248,12 @@ describe("Transform Parser - note-count operations (ratchet/split/merge)", () =>
     it("rejects ratchet() used as a value", () => {
       expect(() => parse("velocity = ratchet(2)")).toThrow(
         /ratchet\(\) is a note-count operation, not a value/,
+      );
+    });
+
+    it("rejects repeat() used as a value", () => {
+      expect(() => parse("velocity = repeat(n/8)")).toThrow(
+        /repeat\(\) is a note-count operation, not a value/,
       );
     });
 

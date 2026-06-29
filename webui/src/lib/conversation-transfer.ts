@@ -4,7 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type BranchRecord,
+  branchFamilyIds,
+  forkPointerCreatesCycle,
+} from "#webui/lib/conversation-branch-helpers";
+import {
   type ConversationRecord,
+  listAllConversationSummaries,
   loadConversation,
   saveConversation,
   getConversationDb,
@@ -86,6 +92,53 @@ export async function importConversations(json: string): Promise<ImportResult> {
       .filter((id): id is string => typeof id === "string"),
   );
 
+  // Extend that protection to the whole branch family each imported fork joins,
+  // including pre-existing local trunks/siblings. Otherwise importing a fork
+  // whose trunk already exists locally (old and unbookmarked) could let the
+  // per-save trim evict that trunk — losing its transcript and orphaning the
+  // imported branch's ‹ n/m › navigation. The walk needs both the imported
+  // records (for their parent pointers) and the existing summaries.
+  const importedBranchRecords: BranchRecord[] = (
+    data.conversations as unknown[]
+  )
+    .map((r) => r as Record<string, unknown>)
+    .filter((r) => typeof r.id === "string")
+    .map((r) => ({
+      id: r.id as string,
+      createdAt: (r.createdAt as number | undefined) ?? 0,
+      updatedAt: (r.updatedAt as number | undefined) ?? 0,
+      ...(typeof r.forkParentId === "string" && {
+        forkParentId: r.forkParentId,
+      }),
+      ...(typeof r.forkedAtIndex === "number" && {
+        forkedAtIndex: r.forkedAtIndex,
+      }),
+    }));
+  const existingSummaries = await listAllConversationSummaries();
+  const protectedIds = branchFamilyIds(
+    [...importIds],
+    [...existingSummaries, ...importedBranchRecords],
+  );
+
+  // Combined parent graph (imported pointers win over existing for the same id)
+  // used to reject a fork pointer that would make a record its own ancestor.
+  // branchRootId tolerates such a cycle without looping, but it still splits one
+  // family across roots and breaks the ‹ n/m › arrows, so drop those pointers.
+  const parentOf = new Map<string, string | undefined>();
+
+  for (const r of existingSummaries) parentOf.set(r.id, r.forkParentId);
+  for (const r of importedBranchRecords) parentOf.set(r.id, r.forkParentId);
+
+  const cyclicForkIds = new Set(
+    importedBranchRecords
+      .filter(
+        (r) =>
+          r.forkParentId != null &&
+          forkPointerCreatesCycle(r.id, r.forkParentId, parentOf),
+      )
+      .map((r) => r.id),
+  );
+
   let newCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;
@@ -100,7 +153,10 @@ export async function importConversations(json: string): Promise<ImportResult> {
     }
 
     try {
-      const normalized = normalizeRecord(record);
+      const normalized = normalizeRecord(
+        record,
+        cyclicForkIds.has(record.id as string),
+      );
       const existing = await loadConversation(normalized.id);
 
       if (existing && existing.updatedAt >= normalized.updatedAt) {
@@ -108,7 +164,7 @@ export async function importConversations(json: string): Promise<ImportResult> {
         continue;
       }
 
-      await saveConversation(normalized, importIds);
+      await saveConversation(normalized, protectedIds);
 
       if (existing) {
         updatedCount++;
@@ -126,7 +182,11 @@ export async function importConversations(json: string): Promise<ImportResult> {
 // --- Helpers below main exports ---
 
 /**
- * Validate that a raw record has the minimum required fields.
+ * Validate that a raw record has the minimum required fields and something
+ * worth importing. A record with a mix of good and malformed messages is still
+ * valid — the bad ones are dropped in {@link normalizeRecord} rather than the
+ * whole conversation being discarded — but one whose messages are *all*
+ * malformed has nothing to keep and is skipped.
  * @param record - Raw parsed object
  * @returns Whether the record is valid for import
  */
@@ -134,19 +194,56 @@ function validateRecord(record: Record<string, unknown>): boolean {
   return (
     typeof record.id === "string" &&
     typeof record.createdAt === "number" &&
-    Array.isArray(record.messages)
+    Array.isArray(record.messages) &&
+    hasUsableMessages(record.messages)
+  );
+}
+
+/**
+ * Whether a record's messages are worth importing: either intentionally empty
+ * (voice records store their transcript in voiceHistory) or carrying at least
+ * one valid message. A record with no usable message is dropped wholesale.
+ * @param messages - Raw parsed messages array
+ * @returns Whether the record has importable messages
+ */
+function hasUsableMessages(messages: unknown[]): boolean {
+  return messages.length === 0 || messages.some(isValidImportedMessage);
+}
+
+/**
+ * Validate a single imported message has the minimum shape search relies on.
+ * Without this, a message lacking a string `content` is saved and later crashes
+ * `searchConversations` (`m.content.toLowerCase()`). Used both to gate a record
+ * (see {@link hasUsableMessages}) and to filter individual bad messages out of
+ * an otherwise-usable record in {@link normalizeRecord}.
+ * @param message - Raw parsed message element
+ * @returns Whether the message has a string content field
+ */
+function isValidImportedMessage(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    typeof (message as { content?: unknown }).content === "string"
   );
 }
 
 /**
  * Normalize a raw record into a full ConversationRecord with defaults.
  * @param record - Raw parsed object with validated required fields
+ * @param dropForkPointers - Drop forkParentId/forkedAtIndex (the import detected
+ *   they would make this record its own ancestor — see {@link forkPointerCreatesCycle})
  * @returns Normalized conversation record
  */
-function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
+function normalizeRecord(
+  record: Record<string, unknown>,
+  dropForkPointers = false,
+): ConversationRecord {
   return {
     id: record.id as string,
-    title: (record.title as string | null | undefined) ?? null,
+    // Coerce a non-string title to null: search does `title.toLowerCase()`, so a
+    // numeric/object title (from a hand-edited or corrupt import) would otherwise
+    // be persisted and crash searchConversations for the whole list.
+    title: typeof record.title === "string" ? record.title : null,
     createdAt: record.createdAt as number,
     updatedAt:
       (record.updatedAt as number | undefined) ?? (record.createdAt as number),
@@ -165,9 +262,27 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
     sessionType:
       (record.sessionType as ConversationRecord["sessionType"] | undefined) ??
       "text",
-    messages: record.messages as ConversationRecord["messages"],
+    // Drop any individually malformed messages (validateRecord already ensured
+    // at least one survives, or the array was intentionally empty) so one bad
+    // entry can't strand the rest of the conversation.
+    messages: (record.messages as unknown[]).filter(
+      isValidImportedMessage,
+    ) as ConversationRecord["messages"],
     voiceHistory:
       (record.voiceHistory as ConversationRecord["voiceHistory"] | undefined) ??
       null,
+    // Round-trip the branching pointers so exported fork families re-import as a
+    // linked set. Both are optional; only carry them when present and well-typed
+    // so a plain (non-forked) record keeps its shape. Dropped entirely when the
+    // pointer would make this record its own ancestor (a corrupt/hand-edited
+    // cycle), so the family collapses cleanly instead of splitting across roots.
+    ...(!dropForkPointers &&
+      typeof record.forkParentId === "string" && {
+        forkParentId: record.forkParentId,
+      }),
+    ...(!dropForkPointers &&
+      typeof record.forkedAtIndex === "number" && {
+        forkedAtIndex: record.forkedAtIndex,
+      }),
   };
 }

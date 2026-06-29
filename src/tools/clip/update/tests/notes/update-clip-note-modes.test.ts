@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  setupAudioClipMock,
   setupUpdateClipMocks,
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -96,6 +97,25 @@ describe("updateClip - Note updates", () => {
     });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
+  });
+
+  it("warns and skips notes on audio clips instead of throwing", async () => {
+    setupAudioClipMock(mocks.clip123, { length: 8 });
+
+    // Audio clips can't hold MIDI notes; writing them would throw and abort a
+    // multi-clip batch. Warn-and-skip instead (mirrors create-clip's guard).
+    await expect(
+      updateClip({ ids: "123", notes: "C3 1|1" }),
+    ).resolves.toBeDefined();
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("notes parameter ignored for audio clip"),
+    );
+    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
   });
 
   it("should handle clips with all v0 notes filtered out during update", async () => {

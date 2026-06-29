@@ -44,6 +44,14 @@ export interface UseSettingsReturn {
   /** Decrypted Gemini provider key, independent of the active `provider`. Same
    * rationale as `openaiApiKey` but for record-aware Gemini Live routing. */
   geminiApiKey: string;
+  /** Read any provider's stored connection (decrypted key + base URL),
+   * independent of the active `provider`. Lets a restored conversation locked to
+   * provider X keep talking to X using the user's *current* key/baseUrl for X —
+   * no API key is ever persisted in conversation storage. */
+  getProviderConnection: (provider: Provider) => {
+    apiKey: string;
+    baseUrl?: string;
+  };
   baseUrl?: string; // For custom, lmstudio, and ollama providers
   setBaseUrl?: (url: string) => void;
   model: string;

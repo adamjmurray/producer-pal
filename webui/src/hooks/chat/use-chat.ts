@@ -7,6 +7,9 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
+  recoverFromChatError,
+  resolveInitConnection,
+  showMissingApiKeyError,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import { useActiveSettings } from "./helpers/use-active-settings";
@@ -20,7 +23,9 @@ import {
   type UseChatReturn,
 } from "./use-chat-types";
 import { useCompaction } from "./use-compaction";
+import { useConversationActions } from "./use-conversation-actions";
 import { useGetChatHistory } from "./use-get-chat-history";
+import { useMessageQueue } from "./use-message-queue";
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -43,9 +48,11 @@ export function useChat<
   mcpStatus,
   mcpError,
   checkMcpConnection,
+  resolveConnection,
   adapter,
   extraParams,
   autoSaveRef,
+  pendingForkRef,
 }: UseChatProps<TClient, TMessage, TConfig>): UseChatReturn {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
@@ -54,6 +61,14 @@ export function useChat<
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
+  const {
+    queuedMessages,
+    queueRef,
+    enqueueMessage,
+    removeMessage,
+    drainQueue,
+    clearQueue,
+  } = useMessageQueue();
   const [toolLimitReached, setToolLimitReached] = useState(false);
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
@@ -101,24 +116,40 @@ export function useChat<
     setMessages,
   });
 
+  const stopResponse = useCallback(() => {
+    abortControllerRef.current?.abort();
+    // Drop any pending-fork signal on teardown. A fork aborted before it streamed
+    // assistant content never autosaves, so the signal would otherwise linger and
+    // mis-branch the next, unrelated conversation's save into a spurious sibling.
+    if (pendingForkRef) pendingForkRef.current = null;
+    abortRetry();
+    setIsAssistantResponding(false);
+    setRateLimitState(null);
+    setToolLimitReached(false);
+    // Deliberately leave the queue intact: aborting a turn is the same as a
+    // failed turn, so queued follow-ups stay visible and flush on the next send.
+    // Tearing down for a conversation switch clears the queue in clearConversation.
+  }, [abortRetry, pendingForkRef]);
+
   const clearConversation = useCallback(() => {
     setMessages([]);
     clientRef.current?.dispose?.();
     clientRef.current = null;
     pendingHistoryRef.current = null;
-    // Abort any in-flight stream on teardown. UI-driven switches call
-    // stopResponse() first, but a browser Back/Forward (hashchange) reaches here
-    // directly — without this, the orphaned stream keeps running and its
-    // setMessages clobbers the freshly-restored conversation (and autosaves the
-    // mixed history under the new ID). Aborting an already-aborted controller is
-    // a no-op, so this is safe for every entry point.
-    abortControllerRef.current?.abort();
+    // stopResponse aborts any in-flight stream and resets the transient response
+    // state (incl. the pending-fork signal). A UI-driven switch already called it,
+    // but a browser Back/Forward (hashchange) reaches here directly — without the
+    // abort the orphaned stream's setMessages clobbers the freshly-restored
+    // conversation and autosaves the mixed history under the new id. Idempotent,
+    // so safe for every entry point.
+    stopResponse();
+    // Switching/clearing a conversation drops any queued follow-ups so they
+    // can't leak into the next conversation (stopResponse leaves them intact
+    // for the abort-the-current-turn case).
+    clearQueue();
     clearSettings();
-    setRateLimitState(null);
-    setToolLimitReached(false);
     invalidateCompactionUndo();
-    abortRetry();
-  }, [clearSettings, abortRetry, invalidateCompactionUndo]);
+  }, [stopResponse, clearQueue, clearSettings, invalidateCompactionUndo]);
 
   const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 
@@ -140,38 +171,40 @@ export function useChat<
     [adapter, restoreSettings, invalidateCompactionUndo],
   );
 
-  const stopResponse = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortRetry();
-    setIsAssistantResponding(false);
-    setRateLimitState(null);
-    setToolLimitReached(false);
-  }, [abortRetry]);
-
   const initializeChat = useCallback(
     async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
       const effectiveThinking = overrides?.thinking ?? thinking;
+      // Continue a restored conversation on its locked provider+model (see
+      // resolveInitConnection); brand-new conversations fall back to current
+      // settings. Rebuilding from current settings here is what previously
+      // switched restored conversations to the selected model on the next send.
+      const init = resolveInitConnection(
+        active,
+        { provider, model },
+        resolveConnection,
+        extraParams,
+      );
 
       const config = adapter.buildConfig(
-        model,
+        init.model,
         temperature,
         effectiveThinking,
         enabledTools,
         chatHistory,
-        extraParams,
+        init.extraParams,
       );
 
       // Dispose any prior client before replacing it — initializeChat is the
       // fork/retry re-init path, so a live client (with an open MCP connection)
       // can already be here.
       clientRef.current?.dispose?.();
-      clientRef.current = adapter.createClient(apiKey, config);
+      clientRef.current = adapter.createClient(init.apiKey, config);
       await clientRef.current.initialize();
       lockSettings(
-        model,
-        provider,
+        init.model,
+        init.provider,
         effectiveThinking,
         temperature,
         null,
@@ -188,7 +221,8 @@ export function useChat<
       temperature,
       thinking,
       enabledTools,
-      apiKey,
+      resolveConnection,
+      active,
       adapter,
       extraParams,
       lockSettings,
@@ -216,50 +250,35 @@ export function useChat<
   const pendingUserMessageRef = useRef<TMessage | null>(null);
 
   const runWithChat = useCallback(
-    async (fn: () => Promise<void>, userMessage?: TMessage) => {
+    async <T>(
+      fn: () => Promise<T>,
+      userMessage?: TMessage,
+    ): Promise<T | undefined> => {
       setIsAssistantResponding(true);
       // A new request clears any prior tool-limit notice before streaming.
       setToolLimitReached(false);
       pendingUserMessageRef.current = userMessage ?? null;
 
       try {
-        await fn();
+        const result = await fn();
+
         pendingUserMessageRef.current = null;
         setToolLimitReached(clientRef.current?.toolLimitReached ?? false);
+
+        return result;
       } catch (error) {
-        const baseHistory = clientRef.current?.chatHistory ?? [];
-        const stashed = pendingUserMessageRef.current;
-        // When init fails before client.sendMessage, the user message never
-        // reached chatHistory. Surface it in the error UI and stash it for
-        // retry/edit so the user isn't stranded if there's no usable client.
-        const includeStashed = stashed && !baseHistory.includes(stashed);
-        const errorHistory = includeStashed
-          ? [...baseHistory, stashed]
-          : baseHistory;
+        recoverFromChatError({
+          error,
+          adapter,
+          clientRef,
+          pendingHistoryRef,
+          stashed: pendingUserMessageRef.current,
+          setMessages,
+          autoSaveRef,
+          pendingForkRef,
+        });
 
-        if (!clientRef.current && includeStashed) {
-          pendingHistoryRef.current = [stashed] as TMessage[];
-        }
-
-        setMessages(adapter.createErrorMessage(error, errorHistory));
-
-        if (clientRef.current) {
-          // The includeStashed path built errorHistory as a fresh array
-          // ([...chatHistory, stashedUserMessage]) and createErrorMessage then
-          // appended the error to it. This is the init-failure case: the client
-          // exists but sendMessage never ran, so its chatHistory is still empty
-          // and has neither the user message nor the error. Assign the whole
-          // array — pushing only the error (the previous behavior) persisted the
-          // error without the user message that prompted it, so a reload showed
-          // a dangling error. Cast is safe: every entry is non-null here
-          // (baseHistory is TMessage[], stashed is non-null when includeStashed).
-          // Reassigning is safe: sendMessage and compact() read chatHistory fresh.
-          if (errorHistory !== clientRef.current.chatHistory) {
-            clientRef.current.chatHistory = errorHistory;
-          }
-
-          autoSaveRef?.current?.();
-        }
+        return undefined;
       } finally {
         pendingUserMessageRef.current = null;
         abortControllerRef.current = null;
@@ -267,70 +286,100 @@ export function useChat<
         setRateLimitState(null);
       }
     },
-    [adapter, autoSaveRef],
+    [adapter, autoSaveRef, pendingForkRef],
   );
 
   const handleSend = useCallback(
     async (message: string, options?: MessageOverrides) => {
-      const userMessage = message.trim();
+      let currentMessage = message;
+      let currentOptions = options;
 
-      if (!userMessage) return;
+      while (true) {
+        const userMessage = currentMessage.trim();
 
-      // Guard the send-during-compaction race at the hook level, not just via
-      // the disabled input: compact() reassigns client.chatHistory mid-flight,
-      // so a concurrent send would corrupt history. Ref (not state) so a future
-      // caller that bypasses the disabled-input prop is still protected.
-      if (isCompactingRef.current) return;
+        if (!userMessage) return;
 
-      // Continuing the conversation invalidates the compaction undo snapshot.
-      invalidateCompactionUndo();
+        // Guard the send-during-compaction race at the hook level, not just via
+        // the disabled input: compact() reassigns client.chatHistory mid-flight,
+        // so a concurrent send would corrupt history. Ref (not state) so a future
+        // caller that bypasses the disabled-input prop is still protected.
+        if (isCompactingRef.current) return;
 
-      const userMessageEntry = adapter.createUserMessage(userMessage);
+        // Continuing the conversation invalidates the compaction undo snapshot.
+        invalidateCompactionUndo();
 
-      if (!apiKey) {
-        // Stash so retry/edit can recover after the user fixes settings.
-        pendingHistoryRef.current = [userMessageEntry];
-        setMessages(
-          adapter.createErrorMessage(
-            new Error(
-              "No API key configured. Please add your API key in Settings.",
-            ),
-            [userMessageEntry],
-          ),
-        );
+        if (!apiKey) {
+          showMissingApiKeyError(
+            adapter,
+            userMessage,
+            setMessages,
+            pendingHistoryRef,
+          );
 
-        return;
+          return;
+        }
+
+        const userMessageEntry = adapter.createUserMessage(userMessage);
+        const sendOptions = currentOptions;
+
+        const succeeded = await runWithChat(async () => {
+          if (!clientRef.current) {
+            const pendingHistory = pendingHistoryRef.current ?? undefined;
+
+            pendingHistoryRef.current = null;
+            await initializeChat(pendingHistory, sendOptions);
+          }
+
+          const client = clientRef.current;
+
+          if (!client) {
+            throw new Error("Failed to initialize chat client");
+          }
+
+          const controller = new AbortController();
+
+          abortControllerRef.current = controller;
+
+          const filtered = filterOverrides(sendOptions, {
+            thinking: thinkingRef.current,
+          });
+          // Interrupt this turn only when the user enqueues a NEW message while
+          // it streams — measured against the queue length at send start, not
+          // "queue is non-empty". A queue carried over from a prior failed turn
+          // (the error path below preserves it) must not self-interrupt this
+          // send; it drains normally once this turn completes.
+          const queueBaseline = queueRef.current.length;
+          const shouldInterrupt = () => queueRef.current.length > queueBaseline;
+
+          return await executeWithRetry({
+            executeStream: (msg) =>
+              client.sendMessage(
+                msg,
+                controller.signal,
+                filtered,
+                shouldInterrupt,
+              ),
+            getHistory: () => client.chatHistory,
+            originalMessage: userMessage,
+          });
+        }, userMessageEntry);
+
+        // A failed turn leaves any queued messages untouched rather than
+        // dropping them: they stay visible and flush on the next successful
+        // send (the queueBaseline above keeps that next send from being
+        // truncated by the carryover).
+        if (!succeeded) return;
+
+        const { messages: queued, overrides } = drainQueue();
+
+        if (queued.length === 0) return;
+
+        // Queued follow-ups coalesce into a single user turn (joined by blank
+        // lines); the overrides (currently just `thinking`) were captured once
+        // from the first queued message and apply to the merged turn (AJM-552).
+        currentMessage = queued.map((m) => m.text).join("\n\n");
+        currentOptions = overrides;
       }
-
-      await runWithChat(async () => {
-        if (!clientRef.current) {
-          const pendingHistory = pendingHistoryRef.current ?? undefined;
-
-          pendingHistoryRef.current = null;
-          await initializeChat(pendingHistory, options);
-        }
-
-        const client = clientRef.current;
-
-        if (!client) {
-          throw new Error("Failed to initialize chat client");
-        }
-
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
-
-        const filtered = filterOverrides(options, {
-          thinking: thinkingRef.current,
-        });
-
-        await executeWithRetry({
-          executeStream: (msg) =>
-            client.sendMessage(msg, controller.signal, filtered),
-          getHistory: () => client.chatHistory,
-          originalMessage: userMessage,
-        });
-      }, userMessageEntry);
     },
     [
       apiKey,
@@ -340,97 +389,48 @@ export function useChat<
       executeWithRetry,
       invalidateCompactionUndo,
       isCompactingRef,
+      queueRef,
+      drainQueue,
     ],
   );
 
-  const forkConversation = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      if (!apiKey) return;
+  // After a successful fork, flush any queued follow-ups through the normal send
+  // path so they don't strand in the queue until the user sends again. handleSend
+  // gives them proper user bubbles, override handling, and its own drain loop.
+  const drainQueuedFollowUps = useCallback(async () => {
+    const { messages: queued, overrides } = drainQueue();
 
-      const message = messages[mergedMessageIndex];
+    if (queued.length === 0) return;
 
-      if (message?.role !== "user") return;
+    const merged = queued.map((m) => m.text).join("\n\n");
 
-      const rawIndex = message.rawHistoryIndex;
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
+    await handleSend(merged, overrides);
+  }, [drainQueue, handleSend]);
 
-      if (!history) return;
-
-      invalidateCompactionUndo();
-
-      await runWithChat(async () => {
-        const slicedHistory = history.slice(0, rawIndex);
-
-        pendingHistoryRef.current = null;
-
-        await initializeChat(slicedHistory);
-
-        const client = clientRef.current as NonNullable<
-          typeof clientRef.current
-        >;
-
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
-
-        await executeWithRetry({
-          executeStream: (msg) => client.sendMessage(msg, controller.signal),
-          getHistory: () => client.chatHistory,
-          originalMessage: newMessage,
-        });
-      });
-    },
-    [
-      apiKey,
-      messages,
-      initializeChat,
-      runWithChat,
-      executeWithRetry,
-      invalidateCompactionUndo,
-    ],
-  );
-
-  const handleRetry = useCallback(
-    async (mergedMessageIndex: number) => {
-      const message = messages[mergedMessageIndex];
-
-      if (message?.role !== "user") return;
-
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      const rawMessage = history[message.rawHistoryIndex];
-
-      if (!rawMessage) return;
-
-      const userMessage = adapter.extractUserMessage(rawMessage);
-
-      if (!userMessage) return;
-
-      await forkConversation(mergedMessageIndex, userMessage);
-    },
-    [messages, adapter, forkConversation],
-  );
-
-  const handleEdit = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      const trimmed = newMessage.trim();
-
-      if (!trimmed) return;
-
-      await forkConversation(mergedMessageIndex, trimmed);
-    },
-    [forkConversation],
-  );
+  const { handleRetry, handleEdit } = useConversationActions({
+    apiKey,
+    messages,
+    adapter,
+    clientRef,
+    pendingHistoryRef,
+    abortControllerRef,
+    initializeChat,
+    runWithChat,
+    executeWithRetry,
+    invalidateCompactionUndo,
+    pendingForkRef,
+    autoSaveRef,
+    drainQueuedFollowUps,
+  });
 
   return {
     messages,
     isAssistantResponding,
     ...active,
     rateLimitState,
+    queuedMessages,
+    enqueueMessage,
+    removeMessage,
     toolLimitReached,
     isCompacting,
     canUndoCompaction,

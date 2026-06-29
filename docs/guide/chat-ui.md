@@ -102,6 +102,25 @@ sections to see the AI's reasoning process:
 
 ![Expandable thoughts](/img/producer-pal-chat-expandable-thoughts.png)
 
+### Editing, Retrying & Branches
+
+You can revise a conversation without losing where it was:
+
+- **Edit** a message you sent — hover over it and click the pencil icon, change
+  the text, and send.
+- **Retry** an AI response — click the ↻ icon to generate a different response.
+
+Either action **branches** the conversation: Producer Pal keeps the original and
+starts a new version from that point forward, so the path you came from is never
+lost. When a turn has more than one version, **‹ n/m › arrows** appear beneath
+it (for example, "2 / 2") — under the edited message for an edit, or under the
+response for a retry. Click them to move between versions — the conversation
+switches to that branch and scrolls to the point where it diverged.
+
+All branches of one conversation share a **single entry** in the
+[history panel](#conversation-history) (showing the most recently used version),
+so branching often won't clutter your history.
+
 ## Message Input
 
 ### Thinking Toggle
@@ -109,11 +128,11 @@ sections to see the AI's reasoning process:
 The thinking toggle next to the text area controls how much reasoning effort the
 AI uses for the next message. Click it to cycle through three levels:
 
-- <img src="/img/thinking-off.png" alt="Off" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+- <img src="/img/thinking-off.png" alt="Off" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Off** - No thinking
-- <img src="/img/thinking-default.png" alt="Default" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+- <img src="/img/thinking-default.png" alt="Default" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Default** - Let the AI decide
-- <img src="/img/thinking-max.png" alt="Max" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+- <img src="/img/thinking-max.png" alt="Max" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Max** - Maximum thinking effort
 
 The default thinking level for new conversations is set in
@@ -124,6 +143,22 @@ overrides it for individual messages.
 
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
+
+### Message Queue
+
+You don't have to wait for the AI to finish. Keep typing and pressing **Send**
+while it's working and your messages line up in a queue, shown as faded bubbles
+at the end of the conversation. Each one has an **✕** to remove it before it's
+sent.
+
+When the current response finishes, the queued messages are sent together as
+your next turn, in the order you added them. Queuing a message can also
+interrupt a long, tool-heavy response so the AI gets to what you said next
+sooner.
+
+Pressing **Stop** clears the queue along with the response in progress. If a
+response fails, your queued messages are kept (not lost) and go out with your
+next send.
 
 ## Voice Mode
 
@@ -183,6 +218,18 @@ revisit them later.
 
 If OpenAI rate-limits your account mid-session, an error banner shows a
 countdown and a **Retry** button that activates once the limit clears.
+
+::: tip Hitting rate limits?
+
+Voice sessions re-send the full conversation context — including Producer Pal's
+skills and tool definitions — to the model on every turn, so a context-heavy
+session can reach rate limits sooner. If you run into limits, try enabling
+[**Small model mode**](#connection): it loads a compact skill set and trims tool
+descriptions, substantially shrinking what's sent each turn. The tradeoff is
+that it's a global setting (it also applies to text chat) and reduces some tool
+detail, so leave it off unless you need it.
+
+:::
 
 ## Settings
 

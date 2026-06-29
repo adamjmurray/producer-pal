@@ -112,6 +112,19 @@ describe("updateScene", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
+  it("should warn and skip an out-of-range tempo (e.g. 0) instead of writing it", async () => {
+    await withConsoleSpy((consoleSpy) => {
+      const result = updateScene({ ids: "123", tempo: 0 });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
+      );
+      expect(scene1.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
+      expect(scene1.set).not.toHaveBeenCalledWith("tempo_enabled", true);
+      expect(result).toStrictEqual({ id: "123" });
+    });
+  });
+
   it("should disable time signature when 'disabled' is passed", () => {
     const result = updateScene({
       ids: "123",

@@ -21,7 +21,7 @@ import {
   handleGeminiMessage,
 } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voice-token";
-import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
 import {
   buildGeminiVoiceInstructions,

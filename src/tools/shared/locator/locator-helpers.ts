@@ -5,10 +5,8 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import {
-  assertDefined,
-  parseCommaSeparatedIds,
-} from "#src/tools/shared/utils.ts";
+import { assertDefined } from "#src/shared/error-utils.ts";
+import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 
 export interface LocatorInfo {
   id: string;

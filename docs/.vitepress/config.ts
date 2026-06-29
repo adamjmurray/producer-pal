@@ -96,9 +96,10 @@ export default defineConfig({
     logo: "/producer-pal-logo.svg",
 
     nav: [
-      { text: "Features", link: "/features" },
       { text: "Installation", link: "/installation" },
       { text: "Guide", link: "/guide" },
+      { text: "Features", link: "/features" },
+      { text: "How It Works", link: "/how-it-works" },
       { text: "Support", link: "/support" },
       {
         text: "GitHub",
@@ -109,8 +110,8 @@ export default defineConfig({
     sidebar: [
       {
         text: "Guide",
+        link: "/guide",
         items: [
-          { text: "User Guide", link: "/guide" },
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
@@ -120,30 +121,51 @@ export default defineConfig({
       },
       {
         text: "Features",
+        link: "/features",
         items: [
-          { text: "Feature List", link: "/features" },
           { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },
       {
-        text: "Support",
+        text: "How It Works",
+        link: "/how-it-works",
         items: [
-          { text: "Overview", link: "/support" },
+          {
+            text: "Running Inside Ableton Live",
+            link: "/how-it-works/running-inside-live",
+          },
+          {
+            text: "The Bridge: JSON Over Patch Cables",
+            link: "/how-it-works/the-bridge",
+          },
+          {
+            text: "More Than a Live API Wrapper",
+            link: "/how-it-works/more-than-a-wrapper",
+          },
+          {
+            text: "Why Not an Ableton Extension?",
+            link: "/how-it-works/why-not-an-extension",
+          },
+        ],
+      },
+      {
+        text: "Support",
+        link: "/support",
+        items: [
           { text: "Troubleshooting", link: "/support/troubleshooting" },
           { text: "Known Issues", link: "/support/known-issues" },
         ],
       },
       {
         text: "Installation",
+        link: "/installation",
         items: [
-          { text: "Overview", link: "/installation" },
           { text: "Upgrading", link: "/installation/upgrading" },
           {
             text: "Built-in Chat UI",
-            collapsed: false,
+            link: "/installation/chat-ui",
             items: [
-              { text: "Overview", link: "/installation/chat-ui" },
               { text: "Gemini", link: "/installation/gemini" },
               { text: "OpenAI", link: "/installation/openai" },
               { text: "Ollama", link: "/installation/ollama" },
@@ -155,9 +177,8 @@ export default defineConfig({
           },
           {
             text: "Desktop Apps",
-            collapsed: false,
+            link: "/installation/desktop-apps",
             items: [
-              { text: "Overview", link: "/installation/desktop-apps" },
               {
                 text: "Claude Desktop",
                 link: "/installation/claude-desktop",
@@ -168,9 +189,8 @@ export default defineConfig({
           },
           {
             text: "Command Line",
-            collapsed: false,
+            link: "/installation/cli",
             items: [
-              { text: "Overview", link: "/installation/cli" },
               { text: "Gemini CLI", link: "/installation/gemini-cli" },
               { text: "Codex CLI", link: "/installation/codex-cli" },
               { text: "Claude Code", link: "/installation/claude-code" },
@@ -179,9 +199,8 @@ export default defineConfig({
           },
           {
             text: "Web Apps",
-            collapsed: false,
+            link: "/installation/web-apps",
             items: [
-              { text: "Overview", link: "/installation/web-apps" },
               { text: "claude.ai", link: "/installation/claude-web" },
               { text: "ChatGPT", link: "/installation/chatgpt-web" },
               { text: "Le Chat", link: "/installation/mistral-le-chat" },
@@ -189,7 +208,7 @@ export default defineConfig({
           },
           {
             text: "Choose by Provider",
-            collapsed: true,
+            link: "/installation/choose-by-provider",
             items: [
               {
                 text: "Claude / Anthropic",
@@ -216,7 +235,7 @@ export default defineConfig({
           },
           {
             text: "Advanced",
-            collapsed: false,
+            link: "/installation/advanced",
             items: [
               { text: "Other MCP LLMs", link: "/installation/other-mcp" },
               { text: "Web Tunnels", link: "/installation/web-tunnels" },

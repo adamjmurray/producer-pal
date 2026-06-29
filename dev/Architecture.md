@@ -92,6 +92,38 @@ UI from the MCP server's Express app and connects directly to the LLM API.
              +-----------------------------+
 ```
 
+### Voice Mode
+
+The chat UI also has a realtime **voice mode**: speech-to-speech conversation
+with the model, with the same MCP tools and conversation store as text chat. The
+browser selects voice mode by choosing a realtime model; the provider is derived
+from the model id (`gpt-realtime-2` → OpenAI, `gemini-3.1-flash-live-preview` →
+Gemini). Two backends are supported behind one interface:
+
+- **OpenAI** uses the `@openai/agents` Realtime SDK over **WebRTC**. The SDK
+  owns mic capture, voice-activity detection, and audio playback.
+- **Gemini** uses the Gemini Live **WebSocket** with manual audio handling: 16
+  kHz PCM captured via an AudioWorklet on the way up, 24 kHz PCM scheduled
+  gaplessly on the way down.
+
+The browser never holds the long-lived API key for the realtime connection. Two
+Express routes on the MCP server mint/relay credentials server-side, both gated
+to local origins:
+
+- `POST /voice-token`
+  ([routes/voice-token-route.ts](../src/mcp-server/routes/voice-token-route.ts))
+  forwards the user's OpenAI key to OpenAI's `client_secrets` endpoint
+  server-to-server and returns only the short-lived `ek_...` ephemeral token.
+- `POST /gemini-voice-token`
+  ([routes/gemini-voice-token-route.ts](../src/mcp-server/routes/gemini-voice-token-route.ts))
+  currently returns the Gemini key as-is (`ephemeral: false`) — Gemini Live
+  accepts the API key directly from the browser — with a server-only upgrade
+  path to v1alpha ephemeral tokens (the client already honors the `ephemeral`
+  flag).
+
+The webui hook graph that drives all of this is documented in
+[Chat-UI.md](./Chat-UI.md#voice-mode).
+
 ## Language Choices
 
 The entire codebase uses TypeScript (`src/`, `scripts/`, and `webui/`).
@@ -153,7 +185,48 @@ point for the V8 Max object.
 
 Musical notation parser and utilities for creating and manipulating MIDI clips.
 
-**Grammar:** `src/notation/barbeat/barbeat-grammar.peggy`
+**Grammar:** `src/notation/barbeat/parser/barbeat-grammar.peggy`
+
+## Module Layering
+
+The `src/` tree is organized into layers with a one-directional dependency
+graph. This is not just a convention: it is an **executable contract** enforced
+in CI by the `import-x/no-restricted-paths` rule in `eslint.config.js` (a
+violation fails `npm run lint`). The layers, from foundational to top-level:
+
+- **`shared/`** — foundational leaf. Pure utilities (path builders, config,
+  pitch math, the `assertDefined` assertion helper, the V8 console shim)
+  depended on by every other layer. It must not import from any higher layer.
+- **`notation/`** — the bar|beat and transform DSL parsers/interpreters. A leaf:
+  it may import only from `shared/`.
+- **`tools/`** — the domain layer. Each tool is a pure function transforming a
+  request into Live API calls. Imports `notation/` and `shared/`. It must
+  **not** import from `mcp-server/` (the server composes tools, not the
+  reverse).
+- **`live-api-adapter/`** (V8 bundle entry) and **`mcp-server/`** (Node bundle
+  entry) — composition layers that import `tools/` to expose them in their
+  respective runtimes.
+- **`portal/`** — standalone stdio-to-HTTP bridge; imports `mcp-server/` and
+  `shared/`.
+
+Enforced rules:
+
+1. `shared/` has no upward dependencies (cannot import `tools/`, `mcp-server/`,
+   `live-api-adapter/`, `notation/`, or `portal/`).
+2. `notation/` is a leaf (may only import `shared/`).
+3. `tools/` may not import `mcp-server/`.
+
+**Documented exception:** `tools/session/library.ts` (and its batch helper)
+import `mcp-server/live-library/library-types.ts`. That module is the shared
+**ppal-library data contract** — types and limit-clamping consumed by both the
+tool and its `mcp-server/live-library/` implementation. It has no upward
+dependencies of its own, so the import is harmless; it is grandfathered via the
+rule's `except` clause rather than relocated, keeping the live-library feature
+cohesive.
+
+The boundary rules apply to production source only. Test infrastructure (mocks,
+fixtures, `*-test-helpers.ts`, `tests/` directories, `src/test/`) legitimately
+reaches across layers and is excluded.
 
 ## Build System
 
@@ -177,7 +250,8 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
 ### Portal Bundle
 
 - **Entry:** `src/portal/producer-pal-portal.ts`
-- **Output:** `release/producer-pal-portal.js`
+- **Output:** `claude-desktop-extension/producer-pal-portal.js` and
+  `npm/producer-pal-portal.js`
 - **Target:** Node.js (standalone process)
 - **Dependencies:** Bundled for distribution (zero runtime dependencies)
 - **Purpose:** stdio-to-HTTP adapter for Claude Desktop Extension
@@ -246,7 +320,7 @@ changes yet.
 
 ## Versioning
 
-Semantic versioning (major.minor.patch) maintained in `src/shared/version.ts`:
+Semantic versioning (major.minor.patch) maintained in `src/shared/config.ts`:
 
 - Displayed in server startup logs
 - Sent to MCP SDK as server version

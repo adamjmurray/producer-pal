@@ -5,7 +5,7 @@
 
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { describe, expect, it } from "vitest";
-import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
+import { mergeVoiceHistory } from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
 
 const item = (
   itemId: string,

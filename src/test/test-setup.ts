@@ -17,6 +17,10 @@ await import("#src/live-api-adapter/live-api-extensions.ts");
 
 g.Task = Task;
 g.outlet = vi.fn();
+// Max V8 outlet-configuration globals used at module load by live-api-adapter.ts
+// (`outlets = 2; setoutletassist(...)`). Mocked so that module is importable.
+g.outlets = 0;
+g.setoutletassist = vi.fn();
 
 type McpResponseHandler = (requestId: string, response: string) => void;
 

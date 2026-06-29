@@ -218,6 +218,22 @@ export async function createTestDevice(
   return String(created.id);
 }
 
+/**
+ * Reads a clip's notes back from Live and returns the parsed result.
+ * The most common e2e read-back pattern, shared across clip test suites.
+ */
+export async function readClipWithNotes(
+  client: Client,
+  clipId: string,
+): Promise<ReadClipResult> {
+  const result = await client.callTool({
+    name: "ppal-read-clip",
+    arguments: { clipId, include: ["notes"] },
+  });
+
+  return parseToolResult<ReadClipResult>(result);
+}
+
 // ============================================================================
 // Shared Result Interfaces
 // ============================================================================

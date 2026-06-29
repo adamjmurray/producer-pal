@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -11,6 +12,7 @@ import { ChatInput } from "#webui/components/chat/controls/ChatInput";
 
 const defaultProps = {
   handleSend: vi.fn(),
+  onEnqueue: vi.fn(),
   isAssistantResponding: false,
   hasError: false,
   onStop: vi.fn(),
@@ -30,9 +32,9 @@ describe("ChatInput", () => {
       expect(screen.getByRole("button", { name: "Send" })).toBeDefined();
     });
 
-    it("renders ... button when responding", () => {
+    it("renders Queue button when responding", () => {
       render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
-      expect(screen.getByRole("button", { name: "..." })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Queue" })).toBeDefined();
     });
 
     it("shows placeholder text", () => {
@@ -100,18 +102,18 @@ describe("ChatInput", () => {
         buttonName: "Send",
       },
       {
-        name: "assistant responding",
-        inputValue: "Hello",
-        isResponding: true,
-        hasError: false,
-        buttonName: "...",
-      },
-      {
         name: "whitespace only",
         inputValue: "   ",
         isResponding: false,
         hasError: false,
         buttonName: "Send",
+      },
+      {
+        name: "empty input while responding",
+        inputValue: undefined,
+        isResponding: true,
+        hasError: false,
+        buttonName: "Queue",
       },
       {
         name: "conversation has error",
@@ -144,6 +146,20 @@ describe("ChatInput", () => {
         expect(button.disabled).toBe(true);
       },
     );
+
+    it("is enabled with content while responding (for queuing)", () => {
+      render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
+
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+
+      const button = screen.getByRole("button", {
+        name: "Queue",
+      }) as HTMLButtonElement;
+
+      expect(button.disabled).toBe(false);
+    });
 
     it("is enabled when input has content", () => {
       render(<ChatInput {...defaultProps} />);
@@ -206,12 +222,6 @@ describe("ChatInput", () => {
         isResponding: false,
       },
       {
-        name: "assistant responding",
-        inputValue: "Hello",
-        shiftKey: false,
-        isResponding: true,
-      },
-      {
         name: "empty input",
         inputValue: undefined,
         shiftKey: false,
@@ -247,6 +257,94 @@ describe("ChatInput", () => {
         expect(handleSend).not.toHaveBeenCalled();
       },
     );
+
+    it("enqueues on Enter when assistant is responding", () => {
+      const onEnqueue = vi.fn();
+
+      render(
+        <ChatInput
+          {...defaultProps}
+          onEnqueue={onEnqueue}
+          isAssistantResponding={true}
+        />,
+      );
+
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Follow up" } });
+      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+      expect(onEnqueue).toHaveBeenCalledExactlyOnceWith("Follow up", {
+        thinking: "Default",
+      });
+    });
+  });
+
+  describe("compaction", () => {
+    it("shows the compacting placeholder while compacting", () => {
+      render(<ChatInput {...defaultProps} isCompacting={true} />);
+
+      expect(screen.getByRole("textbox").getAttribute("placeholder")).toBe(
+        "Compacting…",
+      );
+    });
+
+    it("disables the textarea while compacting", () => {
+      render(<ChatInput {...defaultProps} isCompacting={true} />);
+
+      expect(
+        (screen.getByRole("textbox") as HTMLTextAreaElement).disabled,
+      ).toBe(true);
+    });
+
+    it("disables Send while compacting even with content", () => {
+      render(<ChatInput {...defaultProps} isCompacting={true} />);
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+
+      expect(
+        (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+    });
+
+    it("hides Stop while compacting since compaction can't be canceled", () => {
+      render(
+        <ChatInput
+          {...defaultProps}
+          isAssistantResponding={true}
+          isCompacting={true}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+      expect(
+        screen.getByRole("button", { name: /Thinking level/ }),
+      ).toBeDefined();
+    });
+
+    it("does not send or enqueue on Enter while compacting (no silent drop)", () => {
+      const handleSend = vi.fn();
+      const onEnqueue = vi.fn();
+
+      render(
+        <ChatInput
+          {...defaultProps}
+          handleSend={handleSend}
+          onEnqueue={onEnqueue}
+          isCompacting={true}
+        />,
+      );
+
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+      expect(handleSend).not.toHaveBeenCalled();
+      expect(onEnqueue).not.toHaveBeenCalled();
+    });
   });
 
   describe("thinking toggle", () => {

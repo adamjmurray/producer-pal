@@ -13,7 +13,7 @@ import {
 } from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
 import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { type GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
-import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 
 /** Dependencies handleGeminiMessage needs from the hook. */
 export interface GeminiMessageDeps {

@@ -58,16 +58,25 @@ export function ChatApp(props: ChatAppProps) {
     onOpenContext,
   } = props;
 
-  const { chat, wrappedHandleSend, conversationPanelState, headerInfo } =
-    useChatModeState(props);
+  const {
+    chat,
+    wrappedHandleSend,
+    conversationPanelState,
+    headerInfo,
+    branchNav,
+  } = useChatModeState(props);
 
   return (
     <ChatScreen
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding || chat.isCompacting}
+      isCompacting={chat.isCompacting}
       rateLimitState={chat.rateLimitState}
       toolLimitReached={chat.toolLimitReached}
       handleSend={wrappedHandleSend}
+      enqueueMessage={chat.enqueueMessage}
+      queuedMessages={chat.queuedMessages}
+      onRemoveQueued={chat.removeMessage}
       handleRetry={chat.handleRetry}
       handleEdit={chat.handleEdit}
       handleCompact={chat.compact}
@@ -87,6 +96,7 @@ export function ChatApp(props: ChatAppProps) {
       showTimestamps={display.showTimestamps}
       showTokenUsage={display.showTokenUsage}
       conversationPanel={conversationPanelState}
+      branchNav={branchNav}
     />
   );
 }

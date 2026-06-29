@@ -15,11 +15,14 @@ vi.mock(import("../path/device-path-helpers.ts"), () => ({
   extractDevicePath: vi.fn((path) => path),
 }));
 
-// Mock device-state-helpers
+// Mock device-state-helpers. buildChainInfo surfaces a chain's `_state`
+// (a test-only marker on the mock chain) as `state`, mirroring how the real
+// helper derives mute/solo state — so buildDrumPadFromChains can aggregate it.
 vi.mock(import("../device-state-helpers.ts"), () => ({
   buildChainInfo: vi.fn((chain, options) => ({
     id: chain._id,
     name: chain.getProperty("name"),
+    ...(chain._state !== undefined ? { state: chain._state } : {}),
     ...options,
   })),
   hasInstrumentInDevices: vi.fn(() => true),
@@ -111,6 +114,7 @@ describe("device-reader-drum-helpers", () => {
       note: number;
       pitch: string | null;
       name?: string;
+      state?: string;
       chains?: unknown[];
     }
 
@@ -123,28 +127,31 @@ describe("device-reader-drum-helpers", () => {
     interface ChainConfig {
       inNote: number;
       name: string;
+      state?: string;
     }
 
     // Helper to create mock chain
-    const createMockChain = (inNote: number, name = "Chain") => ({
-      _id: `chain-${inNote}`,
-      getProperty: vi.fn((prop: string) => {
-        if (prop === "in_note") return inNote;
-        if (prop === "name") return name;
-        if (prop === "mute") return 0;
-        if (prop === "solo") return 0;
+    const createMockChain = (inNote: number, name = "Chain", state?: string) =>
+      ({
+        _id: `chain-${inNote}`,
+        _state: state,
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "in_note") return inNote;
+          if (prop === "name") return name;
+          if (prop === "mute") return 0;
+          if (prop === "solo") return 0;
 
-        return null;
-      }),
-      getChildren: vi.fn(() => []),
-    });
+          return null;
+        }),
+        getChildren: vi.fn(() => []),
+      }) as Record<string, unknown>;
 
     // Helper to create mock device
     const createMockDevice = (chainConfigs: ChainConfig[]) => ({
       path: "live_set tracks 0 devices 0",
       getChildren: vi.fn(() =>
         chainConfigs.map((config) =>
-          createMockChain(config.inNote, config.name),
+          createMockChain(config.inNote, config.name, config.state),
         ),
       ),
     });
@@ -186,6 +193,32 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads).toHaveLength(1);
       expect(deviceInfo.drumPads![0]!.note).toBe(-1);
       expect(deviceInfo.drumPads![0]!.pitch).toBe("*");
+    });
+
+    it("should aggregate a muted state onto the drum pad", () => {
+      const deviceInfo = setupAndProcess([
+        { inNote: 36, name: "Kick", state: STATE.MUTED },
+      ]);
+
+      expect(deviceInfo.drumPads![0]!.state).toBe(STATE.MUTED);
+    });
+
+    it("should prefer soloed over muted when a pad has both states across chains", () => {
+      // Two layered chains on the same pad: one soloed, one muted. The pad
+      // surfaces SOLOED (solo wins over mute in the aggregation).
+      const deviceInfo = setupAndProcess([
+        { inNote: 36, name: "Kick Solo", state: STATE.SOLOED },
+        { inNote: 36, name: "Kick Mute", state: STATE.MUTED },
+      ]);
+
+      expect(deviceInfo.drumPads).toHaveLength(1);
+      expect(deviceInfo.drumPads![0]!.state).toBe(STATE.SOLOED);
+    });
+
+    it("should leave state unset when no chain is muted or soloed", () => {
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }]);
+
+      expect(deviceInfo.drumPads![0]!.state).toBeUndefined();
     });
 
     it("should sort drum pads by note with catch-all at end", () => {

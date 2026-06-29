@@ -6,6 +6,10 @@ Icon?
 node_modules
 knowledge-base
 coverage
+
+# Stryker mutation testing artifacts
+reports/mutation
+.stryker-tmp
 claude-desktop-extension/*.mcpb
 claude-desktop-extension/*.js
 claude-desktop-extension/LICENSE

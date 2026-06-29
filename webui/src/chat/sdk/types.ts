@@ -31,6 +31,19 @@ export interface ChatMessage {
     isError?: boolean;
   }>;
   reasoning?: string;
+  /**
+   * Structured reasoning blocks with provider signatures, captured from the
+   * stream so they can be re-emitted verbatim on later turns. Re-sending the
+   * signed thinking blocks keeps the Anthropic request prefix byte-stable across
+   * turns, so the conversation history (incl. the ppal-connect skills result)
+   * stays prompt-cached when adaptive thinking is on. `reasoning` holds the same
+   * text flattened for display.
+   */
+  reasoningParts?: Array<{
+    text: string;
+    signature?: string;
+    redactedData?: string;
+  }>;
   /** Model ID from the API response (assistant messages only) */
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */
@@ -46,6 +59,10 @@ export interface TokenUsage {
   inputTokens?: number;
   outputTokens?: number;
   reasoningTokens?: number;
+  /** Cached input tokens read from a prompt cache (Anthropic + auto-caching providers) */
+  cacheReadTokens?: number;
+  /** Input tokens written to a prompt cache this request */
+  cacheWriteTokens?: number;
 }
 
 /**
@@ -55,11 +72,16 @@ export interface TokenUsage {
  */
 export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
   const reasoning = sdkUsage.outputTokenDetails.reasoningTokens;
+  const cacheRead = sdkUsage.inputTokenDetails.cacheReadTokens;
+  const cacheWrite = sdkUsage.inputTokenDetails.cacheWriteTokens;
 
   return {
     inputTokens: sdkUsage.inputTokens ?? undefined,
     outputTokens: sdkUsage.outputTokens ?? undefined,
     ...(reasoning != null && reasoning > 0 && { reasoningTokens: reasoning }),
+    ...(cacheRead != null && cacheRead > 0 && { cacheReadTokens: cacheRead }),
+    ...(cacheWrite != null &&
+      cacheWrite > 0 && { cacheWriteTokens: cacheWrite }),
   };
 }
 

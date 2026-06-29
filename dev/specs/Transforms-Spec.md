@@ -40,17 +40,28 @@ pow(base, exponent); // base raised to exponent
 // Note-count operations (statements, NOT expression functions — see below)
 ratchet(count); // divide each matched note into `count` equal pieces (a roll)
 ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
+repeat(offset, [copies]); // echo matched notes forward by `offset` (a note value or Nbar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
 split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
 merge(); // span ALL same-pitch matched notes into one sustained note (default)
 merge(0); // glue only touching/overlapping same-pitch notes
 merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
 
-**Argument counts are enforced uniformly.** A call with too few _or_ too many
-arguments (counting only positional args — the trailing `sync`/`raw` keywords
-are not arguments) warns and skips that assignment line rather than guessing
-intent; later lines still run. Extra arguments are never silently dropped. The
-warning is relayed once per malformed line, not once per affected note.
+**Bad argument counts warn rather than fail silently** (counting only positional
+args — the trailing `sync`/`raw` keywords are not arguments), and the warning is
+relayed once per malformed line, not once per affected note. Handling differs by
+call kind:
+
+- **Expression functions** (`cos`, `ramp`, the math helpers, …): too few _or_
+  too many arguments makes the assignment apply no change — the matched notes
+  pass through unchanged rather than the call guessing intent — and later lines
+  still run.
+- **Note-count operations** (`ratchet`, `repeat`, `split`, `merge`): a missing
+  required argument skips the operation (matched notes pass through), but
+  **extra** arguments warn and the call proceeds using the leading argument(s)
+  it expects — `ratchet`/`merge` use the first, `repeat` uses the first two.
+  `split` is variadic (any number of cut positions, so no "too many" case) and
+  `merge()` with no argument is its valid span-all default.
 
 ## Parameters
 
@@ -250,6 +261,59 @@ C1: ratchet(4)        // ratchet only the kick (C1)
 ratchet(4)            // then accent within each ratchet:
 velocity -= note.index % 4 * 15
 ```
+
+### repeat(offset, [copies])
+
+Echoes each matched note forward in time: keeps the original and emits `copies`
+time-shifted copies, the k-th copy displaced by `k × offset`. Each copy inherits
+the parent's pitch, velocity, probability, and deviation, and its duration is
+unchanged — `repeat` translates notes, it does not stretch them.
+
+- **offset** (first argument, required): a **note value** (`n/8`, `n/4`, …) or a
+  bar duration (`Nbar`). This is the only dialect accepted here — a bare number,
+  a pitch, or any other expression warns and the op is skipped. The offset must
+  be greater than 0. It is meter-aware: `1bar` resolves through the clip's
+  beats-per-bar (one bar in 6/8 is three Ableton beats).
+- **copies** (second argument, optional, default 1): the number of echoes to
+  add. Rounded to the nearest integer; a count below 1 warns and is skipped (0
+  echoes is a no-op). Counts above the per-note cap (64) are clamped with a
+  warning. A bare pitch literal (e.g. `repeat(n/8, C2)`) is not a valid count —
+  it warns and is skipped rather than coercing to its MIDI number (a pitch
+  literal nested in arithmetic still resolves to a number). An arithmetic count
+  (e.g. `repeat(n/4, 1 + 2)`) is fine. Omit it for the common single-echo case:
+  `repeat(n/8)`.
+- **Does NOT resize the clip.** Unlike `update-clip`'s `duplicateLoop` (which
+  doubles clip length via Live's native Duplicate Loop), `repeat` only adds
+  notes — like every transform, it never changes clip length. Copies that land
+  past the clip's end are still emitted; in Live they sit beyond the loop/end
+  marker, hidden until the clip is lengthened. To grow the clip to fit the
+  echoes, set `length` on the same `update-clip` call (or a follow-up).
+- The arguments are constants (no per-note variables); an unusable argument
+  warns and the op is skipped (notes pass through unchanged). A third positional
+  argument warns and is ignored (the first two are used).
+- **Same-pitch onset collisions collapse keep-last.** When a copy lands on the
+  exact onset of another same-pitch note (an existing note or an earlier copy,
+  within `SAME_TIME_EPSILON`), the write-path dedupe keeps the last write and
+  drops the other — deterministic, but the displaced note (with its own
+  velocity/probability) is replaced. `repeat` emits a warning counting how many
+  collisions collapsed; the op is not skipped.
+
+`repeat` runs in the same statement-major pipeline as the other note ops, so
+**order matters** when it composes with a `merge`. `repeat` then `merge` first
+lays down the echoes and then collapses same-pitch runs (the copies can be
+swallowed into one sustained note); `merge` then `repeat` collapses first and
+echoes the merged note. `ratchet` and `repeat` commute (one subdivides in place,
+the other translates), so their order does not matter.
+
+```
+repeat(1bar)          // echo every note one bar later (a 2-bar loop's worth, in place)
+repeat(n/8, 3)        // three 8th-note echoes (original + 3 copies)
+C1: repeat(n/4)       // echo only the kick (C1), a quarter later
+2|*: repeat(n/16, 2)  // a 2-echo 16th-note flam on every note in bar 2
+```
+
+(To reveal echoes that land past the clip end, grow the clip with
+`update-clip`'s `length` argument — `repeat` itself never resizes.)
 
 ### split(barBeat, ...)
 
@@ -458,7 +522,10 @@ C1: merge()           // glue all the kick hits into one sustained note
   (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the grid+offset
   form instead. A **0-indexed bound** (`1|0-2|1`) is rejected too: beats count
   from 1 in time ranges just as in note positions (the downbeat is beat 1; for a
-  pickup before it, offset from beat 1 — `1|1-n/4`).
+  pickup before it, offset from beat 1 — `1|1-n/4`). A **descending range** (end
+  before start) is rejected for both ordinary ranges (`2|1-1|1`) and whole-bar
+  spans (`3|*-1|*`), mirroring the pitch-range guard; equal bounds (a point
+  range or single-bar span like `3|*-3|*`) stay valid.
 
 - **`where(...)` predicate filter** (optional): a boolean test on note
   properties that further narrows which notes a line touches, **AND-combined**
@@ -479,22 +546,39 @@ C1: merge()           // glue all the kick hits into one sustained note
     (`a && (b || c)`, and the reflexive `(note.velocity > 80)`) is supported; a
     paren wrapping only arithmetic (`(1 + 2) > note.start`) still groups at the
     arithmetic layer.
-  - **Operands** are restricted to the six intrinsic scalar note properties —
-    `note.velocity`, `note.deviation`, `note.duration`, `note.probability`,
-    `note.pitch`, `note.start` — combined with arithmetic and the usual literals
-    (numbers, pitch names like `C3`, note values like `n/8`). `note.duration`
-    and `note.start` are in musical beats. `note.deviation` is the
-    velocity-deviation span as a plain scalar (the `vA-B` velocity range is
+  - **Operands** are the six intrinsic scalar note properties — `note.velocity`,
+    `note.deviation`, `note.duration`, `note.probability`, `note.pitch`,
+    `note.start` — combined with arithmetic, **functions**, and the usual
+    literals (numbers, pitch names like `C3`, note values like `n/8`).
+    `note.duration` and `note.start` are in musical beats. `note.deviation` is
+    the velocity-deviation span as a plain scalar (the `vA-B` velocity range is
     authoring sugar = base velocity + this span), so it compares like any other
     property.
+  - **Functions in operands**: every transform function is allowed in a
+    predicate except the two that need the finalized selection — `legato()` (the
+    next distinct start / clip cursor) and `seq()` (cycles by `note.index`). So
+    math (`abs`, `min`, `max`, `clamp`, `round`/`floor`/`ceil`, `pow`, `wrap`,
+    `reflect`), waveforms (`sin`/`cos`/`tri`/`saw`/`square`), `ramp`/`curve`,
+    `quant`/`swing`, `snap`/`step`, and `clipseq` all resolve from the per-note
+    position, the line's selector-bounds time range, and the clip context — e.g.
+    `where(abs(note.start - 4) < 1): velocity += 20` (near beat 4, either side),
+    `where(min(note.velocity, note.deviation) > 80): ...`. `rand()`/`choose()`
+    are allowed but non-deterministic (random thinning).
   - **Rejected with targeted errors**: selection-derived references
-    (`note.index`, `note.count`, `next.*`, `legato()`) — they are defined over
-    the selected set, which `where()` itself determines, so they are unavailable
-    while selecting; **functions** of any kind (a deferred fast-follow); and
-    `where()` on a note-count op (`ratchet`/`merge`/`split`).
-  - **Float equality**: `==`/`!=` are exact float comparisons (no epsilon).
-    Prefer them on the integer-valued properties (`velocity`, `pitch`) and use
-    `<`/`>` on the float-valued ones (`duration`, `probability`, `start`).
+    (`note.index`, `note.count`, `next.*`, `legato()`, `seq()`) — they are
+    defined over the selected set, which `where()` itself determines, so they
+    are unavailable while selecting; the `clip.*`/`audio.*` namespaces as bare
+    variables; and `where()` on a note-count op (`ratchet`/`merge`/`split`).
+  - **Float tolerance**: all six comparisons carry `SELECTOR_EPSILON` (1e-9, the
+    same tolerance the pitch/time selectors use), so ULP-level drift in a
+    note-op-generated `note.start`/`note.duration` can't drop a note that names
+    a boundary. Inclusive operators widen by ε so a boundary value isn't missed
+    (`>=` accepts down to `right - ε`, `<=` up to `right + ε`); strict operators
+    narrow by ε so a boundary value isn't spuriously admitted (`>` requires
+    `left > right + ε`, `<` requires `left < right - ε`); `==`/`!=` compare
+    within ε. 1e-9 sits far below any musical distance, so distinct integer
+    values (velocity, pitch) are never bridged. `<`/`>` remain the natural fit
+    for ranges on the float-valued props (`duration`, `probability`, `start`).
   - **Evaluation**: the predicate is evaluated during note selection,
     AND-combined after the pitch/time filters. An evaluation failure (e.g. a
     note missing the referenced property) warns and excludes the note, matching

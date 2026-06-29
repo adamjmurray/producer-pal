@@ -30,6 +30,7 @@ npm run docs:build   # Build static site
 npm run docs:preview # Preview production build
 # When editing docs, use clean URLs: /chat-ui not /chat-ui.html (no trailing slash)
 # Page files named after folder: docs/guide.md not docs/guide/index.md (except top-level docs/index.md)
+# Callouts: use VitePress containers (::: tip Title / ::: warning / ::: info / ::: details ... :::), NOT plain "> **Tip:**" blockquotes
 ```
 
 ## Architecture
@@ -331,7 +332,8 @@ functions for clarity.
   (verifies the AI can use tools correctly, not just that tools work):
   - Run `scripts/chat --help` to see available options
   - Always use `-1` (or `--once`) to exit after one response
-  - Example: `scripts/chat -p gemini -1 "list tracks in the set"`
+  - Example:
+    `scripts/chat -m google/gemini-2.0-flash -1 "list tracks in the set"`
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.ts"`
@@ -438,10 +440,16 @@ Rules:
 - `dev/Arrangement-Operations.md` - Live API constraints, arrangement
   algorithms, and edge cases
 - `dev/Chat-UI.md` - Web UI architecture and development
+- `dev/Conversation-Branching.md` - Conversation forking (edit/retry), sibling
+  branch navigation, and history-panel family collapse
 - `dev/Coding-Standards.md` - Code style, patterns, and rules
+- `dev/decisions/` - Architecture Decision Records: the "why" behind settled
+  choices, especially deliberate rejections ("won't fix" / "cancelled")
 - `dev/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
 - `dev/Documentation-Site.md` - VitePress documentation site setup and
   deployment
+- `dev/Mutation-Testing.md` - Stryker mutation testing: how to run, baseline,
+  interpreting survivors
 - `dev/Read-Tool-Includes.md` - Read tool include parameter system and
   conventions
 - `dev/Specialized-Devices.md` - Specialized device LOM classes, pseudo-param

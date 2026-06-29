@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -72,9 +72,12 @@ export function resolveClipTransform(
     clipContext,
   );
 
-  // Sort ascending by start_time: a transform can shift a note onto an earlier
-  // same-pitch onset, which Live deletes unless the write order is ascending.
-  const sorted = sortNotes(clipNotes);
+  // Dedupe then sort ascending by start_time: a transform (e.g. repeat) can land
+  // a note on an existing same-pitch+exact-onset note, which Live's add_new_notes
+  // deletes nondeterministically — dedupe collapses those to one (keeping last).
+  // Sorting then guards the remaining earlier-onset shifts (ascending writes
+  // survive). Mirrors the update and merge write paths.
+  const sorted = sortNotes(dedupeNotesKeepingLast(clipNotes));
 
   return {
     notes: sorted,

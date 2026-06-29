@@ -1,23 +1,24 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import alias from "@rollup/plugin-alias";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
-import esbuild from "rollup-plugin-esbuild";
-
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import copy from "rollup-plugin-copy";
+import esbuild from "rollup-plugin-esbuild";
 import { inlineChatUI } from "./rollup-plugin-inline-chat-ui.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
+const srcTsconfig = join(rootDir, "src/tsconfig.json");
 
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
@@ -86,6 +87,7 @@ const addLicenseHeader = (options = {}) => ({
   name: "add-license-header",
   renderChunk(code) {
     const shebang = options.shebang ? `${options.shebang}\n` : "";
+
     return `${shebang}/*\n${licenseText}${
       options.includeThirdPartyLicenses
         ? "\nThis file includes bundled dependencies.\nSee https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses."
@@ -115,7 +117,7 @@ export default [
       esbuild({
         include: /\.[jt]sx?$/,
         target: "es2023",
-        tsconfig: join(rootDir, "src/tsconfig.json"),
+        tsconfig: srcTsconfig,
       }),
       resolve({
         extensions: [".mjs", ".js", ".json", ".node", ".ts"],
@@ -154,7 +156,7 @@ export default [
       esbuild({
         include: /\.[jt]sx?$/,
         target: "es2023",
-        tsconfig: join(rootDir, "src/tsconfig.json"),
+        tsconfig: srcTsconfig,
       }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       resolve({
@@ -187,7 +189,7 @@ export default [
       esbuild({
         include: /\.[jt]sx?$/,
         target: "es2023",
-        tsconfig: join(rootDir, "src/tsconfig.json"),
+        tsconfig: srcTsconfig,
       }),
       resolve({
         extensions: [".mjs", ".js", ".json", ".node", ".ts"],

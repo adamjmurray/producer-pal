@@ -13,7 +13,6 @@ import {
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import {
   applyLiveVolume,
   bailIfStale,
@@ -25,7 +24,9 @@ import {
   seedInitialHistory,
   teardownAudioElement,
   type TransportEventDeps,
-} from "#webui/hooks/voice/use-voice-session-helpers";
+} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
+import { useVoiceRetry } from "#webui/hooks/voice/use-voice-retry";
 import {
   createVoiceAudioGraph,
   teardownVoiceAudioGraph,
@@ -84,6 +85,10 @@ export interface UseVoiceSessionReturn {
   assistantThinking: boolean;
   /** Epoch ms when the current rate-limit clears, or null if not rate-limited. */
   rateLimitedUntil: number | null;
+  /** True once auto-retry has hit its cap for the current rate-limit streak: the
+   * countdown is still shown but no auto-retry will fire, so the UI should point
+   * the user at the manual button instead. */
+  autoRetryExhausted: boolean;
   /**
    * Open the realtime connection. If `initialHistory` is provided, message
    * items from it are seeded onto the server's conversation after connect so
@@ -179,6 +184,13 @@ export function useVoiceSession(
   // True while a half-duplex (barge-in disabled) response has the mic
   // auto-muted, so response.done knows to lift it back to the manual state.
   const autoMutedRef = useRef(false);
+  // True between response.created and response.done (mirrors assistantThinking,
+  // kept in a ref the retry path can read synchronously). Gates retryResponse()
+  // so a manual/auto retry never fires response.create over an in-flight response
+  // — the server rejects that as "active response in progress", which on
+  // stop→restart surfaced as a spurious error banner. Also lets cleanup() cancel
+  // a response still running when the session is torn down.
+  const activeResponseRef = useRef(false);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RealtimeItem[]>([]);
@@ -187,6 +199,9 @@ export function useVoiceSession(
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
   const [activeVoice, setActiveVoice] = useState<string | null>(null);
+  // Consecutive auto-retries since the last successful response (or connect),
+  // capped by useRateLimitAutoRetry and reset on success in handleTransportEvent.
+  const autoRetryAttemptsRef = useRef(0);
 
   const cleanup = useCallback(async () => {
     // Mark this as an expected close so the transport's "disconnected" event
@@ -210,13 +225,8 @@ export function useVoiceSession(
     // will see a changed generation and abort.
     connectGenRef.current++;
 
-    if (session) {
-      try {
-        session.close();
-      } catch {
-        // swallow — best-effort teardown
-      }
-    }
+    if (session) closeRealtimeSession(session, activeResponseRef.current);
+    activeResponseRef.current = false;
 
     if (mcpClient) {
       try {
@@ -235,6 +245,10 @@ export function useVoiceSession(
     setIsMuted(false);
     isMutedRef.current = false;
     autoMutedRef.current = false;
+    // Same reasoning for the rate-limit banner: a drop mid-rate-limit would
+    // otherwise render the countdown + a dead "Retry now" under the
+    // "Connection lost" message until the next connect resets it.
+    setRateLimitedUntil(null);
   }, []);
 
   const connect = useCallback(
@@ -257,6 +271,7 @@ export function useVoiceSession(
       setStatus("connecting");
       setError(null);
       setRateLimitedUntil(null);
+      autoRetryAttemptsRef.current = 0;
       setHistory([]);
 
       try {
@@ -317,21 +332,26 @@ export function useVoiceSession(
           }),
         );
 
-        // Barge-in disabled (interrupt_response off, the default) → run
-        // half-duplex: handleTransportEvent mutes the mic for the duration of
-        // each response. When turnDetection is undefined, OpenAI's default
-        // (barge-in on) applies, so we stay full-duplex. turnDetection is fixed
-        // for the session (changes apply on the next Stop → Talk).
-        const halfDuplex = turnDetection?.interruptResponse === false;
-
         wireSessionEvents(session, setHistory, {
-          halfDuplex,
+          // Barge-in disabled (interrupt_response off, the default) → run
+          // half-duplex: handleTransportEvent mutes the mic for the duration of
+          // each response. When turnDetection is undefined, OpenAI's default
+          // (barge-in on) applies, so we stay full-duplex. turnDetection is fixed
+          // for the session (changes apply on the next Stop → Talk).
+          halfDuplex: turnDetection?.interruptResponse === false,
           autoMutedRef,
           isMutedRef,
-          setAssistantThinking,
+          // Track the active-response window in a ref synchronously alongside the
+          // assistantThinking state (set true on response.created, false on
+          // response.done) so retryResponse() can gate on it without a render lag.
+          setAssistantThinking: (value: boolean) => {
+            activeResponseRef.current = value;
+            setAssistantThinking(value);
+          },
           setAssistantSpeaking,
           setError,
           setRateLimitedUntil,
+          autoRetryAttemptsRef,
         });
 
         // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
@@ -396,6 +416,11 @@ export function useVoiceSession(
     setStatus("disconnecting");
     await cleanup();
     setStatus("idle");
+    // Clear any lingering error banner on an explicit Stop so it doesn't persist
+    // into the idle screen. (cleanup() already cleared the rate-limit banner; a
+    // dropped connection routes through cleanup() too but sets its own
+    // "Connection lost" message, which stays.)
+    setError(null);
   }, [cleanup]);
 
   const toggleMute = useCallback(async () => {
@@ -430,24 +455,17 @@ export function useVoiceSession(
     }
   }, []);
 
-  /**
-   * Nudge the server to generate the next response. After a rate-limit
-   * failure the conversation already has the latest user/tool message; we
-   * just need to tell the API to run another response cycle.
-   */
-  const retryResponse = useCallback(() => {
-    const session = sessionRef.current;
-
-    if (!session) return;
-
-    try {
-      session.transport.sendEvent({ type: "response.create" });
-      setError(null);
-      setRateLimitedUntil(null);
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    }
-  }, []);
+  // Manual "Retry now" handler plus the auto-retry that nudges the model to
+  // continue once a rate-limit window elapses, so hands-free voice recovers
+  // without a click or the user speaking again (capped — see useVoiceRetry).
+  const { retryResponse, autoRetryExhausted } = useVoiceRetry({
+    sessionRef,
+    rateLimitedUntil,
+    setError,
+    setRateLimitedUntil,
+    attemptsRef: autoRetryAttemptsRef,
+    activeResponseRef,
+  });
 
   // Push live volume changes mid-session (no Stop → Talk needed, unlike speed):
   // drive the GainNode (active path, can boost above unity) and keep element
@@ -468,6 +486,7 @@ export function useVoiceSession(
     assistantSpeaking,
     assistantThinking,
     rateLimitedUntil,
+    autoRetryExhausted,
     connect,
     disconnect,
     toggleMute,
@@ -476,6 +495,35 @@ export function useVoiceSession(
     resetHistory: () => setHistory([]),
     activeVoice,
   };
+}
+
+/**
+ * Tear a realtime session down: cancel a still-running response first (so the
+ * server isn't left holding/billing an orphaned response and a stop→restart
+ * can't race a lingering one), then close. Both steps are best-effort — a throw
+ * from either must not abort teardown.
+ *
+ * @param session - The session to close
+ * @param cancelInFlight - Whether a response is active and should be cancelled
+ *   (via interrupt) before closing
+ */
+function closeRealtimeSession(
+  session: RealtimeSession,
+  cancelInFlight: boolean,
+): void {
+  if (cancelInFlight) {
+    try {
+      session.interrupt();
+    } catch {
+      // swallow — best-effort cancel
+    }
+  }
+
+  try {
+    session.close();
+  } catch {
+    // swallow — best-effort teardown
+  }
 }
 
 /**

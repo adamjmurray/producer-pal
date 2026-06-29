@@ -46,13 +46,9 @@ const SANITIZE_CONFIG: Config = {
 // embedded webview. A normal in-window navigation would replace the app, so
 // every rendered link MUST open in a new browser window. marked emits plain
 // `<a href>` tags with no target, so force it here (target/rel are allowlisted
-// above). Registered once at module load; applies to both functions below.
-DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-  if (node.tagName === "A" && node.hasAttribute("href")) {
-    node.setAttribute("target", "_blank");
-    node.setAttribute("rel", "noopener noreferrer");
-  }
-});
+// above). Registered once at module load via the hoisted hardenLink helper
+// below; applies to both functions here.
+DOMPurify.addHook("afterSanitizeAttributes", hardenLink);
 
 /**
  * Render markdown to sanitized HTML (block-level).
@@ -74,4 +70,17 @@ export function sanitizeMarkdownInline(input: string): string {
     marked.parseInline(input) as string,
     SANITIZE_CONFIG,
   );
+}
+
+/**
+ * DOMPurify `afterSanitizeAttributes` hook: force every link to open in a new
+ * browser window so it can't replace the embedded chat UI. Exported so it can
+ * be unit-tested directly without a DOM (DOMPurify only invokes it internally).
+ * @param node - The element DOMPurify is currently processing
+ */
+export function hardenLink(node: Element): void {
+  if (node.tagName === "A" && node.hasAttribute("href")) {
+    node.setAttribute("target", "_blank");
+    node.setAttribute("rel", "noopener noreferrer");
+  }
 }

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import { type ChatMessage } from "#webui/chat/sdk/types";
 
 // Mock streamText from ai
 vi.mock(import("ai"), async (importOriginal) => {
@@ -28,11 +28,11 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { generateText, streamText } from "ai";
+import { ChatSdkClient, detectToolLimitReached } from "#webui/chat/sdk/client";
 import {
-  buildModelMessages,
-  ChatSdkClient,
-  detectToolLimitReached,
-} from "#webui/chat/sdk/client";
+  createConfig,
+  mockStreamParts,
+} from "#webui/chat/sdk/tests/client-test-helpers";
 
 const MAX_TOOL_STEPS = 10;
 
@@ -45,13 +45,7 @@ const MAX_TOOL_STEPS = 10;
 async function sendAndGetClient(
   parts: Record<string, unknown>[],
 ): Promise<ChatSdkClient> {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
-  }
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
-  });
+  mockStreamParts(parts);
 
   const client = new ChatSdkClient("key", createConfig());
 
@@ -85,23 +79,6 @@ function buildSteppedStream(
 }
 
 /**
- * Create a mock config.
- * @param overrides - Config overrides
- * @returns Mock ChatClientConfig
- */
-function createConfig(overrides?: Partial<ChatClientConfig>): ChatClientConfig {
-  return {
-    model: {
-      modelId: "test",
-      provider: "openai",
-      specificationVersion: "v3",
-    } as never,
-    showThoughts: false,
-    ...overrides,
-  };
-}
-
-/**
  * Send a message through a new client with mocked stream parts.
  * Returns the final chat history snapshot.
  * @param parts - Stream parts to emit
@@ -112,13 +89,7 @@ async function sendWithParts(
   parts: Record<string, unknown>[],
   message = "Hello",
 ): Promise<ChatMessage[]> {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
-  }
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
-  });
+  mockStreamParts(parts);
 
   const client = new ChatSdkClient("key", createConfig());
   let last: ChatMessage[] = [];
@@ -399,6 +370,34 @@ describe("ChatSdkClient", () => {
       expect(last).toHaveLength(3);
       expect(last[1]!.content).toBe("First");
       expect(last[2]!.content).toBe("Second");
+    });
+
+    it("stops early on start-step when shouldInterrupt returns true", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "First" };
+        yield { type: "start-step", messageId: "m2" };
+        yield { type: "text-delta", text: "Should not appear" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+      });
+
+      const client = new ChatSdkClient("key", createConfig());
+      let last: ChatMessage[] = [];
+
+      for await (const history of client.sendMessage(
+        "Hello",
+        undefined,
+        undefined,
+        () => true,
+      )) {
+        last = history;
+      }
+
+      // Only user + first assistant (interrupted before second step)
+      expect(last).toHaveLength(2);
+      expect(last[1]!.content).toBe("First");
     });
 
     it("processes tool-input-start for Chat Completions streaming", async () => {
@@ -801,64 +800,5 @@ describe("ChatSdkClient.summarize", () => {
 
     expect(result).toBe("the summary");
     expect(generateText).toHaveBeenCalledOnce();
-  });
-});
-
-describe("buildModelMessages", () => {
-  it("merges consecutive user turns into a single user message", () => {
-    // A compaction summary (synthetic user message) followed by the next real
-    // user message: Gemini and Mistral reject two user turns in a row.
-    const result = buildModelMessages([
-      {
-        role: "user",
-        content: "summary of earlier turns",
-        isCompactionSummary: true,
-      },
-      { role: "user", content: "now add a bass line" },
-    ]);
-
-    expect(result).toStrictEqual([
-      {
-        role: "user",
-        content: "summary of earlier turns\n\nnow add a bass line",
-      },
-    ]);
-  });
-
-  it("keeps alternating turns separate", () => {
-    const result = buildModelMessages([
-      { role: "user", content: "u1" },
-      { role: "assistant", content: "a1" },
-      { role: "user", content: "u2" },
-    ]);
-
-    expect(result).toStrictEqual([
-      { role: "user", content: "u1" },
-      { role: "assistant", content: "a1" },
-      { role: "user", content: "u2" },
-    ]);
-  });
-
-  it("does not merge a user turn across a tool-result message", () => {
-    // An assistant turn with tool calls emits an assistant message plus a tool
-    // message, so a following user turn must not fold into the earlier user.
-    const result = buildModelMessages([
-      { role: "user", content: "u1" },
-      {
-        role: "assistant",
-        content: "",
-        toolCalls: [{ id: "1", name: "read-song", args: {} }],
-        toolResults: [{ id: "1", name: "read-song", args: {}, result: "ok" }],
-      },
-      { role: "user", content: "u2" },
-    ]);
-
-    expect(result.map((m) => m.role)).toStrictEqual([
-      "user",
-      "assistant",
-      "tool",
-      "user",
-    ]);
-    expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
 });

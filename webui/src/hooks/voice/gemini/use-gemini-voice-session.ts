@@ -23,11 +23,11 @@ import {
   type ResumeState,
   seedGeminiContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
+import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 import {
   type UseVoiceSessionReturn,
   type VoiceStatus,
 } from "#webui/hooks/voice/use-voice-session";
-import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
 
 export interface UseGeminiVoiceSessionParams {
   mcpUrl: string;
@@ -311,11 +311,10 @@ export function useGeminiVoiceSession(
     const mic = micRef.current;
 
     if (!mic) return;
-    const next = !isMuted;
 
-    mic.setMuted(next);
-    isMutedRef.current = next;
-    setIsMuted(next);
+    mic.setMuted(!isMuted);
+    isMutedRef.current = !isMuted;
+    setIsMuted(!isMuted);
   }, [isMuted]);
 
   // Manual interrupt: flush local playback and close the open model turn. (Gemini
@@ -364,6 +363,8 @@ export function useGeminiVoiceSession(
     assistantSpeaking,
     assistantThinking,
     rateLimitedUntil: null,
+    // Gemini has no rate-limit auto-retry path, so it never reaches the cap.
+    autoRetryExhausted: false,
     connect,
     disconnect,
     toggleMute,

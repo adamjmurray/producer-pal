@@ -49,7 +49,7 @@ describe("ConversationItem", () => {
       });
 
       const usageDiv = container.querySelector(
-        '[title="token usage (input → output)"]',
+        '[title="token usage (input [cached] → output)"]',
       );
 
       const usage = usageDiv as HTMLElement;
@@ -57,6 +57,25 @@ describe("ConversationItem", () => {
       expect(usage).not.toBeNull();
       expect(usage.textContent).toContain("12.3K");
       expect(usage.textContent).toContain("678");
+    });
+
+    it("shows cached tokens when totalUsage has cacheReadTokens", () => {
+      const { container } = renderItem({
+        conv: createTestSummary({
+          title: "With Cache",
+          totalUsage: {
+            inputTokens: 12345,
+            outputTokens: 678,
+            cacheReadTokens: 9000,
+          },
+        }),
+      });
+
+      const usage = container.querySelector(
+        '[title="token usage (input [cached] → output)"]',
+      ) as HTMLElement;
+
+      expect(usage.textContent).toContain("9K cached");
     });
 
     it("omits token usage when totalUsage is null", () => {
