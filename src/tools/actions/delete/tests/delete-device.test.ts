@@ -263,6 +263,43 @@ describe("deleteObject device deletion", () => {
       expect(result).toHaveLength(3);
     });
 
+    it("orders cross-collection siblings (chains vs return_chains) by a stable name comparison", () => {
+      // When two device paths diverge at a sub-collection name (chains vs
+      // return_chains under the same device) the deletes are independent, so the
+      // order is correctness-irrelevant — the comparator falls back to a stable
+      // name comparison. Run both input orders so both arms of that comparison
+      // are exercised; either way both devices delete successfully.
+      const rack = String(livePath.track(0).device(0));
+
+      const firstResult = (() => {
+        setupDeviceMocks(["ch", "rc"], {
+          ch: `${rack} chains 0 devices 0`,
+          rc: `${rack} return_chains 0 devices 0`,
+        });
+
+        return deleteObject({ ids: "ch, rc", type: "device" });
+      })();
+
+      const secondResult = (() => {
+        setupDeviceMocks(["ch2", "rc2"], {
+          ch2: `${rack} chains 0 devices 0`,
+          rc2: `${rack} return_chains 0 devices 0`,
+        });
+
+        return deleteObject({ ids: "rc2, ch2", type: "device" });
+      })();
+
+      for (const result of [firstResult, secondResult]) {
+        expect(result).toHaveLength(2);
+        expect(result).toStrictEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ type: "device", deleted: true }),
+            expect.objectContaining({ type: "device", deleted: true }),
+          ]),
+        );
+      }
+    });
+
     it("should delete a nested device before the rack that contains it", () => {
       // Descendant-before-ancestor: deleting the rack first would invalidate the
       // nested device's parent path. The nested device must delete first.

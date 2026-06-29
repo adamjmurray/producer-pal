@@ -210,6 +210,32 @@ describe("tileClipToRange", () => {
     warn.mockRestore();
   });
 
+  it("skips a full tile when the source overlaps its own target position", () => {
+    // A full tile landing on the source's own range cannot be cleared without
+    // destroying the content being duplicated, so clearClipAtDuplicateTarget
+    // returns false and the tile is skipped (no dup, position advances).
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      is_arrangement_clip: 1,
+      start_time: 100,
+      end_time: 104,
+    });
+    const track = setupTrackWithQueuedMethods(0, {});
+
+    // totalLength 4 === clipLength 4 → one full tile at 100, on top of the
+    // source [100,104]. Remainder is 0, so there is no partial tile either.
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      4,
+      1000,
+      mockContext,
+    );
+
+    expect(result).toStrictEqual([]);
+    expect(track.call).not.toHaveBeenCalled();
+  });
+
   it("does not create partial tile when remainder is negligible", () => {
     const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {
