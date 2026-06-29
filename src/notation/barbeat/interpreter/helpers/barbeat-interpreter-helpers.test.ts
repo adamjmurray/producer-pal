@@ -3,13 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type BarCopyNote, type NoteEvent } from "#src/notation/types.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
+  type BufferState,
   type InterpreterState,
   clearCarriedStreams,
   clearPitchBuffer,
   clearValueStreams,
+  validateBufferedState,
 } from "./barbeat-interpreter-buffer-helpers.ts";
 import {
   copyNoteToDestination,
@@ -301,6 +304,41 @@ describe("barbeat-interpreter-helpers", () => {
       });
       expect(events).toHaveLength(1);
       expect(events[0]!.start_time).toBe(4); // Bar 2 starts at beat 4
+    });
+  });
+
+  describe("validateBufferedState", () => {
+    it("does not warn when nothing is buffered, even if pitches were not emitted", () => {
+      // buffered === 0 isolates the `buffered > 0` guard: a `>= 0` mutant would
+      // warn here because !pitchesEmitted is true.
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const state: BufferState = {
+        ...defaultBufferState,
+        pitchesEmitted: false,
+      };
+
+      validateBufferedState(state, "test-op");
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it("warns when pitches are buffered but not emitted", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const state: BufferState = {
+        ...defaultBufferState,
+        currentPitches: [
+          { pitch: 60, velocity: 100, velocityDeviation: 0, duration: 1 },
+        ],
+        pitchesEmitted: false,
+      };
+
+      validateBufferedState(state, "test-op");
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("1 pitch(es) buffered but not emitted"),
+      );
+      warn.mockRestore();
     });
   });
 });

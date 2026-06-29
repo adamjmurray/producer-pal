@@ -146,6 +146,39 @@ describe("note-count operation: split", () => {
     ]);
   });
 
+  it("de-duplicates positions when splitting directly (zero-width sliver, normally hidden by the evaluator sweep)", () => {
+    // applyTransforms' final zero-duration sweep would delete a missed-dedupe
+    // sliver before it could be observed, so exercise splitNotes directly. Beat
+    // 4 is repeated; a correct dedupe yields three pieces, not a fourth 0-width.
+    const result = splitNotes(
+      createTestNote({ start_time: 0, duration: 8 }),
+      splitOp(4, 4, 6),
+      4,
+    );
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ start_time: 0, duration: 4 }),
+      expect.objectContaining({ start_time: 4, duration: 2 }),
+      expect.objectContaining({ start_time: 6, duration: 2 }),
+    ]);
+  });
+
+  it("sorts unordered positions before cutting", () => {
+    // Positions given descending (6 then 4); without the sort the boundaries run
+    // [0, 6, 4, 8] and produce a negative-duration middle piece.
+    const result = splitNotes(
+      createTestNote({ start_time: 0, duration: 8 }),
+      splitOp(6, 4),
+      4,
+    );
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ start_time: 0, duration: 4 }),
+      expect.objectContaining({ start_time: 4, duration: 2 }),
+      expect.objectContaining({ start_time: 6, duration: 2 }),
+    ]);
+  });
+
   it("treats a position on the note's own boundary as not a cut", () => {
     const notes = createTestNote({ start_time: 0, duration: 1 });
 
@@ -258,6 +291,45 @@ describe("note-count operation: split", () => {
       );
       warn.mockRestore();
     });
+  });
+
+  it("keeps the maximum pieces without clamping at the boundary", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // 63 interior cuts produce exactly 64 pieces — the cap, not past it — so
+    // there is no clamp and no warning.
+    const note: NoteEvent = {
+      pitch: 60,
+      start_time: 0,
+      duration: 100,
+      velocity: 100,
+      probability: 1,
+    };
+    const points = Array.from({ length: 63 }, (_, i) => i + 1);
+
+    const result = splitNotes([note], splitOp(...points), 4);
+
+    expect(result).toHaveLength(64);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("clamps one cut past the cap to the maximum pieces and warns", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // 64 interior cuts would make 65 pieces (one past the cap); the op keeps 64.
+    const note: NoteEvent = {
+      pitch: 60,
+      start_time: 0,
+      duration: 100,
+      velocity: 100,
+      probability: 1,
+    };
+    const points = Array.from({ length: 64 }, (_, i) => i + 1);
+
+    const result = splitNotes([note], splitOp(...points), 4);
+
+    expect(result).toHaveLength(64);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
+    warn.mockRestore();
   });
 
   it("clamps an excessive number of pieces and warns", () => {

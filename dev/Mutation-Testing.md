@@ -58,6 +58,22 @@ Lowest-scoring files (richest triage targets):
 
 Clean (100%): `barbeat-apply-v0-deletions.ts`, `barbeat-config.ts`.
 
+### Follow-up: 3 real gaps closed (2026-06-28)
+
+A first triage pass found three bucket-1 (real test gap) survivors and added
+assertions for them; the rest of the survivors are dominated by `± GRID_EPSILON`
+/ `± SELECTOR_EPSILON` boundary flips (bucket 2/3 — killing them would over-fit
+to a 1e-9 slack). Score after: **85.83%** (476 survived, 2934 killed).
+
+| Gap (now killed)                                            | Test added in                         |
+| ----------------------------------------------------------- | ------------------------------------- |
+| `resolveSplitPoints` de-dupe + ascending sort of cut points | `transform-split-note-op.test.ts`     |
+| `MAX_NOTE_PIECES` clamp boundary (`>`/`+1` off-by-one)      | `transform-split-note-op.test.ts`     |
+| `validateBufferedState` `buffered > 0` guard (vs `>= 0`)    | `barbeat-interpreter-helpers.test.ts` |
+
+The split-point gaps needed `splitNotes`-direct tests: through `applyTransforms`
+the final zero-duration sweep hides a missed de-dupe before it can be observed.
+
 ## Interpreting survivors
 
 Each survivor falls into one of three buckets — triage before acting:
