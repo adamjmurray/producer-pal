@@ -161,6 +161,51 @@ describe("readClip", () => {
     expect(result).toHaveLength("1bar"); // 3 Ableton beats = 1 bar in 6/8
   });
 
+  it("returns notes as a JSON string when notation=midi-json", () => {
+    const clip = setupMidiClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+      },
+    });
+
+    setupNotesMock(clip, [
+      createTestNote({ pitch: 60, startTime: 0 }),
+      createTestNote({ pitch: 64, startTime: 1 }),
+    ]);
+
+    const result = readClip(
+      {
+        trackIndex: 0,
+        sceneIndex: 0,
+        include: ["notes"],
+      },
+      { notation: "midi-json" },
+    );
+
+    expect(JSON.parse(result.notes as string)).toStrictEqual([
+      {
+        pitch: 60,
+        start: 0,
+        duration: 1,
+        velocity: 100,
+        velocityDeviation: 0,
+        probability: 1,
+      },
+      {
+        pitch: 64,
+        start: 1,
+        duration: 1,
+        velocity: 100,
+        velocityDeviation: 0,
+        probability: 1,
+      },
+    ]);
+  });
+
   it("returns notes outside the playable region (pickup before start, overhang past end)", () => {
     // read-clip reads a window of one clip-length on each side of the playable
     // region [0, length] so authored out-of-bounds notes round-trip on read

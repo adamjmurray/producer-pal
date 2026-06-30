@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { formatNotation, type Notation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
@@ -94,12 +94,12 @@ export interface ReadClipResult {
  * @param args.slot - Session clip slot (e.g., "0/3")
  * @param args.clipId - Clip ID to directly access any clip
  * @param args.include - Array of data to include in response
- * @param _context - Context object (unused)
+ * @param context - Context object (supplies the global notation setting)
  * @returns Result object with clip information
  */
 export function readClip(
   args: ReadClipArgs = {},
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): ReadClipResult {
   const { clipId, trackIndex, sceneIndex } = resolveClipLocation(args);
 
@@ -156,7 +156,12 @@ export function readClip(
 
   // Process MIDI clip properties
   if (result.type === "midi") {
-    processMidiClip(result, clip, includeClipNotes);
+    processMidiClip(
+      result,
+      clip,
+      includeClipNotes,
+      context.notation ?? "barbeat",
+    );
   }
 
   // Process audio clip properties
@@ -250,11 +255,13 @@ function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param includeClipNotes - Whether to include formatted notes
+ * @param notation - Notation for the returned notes (default barbeat)
  */
 function processMidiClip(
   result: ReadClipResult,
   clip: LiveAPI,
   includeClipNotes: boolean,
+  notation: Notation,
 ): void {
   if (!includeClipNotes) return;
 
@@ -286,6 +293,7 @@ function processMidiClip(
   const drumMode = clip.trackIndex != null && isDrumRackTrack(clip.trackIndex);
 
   const formatted = formatNotation(notes, {
+    notation,
     timeSigNumerator,
     timeSigDenominator,
     drumMode,

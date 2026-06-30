@@ -175,6 +175,32 @@ describe("createClip - session view", () => {
     });
   });
 
+  it("should create a clip from midi-json notation", async () => {
+    setupLiveSet();
+    setupTrack(0);
+    const { clip } = setupSessionClip(0, 0, {
+      clipId: "clip_0_0",
+      clipProperties: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+      },
+    });
+
+    await createClip(
+      {
+        slot: "0/0",
+        notes:
+          '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":64,"start":1,"duration":1,"velocity":100}]',
+      },
+      { notation: "midi-json" },
+    );
+
+    expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [createNote(), createNote({ pitch: 64, start_time: 1 })],
+    });
+  });
+
   it("should fire the scene when auto=play-scene", async () => {
     setupLiveSet();
     setupTrack(0);

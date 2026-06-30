@@ -7,6 +7,11 @@
 import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
 
+import {
+  DEFAULT_NOTATION,
+  isNotation,
+  type Notation,
+} from "#src/notation/notation.ts";
 import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
 import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
@@ -56,6 +61,7 @@ setoutletassist(1, "tool call warnings");
 interface SessionState {
   memory: { content: string };
   smallModelMode: boolean;
+  notation: Notation;
   sampleFolder: string | null;
 }
 
@@ -64,6 +70,7 @@ const sessionState: SessionState = {
     content: "",
   },
   smallModelMode: false,
+  notation: DEFAULT_NOTATION,
   sampleFolder: null,
 };
 
@@ -83,6 +90,7 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
   return {
     memory: sessionState.memory,
     smallModelMode: sessionState.smallModelMode,
+    notation: sessionState.notation,
     sampleFolder: sessionState.sampleFolder,
     ...incoming,
   };
@@ -186,6 +194,18 @@ export function compactOutput(enabled: unknown): void {
  */
 export function smallModelMode(enabled: unknown): void {
   sessionState.smallModelMode = Boolean(enabled);
+}
+
+/**
+ * Set the global notation used by the clip tools' note read/write seams.
+ * Invalid values are ignored (the current setting is kept).
+ *
+ * @param value - Notation name ("barbeat", "midi-json", or "stark")
+ */
+export function notation(value: unknown): void {
+  if (isNotation(value)) {
+    sessionState.notation = value;
+  }
 }
 
 /**

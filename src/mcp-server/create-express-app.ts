@@ -13,6 +13,11 @@ import express, {
 } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
+import {
+  DEFAULT_NOTATION,
+  isNotation,
+  type Notation,
+} from "#src/notation/notation.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
@@ -28,6 +33,7 @@ const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 interface ProducerPalConfig {
   memoryContent: string;
   smallModelMode: boolean;
+  notation: Notation;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
   liveApiEnabled: boolean;
@@ -49,6 +55,7 @@ const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 const config: ProducerPalConfig = {
   memoryContent: "",
   smallModelMode: false,
+  notation: DEFAULT_NOTATION,
   jsonOutput: false,
   sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
@@ -60,6 +67,14 @@ const config: ProducerPalConfig = {
 
 Max.addHandler("smallModelMode", (enabled: unknown) => {
   config.smallModelMode = Boolean(enabled);
+});
+
+Max.addHandler("notation", (value: unknown) => {
+  // Ignore unrecognized values so a stray device message can't wedge the
+  // setting into an invalid state — keep the current notation instead.
+  if (isNotation(value)) {
+    config.notation = value;
+  }
 });
 
 Max.addHandler("memoryContent", (content: unknown) => {
@@ -345,6 +360,11 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     outlets.push(() =>
       Max.outlet("config", "smallModelMode", config.smallModelMode),
     );
+  }
+
+  if (incoming.notation !== undefined && isNotation(incoming.notation)) {
+    config.notation = incoming.notation;
+    outlets.push(() => Max.outlet("config", "notation", config.notation));
   }
 
   if (incoming.jsonOutput !== undefined) {

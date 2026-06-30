@@ -220,14 +220,25 @@ export async function updateClip(
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
+  focusLastUpdatedClip(updatedClips, focus);
 
+  return unwrapSingleResult(updatedClips);
+}
+
+/**
+ * Select the last updated clip and show the clip detail view, when focus is set.
+ * @param updatedClips - The clips updated this call
+ * @param focus - Whether to focus the last updated clip
+ */
+function focusLastUpdatedClip(
+  updatedClips: ClipResult[],
+  focus: boolean | undefined,
+): void {
   if (focus && updatedClips.length > 0) {
     const lastClip = updatedClips.at(-1) as ClipResult;
 
     select({ clipId: lastClip.id, detailView: "clip" });
   }
-
-  return unwrapSingleResult(updatedClips);
 }
 
 /**

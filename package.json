@@ -48,7 +48,7 @@
     "check": "npm run lint --silent && npm run typecheck --silent && npm run format:check --silent && npm run validate:typescript-only --silent && npm run duplication --silent && npm run test:coverage --silent",
     "check:build": "npm run build && npm run docs:build",
     "fix": "npm run lint:fix && npm run format",
-    "parser:build": "peggy --format es --output src/notation/barbeat/parser/generated-barbeat-parser.js src/notation/barbeat/parser/barbeat-grammar.peggy && peggy --format es --output src/notation/transform/parser/generated-transform-parser.js src/notation/transform/parser/transform-grammar.peggy",
+    "parser:build": "peggy --format es --output src/notation/barbeat/parser/generated-barbeat-parser.js src/notation/barbeat/parser/barbeat-grammar.peggy && peggy --format es --output src/notation/transform/parser/generated-transform-parser.js src/notation/transform/parser/transform-grammar.peggy && peggy --format es --output src/notation/stark/parser/generated-stark-parser.js src/notation/stark/parser/stark-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

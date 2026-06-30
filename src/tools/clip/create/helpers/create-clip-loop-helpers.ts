@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { interpretNotation, type Notation } from "#src/notation/notation.ts";
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -268,6 +268,7 @@ interface PreparedClipData {
  * @param endBeats - End position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
+ * @param notation - Global notation setting the notes string is written in (default barbeat)
  * @returns Object with notes array and clipLength
  */
 export function prepareClipData(
@@ -276,11 +277,13 @@ export function prepareClipData(
   endBeats: number | null,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  notation: Notation | undefined,
 ): PreparedClipData {
   // Parse notation into notes (MIDI clips only)
   const interpretedNotes: MidiNote[] =
     notationString != null
       ? interpretNotation(notationString, {
+          notation,
           timeSigNumerator,
           timeSigDenominator,
         })

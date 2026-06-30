@@ -161,6 +161,51 @@ describe("updateClip - Note updates", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
+  it("merges midi-json notes onto existing notes", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    // Seed with an existing C3; capture the merged write so the post-merge
+    // note count reads back the combined set.
+    let currentNotes: unknown[] = [DEFAULT_C3_NOTE];
+
+    mocks.clip123.call.mockImplementation(
+      (method: string, ...args: unknown[]) => {
+        if (method === "add_new_notes") {
+          const arg = args[0] as { notes?: unknown[] } | undefined;
+
+          currentNotes = arg?.notes ?? [];
+        } else if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: currentNotes });
+        }
+
+        return {};
+      },
+    );
+
+    const result = await updateClip(
+      {
+        ids: "123",
+        notes: '[{"pitch":64,"start":1,"duration":1,"velocity":100}]',
+      },
+      { notation: "midi-json" },
+    );
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        DEFAULT_C3_NOTE,
+        {
+          pitch: 64,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ],
+    });
+    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+  });
+
   it("should not call add_new_notes when the resulting notes array is empty", async () => {
     setupMidiClipMock(mocks.clip123);
 

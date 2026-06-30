@@ -92,7 +92,7 @@ export interface CreateClipArgs {
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
  * @param args.takeLane - Arrangement take lane target (0/omitted = main, 1+ = lane, "new")
  * @param args.takeLaneName - Name for a take lane newly created by this call
- * @param _context - Internal context object (unused)
+ * @param _context - Tool execution context (timeout, notation, smallModelMode)
  * @returns Single clip object when one position, array when multiple positions
  */
 export async function createClip(
@@ -160,6 +160,7 @@ export async function createClip(
     endBeats,
     timeSigNumerator,
     timeSigDenominator,
+    _context.notation,
   );
 
   // Parse comma-separated names/colors for multi-clip creation

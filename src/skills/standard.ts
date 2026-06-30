@@ -26,6 +26,8 @@ Create MIDI clips using the bar|beat notation syntax:
 
 \`v0-127 n<duration> [p0-1] note(s) bar|beat(s)\`
 
+**Alternative — MIDI JSON:** notation is a global setting (default bar|beat), chosen in the device Settings — not a per-call argument. When it is set to MIDI JSON, the \`notes\` argument (and read-clip's returned notes) is a JSON array string instead of bar|beat: \`[{"pitch":60,"start":0,"duration":4,"velocity":100}]\`. Fields: \`pitch\` 0-127, \`start\`/\`duration\` in musical beats, \`velocity\` 1-127, optional \`velocityDeviation\` 0-127 and \`probability\` 0-1. MIDI JSON has no \`v0\`-delete — use \`preTransforms\` to delete existing notes.
+
 - v/n/p are prefixes — they apply to the pitches that follow. Vary per pitch by interspersing: \`v80 C4 v90 G4\` (C4 at 80, G4 at 90)
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start

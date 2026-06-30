@@ -8,19 +8,11 @@
  * These types are shared between Node (MCP server) and V8 (Live API adapter).
  */
 
-/**
- * Note format exposed to user code. Uses camelCase and the clip's musical beats
- * (an eighth in 6/8) — NOT Ableton's quarter-note beats — so start/duration
- * share a unit with `CodeExecutionContext.beatsPerBar` and `CodeClipContext.length`.
- */
-export interface CodeNote {
-  pitch: number; // MIDI pitch 0-127
-  start: number; // musical beats from clip start
-  duration: number; // musical beats
-  velocity: number; // 1-127
-  velocityDeviation: number; // 0-127
-  probability: number; // 0.0-1.0
-}
+// The user-facing note shape now lives in the notation layer (shared with the
+// MIDI JSON notation). Re-exported here so code-exec callers keep their import.
+import { type CodeNote } from "#src/notation/midi-json/midi-json-note.ts";
+
+export { type CodeNote };
 
 /**
  * Track context passed to user code.
