@@ -12,22 +12,12 @@ import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import { useSettings } from "#webui/hooks/settings/use-settings";
+import { flushLoad } from "./use-settings-test-helpers";
 
 describe("useSettings", () => {
   beforeEach(() => {
     localStorage.clear();
   });
-
-  /**
-   * Flush the post-mount async decrypt-load so it can't clobber later edits.
-   * The load chain is several microtask hops (loadAllProviderSettingsAsync →
-   * Promise.all → applyLoadedSettings), so yield several rounds inside act.
-   */
-  async function flushLoad(): Promise<void> {
-    await act(async () => {
-      for (let i = 0; i < 5; i++) await Promise.resolve();
-    });
-  }
 
   /**
    * Assert a provider's stored JSON has an encrypted apiKey (not the cleartext)

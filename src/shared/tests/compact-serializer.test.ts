@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
+import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 
 describe("toCompactJSLiteral - Primitives", () => {
   it("converts strings to JSON-quoted format", () => {

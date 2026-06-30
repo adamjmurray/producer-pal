@@ -365,6 +365,13 @@ also turns the tool on at the device level (MCP clients and the
 [REST API](/guide/rest-api) will see it too). It is off by default; see
 [Direct Live API](/features#ppal-live-api) for why.
 
+The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
+clip notes — **bar|beat** (the default), **MIDI JSON**, or **Stark** (an
+ultra-minimal notation aimed at small/local models). Like the Live API toggle,
+this is a global device setting rather than a per-conversation one: it mirrors
+the device's Setup pane, applies to MCP clients and the REST API too, and takes
+effect on your next message.
+
 ### Preferences
 
 The Preferences tab controls visual preferences and conversation management:

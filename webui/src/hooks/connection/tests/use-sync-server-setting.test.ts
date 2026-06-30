@@ -8,21 +8,21 @@
  */
 import { renderHook } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { useSyncLiveApiEnabled } from "#webui/hooks/connection/use-sync-live-api-enabled";
+import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-setting";
 
-describe("useSyncLiveApiEnabled", () => {
+describe("useSyncServerSetting", () => {
   it("seeds local from server on initial render when not dirty", () => {
     const seed = vi.fn();
 
-    renderHook(() => useSyncLiveApiEnabled(true, false, seed));
+    renderHook(() => useSyncServerSetting(true, false, seed));
 
     expect(seed).toHaveBeenCalledWith(true);
   });
 
-  it("does not seed when dirty (user has touched the modal toggle)", () => {
+  it("does not seed when dirty (user has touched the modal control)", () => {
     const seed = vi.fn();
 
-    renderHook(() => useSyncLiveApiEnabled(true, true, seed));
+    renderHook(() => useSyncServerSetting(true, true, seed));
 
     expect(seed).not.toHaveBeenCalled();
   });
@@ -32,7 +32,7 @@ describe("useSyncLiveApiEnabled", () => {
 
     const { rerender } = renderHook(
       ({ serverValue, dirty }) =>
-        useSyncLiveApiEnabled(serverValue, dirty, seed),
+        useSyncServerSetting(serverValue, dirty, seed),
       { initialProps: { serverValue: false, dirty: false } },
     );
 
@@ -49,7 +49,7 @@ describe("useSyncLiveApiEnabled", () => {
 
     const { rerender } = renderHook(
       ({ serverValue, dirty }) =>
-        useSyncLiveApiEnabled(serverValue, dirty, seed),
+        useSyncServerSetting(serverValue, dirty, seed),
       { initialProps: { serverValue: false, dirty: true } },
     );
 
@@ -65,7 +65,7 @@ describe("useSyncLiveApiEnabled", () => {
 
     const { rerender } = renderHook(
       ({ serverValue, dirty }) =>
-        useSyncLiveApiEnabled(serverValue, dirty, seed),
+        useSyncServerSetting(serverValue, dirty, seed),
       { initialProps: { serverValue: true, dirty: true } },
     );
 
@@ -74,5 +74,22 @@ describe("useSyncLiveApiEnabled", () => {
     rerender({ serverValue: true, dirty: false });
 
     expect(seed).toHaveBeenCalledWith(true);
+  });
+
+  it("works with non-boolean values (e.g. the notation enum)", () => {
+    const seed = vi.fn<(value: string) => void>();
+
+    const { rerender } = renderHook(
+      ({ serverValue, dirty }) =>
+        useSyncServerSetting(serverValue, dirty, seed),
+      { initialProps: { serverValue: "barbeat", dirty: false } },
+    );
+
+    expect(seed).toHaveBeenCalledWith("barbeat");
+    seed.mockClear();
+
+    rerender({ serverValue: "midi-json", dirty: false });
+
+    expect(seed).toHaveBeenCalledWith("midi-json");
   });
 });

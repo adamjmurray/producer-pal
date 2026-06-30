@@ -293,6 +293,61 @@ describe("useRemoteConfig", () => {
     );
   });
 
+  it("defaults serverNotation to barbeat", () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false }),
+    );
+    const { result } = renderHook(() => useRemoteConfig("connecting"));
+
+    expect(result.current.serverNotation).toBe("barbeat");
+  });
+
+  it("fetches serverNotation on mount", async () => {
+    const { result } = await setupRemoteConfigHook({ notation: "midi-json" });
+
+    expect(result.current.serverNotation).toBe("midi-json");
+  });
+
+  it("falls back to barbeat when the server reports an invalid notation", async () => {
+    const { result } = await setupRemoteConfigHook({ notation: "midi-json" });
+
+    // A later fetch returns an unrecognized value (e.g. a future notation this
+    // build doesn't know): the hook ignores it and falls back to the default
+    // rather than storing junk.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ notation: "bogus" }),
+    );
+
+    await act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    await waitFor(() => {
+      expect(result.current.serverNotation).toBe("barbeat");
+    });
+  });
+
+  it("postNotation POSTs the new value and updates serverNotation", async () => {
+    const { result } = await setupRemoteConfigHook({ notation: "barbeat" });
+
+    const mockFetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(mockConfigResponse({ notation: "stark" }));
+
+    await act(() => {
+      result.current.postNotation("stark");
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/config"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ notation: "stark" }),
+      }),
+    );
+    expect(result.current.serverNotation).toBe("stark");
+  });
+
   it("cleans up focus listener on unmount", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: false }),

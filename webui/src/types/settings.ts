@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Notation } from "#src/shared/notation";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 
 /**
@@ -110,6 +111,17 @@ export interface UseSettingsReturn {
   liveApiEnabledDirty: boolean;
   setLiveApiEnabled: (enabled: boolean) => void;
   seedLiveApiEnabled: (enabled: boolean) => void;
+
+  // Global notation setting (how clip tools read/write notes), mirrored from
+  // server config.notation. Same modal-local-mirror pattern as liveApiEnabled:
+  // the source of truth is the server (and the device Setup pane), not
+  // localStorage, since the device can change it out from under the modal. The
+  // dirty flag distinguishes a user edit from a server-seeded value so the save
+  // handler only POSTs on real intent.
+  notation: Notation;
+  notationDirty: boolean;
+  setNotation: (notation: Notation) => void;
+  seedNotation: (notation: Notation) => void;
 
   /** In-modal voice selection for the OpenAI Realtime API. Editing this
    * during a live voice session does NOT change the active voice — the

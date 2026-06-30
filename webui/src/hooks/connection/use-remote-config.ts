@@ -4,6 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import {
+  DEFAULT_NOTATION,
+  isNotation,
+  type Notation,
+} from "#src/shared/notation";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 
@@ -11,15 +16,17 @@ export interface UseRemoteConfigReturn {
   serverSmallModelMode: boolean;
   serverLiveApiEnabled: boolean;
   serverLiveApiForcedOn: boolean;
+  serverNotation: Notation;
   postSmallModelMode: (enabled: boolean) => void;
   postLiveApiEnabled: (enabled: boolean) => Promise<void>;
+  postNotation: (notation: Notation) => void;
 }
 
 /**
  * Hook for reading remote config from the MCP server and posting updates.
- * Fetches the server's smallModelMode and liveApiEnabled on mount, MCP
- * reconnection, and window focus (the focus refetch picks up device-side
- * Setup-tab toggle changes when the user returns to the chat UI window).
+ * Fetches the server's smallModelMode, liveApiEnabled, and notation on mount,
+ * MCP reconnection, and window focus (the focus refetch picks up device-side
+ * Setup-tab changes when the user returns to the chat UI window).
  * Provides POST functions for syncing local changes to the server on save.
  * @param {McpStatus} mcpStatus - Current MCP connection status
  * @returns {UseRemoteConfigReturn} Server config values and POST functions
@@ -28,6 +35,8 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverSmallModelMode, setServerSmallModelMode] = useState(false);
   const [serverLiveApiEnabled, setServerLiveApiEnabled] = useState(false);
   const [serverLiveApiForcedOn, setServerLiveApiForcedOn] = useState(false);
+  const [serverNotation, setServerNotation] =
+    useState<Notation>(DEFAULT_NOTATION);
   // Monotonic counter to detect when a POST's failure-revert refetch is
   // stale (i.e. a newer POST has been initiated since). Without this an
   // older failed POST's refetch can clobber the newer POST's optimistic
@@ -44,11 +53,15 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
           smallModelMode?: boolean;
           liveApiEnabled?: boolean;
           liveApiForcedOn?: boolean;
+          notation?: unknown;
         };
 
         setServerSmallModelMode(Boolean(config.smallModelMode));
         setServerLiveApiEnabled(Boolean(config.liveApiEnabled));
         setServerLiveApiForcedOn(Boolean(config.liveApiForcedOn));
+        setServerNotation(
+          isNotation(config.notation) ? config.notation : DEFAULT_NOTATION,
+        );
       }
     } catch {
       // Server not available or request aborted, keep current state
@@ -124,12 +137,30 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
     [fetchConfig],
   );
 
+  const postNotation = useCallback(
+    (notation: Notation) => {
+      setServerNotation(notation);
+      const seq = ++latestPostSeqRef.current;
+
+      void postConfigField(
+        "notation",
+        notation,
+        fetchConfig,
+        seq,
+        latestPostSeqRef,
+      );
+    },
+    [fetchConfig],
+  );
+
   return {
     serverSmallModelMode,
     serverLiveApiEnabled,
     serverLiveApiForcedOn,
+    serverNotation,
     postSmallModelMode,
     postLiveApiEnabled,
+    postNotation,
   };
 }
 
@@ -154,7 +185,7 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
  */
 async function postConfigField(
   field: string,
-  value: boolean,
+  value: string | boolean,
   refetch: (signal?: AbortSignal) => Promise<void>,
   seq: number,
   latestSeqRef: { current: number },

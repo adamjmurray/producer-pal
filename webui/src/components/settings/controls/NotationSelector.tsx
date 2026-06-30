@@ -1,0 +1,62 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { type Notation, NOTATIONS } from "#src/shared/notation";
+import { Tooltip } from "./Tooltip";
+
+// Human-friendly labels for the notation dropdown. Typed as a full Record so
+// adding a notation to the shared `Notation` union forces a label here.
+const NOTATION_LABELS: Record<Notation, string> = {
+  barbeat: "bar|beat",
+  "midi-json": "MIDI JSON",
+  stark: "Stark",
+};
+
+interface NotationSelectorProps {
+  notation: Notation;
+  setNotation: (notation: Notation) => void;
+}
+
+/**
+ * Dropdown for the global notation setting — how the AI reads and writes clip
+ * notes. Mirrors the server's config.notation (and the Max device Setup pane),
+ * so it applies to all conversations going forward rather than being locked to
+ * one chat.
+ * @param props - Component props
+ * @param props.notation - Currently selected notation
+ * @param props.setNotation - Notation setter callback
+ * @returns Notation selector element
+ */
+export function NotationSelector({
+  notation,
+  setNotation,
+}: NotationSelectorProps) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor="notation-select"
+        className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400"
+      >
+        Notation
+        <Tooltip text="How the AI reads and writes clip notes (bar|beat, MIDI JSON, or Stark). Global setting that mirrors the Notation control on the Max for Live device's Setup pane." />
+      </label>
+      <select
+        id="notation-select"
+        value={notation}
+        onChange={(e) =>
+          setNotation((e.target as HTMLSelectElement).value as Notation)
+        }
+        className="w-full px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded text-sm"
+        data-testid="notation-select"
+      >
+        {NOTATIONS.map((value) => (
+          <option key={value} value={value}>
+            {NOTATION_LABELS[value]}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { THINKING_LEVELS } from "#webui/components/settings/controls/thinking-levels";
+import { THINKING_LEVELS } from "#webui/components/settings/controls/helpers/thinking-levels";
 
 export interface ThinkingToggleProps {
   thinking: string;

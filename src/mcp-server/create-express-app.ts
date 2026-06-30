@@ -13,12 +13,12 @@ import express, {
 } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
-} from "#src/notation/notation.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+} from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { isLocalOrigin } from "./helpers/request-origin.ts";

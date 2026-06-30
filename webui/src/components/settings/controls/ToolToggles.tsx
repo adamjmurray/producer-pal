@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type VNode } from "preact";
+import { type Notation } from "#src/shared/notation";
 import {
   type McpStatus,
   type McpTool,
@@ -12,7 +14,8 @@ import {
   LIVE_API_TOOL_ID,
   type GroupedTools,
   groupTools,
-} from "./tool-toggles-helpers";
+} from "./helpers/tool-toggles-helpers";
+import { NotationSelector } from "./NotationSelector";
 import { Tooltip } from "./Tooltip";
 
 interface ToolTogglesProps {
@@ -30,6 +33,11 @@ interface ToolTogglesProps {
   // makes the device-side toggle a no-op. We disable the checkbox here so
   // the UI doesn't silently snap back after a click.
   liveApiForcedOn: boolean;
+  // Global notation setting, rendered as a dropdown in the Advanced group cell
+  // (under the Live API toggle). Mirrors server config.notation, same as the
+  // liveApiEnabled toggle above.
+  notation: Notation;
+  setNotation: (notation: Notation) => void;
 }
 
 /**
@@ -49,6 +57,8 @@ export function ToolToggles({
   liveApiEnabled,
   setLiveApiEnabled,
   liveApiForcedOn,
+  notation,
+  setNotation,
 }: ToolTogglesProps) {
   if (!tools) {
     return (
@@ -132,6 +142,11 @@ export function ToolToggles({
   };
 
   const groups = groupTools(ensureLiveApiTool(tools));
+  // Rendered as the Advanced group's footer (bottom-aligned under the Live API
+  // toggle); see ToolGroupSection.
+  const notationFooter = (
+    <NotationSelector notation={notation} setNotation={setNotation} />
+  );
 
   return (
     <div>
@@ -165,6 +180,7 @@ export function ToolToggles({
             isToolDisabled={isToolDisabled}
             getDisabledReason={getDisabledReason}
             onToggle={handleToggle}
+            footer={group.label === "Advanced" ? notationFooter : undefined}
           />
         ))}
       </div>
@@ -180,6 +196,10 @@ interface ToolGroupSectionProps {
   isToolDisabled: (toolId: string) => boolean;
   getDisabledReason: (toolId: string) => string | undefined;
   onToggle: (toolId: string) => void;
+  // Optional control rendered at the bottom of the cell (the Notation dropdown
+  // in the Advanced group). `mt-auto` + the cell's `h-full` bottom-aligns it
+  // within the grid row.
+  footer?: VNode;
 }
 
 function ToolGroupSection({
@@ -188,9 +208,10 @@ function ToolGroupSection({
   isToolDisabled,
   getDisabledReason,
   onToggle,
+  footer,
 }: ToolGroupSectionProps) {
   return (
-    <div>
+    <div className="flex flex-col h-full">
       <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
         {group.label}
       </h4>
@@ -229,6 +250,7 @@ function ToolGroupSection({
           );
         })}
       </div>
+      {footer && <div className="mt-auto pt-3">{footer}</div>}
     </div>
   );
 }

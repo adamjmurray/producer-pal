@@ -14,7 +14,7 @@ import {
 import { VOICE_LANGUAGES } from "#webui/lib/constants/voice-language";
 import { type Provider } from "#webui/types/settings";
 import { GeminiTurnDetectionControls } from "./controls/GeminiTurnDetectionControls";
-import { THINKING_LEVELS } from "./controls/thinking-levels";
+import { THINKING_LEVELS } from "./controls/helpers/thinking-levels";
 import { Tooltip } from "./controls/Tooltip";
 import { TurnDetectionControls } from "./controls/TurnDetectionControls";
 import { VoiceSelector } from "./controls/VoiceSelector";

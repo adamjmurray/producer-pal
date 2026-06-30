@@ -38,6 +38,8 @@ describe("ToolToggles", () => {
     liveApiEnabled: false,
     setLiveApiEnabled: vi.fn(),
     liveApiForcedOn: false,
+    notation: "barbeat" as const,
+    setNotation: vi.fn(),
   };
 
   describe("basic rendering", () => {
@@ -162,8 +164,8 @@ describe("ToolToggles", () => {
       });
 
       // connect description + read-live-set description + injected Live API
-      // fallback description + header tooltip = 4
-      expect(infoButtons).toHaveLength(4);
+      // fallback description + header tooltip + notation selector tooltip = 5
+      expect(infoButtons).toHaveLength(5);
     });
 
     it("does not render info icon for tools without descriptions", () => {
@@ -176,8 +178,9 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      // header tooltip + injected Live API fallback description = 2
-      expect(infoButtons).toHaveLength(2);
+      // header tooltip + injected Live API fallback description + notation
+      // selector tooltip = 3
+      expect(infoButtons).toHaveLength(3);
     });
   });
 
@@ -416,6 +419,33 @@ describe("ToolToggles", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Disable all" }));
       expect(setLiveApiEnabled).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("notation selector", () => {
+    it("renders the Notation dropdown (in the Advanced group)", () => {
+      render(<ToolToggles {...defaultProps} notation="midi-json" />);
+
+      const select = screen.getByTestId("notation-select") as HTMLSelectElement;
+
+      expect(select.value).toBe("midi-json");
+    });
+
+    it("calls setNotation when a new notation is picked", () => {
+      const setNotation = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          notation="barbeat"
+          setNotation={setNotation}
+        />,
+      );
+
+      fireEvent.change(screen.getByTestId("notation-select"), {
+        target: { value: "stark" },
+      });
+      expect(setNotation).toHaveBeenCalledWith("stark");
     });
   });
 });

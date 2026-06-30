@@ -49,6 +49,7 @@ export function useSaveSettingsHandler(
     // changes that arrived mid-modal, or post the default `false` if the
     // server fetch hadn't resolved by the time the user opened settings.
     const liveApiChanged = settings.liveApiEnabledDirty;
+    const notationChanged = settings.notationDirty;
     // If saving flips voice ↔ chat mode, the URL hash (which points to the
     // previous mode's conversation) becomes a "foreign" record. Without
     // clearing it, the new mode's mount handler would bounce the user right
@@ -94,6 +95,12 @@ export function useSaveSettingsHandler(
           void remoteConfig
             .postLiveApiEnabled(settings.liveApiEnabled)
             .then(checkMcpConnection);
+        }
+
+        // Notation only changes how clips are read/written — no tool list
+        // changes — so unlike liveApiEnabled it needs no MCP reconnect.
+        if (notationChanged) {
+          remoteConfig.postNotation(settings.notation);
         }
       });
     });

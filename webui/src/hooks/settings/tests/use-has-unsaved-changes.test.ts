@@ -40,6 +40,7 @@ function makeSettings(
     voiceLanguage: "en",
     turnDetection: DEFAULT_TURN_DETECTION,
     liveApiEnabledDirty: false,
+    notationDirty: false,
     settingsLoaded: true,
     ...over,
   } as UseSettingsReturn;
@@ -145,6 +146,20 @@ describe("useHasUnsavedChanges", () => {
     rerender({
       s: makeSettings({ apiKey: "user-typed", settingsLoaded: true }),
     });
+    expect(result.current).toBe(true);
+  });
+
+  it("flags a notation change via its dirty flag (notation is not serialized)", () => {
+    const { result, rerender } = renderHook(
+      ({ s }: { s: UseSettingsReturn }) =>
+        useHasUnsavedChanges(s, appearance, true),
+      { initialProps: { s: makeSettings() } },
+    );
+
+    // The notation value itself is omitted from the snapshot (the device can
+    // change it out from under the modal); the dirty flag is what marks the
+    // modal as having unsaved changes — mirroring liveApiEnabledDirty.
+    rerender({ s: makeSettings({ notationDirty: true }) });
     expect(result.current).toBe(true);
   });
 });

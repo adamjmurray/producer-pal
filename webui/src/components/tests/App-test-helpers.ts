@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
+import { DEFAULT_NOTATION } from "#src/shared/notation";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -71,6 +72,11 @@ export const mockSettingsHook = {
   setLiveApiEnabled: vi.fn(),
   seedLiveApiEnabled: vi.fn(),
 
+  notation: DEFAULT_NOTATION,
+  notationDirty: false,
+  setNotation: vi.fn(),
+  seedNotation: vi.fn(),
+
   savedTurnDetection: DEFAULT_TURN_DETECTION,
 };
 
@@ -116,7 +122,9 @@ export function setupDefaultMocks(): void {
     serverSmallModelMode: false,
     serverLiveApiEnabled: false,
     serverLiveApiForcedOn: false,
+    serverNotation: DEFAULT_NOTATION,
     postSmallModelMode: vi.fn(),
     postLiveApiEnabled: vi.fn().mockResolvedValue(undefined),
+    postNotation: vi.fn(),
   });
 }

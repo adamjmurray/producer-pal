@@ -19,7 +19,7 @@ import { VoiceApp } from "#webui/components/voice/VoiceApp";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
-import { useSyncLiveApiEnabled } from "#webui/hooks/connection/use-sync-live-api-enabled";
+import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-setting";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 import { useSettings } from "#webui/hooks/settings/use-settings";
@@ -74,10 +74,15 @@ export function App() {
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
 
-  useSyncLiveApiEnabled(
+  useSyncServerSetting(
     remoteConfig.serverLiveApiEnabled,
     settings.liveApiEnabledDirty,
     settings.seedLiveApiEnabled,
+  );
+  useSyncServerSetting(
+    remoteConfig.serverNotation,
+    settings.notationDirty,
+    settings.seedNotation,
   );
 
   // Track original appearance settings when settings opened (for cancel)

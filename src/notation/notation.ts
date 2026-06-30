@@ -26,31 +26,7 @@ import {
 } from "#src/notation/midi-json/midi-json-notation.ts";
 import { interpretNotation as interpretStark } from "#src/notation/stark/stark-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-
-/**
- * Supported notations, chosen by the global `config.notation` setting.
- * `barbeat` is the default; `midi-json` and `stark` are opt-in.
- */
-export type Notation = "barbeat" | "midi-json" | "stark";
-
-export const DEFAULT_NOTATION: Notation = "barbeat";
-
-/** Every supported notation, for runtime validation of the config setting. */
-export const NOTATIONS: readonly Notation[] = ["barbeat", "midi-json", "stark"];
-
-/**
- * Type guard for a {@link Notation} value (validates the config setting coming
- * from REST / the device UI).
- *
- * @param value - The candidate value
- * @returns True when `value` is a supported notation
- */
-export function isNotation(value: unknown): value is Notation {
-  return (
-    typeof value === "string" &&
-    (NOTATIONS as readonly string[]).includes(value)
-  );
-}
+import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
 /** Options for {@link interpretNotation}; `notation` selects the parser. */
 export interface InterpretNotationOptions {

@@ -166,6 +166,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           liveApiEnabled={settings.liveApiEnabled}
           setLiveApiEnabled={settings.setLiveApiEnabled}
           liveApiForcedOn={props.liveApiForcedOn}
+          notation={settings.notation}
+          setNotation={settings.setNotation}
         />
       )}
 

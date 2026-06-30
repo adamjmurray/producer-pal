@@ -7,12 +7,7 @@
 import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
 
-import {
-  DEFAULT_NOTATION,
-  isNotation,
-  type Notation,
-} from "#src/notation/notation.ts";
-import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
+import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
   formatErrorResponse,
@@ -21,6 +16,11 @@ import {
   planChunks,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
+import {
+  DEFAULT_NOTATION,
+  isNotation,
+  type Notation,
+} from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";

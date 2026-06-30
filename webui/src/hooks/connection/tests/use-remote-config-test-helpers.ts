@@ -17,6 +17,9 @@ import {
 interface RemoteConfig {
   smallModelMode?: boolean;
   liveApiEnabled?: boolean;
+  // string (not Notation) so tests can also feed invalid values to exercise the
+  // hook's isNotation fallback.
+  notation?: string;
 }
 
 /**
@@ -57,6 +60,10 @@ export async function setupRemoteConfigHook(
       expect(rendered.result.current.serverLiveApiEnabled).toBe(
         initial.liveApiEnabled,
       );
+    }
+
+    if (initial.notation != null) {
+      expect(rendered.result.current.serverNotation).toBe(initial.notation);
     }
   });
 

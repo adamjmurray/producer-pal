@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { parseCompactJSLiteral } from "#src/shared/compact-parser.ts";
-import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
+import { parseCompactJSLiteral } from "#src/shared/compact/compact-parser.ts";
+import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 
 describe("parseCompactJSLiteral - primitives", () => {
   it("parses strings", () => {
