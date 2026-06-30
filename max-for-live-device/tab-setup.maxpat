@@ -9,9 +9,58 @@
             "modernui": 1
         },
         "classnamespace": "box",
-        "rect": [ 166.0, 130.0, 864.0, 680.0 ],
+        "rect": [ 228.0, 117.0, 864.0, 680.0 ],
         "openinpresentation": 1,
         "boxes": [
+            {
+                "box": {
+                    "id": "obj-95",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 740.25, 157.0, 110.0, 22.0 ],
+                    "text": "prepend setsymbol"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-92",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 740.25, 243.0, 68.0, 22.0 ],
+                    "text": "notation $1"
+                }
+            },
+            {
+                "box": {
+                    "annotation": "TODO",
+                    "annotation_name": "notation",
+                    "id": "obj-90",
+                    "maxclass": "live.menu",
+                    "numinlets": 1,
+                    "numoutlets": 3,
+                    "outlettype": [ "", "", "float" ],
+                    "parameter_enable": 1,
+                    "patching_rect": [ 744.25, 219.0, 49.0, 15.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 181.0, 56.52770707011223, 54.0, 15.0 ],
+                    "saved_attribute_attributes": {
+                        "valueof": {
+                            "parameter_enum": [ "barbeat", "midi-json", "stark" ],
+                            "parameter_invisible": 1,
+                            "parameter_longname": "notation",
+                            "parameter_mmax": 2,
+                            "parameter_modmode": 0,
+                            "parameter_shortname": "notation",
+                            "parameter_type": 2
+                        }
+                    },
+                    "varname": "notation"
+                }
+            },
             {
                 "box": {
                     "annotation": "Direct access to the Ableton Live Object Model. Lets the AI read or modify any Live Set property. Can be used to workaround bugs and limitations in Producer Pal's tools. \n\nIt is disabled by default to avoid \"distracting the AI\". The AI may struggle to complete tasks using the Live API directly. It's better to use the other tools when possible.",
@@ -138,7 +187,7 @@
                     "numinlets": 1,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 751.25, 134.0, 72.0, 22.0 ],
+                    "patching_rect": [ 735.0, 109.0, 72.0, 22.0 ],
                     "text": "prepend set"
                 }
             },
@@ -301,11 +350,11 @@
                     "id": "obj-15",
                     "linecount": 2,
                     "maxclass": "newobj",
-                    "numinlets": 5,
-                    "numoutlets": 5,
-                    "outlettype": [ "", "", "", "", "" ],
+                    "numinlets": 6,
+                    "numoutlets": 6,
+                    "outlettype": [ "", "", "", "", "", "" ],
                     "patching_rect": [ 602.0, 32.0, 218.0, 35.0 ],
-                    "text": "route smallModelMode compactOutput samplePath liveApiEnabled"
+                    "text": "route smallModelMode compactOutput samplePath liveApiEnabled notation"
                 }
             },
             {
@@ -1517,6 +1566,12 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-95", 0 ],
+                    "source": [ "obj-15", 4 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-9", 0 ],
                     "source": [ "obj-16", 0 ]
                 }
@@ -1759,14 +1814,14 @@
             {
                 "patchline": {
                     "destination": [ "obj-17", 0 ],
-                    "order": 0,
+                    "order": 1,
                     "source": [ "obj-63", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-21", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-63", 0 ]
                 }
             },
@@ -1775,6 +1830,13 @@
                     "destination": [ "obj-72", 0 ],
                     "midpoints": [ 558.5, 322.31640625, 587.5, 322.31640625 ],
                     "source": [ "obj-63", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-90", 0 ],
+                    "order": 0,
+                    "source": [ "obj-63", 0 ]
                 }
             },
             {
@@ -1804,28 +1866,35 @@
             {
                 "patchline": {
                     "destination": [ "obj-21", 0 ],
-                    "order": 0,
+                    "order": 1,
                     "source": [ "obj-71", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-68", 0 ],
-                    "order": 3,
+                    "order": 4,
                     "source": [ "obj-71", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-8", 0 ],
-                    "order": 2,
+                    "order": 3,
                     "source": [ "obj-71", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-84", 0 ],
-                    "order": 1,
+                    "order": 2,
+                    "source": [ "obj-71", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-90", 0 ],
+                    "order": 0,
                     "source": [ "obj-71", 0 ]
                 }
             },
@@ -1932,6 +2001,32 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-92", 0 ],
+                    "source": [ "obj-90", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-12", 0 ],
+                    "order": 0,
+                    "source": [ "obj-92", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9", 0 ],
+                    "order": 1,
+                    "source": [ "obj-92", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-90", 0 ],
+                    "source": [ "obj-95", 0 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-72", 0 ],
                     "midpoints": [ 723.5, 320.5, 587.5, 320.5 ],
                     "source": [ "obj-97", 1 ]
@@ -1958,6 +2053,7 @@
             "obj-72": [ "sampleFolder", "sampleFolder", 0 ],
             "obj-8": [ "verbose-logs", "verbose-logs", 0 ],
             "obj-84": [ "direct-live-api", "direct-live-api", 0 ],
+            "obj-90": [ "notation", "notation", 0 ],
             "parameterbanks": {
                 "0": {
                     "index": 0,
