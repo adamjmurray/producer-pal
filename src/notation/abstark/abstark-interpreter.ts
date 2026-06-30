@@ -38,6 +38,7 @@ import {
 import * as parser from "#src/notation/abstark/parser/abstark-parser.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 /** Natural pitch class offsets (semitones above C). */
 const NATURAL_PC: Readonly<Record<string, number>> = {

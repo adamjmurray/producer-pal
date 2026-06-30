@@ -15,7 +15,6 @@
 import {
   BASS_REGISTER_DEFAULT,
   CHORDS_REGISTER_DEFAULT,
-  DRUM_MIDI_PITCHES,
   MELODY_REGISTER_DEFAULT,
   MIDI_TO_DRUM_NAME,
   SIXTEENTH_NOTE_BEATS,
@@ -25,34 +24,51 @@ import {
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+
+/** Options for {@link formatNotation}. */
+export interface AbstarkFormatOptions {
+  /**
+   * True when the clip's track has a Drum Rack instrument (detected via the
+   * same device-tree traversal that builds a track's drum map). It — not the
+   * MIDI pitch — decides drum vs. pitched serialization, so a bass C2 (MIDI 36)
+   * on a melodic track is NOT mistaken for a kick.
+   */
+  drumMode?: boolean;
+}
 
 /**
  * Serialize MIDI note events into an Abstark notation string.
+ *
+ * Drum vs. pitched is an all-or-nothing choice driven by the track, not by
+ * individual MIDI numbers: a Drum-Rack track (`drumMode`) serializes every note
+ * as a drum line; any other track serializes every note as bass/melody/chords.
+ * This is deliberately asymmetric — it's the only way to keep low pitched notes
+ * (which overlap the GM drum range) round-trippable.
+ *
  * @param notes - Note events to serialize
- * @returns Abstark string, or "" when there are no notes
+ * @param options - Serialization options (notably `drumMode`)
+ * @returns Abstark string, or "" when there are no serializable notes
  */
-export function formatNotation(notes: NoteEvent[]): string {
+export function formatNotation(
+  notes: NoteEvent[],
+  options: AbstarkFormatOptions = {},
+): string {
   if (notes.length === 0) return "";
 
-  const drumNotes = notes.filter((n) => DRUM_MIDI_PITCHES.has(n.pitch));
-  const pitchedNotes = notes.filter((n) => !DRUM_MIDI_PITCHES.has(n.pitch));
-
-  const sections: string[] = [];
-
-  if (drumNotes.length > 0) {
-    sections.push(...serializeDrums(drumNotes));
+  if (options.drumMode) {
+    return serializeDrums(notes).join("\n");
   }
 
-  if (pitchedNotes.length > 0) {
-    sections.push(serializePitched(pitchedNotes));
-  }
-
-  return sections.join("\n");
+  return serializePitched(notes);
 }
 
 // ---- Drum serializer ----
 
 // Serialize drum notes into one `<drumname>: <pattern>` line per pitch.
+// Pitches without an Abstark drum-line name can't round-trip (the drum-name
+// vocabulary maps a fixed set of pitches), so they are dropped with a WARNING
+// rather than silently lost. General pitch-named drum lines are a follow-up.
 function serializeDrums(notes: NoteEvent[]): string[] {
   const byPitch = new Map<number, NoteEvent[]>();
 
@@ -67,12 +83,25 @@ function serializeDrums(notes: NoteEvent[]): string[] {
   }
 
   const lines: string[] = [];
+  const droppedPitches: number[] = [];
+  let droppedNoteCount = 0;
 
   for (const [midi, drumNotes] of byPitch) {
     const name = MIDI_TO_DRUM_NAME[midi];
 
-    if (!name) continue;
+    if (!name) {
+      droppedPitches.push(midi);
+      droppedNoteCount += drumNotes.length;
+      continue;
+    }
+
     lines.push(`${name}: ${drumPattern(drumNotes)}`);
+  }
+
+  if (droppedNoteCount > 0) {
+    console.warn(
+      `Abstark: dropped ${droppedNoteCount} drum note(s) at unnamed MIDI pitch(es) ${droppedPitches.join(", ")} — no Abstark drum-line name maps to them, so they can't round-trip`,
+    );
   }
 
   return lines;

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { interpretNotation } from "./abstark-interpreter.ts";
 
 // Velocity ranges for dynamics
@@ -294,25 +294,22 @@ describe("interpretNotation — chords lines", () => {
 });
 
 describe("interpretNotation — mixed sections", () => {
+  // Warnings are relayed to the LLM via outlet 1 (see v8-max-console), so the
+  // assertion is on the global outlet mock, not console.warn.
   it("warns on mixed drum + melody sections", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
     interpretNotation("kick: X...\nmelody: C");
 
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(outlet).toHaveBeenCalledWith(
+      1,
       expect.stringContaining("mixed section types"),
     );
-    warnSpy.mockRestore();
   });
 
   it("warns on duplicate notes from mixed sections (bass C = kick MIDI 36)", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
     // bass C = MIDI 36 = same as kick; both start at t=0 → collision after dedup
     interpretNotation("kick: X...\nbass: C");
 
     // At minimum the mixed-sections warning fires; collision warning may also fire
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(outlet).toHaveBeenCalledWith(1, expect.any(String));
   });
 });

@@ -155,17 +155,15 @@ describe("formatNotation — melody line", () => {
   });
 });
 
-describe("formatNotation — bass line", () => {
-  it("MIDI 24 (C1) → bass line", () => {
-    // 24 is not in DRUM_MIDI_PITCHES; median < 48 → bass
+describe("formatNotation — bass line (pitched, no drumMode)", () => {
+  it("MIDI 24 (C1) → bass line (median < 48)", () => {
     const result = formatNotation([note(24, 0, 1)]);
 
     expect(result).toMatch(/^bass:/);
     expect(result).toContain("C");
   });
 
-  it("MIDI 35 (B1) → bass line (non-drum pitch < 48)", () => {
-    // 35 is not in DRUM_MIDI_PITCHES
+  it("MIDI 35 (B1) → bass line (median < 48)", () => {
     const result = formatNotation([note(35, 0, 1)]);
 
     expect(result).toMatch(/^bass:/);
@@ -178,9 +176,7 @@ describe("formatNotation — bass line", () => {
   });
 });
 
-describe("formatNotation — chords line", () => {
-  // Use pitches not in DRUM_MIDI_PITCHES: {36,37,38,39,42,43,45,46,47,49,51}
-  // E3=52, G3=55, B3=59 are all non-drum pitches
+describe("formatNotation — chords line (pitched, no drumMode)", () => {
   it("simultaneous notes → chords line", () => {
     const result = formatNotation([
       note(52, 0, 1),
@@ -219,28 +215,32 @@ describe("formatNotation — chords line", () => {
   });
 });
 
-describe("formatNotation — drum lines", () => {
+// drumMode = true means the track has a Drum Rack, so EVERY note serializes as
+// a drum line (regardless of MIDI pitch). Pass { drumMode: true } explicitly.
+const DRUM = { drumMode: true } as const;
+
+describe("formatNotation — drum lines (drumMode)", () => {
   it("MIDI 36 (kick) → kick: line", () => {
-    const result = formatNotation([note(36, 0, 0.25)]);
+    const result = formatNotation([note(36, 0, 0.25)], DRUM);
 
     expect(result).toMatch(/^kick:/);
   });
 
   it("MIDI 38 (snare) → snare: line", () => {
-    const result = formatNotation([note(38, 0.25, 0.25)]);
+    const result = formatNotation([note(38, 0.25, 0.25)], DRUM);
 
     expect(result).toMatch(/snare:/);
   });
 
   it("hit at beat 0 → X at first position", () => {
-    const result = formatNotation([note(36, 0, 0.25, 100)]);
+    const result = formatNotation([note(36, 0, 0.25, 100)], DRUM);
     const patternPart = result.split(":")[1]?.trim() ?? "";
 
     expect(patternPart[0]).toBe("X");
   });
 
   it("hit at beat 0.25 (2nd 16th) → X at position 1", () => {
-    const result = formatNotation([note(36, 0.25, 0.25, 100)]);
+    const result = formatNotation([note(36, 0.25, 0.25, 100)], DRUM);
     const patternPart = result.split(":")[1]?.trim() ?? "";
     // Pattern has spaces every 4 chars (beat groups), so position 1 is chars[1]
     const withoutSpaces = patternPart.replaceAll(" ", "");
@@ -249,7 +249,7 @@ describe("formatNotation — drum lines", () => {
   });
 
   it("accent velocity (115+) → ^", () => {
-    const result = formatNotation([note(36, 0, 0.25, 120)]);
+    const result = formatNotation([note(36, 0, 0.25, 120)], DRUM);
     const patternPart = result.split(":")[1]?.trim() ?? "";
     const withoutSpaces = patternPart.replaceAll(" ", "");
 
@@ -257,7 +257,7 @@ describe("formatNotation — drum lines", () => {
   });
 
   it("soft velocity (<90) → x", () => {
-    const result = formatNotation([note(36, 0, 0.25, 70)]);
+    const result = formatNotation([note(36, 0, 0.25, 70)], DRUM);
     const patternPart = result.split(":")[1]?.trim() ?? "";
     const withoutSpaces = patternPart.replaceAll(" ", "");
 
@@ -266,7 +266,10 @@ describe("formatNotation — drum lines", () => {
 
   it("two hits on the same drum pitch at different times appear in pattern", () => {
     // Exercises the existing.push(note) branch in serializeDrums
-    const result = formatNotation([note(36, 0, 0.25), note(36, 0.5, 0.25)]);
+    const result = formatNotation(
+      [note(36, 0, 0.25), note(36, 0.5, 0.25)],
+      DRUM,
+    );
     const patternPart = result.split(":")[1]?.trim() ?? "";
     const withoutSpaces = patternPart.replaceAll(" ", "");
 
@@ -275,7 +278,7 @@ describe("formatNotation — drum lines", () => {
   });
 
   it("pattern pads to 16 steps minimum", () => {
-    const result = formatNotation([note(36, 0, 0.25)]);
+    const result = formatNotation([note(36, 0, 0.25)], DRUM);
     const patternPart = result.split(":")[1]?.trim() ?? "";
     const withoutSpaces = patternPart.replaceAll(" ", "");
 
@@ -283,7 +286,7 @@ describe("formatNotation — drum lines", () => {
   });
 
   it("hit in second bar pads to 32 steps", () => {
-    const result = formatNotation([note(36, 4, 0.25)]); // 4 beats = beat 1 of bar 2 = step 16
+    const result = formatNotation([note(36, 4, 0.25)], DRUM); // step 16 = bar 2 beat 1
 
     const patternPart = result.split(":")[1]?.trim() ?? "";
     const withoutSpaces = patternPart.replaceAll(" ", "");
@@ -291,19 +294,46 @@ describe("formatNotation — drum lines", () => {
     expect(withoutSpaces).toHaveLength(32);
   });
 
-  it("drum + pitched → both sections in output", () => {
-    const result = formatNotation([note(36, 0, 0.25), note(60, 0, 1)]);
+  it("multiple drum pitches → one line each", () => {
+    const result = formatNotation(
+      [note(36, 0, 0.25), note(38, 0.5, 0.25)],
+      DRUM,
+    );
 
     expect(result).toContain("kick:");
-    expect(result).toContain("melody:");
+    expect(result).toContain("snare:");
   });
 
-  it("unknown MIDI pitch (e.g. MIDI 40) is skipped in drum serializer", () => {
-    // MIDI 40 is not in DRUM_MIDI_PITCHES; pitched notes < 48 → bass
-    // Note: 40 is not a drum pitch so it goes to pitched serializer
-    const result = formatNotation([note(40, 0, 1)]);
+  it("unnamed drum pitch on a drum track is dropped with a WARNING", () => {
+    // MIDI 60 has no Abstark drum-line name; MIDI 36 (kick) does. The WARNING
+    // is relayed to the LLM via outlet 1 (see v8-max-console).
+    const result = formatNotation([note(36, 0, 0.25), note(60, 0, 0.25)], DRUM);
 
-    expect(result).toMatch(/^bass:/); // treated as pitched
+    expect(result).toContain("kick:");
+    expect(result).not.toContain("60");
+    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("60"));
+  });
+});
+
+describe("formatNotation — drum-range pitches WITHOUT drumMode (the fix)", () => {
+  it("MIDI 36 (kick pitch) on a melodic track → bass, NOT a kick line", () => {
+    // The headline regression: without a Drum Rack, C2=36 is a bass note and
+    // must round-trip as pitched — never mistaken for a kick drum.
+    const result = formatNotation([note(36, 0, 1)]);
+
+    expect(result).toMatch(/^bass:/);
+    expect(result).not.toContain("kick");
+  });
+
+  it("MIDI 51 (ride pitch) chord tone on a melodic track → pitched", () => {
+    const result = formatNotation([
+      note(48, 0, 1),
+      note(51, 0, 1),
+      note(55, 0, 1),
+    ]);
+
+    expect(result).toContain("chords:");
+    expect(result).not.toContain("ride");
   });
 });
 
@@ -311,12 +341,17 @@ describe("formatNotation — drum lines", () => {
 // pitch / start_time / duration, and preserve the velocity bucket. This is the
 // defining property of Abstark (vs. Stark, which has no serializer).
 describe("round-trip (interpret → serialize → interpret)", () => {
-  function roundTrip(abstark: string): {
+  // drumMode mirrors the track context: drum-line inputs round-trip with
+  // drumMode true, pitched inputs with drumMode false.
+  function roundTrip(
+    abstark: string,
+    drumMode = false,
+  ): {
     first: NoteEvent[];
     second: NoteEvent[];
   } {
     const first = interpretNotation(abstark);
-    const second = interpretNotation(formatNotation(first));
+    const second = interpretNotation(formatNotation(first, { drumMode }));
 
     return { first, second };
   }
@@ -355,31 +390,35 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     expect(bucket(first[2]!.velocity)).toBe("normal");
   });
 
-  it("bass line in low register", () => {
-    // The bass register (C2=36) overlaps the drum MIDI range (36-51), so many
-    // bass notes (e.g. C2=36=kick, D2=38=snare) round-trip to drums — a
-    // documented lossy axis. Use non-colliding pitches here (E2=40, F2=41).
-    const { first, second } = roundTrip("bass: E/4 F/4 E/2");
+  it("bass line in low register round-trips (incl. C2=36, the kick pitch)", () => {
+    // With drumMode false there is no drum collision: bass C2 (MIDI 36) and
+    // G1 (31) serialize as pitched and round-trip exactly. This is the fix for
+    // the former MIDI-number-split bug.
+    const { first, second } = roundTrip("bass: C/4 G,/4 C/2");
 
     expectStableNotes(first, second);
+    expect(first[0]!.pitch).toBe(36); // C2 — same MIDI as a kick, but pitched here
   });
 
   it("drum pattern with all hit types", () => {
-    const { first, second } = roundTrip("kick: ^.x. X... ^... x...");
+    const { first, second } = roundTrip("kick: ^.x. X... ^... x...", true);
 
     expectStableNotes(first, second);
   });
 
   it("multiple drum lines", () => {
-    const { first, second } = roundTrip("kick: X... X...\nsnare: ..X. ..X.");
+    const { first, second } = roundTrip(
+      "kick: X... X...\nsnare: ..X. ..X.",
+      true,
+    );
 
     expectStableNotes(first, second);
   });
 
-  it("chords with shared duration and dynamic", () => {
-    // Avoid chord pitches that collide with drum MIDI numbers (e.g. Eb3=51=ride);
-    // such collisions are a documented lossy axis (pitched-on-drum-pitch → drum).
-    const { first, second } = roundTrip("chords: [C E G]/2! [D F A]/2");
+  it("chords with shared duration and dynamic (incl. Eb3=51, ride pitch)", () => {
+    // With drumMode false, chord tones on drum pitches (Eb3=51=ride) stay
+    // pitched and round-trip — no longer a lossy axis on melodic tracks.
+    const { first, second } = roundTrip("chords: [C Eb G]/2! [D F A]/2");
 
     expectStableNotes(first, second);
   });

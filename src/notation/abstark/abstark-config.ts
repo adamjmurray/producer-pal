@@ -70,14 +70,15 @@ export const LINE_DEFAULT_N: Readonly<
   chords: 1,
 };
 
-// --- Drum MIDI pitches ---
+// --- Drum line names ---
 
-/** All MIDI pitches supported by Abstark drum lines */
-export const DRUM_MIDI_PITCHES: ReadonlySet<number> = new Set([
-  36, 37, 38, 39, 42, 43, 45, 46, 47, 49, 51,
-]);
-
-/** MIDI pitch → drum line name (for serializer) */
+/**
+ * MIDI pitch → drum line name (for the serializer). Drum-vs-pitched routing is
+ * decided by the track (drumMode), not by membership here; this map only names
+ * the line for a drum-track note. Pitches absent from this map have no
+ * round-trippable Abstark drum name (general pitch-named drum lines are a
+ * planned follow-up), so the serializer drops them with a WARNING.
+ */
 export const MIDI_TO_DRUM_NAME: Readonly<Record<number, string>> = {
   36: "kick",
   37: "rimshot",

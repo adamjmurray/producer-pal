@@ -109,7 +109,7 @@ export function formatNotation(
   }
 
   if (resolved === "abstark") {
-    return formatAbstark(notes ?? []);
+    return formatAbstark(notes ?? [], { drumMode: rest.drumMode });
   }
 
   // bar|beat handles both barbeat and the stark fallback (no Stark serializer).
