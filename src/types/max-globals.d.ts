@@ -22,7 +22,7 @@ interface ToolContext {
    * Mirrors the `Notation` union in src/notation/notation.ts (inlined here to
    * keep this ambient .d.ts import-free). Undefined ⇒ bar|beat default.
    */
-  notation?: "barbeat" | "midi-json" | "stark";
+  notation?: "barbeat" | "midi-json" | "stark" | "abstark";
   sampleFolder: string | null;
   holdingAreaStartBeats?: number;
   silenceWavPath?: string;

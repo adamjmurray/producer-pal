@@ -8,7 +8,8 @@
  * (notes → string) seams to a specific notation. `barbeat` (the default) is the
  * bar|beat DSL; `midi-json` is a JSON array of CodeNote objects; `stark` is an
  * ultra-minimal notation aimed at small/weak models (interpret-only — there is
- * no Stark serializer, so the read path falls back to bar|beat).
+ * no Stark serializer, so the read path falls back to bar|beat); `abstark` is a
+ * literal, round-trippable notation (has a real serializer).
  *
  * Selection is a single global setting (`config.notation`, default `barbeat`),
  * controlled via the device UI / `POST /config` and threaded to the clip tools
@@ -17,6 +18,8 @@
  * mode (which only trims tool schemas).
  */
 
+import { interpretNotation as interpretAbstark } from "#src/notation/abstark/abstark-interpreter.ts";
+import { formatNotation as formatAbstark } from "#src/notation/abstark/abstark-serializer.ts";
 import { formatNotation as formatBarbeat } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation as interpretBarbeat } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type FormatOptions } from "#src/notation/barbeat/serializer/barbeat-serializer.ts";
@@ -79,6 +82,10 @@ export function interpretNotation(
     return interpretStark(input, { ...rest, scale });
   }
 
+  if (resolved === "abstark") {
+    return interpretAbstark(input, rest);
+  }
+
   return interpretBarbeat(input, rest);
 }
 
@@ -99,6 +106,10 @@ export function formatNotation(
 
   if (resolved === "midi-json") {
     return formatMidiJson(notes ?? [], rest);
+  }
+
+  if (resolved === "abstark") {
+    return formatAbstark(notes ?? []);
   }
 
   // bar|beat handles both barbeat and the stark fallback (no Stark serializer).

@@ -103,6 +103,7 @@ describe("resolveNotation", () => {
     expect(resolveNotation("midi-json")).toBe("midi-json");
     expect(resolveNotation("barbeat")).toBe("barbeat");
     expect(resolveNotation("stark")).toBe("stark");
+    expect(resolveNotation("abstark")).toBe("abstark");
   });
 
   it("defaults to barbeat when no notation is given", () => {
@@ -120,5 +121,52 @@ describe("interpretNotation stark routing", () => {
 
     expect(notes).toHaveLength(4);
     expect(notes[0]?.pitch).toBe(36); // Stark kick = C1
+  });
+});
+
+describe("interpretNotation abstark routing", () => {
+  it("routes to Abstark when notation is abstark", () => {
+    const notes = interpretNotation("kick: X.X.", {
+      notation: "abstark",
+    });
+
+    expect(notes).toHaveLength(2);
+    expect(notes[0]?.pitch).toBe(36); // kick = MIDI 36
+    expect(notes[0]?.start_time).toBe(0);
+    expect(notes[1]?.start_time).toBe(0.5); // 2 × 16th = 0.5 beats
+  });
+
+  it("interprets melody with literal pitch", () => {
+    const notes = interpretNotation("melody: C D Eb", {
+      notation: "abstark",
+    });
+
+    expect(notes).toHaveLength(3);
+    expect(notes[0]?.pitch).toBe(60); // C4 = MIDI 60
+    expect(notes[1]?.pitch).toBe(62); // D4 = MIDI 62
+    expect(notes[2]?.pitch).toBe(63); // Eb4 = MIDI 63
+  });
+});
+
+describe("formatNotation abstark routing", () => {
+  it("routes to Abstark serializer when notation is abstark", () => {
+    const note = {
+      pitch: 60,
+      start_time: 0,
+      duration: 1,
+      velocity: 100,
+      probability: 1,
+    };
+
+    const result = formatNotation([note], { notation: "abstark" });
+
+    expect(result).toContain("melody:");
+    expect(result).toContain("C");
+    expect(result).toContain("/4");
+  });
+
+  it("returns empty string for no notes", () => {
+    expect(formatNotation([], { notation: "abstark" })).toBe("");
+    expect(formatNotation(null, { notation: "abstark" })).toBe("");
   });
 });

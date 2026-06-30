@@ -775,6 +775,7 @@ export default [
   {
     files: ["src/**/*.ts"],
     ignores: [
+      "src/notation/abstark/parser/abstark-parser.ts",
       "src/notation/barbeat/parser/barbeat-parser.ts",
       "src/notation/transform/parser/transform-parser.ts",
       "src/notation/stark/parser/stark-parser.ts",

@@ -14,14 +14,19 @@
 
 /**
  * Supported notations, chosen by the global `config.notation` setting.
- * `barbeat` is the default; `midi-json` and `stark` are opt-in.
+ * `barbeat` is the default; `midi-json`, `stark`, and `abstark` are opt-in.
  */
-export type Notation = "barbeat" | "midi-json" | "stark";
+export type Notation = "barbeat" | "midi-json" | "stark" | "abstark";
 
 export const DEFAULT_NOTATION: Notation = "barbeat";
 
 /** Every supported notation, for runtime validation of the config setting. */
-export const NOTATIONS: readonly Notation[] = ["barbeat", "midi-json", "stark"];
+export const NOTATIONS: readonly Notation[] = [
+  "barbeat",
+  "midi-json",
+  "stark",
+  "abstark",
+];
 
 /**
  * Type guard for a {@link Notation} value (validates the config setting coming
