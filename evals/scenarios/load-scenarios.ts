@@ -9,9 +9,6 @@
 
 import { styleText } from "node:util";
 import {
-  abstarkDrumRoundtrip,
-  abstarkPitchAccuracy,
-  abstarkRhythmAccuracy,
   arpeggioBracketIdiom,
   arpeggioMixedDurations,
   arrangementClipWorkflow,
@@ -32,6 +29,7 @@ import {
   createAndEditClip,
   deviceDrumKit,
   deviceSoundDesign,
+  drumBackbeatMatrix,
   drumTransforms,
   duplicate,
   duplicateLoop,
@@ -40,6 +38,7 @@ import {
   durationArgSubBar,
   durationReachForQuarter,
   legatoTransforms,
+  melodyPitchMatrix,
   melodyTransforms,
   noteOpsMerge,
   noteOpsRatchetRoll,
@@ -51,6 +50,7 @@ import {
   pretransformsHatFillsBaseline,
   pretransformsMelodyReplaceBaseline,
   pretransformsSnareSwapBaseline,
+  rhythmGridMatrix,
   slmPretransformsDrumRemap,
   slmPretransformsRegionClear,
   surgicalNoteDurationEdit,
@@ -119,9 +119,9 @@ const allScenarios: EvalScenario[] = [
   noteOpsRepeat,
   noteOpsSplit,
   noteOpsSplitSync,
-  abstarkPitchAccuracy,
-  abstarkRhythmAccuracy,
-  abstarkDrumRoundtrip,
+  ...drumBackbeatMatrix,
+  ...melodyPitchMatrix,
+  ...rhythmGridMatrix,
 ];
 
 export interface LoadScenariosOptions {

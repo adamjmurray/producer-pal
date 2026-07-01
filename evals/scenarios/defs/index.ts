@@ -11,9 +11,6 @@
  * scenario registration in load-scenarios.ts.
  */
 
-export { abstarkDrumRoundtrip } from "./clip/notation/abstark/abstark-drum-roundtrip.ts";
-export { abstarkPitchAccuracy } from "./clip/notation/abstark/abstark-pitch-accuracy.ts";
-export { abstarkRhythmAccuracy } from "./clip/notation/abstark/abstark-rhythm-accuracy.ts";
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
 export {
   arpeggioBracketIdiom,
@@ -74,6 +71,11 @@ export {
   slmPretransformsDrumRemap,
   slmPretransformsRegionClear,
 } from "./clip/notation/pretransforms-slm.ts";
+export {
+  drumBackbeatMatrix,
+  melodyPitchMatrix,
+  rhythmGridMatrix,
+} from "./clip/notation/notation-matrix-scenarios.ts";
 export { surgicalNoteDurationEdit } from "./clip/notation/surgical-note-duration-edit.ts";
 export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
 export { whereTransforms } from "./clip/where-transforms.ts";
