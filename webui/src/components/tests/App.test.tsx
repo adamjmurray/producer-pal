@@ -43,33 +43,15 @@ vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
-// useChatModeState reads the custom system prompt on mount; stub it so App
-// tests don't fire a real /system-prompt fetch.
+// App renders the real ContextTabs + system-prompt hook, both of which fetch a
+// same-origin endpoint; stub them so App tests stay focused on the overlay
+// open/close plumbing and don't leak real localhost fetches. See
+// App-context-mocks for details.
 vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
-  useSystemPromptMemory: () => ({
-    status: { kind: "ready", content: "" },
-    saveStatus: "idle",
-    saveError: null,
-    save: vi.fn(),
-    clear: vi.fn(),
-    refresh: vi.fn(),
-  }),
+  useSystemPromptMemory: systemPromptMemoryMock,
 }));
-
-// ContextTabs wires CodeMirror + a server fetch; stub it so App tests stay
-// focused on the overlay open/close plumbing.
 vi.mock(import("#webui/components/context/ContextTabs"), () => ({
-  ContextTabs: (props: { onClose?: () => void } = {}) => (
-    <div data-testid="context-stub">
-      <button
-        type="button"
-        aria-label="Close context editor"
-        onClick={props.onClose}
-      >
-        close
-      </button>
-    </div>
-  ),
+  ContextTabs: ContextTabsStub,
 }));
 
 import { useChat } from "#webui/hooks/chat/use-chat";
@@ -78,6 +60,7 @@ import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
+import { ContextTabsStub, systemPromptMemoryMock } from "./App-context-mocks";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 

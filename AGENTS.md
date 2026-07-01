@@ -256,6 +256,19 @@ web UI architecture.
   colocated with source files (e.g., `ChatHeader.tsx` has `ChatHeader.test.tsx`
   in the same directory).
 
+- **Webui tests must not leak real fetches**: Under
+  `@vitest-environment happy-dom` the page origin is `http://localhost:3000`, so
+  any unmocked same-origin `fetch` hits the real network and surfaces as an
+  unhandled `ECONNREFUSED`. These leaks are invisible in plain `npm test` (the
+  process exits before slow polls fire) and only appear under `npm run check` /
+  `test:coverage`, which runs slowly enough for `setInterval` polls to fire. Any
+  test that mounts a component doing same-origin `fetch` on mount or on a timer
+  must mock the transport. In particular, tests that render the real `<App>`
+  must mock `use-system-prompt-memory` and `ContextTabs` (the doc-memory hooks
+  in `use-doc-memory.ts` fetch on mount AND on a 5s poll) — reuse the shared
+  payloads in `webui/src/components/tests/App-context-mocks.tsx` rather than
+  re-inlining them, so the App test files can't drift apart.
+
 - **File organization and size limits**:
   - Max 325 lines per file for source files (ESLint, ignoring blanks/comments)
   - Max 650 lines for `*.test.*` and `*-test-case.ts` (ESLint, ignoring
