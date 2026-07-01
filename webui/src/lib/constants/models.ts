@@ -124,8 +124,9 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 }
 
 export const ANTHROPIC_MODELS = [
-  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { value: "claude-sonnet-5", label: "Claude Sonnet 5" },
   { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
+  { value: "claude-fable-5", label: "Claude Fable 5" },
   { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   OTHER_MODEL_OPTION,
 ];
@@ -173,12 +174,16 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Google Gemini 3.1 Pro",
   },
   {
-    value: "anthropic/claude-sonnet-4.6",
-    label: "[Paid] Anthropic Claude Sonnet 4.6",
+    value: "anthropic/claude-sonnet-5",
+    label: "[Paid] Anthropic Claude Sonnet 5",
   },
   {
     value: "anthropic/claude-opus-4.8",
     label: "[Paid] Anthropic Claude Opus 4.8",
+  },
+  {
+    value: "anthropic/claude-fable-5",
+    label: "[Paid] Anthropic Claude Fable 5",
   },
   { value: "openai/gpt-5.5", label: "[Paid] OpenAI GPT-5.5" },
   {
@@ -186,9 +191,13 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] OpenAI GPT-5.3 Codex",
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
+  { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
   { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6 Plus" },
   { value: "qwen/qwen3.7-max", label: "[Paid] Qwen 3.7 Max" },
-  { value: "moonshotai/kimi-k2.6", label: "[Paid] Moonshot AI Kimi K2.6" },
+  {
+    value: "moonshotai/kimi-k2.7-code",
+    label: "[Paid] Moonshot AI Kimi K2.7 Code",
+  },
   // Free models
   {
     value: "google/gemma-4-26b-a4b-it:free",
@@ -197,10 +206,6 @@ export const OPENROUTER_MODELS = [
   {
     value: "qwen/qwen3-next-80b-a3b-instruct:free",
     label: "[Free] Qwen3 Next 80B",
-  },
-  {
-    value: "moonshotai/kimi-k2.6:free",
-    label: "[Free] Moonshot AI Kimi K2.6",
   },
   {
     value: "nvidia/nemotron-3-super-120b-a12b:free",

@@ -37,7 +37,7 @@ describe("config", () => {
       // ANTHROPIC_MODELS was missing from ALL_MODELS, so Anthropic ids rendered
       // as the raw id (e.g. in the chat header and LockedSettingsNotice).
       expect(getModelName("claude-opus-4-8")).toBe("Claude Opus 4.8");
-      expect(getModelName("claude-sonnet-4-6")).toBe("Claude Sonnet 4.6");
+      expect(getModelName("claude-sonnet-5")).toBe("Claude Sonnet 5");
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {
@@ -47,8 +47,8 @@ describe("config", () => {
     });
 
     it("strips [Free] tag from OpenRouter model labels", () => {
-      expect(getModelName("moonshotai/kimi-k2.6:free")).toBe(
-        "Moonshot AI Kimi K2.6",
+      expect(getModelName("google/gemma-4-26b-a4b-it:free")).toBe(
+        "Google Gemma 4 26B",
       );
     });
 
