@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Skills text for the experimental, dev-only `code` transform parameter (gated
-// behind ENABLE_CODE_EXEC). Kept in its own module so the main `standard.ts`
-// skills file stays under the source line limit; it is interpolated into the
-// standard skills only when code execution is enabled.
+// behind ENABLE_CODE_EXEC). Kept in its own module so `core-standard.ts` stays
+// under the source line limit; it is interpolated into the standard core skills
+// only when code execution is enabled.
 export const codeTransformsSkills = `
 
 ### Code Transforms

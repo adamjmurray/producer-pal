@@ -47,7 +47,7 @@ import {
 // in extensionless webui imports Node can't resolve unbundled. Keep in sync.
 const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
 
-// Re-sourced through buildSkills (formerly the standard.ts / basic.ts monoliths).
+// Sourced through buildSkills (HEADER + notation head + shared core per level).
 // Standard = default (bar|beat); basic = Stark, matching the historical baseline.
 const standardSkills = buildSkills();
 const basicSkills = buildSkills({ notation: "stark", smallModelMode: true });

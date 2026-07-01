@@ -34,7 +34,7 @@ describe("formatNotation — empty input", () => {
 });
 
 describe("formatNotation — melody line", () => {
-  it("single C4 (MIDI 60) → melody line with C", () => {
+  it("single C3 (MIDI 60) → melody line with C", () => {
     const result = formatNotation([note(60, 0, 1)]);
 
     expect(result).toMatch(/^melody:/);
@@ -66,7 +66,7 @@ describe("formatNotation — melody line", () => {
     expect(result).toContain("C'");
   });
 
-  it("MIDI 48 (C3) serializes as C with one octave-down mark", () => {
+  it("MIDI 48 (C2) serializes as C with one octave-down mark", () => {
     const result = formatNotation([note(48, 0, 1)]);
 
     expect(result).toContain("C,");
@@ -156,20 +156,20 @@ describe("formatNotation — melody line", () => {
 });
 
 describe("formatNotation — bass line (pitched, no drumMode)", () => {
-  it("MIDI 24 (C1) → bass line (median < 48)", () => {
+  it("MIDI 24 (C0) → bass line (median < 48)", () => {
     const result = formatNotation([note(24, 0, 1)]);
 
     expect(result).toMatch(/^bass:/);
     expect(result).toContain("C");
   });
 
-  it("MIDI 35 (B1) → bass line (median < 48)", () => {
+  it("MIDI 35 (B0) → bass line (median < 48)", () => {
     const result = formatNotation([note(35, 0, 1)]);
 
     expect(result).toMatch(/^bass:/);
   });
 
-  it("MIDI 48 (C3) → melody line (threshold is < 48 = bass)", () => {
+  it("MIDI 48 (C2) → melody line (threshold is < 48 = bass)", () => {
     const result = formatNotation([note(48, 0, 1)]);
 
     expect(result).toMatch(/^melody:/);
@@ -346,7 +346,7 @@ describe("formatNotation — drum lines (drumMode)", () => {
 
 describe("formatNotation — drum-range pitches WITHOUT drumMode (the fix)", () => {
   it("MIDI 36 (kick pitch) on a melodic track → bass, NOT a kick line", () => {
-    // The headline regression: without a Drum Rack, C2=36 is a bass note and
+    // The headline regression: without a Drum Rack, C1=36 is a bass note and
     // must round-trip as pitched — never mistaken for a kick drum.
     const result = formatNotation([note(36, 0, 1)]);
 
@@ -419,14 +419,14 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     expect(bucket(first[2]!.velocity)).toBe("normal");
   });
 
-  it("bass line in low register round-trips (incl. C2=36, the kick pitch)", () => {
-    // With drumMode false there is no drum collision: bass C2 (MIDI 36) and
-    // G1 (31) serialize as pitched and round-trip exactly. This is the fix for
+  it("bass line in low register round-trips (incl. C1=36, the kick pitch)", () => {
+    // With drumMode false there is no drum collision: bass C1 (MIDI 36) and
+    // G0 (31) serialize as pitched and round-trip exactly. This is the fix for
     // the former MIDI-number-split bug.
     const { first, second } = roundTrip("bass: C/4 G,/4 C/2");
 
     expectStableNotes(first, second);
-    expect(first[0]!.pitch).toBe(36); // C2 — same MIDI as a kick, but pitched here
+    expect(first[0]!.pitch).toBe(36); // C1 — same MIDI as a kick, but pitched here
   });
 
   it("drum pattern with all hit types", () => {

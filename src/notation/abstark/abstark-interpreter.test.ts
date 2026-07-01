@@ -200,19 +200,19 @@ describe("interpretNotation — melody lines", () => {
   it("octave up ' shifts pitch by 12", () => {
     const notes = interpretNotation("melody: C'");
 
-    expect(notes[0]?.pitch).toBe(72); // C4 + 12
+    expect(notes[0]?.pitch).toBe(72); // C3 + 12
   });
 
   it("octave down , shifts pitch by -12", () => {
     const notes = interpretNotation("melody: C,");
 
-    expect(notes[0]?.pitch).toBe(48); // C4 - 12
+    expect(notes[0]?.pitch).toBe(48); // C3 - 12
   });
 
   it("double octave up '' shifts pitch by 24", () => {
     const notes = interpretNotation("melody: C''");
 
-    expect(notes[0]?.pitch).toBe(84); // C4 + 24
+    expect(notes[0]?.pitch).toBe(84); // C3 + 24
   });
 
   it("accent ! produces accent velocity", () => {
@@ -264,14 +264,14 @@ describe("interpretNotation — melody lines", () => {
   });
 
   it("MIDI is clamped to 0 when pitch goes below 0", () => {
-    // C,,,,,, from melody default C4=60 → 60 - 72 = -12 → clamped to 0
+    // C,,,,,, from melody default C3=60 → 60 - 72 = -12 → clamped to 0
     const notes = interpretNotation("melody: C,,,,,,");
 
     expect(notes[0]?.pitch).toBeGreaterThanOrEqual(0);
   });
 
   it("MIDI is clamped to 127 when pitch goes above 127", () => {
-    // C'''''''' from melody C4=60 → 60 + 96 = 156 → clamped to 127
+    // C'''''''' from melody C3=60 → 60 + 96 = 156 → clamped to 127
     const notes = interpretNotation("melody: C''''''''");
 
     expect(notes[0]?.pitch).toBeLessThanOrEqual(127);
@@ -279,7 +279,7 @@ describe("interpretNotation — melody lines", () => {
 });
 
 describe("interpretNotation — bass lines", () => {
-  it("C in bass maps to MIDI 36 (C2)", () => {
+  it("C in bass maps to MIDI 36 (C1)", () => {
     const notes = interpretNotation("bass: C");
 
     expect(notes[0]?.pitch).toBe(36);
@@ -302,11 +302,11 @@ describe("interpretNotation — chords lines", () => {
     expect(notes[2]?.start_time).toBe(0);
   });
 
-  it("[C Eb G] maps correct MIDI pitches from chords register (C3=48)", () => {
+  it("[C Eb G] maps correct MIDI pitches from chords register (C2=48)", () => {
     const notes = interpretNotation("chords: [C Eb G]");
     const pitches = notes.map((n) => n.pitch).sort((a, b) => a - b);
 
-    expect(pitches).toStrictEqual([48, 51, 55]); // C3, Eb3, G3
+    expect(pitches).toStrictEqual([48, 51, 55]); // C2, Eb2, G2
   });
 
   it("[C Eb G]/4 duration on bracket applies to all notes", () => {

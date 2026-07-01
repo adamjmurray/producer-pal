@@ -134,9 +134,9 @@ describe("interpretNotation abstark routing", () => {
     });
 
     expect(notes).toHaveLength(3);
-    expect(notes[0]?.pitch).toBe(60); // C4 = MIDI 60
-    expect(notes[1]?.pitch).toBe(62); // D4 = MIDI 62
-    expect(notes[2]?.pitch).toBe(63); // Eb4 = MIDI 63
+    expect(notes[0]?.pitch).toBe(60); // C3 = MIDI 60
+    expect(notes[1]?.pitch).toBe(62); // D3 = MIDI 62
+    expect(notes[2]?.pitch).toBe(63); // Eb3 = MIDI 63
   });
 });
 

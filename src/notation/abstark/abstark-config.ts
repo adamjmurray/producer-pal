@@ -48,14 +48,15 @@ export function durationBeats(n: number): number {
 }
 
 // --- Register defaults ---
-// Using Yamaha convention: C4 = MIDI 60 (middle C), C2 = MIDI 36.
-// `C` in each line type maps to this MIDI pitch; octave marks shift from here.
+// Octave names use Producer Pal's Ableton convention: C3 = MIDI 60 (middle C),
+// C1 = MIDI 36 (see src/shared/pitch.ts). A bare `C` in each line type maps to
+// this MIDI pitch; octave marks shift from here.
 
-/** bass: C2 = MIDI 36 */
+/** bass: C1 = MIDI 36 */
 export const BASS_REGISTER_DEFAULT = 36;
-/** melody: C4 = MIDI 60 */
+/** melody: C3 = MIDI 60 (middle C) */
 export const MELODY_REGISTER_DEFAULT = 60;
-/** chords: C3 = MIDI 48 (voicing stacks up from here) */
+/** chords: C2 = MIDI 48 (voicing stacks up from here) */
 export const CHORDS_REGISTER_DEFAULT = 48;
 
 // --- Line default duration denominators ---
