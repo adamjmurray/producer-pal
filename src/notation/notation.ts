@@ -6,7 +6,7 @@
 /**
  * Notation router: dispatches the interpret (string → notes) and format
  * (notes → string) seams to a specific notation. `barbeat` (the default) is the
- * bar|beat DSL; `midi-json` is a JSON array of CodeNote objects; `stark` is an
+ * bar|beat DSL; `midi-json` is a compact JS-literal array of note objects; `stark` is an
  * ultra-minimal notation aimed at small/weak models (interpret-only — there is
  * no Stark serializer, so the read path falls back to bar|beat); `abstark` is a
  * literal, round-trippable notation (has a real serializer).

@@ -779,6 +779,7 @@ export default [
       "src/notation/barbeat/parser/barbeat-parser.ts",
       "src/notation/transform/parser/transform-parser.ts",
       "src/notation/stark/parser/stark-parser.ts",
+      "src/notation/midi-json/parser/midi-json-parser.ts",
     ],
     rules: {
       "import-x/extensions": [

@@ -8,11 +8,10 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { formatMidiJson, interpretMidiJson } from "./midi-json-notation.ts";
 
 describe("interpretMidiJson", () => {
-  it("parses a JSON array into note events (4/4: musical beats == Ableton beats)", () => {
-    const result = interpretMidiJson(
-      '[{"pitch":60,"start":0,"duration":4,"velocity":100,"velocityDeviation":0,"probability":1}]',
-      { timeSigDenominator: 4 },
-    );
+  it("parses a compact JS-literal array into note events (4/4: musical beats == Ableton beats)", () => {
+    const result = interpretMidiJson("[{p:60,t:0,d:4,v:100,vd:0,c:1}]", {
+      timeSigDenominator: 4,
+    });
 
     expect(result).toStrictEqual([
       {
@@ -28,22 +27,36 @@ describe("interpretMidiJson", () => {
 
   it("scales musical beats to Ableton beats in x/8 meter", () => {
     // 6/8: toAbleton = 4/8 = 0.5, so 4 musical beats (eighths) -> 2 Ableton beats
-    const [note] = interpretMidiJson(
-      '[{"pitch":60,"start":2,"duration":4,"velocity":100}]',
-      { timeSigDenominator: 8 },
-    );
+    const [note] = interpretMidiJson("[{p:60,t:2,d:4,v:100}]", {
+      timeSigDenominator: 8,
+    });
 
     expect(note?.start_time).toBe(1);
     expect(note?.duration).toBe(2);
   });
 
   it("applies defaults for missing duration and velocity", () => {
-    const [note] = interpretMidiJson('[{"pitch":60,"start":0}]', {
+    const [note] = interpretMidiJson("[{p:60,t:0}]", {
       timeSigDenominator: 4,
     });
 
     expect(note?.duration).toBe(1);
     expect(note?.velocity).toBe(100);
+  });
+
+  it("accepts long keys (pitch/start/...) and quoted JSON keys", () => {
+    const result = interpretMidiJson(
+      '[{"pitch":60,"start":0,"duration":4,"velocity":100}]',
+    );
+
+    expect(result[0]?.pitch).toBe(60);
+    expect(result[0]?.duration).toBe(4);
+  });
+
+  it("accepts the long `deviation` key as an alias for vd", () => {
+    const [note] = interpretMidiJson("[{p:60,t:0,d:1,v:90,deviation:5}]");
+
+    expect(note?.velocity_deviation).toBe(5);
   });
 
   it("returns [] for empty or whitespace input", () => {
@@ -52,28 +65,25 @@ describe("interpretMidiJson", () => {
   });
 
   it("drops malformed notes (missing pitch/start) but keeps valid ones", () => {
-    const result = interpretMidiJson(
-      '[{"pitch":60,"start":0},{"start":1},{"pitch":62}]',
-      { timeSigDenominator: 4 },
-    );
+    const result = interpretMidiJson("[{p:60,t:0},{t:1},{p:62}]", {
+      timeSigDenominator: 4,
+    });
 
     expect(result).toHaveLength(1);
     expect(result[0]?.pitch).toBe(60);
   });
 
-  it("throws on invalid JSON", () => {
+  it("throws on unparseable input", () => {
     expect(() => interpretMidiJson("not json")).toThrow(/Invalid MIDI JSON/);
   });
 
-  it("throws when the JSON is not an array", () => {
-    expect(() => interpretMidiJson('{"pitch":60}')).toThrow(
-      /Invalid MIDI JSON/,
-    );
+  it("throws when the input is not an array", () => {
+    expect(() => interpretMidiJson("{p:60}")).toThrow(/Invalid MIDI JSON/);
   });
 });
 
 describe("formatMidiJson", () => {
-  it("serializes note events to a JSON array of CodeNotes (4/4)", () => {
+  it("serializes note events to a compact JS-literal array with short keys (4/4)", () => {
     const notes: NoteEvent[] = [
       {
         pitch: 60,
@@ -85,18 +95,42 @@ describe("formatMidiJson", () => {
       },
     ];
 
-    expect(
-      JSON.parse(formatMidiJson(notes, { timeSigDenominator: 4 })),
-    ).toStrictEqual([
+    // vd (0) and c (1) are omitted at their defaults.
+    expect(formatMidiJson(notes, { timeSigDenominator: 4 })).toBe(
+      "[{p:60,t:0,d:4,v:100}]",
+    );
+  });
+
+  it("includes vd and c only when they differ from their defaults", () => {
+    const notes: NoteEvent[] = [
+      {
+        pitch: 62,
+        start_time: 1,
+        duration: 1,
+        velocity: 90,
+        velocity_deviation: 10,
+        probability: 0.75,
+      },
+    ];
+
+    expect(formatMidiJson(notes, { timeSigDenominator: 4 })).toBe(
+      "[{p:62,t:1,d:1,v:90,vd:10,c:0.75}]",
+    );
+  });
+
+  it("trims floats to at most 4 decimals with no trailing zeros", () => {
+    const notes: NoteEvent[] = [
       {
         pitch: 60,
-        start: 0,
-        duration: 4,
+        start_time: 1 / 3,
+        duration: 0.1,
         velocity: 100,
-        velocityDeviation: 0,
+        velocity_deviation: 0,
         probability: 1,
       },
-    ]);
+    ];
+
+    expect(formatMidiJson(notes)).toBe("[{p:60,t:0.3333,d:0.1,v:100}]");
   });
 
   it("returns '' for no notes", () => {
@@ -106,11 +140,35 @@ describe("formatMidiJson", () => {
 
 describe("round-trip", () => {
   it("interpret -> format preserves note data in a non-4/4 meter", () => {
-    const json =
-      '[{"pitch":67,"start":3,"duration":2,"velocity":90,"velocityDeviation":5,"probability":0.8}]';
-    const events = interpretMidiJson(json, { timeSigDenominator: 8 });
+    const source = "[{p:67,t:3,d:2,v:90,vd:5,c:0.8}]";
+    const events = interpretMidiJson(source, { timeSigDenominator: 8 });
     const roundTripped = formatMidiJson(events, { timeSigDenominator: 8 });
 
-    expect(JSON.parse(roundTripped)).toStrictEqual(JSON.parse(json));
+    expect(roundTripped).toBe(source);
+  });
+
+  it("format -> interpret preserves note events", () => {
+    const notes: NoteEvent[] = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 4,
+        velocity: 100,
+        velocity_deviation: 0,
+        probability: 1,
+      },
+      {
+        pitch: 62,
+        start_time: 1.5,
+        duration: 0.5,
+        velocity: 80,
+        velocity_deviation: 20,
+        probability: 0.5,
+      },
+    ];
+
+    const roundTripped = interpretMidiJson(formatMidiJson(notes));
+
+    expect(roundTripped).toStrictEqual(notes);
   });
 });

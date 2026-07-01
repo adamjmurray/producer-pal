@@ -63,22 +63,14 @@ describe("formatNotation router", () => {
     expect(result.startsWith("[")).toBe(false);
   });
 
-  it("routes to midi-json (returns a JSON array string)", () => {
+  it("routes to midi-json (returns a compact JS-literal array string)", () => {
     const result = formatNotation([note], {
       notation: "midi-json",
       timeSigDenominator: 4,
     });
 
-    expect(JSON.parse(result)).toStrictEqual([
-      {
-        pitch: 60,
-        start: 0,
-        duration: 4,
-        velocity: 100,
-        velocityDeviation: 0,
-        probability: 1,
-      },
-    ]);
+    // Short keys, defaults (vd/c) omitted.
+    expect(result).toBe("[{p:60,t:0,d:4,v:100}]");
   });
 
   it("handles null/empty notes", () => {
