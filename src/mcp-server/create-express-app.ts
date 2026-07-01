@@ -29,6 +29,7 @@ import * as console from "./node-for-max-logger.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
 import { registerGlobalContextRoutes } from "./routes/global-context-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
+import { registerSystemPromptRoutes } from "./routes/system-prompt-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
@@ -304,6 +305,7 @@ export function createExpressApp(): Express {
   registerRestApiRoutes(app, () => config, callLiveApiWithGlobalContext);
 
   registerGlobalContextRoutes(app);
+  registerSystemPromptRoutes(app);
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);

@@ -4,35 +4,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Reads and writes the machine-global, cross-project user context that lives
-// under ~/.producer-pal/. This is authored by the user (hand-edited, or later
+// at ~/.producer-pal/context.md. This is authored by the user (hand-edited, or
 // via the webui / ppal-context) and is distinct from the Max device's
-// per-project context. Filesystem access lives on the Node-for-Max side; the
-// V8 tool code has no `fs`, so callers on that side must round-trip through
-// here.
+// per-project context. A thin wrapper over the shared config-markdown store,
+// which owns dir resolution, atomic writes, and the Vitest-inert guard.
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import {
+  readConfigMarkdown,
+  resolveConfigPath,
+  writeConfigMarkdown,
+} from "./config-markdown-store.ts";
+
+// Re-exported so existing importers (reveal-config-dir, the node routes) keep
+// resolving these from here rather than reaching into the shared store.
+export { configDir, isConfigDirInert } from "./config-markdown-store.ts";
 
 const CONTEXT_FILENAME = "context.md";
-
-// Detect Vitest so unit tests never read or clobber the developer's real
-// ~/.producer-pal. A test opts back into real filesystem access by pointing
-// PRODUCER_PAL_CONFIG_DIR at a temp dir. Mirrors file-logger.ts's guard.
-const isRunningInVitest = process.env.VITEST === "true";
-
-/**
- * Absolute path to the machine-global config directory. Honors the
- * PRODUCER_PAL_CONFIG_DIR override (used by tests and advanced setups);
- * otherwise resolves to ~/.producer-pal.
- *
- * @returns Absolute path to the config directory
- */
-export function configDir(): string {
-  return (
-    process.env.PRODUCER_PAL_CONFIG_DIR ?? join(homedir(), ".producer-pal")
-  );
-}
 
 /**
  * Absolute path to the global context markdown file.
@@ -40,59 +27,23 @@ export function configDir(): string {
  * @returns Absolute path to ~/.producer-pal/context.md (or the override dir)
  */
 export function resolveContextPath(): string {
-  return join(configDir(), CONTEXT_FILENAME);
+  return resolveConfigPath(CONTEXT_FILENAME);
 }
 
 /**
- * Read the global context verbatim. A missing file (the common,
- * empty-by-default case) or any read error yields an empty string, so callers
- * can treat "no global context" and "empty global context" identically.
- *
- * Content is returned byte-faithful (not trimmed) so a GET/PUT round-trip from
- * the editor echoes exactly what was written — otherwise a trailing newline
- * would make the saved draft and the server echo diverge and spuriously fire
- * the editor's "changed externally" banner. Callers that want a clean blob for
- * display (e.g. the ppal-connect injection) trim at the point of use.
+ * Read the global context verbatim. Missing/unreadable file yields "".
  *
  * @returns File contents verbatim, or "" when absent/unreadable
  */
 export function readGlobalContext(): string {
-  if (isConfigDirInert()) return "";
-
-  try {
-    return readFileSync(resolveContextPath(), "utf8");
-  } catch {
-    // Missing file, permissions, etc. — treat as "no global context".
-    return "";
-  }
+  return readConfigMarkdown(CONTEXT_FILENAME);
 }
 
 /**
- * Overwrite the global context with the given content, creating
- * ~/.producer-pal if needed. Writes to a temp file and renames it into place
- * so a crash mid-write can't leave a half-written context.md.
+ * Overwrite the global context with the given content (atomic temp+rename).
  *
  * @param content - New global context markdown
  */
 export function writeGlobalContext(content: string): void {
-  if (isConfigDirInert()) return;
-
-  const target = resolveContextPath();
-  const tmpPath = `${target}.tmp`;
-
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(tmpPath, content, "utf8");
-  renameSync(tmpPath, target);
-}
-
-/**
- * Whether to skip real config-dir access (read, write, or reveal). True only
- * under Vitest without an explicit dir override, so the config layer is
- * inert-by-default in unit tests and never touches the developer's real
- * ~/.producer-pal.
- *
- * @returns True when config-dir side effects should be skipped
- */
-export function isConfigDirInert(): boolean {
-  return isRunningInVitest && process.env.PRODUCER_PAL_CONFIG_DIR == null;
+  writeConfigMarkdown(CONTEXT_FILENAME, content);
 }
