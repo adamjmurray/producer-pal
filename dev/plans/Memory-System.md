@@ -1,9 +1,11 @@
 # Producer Pal Memory System
 
-Status: design agreed, implementation not started. Builds on
-`dev/plans/User-Content-Overrides.md` (global-context v1, already shipped as a
-single `context.md`) and the auto-memory pattern used by Claude Code itself
-(indexed one-fact-per-file `.md` store).
+Status: design agreed, implementation not started. Builds on the shipped
+global-context v1 (`~/.producer-pal/context.md`, injected verbatim into
+`ppal-connect`) and the auto-memory pattern used by Claude Code itself (indexed
+one-fact-per-file `.md` store). The `~/.producer-pal` content-override layer it
+sits on is described in ADR-0010
+(`dev/decisions/0010-user-content-overrides-layer.md`).
 
 ## Goal
 

@@ -64,14 +64,15 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 
 ## Index
 
-| ADR                                              | Decision                                                           |
-| ------------------------------------------------ | ------------------------------------------------------------------ |
-| [0001](0001-typescript-everywhere.md)            | TypeScript for all first-party code                                |
-| [0002](0002-exact-dependency-pinning.md)         | Exact dependency versions, no ranges                               |
-| [0003](0003-notation-grammar-duplication.md)     | Deliberately duplicate the note-value grammar                      |
-| [0004](0004-tool-input-schema-shapes.md)         | Arrays over `string \| array` unions in tool schemas               |
-| [0005](0005-automation-via-live-api.md)          | Automation goes through the Live API, not offline `.als` rewriting |
-| [0006](0006-no-secure-key-storage.md)            | Provider keys encrypted at rest in the browser; no backend proxy   |
-| [0007](0007-no-native-ableton-extension.md)      | Do not build a native Ableton extension                            |
-| [0008](0008-device-disable-not-a-kill-switch.md) | Disabling the M4L device is not a server kill switch (won't fix)   |
-| [0009](0009-warn-and-skip-error-handling.md)     | Update tools warn-and-skip instead of throwing                     |
+| ADR                                              | Decision                                                             |
+| ------------------------------------------------ | -------------------------------------------------------------------- |
+| [0001](0001-typescript-everywhere.md)            | TypeScript for all first-party code                                  |
+| [0002](0002-exact-dependency-pinning.md)         | Exact dependency versions, no ranges                                 |
+| [0003](0003-notation-grammar-duplication.md)     | Deliberately duplicate the note-value grammar                        |
+| [0004](0004-tool-input-schema-shapes.md)         | Arrays over `string \| array` unions in tool schemas                 |
+| [0005](0005-automation-via-live-api.md)          | Automation goes through the Live API, not offline `.als` rewriting   |
+| [0006](0006-no-secure-key-storage.md)            | Provider keys encrypted at rest in the browser; no backend proxy     |
+| [0007](0007-no-native-ableton-extension.md)      | Do not build a native Ableton extension                              |
+| [0008](0008-device-disable-not-a-kill-switch.md) | Disabling the M4L device is not a server kill switch (won't fix)     |
+| [0009](0009-warn-and-skip-error-handling.md)     | Update tools warn-and-skip instead of throwing                       |
+| [0010](0010-user-content-overrides-layer.md)     | `~/.producer-pal` is a content-override layer, not a settings mirror |
