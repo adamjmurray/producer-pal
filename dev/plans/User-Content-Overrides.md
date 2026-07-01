@@ -133,12 +133,24 @@ V8→node write bridge (`ppal-context` runs in V8, no `fs`) — the same node-si
 
 ## Fast-follows (sequenced, not now)
 
-1. **Custom system prompt** (webui chat) — the first _real_ override, so it
-   introduces frontmatter/provenance and the multi-document webui UX. Backend
-   reads the file, serves it to the UI.
+1. **Custom system prompt** (webui chat) — **SHIPPED**
+   (`~/.producer-pal/system-prompt.md`). Decisions: **full-replace** (non-blank
+   content wholly replaces the built-in `SYSTEM_INSTRUCTION`; blank = default),
+   **global** scope, and a new **"Instructions" tab** in the Context editor.
+   Text chat only — voice keeps its own instructions. The system prompt is a
+   client-side constant consumed as the `system` param (not the ppal-connect
+   skills blob), so this needs no V8→node bridge and no assistant tool: backend
+   `/system-prompt` GET/PUT + `useSystemPromptMemory`, threaded through
+   `buildConfig` and locked at client init. Note: full-replace did **not** end
+   up needing frontmatter/provenance — the built-in ships in the bundle, so
+   Clear reverts to it and the editor can always diff against it; the "default
+   changed since you forked" nudge stays deferred. This work also extracted the
+   reusable `config-markdown-store` + `config-markdown-route` factory
+   (named-slot fs + REST) that #2/#3 build on.
 2. **Override the built-in `ppal-connect` skills** — user `.md` replaces a
    built-in `buildSkills` fragment (core, notation sub-skills, …). Plugs
-   straight into the 574 assembler.
+   straight into the 574 assembler. This is the first **true** replace of
+   release-tuned content, so it's where frontmatter/provenance finally lands.
 3. **Custom / disable-able skills** loaded on-demand by `ppal-context`
    (node-for-max side).
 
