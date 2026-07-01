@@ -295,15 +295,30 @@ describe("REST API Routes", () => {
       );
     }
 
-    it("should not set compactOutput in context when format is omitted", async () => {
+    it("should default to compactOutput: false (json) when format is omitted", async () => {
       const holder = stubMaxOutlet({
-        content: [{ type: "text", text: "ok" }],
+        content: [{ type: "text", text: '{"ok":true}' }],
       });
 
       await callTool("ppal-connect");
 
       expect(holder.lastContext).not.toBeNull();
-      expect(holder.lastContext).not.toHaveProperty("compactOutput");
+      expect(holder.lastContext).toMatchObject({ compactOutput: false });
+    });
+
+    it("should parse the result as JSON when format is omitted (json default)", async () => {
+      stubMaxOutlet({
+        content: [
+          { type: "text", text: '{"tempo":120}' },
+          { type: "text", text: "WARNING: heads up" },
+        ],
+      });
+
+      const response = await callTool("ppal-connect");
+      const body = await response.json();
+
+      expect(body.result).toStrictEqual({ tempo: 120 });
+      expect(body.warnings).toStrictEqual(["heads up"]);
     });
 
     it("should pass compactOutput: false when format=json", async () => {
@@ -393,7 +408,7 @@ describe("REST API Routes", () => {
       expect(body.warnings).toStrictEqual(["real warning"]);
     });
 
-    it("should join content as a string when format=compact (default)", async () => {
+    it("should join content as a string when format=compact", async () => {
       stubMaxOutlet({
         content: [
           { type: "text", text: "{ok:true}" },
@@ -401,7 +416,7 @@ describe("REST API Routes", () => {
         ],
       });
 
-      const response = await callTool("ppal-connect");
+      const response = await callToolWithFormat("ppal-connect", "compact");
       const body = await response.json();
 
       expect(body.result).toBe("{ok:true}\nWARNING: heads up");

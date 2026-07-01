@@ -34,17 +34,21 @@ export async function listTools(baseUrl = DEFAULT_BASE_URL) {
 }
 
 /**
- * Call a Producer Pal tool by name. Always uses `?format=json` so `result` is
- * a parsed value (object/array/etc.) and warnings are surfaced as a separate
- * `warnings: string[]` field.
+ * Call a Producer Pal tool by name. The REST API defaults to `format=json`, so
+ * `result` is a parsed value (object/array/etc.) and warnings are surfaced as a
+ * separate `warnings: string[]` field.
  */
 export async function callTool(name, args = {}, options = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-  const params = new URLSearchParams({ format: "json" });
+  const params = new URLSearchParams();
   if (options.timeoutMs != null)
     params.set("timeoutMs", String(options.timeoutMs));
 
-  const res = await fetch(`${baseUrl}/api/tools/${name}?${params}`, {
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/tools/${name}?${query}`
+    : `${baseUrl}/api/tools/${name}`;
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args),

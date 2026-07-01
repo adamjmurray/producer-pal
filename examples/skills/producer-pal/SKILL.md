@@ -52,7 +52,7 @@ node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16:0","notes":"..."}' --
 node ppal.mjs --url http://other-host:3350 --list-tools
 ```
 
-The script always sends `?format=json`, so:
+The REST API returns JSON by default, so:
 
 - `result` is a parsed JSON value (object, array, number, string)
 - `warnings` (when present) is a `string[]` of non-fatal issues from the Live

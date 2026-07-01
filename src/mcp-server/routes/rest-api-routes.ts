@@ -152,14 +152,17 @@ export function registerRestApiRoutes(
 /**
  * Parse the ?format query param into a normalized value.
  *
+ * The REST API defaults to `json` when the param is omitted: this endpoint is
+ * an HTTP integration surface, so structured JSON is the right default. The
+ * compact JS-literal format (optimized for LLM context) is opt-in via
+ * `?format=compact`.
+ *
  * @param raw - Raw query value from Express
- * @returns "json" | "compact" when valid, undefined when absent,
+ * @returns "json" (the default when absent) | "compact" when valid,
  *   "invalid" when present but not recognized
  */
-function parseFormatQuery(
-  raw: unknown,
-): "json" | "compact" | "invalid" | undefined {
-  if (raw === undefined) return undefined;
+function parseFormatQuery(raw: unknown): "json" | "compact" | "invalid" {
+  if (raw === undefined) return "json";
   if (raw === "json") return "json";
   if (raw === "compact") return "compact";
 
@@ -190,25 +193,25 @@ function parseTimeoutQuery(raw: unknown): number | "invalid" | undefined {
  * Build the RequestOverrides object from parsed query params, or undefined
  * when no overrides were supplied.
  *
- * @param format - Result of parseFormatQuery
+ * @param format - Result of parseFormatQuery (always resolved to a concrete
+ *   format; the REST default is `json`)
  * @param timeoutMs - Result of parseTimeoutQuery
- * @returns RequestOverrides or undefined when no overrides apply
+ * @returns RequestOverrides with compactOutput always set, plus timeoutMs when
+ *   provided
  */
 function buildOverrides(
-  format: "json" | "compact" | undefined,
+  format: "json" | "compact",
   timeoutMs: number | undefined,
-): RequestOverrides | undefined {
-  const overrides: RequestOverrides = {};
-
-  if (format !== undefined) {
-    overrides.compactOutput = format === "compact";
-  }
+): RequestOverrides {
+  const overrides: RequestOverrides = {
+    compactOutput: format === "compact",
+  };
 
   if (timeoutMs !== undefined) {
     overrides.timeoutMs = timeoutMs;
   }
 
-  return Object.keys(overrides).length > 0 ? overrides : undefined;
+  return overrides;
 }
 
 interface UnwrappedResponse {

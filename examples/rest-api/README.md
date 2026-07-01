@@ -16,6 +16,6 @@ skill folder:
 
 - [`ppal.py`](./ppal.py) — CLI + library, Python 3.6+
 
-Both clients always request `?format=json`, so `result` comes back as a parsed
-value and warnings are surfaced as a separate `warnings` array. See the
+The REST API returns JSON by default, so `result` comes back as a parsed value
+and warnings are surfaced as a separate `warnings` array. See the
 [REST API guide](https://producer-pal.org/guide/rest-api) for protocol details.

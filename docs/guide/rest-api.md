@@ -70,10 +70,11 @@ Content-Type: application/json
 { "trackIndex": 0, "include": ["session-clips"] }
 ```
 
-Returns:
+Returns (the default `json` format — see
+[Response format](#response-format-format-json-default)):
 
 ```json
-{ "result": "...", "isError": false }
+{ "result": { "...": "..." }, "isError": false }
 ```
 
 - **200** with `isError: false` — tool ran successfully
@@ -82,47 +83,37 @@ Returns:
 - **404** — unknown or disabled tool
 - **400** — invalid input (includes validation details)
 
-Warnings from the Live API appear inline in the `result` text, prefixed with
-`WARNING:`. The `ppal-update-*` tools use this when updating multiple objects —
-if any individual operation fails or is inapplicable (e.g. setting quantize on
-an audio clip), it emits a warning and continues with the rest.
+Warnings from the Live API surface as a separate `warnings` string array (or
+inline in the `result` text under `?format=compact`). The `ppal-update-*` tools
+use this when updating multiple objects — if any individual operation fails or
+is inapplicable (e.g. setting quantize on an audio clip), it emits a warning and
+continues with the rest.
 
-### Response format: `?format=json`
+### Response format: `?format=json` (default)
 
-::: warning Default will change in v1.5.0
+The REST API defaults to **`json`**: `result` is the parsed value (object,
+array, number, string) and warnings are a separate `string[]`. This is the right
+default for HTTP integrations — no `JSON.parse` or `jq | fromjson` gymnastics.
+The device-level compact-output setting (**Setup** tab) does not affect the REST
+API.
 
-The default response format will change from compact to **`json`** in v1.5.0. We
-recommend explicitly using `?format=json` for now, and removing the override
-once v1.5.0 ships. The compact JS-literal format is optimized for LLM context
-efficiency and is generally not the right fit for HTTP integrations — if you do
-specifically want it, keep `?format=compact` explicit to stay
-forward-compatible.
-
-:::
-
-When `?format` is omitted, the server uses the global compact-output setting
-configured on the **Setup** tab of the Producer Pal Max for Live device. By
-default that setting is on, so `result` is a string in a compact
-JavaScript-literal syntax (unquoted keys, no whitespace) optimized for LLM token
-efficiency — the same format MCP clients receive.
-
-For scripts that want structured data (no `JSON.parse` or `jq | fromjson`
-gymnastics), append `?format=json` to the request — the server parses on your
-behalf and the wrapper shape changes:
+The compact JS-literal format (unquoted keys, no whitespace) is optimized for
+LLM token efficiency and is the same format MCP clients receive. It is opt-in
+for REST via `?format=compact`, where `result` is a string with warnings inline:
 
 ```bash
-# Compact JS-literal (default) — result is a string, warnings are inline
+# JSON (default) — result is the parsed value; warnings are a separate string array
 curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
   -H 'Content-Type: application/json' -d '{}'
-# → {"result":"{tempo:120,timeSignature:\"4/4\",...}","isError":false}
-
-# JSON — result is the parsed value; warnings are a separate string array
-curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=json' \
-  -H 'Content-Type: application/json' -d '{}'
 # → {"result":{"tempo":120,"timeSignature":"4/4",...},"isError":false}
+
+# Compact JS-literal — result is a string, warnings are inline
+curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=compact' \
+  -H 'Content-Type: application/json' -d '{}'
+# → {"result":"{tempo:120,timeSignature:\"4/4\",...}","isError":false}
 ```
 
-When `?format=json` is set:
+With the default `json` format (or explicit `?format=json`):
 
 - **`result`** is the parsed value (object, array, number, string, etc.) — not a
   JSON-encoded string. Access fields directly: `body.result.tempo`.
@@ -132,9 +123,10 @@ When `?format=json` is set:
 - On **error** (`isError: true`), `result` is still a plain error string
   regardless of format — error messages are not JSON.
 
-Pass `?format=compact` or `?format=json` to force a specific format regardless
-of the device-level setting. Other values return **400**. Per-request format
-overrides apply to REST only and never affect MCP clients.
+Pass `?format=compact` to opt into the compact JS-literal format, or
+`?format=json` to be explicit about the default. Other values return **400**.
+The REST format is independent of the device-level setting and never affects MCP
+clients.
 
 ### Per-request timeout: `?timeoutMs=N`
 
