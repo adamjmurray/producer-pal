@@ -23,8 +23,7 @@ import {
 } from "#src/notation/abstark/abstark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import { midiToNoteName, PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
 
 /** Options for {@link formatNotation}. */
 export interface AbstarkFormatOptions {
@@ -65,10 +64,10 @@ export function formatNotation(
 
 // ---- Drum serializer ----
 
-// Serialize drum notes into one `<drumname>: <pattern>` line per pitch.
-// Pitches without an Abstark drum-line name can't round-trip (the drum-name
-// vocabulary maps a fixed set of pitches), so they are dropped with a WARNING
-// rather than silently lost. General pitch-named drum lines are a follow-up.
+// Serialize drum notes into one `<header>: <pattern>` line per pitch. The
+// header prefers the readable drum name (kick/snare/…) when one maps to the
+// pitch, and falls back to an absolute pitch name (e.g. "C3", Ableton C3=60)
+// otherwise — so any Drum-Rack pad round-trips, no drops.
 function serializeDrums(notes: NoteEvent[]): string[] {
   const byPitch = new Map<number, NoteEvent[]>();
 
@@ -83,25 +82,13 @@ function serializeDrums(notes: NoteEvent[]): string[] {
   }
 
   const lines: string[] = [];
-  const droppedPitches: number[] = [];
-  let droppedNoteCount = 0;
 
   for (const [midi, drumNotes] of byPitch) {
-    const name = MIDI_TO_DRUM_NAME[midi];
+    // midiToNoteName only returns null for out-of-range MIDI; NoteEvent pitches
+    // are always 0–127, so the fallback is safe to assert non-null.
+    const header = MIDI_TO_DRUM_NAME[midi] ?? (midiToNoteName(midi) as string);
 
-    if (!name) {
-      droppedPitches.push(midi);
-      droppedNoteCount += drumNotes.length;
-      continue;
-    }
-
-    lines.push(`${name}: ${drumPattern(drumNotes)}`);
-  }
-
-  if (droppedNoteCount > 0) {
-    console.warn(
-      `Abstark: dropped ${droppedNoteCount} drum note(s) at unnamed MIDI pitch(es) ${droppedPitches.join(", ")} — no Abstark drum-line name maps to them, so they can't round-trip`,
-    );
+    lines.push(`${header}: ${drumPattern(drumNotes)}`);
   }
 
   return lines;

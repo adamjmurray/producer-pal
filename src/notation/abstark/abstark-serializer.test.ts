@@ -304,14 +304,21 @@ describe("formatNotation — drum lines (drumMode)", () => {
     expect(result).toContain("snare:");
   });
 
-  it("unnamed drum pitch on a drum track is dropped with a WARNING", () => {
-    // MIDI 60 has no Abstark drum-line name; MIDI 36 (kick) does. The WARNING
-    // is relayed to the LLM via outlet 1 (see v8-max-console).
+  it("unnamed drum pitch → absolute pitch-name line (no drop, no WARNING)", () => {
+    // MIDI 60 has no Abstark drum-line name; MIDI 36 (kick) does. The unnamed
+    // pad now serializes as a pitch-name header (Ableton C3=60) instead of
+    // being dropped — every Drum-Rack pad round-trips.
     const result = formatNotation([note(36, 0, 0.25), note(60, 0, 0.25)], DRUM);
 
     expect(result).toContain("kick:");
-    expect(result).not.toContain("60");
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("60"));
+    expect(result).toContain("C3:");
+  });
+
+  it("a black-key unnamed pad serializes with a flat pitch name", () => {
+    // MIDI 61 = Db3 (midiToNoteName outputs flats). No drum name maps to it.
+    const result = formatNotation([note(61, 0, 0.25)], DRUM);
+
+    expect(result).toMatch(/^Db3:/);
   });
 });
 
@@ -409,6 +416,23 @@ describe("round-trip (interpret → serialize → interpret)", () => {
   it("multiple drum lines", () => {
     const { first, second } = roundTrip(
       "kick: X... X...\nsnare: ..X. ..X.",
+      true,
+    );
+
+    expectStableNotes(first, second);
+  });
+
+  it("pitch-name drum line (unmapped pad) round-trips", () => {
+    // C3 (MIDI 60) has no drum name → serializes back as a pitch-name line.
+    const { first, second } = roundTrip("C3: X.X. ....", true);
+
+    expectStableNotes(first, second);
+    expect(first[0]!.pitch).toBe(60);
+  });
+
+  it("mixed named + pitch-name drum lines round-trip together", () => {
+    const { first, second } = roundTrip(
+      "kick: X... X...\nGb3: ..x. ..x.",
       true,
     );
 

@@ -102,6 +102,57 @@ describe("interpretNotation — drum lines", () => {
   });
 });
 
+describe("interpretNotation — pitch-name drum headers", () => {
+  it("C3 header resolves to MIDI 60 (Ableton C3=60)", () => {
+    const notes = interpretNotation("C3: X...");
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.pitch).toBe(60);
+    expect(notes[0]?.duration).toBe(0.25); // positional 16th, same as named drums
+  });
+
+  it("flat pitch header (Gb3) resolves correctly", () => {
+    const notes = interpretNotation("Gb3: X...");
+
+    expect(notes[0]?.pitch).toBe(66);
+  });
+
+  it("sharp pitch header (F#1) resolves correctly", () => {
+    const notes = interpretNotation("F#1: X...");
+
+    expect(notes[0]?.pitch).toBe(42);
+  });
+
+  it("negative-octave header (C-2) resolves to MIDI 0", () => {
+    const notes = interpretNotation("C-2: X...");
+
+    expect(notes[0]?.pitch).toBe(0);
+  });
+
+  it("a named drum still wins over a pitch header (kick = 36)", () => {
+    // "kick" matches DrumName before DrumPitchName would.
+    const notes = interpretNotation("kick: X...");
+
+    expect(notes[0]?.pitch).toBe(36);
+  });
+
+  it("warn-skips an unresolvable pitch header (Cb has no mapping)", () => {
+    const notes = interpretNotation("Cb3: X...");
+
+    expect(notes).toHaveLength(0);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("no resolvable pitch"),
+    );
+  });
+
+  it("warn-skips an out-of-range pitch header (C9 > MIDI 127)", () => {
+    const notes = interpretNotation("C9: X...");
+
+    expect(notes).toHaveLength(0);
+  });
+});
+
 describe("interpretNotation — melody lines", () => {
   it("C maps to MIDI 60 with default /4 duration", () => {
     const notes = interpretNotation("melody: C");

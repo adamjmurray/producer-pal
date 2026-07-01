@@ -23,9 +23,26 @@ Section
 // --- Section headers ---
 
 DrumSection
-  = name:DrumName _h ":" _h content:DrumContent _ {
-      return { type: name.name, midi: name.midi, content: content };
+  = head:DrumHeader _h ":" _h content:DrumContent _ {
+      return { type: head.type, midi: head.midi, noteName: head.noteName, content: content };
     }
+
+// A drum line is headed by either a fixed drum name (kick/snare/…) or an
+// absolute pitch name (e.g. C1, Gb2). Named drums carry their fixed GM pitch
+// in the grammar; pitch-name headers defer MIDI resolution to the interpreter
+// (via pitch.ts, the single source of truth) so noteName is captured verbatim.
+// Drum names are tried first so the named vocabulary wins when both could match.
+DrumHeader
+  = d:DrumName     { return { type: d.name, midi: d.midi, noteName: null }; }
+  / n:DrumPitchName { return { type: n,     midi: null,   noteName: n }; }
+
+// Absolute pitch name: letter + optional accidental + (optionally negative)
+// octave number, e.g. C1, F#2, Gb-1. Ableton convention (C3 = MIDI 60) is
+// applied by the interpreter/serializer, NOT here. Unambiguous against pitched
+// lines (melody/bass/chords are keyword-led) and against drum aliases (those
+// are two letters with no trailing digit).
+DrumPitchName "drum pitch name"
+  = $([A-Ga-g] [#b]? "-"? [0-9]+)
 
 PitchedSection
   = lineType:PitchedLineType _h dur:LineDefaultDuration? _h ":" _h content:PitchedContent _ {

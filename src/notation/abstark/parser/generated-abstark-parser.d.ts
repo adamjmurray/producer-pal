@@ -98,12 +98,17 @@ export type PitchedContentItem =
 
 // --- Sections ---
 
-/** A `<drumname>: <hits>` section (positional 16th-note timing) */
+/** A `<drumname>: <hits>` or `<pitch>: <hits>` section (positional 16th-note timing) */
 export interface DrumSection {
-  /** Drum instrument name */
+  /** Drum instrument name (kick/snare/…) OR the verbatim pitch-name header (e.g. "C1") */
   type: string;
-  /** Fixed General MIDI pitch for this drum */
-  midi: number;
+  /**
+   * Fixed General MIDI pitch for a named drum, or null for a pitch-name header
+   * (resolve via `noteName` + pitch.ts, Ableton C3 = MIDI 60).
+   */
+  midi: number | null;
+  /** Verbatim pitch-name header (e.g. "C1", "Gb2") for pitch-led lines, else null */
+  noteName: string | null;
   content: DrumContentItem[];
 }
 

@@ -74,10 +74,10 @@ export const LINE_DEFAULT_N: Readonly<
 
 /**
  * MIDI pitch → drum line name (for the serializer). Drum-vs-pitched routing is
- * decided by the track (drumMode), not by membership here; this map only names
- * the line for a drum-track note. Pitches absent from this map have no
- * round-trippable Abstark drum name (general pitch-named drum lines are a
- * planned follow-up), so the serializer drops them with a WARNING.
+ * decided by the track (drumMode), not by membership here; this map only picks
+ * the readable name for a drum-track note. Pitches absent from this map are
+ * serialized as absolute pitch-name headers (e.g. "C3", Ableton C3=60) instead,
+ * so every Drum-Rack pad round-trips — nothing is dropped.
  */
 export const MIDI_TO_DRUM_NAME: Readonly<Record<number, string>> = {
   36: "kick",

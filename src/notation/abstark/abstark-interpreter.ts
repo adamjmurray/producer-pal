@@ -38,6 +38,7 @@ import {
 import * as parser from "#src/notation/abstark/parser/abstark-parser.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 /** Natural pitch class offsets (semitones above C). */
@@ -136,7 +137,21 @@ function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
 }
 
 // Process a drum section: each token is one 16th-note step; barlines are visual only.
+// The pitch is either the named drum's fixed GM pitch (section.midi) or, for a
+// pitch-name header, resolved from section.noteName via pitch.ts (Ableton C3=60).
 function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
+  const pitch =
+    section.midi ??
+    (section.noteName ? noteNameToMidi(section.noteName) : null);
+
+  if (pitch == null) {
+    console.warn(
+      `Abstark: drum line "${section.type}" has no resolvable pitch — skipping`,
+    );
+
+    return;
+  }
+
   let time = 0;
 
   for (const item of section.content) {
@@ -148,7 +163,7 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
     }
 
     notes.push({
-      pitch: section.midi,
+      pitch,
       start_time: time,
       duration: SIXTEENTH_NOTE_BEATS,
       velocity: velocityFor(item.velocity),
