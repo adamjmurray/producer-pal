@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
   type ConversationLockedSettings,
   type PendingFork,
@@ -12,6 +13,7 @@ import { getModelName } from "#webui/lib/config";
 import { deriveForkParentId } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
+  deleteConversation,
   loadConversation,
 } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
@@ -294,6 +296,57 @@ export function deriveTitle(
   }
 
   return firstUserLine || null;
+}
+
+/**
+ * Delete a conversation, first snapshotting the full record so it can be
+ * restored via undo — the DB row is gone the moment deletion resolves.
+ * @param id - Conversation id to delete
+ * @param onSnapshot - Receives the deleted record for undo (skipped if the id
+ *   had no record)
+ */
+export async function deleteConversationWithSnapshot(
+  id: string,
+  onSnapshot: (record: ConversationRecord) => void,
+): Promise<void> {
+  const record = await loadConversation(id);
+
+  await deleteConversation(id);
+
+  if (record) onSnapshot(record);
+}
+
+/**
+ * Pick which banner the conversation panel shows and the matching dismiss
+ * handler. A pending undo-delete banner (a fresh user action) takes precedence
+ * over the passive conversation-limit/save-error banner.
+ * @param undo - Undo-delete notification state and dismiss handler
+ * @param undo.undoNotification - The pending undo banner, or null when none
+ * @param undo.dismissUndoNotification - Clears all pending undos
+ * @param limit - Limit/save-error notification state and dismiss handler
+ * @param limit.limitNotification - The limit/save-error banner, or null
+ * @param limit.dismissLimitNotification - Clears the limit/save-error banner
+ * @returns The active notification and the handler that dismisses it
+ */
+export function resolvePanelNotification(
+  undo: {
+    undoNotification: TransferNotificationData | null;
+    dismissUndoNotification: () => void;
+  },
+  limit: {
+    limitNotification: TransferNotificationData | null;
+    dismissLimitNotification: () => void;
+  },
+): {
+  notification: TransferNotificationData | null;
+  dismissNotification: () => void;
+} {
+  return {
+    notification: undo.undoNotification ?? limit.limitNotification,
+    dismissNotification: undo.undoNotification
+      ? undo.dismissUndoNotification
+      : limit.dismissLimitNotification,
+  };
 }
 
 /**

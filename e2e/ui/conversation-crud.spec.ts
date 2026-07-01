@@ -153,12 +153,44 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
     const items = page.getByTestId("conversation-item");
 
     await expect(items).toHaveCount(1);
-    await expect(page.getByText("Delete me")).toHaveCount(0);
+    await expect(items.filter({ hasText: "Delete me" })).toHaveCount(0);
     await expect(page.getByText("Keep me")).toBeVisible();
+    // The undo banner appears, naming the deleted conversation.
+    await expect(page.getByText("Deleted “Delete me”")).toBeVisible();
 
     const records = await readConversationsFromDb(page);
 
     expect(records.map((r) => r.id)).toEqual(["d1"]);
+
+    expectNoConsoleOutput(captured);
+  });
+
+  test("undoes a deletion, restoring the conversation", async ({ page }) => {
+    await setupUiTest(page, [
+      makeConversation({ id: "u1", title: "Keep me", updatedAt: 20 }),
+      makeConversation({ id: "u2", title: "Undo me", updatedAt: 10 }),
+    ]);
+
+    await page
+      .getByTestId("conversation-item")
+      .filter({ hasText: "Undo me" })
+      .getByRole("button", { name: "Delete conversation" })
+      .click();
+
+    const items = page.getByTestId("conversation-item");
+
+    await expect(items).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    await expect(items).toHaveCount(2);
+    await expect(items.filter({ hasText: "Undo me" })).toHaveCount(1);
+    // The undo banner clears once the record is restored.
+    await expect(page.getByText("Deleted “Undo me”")).toHaveCount(0);
+
+    const records = await readConversationsFromDb(page);
+
+    expect(records.map((r) => r.id).sort()).toEqual(["u1", "u2"]);
 
     expectNoConsoleOutput(captured);
   });

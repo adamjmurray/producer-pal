@@ -22,8 +22,8 @@ function createMockManager(
   return {
     conversations: [],
     activeConversationId: null,
-    limitNotification: null,
-    dismissLimitNotification: vi.fn(),
+    notification: null,
+    dismissNotification: vi.fn(),
     saveCurrentConversation: vi.fn().mockResolvedValue(undefined),
     switchConversation: vi.fn().mockResolvedValue(undefined),
     startNewConversation: vi.fn().mockResolvedValue(undefined),

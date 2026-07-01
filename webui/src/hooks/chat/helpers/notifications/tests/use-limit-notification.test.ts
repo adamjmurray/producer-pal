@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
-import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
+import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 
 /**
  * Render the hook and trigger a notification with the given params.

@@ -69,4 +69,33 @@ describe("TransferNotification", () => {
     screen.getByLabelText("Dismiss notification").click();
     expect(onDismiss).toHaveBeenCalledOnce();
   });
+
+  it("renders an action button and invokes its handler", () => {
+    const onClick = vi.fn();
+
+    render(
+      <TransferNotification
+        notification={{
+          message: "Deleted “My Chat”",
+          type: "warning",
+          action: { label: "Undo", onClick },
+        }}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    screen.getByText("Undo").click();
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("omits the action button when no action is provided", () => {
+    render(
+      <TransferNotification
+        notification={{ message: "No action", type: "success" }}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Undo")).toBeNull();
+  });
 });

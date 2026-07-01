@@ -5,6 +5,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
+import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   type ActiveMeta,
   type ActiveRefs,
@@ -12,10 +14,11 @@ import {
   buildConversationSaveRecord,
   buildLockedSettings,
   chainSave,
+  deleteConversationWithSnapshot,
   getHashConversationId,
+  resolvePanelNotification,
   setLocationHash,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
-import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
 import { useSyncActiveMeta } from "#webui/hooks/chat/helpers/use-sync-active-meta";
 import {
   type ConversationLockedSettings,
@@ -26,7 +29,6 @@ import {
   type ConversationRecord,
   type ConversationSummary,
   deleteAllConversations as dbDeleteAllConversations,
-  deleteConversation as dbDeleteConversation,
   deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listAllConversationSummaries,
   listConversations,
@@ -62,8 +64,10 @@ interface UseConversationsProps {
 export interface UseConversationsReturn {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
-  limitNotification: TransferNotificationData | null;
-  dismissLimitNotification: () => void;
+  /** Active panel notification: an undo-delete banner when one is pending,
+   * otherwise the conversation-limit/save-error banner. */
+  notification: TransferNotificationData | null;
+  dismissNotification: () => void;
   saveCurrentConversation: (updatedAt?: number) => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
@@ -136,6 +140,8 @@ export function useConversations({
 
     setConversations(list);
   }, []);
+
+  const undoDelete = useUndoDelete(refreshList);
 
   const setActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -311,7 +317,7 @@ export function useConversations({
 
   const deleteConversation = useCallback(
     async (id: string) => {
-      await dbDeleteConversation(id);
+      await deleteConversationWithSnapshot(id, undoDelete.pushDeleted);
 
       if (activeIdRef.current === id) {
         clearConversation();
@@ -320,7 +326,7 @@ export function useConversations({
 
       await refreshList();
     },
-    [clearConversation, clearActiveId, refreshList],
+    [clearConversation, clearActiveId, refreshList, undoDelete],
   );
 
   const deleteAllConversations = useCallback(async () => {
@@ -402,8 +408,7 @@ export function useConversations({
   return {
     conversations,
     activeConversationId,
-    limitNotification: limit.limitNotification,
-    dismissLimitNotification: limit.dismissLimitNotification,
+    ...resolvePanelNotification(undoDelete, limit),
     saveCurrentConversation,
     switchConversation,
     startNewConversation,

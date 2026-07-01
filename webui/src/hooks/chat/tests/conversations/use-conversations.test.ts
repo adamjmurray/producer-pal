@@ -188,8 +188,8 @@ describe("useConversations", () => {
       await saveWithMessage(state, result);
 
       expect(saveSpy).toHaveBeenCalled();
-      expect(result.current.limitNotification?.type).toBe("error");
-      expect(result.current.limitNotification?.message).toContain(
+      expect(result.current.notification?.type).toBe("error");
+      expect(result.current.notification?.message).toContain(
         "browser storage is full",
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -445,6 +445,28 @@ describe("useConversations", () => {
     expect(result.current.conversations).toHaveLength(1);
     expect(result.current.activeConversationId).not.toBeNull();
     expect(props.clearConversation).not.toHaveBeenCalled();
+  });
+
+  it("offers an undo banner after deleting, and restores on undo", async () => {
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result);
+    const savedId = result.current.activeConversationId!;
+
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+    expect(result.current.notification?.message).toContain("Deleted");
+    expect(result.current.notification?.action?.label).toBe("Undo");
+
+    await act(() => result.current.notification!.action!.onClick());
+    await waitForEffects();
+
+    expect(result.current.conversations).toHaveLength(1);
+    expect(result.current.conversations[0]?.id).toBe(savedId);
+    expect(result.current.notification).toBeNull();
   });
 
   it("renames a conversation and refreshes list", async () => {
