@@ -9,9 +9,11 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
   description:
-    "Read or write project memory.\n" +
-    "CRITICAL: Writes replace the entire memory. " +
-    "Always read first because the user may have edited memory out-of-band, and unread changes will be silently lost.",
+    "Read or write user context/memory.\n" +
+    "scope=project (default): facts about THIS Live Set. " +
+    "scope=global: facts that apply across ALL projects (~/.producer-pal/context.md).\n" +
+    "CRITICAL: Writes replace the entire context for that scope. " +
+    "Always read the same scope first because the user may have edited it out-of-band, and unread changes will be silently lost.",
 
   annotations: {
     readOnlyHint: false,
@@ -21,7 +23,14 @@ export const toolDefContext = defineTool("ppal-context", {
   inputSchema: {
     action: z
       .enum(["read", "write"])
-      .describe("read: view memory | write: replace memory"),
+      .describe("read: view context | write: replace context"),
+
+    scope: z
+      .enum(["project", "global"])
+      .optional()
+      .describe(
+        "project (default): this Live Set | global: all projects & sessions",
+      ),
 
     content: z
       .string()

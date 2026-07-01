@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { context } from "../context.ts";
 
-describe("context - memory actions", () => {
+describe("context - project memory actions", () => {
   let toolContext: Partial<ToolContext>;
 
   beforeEach(() => {
@@ -16,17 +16,17 @@ describe("context - memory actions", () => {
   });
 
   describe("read action", () => {
-    it("returns current content", () => {
+    it("returns current content", async () => {
       toolContext.memory!.content = "test content";
 
-      const result = context({ action: "read" }, toolContext);
+      const result = await context({ action: "read" }, toolContext);
 
       expect(result).toStrictEqual({ content: "test content" });
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("returns empty string when memory is missing", () => {
-      const result = context({ action: "read" }, {});
+    it("returns empty string when memory is missing", async () => {
+      const result = await context({ action: "read" }, {});
 
       expect(result).toStrictEqual({ content: "" });
       expect(outlet).not.toHaveBeenCalled();
@@ -34,27 +34,27 @@ describe("context - memory actions", () => {
   });
 
   describe("write action", () => {
-    it("throws error when content is missing", () => {
-      expect(() => context({ action: "write" }, toolContext)).toThrow(
+    it("throws error when content is missing", async () => {
+      await expect(context({ action: "write" }, toolContext)).rejects.toThrow(
         "Content required for write action",
       );
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("throws error when content is empty string", () => {
-      expect(() =>
+    it("throws error when content is empty string", async () => {
+      await expect(
         context({ action: "write", content: "" }, toolContext),
-      ).toThrow("Content required for write action");
+      ).rejects.toThrow("Content required for write action");
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it.each([
       ["updates content when memory is present", ""],
       ["overwrites existing content", "old content"],
-    ])("%s", (_, initialContent) => {
+    ])("%s", async (_, initialContent) => {
       if (initialContent) toolContext.memory!.content = initialContent;
 
-      const result = context(
+      const result = await context(
         { action: "write", content: "new content" },
         toolContext,
       );
@@ -64,16 +64,16 @@ describe("context - memory actions", () => {
       expect(outlet).toHaveBeenCalledWith(0, "update_memory", "new content");
     });
 
-    it("writes content via outlet even when memory context is missing", () => {
-      const result = context({ action: "write", content: "fresh" }, {});
+    it("writes content via outlet even when memory context is missing", async () => {
+      const result = await context({ action: "write", content: "fresh" }, {});
 
       expect(result).toStrictEqual({ content: "fresh" });
       expect(outlet).toHaveBeenCalledWith(0, "update_memory", "fresh");
     });
   });
 
-  it("throws error for unknown action", () => {
-    expect(() => context({ action: "unknown-action" })).toThrow(
+  it("throws error for unknown action", async () => {
+    await expect(context({ action: "unknown-action" })).rejects.toThrow(
       "Unknown action: unknown-action",
     );
   });
