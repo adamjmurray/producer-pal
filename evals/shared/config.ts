@@ -7,6 +7,7 @@
  */
 
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
 const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 
@@ -22,6 +23,7 @@ export interface ConfigOptions {
   sampleFolder?: string;
   liveApiEnabled?: boolean;
   tools?: string[];
+  notation?: Notation;
 }
 
 /**
@@ -51,5 +53,6 @@ export async function resetConfig(): Promise<void> {
     jsonOutput: true,
     sampleFolder: "",
     tools: [...TOOL_NAMES],
+    notation: DEFAULT_NOTATION,
   });
 }

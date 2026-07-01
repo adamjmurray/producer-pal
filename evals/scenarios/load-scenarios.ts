@@ -9,6 +9,9 @@
 
 import { styleText } from "node:util";
 import {
+  abstarkDrumRoundtrip,
+  abstarkPitchAccuracy,
+  abstarkRhythmAccuracy,
   arpeggioBracketIdiom,
   arpeggioMixedDurations,
   arrangementClipWorkflow,
@@ -116,6 +119,9 @@ const allScenarios: EvalScenario[] = [
   noteOpsRepeat,
   noteOpsSplit,
   noteOpsSplitSync,
+  abstarkPitchAccuracy,
+  abstarkRhythmAccuracy,
+  abstarkDrumRoundtrip,
 ];
 
 export interface LoadScenariosOptions {

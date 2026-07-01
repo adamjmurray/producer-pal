@@ -89,12 +89,15 @@ export function assertNotesRead(turn: number): EvalAssertion {
  * @param meter - Expected time signature (e.g. "6/8"); also the interpret meter
  * @param check - Verdict over the re-interpreted notes (start_time in Ableton
  *   quarter beats); only called once the read succeeded in `meter`
+ * @param interpret - Notation interpreter (defaults to bar|beat). Pass the
+ *   Abstark interpreter for Abstark scenarios — the only thing that differs.
  * @returns State assertion
  */
 export function clipStateAssertion(
   slot: string,
   meter: string,
   check: (events: NoteEvent[]) => boolean,
+  interpret: NotationInterpreter = interpretNotation,
 ): EvalAssertion {
   const [numerator, denominator] = meter.split("/").map(Number);
 
@@ -110,7 +113,7 @@ export function clipStateAssertion(
       let events: NoteEvent[];
 
       try {
-        events = interpretNotation(clip.notes, {
+        events = interpret(clip.notes, {
           timeSigNumerator: numerator,
           timeSigDenominator: denominator,
         });
@@ -122,6 +125,58 @@ export function clipStateAssertion(
     },
   };
 }
+
+/** A notation interpreter compatible with {@link clipStateAssertion}. Meter
+ * fields are optional so both the bar|beat and Abstark interpreters satisfy it
+ * (Abstark ignores the denominator). */
+export type NotationInterpreter = (
+  notes: string,
+  opts: { timeSigNumerator?: number; timeSigDenominator?: number },
+) => NoteEvent[];
+
+/** One expected note: MIDI pitch, start (Ableton quarter beats), duration. */
+export interface ExpectedNote {
+  pitch: number;
+  start: number;
+  duration?: number;
+}
+
+/**
+ * Order-independent verdict: the interpreted events match `expected` exactly on
+ * pitch and start position (and duration when given). Velocity is never checked
+ * (it is often bucketed/randomized on interpret). Shared by the bar|beat and
+ * Abstark read-back checks.
+ *
+ * @param events - Re-interpreted notes from the read-back
+ * @param expected - Expected notes (pitch + start, optional duration)
+ * @returns True when the note sets match
+ */
+export function notesMatch(
+  events: NoteEvent[],
+  expected: ExpectedNote[],
+): boolean {
+  if (events.length !== expected.length) return false;
+
+  const sortedEvents = [...events].sort(
+    (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
+  );
+  const sortedExpected = [...expected].sort(
+    (a, b) => a.start - b.start || a.pitch - b.pitch,
+  );
+
+  return sortedEvents.every((e, i) => {
+    const want = sortedExpected[i] as ExpectedNote;
+
+    return (
+      e.pitch === want.pitch &&
+      Math.abs(e.start_time - want.start) < EPS &&
+      (want.duration == null || Math.abs(e.duration - want.duration) < EPS)
+    );
+  });
+}
+
+/** Float tolerance for note start_time / duration comparisons (in beats). */
+const EPS = 1e-6;
 
 /** create-clip tool name (turn-1 create assertion in single-clip scenarios). */
 const TOOL_CREATE_CLIP = "ppal-create-clip";

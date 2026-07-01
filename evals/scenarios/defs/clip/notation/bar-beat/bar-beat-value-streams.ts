@@ -31,7 +31,7 @@ import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
-} from "../../../types.ts";
+} from "../../../../types.ts";
 import {
   clearSessionSlots,
   clipStateAssertion,
@@ -39,7 +39,7 @@ import {
   leadClipNotationScenario,
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip-scenario-helpers.ts";
+} from "../../clip-scenario-helpers.ts";
 
 /** Float tolerance for note start_time comparisons (in beats). */
 const EPS = 1e-6;

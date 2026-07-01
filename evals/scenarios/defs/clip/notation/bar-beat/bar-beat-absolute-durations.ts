@@ -15,11 +15,11 @@
  * 5/4 test sets would tighten the signal — see the eval validation tracker.
  */
 
-import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
+import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import {
   clearSessionSlots,
   clipStateAssertion,
-} from "../clip-scenario-helpers.ts";
+} from "../../clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";

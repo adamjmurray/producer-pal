@@ -18,26 +18,24 @@
  * authoritative; LLM judges are advisory (they miscount bar|beat notation).
  */
 
-import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
+import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import {
   clearSessionSlots,
   clipStateAssertion,
+  type ExpectedNote,
   MSG_CONNECT,
+  notesMatch,
   TOOL_CONNECT,
-} from "../clip-scenario-helpers.ts";
+} from "../../clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const LIVE_SET = "basic-midi-4-track";
 /** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
 const LEAD_TRACK = 3;
-/** Float tolerance for note start_time / duration comparisons (in beats). */
-const EPS = 1e-6;
-
-type MelodyNote = { pitch: number; start: number; duration?: number };
 
 /** Ascending C, D, E, F on quarter beats 0-3 — the shared head of the 4/4 and
  * 5/4 stepping melodies (5/4 appends G3). */
-const ASCENDING_QUARTERS: MelodyNote[] = [
+const ASCENDING_QUARTERS: ExpectedNote[] = [
   { pitch: 60, start: 0, duration: 1 },
   { pitch: 62, start: 1, duration: 1 },
   { pitch: 64, start: 2, duration: 1 },
@@ -63,25 +61,11 @@ const ASCENDING_QUARTERS: MelodyNote[] = [
 function assertMelody(
   slot: string,
   meter: string,
-  expected: MelodyNote[],
+  expected: ExpectedNote[],
 ): EvalAssertion {
-  return clipStateAssertion(slot, meter, (events) => {
-    if (events.length !== expected.length) return false;
-
-    const sorted = [...events].sort(
-      (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
-    );
-
-    return sorted.every((e, i) => {
-      const want = expected[i] as MelodyNote;
-
-      return (
-        e.pitch === want.pitch &&
-        Math.abs(e.start_time - want.start) < EPS &&
-        (want.duration == null || Math.abs(e.duration - want.duration) < EPS)
-      );
-    });
-  });
+  return clipStateAssertion(slot, meter, (events) =>
+    notesMatch(events, expected),
+  );
 }
 
 /**

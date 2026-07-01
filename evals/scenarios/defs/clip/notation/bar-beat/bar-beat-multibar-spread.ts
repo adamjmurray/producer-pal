@@ -21,8 +21,8 @@
  * is advisory (judges miscount bar|beat notation).
  */
 
-import { type EvalScenario } from "../../../types.ts";
-import { leadClipNotationScenario } from "../clip-scenario-helpers.ts";
+import { type EvalScenario } from "../../../../types.ts";
+import { leadClipNotationScenario } from "../../clip-scenario-helpers.ts";
 
 /** Float tolerance for note start_time comparisons (in beats). */
 const EPS = 1e-6;

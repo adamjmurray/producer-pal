@@ -11,6 +11,9 @@
  * scenario registration in load-scenarios.ts.
  */
 
+export { abstarkDrumRoundtrip } from "./clip/notation/abstark/abstark-drum-roundtrip.ts";
+export { abstarkPitchAccuracy } from "./clip/notation/abstark/abstark-pitch-accuracy.ts";
+export { abstarkRhythmAccuracy } from "./clip/notation/abstark/abstark-rhythm-accuracy.ts";
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
 export {
   arpeggioBracketIdiom,
@@ -22,21 +25,21 @@ export {
   barBeatCompoundFeelPulse,
   barBeatMeterFill,
   barBeatTriplets,
-} from "./clip/notation/bar-beat-absolute-durations.ts";
+} from "./clip/notation/bar-beat/bar-beat-absolute-durations.ts";
 export {
   barBeatPerBarChord,
   barBeatPerBarNote,
-} from "./clip/notation/bar-beat-multibar-spread.ts";
+} from "./clip/notation/bar-beat/bar-beat-multibar-spread.ts";
 export {
   barBeatMelodicCompoundStepping,
   barBeatMelodicLegatoRun,
   barBeatMelodicStepping,
-} from "./clip/notation/bar-beat-pitch-streams.ts";
+} from "./clip/notation/bar-beat/bar-beat-pitch-streams.ts";
 export {
   barBeatGallop,
   barBeatVelocityAccent,
   barBeatZipStreams,
-} from "./clip/notation/bar-beat-value-streams.ts";
+} from "./clip/notation/bar-beat/bar-beat-value-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
