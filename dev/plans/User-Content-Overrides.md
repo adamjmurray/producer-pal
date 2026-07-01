@@ -86,21 +86,38 @@ this is deliberately the simplest starting point.
   config-storage pass; re-authored here for a single markdown file.)
 - **Inject on the node side, into the `ppal-connect` response.** V8 `connect`
   ([connect.ts](../../src/tools/core/connect.ts)) keeps returning per-project
-  `memoryContent` from `context.memory.content` (V8 has no `fs`). A thin wrapper
-  around `callLiveApi` in
-  [create-express-app.ts](../../src/mcp-server/create-express-app.ts) — for
-  `tool === "ppal-connect"` only — parses the V8 result JSON and adds
-  `globalContext` read from the file. This is the only path that reaches
+  `memoryContent` from `context.memory.content` (V8 has no `fs`). A
+  `withGlobalContext` wrapper around `callLiveApi`
+  ([global-context-inject.ts](../../src/mcp-server/helpers/global-context-inject.ts),
+  wired into both the MCP and REST paths in
+  [create-express-app.ts](../../src/mcp-server/create-express-app.ts)) — for a
+  successful `ppal-connect` result only — **appends** the file contents as a
+  distinct, clearly-labeled extra content block. (Appending, not mutating the
+  result body: the V8 result is compact-serialized, not plain JSON, so a second
+  labeled block is the robust, format-agnostic seam — the same mechanism the
+  `WARNING:` relay already uses.) This is the only path that reaches
   **external** clients (Claude Desktop, LM Studio), which see context solely
   through the connect tool result. Same seam the later skills/prompt overrides
   reuse.
-- Connect prompt wording updated so the model knows global vs per-project scope.
+- The appended block names both scopes ("applies across ALL projects … distinct
+  from this Live Set's per-project context") so the model can tell them apart.
 
 #### Phase 1b — open the config folder
 
-A convenience to reveal `~/.producer-pal` in Finder/Explorer. Preferred: a
-button in the Max device (under investigation). Fallback: a backend shell-open
-from Node-for-Max.
+A convenience to reveal `~/.producer-pal` in Finder/Explorer. Shipped `src/`
+code is barred from shelling out (eslint `no-restricted-imports` on
+`child_process`), so Node can't `open`/`explorer` the folder itself. Instead the
+work is split:
+
+- **Node**
+  ([reveal-config-dir.ts](../../src/mcp-server/helpers/reveal-config-dir.ts)):
+  on an `openConfigFolder` device message, resolves the home dir (Max can't
+  cross-platform), `mkdir -p`s it so the folder always exists, and emits it back
+  as a `pathToFileURL` `file://` URL (correctly encodes spaces / Windows paths).
+- **Patch:** a Setup-tab button sends `openConfigFolder` to the `node.script`
+  inlet; the returned `openConfigFolder <fileUrl>` from its outlet drives a
+  `; max launchbrowser <fileUrl>` message, which opens the folder in the native
+  file browser.
 
 ### Phase 2 — webui editor
 

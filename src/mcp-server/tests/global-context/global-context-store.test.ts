@@ -14,10 +14,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  configDir,
+  isConfigDirInert,
   readGlobalContext,
   resolveContextPath,
   writeGlobalContext,
-} from "../helpers/global-context-store.ts";
+} from "#src/mcp-server/helpers/global-context-store.ts";
 
 const ORIGINAL_DIR = process.env.PRODUCER_PAL_CONFIG_DIR;
 
@@ -36,6 +38,30 @@ afterEach(() => {
   }
 
   rmSync(dir, { recursive: true, force: true });
+});
+
+describe("configDir", () => {
+  it("uses the PRODUCER_PAL_CONFIG_DIR override when set", () => {
+    expect(configDir()).toBe(dir);
+  });
+
+  it("defaults to ~/.producer-pal when no override is set", () => {
+    delete process.env.PRODUCER_PAL_CONFIG_DIR;
+
+    expect(configDir().endsWith(".producer-pal")).toBe(true);
+  });
+});
+
+describe("isConfigDirInert", () => {
+  it("is false under Vitest when a dir override is set", () => {
+    expect(isConfigDirInert()).toBe(false);
+  });
+
+  it("is true under Vitest with no dir override", () => {
+    delete process.env.PRODUCER_PAL_CONFIG_DIR;
+
+    expect(isConfigDirInert()).toBe(true);
+  });
 });
 
 describe("resolveContextPath", () => {

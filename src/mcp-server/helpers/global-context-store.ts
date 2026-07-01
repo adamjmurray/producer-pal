@@ -22,17 +22,25 @@ const CONTEXT_FILENAME = "context.md";
 const isRunningInVitest = process.env.VITEST === "true";
 
 /**
- * Absolute path to the global context markdown file. Honors the
+ * Absolute path to the machine-global config directory. Honors the
  * PRODUCER_PAL_CONFIG_DIR override (used by tests and advanced setups);
- * otherwise resolves under the user's home directory.
+ * otherwise resolves to ~/.producer-pal.
+ *
+ * @returns Absolute path to the config directory
+ */
+export function configDir(): string {
+  return (
+    process.env.PRODUCER_PAL_CONFIG_DIR ?? join(homedir(), ".producer-pal")
+  );
+}
+
+/**
+ * Absolute path to the global context markdown file.
  *
  * @returns Absolute path to ~/.producer-pal/context.md (or the override dir)
  */
 export function resolveContextPath(): string {
-  const dir =
-    process.env.PRODUCER_PAL_CONFIG_DIR ?? join(homedir(), ".producer-pal");
-
-  return join(dir, CONTEXT_FILENAME);
+  return join(configDir(), CONTEXT_FILENAME);
 }
 
 /**
@@ -43,7 +51,7 @@ export function resolveContextPath(): string {
  * @returns Trimmed file contents, or "" when absent/unreadable
  */
 export function readGlobalContext(): string {
-  if (skipFileIo()) return "";
+  if (isConfigDirInert()) return "";
 
   try {
     return readFileSync(resolveContextPath(), "utf8").trim();
@@ -61,7 +69,7 @@ export function readGlobalContext(): string {
  * @param content - New global context markdown
  */
 export function writeGlobalContext(content: string): void {
-  if (skipFileIo()) return;
+  if (isConfigDirInert()) return;
 
   const target = resolveContextPath();
   const tmpPath = `${target}.tmp`;
@@ -72,11 +80,13 @@ export function writeGlobalContext(content: string): void {
 }
 
 /**
- * Whether to skip filesystem access. True only under Vitest without an
- * explicit dir override, so the module is inert-by-default in unit tests.
+ * Whether to skip real config-dir access (read, write, or reveal). True only
+ * under Vitest without an explicit dir override, so the config layer is
+ * inert-by-default in unit tests and never touches the developer's real
+ * ~/.producer-pal.
  *
- * @returns True when file IO should be skipped
+ * @returns True when config-dir side effects should be skipped
  */
-function skipFileIo(): boolean {
+export function isConfigDirInert(): boolean {
   return isRunningInVitest && process.env.PRODUCER_PAL_CONFIG_DIR == null;
 }
