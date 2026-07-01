@@ -7,8 +7,10 @@ nothing. Mutation testing closes that gap: it introduces small faults
 ("mutants") into the source and checks whether the suite fails. A **surviving
 mutant** is a behavior change no test caught — a concrete test-quality gap.
 
-Tool: [Stryker Mutator](https://stryker-mutator.io/) with the Vitest runner. See
-`dev/plans/Mutation-Testing.md` for the original CI-rollout plan.
+Tool: [Stryker Mutator](https://stryker-mutator.io/) with the Vitest runner. The
+full CI-rollout plan (scheduled matrix, incremental PR checks, priority areas)
+is tracked as project work; the matrix sketch is inlined under "Status & next
+steps" below.
 
 ## Running
 
@@ -100,4 +102,44 @@ This is **baseline mode**: the score is reported but `thresholds.break` is
   score like the coverage and lint-suppression gates.
 - Widen `mutate` to `src/tools/` (write operations first), likely as a scheduled
   (nightly/weekly) non-blocking CI job — full-tree runtime is hours, not
-  minutes. See the matrix sketch in `dev/plans/Mutation-Testing.md`.
+  minutes.
+
+### CI-rollout sketch
+
+A full-tree run is ~8–20 hours, so it can't be per-commit — but GitHub Actions
+is free for public repos with a 6-hour hard cap per job. Split the tree into
+module groups running as parallel matrix jobs, each in its own 6-hour window
+(the slowest module is likely 2–3 hours, well under the cap):
+
+```yaml
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Weekly Monday 3am UTC
+jobs:
+  mutation-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        mutate:
+          - "src/notation/**/*.ts"
+          - "src/tools/clip/**/*.ts"
+          - "src/tools/track/**/*.ts"
+          - "src/tools/device/**/*.ts"
+          - "src/tools/actions/**/*.ts"
+          - "src/tools/{scene,control,live-set,workflow}/**/*.ts"
+    steps:
+      - run: npx stryker run --mutate '${{ matrix.mutate }}'
+      # Upload HTML report as artifact
+```
+
+After the first full run, `--incremental` mode only re-tests mutants in changed
+files, bringing per-PR runs down to minutes — viable as a non-blocking check.
+
+**Priority areas when widening** (high-risk first):
+
+1. **Write operations** (`update-*`, `create-*`, `delete`) — weak assertions
+   here could mask bugs that modify Live Sets.
+2. **Recently migrated test files** — the 83 files touched in the mock registry
+   migration are most likely to have weakened assertions.
+3. **Arrangement operations** — complex edge cases around clip splitting,
+   tiling, and boundary detection.
