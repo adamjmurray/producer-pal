@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
-  LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
   LIVE_API_WARP_MODE_PRO,
@@ -145,18 +145,35 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
 }
 
 /**
- * Check if a track's instrument is a Drum Rack.
- * Iterates devices to skip MIDI effects that may precede the instrument.
+ * Check if a track contains a Drum Rack anywhere in its device tree.
+ * A Drum Rack nested inside instrument rack chains (at any depth, in any chain)
+ * still puts the track in drum mode, so the whole tree is searched recursively.
  * @param trackIndex - Track index (0-based)
- * @returns True if the first instrument device is a Drum Rack
+ * @returns True if any device (including nested rack devices) is a Drum Rack
  */
 export function isDrumRackTrack(trackIndex: number): boolean {
   const track = LiveAPI.from(livePath.track(trackIndex));
-  const devices = track.getChildren("devices");
 
+  return devicesContainDrumRack(track.getChildren("devices"));
+}
+
+/**
+ * Recursively search a device list for a Drum Rack, descending into rack chains.
+ * @param devices - LiveAPI device objects to inspect
+ * @returns True if a Drum Rack is found in the list or any nested chain
+ */
+function devicesContainDrumRack(devices: LiveAPI[]): boolean {
   for (const device of devices) {
-    if (device.getProperty("type") === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-      return (device.getProperty("can_have_drum_pads") as number) > 0;
+    if ((device.getProperty("can_have_drum_pads") as number) > 0) {
+      return true;
+    }
+
+    if ((device.getProperty("can_have_chains") as number) > 0) {
+      for (const chain of device.getChildren("chains")) {
+        if (devicesContainDrumRack(chain.getChildren("devices"))) {
+          return true;
+        }
+      }
     }
   }
 
