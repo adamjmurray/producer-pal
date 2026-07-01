@@ -110,11 +110,12 @@ interface ContextHeaderProps {
 
 /**
  * Header strip showing the title (or tab strip), save indicator, and (when
- * mounted inside the chat-app overlay) a close button.
+ * mounted inside the chat-app overlay) a close button. Exported so the skills
+ * editor reuses the identical tab strip + save indicator + close affordance.
  * @param props - Header props
  * @returns Header element
  */
-function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
+export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
   const { title, tabSlot, closeAriaLabel, status, saveStatus, dirty, onClose } =
     props;
 
@@ -312,13 +313,14 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
  * Inline banner shown above the editor when the server-side content has
  * changed externally (AI write, Max device button) and the user has no
  * in-progress draft. Clicking Reload adopts the server's content as the new
- * baseline and remounts the editor.
+ * baseline and remounts the editor. Exported so the skills editor reuses the
+ * same external-write affordance.
  * @param props - Banner props
  * @param props.message - Banner copy for this document type
  * @param props.onReload - Click handler for the Reload button
  * @returns Banner element
  */
-function ExternalUpdateBanner(props: {
+export function ExternalUpdateBanner(props: {
   message: string;
   onReload: () => void;
 }): preact.JSX.Element {

@@ -1,0 +1,390 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * @vitest-environment happy-dom
+ */
+import { act, renderHook, waitFor } from "@testing-library/preact";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
+import { jsonResponse } from "./doc-memory-transport-test-helpers";
+
+// happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
+const LIST_URL = "http://localhost:3000/skill-overrides";
+const SLOT_URL = "http://localhost:3000/skill-overrides/core-standard";
+
+/**
+ * Build a server slot record with overridable fields.
+ * @param over - Fields to override on the default record
+ * @returns A raw slot record as the server would return it
+ */
+function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    name: "core-standard",
+    title: "Core (standard)",
+    builtIn: "BUILT-IN",
+    override: "",
+    drifted: false,
+    provenance: null,
+    ...over,
+  };
+}
+
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason: unknown) => void;
+}
+
+/**
+ * Externally-resolvable promise, so a test can pin the resolution order of a
+ * concurrent save and refresh independent of issue order.
+ * @returns A promise plus its resolve/reject handles
+ */
+function deferred<T>(): Deferred<T> {
+  // The executor runs synchronously, so all three fields are set before return.
+  const box: Partial<Deferred<T>> = {};
+
+  box.promise = new Promise<T>((resolve, reject) => {
+    box.resolve = resolve;
+    box.reject = reject;
+  });
+
+  return box as Deferred<T>;
+}
+
+describe("useSkillOverrides", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("loads and maps all slots on mount via a no-store GET", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        slots: [
+          rawSlot(),
+          rawSlot({
+            name: "stark",
+            title: "stark notation",
+            override: "MINE",
+            drifted: true,
+            provenance: { producerPalVersion: "1.4.0", builtInHash: "old" },
+          }),
+        ],
+      }),
+    );
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots).toStrictEqual([
+      {
+        name: "core-standard",
+        title: "Core (standard)",
+        builtIn: "BUILT-IN",
+        override: "",
+        drifted: false,
+        forkedFromVersion: null,
+      },
+      {
+        name: "stark",
+        title: "stark notation",
+        builtIn: "BUILT-IN",
+        override: "MINE",
+        drifted: true,
+        forkedFromVersion: "1.4.0",
+      },
+    ]);
+    expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+  });
+
+  it("falls back to an empty list when slots is missing", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}));
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status).toStrictEqual({ kind: "ready", slots: [] });
+    });
+  });
+
+  it("reports an error when the GET is not ok", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("boom", { status: 500, statusText: "Server Error" }),
+    );
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("error");
+    });
+
+    expect(
+      result.current.status.kind === "error" && result.current.status.message,
+    ).toContain("Skills request failed");
+  });
+
+  it("stringifies a non-Error rejection", async () => {
+    fetchMock.mockRejectedValueOnce("plain string error");
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status).toStrictEqual({
+        kind: "error",
+        message: "plain string error",
+      });
+    });
+  });
+
+  it("saveSlot PUTs the content and merges only the echoed slot", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        slots: [rawSlot(), rawSlot({ name: "stark", title: "stark notation" })],
+      }),
+    );
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        slot: rawSlot({
+          override: "MINE\n",
+          provenance: { producerPalVersion: "1.5.0", builtInHash: "abc" },
+        }),
+      }),
+    );
+
+    let ok: boolean | undefined;
+
+    await act(async () => {
+      ok = await result.current.saveSlot("core-standard", "MINE");
+    });
+
+    expect(ok).toBe(true);
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+      name: "core-standard",
+      override: "MINE\n",
+      forkedFromVersion: "1.5.0",
+    });
+    // The other slot is left untouched by the merge.
+    expect(status.kind === "ready" && status.slots[1]).toMatchObject({
+      name: "stark",
+      override: "",
+    });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      SLOT_URL,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ content: "MINE" }),
+      }),
+    );
+  });
+
+  it("resetSlot DELETEs the slot and merges the reset echo", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ slots: [rawSlot({ override: "MINE\n" })] }),
+    );
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ slot: rawSlot() }));
+
+    await act(async () => {
+      await result.current.resetSlot("core-standard");
+    });
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]?.override).toBe("");
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      SLOT_URL,
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("surfaces a save error when the write is not ok", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ slots: [rawSlot()] }));
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      new Response("nope", { status: 403, statusText: "Forbidden" }),
+    );
+
+    let ok: boolean | undefined;
+
+    await act(async () => {
+      ok = await result.current.saveSlot("core-standard", "x");
+    });
+
+    expect(ok).toBe(false);
+    expect(result.current.saveStatus).toBe("error");
+    expect(result.current.saveError).toContain("Skills update failed");
+  });
+
+  it("leaves the status untouched when a write resolves before the load", async () => {
+    // GET never resolves, so status is still "loading" when the write echoes.
+    fetchMock.mockReturnValueOnce(new Promise<Response>(() => {}));
+
+    const { result } = renderHook(useSkillOverrides);
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ slot: rawSlot() }));
+
+    await act(async () => {
+      await result.current.saveSlot("core-standard", "x");
+    });
+
+    expect(result.current.status.kind).toBe("loading");
+  });
+
+  it("re-fetches on window focus so external writes surface", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ slots: [rawSlot({ override: "v1" })] }),
+    );
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ slots: [rawSlot({ override: "v2" })] }),
+    );
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      const status = result.current.status;
+
+      expect(status.kind === "ready" && status.slots[0]?.override).toBe("v2");
+    });
+  });
+
+  it("drops a refresh that a concurrent save superseded", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ slots: [rawSlot({ override: "loaded" })] }),
+    );
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    const putEcho = deferred<Response>();
+    const staleGet = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(putEcho.promise); // save PUT
+    fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (pre-save read)
+
+    await act(async () => {
+      const savePromise = result.current.saveSlot("core-standard", "MINE");
+      const refreshPromise = result.current.refresh();
+
+      // The save echo lands first and sets the override.
+      putEcho.resolve(jsonResponse({ slot: rawSlot({ override: "MINE\n" }) }));
+      await savePromise;
+
+      // The stale GET resolves last; the overlap guard must drop it.
+      staleGet.resolve(
+        jsonResponse({ slots: [rawSlot({ override: "stale" })] }),
+      );
+      await refreshPromise;
+    });
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]?.override).toBe("MINE\n");
+  });
+
+  describe("focus-gated polling", () => {
+    const POLL_MS = 5000; // mirrors POLL_INTERVAL_MS in the hook
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it("re-reads each interval while focused", async () => {
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      fetchMock
+        .mockResolvedValueOnce(
+          jsonResponse({ slots: [rawSlot({ override: "old" })] }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({ slots: [rawSlot({ override: "external" })] }),
+        );
+
+      const { result } = renderHook(useSkillOverrides);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_MS);
+      });
+
+      const status = result.current.status;
+
+      expect(status.kind === "ready" && status.slots[0]?.override).toBe(
+        "external",
+      );
+    });
+
+    it("does not poll while the window is unfocused", async () => {
+      vi.spyOn(document, "hasFocus").mockReturnValue(false);
+      fetchMock.mockResolvedValueOnce(jsonResponse({ slots: [rawSlot()] }));
+
+      renderHook(useSkillOverrides);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      fetchMock.mockClear();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+      });
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+});

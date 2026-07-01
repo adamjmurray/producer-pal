@@ -59,6 +59,25 @@ export function getSystemPromptUrl(): string {
 }
 
 /**
+ * Gets the skill-overrides collection endpoint URL (lists every built-in
+ * skills fragment with the user's override and drift state).
+ * @returns {string} The skill-overrides endpoint URL
+ */
+export function getSkillOverridesUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/skill-overrides");
+}
+
+/**
+ * Gets the endpoint URL for a single skills-fragment override slot (PUT to
+ * save an override, DELETE to reset it to the built-in).
+ * @param slot - The slot name
+ * @returns {string} The per-slot skill-overrides endpoint URL
+ */
+export function getSkillOverrideUrl(slot: string): string {
+  return `${getSkillOverridesUrl()}/${encodeURIComponent(slot)}`;
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL

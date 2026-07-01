@@ -7,10 +7,15 @@ import { useState } from "preact/hooks";
 import { useContextMemory } from "#webui/hooks/context/use-context-memory";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
+import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
+import { SkillsScreen } from "./SkillsScreen";
 
-type ContextTab = "project" | "global" | "instructions";
+/** Tabs backed by a single markdown document via useDocMemory. */
+type DocTab = "project" | "global" | "instructions";
+/** All context editor tabs (the doc tabs plus the multi-fragment Skills tab). */
+type ContextTab = DocTab | "skills";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
@@ -47,13 +52,14 @@ interface ContextTabsProps {
 }
 
 /**
- * Multi-document context editor: a Project | Global tab strip over a shared
- * {@link ContextScreen}. Both document hooks stay mounted (so each keeps
- * polling for external writes and switching tabs shows already-loaded content
- * without a flash), while the active one is handed to the editor. Keying the
- * screen by tab remounts it on switch so its uncontrolled editor re-seeds from
- * the newly-active document, and the outgoing editor flushes any pending save
- * on unmount.
+ * Multi-document context editor: a Project | Global | Instructions | Skills tab
+ * strip. The three document tabs share a {@link ContextScreen}; the Skills tab
+ * renders a {@link SkillsScreen} instead (a multi-fragment override editor). All
+ * hooks stay mounted (so each keeps polling for external writes and switching
+ * tabs shows already-loaded content without a flash), while the active one is
+ * handed to its screen. Keying the doc screen by tab remounts it on switch so
+ * its uncontrolled editor re-seeds from the newly-active document, and the
+ * outgoing editor flushes any pending save on unmount.
  * @param props - Tabs props
  * @returns Tabbed editor element
  */
@@ -62,24 +68,36 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const projectMemory = useContextMemory();
   const globalMemory = useGlobalContextMemory();
   const instructionsMemory = useSystemPromptMemory();
+  const skillOverrides = useSkillOverrides();
 
-  const memoryByTab: Record<ContextTab, UseDocMemoryReturn> = {
+  const memoryByTab: Record<DocTab, UseDocMemoryReturn> = {
     project: projectMemory,
     global: globalMemory,
     instructions: instructionsMemory,
   };
-  const labelsByTab: Record<ContextTab, ContextEditorLabels> = {
+  const labelsByTab: Record<DocTab, ContextEditorLabels> = {
     project: PROJECT_LABELS,
     global: GLOBAL_LABELS,
     instructions: INSTRUCTIONS_LABELS,
   };
+  const tabStrip = <TabStrip tab={tab} onSelect={setTab} />;
+
+  if (tab === "skills") {
+    return (
+      <SkillsScreen
+        overrides={skillOverrides}
+        tabSlot={tabStrip}
+        onClose={props.onClose}
+      />
+    );
+  }
 
   return (
     <ContextScreen
       key={tab}
       memory={memoryByTab[tab]}
       labels={labelsByTab[tab]}
-      tabSlot={<TabStrip tab={tab} onSelect={setTab} />}
+      tabSlot={tabStrip}
       onClose={props.onClose}
     />
   );
@@ -93,7 +111,8 @@ interface TabStripProps {
 }
 
 /**
- * Header-left tab strip switching between the project and global documents.
+ * Header-left tab strip switching between the project, global, instructions,
+ * and skills editors.
  * @param props - Tab strip props
  * @returns Tab strip element
  */
@@ -120,6 +139,11 @@ function TabStrip(props: TabStripProps): preact.JSX.Element {
         label="Instructions"
         active={tab === "instructions"}
         onSelect={() => onSelect("instructions")}
+      />
+      <TabButton
+        label="Skills"
+        active={tab === "skills"}
+        onSelect={() => onSelect("skills")}
       />
     </div>
   );

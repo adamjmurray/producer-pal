@@ -47,6 +47,29 @@ vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
   useSystemPromptMemory: () => readyMemory("INSTRUCTIONS-DOC"),
 }));
 
+vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
+  useSkillOverrides: () => ({
+    status: {
+      kind: "ready",
+      slots: [
+        {
+          name: "core-standard",
+          title: "Core (standard)",
+          builtIn: "CORE-BUILTIN",
+          override: "",
+          drifted: false,
+          forkedFromVersion: null,
+        },
+      ],
+    },
+    saveStatus: "idle",
+    saveError: null,
+    saveSlot: vi.fn(),
+    resetSlot: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 describe("ContextTabs", () => {
   it("defaults to the Project tab and shows the project document", () => {
     render(<ContextTabs />);
@@ -100,6 +123,19 @@ describe("ContextTabs", () => {
         .getAttribute("aria-selected"),
     ).toBe("true");
     expect(screen.getByTestId("editor").textContent).toBe("PROJECT-DOC");
+  });
+
+  it("switches to the Skills tab and shows the fragment editor", () => {
+    render(<ContextTabs />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Skills" }));
+
+    expect(
+      screen.getByRole("tab", { name: "Skills" }).getAttribute("aria-selected"),
+    ).toBe("true");
+    // The slot dropdown and the read-only built-in pane render.
+    expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
+    expect(screen.getByText("CORE-BUILTIN")).toBeTruthy();
   });
 
   it("renders a close button that calls onClose", () => {
