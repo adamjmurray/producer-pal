@@ -119,8 +119,8 @@ export function HeaderActions({
       <button
         onClick={onOpenContext}
         className={iconBtn}
-        aria-label="Project context"
-        title="Project context"
+        aria-label="Context"
+        title="Context (project & global)"
       >
         <ContextIcon />
       </button>

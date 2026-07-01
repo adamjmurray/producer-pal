@@ -27,6 +27,7 @@ import { revealConfigDir } from "./helpers/reveal-config-dir.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
+import { registerGlobalContextRoutes } from "./routes/global-context-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
@@ -301,6 +302,8 @@ export function createExpressApp(): Express {
   app.post("/config", handleConfigUpdate);
 
   registerRestApiRoutes(app, () => config, callLiveApiWithGlobalContext);
+
+  registerGlobalContextRoutes(app);
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);

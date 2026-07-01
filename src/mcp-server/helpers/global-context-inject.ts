@@ -34,7 +34,9 @@ export function withGlobalContext(
     const result = (await inner(tool, args, overrides)) as McpResponse;
 
     if (tool === "ppal-connect" && !result.isError) {
-      const globalContext = readGlobalContext();
+      // Trim here (not in the store) so the raw file stays byte-faithful for
+      // the editor's GET/PUT round-trip while the injected block is clean.
+      const globalContext = readGlobalContext().trim();
 
       if (globalContext) {
         result.content.push({

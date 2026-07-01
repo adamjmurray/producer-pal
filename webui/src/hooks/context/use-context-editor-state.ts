@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { type UseContextMemoryReturn } from "./use-context-memory";
+import { type UseDocMemoryReturn } from "./use-doc-memory";
 
 const SAVE_DEBOUNCE_MS = 800;
 const SAVE_RETRY_MS = 5000;
@@ -56,11 +56,13 @@ export interface UseContextEditorStateReturn {
  * error-recovery reset, external-update detection, and the Clear/Reload
  * remount keys. Split out from `ContextScreen.tsx` to keep that component
  * focused on layout while exercising this logic in isolation.
- * @param memory - The hook return from `useContextMemory`
+ * @param memory - A document memory hook return (project or global context)
+ * @param clearConfirmMessage - Confirm prompt shown before clearing the doc
  * @returns Editor state + handlers wired for the screen
  */
 export function useContextEditorState(
-  memory: UseContextMemoryReturn,
+  memory: UseDocMemoryReturn,
+  clearConfirmMessage: string,
 ): UseContextEditorStateReturn {
   const draftRef = useRef<string | null>(null);
   const lastSavedRef = useRef<string | null>(null);
@@ -208,7 +210,7 @@ export function useContextEditorState(
   const handleClear = useCallback(async (): Promise<void> => {
     if (memory.status.kind !== "ready") return;
 
-    if (!window.confirm("Clear all project memory? This cannot be undone.")) {
+    if (!window.confirm(clearConfirmMessage)) {
       return;
     }
 
@@ -238,7 +240,7 @@ export function useContextEditorState(
     const ok = await memory.clear();
 
     if (ok) setEditorKey((k) => k + 1);
-  }, [memory]);
+  }, [memory, clearConfirmMessage]);
 
   const handleReload = useCallback((): void => {
     if (memory.status.kind !== "ready") return;

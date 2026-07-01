@@ -44,17 +44,23 @@ export function resolveContextPath(): string {
 }
 
 /**
- * Read the global context. A missing file (the common, empty-by-default case)
- * or any read error yields an empty string, so callers can treat "no global
- * context" and "empty global context" identically.
+ * Read the global context verbatim. A missing file (the common,
+ * empty-by-default case) or any read error yields an empty string, so callers
+ * can treat "no global context" and "empty global context" identically.
  *
- * @returns Trimmed file contents, or "" when absent/unreadable
+ * Content is returned byte-faithful (not trimmed) so a GET/PUT round-trip from
+ * the editor echoes exactly what was written — otherwise a trailing newline
+ * would make the saved draft and the server echo diverge and spuriously fire
+ * the editor's "changed externally" banner. Callers that want a clean blob for
+ * display (e.g. the ppal-connect injection) trim at the point of use.
+ *
+ * @returns File contents verbatim, or "" when absent/unreadable
  */
 export function readGlobalContext(): string {
   if (isConfigDirInert()) return "";
 
   try {
-    return readFileSync(resolveContextPath(), "utf8").trim();
+    return readFileSync(resolveContextPath(), "utf8");
   } catch {
     // Missing file, permissions, etc. — treat as "no global context".
     return "";

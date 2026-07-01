@@ -43,14 +43,14 @@ vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
-// ContextScreen wires CodeMirror + a server fetch; stub it so App tests stay
+// ContextTabs wires CodeMirror + a server fetch; stub it so App tests stay
 // focused on the overlay open/close plumbing.
-vi.mock(import("#webui/components/context/ContextScreen"), () => ({
-  ContextScreen: (props: { onClose?: () => void } = {}) => (
+vi.mock(import("#webui/components/context/ContextTabs"), () => ({
+  ContextTabs: (props: { onClose?: () => void } = {}) => (
     <div data-testid="context-stub">
       <button
         type="button"
-        aria-label="Close project context"
+        aria-label="Close context editor"
         onClick={props.onClose}
       >
         close
@@ -468,9 +468,7 @@ describe("App", () => {
       document.querySelector('[data-testid="context-stub"]');
 
     const openContext = (container: ParentNode) => {
-      const btn = container.querySelector(
-        'button[aria-label="Project context"]',
-      );
+      const btn = container.querySelector('button[aria-label="Context"]');
 
       if (btn) fireEvent.click(btn);
     };
@@ -489,7 +487,7 @@ describe("App", () => {
 
       openContext(container);
       const close = container.querySelector(
-        'button[aria-label="Close project context"]',
+        'button[aria-label="Close context editor"]',
       );
 
       if (close) fireEvent.click(close);

@@ -71,7 +71,27 @@ describe("withGlobalContext", () => {
     expect(inner).toHaveBeenCalledWith("ppal-connect", { foo: 1 }, overrides);
   });
 
+  it("trims surrounding whitespace from the injected block", async () => {
+    writeFileSync(join(dir, "context.md"), "  I make ambient techno.\n\n");
+    const inner = fakeInner(connectResponse());
+
+    const result = await withGlobalContext(inner)("ppal-connect", {});
+
+    const appended = result.content[1]?.text ?? "";
+
+    expect(appended.endsWith("I make ambient techno.")).toBe(true);
+  });
+
   it("does not inject when there is no global context file", async () => {
+    const inner = fakeInner(connectResponse());
+
+    const result = await withGlobalContext(inner)("ppal-connect", {});
+
+    expect(result.content).toHaveLength(1);
+  });
+
+  it("does not inject when the file is only whitespace", async () => {
+    writeFileSync(join(dir, "context.md"), "   \n\n  ");
     const inner = fakeInner(connectResponse());
 
     const result = await withGlobalContext(inner)("ppal-connect", {});

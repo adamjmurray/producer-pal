@@ -79,10 +79,12 @@ describe("resolveContextPath", () => {
 });
 
 describe("readGlobalContext", () => {
-  it("returns trimmed file contents when the file exists", () => {
+  it("returns file contents verbatim when the file exists", () => {
+    // Not trimmed: a byte-faithful read keeps the editor's GET/PUT round-trip
+    // stable (trimming happens at the ppal-connect injection point instead).
     writeFileSync(join(dir, "context.md"), "  I make ambient techno.\n\n");
 
-    expect(readGlobalContext()).toBe("I make ambient techno.");
+    expect(readGlobalContext()).toBe("  I make ambient techno.\n\n");
   });
 
   it("returns an empty string when the file is missing", () => {

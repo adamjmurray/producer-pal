@@ -10,25 +10,25 @@ import { act, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
-  type ContextMemoryStatus,
+  type DocMemoryStatus,
   type SaveStatus,
-  type UseContextMemoryReturn,
-} from "#webui/hooks/context/use-context-memory";
+  type UseDocMemoryReturn,
+} from "#webui/hooks/context/use-doc-memory";
 
 interface MemoryOverrides {
-  status?: ContextMemoryStatus;
+  status?: DocMemoryStatus;
   saveStatus?: SaveStatus;
   save?: ReturnType<typeof vi.fn>;
   clear?: ReturnType<typeof vi.fn>;
 }
 
 /**
- * Build a `UseContextMemoryReturn` for testing. Defaults to a ready memory
+ * Build a `UseDocMemoryReturn` for testing. Defaults to a ready memory
  * with empty content and resolved save/clear stubs; pass overrides to vary.
  * @param overrides - Field overrides
  * @returns A memory-hook return value plus the spies used to assert
  */
-function makeMemory(overrides: MemoryOverrides = {}): UseContextMemoryReturn {
+function makeMemory(overrides: MemoryOverrides = {}): UseDocMemoryReturn {
   // vi.fn() is typed broadly enough that .mockResolvedValue() returns a
   // generic Mock that doesn't satisfy the precise signatures on the hook
   // return type; cast each one to the field's expected shape.
@@ -37,31 +37,33 @@ function makeMemory(overrides: MemoryOverrides = {}): UseContextMemoryReturn {
     saveStatus: overrides.saveStatus ?? "idle",
     saveError: null,
     save: (overrides.save ??
-      vi.fn().mockResolvedValue(true)) as UseContextMemoryReturn["save"],
+      vi.fn().mockResolvedValue(true)) as UseDocMemoryReturn["save"],
     clear: (overrides.clear ??
-      vi.fn().mockResolvedValue(true)) as UseContextMemoryReturn["clear"],
+      vi.fn().mockResolvedValue(true)) as UseDocMemoryReturn["clear"],
     refresh: vi
       .fn()
-      .mockResolvedValue(
-        undefined,
-      ) as unknown as UseContextMemoryReturn["refresh"],
+      .mockResolvedValue(undefined) as unknown as UseDocMemoryReturn["refresh"],
   };
 }
 
-function renderEditor(memory: UseContextMemoryReturn) {
+function renderEditor(memory: UseDocMemoryReturn) {
   const { result, rerender, unmount } = renderHook(
-    ({ memory: m }) => useContextEditorState(m),
+    ({ memory: m }) =>
+      useContextEditorState(
+        m,
+        "Clear all project memory? This cannot be undone.",
+      ),
     { initialProps: { memory } },
   );
 
   return {
     result,
     unmount,
-    setMemory: (next: UseContextMemoryReturn) => rerender({ memory: next }),
+    setMemory: (next: UseDocMemoryReturn) => rerender({ memory: next }),
   };
 }
 
-const makeReady = (content: string): UseContextMemoryReturn =>
+const makeReady = (content: string): UseDocMemoryReturn =>
   makeMemory({ status: { kind: "ready", content } });
 
 describe("useContextEditorState", () => {

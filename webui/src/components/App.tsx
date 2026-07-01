@@ -30,7 +30,7 @@ import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { ContextScreen } from "./context/ContextScreen";
+import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
 
@@ -144,7 +144,7 @@ export function App() {
     });
   }, [closeSettings, settings, setTheme, display]);
 
-  // Project context overlay (sibling to Settings). Animation timing mirrors
+  // Context overlay (project + global tabs; sibling to Settings). Animation timing mirrors
   // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
   // Transient session state, intentionally not persisted: a refresh or a fresh
   // tab opened from the Max device lands on chat, not the context editor.
@@ -255,7 +255,7 @@ export function App() {
             if (e.target === e.currentTarget) closeContext();
           }}
         >
-          <ContextScreen onClose={closeContext} />
+          <ContextTabs onClose={closeContext} />
         </div>
       )}
       {showSettings && (

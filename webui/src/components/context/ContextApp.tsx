@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import { ContextScreen } from "./ContextScreen";
+import { ContextTabs } from "./ContextTabs";
 
 /**
  * Top-level shell for the /context route. Mounts the theme so dark/light
@@ -18,5 +18,5 @@ export function ContextApp(): preact.JSX.Element {
   // Close on this standalone route means "leave the editor" — navigate to the
   // chat. Full navigation (vs. SPA) is fine: main.tsx only reads pathname at
   // startup, and a clean reload guarantees the chat mounts fresh.
-  return <ContextScreen onClose={() => window.location.assign("/")} />;
+  return <ContextTabs onClose={() => window.location.assign("/")} />;
 }

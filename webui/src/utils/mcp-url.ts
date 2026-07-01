@@ -41,6 +41,15 @@ export function getConfigUrl(): string {
 }
 
 /**
+ * Gets the global-context endpoint URL (the machine-global ~/.producer-pal
+ * context, distinct from the per-project /config memory).
+ * @returns {string} The global-context endpoint URL
+ */
+export function getGlobalContextUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/global-context");
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL
