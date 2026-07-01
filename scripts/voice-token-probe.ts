@@ -36,8 +36,7 @@ import {
 } from "@openai/agents/realtime";
 import { z, type ZodType } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
-import { skills as basicSkills } from "#src/skills/basic.ts";
-import { skills as standardSkills } from "#src/skills/standard.ts";
+import { buildSkills } from "#src/skills/build-skills.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
   buildOpenAIVoiceInstructions,
@@ -47,6 +46,11 @@ import {
 // Inlined from #webui/lib/constants/models.ts: importing that module raw pulls
 // in extensionless webui imports Node can't resolve unbundled. Keep in sync.
 const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
+
+// Re-sourced through buildSkills (formerly the standard.ts / basic.ts monoliths).
+// Standard = default (bar|beat); basic = Stark, matching the historical baseline.
+const standardSkills = buildSkills();
+const basicSkills = buildSkills({ notation: "stark", smallModelMode: true });
 
 /** A measured response's token usage (the realtime `usage` block, normalized). */
 interface TurnUsage {

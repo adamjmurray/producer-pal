@@ -7,8 +7,7 @@ import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
-import { skills as basicSkills } from "#src/skills/basic.ts";
-import { skills } from "#src/skills/standard.ts";
+import { buildSkills } from "#src/skills/build-skills.ts";
 
 interface LiveSetInfo {
   name?: unknown;
@@ -93,7 +92,10 @@ export function connect(
     producerPalVersion: VERSION,
     abletonLiveVersion,
     liveSet: liveSetInfo,
-    skills: context.smallModelMode ? basicSkills : skills,
+    skills: buildSkills({
+      notation: context.notation,
+      smallModelMode: context.smallModelMode,
+    }),
     nextStep:
       "Report the connection status and Live Set overview to the user, then wait for their instructions.",
   };

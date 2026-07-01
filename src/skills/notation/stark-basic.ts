@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-export const skills = `# Producer Pal Skills
+export const starkBasic = `# Producer Pal Skills
 
 Compose in Ableton Live with Producer Pal tools using Stark notation: an
 ultra-minimal format. One line per part, written as \`type: content\`.

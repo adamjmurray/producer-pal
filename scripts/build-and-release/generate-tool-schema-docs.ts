@@ -9,8 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { toJSONSchema, z } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
-import { skills as basicSkills } from "#src/skills/basic.ts";
-import { skills as standardSkills } from "#src/skills/standard.ts";
+import { buildSkills } from "#src/skills/build-skills.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 
@@ -260,8 +259,12 @@ async function main(): Promise<void> {
   }
 
   const skillsFiles: [string, string, string][] = [
-    [standardSkills, "Standard Skills", "skills-standard.md"],
-    [basicSkills, "Basic Skills (small model mode)", "skills-basic.md"],
+    [buildSkills(), "Standard Skills", "skills-standard.md"],
+    [
+      buildSkills({ notation: "stark", smallModelMode: true }),
+      "Basic Skills (small model mode)",
+      "skills-basic.md",
+    ],
   ];
 
   for (const [skills, label, filename] of skillsFiles) {
