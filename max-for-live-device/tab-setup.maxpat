@@ -49,10 +49,10 @@
                     "presentation_rect": [ 181.0, 56.52770707011223, 54.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
-                            "parameter_enum": [ "barbeat", "midi-json", "stark" ],
+                            "parameter_enum": [ "barbeat", "abstark", "stark", "midi-json" ],
                             "parameter_invisible": 1,
                             "parameter_longname": "notation",
-                            "parameter_mmax": 2,
+                            "parameter_mmax": 3,
                             "parameter_modmode": 0,
                             "parameter_shortname": "notation",
                             "parameter_type": 2
