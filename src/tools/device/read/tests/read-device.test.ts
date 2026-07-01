@@ -302,6 +302,20 @@ describe("readDevice", () => {
       expect(result.drumPads).toBeUndefined();
     });
 
+    it("keys drumMap by drum name when notation is abstark", () => {
+      setupDrumRackWithChain();
+
+      const result = readDevice(
+        {
+          deviceId: "drum-rack-123",
+          include: ["drum-map"],
+        },
+        { notation: "abstark" },
+      );
+
+      expect(result.drumMap).toStrictEqual({ kick: "Kick" });
+    });
+
     it("should show deviceCount at maxDepth 0 for drum pad chains", () => {
       setupDrumRackWithChain();
 

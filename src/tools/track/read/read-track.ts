@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { type ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { getDrumMap } from "#src/tools/shared/device/device-reader.ts";
@@ -50,6 +51,7 @@ interface ReadTrackGenericArgs {
   category?: string;
   include?: string[];
   returnTrackNames?: string[];
+  notation?: Notation;
 }
 
 interface SessionClipsResult {
@@ -70,12 +72,12 @@ interface TakeLanesResult {
 /**
  * Read comprehensive information about a track
  * @param args - The parameters
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object (supplies the active notation)
  * @returns Track information
  */
 export function readTrack(
   args: ReadTrackArgs = {},
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
   const { trackIndex, trackId, trackType, returnTrackNames } = args;
   const category = trackType ?? "regular";
@@ -114,6 +116,7 @@ export function readTrack(
     category: resolvedCategory,
     include: args.include,
     returnTrackNames,
+    notation: context.notation,
   });
 }
 
@@ -220,17 +223,19 @@ function processTakeLanes(
  * Add drum map to result from categorized device structure
  * @param result - Result object to add drum map to
  * @param categorizedDevices - Categorized device structure with chains for drum detection
+ * @param notation - Active notation; controls whether drum-map keys are drum names
  */
 function addDrumMapFromDevices(
   result: Record<string, unknown>,
   categorizedDevices: CategorizedDevices,
+  notation?: Notation,
 ): void {
   const allDevices = [
     ...categorizedDevices.midiEffects,
     ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
     ...categorizedDevices.audioEffects,
   ];
-  const drumMap = getDrumMap(allDevices);
+  const drumMap = getDrumMap(allDevices, notation);
 
   if (drumMap != null) {
     result.drumMap = drumMap;
@@ -246,6 +251,7 @@ function addDrumMapFromDevices(
  * @param args.category - Track category: "regular", "return", or "master"
  * @param args.include - Array of data to include in the response
  * @param args.returnTrackNames - Array of return track names for sends
+ * @param args.notation - Active notation; controls whether drum-map keys are drum names
  * @returns Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
@@ -254,6 +260,7 @@ export function readTrackGeneric({
   category = "regular",
   include,
   returnTrackNames,
+  notation,
 }: ReadTrackGenericArgs): Record<string, unknown> {
   const {
     includeDrumMap,
@@ -359,7 +366,7 @@ export function readTrackGeneric({
   if (includeDrumMap) {
     const categorized = categorizeDevices(trackDevices, false, true, false);
 
-    addDrumMapFromDevices(result, categorized);
+    addDrumMapFromDevices(result, categorized, notation);
   }
 
   addSlotIndices(result, track, category);

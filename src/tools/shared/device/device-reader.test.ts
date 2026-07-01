@@ -386,6 +386,67 @@ describe("device-reader", () => {
         C3: "First Kick",
       });
     });
+
+    it.each(["abstark", "stark"] as const)(
+      "keys the drum map by drum name for %s notation",
+      (notation) => {
+        const devices = [
+          {
+            type: "drum-rack",
+            _processedDrumPads: [
+              { note: 36, pitch: "C1", name: "Kick" },
+              { note: 38, pitch: "D1", name: "Snare" },
+              { note: 42, pitch: "F#1", name: "Hi-Hat" },
+            ],
+          },
+        ];
+
+        expect(getDrumMap(devices, notation)).toStrictEqual({
+          kick: "Kick",
+          snare: "Snare",
+          hihat: "Hi-Hat",
+        });
+      },
+    );
+
+    it("falls back to the pitch name for pads outside the drum-name range", () => {
+      const devices = [
+        {
+          type: "drum-rack",
+          _processedDrumPads: [
+            { note: 36, pitch: "C1", name: "Kick" },
+            { note: 60, pitch: "C3", name: "Bell" },
+            { note: -1, pitch: "*", name: "Catch-all" },
+          ],
+        },
+      ];
+
+      expect(getDrumMap(devices, "abstark")).toStrictEqual({
+        kick: "Kick",
+        C3: "Bell",
+        "*": "Catch-all",
+      });
+    });
+
+    it.each(["barbeat", "midi-json", undefined] as const)(
+      "keys the drum map by pitch name for %s notation",
+      (notation) => {
+        const devices = [
+          {
+            type: "drum-rack",
+            _processedDrumPads: [
+              { note: 36, pitch: "C1", name: "Kick" },
+              { note: 38, pitch: "D1", name: "Snare" },
+            ],
+          },
+        ];
+
+        expect(getDrumMap(devices, notation)).toStrictEqual({
+          C1: "Kick",
+          D1: "Snare",
+        });
+      },
+    );
   });
 
   describe("readDevice", () => {

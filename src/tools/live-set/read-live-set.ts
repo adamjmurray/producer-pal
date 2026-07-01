@@ -27,12 +27,12 @@ interface ReadLiveSetArgs {
 /**
  * Read comprehensive information about the Live Set
  * @param args - The parameters
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object (supplies the active notation)
  * @returns Live Set information including tracks, scenes, tempo, time signature, and scale
  */
 export function readLiveSet(
   args: ReadLiveSetArgs = {},
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -76,11 +76,14 @@ export function readLiveSet(
   // Tracks: full details or counts
   if (includeFlags.includeTracks) {
     result.tracks = trackIds.map((_trackId, trackIndex) =>
-      readTrack({
-        trackIndex,
-        include: trackInclude,
-        returnTrackNames,
-      }),
+      readTrack(
+        {
+          trackIndex,
+          include: trackInclude,
+          returnTrackNames,
+        },
+        context,
+      ),
     );
     result.returnTracks = returnTrackIds.map(
       (_returnTrackId, returnTrackIndex) => {
@@ -94,6 +97,7 @@ export function readLiveSet(
           category: "return",
           include: trackInclude,
           returnTrackNames,
+          notation: context.notation,
         });
       },
     );
@@ -105,6 +109,7 @@ export function readLiveSet(
       category: "master",
       include: trackInclude,
       returnTrackNames,
+      notation: context.notation,
     });
   } else {
     result.regularTrackCount = trackIds.length;

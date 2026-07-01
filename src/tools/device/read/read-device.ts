@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
 import {
@@ -50,12 +51,12 @@ interface ReadOptions {
  * @param args.include - Array of data to include in the response
  * @param args.maxDepth - Device tree depth for chains/drum-pads
  * @param args.paramSearch - Filter parameters by substring match on name
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object (supplies the active notation)
  * @returns Device, chain, or drum pad information
  */
 export function readDevice(
   { deviceId, path, include = [], maxDepth = 0, paramSearch }: ReadDeviceArgs,
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
   validateExclusiveParams(deviceId, path, "deviceId", "path");
 
@@ -93,6 +94,7 @@ export function readDevice(
     result,
     includeDrumMap,
     chainsForDrumMap,
+    context.notation,
   );
 
   // Cleanup after drum-map processing (getDrumMap needs _processedDrumPads)
@@ -145,15 +147,20 @@ function readDeviceTarget(
  * @param result - Device result to post-process
  * @param includeDrumMap - Whether drum-map was requested
  * @param chainsForDrumMap - Whether chains were fetched only for drum map building
+ * @param notation - Active notation; controls whether drum-map keys are drum names
  * @returns Post-processed result
  */
 function postProcessDrumMap(
   result: Record<string, unknown>,
   includeDrumMap: boolean,
   chainsForDrumMap: boolean,
+  notation?: Notation,
 ): Record<string, unknown> {
   if (includeDrumMap) {
-    const drumMap = getDrumMap([result as unknown as DeviceWithDrumPads]);
+    const drumMap = getDrumMap(
+      [result as unknown as DeviceWithDrumPads],
+      notation,
+    );
 
     if (drumMap != null) {
       result.drumMap = drumMap;

@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { MIDI_TO_DRUM_NAME } from "#src/notation/abstark/abstark-config.ts";
 import { assertDefined } from "#src/shared/error-utils.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   DEVICE_TYPE,
@@ -49,6 +51,7 @@ interface DeviceWithChains {
 }
 
 interface DrumPadInfo {
+  note?: number;
   pitch: string;
   name: string;
   hasInstrument?: boolean;
@@ -132,12 +135,20 @@ export function cleanupInternalDrumPads(obj: unknown): unknown {
 }
 
 /**
- * Extract track-level drum map from the processed device structure
+ * Extract track-level drum map from the processed device structure.
+ *
+ * Keys are pitch names (e.g. "C1") by default. When notation is "abstark" or
+ * "stark" — the notations whose skills address drum pads by name — keys use the
+ * drum-name vocabulary instead (e.g. "kick"), mirroring the abstark serializer
+ * (MIDI_TO_DRUM_NAME with a pitch-name fallback for pads outside GM notes
+ * 36-51). Values (the Live-configured pad names) are unchanged either way.
  * @param devices - Array of processed device objects
- * @returns Object mapping pitch names to drum pad names, or null if none found
+ * @param notation - Active notation; controls whether keys are drum names
+ * @returns Object mapping drum keys to drum pad names, or null if none found
  */
 export function getDrumMap(
   devices: DeviceWithDrumPads[],
+  notation?: Notation,
 ): Record<string, string> | null {
   /**
    * Recursively find drum rack devices in a device list
@@ -178,12 +189,19 @@ export function getDrumMap(
   const drumMap: Record<string, string> = {};
   const firstDrumRack = assertDefined(drumRacks[0], "first drum rack");
   const drumPads = firstDrumRack._processedDrumPads ?? [];
+  const useDrumNames = notation === "abstark" || notation === "stark";
 
   for (const drumPad of drumPads) {
     if (drumPad.hasInstrument !== false) {
-      const noteName = drumPad.pitch;
+      // Fall back to the pitch name for the catch-all pad (note -1) and any
+      // pad outside the drum-name range, matching the abstark serializer.
+      const midi = drumPad.note ?? -1;
+      const key =
+        useDrumNames && midi >= 0
+          ? (MIDI_TO_DRUM_NAME[midi] ?? drumPad.pitch)
+          : drumPad.pitch;
 
-      drumMap[noteName] = drumPad.name;
+      drumMap[key] = drumPad.name;
     }
   }
 

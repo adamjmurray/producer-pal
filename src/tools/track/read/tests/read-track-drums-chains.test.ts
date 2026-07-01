@@ -181,6 +181,61 @@ describe("readTrack", () => {
       });
     });
 
+    it("keys the drum map by drum name when notation is abstark", () => {
+      setupTrackPathMappedMocks({
+        pathIdMap: {
+          [String(livePath.track(0))]: "track1",
+          [String(livePath.track(0).device(0))]: "drumrack",
+          [String(livePath.track(0).device(0).chain(0))]: "chain1",
+          [String(livePath.track(0).device(0).chain(1))]: "chain2",
+        },
+        objects: {
+          Track: mockTrackProperties({
+            name: "Track Drum Rack With Chains",
+            devices: children("drumrack"),
+          }),
+          drumrack: {
+            name: "Drum Rack With Chains",
+            class_name: "DrumGroupDevice",
+            class_display_name: "Drum Rack",
+            type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+            is_active: 1,
+            can_have_chains: 1,
+            can_have_drum_pads: 1,
+            chains: children("chain1", "chain2"),
+            return_chains: [],
+          },
+          chain1: {
+            in_note: 36, // C1 - kick
+            name: "Kick",
+            color: 16711680,
+            mute: 0,
+            solo: 0,
+            devices: children("kick_device"),
+          },
+          chain2: {
+            in_note: 38, // D1 - snare
+            name: "Snare",
+            color: 65280,
+            mute: 0,
+            solo: 0,
+            devices: children("snare_device"),
+          },
+          kick_device: createSimpleInstrumentMock(),
+          snare_device: createSimpleInstrumentMock(),
+        },
+      });
+      const result = readTrack(
+        { trackIndex: 0, include: ["drum-map"] },
+        { notation: "abstark" },
+      );
+
+      expect(result.drumMap).toStrictEqual({
+        kick: "Kick",
+        snare: "Snare",
+      });
+    });
+
     it("stops at first drum rack found", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
