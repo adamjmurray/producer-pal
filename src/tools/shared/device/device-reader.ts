@@ -137,13 +137,11 @@ export function cleanupInternalDrumPads(obj: unknown): unknown {
 /**
  * Extract track-level drum map from the processed device structure.
  *
- * Keys are pitch names (e.g. "C1") by default. When notation is "abstark" or
- * "stark" — the notations whose skills address drum pads by name — keys use the
- * drum-name vocabulary instead (e.g. "kick"), mirroring the abstark serializer
- * (MIDI_TO_DRUM_NAME with a pitch-name fallback for pads outside GM notes
- * 36-51). Values (the Live-configured pad names) are unchanged either way.
+ * Keys match how the active notation addresses drum pads (see drumMapKey):
+ * pitch names by default, drum names for "abstark"/"stark", MIDI numbers for
+ * "midi-json". Values (the Live-configured pad names) are unchanged.
  * @param devices - Array of processed device objects
- * @param notation - Active notation; controls whether keys are drum names
+ * @param notation - Active notation; controls the drum-map key form
  * @returns Object mapping drum keys to drum pad names, or null if none found
  */
 export function getDrumMap(
@@ -189,23 +187,42 @@ export function getDrumMap(
   const drumMap: Record<string, string> = {};
   const firstDrumRack = assertDefined(drumRacks[0], "first drum rack");
   const drumPads = firstDrumRack._processedDrumPads ?? [];
-  const useDrumNames = notation === "abstark" || notation === "stark";
 
   for (const drumPad of drumPads) {
     if (drumPad.hasInstrument !== false) {
-      // Fall back to the pitch name for the catch-all pad (note -1) and any
-      // pad outside the drum-name range, matching the abstark serializer.
-      const midi = drumPad.note ?? -1;
-      const key =
-        useDrumNames && midi >= 0
-          ? (MIDI_TO_DRUM_NAME[midi] ?? drumPad.pitch)
-          : drumPad.pitch;
-
-      drumMap[key] = drumPad.name;
+      drumMap[drumMapKey(drumPad, notation)] = drumPad.name;
     }
   }
 
   return Object.keys(drumMap).length > 0 ? drumMap : {};
+}
+
+/**
+ * Pick the drum-map key for a pad given the active notation, matching how that
+ * notation addresses drum pads: drum names for abstark/stark (mirroring the
+ * abstark serializer's MIDI_TO_DRUM_NAME), MIDI numbers for midi-json, pitch
+ * names otherwise. The catch-all pad (note -1) and pads outside the drum-name
+ * range fall back to the pitch name.
+ * @param drumPad - Processed drum pad
+ * @param notation - Active notation
+ * @returns The drum-map key for this pad
+ */
+function drumMapKey(drumPad: DrumPadInfo, notation?: Notation): string {
+  const midi = drumPad.note ?? -1;
+
+  if (midi < 0) {
+    return drumPad.pitch;
+  }
+
+  if (notation === "abstark" || notation === "stark") {
+    return MIDI_TO_DRUM_NAME[midi] ?? drumPad.pitch;
+  }
+
+  if (notation === "midi-json") {
+    return String(midi);
+  }
+
+  return drumPad.pitch;
 }
 
 /**

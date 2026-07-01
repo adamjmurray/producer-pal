@@ -428,7 +428,7 @@ describe("device-reader", () => {
       });
     });
 
-    it.each(["barbeat", "midi-json", undefined] as const)(
+    it.each(["barbeat", undefined] as const)(
       "keys the drum map by pitch name for %s notation",
       (notation) => {
         const devices = [
@@ -447,6 +447,25 @@ describe("device-reader", () => {
         });
       },
     );
+
+    it("keys the drum map by MIDI number for midi-json notation", () => {
+      const devices = [
+        {
+          type: "drum-rack",
+          _processedDrumPads: [
+            { note: 36, pitch: "C1", name: "Kick" },
+            { note: 38, pitch: "D1", name: "Snare" },
+            { note: -1, pitch: "*", name: "Catch-all" },
+          ],
+        },
+      ];
+
+      expect(getDrumMap(devices, "midi-json")).toStrictEqual({
+        36: "Kick",
+        38: "Snare",
+        "*": "Catch-all",
+      });
+    });
   });
 
   describe("readDevice", () => {
