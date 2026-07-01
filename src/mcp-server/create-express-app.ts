@@ -21,6 +21,7 @@ import {
 } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
+import { withGlobalContext } from "./helpers/global-context-inject.ts";
 import { isLocalOrigin } from "./helpers/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -129,6 +130,8 @@ function applyLiveApiEnabled(next: boolean): void {
   }
 }
 
+const callLiveApiWithGlobalContext = withGlobalContext(callLiveApi);
+
 interface JsonRpcError {
   jsonrpc: string;
   error: {
@@ -217,7 +220,7 @@ export function createExpressApp(): Express {
 
       console.info(`MCP request: ${method}`);
 
-      const server = createMcpServer(callLiveApi, {
+      const server = createMcpServer(callLiveApiWithGlobalContext, {
         smallModelMode: config.smallModelMode,
         liveApiEnabled: config.liveApiEnabled,
         tools: config.tools,
@@ -288,7 +291,7 @@ export function createExpressApp(): Express {
 
   app.post("/config", handleConfigUpdate);
 
-  registerRestApiRoutes(app, () => config, callLiveApi);
+  registerRestApiRoutes(app, () => config, callLiveApiWithGlobalContext);
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);
