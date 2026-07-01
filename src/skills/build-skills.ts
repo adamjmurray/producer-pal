@@ -4,40 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
-import { coreBasic } from "#src/skills/core/core-basic.ts";
-import { coreStandard } from "#src/skills/core/core-standard.ts";
-import { abstark } from "#src/skills/notation/abstark.ts";
-import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
-import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
-import { midiJson } from "#src/skills/notation/midi-json.ts";
-import { stark } from "#src/skills/notation/stark.ts";
+import {
+  activeSkillSlots,
+  SKILL_SLOTS,
+  type SkillSlotName,
+} from "#src/skills/skill-slots.ts";
 
 const HEADER = "# Producer Pal Skills";
-
-/**
- * Standard-level notation heads, prepended to the shared {@link coreStandard}
- * body. midi-json/stark/abstark reuse a single head across both levels — their
- * notes format has no simplified variant — so the same string appears in
- * {@link NOTATION_BASIC}; only bar|beat has a distinct standard head.
- */
-const NOTATION_STANDARD: Record<Notation, string> = {
-  barbeat: barbeatStandard,
-  "midi-json": midiJson,
-  stark,
-  abstark,
-};
-
-/**
- * Basic (small-model) notation heads, prepended to the shared {@link coreBasic}
- * body. Only bar|beat differs from {@link NOTATION_STANDARD}; the other three
- * share one head (see above).
- */
-const NOTATION_BASIC: Record<Notation, string> = {
-  barbeat: barbeatBasic,
-  "midi-json": midiJson,
-  stark,
-  abstark,
-};
 
 /** Runtime context that selects which skills variant is assembled. */
 export interface BuildSkillsOptions {
@@ -48,22 +21,49 @@ export interface BuildSkillsOptions {
 }
 
 /**
+ * Per-slot user overrides (~/.producer-pal skills overrides). A present entry
+ * replaces that built-in fragment; an absent one tracks the release default.
+ */
+export type SkillOverrides = Partial<Record<SkillSlotName, string>>;
+
+/**
  * Assemble the Producer Pal Skills string for the active runtime context. The
  * level (standard vs basic) selects the shared core body; the notation selects
- * the head prepended to it. Both are `HEADER + notation head + core`.
+ * the head prepended to it — both resolved to slots by {@link activeSkillSlots}.
+ * Each slot uses the user's override when present, else the release-tuned
+ * built-in. The result is `HEADER + notation head + core`.
  *
  * @param options - Runtime context ({@link BuildSkillsOptions}).
  * @param options.notation - The global notation setting (defaults to bar|beat).
  * @param options.smallModelMode - Whether small-model mode is active.
+ * @param overrides - Per-slot user overrides (empty by default).
  * @returns The skills string returned in the ppal-connect tool result.
  */
-export function buildSkills({
-  notation = DEFAULT_NOTATION,
-  smallModelMode = false,
-}: BuildSkillsOptions = {}): string {
-  const [head, core] = smallModelMode
-    ? [NOTATION_BASIC[notation], coreBasic]
-    : [NOTATION_STANDARD[notation], coreStandard];
+export function buildSkills(
+  {
+    notation = DEFAULT_NOTATION,
+    smallModelMode = false,
+  }: BuildSkillsOptions = {},
+  overrides: SkillOverrides = {},
+): string {
+  const { head, core } = activeSkillSlots(notation, smallModelMode);
 
-  return `${HEADER}\n\n${head}\n\n${core}`;
+  return `${HEADER}\n\n${resolveSlot(head, overrides)}\n\n${resolveSlot(
+    core,
+    overrides,
+  )}`;
+}
+
+// --- Helpers below main export ---
+
+/**
+ * The active fragment for a slot: the user override when present, else the
+ * built-in default.
+ *
+ * @param slot - The slot name to resolve
+ * @param overrides - Per-slot user overrides
+ * @returns The fragment string to emit for this slot
+ */
+function resolveSlot(slot: SkillSlotName, overrides: SkillOverrides): string {
+  return overrides[slot] ?? SKILL_SLOTS[slot].builtIn;
 }

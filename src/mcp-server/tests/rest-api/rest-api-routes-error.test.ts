@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { setupRestRoutesServer } from "./express-app-test-helpers.ts";
+import { setupRestRoutesServer } from "../express-app-test-helpers.ts";
 
 describe("REST API Routes – callLiveApi error path", () => {
   const routesState = setupRestRoutesServer({

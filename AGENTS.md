@@ -170,6 +170,19 @@ web UI architecture.
   whether corresponding changes are needed in the `smallModelModeConfig`
   (`excludeParams`, `descriptionOverrides`, `toolDescription`).
 
+- **Filesystem access is Node-side only**: The V8 runtime
+  (`src/live-api-adapter/`) has no filesystem, and shipped `src/**` cannot shell
+  out (`child_process` is banned). All file reads/writes (`node:fs`) live on the
+  Node-for-Max side (`src/mcp-server/`). User-content / config features
+  (`~/.producer-pal` overrides, global context, custom system prompt) are pure
+  MCP/REST service concerns — they do NOT use the Live API, and from the outside
+  it does not matter which runtime services which part of a request. Content
+  that must reach external MCP clients is injected into the `ppal-connect`
+  result Node-side (the append seam in `helpers/global-context-inject.ts`),
+  never built in a V8 tool handler that has no way to read the files. The webui
+  (also no filesystem) round-trips through Node REST routes for the same reason.
+  See `dev/Architecture.md` → Runtime Boundary.
+
 - **Live API**: Always use `src/live-api-adapter/live-api-extensions.ts`
   interface instead of raw `.get("property")?.[0]` calls
 

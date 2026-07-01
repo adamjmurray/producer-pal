@@ -11,7 +11,7 @@ import {
   readSystemPrompt,
   writeSystemPrompt,
 } from "#src/mcp-server/helpers/system-prompt-store.ts";
-import { useTempConfigDir } from "./config-dir-test-helpers.ts";
+import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
 const getDir = useTempConfigDir();
 

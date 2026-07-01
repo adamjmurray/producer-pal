@@ -13,7 +13,13 @@
 // primitives with its own filename so the dir-resolution, atomic write, and
 // Vitest-inert guard live in exactly one place.
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -87,6 +93,23 @@ export function writeConfigMarkdown(filename: string, content: string): void {
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(tmpPath, content, "utf8");
   renameSync(tmpPath, target);
+}
+
+/**
+ * Delete a config markdown slot, if it exists. Used to reset an override back
+ * to the built-in default (empty folder ⇒ latest built-ins, per ADR-0010). A
+ * missing file is treated as already-reset, not an error.
+ *
+ * @param filename - Slot filename (e.g. "skills/core-standard.md")
+ */
+export function deleteConfigMarkdown(filename: string): void {
+  if (isConfigDirInert()) return;
+
+  try {
+    unlinkSync(resolveConfigPath(filename));
+  } catch {
+    // Missing file, permissions, etc. — nothing to reset.
+  }
 }
 
 /**

@@ -10,7 +10,7 @@ import {
   putJson,
   startMarkdownRouteServer,
   useTempConfigDir,
-} from "./config-dir-test-helpers.ts";
+} from "../config-dir-test-helpers.ts";
 
 // The shared route factory's branches (localhost gate, 400, byte-faithful echo)
 // are covered by global-context-route.test.ts. Here we only confirm the

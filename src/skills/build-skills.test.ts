@@ -83,6 +83,69 @@ describe("buildSkills - composition", () => {
   });
 });
 
+describe("buildSkills - overrides", () => {
+  it("no overrides is identical to passing an empty overrides object", () => {
+    expect(buildSkills({ notation: "stark" }, {})).toBe(
+      buildSkills({ notation: "stark" }),
+    );
+  });
+
+  it("replaces the active notation head slot", () => {
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { "barbeat-standard": "MY CUSTOM HEAD" },
+    );
+
+    expect(result).toBe(`${HEADER}\n\nMY CUSTOM HEAD\n\n${coreStandard}`);
+    expect(result).not.toContain(barbeatStandard);
+  });
+
+  it("replaces the active core slot", () => {
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { "core-standard": "MY CUSTOM CORE" },
+    );
+
+    expect(result).toBe(`${HEADER}\n\n${barbeatStandard}\n\nMY CUSTOM CORE`);
+  });
+
+  it("ignores overrides for slots not active in this context", () => {
+    // core-basic and the other notation heads are irrelevant to standard bar|beat.
+    const result = buildSkills(
+      { notation: "barbeat" },
+      {
+        "core-basic": "IGNORED",
+        "midi-json": "IGNORED",
+        stark: "IGNORED",
+      },
+    );
+
+    expect(result).toBe(buildSkills({ notation: "barbeat" }));
+  });
+
+  it("applies the basic core + basic head overrides in small-model mode", () => {
+    const result = buildSkills(
+      { notation: "barbeat", smallModelMode: true },
+      { "barbeat-basic": "BASIC HEAD", "core-basic": "BASIC CORE" },
+    );
+
+    expect(result).toBe(`${HEADER}\n\nBASIC HEAD\n\nBASIC CORE`);
+  });
+
+  it("shares one override across both levels for midi-json/stark/abstark", () => {
+    // These reuse a single head slot, so a stark override lands in standard and
+    // basic alike.
+    const standard = buildSkills({ notation: "stark" }, { stark: "STARK!" });
+    const basic = buildSkills(
+      { notation: "stark", smallModelMode: true },
+      { stark: "STARK!" },
+    );
+
+    expect(standard).toContain("STARK!");
+    expect(basic).toContain("STARK!");
+  });
+});
+
 describe("buildSkills - ENABLE_CODE_EXEC", () => {
   afterEach(() => {
     vi.unstubAllEnvs();

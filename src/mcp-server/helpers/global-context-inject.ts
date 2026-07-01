@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
-import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
+import {
+  withConnectAppend,
+  type WrappedCallLiveApi,
+} from "./connect-append.ts";
 import { readGlobalContext } from "./global-context-store.ts";
 
 /**
@@ -21,34 +24,27 @@ import { readGlobalContext } from "./global-context-store.ts";
  */
 export function withGlobalContext(
   inner: CallLiveApiFunction,
-): (
-  tool: string,
-  args: object,
-  overrides?: RequestOverrides,
-) => Promise<McpResponse> {
-  return async (
-    tool: string,
-    args: object,
-    overrides?: RequestOverrides,
-  ): Promise<McpResponse> => {
-    const result = (await inner(tool, args, overrides)) as McpResponse;
+): WrappedCallLiveApi {
+  return withConnectAppend(inner, globalContextBlock);
+}
 
-    if (tool === "ppal-connect" && !result.isError) {
-      // Trim here (not in the store) so the raw file stays byte-faithful for
-      // the editor's GET/PUT round-trip while the injected block is clean.
-      const globalContext = readGlobalContext().trim();
+// --- Helpers below main export ---
 
-      if (globalContext) {
-        result.content.push({
-          type: "text",
-          text:
-            "Global context — persistent user preferences and facts that " +
-            "apply across ALL projects (distinct from this Live Set's " +
-            `per-project context):\n\n${globalContext}`,
-        });
-      }
-    }
+/**
+ * The global-context block to append, or null when there is no context. Trims
+ * here (not in the store) so the raw file stays byte-faithful for the editor's
+ * GET/PUT round-trip while the injected block is clean.
+ *
+ * @returns The labeled global-context text, or null to skip
+ */
+function globalContextBlock(): string | null {
+  const globalContext = readGlobalContext().trim();
 
-    return result;
-  };
+  if (!globalContext) return null;
+
+  return (
+    "Global context — persistent user preferences and facts that apply " +
+    "across ALL projects (distinct from this Live Set's per-project " +
+    `context):\n\n${globalContext}`
+  );
 }

@@ -54,47 +54,17 @@ describe("connect", () => {
     expect(result.memoryContent).toBeUndefined();
   });
 
-  it("returns standard skills by default", () => {
+  it("does not build the skills blob (assembled Node-side, not in V8)", () => {
+    // Skills moved out of the V8 connect() body: the override files live only on
+    // the Node-for-Max side, so buildSkills runs there and is injected into the
+    // ppal-connect result (see skills-inject.ts). connect() must stay skills-free.
     setupConnectMocks();
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const result = connect();
+    const result = connect({}, { smallModelMode: true }) as {
+      skills?: unknown;
+    };
 
-    expect(result.skills).toContain("Producer Pal Skills");
-    expect(result.skills).toContain("## Transforms");
-  });
-
-  it("returns basic skills when smallModelMode is enabled", () => {
-    setupConnectMocks({ liveSetName: "Small Model Project" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const result = connect({}, { smallModelMode: true });
-
-    expect(result.skills).toContain("Producer Pal Skills");
-    expect(result.skills).not.toContain("## Transforms");
-  });
-
-  it("standard skills include advanced features that basic skills omit", () => {
-    setupConnectMocks();
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const standardResult = connect({}, {});
-    const basicResult = connect({}, { smallModelMode: true });
-
-    // Standard includes advanced features
-    expect(standardResult.skills).toContain("@N="); // bar copying
-    expect(standardResult.skills).toContain("v0 C3 1|1"); // v0 deletion
-    expect(standardResult.skills).toContain("## Transforms");
-    expect(standardResult.skills).toContain("**Creating Music:**");
-    expect(standardResult.skills).toContain("velocity dynamics");
-    expect(standardResult.skills).toContain("routeToSource");
-
-    // Basic omits advanced features
-    expect(basicResult.skills).not.toContain("@N=");
-    expect(basicResult.skills).not.toContain("v0 C3 1|1");
-    expect(basicResult.skills).not.toContain("## Transforms");
-    expect(basicResult.skills).not.toContain("**Creating Music:**");
-    expect(basicResult.skills).not.toContain("velocity dynamics");
-    expect(basicResult.skills).not.toContain("routeToSource");
+    expect(result.skills).toBeUndefined();
   });
 });

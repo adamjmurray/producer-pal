@@ -6,8 +6,8 @@
 import Max from "max-api";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
-import { TOOL_NAMES } from "../create-mcp-server.ts";
-import { setupExpressAppServer } from "./express-app-test-helpers.ts";
+import { TOOL_NAMES } from "../../create-mcp-server.ts";
+import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -409,6 +409,8 @@ describe("REST API Routes", () => {
     });
 
     it("should join content as a string when format=compact", async () => {
+      // Use a non-connect tool: ppal-connect now gets a Node-side skills block
+      // appended (see skills-inject.ts), which would pollute the join under test.
       stubMaxOutlet({
         content: [
           { type: "text", text: "{ok:true}" },
@@ -416,11 +418,25 @@ describe("REST API Routes", () => {
         ],
       });
 
-      const response = await callToolWithFormat("ppal-connect", "compact");
+      const response = await callToolWithFormat("ppal-read-track", "compact");
       const body = await response.json();
 
       expect(body.result).toBe("{ok:true}\nWARNING: heads up");
       expect(body.warnings).toBeUndefined();
+    });
+
+    it("appends the Node-side skills block to ppal-connect (compact)", async () => {
+      // Guards the create-express-app wiring: withSkills is composed into the
+      // REST/MCP call path, so ppal-connect's joined output carries the skills.
+      stubMaxOutlet({
+        content: [{ type: "text", text: "{connected:true}" }],
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "compact");
+      const body = await response.json();
+
+      expect(body.result).toContain("{connected:true}");
+      expect(body.result).toContain("# Producer Pal Skills");
     });
 
     it("should pass compactOutput: true when format=compact", async () => {
