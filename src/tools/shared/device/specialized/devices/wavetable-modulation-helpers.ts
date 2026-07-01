@@ -7,7 +7,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { coerceInt } from "../specialized-device-param-helpers.ts";
 
-// Wavetable mod-matrix helpers. AJM-373. See
+// Wavetable mod-matrix helpers. See
 // dev/Specialized-Devices.md.
 //
 // Wavetable's modulation matrix is imperative: targets are registered by

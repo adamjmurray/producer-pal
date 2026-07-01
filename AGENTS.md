@@ -201,6 +201,14 @@ web UI architecture.
     (`console.log()` and `console.error()` are NOT relayed.)
   - Example: `console.warn("quantize parameter ignored for audio clip")`
 
+- **No Linear ticket references in the repo**: This repository is public; Linear
+  ticket numbers are private. Never write a Linear reference (the `AJM-` prefix
+  followed by digits, e.g. `AJM-NNN`) anywhere in tracked files — code comments,
+  doc prose, test names, or commit/PR text. Explain the reasoning directly
+  instead of pointing at a ticket. Enforced by
+  `src/test/meta/no-linear-refs.test.ts`, which scans every tracked text file
+  for the pattern.
+
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
   in `src/tools/core/connect.ts`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its

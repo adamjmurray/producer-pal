@@ -105,7 +105,7 @@ const baseRules = {
   "no-extra-bind": "error", // Remove unnecessary .bind() calls
   "no-useless-concat": "error", // "a" + "b" should be "ab"
 
-  // Security - eval family (AJM-576: completely ban eval/exec).
+  // Security - eval family (completely ban eval/exec).
   // node:vm is deliberately NOT banned here: the gated, dev-only code-exec
   // feature (src/mcp-server/code-executor.ts, behind ENABLE_CODE_EXEC) uses
   // vm.runInContext by design. Shelling out (child_process) is banned in
@@ -860,7 +860,7 @@ export default [
     },
   },
 
-  // AJM-576: enforce the Max-aware console wrapper over the built-in global
+  // Enforce the Max-aware console wrapper over the built-in global
   // console in production src/ code. The global console.log/error is NOT
   // relayed to the LLM (only the wrappers' output reaches the MCP response),
   // so a bare global console is almost always a silent logging bug. Importing
@@ -896,7 +896,7 @@ export default [
     },
   },
 
-  // AJM-576: shipped src/ code must never shell out. child_process (exec /
+  // Shipped src/ code must never shell out. child_process (exec /
   // execSync / spawn) is a form of exec; dev tooling in scripts/ may use it,
   // but production src/ has no business launching processes.
   {

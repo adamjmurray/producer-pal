@@ -5,7 +5,7 @@
 
 /**
  * Drum-kit capability: can the model build a Drum Rack in ONE device call using
- * path-prefixed sample params (AJM-503)?
+ * path-prefixed sample params?
  *
  * Requires Ableton (agentic — drives a live model against Live).
  *

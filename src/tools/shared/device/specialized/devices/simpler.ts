@@ -19,7 +19,7 @@ import {
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
-// Simpler (SimplerDevice, class_name "OriginalSimpler"). AJM-371. See
+// Simpler (SimplerDevice, class_name "OriginalSimpler"). See
 // dev/Specialized-Devices.md.
 //
 // `sample` (file path) and `gainDb` are normal writable pseudo-params: set them

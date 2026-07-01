@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Stryker mutation testing config (AJM-560).
+// Stryker mutation testing config.
 //
 // Mutation testing introduces small faults ("mutants") into the source and
 // checks whether the test suite fails. A surviving mutant = a behavior no test

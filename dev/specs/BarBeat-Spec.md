@@ -539,15 +539,15 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 
 ## Pattern Brackets (Streams)
 
-> **Status: design locked 2026-06-01, fully implemented (AJM-482 / AJM-483).**
-> This section is the authoritative design contract for the bracket/stream
-> feature. **Pitch streams (`[C3 E3 G3]`, AJM-482) and value streams for
-> velocity/duration/probability (`[v80 v100]`, `[n/4 n/8]`, `[p1 p0.6]`,
-> AJM-483) ship in v1.4.12, including the cross-event cursor, the zip, and the
-> no-`@step` duration-fold** — streams step across separate time positions,
-> multiple sibling streams cycle independently against a shared emission index,
-> and (with `@step` omitted) a duration stream folds its cycled values into the
-> position spacing as well as each note's length.
+> **Status: design locked 2026-06-01, fully implemented.** This section is the
+> authoritative design contract for the bracket/stream feature. **Pitch streams
+> (`[C3 E3 G3]`) and value streams for velocity/duration/probability
+> (`[v80 v100]`, `[n/4 n/8]`, `[p1 p0.6]`) ship in v1.4.12, including the
+> cross-event cursor, the zip, and the no-`@step` duration-fold** — streams step
+> across separate time positions, multiple sibling streams cycle independently
+> against a shared emission index, and (with `@step` omitted) a duration stream
+> folds its cycled values into the position spacing as well as each note's
+> length.
 
 ### The model: a parameter's current state is a _stream_
 
@@ -626,11 +626,11 @@ emits one note, the length-1 == scalar invariant.
   element (`[C3 E3 G3] 1|1x3@n/4` — the time position needs its space). Other
   adjacencies (`C3E3`, `v80v100`) remain ambiguous and are rejected.
 
-> **Supersedes the AJM-482 syntax sketch.** 482 originally sketched a group as
-> "whatever's grouped," bundling a velocity with a pitch
-> (`[(v100 C3) (v80 E3)]`). The resolved AJM-483 model **deletes** per-element
-> bundling: parameters vary as **independent zipped streams**, and `(...)` is a
-> chord only. Per-step velocity is `[v100 v80] [C3 E3]`, never `[(v100 C3) …]`.
+> **Supersedes the earlier syntax sketch.** The earlier sketch treated a group
+> as "whatever's grouped," bundling a velocity with a pitch
+> (`[(v100 C3) (v80 E3)]`). The resolved model **deletes** per-element bundling:
+> parameters vary as **independent zipped streams**, and `(...)` is a chord
+> only. Per-step velocity is `[v100 v80] [C3 E3]`, never `[(v100 C3) …]`.
 
 ### Cursor lifetime
 
@@ -650,12 +650,12 @@ emits one note, the length-1 == scalar invariant.
   two independent streams, each starting at index 0.
 
 ```
-// Pitch cross-event cursor (AJM-482):
+// Pitch cross-event cursor:
 [C3 E3 G3] 1|1 1|2 1|3   // C3@1|1, E3@1|2, G3@1|3 (cursor crosses 3 positions)
 [C3 E3] 1|1 1|2 1|3      // C3, E3, C3 (cursor wraps)
 [C3 E3] 1|1 F3 1|2 1|3   // C3, then F3 rewinds the cursor and broadcasts: F3, F3
 
-// Value stream cross-event cursor (AJM-483):
+// Value stream cross-event cursor:
 [v80 v100] C3 1|1 D3 1|2 E3 1|3   // C3 v80, D3 v100, E3 v80
                                   // (velocity cursor crosses 3 separate events)
 ```
@@ -721,7 +721,7 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 
 ### Worked examples
 
-**Melodic stepping (AJM-482), `@step` grid, meter-safe:**
+**Melodic stepping, `@step` grid, meter-safe:**
 
 ```
 [C3 E3 G3] 1|1x3@n/4      // C3@1|1, E3@1|2, G3@1|3
@@ -730,14 +730,14 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 [C3 E3 G3 C4] 1|1x4@n3/8  // four dotted-quarter steps (e.g. felt beats in 12/8)
 ```
 
-**Phase pattern (AJM-483), coprime cycling under `@step`:**
+**Phase pattern, coprime cycling under `@step`:**
 
 ```
 [v80 v100] [C3 E3 G3] 1|1x8@n/8
 // C3 v80, E3 v100, G3 v80, C3 v100, E3 v80, G3 v100, C3 v80, E3 v100
 ```
 
-**Gallop (AJM-483 duration-fold, no `@step`):**
+**Gallop (duration-fold, no `@step`):**
 
 ```
 [n/4 n/8] C3 1|1x8

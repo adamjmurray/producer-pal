@@ -132,7 +132,7 @@ describe("Drift pseudo-params", () => {
       },
     );
 
-    it("omits a free-slot source when target index is out of range (AJM-422)", () => {
+    it("omits a free-slot source when target index is out of range", () => {
       // TARGETS has 12 labels (indices 0-11). Index 99 returns undefined from
       // readEnumByIndex — without the `== null` guard, the source would emit as
       // a phantom active route even though the target field is omitted.
@@ -433,7 +433,7 @@ describe("Drift pseudo-params", () => {
 
     it("warns and skips an out-of-range value (Live reverts, does not clamp)", () => {
       // pitch_bend_range max is 12; Live silently reverts >12 writes, so we
-      // pre-validate rather than pass the value through. See AJM-389.
+      // pre-validate rather than pass the value through.
       const device = registerDrift();
 
       applySpecializedParamWrite(device, "pitchBendRange", 13, "updateDevice");

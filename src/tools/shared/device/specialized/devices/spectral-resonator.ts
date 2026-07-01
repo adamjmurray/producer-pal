@@ -13,7 +13,7 @@ import {
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Spectral Resonator (SpectralResonatorDevice, class_name "Transmute").
-// AJM-378. See dev/Specialized-Devices.md.
+// See dev/Specialized-Devices.md.
 //
 // Enum index→label mappings and the polyphony count set were verified against
 // Live 12.4's UI (2026-05-22). pitchMode (pitch_mode) is the Hz/Note selector

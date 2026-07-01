@@ -54,8 +54,8 @@ export interface InterpreterState {
    */
   pitchStreamCursor: number;
   /**
-   * Active value streams for velocity/duration/probability (pattern brackets,
-   * AJM-483). When non-null, the stream OVERRIDES the captured per-pitch value
+   * Active value streams for velocity/duration/probability (pattern
+   * brackets). When non-null, the stream OVERRIDES the captured per-pitch value
    * at emission, cycled by its own cursor; when null, emission uses the value
    * captured into each PitchState (the legacy per-pitch scalar). Durations are
    * stored in musical beats. Each persists until its parameter is reassigned (a
@@ -103,7 +103,7 @@ export function clearPitchBuffer(state: InterpreterState): void {
 /**
  * Drop all carried VALUE streams (velocity/duration/probability) and rewind
  * their cursors. Companion to {@link clearPitchBuffer}: a `[...]` value stream
- * carries across emitted positions by its own cursor (AJM-483) exactly as a
+ * carries across emitted positions by its own cursor exactly as a
  * pitch stream does, so the operations that forget the carried pitch stream
  * (`@clear`, bar copy) must forget the carried value streams too — otherwise a
  * velocity/duration/probability stream keeps cycling past a `@clear` that wiped

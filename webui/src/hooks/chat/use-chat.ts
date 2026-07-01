@@ -376,7 +376,7 @@ export function useChat<
 
         // Queued follow-ups coalesce into a single user turn (joined by blank
         // lines); the overrides (currently just `thinking`) were captured once
-        // from the first queued message and apply to the merged turn (AJM-552).
+        // from the first queued message and apply to the merged turn.
         currentMessage = queued.map((m) => m.text).join("\n\n");
         currentOptions = overrides;
       }

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenarios for value streams (velocity + duration pattern brackets, AJM-483).
+ * Scenarios for value streams (velocity + duration pattern brackets).
  *
  * A value bracket `[v110 v70]` cycles a velocity across notes — `[v110 v70] C3
  * 1|1x8@n/8` is a loud/soft alternating line. A duration bracket with no `@step`

@@ -121,7 +121,7 @@ describe("Transform Parser - where() predicate", () => {
     });
   });
 
-  describe("function operands (AJM-517)", () => {
+  describe("function operands", () => {
     it("allows a math function on either side", () => {
       const result = parseAssignments("where(abs(note.start - 4) < 1): v0");
 

@@ -159,7 +159,7 @@ function registerLiveSetTracks(): void {
 /**
  * Register a live_set that also exposes a return track ("A-Reverb", id "r1") and
  * the master track ("Main", id "master-1"), so sidechain reads can resolve
- * return/master sources to track ids (AJM-391).
+ * return/master sources to track ids.
  */
 function registerLiveSetWithReturnsAndMaster(): void {
   registerMockObject("live_set", {

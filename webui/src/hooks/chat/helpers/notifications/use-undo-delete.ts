@@ -31,8 +31,8 @@ export interface UndoDeleteReturn {
 /**
  * Tracks recently deleted conversations so they can be restored (undone).
  * Deletes stack LIFO: the banner always reflects the latest deletion, and each
- * undo restores that record then reveals the previous one (multi-level undo, per
- * AJM-568's "history of > 1"). Records live only in memory until undone or
+ * undo restores that record then reveals the previous one (multi-level undo with
+ * a history depth greater than one). Records live only in memory until undone or
  * dismissed — the DB row is already gone by the time {@link pushDeleted} runs.
  * @param refreshList - Refreshes the conversation list after a restore
  * @returns Undo banner state and handlers

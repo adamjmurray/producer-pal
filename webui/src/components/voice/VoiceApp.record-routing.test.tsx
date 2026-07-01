@@ -83,7 +83,7 @@ function renderWithLoadedRecord(
 
 // Loading an OpenAI voice record while current Settings select Gemini must
 // resume on OpenAI (not silently mount the Gemini backend with the wrong model
-// and a missing-key state). Mirror for the inverse below. Drives AJM-428.
+// and a missing-key state). Mirror for the inverse below.
 describe("VoiceApp record-aware routing", () => {
   it("routes a loaded OpenAI record to the OpenAI backend even when current settings are Gemini", () => {
     renderWithLoadedRecord("openai", "gpt-realtime-2", {
@@ -130,7 +130,7 @@ describe("VoiceApp record-aware routing", () => {
     ).toBe(false);
   });
 
-  // Older voice records (pre-AJM-329) were saved without a `provider` field —
+  // Older voice records were previously saved without a `provider` field —
   // routing has to fall back to sniffing the model id so they don't all
   // accidentally route to OpenAI.
   it("routes a legacy record (no stored provider) on its model id — Gemini side", () => {

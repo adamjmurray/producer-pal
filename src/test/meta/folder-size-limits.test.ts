@@ -8,7 +8,7 @@ import {
   assertFolderSizeLimit,
   assertTestFileRatio,
   projectRoot,
-} from "./helpers/meta-test-helpers.ts";
+} from "#src/test/helpers/meta-test-helpers.ts";
 
 const MAX_ITEMS_PER_FOLDER = 12;
 

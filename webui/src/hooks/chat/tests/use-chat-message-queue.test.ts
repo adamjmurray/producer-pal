@@ -297,7 +297,7 @@ describe("useChat message queuing", () => {
   });
 
   it("force-saves a content-less fork as its own sibling so the queued follow-up doesn't inherit the fork signal", async () => {
-    // The narrow AJM-539 case: a fork that completes SUCCESSFULLY but streams
+    // The narrow case: a fork that completes SUCCESSFULLY but streams
     // zero assistant content (no text/thought/tool) and records no usage never
     // fires the streaming autosave, so the fork signal would otherwise linger and
     // get consumed by the queued follow-up's save — mis-branching the follow-up

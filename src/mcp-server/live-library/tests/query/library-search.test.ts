@@ -72,7 +72,7 @@ describe("librarySearch", () => {
       ]);
     });
 
-    it("returns .mid files plus MIDI Live clips when kind=midi (AJM-335)", async () => {
+    it("returns .mid files plus MIDI Live clips when kind=midi", async () => {
       const result = await librarySearch({ kind: "midi" });
 
       // .mid plus the alcM Live clip (pack_loop.alc), ordered by use_count
@@ -282,7 +282,7 @@ describe("librarySearch", () => {
     });
   });
 
-  describe("live-clip subtype (AJM-335)", () => {
+  describe("live-clip subtype", () => {
     it("reports subtype midi/audio on .alc results", async () => {
       const result = await librarySearch({ kind: "live-clip" });
       const bySubtype = new Map(result.items.map((i) => [i.name, i.subtype]));
@@ -614,7 +614,7 @@ describe("librarySearch", () => {
   describe("error handling", () => {
     it("degrades to dbAvailable:false when the DB lacks a selected column", async () => {
       // Model an older Live DB whose `files` table predates the `subtype` column
-      // we SELECT (AJM-335): preparing the statement throws "no such column", and
+      // we SELECT: preparing the statement throws "no such column", and
       // the guard must degrade to dbAvailable:false rather than surfacing a raw
       // SQLite error to the LLM.
       const broken = createDbMissingSubtypeColumn();

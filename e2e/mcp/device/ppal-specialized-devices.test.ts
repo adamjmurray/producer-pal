@@ -14,7 +14,7 @@
  * values for the hardcoded enums on the no-_list devices (Drift's mod matrix +
  * voice config, Roar's routing mode) so a future Live reordering is caught.
  * Roar additionally exposes a routing_mode_list, so its catalog is checked
- * against Live's authoritative list (a non-circular guard). See AJM-397.
+ * against Live's authoritative list (a non-circular guard).
  *
  * Run with: npm run e2e:mcp -- ppal-specialized-devices
  */
@@ -184,7 +184,7 @@ describe("specialized devices: Drift", () => {
     ).toBe(12);
 
     // 13 is out of range (max 12). Live silently reverts, so we warn-and-skip
-    // rather than write — the value must stay at 12. See AJM-389.
+    // rather than write — the value must stay at 12.
     const { warnings } = parseToolResultWithWarnings(
       await ctx.client!.callTool({
         name: "ppal-update-device",
@@ -231,7 +231,7 @@ describe("specialized devices: Drift", () => {
     // 2026-05-25): they catch a renamed property or an accidental edit to our
     // catalog order, but NOT Live silently reordering its own enum — write and
     // read both use this same catalog, so that drift stays invisible to CI and
-    // is only caught by re-running the manual probe-vs-Live. See AJM-397.
+    // is only caught by re-running the manual probe-vs-Live.
     const raw = parseToolResult<{ results: Array<{ result: number }> }>(
       await ctx.client!.callTool({
         name: "ppal-live-api",
@@ -391,7 +391,7 @@ describe("specialized devices: Compressor", () => {
   });
 
   it("resolves a return-track sidechain source to its track id", async () => {
-    // AJM-391: return/master sources now resolve to a track id on read (they
+    // Return/master sources now resolve to a track id on read (they
     // previously read back as null). A return track only becomes a routable
     // sidechain source once it carries an audio-bearing device, so give it one.
     const created = parseToolResult<{ id: string; returnTrackIndex: number }>(
@@ -612,7 +612,7 @@ describe("specialized devices: Roar", () => {
     // (b) our hardcoded ROUTING_MODES order matches Live's authoritative catalog
     // (lowercased/hyphenated), so a future Live reorder is caught. Read the list
     // with the raw `get` op — `getProperty` returns only its first element.
-    // Verified vs Live 12.4 2026-05-25. See AJM-397.
+    // Verified vs Live 12.4 2026-05-25.
     const raw = parseToolResult<{ results: Array<{ result: unknown }> }>(
       await ctx.client!.callTool({
         name: "ppal-live-api",

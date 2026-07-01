@@ -65,17 +65,17 @@ describe("pitch-class grammar parity across both grammars", () => {
       ["C3", 60],
       ["Gb3", 66],
       ["A#2", 58],
-      // Case-insensitive (AJM-496 #2).
+      // Case-insensitive.
       ["c3", 60],
       ["gb1", 42],
       ["GB1", 42], // all-caps: uppercase B is the flat
       ["eb3", 63],
       ["a#2", 58],
-      // Unicode accidentals (AJM-497 #1).
+      // Unicode accidentals.
       ["C♯1", 37],
       ["D♭1", 37],
       ["c♯1", 37],
-      // Enharmonic spellings, including the octave-wrapping edges (AJM-497 #2).
+      // Enharmonic spellings, including the octave-wrapping edges.
       ["E#3", 65], // → F3, same octave
       ["Fb3", 64], // → E3, same octave
       ["B#3", 72], // → C4, wraps up an octave

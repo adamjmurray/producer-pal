@@ -5,7 +5,7 @@
 
 /**
  * Surface near-duplicate samples in Live's library by grouping `fe_values`
- * rows that share an audio fingerprint hash. Per the AJM-331 spike the hash is
+ * rows that share an audio fingerprint hash. Per the spike the hash is
  * a deterministic function of the feature vector (same hash ⟺ byte-identical
  * vector ⟺ effectively identical audio), so a `GROUP BY hash` is a free
  * content-dedup detector ("you have this kick 4×").
@@ -105,7 +105,7 @@ function runFindDuplicates(
   }
 
   const { where, params } = buildCandidateWhere(args, resolved.parentId);
-  // Assumes one fe_values row per file (the AJM-331 spike found this holds across
+  // Assumes one fe_values row per file (the spike found this holds across
   // the library); a file with multiple rows would contribute more than once to a
   // hash group. CAST hash to TEXT so SQLite renders the full 64-bit integer;
   // reading it as a JS number would lose precision past 2^53 and could falsely

@@ -10,7 +10,7 @@ import { describe, it, expect } from "vitest";
 import { throwOnFileViolations } from "#src/test/helpers/meta-test-helpers.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, "..", "..");
+const rootDir = join(__dirname, "..", "..", "..");
 
 function getAllFiles(dir: string, files: string[] = []): string[] {
   const entries = readdirSync(dir);

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for bar|beat pattern brackets (streams, AJM-482/483) through the
+ * E2E tests for bar|beat pattern brackets (streams) through the
  * real Max V8 runtime: create a clip with bracketed notation, let Live store the
  * notes, read them back, and re-interpret the serialized notation to verify the
  * emitted notes. This exercises the grammar + interpreter in the bundled device

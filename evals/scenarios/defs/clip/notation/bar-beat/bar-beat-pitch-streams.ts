@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenarios for melodic stepping via pitch streams (pattern brackets, AJM-482).
+ * Scenarios for melodic stepping via pitch streams (pattern brackets).
  *
  * A pitch bracket `[C3 E3 G3]` on a repeat steps through the pitches instead of
  * repeating one — `[C3 E3 G3] 1|1x3@n/4` is a melodic run. These capability

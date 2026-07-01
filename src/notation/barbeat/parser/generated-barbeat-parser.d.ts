@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -62,7 +63,7 @@ export interface StreamProbability {
 }
 
 /**
- * Pattern bracket (AJM-482 pitch, AJM-483 v/n/p): a stream of one parameter's
+ * Pattern bracket (pitch, v/n/p): a stream of one parameter's
  * values cycled across emitted note-events. The `param` tag discriminates the
  * `values` element shape — pitch values are chords (a length-1 array for a bare
  * pitch); v/n/p values carry the bare per-kind object.

@@ -5,7 +5,7 @@
 
 /**
  * Rank library samples by audio similarity to a seed sample, using Live's
- * `fe_values` feature vectors (see fe-values-helpers.ts / the AJM-331 spike).
+ * `fe_values` feature vectors (see fe-values-helpers.ts / the spike).
  *
  * findSimilar is `search` re-ranked by cosine distance to the seed instead of
  * by use_count: the same filters (tags, kind, type, source, inFolder) constrain
@@ -165,7 +165,7 @@ function rankCandidates(
   parentId: number | undefined,
 ): LibrarySimilarItem[] {
   const { where, params } = buildCandidateWhere(args, parentId);
-  // Assumes one fe_values row per file (the AJM-331 spike found this holds across
+  // Assumes one fe_values row per file (the spike found this holds across
   // the library); a file with multiple rows would be scored/ranked once per row.
   // The seed side guards this with LIMIT 1 (see loadVector).
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data

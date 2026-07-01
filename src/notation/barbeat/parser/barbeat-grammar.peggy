@@ -282,7 +282,7 @@ pitchClass
 pitchAccidental
   = "#" / "b" / "B" / "♯" / "♭"
 
-// Pattern bracket holding a parameter STREAM (AJM-482 pitch, AJM-483 v/n/p): an
+// Pattern bracket holding a parameter STREAM (pitch, v/n/p): an
 // ordered list of one parameter's values, cycled across emitted note-events. The
 // stream persists until that parameter is reassigned, so its cursor carries
 // across separate time positions (cross-event cursor). The emitter zips it

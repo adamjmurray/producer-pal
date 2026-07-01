@@ -93,7 +93,7 @@ wins, and a cross-check against the line-coverage gate.
 ## Status & next steps
 
 This is **baseline mode**: the score is reported but `thresholds.break` is
-`null`, so the run never fails. Per AJM-560 the next steps (later release) are:
+`null`, so the run never fails. The next steps (later release) are:
 
 - Triage the 489 survivors into the three buckets above.
 - Once a defensible floor is known, set `thresholds.break` to **ratchet** the

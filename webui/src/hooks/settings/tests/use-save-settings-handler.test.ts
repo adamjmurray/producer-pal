@@ -174,7 +174,7 @@ describe("useSaveSettingsHandler", () => {
 
     // The handler chains postLiveApiEnabled inside saveSettings().then(...), so
     // it lands a microtask later than the synchronous-fire pattern this test
-    // used pre-AJM-418.
+    // used previously.
     await waitFor(() => expect(postLiveApiEnabled).toHaveBeenCalledWith(true));
     // checkMcpConnection runs only after the POST resolves (the server exposes
     // ppal-live-api based on the flag, so listTools must follow the POST).

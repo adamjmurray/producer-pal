@@ -11,7 +11,7 @@
  * `floatCount` little-endian float32s. The vectors are NOT unit-normalized
  * (norms ~3.9–16.4), so similarity is cosine — normalize at compare time.
  *
- * Format reverse-engineered in the AJM-331 spike
+ * Format reverse-engineered in the spike
  * (scratchpad/Live-DB-Spike-Report.md): 100% uniform across 51,450 rows,
  * 0 bad/NaN/Inf; vectors encode real audio content and the sibling `hash`
  * column is a deterministic fingerprint of the vector.

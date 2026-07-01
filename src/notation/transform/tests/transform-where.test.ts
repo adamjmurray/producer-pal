@@ -172,7 +172,7 @@ describe("where() predicate filtering", () => {
       expect(notes[1]!.velocity).toBe(100); // long note → untouched
     });
 
-    it("selects either side of a beat with abs() (AJM-517)", () => {
+    it("selects either side of a beat with abs()", () => {
       const notes = createTestNotes([
         { start_time: 3.5, velocity: 100 }, // |3.5 - 4| = 0.5 < 1 → near
         { start_time: 4.5, velocity: 100 }, // |4.5 - 4| = 0.5 < 1 → near
@@ -191,7 +191,7 @@ describe("where() predicate filtering", () => {
       expect(notes[2]!.velocity).toBe(100); // far → untouched
     });
 
-    it("gates on the smaller of two properties with min() (AJM-517)", () => {
+    it("gates on the smaller of two properties with min()", () => {
       const notes = createTestNotes([
         { start_time: 0, velocity: 100, velocity_deviation: 90 }, // min 90 > 80
         { start_time: 1, velocity: 100, velocity_deviation: 50 }, // min 50
@@ -210,7 +210,7 @@ describe("where() predicate filtering", () => {
       expect(notes[2]!.velocity).toBe(70); // low velocity → untouched
     });
 
-    it("selects with a periodic waveform predicate (AJM-517)", () => {
+    it("selects with a periodic waveform predicate", () => {
       // sin(n/4) over a 4/4 clip: positive on the first half of each beat.
       const notes = createTestNotes([
         { start_time: 0.25, velocity: 100 }, // sin phase 0.25 → +1 > 0
@@ -223,7 +223,7 @@ describe("where() predicate filtering", () => {
       expect(notes[1]!.velocity).toBe(100); // on the falling half → untouched
     });
 
-    it("normalizes a ramp() predicate over the line's selector bounds (AJM-517)", () => {
+    it("normalizes a ramp() predicate over the line's selector bounds", () => {
       // Time selector 1|1-3|1 → musical beats [0, 8). ramp(0, 100) is then
       // 100 * position/8, so the predicate ramp(0,100) > 50 selects the second
       // half of the window (position > 4) — proving the predicate uses the

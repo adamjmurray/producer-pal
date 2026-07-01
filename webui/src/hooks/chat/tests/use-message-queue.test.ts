@@ -32,7 +32,7 @@ describe("useMessageQueue", () => {
     const { result } = renderHook(() => useMessageQueue());
 
     // The first message defines the turn's override; later messages in the same
-    // turn cannot change it (AJM-552), so the second message's override is
+    // turn cannot change it, so the second message's override is
     // ignored even when it differs.
     await act(() => result.current.enqueueMessage("a", { thinking: "high" }));
     await act(() => result.current.enqueueMessage("b", { thinking: "off" }));
