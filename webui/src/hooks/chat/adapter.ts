@@ -197,9 +197,15 @@ export const chatAdapter: ChatAdapter<
       showThoughts,
     );
 
+    // Adaptive-family Anthropic models (Sonnet 5, Opus 4.6+, Fable) reject any
+    // non-default sampling parameter with a 400 — suppress temperature for them
+    // regardless of thinking level, including "Off". Haiku uses legacy enabled
+    // thinking, which requires temperature=1 only when thinking is active, so
+    // suppress there only when thinking is on; "Off" on Haiku keeps temperature.
     const suppressTemperature =
       (provider === "openai" && isOpenAIReasoningModel(model)) ||
-      (provider === "anthropic" && thinking !== "Off");
+      (provider === "anthropic" &&
+        (!isLegacyThinkingModel(model) || thinking !== "Off"));
 
     return {
       model: languageModel,

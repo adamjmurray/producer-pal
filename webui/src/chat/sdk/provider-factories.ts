@@ -10,6 +10,10 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { type LanguageModel } from "ai";
+import {
+  isAlwaysOnThinkingModel,
+  isLegacyThinkingModel,
+} from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
 
 /**
@@ -110,6 +114,7 @@ export function createProviderModel(
 
 /** Minimal shape of the Anthropic Messages API request body we mutate. */
 interface AnthropicRequestBody {
+  model?: string;
   thinking?: { type?: string; display?: string };
   system?: string | Array<Record<string, unknown>>;
   tools?: Array<Record<string, unknown>>;
@@ -158,6 +163,17 @@ export async function transformAnthropicRequest(
         modified = true;
       }
 
+      if (shouldForceThinkingDisabled(body)) {
+        // On adaptive-by-default models (Sonnet 5+), an omitted `thinking` field
+        // runs adaptive thinking. The app omits `thinking` only for the "Off"
+        // level, and the @ai-sdk/anthropic provider drops a providerOptions
+        // `{type:"disabled"}` before it reaches the wire, so make the choice
+        // explicit here to honor "Off". Legacy (Haiku) and always-on (Fable /
+        // Mythos, which 400 on disabled) models keep the omitted-thinking body.
+        body.thinking = { type: "disabled" };
+        modified = true;
+      }
+
       if (addCacheControl(body)) modified = true;
 
       if (modified) {
@@ -169,6 +185,23 @@ export async function transformAnthropicRequest(
   }
 
   return await fetch(input, init);
+}
+
+/**
+ * Whether an omitted `thinking` field should be forced to `{type: "disabled"}`.
+ * True for adaptive-by-default Anthropic models where omitting `thinking` would
+ * otherwise run adaptive thinking (Sonnet 5+); false for legacy enabled-thinking
+ * models (Haiku) and always-on models (Fable / Mythos) that reject `disabled`.
+ * @param body - Parsed Anthropic request body
+ * @returns True when `{type: "disabled"}` should be injected
+ */
+function shouldForceThinkingDisabled(body: AnthropicRequestBody): boolean {
+  return (
+    body.thinking == null &&
+    typeof body.model === "string" &&
+    !isLegacyThinkingModel(body.model) &&
+    !isAlwaysOnThinkingModel(body.model)
+  );
 }
 
 /** Minimal shape of one OpenAI/OpenRouter chat message we mutate. */

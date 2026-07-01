@@ -88,6 +88,18 @@ export function isLegacyThinkingModel(model: string): boolean {
 }
 
 /**
+ * Checks if an Anthropic model has always-on thinking that cannot be disabled.
+ * Fable 5 / Mythos 5 run thinking unconditionally and reject
+ * `thinking: {type: "disabled"}` with a 400 — thinking must be omitted for
+ * these, so "Off" cannot fully turn thinking off.
+ * @param {string} model - Model identifier
+ * @returns {boolean} - True if the model's thinking cannot be disabled
+ */
+export function isAlwaysOnThinkingModel(model: string): boolean {
+  return model.includes("fable") || model.includes("mythos");
+}
+
+/**
  * Maps thinking UI setting to Anthropic effort level for adaptive thinking.
  * @param {string} thinking - Thinking mode setting from UI
  * @returns {AnthropicEffort | undefined} - effort level or undefined for Off

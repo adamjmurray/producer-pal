@@ -414,9 +414,24 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("preserves temperature for anthropic with Off thinking", () => {
+    it("suppresses temperature for adaptive-family anthropic with Off thinking", () => {
+      // Sonnet 5 / Opus 4.6+ / Fable reject non-default sampling params (400),
+      // so temperature must be dropped even when thinking is Off.
       const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
+        "claude-sonnet-5",
+        0.7,
+        "Off",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.temperature).toBeUndefined();
+    });
+
+    it("preserves temperature for haiku with Off thinking", () => {
+      const config = chatAdapter.buildConfig(
+        "claude-haiku-4-5",
         0.7,
         "Off",
         {},
@@ -425,6 +440,20 @@ describe("chatAdapter", () => {
       );
 
       expect(config.temperature).toBe(0.7);
+    });
+
+    it("suppresses temperature for haiku when thinking is active", () => {
+      // Legacy enabled thinking requires temperature=1, so suppress it there.
+      const config = chatAdapter.buildConfig(
+        "claude-haiku-4-5",
+        0.7,
+        "Max",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.temperature).toBeUndefined();
     });
 
     it("uses legacy enabled thinking for haiku model", () => {

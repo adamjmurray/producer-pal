@@ -200,7 +200,7 @@ interface CacheBlock {
   cache_control?: { type: string };
 }
 interface ParsedBody {
-  thinking?: { display?: string };
+  thinking?: { type?: string; display?: string };
   system?: CacheBlock[] | string;
   tools?: CacheBlock[];
   messages?: Array<{ role?: string; content?: CacheBlock[] }>;
@@ -288,6 +288,41 @@ describe("transformAnthropicRequest", () => {
       });
 
       expect(parsed.thinking?.display).toBe("omitted");
+    });
+  });
+
+  describe("forced disabled thinking", () => {
+    it("injects disabled thinking when omitted on adaptive-by-default models", async () => {
+      const parsed = await transform({ model: "claude-sonnet-5" });
+
+      expect(parsed.thinking).toStrictEqual({ type: "disabled" });
+    });
+
+    it("leaves omitted thinking alone for legacy (Haiku) models", async () => {
+      const parsed = await transform({ model: "claude-haiku-4-5" });
+
+      expect(parsed.thinking).toBeUndefined();
+    });
+
+    it("leaves omitted thinking alone for always-on (Fable) models", async () => {
+      const parsed = await transform({ model: "claude-fable-5" });
+
+      expect(parsed.thinking).toBeUndefined();
+    });
+
+    it("does not override adaptive thinking with disabled", async () => {
+      const parsed = await transform({
+        model: "claude-sonnet-5",
+        thinking: { type: "adaptive" },
+      });
+
+      expect(parsed.thinking?.type).toBe("adaptive");
+    });
+
+    it("leaves omitted thinking alone when the model is absent", async () => {
+      const parsed = await transform({ system: "sys" });
+
+      expect(parsed.thinking).toBeUndefined();
     });
   });
 
@@ -397,10 +432,12 @@ describe("transformAnthropicRequest", () => {
     });
 
     it("leaves a request with no cacheable prefix untouched", async () => {
+      // Haiku is excluded from disabled-thinking injection, so this body needs
+      // no transform at all and must pass through byte-for-byte.
       await expectPassthrough(
         transformAnthropicRequest,
         url,
-        JSON.stringify({ model: "claude-opus-4-7", messages: [] }),
+        JSON.stringify({ model: "claude-haiku-4-5", messages: [] }),
       );
     });
   });

@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import {
   extractGptVersion,
+  isAlwaysOnThinkingModel,
   mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
@@ -18,6 +19,18 @@ import {
 } from "#webui/hooks/settings/turn-detection-helpers";
 
 describe("config-builders", () => {
+  describe("isAlwaysOnThinkingModel", () => {
+    it("is true for Fable and Mythos models", () => {
+      expect(isAlwaysOnThinkingModel("claude-fable-5")).toBe(true);
+      expect(isAlwaysOnThinkingModel("claude-mythos-5")).toBe(true);
+    });
+
+    it("is false for other models", () => {
+      expect(isAlwaysOnThinkingModel("claude-sonnet-5")).toBe(false);
+      expect(isAlwaysOnThinkingModel("claude-haiku-4-5")).toBe(false);
+    });
+  });
+
   describe("mapTurnDetectionToConfig", () => {
     const base: TurnDetectionSettings = {
       ...DEFAULT_TURN_DETECTION,
