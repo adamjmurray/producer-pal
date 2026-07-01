@@ -77,6 +77,16 @@ describe("stark-interpreter", () => {
       expect(interpretNotation("oh: X")[0]?.pitch).toBe(46);
       expect(interpretNotation("rs: X")[0]?.pitch).toBe(37);
     });
+
+    it("maps the five newly-named GM pads (kept in sync with abstark)", () => {
+      expect(interpretNotation("snare2: X")[0]?.pitch).toBe(40);
+      expect(interpretNotation("tom4: X")[0]?.pitch).toBe(41);
+      expect(interpretNotation("pedal: X")[0]?.pitch).toBe(44);
+      expect(interpretNotation("perc1: X")[0]?.pitch).toBe(48);
+      expect(interpretNotation("perc2: X")[0]?.pitch).toBe(50);
+      // "snare2" wins over its "snare" prefix
+      expect(interpretNotation("snare: X")[0]?.pitch).toBe(38);
+    });
   });
 
   describe("bass mode", () => {

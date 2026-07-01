@@ -87,18 +87,26 @@ ChordToken
   / "." { return { type: "rest" }; }
   / "-" { return { type: "sustain" }; }
 
+// Kept in sync with abstark's DrumName rule (the twin notation). "snare2" is
+// tried before "snare" so the longer name is not short-circuited by its prefix.
+// tom1/2/3/4 run high→low (tom4 = GM Low Floor Tom, the lowest).
 DrumName
   = ("kick"i / "bd"i) { return { name: "kick", midi: 36 }; }
+  / ("snare2"i / "s2"i) { return { name: "snare2", midi: 40 }; }
   / ("snare"i / "sd"i) { return { name: "snare", midi: 38 }; }
   / ("hihat"i / "hh"i) { return { name: "hihat", midi: 42 }; }
+  / ("pedal"i / "ph"i) { return { name: "pedal", midi: 44 }; }
   / ("open"i / "oh"i) { return { name: "open", midi: 46 }; }
   / ("tom1"i / "ht"i) { return { name: "tom1", midi: 47 }; }
   / ("tom2"i / "mt"i) { return { name: "tom2", midi: 45 }; }
   / ("tom3"i / "lt"i) { return { name: "tom3", midi: 43 }; }
+  / ("tom4"i / "ft"i) { return { name: "tom4", midi: 41 }; }
   / ("ride"i / "rc"i) { return { name: "ride", midi: 51 }; }
   / ("crash"i / "cc"i) { return { name: "crash", midi: 49 }; }
   / ("clap"i / "cl"i) { return { name: "clap", midi: 39 }; }
   / ("rimshot"i / "rs"i) { return { name: "rimshot", midi: 37 }; }
+  / ("perc1"i / "p1"i) { return { name: "perc1", midi: 48 }; }
+  / ("perc2"i / "p2"i) { return { name: "perc2", midi: 50 }; }
 
 BarMarker
   = "/" [ \t]* { return { barMarker: true }; }

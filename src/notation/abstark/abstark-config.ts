@@ -79,16 +79,27 @@ export const LINE_DEFAULT_N: Readonly<
  * serialized as absolute pitch-name headers (e.g. "C3", Ableton C3=60) instead,
  * so every Drum-Rack pad round-trips — nothing is dropped.
  */
+// Names follow General MIDI percussion (notes 36-51), which Ableton's factory
+// 16-pad Drum Racks track closely. The high-consensus pads (kick/snare/hats/
+// toms/crash/ride/rimshot/clap) get their GM names. The genuinely variable pads
+// get compromise names: GM-aligned where GM matches the factory tendency (40
+// snare2, 41 tom4, 44 pedal) and generic percN where GM says "tom" but factory
+// kits put miscellaneous percussion there (48, 50). tom1/2/3/4 run high→low.
 export const MIDI_TO_DRUM_NAME: Readonly<Record<number, string>> = {
   36: "kick",
   37: "rimshot",
   38: "snare",
   39: "clap",
+  40: "snare2",
+  41: "tom4",
   42: "hihat",
   43: "tom3",
+  44: "pedal",
   45: "tom2",
   46: "open",
   47: "tom1",
+  48: "perc1",
   49: "crash",
+  50: "perc2",
   51: "ride",
 };

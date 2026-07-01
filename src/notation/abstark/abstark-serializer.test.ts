@@ -304,6 +304,28 @@ describe("formatNotation — drum lines (drumMode)", () => {
     expect(result).toContain("snare:");
   });
 
+  it("the five newly-named GM pads serialize as drum lines, not pitch names", () => {
+    // 40/41/44/48/50 filled the last gaps in the 16-pad GM layout so a standard
+    // Drum Rack returns no raw pitch-name headers.
+    const result = formatNotation(
+      [
+        note(40, 0, 0.25),
+        note(41, 0.25, 0.25),
+        note(44, 0.5, 0.25),
+        note(48, 0.75, 0.25),
+        note(50, 1, 0.25),
+      ],
+      DRUM,
+    );
+
+    expect(result).toContain("snare2:");
+    expect(result).toContain("tom4:");
+    expect(result).toContain("pedal:");
+    expect(result).toContain("perc1:");
+    expect(result).toContain("perc2:");
+    expect(result).not.toMatch(/[A-G][#b]?\d:/); // no absolute pitch-name headers
+  });
+
   it("unnamed drum pitch → absolute pitch-name line (no drop, no WARNING)", () => {
     // MIDI 60 has no Abstark drum-line name; MIDI 36 (kick) does. The unnamed
     // pad now serializes as a pitch-name header (Ableton C3=60) instead of
@@ -420,6 +442,18 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     );
 
     expectStableNotes(first, second);
+  });
+
+  it("newly-named GM pads round-trip to their fixed pitches", () => {
+    const { first, second } = roundTrip(
+      "snare2: X...\ntom4: .X..\npedal: ..X.\nperc1: ...X\nperc2: X...",
+      true,
+    );
+
+    expectStableNotes(first, second);
+    expect(first.map((n) => n.pitch).sort((a, b) => a - b)).toStrictEqual([
+      40, 41, 44, 48, 50,
+    ]);
   });
 
   it("pitch-name drum line (unmapped pad) round-trips", () => {

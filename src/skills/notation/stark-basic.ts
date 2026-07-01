@@ -16,7 +16,7 @@ ultra-minimal format. One line per part, written as \`type: content\`.
 
 ## Drums
 
-One line per drum, named: \`kick snare hihat open tom1 tom2 tom3 ride crash clap rimshot\`.
+One line per drum, named: \`kick snare snare2 hihat pedal open tom1 tom2 tom3 tom4 ride crash clap rimshot perc1 perc2\`.
 Hits: \`X\` = loud, \`x\` = soft, \`^\` = accent.
 \`\`\`
 kick: X . X .
