@@ -50,6 +50,15 @@ export function getGlobalContextUrl(): string {
 }
 
 /**
+ * Gets the system-prompt endpoint URL (the machine-global ~/.producer-pal
+ * custom system prompt that replaces the built-in instruction when non-empty).
+ * @returns {string} The system-prompt endpoint URL
+ */
+export function getSystemPromptUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/system-prompt");
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL

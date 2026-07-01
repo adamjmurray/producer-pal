@@ -5,15 +5,19 @@
 
 import { useState } from "preact/hooks";
 import { useContextMemory } from "#webui/hooks/context/use-context-memory";
+import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
+import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
 
-type ContextTab = "project" | "global";
+type ContextTab = "project" | "global" | "instructions";
+
+const CLOSE_ARIA_LABEL = "Close context editor";
 
 const PROJECT_LABELS: ContextEditorLabels = {
   title: "Project Context",
   loadingLabel: "Loading project context…",
-  closeAriaLabel: "Close context editor",
+  closeAriaLabel: CLOSE_ARIA_LABEL,
   clearConfirmMessage: "Clear all project memory? This cannot be undone.",
   externalUpdateMessage: "Memory was updated outside the editor.",
 };
@@ -21,9 +25,20 @@ const PROJECT_LABELS: ContextEditorLabels = {
 const GLOBAL_LABELS: ContextEditorLabels = {
   title: "Global Context",
   loadingLabel: "Loading global context…",
-  closeAriaLabel: "Close context editor",
+  closeAriaLabel: CLOSE_ARIA_LABEL,
   clearConfirmMessage: "Clear all global context? This cannot be undone.",
   externalUpdateMessage: "Global context was updated outside the editor.",
+};
+
+const INSTRUCTIONS_LABELS: ContextEditorLabels = {
+  title: "Custom Instructions",
+  loadingLabel: "Loading custom instructions…",
+  closeAriaLabel: CLOSE_ARIA_LABEL,
+  clearConfirmMessage:
+    "Reset to Producer Pal's built-in instructions? This deletes your custom system prompt.",
+  externalUpdateMessage: "Custom instructions were updated outside the editor.",
+  description:
+    "Fully replaces Producer Pal's built-in chat system prompt, including its tool-use and notation guidance. Leave empty to use the default.",
 };
 
 interface ContextTabsProps {
@@ -46,14 +61,24 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const [tab, setTab] = useState<ContextTab>("project");
   const projectMemory = useContextMemory();
   const globalMemory = useGlobalContextMemory();
+  const instructionsMemory = useSystemPromptMemory();
 
-  const isProject = tab === "project";
+  const memoryByTab: Record<ContextTab, UseDocMemoryReturn> = {
+    project: projectMemory,
+    global: globalMemory,
+    instructions: instructionsMemory,
+  };
+  const labelsByTab: Record<ContextTab, ContextEditorLabels> = {
+    project: PROJECT_LABELS,
+    global: GLOBAL_LABELS,
+    instructions: INSTRUCTIONS_LABELS,
+  };
 
   return (
     <ContextScreen
       key={tab}
-      memory={isProject ? projectMemory : globalMemory}
-      labels={isProject ? PROJECT_LABELS : GLOBAL_LABELS}
+      memory={memoryByTab[tab]}
+      labels={labelsByTab[tab]}
       tabSlot={<TabStrip tab={tab} onSelect={setTab} />}
       onClose={props.onClose}
     />
@@ -78,7 +103,7 @@ function TabStrip(props: TabStripProps): preact.JSX.Element {
   return (
     <div
       role="tablist"
-      aria-label="Context scope"
+      aria-label="Context editor tabs"
       className="flex items-center gap-1"
     >
       <TabButton
@@ -90,6 +115,11 @@ function TabStrip(props: TabStripProps): preact.JSX.Element {
         label="Global"
         active={tab === "global"}
         onSelect={() => onSelect("global")}
+      />
+      <TabButton
+        label="Instructions"
+        active={tab === "instructions"}
+        onSelect={() => onSelect("instructions")}
       />
     </div>
   );

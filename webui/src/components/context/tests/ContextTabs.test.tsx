@@ -43,6 +43,10 @@ vi.mock(import("#webui/hooks/context/use-global-context-memory"), () => ({
   useGlobalContextMemory: () => readyMemory("GLOBAL-DOC"),
 }));
 
+vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
+  useSystemPromptMemory: () => readyMemory("INSTRUCTIONS-DOC"),
+}));
+
 describe("ContextTabs", () => {
   it("defaults to the Project tab and shows the project document", () => {
     render(<ContextTabs />);
@@ -67,6 +71,21 @@ describe("ContextTabs", () => {
         .getAttribute("aria-selected"),
     ).toBe("false");
     expect(screen.getByTestId("editor").textContent).toBe("GLOBAL-DOC");
+  });
+
+  it("switches to the Instructions tab, shows the custom prompt doc and its full-replace note", () => {
+    render(<ContextTabs />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Instructions" }));
+
+    expect(
+      screen
+        .getByRole("tab", { name: "Instructions" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(screen.getByTestId("editor").textContent).toBe("INSTRUCTIONS-DOC");
+    // The controls strip warns that this document replaces the built-in prompt.
+    expect(screen.getByText(/fully replaces/i)).toBeTruthy();
   });
 
   it("switches back to the Project tab", () => {

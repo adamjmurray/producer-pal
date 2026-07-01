@@ -6,6 +6,7 @@
 import { type LanguageModel } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import { type ChatMessage } from "#webui/chat/sdk/types";
+import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 
 // Mock provider-factories to avoid real OpenAI client creation
 const mockModel = { modelId: "test-model" } as unknown as LanguageModel;
@@ -99,6 +100,48 @@ describe("chatAdapter", () => {
       );
 
       expect(config.chatHistory).toStrictEqual(history);
+    });
+
+    it("uses the built-in system instruction when no override is provided", () => {
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        1.0,
+        "default",
+        {},
+        undefined,
+        extraParams,
+      );
+
+      expect(config.systemInstruction).toBe(SYSTEM_INSTRUCTION);
+    });
+
+    it("fully replaces the system instruction with a non-blank override", () => {
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        1.0,
+        "default",
+        {},
+        undefined,
+        {
+          ...extraParams,
+          systemInstructionOverride: "You are a terse studio engineer.",
+        },
+      );
+
+      expect(config.systemInstruction).toBe("You are a terse studio engineer.");
+    });
+
+    it("falls back to the built-in instruction when the override is blank", () => {
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        1.0,
+        "default",
+        {},
+        undefined,
+        { ...extraParams, systemInstructionOverride: "   \n  " },
+      );
+
+      expect(config.systemInstruction).toBe(SYSTEM_INSTRUCTION);
     });
 
     it("sets reasoning effort for openai provider with Max thinking", () => {

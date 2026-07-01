@@ -43,6 +43,19 @@ vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
+// useChatModeState reads the custom system prompt on mount; stub it so App
+// tests don't fire a real /system-prompt fetch.
+vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
+  useSystemPromptMemory: () => ({
+    status: { kind: "ready", content: "" },
+    saveStatus: "idle",
+    saveError: null,
+    save: vi.fn(),
+    clear: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 // ContextTabs wires CodeMirror + a server fetch; stub it so App tests stay
 // focused on the overlay open/close plumbing.
 vi.mock(import("#webui/components/context/ContextTabs"), () => ({

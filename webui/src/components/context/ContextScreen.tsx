@@ -23,6 +23,12 @@ export interface ContextEditorLabels {
   clearConfirmMessage: string;
   /** Banner text when the server content changed under a clean draft. */
   externalUpdateMessage: string;
+  /**
+   * Optional one-line explainer shown in the controls strip (e.g. the custom
+   * instructions tab warns that its content fully replaces the built-in
+   * prompt). Omitted for documents that need no framing.
+   */
+  description?: string;
 }
 
 interface ContextScreenProps {
@@ -71,6 +77,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
       />
       <ContextControls
         status={memory.status}
+        description={labels.description}
         onClear={() => void editor.handleClear()}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -144,29 +151,35 @@ function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
 
 interface ContextControlsProps {
   status: DocMemoryStatus;
+  description?: string;
   onClear: () => void;
 }
 
 /**
- * Controls strip below the header with a destructive clear action. Hidden
- * until memory has loaded so we don't flash a control whose state we
- * haven't fetched yet.
+ * Controls strip below the header with an optional explainer and a destructive
+ * clear action. Hidden until memory has loaded so we don't flash a control
+ * whose state we haven't fetched yet.
  * @param props - Controls props
  * @returns Controls element (or null while loading)
  */
 function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
-  const { status, onClear } = props;
+  const { status, description, onClear } = props;
 
   if (status.kind !== "ready") return null;
 
   return (
-    <div className="flex items-center px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
+    <div className="flex items-center gap-3 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
+      {description != null && (
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          {description}
+        </span>
+      )}
       <button
         type="button"
         onClick={onClear}
-        className="ml-auto text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+        className="ml-auto shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
       >
         Clear
       </button>

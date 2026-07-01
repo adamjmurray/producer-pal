@@ -109,6 +109,16 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
+  // Custom system prompt read (the chat mounts useSystemPromptMemory) — empty
+  // means "use the built-in instruction", the default state under test.
+  await page.route("**/system-prompt", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ content: "" }),
+    }),
+  );
+
   // GitHub release check (useUpdateCheck) — empty body => no update banner, and
   // keeps the test offline/deterministic.
   await page.route("https://api.github.com/**", (route) =>

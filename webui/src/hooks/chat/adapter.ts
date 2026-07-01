@@ -184,6 +184,16 @@ export const chatAdapter: ChatAdapter<
     const provider = extraParams?.provider as Provider;
     const baseUrl = extraParams?.baseUrl as string | undefined;
     const apiKey = extraParams?.apiKey as string;
+    // Full-replace custom system prompt (~/.producer-pal/system-prompt.md): any
+    // non-blank content wholly replaces the built-in instruction; blank/absent
+    // falls back to the default. Locked here at client-init so it stays stable
+    // for the conversation (and keeps the cached system prefix consistent).
+    const systemInstructionOverride = extraParams?.systemInstructionOverride as
+      | string
+      | undefined;
+    const systemInstruction = systemInstructionOverride?.trim()
+      ? systemInstructionOverride
+      : SYSTEM_INSTRUCTION;
     // When thinking is Off, always exclude reasoning tokens even if the model generates them.
     // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
     const showThoughts =
@@ -210,7 +220,7 @@ export const chatAdapter: ChatAdapter<
     return {
       model: languageModel,
       temperature: suppressTemperature ? undefined : temperature,
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction,
       enabledTools,
       showThoughts,
       providerOptions,

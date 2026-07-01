@@ -20,6 +20,7 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
+import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
@@ -84,6 +85,16 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // next save to branch the record instead of overwriting it.
   const pendingForkRef = useRef<PendingFork | null>(null);
 
+  // The user's custom system prompt (~/.producer-pal/system-prompt.md). When
+  // non-empty it fully replaces the built-in instruction for each new
+  // conversation (locked at client init; see the adapter). Editing it in the
+  // Instructions tab converges here via useDocMemory's focus/poll refresh.
+  const systemPromptMemory = useSystemPromptMemory();
+  const systemInstructionOverride =
+    systemPromptMemory.status.kind === "ready"
+      ? systemPromptMemory.status.content
+      : "";
+
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
   const resolvedApiKey = resolveProviderApiKey(
     settings.provider,
@@ -126,6 +137,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
       showThoughts: settings.showThoughts,
       provider: settings.provider,
       apiKey: resolvedApiKey,
+      systemInstructionOverride,
     },
     autoSaveRef,
     pendingForkRef,

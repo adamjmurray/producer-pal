@@ -6,15 +6,15 @@
 /**
  * @vitest-environment happy-dom
  */
-import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
+import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import { describeDocMemoryTransport } from "./doc-memory-transport-test-helpers";
 
 // happy-dom defaults to http://localhost:3000/, so the same-origin endpoint
-// resolves to localhost:3000/global-context.
+// resolves to localhost:3000/system-prompt.
 describeDocMemoryTransport({
-  hookName: "useGlobalContextMemory",
-  useHook: useGlobalContextMemory,
-  url: "http://localhost:3000/global-context",
-  readError: "Global context request failed",
-  writeError: "Global context update failed",
+  hookName: "useSystemPromptMemory",
+  useHook: useSystemPromptMemory,
+  url: "http://localhost:3000/system-prompt",
+  readError: "System prompt request failed",
+  writeError: "System prompt update failed",
 });
