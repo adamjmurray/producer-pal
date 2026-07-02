@@ -15,18 +15,19 @@ An ultra-minimal format. One line per part, written as \`type: content\`.
 
 ### Timing (one rule)
 
-- Tokens separated by a space = quarter notes.
-- Tokens with NO space between them = 16th notes.
-- \`/\` starts the next bar. \`.\` = rest. \`-\` = sustain (hold the previous note).
+- A character with a space after it = a quarter note; characters run together (no spaces) = 16th notes. \`/\` = next bar, \`.\` = rest, \`-\` = sustain (hold the previous note).
+- For eighths or 16ths, write the part as ONE continuous 16th run with NO internal spaces (\`.\` for the gaps): eighths = \`x.x.x.x.x.x.x.x.\`, straight 16ths = \`xxxxxxxxxxxxxxxx\`. A space turns the character before it into a quarter note, so a space inside a subdivided run breaks the timing — never group a fast run with spaces.
+- **Fill the whole clip: a 4/4 bar is 4 quarters or 16 sixteenths, and every line must span the same number of bars.**
 
 ### Drums
 
 One line per drum, named: \`kick snare snare2 hihat pedal open tom1 tom2 tom3 tom4 ride crash clap rimshot perc1 perc2\`.
 Hits: \`X\` = loud, \`x\` = soft, \`^\` = accent.
+Example — a 1-bar 4/4 backbeat: kick on 1 & 3, snare on 2 & 4, closed hi-hat on every eighth. Kick/snare are quarters (space-separated); the hi-hat's eighths are one unbroken run:
 \`\`\`
 kick: X . X .
 snare: . X . X
-hihat: xxxx xxxx
+hihat: x.x.x.x.x.x.x.x.
 \`\`\`
 
 ### Bass / Melody
