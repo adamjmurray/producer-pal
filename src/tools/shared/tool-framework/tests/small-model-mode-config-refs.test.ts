@@ -19,12 +19,14 @@ const { toolDefLiveApi } = await import("#src/tools/advanced/live-api.def.ts");
 
 const ALL_TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
 
-// Every smallModelModeConfig key that names a param — excludeParams entries and
-// the object keys of descriptionOverrides / excludeEnumValues — must reference a
-// real inputSchema param. A renamed or removed param leaves a dangling reference
-// that silently no-ops (the exclude/override does nothing), which AGENTS.md
-// flags as the highest-risk small-model-mode drift and asks authors to check by
-// hand on every .def.ts edit. This enforces it automatically.
+// Every smallModelModeConfig / notationConfig key that names a param —
+// excludeParams entries and the object keys of descriptionOverrides /
+// excludeEnumValues, plus each notation override's descriptionOverrides keys —
+// must reference a real inputSchema param. A renamed or removed param leaves a
+// dangling reference that silently no-ops (the exclude/override does nothing),
+// which AGENTS.md flags as the highest-risk small-model-mode drift and asks
+// authors to check by hand on every .def.ts edit. This enforces it
+// automatically.
 describe("smallModelModeConfig param references", () => {
   // Guard against the flag setup above silently failing — if the conditional
   // params weren't loaded, the per-tool checks could pass vacuously.
@@ -40,13 +42,19 @@ describe("smallModelModeConfig param references", () => {
 
   for (const def of ALL_TOOL_DEFS) {
     it(`${def.toolName}: all param references exist in inputSchema`, () => {
-      const { inputSchema, smallModelModeConfig } = def.toolOptions;
+      const { inputSchema, smallModelModeConfig, notationConfig } =
+        def.toolOptions;
       const params = new Set(Object.keys(inputSchema));
+
+      const notationRefs = Object.values(notationConfig ?? {}).flatMap(
+        (override) => Object.keys(override.descriptionOverrides ?? {}),
+      );
 
       const referencedParams = [
         ...(smallModelModeConfig?.excludeParams ?? []),
         ...Object.keys(smallModelModeConfig?.descriptionOverrides ?? {}),
         ...Object.keys(smallModelModeConfig?.excludeEnumValues ?? {}),
+        ...notationRefs,
       ];
 
       const dangling = referencedParams.filter((ref) => !params.has(ref));

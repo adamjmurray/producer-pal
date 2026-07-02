@@ -170,6 +170,18 @@ web UI architecture.
   whether corresponding changes are needed in the `smallModelModeConfig`
   (`excludeParams`, `descriptionOverrides`, `toolDescription`).
 
+- **Notation-aware descriptions**: A tool's `notationConfig` (keyed by
+  `Notation`) overrides param descriptions for the active `config.notation`,
+  applied AFTER small-model mode so the notation wins. Use it for params whose
+  text describes the note-content format (chiefly `notes` on create-clip /
+  update-clip) so the schema reflects the notation actually in effect
+  (`midi-json` / `stark` / `abstark`) instead of hardcoding bar|beat. `barbeat`
+  is the default and needs no entry. Timing/position params (`start`, `split`,
+  `firstStart`, `arrangementStart`, `length`) stay bar|beat regardless — the
+  notation setting governs note encoding only, not clip time. When you add or
+  rename a note-format param, keep `notationConfig` in sync (a dangling ref is
+  caught by `small-model-mode-config-refs.test.ts`).
+
 - **Filesystem access is Node-side only**: The V8 runtime
   (`src/live-api-adapter/`) has no filesystem, and shipped `src/**` cannot shell
   out (`child_process` is banned). All file reads/writes (`node:fs`) live on the

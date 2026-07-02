@@ -6,6 +6,7 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { z, type ZodRawShape } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { type Notation } from "#src/shared/notation.ts";
 import {
   defineTool,
   filterExcludedEnumValues,
@@ -23,12 +24,17 @@ function createMockServer(): MockServer {
  * @param toolOptions - tool definition options
  * @param options - registration options
  * @param options.smallModelMode - whether to enable small model mode
+ * @param options.notation - active notation threaded to the tool
  * @param options.successMock - whether mockCallLiveApi resolves with success
  * @returns mock server and callLiveApi mock
  */
 function registerTestTool(
   toolOptions: ToolOptions,
-  options?: { smallModelMode?: boolean; successMock?: boolean },
+  options?: {
+    smallModelMode?: boolean;
+    notation?: Notation;
+    successMock?: boolean;
+  },
 ) {
   const mockServer = createMockServer();
   const mockCallLiveApi = options?.successMock
@@ -38,8 +44,8 @@ function registerTestTool(
     : vi.fn();
   const toolRegistrar = defineTool("test-tool", toolOptions);
   const registerOptions =
-    options?.smallModelMode != null
-      ? { smallModelMode: options.smallModelMode }
+    options?.smallModelMode != null || options?.notation != null
+      ? { smallModelMode: options.smallModelMode, notation: options.notation }
       : undefined;
 
   toolRegistrar(mockServer, mockCallLiveApi, registerOptions);
@@ -455,6 +461,157 @@ describe("defineTool", () => {
     expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
       sceneIndex: "0",
     });
+  });
+});
+
+describe("defineTool notationConfig", () => {
+  /**
+   * Tool config with a notation-keyed `notes` override and a bar|beat base.
+   * @returns Tool options exercising notationConfig
+   */
+  function notationToolConfig(): ToolOptions {
+    return {
+      title: "Test Tool",
+      description: "Base tool description",
+      inputSchema: {
+        notes: z.string().optional().describe("notes in bar|beat"),
+        other: z.string().optional().describe("other param"),
+      },
+      notationConfig: {
+        "midi-json": {
+          descriptionOverrides: { notes: "notes as JSON array" },
+        },
+      },
+    };
+  }
+
+  it("overrides the param description for the active notation", () => {
+    const { mockServer } = registerTestTool(notationToolConfig(), {
+      notation: "midi-json",
+    });
+
+    const shape = getRegisteredShape(mockServer) as Record<
+      string,
+      { description?: string }
+    >;
+
+    expect(shape.notes?.description).toBe("notes as JSON array");
+    // Params without an override keep their base description.
+    expect(shape.other?.description).toBe("other param");
+  });
+
+  it("keeps the base description for the default (barbeat) notation", () => {
+    const { mockServer } = registerTestTool(notationToolConfig(), {
+      notation: "barbeat",
+    });
+
+    const shape = getRegisteredShape(mockServer) as Record<
+      string,
+      { description?: string }
+    >;
+
+    // barbeat has no notationConfig key, so the base .describe() stands.
+    expect(shape.notes?.description).toBe("notes in bar|beat");
+  });
+
+  it("keeps the base description when a notation has no override entry", () => {
+    const { mockServer } = registerTestTool(notationToolConfig(), {
+      notation: "stark",
+    });
+
+    const shape = getRegisteredShape(mockServer) as Record<
+      string,
+      { description?: string }
+    >;
+
+    expect(shape.notes?.description).toBe("notes in bar|beat");
+  });
+
+  it("lets the notation override win over the small-model override", () => {
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Base tool description",
+        inputSchema: {
+          notes: z.string().optional().describe("notes in bar|beat"),
+        },
+        smallModelModeConfig: {
+          descriptionOverrides: { notes: "small-model bar|beat notes" },
+        },
+        notationConfig: {
+          "midi-json": {
+            descriptionOverrides: { notes: "notes as JSON array" },
+          },
+        },
+      },
+      { smallModelMode: true, notation: "midi-json" },
+    );
+
+    const shape = getRegisteredShape(mockServer) as Record<
+      string,
+      { description?: string }
+    >;
+
+    // Notation is applied after small-model, so it is authoritative for `notes`.
+    expect(shape.notes?.description).toBe("notes as JSON array");
+  });
+
+  it("still applies small-model excludeParams alongside a notation override", () => {
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Base tool description",
+        inputSchema: {
+          notes: z.string().optional().describe("notes in bar|beat"),
+          advanced: z.string().optional().describe("advanced param"),
+        },
+        smallModelModeConfig: {
+          excludeParams: ["advanced"],
+        },
+        notationConfig: {
+          "midi-json": {
+            descriptionOverrides: { notes: "notes as JSON array" },
+          },
+        },
+      },
+      { smallModelMode: true, notation: "midi-json" },
+    );
+
+    const shape = getRegisteredShape(mockServer) as Record<
+      string,
+      { description?: string }
+    >;
+
+    // Small-model still trims params; notation still overrides the kept one.
+    expect(Object.keys(shape)).toStrictEqual(["notes"]);
+    expect(shape.notes?.description).toBe("notes as JSON array");
+  });
+
+  it("applies a notation-specific toolDescription over the base", () => {
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Base tool description",
+        inputSchema: { notes: z.string().optional() },
+        notationConfig: {
+          "midi-json": { toolDescription: "JSON-notes tool" },
+        },
+      },
+      { notation: "midi-json" },
+    );
+
+    expect(getRegisteredConfig(mockServer).description).toBe("JSON-notes tool");
+  });
+
+  it("ignores notationConfig when no notation is provided", () => {
+    const { mockServer } = registerTestTool(notationToolConfig());
+
+    const shape = getRegisteredShape(mockServer) as Record<
+      string,
+      { description?: string }
+    >;
+
+    expect(shape.notes?.description).toBe("notes in bar|beat");
   });
 });
 

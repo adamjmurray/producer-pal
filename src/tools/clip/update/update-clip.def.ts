@@ -109,7 +109,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI notes in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only. MERGES into existing notes (overwrites at same pitch+start - restate a note to edit it in place). To delete/move existing notes or replace a region use preTransforms; don't rewrite the whole clip. Carries a JSON array string instead when the global notation setting is midi-json (no v0-delete - use preTransforms to delete)",
+        "MIDI notes in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only. MERGES into existing notes (overwrites at same pitch+start - restate a note to edit it in place). To delete/move existing notes or replace a region use preTransforms; don't rewrite the whole clip",
       ),
     transforms: z
       .string()
@@ -229,6 +229,31 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "MIDI notes (bar|beat). MERGES - overwrites at same pitch+start; restate to edit in place. Delete/move existing notes via preTransforms, don't rewrite the clip",
       preTransforms:
         "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `1|1-2|1: v0` clears a span, `v0` clears all, `C1: C4` remaps a drum lane",
+    },
+  },
+
+  // Notation-keyed `notes` text so the schema reflects the active note format
+  // instead of the default bar|beat. Applied over small-model mode (see
+  // NotationConfig). `preTransforms` stays bar|beat everywhere (the transform
+  // DSL is notation-independent), so only `notes` is overridden here.
+  notationConfig: {
+    "midi-json": {
+      descriptionOverrides: {
+        notes:
+          "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (p pitch, t start & d duration in beats, v velocity; see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). No v0-delete; delete/move existing notes via preTransforms - don't rewrite the clip",
+      },
+    },
+    stark: {
+      descriptionOverrides: {
+        notes:
+          "MIDI notes in stark notation, an ultra-minimal per-line `type: content` grid (see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start). Delete/move existing notes via preTransforms - don't rewrite the clip",
+      },
+    },
+    abstark: {
+      descriptionOverrides: {
+        notes:
+          "MIDI notes in abstark notation, a literal per-line `type: content` format (see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). Delete/move existing notes via preTransforms - don't rewrite the clip",
+      },
     },
   },
 });

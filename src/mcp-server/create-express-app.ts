@@ -243,6 +243,7 @@ export function createExpressApp(): Express {
 
       const server = createMcpServer(callLiveApiEnriched, {
         smallModelMode: config.smallModelMode,
+        notation: config.notation,
         liveApiEnabled: config.liveApiEnabled,
         tools: config.tools,
       });

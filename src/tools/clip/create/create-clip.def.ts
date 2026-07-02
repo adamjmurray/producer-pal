@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
@@ -82,8 +83,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only. " +
-          "Carries a JSON array string instead when the global notation setting is midi-json",
+        "MIDI in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only",
       ),
 
     transforms: z
@@ -141,6 +141,29 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "arrangement clip bar|beat position (e.g., '1|1'). Song meter",
       name: "clip name",
       color: "#RRGGBB",
+    },
+  },
+
+  // Notation-keyed `notes` text so the schema reflects the active note format
+  // instead of the default bar|beat (see NotationConfig).
+  notationConfig: {
+    "midi-json": {
+      descriptionOverrides: {
+        notes:
+          "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (see Skills) - MIDI clips only",
+      },
+    },
+    stark: {
+      descriptionOverrides: {
+        notes:
+          "MIDI notes in stark notation (ultra-minimal `type: content` grid, see Skills) - MIDI clips only",
+      },
+    },
+    abstark: {
+      descriptionOverrides: {
+        notes:
+          "MIDI notes in abstark notation (literal `type: content` format, see Skills) - MIDI clips only",
+      },
     },
   },
 });

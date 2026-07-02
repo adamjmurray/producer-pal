@@ -5,6 +5,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/config.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
@@ -84,6 +85,12 @@ interface CreateMcpServerOptions {
   smallModelMode?: boolean;
   liveApiEnabled?: boolean;
   tools?: string[];
+  /**
+   * Active notation (`config.notation`). Threaded to each tool so notation-keyed
+   * description overrides (e.g. the `notes` param's format text) reflect the
+   * notation in effect. Omitted ⇒ bar|beat default (no overrides applied).
+   */
+  notation?: Notation;
 }
 
 /**
@@ -97,7 +104,12 @@ export function createMcpServer(
   callLiveApi: CallLiveApiFunction,
   options: CreateMcpServerOptions = {},
 ): McpServer {
-  const { smallModelMode = false, liveApiEnabled = false, tools } = options;
+  const {
+    smallModelMode = false,
+    liveApiEnabled = false,
+    tools,
+    notation,
+  } = options;
   const includedSet = tools ? new Set(tools) : null;
 
   const server = new McpServer({
@@ -107,7 +119,7 @@ export function createMcpServer(
 
   for (const toolDef of STANDARD_TOOL_DEFS) {
     if (includedSet && !includedSet.has(toolDef.toolName)) continue;
-    toolDef(server, callLiveApi, { smallModelMode });
+    toolDef(server, callLiveApi, { smallModelMode, notation });
   }
 
   // Live API: opt-in via device Setup tab. Goes through the same
@@ -118,7 +130,7 @@ export function createMcpServer(
     !smallModelMode &&
     (!includedSet || includedSet.has(toolDefLiveApi.toolName))
   ) {
-    toolDefLiveApi(server, callLiveApi, { smallModelMode });
+    toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
   }
 
   return server;
