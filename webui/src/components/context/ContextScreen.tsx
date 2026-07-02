@@ -10,6 +10,7 @@ import {
   type UseDocMemoryReturn,
 } from "#webui/hooks/context/use-doc-memory";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { OverridePanes } from "./OverridePanes";
 
 /** Copy that distinguishes one document editor (project vs. global context). */
 export interface ContextEditorLabels {
@@ -29,6 +30,19 @@ export interface ContextEditorLabels {
    * prompt). Omitted for documents that need no framing.
    */
   description?: string;
+  /**
+   * Optional read-only built-in reference. When set, the editor renders
+   * side-by-side (editable override | built-in with a Copy button) so a user
+   * can fork the shipped default instead of starting from a blank slate. Used
+   * by the custom-instructions tab; the plain context tabs (no shipped default)
+   * omit it and stay single-pane.
+   */
+  builtIn?: string;
+  /**
+   * Label above the editable pane in side-by-side mode (e.g. "Your
+   * instructions"). Only meaningful when `builtIn` is set.
+   */
+  overridePaneLabel?: string;
 }
 
 interface ContextScreenProps {
@@ -85,6 +99,8 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           status={memory.status}
           loadingLabel={labels.loadingLabel}
           externalUpdateMessage={labels.externalUpdateMessage}
+          builtIn={labels.builtIn}
+          overridePaneLabel={labels.overridePaneLabel}
           editorKey={editor.editorKey}
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
@@ -246,6 +262,8 @@ interface ContextBodyProps {
   status: DocMemoryStatus;
   loadingLabel: string;
   externalUpdateMessage: string;
+  builtIn?: string;
+  overridePaneLabel?: string;
   editorKey: number;
   externalUpdate: boolean;
   onReload: () => void;
@@ -257,7 +275,8 @@ interface ContextBodyProps {
  * Renders either the framed editor (with an external-update banner when
  * the server has changed under us) or a status message for loading/error.
  * The editor is mounted once per `ready` session; bumping `editorKey`
- * forces a remount (used by Clear and Reload).
+ * forces a remount (used by Clear and Reload). When `builtIn` is supplied the
+ * editor renders side-by-side with the read-only default (see OverridePanes).
  * @param props - Body props
  * @returns Body element
  */
@@ -266,6 +285,8 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     status,
     loadingLabel,
     externalUpdateMessage,
+    builtIn,
+    overridePaneLabel,
     editorKey,
     externalUpdate,
     onReload,
@@ -297,14 +318,25 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
           onReload={onReload}
         />
       )}
-      <MarkdownEditor
-        key={editorKey}
-        initialValue={status.content}
-        readOnly={false}
-        onChange={onChange}
-        onBlur={onBlur}
-        className="flex-1 min-h-0"
-      />
+      {builtIn != null ? (
+        <OverridePanes
+          editorKey={editorKey}
+          value={status.content}
+          builtIn={builtIn}
+          overrideLabel={overridePaneLabel ?? "Your override"}
+          onChange={onChange}
+          onBlur={onBlur}
+        />
+      ) : (
+        <MarkdownEditor
+          key={editorKey}
+          initialValue={status.content}
+          readOnly={false}
+          onChange={onChange}
+          onBlur={onBlur}
+          className="flex-1 min-h-0"
+        />
+      )}
     </div>
   );
 }

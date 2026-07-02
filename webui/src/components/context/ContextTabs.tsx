@@ -9,6 +9,7 @@ import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
+import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
 import { SkillsScreen } from "./SkillsScreen";
 
@@ -44,6 +45,12 @@ const INSTRUCTIONS_LABELS: ContextEditorLabels = {
   externalUpdateMessage: "Custom instructions were updated outside the editor.",
   description:
     "Fully replaces Producer Pal's built-in chat system prompt, including its tool-use and notation guidance. Leave empty to use the default.",
+  // Show the shipped default beside the editor with a Copy button, so users can
+  // fork it instead of starting from a blank slate. This is the webui chat's
+  // built-in instruction (not the ppal-connect skills blob), the same constant
+  // the adapter falls back to when the override is empty.
+  builtIn: SYSTEM_INSTRUCTION,
+  overridePaneLabel: "Your instructions",
 };
 
 interface ContextTabsProps {

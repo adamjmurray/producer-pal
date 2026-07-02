@@ -109,6 +109,10 @@ describe("ContextTabs", () => {
     expect(screen.getByTestId("editor").textContent).toBe("INSTRUCTIONS-DOC");
     // The controls strip warns that this document replaces the built-in prompt.
     expect(screen.getByText(/fully replaces/i)).toBeTruthy();
+    // The shipped default renders read-only beside the editor so users can fork
+    // it instead of starting from a blank slate.
+    expect(screen.getByText("Your instructions")).toBeTruthy();
+    expect(screen.getByText(/ai music composition assistant/i)).toBeTruthy();
   });
 
   it("switches back to the Project tab", () => {

@@ -10,7 +10,7 @@ import {
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
 import { ContextHeader, ExternalUpdateBanner } from "./ContextScreen";
-import { MarkdownEditor } from "./MarkdownEditor";
+import { OverridePanes } from "./OverridePanes";
 import { SkillSlotSelect } from "./SkillSlotSelect";
 
 const RESET_CONFIRM =
@@ -77,10 +77,11 @@ export function SkillSlotScreen(
             onReload={editor.handleReload}
           />
         )}
-        <SkillPanes
+        <OverridePanes
           editorKey={editor.editorKey}
-          override={slot.override}
+          value={slot.override}
           builtIn={slot.builtIn}
+          overrideLabel="Your override"
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
         />
@@ -155,60 +156,6 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
           Reset to default
         </button>
       )}
-    </div>
-  );
-}
-
-interface SkillPanesProps {
-  editorKey: number;
-  override: string;
-  builtIn: string;
-  onChange: (value: string) => void;
-  onBlur: () => void;
-}
-
-/**
- * The side-by-side body: an editable "Your override" pane (empty when the slot
- * tracks the built-in) beside a read-only, selectable "Built-in" pane with a
- * Copy button for forking the default.
- * @param props - Panes props
- * @returns Panes element
- */
-function SkillPanes(props: SkillPanesProps): preact.JSX.Element {
-  const { editorKey, override, builtIn, onChange, onBlur } = props;
-
-  return (
-    <div className="flex-1 min-h-0 flex gap-3">
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <span className="h-5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-          Your override
-        </span>
-        <MarkdownEditor
-          key={editorKey}
-          initialValue={override}
-          readOnly={false}
-          onChange={onChange}
-          onBlur={onBlur}
-          className="flex-1 min-h-0"
-        />
-      </div>
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="flex items-center justify-between h-5">
-          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Built-in (read-only)
-          </span>
-          <button
-            type="button"
-            onClick={() => void navigator.clipboard.writeText(builtIn)}
-            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
-          >
-            Copy
-          </button>
-        </div>
-        <pre className="flex-1 min-h-0 overflow-auto rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-3 text-xs whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
-          {builtIn}
-        </pre>
-      </div>
     </div>
   );
 }
