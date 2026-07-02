@@ -33,6 +33,7 @@ import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
   clearSessionSlots,
+  diffNotes,
   type ExpectedNote,
   getCreatedClip,
   MSG_CONNECT,
@@ -147,36 +148,64 @@ function midiJsonNotesAssertion(
     }),
     notation: "midi-json",
     expect: (result: unknown): boolean => {
-      const clip = result as { notes?: unknown; timeSignature?: string };
+      const events = parseMidiJsonClip(result, meter);
 
-      if (clip.timeSignature !== meter || clip.notes == null) return false;
+      return events != null && notesMatch(events, expected);
+    },
+    explain: (result: unknown): string => {
+      const clip = result as { timeSignature?: string };
 
-      let raw: unknown = clip.notes;
-
-      if (typeof raw === "string") {
-        try {
-          raw = parseToolResult(raw);
-        } catch {
-          return false; // unparseable midi-json payload
-        }
+      if (clip.timeSignature !== meter) {
+        return `time signature: expected ${meter}, actual ${clip.timeSignature ?? "(none)"}`;
       }
 
-      if (!Array.isArray(raw)) return false;
+      const events = parseMidiJsonClip(result, meter);
 
-      const events: NoteEvent[] = raw.map((n) => {
-        const o = (n ?? {}) as { p?: number; t?: number; d?: number };
+      if (events == null)
+        return "clip notes missing or not parseable as midi-json";
 
-        return {
-          pitch: Number(o.p),
-          start_time: Number(o.t),
-          duration: Number(o.d),
-          velocity: 0,
-        };
-      });
-
-      return notesMatch(events, expected);
+      return diffNotes(events, expected);
     },
   };
+}
+
+/**
+ * Parse a read-clip result (read back in midi-json) into note events, or null
+ * when the meter is wrong or the notes payload is missing/unparseable. Shared by
+ * the grading `expect` (pass/fail) and `explain` (diff) so both read the clip
+ * identically.
+ *
+ * @param result - The parsed read-clip tool result
+ * @param meter - Required time signature; a mismatch returns null (fails closed)
+ * @returns The clip's notes as events, or null when ungradeable
+ */
+function parseMidiJsonClip(result: unknown, meter: string): NoteEvent[] | null {
+  const clip = result as { notes?: unknown; timeSignature?: string };
+
+  if (clip.timeSignature !== meter || clip.notes == null) return null;
+
+  let raw: unknown = clip.notes;
+
+  if (typeof raw === "string") {
+    try {
+      raw = parseToolResult(raw);
+    } catch {
+      return null; // unparseable midi-json payload
+    }
+  }
+
+  if (!Array.isArray(raw)) return null;
+
+  return raw.map((n) => {
+    const o = (n ?? {}) as { p?: number; t?: number; d?: number };
+
+    return {
+      pitch: Number(o.p),
+      start_time: Number(o.t),
+      duration: Number(o.d),
+      velocity: 0,
+    };
+  });
 }
 
 /**

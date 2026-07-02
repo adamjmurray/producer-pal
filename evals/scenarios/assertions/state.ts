@@ -62,19 +62,26 @@ export async function assertState(
         ? assertion.expect(parsed)
         : partialMatch(parsed as Record<string, unknown>, assertion.expect);
 
+    // On failure, let a custom matcher explain WHAT diverged (e.g. a midi-json
+    // note diff) instead of leaving a bare "(custom function)" in the report.
+    const diff =
+      !passed && assertion.explain ? assertion.explain(parsed) : undefined;
+    const diffSuffix = diff ? `\n${diff}` : "";
+
     return {
       assertion,
       earned: passed ? 1 : 0,
       maxScore: 1,
       message: passed
         ? `State assertion passed for ${assertion.tool}`
-        : `State assertion failed for ${assertion.tool}`,
+        : `State assertion failed for ${assertion.tool}${diffSuffix}`,
       details: {
         actual: parsed,
         expected:
           typeof assertion.expect === "function"
             ? "(custom function)"
             : assertion.expect,
+        ...(diff == null ? {} : { diff }),
       },
     };
   } catch (error) {

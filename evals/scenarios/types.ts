@@ -152,6 +152,11 @@ export interface StateAssertion {
     | ((turns: EvalTurnResult[]) => Record<string, unknown>);
   /** Expected partial result or matcher function */
   expect: Record<string, unknown> | ((result: unknown) => boolean);
+  /** Optional human-readable diagnostic for a FAILED `expect`, given the same
+   *  parsed result. Its string is attached to the failure `details.diff` and
+   *  appended to the console message so custom matchers (e.g. midi-json note
+   *  comparison) can explain WHAT diverged instead of reporting a bare boolean. */
+  explain?: (result: unknown) => string;
   /** When set, flip the server notation to this (via POST /config) BEFORE the
    *  read, so the tool serializes notes in a known format regardless of the
    *  notation the model wrote in. Lets a grading read pull clean midi-json

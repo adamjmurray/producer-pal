@@ -134,18 +134,53 @@ export type NotationInterpreter = (
   opts: { timeSigNumerator?: number; timeSigDenominator?: number },
 ) => NoteEvent[];
 
-/** One expected note: MIDI pitch, start (Ableton quarter beats), duration. */
+/**
+ * One expected note: MIDI pitch, start (Ableton quarter beats), duration.
+ * `pitch` may be a SET of acceptable pitches (any-of). Used for drum pads whose
+ * "role" spans several MIDI notes: stark/abstark map a drum name to a fixed GM
+ * pitch (e.g. snare→38) while a bar|beat/midi-json model reads the actual Drum
+ * Rack and picks whatever pad that rack labels a snare (Eb1=39, E1=40 in
+ * basic-midi-4-track). Accepting the family keeps the four notations graded
+ * against the SAME expected set (the matrix's apples-to-apples invariant) instead
+ * of rewarding whichever notation happens to match this rack's GM alignment. The
+ * rhythm (start) is still asserted exactly; only the pad choice is loosened.
+ */
 export interface ExpectedNote {
-  pitch: number;
+  pitch: number | number[];
   start: number;
   duration?: number;
 }
 
 /**
+ * Lowest acceptable pitch of an expected note — the sort key that lines a
+ * pitch-set note up with the actual note in its (non-overlapping) family.
+ *
+ * @param p - The expected pitch or set of acceptable pitches
+ * @returns The single value, or the minimum of the set
+ */
+function pitchSortKey(p: number | number[]): number {
+  return Array.isArray(p) ? Math.min(...p) : p;
+}
+
+/**
+ * Whether an actual MIDI pitch satisfies an expected pitch (a single value or an
+ * any-of set).
+ *
+ * @param actual - The read-back note's pitch
+ * @param expected - The expected pitch or set of acceptable pitches
+ * @returns True when actual equals the value or is a member of the set
+ */
+function pitchMatches(actual: number, expected: number | number[]): boolean {
+  return Array.isArray(expected)
+    ? expected.includes(actual)
+    : actual === expected;
+}
+
+/**
  * Order-independent verdict: the interpreted events match `expected` exactly on
- * pitch and start position (and duration when given). Velocity is never checked
- * (it is often bucketed/randomized on interpret). Shared by the bar|beat and
- * Abstark read-back checks.
+ * pitch (or membership in a pitch-set) and start position (and duration when
+ * given). Velocity is never checked (it is often bucketed/randomized on
+ * interpret). Shared by the bar|beat and Abstark read-back checks.
  *
  * @param events - Re-interpreted notes from the read-back
  * @param expected - Expected notes (pitch + start, optional duration)
@@ -161,14 +196,15 @@ export function notesMatch(
     (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
   );
   const sortedExpected = [...expected].sort(
-    (a, b) => a.start - b.start || a.pitch - b.pitch,
+    (a, b) =>
+      a.start - b.start || pitchSortKey(a.pitch) - pitchSortKey(b.pitch),
   );
 
   return sortedEvents.every((e, i) => {
     const want = sortedExpected[i] as ExpectedNote;
 
     return (
-      e.pitch === want.pitch &&
+      pitchMatches(e.pitch, want.pitch) &&
       Math.abs(e.start_time - want.start) < EPS &&
       (want.duration == null || Math.abs(e.duration - want.duration) < EPS)
     );
@@ -177,6 +213,104 @@ export function notesMatch(
 
 /** Float tolerance for note start_time / duration comparisons (in beats). */
 const EPS = 1e-6;
+
+/**
+ * Human-readable expected-vs-actual note diff for a failed `notesMatch`, in
+ * midi-json terms (`p`itch / `t`ime / `d`uration). Pairs the two sets after the
+ * SAME (start, pitch) sort `notesMatch` uses, so the printed rows line up with
+ * the comparison that actually failed and each mismatch is tagged with the field
+ * (pitch/start/duration) that diverged. Duration is only shown/compared when the
+ * expected note pins it. Surfaced in the state assertion's `details.diff` and the
+ * console failure line so a failing drum/melody scenario is debuggable at a
+ * glance instead of eyeballing two 22-note dumps.
+ *
+ * @param events - Re-interpreted notes from the read-back (actual)
+ * @param expected - Expected notes (pitch + start, optional duration)
+ * @returns Multi-line diff string
+ */
+export function diffNotes(
+  events: NoteEvent[],
+  expected: ExpectedNote[],
+): string {
+  const sortedEvents = [...events].sort(
+    (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
+  );
+  const sortedExpected = [...expected].sort(
+    (a, b) =>
+      a.start - b.start || pitchSortKey(a.pitch) - pitchSortKey(b.pitch),
+  );
+  const rows: string[] = [
+    `count: expected ${expected.length}, actual ${events.length}`,
+  ];
+  const max = Math.max(sortedEvents.length, sortedExpected.length);
+
+  for (let i = 0; i < max; i++) {
+    const want = sortedExpected[i];
+    const got = sortedEvents[i];
+
+    rows.push(diffNoteRow(want, got));
+  }
+
+  return rows.join("\n");
+}
+
+/**
+ * Format an expected note as a midi-json-ish `p… t… d…` token (duration omitted
+ * when the expectation doesn't pin it).
+ *
+ * @param w - Expected note
+ * @returns One-line token
+ */
+function fmtExpected(w: ExpectedNote): string {
+  const dur = w.duration == null ? "" : ` d${w.duration}`;
+  const pitch = Array.isArray(w.pitch)
+    ? `p{${w.pitch.join("|")}}`
+    : `p${w.pitch}`;
+
+  return `${pitch} t${w.start}${dur}`;
+}
+
+/**
+ * Format an actual note event as a midi-json-ish `p… t… d…` token.
+ *
+ * @param g - Actual note event
+ * @returns One-line token
+ */
+function fmtActual(g: NoteEvent): string {
+  return `p${g.pitch} t${g.start_time} d${g.duration}`;
+}
+
+/**
+ * Format one paired expected/actual note row for `diffNotes`, tagging the field
+ * that diverged (or a missing/extra note when one side is absent).
+ *
+ * @param want - Expected note at this sorted index (may be absent)
+ * @param got - Actual note at this sorted index (may be absent)
+ * @returns One diff line
+ */
+function diffNoteRow(
+  want: ExpectedNote | undefined,
+  got: NoteEvent | undefined,
+): string {
+  if (want == null) return `  + extra   ${fmtActual(got as NoteEvent)}`;
+  if (got == null) return `  - missing ${fmtExpected(want)}`;
+
+  const reasons: string[] = [];
+
+  if (!pitchMatches(got.pitch, want.pitch)) reasons.push("pitch");
+
+  if (Math.abs(got.start_time - want.start) >= EPS) reasons.push("start");
+
+  if (want.duration != null && Math.abs(got.duration - want.duration) >= EPS) {
+    reasons.push("duration");
+  }
+
+  if (reasons.length === 0) return `  ✓ ${fmtExpected(want)}`;
+
+  const detail = `expected ${fmtExpected(want)} — actual ${fmtActual(got)}`;
+
+  return `  ✗ ${detail}  (${reasons.join(", ")})`;
+}
 
 /** create-clip tool name (turn-1 create assertion in single-clip scenarios). */
 const TOOL_CREATE_CLIP = "ppal-create-clip";

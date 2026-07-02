@@ -26,10 +26,21 @@ import {
   notationNeutralScenarios,
 } from "./notation-matrix.ts";
 
-/** GM drum pitches the standard drum names map to (kick/snare/hi-hat). */
+// Drum-pad expectations as any-of sets, so the SAME expected notes grade every
+// notation (the matrix invariant). stark/abstark map a drum name to a fixed GM
+// pitch (snare→38, closed hat→42); a bar|beat/midi-json model instead reads
+// basic-midi-4-track's Drum Rack and picks whatever pad IT labels a snare/closed
+// hat. In that rack D1(38) is actually a Rim and the real snares are Eb1(39) &
+// E1(40); closed hats sit on BOTH Gb1(42) and Ab1(44). Accepting each family
+// keeps a rack that isn't strictly GM-aligned from rewarding the notation that
+// happens to hardcode GM while failing the model that correctly read the map.
+// Kick (C1=36) is unambiguous in both worlds, so it stays a single pitch.
+/** Kick: GM and the rack agree on C1. */
 const KICK = 36;
-const SNARE = 38;
-const HIHAT = 42;
+/** Snare family: GM name-pitch (38) plus the rack's two real snares (39, 40). */
+const SNARE = [38, 39, 40];
+/** Closed hi-hat family: both pads this rack labels "Hihat Closed Trad". */
+const HIHAT = [42, 44];
 
 /**
  * One-bar 4/4 groove: four-on-the-floor kick (every beat), snare on 2 & 4,
