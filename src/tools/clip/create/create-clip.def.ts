@@ -22,7 +22,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     slot: param(z.coerce.string().optional(), {
       default:
         "session clip slot(s): trackIndex/sceneIndex, both 0-based (scene 1 = index 0), comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
-      smallModel: "session clip slot(s): trackIndex/sceneIndex (e.g., '0/0')",
+      smallModel:
+        "session clip slot(s): trackIndex/sceneIndex, 0-based — scene 1 = slot 0 (e.g., '0/0')",
     }),
 
     trackIndex: z.coerce
