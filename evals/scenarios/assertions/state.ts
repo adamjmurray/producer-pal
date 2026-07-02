@@ -8,6 +8,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
+import { setConfig } from "#evals/shared/config.ts";
 import { type StateAssertion, type EvalAssertionResult } from "../types.ts";
 import { partialMatch } from "./helpers.ts";
 
@@ -23,6 +24,14 @@ export async function assertState(
   mcpClient: Client,
 ): Promise<EvalAssertionResult> {
   try {
+    // Optionally flip the server notation before reading so the tool serializes
+    // notes in a known format (grading reads clean midi-json regardless of the
+    // notation the model wrote in). POST /config merges, so only notation
+    // changes; the scenario's finally-block resetConfig restores defaults.
+    if (assertion.notation) {
+      await setConfig({ notation: assertion.notation });
+    }
+
     const result = await mcpClient.callTool({
       name: assertion.tool,
       arguments: assertion.args,

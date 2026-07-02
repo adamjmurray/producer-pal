@@ -9,6 +9,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ConfigOptions } from "#evals/shared/config.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 
 // Re-export types from chat for convenience
@@ -147,6 +148,11 @@ export interface StateAssertion {
   args: Record<string, unknown>;
   /** Expected partial result or matcher function */
   expect: Record<string, unknown> | ((result: unknown) => boolean);
+  /** When set, flip the server notation to this (via POST /config) BEFORE the
+   *  read, so the tool serializes notes in a known format regardless of the
+   *  notation the model wrote in. Lets a grading read pull clean midi-json
+   *  instead of re-interpreting the model's notation. */
+  notation?: Notation;
 }
 
 /**

@@ -32,40 +32,38 @@ const SNARE = 38;
 const HIHAT = 42;
 
 /**
- * One-bar 4/4 backbeat: kick on beats 1 & 3, snare on 2 & 4, closed hi-hat on
- * every eighth (8 hats). Duration is NOT asserted — drum hits are one-shots and
- * their length is notation-dependent (a fixed 16th step in abstark/stark, the
- * model's pick in bar|beat / midi-json), so grading pitch + start keeps the
- * comparison fair. Ableton beats: kick 0,2 — snare 1,3 — hats 0,0.5,…,3.5.
+ * One-bar 4/4 groove: four-on-the-floor kick (every beat), snare on 2 & 4,
+ * closed hi-hat on every sixteenth (16 hats). Deliberately far from the
+ * every-eighth-hats + 1&3-kick backbeat shown in the abstark/stark skill
+ * examples — the model must derive BOTH the kick and hi-hat patterns rather than
+ * copy the taught one, so this measures notation generalization, not recall.
+ * Duration is NOT asserted — drum hits are one-shots and their length is
+ * notation-dependent, so grading pitch + start keeps the comparison fair.
+ * Ableton beats: kick 0,1,2,3 — snare 1,3 — hats 0,0.25,…,3.75.
  */
-const BACKBEAT: ExpectedNote[] = [
+const GROOVE: ExpectedNote[] = [
   { pitch: KICK, start: 0 },
+  { pitch: KICK, start: 1 },
   { pitch: KICK, start: 2 },
+  { pitch: KICK, start: 3 },
   { pitch: SNARE, start: 1 },
   { pitch: SNARE, start: 3 },
-  { pitch: HIHAT, start: 0 },
-  { pitch: HIHAT, start: 0.5 },
-  { pitch: HIHAT, start: 1 },
-  { pitch: HIHAT, start: 1.5 },
-  { pitch: HIHAT, start: 2 },
-  { pitch: HIHAT, start: 2.5 },
-  { pitch: HIHAT, start: 3 },
-  { pitch: HIHAT, start: 3.5 },
+  ...Array.from({ length: 16 }, (_, i) => ({
+    pitch: HIHAT,
+    start: i * 0.25,
+  })),
 ];
 
-/** All four notations: a GM backbeat is exact-pitch and representable in each. */
+/** All four notations: exact GM pitches on the 16th grid, representable in each. */
 export const drumBackbeatMatrix = notationNeutralScenarios({
   baseId: "drum-backbeat",
-  description: "Drum backbeat: kick 1&3, snare 2&4, hi-hat every eighth",
+  description:
+    "Drum groove: four-on-the-floor kick, snare 2&4, hi-hat every sixteenth",
   track: DRUMS_TRACK,
   meter: "4/4",
   prompt:
-    "On the Drums track, create a 1-bar drum clip in scene 1: kick on beats 1 and 3, snare on beats 2 and 4, and a closed hi-hat on every eighth note (8 hi-hats total).",
-  expected: BACKBEAT,
-  judgePrompt: `Evaluate if the assistant:
-1. Created a 1-bar 4/4 drum clip with kick on beats 1 & 3, snare on beats 2 & 4, and a closed hi-hat on every eighth (8 hats)
-2. Placed the kick (Ableton beats 0, 2), snare (beats 1, 3), and hats (beats 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5) on the correct grid positions
-3. Kept the three instruments on their own pitches (kick 36, snare 38, hi-hat 42) — a clean backbeat, nothing dropped or doubled`,
+    "On the Drums track, create a 1-bar drum clip in scene 1: a four-on-the-floor kick (on every beat), snare on beats 2 and 4, and a closed hi-hat on every sixteenth note (16 hi-hats total).",
+  expected: GROOVE,
 });
 
 /**
@@ -96,10 +94,6 @@ export const melodyPitchMatrix = notationNeutralScenarios({
   prompt:
     "On the Lead track, create a 2-bar MIDI clip in scene 1 with this quarter-note melody, one note per beat: bar 1 ascends C3, E3, G3, then leaps up an octave to C4; bar 2 descends chromatically B3, Bb3, A3, Ab3.",
   expected: CHROMATIC_MELODY,
-  judgePrompt: `Evaluate if the assistant:
-1. Created a 2-bar 4/4 clip with eight quarter notes, one per beat (Ableton beats 0-7)
-2. Bar 1 ascends C3, E3, G3 then leaps an OCTAVE up to C4 (MIDI 60, 64, 67, 72)
-3. Bar 2 descends by exact chromatic half-steps: B3, Bb3, A3, Ab3 (MIDI 71, 70, 69, 68) — not a diatonic/scale approximation`,
 });
 
 /**
@@ -129,8 +123,4 @@ export const rhythmGridMatrix = notationNeutralScenarios({
   prompt:
     "On the Lead track, create a 1-bar MIDI clip in scene 1 with every note on C3: a quarter note on beat 1, two eighth notes on beat 2, four sixteenth notes on beat 3, and a quarter note on beat 4.",
   expected: MIXED_RHYTHM,
-  judgePrompt: `Evaluate if the assistant:
-1. Created a 1-bar 4/4 clip with eight notes, all on C3 (MIDI 60)
-2. Used the right absolute durations: a quarter (beat 1), two eighths (beat 2), four sixteenths (beat 3), a quarter (beat 4)
-3. Placed them at the correct grid positions (Ableton beats 0, 1, 1.5, 2, 2.25, 2.5, 2.75, 3) — the sixteenths tightly packed, NOT spread as eighths or quarters`,
 });
