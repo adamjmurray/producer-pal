@@ -480,6 +480,7 @@ describe("useChat", () => {
             temperature: null,
             showThoughts: null,
             smallModelMode: null,
+            systemInstruction: null,
           },
         );
       });
@@ -509,6 +510,7 @@ describe("useChat", () => {
           temperature: null,
           showThoughts: null,
           smallModelMode: null,
+          systemInstruction: null,
         });
       });
 
@@ -577,7 +579,12 @@ describe("useChat", () => {
         "Default",
         {},
         history,
-        { provider: "gemini", apiKey: "test-key", baseUrl: undefined },
+        {
+          provider: "gemini",
+          apiKey: "test-key",
+          baseUrl: undefined,
+          lockedSystemInstruction: null,
+        },
       );
     });
 

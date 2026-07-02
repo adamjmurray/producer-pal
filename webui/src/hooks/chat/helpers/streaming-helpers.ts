@@ -9,6 +9,7 @@ import {
   type MessageOverrides,
   type PendingForkRef,
 } from "#webui/hooks/chat/use-chat-types";
+import { resolveSystemInstruction } from "#webui/lib/config";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
@@ -206,6 +207,8 @@ export interface InitConnection {
   model: string;
   apiKey: string;
   extraParams: Record<string, unknown>;
+  /** The resolved system instruction to lock and send for this init. */
+  systemInstruction: string;
 }
 
 /**
@@ -217,9 +220,15 @@ export interface InitConnection {
  * *current* settings for the effective provider — no API key is ever persisted
  * with the conversation.
  *
- * @param locked - Conversation's locked provider/model (null fields if unset)
+ * A restored conversation also carries its locked system instruction through as
+ * `lockedSystemInstruction`, so the adapter sends what the conversation started
+ * with rather than the current global override. Null (brand-new conversation)
+ * lets the adapter fall back to resolving the current override.
+ *
+ * @param locked - Conversation's locked provider/model/system-instruction (null fields if unset)
  * @param locked.activeProvider - Locked provider, or null when not locked
  * @param locked.activeModel - Locked model, or null when not locked
+ * @param locked.activeSystemInstruction - Locked system instruction, or null when not locked
  * @param fallback - Current-settings provider/model (used when not locked)
  * @param fallback.provider - Current-settings provider
  * @param fallback.model - Current-settings model
@@ -228,7 +237,11 @@ export interface InitConnection {
  * @returns Effective provider, model, key, and merged extra params
  */
 export function resolveInitConnection(
-  locked: { activeProvider: Provider | null; activeModel: string | null },
+  locked: {
+    activeProvider: Provider | null;
+    activeModel: string | null;
+    activeSystemInstruction: string | null;
+  },
   fallback: { provider: Provider; model: string },
   resolveConnection: (provider: Provider) => {
     apiKey: string;
@@ -239,11 +252,38 @@ export function resolveInitConnection(
   const provider = locked.activeProvider ?? fallback.provider;
   const model = locked.activeModel ?? fallback.model;
   const { apiKey, baseUrl } = resolveConnection(provider);
+  const mergedExtraParams = {
+    ...extraParams,
+    provider,
+    apiKey,
+    baseUrl,
+    lockedSystemInstruction: locked.activeSystemInstruction,
+  };
 
   return {
     provider,
     model,
     apiKey,
-    extraParams: { ...extraParams, provider, apiKey, baseUrl },
+    extraParams: mergedExtraParams,
+    systemInstruction: resolveLockedSystemInstruction(mergedExtraParams),
   };
+}
+
+/**
+ * The system instruction to lock for an init: the conversation's locked snapshot
+ * when continuing a restored chat, else the resolved current override for a
+ * brand-new one. Mirrors the adapter's resolution so the locked value equals
+ * what was sent.
+ * @param extraParams - The init's extra params (locked snapshot + current override)
+ * @returns The effective system instruction to lock and send
+ */
+export function resolveLockedSystemInstruction(
+  extraParams: Record<string, unknown>,
+): string {
+  return (
+    (extraParams.lockedSystemInstruction as string | null) ??
+    resolveSystemInstruction(
+      extraParams.systemInstructionOverride as string | undefined,
+    )
+  );
 }

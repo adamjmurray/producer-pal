@@ -186,14 +186,20 @@ export const chatAdapter: ChatAdapter<
     const apiKey = extraParams?.apiKey as string;
     // Full-replace custom system prompt (~/.producer-pal/system-prompt.md): any
     // non-blank content wholly replaces the built-in instruction; blank/absent
-    // falls back to the default. Locked here at client-init so it stays stable
-    // for the conversation (and keeps the cached system prefix consistent).
+    // falls back to the default. A restored conversation passes its locked
+    // snapshot (lockedSystemInstruction) so continuing it keeps sending what it
+    // started with, even after the global override changes; a brand-new
+    // conversation has none and resolves the current override instead.
     const systemInstructionOverride = extraParams?.systemInstructionOverride as
       | string
       | undefined;
-    const systemInstruction = resolveSystemInstruction(
-      systemInstructionOverride,
-    );
+    const lockedSystemInstruction = extraParams?.lockedSystemInstruction as
+      | string
+      | null
+      | undefined;
+    const systemInstruction =
+      lockedSystemInstruction ??
+      resolveSystemInstruction(systemInstructionOverride);
     // When thinking is Off, always exclude reasoning tokens even if the model generates them.
     // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
     const showThoughts =

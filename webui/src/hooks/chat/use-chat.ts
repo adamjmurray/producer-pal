@@ -209,6 +209,7 @@ export function useChat<
         temperature,
         null,
         smallModelMode,
+        init.systemInstruction,
       );
     },
     [
@@ -402,9 +403,7 @@ export function useChat<
 
     if (queued.length === 0) return;
 
-    const merged = queued.map((m) => m.text).join("\n\n");
-
-    await handleSend(merged, overrides);
+    await handleSend(queued.map((m) => m.text).join("\n\n"), overrides);
   }, [drainQueue, handleSend]);
 
   const { handleRetry, handleEdit } = useConversationActions({

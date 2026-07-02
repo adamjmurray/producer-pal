@@ -144,6 +144,28 @@ describe("chatAdapter", () => {
       expect(config.systemInstruction).toBe(SYSTEM_INSTRUCTION);
     });
 
+    it("uses a locked system instruction over the current override", () => {
+      // A restored conversation carries its locked snapshot; it wins over the
+      // current global override so continuing the chat sends what it started
+      // with.
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        1.0,
+        "default",
+        {},
+        undefined,
+        {
+          ...extraParams,
+          lockedSystemInstruction: "Locked prompt from when the chat started.",
+          systemInstructionOverride: "A newer global override.",
+        },
+      );
+
+      expect(config.systemInstruction).toBe(
+        "Locked prompt from when the chat started.",
+      );
+    });
+
     it("sets reasoning effort for openai provider with Max thinking", () => {
       const config = chatAdapter.buildConfig(
         "o3-mini",

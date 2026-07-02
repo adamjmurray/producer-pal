@@ -254,6 +254,7 @@ describe("useConversations", () => {
         temperature: null,
         showThoughts: null,
         smallModelMode: null,
+        systemInstruction: null,
       },
     );
   });
@@ -347,6 +348,7 @@ describe("useConversations", () => {
         temperature: null,
         showThoughts: null,
         smallModelMode: null,
+        systemInstruction: null,
       },
     );
   });
@@ -571,6 +573,7 @@ describe("useConversations", () => {
           temperature: null,
           showThoughts: null,
           smallModelMode: null,
+          systemInstruction: null,
         },
       );
     });

@@ -170,7 +170,10 @@ export function useChatModeState(params: UseChatModeStateParams) {
       activeTemperature: chat.activeTemperature,
       activeShowThoughts: chat.activeShowThoughts,
       activeSmallModelMode: chat.activeSmallModelMode,
-      activeSystemInstruction: effectiveSystemInstruction,
+      // Snapshot the LOCKED instruction (what this conversation actually ran
+      // with), not the current global override — so editing the global later
+      // doesn't rewrite an existing conversation's record.
+      activeSystemInstruction: chat.activeSystemInstruction,
     },
     onForeignRecord,
     pendingForkRef,
@@ -241,7 +244,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
     conversationPanelState,
     headerInfo,
     branchNav,
-    systemInstruction: effectiveSystemInstruction,
+    // Show the LOCKED instruction for the active conversation (accurate once a
+    // chat has sent its first turn / been restored); fall back to the current
+    // resolved instruction for a brand-new, not-yet-locked chat.
+    systemInstruction:
+      chat.activeSystemInstruction ?? effectiveSystemInstruction,
   };
 }
 

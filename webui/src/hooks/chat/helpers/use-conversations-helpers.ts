@@ -93,6 +93,7 @@ export function buildLockedSettings(
     temperature: record.temperature,
     showThoughts: record.showThoughts,
     smallModelMode: record.smallModelMode,
+    systemInstruction: record.systemInstruction ?? null,
   };
 }
 
