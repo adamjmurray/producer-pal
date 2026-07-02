@@ -9,9 +9,94 @@
             "modernui": 1
         },
         "classnamespace": "box",
-        "rect": [ 722.0, 222.0, 692.0, 506.0 ],
+        "rect": [ 44.0, 236.0, 621.0, 585.0 ],
         "openinpresentation": 1,
         "boxes": [
+            {
+                "box": {
+                    "id": "obj-12",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 2,
+                    "outlettype": [ "", "" ],
+                    "patching_rect": [ 233.0, 392.0, 135.0, 22.0 ],
+                    "text": "route openConfigFolder"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-18",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 298.0, 504.0, 131.0, 22.0 ],
+                    "text": "print openConfigFolder"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-14",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 105.0, 344.0, 104.0, 22.0 ],
+                    "text": "openConfigFolder"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-11",
+                    "maxclass": "newobj",
+                    "numinlets": 0,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 233.0, 352.0, 123.0, 22.0 ],
+                    "text": "r ---openConfigFolder"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-9",
+                    "linecount": 2,
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 233.0, 441.0, 136.0, 35.0 ],
+                    "text": ";\rmax launch_browser $1"
+                }
+            },
+            {
+                "box": {
+                    "annotation": "Open the folder containing global context and customizations.",
+                    "annotation_name": "Open Folder",
+                    "fontsize": 10.0,
+                    "id": "obj-7",
+                    "maxclass": "live.text",
+                    "mode": 0,
+                    "numinlets": 1,
+                    "numoutlets": 2,
+                    "outlettype": [ "", "" ],
+                    "parameter_enable": 1,
+                    "patching_rect": [ 105.0, 308.0, 83.0, 24.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 174.0, 133.0, 66.0, 19.0 ],
+                    "saved_attribute_attributes": {
+                        "valueof": {
+                            "parameter_enum": [ "val1", "val2" ],
+                            "parameter_invisible": 2,
+                            "parameter_longname": "live.text[1]",
+                            "parameter_mmax": 1,
+                            "parameter_modmode": 0,
+                            "parameter_shortname": "live.text[3]",
+                            "parameter_type": 2
+                        }
+                    },
+                    "text": "Open Folder",
+                    "varname": "open-chat-ui[1]"
+                }
+            },
             {
                 "box": {
                     "id": "obj-4",
@@ -37,7 +122,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 233.0, 220.5, 83.0, 24.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 183.0, 131.0, 66.0, 19.0 ],
+                    "presentation_rect": [ 92.0, 133.0, 66.0, 19.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "val1", "val2" ],
@@ -94,7 +179,7 @@
                     "maxclass": "newobj",
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 81.0, 361.0, 89.0, 22.0 ],
+                    "patching_rect": [ 81.0, 387.0, 89.0, 22.0 ],
                     "text": "s ---node-script"
                 }
             },
@@ -151,7 +236,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 180.5, 33.5, 96.0, 41.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 1.0, 132.0, 181.0, 18.0 ],
+                    "presentation_rect": [ 0.0, 2.0, 181.0, 18.0 ],
                     "text": "Info for AI understand your project goals",
                     "textjustification": 1
                 }
@@ -217,7 +302,7 @@
                     "maxclass": "newobj",
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 24.0, 361.0, 42.0, 22.0 ],
+                    "patching_rect": [ 24.0, 387.0, 42.0, 22.0 ],
                     "text": "s ---v8"
                 }
             },
@@ -236,7 +321,7 @@
                     "parameter_mappable": 0,
                     "patching_rect": [ 24.0, 29.0, 146.0, 50.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 0.0, 0.0, 250.0, 132.0 ],
+                    "presentation_rect": [ 0.0, 19.0, 250.0, 113.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_invisible": 1,
@@ -280,6 +365,32 @@
                     "destination": [ "obj-6", 0 ],
                     "order": 1,
                     "source": [ "obj-10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-12", 0 ],
+                    "source": [ "obj-11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-18", 0 ],
+                    "order": 0,
+                    "source": [ "obj-12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9", 0 ],
+                    "order": 1,
+                    "source": [ "obj-12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-13", 0 ],
+                    "source": [ "obj-14", 0 ]
                 }
             },
             {
@@ -344,6 +455,12 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-14", 0 ],
+                    "source": [ "obj-7", 0 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-35", 1 ],
                     "source": [ "obj-71", 0 ]
                 }
@@ -358,6 +475,7 @@
         "parameters": {
             "obj-2": [ "memoryContent", "memoryContent", 0 ],
             "obj-32": [ "live.text[3]", "live.text[3]", 0 ],
+            "obj-7": [ "live.text[1]", "live.text[3]", 0 ],
             "parameterbanks": {
                 "0": {
                     "index": 0,
