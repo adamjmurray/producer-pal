@@ -172,18 +172,28 @@ web UI architecture.
   (`src/tools/shared/tool-framework/modal-config.ts`) — there is no separate
   `smallModelModeConfig` / `notationConfig` object. A param is either a plain
   `z.….describe("text")` (identical in every mode) or
-  `param(z.…, { default, smallModel?, "midi-json"?, stark?, abstark? })`:
+  `param(z.…, { default, smallModel?, "midi-json"?, stark?, abstark?, "smallModel:<notation>"? })`:
   - `default` is the base description (barbeat, large-model).
   - A mode's value is a **string** (override the description), **`null`** (hide
     the param in that mode — the old `excludeParams`), or an **object**
     `{ description?, excludeEnumValues? }` (trim enum values, e.g. the
     small-model `include` params on read tools).
   - The tool `description` field is likewise a plain string or
-    `{ default, smallModel?, <notation>? }` (replaces the old
-    `toolDescription`).
-  - Resolution: the active notation wins over `smallModel`, both over `default`;
-    a `null` in any active mode hides the param. `barbeat` (the default
-    notation) has no key and falls through to `default`.
+    `{ default, smallModel?, <notation>?, "smallModel:<notation>"? }` (replaces
+    the old `toolDescription`).
+  - Two independent axes are live — model size (large / `smallModel`) and
+    notation — for 8 (size × notation) cells that map 1:1 to `default` + the
+    keys: large×barbeat = `default`, small×barbeat = `smallModel`,
+    large×notation = the bare notation (e.g. `stark`), small×notation = the
+    compound `smallModel:<notation>` (e.g. `"smallModel:stark"`).
+  - Resolution walks a most-specific-first ladder — `smallModel:<notation>` →
+    `<notation>` → `smallModel` → `default` — and the first key present wins
+    outright (`null` there hides the param). So the active notation wins over
+    `smallModel`, both over `default`; a bare notation also serves as small's
+    fallback until you pin its compound cell. `barbeat` (the default notation)
+    has no key and falls through. Add a compound cell only when the
+    small×notation combination needs its own (usually shorter) text — e.g.
+    `update-clip`'s `notes`, where the notation descriptions are verbose.
   - Use notation keys only for params whose text describes note-content encoding
     (chiefly `notes` on create-clip / update-clip), so the schema reflects the
     notation in effect (`midi-json` / `stark` / `abstark`). Timing/position

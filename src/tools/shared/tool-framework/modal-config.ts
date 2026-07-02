@@ -8,13 +8,30 @@ import { type Notation } from "#src/shared/notation.ts";
 
 /**
  * Modal tool config: per-arg and per-tool-description overrides keyed by the
- * "mode" in effect. Modes are the active notation (`config.notation`, minus the
- * `barbeat` default which falls through) and `smallModel`. Overrides are
+ * "mode" in effect. Two independent axes are live at runtime — model size
+ * (large / `smallModel`) and notation (`config.notation`, with the `barbeat`
+ * default falling through) — for 8 (size × notation) combinations. Overrides are
  * co-located with the thing they modify — a param via {@link param}, the tool
  * text via the `description` field — so there is no separate lookup table and no
- * dangling-reference risk. Notation wins over small-model for the same target.
+ * dangling-reference risk.
+ *
+ * The 8 grid cells map 1:1 to `default` + the {@link ModeKey}s: large×barbeat is
+ * `default`, small×barbeat is `smallModel`, large×notation is the bare notation
+ * (e.g. `stark`), and small×notation is the compound `smallModel:{notation}`.
+ * Resolution walks a most-specific-first ladder (compound cell → notation →
+ * smallModel → default) and the first key present wins outright, so a bare
+ * notation also serves as small's fallback until you pin its compound cell.
  */
-export type ModeKey = Exclude<Notation, "barbeat"> | "smallModel";
+export type NonDefaultNotation = Exclude<Notation, "barbeat">;
+
+/**
+ * A mode key: the active notation (non-barbeat), `smallModel` (small model, any
+ * notation), or a compound `smallModel:{notation}` cell pinning both axes.
+ */
+export type ModeKey =
+  | NonDefaultNotation
+  | "smallModel"
+  | `smallModel:${NonDefaultNotation}`;
 
 /** Tool `description`: a plain string, or per-mode text over a required base. */
 export type ModalDescription =
@@ -24,7 +41,7 @@ export type ModalDescription =
 /**
  * A param's value in one mode: a replacement description string, `null` to hide
  * the param entirely in that mode, or an object to trim enum values (with an
- * optional description). Absent key ⇒ the base `default` applies.
+ * optional description). Absent key ⇒ a less-specific key (or `default`) applies.
  */
 export type ParamModeValue =
   | string
@@ -80,9 +97,11 @@ export function getParamModes(schema: ZodType): ParamModeMap | undefined {
 
 /**
  * Resolves every param's modes for the active context into the flat
- * exclude/override maps that {@link filterSchemaForSmallModel} consumes.
- * Description and enum-value overrides resolve independently; for each, notation
- * wins over small-model. A `null` in any active mode hides the param.
+ * exclude/override maps that {@link filterSchemaForSmallModel} consumes. Each
+ * param resolves to a single winning value via the most-specific-first key
+ * ladder (compound cell → notation → smallModel); `null` hides the param, a
+ * string overrides its description, an object overrides description and/or trims
+ * enum values.
  * @param inputSchema - The tool's raw input schema
  * @param context - The active notation and small-model flag
  * @returns Flattened excludeParams / descriptionOverrides / excludeEnumValues
@@ -91,8 +110,7 @@ export function resolveParamModes(
   inputSchema: Record<string, ZodType>,
   context: ModeContext,
 ): ResolvedParamModes {
-  const useNotation =
-    context.notation != null && context.notation !== "barbeat";
+  const ladder = modeKeyLadder(context);
   const excludeParams: string[] = [];
   const descriptionOverrides: Record<string, string> = {};
   const excludeEnumValues: Record<string, string[]> = {};
@@ -102,22 +120,20 @@ export function resolveParamModes(
 
     if (modes == null) continue;
 
-    const notationVal =
-      useNotation && context.notation != null
-        ? modes[context.notation as ModeKey]
-        : undefined;
-    const smallVal = context.smallModelMode ? modes.smallModel : undefined;
+    const winner = firstPresent(ladder, (k) => modes[k]);
 
-    if (notationVal === null || smallVal === null) {
+    if (winner === undefined) continue;
+
+    if (winner === null) {
       excludeParams.push(key);
       continue;
     }
 
-    const desc = descriptionOf(notationVal) ?? descriptionOf(smallVal);
+    const desc = descriptionOf(winner);
 
     if (desc != null) descriptionOverrides[key] = desc;
 
-    const enums = enumValuesOf(notationVal) ?? enumValuesOf(smallVal);
+    const enums = enumValuesOf(winner);
 
     if (enums != null) excludeEnumValues[key] = enums;
   }
@@ -126,8 +142,9 @@ export function resolveParamModes(
 }
 
 /**
- * Resolves a tool `description` for the active context. Notation wins over
- * small-model, both over the base. A plain-string description is returned as-is.
+ * Resolves a tool `description` for the active context via the same
+ * most-specific-first key ladder as {@link resolveParamModes} (compound cell →
+ * notation → smallModel → default). A plain-string description is returned as-is.
  * @param description - The tool's modal or plain description
  * @param context - The active notation and small-model flag
  * @returns The resolved description string
@@ -138,13 +155,52 @@ export function resolveModalDescription(
 ): string {
   if (typeof description === "string") return description;
 
-  const notationText =
-    context.notation != null && context.notation !== "barbeat"
-      ? description[context.notation as ModeKey]
-      : undefined;
-  const smallText = context.smallModelMode ? description.smallModel : undefined;
+  const winner = firstPresent(modeKeyLadder(context), (k) => description[k]);
 
-  return notationText ?? smallText ?? description.default;
+  return winner ?? description.default;
+}
+
+/**
+ * Builds the most-specific-first ladder of mode keys active for a context: the
+ * compound `smallModel:{notation}` cell (small + non-barbeat), then the bare
+ * notation (non-barbeat), then `smallModel` (small). Empty for large×barbeat.
+ * @param context - The active notation and small-model flag
+ * @returns Mode keys to try in precedence order
+ */
+function modeKeyLadder(context: ModeContext): ModeKey[] {
+  const notation =
+    context.notation != null && context.notation !== "barbeat"
+      ? context.notation
+      : undefined;
+  const small = context.smallModelMode === true;
+  const keys: ModeKey[] = [];
+
+  if (small && notation != null) keys.push(`smallModel:${notation}`);
+
+  if (notation != null) keys.push(notation);
+
+  if (small) keys.push("smallModel");
+
+  return keys;
+}
+
+/**
+ * Returns the first defined value produced by `pick` over the ladder keys.
+ * @param ladder - Mode keys in precedence order
+ * @param pick - Reads a key's value from a mode map
+ * @returns The first non-undefined value, or undefined if none
+ */
+function firstPresent<T>(
+  ladder: ModeKey[],
+  pick: (key: ModeKey) => T | undefined,
+): T | undefined {
+  for (const key of ladder) {
+    const value = pick(key);
+
+    if (value !== undefined) return value;
+  }
+
+  return undefined;
 }
 
 /**

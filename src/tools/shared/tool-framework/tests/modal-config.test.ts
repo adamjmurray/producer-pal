@@ -165,6 +165,101 @@ describe("resolveParamModes", () => {
       notes: "small-model text",
     });
   });
+
+  it("uses the compound smallModel:notation cell when both axes are active", () => {
+    const schema = {
+      notes: param(z.string().optional(), {
+        default: "base",
+        smallModel: "small barbeat text",
+        stark: "large stark text",
+        "smallModel:stark": "small stark text",
+      }),
+    };
+
+    const result = resolveParamModes(schema, {
+      smallModelMode: true,
+      notation: "stark",
+    });
+
+    expect(result.descriptionOverrides).toStrictEqual({
+      notes: "small stark text",
+    });
+  });
+
+  it("ignores the compound cell for a large model (bare notation wins)", () => {
+    const schema = {
+      notes: param(z.string().optional(), {
+        default: "base",
+        stark: "large stark text",
+        "smallModel:stark": "small stark text",
+      }),
+    };
+
+    const result = resolveParamModes(schema, {
+      smallModelMode: false,
+      notation: "stark",
+    });
+
+    expect(result.descriptionOverrides).toStrictEqual({
+      notes: "large stark text",
+    });
+  });
+
+  it("ignores the compound cell in the barbeat default (smallModel wins)", () => {
+    const schema = {
+      notes: param(z.string().optional(), {
+        default: "base",
+        smallModel: "small barbeat text",
+        "smallModel:stark": "small stark text",
+      }),
+    };
+
+    const result = resolveParamModes(schema, {
+      smallModelMode: true,
+      notation: "barbeat",
+    });
+
+    expect(result.descriptionOverrides).toStrictEqual({
+      notes: "small barbeat text",
+    });
+  });
+
+  it("falls back to the bare notation when the compound cell is absent", () => {
+    const schema = {
+      notes: param(z.string().optional(), {
+        default: "base",
+        smallModel: "small barbeat text",
+        stark: "large stark text",
+      }),
+    };
+
+    const result = resolveParamModes(schema, {
+      smallModelMode: true,
+      notation: "stark",
+    });
+
+    expect(result.descriptionOverrides).toStrictEqual({
+      notes: "large stark text",
+    });
+  });
+
+  it("hides a param whose compound cell is null", () => {
+    const schema = {
+      notes: param(z.string().optional(), {
+        default: "base",
+        stark: "large stark text",
+        "smallModel:stark": null,
+      }),
+    };
+
+    const result = resolveParamModes(schema, {
+      smallModelMode: true,
+      notation: "stark",
+    });
+
+    expect(result.excludeParams).toStrictEqual(["notes"]);
+    expect(result.descriptionOverrides).toStrictEqual({});
+  });
 });
 
 describe("resolveModalDescription", () => {
@@ -211,5 +306,28 @@ describe("resolveModalDescription", () => {
         { notation: "stark" },
       ),
     ).toBe("base");
+  });
+
+  it("uses the compound smallModel:notation cell when both axes are active", () => {
+    expect(
+      resolveModalDescription(
+        {
+          default: "base",
+          smallModel: "short",
+          stark: "large stark",
+          "smallModel:stark": "small stark",
+        },
+        { smallModelMode: true, notation: "stark" },
+      ),
+    ).toBe("small stark");
+  });
+
+  it("falls back to the bare notation when the compound cell is absent", () => {
+    expect(
+      resolveModalDescription(
+        { default: "base", smallModel: "short", stark: "large stark" },
+        { smallModelMode: true, notation: "stark" },
+      ),
+    ).toBe("large stark");
   });
 });

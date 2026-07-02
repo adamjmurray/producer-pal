@@ -112,10 +112,16 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "MIDI notes (bar|beat). MERGES - overwrites at same pitch+start; restate to edit in place. Delete/move existing notes via preTransforms, don't rewrite the clip",
       "midi-json":
         "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (p pitch, t start & d duration in beats, v velocity; see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). No v0-delete; delete/move existing notes via preTransforms - don't rewrite the clip",
+      "smallModel:midi-json":
+        "MIDI notes as JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (p pitch, t start, d dur, v vel; see Skills). MERGES - overwrites at same pitch+start. No v0-delete; delete/move via preTransforms, don't rewrite the clip",
       stark:
         "MIDI notes in stark notation, an ultra-minimal per-line `type: content` grid (see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start). Delete/move existing notes via preTransforms - don't rewrite the clip",
+      "smallModel:stark":
+        "MIDI notes in stark notation (`type: content` grid, see Skills). MERGES - overwrites at same pitch+start. Delete/move via preTransforms, don't rewrite the clip",
       abstark:
         "MIDI notes in abstark notation, a literal per-line `type: content` format (see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). Delete/move existing notes via preTransforms - don't rewrite the clip",
+      "smallModel:abstark":
+        "MIDI notes in abstark notation (literal `type: content`, see Skills). MERGES - overwrites at same pitch+start. Delete/move via preTransforms, don't rewrite the clip",
     }),
     transforms: param(z.string().optional(), {
       default:
