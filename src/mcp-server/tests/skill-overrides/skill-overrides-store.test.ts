@@ -102,6 +102,7 @@ describe("readSkillSlotState", () => {
 
     expect(state.builtIn).toBe(SKILL_SLOTS["core-standard"].builtIn);
     expect(state.title).toBe(SKILL_SLOTS["core-standard"].title);
+    expect(state.description).toBe(SKILL_SLOTS["core-standard"].description);
     expect(state.override).toBe("");
     expect(state.drifted).toBe(false);
     expect(state.provenance).toBeNull();

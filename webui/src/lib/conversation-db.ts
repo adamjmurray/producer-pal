@@ -33,6 +33,12 @@ export interface ConversationRecord {
   // RealtimeItem[] for voice records, null for text. Typed as unknown[] so the
   // storage layer stays decoupled from @openai/agents/realtime.
   voiceHistory: unknown[] | null;
+  // The system instruction this conversation ran with (resolved override or the
+  // built-in), snapshotted at the first save and preserved on later saves so the
+  // transcript shows what it actually ran with even after the global override is
+  // edited. Optional/schemaless: legacy records read fine without it (no
+  // DB_VERSION bump), and it rides the conversation export/import.
+  systemInstruction?: string;
   // --- Conversation branching (edit/retry forks) ---
   // Set on records created by forking an earlier turn. The fork stores a pointer
   // back to the record it diverged from (its "trunk") plus the UI message index

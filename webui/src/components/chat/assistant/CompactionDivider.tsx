@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { SafeMarkdown } from "./message-list-helpers";
+import { SafeMarkdown } from "./helpers/message-list-helpers";
 
 interface CompactionDividerProps {
   /** Transcript index of the divider's message, so scroll-to-fork can locate it

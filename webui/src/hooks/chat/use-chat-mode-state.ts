@@ -24,6 +24,7 @@ import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-me
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
+import { resolveSystemInstruction } from "#webui/lib/config";
 import {
   type BranchNavState,
   type BranchPoint,
@@ -94,6 +95,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
     systemPromptMemory.status.kind === "ready"
       ? systemPromptMemory.status.content
       : "";
+  // The instruction actually in effect (override or built-in): sent by the
+  // adapter, snapshotted onto saved records, and shown in the transcript notice.
+  const effectiveSystemInstruction = resolveSystemInstruction(
+    systemInstructionOverride,
+  );
 
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
   const resolvedApiKey = resolveProviderApiKey(
@@ -157,12 +163,15 @@ export function useChatModeState(params: UseChatModeStateParams) {
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
     clearConversation: wrappedClearConversation,
-    activeModel: chat.activeModel,
-    activeProvider: chat.activeProvider,
-    activeThinking: chat.activeThinking,
-    activeTemperature: chat.activeTemperature,
-    activeShowThoughts: chat.activeShowThoughts,
-    activeSmallModelMode: chat.activeSmallModelMode,
+    activeMeta: {
+      activeModel: chat.activeModel,
+      activeProvider: chat.activeProvider,
+      activeThinking: chat.activeThinking,
+      activeTemperature: chat.activeTemperature,
+      activeShowThoughts: chat.activeShowThoughts,
+      activeSmallModelMode: chat.activeSmallModelMode,
+      activeSystemInstruction: effectiveSystemInstruction,
+    },
     onForeignRecord,
     pendingForkRef,
   });
@@ -232,6 +241,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     conversationPanelState,
     headerInfo,
     branchNav,
+    systemInstruction: effectiveSystemInstruction,
   };
 }
 

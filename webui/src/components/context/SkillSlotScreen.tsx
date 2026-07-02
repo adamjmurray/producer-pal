@@ -9,7 +9,11 @@ import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
-import { ContextHeader, ExternalUpdateBanner } from "./ContextScreen";
+import {
+  ContextHeader,
+  DOUBLE_PANE_WIDTH,
+  ExternalUpdateBanner,
+} from "./ContextScreen";
 import { OverridePanes } from "./OverridePanes";
 import { SkillSlotSelect } from "./SkillSlotSelect";
 
@@ -70,7 +74,9 @@ export function SkillSlotScreen(
         slot={slot}
         onReset={() => void editor.handleClear()}
       />
-      <div className="flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden">
+      <div
+        className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
+      >
         {editor.externalUpdate && (
           <ExternalUpdateBanner
             message={EXTERNAL_UPDATE_MESSAGE}
@@ -123,8 +129,10 @@ interface SkillControlsProps {
 }
 
 /**
- * Controls strip: the slot dropdown, a drift note for the selected slot, and a
- * "Reset to default" action shown only when the slot has an override.
+ * Controls strip: the slot dropdown, a one-line explainer for the selected slot,
+ * a drift note, and a "Reset to default" action shown only when the slot has an
+ * override. The border spans full width while the content is centered to match
+ * the editor below.
  * @param props - Controls props
  * @returns Controls element
  */
@@ -132,30 +140,40 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
   const { slots, selected, onSelectSlot, slot, onReset } = props;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-      <SkillSlotSelect
-        slots={slots}
-        selected={selected}
-        onSelect={onSelectSlot}
-      />
-      {slot.drifted && (
-        <span className="text-xs text-amber-600 dark:text-amber-400">
-          ⚠ Built-in changed since you forked
-          {slot.forkedFromVersion != null
-            ? ` (v${slot.forkedFromVersion})`
-            : ""}
-          .
-        </span>
-      )}
-      {slot.override !== "" && (
-        <button
-          type="button"
-          onClick={onReset}
-          className="ml-auto shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+    <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
+      <div
+        className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex items-center gap-3`}
+      >
+        <SkillSlotSelect
+          slots={slots}
+          selected={selected}
+          onSelect={onSelectSlot}
+        />
+        <span
+          className="min-w-0 flex-1 truncate text-xs text-zinc-500 dark:text-zinc-400"
+          title={slot.description}
         >
-          Reset to default
-        </button>
-      )}
+          {slot.description}
+        </span>
+        {slot.drifted && (
+          <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">
+            ⚠ Built-in changed since you forked
+            {slot.forkedFromVersion != null
+              ? ` (v${slot.forkedFromVersion})`
+              : ""}
+            .
+          </span>
+        )}
+        {slot.override !== "" && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          >
+            Reset to default
+          </button>
+        )}
+      </div>
     </div>
   );
 }

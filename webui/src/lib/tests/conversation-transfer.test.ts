@@ -435,4 +435,39 @@ describe("conversation-transfer", () => {
     expect(imported.sessionType).toBe("voice");
     expect(imported.voiceHistory).toStrictEqual(voiceItems);
   });
+
+  it("round-trips the system-prompt snapshot on import", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "with-prompt",
+          createdAt: 100,
+          messages: [{ role: "user", content: "hi" }],
+          systemInstruction: "You are a custom assistant.",
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "with-prompt");
+
+    expect(imported.systemInstruction).toBe("You are a custom assistant.");
+  });
+
+  it("leaves records without a system-prompt snapshot unchanged", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "no-prompt",
+          createdAt: 100,
+          messages: [{ role: "user", content: "hi" }],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "no-prompt");
+
+    expect(imported).not.toHaveProperty("systemInstruction");
+  });
 });

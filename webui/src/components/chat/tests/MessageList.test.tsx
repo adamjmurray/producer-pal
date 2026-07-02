@@ -113,6 +113,34 @@ function renderMessageList(
 }
 
 describe("MessageList", () => {
+  describe("system prompt notice", () => {
+    it("shows the collapsible system prompt notice when provided", () => {
+      render(
+        <MessageList
+          {...messageListProps({
+            messages: [createUserMessage("hi")],
+            systemInstruction: "You are a helpful test assistant.",
+          })}
+        />,
+      );
+
+      expect(screen.getByText("System prompt")).toBeTruthy();
+      expect(
+        screen.getByText("You are a helpful test assistant."),
+      ).toBeTruthy();
+    });
+
+    it("omits the notice when no system prompt is provided", () => {
+      render(
+        <MessageList
+          {...messageListProps({ messages: [createUserMessage("hi")] })}
+        />,
+      );
+
+      expect(screen.queryByText("System prompt")).toBeNull();
+    });
+  });
+
   describe("rendering messages", () => {
     it("renders empty list when no messages", () => {
       const { container } = renderMessageList();

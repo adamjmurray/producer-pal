@@ -24,6 +24,7 @@ function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     name: "core-standard",
     title: "Core (standard)",
+    description: "Slot description.",
     builtIn: "BUILT-IN",
     override: "",
     drifted: false,
@@ -95,6 +96,7 @@ describe("useSkillOverrides", () => {
       {
         name: "core-standard",
         title: "Core (standard)",
+        description: "Slot description.",
         builtIn: "BUILT-IN",
         override: "",
         drifted: false,
@@ -103,6 +105,7 @@ describe("useSkillOverrides", () => {
       {
         name: "stark",
         title: "stark notation",
+        description: "Slot description.",
         builtIn: "BUILT-IN",
         override: "MINE",
         drifted: true,

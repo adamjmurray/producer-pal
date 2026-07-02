@@ -16,7 +16,7 @@ import {
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
-import { SYSTEM_INSTRUCTION, getThinkingBudget } from "#webui/lib/config";
+import { getThinkingBudget, resolveSystemInstruction } from "#webui/lib/config";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
 import { type ChatAdapter } from "./use-chat-types";
@@ -191,9 +191,9 @@ export const chatAdapter: ChatAdapter<
     const systemInstructionOverride = extraParams?.systemInstructionOverride as
       | string
       | undefined;
-    const systemInstruction = systemInstructionOverride?.trim()
-      ? systemInstructionOverride
-      : SYSTEM_INSTRUCTION;
+    const systemInstruction = resolveSystemInstruction(
+      systemInstructionOverride,
+    );
     // When thinking is Off, always exclude reasoning tokens even if the model generates them.
     // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
     const showThoughts =

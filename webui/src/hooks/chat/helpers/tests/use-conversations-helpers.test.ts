@@ -3,11 +3,43 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  type ActiveRefs,
+  buildConversationSaveRecord,
+  buildSaveRecord,
   deriveTitle,
   sumMessageUsage,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
+import { loadConversation } from "#webui/lib/conversation-db";
+
+vi.mock(import("#webui/lib/conversation-db"), () => ({
+  loadConversation: vi.fn(),
+}));
+
+/**
+ * Build active refs with overridable fields for the record builders.
+ * @param over - Fields to override on the defaults
+ * @returns Active refs
+ */
+function refs(over: Partial<ActiveRefs> = {}): ActiveRefs {
+  return {
+    id: "conv-1",
+    title: null,
+    createdAt: null,
+    bookmarked: false,
+    model: null,
+    provider: null,
+    thinking: null,
+    temperature: null,
+    showThoughts: null,
+    smallModelMode: null,
+    systemInstruction: null,
+    ...over,
+  };
+}
+
+const HISTORY = [{ role: "user", content: "hi" }];
 
 describe("deriveTitle", () => {
   it("uses first user message as title", () => {
@@ -34,6 +66,79 @@ describe("deriveTitle", () => {
 
   it("returns currentTitle when no user messages", () => {
     expect(deriveTitle("Old Title", [])).toBe("Old Title");
+  });
+});
+
+describe("buildSaveRecord systemInstruction snapshot", () => {
+  it("snapshots the active instruction on a new record", () => {
+    const rec = buildSaveRecord(
+      refs({ systemInstruction: "PROMPT A" }),
+      undefined,
+      HISTORY,
+    );
+
+    expect(rec.systemInstruction).toBe("PROMPT A");
+  });
+
+  it("preserves an existing snapshot over the current instruction", () => {
+    const existing = buildSaveRecord(
+      refs({ systemInstruction: "OLD" }),
+      undefined,
+      HISTORY,
+    );
+    const updated = buildSaveRecord(
+      refs({ systemInstruction: "NEW" }),
+      existing,
+      HISTORY,
+    );
+
+    expect(updated.systemInstruction).toBe("OLD");
+  });
+
+  it("omits the field when no instruction is known", () => {
+    const rec = buildSaveRecord(refs(), undefined, HISTORY);
+
+    expect("systemInstruction" in rec).toBe(false);
+  });
+});
+
+describe("buildConversationSaveRecord fork inheritance", () => {
+  afterEach(() => {
+    vi.mocked(loadConversation).mockReset();
+  });
+
+  it("inherits the trunk's snapshot when forking", async () => {
+    vi.mocked(loadConversation).mockResolvedValue({
+      id: "trunk",
+      systemInstruction: "TRUNK SI",
+    } as never);
+
+    const rec = await buildConversationSaveRecord({
+      id: "fork-1",
+      reuseId: "trunk",
+      fork: { anchorIndex: 1 },
+      refs: refs({ systemInstruction: "CURRENT GLOBAL" }),
+      chatHistory: HISTORY,
+      updatedAt: undefined,
+    });
+
+    expect(rec.systemInstruction).toBe("TRUNK SI");
+    expect(rec.forkParentId).toBe("trunk");
+  });
+
+  it("uses the current instruction when the trunk has no snapshot", async () => {
+    vi.mocked(loadConversation).mockResolvedValue({ id: "trunk" } as never);
+
+    const rec = await buildConversationSaveRecord({
+      id: "fork-1",
+      reuseId: "trunk",
+      fork: { anchorIndex: 1 },
+      refs: refs({ systemInstruction: "CURRENT GLOBAL" }),
+      chatHistory: HISTORY,
+      updatedAt: undefined,
+    });
+
+    expect(rec.systemInstruction).toBe("CURRENT GLOBAL");
   });
 });
 

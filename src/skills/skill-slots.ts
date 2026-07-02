@@ -37,25 +37,54 @@ export type SkillSlotName = (typeof SKILL_SLOT_NAMES)[number];
 export interface SkillSlotDef {
   /** Human label for the webui editor. */
   title: string;
+  /** One-line explainer shown beside the slot dropdown in the webui editor. */
+  description: string;
   /** The release-tuned built-in fragment this slot replaces. */
   builtIn: string;
 }
 
 /** The overridable skills fragments, keyed by their stable slot name. */
 export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
-  "core-standard": { title: "Core (standard)", builtIn: coreStandard },
-  "core-basic": { title: "Core (small-model)", builtIn: coreBasic },
+  "core-standard": {
+    title: "Core (standard)",
+    description:
+      "The main instructions: the tools, the workflow, and how Producer Pal drives Ableton Live. Used with capable models.",
+    builtIn: coreStandard,
+  },
+  "core-basic": {
+    title: "Core (small-model)",
+    description:
+      "A trimmed version of the core instructions for smaller or local models (small-model mode).",
+    builtIn: coreBasic,
+  },
   "barbeat-standard": {
     title: "bar|beat notation (standard)",
+    description:
+      "How to read and write bar|beat notation, the default note format. Used with capable models.",
     builtIn: barbeatStandard,
   },
   "barbeat-basic": {
     title: "bar|beat notation (small-model)",
+    description:
+      "A trimmed bar|beat notation guide for smaller or local models (small-model mode).",
     builtIn: barbeatBasic,
   },
-  "midi-json": { title: "midi-json notation", builtIn: midiJson },
-  stark: { title: "stark notation", builtIn: stark },
-  abstark: { title: "abstark notation", builtIn: abstark },
+  "midi-json": {
+    title: "midi-json notation",
+    description:
+      "The note format guide used when midi-json notation is active.",
+    builtIn: midiJson,
+  },
+  stark: {
+    title: "stark notation",
+    description: "The note format guide used when stark notation is active.",
+    builtIn: stark,
+  },
+  abstark: {
+    title: "abstark notation",
+    description: "The note format guide used when abstark notation is active.",
+    builtIn: abstark,
+  },
 };
 
 /** The two slots buildSkills assembles for a given runtime context. */

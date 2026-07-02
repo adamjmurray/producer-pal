@@ -146,8 +146,8 @@ describe("useConversations", () => {
   it("persists active model and provider in saved conversation", async () => {
     const { props, state } = createProps();
 
-    props.activeModel = "gemini-2.5-pro";
-    props.activeProvider = "gemini";
+    props.activeMeta.activeModel = "gemini-2.5-pro";
+    props.activeMeta.activeProvider = "gemini";
 
     const { result } = renderHook(() => useConversations(props));
 
@@ -276,7 +276,7 @@ describe("useConversations", () => {
   it("syncs activeSmallModelMode prop to conversation meta", async () => {
     const { props, state } = createProps();
 
-    props.activeSmallModelMode = true;
+    props.activeMeta.activeSmallModelMode = true;
 
     const { result } = renderHook(() => useConversations(props));
 

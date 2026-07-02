@@ -56,6 +56,8 @@ interface ChatScreenProps {
   showTokenUsage: boolean;
   conversationPanel: ConversationPanelState;
   branchNav?: BranchNavState;
+  /** System instruction shown as a collapsible notice atop the transcript. */
+  systemInstruction?: string;
 }
 
 /**
@@ -119,6 +121,7 @@ export function ChatScreen(props: ChatScreenProps) {
     showTokenUsage,
     conversationPanel,
     branchNav,
+    systemInstruction,
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
@@ -161,6 +164,7 @@ export function ChatScreen(props: ChatScreenProps) {
             showTokenUsage={showTokenUsage}
             requestedModel={headerInfo.activeModel}
             branchNav={branchNav}
+            systemInstruction={systemInstruction}
           />
         )}
       </div>

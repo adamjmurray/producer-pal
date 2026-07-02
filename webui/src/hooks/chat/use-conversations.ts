@@ -19,7 +19,10 @@ import {
   resolvePanelNotification,
   setLocationHash,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
-import { useSyncActiveMeta } from "#webui/hooks/chat/helpers/use-sync-active-meta";
+import {
+  type SyncActiveMetaParams,
+  useSyncActiveMeta,
+} from "#webui/hooks/chat/helpers/use-sync-active-meta";
 import {
   type ConversationLockedSettings,
   type PendingForkRef,
@@ -46,12 +49,12 @@ interface UseConversationsProps {
     lockedSettings?: ConversationLockedSettings,
   ) => void;
   clearConversation: () => void;
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  activeThinking: string | null;
-  activeTemperature: number | null;
-  activeShowThoughts: boolean | null;
-  activeSmallModelMode: boolean | null;
+  /**
+   * The active conversation's locked metadata (model/provider/thinking/etc. plus
+   * the resolved system instruction), mirrored into a ref and snapshotted onto
+   * saved records.
+   */
+  activeMeta: SyncActiveMetaParams;
   /** Invoked when a voice record is encountered. The parent should switch
    * modes so the voice hook can pick the conversation up from the URL hash.
    * When omitted, the hook falls back to clearing the active id. */
@@ -86,12 +89,7 @@ export interface UseConversationsReturn {
  * @param props.getChatHistory - Returns current chat history for saving
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
- * @param props.activeModel - Active model for the current conversation
- * @param props.activeProvider - Active provider for the current conversation
- * @param props.activeThinking - Active thinking level for the current conversation
- * @param props.activeTemperature - Active temperature for the current conversation
- * @param props.activeShowThoughts - Active showThoughts setting for the current conversation
- * @param props.activeSmallModelMode - Active smallModelMode setting for the current conversation
+ * @param props.activeMeta - Locked conversation metadata (model/provider/etc. + system instruction)
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
  * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
  * @returns Conversation management state and handlers
@@ -100,12 +98,7 @@ export function useConversations({
   getChatHistory,
   restoreChatHistory,
   clearConversation,
-  activeModel: activeModelProp,
-  activeProvider: activeProviderProp,
-  activeThinking: activeThinkingProp,
-  activeTemperature: activeTemperatureProp,
-  activeShowThoughts: activeShowThoughtsProp,
-  activeSmallModelMode: activeSmallModelModeProp,
+  activeMeta,
   onForeignRecord,
   pendingForkRef,
 }: UseConversationsProps): UseConversationsReturn {
@@ -123,14 +116,7 @@ export function useConversations({
   // of an earlier save's write (see saveCurrentConversation).
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
 
-  useSyncActiveMeta(activeMetaRef, {
-    activeModel: activeModelProp,
-    activeProvider: activeProviderProp,
-    activeThinking: activeThinkingProp,
-    activeTemperature: activeTemperatureProp,
-    activeShowThoughts: activeShowThoughtsProp,
-    activeSmallModelMode: activeSmallModelModeProp,
-  });
+  useSyncActiveMeta(activeMetaRef, activeMeta);
 
   const refreshList = useCallback(async () => {
     // Pass the active id so its branch family is represented by the conversation
@@ -478,5 +464,6 @@ function syncMetaRef(
     temperature: record.temperature,
     showThoughts: record.showThoughts,
     smallModelMode: record.smallModelMode ?? null,
+    systemInstruction: record.systemInstruction ?? null,
   };
 }

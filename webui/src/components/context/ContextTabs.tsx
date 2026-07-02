@@ -26,6 +26,8 @@ const PROJECT_LABELS: ContextEditorLabels = {
   closeAriaLabel: CLOSE_ARIA_LABEL,
   clearConfirmMessage: "Clear all project memory? This cannot be undone.",
   externalUpdateMessage: "Memory was updated outside the editor.",
+  description:
+    "Notes about this Ableton project — song direction, section plans, naming conventions — that Producer Pal keeps in mind. Saved with this project.",
 };
 
 const GLOBAL_LABELS: ContextEditorLabels = {
@@ -34,6 +36,8 @@ const GLOBAL_LABELS: ContextEditorLabels = {
   closeAriaLabel: CLOSE_ARIA_LABEL,
   clearConfirmMessage: "Clear all global context? This cannot be undone.",
   externalUpdateMessage: "Global context was updated outside the editor.",
+  description:
+    "Notes that apply to every project — your style, gear, and preferences — that Producer Pal keeps in mind in every chat.",
 };
 
 const INSTRUCTIONS_LABELS: ContextEditorLabels = {

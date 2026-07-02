@@ -7,6 +7,7 @@ import {
   SYSTEM_INSTRUCTION,
   getModelName,
   getThinkingBudget,
+  resolveSystemInstruction,
 } from "#webui/lib/config";
 
 describe("config", () => {
@@ -19,6 +20,21 @@ describe("config", () => {
     it("contains key concepts", () => {
       expect(SYSTEM_INSTRUCTION).toContain("Producer Pal");
       expect(SYSTEM_INSTRUCTION).toContain("Ableton Live");
+    });
+  });
+
+  describe("resolveSystemInstruction", () => {
+    it("falls back to the built-in for blank/absent overrides", () => {
+      expect(resolveSystemInstruction()).toBe(SYSTEM_INSTRUCTION);
+      expect(resolveSystemInstruction("")).toBe(SYSTEM_INSTRUCTION);
+      expect(resolveSystemInstruction("   \n ")).toBe(SYSTEM_INSTRUCTION);
+      expect(resolveSystemInstruction(null)).toBe(SYSTEM_INSTRUCTION);
+    });
+
+    it("uses a non-blank override verbatim", () => {
+      expect(resolveSystemInstruction("My custom prompt")).toBe(
+        "My custom prompt",
+      );
     });
   });
 

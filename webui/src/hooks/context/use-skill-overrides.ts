@@ -19,6 +19,8 @@ export interface SkillSlotView {
   name: string;
   /** Human label for the dropdown. */
   title: string;
+  /** One-line explainer shown beside the dropdown. */
+  description: string;
   /** The current release-tuned built-in fragment (read-only reference pane). */
   builtIn: string;
   /** The user's override body ("" when the slot tracks the built-in). */
@@ -159,6 +161,7 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
 interface RawSkillSlot {
   name: string;
   title: string;
+  description: string;
   builtIn: string;
   override: string;
   drifted: boolean;
@@ -262,6 +265,7 @@ function toView(raw: RawSkillSlot): SkillSlotView {
   return {
     name: raw.name,
     title: raw.title,
+    description: raw.description,
     builtIn: raw.builtIn,
     override: raw.override,
     drifted: raw.drifted,

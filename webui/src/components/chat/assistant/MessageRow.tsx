@@ -21,7 +21,10 @@ import {
 } from "#webui/lib/utils/format-timestamp";
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
-import { RenderErrorFallback, SafeMarkdown } from "./message-list-helpers";
+import {
+  RenderErrorFallback,
+  SafeMarkdown,
+} from "./helpers/message-list-helpers";
 
 export interface MessageRowProps {
   message: UIMessage;

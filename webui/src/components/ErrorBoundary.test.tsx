@@ -8,7 +8,7 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { RenderErrorFallback } from "./chat/assistant/message-list-helpers";
+import { RenderErrorFallback } from "./chat/assistant/helpers/message-list-helpers";
 import { ErrorBoundary } from "./ErrorBoundary";
 
 function ThrowingChild(): never {

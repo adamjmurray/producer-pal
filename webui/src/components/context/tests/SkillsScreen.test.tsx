@@ -45,6 +45,7 @@ function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
   return {
     name: "core-standard",
     title: "Core (standard)",
+    description: "Slot description.",
     builtIn: "BUILT-IN",
     override: "",
     drifted: false,
@@ -127,6 +128,20 @@ describe("SkillsScreen", () => {
     expect(screen.getByText("BUILT-IN")).toBeTruthy();
     expect(screen.queryByText("Reset to default")).toBeNull();
     expect(screen.queryByText(/Built-in changed since you forked/)).toBeNull();
+  });
+
+  it("shows the selected slot's one-line explainer", () => {
+    render(
+      <SkillsScreen
+        overrides={overrides({
+          kind: "ready",
+          slots: [slot({ description: "Explains what this fragment does." })],
+        })}
+        tabSlot={TAB_SLOT}
+      />,
+    );
+
+    expect(screen.getByText("Explains what this fragment does.")).toBeTruthy();
   });
 
   it("shows a drift note for a drifted slot", () => {

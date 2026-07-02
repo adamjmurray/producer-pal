@@ -29,6 +29,8 @@ export interface ActiveMeta {
   temperature: number | null;
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
+  /** Resolved system instruction in effect (snapshotted onto the record). */
+  systemInstruction: string | null;
 }
 
 export const DEFAULT_META: ActiveMeta = {
@@ -41,6 +43,7 @@ export const DEFAULT_META: ActiveMeta = {
   temperature: null,
   showThoughts: null,
   smallModelMode: null,
+  systemInstruction: null,
 };
 
 /** Ref snapshot for building a save record */
@@ -110,6 +113,9 @@ export function buildSaveRecord(
   const now = Date.now();
   const existingTitle = existing?.title ?? refs.title ?? null;
   const title = deriveTitle(existingTitle, chatHistory);
+  // Lock the snapshot at the first save: prefer an already-stored value.
+  const systemInstruction =
+    existing?.systemInstruction ?? refs.systemInstruction;
 
   return {
     id: refs.id,
@@ -128,6 +134,9 @@ export function buildSaveRecord(
     sessionType: "text",
     messages: chatHistory as ConversationRecord["messages"],
     voiceHistory: null,
+    // Snapshot the system instruction (locked above). Omitted when unknown so a
+    // record with no resolved instruction keeps its prior shape.
+    ...(systemInstruction != null && { systemInstruction }),
     // Carry branch linkage across updates. A fork's later saves (e.g. the
     // post-response autosave) route through here too; without this they would
     // strip the fields that make it a sibling, so its ‹ n/m › arrows vanish and
@@ -207,11 +216,17 @@ export async function buildConversationSaveRecord(args: {
       ? deriveForkParentId(source, fork.anchorIndex)
       : reuseId;
 
-    return buildForkedRecord(refs, chatHistory, {
+    const forked = buildForkedRecord(refs, chatHistory, {
       newId: id,
       parentId,
       anchorIndex: fork.anchorIndex,
     });
+
+    // A fork shares the trunk's transcript, so it inherits the trunk's
+    // system-prompt snapshot rather than re-capturing the current global.
+    return source?.systemInstruction != null
+      ? { ...forked, systemInstruction: source.systemInstruction }
+      : forked;
   }
 
   const existing = reuseId == null ? undefined : await loadConversation(id);

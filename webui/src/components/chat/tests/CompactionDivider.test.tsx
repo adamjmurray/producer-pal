@@ -10,7 +10,7 @@ import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock(
-  import("#webui/components/chat/assistant/message-list-helpers"),
+  import("#webui/components/chat/assistant/helpers/message-list-helpers"),
   () => ({
     SafeMarkdown: ({ content }: { content: string }) => <div>{content}</div>,
     RenderErrorFallback: () => <div />,

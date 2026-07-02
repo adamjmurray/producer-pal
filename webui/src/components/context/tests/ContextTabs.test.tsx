@@ -55,6 +55,7 @@ vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
         {
           name: "core-standard",
           title: "Core (standard)",
+          description: "Slot description.",
           builtIn: "CORE-BUILTIN",
           override: "",
           drifted: false,

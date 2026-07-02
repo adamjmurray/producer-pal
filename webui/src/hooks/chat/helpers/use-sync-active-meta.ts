@@ -10,13 +10,14 @@ import {
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
 import { type Provider } from "#webui/types/settings";
 
-interface SyncActiveMetaParams {
+export interface SyncActiveMetaParams {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
   activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
+  activeSystemInstruction: string | null;
 }
 
 /**
@@ -39,6 +40,7 @@ export function useSyncActiveMeta(
     activeTemperature,
     activeShowThoughts,
     activeSmallModelMode,
+    activeSystemInstruction,
   } = props;
 
   useEffect(() => {
@@ -52,6 +54,8 @@ export function useSyncActiveMeta(
     if (activeShowThoughts != null) meta.showThoughts = activeShowThoughts;
     if (activeSmallModelMode != null)
       meta.smallModelMode = activeSmallModelMode;
+    if (activeSystemInstruction != null)
+      meta.systemInstruction = activeSystemInstruction;
   }, [
     activeMetaRef,
     activeModel,
@@ -60,5 +64,6 @@ export function useSyncActiveMeta(
     activeTemperature,
     activeShowThoughts,
     activeSmallModelMode,
+    activeSystemInstruction,
   ]);
 }

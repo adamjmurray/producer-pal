@@ -45,6 +45,8 @@ export interface SkillSlotState {
   name: SkillSlotName;
   /** Human label for the editor. */
   title: string;
+  /** One-line explainer shown beside the slot dropdown. */
+  description: string;
   /** The current release-tuned built-in fragment. */
   builtIn: string;
   /** The user's override body ("" when the slot tracks the built-in). */
@@ -101,6 +103,7 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
   return {
     name,
     title: slot.title,
+    description: slot.description,
     builtIn: slot.builtIn,
     override,
     drifted:

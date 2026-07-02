@@ -20,6 +20,7 @@ function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
   return {
     name: "core-standard",
     title: "Core (standard)",
+    description: "Slot description.",
     builtIn: "BUILT-IN",
     override: "",
     drifted: false,

@@ -64,6 +64,7 @@ export function ChatApp(props: ChatAppProps) {
     conversationPanelState,
     headerInfo,
     branchNav,
+    systemInstruction,
   } = useChatModeState(props);
 
   return (
@@ -97,6 +98,7 @@ export function ChatApp(props: ChatAppProps) {
       showTokenUsage={display.showTokenUsage}
       conversationPanel={conversationPanelState}
       branchNav={branchNav}
+      systemInstruction={systemInstruction}
     />
   );
 }

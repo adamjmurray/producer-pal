@@ -77,6 +77,11 @@ interface ContextScreenProps {
 export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
   const { memory, labels, tabSlot, onClose } = props;
   const editor = useContextEditorState(memory, labels.clearConfirmMessage);
+  // Cap the editable region so it lines up with the chat column instead of
+  // sprawling across a wide monitor. Single-pane documents match the chat width;
+  // the side-by-side built-in view gets a little more room so neither pane is
+  // cramped (item: editors too wide on 4K).
+  const widthClass = labels.builtIn != null ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
@@ -92,6 +97,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
       <ContextControls
         status={memory.status}
         description={labels.description}
+        widthClass={widthClass}
         onClear={() => void editor.handleClear()}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -101,6 +107,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           externalUpdateMessage={labels.externalUpdateMessage}
           builtIn={labels.builtIn}
           overridePaneLabel={labels.overridePaneLabel}
+          widthClass={widthClass}
           editorKey={editor.editorKey}
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
@@ -113,6 +120,15 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
 }
 
 // --- Helpers below main export ---
+
+/** Single-pane editor width (matches the chat column, `max-w-5xl`). */
+const SINGLE_WIDTH = "max-w-5xl";
+
+/**
+ * Side-by-side editor width — a little wider than the chat column so neither
+ * pane is cramped. Exported so the skills editor (also side-by-side) matches.
+ */
+export const DOUBLE_PANE_WIDTH = "max-w-7xl";
 
 interface ContextHeaderProps {
   title: string;
@@ -169,37 +185,41 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
 interface ContextControlsProps {
   status: DocMemoryStatus;
   description?: string;
+  widthClass: string;
   onClear: () => void;
 }
 
 /**
  * Controls strip below the header with an optional explainer and a destructive
  * clear action. Hidden until memory has loaded so we don't flash a control
- * whose state we haven't fetched yet.
+ * whose state we haven't fetched yet. The border spans full width while the
+ * content is centered to `widthClass` so it lines up with the editor below.
  * @param props - Controls props
  * @returns Controls element (or null while loading)
  */
 function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
-  const { status, description, onClear } = props;
+  const { status, description, widthClass, onClear } = props;
 
   if (status.kind !== "ready") return null;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
-      {description != null && (
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          {description}
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={onClear}
-        className="ml-auto shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-      >
-        Clear
-      </button>
+    <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
+      <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
+        {description != null && (
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            {description}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onClear}
+          className="ml-auto shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+        >
+          Clear
+        </button>
+      </div>
     </div>
   );
 }
@@ -264,6 +284,7 @@ interface ContextBodyProps {
   externalUpdateMessage: string;
   builtIn?: string;
   overridePaneLabel?: string;
+  widthClass: string;
   editorKey: number;
   externalUpdate: boolean;
   onReload: () => void;
@@ -287,6 +308,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     externalUpdateMessage,
     builtIn,
     overridePaneLabel,
+    widthClass,
     editorKey,
     externalUpdate,
     onReload,
@@ -311,7 +333,9 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
   }
 
   return (
-    <div className="flex flex-col h-full p-4 gap-3 overflow-hidden">
+    <div
+      className={`mx-auto w-full ${widthClass} flex flex-col h-full p-4 gap-3 overflow-hidden`}
+    >
       {externalUpdate && (
         <ExternalUpdateBanner
           message={externalUpdateMessage}
