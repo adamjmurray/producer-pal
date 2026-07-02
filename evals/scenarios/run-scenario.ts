@@ -60,6 +60,8 @@ export interface RunScenarioOptions {
   envLabel: string;
   usage?: boolean;
   skipJudge?: boolean;
+  /** Skip the post-failure self-reflection turn (default: inject one). */
+  skipReflection?: boolean;
 }
 
 /**
@@ -139,6 +141,7 @@ export async function runScenario(
       provider,
       judgeOverride,
       options.skipJudge ?? false,
+      options.skipReflection ?? false,
     );
 
     return {
@@ -258,6 +261,7 @@ async function runAssertions(
  * @param provider - LLM provider being used
  * @param judgeOverride - Optional judge LLM override
  * @param skipJudge - When true, skip the LLM-as-judge step entirely
+ * @param skipReflection - When true, skip the post-failure self-reflection turn
  * @returns Combined assertion results
  */
 async function runAllAssertions(
@@ -267,6 +271,7 @@ async function runAllAssertions(
   provider: EvalProvider,
   judgeOverride: JudgeOverride | undefined,
   skipJudge: boolean,
+  skipReflection: boolean,
 ): Promise<EvalAssertionResult[]> {
   const checkAssertions = scenario.assertions.filter(
     (a) => a.type !== "llm_judge" && a.type !== "token_usage",
@@ -295,7 +300,9 @@ async function runAllAssertions(
   );
 
   // Self-reflection (before judge)
-  await maybeInjectReflection(checkResults, turns, session);
+  if (!skipReflection) {
+    await maybeInjectReflection(checkResults, turns, session);
+  }
 
   // Judge
   const judgeResults = await printJudgeSection(

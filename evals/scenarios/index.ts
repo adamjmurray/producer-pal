@@ -63,6 +63,7 @@ interface CliOptions {
   all?: boolean;
   skipSetup?: boolean;
   skipJudge?: boolean;
+  skipReflection?: boolean;
   quiet?: boolean;
   usage?: boolean;
   /** Whether to write JSON result files to disk (--no-save sets false). */
@@ -135,6 +136,10 @@ program
   .option(
     "--skip-judge",
     "Skip the LLM-as-judge step (rely on deterministic checks only)",
+  )
+  .option(
+    "--skip-reflection",
+    "Skip the self-reflection turn injected after a deterministic failure",
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-u, --usage", "Show per-step token usage")
@@ -400,6 +405,7 @@ async function runTrials(
       envLabel: label,
       usage: options.usage,
       skipJudge: options.skipJudge,
+      skipReflection: options.skipReflection,
     });
 
     const trialInfo: TrialInfo | undefined =
