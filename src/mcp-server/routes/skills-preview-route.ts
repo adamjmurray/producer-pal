@@ -1,0 +1,51 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Read-only REST endpoint that assembles the exact "# Producer Pal Skills" blob
+// ppal-connect would return for a given notation + small-model combination,
+// with the user's fragment overrides (~/.producer-pal/skills) applied. The webui
+// context editor's Skills "Preview" view fetches this to show what any of the
+// six combinations produces, so users can review (and size) the instructions the
+// model actually receives. Assembly must happen Node-side because the override
+// files are only readable here (V8 has no filesystem) — the same reason
+// skills-inject.ts assembles the live blob rather than the V8 connect() handler.
+
+import { type Express, type Request, type Response } from "express";
+import { DEFAULT_NOTATION, isNotation } from "#src/shared/notation.ts";
+import { buildSkills } from "#src/skills/build-skills.ts";
+import { activeSkillSlots } from "#src/skills/skill-slots.ts";
+import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
+
+/**
+ * Register the GET /skills-preview endpoint on the Express app. Query params
+ * `notation` (defaults to bar|beat when absent/invalid) and `smallModel`
+ * (`"true"` enables basic/small-model skills) select the combination. The
+ * response carries the assembled blob plus the two active slot names, so the
+ * editor can label which fragments a combination uses without re-deriving the
+ * selection logic. Read-only, so it is not origin-gated (unlike the override
+ * writes) — it exposes nothing a GET /skill-overrides didn't already.
+ *
+ * @param app - Express application
+ */
+export function registerSkillsPreviewRoute(app: Express): void {
+  app.get("/skills-preview", (req: Request, res: Response): void => {
+    // Overrides can change on the device/filesystem between calls — never cache.
+    res.set("Cache-Control", "no-store");
+
+    const notationParam = req.query.notation;
+    const notation = isNotation(notationParam)
+      ? notationParam
+      : DEFAULT_NOTATION;
+    const smallModelMode = req.query.smallModel === "true";
+
+    const { head, core } = activeSkillSlots(notation, smallModelMode);
+    const skills = buildSkills(
+      { notation, smallModelMode },
+      readSkillOverrides(),
+    );
+
+    res.json({ notation, smallModelMode, head, core, skills });
+  });
+}

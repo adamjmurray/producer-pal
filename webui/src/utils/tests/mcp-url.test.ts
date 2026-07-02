@@ -6,6 +6,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   detectCorsBlock,
   getMcpUrl,
+  getSkillsPreviewUrl,
   isViteDevServer,
 } from "#webui/utils/mcp-url";
 
@@ -66,6 +67,30 @@ describe("isViteDevServer", () => {
   it("returns false when window is undefined", () => {
     vi.stubGlobal("window", undefined);
     expect(isViteDevServer()).toBe(false);
+  });
+});
+
+describe("getSkillsPreviewUrl", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("derives the endpoint from the MCP URL with query params", () => {
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "3350", protocol: "http:" },
+    });
+    expect(getSkillsPreviewUrl("stark", true)).toBe(
+      "http://localhost:3350/skills-preview?notation=stark&smallModel=true",
+    );
+  });
+
+  it("encodes standard (non-small-model) selections", () => {
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "3350", protocol: "http:" },
+    });
+    expect(getSkillsPreviewUrl("barbeat", false)).toBe(
+      "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false",
+    );
   });
 });
 

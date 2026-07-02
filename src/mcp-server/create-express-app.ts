@@ -31,6 +31,7 @@ import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route
 import { registerGlobalContextRoutes } from "./routes/global-context-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
+import { registerSkillsPreviewRoute } from "./routes/skills-preview-route.ts";
 import { registerSystemPromptRoutes } from "./routes/system-prompt-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
@@ -318,6 +319,7 @@ export function createExpressApp(): Express {
   registerGlobalContextRoutes(app);
   registerSystemPromptRoutes(app);
   registerSkillOverridesRoutes(app);
+  registerSkillsPreviewRoute(app);
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);

@@ -34,6 +34,14 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
   ),
 }));
 
+// Stub the preview screen (it fetches on mount) to a marker that still renders
+// the view toggle, so the Fragments/Preview switch is exercised without network.
+vi.mock(import("#webui/components/context/SkillsPreviewScreen"), () => ({
+  SkillsPreviewScreen: (props: { viewSlot: preact.JSX.Element }) => (
+    <div data-testid="preview-screen">{props.viewSlot}</div>
+  ),
+}));
+
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 
 /**
@@ -274,6 +282,42 @@ describe("SkillsScreen", () => {
     });
 
     expect(screen.getByText("STARK")).toBeTruthy();
+  });
+
+  it("toggles between the fragment editor and the preview", () => {
+    render(
+      <SkillsScreen
+        overrides={overrides({ kind: "ready", slots: [slot()] })}
+        tabSlot={TAB_SLOT}
+      />,
+    );
+
+    // Fragments view by default: the slot dropdown is present.
+    expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
+    expect(screen.queryByTestId("preview-screen")).toBeNull();
+
+    fireEvent.click(screen.getByText("Preview"));
+
+    expect(screen.getByTestId("preview-screen")).toBeTruthy();
+    expect(screen.queryByLabelText("Skill fragment")).toBeNull();
+
+    // The toggle is still reachable inside the preview screen; switch back.
+    fireEvent.click(screen.getByText("Fragments"));
+
+    expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
+  });
+
+  it("keeps the preview reachable while the fragments list is loading", () => {
+    render(
+      <SkillsScreen
+        overrides={overrides({ kind: "loading" })}
+        tabSlot={TAB_SLOT}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Preview"));
+
+    expect(screen.getByTestId("preview-screen")).toBeTruthy();
   });
 
   describe("copy built-in", () => {

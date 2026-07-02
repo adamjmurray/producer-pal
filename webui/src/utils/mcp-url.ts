@@ -78,6 +78,27 @@ export function getSkillOverrideUrl(slot: string): string {
 }
 
 /**
+ * Gets the skills-preview endpoint URL for a notation + small-model combination
+ * (the assembled "# Producer Pal Skills" blob ppal-connect would return for that
+ * combination, with the user's fragment overrides applied).
+ * @param notation - The notation to preview
+ * @param smallModel - Whether to preview the small-model (basic) skills
+ * @returns {string} The skills-preview endpoint URL with query params
+ */
+export function getSkillsPreviewUrl(
+  notation: string,
+  smallModel: boolean,
+): string {
+  const base = getMcpUrl().replace(/\/mcp$/, "/skills-preview");
+  const params = new URLSearchParams({
+    notation,
+    smallModel: String(smallModel),
+  });
+
+  return `${base}?${params.toString()}`;
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL

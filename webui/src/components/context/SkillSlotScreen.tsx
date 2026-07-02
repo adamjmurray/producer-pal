@@ -34,6 +34,8 @@ interface SkillSlotScreenProps {
   onSelectSlot: (name: string) => void;
   /** The Project | Global | Instructions | Skills tab strip. */
   tabSlot: preact.JSX.Element;
+  /** The Fragments | Preview view toggle for the Skills tab. */
+  viewSlot: preact.JSX.Element;
   /** Close the overlay (omitted on the standalone /context page). */
   onClose?: () => void;
 }
@@ -52,7 +54,8 @@ interface SkillSlotScreenProps {
 export function SkillSlotScreen(
   props: SkillSlotScreenProps,
 ): preact.JSX.Element {
-  const { overrides, slots, slot, onSelectSlot, tabSlot, onClose } = props;
+  const { overrides, slots, slot, onSelectSlot, tabSlot, viewSlot, onClose } =
+    props;
   const memory = slotAsDocMemory(overrides, slot);
   const editor = useContextEditorState(memory, RESET_CONFIRM);
 
@@ -72,6 +75,7 @@ export function SkillSlotScreen(
         selected={slot.name}
         onSelectSlot={onSelectSlot}
         slot={slot}
+        viewSlot={viewSlot}
         onReset={() => void editor.handleClear()}
       />
       <div
@@ -125,25 +129,27 @@ interface SkillControlsProps {
   selected: string;
   onSelectSlot: (name: string) => void;
   slot: SkillSlotView;
+  viewSlot: preact.JSX.Element;
   onReset: () => void;
 }
 
 /**
- * Controls strip: the slot dropdown, a one-line explainer for the selected slot,
- * a drift note, and a "Reset to default" action shown only when the slot has an
- * override. The border spans full width while the content is centered to match
- * the editor below.
+ * Controls strip: the view toggle, the slot dropdown, a one-line explainer for
+ * the selected slot, a drift note, and a "Reset to default" action shown only
+ * when the slot has an override. The border spans full width while the content
+ * is centered to match the editor below.
  * @param props - Controls props
  * @returns Controls element
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
-  const { slots, selected, onSelectSlot, slot, onReset } = props;
+  const { slots, selected, onSelectSlot, slot, viewSlot, onReset } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
       <div
         className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex items-center gap-3`}
       >
+        {viewSlot}
         <SkillSlotSelect
           slots={slots}
           selected={selected}

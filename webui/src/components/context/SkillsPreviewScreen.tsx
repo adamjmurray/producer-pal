@@ -1,0 +1,294 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { NOTATIONS, type Notation } from "#src/shared/notation";
+import {
+  type SkillsCombination,
+  type SkillsPreviewStatus,
+  useSkillsPreview,
+} from "#webui/hooks/context/use-skills-preview";
+import { ContextHeader, DOUBLE_PANE_WIDTH } from "./ContextScreen";
+
+const CLOSE_ARIA_LABEL = "Close context editor";
+
+/** How each notation reads in the preview's picker. */
+const NOTATION_LABELS: Record<Notation, string> = {
+  barbeat: "bar|beat",
+  "midi-json": "MIDI JSON",
+  stark: "Stark",
+};
+
+const SELECT_CLASS =
+  "text-sm rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-zinc-900 dark:text-zinc-100";
+
+interface SkillsPreviewScreenProps {
+  /** The Project | Global | Instructions | Skills tab strip. */
+  tabSlot: preact.JSX.Element;
+  /** The Fragments | Preview view toggle for the Skills tab. */
+  viewSlot: preact.JSX.Element;
+  /** Close the overlay (omitted on the standalone /context page). */
+  onClose?: () => void;
+}
+
+/**
+ * The Skills "Preview" view: pick a notation + small-model combination and see
+ * the exact assembled "# Producer Pal Skills" blob ppal-connect would return for
+ * it (with the user's fragment overrides applied), plus its size. Defaults to —
+ * and badges — the device's current live combination. Read-only, so the header
+ * shows a "Read-only preview" note instead of a save indicator.
+ * @param props - Screen props
+ * @returns Screen element
+ */
+export function SkillsPreviewScreen(
+  props: SkillsPreviewScreenProps,
+): preact.JSX.Element {
+  const { tabSlot, viewSlot, onClose } = props;
+  const preview = useSkillsPreview();
+
+  return (
+    <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
+      <ContextHeader
+        title="Skills"
+        tabSlot={tabSlot}
+        closeAriaLabel={CLOSE_ARIA_LABEL}
+        rightSlot={
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            Read-only preview
+          </span>
+        }
+        onClose={onClose}
+      />
+      <PreviewControls
+        viewSlot={viewSlot}
+        selected={preview.selected}
+        currentMode={preview.currentMode}
+        status={preview.status}
+        onNotation={preview.setNotation}
+        onSmallModel={preview.setSmallModelMode}
+      />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <PreviewBody status={preview.status} />
+      </div>
+    </div>
+  );
+}
+
+// --- Helpers below main export ---
+
+interface PreviewControlsProps {
+  viewSlot: preact.JSX.Element;
+  selected: SkillsCombination;
+  currentMode: SkillsCombination | null;
+  status: SkillsPreviewStatus;
+  onNotation: (notation: Notation) => void;
+  onSmallModel: (smallModelMode: boolean) => void;
+}
+
+/**
+ * Controls strip: the view toggle, the notation + model-size pickers, and (right
+ * aligned) the live-combination badge and the assembled blob's size.
+ * @param props - Controls props
+ * @returns Controls element
+ */
+function PreviewControls(props: PreviewControlsProps): preact.JSX.Element {
+  const { viewSlot, selected, currentMode, status, onNotation, onSmallModel } =
+    props;
+
+  return (
+    <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
+      <div
+        className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-wrap items-center gap-x-3 gap-y-2`}
+      >
+        {viewSlot}
+        <NotationSelect value={selected.notation} onSelect={onNotation} />
+        <ModelSelect value={selected.smallModelMode} onSelect={onSmallModel} />
+        <div className="ml-auto flex items-center gap-3">
+          {isLive(selected, currentMode) && <LiveBadge />}
+          <PreviewSize status={status} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface NotationSelectProps {
+  value: Notation;
+  onSelect: (notation: Notation) => void;
+}
+
+/**
+ * Notation picker for the preview (does not change the device's live notation).
+ * @param props - Select props
+ * @returns Select element
+ */
+function NotationSelect(props: NotationSelectProps): preact.JSX.Element {
+  const { value, onSelect } = props;
+
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+      Notation
+      <select
+        aria-label="Preview notation"
+        value={value}
+        onChange={(event) =>
+          onSelect((event.target as HTMLSelectElement).value as Notation)
+        }
+        className={SELECT_CLASS}
+      >
+        {NOTATIONS.map((notation) => (
+          <option key={notation} value={notation}>
+            {NOTATION_LABELS[notation]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+interface ModelSelectProps {
+  value: boolean;
+  onSelect: (smallModelMode: boolean) => void;
+}
+
+/**
+ * Model-size picker (Standard vs. small-model), which selects the basic skills.
+ * @param props - Select props
+ * @returns Select element
+ */
+function ModelSelect(props: ModelSelectProps): preact.JSX.Element {
+  const { value, onSelect } = props;
+
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+      Model
+      <select
+        aria-label="Preview model size"
+        value={value ? "small" : "standard"}
+        onChange={(event) =>
+          onSelect((event.target as HTMLSelectElement).value === "small")
+        }
+        className={SELECT_CLASS}
+      >
+        <option value="standard">Standard</option>
+        <option value="small">Small-model</option>
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Badge marking that the selected combination matches the device's live one.
+ * @returns Badge element
+ */
+function LiveBadge(): preact.JSX.Element {
+  return (
+    <span
+      title="This is the combination your current notation + model settings use."
+      className="shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400"
+    >
+      ★ Current settings
+    </span>
+  );
+}
+
+interface PreviewSizeProps {
+  status: SkillsPreviewStatus;
+}
+
+/**
+ * Right-aligned size readout: exact character count and an approximate token
+ * count (see token-estimate.ts). Shows a placeholder until the preview loads.
+ * @param props - Size props
+ * @returns Size element
+ */
+function PreviewSize(props: PreviewSizeProps): preact.JSX.Element {
+  const { status } = props;
+
+  if (status.kind !== "ready") {
+    return <span className="shrink-0 text-xs text-zinc-400">—</span>;
+  }
+
+  const { charCount, tokenEstimate } = status.preview;
+
+  return (
+    <span
+      title="Token count is a rough estimate (~4 chars/token); actual usage varies by model."
+      className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400 tabular-nums"
+    >
+      {charCount.toLocaleString()} chars · ≈{tokenEstimate.toLocaleString()}{" "}
+      tokens
+    </span>
+  );
+}
+
+interface PreviewBodyProps {
+  status: SkillsPreviewStatus;
+}
+
+/**
+ * The assembled-blob body: a loading/error state, or the read-only skills text
+ * with a caption naming its two active slots and a Copy button.
+ * @param props - Body props
+ * @returns Body element
+ */
+function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
+  const { status } = props;
+
+  if (status.kind === "loading") {
+    return (
+      <div className="flex items-center justify-center h-full text-zinc-500">
+        Assembling preview…
+      </div>
+    );
+  }
+
+  if (status.kind === "error") {
+    return (
+      <div className="flex items-center justify-center h-full px-8 text-center text-red-600 dark:text-red-400">
+        {status.message}
+      </div>
+    );
+  }
+
+  const { skills, head, core } = status.preview;
+
+  return (
+    <div
+      className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-col h-full p-4 gap-2 overflow-hidden`}
+    >
+      <div className="flex items-center justify-between h-5 gap-3">
+        <span className="min-w-0 truncate text-xs text-zinc-400 dark:text-zinc-500">
+          Fragments: {head} + {core}
+        </span>
+        <button
+          type="button"
+          onClick={() => void navigator.clipboard.writeText(skills)}
+          className="shrink-0 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
+        >
+          Copy
+        </button>
+      </div>
+      <pre className="flex-1 min-h-0 overflow-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 p-3 text-xs whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
+        {skills}
+      </pre>
+    </div>
+  );
+}
+
+/**
+ * Whether the selected combination matches the device's live one.
+ * @param selected - The combination being previewed
+ * @param currentMode - The device's live combination (null until /config loads)
+ * @returns True when both fields match the live combination
+ */
+function isLive(
+  selected: SkillsCombination,
+  currentMode: SkillsCombination | null,
+): boolean {
+  return (
+    currentMode?.notation === selected.notation &&
+    currentMode.smallModelMode === selected.smallModelMode
+  );
+}

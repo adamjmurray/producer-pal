@@ -134,28 +134,44 @@ interface ContextHeaderProps {
   title: string;
   tabSlot?: preact.JSX.Element;
   closeAriaLabel: string;
-  status: DocMemoryStatus;
-  saveStatus: SaveStatus;
-  dirty: boolean;
+  status?: DocMemoryStatus;
+  saveStatus?: SaveStatus;
+  dirty?: boolean;
+  /**
+   * Replaces the save indicator when provided. Read-only screens (the skills
+   * preview) pass their own status text here so the header doesn't show a
+   * misleading "Auto-save on" for content that is never saved.
+   */
+  rightSlot?: preact.JSX.Element;
   onClose?: () => void;
 }
 
 /**
- * Header strip showing the title (or tab strip), save indicator, and (when
- * mounted inside the chat-app overlay) a close button. Exported so the skills
- * editor reuses the identical tab strip + save indicator + close affordance.
+ * Header strip showing the title (or tab strip), save indicator (or a custom
+ * `rightSlot`), and (when mounted inside the chat-app overlay) a close button.
+ * Exported so the skills editor and preview reuse the identical tab strip +
+ * close affordance.
  * @param props - Header props
  * @returns Header element
  */
 export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
-  const { title, tabSlot, closeAriaLabel, status, saveStatus, dirty, onClose } =
-    props;
+  const { title, tabSlot, closeAriaLabel, status, rightSlot, onClose } = props;
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
+    // Center the tab strip in the header; the save indicator / close button sit
+    // absolutely at the right so they don't pull the tabs off-center (and so the
+    // save text changing width never nudges them).
+    <header className="relative flex items-center justify-center px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
       {tabSlot ?? <h1 className="text-base font-semibold">{title}</h1>}
-      <div className="flex items-center gap-3">
-        <SaveIndicator status={status} saveStatus={saveStatus} dirty={dirty} />
+      <div className="absolute inset-y-0 right-4 flex items-center gap-3">
+        {rightSlot ??
+          (status != null && (
+            <SaveIndicator
+              status={status}
+              saveStatus={props.saveStatus ?? "idle"}
+              dirty={props.dirty ?? false}
+            />
+          ))}
         {onClose != null && (
           <button
             type="button"
