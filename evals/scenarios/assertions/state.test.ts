@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { type StateAssertion } from "../types.ts";
+import { type StateAssertion, type EvalTurnResult } from "../types.ts";
 import { assertState } from "./state.ts";
 
 /** Type for state assertion details */
@@ -52,7 +52,7 @@ describe("assertState", () => {
         expect: { name: "Track 1" },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
       expect(result.message).toContain("passed");
@@ -78,7 +78,7 @@ describe("assertState", () => {
         expect: { track: { name: "Bass" } },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
     });
@@ -94,7 +94,7 @@ describe("assertState", () => {
         expect: { name: "Track 2" },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
       expect(result.message).toContain("failed");
@@ -118,7 +118,7 @@ describe("assertState", () => {
         expect: { volume: 0.5 },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
     });
@@ -140,7 +140,7 @@ describe("assertState", () => {
         },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
@@ -163,7 +163,7 @@ describe("assertState", () => {
         },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
     });
@@ -179,7 +179,7 @@ describe("assertState", () => {
         expect: (result) => typeof result === "string",
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
@@ -196,7 +196,7 @@ describe("assertState", () => {
         expect: (result) => result === "Not valid JSON {",
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
     });
@@ -214,7 +214,7 @@ describe("assertState", () => {
         expect: { name: "Track 1" },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
       expect(result.message).toContain("error");
@@ -235,12 +235,37 @@ describe("assertState", () => {
         expect: {},
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
       const details = result.details as StateDetails;
 
       expect(details.error).toContain("string error");
+    });
+  });
+
+  describe("dynamic args from turns", () => {
+    it("resolves args from a function of the completed turns", async () => {
+      const mockClient = createMockClient(
+        mcpResult(JSON.stringify({ ok: true })),
+      );
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        args: (turns) => ({ clipId: `clip-${turns.length}` }),
+        expect: {},
+      };
+
+      await assertState(
+        assertion,
+        [{}, {}] as unknown as EvalTurnResult[],
+        mockClient,
+      );
+
+      expect(mockClient.callTool).toHaveBeenCalledWith({
+        name: "ppal-read-clip",
+        arguments: { clipId: "clip-2" },
+      });
     });
   });
 
@@ -254,7 +279,7 @@ describe("assertState", () => {
         expect: {},
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.assertion).toBe(assertion);
     });
@@ -268,7 +293,7 @@ describe("assertState", () => {
         expect: {},
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.message).toContain("custom-tool-name");
     });

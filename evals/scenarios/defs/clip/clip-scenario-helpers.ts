@@ -277,7 +277,7 @@ export function getTransforms(
  */
 export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
   const call = getToolCalls(turns, turn).find(
-    (c) => c.name === "ppal-create-clip",
+    (c) => c.name === TOOL_CREATE_CLIP,
   );
 
   if (!call) throw new Error(`ppal-create-clip not found in turn ${turn}`);
@@ -289,6 +289,44 @@ export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
   }
 
   return notes;
+}
+
+/**
+ * Pull the created clip's id and target slot from the ppal-create-clip call in
+ * the given turn. Lets a grading read fetch the clip by id (wherever the model
+ * placed it — small models often misjudge 0-based scene indexing) while a
+ * separate assertion checks whether it landed in the intended slot.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index containing the create-clip call (default 1)
+ * @returns The created clip's id and slot (either may be undefined if absent)
+ */
+export function getCreatedClip(
+  turns: EvalTurnResult[],
+  turn = 1,
+): { id?: string; slot?: string } {
+  const call = getToolCalls(turns, turn).find(
+    (c) => c.name === TOOL_CREATE_CLIP,
+  );
+
+  if (!call) return {};
+
+  const slot = typeof call.args.slot === "string" ? call.args.slot : undefined;
+  let id: string | undefined;
+
+  if (call.result != null) {
+    try {
+      const parsed = parseToolResult(String(call.result)) as {
+        id?: unknown;
+      } | null;
+
+      if (parsed?.id != null) id = String(parsed.id);
+    } catch {
+      // unparseable create result — leave id undefined
+    }
+  }
+
+  return { id, slot };
 }
 
 /**

@@ -144,8 +144,12 @@ export interface StateAssertion {
   type: "state";
   /** Tool to call to verify state */
   tool: string;
-  /** Arguments for the tool */
-  args: Record<string, unknown>;
+  /** Arguments for the tool, or a function that derives them from the completed
+   *  turns (e.g. to read the just-created clip by the id it returned, wherever
+   *  the model placed it). */
+  args:
+    | Record<string, unknown>
+    | ((turns: EvalTurnResult[]) => Record<string, unknown>);
   /** Expected partial result or matcher function */
   expect: Record<string, unknown> | ((result: unknown) => boolean);
   /** When set, flip the server notation to this (via POST /config) BEFORE the

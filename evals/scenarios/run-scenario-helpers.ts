@@ -47,7 +47,7 @@ export async function runCorrectnessAssertion(
     case "tool_called":
       return assertToolCalled(assertion, turns);
     case "state":
-      return await assertState(assertion, mcpClient);
+      return await assertState(assertion, turns, mcpClient);
     case "response_contains":
       return assertResponseContains(assertion, turns);
     case "custom":

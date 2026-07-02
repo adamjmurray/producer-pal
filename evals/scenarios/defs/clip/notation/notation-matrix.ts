@@ -34,6 +34,7 @@ import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
   clearSessionSlots,
   type ExpectedNote,
+  getCreatedClip,
   MSG_CONNECT,
   notesMatch,
   TOOL_CONNECT,
@@ -84,7 +85,15 @@ export function notationNeutralScenarios(
   spec: NotationNeutralSpec,
 ): EvalScenario[] {
   const notations = spec.notations ?? [...NOTATIONS];
-  const slot = `${spec.track}/0`;
+  const correctSlot = `${spec.track}/0`;
+  // The correct slot plus the two an off-by-one model reaches for: `track/1`
+  // (treating "scene 1" as 1-based) and `(track+1)/1` (1-based track AND scene).
+  // Cleared in setup so `-r` repeats stay clean wherever the clip lands.
+  const candidateSlots = [
+    correctSlot,
+    `${spec.track}/1`,
+    `${spec.track + 1}/1`,
+  ];
 
   return notations.map(
     (notation): EvalScenario => ({
@@ -94,11 +103,12 @@ export function notationNeutralScenarios(
       liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
       config: { notation },
       messages: [MSG_CONNECT, spec.prompt],
-      setup: (mcpClient) => clearSessionSlots(mcpClient, [slot]),
+      setup: (mcpClient) => clearSessionSlots(mcpClient, candidateSlots),
       assertions: [
         { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
         { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-        midiJsonClipStateAssertion(slot, spec.meter, spec.expected),
+        midiJsonNotesAssertion(spec.meter, spec.expected),
+        correctSlotAssertion(correctSlot),
         { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
       ],
     }),
@@ -106,30 +116,34 @@ export function notationNeutralScenarios(
 }
 
 /**
- * Grade a clip deterministically by reading it back as midi-json and comparing
- * the raw `{p,t,d}` objects to `expected`. The `notation: "midi-json"` override
- * flips the server to midi-json before the read (via POST /config, which merges
- * — the scenario's finally-block resetConfig restores defaults), so the notes
- * come back as a plain array we parse directly — no notation grammar involved,
- * whatever the model wrote in. Fails closed: a wrong/absent time signature,
- * missing notes, or an unparseable payload all return false.
+ * Grade the created clip's NOTES deterministically, wherever the model placed
+ * it: read it back BY ID (from the create-clip result — so a wrong scene doesn't
+ * fail the notes check; `correctSlotAssertion` scores placement separately) as
+ * midi-json and compare the raw `{p,t,d}` objects to `expected`. The
+ * `notation: "midi-json"` override flips the server to midi-json before the read
+ * (via POST /config, which merges — the scenario's finally-block resetConfig
+ * restores defaults), so the notes come back as a plain array we parse directly
+ * — no notation grammar involved, whatever the model wrote in. Fails closed: a
+ * wrong/absent time signature, a missing clip/notes, or an unparseable payload
+ * all return false.
  *
- * @param slot - Session clip slot to read (trackIndex/sceneIndex)
  * @param meter - Expected time signature (e.g. "4/4"), also gates the read
  * @param expected - Exact notes the clip must contain (pitch + start, optional
  *   duration); midi-json `t`/`d` are musical beats (a quarter = 1 beat in x/4),
  *   which equal Ableton quarter beats in the 4/4 matrix scenarios
  * @returns State assertion
  */
-function midiJsonClipStateAssertion(
-  slot: string,
+function midiJsonNotesAssertion(
   meter: string,
   expected: ExpectedNote[],
 ): EvalAssertion {
   return {
     type: "state",
     tool: TOOL_READ_CLIP,
-    args: { slot, include: ["notes", "timing"] },
+    args: (turns) => ({
+      clipId: getCreatedClip(turns).id ?? "",
+      include: ["notes", "timing"],
+    }),
     notation: "midi-json",
     expect: (result: unknown): boolean => {
       const clip = result as { notes?: unknown; timeSignature?: string };
@@ -161,5 +175,23 @@ function midiJsonClipStateAssertion(
 
       return notesMatch(events, expected);
     },
+  };
+}
+
+/**
+ * Score clip PLACEMENT separately from the notes: pass only when the model
+ * created the clip in `correctSlot` (the prompt's "scene 1" = trackIndex/0). A
+ * small model that notated the drums perfectly but dropped them in the wrong
+ * scene fails this check while still passing the notes check — so scene-index
+ * confusion is measured on its own axis instead of masking notation skill.
+ *
+ * @param correctSlot - The slot the clip should land in (e.g. "0/0")
+ * @returns Custom assertion
+ */
+function correctSlotAssertion(correctSlot: string): EvalAssertion {
+  return {
+    type: "custom",
+    description: `clip created in the correct slot (${correctSlot})`,
+    assert: (turns) => getCreatedClip(turns).slot === correctSlot,
   };
 }

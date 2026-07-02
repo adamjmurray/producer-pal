@@ -9,18 +9,24 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { setConfig } from "#evals/shared/config.ts";
-import { type StateAssertion, type EvalAssertionResult } from "../types.ts";
+import {
+  type StateAssertion,
+  type EvalAssertionResult,
+  type EvalTurnResult,
+} from "../types.ts";
 import { partialMatch } from "./helpers.ts";
 
 /**
  * Assert Live Set state by calling an MCP tool and checking the result
  *
  * @param assertion - The state assertion to evaluate
+ * @param turns - Completed conversation turns (for args derived from the run)
  * @param mcpClient - MCP client for tool calls
  * @returns Assertion result with pass/fail and details
  */
 export async function assertState(
   assertion: StateAssertion,
+  turns: EvalTurnResult[],
   mcpClient: Client,
 ): Promise<EvalAssertionResult> {
   try {
@@ -32,9 +38,14 @@ export async function assertState(
       await setConfig({ notation: assertion.notation });
     }
 
+    const args =
+      typeof assertion.args === "function"
+        ? assertion.args(turns)
+        : assertion.args;
+
     const result = await mcpClient.callTool({
       name: assertion.tool,
-      arguments: assertion.args,
+      arguments: args,
     });
 
     const resultText = extractToolResultText(result);
