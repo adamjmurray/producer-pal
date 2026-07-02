@@ -200,7 +200,7 @@ export function smallModelMode(enabled: unknown): void {
  * Set the global notation used by the clip tools' note read/write seams.
  * Invalid values are ignored (the current setting is kept).
  *
- * @param value - Notation name ("barbeat", "midi-json", "stark", or "abstark")
+ * @param value - Notation name ("barbeat", "midi-json", or "stark")
  */
 export function notation(value: unknown): void {
   if (isNotation(value)) {

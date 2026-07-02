@@ -302,7 +302,7 @@ describe("readDevice", () => {
       expect(result.drumPads).toBeUndefined();
     });
 
-    it("keys drumMap by drum name when notation is abstark", () => {
+    it("keys drumMap by drum name when notation is stark", () => {
       setupDrumRackWithChain();
 
       const result = readDevice(
@@ -310,7 +310,7 @@ describe("readDevice", () => {
           deviceId: "drum-rack-123",
           include: ["drum-map"],
         },
-        { notation: "abstark" },
+        { notation: "stark" },
       );
 
       expect(result.drumMap).toStrictEqual({ kick: "Kick" });

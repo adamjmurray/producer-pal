@@ -6,12 +6,6 @@
 /**
  * Type declarations for the peggy-generated Stark parser.
  * The actual parser is generated from stark-grammar.peggy.
- *
- * A/B scaffolding: Stark's pitched (bass/melody/chords) AST is byte-for-byte
- * identical to abstark's, so those types are re-exported from the abstark parser
- * rather than redeclared here (avoids a .d.ts duplication clone). Only the
- * event-based drum AST — which genuinely differs from abstark's positional-grid
- * drum AST — is declared locally. Collapses when abstark is deleted post-eval.
  */
 
 export {
@@ -23,38 +17,82 @@ export {
 
 import type { ParseOptions } from "../../peggy-parser-types.ts";
 
-export type {
-  AbstarkDurationN as StarkDurationN,
-  AbstarkDynamic as StarkDynamic,
-  BarMarkerItem,
-  NoteItem,
-  RestItem,
-  ChordNoteItem,
-  ChordItem,
-  PitchedContentItem,
-  PitchedSection,
-} from "../../abstark/parser/abstark-parser.ts";
+// --- Duration ---
 
-import type {
-  AbstarkDurationN,
-  AbstarkDynamic,
-  BarMarkerItem,
-  RestItem,
-  PitchedSection,
-} from "../../abstark/parser/abstark-parser.ts";
+/** Absolute note-value denominator: /1=whole, /2=half, /4=quarter, /8=eighth, /16=sixteenth */
+export type StarkDurationN = 1 | 2 | 4 | 8 | 16;
 
-// --- Drum items (event-based; differs from abstark's positional-grid drums) ---
+// --- Dynamic ---
+
+export type StarkDynamic = "accent" | "normal" | "soft";
+
+// --- Shared items ---
+
+/** Bar separator — visual/checking only; does not advance time in any line type */
+export interface BarMarkerItem {
+  barMarker: true;
+}
+
+/** A rest token (z with optional /N) */
+export interface RestItem {
+  type: "rest";
+  /** Explicit /N duration, or null (use line default) */
+  duration: StarkDurationN | null;
+}
+
+// --- Drum items (event-based: a line of hits/rests at a fixed pitch) ---
 
 /** A drum hit at the line's fixed pitch, with an optional glued /N override */
 export interface DrumHitItem {
   type: "hit";
   /** ^ = accent, X = normal, x = soft */
-  velocity: AbstarkDynamic;
+  velocity: StarkDynamic;
   /** Explicit glued /N override, or null (use the line default) */
-  duration: AbstarkDurationN | null;
+  duration: StarkDurationN | null;
 }
 
 export type DrumContentItem = BarMarkerItem | DrumHitItem | RestItem;
+
+// --- Pitched items (bass / melody / chords) ---
+
+/** A pitched note token */
+export interface NoteItem {
+  type: "note";
+  /** Uppercase letter A–G */
+  letter: string;
+  /** "#" sharp, "b" flat, or null (natural) */
+  accidental: "#" | "b" | null;
+  /** Net octave displacement: positive = up, negative = down */
+  octaveShift: number;
+  /** Explicit /N duration, or null (use line default) */
+  duration: StarkDurationN | null;
+  dynamic: StarkDynamic;
+}
+
+/** A single note inside a bracket chord */
+export interface ChordNoteItem {
+  /** Uppercase letter A–G */
+  letter: string;
+  /** "#" sharp, "b" flat, or null (natural) */
+  accidental: "#" | "b" | null;
+  /** Net octave displacement */
+  octaveShift: number;
+}
+
+/** A bracket chord: [<note> <note> ...] with duration/dynamic on the whole chord */
+export interface ChordItem {
+  type: "chord";
+  notes: ChordNoteItem[];
+  /** Explicit /N duration, or null (use line default) */
+  duration: StarkDurationN | null;
+  dynamic: StarkDynamic;
+}
+
+export type PitchedContentItem =
+  | BarMarkerItem
+  | NoteItem
+  | RestItem
+  | ChordItem;
 
 // --- Sections ---
 
@@ -70,8 +108,16 @@ export interface DrumSection {
   /** Verbatim pitch-name header (e.g. "C1", "Gb2") for pitch-led lines, else null */
   noteName: string | null;
   /** /N from the line header (sets the line default), or null */
-  defaultDuration: AbstarkDurationN | null;
+  defaultDuration: StarkDurationN | null;
   content: DrumContentItem[];
+}
+
+/** A `bass: / melody: / chords: <tokens>` section (event-based timing) */
+export interface PitchedSection {
+  type: "bass" | "melody" | "chords";
+  /** /N from the line header (sets the line default), or null */
+  defaultDuration: StarkDurationN | null;
+  content: PitchedContentItem[];
 }
 
 export type StarkSection = DrumSection | PitchedSection;

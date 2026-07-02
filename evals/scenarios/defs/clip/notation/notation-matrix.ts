@@ -9,22 +9,23 @@
  * per notation. Every variant sends the SAME prompt and grades against the SAME
  * expected notes; the only thing that differs per variant is `config.notation` —
  * which notation head the model is taught. That makes the pass rates directly
- * comparable across bar|beat / abstark / stark / midi-json (the point: is
- * abstark better than stark, and do the small-model notations beat bar|beat
+ * comparable across bar|beat / stark / midi-json (the point: which notation
+ * lands a musical intent most reliably, and do the opt-in notations beat bar|beat
  * under `--small-model`?).
  *
  * Grading is notation-INDEPENDENT and deterministic: after the model's turn the
  * grader flips the server to midi-json (a `notation` override on the state
  * assertion) and reads the clip back as raw `{p,t,d}` objects, then compares to
  * the expected notes. No grammar interpretation, no per-notation read-back
- * branch (the old stark→bar|beat fallback is gone) — every variant is graded by
- * the exact same code path regardless of which notation the model wrote in.
- * There is no LLM judge: the state assertion is the sole gate.
+ * branch — every variant is graded by the exact same code path regardless of
+ * which notation the model wrote in. There is no LLM judge: the state assertion
+ * is the sole gate.
  *
  * A spec lists only the notations its target is exactly representable in. Stark
- * scale-snaps letters, has no accidentals or octave numbers, and no sub-quarter
- * durations, so specs needing exact chromatic pitch or eighth/sixteenth
- * durations omit it (see notation-matrix-scenarios.ts).
+ * is literal and round-trippable (exact chromatic pitch, accidentals, octave
+ * marks, absolute /N durations), so it runs every spec; a spec passes a `notations`
+ * subset only when a target isn't representable in some notation (e.g. off-16th
+ * or triplet timing that no /N note value reaches).
  */
 
 import { parseToolResult } from "#evals/chat/mcp.ts";
@@ -70,8 +71,8 @@ export interface NotationNeutralSpec {
   expected: ExpectedNote[];
   /** Notations to emit a variant for. Defaults to every notation. Pass a subset
    *  when the target isn't exactly representable in some notation (e.g. omit
-   *  stark/abstark for triplet or off-16th-grid timing — their /N note values
-   *  don't reach it). */
+   *  stark for triplet or off-16th-grid timing — its /N note values don't reach
+   *  it). */
   notations?: Notation[];
   /** Live Set (defaults to basic-midi-4-track). */
   liveSet?: string;

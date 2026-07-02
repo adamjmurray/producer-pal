@@ -135,7 +135,7 @@ architecture.
   (`src/tools/shared/tool-framework/modal-config.ts`) — no separate
   `smallModelModeConfig` / `notationConfig` object. A param is either a plain
   `z.….describe("text")` (identical in every mode) or
-  `param(z.…, { default, smallModel?, "midi-json"?, stark?, abstark?, "smallModel:<notation>"? })`:
+  `param(z.…, { default, smallModel?, "midi-json"?, stark?, "smallModel:<notation>"? })`:
   - A mode's value is a **string** (override the description), **`null`** (hide
     the param, the old `excludeParams`), or an **object**
     `{ description?, excludeEnumValues? }` (trim enum values).

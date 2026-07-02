@@ -6,7 +6,6 @@
 import { type Notation } from "#src/shared/notation.ts";
 import { coreBasic } from "#src/skills/core/core-basic.ts";
 import { coreStandard } from "#src/skills/core/core-standard.ts";
-import { abstark } from "#src/skills/notation/abstark.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
@@ -16,7 +15,7 @@ import { stark } from "#src/skills/notation/stark.ts";
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
 // buildSkills fragment. Renaming one orphans that user's override, so the set is
 // kept small, coarse, and stable. Every fragment buildSkills can emit has
-// exactly one slot; midi-json/stark/abstark reuse a single head across both the
+// exactly one slot; midi-json/stark reuse a single head across both the
 // standard and basic (small-model) levels, so they are one slot each.
 export const SKILL_SLOT_NAMES = [
   "core-standard",
@@ -25,7 +24,6 @@ export const SKILL_SLOT_NAMES = [
   "barbeat-basic",
   "midi-json",
   "stark",
-  "abstark",
 ] as const;
 
 export type SkillSlotName = (typeof SKILL_SLOT_NAMES)[number];
@@ -80,11 +78,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description: "The note format guide used when stark notation is active.",
     builtIn: stark,
   },
-  abstark: {
-    title: "abstark notation",
-    description: "The note format guide used when abstark notation is active.",
-    builtIn: abstark,
-  },
 };
 
 /** The two slots buildSkills assembles for a given runtime context. */
@@ -98,8 +91,8 @@ export interface ActiveSkillSlots {
 /**
  * Resolve which head + core slots buildSkills uses for a runtime context. The
  * level (standard vs basic) selects the core body; the notation selects the
- * head. bar|beat has a distinct head per level; the other three notations reuse
- * one head across both levels, so their slot name equals the notation name.
+ * head. bar|beat has a distinct head per level; midi-json and stark reuse one
+ * head across both levels, so their slot name equals the notation name.
  *
  * @param notation - The active notation
  * @param smallModelMode - Whether small-model (basic) skills are active

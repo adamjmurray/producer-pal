@@ -83,8 +83,8 @@ describe("skill-overrides route", () => {
   });
 
   it("PUT with blank content resets the slot", async () => {
-    await putJson(`${base}/abstark`, { content: "temp" });
-    const res = await putJson(`${base}/abstark`, { content: "   " });
+    await putJson(`${base}/midi-json`, { content: "temp" });
+    const res = await putJson(`${base}/midi-json`, { content: "   " });
 
     const { slot } = (await res.json()) as { slot: SlotState };
 

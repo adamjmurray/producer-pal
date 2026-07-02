@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { MIDI_TO_DRUM_NAME } from "#src/notation/abstark/abstark-config.ts";
+import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -138,7 +138,7 @@ export function cleanupInternalDrumPads(obj: unknown): unknown {
  * Extract track-level drum map from the processed device structure.
  *
  * Keys match how the active notation addresses drum pads (see drumMapKey):
- * pitch names by default, drum names for "abstark"/"stark", MIDI numbers for
+ * pitch names by default, drum names for "stark", MIDI numbers for
  * "midi-json". Values (the Live-configured pad names) are unchanged.
  * @param devices - Array of processed device objects
  * @param notation - Active notation; controls the drum-map key form
@@ -199,10 +199,10 @@ export function getDrumMap(
 
 /**
  * Pick the drum-map key for a pad given the active notation, matching how that
- * notation addresses drum pads: drum names for abstark/stark (mirroring the
- * abstark serializer's MIDI_TO_DRUM_NAME), MIDI numbers for midi-json, pitch
- * names otherwise. The catch-all pad (note -1) and pads outside the drum-name
- * range fall back to the pitch name.
+ * notation addresses drum pads: drum names for stark (mirroring the stark
+ * serializer's MIDI_TO_DRUM_NAME), MIDI numbers for midi-json, pitch names
+ * otherwise. The catch-all pad (note -1) and pads outside the drum-name range
+ * fall back to the pitch name.
  * @param drumPad - Processed drum pad
  * @param notation - Active notation
  * @returns The drum-map key for this pad
@@ -214,7 +214,7 @@ function drumMapKey(drumPad: DrumPadInfo, notation?: Notation): string {
     return drumPad.pitch;
   }
 
-  if (notation === "abstark" || notation === "stark") {
+  if (notation === "stark") {
     return MIDI_TO_DRUM_NAME[midi] ?? drumPad.pitch;
   }
 

@@ -5,31 +5,54 @@
 
 /**
  * Stark notation interpreter: converts a Stark expression into MIDI note events.
- * Stark is a literal, round-trippable notation. Its pitched (bass/melody/chords)
- * lines are identical to abstark's, so this interpreter reuses abstark's
- * `processPitchedSection` / `velocityFor` directly (A/B scaffolding — collapses
- * when abstark is deleted post-eval). Stark's ONLY divergence is drums: they are
- * EVENT-BASED (each token is a hit or rest with a /N duration, like a melody line
- * of drum hits), not abstark's positional 16th-note grid.
+ * Stark is a literal, round-trippable notation — pitches are exact (no scale
+ * snapping), accidentals are explicit, durations are absolute /N note values.
+ *
+ * Two timing models coexist, but both are event-based (duration is explicit /N):
+ *   Drums:                  a line of hit/rest tokens at a fixed pitch.
+ *   Bass / melody / chords: pitched tokens.
  *
  * See parser/stark-grammar.peggy for the syntax.
  */
 
-import { durationBeats } from "#src/notation/abstark/abstark-config.ts";
-import {
-  processPitchedSection,
-  velocityFor,
-} from "#src/notation/abstark/abstark-interpreter.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import {
   type DrumSection,
+  type PitchedContentItem,
+  type PitchedSection,
+  type StarkDynamic,
   type StarkSection,
 } from "#src/notation/stark/parser/stark-parser.ts";
 import * as parser from "#src/notation/stark/parser/stark-parser.ts";
-import { DRUM_DEFAULT_N } from "#src/notation/stark/stark-config.ts";
+import {
+  BASS_REGISTER_DEFAULT,
+  CHORDS_REGISTER_DEFAULT,
+  DRUM_DEFAULT_N,
+  durationBeats,
+  LINE_DEFAULT_N,
+  MELODY_REGISTER_DEFAULT,
+  randomVelocity,
+  VELOCITY_ACCENT_MAX,
+  VELOCITY_ACCENT_MIN,
+  VELOCITY_NORMAL_MAX,
+  VELOCITY_NORMAL_MIN,
+  VELOCITY_SOFT_MAX,
+  VELOCITY_SOFT_MIN,
+} from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+
+/** Natural pitch class offsets (semitones above C). */
+const NATURAL_PC: Readonly<Record<string, number>> = {
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+};
 
 export interface StarkInterpretOptions {
   /** Time signature numerator (beats per bar). Accepted for parity; unused (timing is explicit). */
@@ -139,4 +162,107 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
     });
     time += beats;
   }
+}
+
+// Convert a dynamic level to a random velocity within its range.
+function velocityFor(dynamic: StarkDynamic): number {
+  if (dynamic === "accent")
+    return randomVelocity(VELOCITY_ACCENT_MIN, VELOCITY_ACCENT_MAX);
+  if (dynamic === "soft")
+    return randomVelocity(VELOCITY_SOFT_MIN, VELOCITY_SOFT_MAX);
+
+  return randomVelocity(VELOCITY_NORMAL_MIN, VELOCITY_NORMAL_MAX);
+}
+
+// Compute semitone offset from the register's C for a note letter + accidental.
+function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
+  const base = NATURAL_PC[letter] ?? 0;
+
+  if (accidental === "#") return base + 1;
+  if (accidental === "b") return base - 1;
+
+  return base;
+}
+
+// Process a pitched section (bass/melody/chords): event-based timing, /N
+// durations. Pushes the section's notes onto `notes`.
+function processPitchedSection(
+  section: PitchedSection,
+  notes: NoteEvent[],
+): void {
+  const registerDefault =
+    section.type === "bass"
+      ? BASS_REGISTER_DEFAULT
+      : section.type === "melody"
+        ? MELODY_REGISTER_DEFAULT
+        : CHORDS_REGISTER_DEFAULT;
+
+  const lineDefaultN = section.defaultDuration ?? LINE_DEFAULT_N[section.type];
+
+  let time = 0;
+
+  for (const item of section.content) {
+    time = processItem(item, time, registerDefault, lineDefaultN, notes);
+  }
+}
+
+// Process one pitched content item; returns updated time cursor.
+function processItem(
+  item: PitchedContentItem,
+  time: number,
+  registerDefault: number,
+  lineDefaultN: number,
+  notes: NoteEvent[],
+): number {
+  if ("barMarker" in item) return time;
+
+  if (item.type === "rest") {
+    return time + durationBeats(item.duration ?? lineDefaultN);
+  }
+
+  if (item.type === "note") {
+    const beats = durationBeats(item.duration ?? lineDefaultN);
+    const midi = clampMidi(
+      registerDefault +
+        pitchOffset(item.letter, item.accidental) +
+        item.octaveShift * 12,
+    );
+
+    notes.push({
+      pitch: midi,
+      start_time: time,
+      duration: beats,
+      velocity: velocityFor(item.dynamic),
+      probability: 1.0,
+    });
+
+    return time + beats;
+  }
+
+  // type === "chord"
+  const beats = durationBeats(item.duration ?? lineDefaultN);
+  const vel = velocityFor(item.dynamic);
+
+  for (const chordNote of item.notes) {
+    const midi = clampMidi(
+      registerDefault +
+        pitchOffset(chordNote.letter, chordNote.accidental) +
+        chordNote.octaveShift * 12,
+    );
+
+    notes.push({
+      pitch: midi,
+      start_time: time,
+      duration: beats,
+      velocity: vel,
+      probability: 1.0,
+    });
+  }
+
+  return time + beats;
+}
+
+// Clamp a computed pitch to the valid MIDI range.
+function clampMidi(midi: number): number {
+  return Math.max(0, Math.min(127, midi));
 }

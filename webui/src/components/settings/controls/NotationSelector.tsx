@@ -9,7 +9,6 @@ import { Tooltip } from "./Tooltip";
 // Human-friendly labels for the notation dropdown. Typed as a full Record so
 // adding a notation to the shared `Notation` union forces a label here.
 const NOTATION_LABELS: Record<Notation, string> = {
-  abstark: "Abstark",
   barbeat: "bar|beat",
   "midi-json": "MIDI JSON",
   stark: "Stark",

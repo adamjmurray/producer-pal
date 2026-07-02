@@ -115,7 +115,7 @@ describe("stark interpreter — drums (event-based)", () => {
   });
 });
 
-describe("stark interpreter — pitched lines (shared with abstark)", () => {
+describe("stark interpreter — pitched lines", () => {
   it("melody: literal pitch, accidentals, octave marks", () => {
     const notes = interpretNotation("melody: C Eb G'");
 

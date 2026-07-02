@@ -118,10 +118,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "MIDI notes in stark notation, a literal per-line `type: content` format with event-based drum hits (see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). Delete/move existing notes via preTransforms - don't rewrite the clip",
       "smallModel:stark":
         "MIDI notes in stark notation (`type: content`, event-based drums, see Skills). MERGES - overwrites at same pitch+start. Delete/move via preTransforms, don't rewrite the clip",
-      abstark:
-        "MIDI notes in abstark notation, a literal per-line `type: content` format (see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). Delete/move existing notes via preTransforms - don't rewrite the clip",
-      "smallModel:abstark":
-        "MIDI notes in abstark notation (literal `type: content`, see Skills). MERGES - overwrites at same pitch+start. Delete/move via preTransforms, don't rewrite the clip",
     }),
     transforms: param(z.string().optional(), {
       default:

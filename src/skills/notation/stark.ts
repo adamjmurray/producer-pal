@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Stark notation head. A literal, round-trippable format. Its pitched
- * (bass/melody/chords) syntax is identical to abstark; it differs only in drums,
- * which are event-based (a line of drum hits with /N durations) rather than a
- * positional 16th-note grid. One shared head used at both skill levels (standard
- * and basic) — the only standard/basic difference is which core body
- * ({@link coreStandard} / {@link coreBasic}) {@link buildSkills} appends.
+ * Stark notation head. A literal, round-trippable format: pitched
+ * (bass/melody/chords) lines use explicit pitch + absolute /N durations, and
+ * drums are event-based (a line of drum hits with /N durations). One shared head
+ * used at both skill levels (standard and basic) — the only standard/basic
+ * difference is which core body ({@link coreStandard} / {@link coreBasic})
+ * {@link buildSkills} appends.
  */
 export const stark = `## MIDI Notation — Stark
 

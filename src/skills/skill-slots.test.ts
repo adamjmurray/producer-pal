@@ -45,7 +45,7 @@ describe("activeSkillSlots", () => {
   });
 
   it("uses the notation name as the head slot for non-bar|beat notations", () => {
-    for (const notation of ["midi-json", "stark", "abstark"] as const) {
+    for (const notation of ["midi-json", "stark"] as const) {
       expect(activeSkillSlots(notation, false).head).toBe(notation);
       // Same head slot at both levels (no simplified variant).
       expect(activeSkillSlots(notation, true).head).toBe(notation);

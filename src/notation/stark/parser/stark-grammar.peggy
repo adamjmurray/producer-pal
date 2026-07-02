@@ -1,11 +1,9 @@
 // Stark notation grammar.
 //
-// Stark is a literal, round-trippable notation. It shares abstark's pitched
-// (bass/melody/chords) syntax verbatim — the pitched rules below are byte-for-byte
-// identical to abstark-grammar.peggy so the AST types can be re-exported and the
-// pitched interpreter/serializer reused. Stark's ONLY divergence from abstark is
-// the drum syntax: stark drums are EVENT-BASED (like a melody line whose tokens
-// are drum hits), not a positional 16th-note grid.
+// Stark is a literal, round-trippable notation. Both section types are
+// event-based: pitched (bass/melody/chords) lines and drum lines each spell
+// timing with explicit /N durations (drums are a melody line whose tokens are
+// drum hits at a fixed pitch), not a positional 16th-note grid.
 //
 // Durations are absolute note values (/4 = quarter note, /8 = eighth, etc.).
 // In every line type here `/` introduces a duration and `|` is a visual barline
@@ -84,9 +82,9 @@ DrumItem
   / DrumToken
   / RestToken
 
-// A drum hit at the line's fixed pitch. Velocity buckets match AbstarkDynamic so
-// the shared velocityFor() applies. Optional glued /N (like a pitched NoteToken)
-// overrides the line default for this one hit.
+// A drum hit at the line's fixed pitch. Velocity buckets match StarkDynamic so
+// velocityFor() applies. Optional glued /N (like a pitched NoteToken) overrides
+// the line default for this one hit.
 DrumToken
   = velocity:DrumVelocity dur:("/" n:DurationN { return n; })? {
       return { type: "hit", velocity: velocity, duration: dur };
@@ -99,7 +97,7 @@ DrumVelocity
 
 // --- Pitched content (event-based, whitespace-tokenized) ---
 // Whitespace between tokens has no rhythmic meaning.
-// Applies to bass, melody, and chords lines. Identical to abstark.
+// Applies to bass, melody, and chords lines.
 
 PitchedContent
   = items:PitchedContentItem* { return items; }
@@ -209,7 +207,6 @@ BarMarker
 
 // "snare2" is tried before "snare" so the longer name is not short-circuited by
 // its prefix. tom1/2/3/4 run high→low (tom4 = GM Low Floor Tom, the lowest).
-// Kept in sync with abstark's DrumName rule (the twin notation).
 DrumName
   = ("kick"i    / "bd"i)  { return { name: "kick",    midi: 36 }; }
   / ("snare2"i  / "s2"i)  { return { name: "snare2",  midi: 40 }; }

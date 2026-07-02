@@ -20,15 +20,15 @@
  * the header (a drum name vs melody/bass/chords).
  *
  * The leaf primitives (pitch spelling, velocity glyphs, rest decomposition, line
- * classification) are imported from abstark as A/B scaffolding; the line-default
- * FACTORING is stark-specific (abstark's serializer stays verbose) and collapses
- * into stark when abstark is deleted post-eval.
+ * classification) live in stark-serializer-helpers.ts; the line-default
+ * FACTORING below is what keeps the read-back clean.
  */
 
 import {
   CHORDS_REGISTER_DEFAULT,
+  DRUM_DEFAULT_N,
   LINE_DEFAULT_N,
-} from "#src/notation/abstark/abstark-config.ts";
+} from "#src/notation/stark/stark-config.ts";
 import {
   classifyPitchedLine,
   drumChar,
@@ -39,8 +39,7 @@ import {
   octaveMarks,
   pitchParts,
   restNoteValues,
-} from "#src/notation/abstark/abstark-serializer.ts";
-import { DRUM_DEFAULT_N } from "#src/notation/stark/stark-config.ts";
+} from "#src/notation/stark/stark-serializer-helpers.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
@@ -48,7 +47,8 @@ import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 export interface StarkFormatOptions {
   /**
    * True when the clip's track has a Drum Rack instrument. It — not the MIDI
-   * pitch — decides drum vs. pitched serialization (see abstark-serializer).
+   * pitch — decides drum vs. pitched serialization, so a low bass note is not
+   * mistaken for a kick.
    */
   drumMode?: boolean;
 }

@@ -89,8 +89,9 @@ export function assertNotesRead(turn: number): EvalAssertion {
  * @param meter - Expected time signature (e.g. "6/8"); also the interpret meter
  * @param check - Verdict over the re-interpreted notes (start_time in Ableton
  *   quarter beats); only called once the read succeeded in `meter`
- * @param interpret - Notation interpreter (defaults to bar|beat). Pass the
- *   Abstark interpreter for Abstark scenarios — the only thing that differs.
+ * @param interpret - Notation interpreter (defaults to bar|beat). Pass a
+ *   notation-specific interpreter for non-bar|beat scenarios — the only thing
+ *   that differs.
  * @returns State assertion
  */
 export function clipStateAssertion(
@@ -127,8 +128,8 @@ export function clipStateAssertion(
 }
 
 /** A notation interpreter compatible with {@link clipStateAssertion}. Meter
- * fields are optional so both the bar|beat and Abstark interpreters satisfy it
- * (Abstark ignores the denominator). */
+ * fields are optional so both the bar|beat and stark interpreters satisfy it
+ * (stark ignores the denominator). */
 export type NotationInterpreter = (
   notes: string,
   opts: { timeSigNumerator?: number; timeSigDenominator?: number },
@@ -137,10 +138,10 @@ export type NotationInterpreter = (
 /**
  * One expected note: MIDI pitch, start (Ableton quarter beats), duration.
  * `pitch` may be a SET of acceptable pitches (any-of). Used for drum pads whose
- * "role" spans several MIDI notes: stark/abstark map a drum name to a fixed GM
+ * "role" spans several MIDI notes: stark maps a drum name to a fixed GM
  * pitch (e.g. snare→38) while a bar|beat/midi-json model reads the actual Drum
  * Rack and picks whatever pad that rack labels a snare (Eb1=39, E1=40 in
- * basic-midi-4-track). Accepting the family keeps the four notations graded
+ * basic-midi-4-track). Accepting the family keeps the notations graded
  * against the SAME expected set (the matrix's apples-to-apples invariant) instead
  * of rewarding whichever notation happens to match this rack's GM alignment. The
  * rhythm (start) is still asserted exactly; only the pad choice is loosened.
@@ -180,7 +181,7 @@ function pitchMatches(actual: number, expected: number | number[]): boolean {
  * Order-independent verdict: the interpreted events match `expected` exactly on
  * pitch (or membership in a pitch-set) and start position (and duration when
  * given). Velocity is never checked (it is often bucketed/randomized on
- * interpret). Shared by the bar|beat and Abstark read-back checks.
+ * interpret). Shared by the bar|beat and stark read-back checks.
  *
  * @param events - Re-interpreted notes from the read-back
  * @param expected - Expected notes (pitch + start, optional duration)

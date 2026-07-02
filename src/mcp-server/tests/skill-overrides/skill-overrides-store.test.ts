@@ -57,10 +57,10 @@ describe("readSkillOverrides", () => {
   });
 
   it("reads a hand-authored override that has no frontmatter", () => {
-    writeRaw("abstark", "hand written, no provenance");
+    writeRaw("midi-json", "hand written, no provenance");
 
     expect(readSkillOverrides()).toStrictEqual({
-      abstark: "hand written, no provenance",
+      "midi-json": "hand written, no provenance",
     });
   });
 });
@@ -134,11 +134,11 @@ describe("readSkillSlotState", () => {
 
 describe("deleteSkillOverride", () => {
   it("resets a slot to the built-in and is a no-op when already absent", () => {
-    writeSkillOverride("abstark", "temp");
+    writeSkillOverride("midi-json", "temp");
 
-    expect(deleteSkillOverride("abstark").override).toBe("");
+    expect(deleteSkillOverride("midi-json").override).toBe("");
     // Second delete must not throw on a missing file.
-    expect(deleteSkillOverride("abstark").override).toBe("");
+    expect(deleteSkillOverride("midi-json").override).toBe("");
   });
 });
 

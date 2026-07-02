@@ -7,22 +7,16 @@
  * Notation router: dispatches the interpret (string → notes) and format
  * (notes → string) seams to a specific notation. `barbeat` (the default) is the
  * bar|beat DSL; `midi-json` is a compact JS-literal array of note objects;
- * `stark` and `abstark` are literal, round-trippable notations (both have real
- * serializers).
+ * `stark` is a literal, round-trippable notation with a real serializer and an
+ * event-based drum syntax.
  *
  * Selection is a single global setting (`config.notation`, default `barbeat`),
  * controlled via the device UI / `POST /config` and threaded to the clip tools
  * as `context.notation`. {@link resolveNotation} just fills in the default when
  * no notation is supplied. The notation is fully independent of small-model
  * mode (which only trims tool schemas).
- *
- * `stark` and `abstark` are literal, round-trippable notations (both have real
- * serializers); they differ only in their drum syntax (stark's is event-based,
- * abstark's is a positional 16th-note grid).
  */
 
-import { interpretNotation as interpretAbstark } from "#src/notation/abstark/abstark-interpreter.ts";
-import { formatNotation as formatAbstark } from "#src/notation/abstark/abstark-serializer.ts";
 import { formatNotation as formatBarbeat } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation as interpretBarbeat } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type FormatOptions } from "#src/notation/barbeat/serializer/barbeat-serializer.ts";
@@ -84,10 +78,6 @@ export function interpretNotation(
     return interpretStark(input, rest);
   }
 
-  if (resolved === "abstark") {
-    return interpretAbstark(input, rest);
-  }
-
   return interpretBarbeat(input, rest);
 }
 
@@ -108,10 +98,6 @@ export function formatNotation(
 
   if (resolved === "midi-json") {
     return formatMidiJson(notes ?? [], rest);
-  }
-
-  if (resolved === "abstark") {
-    return formatAbstark(notes ?? [], { drumMode: rest.drumMode });
   }
 
   if (resolved === "stark") {

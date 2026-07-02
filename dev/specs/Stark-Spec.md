@@ -1,13 +1,12 @@
 # Stark Specification
 
-A literal, **round-trippable** music notation for one clip's notes. Stark is the
-twin of [Abstark](./Abstark-Spec.md): its pitched (bass / melody / chords) lines
-are **identical** to Abstark's, and it ships a serializer so reading a clip with
-`notation: "stark"` re-emits Stark. Stark differs from Abstark in **one** place
-— **drums are event-based** (a line of drum hits with `/N` durations, like a
-melody of hits) rather than Abstark's positional 16th-note grid. This makes drum
-patterns count by the familiar subdivision (a 4/4 bar of quarters is 4 tokens,
-of eighths is 8) instead of a fixed 16-character grid.
+A literal, **round-trippable** music notation for one clip's notes. Stark spells
+pitch literally (no key, no scale, no snapping), spells accidentals explicitly,
+uses absolute `/N` durations, and ships a **serializer** so reading a clip with
+`notation: "stark"` re-emits Stark rather than falling back to bar|beat. Every
+section is **event-based**: drums are a line of drum hits with `/N` durations
+(like a melody of hits), so drum patterns count by the familiar subdivision (a
+4/4 bar of quarters is 4 tokens, of eighths is 8) rather than a fixed grid.
 
 > **Documented lossy axes.** interpret → serialize → interpret is a fixed point
 > on pitch / start_time / **duration** for any legato line (every note starting
@@ -18,9 +17,8 @@ of eighths is 8) instead of a fixed 16-character grid.
 > timing model**, so drum note-length round-trips like a melody note's. The
 > authoritative implementation is the source files:
 > `parser/stark-grammar.peggy`, `stark-interpreter.ts`, `stark-serializer.ts`,
-> `stark-config.ts`. Stark reuses Abstark's pitched interpreter and the
-> serializer's leaf primitives (temporary A/B scaffolding); the serializer's
-> line-default factoring is stark-specific.
+> `stark-config.ts`. The serializer's line-default factoring keeps the read-back
+> clean.
 
 ---
 
@@ -33,7 +31,7 @@ advances time by its own duration:
 
 - **Drums** — headed by a **drum name** or an **absolute pitch name** (below),
   with an optional header `/N` line default. Tokens are hits/rests.
-- **Bass / melody / chords** — identical to Abstark.
+- **Bass / melody / chords** — pitched tokens (below).
 
 Headers are case-insensitive. Mixed section types in one string (e.g. `drums` +
 `melody`) are **legal but warned**. When two voices produce the same pitch at
@@ -74,7 +72,7 @@ vocabulary wins):
    | tom3 (lt)    | 43   | pedal (ph)   | 44   |
 
    (toms run high→low: tom1=47 … tom4=41). `hats` is also accepted as an alias
-   for `hihat`. Kept in sync with Abstark's identical `DrumName` rule.
+   for `hihat`.
 
 2. **Absolute pitch name** — `letter [#|b]? (-?octave)`, e.g. `C3`, `F#1`,
    `Gb-1`, using the **Ableton convention (C3 = MIDI 60)** via `pitch.ts`. A
@@ -95,22 +93,43 @@ dropped notes.
 
 ## Pitched lines (bass / melody / chords)
 
-Identical to Abstark — see [Abstark-Spec § Pitched lines](./Abstark-Spec.md). In
-brief:
-
 ```
 melody: C Eb G' z/2 A/8!
 melody/8: C D E G          # /N in the header sets the line's default duration
 chords: [C Eb G]/2!        # bracket notes share the chord's /N and dynamic
 ```
 
-A **note token** is `letter` (`A`–`G`) + **accidental** (`#`/`b`, immediately
-after the letter, so `Cb` = C-flat while a lone `b` = note B) + any-order
-suffixes: **octave marks** `'`/`,` (register-relative, stackable), **duration**
-`/N`, **dynamic** `!`/`?`. **Rest** = `z` (optional `/N`). **Bracket chord** =
-`[<note> …]` with the `/N`/dynamic on the whole chord. Register defaults (the
-MIDI pitch a bare `C` maps to): bass = C1 = 36, melody = C3 = 60, chords = C2
-= 48.
+A **note token** is, in order: `letter` (`A`–`G`, case-insensitive) +
+**accidental** (`#`/`b`, _immediately after the letter_, so `Cb` = C-flat while
+a lone `b` = note B) + suffix modifiers in **any order**:
+
+- **octave marks** `'` (up) / `,` (down), stackable — shift from the register
+  default.
+- **duration** `/N` — absolute note value (§ Durations). At most one.
+- **dynamic** `!` accent / `?` soft. Omit = normal. At most one.
+
+The suffix glyph classes are disjoint (`' ,` vs `/N` vs `! ?`), so `Eb''/8!`,
+`Eb/8''!`, and `Eb!/8''` parse identically. The serializer always emits one
+canonical order: pitch → accidental → octave → `/duration` → dynamic.
+
+**Rest** = `z` with optional `/N` (`z/4`). **Bracket chord** =
+`[<note> <note> ...]` with optional `/N` and dynamic applied to the whole chord;
+inner notes follow the pitch rules (letter + accidental + octave), no per-note
+duration/dynamic.
+
+**Register defaults** (the MIDI pitch a bare `C` maps to; octave marks shift
+from here), using the Ableton convention (C3 = MIDI 60):
+
+| line   | `C` maps to | MIDI |
+| ------ | ----------- | ---- |
+| bass   | C1          | 36   |
+| melody | C3          | 60   |
+| chords | C2          | 48   |
+
+> Note the two octave conventions are intentional and separate: pitched lines
+> use **register-relative** marks (no octave numbers; `C` = the register
+> default), while drum pitch-name headers use **absolute Ableton note names**
+> (C3 = 60). They never share syntax, so there is no ambiguity.
 
 ---
 

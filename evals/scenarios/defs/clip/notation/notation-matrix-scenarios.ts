@@ -5,14 +5,13 @@
 
 /**
  * Notation-matrix scenarios: the same musical task authored under each notation
- * so their pass rates are directly comparable. Converted from the original
- * Abstark-only scenarios (drum backbeat, chromatic pitch, mixed-duration rhythm)
- * into notation-neutral specs — see notation-matrix.ts for the factory and the
- * grading/representability rules.
+ * so their pass rates are directly comparable. Notation-neutral specs (drum
+ * backbeat, chromatic pitch, mixed-duration rhythm) — see notation-matrix.ts for
+ * the factory and the grading/representability rules.
  *
  * Run the whole matrix with `-a` (add `--small-model` for the basic-tier
  * comparison), or a single family with repeated `-t`, e.g.
- * `-t drum-backbeat-stark -t drum-backbeat-abstark`.
+ * `-t drum-backbeat-stark -t drum-backbeat-barbeat`.
  *
  * Prompts use Ableton pitch naming (C3 = MIDI 60), matching everything else the
  * model sees in Producer Pal; the grader asserts MIDI numbers, so each notation's
@@ -27,7 +26,7 @@ import {
 } from "./notation-matrix.ts";
 
 // Drum-pad expectations as any-of sets, so the SAME expected notes grade every
-// notation (the matrix invariant). stark/abstark map a drum name to a fixed GM
+// notation (the matrix invariant). stark maps a drum name to a fixed GM
 // pitch (snare→38, closed hat→42); a bar|beat/midi-json model instead reads
 // basic-midi-4-track's Drum Rack and picks whatever pad IT labels a snare/closed
 // hat. In that rack D1(38) is actually a Rim and the real snares are Eb1(39) &
@@ -45,7 +44,7 @@ const HIHAT = [42, 44];
 /**
  * One-bar 4/4 groove: four-on-the-floor kick (every beat), snare on 2 & 4,
  * closed hi-hat on every sixteenth (16 hats). Deliberately far from the
- * every-eighth-hats + 1&3-kick backbeat shown in the abstark/stark skill
+ * every-eighth-hats + 1&3-kick backbeat shown in the stark skill
  * examples — the model must derive BOTH the kick and hi-hat patterns rather than
  * copy the taught one, so this measures notation generalization, not recall.
  * Duration is NOT asserted — drum hits are one-shots and their length is

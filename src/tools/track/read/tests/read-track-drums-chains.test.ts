@@ -181,7 +181,7 @@ describe("readTrack", () => {
       });
     });
 
-    it("keys the drum map by drum name when notation is abstark", () => {
+    it("keys the drum map by drum name when notation is stark", () => {
       setupTrackPathMappedMocks({
         pathIdMap: {
           [String(livePath.track(0))]: "track1",
@@ -227,7 +227,7 @@ describe("readTrack", () => {
       });
       const result = readTrack(
         { trackIndex: 0, include: ["drum-map"] },
-        { notation: "abstark" },
+        { notation: "stark" },
       );
 
       expect(result.drumMap).toStrictEqual({
