@@ -64,11 +64,27 @@ export function formatNotation(
 
 // ---- Drum serializer ----
 
-// Serialize drum notes into one `<header>: <pattern>` line per pitch. The
-// header prefers the readable drum name (kick/snare/…) when one maps to the
-// pitch, and falls back to an absolute pitch name (e.g. "C3", Ableton C3=60)
-// otherwise — so any Drum-Rack pad round-trips, no drops.
+// Serialize drum notes into one `<header>: <pattern>` line per pitch.
 function serializeDrums(notes: NoteEvent[]): string[] {
+  const lines: string[] = [];
+
+  for (const [midi, drumNotes] of groupNotesByPitch(notes)) {
+    lines.push(`${drumHeader(midi)}: ${drumPattern(drumNotes)}`);
+  }
+
+  return lines;
+}
+
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period (stark reuses drum grouping); remove when abstark is deleted.
+/**
+ * Group notes by MIDI pitch, preserving first-seen pitch order.
+ * @param notes - Note events to group
+ * @returns Map from MIDI pitch to its notes, in first-seen order
+ */
+export function groupNotesByPitch(
+  notes: NoteEvent[],
+): Map<number, NoteEvent[]> {
   const byPitch = new Map<number, NoteEvent[]>();
 
   for (const note of notes) {
@@ -81,17 +97,22 @@ function serializeDrums(notes: NoteEvent[]): string[] {
     }
   }
 
-  const lines: string[] = [];
+  return byPitch;
+}
 
-  for (const [midi, drumNotes] of byPitch) {
-    // midiToNoteName only returns null for out-of-range MIDI; NoteEvent pitches
-    // are always 0–127, so the fallback is safe to assert non-null.
-    const header = MIDI_TO_DRUM_NAME[midi] ?? (midiToNoteName(midi) as string);
-
-    lines.push(`${header}: ${drumPattern(drumNotes)}`);
-  }
-
-  return lines;
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period; remove when abstark is deleted.
+/**
+ * Choose a drum line header: the readable drum name (kick/snare/…) when one maps
+ * to the pitch, else an absolute pitch name (e.g. "C3", Ableton C3=60) — so any
+ * Drum-Rack pad round-trips, no drops.
+ * @param midi - MIDI pitch of the drum note
+ * @returns The header token (drum name or absolute pitch name)
+ */
+export function drumHeader(midi: number): string {
+  // midiToNoteName only returns null for out-of-range MIDI; NoteEvent pitches
+  // are always 0–127, so the fallback is safe to assert non-null.
+  return MIDI_TO_DRUM_NAME[midi] ?? (midiToNoteName(midi) as string);
 }
 
 // Build a positional 16th-note pattern string for one drum instrument.
@@ -121,8 +142,14 @@ function drumPattern(notes: NoteEvent[]): string {
   return groups.join(" ");
 }
 
-// Map velocity to drum character (^/X/x).
-function drumChar(velocity: number): string {
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period; remove when abstark is deleted.
+/**
+ * Map a velocity to its drum character (^ accent / X normal / x soft).
+ * @param velocity - MIDI velocity
+ * @returns The drum hit character
+ */
+export function drumChar(velocity: number): string {
   if (velocity >= VELOCITY_ACCENT_THRESHOLD) return "^";
   if (velocity >= VELOCITY_SOFT_THRESHOLD) return "X";
 
@@ -131,8 +158,16 @@ function drumChar(velocity: number): string {
 
 // ---- Pitched serializer ----
 
-// Classify and serialize non-drum notes into a single section line.
-function serializePitched(notes: NoteEvent[]): string {
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period (stark's pitched lines are identical to abstark's); remove when
+// abstark is deleted.
+/**
+ * Classify and serialize non-drum notes into a single section line
+ * (bass / melody / chords).
+ * @param notes - Note events to serialize
+ * @returns The serialized pitched line
+ */
+export function serializePitched(notes: NoteEvent[]): string {
   const sorted = [...notes].sort((a, b) => a.start_time - b.start_time);
 
   // Detect simultaneous notes (same start_time within epsilon).

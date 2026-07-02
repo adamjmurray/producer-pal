@@ -4,48 +4,29 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Stark notation head. An ultra-minimal format for small/weak LLMs. One shared
- * head used at both skill levels (standard and basic) — the format has no
- * richer variant, so the only standard/basic difference is which core body
+ * Stark notation head. A literal, round-trippable format. Its pitched
+ * (bass/melody/chords) syntax is identical to abstark; it differs only in drums,
+ * which are event-based (a line of drum hits with /N durations) rather than a
+ * positional 16th-note grid. One shared head used at both skill levels (standard
+ * and basic) — the only standard/basic difference is which core body
  * ({@link coreStandard} / {@link coreBasic}) {@link buildSkills} appends.
  */
 export const stark = `## MIDI Notation — Stark
 
-An ultra-minimal format. One line per part, written as \`type: content\`.
+A literal, round-trippable format. The \`notes\` argument (and read-clip's returned notes) is one line per part, \`type: content\`. Whitespace between tokens is only a separator — it has NO rhythmic meaning; timing comes from each token's duration.
 
-### Timing (one rule)
+- **Drums** — one line per drum, written like a melody of hits: \`X\`=normal, \`x\`=soft, \`^\`=accent, \`z\`=rest. Each token lasts \`/4\` (a quarter note) by default; set a line default in the header (\`hihat /8:\`) or glue \`/N\` to one token (\`X/8\`). Token count = the familiar subdivision: a 4/4 bar of quarters is 4 tokens, of eighths is 8. \`|\` is an optional visual barline. Example — a 1-bar 4/4 backbeat, kick on 1 & 3, snare on 2 & 4, closed hi-hat on every eighth:
 
-- A character with a space after it = a quarter note; characters run together (no spaces) = 16th notes. \`/\` = next bar, \`.\` = rest, \`-\` = sustain (hold the previous note).
-- For eighths or 16ths, write the part as ONE continuous 16th run with NO internal spaces (\`.\` for the gaps): eighths = \`x.x.x.x.x.x.x.x.\`, straight 16ths = \`xxxxxxxxxxxxxxxx\`. A space turns the character before it into a quarter note, so a space inside a subdivided run breaks the timing — never group a fast run with spaces.
-- **Fill the whole clip: a 4/4 bar is 4 quarters or 16 sixteenths, and every line must span the same number of bars.**
-
-### Drums
-
-One line per drum, named: \`kick snare snare2 hihat pedal open tom1 tom2 tom3 tom4 ride crash clap rimshot perc1 perc2\`.
-Hits: \`X\` = loud, \`x\` = soft, \`^\` = accent.
-Example — a 1-bar 4/4 backbeat: kick on 1 & 3, snare on 2 & 4, closed hi-hat on every eighth. Kick/snare are quarters (space-separated); the hi-hat's eighths are one unbroken run:
 \`\`\`
-kick: X . X .
-snare: . X . X
-hihat: x.x.x.x.x.x.x.x.
+kick: X z X z
+snare: z X z X
+hihat /8: X X X X X X X X
 \`\`\`
 
-### Bass / Melody
+Drum names (General MIDI 16-pad layout, notes 36-51): kick snare snare2 hihat pedal open tom1 tom2 tom3 tom4 ride crash clap rimshot perc1 perc2 (toms run high→low; perc1/perc2 are the variable upper pads). A pad with no name uses an absolute pitch-name header instead (\`C3: X z X z\`, Ableton C3=60) — same content syntax.
+- **Pitched** — \`melody: C Eb G'\` (also \`bass:\`, \`chords:\`). A token is letter \`A\`-\`G\` + optional \`#\`/\`b\` (immediately after the letter, so \`Cb\`=C-flat but a lone \`b\`=note B) + octave marks (\`'\` up, \`,\` down, stackable) + duration \`/N\` + dynamic (\`!\`=accent, \`?\`=soft, omit=normal). \`/N\` is an ABSOLUTE note value: \`/1\`=whole (4 beats), \`/2\`=half, \`/4\`=quarter (1 beat), \`/8\`, \`/16\`. Rest = \`z\` or \`z/N\`. Default duration is \`/4\` for bass/melody, \`/1\` for chords; set a line default in the header (\`melody/8: ...\`).
+- **Registers** (the MIDI pitch a bare \`C\` maps to, Ableton naming where C3=60=middle C): bass=C1, melody=C3, chords=C2; octave marks shift from there.
+- **Chords** — \`chords: [C Eb G]/2!\` the bracket's notes share its \`/N\` duration and dynamic.
 
-\`bass:\` (low register) or \`melody:\` (higher register). Note letters \`A\`-\`G\`
-auto-snap to the scale (default C Major) — no sharps/flats, no octave numbers;
-each note picks the octave closest to the previous one. Uppercase = loud,
-lowercase = soft.
-\`\`\`
-bass: C E G C / C D E F
-melody: E G A / A G E
-\`\`\`
-
-### Chords
-
-\`chords:\` builds a triad per letter; quality comes from the scale degree
-(in C Major: C/F/G major, D/E/A minor, B diminished). Add \`7\` for a 7th chord.
-\`\`\`
-chords: C F G C
-chords: C7 D7 G7 C
-\`\`\``;
+\`notes\` MERGES into an existing clip; use \`preTransforms\` to delete or edit notes already in the clip.
+`;

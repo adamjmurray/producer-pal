@@ -78,15 +78,17 @@ describe("formatNotation router", () => {
     expect(formatNotation([], {})).toBe("");
   });
 
-  it("falls back to bar|beat for stark (no Stark serializer)", () => {
+  it("routes to the stark serializer (round-trippable — no bar|beat fallback)", () => {
     const result = formatNotation([note], {
       notation: "stark",
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
 
-    expect(result).toContain("1|1");
-    expect(result.startsWith("[")).toBe(false);
+    // pitch 60 = C3 → a stark melody line, not bar|beat and not JSON.
+    expect(result).toMatch(/^melody:/);
+    expect(result).toContain("C");
+    expect(result).not.toContain("1|1");
   });
 });
 

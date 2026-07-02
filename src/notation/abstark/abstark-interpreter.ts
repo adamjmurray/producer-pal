@@ -116,8 +116,14 @@ export function interpretNotation(
   return sortNotes(deduped);
 }
 
-// Convert dynamic level to a random velocity within its range.
-function velocityFor(dynamic: AbstarkDynamic): number {
+// A/B scaffolding: shared with the stark interpreter during the coexistence
+// period (stark drum + pitched velocity); remove when abstark is deleted.
+/**
+ * Convert a dynamic level to a random velocity within its range.
+ * @param dynamic - Dynamic level (accent / normal / soft)
+ * @returns A velocity randomized within that dynamic's range
+ */
+export function velocityFor(dynamic: AbstarkDynamic): number {
   if (dynamic === "accent")
     return randomVelocity(VELOCITY_ACCENT_MIN, VELOCITY_ACCENT_MAX);
   if (dynamic === "soft")
@@ -173,8 +179,16 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
   }
 }
 
-// Process a pitched section (bass/melody/chords): event-based timing, /N durations.
-function processPitchedSection(
+// A/B scaffolding: shared with the stark interpreter during the coexistence
+// period (stark's pitched lines are identical to abstark's); remove when
+// abstark is deleted.
+/**
+ * Process a pitched section (bass/melody/chords): event-based timing, /N
+ * durations. Pushes the section's notes onto `notes`.
+ * @param section - The parsed pitched section
+ * @param notes - Accumulator the section's notes are appended to
+ */
+export function processPitchedSection(
   section: PitchedSection,
   notes: NoteEvent[],
 ): void {

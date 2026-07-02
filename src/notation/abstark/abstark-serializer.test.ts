@@ -367,8 +367,7 @@ describe("formatNotation — drum-range pitches WITHOUT drumMode (the fix)", () 
 });
 
 // Round-trip: interpret → serialize → interpret must be a fixed point on
-// pitch / start_time / duration, and preserve the velocity bucket. This is the
-// defining property of Abstark (vs. Stark, which has no serializer).
+// pitch / start_time / duration, and preserve the velocity bucket.
 describe("round-trip (interpret → serialize → interpret)", () => {
   // drumMode mirrors the track context: drum-line inputs round-trip with
   // drumMode true, pitched inputs with drumMode false.

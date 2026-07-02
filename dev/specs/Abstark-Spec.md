@@ -1,11 +1,12 @@
 # Abstark Specification
 
-A literal, **round-trippable** music notation for one clip's notes. Abstark is
-the deliberate inversion of [Stark](./Stark-Spec.md): where Stark snaps letters
-to a configured scale and is lossy/input-only, Abstark is literal (no key, no
-scale, no snapping), spells accidentals explicitly, uses absolute `/N`
-durations, and ships a **serializer** so reading a clip with
-`notation: "abstark"` re-emits Abstark rather than falling back to bar|beat.
+A literal, **round-trippable** music notation for one clip's notes. Abstark
+spells pitch literally (no key, no scale, no snapping), spells accidentals
+explicitly, uses absolute `/N` durations, and ships a **serializer** so reading
+a clip with `notation: "abstark"` re-emits Abstark rather than falling back to
+bar|beat. Its twin [Stark](./Stark-Spec.md) shares Abstark's pitched syntax and
+differs only in drums (Stark's are event-based; Abstark's are the positional
+16th-note grid below).
 
 > **Documented lossy axes (the only ones).** interpret → serialize → interpret
 > is a fixed point on pitch / start_time / duration, modulo: velocity bucketing

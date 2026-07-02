@@ -69,7 +69,8 @@ export interface NotationNeutralSpec {
   expected: ExpectedNote[];
   /** Notations to emit a variant for. Defaults to every notation. Pass a subset
    *  when the target isn't exactly representable in some notation (e.g. omit
-   *  "stark" for chromatic pitch or sub-quarter durations). */
+   *  stark/abstark for triplet or off-16th-grid timing — their /N note values
+   *  don't reach it). */
   notations?: Notation[];
   /** Live Set (defaults to basic-midi-4-track). */
   liveSet?: string;

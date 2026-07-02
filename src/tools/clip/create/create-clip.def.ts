@@ -84,7 +84,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       "midi-json":
         "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (see Skills) - MIDI clips only",
       stark:
-        "MIDI notes in stark notation (ultra-minimal `type: content` grid, see Skills) - MIDI clips only",
+        "MIDI notes in stark notation (literal, round-trippable `type: content`; event-based drum hits, see Skills) - MIDI clips only",
       abstark:
         "MIDI notes in abstark notation (literal `type: content` format, see Skills) - MIDI clips only",
     }),

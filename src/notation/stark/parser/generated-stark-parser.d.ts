@@ -6,6 +6,12 @@
 /**
  * Type declarations for the peggy-generated Stark parser.
  * The actual parser is generated from stark-grammar.peggy.
+ *
+ * A/B scaffolding: Stark's pitched (bass/melody/chords) AST is byte-for-byte
+ * identical to abstark's, so those types are re-exported from the abstark parser
+ * rather than redeclared here (avoids a .d.ts duplication clone). Only the
+ * event-based drum AST — which genuinely differs from abstark's positional-grid
+ * drum AST — is declared locally. Collapses when abstark is deleted post-eval.
  */
 
 export {
@@ -17,89 +23,61 @@ export {
 
 import type { ParseOptions } from "../../peggy-parser-types.ts";
 
-/** Note value granularity derived from token spacing */
-export type StarkDuration = "quarter" | "sixteenth";
+export type {
+  AbstarkDurationN as StarkDurationN,
+  AbstarkDynamic as StarkDynamic,
+  BarMarkerItem,
+  NoteItem,
+  RestItem,
+  ChordNoteItem,
+  ChordItem,
+  PitchedContentItem,
+  PitchedSection,
+} from "../../abstark/parser/abstark-parser.ts";
 
-/** Bar separator token */
-export interface BarMarkerItem {
-  barMarker: true;
-}
+import type {
+  AbstarkDurationN,
+  AbstarkDynamic,
+  BarMarkerItem,
+  RestItem,
+  PitchedSection,
+} from "../../abstark/parser/abstark-parser.ts";
 
-/** A rest (advance time without a note) */
-export interface RestItem {
-  type: "rest";
-  duration: StarkDuration;
-}
+// --- Drum items (event-based; differs from abstark's positional-grid drums) ---
 
-/** A sustain (hold/extend the previous note) */
-export interface SustainItem {
-  type: "sustain";
-  duration: StarkDuration;
-}
-
-/** A drum hit */
+/** A drum hit at the line's fixed pitch, with an optional glued /N override */
 export interface DrumHitItem {
   type: "hit";
-  velocity: "accent" | "loud" | "soft";
-  duration: StarkDuration;
+  /** ^ = accent, X = normal, x = soft */
+  velocity: AbstarkDynamic;
+  /** Explicit glued /N override, or null (use the line default) */
+  duration: AbstarkDurationN | null;
 }
 
-/** A pitched note (bass/melody mode) */
-export interface NoteItem {
-  type: "note";
-  note: string;
-  velocity: "loud" | "soft";
-  duration: StarkDuration;
-}
+export type DrumContentItem = BarMarkerItem | DrumHitItem | RestItem;
 
-/** A chord (chords mode) */
-export interface ChordItem {
-  type: "chord";
-  root: string;
-  velocity: "loud" | "soft";
-  hasSeventh: boolean;
-  duration: StarkDuration;
-}
+// --- Sections ---
 
-export type DrumContentItem =
-  | BarMarkerItem
-  | RestItem
-  | SustainItem
-  | DrumHitItem;
-export type NoteContentItem = BarMarkerItem | RestItem | SustainItem | NoteItem;
-export type ChordContentItem =
-  | BarMarkerItem
-  | RestItem
-  | SustainItem
-  | ChordItem;
-
-/** A single `drumname: pattern` line */
-export interface DrumLine {
+/** A `<drumname>: <hits>` or `<pitch>: <hits>` section (event-based timing) */
+export interface DrumSection {
+  /** Drum instrument name (kick/snare/…) OR the verbatim pitch-name header (e.g. "C1") */
   type: string;
-  midi: number;
+  /**
+   * Fixed General MIDI pitch for a named drum, or null for a pitch-name header
+   * (resolve via `noteName` + pitch.ts, Ableton C3 = MIDI 60).
+   */
+  midi: number | null;
+  /** Verbatim pitch-name header (e.g. "C1", "Gb2") for pitch-led lines, else null */
+  noteName: string | null;
+  /** /N from the line header (sets the line default), or null */
+  defaultDuration: AbstarkDurationN | null;
   content: DrumContentItem[];
 }
 
-/** A `bass:` line */
-export interface BassLine {
-  type: "bass";
-  content: NoteContentItem[];
-}
+export type StarkSection = DrumSection | PitchedSection;
 
-/** A `melody:` line */
-export interface MelodyLine {
-  type: "melody";
-  content: NoteContentItem[];
-}
-
-/** A `chords:` line */
-export interface ChordLine {
-  type: "chords";
-  content: ChordContentItem[];
-}
-
-/** The parsed Stark AST: one or more drum lines, or a single mono/chord line */
-export type StarkAst = DrumLine[] | BassLine | MelodyLine | ChordLine;
+/** The parsed Stark AST: one or more sections (mixed sections are legal but warned) */
+export type StarkAst = StarkSection[];
 
 /** Parse a Stark expression string into an AST */
 export function parse(input: string, options?: ParseOptions): StarkAst;

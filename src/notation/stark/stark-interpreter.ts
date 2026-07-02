@@ -4,68 +4,51 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Stark notation interpreter: converts an ultra-minimal Stark expression into
- * MIDI note events. Used in small-model mode. See parser/stark-grammar.peggy
- * for the syntax and stark-interpreter-helpers.ts for the music theory.
+ * Stark notation interpreter: converts a Stark expression into MIDI note events.
+ * Stark is a literal, round-trippable notation. Its pitched (bass/melody/chords)
+ * lines are identical to abstark's, so this interpreter reuses abstark's
+ * `processPitchedSection` / `velocityFor` directly (A/B scaffolding — collapses
+ * when abstark is deleted post-eval). Stark's ONLY divergence is drums: they are
+ * EVENT-BASED (each token is a hit or rest with a /N duration, like a melody line
+ * of drum hits), not abstark's positional 16th-note grid.
+ *
+ * See parser/stark-grammar.peggy for the syntax.
  */
 
-import * as parser from "#src/notation/stark/parser/stark-parser.ts";
+import { durationBeats } from "#src/notation/abstark/abstark-config.ts";
 import {
-  type ChordContentItem,
-  type DrumLine,
-  type NoteContentItem,
+  processPitchedSection,
+  velocityFor,
+} from "#src/notation/abstark/abstark-interpreter.ts";
+import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
+import {
+  type DrumSection,
+  type StarkSection,
 } from "#src/notation/stark/parser/stark-parser.ts";
-import {
-  BASS_DEFAULT_OCTAVE,
-  BASS_MAX_OCTAVE,
-  BASS_MIN_OCTAVE,
-  CHORD_OCTAVE,
-  MELODY_DEFAULT_OCTAVE,
-  MELODY_MAX_OCTAVE,
-  MELODY_MIN_OCTAVE,
-  QUARTER_NOTE_BEATS,
-  SIXTEENTH_NOTE_BEATS,
-  VELOCITY_ACCENT_MAX,
-  VELOCITY_ACCENT_MIN,
-  VELOCITY_LOUD_MAX,
-  VELOCITY_LOUD_MIN,
-  VELOCITY_SOFT_MAX,
-  VELOCITY_SOFT_MIN,
-} from "#src/notation/stark/stark-config.ts";
-import {
-  applyScale,
-  chooseOctave,
-  CHORD_TYPES,
-  getChordQuality,
-  parseScale,
-  randomVelocity,
-  type ScaleType,
-} from "#src/notation/stark/stark-interpreter-helpers.ts";
+import * as parser from "#src/notation/stark/parser/stark-parser.ts";
+import { DRUM_DEFAULT_N } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 export interface StarkInterpretOptions {
-  /** Time signature numerator (beats per bar). Defaults to 4. */
+  /** Time signature numerator (beats per bar). Accepted for parity; unused (timing is explicit). */
   timeSigNumerator?: number;
-  /** Scale string like "C Major" or "Eb Minor". Defaults to C Major. */
-  scale?: string;
 }
 
 /**
  * Convert a Stark notation string into MIDI note events.
  * @param starkExpression - Stark notation string
- * @param options - Interpretation options
- * @returns Array of note events
+ * @param _options - Interpretation options (timeSigNumerator accepted but unused)
+ * @returns Array of note events sorted by start_time
  */
 export function interpretNotation(
   starkExpression: string,
-  options: StarkInterpretOptions = {},
+  _options: StarkInterpretOptions = {},
 ): NoteEvent[] {
   if (!starkExpression || starkExpression.trim() === "") {
     return [];
   }
-
-  const { timeSigNumerator = 4, scale: scaleParam } = options;
-  const { root: scaleRoot, type: scaleType } = parseScale(scaleParam);
 
   let ast;
 
@@ -77,210 +60,83 @@ export function interpretNotation(
     });
   }
 
+  // Warn on mixed section types (drums + melody etc in one clip is unusual).
+  const sectionKinds = new Set(
+    ast.map((s) => ("midi" in s ? "drums" : s.type)),
+  );
+
+  if (sectionKinds.size > 1) {
+    console.warn(
+      `Stark: mixed section types (${[...sectionKinds].join(", ")}) in one clip`,
+    );
+  }
+
   const notes: NoteEvent[] = [];
 
-  // Drums mode: an array of drum lines
-  if (Array.isArray(ast)) {
-    for (const drumLine of ast) {
-      processDrumLine(drumLine, notes, timeSigNumerator);
+  for (const section of ast) {
+    if (isDrumSection(section)) {
+      processDrumSection(section, notes);
+    } else {
+      processPitchedSection(section, notes);
     }
-
-    return notes;
   }
 
-  if (ast.type === "bass") {
-    processMono(ast, notes, timeSigNumerator, scaleRoot, scaleType, {
-      defaultOctave: BASS_DEFAULT_OCTAVE,
-      minOctave: BASS_MIN_OCTAVE,
-      maxOctave: BASS_MAX_OCTAVE,
-    });
-  } else if (ast.type === "melody") {
-    processMono(ast, notes, timeSigNumerator, scaleRoot, scaleType, {
-      defaultOctave: MELODY_DEFAULT_OCTAVE,
-      minOctave: MELODY_MIN_OCTAVE,
-      maxOctave: MELODY_MAX_OCTAVE,
-    });
-  } else {
-    processChords(ast, notes, timeSigNumerator, scaleRoot, scaleType);
+  // Resolve same-pitch+start collisions (can arise from mixed sections).
+  const deduped = dedupeNotesKeepingLast(notes);
+  const collisions = notes.length - deduped.length;
+
+  if (collisions > 0) {
+    console.warn(
+      `Stark: ${collisions} same-pitch+start ${collisions === 1 ? "collision" : "collisions"} from mixed sections; keeping last note`,
+    );
   }
 
-  return notes;
+  return sortNotes(deduped);
 }
 
-// Beats consumed by an item based on its note-value granularity
-function itemBeats(duration: "quarter" | "sixteenth"): number {
-  return duration === "quarter" ? QUARTER_NOTE_BEATS : SIXTEENTH_NOTE_BEATS;
+// Drum sections carry a `midi`/`noteName` header; pitched sections do not.
+function isDrumSection(section: StarkSection): section is DrumSection {
+  return "midi" in section;
 }
 
-// Velocity for a dynamic level, randomized within its range
-function velocityFor(level: "accent" | "loud" | "soft"): number {
-  if (level === "accent")
-    return randomVelocity(VELOCITY_ACCENT_MIN, VELOCITY_ACCENT_MAX);
-  if (level === "loud")
-    return randomVelocity(VELOCITY_LOUD_MIN, VELOCITY_LOUD_MAX);
+// Process an event-based drum section: each token is a hit or rest whose
+// duration is its glued /N, else the line default (header /N, else /4). The
+// pitch is fixed — the named drum's GM pitch (section.midi) or a pitch-name
+// header resolved via pitch.ts (Ableton C3=60).
+function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
+  const pitch =
+    section.midi ??
+    (section.noteName ? noteNameToMidi(section.noteName) : null);
 
-  return randomVelocity(VELOCITY_SOFT_MIN, VELOCITY_SOFT_MAX);
-}
+  if (pitch == null) {
+    console.warn(
+      `Stark: drum line "${section.type}" has no resolvable pitch — skipping`,
+    );
 
-// Process a single drum line into note events
-function processDrumLine(
-  drumLine: DrumLine,
-  notes: NoteEvent[],
-  beatsPerBar: number,
-): void {
+    return;
+  }
+
+  const lineDefaultN = section.defaultDuration ?? DRUM_DEFAULT_N;
+
   let time = 0;
-  let bar = 1;
 
-  for (const item of drumLine.content) {
-    if ("barMarker" in item) {
-      bar++;
-      time = (bar - 1) * beatsPerBar;
-      continue;
-    }
+  for (const item of section.content) {
+    if ("barMarker" in item) continue;
 
-    const duration = itemBeats(item.duration);
+    const beats = durationBeats(item.duration ?? lineDefaultN);
 
-    // Rests and sustains both just advance time (drums don't retrigger).
-    if (item.type === "rest" || item.type === "sustain") {
-      time += duration;
+    if (item.type === "rest") {
+      time += beats;
       continue;
     }
 
     notes.push({
-      pitch: drumLine.midi,
+      pitch,
       start_time: time,
-      duration,
+      duration: beats,
       velocity: velocityFor(item.velocity),
       probability: 1.0,
     });
-    time += duration;
-  }
-}
-
-// Process bass/melody (mono) mode into note events
-function processMono(
-  line: { content: NoteContentItem[] },
-  notes: NoteEvent[],
-  beatsPerBar: number,
-  scaleRoot: number,
-  scaleType: ScaleType,
-  range: { defaultOctave: number; minOctave: number; maxOctave: number },
-): void {
-  let time = 0;
-  let bar = 1;
-  let prevMidi: number | null = null;
-  let sustainingNote: NoteEvent | null = null;
-
-  for (const item of line.content) {
-    if ("barMarker" in item) {
-      bar++;
-      time = (bar - 1) * beatsPerBar;
-      sustainingNote = null;
-      continue;
-    }
-
-    const duration = itemBeats(item.duration);
-
-    if (item.type === "rest") {
-      time += duration;
-      sustainingNote = null;
-      continue;
-    }
-
-    if (item.type === "sustain") {
-      if (sustainingNote) sustainingNote.duration += duration;
-      time += duration;
-      continue;
-    }
-
-    const pitchClass = applyScale(item.note, scaleRoot, scaleType);
-    const midi = chooseOctave(
-      pitchClass,
-      prevMidi,
-      range.minOctave,
-      range.maxOctave,
-      range.defaultOctave,
-    );
-    const note: NoteEvent = {
-      pitch: midi,
-      start_time: time,
-      duration,
-      velocity: velocityFor(item.velocity),
-      probability: 1.0,
-    };
-
-    notes.push(note);
-    prevMidi = midi;
-    sustainingNote = note;
-    time += duration;
-  }
-}
-
-// Process chords mode into note events
-function processChords(
-  line: { content: ChordContentItem[] },
-  notes: NoteEvent[],
-  beatsPerBar: number,
-  scaleRoot: number,
-  scaleType: ScaleType,
-): void {
-  const letterMap: Readonly<Record<string, number>> = {
-    C: 0,
-    D: 1,
-    E: 2,
-    F: 3,
-    G: 4,
-    A: 5,
-    B: 6,
-  };
-  let time = 0;
-  let bar = 1;
-
-  for (const item of line.content) {
-    if ("barMarker" in item) {
-      bar++;
-      time = (bar - 1) * beatsPerBar;
-      continue;
-    }
-
-    const duration = itemBeats(item.duration);
-
-    if (item.type === "rest") {
-      time += duration;
-      continue;
-    }
-
-    if (item.type === "sustain") {
-      // Extend every note that started with the previous chord.
-      const prevTime = time - duration;
-
-      for (const note of notes) {
-        if (Math.abs(note.start_time - prevTime) < 0.001) {
-          note.duration += duration;
-        }
-      }
-
-      time += duration;
-      continue;
-    }
-
-    // Grammar guarantees item.root is one of C-B, so the lookup is defined.
-    const degree = letterMap[item.root] as number;
-    const rootPitchClass = applyScale(item.root, scaleRoot, scaleType);
-    const intervals =
-      CHORD_TYPES[getChordQuality(degree, scaleType, item.hasSeventh)];
-    const velocity = velocityFor(item.velocity);
-
-    for (const interval of intervals) {
-      notes.push({
-        pitch: CHORD_OCTAVE * 12 + ((rootPitchClass + interval) % 12),
-        start_time: time,
-        duration,
-        velocity,
-        probability: 1.0,
-      });
-    }
-
-    time += duration;
+    time += beats;
   }
 }

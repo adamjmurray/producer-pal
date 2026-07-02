@@ -69,8 +69,8 @@ export const drumBackbeatMatrix = notationNeutralScenarios({
 /**
  * Bar 1 ascends C3, E3, G3 then leaps an octave to C4; bar 2 descends
  * chromatically B3, Bb3, A3, Ab3. Eight quarter notes across two 4/4 bars
- * (Ableton beats 0–7). Exact chromatic pitches, so stark (scale-snapped, no
- * accidentals) is omitted.
+ * (Ableton beats 0–7). Exact chromatic pitches — representable in every notation
+ * now that stark is literal (post-rework), so all four run.
  */
 const CHROMATIC_MELODY: ExpectedNote[] = [
   { pitch: 60, start: 0, duration: 1 }, // C3
@@ -83,14 +83,13 @@ const CHROMATIC_MELODY: ExpectedNote[] = [
   { pitch: 68, start: 7, duration: 1 }, // Ab3
 ];
 
-/** Exact chromatic pitches → bar|beat / abstark / midi-json only (no stark). */
+/** Exact chromatic pitches — all four notations (stark is literal post-rework). */
 export const melodyPitchMatrix = notationNeutralScenarios({
   baseId: "melody-pitch",
   description:
     "Melody with an octave leap and a chromatic descent — exact pitches",
   track: LEAD_TRACK,
   meter: "4/4",
-  notations: ["barbeat", "abstark", "midi-json"],
   prompt:
     "On the Lead track, create a 2-bar MIDI clip in scene 1 with this quarter-note melody, one note per beat: bar 1 ascends C3, E3, G3, then leaps up an octave to C4; bar 2 descends chromatically B3, Bb3, A3, Ab3.",
   expected: CHROMATIC_MELODY,
@@ -99,8 +98,8 @@ export const melodyPitchMatrix = notationNeutralScenarios({
 /**
  * One 4/4 bar on C3 (MIDI 60): a quarter on beat 1, two eighths on beat 2, four
  * sixteenths on beat 3, a quarter on beat 4 — Ableton beats 0, 1, 1.5, 2, 2.25,
- * 2.5, 2.75, 3. Sub-quarter durations, so stark (quarter/16th grid only, no
- * clean eighths) is omitted.
+ * 2.5, 2.75, 3. Sub-quarter durations — representable in every notation now that
+ * stark has absolute /N durations (post-rework), so all four run.
  */
 const MIXED_RHYTHM: ExpectedNote[] = [
   { pitch: 60, start: 0, duration: 1 }, // quarter, beat 1
@@ -113,13 +112,12 @@ const MIXED_RHYTHM: ExpectedNote[] = [
   { pitch: 60, start: 3, duration: 1 }, // quarter, beat 4
 ];
 
-/** Sub-quarter durations → bar|beat / abstark / midi-json only (no stark). */
+/** Sub-quarter durations — all four notations (stark has /N durations now). */
 export const rhythmGridMatrix = notationNeutralScenarios({
   baseId: "rhythm-grid",
   description: "Single-pitch bar mixing quarter, eighth, and sixteenth notes",
   track: LEAD_TRACK,
   meter: "4/4",
-  notations: ["barbeat", "abstark", "midi-json"],
   prompt:
     "On the Lead track, create a 1-bar MIDI clip in scene 1 with every note on C3: a quarter note on beat 1, two eighth notes on beat 2, four sixteenth notes on beat 3, and a quarter note on beat 4.",
   expected: MIXED_RHYTHM,

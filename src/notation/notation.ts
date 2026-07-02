@@ -6,16 +6,19 @@
 /**
  * Notation router: dispatches the interpret (string → notes) and format
  * (notes → string) seams to a specific notation. `barbeat` (the default) is the
- * bar|beat DSL; `midi-json` is a compact JS-literal array of note objects; `stark` is an
- * ultra-minimal notation aimed at small/weak models (interpret-only — there is
- * no Stark serializer, so the read path falls back to bar|beat); `abstark` is a
- * literal, round-trippable notation (has a real serializer).
+ * bar|beat DSL; `midi-json` is a compact JS-literal array of note objects;
+ * `stark` and `abstark` are literal, round-trippable notations (both have real
+ * serializers).
  *
  * Selection is a single global setting (`config.notation`, default `barbeat`),
  * controlled via the device UI / `POST /config` and threaded to the clip tools
  * as `context.notation`. {@link resolveNotation} just fills in the default when
  * no notation is supplied. The notation is fully independent of small-model
  * mode (which only trims tool schemas).
+ *
+ * `stark` and `abstark` are literal, round-trippable notations (both have real
+ * serializers); they differ only in their drum syntax (stark's is event-based,
+ * abstark's is a positional 16th-note grid).
  */
 
 import { interpretNotation as interpretAbstark } from "#src/notation/abstark/abstark-interpreter.ts";
@@ -28,6 +31,7 @@ import {
   interpretMidiJson,
 } from "#src/notation/midi-json/midi-json-notation.ts";
 import { interpretNotation as interpretStark } from "#src/notation/stark/stark-interpreter.ts";
+import { formatNotation as formatStark } from "#src/notation/stark/stark-serializer.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
@@ -38,8 +42,6 @@ export interface InterpretNotationOptions {
   beatsPerBar?: number;
   timeSigNumerator?: number;
   timeSigDenominator?: number;
-  /** Scale string like "C Major" (Stark only). */
-  scale?: string;
 }
 
 /** Options for {@link formatNotation}; `notation` selects the serializer. */
@@ -71,7 +73,7 @@ export function interpretNotation(
   input: string,
   options: InterpretNotationOptions = {},
 ): NoteEvent[] {
-  const { notation, scale, ...rest } = options;
+  const { notation, ...rest } = options;
   const resolved = resolveNotation(notation);
 
   if (resolved === "midi-json") {
@@ -79,7 +81,7 @@ export function interpretNotation(
   }
 
   if (resolved === "stark") {
-    return interpretStark(input, { ...rest, scale });
+    return interpretStark(input, rest);
   }
 
   if (resolved === "abstark") {
@@ -91,7 +93,7 @@ export function interpretNotation(
 
 /**
  * Serialize note events into a notation string, routing on the resolved
- * notation. Stark has no serializer, so it falls back to bar|beat.
+ * notation.
  *
  * @param notes - Note events to serialize
  * @param options - Format options including the notation to use
@@ -112,6 +114,9 @@ export function formatNotation(
     return formatAbstark(notes ?? [], { drumMode: rest.drumMode });
   }
 
-  // bar|beat handles both barbeat and the stark fallback (no Stark serializer).
+  if (resolved === "stark") {
+    return formatStark(notes ?? [], { drumMode: rest.drumMode });
+  }
+
   return formatBarbeat(notes, rest);
 }
