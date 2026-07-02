@@ -291,34 +291,27 @@ Before committing, `npm run check` must pass with zero errors.
 
 - After ALL code changes: run `npm run check` (lint + typecheck + format +
   tests).
-- Direct tool invocation (upon request):
-  ```
-  node scripts/ppal-client.ts tools/list
-  node scripts/ppal-client.ts tools/call tool-name '{"arg": "value"}'
-  ```
-- **Diagnosing with test Live Sets**: Use the reproducible sets in
-  `e2e/live-sets/` and `evals/live-sets/`. Open one with
-  `scripts/open-live-set path/to/set.als`; trace execution with `console.warn()`
-  (appears as WARNING). Reopen the set to reset state after writes.
-- **LLM-based e2e testing**: `scripts/chat` verifies the AI can drive tools (not
-  just that tools work). See `scripts/chat --help`; always use `-1`/`--once` to
-  exit after one response. E.g.
-  `scripts/chat -m google/gemini-2.0-flash -1 "list tracks in the set"`.
-- **Debug logging for CLI**: import console
-  (`import * as console from "../../shared/v8-max-console.ts"`) and use
-  `console.warn()` — it's relayed as a `WARNING:` block in both the CLI and the
-  live MCP response (the LLM sees it). `console.log()`/`console.error()` are
-  not.
 - **Before claiming done**: ALWAYS run `npm run fix`, then `npm run check`, then
   `npm run check:build` (verifies production artifacts and docs site compile).
   This pre-empts likely errors. **If you touched the chat UI** (`webui/**` or
   its build): ALSO run `npm run ui:test` (the stubbed Playwright suite;
   `npm run check` doesn't run it — no Ableton/keys needed).
+- **Debug logging**: import console
+  (`import * as console from "../../shared/v8-max-console.ts"`) and use
+  `console.warn()` — it's relayed as a `WARNING:` block in both the CLI and the
+  live MCP response (the LLM sees it); `console.log()`/`console.error()` are
+  not. Invaluable for tracing tool behavior when CLI-testing AND when debugging
+  e2e tests.
 - **Diagnosing coverage gaps**: `npm run check`'s console shows only totals —
   check `coverage/coverage-summary.txt` for the per-file breakdown. Function
   coverage is enforced at 100%; if a function is genuinely untestable use
   `/* v8 ignore start -- reason */` (see `dev/Coding-Standards.md` Coverage).
-  Raising v8 ignore limits requires user approval.
+- **Needs user approval** (never do unprompted): raising v8-ignore limits,
+  raising duplication thresholds, or lowering coverage thresholds — see
+  Protected Files.
+- CLI tool invocation (`scripts/ppal-client.ts`), reproducible test Live Sets,
+  and LLM-based e2e (`scripts/chat -1`) are documented in
+  `dev/Development-Tools.md`.
 
 ## MCP E2E Testing
 
@@ -351,6 +344,7 @@ These hold code-quality thresholds — **do not relax without asking first:**
 - `src/test/lint-suppression-limits.test.ts` — per-tree limits for
   eslint-disable, @ts-expect-error, and v8 ignore comments.
 - `vitest.config.ts` (thresholds section) — test coverage thresholds.
+- `config/.jscpd*.json` (`threshold`) — code-duplication limits (per tree).
 
 ## Refactoring & Code Quality
 
@@ -371,21 +365,11 @@ abstraction.
 
 ## Documentation
 
-- `dev/Architecture.md` — System design and components
-- `dev/Arrangement-Operations.md` — Live API constraints, arrangement
-  algorithms, edge cases
-- `dev/Chat-UI.md` — Web UI architecture and development
-- `dev/Conversation-Branching.md` — Conversation forking (edit/retry), sibling
-  navigation, history-panel family collapse
-- `dev/Coding-Standards.md` — Code style, patterns, and rules
-- `dev/decisions/` — Architecture Decision Records: the "why" behind settled
-  choices (esp. rejections)
-- `dev/Development-Tools.md` — CLI testing, raw API debugging, MCP inspector
-- `dev/Documentation-Site.md` — VitePress docs site setup and deployment
-- `dev/Mutation-Testing.md` — Stryker mutation testing: running, baseline,
-  interpreting survivors
-- `dev/Read-Tool-Includes.md` — Read tool include parameter system and
-  conventions
-- `dev/Specialized-Devices.md` — Specialized device LOM classes, pseudo-param
-  mappings, probe-against-Live discipline
-- `DEVELOPERS.md` — Development setup and testing
+Internal design docs live in `dev/` — filenames are descriptive, so `ls dev/` to
+find the right one. Key entries: `dev/Architecture.md` (system design),
+`dev/Coding-Standards.md` (full code-style + Live API reference),
+`dev/decisions/` (ADRs — the "why" behind settled choices, esp. rejections),
+`dev/specs/` (bar|beat
+
+- transform grammar specs), `dev/Development-Tools.md` (CLI/e2e testing tools).
+  `DEVELOPERS.md` = dev setup and testing.

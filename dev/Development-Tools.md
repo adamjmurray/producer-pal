@@ -229,6 +229,15 @@ npm run format:check
 node scripts/build-and-release/test-claude-desktop-extension.ts
 ```
 
+### Reproducible Test Live Sets
+
+The Live Sets in `e2e/live-sets/` and `evals/live-sets/` are reproducible
+scenarios for debugging tool behavior with `scripts/ppal-client.ts`. Open one
+with `scripts/open-live-set path/to/set.als`. Trace execution with
+`console.warn()` (relayed as `WARNING:` in the CLI output — see Max Console
+below). After any writes modify the set's state, reopen it with
+`scripts/open-live-set` to reset back to the original.
+
 ## Debugging Tips
 
 ### Enable Verbose Logging
