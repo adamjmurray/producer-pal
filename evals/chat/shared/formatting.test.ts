@@ -18,6 +18,9 @@ import {
   DEBUG_SEPARATOR,
   debugLog,
   debugCall,
+  describeStreamError,
+  formatError,
+  formatWarning,
   formatScenarioHeader,
   formatTurnHeader,
   formatSectionHeader,
@@ -242,6 +245,54 @@ describe("debugCall", () => {
     expect(loggedOutput).toContain("value1");
 
     consoleSpy.mockRestore();
+  });
+});
+
+describe("describeStreamError", () => {
+  it("returns the message for a plain Error", () => {
+    expect(describeStreamError(new Error("boom"))).toBe("boom");
+  });
+
+  it("appends status code and url for API-call-shaped errors", () => {
+    const err = Object.assign(new Error("Not Found"), {
+      statusCode: 404,
+      url: "http://localhost:1234/chat/completions",
+    });
+
+    expect(describeStreamError(err)).toBe(
+      "Not Found (HTTP 404 http://localhost:1234/chat/completions)",
+    );
+  });
+
+  it("includes only the status code when url is absent", () => {
+    const err = Object.assign(new Error("Server Error"), { statusCode: 500 });
+
+    expect(describeStreamError(err)).toBe("Server Error (HTTP 500)");
+  });
+
+  it("stringifies non-object errors", () => {
+    expect(describeStreamError("raw string error")).toBe("raw string error");
+  });
+
+  it("stringifies an object with no usable message", () => {
+    expect(describeStreamError({})).toBe("[object Object]");
+  });
+});
+
+describe("formatError", () => {
+  it("includes the message and an error marker", () => {
+    const result = formatError("something broke");
+
+    expect(result).toContain("Error:");
+    expect(result).toContain("something broke");
+  });
+});
+
+describe("formatWarning", () => {
+  it("includes the message", () => {
+    const result = formatWarning("heads up");
+
+    expect(result).toContain("heads up");
   });
 });
 

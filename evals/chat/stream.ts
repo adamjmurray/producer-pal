@@ -12,9 +12,12 @@ import { type streamText } from "ai";
 import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
 import {
   continueThought,
+  describeStreamError,
   endThought,
+  formatError,
   formatToolCall,
   formatToolResult,
+  formatWarning,
   startThought,
 } from "./shared/formatting.ts";
 import { type TurnResult } from "./shared/types.ts";
@@ -27,6 +30,7 @@ interface StreamState {
   hadToolCalls: boolean;
   showUsage: boolean;
   stepCount: number;
+  error?: string;
 }
 
 /**
@@ -57,7 +61,7 @@ export async function processCliStream(
 
   finishStream(state);
 
-  return { text: state.text, toolCalls: state.toolCalls };
+  return { text: state.text, toolCalls: state.toolCalls, error: state.error };
 }
 
 /**
@@ -91,7 +95,29 @@ function handleStreamPart(
     case "start-step":
       handleStartStep(state);
       break;
+    case "error":
+      handleError(part.error, state);
+      break;
   }
+}
+
+/**
+ * Handle an error stream event. The AI SDK surfaces streaming/API failures as
+ * an "error" part rather than throwing, so without this they are silently
+ * dropped and the turn just looks like an empty response.
+ *
+ * @param error - The error value from the stream part
+ * @param state - Mutable stream state
+ */
+function handleError(error: unknown, state: StreamState): void {
+  if (state.inThought) {
+    process.stderr.write(endThought());
+    state.inThought = false;
+  }
+
+  state.error = describeStreamError(error);
+
+  process.stderr.write(formatError(state.error) + "\n");
 }
 
 /**
@@ -192,6 +218,22 @@ function handleStartStep(state: StreamState): void {
  * @param state - Stream state
  */
 function finishStream(state: StreamState): void {
+  // An empty turn with no error usually means the request reached a server that
+  // returned a non-streaming/200 body (e.g. a wrong base URL path) — the SDK
+  // yields no text and no "error" part. Surface it instead of showing nothing.
+  if (
+    state.error == null &&
+    state.text.length === 0 &&
+    state.toolCalls.length === 0
+  ) {
+    process.stderr.write(
+      formatWarning(
+        "Assistant returned an empty response (no text, tool calls, or error). " +
+          "Check the model name and base URL (e.g. a missing /v1 path).",
+      ) + "\n",
+    );
+  }
+
   if (isQuietMode()) return;
 
   if (state.inThought) process.stdout.write(endThought());

@@ -111,6 +111,9 @@ export async function createEvalSession(
         stopWhen: stepCountIs(MAX_TOOL_STEPS),
         maxOutputTokens: DEFAULT_MAX_TOKENS,
         system: options.instructions,
+        // Errors are rendered (in red) by processCliStream via the fullStream
+        // "error" part; suppress the SDK's default raw dump.
+        onError: () => {},
         onStepFinish: (event) => {
           const usage = toTokenUsage(event.usage);
 
@@ -127,6 +130,12 @@ export async function createEvalSession(
       const turnResult = await processCliStream(result, {
         showUsage: options.usage,
       });
+
+      // On a stream error, result.response rejects; the error was already shown
+      // by processCliStream. Skip history so the scenario can grade the miss.
+      if (turnResult.error != null) {
+        return { ...turnResult, stepUsages };
+      }
 
       // Append generated messages to history for multi-turn
       const response = await result.response;

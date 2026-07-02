@@ -46,6 +46,8 @@ export interface TurnResult {
   text: string;
   toolCalls: Array<ToolCall & { result?: string }>;
   stepUsages?: TokenUsage[];
+  /** Error message if the stream emitted an "error" part during the turn */
+  error?: string;
 }
 
 export interface ChatContext {

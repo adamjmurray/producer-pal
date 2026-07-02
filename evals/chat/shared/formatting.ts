@@ -86,6 +86,58 @@ export function efficiencyColor(pct: number): ForegroundFormat {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Error formatting
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Extract a concise, human-readable message from a stream/API error.
+ * For AI SDK APICallError-shaped errors, appends the status code and URL,
+ * which are the most useful clues for diagnosing a wrong base URL or path.
+ *
+ * @param error - The error value from a stream "error" part
+ * @returns A single-line description of the error
+ */
+export function describeStreamError(error: unknown): string {
+  if (error == null || typeof error !== "object") return String(error);
+
+  const err = error as {
+    message?: unknown;
+    statusCode?: unknown;
+    url?: unknown;
+  };
+  const base =
+    typeof err.message === "string" && err.message.length > 0
+      ? err.message
+      : String(error);
+  const details: string[] = [];
+
+  if (err.statusCode != null) details.push(`HTTP ${String(err.statusCode)}`);
+  if (typeof err.url === "string") details.push(err.url);
+
+  return details.length > 0 ? `${base} (${details.join(" ")})` : base;
+}
+
+/**
+ * Format an error message for terminal display (red, with a leading marker).
+ *
+ * @param message - The error message text
+ * @returns Red-styled error string
+ */
+export function formatError(message: string): string {
+  return styleText("red", `✖ Error: ${message}`);
+}
+
+/**
+ * Format a warning message for terminal display (yellow, with a leading marker).
+ *
+ * @param message - The warning message text
+ * @returns Yellow-styled warning string
+ */
+export function formatWarning(message: string): string {
+  return styleText("yellow", `⚠ ${message}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Thought formatting
 // ─────────────────────────────────────────────────────────────────────────────
 
