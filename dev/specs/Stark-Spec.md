@@ -10,14 +10,17 @@ patterns count by the familiar subdivision (a 4/4 bar of quarters is 4 tokens,
 of eighths is 8) instead of a fixed 16-character grid.
 
 > **Documented lossy axes.** interpret → serialize → interpret is a fixed point
-> on pitch / start_time (and, for pitched lines, duration), modulo: velocity
-> bucketing (3 dynamics), **drum note-length** (drums re-serialize from onsets
-> on the chosen per-line grid, so a hit's stored length is not recovered), and
-> snapping any off-16th onset to the 16th grid. The authoritative implementation
-> is the grammar/source files: `parser/stark-grammar.peggy`,
-> `stark-interpreter.ts`, `stark-serializer.ts`, `stark-config.ts`. Stark reuses
-> Abstark's pitched interpreter/serializer directly (temporary A/B scaffolding
-> during the coexistence period).
+> on pitch / start_time / **duration** for any legato line (every note starting
+> where the previous ends — anything Stark itself produces), modulo: velocity
+> bucketing (3 dynamics) and snapping any off-16th onset or non-power-of-two
+> duration to the 16th grid. Overlapping notes on one line are normalized to
+> legato exactly as a melody line is — **drums and pitched lines share ONE
+> timing model**, so drum note-length round-trips like a melody note's. The
+> authoritative implementation is the source files:
+> `parser/stark-grammar.peggy`, `stark-interpreter.ts`, `stark-serializer.ts`,
+> `stark-config.ts`. Stark reuses Abstark's pitched interpreter and the
+> serializer's leaf primitives (temporary A/B scaffolding); the serializer's
+> line-default factoring is stark-specific.
 
 ---
 
@@ -70,21 +73,23 @@ vocabulary wins):
    | hihat (hh)   | 42   | ride (rc)    | 51   |
    | tom3 (lt)    | 43   | pedal (ph)   | 44   |
 
-   (toms run high→low: tom1=47 … tom4=41). Kept in sync with Abstark's identical
-   `DrumName` rule.
+   (toms run high→low: tom1=47 … tom4=41). `hats` is also accepted as an alias
+   for `hihat`. Kept in sync with Abstark's identical `DrumName` rule.
 
 2. **Absolute pitch name** — `letter [#|b]? (-?octave)`, e.g. `C3`, `F#1`,
    `Gb-1`, using the **Ableton convention (C3 = MIDI 60)** via `pitch.ts`. A
    header that resolves to no MIDI pitch (`Cb`, out-of-range octave) is
    warn-skipped.
 
-The **serializer** picks, per line, the coarsest grid in `/4, /8, /16` on which
-every onset lands (falling back to `/16` when none fits — off-grid content snaps
-to the 16th grid), emits the header `/N` only when it is finer than the `/4`
-default, and writes one `^`/`X`/`x` per onset and `z` per gap up to the last
-onset (**no trailing-rest padding**). It emits the drum name when one maps to
-the pitch and an absolute pitch name otherwise, so every Drum-Rack pad
-round-trips with no dropped notes.
+The **serializer** walks each line's notes, fills gaps with `z` rests, and takes
+each note's own duration as its `/N` (so lengths round-trip). It then **factors
+the line default**: the most common `/N` becomes the line default — written in
+the header only when it is not `/4` — and every token drops its `/N` when it
+matches. So a bar of quarter kicks reads `kick: X X X X` and straight eighths
+read `hihat /8: X X X X X X X X`. Trailing rests are not padded (each line stops
+at its last onset). It emits the drum name when one maps to the pitch and an
+absolute pitch name otherwise, so every Drum-Rack pad round-trips with no
+dropped notes.
 
 ---
 

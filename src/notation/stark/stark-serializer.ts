@@ -5,23 +5,42 @@
 
 /**
  * Stark serializer: converts NoteEvent[] into a Stark string. Round-trip
- * (interpret → serialize → interpret) is a fixed point on note ONSETS, modulo
- * the documented lossy axes: velocity bucketing, drum note-length, and any
- * off-16th onset (snapped to a 16th grid — the same axis abstark documents).
+ * (interpret → serialize → interpret) is a fixed point on pitch / start_time /
+ * duration for any LEGATO line (each note starts where the previous ends — i.e.
+ * anything Stark itself produced), modulo velocity bucketing and the off-16th
+ * snap. Overlapping notes on one line are normalized to legato exactly as a
+ * melody line is, so drums and pitched lines share ONE timing model.
  *
- * Pitched (bass/melody/chords) lines are identical to abstark, so they reuse
- * abstark's `serializePitched` verbatim (A/B scaffolding — collapses when
- * abstark is deleted post-eval). Only the drum serializer differs: stark drums
- * are event-based, so each line picks the coarsest grid (quarter → eighth →
- * sixteenth) that lands every onset, then emits one hit/`z` token per step.
+ * Every line is serialized the same way: walk the notes, fill gaps with `z`
+ * rests, take each note's own duration as its absolute `/N`, then FACTOR OUT the
+ * line default — emit a header `/N` only when it differs from the line-type
+ * default and a token `/N` only when it differs from the line default — so the
+ * common case reads clean (`kick: X X X X`, `hihat /8: z X z X …`). Drums differ
+ * from pitched lines only in the token glyph (`^`/`X`/`x` vs a pitch letter) and
+ * the header (a drum name vs melody/bass/chords).
+ *
+ * The leaf primitives (pitch spelling, velocity glyphs, rest decomposition, line
+ * classification) are imported from abstark as A/B scaffolding; the line-default
+ * FACTORING is stark-specific (abstark's serializer stays verbose) and collapses
+ * into stark when abstark is deleted post-eval.
  */
 
 import {
+  CHORDS_REGISTER_DEFAULT,
+  LINE_DEFAULT_N,
+} from "#src/notation/abstark/abstark-config.ts";
+import {
+  classifyPitchedLine,
   drumChar,
   drumHeader,
+  dynamicSuffix,
   groupNotesByPitch,
-  serializePitched,
+  groupSimultaneousNotes,
+  octaveMarks,
+  pitchParts,
+  restNoteValues,
 } from "#src/notation/abstark/abstark-serializer.ts";
+import { DRUM_DEFAULT_N } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
@@ -32,6 +51,14 @@ export interface StarkFormatOptions {
    * pitch — decides drum vs. pitched serialization (see abstark-serializer).
    */
   drumMode?: boolean;
+}
+
+// One serialized token before line-default factoring: the glyph/pitch `core`, an
+// optional pitched `dynamic` suffix, and the absolute note value `n` (an /N).
+interface LineToken {
+  core: string;
+  dynamic: string;
+  n: number;
 }
 
 /**
@@ -50,59 +77,185 @@ export function formatNotation(
     return serializeStarkDrums(notes).join("\n");
   }
 
-  return serializePitched(notes);
+  return serializeStarkPitched(notes);
 }
 
-// Grid choices for a drum line, coarse → fine. Never coarser than a quarter: a
-// bar with a single kick reads as `kick: X` (not `/1: X`), and half-note spacing
-// uses quarter-grid rests (`kick: X z X`). Off-grid onsets fall back to /16.
-const DRUM_GRID_NS = [4, 8, 16] as const;
+// ---- Shared line machinery (drums + pitched) ----
 
-// Serialize drum notes into one `<header> [/N]: <tokens>` line per pitch.
+// Walk a monophonic note sequence into hit/rest tokens: legato timing, gaps
+// filled with `z` rests. `makeHit` supplies each note's glyph + dynamic; the
+// note's own duration becomes its /N (durations round-trip for legato input).
+function walkLine(
+  notes: NoteEvent[],
+  makeHit: (note: NoteEvent) => { core: string; dynamic: string },
+): LineToken[] {
+  const sorted = [...notes].sort((a, b) => a.start_time - b.start_time);
+  const tokens: LineToken[] = [];
+  let time = 0;
+
+  for (const note of sorted) {
+    if (note.start_time > time + SAME_TIME_EPSILON) {
+      tokens.push(...restTokens(note.start_time - time));
+    }
+
+    const { core, dynamic } = makeHit(note);
+
+    tokens.push({ core, dynamic, n: durationToN(note.duration) });
+    time = note.start_time + note.duration;
+  }
+
+  return tokens;
+}
+
+// Fill a gap with `z` rest tokens (greedy, largest note value first).
+function restTokens(gapBeats: number): LineToken[] {
+  return restNoteValues(gapBeats).map((n) => ({ core: "z", dynamic: "", n }));
+}
+
+// Absolute note value (/N) nearest a duration in beats: 4b→1 … 0.25b→16.
+function durationToN(beats: number): number {
+  const n = Math.round(4 / beats);
+
+  if (n <= 1) return 1;
+  if (n <= 2) return 2;
+  if (n <= 4) return 4;
+  if (n <= 8) return 8;
+
+  return 16;
+}
+
+// Render one section line, factoring out the line default: a header `/N` only
+// when the chosen default differs from the line-type default, and a token `/N`
+// only when the token differs from the chosen default.
+function renderLine(
+  header: string,
+  tokens: LineToken[],
+  lineTypeDefaultN: number,
+): string {
+  const lineDefaultN = chooseLineDefaultN(tokens, lineTypeDefaultN);
+  const headerDur =
+    lineDefaultN === lineTypeDefaultN ? "" : ` /${lineDefaultN}`;
+  const body = tokens
+    .map((t) => {
+      const tokenDur = t.n === lineDefaultN ? "" : `/${t.n}`;
+
+      return `${t.core}${tokenDur}${t.dynamic}`;
+    })
+    .join(" ");
+
+  return `${header}${headerDur}: ${body}`;
+}
+
+// Pick the line default /N: the most common token note value, preferring the
+// line-type default on ties (so the header can be omitted) then coarser values.
+function chooseLineDefaultN(
+  tokens: LineToken[],
+  lineTypeDefaultN: number,
+): number {
+  const counts = new Map<number, number>();
+
+  for (const t of tokens) counts.set(t.n, (counts.get(t.n) ?? 0) + 1);
+
+  let best = lineTypeDefaultN;
+  let bestCount = counts.get(lineTypeDefaultN) ?? 0;
+
+  for (const [n, count] of counts) {
+    if (isBetterDefault(n, count, best, bestCount, lineTypeDefaultN)) {
+      best = n;
+      bestCount = count;
+    }
+  }
+
+  return best;
+}
+
+// Tie-break for chooseLineDefaultN: higher count wins; on a tie the line-type
+// default wins (lets the header drop), otherwise the coarser value (smaller N).
+function isBetterDefault(
+  n: number,
+  count: number,
+  best: number,
+  bestCount: number,
+  lineTypeDefaultN: number,
+): boolean {
+  if (count !== bestCount) return count > bestCount;
+  if (n === lineTypeDefaultN) return true;
+  if (best === lineTypeDefaultN) return false;
+
+  return n < best;
+}
+
+// ---- Pitched lines (bass / melody / chords) ----
+
+// Classify the notes, then serialize as a chords line or a mono bass/melody line.
+function serializeStarkPitched(notes: NoteEvent[]): string {
+  const classified = classifyPitchedLine(notes);
+
+  if (classified.kind === "chords") {
+    return serializeStarkChords(classified.sorted);
+  }
+
+  const tokens = walkLine(classified.sorted, (note) => ({
+    core: pitchCore(note.pitch, classified.registerDefault),
+    dynamic: dynamicSuffix(note.velocity),
+  }));
+
+  return renderLine(
+    classified.lineType,
+    tokens,
+    LINE_DEFAULT_N[classified.lineType],
+  );
+}
+
+// Serialize a chords line: one bracket per simultaneous group, gaps as rests.
+function serializeStarkChords(sorted: NoteEvent[]): string {
+  const tokens: LineToken[] = [];
+  let time = 0;
+
+  for (const group of groupSimultaneousNotes(sorted)) {
+    // group is non-empty (groupSimultaneousNotes only emits matched groups).
+    const rep = group[0] as NoteEvent;
+
+    if (rep.start_time > time + SAME_TIME_EPSILON) {
+      tokens.push(...restTokens(rep.start_time - time));
+    }
+
+    const inner = group
+      .map((note) => pitchCore(note.pitch, CHORDS_REGISTER_DEFAULT))
+      .join(" ");
+
+    tokens.push({
+      core: `[${inner}]`,
+      dynamic: dynamicSuffix(rep.velocity),
+      n: durationToN(rep.duration),
+    });
+    time = rep.start_time + rep.duration;
+  }
+
+  return renderLine("chords", tokens, LINE_DEFAULT_N.chords);
+}
+
+// Spell one pitch as letter + accidental + octave marks (no duration/dynamic).
+function pitchCore(midi: number, registerDefault: number): string {
+  const { letter, accidental, octaveShift } = pitchParts(midi, registerDefault);
+
+  return `${letter}${accidental}${octaveMarks(octaveShift)}`;
+}
+
+// ---- Drum lines (event-based, one line per pitch) ----
+
+// Serialize drum notes into one factored `<header> [/N]: <tokens>` line per pitch.
 function serializeStarkDrums(notes: NoteEvent[]): string[] {
   const lines: string[] = [];
 
   for (const [pitch, pitchNotes] of groupNotesByPitch(notes)) {
-    const sorted = [...pitchNotes].sort((a, b) => a.start_time - b.start_time);
-    const n = chooseLineDefaultN(sorted);
-    const step = 4 / n;
-    const lastOnset = sorted.at(-1)?.start_time ?? 0;
-    const stepCount = Math.round(lastOnset / step) + 1;
+    const tokens = walkLine(pitchNotes, (note) => ({
+      core: drumChar(note.velocity),
+      dynamic: "",
+    }));
 
-    const charAt = new Map<number, string>();
-
-    for (const note of sorted) {
-      charAt.set(Math.round(note.start_time / step), drumChar(note.velocity));
-    }
-
-    const tokens: string[] = [];
-
-    for (let i = 0; i < stepCount; i++) {
-      tokens.push(charAt.get(i) ?? "z");
-    }
-
-    // /N header only when the grid is finer than the /4 default.
-    const header = n === 4 ? drumHeader(pitch) : `${drumHeader(pitch)} /${n}`;
-
-    lines.push(`${header}: ${tokens.join(" ")}`);
+    lines.push(renderLine(drumHeader(pitch), tokens, DRUM_DEFAULT_N));
   }
 
   return lines;
-}
-
-// Coarsest grid in {4, 8, 16} whose step length divides every onset; /16 when
-// none does (off-grid content snaps to the 16th grid — a documented lossy axis).
-function chooseLineDefaultN(notes: NoteEvent[]): number {
-  for (const n of DRUM_GRID_NS) {
-    const step = 4 / n;
-    const fits = notes.every((note) => {
-      const snapped = Math.round(note.start_time / step) * step;
-
-      return Math.abs(note.start_time - snapped) < SAME_TIME_EPSILON;
-    });
-
-    if (fits) return n;
-  }
-
-  return 16;
 }

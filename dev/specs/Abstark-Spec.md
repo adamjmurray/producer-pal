@@ -63,6 +63,8 @@ advances time.
    | hihat (hh)   | 42   | crash (cc)   | 49   |
    |              |      | ride (rc)    | 51   |
 
+   `hats` is also accepted as an alias for `hihat`.
+
 2. **Absolute pitch name** — `letter [#|b]? (-?octave)`, e.g. `C3`, `F#1`,
    `Gb-1`. Uses the codebase-canonical **Ableton convention (C3 = MIDI 60)** via
    `pitch.ts` — _not_ the pitched-line register convention below. A pitch-name

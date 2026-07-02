@@ -42,23 +42,23 @@ describe("stark serializer — drum lines (drumMode)", () => {
     expect(line).toBe("kick: X X X X");
   });
 
-  it("backbeat snare emits z rests on the quarter grid", () => {
+  it("backbeat snare emits z rests between hits", () => {
     expect(formatNotation([note(38, 1, 1), note(38, 3, 1)], DRUM)).toBe(
       "snare: z X z X",
     );
   });
 
-  it("a single hit serializes to one token (no over-coarsening to /1)", () => {
+  it("a single hit serializes to one token", () => {
     expect(formatNotation([note(36, 0, 1)], DRUM)).toBe("kick: X");
   });
 
-  it("half-note spacing stays on the quarter grid (no /2 header)", () => {
+  it("half-note spacing fills the gap with a quarter rest", () => {
     expect(formatNotation([note(36, 0, 1), note(36, 2, 1)], DRUM)).toBe(
       "kick: X z X",
     );
   });
 
-  it("eighth-note content picks the /8 grid via a header", () => {
+  it("eighth-note hits on the offbeats factor /8 into the header", () => {
     const line = formatNotation(
       [
         note(42, 0.5, 0.5),
@@ -72,10 +72,34 @@ describe("stark serializer — drum lines (drumMode)", () => {
     expect(line).toBe("hihat /8: z X z X z X z X");
   });
 
-  it("sixteenth-note content picks the /16 grid", () => {
-    expect(formatNotation([note(36, 0, 1), note(36, 0.25, 1)], DRUM)).toBe(
-      "kick /16: X X",
+  it("adjacent sixteenth hits factor /16 into the header", () => {
+    expect(
+      formatNotation([note(36, 0, 0.25), note(36, 0.25, 0.25)], DRUM),
+    ).toBe("kick /16: X X");
+  });
+
+  it("a per-hit duration different from the line default keeps its /N", () => {
+    expect(
+      formatNotation(
+        [note(36, 0, 1), note(36, 1, 0.5), note(36, 1.5, 1)],
+        DRUM,
+      ),
+    ).toBe("kick: X X/8 X");
+  });
+
+  it("on a duration tie the coarser note value wins the line default", () => {
+    // two /16 then two /8 (equal counts) → /8 (coarser) becomes the default.
+    const line = formatNotation(
+      [
+        note(36, 0, 0.25),
+        note(36, 0.25, 0.25),
+        note(36, 0.5, 0.5),
+        note(36, 1, 0.5),
+      ],
+      DRUM,
     );
+
+    expect(line).toBe("kick /8: X/16 X/16 X X");
   });
 
   it("velocity buckets map to ^ / X / x", () => {
@@ -103,12 +127,30 @@ describe("stark serializer — drum lines (drumMode)", () => {
   });
 });
 
-describe("stark serializer — pitched lines (shared with abstark)", () => {
-  it("melodic notes serialize as a melody line (drumMode false)", () => {
-    const line = formatNotation([note(60, 0, 1)]);
+describe("stark serializer — pitched lines (line-default factoring)", () => {
+  it("a single quarter melody note omits the /4 default", () => {
+    expect(formatNotation([note(60, 0, 1)])).toBe("melody: C");
+  });
 
-    expect(line).toMatch(/^melody:/);
-    expect(line).toContain("C");
+  it("an all-eighth melody factors /8 into the header", () => {
+    const line = formatNotation([
+      note(60, 0, 0.5),
+      note(62, 0.5, 0.5),
+      note(64, 1, 0.5),
+    ]);
+
+    expect(line).toBe("melody /8: C D E");
+  });
+
+  it("a duration tie with the line default keeps the default (header omitted)", () => {
+    const line = formatNotation([
+      note(60, 0, 1),
+      note(62, 1, 1),
+      note(64, 2, 0.5),
+      note(65, 2.5, 0.5),
+    ]);
+
+    expect(line).toBe("melody: C D E/8 F/8");
   });
 });
 
@@ -123,7 +165,8 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     return { first, second };
   }
 
-  // Pitched notes round-trip exactly modulo the velocity bucket.
+  // Both drum and pitched lines are a fixed point on pitch / start / duration
+  // (modulo the velocity bucket) — drums share the pitched timing model.
   function expectStableNotes(first: NoteEvent[], second: NoteEvent[]): void {
     expect(second).toHaveLength(first.length);
 
@@ -137,20 +180,6 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     }
   }
 
-  // Drums are a fixed point on ONSETS only: note length is a documented lossy
-  // axis (the serializer re-derives timing from the chosen per-line grid).
-  function expectStableOnsets(first: NoteEvent[], second: NoteEvent[]): void {
-    expect(second).toHaveLength(first.length);
-
-    for (const [i, a] of first.entries()) {
-      const b = second[i] as NoteEvent;
-
-      expect(b.pitch).toBe(a.pitch);
-      expect(b.start_time).toBeCloseTo(a.start_time, 6);
-      expect(bucket(b.velocity)).toBe(bucket(a.velocity));
-    }
-  }
-
   it("melody with varied durations and octaves", () => {
     const { first, second } = roundTrip("melody: C/4 Eb/8 G'/2 C''/16");
 
@@ -159,6 +188,12 @@ describe("round-trip (interpret → serialize → interpret)", () => {
 
   it("melody with rests (gap fill)", () => {
     const { first, second } = roundTrip("melody: C/4 z/4 D/4 z/2 E/4");
+
+    expectStableNotes(first, second);
+  });
+
+  it("melody with a multi-beat gap decomposes rests greedily", () => {
+    const { first, second } = roundTrip("melody: C z/2 z/4 E");
 
     expectStableNotes(first, second);
   });
@@ -176,46 +211,68 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     expectStableNotes(first, second);
   });
 
-  it("four-on-the-floor drums", () => {
+  it("whole-note chords use the /1 default", () => {
+    const { first, second } = roundTrip("chords: [C E G] [D F A]");
+
+    expectStableNotes(first, second);
+  });
+
+  it("four-on-the-floor drums (duration round-trips)", () => {
     const { first, second } = roundTrip("kick: X X X X", true);
 
-    expectStableOnsets(first, second);
+    expectStableNotes(first, second);
+    expect(first.every((n) => n.duration === 1)).toBe(true);
   });
 
   it("backbeat with rests", () => {
     const { first, second } = roundTrip("snare: z X z X", true);
 
-    expectStableOnsets(first, second);
+    expectStableNotes(first, second);
   });
 
   it("eighth-note hats via header /N", () => {
     const { first, second } = roundTrip("hihat /8: z X z X z X z X", true);
 
-    expectStableOnsets(first, second);
+    expectStableNotes(first, second);
+    expect(first.every((n) => n.duration === 0.5)).toBe(true);
+  });
+
+  it("glued inline /N round-trips the mixed durations", () => {
+    const { first, second } = roundTrip("kick: X X/8 X", true);
+
+    expectStableNotes(first, second);
+    expect(first.map((n) => n.duration)).toStrictEqual([1, 0.5, 1]);
   });
 
   it("all hit types (accent / normal / soft)", () => {
     const { first, second } = roundTrip("kick: ^ X x X", true);
 
-    expectStableOnsets(first, second);
+    expectStableNotes(first, second);
+  });
+
+  it("hats alias resolves to hihat (MIDI 42)", () => {
+    const { first, second } = roundTrip("hats: X X", true);
+
+    expectStableNotes(first, second);
+    expect(first.every((n) => n.pitch === 42)).toBe(true);
   });
 
   it("multiple drum lines round-trip together", () => {
     const { first, second } = roundTrip("kick: X z X z\nsnare: z X z X", true);
 
-    expectStableOnsets(first, second);
+    expectStableNotes(first, second);
   });
 
   it("pitch-name drum line (unmapped pad) round-trips", () => {
     const { first, second } = roundTrip("C3: X z X z", true);
 
-    expectStableOnsets(first, second);
+    expectStableNotes(first, second);
     expect(first[0]?.pitch).toBe(60);
   });
 
   it("sixteenth-note drums round-trip on the /16 grid", () => {
     const { first, second } = roundTrip("hihat /16: X X X X X X X X", true);
 
-    expectStableOnsets(first, second);
+    expectStableNotes(first, second);
   });
 });

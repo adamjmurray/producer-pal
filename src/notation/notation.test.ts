@@ -86,7 +86,8 @@ describe("formatNotation router", () => {
     });
 
     // pitch 60 = C3 → a stark melody line, not bar|beat and not JSON.
-    expect(result).toMatch(/^melody:/);
+    // (whole note → the /1 line default is factored into the header)
+    expect(result).toMatch(/^melody[ :]/);
     expect(result).toContain("C");
     expect(result).not.toContain("1|1");
   });

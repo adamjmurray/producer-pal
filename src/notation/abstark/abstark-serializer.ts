@@ -168,6 +168,39 @@ export function drumChar(velocity: number): string {
  * @returns The serialized pitched line
  */
 export function serializePitched(notes: NoteEvent[]): string {
+  const classified = classifyPitchedLine(notes);
+
+  if (classified.kind === "chords") {
+    return serializeChords(classified.sorted);
+  }
+
+  return serializeMono(
+    classified.lineType,
+    classified.registerDefault,
+    classified.sorted,
+  );
+}
+
+/** A pitched line classified for serialization (chords vs. mono bass/melody). */
+export type PitchedClassification =
+  | { kind: "chords"; sorted: NoteEvent[] }
+  | {
+      kind: "mono";
+      lineType: "bass" | "melody";
+      registerDefault: number;
+      sorted: NoteEvent[];
+    };
+
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period (stark applies line-default factoring on top of this); remove when
+// abstark is deleted.
+/**
+ * Sort notes and classify the line as chords (any simultaneous notes) or a
+ * monophonic bass/melody line (by median pitch), with its register default.
+ * @param notes - Note events to classify
+ * @returns The classification plus the start-sorted notes
+ */
+export function classifyPitchedLine(notes: NoteEvent[]): PitchedClassification {
   const sorted = [...notes].sort((a, b) => a.start_time - b.start_time);
 
   // Detect simultaneous notes (same start_time within epsilon).
@@ -181,7 +214,7 @@ export function serializePitched(notes: NoteEvent[]): string {
   });
 
   if (hasChords) {
-    return serializeChords(sorted);
+    return { kind: "chords", sorted };
   }
 
   // Monophonic — classify as bass or melody by median pitch.
@@ -191,7 +224,7 @@ export function serializePitched(notes: NoteEvent[]): string {
   const registerDefault =
     lineType === "bass" ? BASS_REGISTER_DEFAULT : MELODY_REGISTER_DEFAULT;
 
-  return serializeMono(lineType, registerDefault, sorted);
+  return { kind: "mono", lineType, registerDefault, sorted };
 }
 
 // Serialize a monophonic (bass or melody) note sequence.
@@ -221,32 +254,15 @@ function serializeMono(
 function serializeChords(notes: NoteEvent[]): string {
   const tokens: string[] = [];
   let time = 0;
-  let i = 0;
 
-  while (i < notes.length) {
-    // i < notes.length above guarantees this access is valid
-    const groupStart = (notes[i] as NoteEvent).start_time;
-
-    // Collect all notes that start at this time position.
-    const group: NoteEvent[] = [];
-
-    while (
-      i < notes.length &&
-      // i < notes.length above guarantees this access is valid
-      Math.abs((notes[i] as NoteEvent).start_time - groupStart) <
-        SAME_TIME_EPSILON
-    ) {
-      group.push(notes[i] as NoteEvent); // i < notes.length guarantees valid index
-      i++;
-    }
-
-    if (groupStart > time + SAME_TIME_EPSILON) {
-      tokens.push(...restTokens(groupStart - time));
-    }
-
-    // Use duration and velocity of the first note in the group.
-    // group is non-empty: the inner while ran at least once (groupStart matched)
+  for (const group of groupSimultaneousNotes(notes)) {
+    // group is non-empty (groupSimultaneousNotes only emits matched groups).
     const rep = group[0] as NoteEvent;
+
+    if (rep.start_time > time + SAME_TIME_EPSILON) {
+      tokens.push(...restTokens(rep.start_time - time));
+    }
+
     const dur = durationN(rep.duration);
     const dyn = dynamicSuffix(rep.velocity);
     const innerNotes = group
@@ -254,10 +270,42 @@ function serializeChords(notes: NoteEvent[]): string {
       .join(" ");
 
     tokens.push(`[${innerNotes}]/${dur}${dyn}`);
-    time = groupStart + rep.duration;
+    time = rep.start_time + rep.duration;
   }
 
   return `chords: ${tokens.join(" ")}`;
+}
+
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period; remove when abstark is deleted.
+/**
+ * Group start-sorted notes into runs of simultaneous notes (same start_time
+ * within epsilon). Each group is non-empty and preserves input order.
+ * @param sorted - Notes already sorted by start_time
+ * @returns Array of simultaneous-note groups
+ */
+export function groupSimultaneousNotes(sorted: NoteEvent[]): NoteEvent[][] {
+  const groups: NoteEvent[][] = [];
+  let i = 0;
+
+  while (i < sorted.length) {
+    // i < sorted.length above guarantees this access is valid.
+    const groupStart = (sorted[i] as NoteEvent).start_time;
+    const group: NoteEvent[] = [];
+
+    while (
+      i < sorted.length &&
+      Math.abs((sorted[i] as NoteEvent).start_time - groupStart) <
+        SAME_TIME_EPSILON
+    ) {
+      group.push(sorted[i] as NoteEvent);
+      i++;
+    }
+
+    groups.push(group);
+  }
+
+  return groups;
 }
 
 // ---- Token formatters ----
@@ -284,9 +332,16 @@ function chordNoteToken(midi: number, registerDefault: number): string {
   return `${letter}${accidental}${octaveMarks(octaveShift)}`;
 }
 
-// Decompose a MIDI pitch into Abstark letter + accidental + octave shift
-// relative to a register default (the MIDI value that C maps to in that line).
-function pitchParts(
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period; remove when abstark is deleted.
+/**
+ * Decompose a MIDI pitch into a letter + accidental + octave shift relative to a
+ * register default (the MIDI value that a bare C maps to in that line).
+ * @param midi - MIDI pitch
+ * @param registerDefault - MIDI value a bare C maps to for this line
+ * @returns The pitch letter, accidental ("b" or ""), and octave shift
+ */
+export function pitchParts(
   midi: number,
   registerDefault: number,
 ): { letter: string; accidental: string; octaveShift: number } {
@@ -316,16 +371,28 @@ function durationN(beats: number): string {
   return "16";
 }
 
-// Build octave mark string from shift count.
-function octaveMarks(shift: number): string {
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period; remove when abstark is deleted.
+/**
+ * Build an octave-mark string from a shift count ("'" up, "," down).
+ * @param shift - Octave shift (positive = up, negative = down)
+ * @returns The octave-mark string ("" when shift is 0)
+ */
+export function octaveMarks(shift: number): string {
   if (shift > 0) return "'".repeat(shift);
   if (shift < 0) return ",".repeat(-shift);
 
   return "";
 }
 
-// Map velocity to dynamic suffix ("!" / "" / "?").
-function dynamicSuffix(velocity: number): string {
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period; remove when abstark is deleted.
+/**
+ * Map a velocity to its dynamic suffix ("!" accent / "" normal / "?" soft).
+ * @param velocity - MIDI velocity
+ * @returns The dynamic suffix
+ */
+export function dynamicSuffix(velocity: number): string {
   if (velocity >= VELOCITY_ACCENT_THRESHOLD) return "!";
   if (velocity >= VELOCITY_SOFT_THRESHOLD) return "";
 
@@ -333,9 +400,21 @@ function dynamicSuffix(velocity: number): string {
 }
 
 // Build rest tokens to fill a gap of the given beat count.
-// Greedy: largest available duration first (whole → half → quarter → 8th → 16th).
 function restTokens(gapBeats: number): string[] {
-  const tokens: string[] = [];
+  return restNoteValues(gapBeats).map((n) => `z/${n}`);
+}
+
+// A/B scaffolding: shared with the stark serializer during the coexistence
+// period; remove when abstark is deleted.
+/**
+ * Decompose a gap into a greedy list of note-value denominators that fill it
+ * (largest first: whole → half → quarter → 8th → 16th). A sub-16th remainder is
+ * dropped (the off-16th snap both serializers document).
+ * @param gapBeats - Gap length in Ableton beats
+ * @returns Note-value denominators (each an /N) summing to about the gap
+ */
+export function restNoteValues(gapBeats: number): number[] {
+  const ns: number[] = [];
   const denominators = [1, 2, 4, 8, 16] as const;
 
   let remaining = gapBeats;
@@ -344,10 +423,10 @@ function restTokens(gapBeats: number): string[] {
     const beats = 4 / n;
 
     while (remaining >= beats - SAME_TIME_EPSILON) {
-      tokens.push(`z/${n}`);
+      ns.push(n);
       remaining -= beats;
     }
   }
 
-  return tokens;
+  return ns;
 }
