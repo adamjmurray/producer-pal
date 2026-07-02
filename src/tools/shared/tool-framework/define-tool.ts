@@ -8,34 +8,14 @@ import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  type ModalDescription,
+  resolveModalDescription,
+  resolveParamModes,
+} from "#src/tools/shared/tool-framework/modal-config.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
-
-export interface SmallModelModeConfig {
-  excludeParams?: string[];
-  excludeEnumValues?: Record<string, string[]>;
-  descriptionOverrides?: Record<string, string>;
-  toolDescription?: string;
-}
-
-/** Per-notation description overrides (see {@link NotationConfig}). */
-export interface NotationOverride {
-  descriptionOverrides?: Record<string, string>;
-  toolDescription?: string;
-}
-
-/**
- * Notation-keyed description overrides, applied when the active notation
- * (`config.notation`) matches a key. Use this for params whose text describes
- * the note-content format — chiefly `notes` — so the tool schema reflects the
- * notation actually in effect (e.g. midi-json / stark / abstark) instead of
- * hardcoding bar|beat. Notation is authoritative for these params: its override
- * is applied AFTER {@link SmallModelModeConfig} so it wins over the small-model
- * text. `barbeat` (the default) has no key and falls through to the base
- * `.describe()`.
- */
-export type NotationConfig = Partial<Record<Notation, NotationOverride>>;
 
 export interface ToolAnnotations {
   readOnlyHint?: boolean;
@@ -44,11 +24,13 @@ export interface ToolAnnotations {
 
 export interface ToolOptions {
   title?: string;
-  description: string;
+  // A plain string, or a modal description with per-mode (notation / small-model)
+  // overrides. See modal-config.ts.
+  description: ModalDescription;
   annotations?: ToolAnnotations;
+  // Param descriptions/exclusions/enum-trims are co-located on each param via
+  // param() (see modal-config.ts) — there is no separate override config.
   inputSchema: Record<string, ZodType>;
-  smallModelModeConfig?: SmallModelModeConfig;
-  notationConfig?: NotationConfig;
 }
 
 export interface McpOptions {
@@ -72,7 +54,7 @@ export interface ToolDefFunction {
 }
 
 /**
- * Defines an MCP tool with validation and small model mode support
+ * Defines an MCP tool with validation and modal (notation / small-model) support
  * @param name - Tool name
  * @param options - Tool configuration options
  * @returns Function that registers the tool with the MCP server
@@ -87,37 +69,30 @@ export function defineTool(
     mcpOptions: McpOptions = {},
   ): void => {
     const { smallModelMode = false, notation } = mcpOptions;
-    const { inputSchema, smallModelModeConfig, notationConfig, ...toolConfig } =
-      options;
+    const { inputSchema, description, ...toolConfig } = options;
 
-    // Two independent override layers combine here:
-    // - small-model mode trims params (excludeParams) and can override text
-    // - the active notation overrides note-format text (chiefly `notes`)
-    // Notation is applied AFTER small-model so it wins for those params — the
-    // notation in effect is authoritative for how notes are written.
-    const smallModel = smallModelMode ? smallModelModeConfig : undefined;
-    const notationOverride =
-      notation != null ? notationConfig?.[notation] : undefined;
-
-    const descriptionOverrides = {
-      ...smallModel?.descriptionOverrides,
-      ...notationOverride?.descriptionOverrides,
-    };
+    // Resolve every param's co-located modes into the flat exclude/override maps
+    // filterSchemaForSmallModel consumes. Notation wins over small-model per
+    // param; a mode's `null` hides the param.
+    const resolved = resolveParamModes(inputSchema, {
+      notation,
+      smallModelMode,
+    });
 
     // filterSchemaForSmallModel returns the schema unchanged when there is
     // nothing to exclude or override, so calling it unconditionally is a no-op
-    // for tools/contexts without either config.
+    // for tools/contexts without any active modes.
     const finalInputSchema = filterSchemaForSmallModel(
       inputSchema,
-      smallModel?.excludeParams ?? [],
-      descriptionOverrides,
-      smallModel?.excludeEnumValues,
+      resolved.excludeParams,
+      resolved.descriptionOverrides,
+      resolved.excludeEnumValues,
     );
 
-    const finalDescription =
-      notationOverride?.toolDescription ??
-      smallModel?.toolDescription ??
-      toolConfig.description;
+    const finalDescription = resolveModalDescription(description, {
+      notation,
+      smallModelMode,
+    });
 
     // Use loose() so extra args reach our handler (SDK would strip them otherwise)
     const passthroughSchema = z.object(finalInputSchema).loose();
@@ -139,14 +114,12 @@ export function defineTool(
         // Parse with strict schema (strips extra keys for callLiveApi)
         const validated = z.object(finalInputSchema).parse(args);
 
-        // In small model mode, filter out excluded enum values as defense-in-depth
-        // (schema validation is primary gate, this catches hallucinated values)
+        // Filter out excluded enum values as defense-in-depth (schema validation
+        // is the primary gate; this catches hallucinated values). Populated only
+        // when a mode trims a param's enum values.
         const finalArgs =
-          smallModelMode && smallModelModeConfig?.excludeEnumValues
-            ? filterExcludedEnumValues(
-                validated,
-                smallModelModeConfig.excludeEnumValues,
-              )
+          Object.keys(resolved.excludeEnumValues).length > 0
+            ? filterExcludedEnumValues(validated, resolved.excludeEnumValues)
             : validated;
 
         const rawResult = (await callLiveApi(

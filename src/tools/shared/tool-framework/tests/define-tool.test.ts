@@ -12,6 +12,7 @@ import {
   filterExcludedEnumValues,
   type ToolOptions,
 } from "../define-tool.ts";
+import { param } from "../modal-config.ts";
 
 type MockServer = McpServer & { registerTool: Mock };
 
@@ -71,6 +72,18 @@ function getRegisteredShape(mockServer: MockServer): ZodRawShape {
   const config = getRegisteredConfig(mockServer);
 
   return (config.inputSchema as { shape: ZodRawShape }).shape;
+}
+
+/**
+ * Get param descriptions from a mock server's registered tool
+ * @param mockServer - mock MCP server
+ * @returns registered shape typed for description access
+ */
+function getRegisteredDescriptions(mockServer: MockServer) {
+  return getRegisteredShape(mockServer) as Record<
+    string,
+    { description?: string }
+  >;
 }
 
 /**
@@ -143,17 +156,17 @@ describe("defineTool", () => {
     });
   });
 
-  it("should filter schema parameters when smallModelMode is enabled", () => {
+  it("should drop params hidden in smallModelMode (smallModel: null)", () => {
     const toolOptions: ToolOptions = {
       title: "Test Tool",
       description: "Test",
       inputSchema: {
         keepParam: z.string(),
-        removeParam: z.number().optional(),
+        removeParam: param(z.number().optional(), {
+          default: "removable",
+          smallModel: null,
+        }),
         alsoKeep: z.boolean().optional(),
-      },
-      smallModelModeConfig: {
-        excludeParams: ["removeParam"],
       },
     };
 
@@ -169,17 +182,17 @@ describe("defineTool", () => {
     expect(shape.removeParam).toBeUndefined();
   });
 
-  it("should use full schema when smallModelMode is disabled", () => {
+  it("should keep hidden params when smallModelMode is disabled", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
         description: "Test",
         inputSchema: {
           keepParam: z.string(),
-          removeParam: z.number().optional(),
-        },
-        smallModelModeConfig: {
-          excludeParams: ["removeParam"],
+          removeParam: param(z.number().optional(), {
+            default: "removable",
+            smallModel: null,
+          }),
         },
       },
       { smallModelMode: false },
@@ -191,17 +204,17 @@ describe("defineTool", () => {
     expect(Object.keys(shape)).toStrictEqual(["keepParam", "removeParam"]);
   });
 
-  it("should strip filtered parameters in smallModelMode", async () => {
+  it("should strip hidden parameters from args in smallModelMode", async () => {
     const { mockServer, mockCallLiveApi } = registerTestTool(
       {
         title: "Test Tool",
         description: "Test",
         inputSchema: {
           allowedParam: z.string(),
-          filteredParam: z.number().optional(),
-        },
-        smallModelModeConfig: {
-          excludeParams: ["filteredParam"],
+          filteredParam: param(z.number().optional(), {
+            default: "removable",
+            smallModel: null,
+          }),
         },
       },
       { smallModelMode: true, successMock: true },
@@ -227,7 +240,7 @@ describe("defineTool", () => {
     );
   });
 
-  it("should work normally without smallModelModeConfig", () => {
+  it("should work normally without any modal params", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
@@ -236,7 +249,6 @@ describe("defineTool", () => {
           param1: z.string(),
           param2: z.number().optional(),
         },
-        // No smallModelModeConfig
       },
       { smallModelMode: true },
     );
@@ -247,28 +259,23 @@ describe("defineTool", () => {
     expect(Object.keys(shape)).toStrictEqual(["param1", "param2"]);
   });
 
-  it("should apply description overrides when smallModelMode is enabled", () => {
+  it("should apply a param's small-model description override", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
         description: "Test",
         inputSchema: {
-          param1: z.string().describe("original description"),
+          param1: param(z.string(), {
+            default: "original description",
+            smallModel: "simplified",
+          }),
           param2: z.number().optional().describe("original number"),
-        },
-        smallModelModeConfig: {
-          descriptionOverrides: {
-            param1: "simplified",
-          },
         },
       },
       { smallModelMode: true },
     );
 
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
+    const shape = getRegisteredDescriptions(mockServer);
 
     // param1 should have overridden description
     expect(shape.param1?.description).toBe("simplified");
@@ -277,28 +284,23 @@ describe("defineTool", () => {
     expect(shape.param2?.description).toBe("original number");
   });
 
-  it("should work with only descriptionOverrides (no excludeParams)", () => {
+  it("should override description without hiding any params", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
         description: "Test",
         inputSchema: {
-          keepAll: z.string().describe("verbose description"),
+          keepAll: param(z.string(), {
+            default: "verbose description",
+            smallModel: "short",
+          }),
           alsoKeep: z.number().optional(),
-        },
-        smallModelModeConfig: {
-          descriptionOverrides: {
-            keepAll: "short",
-          },
         },
       },
       { smallModelMode: true },
     );
 
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
+    const shape = getRegisteredDescriptions(mockServer);
 
     // Both params should be present
     expect(Object.keys(shape)).toStrictEqual(["keepAll", "alsoKeep"]);
@@ -307,15 +309,15 @@ describe("defineTool", () => {
     expect(shape.keepAll?.description).toBe("short");
   });
 
-  it("should apply toolDescription override when smallModelMode is enabled", () => {
+  it("should apply a modal tool description in smallModelMode", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
-        description: "Original verbose tool description with many details",
-        inputSchema: { param: z.string() },
-        smallModelModeConfig: {
-          toolDescription: "Short description",
+        description: {
+          default: "Original verbose tool description with many details",
+          smallModel: "Short description",
         },
+        inputSchema: { param: z.string() },
       },
       { smallModelMode: true },
     );
@@ -325,15 +327,15 @@ describe("defineTool", () => {
     expect(config.description).toBe("Short description");
   });
 
-  it("should use original description when smallModelMode is disabled", () => {
+  it("should use the default tool description when smallModelMode is disabled", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
-        description: "Original verbose tool description",
-        inputSchema: { param: z.string() },
-        smallModelModeConfig: {
-          toolDescription: "Short description",
+        description: {
+          default: "Original verbose tool description",
+          smallModel: "Short description",
         },
+        inputSchema: { param: z.string() },
       },
       { smallModelMode: false },
     );
@@ -464,23 +466,21 @@ describe("defineTool", () => {
   });
 });
 
-describe("defineTool notationConfig", () => {
+describe("defineTool modal params (notation)", () => {
   /**
    * Tool config with a notation-keyed `notes` override and a bar|beat base.
-   * @returns Tool options exercising notationConfig
+   * @returns Tool options exercising a param's notation modes
    */
   function notationToolConfig(): ToolOptions {
     return {
       title: "Test Tool",
       description: "Base tool description",
       inputSchema: {
-        notes: z.string().optional().describe("notes in bar|beat"),
+        notes: param(z.string().optional(), {
+          default: "notes in bar|beat",
+          "midi-json": "notes as JSON array",
+        }),
         other: z.string().optional().describe("other param"),
-      },
-      notationConfig: {
-        "midi-json": {
-          descriptionOverrides: { notes: "notes as JSON array" },
-        },
       },
     };
   }
@@ -490,10 +490,7 @@ describe("defineTool notationConfig", () => {
       notation: "midi-json",
     });
 
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
+    const shape = getRegisteredDescriptions(mockServer);
 
     expect(shape.notes?.description).toBe("notes as JSON array");
     // Params without an override keep their base description.
@@ -505,113 +502,53 @@ describe("defineTool notationConfig", () => {
       notation: "barbeat",
     });
 
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
+    const shape = getRegisteredDescriptions(mockServer);
 
-    // barbeat has no notationConfig key, so the base .describe() stands.
+    // barbeat has no override key, so the base default stands.
     expect(shape.notes?.description).toBe("notes in bar|beat");
   });
 
-  it("keeps the base description when a notation has no override entry", () => {
-    const { mockServer } = registerTestTool(notationToolConfig(), {
-      notation: "stark",
-    });
-
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
-
-    expect(shape.notes?.description).toBe("notes in bar|beat");
-  });
-
-  it("lets the notation override win over the small-model override", () => {
+  it("lets a notation override win over the small-model override", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
         description: "Base tool description",
         inputSchema: {
-          notes: z.string().optional().describe("notes in bar|beat"),
-        },
-        smallModelModeConfig: {
-          descriptionOverrides: { notes: "small-model bar|beat notes" },
-        },
-        notationConfig: {
-          "midi-json": {
-            descriptionOverrides: { notes: "notes as JSON array" },
-          },
-        },
-      },
-      { smallModelMode: true, notation: "midi-json" },
-    );
-
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
-
-    // Notation is applied after small-model, so it is authoritative for `notes`.
-    expect(shape.notes?.description).toBe("notes as JSON array");
-  });
-
-  it("still applies small-model excludeParams alongside a notation override", () => {
-    const { mockServer } = registerTestTool(
-      {
-        title: "Test Tool",
-        description: "Base tool description",
-        inputSchema: {
-          notes: z.string().optional().describe("notes in bar|beat"),
-          advanced: z.string().optional().describe("advanced param"),
-        },
-        smallModelModeConfig: {
-          excludeParams: ["advanced"],
-        },
-        notationConfig: {
-          "midi-json": {
-            descriptionOverrides: { notes: "notes as JSON array" },
-          },
+          notes: param(z.string().optional(), {
+            default: "notes in bar|beat",
+            smallModel: "small-model bar|beat notes",
+            "midi-json": "notes as JSON array",
+          }),
+          advanced: param(z.string().optional(), {
+            default: "advanced param",
+            smallModel: null,
+          }),
         },
       },
       { smallModelMode: true, notation: "midi-json" },
     );
 
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
+    const shape = getRegisteredDescriptions(mockServer);
 
-    // Small-model still trims params; notation still overrides the kept one.
+    // Small-model still trims params; notation is authoritative for the kept one.
     expect(Object.keys(shape)).toStrictEqual(["notes"]);
     expect(shape.notes?.description).toBe("notes as JSON array");
   });
 
-  it("applies a notation-specific toolDescription over the base", () => {
+  it("applies a notation-specific tool description over the base", () => {
     const { mockServer } = registerTestTool(
       {
         title: "Test Tool",
-        description: "Base tool description",
-        inputSchema: { notes: z.string().optional() },
-        notationConfig: {
-          "midi-json": { toolDescription: "JSON-notes tool" },
+        description: {
+          default: "Base tool description",
+          "midi-json": "JSON-notes tool",
         },
+        inputSchema: { notes: z.string().optional() },
       },
       { notation: "midi-json" },
     );
 
     expect(getRegisteredConfig(mockServer).description).toBe("JSON-notes tool");
-  });
-
-  it("ignores notationConfig when no notation is provided", () => {
-    const { mockServer } = registerTestTool(notationToolConfig());
-
-    const shape = getRegisteredShape(mockServer) as Record<
-      string,
-      { description?: string }
-    >;
-
-    expect(shape.notes?.description).toBe("notes in bar|beat");
   });
 });
 
@@ -683,10 +620,13 @@ function excludeEnumValuesToolConfig(): ToolOptions {
     title: "Test Tool",
     description: "Test",
     inputSchema: {
-      include: z.array(z.enum(["notes", "timing", "sample"])).default([]),
-    },
-    smallModelModeConfig: {
-      excludeEnumValues: { include: ["timing"] },
+      include: param(
+        z.array(z.enum(["notes", "timing", "sample"])).default([]),
+        {
+          default: "include options",
+          smallModel: { excludeEnumValues: ["timing"] },
+        },
+      ),
     },
   };
 }

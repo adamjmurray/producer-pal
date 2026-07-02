@@ -90,8 +90,8 @@ describe("coverage exclusion honesty", () => {
     // Every concrete project-file path the config quotes — exclude entries,
     // setupFiles, alias targets — must still point at a real file. A renamed
     // file leaves a silently-dead reference (e.g. a coverage exclude that then
-    // matches nothing, so the file rejoins the threshold unnoticed). Same
-    // dangling-reference class as the smallModelModeConfig param guard.
+    // matches nothing, so the file rejoins the threshold unnoticed) — the same
+    // silent dangling-reference class this guards against.
     const quoted = [...configText.matchAll(/"([^"]+)"/g)].map(
       (m) => m[1] ?? "",
     );

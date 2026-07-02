@@ -17,11 +17,12 @@ describe("createMcpServer", () => {
     expect(() => createMcpServer(callLiveApi)).not.toThrow();
   });
 
-  // Regression: a tool whose smallModelModeConfig.excludeEnumValues targets an
-  // enum without a top-level .default() throws during registration, and the
-  // server is rebuilt per /mcp request with the live smallModelMode flag — so
-  // such a tool breaks every request once small-model mode is on. Build the
-  // full server in small-model mode to catch this class of bug for every tool.
+  // Regression: a param whose small-model mode trims enum values (an
+  // excludeEnumValues override) targeting an enum without a top-level .default()
+  // throws during registration, and the server is rebuilt per /mcp request with
+  // the live smallModelMode flag — so such a tool breaks every request once
+  // small-model mode is on. Build the full server in small-model mode to catch
+  // this class of bug for every tool.
   it("registers all standard tools in small-model mode without throwing", () => {
     expect(() =>
       createMcpServer(callLiveApi, { smallModelMode: true }),

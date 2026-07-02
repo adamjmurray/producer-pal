@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
@@ -20,107 +22,77 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe("comma-separated ID(s) to update (device, chain, or drum pad)"),
-    path: z
-      .string()
-      .optional()
-      .describe(
+    path: param(z.string().optional(), {
+      default:
         "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
-      ),
+      smallModel: "device path like 't0/d0' (track 0, device 0)",
+    }),
 
-    toPath: z
-      .string()
-      .optional()
-      .describe("move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1')"),
-    name: z
-      .string()
-      .optional()
-      .describe(
+    toPath: param(z.string().optional(), {
+      default: "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1')",
+      smallModel: "destination path to move device to",
+    }),
+    name: param(z.string().optional(), {
+      default:
         "name for all, or comma-separated for each (extras keep existing name, not drum pads)",
-      ),
+      smallModel: "display name (not drum pads)",
+    }),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
-    params: paramsInputSchema.describe(
-      "array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
-    ),
+    params: param(paramsInputSchema, {
+      default:
+        "array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+      smallModel: "array of {name, value} (name = param name or id)",
+    }),
     // Intentionally an array (not the usual comma-separated string): action
     // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
     // a delimited string would be ambiguous. One action string per element.
-    actions: z
-      .array(z.string())
-      .optional()
-      .describe(
+    actions: param(z.array(z.string()).optional(), {
+      default:
         'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)"',
-      ),
-    macroVariation: z
-      .enum(["create", "load", "delete", "revert", "randomize"])
-      .optional()
-      .describe(
-        "Rack only: create/load/delete/revert variation, or randomize macros. load/delete require macroVariationIndex. create always appends.",
-      ),
-    macroVariationIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe(
+      smallModel: null,
+    }),
+    macroVariation: param(
+      z.enum(["create", "load", "delete", "revert", "randomize"]).optional(),
+      {
+        default:
+          "Rack only: create/load/delete/revert variation, or randomize macros. load/delete require macroVariationIndex. create always appends.",
+        smallModel: null,
+      },
+    ),
+    macroVariationIndex: param(z.coerce.number().int().min(0).optional(), {
+      default:
         "Rack only: variation index for load/delete operations (0-based)",
-      ),
-    macroCount: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(16)
-      .optional()
-      .describe("Rack only: set visible macro count (0-16)"),
-    abCompare: z
-      .enum(["a", "b", "save"])
-      .optional()
-      .describe(
+      smallModel: null,
+    }),
+    macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
+      default: "Rack only: set visible macro count (0-16)",
+      smallModel: null,
+    }),
+    abCompare: param(z.enum(["a", "b", "save"]).optional(), {
+      default:
         "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
-      ),
+      smallModel: null,
+    }),
 
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
-    color: z
-      .string()
-      .optional()
-      .describe(
+    color: param(z.string().optional(), {
+      default:
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids; chains only)",
-      ),
-    chokeGroup: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .max(16)
-      .optional()
-      .describe("choke group 0-16, 0=none (drum chains only)"),
-    mappedPitch: z
-      .string()
-      .optional()
-      .describe("output MIDI note e.g. 'C3' (drum chains only)"),
-    wrapInRack: z
-      .boolean()
-      .optional()
-      .describe("Wrap device(s) in a new rack (auto-detects type from device)"),
-  },
-
-  smallModelModeConfig: {
-    excludeParams: [
-      "actions",
-      "macroVariation",
-      "macroVariationIndex",
-      "macroCount",
-      "abCompare",
-      "chokeGroup",
-      "mappedPitch",
-      "wrapInRack",
-    ],
-    descriptionOverrides: {
-      path: "device path like 't0/d0' (track 0, device 0)",
-      toPath: "destination path to move device to",
-      name: "display name (not drum pads)",
-      params: "array of {name, value} (name = param name or id)",
-      color: "#RRGGBB (chains only)",
-    },
+      smallModel: "#RRGGBB (chains only)",
+    }),
+    chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
+      default: "choke group 0-16, 0=none (drum chains only)",
+      smallModel: null,
+    }),
+    mappedPitch: param(z.string().optional(), {
+      default: "output MIDI note e.g. 'C3' (drum chains only)",
+      smallModel: null,
+    }),
+    wrapInRack: param(z.boolean().optional(), {
+      default: "Wrap device(s) in a new rack (auto-detects type from device)",
+      smallModel: null,
+    }),
   },
 });

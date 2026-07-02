@@ -39,6 +39,10 @@ import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
+  resolveModalDescription,
+  resolveParamModes,
+} from "#src/tools/shared/tool-framework/modal-config.ts";
+import {
   buildOpenAIVoiceInstructions,
   getVoiceLanguage,
 } from "#webui/lib/constants/voice-language.ts";
@@ -212,20 +216,21 @@ function toRealtimeTool(
   td: (typeof STANDARD_TOOL_DEFS)[number],
   mode: "full" | "small",
 ): Tool {
-  const cfg = td.toolOptions.smallModelModeConfig;
-  const inputSchema =
-    mode === "small" && cfg
-      ? filterSchemaForSmallModel(
-          td.toolOptions.inputSchema,
-          cfg.excludeParams,
-          cfg.descriptionOverrides,
-          cfg.excludeEnumValues,
-        )
-      : td.toolOptions.inputSchema;
-  const description =
-    mode === "small" && cfg?.toolDescription
-      ? cfg.toolDescription
-      : td.toolOptions.description;
+  const smallModelMode = mode === "small";
+  const resolved = resolveParamModes(td.toolOptions.inputSchema, {
+    smallModelMode,
+  });
+  const inputSchema = smallModelMode
+    ? filterSchemaForSmallModel(
+        td.toolOptions.inputSchema,
+        resolved.excludeParams,
+        resolved.descriptionOverrides,
+        resolved.excludeEnumValues,
+      )
+    : td.toolOptions.inputSchema;
+  const description = resolveModalDescription(td.toolOptions.description, {
+    smallModelMode,
+  });
 
   return tool({
     name: td.toolName,

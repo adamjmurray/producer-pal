@@ -12,6 +12,7 @@ import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, "../..");
@@ -120,15 +121,18 @@ function escapeTableCell(text: string): string {
  */
 function generateToolPartial(toolDef: ToolDefFunction): string {
   const { toolOptions } = toolDef;
-  const { inputSchema, smallModelModeConfig } = toolOptions;
+  const { inputSchema } = toolOptions;
   const schemaKeys = Object.keys(inputSchema);
 
   if (schemaKeys.length === 0) {
     return `<p class="vp-doc-muted">(no parameters)</p>\n`;
   }
 
-  const excludedParams = new Set(smallModelModeConfig?.excludeParams ?? []);
-  const excludedEnumMap = smallModelModeConfig?.excludeEnumValues ?? {};
+  // What small-model mode drops/trims, derived from each param's co-located
+  // modes, so the docs mark large-only params and enum values.
+  const smallModel = resolveParamModes(inputSchema, { smallModelMode: true });
+  const excludedParams = new Set(smallModel.excludeParams);
+  const excludedEnumMap = smallModel.excludeEnumValues;
 
   const objectSchema = z.object(inputSchema);
   const jsonSchema = toJSONSchema(objectSchema) as JsonSchema;

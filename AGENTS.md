@@ -148,13 +148,15 @@ web UI architecture.
     call site (the LLM picks one branch based on which property it's setting),
     not a "one-or-many" shape — there is no scalar/array ambiguity for any given
     property. Don't pattern-match off this for new tools.
-  - Anything richer than a primitive MUST have a `smallModelModeConfig` plan:
-    either exclude the param (`excludeParams`), or keep it with a
-    small-model-tolerant schema. There is no built-in "degrade to a
-    comma-separated string" switch — the tolerance lives in the schema. Example:
-    the `params` array in `device-params-schema.ts` adds a `preprocess` that
-    also accepts a JSON-stringified array (absorbing the small-model habit of
-    stringifying structured args) alongside a `descriptionOverrides` entry.
+  - Anything richer than a primitive MUST have a small-model plan: either hide
+    the param in small-model mode
+    (`param(schema, { default, smallModel: null })`, see Modal tool config
+    below), or keep it with a small-model-tolerant schema. There is no built-in
+    "degrade to a comma-separated string" switch — the tolerance lives in the
+    schema. Example: the `params` array in `device-params-schema.ts` adds a
+    `preprocess` that also accepts a JSON-stringified array (absorbing the
+    small-model habit of stringifying structured args) alongside a small-model
+    description override.
 
 - **Tool schema coercion**: Use `z.coerce.string()` instead of `z.string()` for
   ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
@@ -165,22 +167,32 @@ web UI architecture.
   automatically coerces. The MCP SDK validates schemas before our handler runs,
   so coercion must happen at the schema level.
 
-- **Small model mode**: When modifying tool definitions (`.def.ts` files) —
-  adding, removing, or renaming parameters, or changing descriptions — check
-  whether corresponding changes are needed in the `smallModelModeConfig`
-  (`excludeParams`, `descriptionOverrides`, `toolDescription`).
-
-- **Notation-aware descriptions**: A tool's `notationConfig` (keyed by
-  `Notation`) overrides param descriptions for the active `config.notation`,
-  applied AFTER small-model mode so the notation wins. Use it for params whose
-  text describes the note-content format (chiefly `notes` on create-clip /
-  update-clip) so the schema reflects the notation actually in effect
-  (`midi-json` / `stark` / `abstark`) instead of hardcoding bar|beat. `barbeat`
-  is the default and needs no entry. Timing/position params (`start`, `split`,
-  `firstStart`, `arrangementStart`, `length`) stay bar|beat regardless — the
-  notation setting governs note encoding only, not clip time. When you add or
-  rename a note-format param, keep `notationConfig` in sync (a dangling ref is
-  caught by `small-model-mode-config-refs.test.ts`).
+- **Modal tool config**: Per-mode overrides for tool params and the tool
+  description are co-located via the `param()` helper
+  (`src/tools/shared/tool-framework/modal-config.ts`) — there is no separate
+  `smallModelModeConfig` / `notationConfig` object. A param is either a plain
+  `z.….describe("text")` (identical in every mode) or
+  `param(z.…, { default, smallModel?, "midi-json"?, stark?, abstark? })`:
+  - `default` is the base description (barbeat, large-model).
+  - A mode's value is a **string** (override the description), **`null`** (hide
+    the param in that mode — the old `excludeParams`), or an **object**
+    `{ description?, excludeEnumValues? }` (trim enum values, e.g. the
+    small-model `include` params on read tools).
+  - The tool `description` field is likewise a plain string or
+    `{ default, smallModel?, <notation>? }` (replaces the old
+    `toolDescription`).
+  - Resolution: the active notation wins over `smallModel`, both over `default`;
+    a `null` in any active mode hides the param. `barbeat` (the default
+    notation) has no key and falls through to `default`.
+  - Use notation keys only for params whose text describes note-content encoding
+    (chiefly `notes` on create-clip / update-clip), so the schema reflects the
+    notation in effect (`midi-json` / `stark` / `abstark`). Timing/position
+    params (`start`, `split`, `firstStart`, `arrangementStart`, `length`) stay
+    bar|beat — notation governs note encoding, not clip time.
+  - Co-location means a renamed param can't leave a dangling override reference
+    (there's no name-keyed lookup table), so no separate refs test guards it —
+    just keep each param's modes correct. `config.notation` reaches the tool at
+    registration because `createMcpServer` runs fresh per `POST /mcp` request.
 
 - **Filesystem access is Node-side only**: The V8 runtime
   (`src/live-api-adapter/`) has no filesystem, and shipped `src/**` cannot shell

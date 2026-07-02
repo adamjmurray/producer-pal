@@ -1,13 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
   title: "Update Live Set",
-  description: "Update Live Set global settings or manage locators.",
+  description: {
+    default: "Update Live Set global settings or manage locators.",
+    smallModel: "Update Live Set global settings",
+  },
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -22,36 +27,24 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
         '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Empty string disables scale',
       ),
 
-    locatorOperation: z
-      .enum(["create", "delete", "rename"])
-      .optional()
-      .describe("Locator operation"),
-    locatorId: z.coerce
-      .string()
-      .optional()
-      .describe(
+    locatorOperation: param(z.enum(["create", "delete", "rename"]).optional(), {
+      default: "Locator operation",
+      smallModel: null,
+    }),
+    locatorId: param(z.coerce.string().optional(), {
+      default:
         "Locator ID for delete/rename (e.g. locator-0). Positional — shifts if locators are added/removed, so prefer locatorTime or locatorName",
-      ),
-    locatorTime: z
-      .string()
-      .optional()
-      .describe(
+      smallModel: null,
+    }),
+    locatorTime: param(z.string().optional(), {
+      default:
         "Bar|beat position, song meter (required for create, alt ID for delete/rename)",
-      ),
-    locatorName: z
-      .string()
-      .optional()
-      .describe("Name for create/rename, or name-match filter for delete"),
+      smallModel: null,
+    }),
+    locatorName: param(z.string().optional(), {
+      default: "Name for create/rename, or name-match filter for delete",
+      smallModel: null,
+    }),
     // arrangementFollower removed from interface - play-arrangement always auto-follows
-  },
-
-  smallModelModeConfig: {
-    toolDescription: "Update Live Set global settings",
-    excludeParams: [
-      "locatorOperation",
-      "locatorId",
-      "locatorTime",
-      "locatorName",
-    ],
   },
 });

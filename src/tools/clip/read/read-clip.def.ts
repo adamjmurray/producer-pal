@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
@@ -21,19 +23,19 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .describe(
         "session clip slot: trackIndex/sceneIndex (e.g., '0/3'). provide this or clipId",
       ),
-    include: z
-      .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))
-      .default([])
-      .describe(
-        'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. warp = warp settings. color. "*" = all',
-      ),
-  },
-
-  smallModelModeConfig: {
-    excludeEnumValues: { include: ["warp", "*"] },
-    descriptionOverrides: {
-      include:
-        "notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color",
-    },
+    include: param(
+      z
+        .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))
+        .default([]),
+      {
+        default:
+          'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. warp = warp settings. color. "*" = all',
+        smallModel: {
+          description:
+            "notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color",
+          excludeEnumValues: ["warp", "*"],
+        },
+      },
+    ),
   },
 });

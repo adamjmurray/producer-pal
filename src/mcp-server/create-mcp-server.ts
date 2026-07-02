@@ -26,6 +26,7 @@ import { toolDefLibrary } from "#src/tools/session/library.def.ts";
 import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
@@ -68,16 +69,19 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
 
 /**
  * Union of params dropped from tool input schemas under small-model mode,
- * across all standard tools. Sourced directly from each tool's
- * `smallModelModeConfig.excludeParams` so it stays a single source of truth.
- * The eval framework consults this to SKIP (not fail) scenarios that depend on
+ * across all standard tools. Derived from each tool's co-located param modes
+ * (params whose `smallModel` mode is `null`) so it stays a single source of
+ * truth. The eval framework consults this to SKIP (not fail) scenarios that
+ * depend on
  * a param small models never receive — keeping small-model scores
  * apples-to-apples. Param names are descriptive and, where shared across tools,
  * are excluded by every tool that has them, so a flat union is unambiguous.
  */
 export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
   STANDARD_TOOL_DEFS.flatMap(
-    (td) => td.toolOptions.smallModelModeConfig?.excludeParams ?? [],
+    (td) =>
+      resolveParamModes(td.toolOptions.inputSchema, { smallModelMode: true })
+        .excludeParams,
   ),
 );
 

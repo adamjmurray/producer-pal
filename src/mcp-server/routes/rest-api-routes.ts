@@ -6,6 +6,7 @@
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -56,7 +57,9 @@ export function registerRestApiRoutes(
       .map((td) => ({
         name: td.toolName,
         title: td.toolOptions.title,
-        description: td.toolOptions.description,
+        // This endpoint serves the base (unfiltered) view, so resolve to the
+        // default description (empty mode context).
+        description: resolveModalDescription(td.toolOptions.description, {}),
         annotations: td.toolOptions.annotations,
         inputSchema: z.toJSONSchema(z.object(td.toolOptions.inputSchema)),
       }));
