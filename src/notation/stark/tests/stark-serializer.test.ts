@@ -250,13 +250,6 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     expectStableNotes(first, second);
   });
 
-  it("hats alias resolves to hihat (MIDI 42)", () => {
-    const { first, second } = roundTrip("hats: X X", true);
-
-    expectStableNotes(first, second);
-    expect(first.every((n) => n.pitch === 42)).toBe(true);
-  });
-
   it("multiple drum lines round-trip together", () => {
     const { first, second } = roundTrip("kick: X z X z\nsnare: z X z X", true);
 

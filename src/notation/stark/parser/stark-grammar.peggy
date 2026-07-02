@@ -211,7 +211,7 @@ DrumName
   = ("kick"i    / "bd"i)  { return { name: "kick",    midi: 36 }; }
   / ("snare2"i  / "s2"i)  { return { name: "snare2",  midi: 40 }; }
   / ("snare"i   / "sd"i)  { return { name: "snare",   midi: 38 }; }
-  / ("hihat"i   / "hats"i / "hh"i)  { return { name: "hihat",   midi: 42 }; }
+  / ("hihat"i   / "hh"i)  { return { name: "hihat",   midi: 42 }; }
   / ("pedal"i   / "ph"i)  { return { name: "pedal",   midi: 44 }; }
   / ("open"i    / "oh"i)  { return { name: "open",    midi: 46 }; }
   / ("tom1"i    / "ht"i)  { return { name: "tom1",    midi: 47 }; }
