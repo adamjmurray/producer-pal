@@ -9,6 +9,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
+import { hasPerfectMatching } from "#evals/shared/bipartite-matching.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
@@ -193,23 +194,28 @@ export function notesMatch(
 ): boolean {
   if (events.length !== expected.length) return false;
 
-  const sortedEvents = [...events].sort(
-    (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
-  );
-  const sortedExpected = [...expected].sort(
-    (a, b) =>
-      a.start - b.start || pitchSortKey(a.pitch) - pitchSortKey(b.pitch),
-  );
+  // A greedy sort-then-pair-by-index check can wrongly fail when expected notes
+  // carry OVERLAPPING any-of pitch sets at the same start (e.g. [40,50] and [45]
+  // vs actual {45,50}): index-pairing forces 45↔[40,50] and misses the valid
+  // assignment 50↔[40,50], 45↔[45]. Accept iff a perfect matching exists between
+  // actual and expected notes under the per-pair predicate.
+  return hasPerfectMatching(events, expected, satisfiesExpected);
+}
 
-  return sortedEvents.every((e, i) => {
-    const want = sortedExpected[i] as ExpectedNote;
-
-    return (
-      pitchMatches(e.pitch, want.pitch) &&
-      Math.abs(e.start_time - want.start) < EPS &&
-      (want.duration == null || Math.abs(e.duration - want.duration) < EPS)
-    );
-  });
+/**
+ * Whether an actual event can stand in for an expected note: pitch (value or
+ * any-of membership), start, and duration (only when the expected pins it).
+ *
+ * @param event - Re-interpreted read-back note
+ * @param want - Expected note
+ * @returns True when the event satisfies the expected note's constraints
+ */
+function satisfiesExpected(event: NoteEvent, want: ExpectedNote): boolean {
+  return (
+    pitchMatches(event.pitch, want.pitch) &&
+    Math.abs(event.start_time - want.start) < EPS &&
+    (want.duration == null || Math.abs(event.duration - want.duration) < EPS)
+  );
 }
 
 /** Float tolerance for note start_time / duration comparisons (in beats). */
