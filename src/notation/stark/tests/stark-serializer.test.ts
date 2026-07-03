@@ -154,35 +154,91 @@ describe("stark serializer — pitched lines (line-default factoring)", () => {
   });
 });
 
-describe("stark serializer — non-/N durations preserve onsets", () => {
-  it("a dotted-quarter melody note does not shift the following onset", () => {
-    // 1.5 beats isn't a single /N. The serializer must advance by EMITTED
-    // grid-time (not the real 1.5) so D stays anchored at 1.5 — the old code
-    // cascaded a -0.5 error onto D, moving it to 1.0.
-    const out = formatNotation([note(60, 0, 1.5), note(62, 1.5, 1)]);
+describe("stark serializer — off-grid durations preserve onsets", () => {
+  it("an off-grid melody duration does not shift the following onset", () => {
+    // 2.5 beats isn't a grid value; it ties between /2 (2) and /2. (3) and snaps
+    // DOWN to /2. The serializer advances by EMITTED grid-time (not the real 2.5)
+    // so D stays anchored at 2.5 via a compensating /8 rest — a -0.5 error must
+    // not cascade onto D.
+    const out = formatNotation([note(60, 0, 2.5), note(62, 2.5, 1)]);
 
-    expect(out).toBe("melody: C z/8 D");
+    expect(out).toBe("melody: C/2 z/8 D");
 
     const back = interpretNotation(out);
 
-    // Onsets preserved exactly; only C's own sustain snaps 1.5 → 1.
-    expect(back.map((n) => n.start_time)).toStrictEqual([0, 1.5]);
-    expect(back.map((n) => n.duration)).toStrictEqual([1, 1]);
+    // Onsets preserved exactly; only C's own sustain snaps 2.5 → 2.
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 2.5]);
+    expect(back.map((n) => n.duration)).toStrictEqual([2, 1]);
   });
 
-  it("a non-/N drum duration stays anchored across the rest of the line", () => {
-    // kick at 0 (dur 1.5), 1.5, 2.5. The 1.5-beat hit rounds to /4 but a
+  it("an off-grid drum duration stays anchored across the rest of the line", () => {
+    // kick at 0 (dur 2.5), 2.5, 3.5. The 2.5-beat hit snaps to /2 but a
     // compensating /8 rest keeps every later onset in place.
     const out = formatNotation(
-      [note(36, 0, 1.5), note(36, 1.5, 1), note(36, 2.5, 1)],
+      [note(36, 0, 2.5), note(36, 2.5, 1), note(36, 3.5, 1)],
       DRUM,
     );
 
-    expect(out).toBe("kick: X z/8 X X");
+    expect(out).toBe("kick: X/2 z/8 X X");
 
     const back = interpretNotation(out);
 
-    expect(back.map((n) => n.start_time)).toStrictEqual([0, 1.5, 2.5]);
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 2.5, 3.5]);
+  });
+});
+
+describe("stark serializer — dotted durations round-trip exactly", () => {
+  it("a dotted-quarter melody note round-trips losslessly", () => {
+    // 1.5 beats is now the grid value /4. — emitted exactly, no compensating rest.
+    const out = formatNotation([note(60, 0, 1.5), note(62, 1.5, 1)]);
+
+    expect(out).toBe("melody: C/4. D");
+
+    const back = interpretNotation(out);
+
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 1.5]);
+    expect(back.map((n) => n.duration)).toStrictEqual([1.5, 1]);
+  });
+
+  it("factors a dotted value into the line-default header", () => {
+    // A line of dotted quarters picks /4. as the line default, dropping it from
+    // every token onto the header.
+    const out = formatNotation([
+      note(60, 0, 1.5),
+      note(62, 1.5, 1.5),
+      note(64, 3, 1.5),
+    ]);
+
+    expect(out).toBe("melody /4.: C D E");
+    expect(interpretNotation(out).map((n) => n.duration)).toStrictEqual([
+      1.5, 1.5, 1.5,
+    ]);
+  });
+
+  it("emits a single dotted rest for a 1.5-beat gap", () => {
+    // The gap fill uses the same dotted grid: 1.5 beats → one z/4., not z z/8.
+    const out = formatNotation([note(60, 0, 1), note(62, 2.5, 1)]);
+
+    expect(out).toBe("melody: C z/4. D");
+    expect(interpretNotation(out).map((n) => n.start_time)).toStrictEqual([
+      0, 2.5,
+    ]);
+  });
+
+  it("round-trips a dotted chord and a dotted drum hit", () => {
+    const chord = formatNotation([note(48, 0, 3), note(52, 0, 3)]);
+
+    expect(chord).toBe("chords /2.: [C E]");
+
+    const drum = formatNotation(
+      [note(36, 0, 0.75), note(36, 0.75, 0.75)],
+      DRUM,
+    );
+
+    expect(drum).toBe("kick /8.: X X");
+    expect(interpretNotation(drum).map((n) => n.start_time)).toStrictEqual([
+      0, 0.75,
+    ]);
   });
 });
 

@@ -22,6 +22,15 @@ import type { ParseOptions } from "../../peggy-parser-types.ts";
 /** Absolute note-value denominator: /1=whole, /2=half, /4=quarter, /8=eighth, /16=sixteenth */
 export type StarkDurationN = 1 | 2 | 4 | 8 | 16;
 
+/**
+ * An absolute /N note value with an optional dot. `dotted` multiplies the value
+ * by 1.5 (a dotted quarter `/4.` = 1.5 beats). Double-dots are not supported.
+ */
+export interface StarkDuration {
+  n: StarkDurationN;
+  dotted: boolean;
+}
+
 // --- Dynamic ---
 
 export type StarkDynamic = "accent" | "normal" | "soft";
@@ -37,7 +46,7 @@ export interface BarMarkerItem {
 export interface RestItem {
   type: "rest";
   /** Explicit /N duration, or null (use line default) */
-  duration: StarkDurationN | null;
+  duration: StarkDuration | null;
 }
 
 // --- Drum items (event-based: a line of hits/rests at a fixed pitch) ---
@@ -48,7 +57,7 @@ export interface DrumHitItem {
   /** ^ = accent, X = normal, x = soft */
   velocity: StarkDynamic;
   /** Explicit glued /N override, or null (use the line default) */
-  duration: StarkDurationN | null;
+  duration: StarkDuration | null;
 }
 
 export type DrumContentItem = BarMarkerItem | DrumHitItem | RestItem;
@@ -65,7 +74,7 @@ export interface NoteItem {
   /** Net octave displacement: positive = up, negative = down */
   octaveShift: number;
   /** Explicit /N duration, or null (use line default) */
-  duration: StarkDurationN | null;
+  duration: StarkDuration | null;
   dynamic: StarkDynamic;
 }
 
@@ -84,7 +93,7 @@ export interface ChordItem {
   type: "chord";
   notes: ChordNoteItem[];
   /** Explicit /N duration, or null (use line default) */
-  duration: StarkDurationN | null;
+  duration: StarkDuration | null;
   dynamic: StarkDynamic;
 }
 
@@ -108,7 +117,7 @@ export interface DrumSection {
   /** Verbatim pitch-name header (e.g. "C1", "Gb2") for pitch-led lines, else null */
   noteName: string | null;
   /** /N from the line header (sets the line default), or null */
-  defaultDuration: StarkDurationN | null;
+  defaultDuration: StarkDuration | null;
   content: DrumContentItem[];
 }
 
@@ -116,7 +125,7 @@ export interface DrumSection {
 export interface PitchedSection {
   type: "bass" | "melody" | "chords";
   /** /N from the line header (sets the line default), or null */
-  defaultDuration: StarkDurationN | null;
+  defaultDuration: StarkDuration | null;
   content: PitchedContentItem[];
 }
 

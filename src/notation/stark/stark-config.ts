@@ -11,6 +11,8 @@
  * hits) with the line default below.
  */
 
+import { type StarkDuration } from "#src/notation/stark/parser/stark-parser.ts";
+
 // --- Velocity ---
 
 export const VELOCITY_SOFT_MIN = 60;
@@ -37,13 +39,14 @@ export function randomVelocity(min: number, max: number): number {
 // --- Timing ---
 
 /**
- * Convert an absolute /N duration denominator to Ableton beats.
+ * Convert an absolute /N note value (with optional dot) to Ableton beats.
  * Absolute note value — NOT an ABC-style multiplier: /4 = 1 beat, /1 = 4 beats.
- * @param n - Duration denominator (1, 2, 4, 8, or 16)
+ * A dot multiplies the value by 1.5 (/4. = 1.5 beats).
+ * @param duration - The parsed { n, dotted } note value
  * @returns Duration in Ableton beats
  */
-export function durationBeats(n: number): number {
-  return 4 / n;
+export function durationBeats(duration: StarkDuration): number {
+  return (4 / duration.n) * (duration.dotted ? 1.5 : 1);
 }
 
 // --- Register defaults ---
@@ -58,16 +61,16 @@ export const MELODY_REGISTER_DEFAULT = 60;
 /** chords: C2 = MIDI 48 (voicing stacks up from here) */
 export const CHORDS_REGISTER_DEFAULT = 48;
 
-// --- Line default duration denominators ---
+// --- Line default note values ---
 // Applied when no /N on the token AND no /N in the line header.
 // Bass and melody default to /4 (quarter), chords default to /1 (whole).
 
-export const LINE_DEFAULT_N: Readonly<
-  Record<"bass" | "melody" | "chords", number>
+export const LINE_DEFAULT: Readonly<
+  Record<"bass" | "melody" | "chords", StarkDuration>
 > = {
-  bass: 4,
-  melody: 4,
-  chords: 1,
+  bass: { n: 4, dotted: false },
+  melody: { n: 4, dotted: false },
+  chords: { n: 1, dotted: false },
 };
 
 /**
@@ -75,7 +78,7 @@ export const LINE_DEFAULT_N: Readonly<
  * a /N: /4 (a quarter note), matching bass/melody. A bare `kick: X X X X` is four
  * quarter-note hits = one 4/4 bar.
  */
-export const DRUM_DEFAULT_N = 4;
+export const DRUM_DEFAULT: StarkDuration = { n: 4, dotted: false };
 
 // --- Drum line names ---
 

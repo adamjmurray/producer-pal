@@ -5,7 +5,9 @@
 // timing with explicit /N durations (drums are a melody line whose tokens are
 // drum hits at a fixed pitch), not a positional 16th-note grid.
 //
-// Durations are absolute note values (/4 = quarter note, /8 = eighth, etc.).
+// Durations are absolute note values (/4 = quarter note, /8 = eighth, etc.),
+// with an optional trailing dot for a dotted (×1.5) value (/4. = dotted quarter,
+// = 3 eighths). At most one dot; double-dots are not supported.
 // In every line type here `/` introduces a duration and `|` is a visual barline
 // (the inverse of legacy stark, where `/` was the bar marker).
 //
@@ -59,7 +61,7 @@ PitchedSection
 
 // Optional /N in a line header sets the line's default duration.
 LineDefaultDuration
-  = "/" n:DurationN { return n; }
+  = "/" d:Duration { return d; }
 
 PitchedLineType
   = "melody"i { return "melody"; }
@@ -86,7 +88,7 @@ DrumItem
 // velocityFor() applies. Optional glued /N (like a pitched NoteToken) overrides
 // the line default for this one hit.
 DrumToken
-  = velocity:DrumVelocity dur:("/" n:DurationN { return n; })? {
+  = velocity:DrumVelocity dur:("/" d:Duration { return d; })? {
       return { type: "hit", velocity: velocity, duration: dur };
     }
 
@@ -143,13 +145,13 @@ NoteToken
 NoteTokenSuffix
   = "'"  { return { type: "octave",    value:  1 }; }
   / ","  { return { type: "octave",    value: -1 }; }
-  / "/" n:DurationN { return { type: "duration", value: n }; }
+  / "/" d:Duration { return { type: "duration", value: d }; }
   / "!"  { return { type: "dynamic",   value: "accent" }; }
   / "?"  { return { type: "dynamic",   value: "soft" }; }
 
 // Rest token: z (case-insensitive) with optional /N duration.
 RestToken
-  = "z"i dur:("/" n:DurationN { return n; })? {
+  = "z"i dur:("/" d:Duration { return d; })? {
       return { type: "rest", duration: dur };
     }
 
@@ -188,11 +190,18 @@ ChordNote
     }
 
 ChordSuffix
-  = "/" n:DurationN { return { type: "duration", value: n }; }
+  = "/" d:Duration { return { type: "duration", value: d }; }
   / "!"  { return { type: "dynamic", value: "accent" }; }
   / "?"  { return { type: "dynamic", value: "soft" }; }
 
-// Absolute note value: 1=whole, 2=half, 4=quarter, 8=eighth, 16=sixteenth.
+// Absolute note value with an optional trailing dot: /4 = quarter (1 beat),
+// /4. = dotted quarter (×1.5 = 1.5 beats). At most one dot — double-dots are not
+// supported. The dot binds tightly to its /N (no whitespace), so the freely
+// ordered `' , ! ?` suffixes stay unambiguous. Returns { n, dotted }.
+Duration
+  = n:DurationN dot:"."? { return { n: n, dotted: dot != null }; }
+
+// Absolute note-value denominator: 1=whole, 2=half, 4=quarter, 8=eighth, 16=sixteenth.
 // "16" is tried before "1" so the two-digit form is not short-circuited.
 DurationN
   = "16" { return 16; }

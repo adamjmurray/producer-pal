@@ -149,6 +149,47 @@ describe("stark interpreter — pitched lines", () => {
   });
 });
 
+describe("stark interpreter — dotted durations (×1.5)", () => {
+  it("a dotted /N is 1.5× the plain value on a note", () => {
+    const notes = interpretNotation("melody: C/4. D");
+
+    // C = dotted quarter (1.5 beats); D falls at 1.5 with the /4 default.
+    expect(notes.map((n) => n.duration)).toStrictEqual([1.5, 1]);
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1.5]);
+  });
+
+  it("a dotted /N works as the line-header default", () => {
+    const notes = interpretNotation("melody /4.: C D E");
+
+    expect(notes.map((n) => n.duration)).toStrictEqual([1.5, 1.5, 1.5]);
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1.5, 3]);
+  });
+
+  it("a dotted rest advances time by 1.5× the value", () => {
+    const notes = interpretNotation("melody: C z/4. D");
+
+    // C (default /4 = 1 beat) then a dotted-quarter rest (1.5) → D at 2.5.
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 2.5]);
+  });
+
+  it("a dotted /N applies to drum hits and chords", () => {
+    const drum = interpretNotation("kick: X/4. X");
+
+    expect(drum.map((n) => n.start_time)).toStrictEqual([0, 1.5]);
+
+    const chord = interpretNotation("chords: [C E]/2.");
+
+    expect(chord).toHaveLength(2);
+    expect(chord.every((n) => n.duration === 3)).toBe(true);
+  });
+
+  it("rejects a double dot", () => {
+    expect(() => interpretNotation("melody: C/4..")).toThrow(
+      /Stark notation parse error/,
+    );
+  });
+});
+
 describe("stark interpreter — velocity buckets are within range", () => {
   it("accent hits land in the accent range", () => {
     const notes = interpretNotation("kick: ^ ^ ^ ^");

@@ -11,8 +11,10 @@
  * knows about the line-default factoring the serializer layers on top.
  */
 
+import { type StarkDuration } from "#src/notation/stark/parser/stark-parser.ts";
 import {
   BASS_REGISTER_DEFAULT,
+  durationBeats,
   MELODY_REGISTER_DEFAULT,
   MIDI_TO_DRUM_NAME,
   VELOCITY_ACCENT_THRESHOLD,
@@ -190,27 +192,87 @@ export function dynamicSuffix(velocity: number): string {
   return "?";
 }
 
+/** A spellable Stark note value: its Ableton beat length and the `/N[.]` text. */
+export interface DurationGridEntry {
+  /** Length in Ableton beats — the identity the serializer factors/advances on. */
+  beats: number;
+  /** Text after the `/` (e.g. "4", "4."). */
+  token: string;
+}
+
+// The legal note-value grid, coarsest first: the five plain values (/1…/16) and
+// their dotted (×1.5) partners. Every duration the serializer emits snaps to one
+// of these ten; `beats` is the exact binary fraction each spells to.
+const DURATION_GRID: ReadonlyArray<DurationGridEntry> = [
+  { beats: 6, token: "1." },
+  { beats: 4, token: "1" },
+  { beats: 3, token: "2." },
+  { beats: 2, token: "2" },
+  { beats: 1.5, token: "4." },
+  { beats: 1, token: "4" },
+  { beats: 0.75, token: "8." },
+  { beats: 0.5, token: "8" },
+  { beats: 0.375, token: "16." },
+  { beats: 0.25, token: "16" },
+];
+
 /**
- * Decompose a gap into a greedy list of note-value denominators that fill it
- * (largest first: whole → half → quarter → 8th → 16th). A sub-16th remainder is
- * dropped (the off-16th snap the serializer documents).
- * @param gapBeats - Gap length in Ableton beats
- * @returns Note-value denominators (each an /N) summing to about the gap
+ * Snap an arbitrary duration to the nearest grid note value. On an exact tie the
+ * shorter value wins, so any shortfall is filled by a compensating rest rather
+ * than overshooting and delaying later onsets.
+ * @param beats - Duration in Ableton beats
+ * @returns The nearest grid entry (its beats + `/N[.]` token)
  */
-export function restNoteValues(gapBeats: number): number[] {
-  const ns: number[] = [];
-  const denominators = [1, 2, 4, 8, 16] as const;
+export function snapDuration(beats: number): DurationGridEntry {
+  // The grid is a non-empty module constant; index 0 is always present.
+  let best = DURATION_GRID[0] as DurationGridEntry;
+  let bestDiff = Math.abs(beats - best.beats);
 
-  let remaining = gapBeats;
+  for (const entry of DURATION_GRID) {
+    const diff = Math.abs(beats - entry.beats);
 
-  for (const n of denominators) {
-    const beats = 4 / n;
-
-    while (remaining >= beats - SAME_TIME_EPSILON) {
-      ns.push(n);
-      remaining -= beats;
+    // `<=` so a tie prefers the later (shorter, coming later in this descending
+    // grid) value — the safe undershoot.
+    if (diff <= bestDiff) {
+      best = entry;
+      bestDiff = diff;
     }
   }
 
-  return ns;
+  return best;
+}
+
+/**
+ * Build the grid entry for a parsed { n, dotted } note value — used to spell the
+ * line-type defaults (bass /4, chords /1, …) the serializer factors against.
+ * @param duration - The parsed note value
+ * @returns Its grid entry (beats + `/N[.]` token)
+ */
+export function durationEntry(duration: StarkDuration): DurationGridEntry {
+  return {
+    beats: durationBeats(duration),
+    token: `${duration.n}${duration.dotted ? "." : ""}`,
+  };
+}
+
+/**
+ * Decompose a gap into a greedy list of grid note values that fill it (largest
+ * first, dotted values included: dotted-whole → whole → dotted-half → …). A
+ * sub-16th remainder is dropped (the off-16th snap the serializer documents).
+ * @param gapBeats - Gap length in Ableton beats
+ * @returns Grid entries (each an /N[.]) summing to about the gap
+ */
+export function restNoteValues(gapBeats: number): DurationGridEntry[] {
+  const rests: DurationGridEntry[] = [];
+
+  let remaining = gapBeats;
+
+  for (const entry of DURATION_GRID) {
+    while (remaining >= entry.beats - SAME_TIME_EPSILON) {
+      rests.push(entry);
+      remaining -= entry.beats;
+    }
+  }
+
+  return rests;
 }

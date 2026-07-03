@@ -20,6 +20,7 @@ import {
   type DrumSection,
   type PitchedContentItem,
   type PitchedSection,
+  type StarkDuration,
   type StarkDynamic,
   type StarkSection,
 } from "#src/notation/stark/parser/stark-parser.ts";
@@ -27,9 +28,9 @@ import * as parser from "#src/notation/stark/parser/stark-parser.ts";
 import {
   BASS_REGISTER_DEFAULT,
   CHORDS_REGISTER_DEFAULT,
-  DRUM_DEFAULT_N,
+  DRUM_DEFAULT,
   durationBeats,
-  LINE_DEFAULT_N,
+  LINE_DEFAULT,
   MELODY_REGISTER_DEFAULT,
   randomVelocity,
   VELOCITY_ACCENT_MAX,
@@ -139,14 +140,14 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
     return;
   }
 
-  const lineDefaultN = section.defaultDuration ?? DRUM_DEFAULT_N;
+  const lineDefault = section.defaultDuration ?? DRUM_DEFAULT;
 
   let time = 0;
 
   for (const item of section.content) {
     if ("barMarker" in item) continue;
 
-    const beats = durationBeats(item.duration ?? lineDefaultN);
+    const beats = durationBeats(item.duration ?? lineDefault);
 
     if (item.type === "rest") {
       time += beats;
@@ -197,12 +198,12 @@ function processPitchedSection(
         ? MELODY_REGISTER_DEFAULT
         : CHORDS_REGISTER_DEFAULT;
 
-  const lineDefaultN = section.defaultDuration ?? LINE_DEFAULT_N[section.type];
+  const lineDefault = section.defaultDuration ?? LINE_DEFAULT[section.type];
 
   let time = 0;
 
   for (const item of section.content) {
-    time = processItem(item, time, registerDefault, lineDefaultN, notes);
+    time = processItem(item, time, registerDefault, lineDefault, notes);
   }
 }
 
@@ -211,17 +212,17 @@ function processItem(
   item: PitchedContentItem,
   time: number,
   registerDefault: number,
-  lineDefaultN: number,
+  lineDefault: StarkDuration,
   notes: NoteEvent[],
 ): number {
   if ("barMarker" in item) return time;
 
   if (item.type === "rest") {
-    return time + durationBeats(item.duration ?? lineDefaultN);
+    return time + durationBeats(item.duration ?? lineDefault);
   }
 
   if (item.type === "note") {
-    const beats = durationBeats(item.duration ?? lineDefaultN);
+    const beats = durationBeats(item.duration ?? lineDefault);
     const midi = clampMidi(
       registerDefault +
         pitchOffset(item.letter, item.accidental) +
@@ -240,7 +241,7 @@ function processItem(
   }
 
   // type === "chord"
-  const beats = durationBeats(item.duration ?? lineDefaultN);
+  const beats = durationBeats(item.duration ?? lineDefault);
   const vel = velocityFor(item.dynamic);
 
   for (const chordNote of item.notes) {

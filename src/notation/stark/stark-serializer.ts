@@ -11,11 +11,12 @@
  * snap. Overlapping notes on one line are normalized to legato exactly as a
  * melody line is, so drums and pitched lines share ONE timing model.
  *
- * A duration that isn't a single /N value (a dotted quarter = 1.5 beats, a
- * triplet, a held 3-beat note — content Stark can't itself produce) snaps its
- * OWN sustain to the nearest /N, but its onset and every following onset are
- * preserved: the walk advances by emitted grid-time, so any shortfall is filled
- * with a compensating rest rather than shifting the rest of the line.
+ * A duration that isn't one of the ten grid note values (an eighth-note triplet
+ * = 1/3 beat, a sample-derived 2.3-beat sustain — content Stark can't itself
+ * produce) snaps its OWN sustain to the nearest grid value, but its onset and
+ * every following onset are preserved: the walk advances by emitted grid-time, so
+ * any shortfall is filled with a compensating rest rather than shifting the line.
+ * (Dotted values ARE on the grid now — a dotted quarter round-trips exactly.)
  *
  * Every line is serialized the same way: walk the notes, fill gaps with `z`
  * rests, take each note's own duration as its absolute `/N`, then FACTOR OUT the
@@ -32,20 +33,22 @@
 
 import {
   CHORDS_REGISTER_DEFAULT,
-  DRUM_DEFAULT_N,
-  durationBeats,
-  LINE_DEFAULT_N,
+  DRUM_DEFAULT,
+  LINE_DEFAULT,
 } from "#src/notation/stark/stark-config.ts";
 import {
   classifyPitchedLine,
+  type DurationGridEntry,
   drumChar,
   drumHeader,
+  durationEntry,
   dynamicSuffix,
   groupNotesByPitch,
   groupSimultaneousNotes,
   octaveMarks,
   pitchParts,
   restNoteValues,
+  snapDuration,
 } from "#src/notation/stark/stark-serializer-helpers.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
@@ -61,11 +64,12 @@ export interface StarkFormatOptions {
 }
 
 // One serialized token before line-default factoring: the glyph/pitch `core`, an
-// optional pitched `dynamic` suffix, and the absolute note value `n` (an /N).
+// optional pitched `dynamic` suffix, and the grid note value (its beats + `/N[.]`
+// token) — beats is the duration identity the line-default factoring keys on.
 interface LineToken {
   core: string;
   dynamic: string;
-  n: number;
+  duration: DurationGridEntry;
 }
 
 /**
@@ -94,9 +98,9 @@ export function formatNotation(
 // note's own duration becomes its /N (durations round-trip for legato input).
 //
 // The cursor tracks EMITTED (grid-snapped) time, not real time. A note whose
-// real duration isn't a single /N (e.g. a dotted quarter = 1.5 beats) snaps its
-// own sustain, but that error is NOT allowed to cascade into later onsets: the
-// gap-fill below re-anchors each note to its true start_time, inserting a
+// real duration isn't a grid value (e.g. an eighth-note triplet = 1/3 beat) snaps
+// its own sustain, but that error is NOT allowed to cascade into later onsets:
+// the gap-fill below re-anchors each note to its true start_time, inserting a
 // compensating rest when the previous emitted duration undershot.
 function walkLine(
   notes: NoteEvent[],
@@ -115,37 +119,29 @@ function walkLine(
     }
 
     const { core, dynamic } = makeHit(note);
-    const n = durationToN(note.duration);
+    const duration = snapDuration(note.duration);
 
-    tokens.push({ core, dynamic, n });
-    time += durationBeats(n);
+    tokens.push({ core, dynamic, duration });
+    time += duration.beats;
   }
 
   return tokens;
 }
 
-// Fill a gap with `z` rest tokens (greedy, largest note value first).
+// Fill a gap with `z` rest tokens (greedy, largest grid note value first).
 function restTokens(gapBeats: number): LineToken[] {
-  return restNoteValues(gapBeats).map((n) => ({ core: "z", dynamic: "", n }));
+  return restNoteValues(gapBeats).map((duration) => ({
+    core: "z",
+    dynamic: "",
+    duration,
+  }));
 }
 
-// Total grid-snapped beat length a run of tokens actually emits (each token's
-// /N is durationBeats(n)); used to advance the cursor by what was written, not
-// what was asked for, so onset re-anchoring stays exact.
+// Total grid-snapped beat length a run of tokens actually emits; used to advance
+// the cursor by what was written, not what was asked for, so onset re-anchoring
+// stays exact.
 function emittedBeats(tokens: LineToken[]): number {
-  return tokens.reduce((sum, t) => sum + durationBeats(t.n), 0);
-}
-
-// Absolute note value (/N) nearest a duration in beats: 4b→1 … 0.25b→16.
-function durationToN(beats: number): number {
-  const n = Math.round(4 / beats);
-
-  if (n <= 1) return 1;
-  if (n <= 2) return 2;
-  if (n <= 4) return 4;
-  if (n <= 8) return 8;
-
-  return 16;
+  return tokens.reduce((sum, t) => sum + t.duration.beats, 0);
 }
 
 // Render one section line, factoring out the line default: a header `/N` only
@@ -154,14 +150,15 @@ function durationToN(beats: number): number {
 function renderLine(
   header: string,
   tokens: LineToken[],
-  lineTypeDefaultN: number,
+  lineTypeDefault: DurationGridEntry,
 ): string {
-  const lineDefaultN = chooseLineDefaultN(tokens, lineTypeDefaultN);
+  const lineDefault = chooseLineDefault(tokens, lineTypeDefault);
   const headerDur =
-    lineDefaultN === lineTypeDefaultN ? "" : ` /${lineDefaultN}`;
+    lineDefault.token === lineTypeDefault.token ? "" : ` /${lineDefault.token}`;
   const body = tokens
     .map((t) => {
-      const tokenDur = t.n === lineDefaultN ? "" : `/${t.n}`;
+      const tokenDur =
+        t.duration.token === lineDefault.token ? "" : `/${t.duration.token}`;
 
       return `${t.core}${tokenDur}${t.dynamic}`;
     })
@@ -170,22 +167,30 @@ function renderLine(
   return `${header}${headerDur}: ${body}`;
 }
 
-// Pick the line default /N: the most common token note value, preferring the
-// line-type default on ties (so the header can be omitted) then coarser values.
-function chooseLineDefaultN(
+// Pick the line default note value: the most common token duration, preferring
+// the line-type default on ties (so the header can be omitted) then coarser
+// (longer) values. Keyed by the token string; returns the winning grid entry.
+function chooseLineDefault(
   tokens: LineToken[],
-  lineTypeDefaultN: number,
-): number {
-  const counts = new Map<number, number>();
+  lineTypeDefault: DurationGridEntry,
+): DurationGridEntry {
+  const counts = new Map<string, number>();
+  const entries = new Map<string, DurationGridEntry>();
 
-  for (const t of tokens) counts.set(t.n, (counts.get(t.n) ?? 0) + 1);
+  for (const t of tokens) {
+    counts.set(t.duration.token, (counts.get(t.duration.token) ?? 0) + 1);
+    entries.set(t.duration.token, t.duration);
+  }
 
-  let best = lineTypeDefaultN;
-  let bestCount = counts.get(lineTypeDefaultN) ?? 0;
+  let best = lineTypeDefault;
+  let bestCount = counts.get(lineTypeDefault.token) ?? 0;
 
-  for (const [n, count] of counts) {
-    if (isBetterDefault(n, count, best, bestCount, lineTypeDefaultN)) {
-      best = n;
+  for (const [token, count] of counts) {
+    // Every counted token was recorded in `entries` in the same loop above.
+    const entry = entries.get(token) as DurationGridEntry;
+
+    if (isBetterDefault(entry, count, best, bestCount, lineTypeDefault)) {
+      best = entry;
       bestCount = count;
     }
   }
@@ -193,20 +198,20 @@ function chooseLineDefaultN(
   return best;
 }
 
-// Tie-break for chooseLineDefaultN: higher count wins; on a tie the line-type
-// default wins (lets the header drop), otherwise the coarser value (smaller N).
+// Tie-break for chooseLineDefault: higher count wins; on a tie the line-type
+// default wins (lets the header drop), otherwise the coarser (longer) value.
 function isBetterDefault(
-  n: number,
+  entry: DurationGridEntry,
   count: number,
-  best: number,
+  best: DurationGridEntry,
   bestCount: number,
-  lineTypeDefaultN: number,
+  lineTypeDefault: DurationGridEntry,
 ): boolean {
   if (count !== bestCount) return count > bestCount;
-  if (n === lineTypeDefaultN) return true;
-  if (best === lineTypeDefaultN) return false;
+  if (entry.token === lineTypeDefault.token) return true;
+  if (best.token === lineTypeDefault.token) return false;
 
-  return n < best;
+  return entry.beats > best.beats;
 }
 
 // ---- Pitched lines (bass / melody / chords) ----
@@ -227,7 +232,7 @@ function serializeStarkPitched(notes: NoteEvent[]): string {
   return renderLine(
     classified.lineType,
     tokens,
-    LINE_DEFAULT_N[classified.lineType],
+    durationEntry(LINE_DEFAULT[classified.lineType]),
   );
 }
 
@@ -250,17 +255,17 @@ function serializeStarkChords(sorted: NoteEvent[]): string {
     const inner = group
       .map((note) => pitchCore(note.pitch, CHORDS_REGISTER_DEFAULT))
       .join(" ");
-    const n = durationToN(rep.duration);
+    const duration = snapDuration(rep.duration);
 
     tokens.push({
       core: `[${inner}]`,
       dynamic: dynamicSuffix(rep.velocity),
-      n,
+      duration,
     });
-    time += durationBeats(n);
+    time += duration.beats;
   }
 
-  return renderLine("chords", tokens, LINE_DEFAULT_N.chords);
+  return renderLine("chords", tokens, durationEntry(LINE_DEFAULT.chords));
 }
 
 // Spell one pitch as letter + accidental + octave marks (no duration/dynamic).
@@ -282,7 +287,9 @@ function serializeStarkDrums(notes: NoteEvent[]): string[] {
       dynamic: "",
     }));
 
-    lines.push(renderLine(drumHeader(pitch), tokens, DRUM_DEFAULT_N));
+    lines.push(
+      renderLine(drumHeader(pitch), tokens, durationEntry(DRUM_DEFAULT)),
+    );
   }
 
   return lines;

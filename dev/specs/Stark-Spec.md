@@ -11,11 +11,12 @@ section is **event-based**: drums are a line of drum hits with `/N` durations
 > **Documented lossy axes.** interpret → serialize → interpret is a fixed point
 > on pitch / start_time / **duration** for any legato line (every note starting
 > where the previous ends — anything Stark itself produces), modulo: velocity
-> bucketing (3 dynamics) and snapping any off-16th onset or non-power-of-two
-> duration to the 16th grid. Overlapping notes on one line are normalized to
-> legato exactly as a melody line is — **drums and pitched lines share ONE
-> timing model**, so drum note-length round-trips like a melody note's. The
-> authoritative implementation is the source files:
+> bucketing (3 dynamics) and snapping any sub-16th onset gap or off-grid
+> duration to the note-value grid (the ten spellable values — plain `/1`…`/16`
+> plus their dotted partners; see § Durations). Overlapping notes on one line
+> are normalized to legato exactly as a melody line is — **drums and pitched
+> lines share ONE timing model**, so drum note-length round-trips like a melody
+> note's. The authoritative implementation is the source files:
 > `parser/stark-grammar.peggy`, `stark-interpreter.ts`, `stark-serializer.ts`,
 > `stark-config.ts`. The serializer's line-default factoring keeps the read-back
 > clean.
@@ -140,6 +141,21 @@ beats), `/2` = half, `/4` = quarter (1 beat), `/8` = eighth, `/16` = sixteenth.
 A token's own `/N` overrides the line default; line defaults are `/4` for
 bass/melody **and drums**, `/1` for chords, and may be overridden in the header
 (`melody/8:`, `hihat /8:`).
+
+A single trailing **dot** makes the value **dotted** (× 1.5): `/4.` = dotted
+quarter = 1.5 beats, `/8.` = 0.75, `/2.` = 3, up to `/1.` = 6. Double-dots are
+**not** supported (at most one dot). The dot binds tightly to its `/N` (no
+whitespace) and is part of the duration suffix, so it does not disturb the free
+ordering of the `' , ! ?` suffixes. A dot is legal everywhere a `/N` is: note,
+drum hit, rest (`z/4.`), chord (`[C E]/2.`), and the line-default header
+(`melody /4.:`).
+
+This gives ten spellable note values — the five plain (`/1`…`/16`) and their
+dotted partners. The serializer **snaps** every duration to the nearest of these
+ten (ties resolve to the shorter value); a duration off the grid (a triplet, a
+sample-derived sustain) snaps its own length but the walk advances by _emitted_
+grid-time, so a shortfall is absorbed by a compensating rest and later onsets
+never shift. Beats here are internal Ableton quarter-note beats.
 
 ---
 
