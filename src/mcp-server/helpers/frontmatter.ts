@@ -55,6 +55,14 @@ export function parseFrontmatter(raw: string): ParsedFrontmatter {
     if (key) data[key] = line.slice(sep + 1).trim();
   }
 
+  // A leading `---` fence with no `key: value` pairs is a markdown thematic
+  // break, not a provenance block — keep the whole document as body rather than
+  // swallowing its content into empty metadata (ADR-0010 supports hand-edited
+  // files with no frontmatter). A serialized provenance block always has fields.
+  if (Object.keys(data).length === 0) {
+    return { data: {}, body: raw };
+  }
+
   return {
     data,
     body: lines

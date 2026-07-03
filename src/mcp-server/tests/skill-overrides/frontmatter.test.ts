@@ -45,6 +45,15 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter(raw).data).toStrictEqual({ key: "value" });
   });
 
+  it("keeps content when a leading --- is a thematic break, not frontmatter", () => {
+    // A hand-authored file opening with a markdown thematic break: the fenced
+    // block has no `key: value` pairs, so it must stay in the body rather than
+    // being swallowed into empty metadata.
+    const raw = "---\n\n# My Custom Context\n\nSome guidance.\n\n---\n\nMore.";
+
+    expect(parseFrontmatter(raw)).toStrictEqual({ data: {}, body: raw });
+  });
+
   it("parses a CRLF file (Windows line endings) the same as LF", () => {
     // Regression: the close fence "---\r" never matched "---", so the whole
     // file (provenance block included) was returned as body and drift detection
