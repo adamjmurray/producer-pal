@@ -8,8 +8,8 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
-import { setConfig } from "#evals/shared/config.ts";
-import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
+import { getNotation, setConfig } from "#evals/shared/config.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import {
   type StateAssertion,
   type EvalAssertionResult,
@@ -30,18 +30,19 @@ export async function assertState(
   turns: EvalTurnResult[],
   mcpClient: Client,
 ): Promise<EvalAssertionResult> {
-  // Track whether we actually flipped the notation so the finally-block only
-  // resets when it needs to (and never when the initial set-config threw).
-  let notationOverridden = false;
+  // Snapshot the notation we override so the finally-block can restore the
+  // prior value (e.g. a scenario's configured notation), not a hardcoded
+  // default. Stays null when we never flip, so finally is a no-op then.
+  let priorNotation: Notation | null = null;
 
   try {
     // Optionally flip the server notation before reading so the tool serializes
     // notes in a known format (grading reads clean midi-json regardless of the
     // notation the model wrote in). POST /config merges, so only notation
-    // changes.
+    // changes. Snapshot first so the exact prior notation is restored below.
     if (assertion.notation) {
+      priorNotation = await getNotation();
       await setConfig({ notation: assertion.notation });
-      notationOverridden = true;
     }
 
     const args =
@@ -99,10 +100,11 @@ export async function assertState(
       details: { error: String(error) },
     };
   } finally {
-    // Restore the default notation so this assertion's override can't leak into a
-    // later state read that grades without one (assertions must be independent).
-    if (notationOverridden) {
-      await setConfig({ notation: DEFAULT_NOTATION });
+    // Restore the prior notation so this assertion's override can't leak into a
+    // later state read (assertions must be independent). Restores the scenario's
+    // configured notation, not a hardcoded default.
+    if (priorNotation != null) {
+      await setConfig({ notation: priorNotation });
     }
   }
 }

@@ -7,15 +7,23 @@
  */
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { setConfig } from "#evals/shared/config.ts";
+import { getNotation, setConfig } from "#evals/shared/config.ts";
 import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import { type StateAssertion, type EvalTurnResult } from "../types.ts";
 import { assertState } from "./state.ts";
 
+// The factory is hoisted above the imports, so it must NOT reference imported
+// bindings like DEFAULT_NOTATION (ReferenceError once another file isn't loading
+// the module first to mask it). Set the default resolved value in beforeEach.
 vi.mock(import("#evals/shared/config.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
   setConfig: vi.fn().mockResolvedValue(undefined),
+  getNotation: vi.fn(),
 }));
+
+beforeEach(() => {
+  vi.mocked(getNotation).mockResolvedValue(DEFAULT_NOTATION);
+});
 
 /** Type for state assertion details */
 interface StateDetails {
@@ -309,6 +317,7 @@ describe("assertState", () => {
   describe("notation override", () => {
     beforeEach(() => {
       vi.mocked(setConfig).mockClear();
+      vi.mocked(getNotation).mockReset().mockResolvedValue(DEFAULT_NOTATION);
     });
 
     it("leaves config untouched when no notation override is set", async () => {
@@ -325,7 +334,7 @@ describe("assertState", () => {
       expect(setConfig).not.toHaveBeenCalled();
     });
 
-    it("resets to the default notation after a per-assertion override", async () => {
+    it("restores the prior notation after a per-assertion override", async () => {
       const mockClient = createMockClient(
         mcpResult(JSON.stringify({ ok: true })),
       );
@@ -346,14 +355,36 @@ describe("assertState", () => {
       });
     });
 
-    it("still resets the notation when the read throws", async () => {
+    it("restores the scenario's notation, not the hardcoded default", async () => {
+      // Scenario configured a non-default notation; a mid-scenario assertion
+      // that overrides notation must restore that configured value, not barbeat.
+      vi.mocked(getNotation).mockResolvedValue("stark");
+      const mockClient = createMockClient(
+        mcpResult(JSON.stringify({ ok: true })),
+      );
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        notation: "midi-json",
+        args: { clipId: "1" },
+        expect: () => true,
+      };
+
+      await assertState(assertion, [], mockClient);
+
+      expect(setConfig).toHaveBeenNthCalledWith(1, { notation: "midi-json" });
+      expect(setConfig).toHaveBeenNthCalledWith(2, { notation: "stark" });
+    });
+
+    it("still restores the notation when the read throws", async () => {
+      vi.mocked(getNotation).mockResolvedValue("stark");
       const mockClient = {
         callTool: vi.fn().mockRejectedValue(new Error("boom")),
       } as unknown as Client;
       const assertion: StateAssertion = {
         type: "state",
         tool: "ppal-read-clip",
-        notation: "stark",
+        notation: "midi-json",
         args: {},
         expect: () => true,
       };
@@ -361,9 +392,7 @@ describe("assertState", () => {
       const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
-      expect(setConfig).toHaveBeenNthCalledWith(2, {
-        notation: DEFAULT_NOTATION,
-      });
+      expect(setConfig).toHaveBeenNthCalledWith(2, { notation: "stark" });
     });
   });
 });
