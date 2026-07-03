@@ -96,19 +96,33 @@ describe("formatAbsoluteDuration", () => {
     expect(formatAbsoluteDuration(1 / 32)).toBe("/32"); // thirty-second
   });
 
-  it("formats triplet/tuplet denominators", () => {
-    expect(formatAbsoluteDuration(1 / 3)).toBe("/3"); // half-note triplet
-    expect(formatAbsoluteDuration(1 / 6)).toBe("/6"); // quarter-note triplet
-    expect(formatAbsoluteDuration(1 / 12)).toBe("/12"); // eighth-note triplet
-    expect(formatAbsoluteDuration(1 / 24)).toBe("/24"); // sixteenth-note triplet
-    expect(formatAbsoluteDuration(1 / 20)).toBe("/20"); // sixteenth quintuplet
+  it("sugars power-of-two triplet values with the `t` suffix", () => {
+    // Read-back prefers the triplet suffix over the plain /3-family fraction for the
+    // implicit-numerator power-of-two families (n=1..64) — a musician reads "eighth
+    // triplet" faster than "/12". See formatModifiedNoteValue (barbeat-config.ts).
+    expect(formatAbsoluteDuration(1 / 3)).toBe("/2t"); // half-note triplet (was /3)
+    expect(formatAbsoluteDuration(1 / 6)).toBe("/4t"); // quarter-note triplet (was /6)
+    expect(formatAbsoluteDuration(1 / 12)).toBe("/8t"); // eighth-note triplet (was /12)
+    expect(formatAbsoluteDuration(1 / 24)).toBe("/16t"); // sixteenth triplet (was /24)
+    expect(formatAbsoluteDuration(2 / 3)).toBe("/1t"); // whole-note triplet
   });
 
-  it("formats non-unit numerators", () => {
-    expect(formatAbsoluteDuration(3 / 8)).toBe("3/8"); // dotted quarter
-    expect(formatAbsoluteDuration(3 / 4)).toBe("3/4"); // dotted half / 3 quarters
-    expect(formatAbsoluteDuration(3 / 16)).toBe("3/16"); // dotted eighth
-    expect(formatAbsoluteDuration(2 / 3)).toBe("2/3"); // 2 half-note triplets
+  it("sugars power-of-two dotted values with the `d` suffix", () => {
+    // Dotted (×3/2) implicit-numerator families read back as `/Nd`, not the raw
+    // `3/2^k` fraction.
+    expect(formatAbsoluteDuration(3 / 2)).toBe("/1d"); // dotted whole
+    expect(formatAbsoluteDuration(3 / 4)).toBe("/2d"); // dotted half (3 quarters, was 3/4)
+    expect(formatAbsoluteDuration(3 / 8)).toBe("/4d"); // dotted quarter (was 3/8)
+    expect(formatAbsoluteDuration(3 / 16)).toBe("/8d"); // dotted eighth (was 3/16)
+    expect(formatAbsoluteDuration(3 / 32)).toBe("/16d"); // dotted sixteenth
+  });
+
+  it("keeps non-power-of-two tuplets and multi-note numerators as plain fractions", () => {
+    // Only implicit-numerator power-of-two dotted/triplet families sugar. A value
+    // with no such base (a quintuplet, or a numerator like the 9/16 that `n3/8d`
+    // parses to) round-trips through its plain fraction — lossless, just not sugared.
+    expect(formatAbsoluteDuration(1 / 20)).toBe("/20"); // sixteenth quintuplet
+    expect(formatAbsoluteDuration(9 / 16)).toBe("9/16"); // n3/8d input reads back plain
     expect(formatAbsoluteDuration(5 / 4)).toBe("5/4"); // 5 quarter notes (5/4 bar)
     expect(formatAbsoluteDuration(5 / 8)).toBe("5/8"); // 5 eighth notes
   });
@@ -136,8 +150,8 @@ describe("formatAbsoluteDuration", () => {
     expect(formatAbsoluteDuration(1 / 64)).toBe("/64");
     expect(formatAbsoluteDuration(1 / 128)).toBe("/128"); // was lossy → /64 (2x)
     expect(formatAbsoluteDuration(1 / 256)).toBe("/256"); // was lossy → /64 (4x)
-    expect(formatAbsoluteDuration(1 / 48)).toBe("/48"); // triplet 32nd
-    expect(formatAbsoluteDuration(1 / 96)).toBe("/96");
+    expect(formatAbsoluteDuration(1 / 48)).toBe("/32t"); // 32nd triplet (sugared, was /48)
+    expect(formatAbsoluteDuration(1 / 96)).toBe("/64t"); // 64th triplet (sugared, was /96)
     expect(formatAbsoluteDuration(1 / 40)).toBe("/40"); // quintuplet 32nd
   });
 

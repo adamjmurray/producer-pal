@@ -42,6 +42,40 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
+  it("parses dotted (`d`, ×3/2) and triplet (`t`, ×2/3) suffixes", () => {
+    // `d` scales the note value by 3/2, `t` by 2/3. n/4d = dotted quarter = 3/8;
+    // n/4t = quarter triplet = 1/6; n/8t = eighth triplet = 1/12.
+    expect(parser.parse("n/4d C3 n/4t D3 n/8t E3")).toStrictEqual([
+      { duration: 3 / 8 },
+      { pitch: 60 },
+      { duration: 1 / 6 },
+      { pitch: 62 },
+      { duration: 1 / 12 },
+      { pitch: 64 },
+    ]);
+  });
+
+  it("applies d/t suffix to any numerator (not just implicit 1)", () => {
+    // The suffix is a pure post-multiply on the fraction value: n3/8d = 9/16,
+    // n3/8t = 1/4, n5/16t = 5/24.
+    expect(parser.parse("n3/8d C3 n3/8t D3 n5/16t E3")).toStrictEqual([
+      { duration: 9 / 16 },
+      { pitch: 60 },
+      { duration: 1 / 4 },
+      { pitch: 62 },
+      { duration: 5 / 24 },
+      { pitch: 64 },
+    ]);
+  });
+
+  it("rejects stacked/doubled note-value suffixes (mutually exclusive)", () => {
+    // `("d"/"t")?` matches at most one suffix; a doubled or mixed suffix leaves a
+    // stray letter that the element separator can't consume.
+    for (const bad of ["n/4dt C3", "n/4dd C3", "n/4td C3", "n/4tt C3"]) {
+      expect(() => parser.parse(bad)).toThrow();
+    }
+  });
+
   it("parses zero numerator", () => {
     expect(parser.parse("n0/1 C3")).toStrictEqual([
       { duration: 0 },

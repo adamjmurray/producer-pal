@@ -36,16 +36,16 @@ describe("abletonBeatsToDuration", () => {
     it("emits whole-note fractions for sub-bar values", () => {
       expect(abletonBeatsToDuration(1, 4, 4)).toBe("n/4"); // quarter note
       expect(abletonBeatsToDuration(2, 4, 4)).toBe("n/2"); // half note
-      expect(abletonBeatsToDuration(3, 4, 4)).toBe("n3/4"); // dotted half
+      expect(abletonBeatsToDuration(3, 4, 4)).toBe("n/2d"); // dotted half (sugared, was n3/4)
       expect(abletonBeatsToDuration(0.5, 4, 4)).toBe("n/8"); // eighth
       expect(abletonBeatsToDuration(0.25, 4, 4)).toBe("n/16"); // sixteenth
-      expect(abletonBeatsToDuration(1.5, 4, 4)).toBe("n3/8"); // dotted quarter
+      expect(abletonBeatsToDuration(1.5, 4, 4)).toBe("n/4d"); // dotted quarter (sugared, was n3/8)
     });
 
     it("emits Nbar+n<fraction> for mixed durations", () => {
       expect(abletonBeatsToDuration(5, 4, 4)).toBe("1bar+n/4");
       expect(abletonBeatsToDuration(6, 4, 4)).toBe("1bar+n/2");
-      expect(abletonBeatsToDuration(7, 4, 4)).toBe("1bar+n3/4");
+      expect(abletonBeatsToDuration(7, 4, 4)).toBe("1bar+n/2d"); // dotted half (sugared, was 1bar+n3/4)
       expect(abletonBeatsToDuration(9, 4, 4)).toBe("2bar+n/4");
       expect(abletonBeatsToDuration(4.5, 4, 4)).toBe("1bar+n/8");
     });
@@ -61,7 +61,7 @@ describe("abletonBeatsToDuration", () => {
     it("handles sub-bar and mixed values", () => {
       expect(abletonBeatsToDuration(0.5, 6, 8)).toBe("n/8");
       expect(abletonBeatsToDuration(1, 6, 8)).toBe("n/4");
-      expect(abletonBeatsToDuration(1.5, 6, 8)).toBe("n3/8");
+      expect(abletonBeatsToDuration(1.5, 6, 8)).toBe("n/4d"); // dotted quarter (sugared, was n3/8)
       expect(abletonBeatsToDuration(3.5, 6, 8)).toBe("1bar+n/8");
     });
   });
@@ -91,10 +91,12 @@ describe("abletonBeatsToDuration", () => {
     });
   });
 
-  it("emits triplet fractions when needed", () => {
-    expect(abletonBeatsToDuration(1 / 3, 4, 4)).toBe("n/12"); // eighth triplet
-    expect(abletonBeatsToDuration(2 / 3, 4, 4)).toBe("n/6"); // quarter triplet
-    expect(abletonBeatsToDuration(4 / 3, 4, 4)).toBe("n/3"); // half triplet
+  it("emits triplet suffixes when needed", () => {
+    // Triplet read-back sugar (power-of-two base): eighth triplet reads back n/8t
+    // rather than the equivalent n/12. See formatModifiedNoteValue.
+    expect(abletonBeatsToDuration(1 / 3, 4, 4)).toBe("n/8t"); // eighth triplet (was n/12)
+    expect(abletonBeatsToDuration(2 / 3, 4, 4)).toBe("n/4t"); // quarter triplet (was n/6)
+    expect(abletonBeatsToDuration(4 / 3, 4, 4)).toBe("n/2t"); // half triplet (was n/3)
   });
 
   describe("off-grid (sample-derived) lengths", () => {

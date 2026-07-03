@@ -403,16 +403,21 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* {
+  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
     // Numerator may be empty (→ 1), an integer, or a DECIMAL: the off-grid escape
     // `n<beats>/4` (e.g. `n1.9638/4`) the length/duration serializer emits for a
     // sample-derived value with no clean note-value fraction. The denominator
-    // stays a no-leading-zero integer. Kept in parity with the TS regexes in
+    // stays a no-leading-zero integer. An optional single `d`/`t` suffix scales the
+    // value: `d` = dotted (×3/2, `n/4d` = dotted quarter = 3/8), `t` = triplet
+    // (×2/3, `n/4t` = quarter triplet = 1/6, `n/8t` = eighth triplet = 1/12).
+    // Mutually exclusive, no stacking (`("d"/"t")?` matches at most one); applies to
+    // ANY numerator (`n3/8d` = 9/16). Kept in parity with the TS regexes in
     // barbeat-time.ts by note-value-grammar-parity.test.ts.
     const parts = text().split('/');
     const numerator = parts[0] === '' ? 1 : Number.parseFloat(parts[0]);
-    const denominator = Number.parseInt(parts[1]);
-    return numerator / denominator;
+    const denominator = Number.parseInt(parts[1]);  // parseInt stops at a d/t suffix
+    const value = numerator / denominator;
+    return mod === "d" ? (value * 3) / 2 : mod === "t" ? (value * 2) / 3 : value;
   }
 
 oneOrMoreDecimal

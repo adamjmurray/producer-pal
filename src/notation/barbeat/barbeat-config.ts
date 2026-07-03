@@ -74,3 +74,48 @@ export function musicalBeatsToWholeNoteFraction(
 ): number {
   return musicalBeats / (timeSigDenominator ?? 4);
 }
+
+/**
+ * Base denominators (powers of two) the read-back serializers may sugar with a
+ * dotted (`d`) or triplet (`t`) suffix: `/1d` (dotted whole) … `/64d`, `/1t` …
+ * `/64t`. Finer values fall through to their plain fraction — a dotted or triplet
+ * note value below a 64th is unheard-of.
+ */
+const MODIFIER_NOTE_VALUE_DENOMINATORS = [1, 2, 4, 8, 16, 32, 64];
+
+/**
+ * Match tolerance for read-back dotted/triplet detection. Genuine dotted/triplet
+ * note values reach the serializer as full-precision doubles (residual ~1e-15),
+ * while the nearest non-matching note value is >~1e-3 away, so a tight 1e-9 catches
+ * every real one and can never hijack a plain value.
+ */
+const MODIFIER_EPSILON = 1e-9;
+
+/**
+ * If `wholeNoteFraction` is exactly an implicit-numerator dotted (`3/2N`) or
+ * triplet (`2/3N`) note value with a power-of-two base denominator N, return its
+ * sugared spelling — `/4d` (dotted quarter = 3/8), `/8t` (eighth triplet = 1/12) —
+ * else null. Read-back sugar for durations/lengths/`@step`: the serializers try
+ * this before the plain fraction reduction so a dotted quarter emits `n/4d` rather
+ * than `n3/8`. Only implicit-numerator forms are emitted (never `n3/8d`); a value
+ * with no power-of-two base (e.g. 9/16, the `n3/8d` input) round-trips through its
+ * plain fraction. Dotted (numerator 3) and triplet (a factor of 3 in the
+ * denominator) families never overlap each other, nor any plain `1/2^m` note value.
+ * @param wholeNoteFraction - Value as a fraction of a whole note
+ * @returns Sugared note-value fraction (`/4d`, `/8t`) or null
+ */
+export function formatModifiedNoteValue(
+  wholeNoteFraction: number,
+): string | null {
+  for (const n of MODIFIER_NOTE_VALUE_DENOMINATORS) {
+    if (Math.abs(wholeNoteFraction - 3 / (2 * n)) < MODIFIER_EPSILON) {
+      return `/${n}d`;
+    }
+
+    if (Math.abs(wholeNoteFraction - 2 / (3 * n)) < MODIFIER_EPSILON) {
+      return `/${n}t`;
+    }
+  }
+
+  return null;
+}

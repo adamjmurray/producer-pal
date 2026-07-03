@@ -120,6 +120,15 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Tuplets: `n/3` half-note triplet, `n/6` quarter triplet, `n/12` eighth
     triplet, `n/24` sixteenth triplet (denominator = how many fit in a whole
     note)
+  - **Dotted (`d`) / triplet (`t`) suffix**: a single trailing `d` scales the
+    note value ×3/2, `t` ×2/3. `n/4d` = dotted quarter (≡ `n3/8`), `n/4t` =
+    quarter triplet (≡ `n/6`), `n/8t` = eighth triplet (≡ `n/12`). Mutually
+    exclusive and non-stacking (`n/4dt`, `n/4dd` are errors); applies to any
+    numerator (`n3/8d` = 9/16). `.` is deliberately NOT the dotted glyph here —
+    it is bar|beat's decimal glyph (`n1.5/4`, `1|2.5`), so it would be ambiguous
+    (stark uses `.`, having no decimals). The suffix rides the shared note-value
+    fraction, so it also works on `±n` beat offsets (`1|1+n/8t`) and `@n` step
+    intervals (`@n/8t`)
   - Meter-independent: `n/4` is always one quarter note, in 4/4, 6/8, 5/4, etc.
   - **Bar durations**: `Nbar` (meter-aware, e.g. `1bar` = hold one bar in any
     meter) and `Nbar±n<fraction>` mixed (e.g. `1bar+n3/4`, or `1bar-n/16` =
@@ -155,7 +164,13 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     than snapping to a wrong note value. A clip/arrangement `length` behaves
     identically: exact `n<fraction>`/`Nbar` on the grid (within ~1e-6),
     otherwise the `n<beats>/4` escape at fixed precision (trailing zeros
-    stripped). `@step` intervals share the same formatter
+    stripped). `@step` intervals share the same formatter. The
+    implicit-numerator power-of-two dotted (`n/1d`…`n/64d`) and triplet
+    (`n/1t`…`n/64t`) families read back **with** the `d`/`t` suffix (dotted
+    quarter → `n/4d`, eighth triplet → `n/8t`) in place of the equivalent plain
+    fraction; other numerators/tuplets (`n3/8d` = 9/16, quintuplets) keep the
+    plain fraction. `±n` beat-offset positions are not sugared — they keep the
+    plain fraction (`1|1+n/12`)
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:

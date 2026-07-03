@@ -193,8 +193,9 @@ describe("drum mode serializer", () => {
 
     const result = formatNotation(notes, { drumMode: true });
 
-    // 1/3 quarter = 1/12 whole → n/12, step equals duration so @step is omitted
-    expect(result).toBe("v80 n/12 Gb1 1|1x6");
+    // 1/3 quarter = 1/12 whole → n/8t (triplet read-back sugar); step equals
+    // duration so @step is omitted
+    expect(result).toBe("v80 n/8t Gb1 1|1x6");
   });
 
   describe("round-trip tests", () => {

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  formatModifiedNoteValue,
   musicalBeatsToWholeNoteFraction,
   NOTE_VALUE_DENOMINATORS,
 } from "#src/notation/barbeat/barbeat-config.ts";
@@ -155,6 +156,15 @@ export const BEAT_OFFSET_DENOMINATORS = [
  */
 export function formatAbsoluteDuration(wholeNoteFraction: number): string {
   if (wholeNoteFraction === 0) return "0/1";
+
+  // Prefer dotted/triplet sugar for the implicit-numerator families (`/4d` = 3/8
+  // dotted quarter, `/8t` = 1/12 eighth triplet) — a musician reads those faster
+  // than the raw fraction. Runs before the plain reduction, which would otherwise
+  // spell them `3/8` / `/12`. Non-power-of-two-base values (`n3/8d` = 9/16) return
+  // null here and fall through to their plain fraction.
+  const modified = formatModifiedNoteValue(wholeNoteFraction);
+
+  if (modified != null) return modified;
 
   // Try musically clean denominators first (powers of 2), then triplet family,
   // then less common tuplets. Smallest matching denominator wins.
