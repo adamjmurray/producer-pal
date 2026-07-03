@@ -310,6 +310,13 @@ describe("transformAnthropicRequest", () => {
       expect(parsed.thinking).toBeUndefined();
     });
 
+    it("leaves omitted thinking alone for pre-3.7 models typed via Other", async () => {
+      // These ids reject the `thinking` field entirely; injecting disabled 400s.
+      const parsed = await transform({ model: "claude-3-5-sonnet-20241022" });
+
+      expect(parsed.thinking).toBeUndefined();
+    });
+
     it("does not override adaptive thinking with disabled", async () => {
       const parsed = await transform({
         model: "claude-sonnet-5",

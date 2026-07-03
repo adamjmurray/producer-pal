@@ -12,6 +12,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { type LanguageModel } from "ai";
 import {
   isAlwaysOnThinkingModel,
+  isLegacyNonThinkingModel,
   isLegacyThinkingModel,
 } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
@@ -191,7 +192,9 @@ export async function transformAnthropicRequest(
  * Whether an omitted `thinking` field should be forced to `{type: "disabled"}`.
  * True for adaptive-by-default Anthropic models where omitting `thinking` would
  * otherwise run adaptive thinking (Sonnet 5+); false for legacy enabled-thinking
- * models (Haiku) and always-on models (Fable / Mythos) that reject `disabled`.
+ * models (Haiku), always-on models (Fable / Mythos) that reject `disabled`, and
+ * pre-3.7 models (via the free-text "Other..." input) that reject the `thinking`
+ * field entirely — injecting `disabled` on those 400s every send.
  * @param body - Parsed Anthropic request body
  * @returns True when `{type: "disabled"}` should be injected
  */
@@ -200,7 +203,8 @@ function shouldForceThinkingDisabled(body: AnthropicRequestBody): boolean {
     body.thinking == null &&
     typeof body.model === "string" &&
     !isLegacyThinkingModel(body.model) &&
-    !isAlwaysOnThinkingModel(body.model)
+    !isAlwaysOnThinkingModel(body.model) &&
+    !isLegacyNonThinkingModel(body.model)
   );
 }
 
