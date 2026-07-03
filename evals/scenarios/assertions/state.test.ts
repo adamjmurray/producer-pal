@@ -5,10 +5,17 @@
 /**
  * Tests for state.ts - State assertion with mocked MCP client
  */
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { setConfig } from "#evals/shared/config.ts";
+import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import { type StateAssertion, type EvalTurnResult } from "../types.ts";
 import { assertState } from "./state.ts";
+
+vi.mock(import("#evals/shared/config.ts"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  setConfig: vi.fn().mockResolvedValue(undefined),
+}));
 
 /** Type for state assertion details */
 interface StateDetails {
@@ -296,6 +303,67 @@ describe("assertState", () => {
       const result = await assertState(assertion, [], mockClient);
 
       expect(result.message).toContain("custom-tool-name");
+    });
+  });
+
+  describe("notation override", () => {
+    beforeEach(() => {
+      vi.mocked(setConfig).mockClear();
+    });
+
+    it("leaves config untouched when no notation override is set", async () => {
+      const mockClient = createMockClient(mcpResult(JSON.stringify({})));
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "read-track",
+        args: {},
+        expect: {},
+      };
+
+      await assertState(assertion, [], mockClient);
+
+      expect(setConfig).not.toHaveBeenCalled();
+    });
+
+    it("resets to the default notation after a per-assertion override", async () => {
+      const mockClient = createMockClient(
+        mcpResult(JSON.stringify({ ok: true })),
+      );
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        notation: "midi-json",
+        args: { clipId: "1" },
+        expect: () => true,
+      };
+
+      await assertState(assertion, [], mockClient);
+
+      // Override applied for the read, then reset so it can't leak downstream.
+      expect(setConfig).toHaveBeenNthCalledWith(1, { notation: "midi-json" });
+      expect(setConfig).toHaveBeenNthCalledWith(2, {
+        notation: DEFAULT_NOTATION,
+      });
+    });
+
+    it("still resets the notation when the read throws", async () => {
+      const mockClient = {
+        callTool: vi.fn().mockRejectedValue(new Error("boom")),
+      } as unknown as Client;
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        notation: "stark",
+        args: {},
+        expect: () => true,
+      };
+
+      const result = await assertState(assertion, [], mockClient);
+
+      expect(result.earned).toBe(0);
+      expect(setConfig).toHaveBeenNthCalledWith(2, {
+        notation: DEFAULT_NOTATION,
+      });
     });
   });
 });

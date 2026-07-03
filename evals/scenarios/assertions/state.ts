@@ -9,6 +9,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { setConfig } from "#evals/shared/config.ts";
+import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import {
   type StateAssertion,
   type EvalAssertionResult,
@@ -29,13 +30,18 @@ export async function assertState(
   turns: EvalTurnResult[],
   mcpClient: Client,
 ): Promise<EvalAssertionResult> {
+  // Track whether we actually flipped the notation so the finally-block only
+  // resets when it needs to (and never when the initial set-config threw).
+  let notationOverridden = false;
+
   try {
     // Optionally flip the server notation before reading so the tool serializes
     // notes in a known format (grading reads clean midi-json regardless of the
     // notation the model wrote in). POST /config merges, so only notation
-    // changes; the scenario's finally-block resetConfig restores defaults.
+    // changes.
     if (assertion.notation) {
       await setConfig({ notation: assertion.notation });
+      notationOverridden = true;
     }
 
     const args =
@@ -92,5 +98,11 @@ export async function assertState(
       message: `State assertion error: ${error instanceof Error ? error.message : String(error)}`,
       details: { error: String(error) },
     };
+  } finally {
+    // Restore the default notation so this assertion's override can't leak into a
+    // later state read that grades without one (assertions must be independent).
+    if (notationOverridden) {
+      await setConfig({ notation: DEFAULT_NOTATION });
+    }
   }
 }
