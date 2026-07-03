@@ -32,7 +32,10 @@ advances time by its own duration:
 
 - **Drums** — headed by a **drum name** or an **absolute pitch name** (below),
   with an optional header `/N` line default. Tokens are hits/rests.
-- **Bass / melody / chords** — pitched tokens (below).
+- **Melody / bass** — **literal** pitched tokens: single notes and `[..]`
+  bracket stacks (below).
+- **Chords** — **symbolic**: chord symbols (`Cm7`, `G7/B`) the interpreter
+  realizes into notes, plus optional `[..]` bracket voicings (below).
 
 Headers are case-insensitive. Mixed section types in one string (e.g. `drums` +
 `melody`) are **legal but warned**. When two voices produce the same pitch at
@@ -93,17 +96,25 @@ dropped notes.
 
 ---
 
-## Pitched lines (bass / melody / chords)
+## Pitched lines (melody / bass / chords)
+
+Pitched lines split along a **literal-vs-symbolic** axis. `melody`/`bass` are
+**literal** — single notes and `[..]` bracket stacks spelled exactly. `chords`
+is **symbolic** — each bare token is a chord **symbol** the interpreter realizes
+into notes, with `[..]` voicings also allowed. The three differ in register
+default (below); only the chords line reads chord symbols.
 
 ```
 melody: C Eb G' z/2 A/8!
 melody/8: C D E G          # /N in the header sets the line's default duration
-chords: [C Eb G]/2!        # bracket notes share the chord's /N and dynamic
+melody: [C Eb G]/2!        # a bracket stack — notes share the /N and dynamic
+chords: C Am F G7          # chord symbols: bare = major, else a quality suffix
+chords: Cm7 [Eb G C']      # a symbol, then an explicit voicing (chord register)
 ```
 
-A **note token** is, in order: `letter` (`A`–`G`, case-insensitive) +
-**accidental** (`#`/`b`, _immediately after the letter_, so `Cb` = C-flat while
-a lone `b` = note B) + suffix modifiers in **any order**:
+A **note token** (melody/bass) is, in order: `letter` (`A`–`G`,
+case-insensitive) + **accidental** (`#`/`b`, _immediately after the letter_, so
+`Cb` = C-flat while a lone `b` = note B) + suffix modifiers in **any order**:
 
 - **octave marks** `'` (up) / `,` (down), stackable — shift from the register
   default.
@@ -118,7 +129,42 @@ pitch → accidental → octave → `/duration` → dynamic.
 **Rest** = `z` with optional `/N` (`z/4`). **Bracket chord** =
 `[<note> <note> ...]` with optional `/N` and dynamic applied to the whole chord;
 inner notes follow the pitch rules (letter + accidental + octave), no per-note
-duration/dynamic.
+duration/dynamic. Brackets are valid on **any** pitched line — melody/bass
+(their register) and chords (the chord register).
+
+### Chord symbols (chords line)
+
+On a `chords` line a **bare** token is a chord symbol (never a single note):
+
+- **root** — `letter` (`A`–`G`, case-insensitive) + optional **accidental**
+  `#`/`b` bound immediately, exactly like a note root (`Ebm7`, `Bb7`).
+- **quality** — the suffix that names the chord. **Bare root = major triad**
+  (`C` = C major); `m`/`min` = minor. The vocabulary (`stark-config`'s
+  `CHORD_QUALITY_INTERVALS`) covers triads (`maj`/`M`, `m`/`min`, `dim`,
+  `aug`/`+`, `sus2`, `sus4`/`sus`, `5`), sixths (`6`, `m6`, `69`), sevenths
+  (`7`, `maj7`/`M7`, `m7`/`min7`, `m7b5`, `dim7`, `mMaj7`), extensions (`9`,
+  `maj9`, `m9`, `11`, `13`, `add9`, `add11`, `add13`), and alterations (`7b5`,
+  `7#5`, `7b9`, `7#9`, `7#11`). Case matters: `m` = minor, `M` = a major-7th
+  qualifier. An extension implies the tones below it (a `9` includes its `7`).
+- **slash bass** — `/` + a pitch letter (+ optional accidental): `G7/B`. Since
+  `/` + a **letter** is a bass but `/` + a **digit** is a duration, the two are
+  disjoint and coexist: `G7/B/2` = G7 over B, half note.
+- **suffixes** — the same octave marks, `/N` duration, `!`/`?` dynamic, and `*N`
+  repeat as a note, applied to the whole chord. (Known collision: a `6/9` chord
+  clashes with slash/duration — spell it `69`.)
+
+**Voicing (v1):** closed, root position, stacked up from the chords register (C2
+= 48); a slash bass is placed at the highest octave strictly below the root (a
+chord tone → inversion, else an added bottom). Octave marks shift the whole
+chord. No drop/open/spread voicings. An **unknown quality** warn-skips the token
+(and still advances time, so later chords stay aligned).
+
+> **Chord symbols are INPUT-ONLY sugar.** They name a set of pitch classes; the
+> interpreter realizes them into concrete notes. The **serializer never emits a
+> `chords:` line or a symbol** — read-back is always literal notes on a
+> melody/bass line (a simultaneous group becomes a `[..]` stack, placed on the
+> line the median pitch selects). This preserves the literal round-trip: the
+> realized notes are canonical, the symbol is lossy authoring convenience.
 
 **Register defaults** (the MIDI pitch a bare `C` maps to; octave marks shift
 from here), using the Ableton convention (C3 = MIDI 60):
@@ -173,8 +219,8 @@ exactly as separate tokens do) and time advances by the copies' summed duration.
 harmless no-op). `*N` is the **terminal** modifier — it follows the `/N`
 duration, octave marks, and dynamic (`X/8*4`, `Eb'/16!*8`), so it never disturbs
 the free ordering of the `' , ! ?` suffixes. It applies to every token type:
-drum hit, pitched note, rest, and bracket chord. There is **no group repeat**
-(`(…)*N` is not supported) — repeat multiplies one token only.
+drum hit, pitched note, rest, bracket chord, and chord symbol. There is **no
+group repeat** (`(…)*N` is not supported) — repeat multiplies one token only.
 
 The serializer **emits** `*N`: a final pass collapses each run of **3+**
 consecutive identical rendered tokens (same core, `/N`, and dynamic) into

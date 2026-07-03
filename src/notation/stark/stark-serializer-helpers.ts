@@ -24,47 +24,30 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { midiToNoteName, PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
 
-/** A pitched line classified for serialization (chords vs. mono bass/melody). */
-export type PitchedClassification =
-  | { kind: "chords"; sorted: NoteEvent[] }
-  | {
-      kind: "mono";
-      lineType: "bass" | "melody";
-      registerDefault: number;
-      sorted: NoteEvent[];
-    };
+/** A pitched line classified for serialization: a bass/melody line by register. */
+export interface PitchedClassification {
+  lineType: "bass" | "melody";
+  registerDefault: number;
+  sorted: NoteEvent[];
+}
 
 /**
- * Sort notes and classify the line as chords (any simultaneous notes) or a
- * monophonic bass/melody line (by median pitch), with its register default.
+ * Sort notes and classify the line as bass or melody by median pitch, with its
+ * register default. Simultaneous notes (chords) are serialized as [..] bracket
+ * stacks on whichever line the median picks — chord SYMBOLS are input-only, so
+ * read-back is always literal notes on a melody/bass line, never a `chords:` line.
  * @param notes - Note events to classify
  * @returns The classification plus the start-sorted notes
  */
 export function classifyPitchedLine(notes: NoteEvent[]): PitchedClassification {
   const sorted = [...notes].sort((a, b) => a.start_time - b.start_time);
-
-  // Detect simultaneous notes (same start_time within epsilon).
-  const hasChords = sorted.some((note, i) => {
-    const next = sorted[i + 1];
-
-    return (
-      next !== undefined &&
-      Math.abs(note.start_time - next.start_time) < SAME_TIME_EPSILON
-    );
-  });
-
-  if (hasChords) {
-    return { kind: "chords", sorted };
-  }
-
-  // Monophonic — classify as bass or melody by median pitch.
   const pitches = sorted.map((n) => n.pitch).sort((a, b) => a - b);
   const medianPitch = pitches[Math.floor(pitches.length / 2)] ?? 60;
   const lineType = medianPitch < 48 ? "bass" : "melody";
   const registerDefault =
     lineType === "bass" ? BASS_REGISTER_DEFAULT : MELODY_REGISTER_DEFAULT;
 
-  return { kind: "mono", lineType, registerDefault, sorted };
+  return { lineType, registerDefault, sorted };
 }
 
 /**

@@ -129,8 +129,8 @@ describe("stark interpreter — pitched lines", () => {
     expect(notes[0]?.pitch).toBe(36);
   });
 
-  it("chords: bracket voicing = simultaneous notes", () => {
-    const notes = interpretNotation("chords: [C Eb G]/2");
+  it("melody: bracket voicing = simultaneous notes", () => {
+    const notes = interpretNotation("melody: [C Eb G]/2");
 
     expect(notes).toHaveLength(3);
     expect(notes.every((n) => n.start_time === 0)).toBe(true);
@@ -146,6 +146,112 @@ describe("stark interpreter — pitched lines", () => {
       1,
       expect.stringContaining("mixed section types"),
     );
+  });
+});
+
+describe("stark interpreter — chord symbols (chords line)", () => {
+  it("a bare root is a major triad at the chord register (C2=48), /1 default", () => {
+    const notes = interpretNotation("chords: C");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([48, 52, 55]);
+    expect(notes.every((n) => n.duration === 4)).toBe(true);
+  });
+
+  it("realizes a quality (minor seventh) and a slash bass", () => {
+    expect(interpretNotation("chords: Cm7").map((n) => n.pitch)).toStrictEqual([
+      48, 51, 55, 58,
+    ]);
+    // G7/B: G7 = [55,59,62,65] with the B dropped to 47, just below the root.
+    expect(interpretNotation("chords: G7/B").map((n) => n.pitch)).toStrictEqual(
+      [47, 55, 59, 62, 65],
+    );
+  });
+
+  it("octave marks shift the whole chord down an octave", () => {
+    expect(interpretNotation("chords: C,").map((n) => n.pitch)).toStrictEqual([
+      36, 40, 43,
+    ]);
+  });
+
+  it("advances time per chord (event-based)", () => {
+    const notes = interpretNotation("chords: C G");
+
+    expect(
+      notes.filter((n) => n.start_time === 0).map((n) => n.pitch),
+    ).toStrictEqual([48, 52, 55]);
+    expect(
+      notes.filter((n) => n.start_time === 4).map((n) => n.pitch),
+    ).toStrictEqual([55, 59, 62]);
+  });
+
+  it("*N repeats a whole chord", () => {
+    const notes = interpretNotation("chords: C*2");
+
+    expect(notes).toHaveLength(6);
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 0, 0, 4, 4, 4]);
+  });
+
+  it("a bar marker does not advance time; a rest does", () => {
+    // C then | then G: the barline advances nothing, so G lands at beat 4.
+    expect(
+      interpretNotation("chords: C | G").filter((n) => n.start_time === 4),
+    ).toHaveLength(3);
+
+    // C (/2 = 2 beats) then a /2 rest (2 beats) → G at beat 4.
+    expect(
+      interpretNotation("chords /2: C z/2 G").filter((n) => n.start_time === 4),
+    ).toHaveLength(3);
+  });
+
+  it("warn-skips an unknown quality but keeps later chords aligned", () => {
+    const notes = interpretNotation("chords: C Cwat G");
+
+    // C at 0, Cwat skipped (still advances 4 beats), G at 8 — nothing at 4.
+    expect(
+      notes.filter((n) => n.start_time === 0).map((n) => n.pitch),
+    ).toStrictEqual([48, 52, 55]);
+    expect(
+      notes.filter((n) => n.start_time === 8).map((n) => n.pitch),
+    ).toStrictEqual([55, 59, 62]);
+    expect(notes.some((n) => n.start_time === 4)).toBe(false);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("unknown chord symbol"),
+    );
+  });
+
+  it("uses ! / ? for dynamics; letter case is insignificant (not a dynamic)", () => {
+    expect(
+      interpretNotation("chords: C?").every(
+        (n) => bucket(n.velocity) === "soft",
+      ),
+    ).toBe(true);
+    expect(
+      interpretNotation("chords: C!").every(
+        (n) => bucket(n.velocity) === "accent",
+      ),
+    ).toBe(true);
+    // lowercase root = the SAME chord at normal velocity, not a softer one.
+    const lower = interpretNotation("chords: c");
+
+    expect(lower.map((n) => n.pitch)).toStrictEqual([48, 52, 55]);
+    expect(lower.every((n) => bucket(n.velocity) === "normal")).toBe(true);
+  });
+
+  it("accepts an explicit [..] voicing at the chord register, beside symbols", () => {
+    const notes = interpretNotation("chords: Cm7 [Eb G C']");
+
+    // Cm7 at 0; then the bracket [Eb G C'] voiced from C2: Eb=51, G=55, C'=60.
+    expect(
+      notes.filter((n) => n.start_time === 4).map((n) => n.pitch),
+    ).toStrictEqual([51, 55, 60]);
+  });
+
+  it("a single-note [..] bracket is a literal note, distinct from a bare symbol", () => {
+    // `[C]` = one literal C (48); bare `C` = the C-major triad.
+    expect(interpretNotation("chords: [C]").map((n) => n.pitch)).toStrictEqual([
+      48,
+    ]);
   });
 });
 
@@ -172,12 +278,12 @@ describe("stark interpreter — dotted durations (×1.5)", () => {
     expect(notes.map((n) => n.start_time)).toStrictEqual([0, 2.5]);
   });
 
-  it("a dotted /N applies to drum hits and chords", () => {
+  it("a dotted /N applies to drum hits and bracket chords", () => {
     const drum = interpretNotation("kick: X/4. X");
 
     expect(drum.map((n) => n.start_time)).toStrictEqual([0, 1.5]);
 
-    const chord = interpretNotation("chords: [C E]/2.");
+    const chord = interpretNotation("melody: [C E]/2.");
 
     expect(chord).toHaveLength(2);
     expect(chord.every((n) => n.duration === 3)).toBe(true);
@@ -223,8 +329,8 @@ describe("stark interpreter — repeat (*N)", () => {
     expect(notes.map((n) => n.start_time)).toStrictEqual([0, 3]);
   });
 
-  it("repeats a whole chord", () => {
-    const notes = interpretNotation("chords: [C E G]/4*2");
+  it("repeats a whole bracket chord", () => {
+    const notes = interpretNotation("melody: [C E G]/4*2");
 
     expect(notes).toHaveLength(6);
     expect(notes.map((n) => n.start_time)).toStrictEqual([0, 0, 0, 1, 1, 1]);

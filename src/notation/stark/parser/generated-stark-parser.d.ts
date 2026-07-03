@@ -111,6 +111,42 @@ export type PitchedContentItem =
   | RestItem
   | ChordItem;
 
+// --- Chord-symbol items (symbolic: chords lines only) ---
+
+/**
+ * A chord symbol (`Cm7`, `G7/B`, `Fmaj9`) — INPUT-ONLY sugar the interpreter
+ * realizes into concrete notes. The serializer never emits these (read-back is
+ * literal notes on a melody/bass line), so there is no chord-symbol AST on the
+ * way out.
+ */
+export interface ChordSymbolItem {
+  type: "chordSymbol";
+  /** Root pitch-class name with optional accidental (e.g. "C", "Eb", "F#") */
+  root: string;
+  /** Quality string as written ("" = major triad; "m7", "maj9", "7b9", …) */
+  quality: string;
+  /** Slash-bass pitch-class name (e.g. "B" in "G7/B"), or null */
+  bass: string | null;
+  /** Net octave displacement from octave marks (shifts the whole chord) */
+  octaveShift: number;
+  /** Explicit /N duration, or null (use line default) */
+  duration: StarkDuration | null;
+  dynamic: StarkDynamic;
+  /** `*N` repeat count (expand into N copies), or null (once) */
+  repeat: number | null;
+}
+
+/**
+ * A chords-line content item: bar marker, rest, chord symbol, or an explicit
+ * [..] bracket voicing (ChordItem, voiced in the chord register). No bare single
+ * notes — a bare token is always a symbol.
+ */
+export type ChordsContentItem =
+  | BarMarkerItem
+  | RestItem
+  | ChordSymbolItem
+  | ChordItem;
+
 // --- Sections ---
 
 /** A `<drumname>: <hits>` or `<pitch>: <hits>` section (event-based timing) */
@@ -129,13 +165,24 @@ export interface DrumSection {
   content: DrumContentItem[];
 }
 
-/** A `bass: / melody: / chords: <tokens>` section (event-based timing) */
-export interface PitchedSection {
-  type: "bass" | "melody" | "chords";
+/** A `bass:` / `melody:` LITERAL section: single notes and [..] bracket stacks */
+export interface MelodyBassSection {
+  type: "bass" | "melody";
   /** /N from the line header (sets the line default), or null */
   defaultDuration: StarkDuration | null;
   content: PitchedContentItem[];
 }
+
+/** A `chords:` SYMBOLIC section: chord symbols the interpreter realizes to notes */
+export interface ChordsSection {
+  type: "chords";
+  /** /N from the line header (sets the line default), or null */
+  defaultDuration: StarkDuration | null;
+  content: ChordsContentItem[];
+}
+
+/** A pitched (non-drum) section: literal melody/bass, or symbolic chords */
+export type PitchedSection = MelodyBassSection | ChordsSection;
 
 export type StarkSection = DrumSection | PitchedSection;
 

@@ -1,9 +1,11 @@
 // Stark notation grammar.
 //
-// Stark is a literal, round-trippable notation. Both section types are
-// event-based: pitched (bass/melody/chords) lines and drum lines each spell
-// timing with explicit /N durations (drums are a melody line whose tokens are
-// drum hits at a fixed pitch), not a positional 16th-note grid.
+// Stark is a literal, round-trippable notation. Every line is event-based: it
+// spells timing with explicit /N durations, not a positional 16th-note grid.
+// Line types split along a literal-vs-symbolic axis:
+//   melody / bass — LITERAL pitches: single notes and [..] bracket stacks.
+//   chords        — SYMBOLIC: chord symbols (Cm7, G7/B) realized into notes.
+//   drums         — a melody line whose tokens are drum hits at a fixed pitch.
 //
 // Durations are absolute note values (/4 = quarter note, /8 = eighth, etc.),
 // with an optional trailing dot for a dotted (×1.5) value (/4. = dotted quarter,
@@ -19,7 +21,8 @@ Start
 
 Section
   = DrumSection
-  / PitchedSection
+  / ChordsSection
+  / MelodyBassSection
 
 // --- Section headers ---
 
@@ -54,8 +57,18 @@ DrumHeader
 DrumPitchName "drum pitch name"
   = $([A-Ga-g] [#b]? "-"? [0-9]+)
 
-PitchedSection
-  = lineType:PitchedLineType _h dur:LineDefaultDuration? _h ":" _h content:PitchedContent _ {
+// A chords line is SYMBOLIC: each token is a chord symbol (Cm7, G7/B, Fmaj9) the
+// interpreter realizes into concrete notes. Unlike melody/bass it takes no bare
+// single notes or [..] bracket voicings — those belong on a melody/bass line.
+ChordsSection
+  = "chords"i _h dur:LineDefaultDuration? _h ":" _h content:ChordsContent _ {
+      return { type: "chords", defaultDuration: dur, content: content };
+    }
+
+// A melody or bass line is LITERAL: single notes and [..] bracket stacks spelled
+// exactly. melody and bass differ only in register default (C3=60 vs C1=36).
+MelodyBassSection
+  = lineType:MelodyBassLineType _h dur:LineDefaultDuration? _h ":" _h content:PitchedContent _ {
       return { type: lineType, defaultDuration: dur, content: content };
     }
 
@@ -63,10 +76,9 @@ PitchedSection
 LineDefaultDuration
   = "/" d:Duration { return d; }
 
-PitchedLineType
+MelodyBassLineType
   = "melody"i { return "melody"; }
   / "bass"i   { return "bass"; }
-  / "chords"i { return "chords"; }
 
 // --- Drum content (event-based, whitespace-tokenized) ---
 // Whitespace between tokens has no rhythmic meaning. A token is a hit (^/X/x)
@@ -99,7 +111,7 @@ DrumVelocity
 
 // --- Pitched content (event-based, whitespace-tokenized) ---
 // Whitespace between tokens has no rhythmic meaning.
-// Applies to bass, melody, and chords lines.
+// Applies to melody and bass lines (chords lines are symbolic — see below).
 
 PitchedContent
   = items:PitchedContentItem* { return items; }
@@ -195,6 +207,62 @@ ChordSuffix
   = "/" d:Duration { return { type: "duration", value: d }; }
   / "!"  { return { type: "dynamic", value: "accent" }; }
   / "?"  { return { type: "dynamic", value: "soft" }; }
+
+// --- Chords content (event-based, whitespace-tokenized) ---
+// A chords line holds polyphony spelled either way: a bare token is a chord
+// SYMBOL the interpreter realizes into notes (`Cm7`, bare = major triad), and a
+// [..] bracket is an explicit voicing (voiced in the chord register). The bracket
+// disambiguates, so `C` (symbol → C major) and `[C]` (literal single note)
+// coexist. Bare single NOTES are not a thing here — a bare token is always a
+// symbol; put literal single-note lines on melody/bass.
+
+ChordsContent
+  = items:ChordsContentItem* { return items; }
+
+// Leading _h on each item handles the inter-token whitespace.
+ChordsContentItem
+  = _h item:ChordsItem { return item; }
+
+ChordsItem
+  = BarMarker
+  / ChordToken
+  / RestToken
+  / ChordSymbolToken
+
+// A chord symbol: root (letter + optional accidental, bound immediately like a
+// note so `Ebm7` = Eb minor 7) + a quality string (`m7`, `maj9`, `7b9`; empty =
+// major triad) + optional slash bass (`/B`) + the same octave/duration/dynamic
+// suffixes and `*N` repeat as a note. `/`+letter is the slash bass, `/`+digit is
+// a duration — disjoint, so `G7/B/2` = G7 over B, half note. The quality class
+// stops at any suffix/terminator (`/ ' , ! ? * |`) and whitespace; the
+// interpreter (not the grammar) validates the quality and warns on unknowns.
+ChordSymbolToken
+  = letter:[A-Ga-g] acc:[#b]? quality:$([A-Za-z0-9#+]*) bass:SlashBass? suffixes:NoteTokenSuffix* rep:Repeat? {
+      var octaveShift = 0;
+      var duration = null;
+      var dynamic = "normal";
+      for (var i = 0; i < suffixes.length; i++) {
+        var s = suffixes[i];
+        if (s.type === "octave")         octaveShift += s.value;
+        else if (s.type === "duration")  duration = s.value;
+        else if (s.type === "dynamic")   dynamic = s.value;
+      }
+      return {
+        type: "chordSymbol",
+        root: letter.toUpperCase() + (acc || ""),
+        quality: quality,
+        bass: bass,
+        octaveShift: octaveShift,
+        duration: duration,
+        dynamic: dynamic,
+        repeat: rep
+      };
+    }
+
+// Slash bass: `/` + a pitch letter (+ optional accidental). Distinct from a `/N`
+// duration suffix because the char after `/` is a letter, not a digit.
+SlashBass
+  = "/" letter:[A-Ga-g] acc:[#b]? { return letter.toUpperCase() + (acc || ""); }
 
 // Absolute note value with an optional trailing dot: /4 = quarter (1 beat),
 // /4. = dotted quarter (×1.5 = 1.5 beats). At most one dot — double-dots are not

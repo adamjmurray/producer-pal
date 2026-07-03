@@ -4,18 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Stark notation heads. A literal, round-trippable format: pitched
- * (bass/melody/chords) lines use explicit pitch + absolute /N durations, and
- * drums are event-based (a line of drum hits with /N durations).
+ * Stark notation heads. A literal, round-trippable format: melody/bass lines are
+ * literal pitches, a chords line is chord SYMBOLS, and drums are event-based (a
+ * line of drum hits) — all with absolute /N durations.
  *
- * Two variants share one body and differ only in the drum pitch-name fallback.
- * {@link starkStandard} teaches the absolute pitch-name header (`C3:`) for pads
- * outside the 16 named General MIDI drums; {@link starkBasic} (small-model mode)
- * omits it so small models only ever author the 16 named pads. The serializer
- * still emits, and the parser still reads, `C3:` headers — so read-back of an
- * exotic pad is unchanged; this only narrows what a small model is taught to
- * generate. The matching core body ({@link coreStandard} / {@link coreBasic}) is
- * appended by {@link buildSkills}.
+ * The two variants share a body and differ in two escape hatches the standard
+ * head adds and the basic head omits: the absolute drum pitch-name header (`C3:`)
+ * for pads outside the 16 named General MIDI drums, and `[..]` bracket voicings.
+ * The parser reads both in EVERY mode — the serializer still emits `C3:` headers
+ * and bracket stacks — so read-back is unchanged; the basic head only narrows
+ * what a small model is TAUGHT to generate (chord symbols + the 16 named pads).
+ * The matching core body ({@link coreStandard} / {@link coreBasic}) is appended
+ * by {@link buildSkills}.
  */
 
 // Preamble + the drum line, through the 16 named pads (shared by both heads).
@@ -36,18 +36,36 @@ Drum names (General MIDI 16-pad layout, notes 36-51): kick snare snare2 hihat pe
 // Standard-only clause: how to address a pad outside the 16 named drums.
 const starkDrumPitchNameFallback = ` A pad with no name uses an absolute pitch-name header instead (\`C3: X z X z\`, Ableton C3=60) — same content syntax.`;
 
-// Pitched lines, registers, chords, and the merge note (shared by both heads).
+// Pitched lines, registers, and chord symbols (shared by both heads).
 const starkHeadPitched = `
-- **Pitched** — \`melody: C Eb G'\` (also \`bass:\`, \`chords:\`). A token is letter \`A\`-\`G\` + optional \`#\`/\`b\` (immediately after the letter, so \`Cb\`=C-flat but a lone \`b\`=note B) + octave marks (\`'\` up, \`,\` down, stackable) + duration \`/N\` + dynamic (\`!\`=accent, \`?\`=soft, omit=normal). \`/N\` is an ABSOLUTE note value: \`/1\`=whole (4 beats), \`/2\`=half, \`/4\`=quarter (1 beat), \`/8\`, \`/16\`. A trailing dot means dotted (×1.5): \`/4.\`=dotted quarter (1.5 beats); one dot max. Repeat any token with a trailing \`*N\`: \`C*4\`, \`[C E G]*2\`, \`z*3\`. Rest = \`z\` or \`z/N\`. Default duration is \`/4\` for bass/melody, \`/1\` for chords; set a line default in the header (\`melody/8: ...\`).
+- **Pitched** — \`melody: C Eb G'\` (also \`bass:\`). A token is letter \`A\`-\`G\` + optional \`#\`/\`b\` (immediately after the letter, so \`Cb\`=C-flat but a lone \`b\`=note B) + octave marks (\`'\` up, \`,\` down, stackable) + duration \`/N\` + dynamic (\`!\`=accent, \`?\`=soft, omit=normal). \`/N\` is an ABSOLUTE note value: \`/1\`=whole (4 beats), \`/2\`=half, \`/4\`=quarter (1 beat), \`/8\`, \`/16\`. A trailing dot means dotted (×1.5): \`/4.\`=dotted quarter (1.5 beats); one dot max. Repeat any token with a trailing \`*N\`: \`C*4\`, \`z*3\`. Rest = \`z\` or \`z/N\`. Default duration is \`/4\` for bass/melody, \`/1\` for chords; set a line default in the header (\`melody/8: ...\`).
 - **Registers** (the MIDI pitch a bare \`C\` maps to, Ableton naming where C3=60=middle C): bass=C1, melody=C3, chords=C2; octave marks shift from there.
-- **Chords** — \`chords: [C Eb G]/2!\` the bracket's notes share its \`/N\` duration and dynamic.
+- **Chords** — \`chords: C Am F G7\` one chord SYMBOL per token: root (letter + optional \`#\`/\`b\`, e.g. \`Ebm7\`, \`Bb7\`) + quality. Bare root = major triad; \`m\`=minor (\`Cm\`), then \`maj7 m7 7 dim aug sus2 sus4 6 9 11 13 add9\` and alterations like \`7b9\`/\`7#5\`. Slash bass \`G7/B\`. Octave marks, \`/N\`, \`!\`/\`?\`, and \`*N\` work as on notes. Chord symbols are input-only sugar — read-back returns the literal notes.`;
+
+// Bracket voicings — an advanced escape hatch taught to the standard head only;
+// the parser accepts them in every mode, so small models simply aren't shown them.
+const starkBracketVoicings = `
+- **Voicings** — a \`[C E G]\` bracket is an explicit simultaneous stack sharing one \`/N\` + dynamic: \`melody: [C E G]/2!\`. Valid on melody/bass (their register) and on a \`chords:\` line (chord register), alongside symbols: \`chords: Cm7 [Eb G C']\`.`;
+
+// The merge note closes both heads.
+const starkMergeNote = `
 
 \`notes\` MERGES into an existing clip; use \`preTransforms\` to delete or edit notes already in the clip.
 `;
 
-/** Standard stark head: includes the absolute pitch-name fallback for unnamed pads. */
+/**
+ * Standard stark head: adds the absolute pitch-name fallback for unnamed pads and
+ * the bracket-voicing escape hatch that the basic head omits.
+ */
 export const starkStandard =
-  starkHeadDrums + starkDrumPitchNameFallback + starkHeadPitched;
+  starkHeadDrums +
+  starkDrumPitchNameFallback +
+  starkHeadPitched +
+  starkBracketVoicings +
+  starkMergeNote;
 
-/** Small-model stark head: the 16 named pads only, no absolute pitch-name fallback. */
-export const starkBasic = starkHeadDrums + starkHeadPitched;
+/**
+ * Small-model stark head: the 16 named pads and chord symbols only — no absolute
+ * pitch-name fallback and no bracket voicings.
+ */
+export const starkBasic = starkHeadDrums + starkHeadPitched + starkMergeNote;

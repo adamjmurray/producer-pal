@@ -225,10 +225,11 @@ describe("stark serializer — dotted durations round-trip exactly", () => {
     ]);
   });
 
-  it("round-trips a dotted chord and a dotted drum hit", () => {
+  it("round-trips a dotted bracket chord and a dotted drum hit", () => {
+    // Median 52 ≥ 48 → a melody line; simultaneous notes serialize as a [..] stack.
     const chord = formatNotation([note(48, 0, 3), note(52, 0, 3)]);
 
-    expect(chord).toBe("chords /2.: [C E]");
+    expect(chord).toBe("melody /2.: [C, E,]");
 
     const drum = formatNotation(
       [note(36, 0, 0.75), note(36, 0.75, 0.75)],
@@ -262,7 +263,7 @@ describe("stark serializer — repeat emission (*N)", () => {
     expect(line).toBe("melody: C*4");
   });
 
-  it("collapses repeated chords into [notes]*N", () => {
+  it("collapses repeated bracket chords into [notes]*N", () => {
     const line = formatNotation([
       note(48, 0, 1),
       note(52, 0, 1),
@@ -275,7 +276,7 @@ describe("stark serializer — repeat emission (*N)", () => {
       note(55, 2, 1),
     ]);
 
-    expect(line).toBe("chords /4: [C E G]*3");
+    expect(line).toBe("melody: [C, E, G,]*3");
   });
 
   it("a run of three hits collapses (the emit threshold)", () => {
@@ -352,14 +353,16 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     expect(first[0]?.pitch).toBe(36);
   });
 
-  it("chords preserve simultaneous notes", () => {
-    const { first, second } = roundTrip("chords: [C Eb G]/2! [D F A]/2");
+  it("bracket chords preserve simultaneous notes", () => {
+    const { first, second } = roundTrip("melody: [C Eb G]/2! [D F A]/2");
 
     expectStableNotes(first, second);
   });
 
-  it("whole-note chords use the /1 default", () => {
-    const { first, second } = roundTrip("chords: [C E G] [D F A]");
+  it("chord symbols realize to notes that round-trip", () => {
+    // Chord symbols are input-only sugar; read-back is literal notes on a
+    // melody/bass line, never a chords: line.
+    const { first, second } = roundTrip("chords: C G");
 
     expectStableNotes(first, second);
   });

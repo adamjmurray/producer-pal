@@ -25,7 +25,8 @@
  * common case reads clean (`kick: X X X X`, `hihat /8: z X z X …`). A final pass
  * collapses runs of 3+ identical tokens into `token*N` (`X*16` for a 16th roll).
  * Drums differ from pitched lines only in the token glyph (`^`/`X`/`x` vs a pitch
- * letter) and the header (a drum name vs melody/bass/chords).
+ * letter) and the header (a drum name vs melody/bass). Chord symbols are
+ * input-only, so a chord serializes as a [..] bracket stack, never a `chords:` line.
  *
  * The leaf primitives (pitch spelling, velocity glyphs, rest decomposition, line
  * classification) live in stark-serializer-helpers.ts; the line-default
@@ -33,7 +34,6 @@
  */
 
 import {
-  CHORDS_REGISTER_DEFAULT,
   DRUM_DEFAULT,
   LINE_DEFAULT,
 } from "#src/notation/stark/stark-config.ts";
@@ -244,30 +244,13 @@ function isBetterDefault(
   return entry.beats > best.beats;
 }
 
-// ---- Pitched lines (bass / melody / chords) ----
+// ---- Pitched lines (bass / melody) ----
 
-// Classify the notes, then serialize as a chords line or a mono bass/melody line.
+// Serialize a pitched line: bass or melody by median pitch, with any
+// simultaneous notes rendered as a [..] bracket stack. Gaps become z rests.
+// Chord SYMBOLS are input-only, so read-back is always literal notes here.
 function serializeStarkPitched(notes: NoteEvent[]): string {
-  const classified = classifyPitchedLine(notes);
-
-  if (classified.kind === "chords") {
-    return serializeStarkChords(classified.sorted);
-  }
-
-  const tokens = walkLine(classified.sorted, (note) => ({
-    core: pitchCore(note.pitch, classified.registerDefault),
-    dynamic: dynamicSuffix(note.velocity),
-  }));
-
-  return renderLine(
-    classified.lineType,
-    tokens,
-    durationEntry(LINE_DEFAULT[classified.lineType]),
-  );
-}
-
-// Serialize a chords line: one bracket per simultaneous group, gaps as rests.
-function serializeStarkChords(sorted: NoteEvent[]): string {
+  const { lineType, registerDefault, sorted } = classifyPitchedLine(notes);
   const tokens: LineToken[] = [];
   let time = 0;
 
@@ -282,20 +265,31 @@ function serializeStarkChords(sorted: NoteEvent[]): string {
       time += emittedBeats(rests);
     }
 
-    const inner = group
-      .map((note) => pitchCore(note.pitch, CHORDS_REGISTER_DEFAULT))
-      .join(" ");
     const duration = snapDuration(rep.duration);
 
     tokens.push({
-      core: `[${inner}]`,
+      core: groupCore(group, registerDefault),
       dynamic: dynamicSuffix(rep.velocity),
       duration,
     });
     time += duration.beats;
   }
 
-  return renderLine("chords", tokens, durationEntry(LINE_DEFAULT.chords));
+  return renderLine(lineType, tokens, durationEntry(LINE_DEFAULT[lineType]));
+}
+
+// Spell a simultaneous-note group: a lone note as its pitch, 2+ as a [..] stack.
+function groupCore(group: NoteEvent[], registerDefault: number): string {
+  if (group.length === 1) {
+    // length 1 → index 0 is present.
+    return pitchCore((group[0] as NoteEvent).pitch, registerDefault);
+  }
+
+  const inner = group
+    .map((note) => pitchCore(note.pitch, registerDefault))
+    .join(" ");
+
+  return `[${inner}]`;
 }
 
 // Spell one pitch as letter + accidental + octave marks (no duration/dynamic).

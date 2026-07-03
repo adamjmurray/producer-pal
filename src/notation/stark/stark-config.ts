@@ -6,9 +6,9 @@
 /**
  * Configuration constants for Stark notation: a literal, round-trippable music
  * notation. See stark-grammar.peggy, stark-interpreter.ts, and
- * stark-serializer.ts. Pitched (bass/melody/chords) lines share the register /
- * velocity / duration model here; drums are event-based (a melody line of drum
- * hits) with the line default below.
+ * stark-serializer.ts. Pitched lines (literal melody/bass, symbolic chords)
+ * share the register / velocity / duration model here; drums are event-based (a
+ * melody line of drum hits) with the line default below.
  */
 
 import { type StarkDuration } from "#src/notation/stark/parser/stark-parser.ts";

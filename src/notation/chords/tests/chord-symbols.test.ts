@@ -1,0 +1,215 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it } from "vitest";
+import {
+  chordSymbolPitches,
+  realizeChordSymbol,
+  resolveChordSymbol,
+} from "#src/notation/chords/chord-symbols.ts";
+
+// C2 = MIDI 48 is Stark's chords register default; most cases voice from here.
+const C2 = 48;
+
+describe("chordSymbolPitches — triads (bare root = major)", () => {
+  it("a bare root is a major triad", () => {
+    expect(chordSymbolPitches("C", "", null, C2, 0)).toStrictEqual([
+      48, 52, 55,
+    ]);
+  });
+
+  it("maj and M are also major", () => {
+    expect(chordSymbolPitches("C", "maj", null, C2, 0)).toStrictEqual([
+      48, 52, 55,
+    ]);
+    expect(chordSymbolPitches("C", "M", null, C2, 0)).toStrictEqual([
+      48, 52, 55,
+    ]);
+  });
+
+  it("m and min are minor", () => {
+    expect(chordSymbolPitches("C", "m", null, C2, 0)).toStrictEqual([
+      48, 51, 55,
+    ]);
+    expect(chordSymbolPitches("C", "min", null, C2, 0)).toStrictEqual([
+      48, 51, 55,
+    ]);
+  });
+
+  it("dim, aug, and + voice the altered fifth", () => {
+    expect(chordSymbolPitches("C", "dim", null, C2, 0)).toStrictEqual([
+      48, 51, 54,
+    ]);
+    expect(chordSymbolPitches("C", "aug", null, C2, 0)).toStrictEqual([
+      48, 52, 56,
+    ]);
+    expect(chordSymbolPitches("C", "+", null, C2, 0)).toStrictEqual([
+      48, 52, 56,
+    ]);
+  });
+
+  it("sus2/sus4/sus and 5 (power) replace or drop the third", () => {
+    expect(chordSymbolPitches("C", "sus2", null, C2, 0)).toStrictEqual([
+      48, 50, 55,
+    ]);
+    expect(chordSymbolPitches("C", "sus4", null, C2, 0)).toStrictEqual([
+      48, 53, 55,
+    ]);
+    expect(chordSymbolPitches("C", "sus", null, C2, 0)).toStrictEqual([
+      48, 53, 55,
+    ]);
+    expect(chordSymbolPitches("C", "5", null, C2, 0)).toStrictEqual([48, 55]);
+  });
+});
+
+describe("chordSymbolPitches — sevenths and extensions", () => {
+  it("dominant, major, and minor sevenths", () => {
+    expect(chordSymbolPitches("C", "7", null, C2, 0)).toStrictEqual([
+      48, 52, 55, 58,
+    ]);
+    expect(chordSymbolPitches("C", "maj7", null, C2, 0)).toStrictEqual([
+      48, 52, 55, 59,
+    ]);
+    expect(chordSymbolPitches("C", "m7", null, C2, 0)).toStrictEqual([
+      48, 51, 55, 58,
+    ]);
+  });
+
+  it("half-diminished (m7b5) and fully diminished (dim7)", () => {
+    expect(chordSymbolPitches("C", "m7b5", null, C2, 0)).toStrictEqual([
+      48, 51, 54, 58,
+    ]);
+    expect(chordSymbolPitches("C", "dim7", null, C2, 0)).toStrictEqual([
+      48, 51, 54, 57,
+    ]);
+  });
+
+  it("an extension implies the tones below it (9 includes its 7)", () => {
+    expect(chordSymbolPitches("C", "9", null, C2, 0)).toStrictEqual([
+      48, 52, 55, 58, 62,
+    ]);
+    expect(chordSymbolPitches("C", "maj9", null, C2, 0)).toStrictEqual([
+      48, 52, 55, 59, 62,
+    ]);
+    expect(chordSymbolPitches("C", "13", null, C2, 0)).toStrictEqual([
+      48, 52, 55, 58, 62, 69,
+    ]);
+  });
+
+  it("add chords stack the extension without the seventh", () => {
+    expect(chordSymbolPitches("C", "add9", null, C2, 0)).toStrictEqual([
+      48, 52, 55, 62,
+    ]);
+  });
+});
+
+describe("chordSymbolPitches — root spelling", () => {
+  it("accepts flats and sharps on the root", () => {
+    expect(chordSymbolPitches("Eb", "m7", null, C2, 0)).toStrictEqual([
+      51, 54, 58, 61,
+    ]);
+    expect(chordSymbolPitches("F#", "", null, C2, 0)).toStrictEqual([
+      54, 58, 61,
+    ]);
+  });
+
+  it("is case-insensitive on the root letter", () => {
+    expect(chordSymbolPitches("c", "m", null, C2, 0)).toStrictEqual([
+      48, 51, 55,
+    ]);
+  });
+});
+
+describe("chordSymbolPitches — slash bass", () => {
+  it("places a non-chord-tone bass below the root (added bottom)", () => {
+    // G7/B: G7 = [55,59,62,65]; B drops to 47 (highest B below G2=55).
+    expect(chordSymbolPitches("G", "7", "B", C2, 0)).toStrictEqual([
+      47, 55, 59, 62, 65,
+    ]);
+  });
+
+  it("a chord-tone bass becomes an inversion", () => {
+    // C/G: C major = [48,52,55]; G drops to 43 (below C2=48).
+    expect(chordSymbolPitches("C", "", "G", C2, 0)).toStrictEqual([
+      43, 48, 52, 55,
+    ]);
+  });
+
+  it("accepts an accidental on the slash bass", () => {
+    expect(chordSymbolPitches("C", "m7", "Bb", C2, 0)).toStrictEqual([
+      46, 48, 51, 55, 58,
+    ]);
+  });
+});
+
+describe("chordSymbolPitches — octave shift", () => {
+  it("shifts the whole chord (bass included) by 12 per octave", () => {
+    expect(chordSymbolPitches("C", "", null, C2, 1)).toStrictEqual([
+      60, 64, 67,
+    ]);
+    expect(chordSymbolPitches("C", "", null, C2, -1)).toStrictEqual([
+      36, 40, 43,
+    ]);
+    // Slash bass shifts with the chord.
+    expect(chordSymbolPitches("C", "", "G", C2, 1)).toStrictEqual([
+      55, 60, 64, 67,
+    ]);
+  });
+});
+
+describe("chordSymbolPitches — unrealizable inputs return null", () => {
+  it("null on an unspellable root", () => {
+    expect(chordSymbolPitches("H", "m7", null, C2, 0)).toBeNull();
+  });
+
+  it("null on an unknown quality", () => {
+    expect(chordSymbolPitches("C", "wat", null, C2, 0)).toBeNull();
+  });
+
+  it("null on an unspellable slash bass", () => {
+    expect(chordSymbolPitches("C", "", "H", C2, 0)).toBeNull();
+  });
+});
+
+describe("realizeChordSymbol — clamping and de-duplication", () => {
+  it("clamps out-of-range pitches to 0–127", () => {
+    const high = realizeChordSymbol(
+      { rootPc: 0, intervals: [0, 4, 7], bassPc: null },
+      120,
+      1,
+    );
+
+    expect(high).toStrictEqual([127]); // 132/136/139 all clamp+dedupe to 127
+  });
+
+  it("de-duplicates a bass that collapses onto a chord tone at 0", () => {
+    const pitches = realizeChordSymbol(
+      { rootPc: 0, intervals: [0, 7], bassPc: 7 },
+      0,
+      0,
+    );
+
+    // root 0, fifth 7; bass 7 drops below 0 → -5 → clamps to 0 → dedup with root.
+    expect(pitches).toStrictEqual([0, 7]);
+  });
+});
+
+describe("resolveChordSymbol", () => {
+  it("returns register-independent material", () => {
+    expect(resolveChordSymbol("D", "m7", "G")).toStrictEqual({
+      rootPc: 2,
+      intervals: [0, 3, 7, 10],
+      bassPc: 7,
+    });
+  });
+
+  it("returns null bassPc when there is no slash bass", () => {
+    expect(resolveChordSymbol("D", "", null)).toStrictEqual({
+      rootPc: 2,
+      intervals: [0, 4, 7],
+      bassPc: null,
+    });
+  });
+});

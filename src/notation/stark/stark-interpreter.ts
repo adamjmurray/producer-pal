@@ -8,15 +8,20 @@
  * Stark is a literal, round-trippable notation — pitches are exact (no scale
  * snapping), accidentals are explicit, durations are absolute /N note values.
  *
- * Two timing models coexist, but both are event-based (duration is explicit /N):
- *   Drums:                  a line of hit/rest tokens at a fixed pitch.
- *   Bass / melody / chords: pitched tokens.
+ * Three line types coexist, all event-based (duration is explicit /N):
+ *   Drums:         a line of hit/rest tokens at a fixed pitch.
+ *   Melody / bass: literal pitched tokens (notes and [..] bracket stacks).
+ *   Chords:        chord SYMBOLS (Cm7, G7/B) realized into notes on input.
  *
  * See parser/stark-grammar.peggy for the syntax.
  */
 
+import { chordSymbolPitches } from "#src/notation/chords/chord-symbols.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import {
+  type ChordItem,
+  type ChordsContentItem,
+  type ChordsSection,
   type DrumSection,
   type PitchedContentItem,
   type PitchedSection,
@@ -187,18 +192,20 @@ function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
   return base;
 }
 
-// Process a pitched section (bass/melody/chords): event-based timing, /N
-// durations. Pushes the section's notes onto `notes`.
+// Process a pitched section. Chords are symbolic (realized from chord symbols);
+// melody/bass are literal pitches. Both are event-based with /N durations.
 function processPitchedSection(
   section: PitchedSection,
   notes: NoteEvent[],
 ): void {
+  if (section.type === "chords") {
+    processChordsSection(section, notes);
+
+    return;
+  }
+
   const registerDefault =
-    section.type === "bass"
-      ? BASS_REGISTER_DEFAULT
-      : section.type === "melody"
-        ? MELODY_REGISTER_DEFAULT
-        : CHORDS_REGISTER_DEFAULT;
+    section.type === "bass" ? BASS_REGISTER_DEFAULT : MELODY_REGISTER_DEFAULT;
 
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT[section.type];
 
@@ -212,6 +219,84 @@ function processPitchedSection(
       time = processItem(item, time, registerDefault, lineDefault, notes);
     }
   }
+}
+
+// Process a chords section: each token is a chord symbol realized into concrete
+// notes (closed, root-position voicing stacked from C2). Event-based timing.
+function processChordsSection(
+  section: ChordsSection,
+  notes: NoteEvent[],
+): void {
+  const lineDefault = section.defaultDuration ?? LINE_DEFAULT.chords;
+
+  let time = 0;
+
+  for (const item of section.content) {
+    const count = "barMarker" in item ? 1 : (item.repeat ?? 1);
+
+    for (let i = 0; i < count; i++) {
+      time = processChordItem(item, time, lineDefault, notes);
+    }
+  }
+}
+
+// Process one chords-line item; returns the updated time cursor. Tokens are chord
+// symbols (realized from the vocab) or explicit [..] bracket voicings (voiced in
+// the chord register). An unknown symbol quality warns and skips but STILL
+// advances time, so a later chord stays aligned.
+function processChordItem(
+  item: ChordsContentItem,
+  time: number,
+  lineDefault: StarkDuration,
+  notes: NoteEvent[],
+): number {
+  if ("barMarker" in item) return time;
+
+  if (item.type === "rest") {
+    return time + durationBeats(item.duration ?? lineDefault);
+  }
+
+  if (item.type === "chord") {
+    return pushBracketChord(
+      item,
+      time,
+      lineDefault,
+      CHORDS_REGISTER_DEFAULT,
+      notes,
+    );
+  }
+
+  const beats = durationBeats(item.duration ?? lineDefault);
+  const pitches = chordSymbolPitches(
+    item.root,
+    item.quality,
+    item.bass,
+    CHORDS_REGISTER_DEFAULT,
+    item.octaveShift,
+  );
+
+  if (pitches == null) {
+    const slash = item.bass == null ? "" : `/${item.bass}`;
+    const label = `${item.root}${item.quality}${slash}`;
+
+    console.warn(`Stark: unknown chord symbol "${label}" — skipping`);
+
+    return time + beats;
+  }
+
+  const velocity = velocityFor(item.dynamic);
+
+  for (const pitch of pitches) {
+    notes.push({
+      pitch,
+      start_time: time,
+      duration: beats,
+      velocity,
+      probability: 1.0,
+    });
+  }
+
+  return time + beats;
 }
 
 // Process one pitched content item; returns updated time cursor.
@@ -248,21 +333,32 @@ function processItem(
   }
 
   // type === "chord"
+  return pushBracketChord(item, time, lineDefault, registerDefault, notes);
+}
+
+// Voice an explicit [..] bracket chord at `registerDefault`; every note shares
+// one velocity roll. Returns the advanced time cursor. Shared by melody/bass
+// (their line register) and chords lines (the chord register).
+function pushBracketChord(
+  item: ChordItem,
+  time: number,
+  lineDefault: StarkDuration,
+  registerDefault: number,
+  notes: NoteEvent[],
+): number {
   const beats = durationBeats(item.duration ?? lineDefault);
-  const vel = velocityFor(item.dynamic);
+  const velocity = velocityFor(item.dynamic);
 
   for (const chordNote of item.notes) {
-    const midi = clampMidi(
-      registerDefault +
-        pitchOffset(chordNote.letter, chordNote.accidental) +
-        chordNote.octaveShift * 12,
-    );
-
     notes.push({
-      pitch: midi,
+      pitch: clampMidi(
+        registerDefault +
+          pitchOffset(chordNote.letter, chordNote.accidental) +
+          chordNote.octaveShift * 12,
+      ),
       start_time: time,
       duration: beats,
-      velocity: vel,
+      velocity,
       probability: 1.0,
     });
   }
