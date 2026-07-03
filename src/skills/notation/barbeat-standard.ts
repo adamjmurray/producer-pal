@@ -32,13 +32,13 @@ Create MIDI clips using the bar|beat notation syntax:
     - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter (see Positions & Meter for the meter trap this avoids)
     - **Pattern brackets** \`[...]\`: a *cycle* of one parameter's values, stepped across notes instead of repeated. **Pitch**: \`[C3 E3 G3] 1|1x3@n/4\` (or across separate beats, \`[C3 E3 G3] 1|1 1|2 1|3\`) plays C3, E3, G3 (a melodic line, not 3× one pitch); \`(...)\` is a chord step (\`[(C3 E3) (D3 F3)] 1|1x2@n/4\`). Multiple pitch brackets (or a bare pitch + a bracket) **layer** into chords: \`C4 [E4 G4 C5] 1|1,2,3,4\` is a held C4 under a moving line; \`[C3 C4] [E3 G3 E4] 1|1,2,3,4\` stacks two voices that phase (only pitch layers — v/n/p are last-wins). **Velocity/duration/probability**: \`[v100 v60]\`, \`[n/4 n/8]\`, \`[p1 p0.5]\` cycle that value (e.g. \`[v100 v60 v60 v60] C1 1|1x16@n/16\` = accent every 4th hat). A duration bracket with **no** \`@step\` also sets the spacing — the notes gallop (\`[n/4 n/8] C3 1|1x8\` = long-short long-short). One kind per bracket. **Zip** sibling brackets to vary several at once against the same step: \`[v80 v100] [C3 E3 G3] 1|1x8@n/8\` → eight 8th notes C3 v80, E3 v100, G3 v80, C3 v100, E3 v80, G3 v100, C3 v80, E3 v100 (velocity cycles every 2, pitch every 3 — coprime lengths phase against each other). Each cycle wraps at its own length and persists until you reassign that parameter
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization (low bound ≥1; \`v0-N\` is an error — v0 is the delete sentinel, not a range floor)
-  - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. It applies to notes **after** it — put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length and overlaps A3). For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
+  - \`v0\` deletes earlier notes at the same pitch/time — **sticky** like any \`v\` (keeps deleting until you set a non-zero \`v\`). Reserve it for notes built in this same \`notes\` string; to delete notes already in the clip prefer \`preTransforms\`/\`transforms\` \`delete\` (see Editing Existing Notes + Transforms). Always follow an inline \`v0\` with \`vN\` (N>0) to exit delete state
+- n<duration>: Note length as an absolute note value (default \`n/4\`). \`n\` is **stateful** — it carries until changed and applies to notes **after** it, so put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length). Length matters for sustained/melodic notes (it *is* the articulation); for one-shot drums a carried length is usually inaudible, so re-set \`n\` only when the intended length actually changes. REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always). Opt-in — if any note uses probability, set it on every note (a stray p otherwise rides along)
 - Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2; case-insensitive). C3 = middle C
 - **Shortcut (stateful)**: omit any of v/n/p to reuse its last value — they don't reset per note, so re-state one whenever it should change. v/n/p and pitch persist until changed
 - **Same-pitch overlap**: two notes of the same pitch can't sound at once — if one's length runs into the next same-pitch note, Live truncates the earlier to end where the next starts. Both are kept (authored notes aren't dropped for overlapping); same pitch *and* start collapses to one
-- copying bars (**MERGES** - use v0 to clear unwanted notes):
+- copying bars (**MERGES** - clear unwanted notes with \`preTransforms\`/\`transforms\` \`delete\`, or a sticky inline \`v0\`):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
   - Copies capture each note's v/n/p at the time it was written, not the current state
@@ -60,8 +60,7 @@ n/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@n/16 is
 [C3 E3 G3 C4] 1|1x4@n/4 // melodic line: C3,E3,G3,C4 on 4 quarters (pitch bracket steps the list, not 4× one pitch)
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
-v90-110 n/4 C1 1|1,3 n/8 D1 1|2,4 // humanized drums — re-set n per lane
-n/16 Gb1 1|1,1.5,2,2.5 n/4 C1 1|1 // re-set n/4 for kick, else hat's n/16 leaks onto it
+v90-110 n/4 C1 1|1,3 n/8 D1 1|2,4 // humanized drums — n re-set per lane
 p0.5 n/4 C1 1|1,2,3,4 // 50% chance each kick plays
 \`\`\`
 
@@ -79,13 +78,13 @@ C1 4|1,3.5 D1 4|4 // bar 4
 
 ### Repeats with Variations
 
-Copy foundation to **all bars** (including variation bars), then modify:
+Copy foundation to **all bars** (including variation bars), then modify. Inline \`v0\` shown here as an alternative to the preferred \`preTransforms\`/\`transforms\` \`delete\`; \`v0\` is sticky, so each is followed by \`vN\` (N>0) to exit delete state:
 
 \`\`\`
 C1 1|1,3 D1 1|2,4       // bar 1 foundation
 Gb1 1|1.5,2.5,3.5,4.5
 @2-16=1                 // copy to ALL bars, not just 2-8
-v0 Gb1 9|4.5 v100       // remove hat from bar 9
+v0 Gb1 9|4.5 v100       // remove hat from bar 9 (v100 exits delete state)
 C1 9|3.5                // add extra kick to bar 9
-v0 C1 13|3 v100 D1 13|3 // replace kick with snare in bar 13
+v0 C1 13|3 v100 D1 13|3 // replace kick w/ snare in bar 13 (v100 exits delete + sets D1)
 \`\`\``;
