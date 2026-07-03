@@ -53,8 +53,9 @@ C3: X z X z              # pitch-name header (Ableton C3 = MIDI 60)
 
 **Drum tokens**: `^` accent, `X` normal, `x` soft, `z` rest. Each token lasts
 the **line default** (header `/N`, else `/4`) unless a `/N` is glued directly to
-it (`X/8`). A rest (`z`) advances time by its duration without emitting a note.
-`|` is a visual barline — it never advances time.
+it (`X/8`). A trailing `*N` repeats the token (`X*16`; § Repeat). A rest (`z`)
+advances time by its duration without emitting a note. `|` is a visual barline —
+it never advances time.
 
 **Header** resolves to a fixed MIDI pitch, tried in this order (so the readable
 vocabulary wins):
@@ -110,8 +111,9 @@ a lone `b` = note B) + suffix modifiers in **any order**:
 - **dynamic** `!` accent / `?` soft. Omit = normal. At most one.
 
 The suffix glyph classes are disjoint (`' ,` vs `/N` vs `! ?`), so `Eb''/8!`,
-`Eb/8''!`, and `Eb!/8''` parse identically. The serializer always emits one
-canonical order: pitch → accidental → octave → `/duration` → dynamic.
+`Eb/8''!`, and `Eb!/8''` parse identically. A terminal `*N` (§ Repeat) may
+follow, after all of these. The serializer always emits one canonical order:
+pitch → accidental → octave → `/duration` → dynamic.
 
 **Rest** = `z` with optional `/N` (`z/4`). **Bracket chord** =
 `[<note> <note> ...]` with optional `/N` and dynamic applied to the whole chord;
@@ -156,6 +158,26 @@ ten (ties resolve to the shorter value); a duration off the grid (a triplet, a
 sample-derived sustain) snaps its own length but the walk advances by _emitted_
 grid-time, so a shortfall is absorbed by a compensating rest and later onsets
 never shift. Beats here are internal Ableton quarter-note beats.
+
+---
+
+## Repeat (`*N`)
+
+A trailing `*N` expands the fully-formed token into **N** consecutive copies at
+interpret time: `X*16` = sixteen `X` hits, `C/8*4` = four eighth-note Cs, `z*3`
+= three rests, `[C E G]*2` = the chord twice. It is pure syntactic sugar — each
+copy is an independent note (a hit re-rolls its velocity within the bucket,
+exactly as separate tokens do) and time advances by the copies' summed duration.
+
+`N` is an integer **≥ 1** with no leading zero (`*0` is a parse error; `*1` is a
+harmless no-op). `*N` is the **terminal** modifier — it follows the `/N`
+duration, octave marks, and dynamic (`X/8*4`, `Eb'/16!*8`), so it never disturbs
+the free ordering of the `' , ! ?` suffixes. It applies to every token type:
+drum hit, pitched note, rest, and bracket chord. There is **no group repeat**
+(`(…)*N` is not supported) — repeat multiplies one token only.
+
+The serializer does not yet emit `*N`; a read-back expands runs into literal
+tokens (that compression is a planned follow-up).
 
 ---
 

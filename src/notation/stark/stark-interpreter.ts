@@ -148,20 +148,22 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
     if ("barMarker" in item) continue;
 
     const beats = durationBeats(item.duration ?? lineDefault);
+    const count = item.repeat ?? 1;
 
-    if (item.type === "rest") {
+    // `*N` expands one token into N copies; each hit re-rolls its velocity.
+    for (let i = 0; i < count; i++) {
+      if (item.type !== "rest") {
+        notes.push({
+          pitch,
+          start_time: time,
+          duration: beats,
+          velocity: velocityFor(item.velocity),
+          probability: 1.0,
+        });
+      }
+
       time += beats;
-      continue;
     }
-
-    notes.push({
-      pitch,
-      start_time: time,
-      duration: beats,
-      velocity: velocityFor(item.velocity),
-      probability: 1.0,
-    });
-    time += beats;
   }
 }
 
@@ -203,7 +205,12 @@ function processPitchedSection(
   let time = 0;
 
   for (const item of section.content) {
-    time = processItem(item, time, registerDefault, lineDefault, notes);
+    // `*N` expands one token into N copies (a barMarker has no repeat → once).
+    const count = "barMarker" in item ? 1 : (item.repeat ?? 1);
+
+    for (let i = 0; i < count; i++) {
+      time = processItem(item, time, registerDefault, lineDefault, notes);
+    }
   }
 }
 

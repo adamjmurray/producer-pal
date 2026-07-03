@@ -47,6 +47,8 @@ export interface RestItem {
   type: "rest";
   /** Explicit /N duration, or null (use line default) */
   duration: StarkDuration | null;
+  /** `*N` repeat count (expand into N copies), or null (once) */
+  repeat: number | null;
 }
 
 // --- Drum items (event-based: a line of hits/rests at a fixed pitch) ---
@@ -58,6 +60,8 @@ export interface DrumHitItem {
   velocity: StarkDynamic;
   /** Explicit glued /N override, or null (use the line default) */
   duration: StarkDuration | null;
+  /** `*N` repeat count (expand into N copies), or null (once) */
+  repeat: number | null;
 }
 
 export type DrumContentItem = BarMarkerItem | DrumHitItem | RestItem;
@@ -76,6 +80,8 @@ export interface NoteItem {
   /** Explicit /N duration, or null (use line default) */
   duration: StarkDuration | null;
   dynamic: StarkDynamic;
+  /** `*N` repeat count (expand into N copies), or null (once) */
+  repeat: number | null;
 }
 
 /** A single note inside a bracket chord */
@@ -95,6 +101,8 @@ export interface ChordItem {
   /** Explicit /N duration, or null (use line default) */
   duration: StarkDuration | null;
   dynamic: StarkDynamic;
+  /** `*N` repeat count (expand into N copies), or null (once) */
+  repeat: number | null;
 }
 
 export type PitchedContentItem =

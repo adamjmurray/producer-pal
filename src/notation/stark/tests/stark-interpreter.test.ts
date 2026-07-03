@@ -190,6 +190,66 @@ describe("stark interpreter — dotted durations (×1.5)", () => {
   });
 });
 
+describe("stark interpreter — repeat (*N)", () => {
+  it("expands a drum roll into N hits on the token's grid", () => {
+    const notes = interpretNotation("hihat /16: X*16");
+
+    expect(notes).toHaveLength(16);
+    expect(notes.every((n) => n.pitch === 42)).toBe(true);
+    expect(notes.every((n) => n.duration === 0.25)).toBe(true);
+    expect(notes.map((n) => n.start_time)).toStrictEqual(
+      Array.from({ length: 16 }, (_unused, i) => i * 0.25),
+    );
+  });
+
+  it("repeats a pitched note at the line default", () => {
+    const notes = interpretNotation("melody: C*4");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([60, 60, 60, 60]);
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1, 2, 3]);
+  });
+
+  it("carries a glued /N onto every copy", () => {
+    const notes = interpretNotation("melody: C/8*4 D");
+
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 0.5, 1, 1.5, 2]);
+    expect(notes.map((n) => n.duration)).toStrictEqual([0.5, 0.5, 0.5, 0.5, 1]);
+  });
+
+  it("repeats a rest to advance time without emitting notes", () => {
+    const notes = interpretNotation("melody: C z*2 D");
+
+    // C (1 beat) + two quarter rests (2 beats) → D at 3.
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 3]);
+  });
+
+  it("repeats a whole chord", () => {
+    const notes = interpretNotation("chords: [C E G]/4*2");
+
+    expect(notes).toHaveLength(6);
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 0, 0, 1, 1, 1]);
+  });
+
+  it("treats *1 as a single token (no-op)", () => {
+    const notes = interpretNotation("melody: C*1 D");
+
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1]);
+  });
+
+  it("skips a visual barline while repeating the next token", () => {
+    const notes = interpretNotation("melody: C | D*2");
+
+    // The | advances nothing; D*2 lands at beats 1 and 2.
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1, 2]);
+  });
+
+  it("rejects *0 (count must be >= 1)", () => {
+    expect(() => interpretNotation("melody: C*0")).toThrow(
+      /Stark notation parse error/,
+    );
+  });
+});
+
 describe("stark interpreter — velocity buckets are within range", () => {
   it("accent hits land in the accent range", () => {
     const notes = interpretNotation("kick: ^ ^ ^ ^");

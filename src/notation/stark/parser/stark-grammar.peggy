@@ -88,8 +88,8 @@ DrumItem
 // velocityFor() applies. Optional glued /N (like a pitched NoteToken) overrides
 // the line default for this one hit.
 DrumToken
-  = velocity:DrumVelocity dur:("/" d:Duration { return d; })? {
-      return { type: "hit", velocity: velocity, duration: dur };
+  = velocity:DrumVelocity dur:("/" d:Duration { return d; })? rep:Repeat? {
+      return { type: "hit", velocity: velocity, duration: dur, repeat: rep };
     }
 
 DrumVelocity
@@ -120,7 +120,7 @@ PitchedItem
 // a bare `b` = note B — this is the load-bearing rule that makes accidentals
 // unambiguous in a whitespace-tokenized stream.
 NoteToken
-  = letter:[A-Ga-g] acc:[#b]? suffixes:NoteTokenSuffix* {
+  = letter:[A-Ga-g] acc:[#b]? suffixes:NoteTokenSuffix* rep:Repeat? {
       var octaveShift = 0;
       var duration = null;
       var dynamic = "normal";
@@ -136,7 +136,8 @@ NoteToken
         accidental: acc,
         octaveShift: octaveShift,
         duration: duration,
-        dynamic: dynamic
+        dynamic: dynamic,
+        repeat: rep
       };
     }
 
@@ -151,14 +152,14 @@ NoteTokenSuffix
 
 // Rest token: z (case-insensitive) with optional /N duration.
 RestToken
-  = "z"i dur:("/" d:Duration { return d; })? {
-      return { type: "rest", duration: dur };
+  = "z"i dur:("/" d:Duration { return d; })? rep:Repeat? {
+      return { type: "rest", duration: dur, repeat: rep };
     }
 
 // Bracket chord: [<note> <note> ...] with optional /duration and dynamic.
 // Notes inside are space-separated; duration and dynamic apply to the whole chord.
 ChordToken
-  = "[" _h notes:ChordNote+ _h "]" suffixes:ChordSuffix* {
+  = "[" _h notes:ChordNote+ _h "]" suffixes:ChordSuffix* rep:Repeat? {
       var duration = null;
       var dynamic = "normal";
       for (var i = 0; i < suffixes.length; i++) {
@@ -170,7 +171,8 @@ ChordToken
         type: "chord",
         notes: notes,
         duration: duration,
-        dynamic: dynamic
+        dynamic: dynamic,
+        repeat: rep
       };
     }
 
@@ -209,6 +211,13 @@ DurationN
   / "4"  { return 4; }
   / "2"  { return 2; }
   / "1"  { return 1; }
+
+// Token repeat: `*N` (N ≥ 1, no leading zero) expands the fully-formed token
+// into N copies at interpret time (`X*16` = sixteen X hits, `Eb/8*4` = four
+// eighth-note Ebs). Terminal — it follows every other suffix. Single-token only;
+// there is no group repeat. Returns the integer count.
+Repeat
+  = "*" digits:$([1-9] [0-9]*) { return parseInt(digits, 10); }
 
 // Visual/checking only — does not advance time in any line type.
 BarMarker
