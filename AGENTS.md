@@ -77,6 +77,11 @@ architecture.
   `barbeat-parser.ts`, not the `.js`). `webui/` is bundled and must NEVER use
   extensions in relative imports.
 
+- **Generated parsers**: the Peggy `generated-*-parser.js` files are gitignored
+  and rebuilt from the `.peggy` grammars at build time (and by
+  `npm run parser:build`) — never commit them. After editing a `.peggy` grammar,
+  regenerate so tests and builds pick up the change.
+
 - **Path aliases**: Use `#src/`, `#webui/`, `#evals/` (Node.js package subpath
   imports in package.json `"imports"`). The `#` prefix is required for unbundled
   execution (build scripts, CLI tools). Never use relative `../../` when an
