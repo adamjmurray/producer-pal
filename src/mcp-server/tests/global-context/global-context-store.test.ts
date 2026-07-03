@@ -5,6 +5,7 @@
 
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   rmSync,
@@ -89,6 +90,16 @@ describe("readGlobalContext", () => {
 
   it("returns an empty string when the file is missing", () => {
     expect(readGlobalContext()).toBe("");
+  });
+
+  it("throws instead of masking when the slot is present but unreadable", () => {
+    // A directory where context.md should be makes readFileSync fail with
+    // EISDIR (not ENOENT). Masking that as "" would let a subsequent editor save
+    // overwrite recoverable content with empty; only a genuinely absent file
+    // reads as "". Stands in for the transient-permission/IO case.
+    mkdirSync(join(dir, "context.md"));
+
+    expect(() => readGlobalContext()).toThrow();
   });
 
   it("is inert under Vitest without a dir override (never reads real home)", () => {

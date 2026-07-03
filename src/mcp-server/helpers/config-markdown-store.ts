@@ -52,9 +52,12 @@ export function resolveConfigPath(filename: string): string {
 }
 
 /**
- * Read a config markdown slot verbatim. A missing file (the common,
- * empty-by-default case) or any read error yields an empty string, so callers
- * can treat "absent" and "empty" identically.
+ * Read a config markdown slot verbatim. A missing file — the common,
+ * empty-by-default case — yields an empty string so callers can treat "absent"
+ * and "empty" identically. Any OTHER read error (permissions, I/O, a directory
+ * in the file's place) throws instead of masking as empty: the slot may hold
+ * real content we merely can't read right now, and returning "" would let the
+ * editor's GET/PUT round-trip overwrite a recoverable file with nothing.
  *
  * Content is returned byte-faithful (not trimmed) so a GET/PUT round-trip from
  * the editor echoes exactly what was written — otherwise a trailing newline
@@ -63,16 +66,17 @@ export function resolveConfigPath(filename: string): string {
  * display (e.g. the ppal-connect injection) trim at the point of use.
  *
  * @param filename - Slot filename (e.g. "context.md")
- * @returns File contents verbatim, or "" when absent/unreadable
+ * @returns File contents verbatim, or "" when the file is absent
  */
 export function readConfigMarkdown(filename: string): string {
   if (isConfigDirInert()) return "";
 
   try {
     return readFileSync(resolveConfigPath(filename), "utf8");
-  } catch {
-    // Missing file, permissions, etc. — treat as "no content".
-    return "";
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+
+    throw error;
   }
 }
 
