@@ -25,10 +25,14 @@ export interface ScanContext {
 
 /**
  * Call the raw live API via REST
+ *
+ * Requests `?format=compact` explicitly: the REST default is now parsed JSON,
+ * but getInfo/getPropertyValue below regex-parse the compact `result:"..."`
+ * string form, so the scan needs the compact response shape.
  * @param baseUrl - Base URL of the Producer Pal server
  * @param path - Live API path
  * @param operations - Operations to execute
- * @returns Parsed result text or null
+ * @returns Compact result text or null
  */
 export async function callRawApi(
   baseUrl: string,
@@ -36,11 +40,14 @@ export async function callRawApi(
   operations: Record<string, unknown>[],
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${baseUrl}/api/tools/ppal-live-api`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path, operations }),
-    });
+    const res = await fetch(
+      `${baseUrl}/api/tools/ppal-live-api?format=compact`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path, operations }),
+      },
+    );
 
     if (!res.ok) return null;
 
