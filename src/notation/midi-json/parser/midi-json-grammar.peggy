@@ -46,8 +46,12 @@ Key
 KeyName
   = $([A-Za-z][A-Za-z0-9]*)
 
+// Tolerant numeric literal. Accepts a leading-dot decimal (`.5`, `-.75`) — a
+// common LLM habit of dropping the leading zero — as well as leading zeros
+// (`007`); parseFloat normalizes both. A whole-array parse error would abort the
+// entire clip op, so the grammar errs toward accepting whatever an LLM emits.
 Number
-  = n:$("-"? ("0" / [1-9] [0-9]*) ("." [0-9]+)? ([eE] [+-]? [0-9]+)?) {
+  = n:$("-"? ([0-9]+ ("." [0-9]+)? / "." [0-9]+) ([eE] [+-]? [0-9]+)?) {
       return parseFloat(n);
     }
 

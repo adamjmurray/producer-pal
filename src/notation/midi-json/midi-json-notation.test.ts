@@ -44,6 +44,17 @@ describe("interpretMidiJson", () => {
     expect(note?.velocity).toBe(100);
   });
 
+  it("accepts leading-dot decimals like t:.5 (LLM drops the leading zero)", () => {
+    // Regression: the Number rule required a leading digit, so `.5`/`.25` threw
+    // a parse error that aborted the ENTIRE clip op instead of parsing as 0.5.
+    const [note] = interpretMidiJson("[{p:60,t:.5,d:.25,v:100}]", {
+      timeSigDenominator: 4,
+    });
+
+    expect(note?.start_time).toBe(0.5);
+    expect(note?.duration).toBe(0.25);
+  });
+
   it("accepts long keys (pitch/start/...) and quoted JSON keys", () => {
     const result = interpretMidiJson(
       '[{"pitch":60,"start":0,"duration":4,"velocity":100}]',
