@@ -33,13 +33,13 @@ describe("stark serializer — empty input", () => {
 });
 
 describe("stark serializer — drum lines (drumMode)", () => {
-  it("four-on-the-floor uses the /4 default (no header /N)", () => {
+  it("four-on-the-floor collapses to X*4 on the /4 default (no header /N)", () => {
     const line = formatNotation(
       [note(36, 0, 1), note(36, 1, 1), note(36, 2, 1), note(36, 3, 1)],
       DRUM,
     );
 
-    expect(line).toBe("kick: X X X X");
+    expect(line).toBe("kick: X*4");
   });
 
   it("backbeat snare emits z rests between hits", () => {
@@ -242,6 +242,65 @@ describe("stark serializer — dotted durations round-trip exactly", () => {
   });
 });
 
+describe("stark serializer — repeat emission (*N)", () => {
+  it("collapses a 16th-note roll to X*16 on the /16 header default", () => {
+    const roll = Array.from({ length: 16 }, (_unused, i) =>
+      note(42, i * 0.25, 0.25),
+    );
+
+    expect(formatNotation(roll, DRUM)).toBe("hihat /16: X*16");
+  });
+
+  it("collapses repeated melody notes into note*N (default omitted)", () => {
+    const line = formatNotation([
+      note(60, 0, 1),
+      note(60, 1, 1),
+      note(60, 2, 1),
+      note(60, 3, 1),
+    ]);
+
+    expect(line).toBe("melody: C*4");
+  });
+
+  it("collapses repeated chords into [notes]*N", () => {
+    const line = formatNotation([
+      note(48, 0, 1),
+      note(52, 0, 1),
+      note(55, 0, 1),
+      note(48, 1, 1),
+      note(52, 1, 1),
+      note(55, 1, 1),
+      note(48, 2, 1),
+      note(52, 2, 1),
+      note(55, 2, 1),
+    ]);
+
+    expect(line).toBe("chords /4: [C E G]*3");
+  });
+
+  it("a run of three hits collapses (the emit threshold)", () => {
+    expect(
+      formatNotation([note(36, 0, 1), note(36, 1, 1), note(36, 2, 1)], DRUM),
+    ).toBe("kick: X*3");
+  });
+
+  it("a run of exactly two stays literal (below the *N threshold)", () => {
+    expect(formatNotation([note(36, 0, 1), note(36, 1, 1)], DRUM)).toBe(
+      "kick: X X",
+    );
+  });
+
+  it("collapses only the identical run, leaving a differing token literal", () => {
+    // three normal kicks then a soft one — the glyph change breaks the run.
+    const line = formatNotation(
+      [note(36, 0, 1), note(36, 1, 1), note(36, 2, 1), note(36, 3, 1, 70)],
+      DRUM,
+    );
+
+    expect(line).toBe("kick: X*3 x");
+  });
+});
+
 describe("round-trip (interpret → serialize → interpret)", () => {
   function roundTrip(
     stark: string,
@@ -355,5 +414,14 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     const { first, second } = roundTrip("hihat /16: X X X X X X X X", true);
 
     expectStableNotes(first, second);
+  });
+
+  it("a *N roll round-trips through the compact form", () => {
+    // Interpret expands X*16 to 16 hits; serialize re-collapses to X*16.
+    const { first, second } = roundTrip("hihat /16: X*16", true);
+
+    expectStableNotes(first, second);
+    expect(first).toHaveLength(16);
+    expect(formatNotation(first, { drumMode: true })).toBe("hihat /16: X*16");
   });
 });

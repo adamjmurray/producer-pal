@@ -22,9 +22,10 @@
  * rests, take each note's own duration as its absolute `/N`, then FACTOR OUT the
  * line default — emit a header `/N` only when it differs from the line-type
  * default and a token `/N` only when it differs from the line default — so the
- * common case reads clean (`kick: X X X X`, `hihat /8: z X z X …`). Drums differ
- * from pitched lines only in the token glyph (`^`/`X`/`x` vs a pitch letter) and
- * the header (a drum name vs melody/bass/chords).
+ * common case reads clean (`kick: X X X X`, `hihat /8: z X z X …`). A final pass
+ * collapses runs of 3+ identical tokens into `token*N` (`X*16` for a 16th roll).
+ * Drums differ from pitched lines only in the token glyph (`^`/`X`/`x` vs a pitch
+ * letter) and the header (a drum name vs melody/bass/chords).
  *
  * The leaf primitives (pitch spelling, velocity glyphs, rest decomposition, line
  * classification) live in stark-serializer-helpers.ts; the line-default
@@ -146,7 +147,8 @@ function emittedBeats(tokens: LineToken[]): number {
 
 // Render one section line, factoring out the line default: a header `/N` only
 // when the chosen default differs from the line-type default, and a token `/N`
-// only when the token differs from the chosen default.
+// only when the token differs from the chosen default. Consecutive identical
+// tokens then collapse into `token*N` (see collapseRepeats).
 function renderLine(
   header: string,
   tokens: LineToken[],
@@ -155,16 +157,44 @@ function renderLine(
   const lineDefault = chooseLineDefault(tokens, lineTypeDefault);
   const headerDur =
     lineDefault.token === lineTypeDefault.token ? "" : ` /${lineDefault.token}`;
-  const body = tokens
-    .map((t) => {
-      const tokenDur =
-        t.duration.token === lineDefault.token ? "" : `/${t.duration.token}`;
+  const rendered = tokens.map((t) => {
+    const tokenDur =
+      t.duration.token === lineDefault.token ? "" : `/${t.duration.token}`;
 
-      return `${t.core}${tokenDur}${t.dynamic}`;
-    })
-    .join(" ");
+    return `${t.core}${tokenDur}${t.dynamic}`;
+  });
 
-  return `${header}${headerDur}: ${body}`;
+  return `${header}${headerDur}: ${collapseRepeats(rendered).join(" ")}`;
+}
+
+// Emit `*N` only once a run reaches this many copies: `X*3` is shorter than
+// `X X X`, but `X*2` is no shorter than `X X`, so runs of 1–2 stay literal.
+const REPEAT_EMIT_THRESHOLD = 3;
+
+// Collapse runs of identical rendered tokens into `token*N` (`X X X X` → `X*4`).
+// `*N` round-trips as N independent copies (the interpreter's expansion), so a
+// run of same-bucket hits/rests/chords compresses losslessly at the bucket level.
+function collapseRepeats(rendered: string[]): string[] {
+  const out: string[] = [];
+  let i = 0;
+
+  while (i < rendered.length) {
+    // The while-guard guarantees index i is in range.
+    const token = rendered[i] as string;
+    let run = 1;
+
+    while (rendered[i + run] === token) run++;
+
+    if (run >= REPEAT_EMIT_THRESHOLD) {
+      out.push(`${token}*${run}`);
+    } else {
+      for (let k = 0; k < run; k++) out.push(token);
+    }
+
+    i += run;
+  }
+
+  return out;
 }
 
 // Pick the line default note value: the most common token duration, preferring

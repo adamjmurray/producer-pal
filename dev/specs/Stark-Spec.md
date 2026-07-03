@@ -176,8 +176,12 @@ the free ordering of the `' , ! ?` suffixes. It applies to every token type:
 drum hit, pitched note, rest, and bracket chord. There is **no group repeat**
 (`(…)*N` is not supported) — repeat multiplies one token only.
 
-The serializer does not yet emit `*N`; a read-back expands runs into literal
-tokens (that compression is a planned follow-up).
+The serializer **emits** `*N`: a final pass collapses each run of **3+**
+consecutive identical rendered tokens (same core, `/N`, and dynamic) into
+`token*N`, so a read-back of a 16th roll reads `X*16` rather than sixteen `X`s.
+Runs of 1–2 stay literal (`X*2` is no shorter than `X X`). The count is the
+number of copies, matching interpret-time expansion, so the collapse is lossless
+(at the velocity-bucket level a run of same-bucket hits round-trips).
 
 ---
 
