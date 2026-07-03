@@ -8,6 +8,7 @@ import { type AddressInfo } from "node:net";
 import express from "express";
 import Max from "max-api";
 import { afterAll, beforeAll, type Mock, vi } from "vitest";
+import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import { registerRestApiRoutes } from "../routes/rest-api-routes.ts";
 
@@ -144,13 +145,29 @@ interface RestRoutesTestState {
  * Registers beforeAll/afterAll hooks to start and stop the server.
  *
  * @param options - Setup options
- * @param options.getConfig - Function returning the runtime config (tools + liveApiEnabled)
+ * @param options.getConfig - Function returning the runtime config (tools +
+ *   liveApiEnabled; notation defaults to bar|beat when omitted)
  * @returns Test state with base URL and the shared callLiveApi mock
  */
 export function setupRestRoutesServer(options: {
-  getConfig: () => { tools: string[]; liveApiEnabled: boolean };
+  getConfig: () => {
+    tools: string[];
+    liveApiEnabled: boolean;
+    notation?: Notation;
+  };
 }): RestRoutesTestState {
   const callLiveApi = vi.fn<CallLiveApiFunction>();
+
+  const getConfig = (): {
+    tools: string[];
+    liveApiEnabled: boolean;
+    notation: Notation;
+  } => {
+    const config = options.getConfig();
+
+    return { notation: DEFAULT_NOTATION, ...config };
+  };
+
   const state: RestRoutesTestState = {
     baseUrl: "",
     callLiveApi,
@@ -161,7 +178,7 @@ export function setupRestRoutesServer(options: {
     const app = express();
 
     app.use(express.json());
-    registerRestApiRoutes(app, options.getConfig, callLiveApi);
+    registerRestApiRoutes(app, getConfig, callLiveApi);
 
     server = app.listen(0);
     await new Promise<void>((resolve) => server?.once("listening", resolve));

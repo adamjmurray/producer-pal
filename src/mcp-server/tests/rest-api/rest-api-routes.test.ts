@@ -86,6 +86,14 @@ describe("REST API Routes", () => {
     });
   }
 
+  async function setNotation(notation: string): Promise<void> {
+    await fetch(`${appState.baseUrl}/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notation }),
+    });
+  }
+
   beforeAll(async () => {
     // Most tests assume the Live API tool is enabled and whitelisted.
     await setLiveApiEnabled(true);
@@ -94,6 +102,7 @@ describe("REST API Routes", () => {
   afterEach(async () => {
     await setLiveApiEnabled(true);
     await setEnabledTools([...TOOL_NAMES, "ppal-live-api"]);
+    await setNotation("barbeat");
   });
 
   async function callTool(
@@ -149,6 +158,27 @@ describe("REST API Routes", () => {
       const names = body.tools.map((t: { name: string }) => t.name);
 
       expect(names).toStrictEqual(["ppal-connect"]);
+    });
+
+    it("resolves tool/param descriptions against the active notation", async () => {
+      const notesDescription = async (): Promise<string> => {
+        const response = await fetch(`${appState.baseUrl}/api/tools`);
+        const body = await response.json();
+        const createClip = body.tools.find(
+          (t: { name: string }) => t.name === "ppal-create-clip",
+        );
+
+        return createClip.inputSchema.properties.notes.description;
+      };
+
+      expect(await notesDescription()).toContain("bar|beat notation");
+
+      await setNotation("stark");
+
+      const starkDescription = await notesDescription();
+
+      expect(starkDescription).toContain("stark notation");
+      expect(starkDescription).not.toContain("bar|beat notation");
     });
 
     it("allows cross-origin requests (LAN/tunnel chat uses a non-localhost origin)", async () => {

@@ -5,8 +5,13 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
+import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  resolveModalDescription,
+  resolveParamModes,
+} from "#src/tools/shared/tool-framework/modal-config.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -21,6 +26,7 @@ import * as console from "../node-for-max-logger.ts";
 interface RestApiConfig {
   tools: string[];
   liveApiEnabled: boolean;
+  notation: Notation;
 }
 
 /**
@@ -50,19 +56,37 @@ export function registerRestApiRoutes(
   // localhost gate would 403 the documented unauthenticated remote-access
   // feature's own requests.
   app.get("/api/tools", (_req: Request, res: Response): void => {
-    const enabledSet = new Set(getConfig().tools);
+    const config = getConfig();
+    const enabledSet = new Set(config.tools);
+    // Resolve descriptions and schemas against the active notation, matching how
+    // REST tool execution registers them (define-tool.ts). REST is the
+    // large-model surface, so small-model mode is off. Without this the catalog
+    // served bar|beat `notes` guidance while execution honored config.notation,
+    // making a stark/midi-json client send input that fails to parse.
+    const context = { notation: config.notation };
 
     const tools = getActiveToolDefs()
       .filter((td) => enabledSet.has(td.toolName))
-      .map((td) => ({
-        name: td.toolName,
-        title: td.toolOptions.title,
-        // This endpoint serves the base (unfiltered) view, so resolve to the
-        // default description (empty mode context).
-        description: resolveModalDescription(td.toolOptions.description, {}),
-        annotations: td.toolOptions.annotations,
-        inputSchema: z.toJSONSchema(z.object(td.toolOptions.inputSchema)),
-      }));
+      .map((td) => {
+        const resolved = resolveParamModes(td.toolOptions.inputSchema, context);
+        const finalInputSchema = filterSchemaForSmallModel(
+          td.toolOptions.inputSchema,
+          resolved.excludeParams,
+          resolved.descriptionOverrides,
+          resolved.excludeEnumValues,
+        );
+
+        return {
+          name: td.toolName,
+          title: td.toolOptions.title,
+          description: resolveModalDescription(
+            td.toolOptions.description,
+            context,
+          ),
+          annotations: td.toolOptions.annotations,
+          inputSchema: z.toJSONSchema(z.object(finalInputSchema)),
+        };
+      });
 
     res.json({ tools });
   });
