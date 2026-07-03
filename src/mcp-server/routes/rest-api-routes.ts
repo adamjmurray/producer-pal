@@ -221,6 +221,7 @@ interface UnwrappedResponse {
   result: unknown;
   isError: boolean;
   warnings?: string[];
+  appended?: string[];
 }
 
 const WARNING_PREFIX = "WARNING: ";
@@ -234,14 +235,17 @@ const WARNING_PREFIX = "WARNING: ";
  *
  * JSON mode (parseJson=true, set by `?format=json`): parses the first
  * content item as JSON and exposes warnings as a separate string array.
- * Items past the first are filtered by the `WARNING: ` prefix so non-warning
- * content the V8 layer might emit in the future is not silently treated as a
- * warning. If the first item is not valid JSON (a V8 contract regression), it
- * falls back to returning the raw text.
+ * Items past the first prefixed with `WARNING: ` become warnings; any other
+ * extra items are Node-appended text blocks (the ppal-connect skills blob and
+ * `~/.producer-pal/context.md` global context pushed by `withConnectAppend`)
+ * and are surfaced as an `appended` string array rather than dropped. If the
+ * first item is not valid JSON (a V8 contract regression), it falls back to
+ * returning the raw text.
  *
  * @param mcpResponse - Response from callLiveApi
  * @param parseJson - True when the caller asked for `?format=json`
- * @returns Plain object with `result`, `isError`, and optional `warnings`
+ * @returns Plain object with `result`, `isError`, and optional `warnings` /
+ *   `appended`
  */
 function unwrapMcpResponse(
   mcpResponse: McpResponse,
@@ -255,12 +259,20 @@ function unwrapMcpResponse(
   }
 
   // First content item is the tool result. Subsequent items prefixed with
-  // `WARNING: ` are warnings emitted by the V8 layer; anything else past the
-  // first item is unexpected under the current contract and ignored.
+  // `WARNING: ` are warnings emitted by the V8 layer; the remaining extra
+  // items are Node-appended blocks (ppal-connect skills + global context) and
+  // are surfaced under `appended` rather than dropped.
   const [resultText = "", ...rest] = items;
-  const warnings = rest
-    .filter((line) => line.startsWith(WARNING_PREFIX))
-    .map((line) => line.slice(WARNING_PREFIX.length));
+  const warnings: string[] = [];
+  const appended: string[] = [];
+
+  for (const line of rest) {
+    if (line.startsWith(WARNING_PREFIX)) {
+      warnings.push(line.slice(WARNING_PREFIX.length));
+    } else {
+      appended.push(line);
+    }
+  }
 
   let result: unknown;
 
@@ -276,6 +288,7 @@ function unwrapMcpResponse(
   const response: UnwrappedResponse = { result, isError: false };
 
   if (warnings.length > 0) response.warnings = warnings;
+  if (appended.length > 0) response.appended = appended;
 
   return response;
 }

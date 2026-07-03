@@ -120,6 +120,11 @@ With the default `json` format (or explicit `?format=json`):
 - **`warnings`** is a `string[]` (with the `WARNING: ` prefix stripped), present
   only when the tool emitted any. In compact mode, warnings remain inline in
   `result` for backwards compatibility.
+- **`appended`** is a `string[]` of extra Markdown text blocks the server
+  attaches after the result. Currently only `ppal-connect` uses it, to deliver
+  the Producer Pal skills (notation instructions) and your
+  `~/.producer-pal/context.md` global context. Present only when non-empty. In
+  compact mode these blocks are joined into the `result` string instead.
 - On **error** (`isError: true`), `result` is still a plain error string
   regardless of format — error messages are not JSON.
 

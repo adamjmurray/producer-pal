@@ -392,20 +392,61 @@ describe("REST API Routes", () => {
       expect(body.isError).toBe(false);
     });
 
-    it("should ignore non-WARNING content items past the first when format=json", async () => {
+    it("should surface non-WARNING appended blocks under `appended` when format=json", async () => {
+      // The ppal-connect skills blob and global context are pushed as plain
+      // extra content blocks with no WARNING: prefix (see connect-append.ts).
+      // JSON mode must preserve them, not silently drop them. Use a non-connect
+      // tool so the real skills block isn't also appended by the wrapper.
       stubMaxOutlet({
         content: [
           { type: "text", text: '{"ok":true}' },
           { type: "text", text: "WARNING: real warning" },
-          { type: "text", text: "some unexpected debug item" },
+          { type: "text", text: "# Producer Pal Skills\n..." },
+          { type: "text", text: "# Global context\n..." },
         ],
+      });
+
+      const response = await callToolWithFormat("ppal-read-track", "json");
+      const body = await response.json();
+
+      expect(body.result).toStrictEqual({ ok: true });
+      expect(body.warnings).toStrictEqual(["real warning"]);
+      expect(body.appended).toStrictEqual([
+        "# Producer Pal Skills\n...",
+        "# Global context\n...",
+      ]);
+    });
+
+    it("delivers the appended skills block under `appended` for ppal-connect (json)", async () => {
+      // End-to-end guard: the withConnectAppend wiring pushes the skills block
+      // and JSON mode must surface it, not drop it (regression for the bug
+      // where JSON mode silently discarded connect's appended content).
+      stubMaxOutlet({
+        content: [{ type: "text", text: '{"connected":true}' }],
       });
 
       const response = await callToolWithFormat("ppal-connect", "json");
       const body = await response.json();
 
+      expect(body.result).toStrictEqual({ connected: true });
+      expect(body.appended).toBeInstanceOf(Array);
+      expect(body.appended.join("\n")).toContain("# Producer Pal Skills");
+    });
+
+    it("omits `appended` when there are no non-WARNING extra blocks (format=json)", async () => {
+      stubMaxOutlet({
+        content: [
+          { type: "text", text: '{"ok":true}' },
+          { type: "text", text: "WARNING: heads up" },
+        ],
+      });
+
+      const response = await callToolWithFormat("ppal-read-track", "json");
+      const body = await response.json();
+
       expect(body.result).toStrictEqual({ ok: true });
-      expect(body.warnings).toStrictEqual(["real warning"]);
+      expect(body.warnings).toStrictEqual(["heads up"]);
+      expect(body.appended).toBeUndefined();
     });
 
     it("should join content as a string when format=compact", async () => {
