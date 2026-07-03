@@ -15,7 +15,17 @@ import {
   getConversationDb,
   loadConversation,
   resetDbCache,
+  saveConversation,
 } from "#webui/lib/conversation-db";
+
+// Wrap saveConversation in a spy that delegates to the real fake-indexeddb
+// implementation by default, so most tests exercise the real DB. Failure tests
+// queue a one-off rejection via mockRejectedValueOnce.
+vi.mock(import("#webui/lib/conversation-db"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return { ...actual, saveConversation: vi.fn(actual.saveConversation) };
+});
 
 /**
  * Build a minimal conversation record for undo tests.
@@ -141,6 +151,63 @@ describe("useUndoDelete", () => {
       expect(restoredFirst?.title).toBe("First");
     });
     expect(result.current.undoNotification).toBeNull();
+  });
+
+  it("keeps the record and shows a retryable error when the restore save fails", async () => {
+    // A failed save must NOT lose the conversation: the DB row was already
+    // deleted, so the stack is its only copy. The banner turns into an error and
+    // the record stays put so the user can retry.
+    vi.mocked(saveConversation).mockRejectedValueOnce(
+      new DOMException("full", "QuotaExceededError"),
+    );
+    const refreshList = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const record = makeRecord({ title: "Keep me" });
+
+    await act(() => result.current.pushDeleted(record));
+    await act(() => result.current.undoNotification!.action!.onClick());
+
+    // onClick fires `void undo()`, so wait for the rejected save to flush.
+    await waitFor(() =>
+      expect(result.current.undoNotification?.type).toBe("error"),
+    );
+    expect(result.current.undoNotification?.message).toMatch(
+      /storage is full/i,
+    );
+    expect(result.current.undoNotification?.action?.label).toBe("Retry");
+    expect(refreshList).not.toHaveBeenCalled();
+    expect(await loadConversation(record.id)).toBeUndefined();
+
+    // Retry now succeeds (the one-off rejection is consumed): the record is
+    // restored and the banner clears.
+    await act(() => result.current.undoNotification!.action!.onClick());
+
+    await waitFor(async () => {
+      expect(await loadConversation(record.id)).toBeDefined();
+    });
+    expect(refreshList).toHaveBeenCalled();
+    expect(result.current.undoNotification).toBeNull();
+  });
+
+  it("clears a prior restore error when a new deletion is pushed", async () => {
+    vi.mocked(saveConversation).mockRejectedValueOnce(new Error("boom"));
+    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+
+    await act(() => result.current.pushDeleted(makeRecord({ title: "First" })));
+    await act(() => result.current.undoNotification!.action!.onClick());
+
+    await waitFor(() =>
+      expect(result.current.undoNotification?.type).toBe("error"),
+    );
+
+    await act(() =>
+      result.current.pushDeleted(makeRecord({ title: "Second" })),
+    );
+
+    // A fresh deletion resets the banner to a normal warning.
+    expect(result.current.undoNotification?.type).toBe("warning");
+    expect(result.current.undoNotification?.message).toBe("Deleted “Second”");
+    expect(result.current.undoNotification?.action?.label).toBe("Undo");
   });
 
   it("dismiss drops all pending undos without restoring", async () => {

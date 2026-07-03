@@ -5,6 +5,7 @@
 
 import { useCallback, useRef, useState } from "preact/hooks";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { formatSaveErrorMessage } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import {
   type ConversationRecord,
   saveConversation,
@@ -33,7 +34,9 @@ export interface UndoDeleteReturn {
  * Deletes stack LIFO: the banner always reflects the latest deletion, and each
  * undo restores that record then reveals the previous one (multi-level undo with
  * a history depth greater than one). Records live only in memory until undone or
- * dismissed — the DB row is already gone by the time {@link pushDeleted} runs.
+ * dismissed — the DB row is already gone by the time {@link pushDeleted} runs, so
+ * a restore that fails to save keeps the record on the stack and turns the banner
+ * into a retryable error rather than losing the conversation.
  * @param refreshList - Refreshes the conversation list after a restore
  * @returns Undo banner state and handlers
  */
@@ -45,6 +48,9 @@ export function useUndoDelete(
   // transcript, capped at MAX_UNDO_HISTORY, so holding them in memory is cheap.
   const stackRef = useRef<ConversationRecord[]>([]);
   const [stack, setStack] = useState<ConversationRecord[]>([]);
+  // Set when a restore save rejects: the record stays on the stack (so the user
+  // can retry) and the banner turns into an error until the next successful undo.
+  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   const sync = useCallback((next: ConversationRecord[]) => {
     stackRef.current = next;
@@ -56,26 +62,45 @@ export function useUndoDelete(
 
     if (!restored) return;
 
-    sync(stackRef.current.slice(0, -1));
-    await saveConversation(restored);
+    // Save BEFORE popping. The DB row was already deleted at delete-time, so the
+    // record survives only on this stack; popping before the save would lose it
+    // permanently if the save rejects (e.g. QuotaExceededError). Pop only on
+    // success, and remove by identity in case a delete raced in during the await.
+    try {
+      await saveConversation(restored);
+    } catch (error) {
+      setRestoreError(formatSaveErrorMessage(error));
+
+      return;
+    }
+
+    setRestoreError(null);
+    sync(stackRef.current.filter((record) => record !== restored));
     await refreshList();
   }, [refreshList, sync]);
 
   const pushDeleted = useCallback(
     (record: ConversationRecord) => {
+      setRestoreError(null);
       sync([...stackRef.current, record].slice(-MAX_UNDO_HISTORY));
     },
     [sync],
   );
 
-  const dismiss = useCallback(() => sync([]), [sync]);
+  const dismiss = useCallback(() => {
+    setRestoreError(null);
+    sync([]);
+  }, [sync]);
 
   const top = stack.at(-1);
   const undoNotification: TransferNotificationData | null = top
     ? {
-        message: `Deleted “${undoTitle(top)}”`,
-        type: "warning",
-        action: { label: "Undo", onClick: () => void undo() },
+        message: restoreError ?? `Deleted “${undoTitle(top)}”`,
+        type: restoreError ? "error" : "warning",
+        action: {
+          label: restoreError ? "Retry" : "Undo",
+          onClick: () => void undo(),
+        },
       }
     : null;
 

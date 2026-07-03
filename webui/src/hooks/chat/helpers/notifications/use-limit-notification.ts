@@ -68,11 +68,12 @@ export function useLimitNotification(): {
 
 /**
  * Build a user-facing message for an IndexedDB save failure, with a
- * targeted hint when the browser's storage quota is exhausted.
+ * targeted hint when the browser's storage quota is exhausted. Shared with the
+ * undo-delete banner, which re-saves a restored record.
  * @param error - The thrown error
  * @returns Display message
  */
-function formatSaveErrorMessage(error: unknown): string {
+export function formatSaveErrorMessage(error: unknown): string {
   const isQuota =
     (error instanceof DOMException && error.name === "QuotaExceededError") ||
     (error instanceof Error && /quota/i.test(error.message));
