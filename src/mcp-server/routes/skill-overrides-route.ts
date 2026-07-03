@@ -15,7 +15,7 @@ import {
   isSkillSlotName,
   type SkillSlotName,
 } from "#src/skills/skill-slots.ts";
-import { isLocalOrigin } from "../helpers/request-origin.ts";
+import { rejectCrossOriginWrite } from "../helpers/request-origin.ts";
 import {
   deleteSkillOverride,
   listSkillSlotStates,
@@ -76,13 +76,13 @@ export function registerSkillOverridesRoutes(app: Express): void {
 function requireSlot(req: Request, res: Response): SkillSlotName | null {
   // Same localhost gate as POST /config: same-origin and non-browser
   // (Origin-less) clients pass; a cross-origin browser 403s.
-  const origin = req.get("Origin");
-
-  if (origin && !isLocalOrigin(origin)) {
-    res
-      .status(403)
-      .json({ error: "cross-origin /skill-overrides writes are not allowed" });
-
+  if (
+    rejectCrossOriginWrite(
+      req,
+      res,
+      "cross-origin /skill-overrides writes are not allowed",
+    )
+  ) {
     return null;
   }
 

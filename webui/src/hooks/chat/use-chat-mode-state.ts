@@ -254,8 +254,12 @@ export function useChatModeState(params: UseChatModeStateParams) {
     headerInfo,
     branchNav,
     // Show the LOCKED instruction for the active conversation (accurate once a
-    // chat has sent its first turn / been restored); fall back to the current
-    // resolved instruction for a brand-new, not-yet-locked chat.
+    // chat has sent its first turn). Fall back to the current resolved
+    // instruction when none is locked — a brand-new not-yet-locked chat, or a
+    // pre-1.5 conversation restored from before instruction-locking existed.
+    // Legacy records never stored their instruction, so it can't be recovered:
+    // the current one is the only sane default to display and to continue with,
+    // even though it may not match what that old chat originally used.
     systemInstruction:
       chat.activeSystemInstruction ?? effectiveSystemInstruction,
   };

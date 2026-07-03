@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Request, type Response } from "express";
+
 /**
  * Check whether an Origin header value points to localhost. Used ONLY to gate
  * cross-origin browser writes to POST /config (device settings), while still
@@ -28,4 +30,32 @@ export function isLocalOrigin(origin: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Gate a browser write to a localhost-only endpoint. Same-origin and
+ * non-browser (Origin-less) clients pass; a cross-origin browser gets a 403
+ * with `message` and this returns true so the caller can bail. See
+ * {@link isLocalOrigin} for why this is applied to config/content writes but
+ * never to /mcp or /api/tools.
+ *
+ * @param req - Express request
+ * @param res - Express response (a 403 is written when rejected)
+ * @param message - Error body for the 403 (endpoint-specific wording)
+ * @returns true if the request was rejected (403 written); false to proceed
+ */
+export function rejectCrossOriginWrite(
+  req: Request,
+  res: Response,
+  message: string,
+): boolean {
+  const origin = req.get("Origin");
+
+  if (origin && !isLocalOrigin(origin)) {
+    res.status(403).json({ error: message });
+
+    return true;
+  }
+
+  return false;
 }

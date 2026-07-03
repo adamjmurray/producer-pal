@@ -22,7 +22,7 @@ import {
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { withGlobalContext } from "./helpers/global-context-inject.ts";
-import { isLocalOrigin } from "./helpers/request-origin.ts";
+import { rejectCrossOriginWrite } from "./helpers/request-origin.ts";
 import { revealConfigDir } from "./helpers/reveal-config-dir.ts";
 import { withSkills } from "./helpers/skills-inject.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
@@ -366,13 +366,13 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   // endpoints must stay reachable from the LAN/tunnel chat's non-localhost
   // origin. Side effect: config writes from a LAN/tunnel browser are blocked —
   // an accepted limitation, not part of the remote-access feature's contract.
-  const origin = req.get("Origin");
-
-  if (origin && !isLocalOrigin(origin)) {
-    res
-      .status(403)
-      .json({ error: "cross-origin /config writes are not allowed" });
-
+  if (
+    rejectCrossOriginWrite(
+      req,
+      res,
+      "cross-origin /config writes are not allowed",
+    )
+  ) {
     return;
   }
 

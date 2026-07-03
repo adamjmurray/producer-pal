@@ -209,7 +209,7 @@ function buildAgentTools(mode: "full" | "small"): Tool[] {
  * (JSON Schema from Zod, strict disabled, no-op executor — we only measure the
  * uploaded schema's token cost, never execute).
  * @param td - A standard tool definition
- * @param mode - "full" or "small" (small applies smallModelModeConfig)
+ * @param mode - "full" or "small" (small resolves each param's small-model mode)
  * @returns A Realtime SDK tool
  */
 function toRealtimeTool(

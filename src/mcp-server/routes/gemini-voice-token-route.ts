@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Express, type Request, type Response } from "express";
-import { isLocalOrigin } from "../helpers/request-origin.ts";
+import { rejectCrossOriginWrite } from "../helpers/request-origin.ts";
 
 const GEMINI_KEY_HEADER = "x-gemini-key";
 
@@ -29,13 +29,13 @@ const GEMINI_KEY_HEADER = "x-gemini-key";
  */
 export function registerGeminiVoiceTokenRoute(app: Express): void {
   app.post("/gemini-voice-token", (req: Request, res: Response): void => {
-    const origin = req.get("Origin");
-
-    if (origin && !isLocalOrigin(origin)) {
-      res
-        .status(403)
-        .json({ error: "cross-origin /gemini-voice-token is not allowed" });
-
+    if (
+      rejectCrossOriginWrite(
+        req,
+        res,
+        "cross-origin /gemini-voice-token is not allowed",
+      )
+    ) {
       return;
     }
 

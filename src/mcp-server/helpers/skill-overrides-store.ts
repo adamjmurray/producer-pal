@@ -31,6 +31,17 @@ import {
 } from "./config-markdown-store.ts";
 import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.ts";
 
+// Built-in fragments are static module imports, so their hashes never change at
+// runtime. Precompute them once: GET /skill-overrides is polled every 5s and
+// would otherwise re-hash all slots on each poll. (The override *files* are
+// still re-read per request — they change on disk and must surface promptly.)
+const BUILT_IN_HASHES: Record<SkillSlotName, string> = Object.fromEntries(
+  SKILL_SLOT_NAMES.map((name) => [
+    name,
+    hashFragment(SKILL_SLOTS[name].builtIn),
+  ]),
+) as Record<SkillSlotName, string>;
+
 /** Fork-time provenance recorded in a saved override's frontmatter. */
 export interface SkillOverrideProvenance {
   /** Producer Pal version the override was forked from. */
@@ -107,8 +118,7 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
     builtIn: slot.builtIn,
     override,
     drifted:
-      provenance != null &&
-      provenance.builtInHash !== hashFragment(slot.builtIn),
+      provenance != null && provenance.builtInHash !== BUILT_IN_HASHES[name],
     provenance,
   };
 }
@@ -132,7 +142,7 @@ export function writeSkillOverride(
 
   const provenance: SkillOverrideProvenance = {
     producerPalVersion: VERSION,
-    builtInHash: hashFragment(SKILL_SLOTS[name].builtIn),
+    builtInHash: BUILT_IN_HASHES[name],
   };
 
   writeConfigMarkdown(
