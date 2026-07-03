@@ -37,6 +37,9 @@ interface ReadClipArgs {
   trackIndex?: number | null;
   /** @internal Used by batch readers that already have parsed indices */
   sceneIndex?: number | null;
+  /** @internal Precomputed drum mode from a batch reader, so N clips of one
+   * track don't each re-walk the track's device tree */
+  drumMode?: boolean;
 }
 
 interface WarpMarker {
@@ -162,6 +165,7 @@ export function readClip(
       clip,
       includeClipNotes,
       context.notation ?? "barbeat",
+      args.drumMode,
     );
   }
 
@@ -257,12 +261,15 @@ function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
  * @param clip - LiveAPI clip object
  * @param includeClipNotes - Whether to include formatted notes
  * @param notation - Notation for the returned notes (default barbeat)
+ * @param precomputedDrumMode - Drum mode supplied by a batch reader; falls back
+ *   to a per-clip device-tree walk when omitted (standalone reads)
  */
 function processMidiClip(
   result: ReadClipResult,
   clip: LiveAPI,
   includeClipNotes: boolean,
   notation: Notation,
+  precomputedDrumMode?: boolean,
 ): void {
   if (!includeClipNotes) return;
 
@@ -291,7 +298,9 @@ function processMidiClip(
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
-  const drumMode = clip.trackIndex != null && isDrumRackTrack(clip.trackIndex);
+  const drumMode =
+    precomputedDrumMode ??
+    (clip.trackIndex != null && isDrumRackTrack(clip.trackIndex));
 
   const formatted = formatNotation(notes, {
     notation,

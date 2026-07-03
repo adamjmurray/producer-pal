@@ -152,8 +152,17 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
  * @returns True if any device (including nested rack devices) is a Drum Rack
  */
 export function isDrumRackTrack(trackIndex: number): boolean {
-  const track = LiveAPI.from(livePath.track(trackIndex));
+  return isDrumRackForTrack(LiveAPI.from(livePath.track(trackIndex)));
+}
 
+/**
+ * Drum-mode check for a track object already in hand. Batch readers that walk N
+ * clips of one track call this once instead of paying a full device-tree walk
+ * per clip via {@link isDrumRackTrack}.
+ * @param track - LiveAPI track object
+ * @returns True if any device (including nested rack devices) is a Drum Rack
+ */
+export function isDrumRackForTrack(track: LiveAPI): boolean {
   return devicesContainDrumRack(track.getChildren("devices"));
 }
 

@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/read-clip-helpers.ts";
 import {
   readClip,
   type ReadClipResult,
@@ -57,6 +58,8 @@ export function readSessionClips(
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
+  const drumMode = isDrumRackForTrack(track);
+
   return track
     .getChildIds("clip_slots")
     .map((_clipSlotId, sceneIndex) =>
@@ -65,6 +68,7 @@ export function readSessionClips(
           trackIndex,
           sceneIndex,
           suppressEmptyWarning: true,
+          drumMode,
           ...(include && { include }),
         },
         { notation },
@@ -110,12 +114,15 @@ export function readArrangementClips(
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
+  const drumMode = isDrumRackForTrack(track);
+
   return track
     .getChildIds("arrangement_clips")
     .map((clipId) =>
       readClip(
         {
           clipId,
+          drumMode,
           ...(include && { include }),
         },
         { notation },
@@ -148,11 +155,16 @@ export function readTakeLanes(
 ): ReadTakeLaneResult[] {
   // 1-based to match the write-side `takeLane` param (0 = main lane, which the
   // take_lanes collection excludes — so the first non-main lane is takeLane:1).
+  const drumMode = isDrumRackForTrack(track);
+
   return track.getChildren("take_lanes").map((lane, i) => {
     const clips = lane
       .getChildIds("arrangement_clips")
       .map((clipId) =>
-        readClip({ clipId, ...(include && { include }) }, { notation }),
+        readClip(
+          { clipId, drumMode, ...(include && { include }) },
+          { notation },
+        ),
       )
       .filter((clip) => clip.id != null);
 
