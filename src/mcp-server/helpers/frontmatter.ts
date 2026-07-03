@@ -27,7 +27,10 @@ const FENCE = "---";
  * @returns The parsed frontmatter fields and body
  */
 export function parseFrontmatter(raw: string): ParsedFrontmatter {
-  const lines = raw.split("\n");
+  // Split on CRLF or LF: a Windows editor rewrites the file with `\r\n`, and a
+  // trailing `\r` on the close line ("---\r") would otherwise never match FENCE,
+  // dropping the provenance block AND injecting the literal fence into the body.
+  const lines = raw.split(/\r?\n/);
 
   if (lines[0]?.trim() !== FENCE) {
     return { data: {}, body: raw };

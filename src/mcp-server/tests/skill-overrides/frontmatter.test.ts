@@ -44,6 +44,19 @@ describe("parseFrontmatter", () => {
 
     expect(parseFrontmatter(raw).data).toStrictEqual({ key: "value" });
   });
+
+  it("parses a CRLF file (Windows line endings) the same as LF", () => {
+    // Regression: the close fence "---\r" never matched "---", so the whole
+    // file (provenance block included) was returned as body and drift detection
+    // silently broke. Splitting on /\r?\n/ handles both.
+    const raw =
+      "---\r\nproducerPalVersion: 1.5.0\r\nbuiltInHash: abc123\r\n---\r\n\r\nThe body.";
+
+    expect(parseFrontmatter(raw)).toStrictEqual({
+      data: { producerPalVersion: "1.5.0", builtInHash: "abc123" },
+      body: "The body.",
+    });
+  });
 });
 
 describe("serializeFrontmatter", () => {
