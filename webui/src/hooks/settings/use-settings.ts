@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { errorMessage } from "#src/shared/error-utils";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import {
@@ -412,15 +413,6 @@ async function persistAllSettings(
 ): Promise<void> {
   saveSmallModelMode(smallModelMode);
   await saveCurrentSettings(provider, enabledTools, allSettings);
-}
-
-/**
- * Extract a string error message from an unknown thrown value.
- * @param {unknown} error - Caught value
- * @returns {string} Message string
- */
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { errorMessage } from "#src/shared/error-utils";
 import {
   DEFAULT_NOTATION,
   isNotation,
@@ -195,13 +196,4 @@ async function fetchCurrentMode(
   } catch {
     return null;
   }
-}
-
-/**
- * Extract a string error message from an unknown thrown value.
- * @param error - Caught value
- * @returns Message string
- */
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

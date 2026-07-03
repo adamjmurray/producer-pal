@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { errorMessage } from "#src/shared/error-utils";
 
 /** How often to re-read the document while the editor is open and focused. */
 const POLL_INTERVAL_MS = 5000;
@@ -34,8 +35,8 @@ export interface UseDocMemoryReturn {
  * save/refresh coordination the editor needs: optimistic save status, focus +
  * interval polling for external writes, and a guard so a slow refresh GET can't
  * clobber a concurrent save's echo. `useContextMemory` (project context via
- * /config) and `useGlobalContextMemory` (global context via /global-context)
- * are thin wrappers that supply their own transport.
+ * /config), `useGlobalContextMemory`, and `useSystemPromptMemory` are thin
+ * wrappers that supply their own transport (see {@link makeContentTransport}).
  *
  * `read` and `write` MUST be stable references (module-level functions) — they
  * are effect/callback dependencies, so a fresh closure each render would
@@ -52,21 +53,10 @@ export function useDocMemory(
   const [status, setStatus] = useState<DocMemoryStatus>({ kind: "loading" });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
-  // Coordinate refresh() reads against in-flight save() writes. A focus/poll
-  // read can resolve older content than a concurrent save's write and, if it
-  // lands last, clobber the save's echo. saveCountRef counts currently-running
-  // saves; saveGenRef counts saves ever started. A refresh trusts its result
-  // only if no save overlapped its round-trip.
-  const saveCountRef = useRef(0);
-  const saveGenRef = useRef(0);
+  const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
   const refresh = useCallback(async (): Promise<void> => {
-    const saveInFlightAtStart = saveCountRef.current;
-    const saveGenAtStart = saveGenRef.current;
-    // The read's result is only authoritative if no save overlapped its
-    // round-trip; otherwise the save's echo wins (see saveCountRef comment).
-    const supersededBySave = (): boolean =>
-      saveInFlightAtStart > 0 || saveGenRef.current !== saveGenAtStart;
+    const supersededBySave = guardRefresh();
 
     try {
       const content = await read();
@@ -79,12 +69,11 @@ export function useDocMemory(
 
       setStatus({ kind: "error", message: errorMessage(error) });
     }
-  }, [read]);
+  }, [read, guardRefresh]);
 
   const save = useCallback(
     async (content: string): Promise<boolean> => {
-      saveCountRef.current++;
-      saveGenRef.current++;
+      beginSave();
       setSaveStatus("saving");
       setSaveError(null);
 
@@ -96,17 +85,15 @@ export function useDocMemory(
 
         return true;
       } catch (error: unknown) {
-        const message = errorMessage(error);
-
-        setSaveError(message);
+        setSaveError(errorMessage(error));
         setSaveStatus("error");
 
         return false;
       } finally {
-        saveCountRef.current--;
+        endSave();
       }
     },
-    [write],
+    [write, beginSave, endSave],
   );
 
   const clear = useCallback((): Promise<boolean> => save(""), [save]);
@@ -116,35 +103,7 @@ export function useDocMemory(
     void refresh();
   }, [refresh]);
 
-  // Re-fetch when the window regains focus so device/AI writes that happened
-  // while the tab was elsewhere surface when the user returns. The editor doc
-  // is uncontrolled and seeded once, so this updates status without clobbering
-  // an in-progress draft.
-  useEffect(() => {
-    const handleFocus = (): void => {
-      void refresh();
-    };
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [refresh]);
-
-  // Poll while the editor is open and the window is focused so external writes
-  // surface within a few seconds without a manual refocus/reload. Focus-gated
-  // to avoid idle background traffic. refresh() defers to in-flight saves, so a
-  // tick mid-save can't clobber the echo. Cleanup ends polling on unmount.
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (document.hasFocus()) void refresh();
-    }, POLL_INTERVAL_MS);
-
-    return () => {
-      clearInterval(id);
-    };
-  }, [refresh]);
+  useRefreshOnFocusAndPoll(refresh);
 
   return {
     status,
@@ -156,13 +115,140 @@ export function useDocMemory(
   };
 }
 
-// --- Helpers below main export ---
+// --- Shared save/refresh coordination (also used by useSkillOverrides) ---
+
+/** Save/refresh race coordination primitives (see {@link useSaveRefreshGuard}). */
+export interface SaveRefreshGuard {
+  /** Mark a save started (before its write begins). */
+  beginSave: () => void;
+  /** Mark a save finished (in the write's finally). */
+  endSave: () => void;
+  /** Snapshot the guard at a refresh's start; the returned predicate reports
+   *  whether a save overlapped the refresh's round-trip and should win. */
+  guardRefresh: () => () => boolean;
+}
 
 /**
- * Extract a string error message from an unknown thrown value.
- * @param error - Caught value
- * @returns Message string
+ * Coordinate refresh() reads against in-flight save() writes, shared by the
+ * single-document ({@link useDocMemory}) and slot-collection (useSkillOverrides)
+ * memory hooks. A focus/poll read can resolve older data than a concurrent
+ * save's echo and, landing last, clobber it. `beginSave`/`endSave` bracket each
+ * write (an in-flight counter plus a monotonic generation counter); a refresh
+ * calls `guardRefresh()` at its start and trusts its result only if no save
+ * overlapped the round-trip.
+ * @returns The save-bracketing and refresh-guard helpers
  */
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+export function useSaveRefreshGuard(): SaveRefreshGuard {
+  const saveCountRef = useRef(0);
+  const saveGenRef = useRef(0);
+
+  const beginSave = useCallback((): void => {
+    saveCountRef.current++;
+    saveGenRef.current++;
+  }, []);
+
+  const endSave = useCallback((): void => {
+    saveCountRef.current--;
+  }, []);
+
+  const guardRefresh = useCallback((): (() => boolean) => {
+    const inFlightAtStart = saveCountRef.current;
+    const genAtStart = saveGenRef.current;
+
+    return (): boolean =>
+      inFlightAtStart > 0 || saveGenRef.current !== genAtStart;
+  }, []);
+
+  return { beginSave, endSave, guardRefresh };
+}
+
+/**
+ * Refresh on window focus and on a focus-gated interval so external writes
+ * (device/AI/hand edits made while the tab was elsewhere) surface within a few
+ * seconds without a manual reload. Polling is gated on `document.hasFocus()` to
+ * avoid idle background traffic; the focus listener fires unconditionally on
+ * return. The refresh must defer to in-flight saves (see
+ * {@link useSaveRefreshGuard}) so a tick mid-save can't clobber the echo.
+ * @param refresh - Stable refresh callback to run on focus and each poll tick
+ */
+export function useRefreshOnFocusAndPoll(
+  refresh: () => void | Promise<void>,
+): void {
+  useEffect(() => {
+    const handleFocus = (): void => {
+      void refresh();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    const id = setInterval(() => {
+      if (document.hasFocus()) void refresh();
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(id);
+    };
+  }, [refresh]);
+}
+
+// --- Content transport factory (single-content markdown endpoints) ---
+
+/** Server shape for the single-content markdown doc endpoints. */
+interface ContentResponse {
+  content?: string;
+}
+
+/** A stable read/write transport pair for {@link useDocMemory}. */
+export interface ContentTransport {
+  read: () => Promise<string>;
+  write: (content: string) => Promise<string>;
+}
+
+/**
+ * Build a read/write transport for a single-content markdown endpoint that
+ * speaks GET(no-store)→{content} and PUT(JSON {content})→{content}. The system
+ * prompt and global context endpoints are byte-identical but for their URL and
+ * error label, so they share this factory. Call it once at module scope so the
+ * pair is a stable reference (see {@link useDocMemory}).
+ * @param url - The endpoint URL
+ * @param label - Human label for error copy (e.g. "System prompt")
+ * @returns The stable { read, write } transport pair
+ */
+export function makeContentTransport(
+  url: string,
+  label: string,
+): ContentTransport {
+  const read = async (): Promise<string> => {
+    const response = await fetch(url, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error(
+        `${label} request failed (${response.status} ${response.statusText})`,
+      );
+    }
+
+    const body = (await response.json()) as ContentResponse;
+
+    return body.content ?? "";
+  };
+
+  const write = async (content: string): Promise<string> => {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `${label} update failed (${response.status} ${response.statusText})`,
+      );
+    }
+
+    const body = (await response.json()) as ContentResponse;
+
+    return body.content ?? "";
+  };
+
+  return { read, write };
 }

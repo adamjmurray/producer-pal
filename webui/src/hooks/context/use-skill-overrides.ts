@@ -3,15 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
+import { errorMessage } from "#src/shared/error-utils";
 import {
   getSkillOverrideUrl,
   getSkillOverridesUrl,
 } from "#webui/utils/mcp-url";
-import { type SaveStatus } from "./use-doc-memory";
-
-/** How often to re-read the slots while the editor is open and focused. */
-const POLL_INTERVAL_MS = 5000;
+import {
+  type SaveStatus,
+  useRefreshOnFocusAndPoll,
+  useSaveRefreshGuard,
+} from "./use-doc-memory";
 
 /** One overridable skills fragment, as the editor needs it. */
 export interface SkillSlotView {
@@ -66,18 +68,13 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
-  // Same refresh-vs-save coordination as useDocMemory: a focus/poll read can
-  // resolve older slot data than a concurrent save's echo and, if it lands
-  // last, clobber it. saveCountRef counts in-flight saves; saveGenRef counts
-  // saves ever started. A refresh trusts its result only if none overlapped.
-  const saveCountRef = useRef(0);
-  const saveGenRef = useRef(0);
+  // Same refresh-vs-save coordination as useDocMemory (a focus/poll read can
+  // resolve older slot data than a concurrent save's echo and, landing last,
+  // clobber it), just over the slot collection instead of one document.
+  const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
   const refresh = useCallback(async (): Promise<void> => {
-    const saveInFlightAtStart = saveCountRef.current;
-    const saveGenAtStart = saveGenRef.current;
-    const supersededBySave = (): boolean =>
-      saveInFlightAtStart > 0 || saveGenRef.current !== saveGenAtStart;
+    const supersededBySave = guardRefresh();
 
     try {
       const slots = await fetchSlots();
@@ -90,12 +87,11 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
 
       setStatus({ kind: "error", message: errorMessage(error) });
     }
-  }, []);
+  }, [guardRefresh]);
 
   const writeSlot = useCallback(
     async (write: () => Promise<SkillSlotView>): Promise<boolean> => {
-      saveCountRef.current++;
-      saveGenRef.current++;
+      beginSave();
       setSaveStatus("saving");
       setSaveError(null);
 
@@ -112,10 +108,10 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
 
         return false;
       } finally {
-        saveCountRef.current--;
+        endSave();
       }
     },
-    [],
+    [beginSave, endSave],
   );
 
   const saveSlot = useCallback(
@@ -134,23 +130,7 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
     void refresh();
   }, [refresh]);
 
-  // Re-fetch on focus so device/AI/hand writes made while the tab was elsewhere
-  // surface on return. Polling is focus-gated to avoid idle background traffic.
-  useEffect(() => {
-    const handleFocus = (): void => {
-      void refresh();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    const id = setInterval(() => {
-      if (document.hasFocus()) void refresh();
-    }, POLL_INTERVAL_MS);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      clearInterval(id);
-    };
-  }, [refresh]);
+  useRefreshOnFocusAndPoll(refresh);
 
   return { status, saveStatus, saveError, saveSlot, resetSlot, refresh };
 }
@@ -271,13 +251,4 @@ function toView(raw: RawSkillSlot): SkillSlotView {
     drifted: raw.drifted,
     forkedFromVersion: raw.provenance?.producerPalVersion ?? null,
   };
-}
-
-/**
- * Extract a string error message from an unknown thrown value.
- * @param error - Caught value
- * @returns Message string
- */
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
