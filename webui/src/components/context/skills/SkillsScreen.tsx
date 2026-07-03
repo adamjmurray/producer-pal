@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { ContextHeader } from "#webui/components/context/ContextScreen";
 import { type UseSkillOverridesReturn } from "#webui/hooks/context/use-skill-overrides";
-import { ContextHeader } from "./ContextScreen";
 import { SkillSlotScreen } from "./SkillSlotScreen";
 import { SkillsPreviewScreen } from "./SkillsPreviewScreen";
 

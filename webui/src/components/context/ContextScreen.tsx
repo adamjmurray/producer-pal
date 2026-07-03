@@ -10,6 +10,9 @@ import {
   type UseDocMemoryReturn,
 } from "#webui/hooks/context/use-doc-memory";
 import { CharTokenCount } from "./CharTokenCount";
+import { makeContextIoHandlers } from "./context-io";
+import { ContextIoButtons } from "./ContextIoButtons";
+import { MarkdownDropZone } from "./MarkdownDropZone";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { OverridePanes } from "./OverridePanes";
 
@@ -23,6 +26,11 @@ export interface ContextEditorLabels {
   closeAriaLabel: string;
   /** Confirm prompt shown before Clear wipes the document. */
   clearConfirmMessage: string;
+  /**
+   * Human basename for the `.md` export file (e.g.
+   * "producer-pal-global-context"); dated and slugified at download time.
+   */
+  exportBasename: string;
   /** Banner text when the server content changed under a clean draft. */
   externalUpdateMessage: string;
   /**
@@ -78,6 +86,7 @@ interface ContextScreenProps {
 export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
   const { memory, labels, tabSlot, onClose } = props;
   const editor = useContextEditorState(memory, labels.clearConfirmMessage);
+  const io = makeContextIoHandlers(editor, labels.exportBasename);
   // Cap the editable region so it lines up with the chat column instead of
   // sprawling across a wide monitor. Single-pane documents match the chat width;
   // the side-by-side built-in view gets a little more room so neither pane is
@@ -101,6 +110,8 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         widthClass={widthClass}
         charCount={editor.charCount}
         onClear={() => void editor.handleClear()}
+        onImport={io.onImport}
+        onExport={io.onExport}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
         <ContextBody
@@ -115,6 +126,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           onReload={editor.handleReload}
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
+          onImportText={io.onImportText}
         />
       </div>
     </div>
@@ -206,6 +218,8 @@ interface ContextControlsProps {
   widthClass: string;
   charCount: number;
   onClear: () => void;
+  onImport: () => void;
+  onExport: () => void;
 }
 
 /**
@@ -234,6 +248,10 @@ function ContextControls(
         )}
         <div className="ml-auto flex items-center gap-3">
           <CharTokenCount chars={charCount} className="shrink-0" />
+          <ContextIoButtons
+            onImport={props.onImport}
+            onExport={props.onExport}
+          />
           <button
             type="button"
             onClick={onClear}
@@ -313,6 +331,7 @@ interface ContextBodyProps {
   onReload: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
+  onImportText: (text: string) => void;
 }
 
 /**
@@ -337,6 +356,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     onReload,
     onChange,
     onBlur,
+    onImportText,
   } = props;
 
   if (status.kind === "error") {
@@ -365,25 +385,30 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
           onReload={onReload}
         />
       )}
-      {builtIn != null ? (
-        <OverridePanes
-          editorKey={editorKey}
-          value={status.content}
-          builtIn={builtIn}
-          overrideLabel={overridePaneLabel ?? "Your override"}
-          onChange={onChange}
-          onBlur={onBlur}
-        />
-      ) : (
-        <MarkdownEditor
-          key={editorKey}
-          initialValue={status.content}
-          readOnly={false}
-          onChange={onChange}
-          onBlur={onBlur}
-          className="flex-1 min-h-0"
-        />
-      )}
+      <MarkdownDropZone
+        onImportText={onImportText}
+        className="flex-1 min-h-0 flex flex-col"
+      >
+        {builtIn != null ? (
+          <OverridePanes
+            editorKey={editorKey}
+            value={status.content}
+            builtIn={builtIn}
+            overrideLabel={overridePaneLabel ?? "Your override"}
+            onChange={onChange}
+            onBlur={onBlur}
+          />
+        ) : (
+          <MarkdownEditor
+            key={editorKey}
+            initialValue={status.content}
+            readOnly={false}
+            onChange={onChange}
+            onBlur={onBlur}
+            className="flex-1 min-h-0"
+          />
+        )}
+      </MarkdownDropZone>
     </div>
   );
 }

@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SkillsPreviewScreen } from "#webui/components/context/SkillsPreviewScreen";
+import { SkillsPreviewScreen } from "#webui/components/context/skills/SkillsPreviewScreen";
 
 const CONFIG_URL = "http://localhost:3000/config";
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;

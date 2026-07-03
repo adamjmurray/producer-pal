@@ -4,13 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { NOTATIONS, type Notation } from "#src/shared/notation";
+import { CharTokenCount } from "#webui/components/context/CharTokenCount";
+import {
+  ContextHeader,
+  DOUBLE_PANE_WIDTH,
+} from "#webui/components/context/ContextScreen";
 import {
   type SkillsCombination,
   type SkillsPreviewStatus,
   useSkillsPreview,
 } from "#webui/hooks/context/use-skills-preview";
-import { CharTokenCount } from "./CharTokenCount";
-import { ContextHeader, DOUBLE_PANE_WIDTH } from "./ContextScreen";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 

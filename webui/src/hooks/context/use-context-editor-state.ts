@@ -9,6 +9,10 @@ import { type UseDocMemoryReturn } from "./use-doc-memory";
 const SAVE_DEBOUNCE_MS = 800;
 const SAVE_RETRY_MS = 5000;
 
+/** Confirm shown before an import overwrites non-empty editor content. */
+const IMPORT_CONFIRM =
+  "Replace the current editor content with the imported file? This can't be undone.";
+
 type TimerRef = { current: ReturnType<typeof setTimeout> | null };
 
 /**
@@ -48,6 +52,14 @@ export interface UseContextEditorStateReturn {
   handleClear: () => Promise<void>;
   /** Adopts the server's current content and remounts the editor. */
   handleReload: () => void;
+  /**
+   * Replaces the editor content with `content` (from an imported .md file),
+   * confirming first if the current draft is non-empty. Saves the imported
+   * content and remounts the editor so it re-seeds from it.
+   */
+  handleImport: (content: string) => Promise<void>;
+  /** The editor's current draft text (includes not-yet-saved edits). */
+  getContent: () => string;
   /**
    * Live character count of the editor's current draft — seeded from the
    * server, updated on each keystroke, reset by Clear/Reload. Drives the
@@ -271,6 +283,43 @@ export function useContextEditorState(
     setEditorKey((k) => k + 1);
   }, [memory.status]);
 
+  const handleImport = useCallback(
+    async (content: string): Promise<void> => {
+      if (memory.status.kind !== "ready") return;
+
+      // Guard against clobbering in-progress work. An empty editor imports
+      // silently (the common "start from a file" case).
+      const current = draftRef.current ?? "";
+
+      if (current.trim() !== "" && !window.confirm(IMPORT_CONFIRM)) return;
+
+      // Adopt the imported content as the new baseline, then remount — mirrors
+      // handleClear/handleReload so draft markers, size readout, and the editor
+      // seed stay consistent.
+      draftRef.current = content;
+      lastSavedRef.current = content;
+      setExternalUpdate(false);
+      setDirty(false);
+      setCharCount(content.length);
+
+      clearTimer(debounceTimerRef);
+      clearTimer(retryTimerRef);
+
+      // Order the import POST after any in-flight save so a stale draft POST
+      // can't land after it and resurrect the old content (see handleClear).
+      const pending = inFlightSaveRef.current;
+
+      if (pending != null) await pending;
+
+      const ok = await memory.save(content);
+
+      if (ok) setEditorKey((k) => k + 1);
+    },
+    [memory],
+  );
+
+  const getContent = useCallback((): string => draftRef.current ?? "", []);
+
   // Flush on tab close so an in-flight debounce doesn't drop edits.
   useEffect(() => {
     const onBeforeUnload = (): void => {
@@ -306,6 +355,8 @@ export function useContextEditorState(
     handleBlur,
     handleClear,
     handleReload,
+    handleImport,
+    getContent,
     charCount,
   };
 }

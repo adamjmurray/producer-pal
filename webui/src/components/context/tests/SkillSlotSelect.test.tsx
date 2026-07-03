@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { SkillSlotSelect } from "#webui/components/context/SkillSlotSelect";
+import { SkillSlotSelect } from "#webui/components/context/skills/SkillSlotSelect";
 import { type SkillSlotView } from "#webui/hooks/context/use-skill-overrides";
 
 /**

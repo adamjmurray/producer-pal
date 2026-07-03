@@ -87,6 +87,7 @@ const TEST_LABELS: ContextEditorLabels = {
   closeAriaLabel: "Close context editor",
   clearConfirmMessage: "Clear all project memory? This cannot be undone.",
   externalUpdateMessage: "Memory was updated outside the editor.",
+  exportBasename: "producer-pal-project-context",
 };
 
 /**
@@ -212,6 +213,36 @@ describe("ContextScreen", () => {
     render(<Harness />);
 
     expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy();
+  });
+
+  it("renders Import and Export buttons when ready", () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    render(<Harness />);
+
+    expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
+  });
+
+  it("Export button downloads the current content as a .md file", () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "# exported";
+    render(<Harness />);
+
+    const click = vi.fn();
+    const anchor = { href: "", download: "", click } as unknown as HTMLElement;
+
+    vi.spyOn(document, "createElement").mockReturnValue(anchor);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:x");
+    vi.spyOn(URL, "revokeObjectURL").mockReturnValue();
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+
+    expect((anchor as unknown as HTMLAnchorElement).download).toMatch(
+      /^producer-pal-project-context-\d{4}-\d{2}-\d{2}\.md$/,
+    );
+    expect(click).toHaveBeenCalledOnce();
+    vi.restoreAllMocks();
   });
 
   it("shows a live char/token count that updates as the user types", async () => {

@@ -381,6 +381,87 @@ describe("useContextEditorState", () => {
     });
   });
 
+  describe("import", () => {
+    it("imports into an empty editor without confirming, saves, and remounts", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const confirm = vi.fn().mockReturnValue(true);
+
+      vi.stubGlobal("confirm", confirm);
+      const { result } = renderEditor(makeMemory({ save }));
+      const startingKey = result.current.editorKey;
+
+      await act(async () => {
+        await result.current.handleImport("# imported");
+      });
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledWith("# imported");
+      expect(result.current.editorKey).toBe(startingKey + 1);
+      expect(result.current.charCount).toBe("# imported".length);
+      expect(result.current.dirty).toBe(false);
+    });
+
+    it("confirms before overwriting non-empty content and imports on accept", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const confirm = vi.fn().mockReturnValue(true);
+
+      vi.stubGlobal("confirm", confirm);
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "existing" }, save }),
+      );
+
+      await act(async () => {
+        await result.current.handleImport("replacement");
+      });
+
+      expect(confirm).toHaveBeenCalledOnce();
+      expect(save).toHaveBeenCalledWith("replacement");
+    });
+
+    it("is a no-op when the user cancels the overwrite confirm", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "existing" }, save }),
+      );
+      const startingKey = result.current.editorKey;
+
+      await act(async () => {
+        await result.current.handleImport("replacement");
+      });
+
+      expect(save).not.toHaveBeenCalled();
+      expect(result.current.editorKey).toBe(startingKey);
+    });
+
+    it("does not remount when the import save fails", async () => {
+      const save = vi.fn().mockResolvedValue(false);
+
+      const { result } = renderEditor(makeMemory({ save }));
+      const startingKey = result.current.editorKey;
+
+      await act(async () => {
+        await result.current.handleImport("# imported");
+      });
+
+      expect(save).toHaveBeenCalledWith("# imported");
+      expect(result.current.editorKey).toBe(startingKey);
+    });
+
+    it("getContent returns the live draft", async () => {
+      const { result } = renderEditor(makeReady("seed"));
+
+      expect(result.current.getContent()).toBe("seed");
+
+      await act(() => {
+        result.current.handleChange("edited draft");
+      });
+
+      expect(result.current.getContent()).toBe("edited draft");
+    });
+  });
+
   describe("charCount", () => {
     it("seeds from the ready content length", () => {
       const { result } = renderEditor(makeReady("hello"));

@@ -3,18 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { makeContextIoHandlers } from "#webui/components/context/context-io";
+import { ContextIoButtons } from "#webui/components/context/ContextIoButtons";
+import {
+  ContextHeader,
+  DOUBLE_PANE_WIDTH,
+  ExternalUpdateBanner,
+} from "#webui/components/context/ContextScreen";
+import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";
+import { OverridePanes } from "#webui/components/context/OverridePanes";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
-import {
-  ContextHeader,
-  DOUBLE_PANE_WIDTH,
-  ExternalUpdateBanner,
-} from "./ContextScreen";
-import { OverridePanes } from "./OverridePanes";
 import { SkillSlotSelect } from "./SkillSlotSelect";
 
 const RESET_CONFIRM =
@@ -58,6 +61,7 @@ export function SkillSlotScreen(
     props;
   const memory = slotAsDocMemory(overrides, slot);
   const editor = useContextEditorState(memory, RESET_CONFIRM);
+  const io = makeContextIoHandlers(editor, `producer-pal-skill-${slot.name}`);
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
@@ -77,6 +81,8 @@ export function SkillSlotScreen(
         slot={slot}
         viewSlot={viewSlot}
         onReset={() => void editor.handleClear()}
+        onImport={io.onImport}
+        onExport={io.onExport}
       />
       <div
         className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
@@ -87,14 +93,19 @@ export function SkillSlotScreen(
             onReload={editor.handleReload}
           />
         )}
-        <OverridePanes
-          editorKey={editor.editorKey}
-          value={slot.override}
-          builtIn={slot.builtIn}
-          overrideLabel="Your override"
-          onChange={editor.handleChange}
-          onBlur={editor.handleBlur}
-        />
+        <MarkdownDropZone
+          onImportText={io.onImportText}
+          className="flex-1 min-h-0 flex flex-col"
+        >
+          <OverridePanes
+            editorKey={editor.editorKey}
+            value={slot.override}
+            builtIn={slot.builtIn}
+            overrideLabel="Your override"
+            onChange={editor.handleChange}
+            onBlur={editor.handleBlur}
+          />
+        </MarkdownDropZone>
       </div>
     </div>
   );
@@ -131,6 +142,8 @@ interface SkillControlsProps {
   slot: SkillSlotView;
   viewSlot: preact.JSX.Element;
   onReset: () => void;
+  onImport: () => void;
+  onExport: () => void;
 }
 
 /**
@@ -143,6 +156,7 @@ interface SkillControlsProps {
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
   const { slots, selected, onSelectSlot, slot, viewSlot, onReset } = props;
+  const { onImport, onExport } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
@@ -170,6 +184,7 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
             .
           </span>
         )}
+        <ContextIoButtons onImport={onImport} onExport={onExport} />
         {slot.override !== "" && (
           <button
             type="button"

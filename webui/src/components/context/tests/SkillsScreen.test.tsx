@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SkillsScreen } from "#webui/components/context/SkillsScreen";
+import { SkillsScreen } from "#webui/components/context/skills/SkillsScreen";
 import {
   type SkillOverridesStatus,
   type SkillSlotView,
@@ -36,7 +36,7 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
 
 // Stub the preview screen (it fetches on mount) to a marker that still renders
 // the view toggle, so the Fragments/Preview switch is exercised without network.
-vi.mock(import("#webui/components/context/SkillsPreviewScreen"), () => ({
+vi.mock(import("#webui/components/context/skills/SkillsPreviewScreen"), () => ({
   SkillsPreviewScreen: (props: { viewSlot: preact.JSX.Element }) => (
     <div data-testid="preview-screen">{props.viewSlot}</div>
   ),
@@ -136,6 +136,9 @@ describe("SkillsScreen", () => {
     expect(screen.getByText("BUILT-IN")).toBeTruthy();
     expect(screen.queryByText("Reset to default")).toBeNull();
     expect(screen.queryByText(/Built-in changed since you forked/)).toBeNull();
+    // Import/Export are available per-fragment even when there's no override.
+    expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
   });
 
   it("shows the selected slot's one-line explainer", () => {

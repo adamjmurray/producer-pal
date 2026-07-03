@@ -11,7 +11,7 @@ import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
-import { SkillsScreen } from "./SkillsScreen";
+import { SkillsScreen } from "./skills/SkillsScreen";
 
 /** Tabs backed by a single markdown document via useDocMemory. */
 type DocTab = "project" | "global" | "instructions";
@@ -26,6 +26,7 @@ const PROJECT_LABELS: ContextEditorLabels = {
   closeAriaLabel: CLOSE_ARIA_LABEL,
   clearConfirmMessage: "Clear all project memory? This cannot be undone.",
   externalUpdateMessage: "Memory was updated outside the editor.",
+  exportBasename: "producer-pal-project-context",
   description:
     "Notes about this Ableton project — song direction, section plans, naming conventions — that Producer Pal keeps in mind. Saved with this project.",
 };
@@ -36,6 +37,7 @@ const GLOBAL_LABELS: ContextEditorLabels = {
   closeAriaLabel: CLOSE_ARIA_LABEL,
   clearConfirmMessage: "Clear all global context? This cannot be undone.",
   externalUpdateMessage: "Global context was updated outside the editor.",
+  exportBasename: "producer-pal-global-context",
   description:
     "Notes that apply to every project — your style, gear, and preferences — that Producer Pal keeps in mind in every chat.",
 };
@@ -47,6 +49,7 @@ const INSTRUCTIONS_LABELS: ContextEditorLabels = {
   clearConfirmMessage:
     "Reset to Producer Pal's built-in instructions? This deletes your custom system prompt.",
   externalUpdateMessage: "Custom instructions were updated outside the editor.",
+  exportBasename: "producer-pal-custom-instructions",
   description:
     "Fully replaces Producer Pal's built-in chat system prompt, including its tool-use and notation guidance. Leave empty to use the default.",
   // Show the shipped default beside the editor with a Copy button, so users can
