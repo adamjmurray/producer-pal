@@ -14,10 +14,8 @@ import {
   clearValueStreams,
   validateBufferedState,
 } from "./barbeat-interpreter-buffer-helpers.ts";
-import {
-  copyNoteToDestination,
-  handleBarCopySingleDestination,
-} from "./barbeat-interpreter-copy-helpers.ts";
+import { copyNoteToDestination } from "./barbeat-interpreter-copy-bar-helpers.ts";
+import { handleBarCopySingleDestination } from "./barbeat-interpreter-copy-helpers.ts";
 import {
   defaultBufferState,
   testRangeCopyFailure,
