@@ -48,6 +48,12 @@ export interface UseContextEditorStateReturn {
   handleClear: () => Promise<void>;
   /** Adopts the server's current content and remounts the editor. */
   handleReload: () => void;
+  /**
+   * Live character count of the editor's current draft — seeded from the
+   * server, updated on each keystroke, reset by Clear/Reload. Drives the
+   * char/token size readout in the controls strip.
+   */
+  charCount: number;
 }
 
 /**
@@ -82,6 +88,10 @@ export function useContextEditorState(
   // Drives the "Editing…" indicator so "Saved" doesn't linger after the
   // user has typed more in the debounce window between save and re-save.
   const [dirty, setDirty] = useState(false);
+  // Live character count of the draft (draftRef is a ref, so a separate piece
+  // of reactive state drives the size readout). Kept in sync at every point
+  // draftRef changes: seed-on-ready, keystroke, Clear, Reload.
+  const [charCount, setCharCount] = useState(0);
 
   // Seed the draft markers from the server when memory first becomes ready.
   // Only on first ready: subsequent status updates (save echoes, AI writes,
@@ -91,6 +101,7 @@ export function useContextEditorState(
     if (draftRef.current != null) return;
     draftRef.current = memory.status.content;
     lastSavedRef.current = memory.status.content;
+    setCharCount(memory.status.content.length);
   }, [memory.status]);
 
   // Null the draft markers on transition to error. Without this, a recovery
@@ -104,6 +115,7 @@ export function useContextEditorState(
     lastSavedRef.current = null;
     setExternalUpdate(false);
     setDirty(false);
+    setCharCount(0);
   }, [memory.status]);
 
   // Surface an "external update" banner when an AI/device write changes
@@ -184,6 +196,7 @@ export function useContextEditorState(
   const handleChange = useCallback(
     (value: string): void => {
       draftRef.current = value;
+      setCharCount(value.length);
       // Compare against lastSavedRef so reverting to the saved value clears
       // the dirty flag (covers undo-back-to-saved). lastSavedRef is null
       // briefly after a failed save (rolled back for retry), in which case
@@ -220,6 +233,7 @@ export function useContextEditorState(
     lastSavedRef.current = "";
     setExternalUpdate(false);
     setDirty(false);
+    setCharCount(0);
 
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
@@ -251,6 +265,7 @@ export function useContextEditorState(
     lastSavedRef.current = memory.status.content;
     setExternalUpdate(false);
     setDirty(false);
+    setCharCount(memory.status.content.length);
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
     setEditorKey((k) => k + 1);
@@ -291,5 +306,6 @@ export function useContextEditorState(
     handleBlur,
     handleClear,
     handleReload,
+    charCount,
   };
 }

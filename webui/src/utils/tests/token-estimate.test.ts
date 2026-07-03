@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { estimateTokens } from "#webui/utils/token-estimate";
+import {
+  estimateTokens,
+  estimateTokensFromChars,
+} from "#webui/utils/token-estimate";
 
 describe("estimateTokens", () => {
   it("is 0 for an empty string", () => {
@@ -21,5 +24,21 @@ describe("estimateTokens", () => {
 
   it("scales linearly with length", () => {
     expect(estimateTokens("x".repeat(400))).toBe(100);
+  });
+});
+
+describe("estimateTokensFromChars", () => {
+  it("is 0 for zero characters", () => {
+    expect(estimateTokensFromChars(0)).toBe(0);
+  });
+
+  it("rounds a partial token up", () => {
+    expect(estimateTokensFromChars(5)).toBe(2);
+  });
+
+  it("matches estimateTokens for the same length", () => {
+    const text = "hello world, this is some markdown";
+
+    expect(estimateTokensFromChars(text.length)).toBe(estimateTokens(text));
   });
 });

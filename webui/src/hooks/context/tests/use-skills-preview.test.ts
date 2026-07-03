@@ -95,7 +95,6 @@ describe("useSkillsPreview", () => {
       core: "core-basic",
       skills: "S:stark:true",
       charCount: "S:stark:true".length,
-      tokenEstimate: Math.ceil("S:stark:true".length / 4),
     });
   });
 

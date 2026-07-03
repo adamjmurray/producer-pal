@@ -10,7 +10,6 @@ import {
   type Notation,
 } from "#src/shared/notation";
 import { getConfigUrl, getSkillsPreviewUrl } from "#webui/utils/mcp-url";
-import { estimateTokens } from "#webui/utils/token-estimate";
 
 /** A notation + small-model-mode combination that selects a skills blob. */
 export interface SkillsCombination {
@@ -26,10 +25,8 @@ export interface SkillsPreview extends SkillsCombination {
   core: string;
   /** The assembled "# Producer Pal Skills" blob. */
   skills: string;
-  /** Exact character count of the blob. */
+  /** Exact character count of the blob (token estimate is derived at display). */
   charCount: number;
-  /** Approximate token count (see token-estimate.ts). */
-  tokenEstimate: number;
 }
 
 /** Status of the currently-selected combination's preview. */
@@ -168,7 +165,6 @@ async function fetchPreview(
     core: typeof raw.core === "string" ? raw.core : "",
     skills,
     charCount: skills.length,
-    tokenEstimate: estimateTokens(skills),
   };
 }
 

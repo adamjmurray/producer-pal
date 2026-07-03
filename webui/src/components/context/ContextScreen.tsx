@@ -9,6 +9,7 @@ import {
   type SaveStatus,
   type UseDocMemoryReturn,
 } from "#webui/hooks/context/use-doc-memory";
+import { CharTokenCount } from "./CharTokenCount";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { OverridePanes } from "./OverridePanes";
 
@@ -98,6 +99,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         status={memory.status}
         description={labels.description}
         widthClass={widthClass}
+        charCount={editor.charCount}
         onClear={() => void editor.handleClear()}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -202,21 +204,23 @@ interface ContextControlsProps {
   status: DocMemoryStatus;
   description?: string;
   widthClass: string;
+  charCount: number;
   onClear: () => void;
 }
 
 /**
- * Controls strip below the header with an optional explainer and a destructive
- * clear action. Hidden until memory has loaded so we don't flash a control
- * whose state we haven't fetched yet. The border spans full width while the
- * content is centered to `widthClass` so it lines up with the editor below.
+ * Controls strip below the header with an optional explainer, a live char/token
+ * size readout, and a destructive clear action. Hidden until memory has loaded
+ * so we don't flash a control whose state we haven't fetched yet. The border
+ * spans full width while the content is centered to `widthClass` so it lines up
+ * with the editor below.
  * @param props - Controls props
  * @returns Controls element (or null while loading)
  */
 function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
-  const { status, description, widthClass, onClear } = props;
+  const { status, description, widthClass, charCount, onClear } = props;
 
   if (status.kind !== "ready") return null;
 
@@ -228,13 +232,16 @@ function ContextControls(
             {description}
           </span>
         )}
-        <button
-          type="button"
-          onClick={onClear}
-          className="ml-auto shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-        >
-          Clear
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          <CharTokenCount chars={charCount} className="shrink-0" />
+          <button
+            type="button"
+            onClick={onClear}
+            className="shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          >
+            Clear
+          </button>
+        </div>
       </div>
     </div>
   );

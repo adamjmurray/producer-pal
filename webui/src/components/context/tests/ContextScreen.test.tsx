@@ -214,6 +214,20 @@ describe("ContextScreen", () => {
     expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy();
   });
 
+  it("shows a live char/token count that updates as the user types", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "hello"; // 5 chars → ceil(5/4) = 2 tokens
+    render(<Harness />);
+
+    expect(screen.getByText(/5 chars · ≈2 tokens/)).toBeTruthy();
+
+    await act(() => {
+      editorChange("hi there!"); // 9 chars → ceil(9/4) = 3 tokens
+    });
+
+    expect(screen.getByText(/9 chars · ≈3 tokens/)).toBeTruthy();
+  });
+
   it("hides the controls strip while loading", () => {
     render(<Harness />);
 

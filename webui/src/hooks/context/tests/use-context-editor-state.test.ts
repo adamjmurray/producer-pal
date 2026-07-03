@@ -381,6 +381,63 @@ describe("useContextEditorState", () => {
     });
   });
 
+  describe("charCount", () => {
+    it("seeds from the ready content length", () => {
+      const { result } = renderEditor(makeReady("hello"));
+
+      expect(result.current.charCount).toBe(5);
+    });
+
+    it("tracks the draft length as the user types", async () => {
+      const { result } = renderEditor(makeReady("hi"));
+
+      expect(result.current.charCount).toBe(2);
+
+      await act(() => {
+        result.current.handleChange("hello world");
+      });
+
+      expect(result.current.charCount).toBe(11);
+    });
+
+    it("resets to 0 on Clear", async () => {
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      const { result } = renderEditor(makeReady("hello"));
+
+      await act(async () => {
+        await result.current.handleClear();
+      });
+
+      expect(result.current.charCount).toBe(0);
+    });
+
+    it("resets to the server content length on Reload", async () => {
+      const { result, setMemory } = renderEditor(makeReady("old"));
+
+      await act(() => {
+        result.current.handleChange("a much longer draft");
+      });
+
+      setMemory(makeReady("from-ai"));
+
+      await act(() => {
+        result.current.handleReload();
+      });
+
+      expect(result.current.charCount).toBe("from-ai".length);
+    });
+
+    it("resets to 0 when memory transitions to error", () => {
+      const { result, setMemory } = renderEditor(makeReady("hello"));
+
+      expect(result.current.charCount).toBe(5);
+
+      setMemory(makeMemory({ status: { kind: "error", message: "boom" } }));
+
+      expect(result.current.charCount).toBe(0);
+    });
+  });
+
   describe("unmount flushes pending save", () => {
     it("flushes a debounced save when the editor unmounts mid-debounce (Esc close after typing)", async () => {
       // Regression: cleanup only cleared timers without flushing, so typing

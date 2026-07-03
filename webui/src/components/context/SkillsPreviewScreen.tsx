@@ -9,6 +9,7 @@ import {
   type SkillsPreviewStatus,
   useSkillsPreview,
 } from "#webui/hooks/context/use-skills-preview";
+import { CharTokenCount } from "./CharTokenCount";
 import { ContextHeader, DOUBLE_PANE_WIDTH } from "./ContextScreen";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
@@ -210,16 +211,8 @@ function PreviewSize(props: PreviewSizeProps): preact.JSX.Element {
     return <span className="shrink-0 text-xs text-zinc-400">—</span>;
   }
 
-  const { charCount, tokenEstimate } = status.preview;
-
   return (
-    <span
-      title="Token count is a rough estimate (~4 chars/token); actual usage varies by model."
-      className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400 tabular-nums"
-    >
-      {charCount.toLocaleString()} chars · ≈{tokenEstimate.toLocaleString()}{" "}
-      tokens
-    </span>
+    <CharTokenCount chars={status.preview.charCount} className="shrink-0" />
   );
 }
 
