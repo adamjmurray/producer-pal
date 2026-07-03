@@ -48,9 +48,17 @@ KeyName
 
 // Tolerant numeric literal. Accepts a leading-dot decimal (`.5`, `-.75`) — a
 // common LLM habit of dropping the leading zero — as well as leading zeros
-// (`007`); parseFloat normalizes both. A whole-array parse error would abort the
-// entire clip op, so the grammar errs toward accepting whatever an LLM emits.
+// (`007`); parseFloat normalizes both. It also accepts a ratio `<num>/<int>`
+// (e.g. `d:2/3`, `t:1/3`) so tuplet durations/onsets round-trip EXACTLY instead
+// of as lossy repeating decimals — the ratio is divided into its float value
+// here; the TS layer still normalizes and clamps. A whole-array parse error
+// would abort the entire clip op, so the grammar errs toward accepting whatever
+// an LLM emits.
 Number
+  = num:Decimal "/" den:$([0-9]+) { return num / parseInt(den, 10); }
+  / Decimal
+
+Decimal
   = n:$("-"? ([0-9]+ ("." [0-9]+)? / "." [0-9]+) ([eE] [+-]? [0-9]+)?) {
       return parseFloat(n);
     }

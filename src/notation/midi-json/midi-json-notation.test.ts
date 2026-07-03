@@ -129,11 +129,13 @@ describe("formatMidiJson", () => {
     );
   });
 
-  it("trims floats to at most 4 decimals with no trailing zeros", () => {
+  it("trims non-fraction floats to at most 4 decimals with no trailing zeros", () => {
+    // 1.23456 is a lossy decimal with no small-denominator ratio, so it stays
+    // decimal (trimmed) — the ratio path only kicks in for true tuplets.
     const notes: NoteEvent[] = [
       {
         pitch: 60,
-        start_time: 1 / 3,
+        start_time: 1.23456,
         duration: 0.1,
         velocity: 100,
         velocity_deviation: 0,
@@ -141,11 +143,73 @@ describe("formatMidiJson", () => {
       },
     ];
 
-    expect(formatMidiJson(notes)).toBe("[{p:60,t:0.3333,d:0.1,v:100}]");
+    expect(formatMidiJson(notes)).toBe("[{p:60,t:1.2346,d:0.1,v:100}]");
   });
 
   it("returns '' for no notes", () => {
     expect(formatMidiJson([])).toBe("");
+  });
+});
+
+describe("ratio durations (tuplets)", () => {
+  it("interprets a ratio duration/start as its exact divided value", () => {
+    // d:2/3 = a quarter-note triplet; t:1/3 = an eighth-triplet onset.
+    const [note] = interpretMidiJson("[{p:60,t:1/3,d:2/3,v:100}]");
+
+    expect(note?.start_time).toBe(1 / 3);
+    expect(note?.duration).toBe(2 / 3);
+  });
+
+  it("interprets a negative ratio start (note before clip start)", () => {
+    const [note] = interpretMidiJson("[{p:60,t:-2/3,d:1/3,v:100}]");
+
+    expect(note?.start_time).toBe(-2 / 3);
+    expect(note?.duration).toBe(1 / 3);
+  });
+
+  it("interprets a ratio > 1 (t:4/3, d:4/3)", () => {
+    const [note] = interpretMidiJson("[{p:60,t:4/3,d:4/3,v:100}]");
+
+    expect(note?.start_time).toBe(4 / 3);
+    expect(note?.duration).toBe(4 / 3);
+  });
+
+  it("serializes a repeating-decimal tuplet as an exact ratio", () => {
+    const notes: NoteEvent[] = [
+      { pitch: 60, start_time: 1 / 3, duration: 2 / 3, velocity: 100 },
+    ];
+
+    expect(formatMidiJson(notes)).toBe("[{p:60,t:1/3,d:2/3,v:100}]");
+  });
+
+  it("serializes higher tuplets (sixths, twelfths) as reduced ratios", () => {
+    const notes: NoteEvent[] = [
+      { pitch: 60, start_time: 1 / 6, duration: 1 / 12, velocity: 100 },
+    ];
+
+    expect(formatMidiJson(notes)).toBe("[{p:60,t:1/6,d:1/12,v:100}]");
+  });
+
+  it("keeps exact decimals decimal (integers, halves, 0.1 never become ratios)", () => {
+    const notes: NoteEvent[] = [
+      { pitch: 60, start_time: 0.5, duration: 0.1, velocity: 100 },
+    ];
+
+    expect(formatMidiJson(notes)).toBe("[{p:60,t:0.5,d:0.1,v:100}]");
+  });
+
+  it("round-trips a ratio tuplet exactly (d:1/3 in and out)", () => {
+    const source =
+      "[{p:60,t:0,d:1/3,v:100},{p:64,t:1/3,d:1/3,v:100},{p:67,t:2/3,d:1/3,v:100}]";
+
+    expect(formatMidiJson(interpretMidiJson(source))).toBe(source);
+  });
+
+  it("round-trips a ratio tuplet exactly in a non-4/4 meter", () => {
+    const source = "[{p:60,t:1/3,d:1/3,v:100}]";
+    const events = interpretMidiJson(source, { timeSigDenominator: 8 });
+
+    expect(formatMidiJson(events, { timeSigDenominator: 8 })).toBe(source);
   });
 });
 
