@@ -21,6 +21,7 @@ import {
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
+import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
@@ -152,6 +153,14 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({ chat: aiSdkChat });
 
+  // Hold the first send until the custom system prompt has finished loading, so a
+  // turn fired during the mount-time fetch doesn't lock the built-in instruction
+  // when the user actually has an override. Transparent once the status resolves.
+  const gatedHandleSend = useSystemPromptSendGate(
+    systemPromptMemory.status,
+    wrappedHandleSend,
+  );
+
   useSyncSmallModelMode(
     remoteConfig.serverSmallModelMode,
     chat.activeSmallModelMode,
@@ -240,7 +249,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
 
   return {
     chat,
-    wrappedHandleSend,
+    wrappedHandleSend: gatedHandleSend,
     conversationPanelState,
     headerInfo,
     branchNav,
