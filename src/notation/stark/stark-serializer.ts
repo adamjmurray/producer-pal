@@ -11,6 +11,12 @@
  * snap. Overlapping notes on one line are normalized to legato exactly as a
  * melody line is, so drums and pitched lines share ONE timing model.
  *
+ * A duration that isn't a single /N value (a dotted quarter = 1.5 beats, a
+ * triplet, a held 3-beat note — content Stark can't itself produce) snaps its
+ * OWN sustain to the nearest /N, but its onset and every following onset are
+ * preserved: the walk advances by emitted grid-time, so any shortfall is filled
+ * with a compensating rest rather than shifting the rest of the line.
+ *
  * Every line is serialized the same way: walk the notes, fill gaps with `z`
  * rests, take each note's own duration as its absolute `/N`, then FACTOR OUT the
  * line default — emit a header `/N` only when it differs from the line-type
@@ -27,6 +33,7 @@
 import {
   CHORDS_REGISTER_DEFAULT,
   DRUM_DEFAULT_N,
+  durationBeats,
   LINE_DEFAULT_N,
 } from "#src/notation/stark/stark-config.ts";
 import {
@@ -85,6 +92,12 @@ export function formatNotation(
 // Walk a monophonic note sequence into hit/rest tokens: legato timing, gaps
 // filled with `z` rests. `makeHit` supplies each note's glyph + dynamic; the
 // note's own duration becomes its /N (durations round-trip for legato input).
+//
+// The cursor tracks EMITTED (grid-snapped) time, not real time. A note whose
+// real duration isn't a single /N (e.g. a dotted quarter = 1.5 beats) snaps its
+// own sustain, but that error is NOT allowed to cascade into later onsets: the
+// gap-fill below re-anchors each note to its true start_time, inserting a
+// compensating rest when the previous emitted duration undershot.
 function walkLine(
   notes: NoteEvent[],
   makeHit: (note: NoteEvent) => { core: string; dynamic: string },
@@ -95,13 +108,17 @@ function walkLine(
 
   for (const note of sorted) {
     if (note.start_time > time + SAME_TIME_EPSILON) {
-      tokens.push(...restTokens(note.start_time - time));
+      const rests = restTokens(note.start_time - time);
+
+      tokens.push(...rests);
+      time += emittedBeats(rests);
     }
 
     const { core, dynamic } = makeHit(note);
+    const n = durationToN(note.duration);
 
-    tokens.push({ core, dynamic, n: durationToN(note.duration) });
-    time = note.start_time + note.duration;
+    tokens.push({ core, dynamic, n });
+    time += durationBeats(n);
   }
 
   return tokens;
@@ -110,6 +127,13 @@ function walkLine(
 // Fill a gap with `z` rest tokens (greedy, largest note value first).
 function restTokens(gapBeats: number): LineToken[] {
   return restNoteValues(gapBeats).map((n) => ({ core: "z", dynamic: "", n }));
+}
+
+// Total grid-snapped beat length a run of tokens actually emits (each token's
+// /N is durationBeats(n)); used to advance the cursor by what was written, not
+// what was asked for, so onset re-anchoring stays exact.
+function emittedBeats(tokens: LineToken[]): number {
+  return tokens.reduce((sum, t) => sum + durationBeats(t.n), 0);
 }
 
 // Absolute note value (/N) nearest a duration in beats: 4b→1 … 0.25b→16.
@@ -217,19 +241,23 @@ function serializeStarkChords(sorted: NoteEvent[]): string {
     const rep = group[0] as NoteEvent;
 
     if (rep.start_time > time + SAME_TIME_EPSILON) {
-      tokens.push(...restTokens(rep.start_time - time));
+      const rests = restTokens(rep.start_time - time);
+
+      tokens.push(...rests);
+      time += emittedBeats(rests);
     }
 
     const inner = group
       .map((note) => pitchCore(note.pitch, CHORDS_REGISTER_DEFAULT))
       .join(" ");
+    const n = durationToN(rep.duration);
 
     tokens.push({
       core: `[${inner}]`,
       dynamic: dynamicSuffix(rep.velocity),
-      n: durationToN(rep.duration),
+      n,
     });
-    time = rep.start_time + rep.duration;
+    time += durationBeats(n);
   }
 
   return renderLine("chords", tokens, LINE_DEFAULT_N.chords);

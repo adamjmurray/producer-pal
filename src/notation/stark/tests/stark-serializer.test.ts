@@ -154,6 +154,38 @@ describe("stark serializer — pitched lines (line-default factoring)", () => {
   });
 });
 
+describe("stark serializer — non-/N durations preserve onsets", () => {
+  it("a dotted-quarter melody note does not shift the following onset", () => {
+    // 1.5 beats isn't a single /N. The serializer must advance by EMITTED
+    // grid-time (not the real 1.5) so D stays anchored at 1.5 — the old code
+    // cascaded a -0.5 error onto D, moving it to 1.0.
+    const out = formatNotation([note(60, 0, 1.5), note(62, 1.5, 1)]);
+
+    expect(out).toBe("melody: C z/8 D");
+
+    const back = interpretNotation(out);
+
+    // Onsets preserved exactly; only C's own sustain snaps 1.5 → 1.
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 1.5]);
+    expect(back.map((n) => n.duration)).toStrictEqual([1, 1]);
+  });
+
+  it("a non-/N drum duration stays anchored across the rest of the line", () => {
+    // kick at 0 (dur 1.5), 1.5, 2.5. The 1.5-beat hit rounds to /4 but a
+    // compensating /8 rest keeps every later onset in place.
+    const out = formatNotation(
+      [note(36, 0, 1.5), note(36, 1.5, 1), note(36, 2.5, 1)],
+      DRUM,
+    );
+
+    expect(out).toBe("kick: X z/8 X X");
+
+    const back = interpretNotation(out);
+
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 1.5, 2.5]);
+  });
+});
+
 describe("round-trip (interpret → serialize → interpret)", () => {
   function roundTrip(
     stark: string,
