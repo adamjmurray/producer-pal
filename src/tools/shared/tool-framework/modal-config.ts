@@ -10,12 +10,12 @@ import { type Notation } from "#src/shared/notation.ts";
  * Modal tool config: per-arg and per-tool-description overrides keyed by the
  * "mode" in effect. Two independent axes are live at runtime — model size
  * (large / `smallModel`) and notation (`config.notation`, with the `barbeat`
- * default falling through) — for 8 (size × notation) combinations. Overrides are
- * co-located with the thing they modify — a param via {@link param}, the tool
- * text via the `description` field — so there is no separate lookup table and no
- * dangling-reference risk.
+ * default falling through) — for 6 (size × notation) combinations across the
+ * three notations. Overrides are co-located with the thing they modify — a param
+ * via {@link param}, the tool text via the `description` field — so there is no
+ * separate lookup table and no dangling-reference risk.
  *
- * The 8 grid cells map 1:1 to `default` + the {@link ModeKey}s: large×barbeat is
+ * The 6 grid cells map 1:1 to `default` + the {@link ModeKey}s: large×barbeat is
  * `default`, small×barbeat is `smallModel`, large×notation is the bare notation
  * (e.g. `stark`), and small×notation is the compound `smallModel:{notation}`.
  * Resolution walks a most-specific-first ladder (compound cell → notation →

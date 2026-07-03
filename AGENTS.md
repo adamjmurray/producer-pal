@@ -141,10 +141,10 @@ architecture.
     `{ description?, excludeEnumValues? }` (trim enum values).
   - The tool `description` field is likewise a string or
     `{ default, smallModel?, <notation>?, "smallModel:<notation>"? }`.
-  - Two axes — model size (large / `smallModel`) and notation — give 8 cells:
-    large×barbeat = `default`, small×barbeat = `smallModel`, large×notation =
-    the bare notation (`stark`), small×notation = the compound
-    (`"smallModel:stark"`).
+  - Two axes — model size (large / `smallModel`) and notation — give 6 cells (2
+    sizes × 3 notations): large×barbeat = `default`, small×barbeat =
+    `smallModel`, large×notation = the bare notation (`stark`), small×notation =
+    the compound (`"smallModel:stark"`).
   - Resolution walks most-specific-first (`smallModel:<notation>` → `<notation>`
     → `smallModel` → `default`); first key present wins (`null` there hides).
     `barbeat` (the default notation) has no key and falls through. Add a
