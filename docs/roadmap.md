@@ -104,7 +104,7 @@ companion MCP servers.
 
 **Core features under consideration:**
 
-- Chord notation and pitches as scale/chord degrees
+- Chord symbols in bar|beat notation, plus pitches as scale/chord degrees
 - Bar|beat and MIDI transform notation refinements (including alternate
   notations that may work better with smaller models)
 - Audio analysis

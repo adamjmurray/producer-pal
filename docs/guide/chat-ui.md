@@ -368,11 +368,11 @@ also turns the tool on at the device level (MCP clients and the
 [Direct Live API](/features#ppal-live-api) for why.
 
 The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
-clip notes — **bar|beat** (the default), **MIDI JSON**, or **Stark** (an
-ultra-minimal notation aimed at small/local models). Like the Live API toggle,
-this is a global device setting rather than a per-conversation one: it mirrors
-the device's Setup pane, applies to MCP clients and the REST API too, and takes
-effect on your next message.
+clip notes — **bar|beat** (the default), **MIDI JSON**, or **Stark** (a literal,
+round-trippable notation with chord symbols, friendly to small/local models).
+Like the Live API toggle, this is a global device setting rather than a
+per-conversation one: it mirrors the device's Setup pane, applies to MCP clients
+and the REST API too, and takes effect on your next message.
 
 ### Preferences
 
