@@ -60,7 +60,7 @@ export function readLiveSet(
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
     result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
-      readScene({ sceneIndex, include: trackInclude }),
+      readScene({ sceneIndex, include: trackInclude }, context),
     );
   } else {
     result.sceneCount = sceneIds.length;

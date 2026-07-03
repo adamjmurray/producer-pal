@@ -140,6 +140,7 @@ function computeTrackType(isMidiTrack: boolean, category: string): string {
  * @param trackIndex - Track index
  * @param includeSessionClips - Whether to include full session clip details
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Object with session clips data
  */
 function processSessionClips(
@@ -148,13 +149,14 @@ function processSessionClips(
   trackIndex: number | null,
   includeSessionClips: boolean,
   include: string[] | undefined,
+  notation: Notation | undefined,
 ): SessionClipsResult {
   if (category !== "regular") {
     return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
   }
 
   return includeSessionClips
-    ? { sessionClips: readSessionClips(track, trackIndex, include) }
+    ? { sessionClips: readSessionClips(track, trackIndex, include, notation) }
     : { sessionClipCount: countSessionClips(track, trackIndex) };
 }
 
@@ -165,6 +167,7 @@ function processSessionClips(
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full arrangement clip details
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Object with arrangementClips array or arrangementClipCount
  */
 function processArrangementClips(
@@ -173,6 +176,7 @@ function processArrangementClips(
   category: string,
   includeArrangementClips: boolean,
   include: string[] | undefined,
+  notation: Notation | undefined,
 ): ArrangementClipsResult {
   if (isGroup || category === "return" || category === "master") {
     return includeArrangementClips
@@ -181,7 +185,7 @@ function processArrangementClips(
   }
 
   return includeArrangementClips
-    ? { arrangementClips: readArrangementClips(track, include) }
+    ? { arrangementClips: readArrangementClips(track, include, notation) }
     : { arrangementClipCount: countArrangementClips(track) };
 }
 
@@ -194,6 +198,7 @@ function processArrangementClips(
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full take lane clip details
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Object with takeLanes array, takeLaneCount, or empty
  */
 function processTakeLanes(
@@ -202,6 +207,7 @@ function processTakeLanes(
   category: string,
   includeArrangementClips: boolean,
   include: string[] | undefined,
+  notation: Notation | undefined,
 ): TakeLanesResult {
   // Take lanes are arrangement-only and only exist on non-group regular tracks
   if (isGroup || category !== "regular") {
@@ -215,7 +221,7 @@ function processTakeLanes(
   }
 
   return includeArrangementClips
-    ? { takeLanes: readTakeLanes(track, include) }
+    ? { takeLanes: readTakeLanes(track, include, notation) }
     : { takeLaneCount: count };
 }
 
@@ -324,6 +330,7 @@ export function readTrackGeneric({
       trackIndex,
       includeSessionClips,
       include,
+      notation,
     ),
   );
 
@@ -336,6 +343,7 @@ export function readTrackGeneric({
       category,
       includeArrangementClips,
       include,
+      notation,
     ),
   );
 
@@ -348,6 +356,7 @@ export function readTrackGeneric({
       category,
       includeArrangementClips,
       include,
+      notation,
     ),
   );
 
