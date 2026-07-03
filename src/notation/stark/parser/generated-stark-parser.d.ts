@@ -23,12 +23,15 @@ import type { ParseOptions } from "../../peggy-parser-types.ts";
 export type StarkDurationN = 1 | 2 | 4 | 8 | 16;
 
 /**
- * An absolute /N note value with an optional dot. `dotted` multiplies the value
- * by 1.5 (a dotted quarter `/4.` = 1.5 beats). Double-dots are not supported.
+ * An absolute /N note value with an optional modifier. `dotted` multiplies the
+ * value by 1.5 (a dotted quarter `/4.` = 1.5 beats); `triplet` multiplies by 2/3
+ * (an eighth-note triplet `/8t` = 1/3 beat). The two are mutually exclusive and
+ * don't stack.
  */
 export interface StarkDuration {
   n: StarkDurationN;
   dotted: boolean;
+  triplet: boolean;
 }
 
 // --- Dynamic ---

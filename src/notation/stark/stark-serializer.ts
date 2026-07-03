@@ -11,12 +11,13 @@
  * snap. Overlapping notes on one line are normalized to legato exactly as a
  * melody line is, so drums and pitched lines share ONE timing model.
  *
- * A duration that isn't one of the ten grid note values (an eighth-note triplet
- * = 1/3 beat, a sample-derived 2.3-beat sustain — content Stark can't itself
- * produce) snaps its OWN sustain to the nearest grid value, but its onset and
- * every following onset are preserved: the walk advances by emitted grid-time, so
- * any shortfall is filled with a compensating rest rather than shifting the line.
- * (Dotted values ARE on the grid now — a dotted quarter round-trips exactly.)
+ * A duration that isn't one of the fifteen grid note values (a sample-derived
+ * 2.3-beat sustain, a quintuplet — content Stark can't itself produce) snaps its
+ * OWN sustain to the nearest grid value, but its onset and every following onset
+ * are preserved: the walk advances by emitted grid-time, so any shortfall is
+ * filled with a compensating rest rather than shifting the line. (Dotted AND
+ * triplet values ARE on the grid now — a dotted quarter and an eighth-note
+ * triplet each round-trip exactly.)
  *
  * Every line is serialized the same way: walk the notes, fill gaps with `z`
  * rests, take each note's own duration as its absolute `/N`, then FACTOR OUT the
@@ -99,7 +100,7 @@ export function formatNotation(
 // note's own duration becomes its /N (durations round-trip for legato input).
 //
 // The cursor tracks EMITTED (grid-snapped) time, not real time. A note whose
-// real duration isn't a grid value (e.g. an eighth-note triplet = 1/3 beat) snaps
+// real duration isn't a grid value (e.g. a sample-derived 2.3-beat sustain) snaps
 // its own sustain, but that error is NOT allowed to cascade into later onsets:
 // the gap-fill below re-anchors each note to its true start_time, inserting a
 // compensating rest when the previous emitted duration undershot.

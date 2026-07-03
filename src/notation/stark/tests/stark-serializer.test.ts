@@ -156,34 +156,35 @@ describe("stark serializer — pitched lines (line-default factoring)", () => {
 
 describe("stark serializer — off-grid durations preserve onsets", () => {
   it("an off-grid melody duration does not shift the following onset", () => {
-    // 2.5 beats isn't a grid value; it ties between /2 (2) and /2. (3) and snaps
-    // DOWN to /2. The serializer advances by EMITTED grid-time (not the real 2.5)
-    // so D stays anchored at 2.5 via a compensating /8 rest — a -0.5 error must
-    // not cascade onto D.
-    const out = formatNotation([note(60, 0, 2.5), note(62, 2.5, 1)]);
+    // 3.5 beats isn't a grid value; it ties between /2. (3) and /1 (4) and snaps
+    // DOWN to /2.. The serializer advances by EMITTED grid-time (not the real 3.5)
+    // so D stays anchored at 3.5 via a compensating /8 rest — a -0.5 error must
+    // not cascade onto D. (2.5 is no longer off-grid-ambiguous: it now snaps to
+    // the /1t triplet, so a plain tie needs a value with no triplet neighbor.)
+    const out = formatNotation([note(60, 0, 3.5), note(62, 3.5, 1)]);
 
-    expect(out).toBe("melody: C/2 z/8 D");
+    expect(out).toBe("melody: C/2. z/8 D");
 
     const back = interpretNotation(out);
 
-    // Onsets preserved exactly; only C's own sustain snaps 2.5 → 2.
-    expect(back.map((n) => n.start_time)).toStrictEqual([0, 2.5]);
-    expect(back.map((n) => n.duration)).toStrictEqual([2, 1]);
+    // Onsets preserved exactly; only C's own sustain snaps 3.5 → 3.
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 3.5]);
+    expect(back.map((n) => n.duration)).toStrictEqual([3, 1]);
   });
 
   it("an off-grid drum duration stays anchored across the rest of the line", () => {
-    // kick at 0 (dur 2.5), 2.5, 3.5. The 2.5-beat hit snaps to /2 but a
+    // kick at 0 (dur 3.5), 3.5, 4.5. The 3.5-beat hit snaps to /2. but a
     // compensating /8 rest keeps every later onset in place.
     const out = formatNotation(
-      [note(36, 0, 2.5), note(36, 2.5, 1), note(36, 3.5, 1)],
+      [note(36, 0, 3.5), note(36, 3.5, 1), note(36, 4.5, 1)],
       DRUM,
     );
 
-    expect(out).toBe("kick: X/2 z/8 X X");
+    expect(out).toBe("kick: X/2. z/8 X X");
 
     const back = interpretNotation(out);
 
-    expect(back.map((n) => n.start_time)).toStrictEqual([0, 2.5, 3.5]);
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 3.5, 4.5]);
   });
 });
 
@@ -239,6 +240,66 @@ describe("stark serializer — dotted durations round-trip exactly", () => {
     expect(drum).toBe("kick /8.: X X");
     expect(interpretNotation(drum).map((n) => n.start_time)).toStrictEqual([
       0, 0.75,
+    ]);
+  });
+});
+
+describe("stark serializer — triplet durations round-trip exactly", () => {
+  it("an eighth-note-triplet melody note round-trips losslessly", () => {
+    // 1/3 beat is now the grid value /8t — emitted exactly, no compensating rest.
+    const out = formatNotation([note(60, 0, 1 / 3), note(62, 1 / 3, 1)]);
+
+    expect(out).toBe("melody: C/8t D");
+
+    const back = interpretNotation(out);
+
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 1 / 3]);
+    expect(back.map((n) => n.duration)).toStrictEqual([1 / 3, 1]);
+  });
+
+  it("factors a triplet value into the line-default header", () => {
+    // Three eighth-note triplets fill one beat; the line picks /8t as the default
+    // and drops it from every token onto the header.
+    const out = formatNotation([
+      note(60, 0, 1 / 3),
+      note(62, 1 / 3, 1 / 3),
+      note(64, 2 / 3, 1 / 3),
+    ]);
+
+    expect(out).toBe("melody /8t: C D E");
+    expect(interpretNotation(out).map((n) => n.duration)).toStrictEqual([
+      1 / 3,
+      1 / 3,
+      1 / 3,
+    ]);
+  });
+
+  it("emits a single triplet rest for a 1/3-beat gap", () => {
+    // The gap fill uses the same triplet grid: 1/3 beat → one z/8t, not z/16 + drop.
+    const out = formatNotation([note(60, 0, 1), note(62, 1 + 1 / 3, 1)]);
+
+    expect(out).toBe("melody: C z/8t D");
+    expect(interpretNotation(out).map((n) => n.start_time)).toStrictEqual([
+      0,
+      1 + 1 / 3,
+    ]);
+  });
+
+  it("round-trips a triplet bracket chord and a triplet drum hit", () => {
+    // Median 52 ≥ 48 → a melody line; simultaneous notes serialize as a [..] stack.
+    const chord = formatNotation([note(48, 0, 2 / 3), note(52, 0, 2 / 3)]);
+
+    expect(chord).toBe("melody /4t: [C, E,]");
+
+    const drum = formatNotation(
+      [note(36, 0, 1 / 3), note(36, 1 / 3, 1 / 3)],
+      DRUM,
+    );
+
+    expect(drum).toBe("kick /8t: X X");
+    expect(interpretNotation(drum).map((n) => n.start_time)).toStrictEqual([
+      0,
+      1 / 3,
     ]);
   });
 });

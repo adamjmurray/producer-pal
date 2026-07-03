@@ -264,12 +264,16 @@ ChordSymbolToken
 SlashBass
   = "/" letter:[A-Ga-g] acc:[#b]? { return letter.toUpperCase() + (acc || ""); }
 
-// Absolute note value with an optional trailing dot: /4 = quarter (1 beat),
-// /4. = dotted quarter (×1.5 = 1.5 beats). At most one dot — double-dots are not
-// supported. The dot binds tightly to its /N (no whitespace), so the freely
-// ordered `' , ! ?` suffixes stay unambiguous. Returns { n, dotted }.
+// Absolute note value with an optional trailing modifier: /4 = quarter (1 beat),
+// /4. = dotted quarter (×1.5 = 1.5 beats), /4t = quarter triplet (×2/3 ≈ 0.667
+// beats). At most one modifier — `.` (dotted) and `t` (triplet) are mutually
+// exclusive and don't stack. The modifier binds tightly to its /N (no
+// whitespace), so the freely ordered `' , ! ?` suffixes stay unambiguous.
+// Returns { n, dotted, triplet }.
 Duration
-  = n:DurationN dot:"."? { return { n: n, dotted: dot != null }; }
+  = n:DurationN mod:("." / "t")? {
+      return { n: n, dotted: mod === ".", triplet: mod === "t" };
+    }
 
 // Absolute note-value denominator: 1=whole, 2=half, 4=quarter, 8=eighth, 16=sixteenth.
 // "16" is tried before "1" so the two-digit form is not short-circuited.

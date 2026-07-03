@@ -11,7 +11,10 @@
  * knows about the line-default factoring the serializer layers on top.
  */
 
-import { type StarkDuration } from "#src/notation/stark/parser/stark-parser.ts";
+import {
+  type StarkDuration,
+  type StarkDurationN,
+} from "#src/notation/stark/parser/stark-parser.ts";
 import {
   BASS_REGISTER_DEFAULT,
   durationBeats,
@@ -183,20 +186,32 @@ export interface DurationGridEntry {
   token: string;
 }
 
-// The legal note-value grid, coarsest first: the five plain values (/1…/16) and
-// their dotted (×1.5) partners. Every duration the serializer emits snaps to one
-// of these ten; `beats` is the exact binary fraction each spells to.
+// The legal note-value grid, coarsest first: the five plain values (/1…/16) with
+// their dotted (×1.5, `N.`) and triplet (×2/3, `Nt`) partners. Every duration the
+// serializer emits snaps to one of these fifteen. Plain and dotted `beats` are
+// exact binary fractions; each triplet `beats` comes from durationBeats — the
+// single source of truth for the beat math — so a triplet snaps bit-exactly to
+// itself and round-trips. Order stays strictly descending (greedy rest-fill +
+// tie-to-shorter).
+const tripletBeats = (n: StarkDurationN): number =>
+  durationBeats({ n, dotted: false, triplet: true });
+
 const DURATION_GRID: ReadonlyArray<DurationGridEntry> = [
   { beats: 6, token: "1." },
   { beats: 4, token: "1" },
   { beats: 3, token: "2." },
+  { beats: tripletBeats(1), token: "1t" }, // 8/3 ≈ 2.667
   { beats: 2, token: "2" },
   { beats: 1.5, token: "4." },
+  { beats: tripletBeats(2), token: "2t" }, // 4/3 ≈ 1.333
   { beats: 1, token: "4" },
   { beats: 0.75, token: "8." },
+  { beats: tripletBeats(4), token: "4t" }, // 2/3 ≈ 0.667
   { beats: 0.5, token: "8" },
   { beats: 0.375, token: "16." },
+  { beats: tripletBeats(8), token: "8t" }, // 1/3 ≈ 0.333
   { beats: 0.25, token: "16" },
+  { beats: tripletBeats(16), token: "16t" }, // 1/6 ≈ 0.167
 ];
 
 /**
@@ -232,9 +247,11 @@ export function snapDuration(beats: number): DurationGridEntry {
  * @returns Its grid entry (beats + `/N[.]` token)
  */
 export function durationEntry(duration: StarkDuration): DurationGridEntry {
+  const modifier = duration.dotted ? "." : duration.triplet ? "t" : "";
+
   return {
     beats: durationBeats(duration),
-    token: `${duration.n}${duration.dotted ? "." : ""}`,
+    token: `${duration.n}${modifier}`,
   };
 }
 

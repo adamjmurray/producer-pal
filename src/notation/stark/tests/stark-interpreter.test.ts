@@ -296,6 +296,50 @@ describe("stark interpreter — dotted durations (×1.5)", () => {
   });
 });
 
+describe("stark interpreter — triplet durations (×2/3)", () => {
+  it("a triplet /N is 2/3× the plain value on a note", () => {
+    const notes = interpretNotation("melody: C/4t D");
+
+    // C = quarter-note triplet (2/3 beat); D falls at 2/3 with the /4 default.
+    expect(notes.map((n) => n.duration)).toStrictEqual([2 / 3, 1]);
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 2 / 3]);
+  });
+
+  it("a triplet /N works as the line-header default", () => {
+    const notes = interpretNotation("melody /8t: C D E");
+
+    // Three eighth-note triplets fill one beat.
+    expect(notes.map((n) => n.duration)).toStrictEqual([1 / 3, 1 / 3, 1 / 3]);
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1 / 3, 2 / 3]);
+  });
+
+  it("a triplet rest advances time by 2/3× the value", () => {
+    const notes = interpretNotation("melody: C z/4t D");
+
+    // C (default /4 = 1 beat) then a quarter-triplet rest (2/3) → D at 5/3.
+    expect(notes.map((n) => n.start_time)).toStrictEqual([0, 1 + 2 / 3]);
+  });
+
+  it("a triplet /N applies to drum hits and bracket chords", () => {
+    const drum = interpretNotation("kick: X/4t X");
+
+    expect(drum.map((n) => n.start_time)).toStrictEqual([0, 2 / 3]);
+
+    const chord = interpretNotation("melody: [C E]/8t");
+
+    expect(chord).toHaveLength(2);
+    expect(chord.every((n) => n.duration === 1 / 3)).toBe(true);
+  });
+
+  it("rejects combining a dot and a triplet", () => {
+    for (const bad of ["melody: C/4.t", "melody: C/4t.", "melody: C/4tt"]) {
+      expect(() => interpretNotation(bad)).toThrow(
+        /Stark notation parse error/,
+      );
+    }
+  });
+});
+
 describe("stark interpreter — repeat (*N)", () => {
   it("expands a drum roll into N hits on the token's grid", () => {
     const notes = interpretNotation("hihat /16: X*16");

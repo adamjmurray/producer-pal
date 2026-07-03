@@ -39,14 +39,20 @@ export function randomVelocity(min: number, max: number): number {
 // --- Timing ---
 
 /**
- * Convert an absolute /N note value (with optional dot) to Ableton beats.
+ * Convert an absolute /N note value (with optional modifier) to Ableton beats.
  * Absolute note value — NOT an ABC-style multiplier: /4 = 1 beat, /1 = 4 beats.
- * A dot multiplies the value by 1.5 (/4. = 1.5 beats).
- * @param duration - The parsed { n, dotted } note value
+ * A dot multiplies the value by 1.5 (/4. = 1.5 beats); a triplet by 2/3 (/8t =
+ * 1/3 beat). The two are mutually exclusive, so at most one factor applies.
+ * @param duration - The parsed { n, dotted, triplet } note value
  * @returns Duration in Ableton beats
  */
 export function durationBeats(duration: StarkDuration): number {
-  return (4 / duration.n) * (duration.dotted ? 1.5 : 1);
+  const base = 4 / duration.n;
+
+  if (duration.dotted) return base * 1.5;
+  if (duration.triplet) return base * (2 / 3);
+
+  return base;
 }
 
 // --- Register defaults ---
@@ -68,9 +74,9 @@ export const CHORDS_REGISTER_DEFAULT = 48;
 export const LINE_DEFAULT: Readonly<
   Record<"bass" | "melody" | "chords", StarkDuration>
 > = {
-  bass: { n: 4, dotted: false },
-  melody: { n: 4, dotted: false },
-  chords: { n: 1, dotted: false },
+  bass: { n: 4, dotted: false, triplet: false },
+  melody: { n: 4, dotted: false, triplet: false },
+  chords: { n: 1, dotted: false, triplet: false },
 };
 
 /**
@@ -78,7 +84,11 @@ export const LINE_DEFAULT: Readonly<
  * a /N: /4 (a quarter note), matching bass/melody. A bare `kick: X X X X` is four
  * quarter-note hits = one 4/4 bar.
  */
-export const DRUM_DEFAULT: StarkDuration = { n: 4, dotted: false };
+export const DRUM_DEFAULT: StarkDuration = {
+  n: 4,
+  dotted: false,
+  triplet: false,
+};
 
 // --- Drum line names ---
 
