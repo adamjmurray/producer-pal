@@ -72,9 +72,9 @@ describe("skill-overrides route", () => {
   });
 
   it("DELETE resets an override back to the built-in", async () => {
-    await putJson(`${base}/stark`, { content: "temp override" });
+    await putJson(`${base}/stark-standard`, { content: "temp override" });
 
-    const res = await fetch(`${base}/stark`, { method: "DELETE" });
+    const res = await fetch(`${base}/stark-standard`, { method: "DELETE" });
 
     expect(res.status).toBe(200);
     const { slot } = (await res.json()) as { slot: SlotState };

@@ -9,21 +9,23 @@ import { coreStandard } from "#src/skills/core/core-standard.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
-import { stark } from "#src/skills/notation/stark.ts";
+import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 
 // The user-facing override "slots" (~/.producer-pal skills overrides, ADR-0010).
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
 // buildSkills fragment. Renaming one orphans that user's override, so the set is
 // kept small, coarse, and stable. Every fragment buildSkills can emit has
-// exactly one slot; midi-json/stark reuse a single head across both the
-// standard and basic (small-model) levels, so they are one slot each.
+// exactly one slot; bar|beat and stark have a distinct head per level, while
+// midi-json reuses a single head across both the standard and basic (small-model)
+// levels, so it is one slot.
 export const SKILL_SLOT_NAMES = [
   "core-standard",
   "core-basic",
   "barbeat-standard",
   "barbeat-basic",
   "midi-json",
-  "stark",
+  "stark-standard",
+  "stark-basic",
 ] as const;
 
 export type SkillSlotName = (typeof SKILL_SLOT_NAMES)[number];
@@ -73,10 +75,17 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
       "The note format guide used when midi-json notation is active.",
     builtIn: midiJson,
   },
-  stark: {
-    title: "stark notation",
-    description: "The note format guide used when stark notation is active.",
-    builtIn: stark,
+  "stark-standard": {
+    title: "stark notation (standard)",
+    description:
+      "How to read and write stark notation, the literal round-trippable note format. Used with capable models.",
+    builtIn: starkStandard,
+  },
+  "stark-basic": {
+    title: "stark notation (small-model)",
+    description:
+      "A trimmed stark notation guide for smaller or local models (small-model mode): the 16 named drum pads only.",
+    builtIn: starkBasic,
   },
 };
 
@@ -91,8 +100,8 @@ export interface ActiveSkillSlots {
 /**
  * Resolve which head + core slots buildSkills uses for a runtime context. The
  * level (standard vs basic) selects the core body; the notation selects the
- * head. bar|beat has a distinct head per level; midi-json and stark reuse one
- * head across both levels, so their slot name equals the notation name.
+ * head. bar|beat and stark have a distinct head per level; midi-json reuses one
+ * head across both levels, so its slot name equals the notation name.
  *
  * @param notation - The active notation
  * @param smallModelMode - Whether small-model (basic) skills are active
@@ -104,11 +113,11 @@ export function activeSkillSlots(
 ): ActiveSkillSlots {
   const core: SkillSlotName = smallModelMode ? "core-basic" : "core-standard";
   const head: SkillSlotName =
-    notation === "barbeat"
-      ? smallModelMode
-        ? "barbeat-basic"
-        : "barbeat-standard"
-      : notation;
+    notation === "midi-json"
+      ? "midi-json"
+      : smallModelMode
+        ? `${notation}-basic`
+        : `${notation}-standard`;
 
   return { head, core };
 }

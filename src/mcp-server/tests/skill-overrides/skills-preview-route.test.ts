@@ -72,7 +72,7 @@ describe("skills-preview route", () => {
     const body = await getPreview("notation=stark&smallModel=true");
 
     expect(body.smallModelMode).toBe(true);
-    expect(body.head).toBe("stark");
+    expect(body.head).toBe("stark-basic");
     expect(body.core).toBe("core-basic");
     expect(body.skills).toBe(
       buildSkills({ notation: "stark", smallModelMode: true }),
@@ -101,7 +101,9 @@ describe("skills-preview route", () => {
   });
 
   it("reflects a saved fragment override in the assembled blob", async () => {
-    await putJson(`${overridesBase}/stark`, { content: "MY CUSTOM STARK" });
+    await putJson(`${overridesBase}/stark-standard`, {
+      content: "MY CUSTOM STARK",
+    });
 
     const body = await getPreview("notation=stark");
 

@@ -51,9 +51,11 @@ describe("readSkillOverrides", () => {
 
   it("ignores stray files that are not registered slots", () => {
     writeRaw("not-a-slot", "should be ignored");
-    writeSkillOverride("stark", "custom stark");
+    writeSkillOverride("stark-standard", "custom stark");
 
-    expect(readSkillOverrides()).toStrictEqual({ stark: "custom stark" });
+    expect(readSkillOverrides()).toStrictEqual({
+      "stark-standard": "custom stark",
+    });
   });
 
   it("reads a hand-authored override that has no frontmatter", () => {
@@ -87,8 +89,8 @@ describe("writeSkillOverride", () => {
   });
 
   it("resets the slot (deletes the file) when given blank content", () => {
-    writeSkillOverride("stark", "temporary");
-    const state = writeSkillOverride("stark", "   \n  ");
+    writeSkillOverride("stark-standard", "temporary");
+    const state = writeSkillOverride("stark-standard", "   \n  ");
 
     expect(state.override).toBe("");
     expect(state.provenance).toBeNull();

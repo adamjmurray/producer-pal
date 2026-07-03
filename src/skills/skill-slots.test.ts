@@ -44,12 +44,14 @@ describe("activeSkillSlots", () => {
     });
   });
 
-  it("uses the notation name as the head slot for non-bar|beat notations", () => {
-    for (const notation of ["midi-json", "stark"] as const) {
-      expect(activeSkillSlots(notation, false).head).toBe(notation);
-      // Same head slot at both levels (no simplified variant).
-      expect(activeSkillSlots(notation, true).head).toBe(notation);
-    }
+  it("uses the notation name as the head slot for midi-json (one head, both levels)", () => {
+    expect(activeSkillSlots("midi-json", false).head).toBe("midi-json");
+    expect(activeSkillSlots("midi-json", true).head).toBe("midi-json");
+  });
+
+  it("forks the stark head by level, like bar|beat", () => {
+    expect(activeSkillSlots("stark", false).head).toBe("stark-standard");
+    expect(activeSkillSlots("stark", true).head).toBe("stark-basic");
   });
 
   it("only ever resolves to registered slot names, for every notation", () => {

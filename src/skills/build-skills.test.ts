@@ -11,20 +11,20 @@ import { coreStandard } from "./core/core-standard.ts";
 import { barbeatBasic } from "./notation/barbeat-basic.ts";
 import { barbeatStandard } from "./notation/barbeat-standard.ts";
 import { midiJson } from "./notation/midi-json.ts";
-import { stark } from "./notation/stark.ts";
+import { starkBasic, starkStandard } from "./notation/stark.ts";
 
 const HEADER = "# Producer Pal Skills";
 
 const STANDARD_HEAD: Record<Notation, string> = {
   barbeat: barbeatStandard,
   "midi-json": midiJson,
-  stark,
+  stark: starkStandard,
 };
 
 const BASIC_HEAD: Record<Notation, string> = {
   barbeat: barbeatBasic,
   "midi-json": midiJson,
-  stark,
+  stark: starkBasic,
 };
 
 describe("buildSkills - composition", () => {
@@ -58,11 +58,11 @@ describe("buildSkills - composition", () => {
 
     expect(new Set(standardHeads).size).toBe(NOTATIONS.length);
 
-    // Only bar|beat has a distinct basic head; midi-json and stark share one
-    // head across both levels (their notes format has no simplified variant).
+    // bar|beat and stark have a distinct basic head; midi-json shares one head
+    // across both levels (its notes format has no simplified variant).
     expect(STANDARD_HEAD.barbeat).not.toBe(BASIC_HEAD.barbeat);
+    expect(STANDARD_HEAD.stark).not.toBe(BASIC_HEAD.stark);
     expect(STANDARD_HEAD["midi-json"]).toBe(BASIC_HEAD["midi-json"]);
-    expect(STANDARD_HEAD.stark).toBe(BASIC_HEAD.stark);
   });
 
   it("layers the shared core body onto every notation at both levels", () => {
@@ -112,7 +112,7 @@ describe("buildSkills - overrides", () => {
       {
         "core-basic": "IGNORED",
         "midi-json": "IGNORED",
-        stark: "IGNORED",
+        "stark-standard": "IGNORED",
       },
     );
 
@@ -128,17 +128,38 @@ describe("buildSkills - overrides", () => {
     expect(result).toBe(`${HEADER}\n\nBASIC HEAD\n\nBASIC CORE`);
   });
 
-  it("shares one override across both levels for midi-json/stark", () => {
-    // These reuse a single head slot, so a stark override lands in standard and
+  it("shares one override across both levels for midi-json", () => {
+    // midi-json reuses a single head slot, so its override lands in standard and
     // basic alike.
-    const standard = buildSkills({ notation: "stark" }, { stark: "STARK!" });
+    const standard = buildSkills(
+      { notation: "midi-json" },
+      { "midi-json": "MJ!" },
+    );
     const basic = buildSkills(
-      { notation: "stark", smallModelMode: true },
-      { stark: "STARK!" },
+      { notation: "midi-json", smallModelMode: true },
+      { "midi-json": "MJ!" },
     );
 
-    expect(standard).toContain("STARK!");
-    expect(basic).toContain("STARK!");
+    expect(standard).toContain("MJ!");
+    expect(basic).toContain("MJ!");
+  });
+
+  it("overrides stark's standard and basic heads independently", () => {
+    // stark has a distinct head per level, so each level takes its own override.
+    const overrides = {
+      "stark-standard": "STD HEAD",
+      "stark-basic": "BASIC HEAD",
+    };
+    const standard = buildSkills({ notation: "stark" }, overrides);
+    const basic = buildSkills(
+      { notation: "stark", smallModelMode: true },
+      overrides,
+    );
+
+    expect(standard).toContain("STD HEAD");
+    expect(standard).not.toContain("BASIC HEAD");
+    expect(basic).toContain("BASIC HEAD");
+    expect(basic).not.toContain("STD HEAD");
   });
 });
 
