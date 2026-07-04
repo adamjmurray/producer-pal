@@ -3,16 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerGlobalMemoryNodeRoutes } from "#src/mcp-server/helpers/memory/global-memory-node-routes.ts";
 import { rememberMemory } from "#src/mcp-server/helpers/memory/global-memory-store.ts";
+import { clearNodeRoutes } from "#src/mcp-server/rpc/node-request-protocol.ts";
 import {
-  clearNodeRoutes,
-  handleNodeRequest,
-} from "#src/mcp-server/rpc/node-request-protocol.ts";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
-import { useTempConfigDir } from "../config-dir-test-helpers.ts";
+  dispatchNodeRoute,
+  useTempConfigDir,
+} from "../config-dir-test-helpers.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   log: vi.fn(),
@@ -20,42 +18,6 @@ vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
-
-type ParsedNodeResponse = {
-  success: boolean;
-  result?: { content?: string };
-  error?: string;
-};
-
-/**
- * Reassemble and parse the response JSON from the chunked Max.outlet call.
- * @returns Parsed response object
- */
-function parseSentResponse(): ParsedNodeResponse {
-  const [name, , ...rest] = vi.mocked(Max.outlet).mock.calls[0] ?? [];
-
-  expect(name).toBe("node_response");
-
-  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
-  const chunks = rest.slice(0, delimiterIndex) as string[];
-
-  return JSON.parse(chunks.join("")) as ParsedNodeResponse;
-}
-
-/**
- * Dispatch a memory route and return the parsed response.
- * @param route - The route name (e.g. "memory.read")
- * @param args - The route args
- * @returns Parsed response object
- */
-async function callRoute(
-  route: string,
-  args: unknown,
-): Promise<ParsedNodeResponse> {
-  await handleNodeRequest("id", JSON.stringify({ route, args }));
-
-  return parseSentResponse();
-}
 
 useTempConfigDir();
 
@@ -70,7 +32,7 @@ afterEach(() => {
 
 describe("memory.remember route", () => {
   it("stores a memory and echoes the regenerated index", async () => {
-    const response = await callRoute("memory.remember", {
+    const response = await dispatchNodeRoute("memory.remember", {
       name: "Prefers C Minor",
       type: "user",
       description: "default key",
@@ -86,7 +48,7 @@ describe("memory.remember route", () => {
   });
 
   it("stores a memory with no description (index line has no dash)", async () => {
-    const response = await callRoute("memory.remember", {
+    const response = await dispatchNodeRoute("memory.remember", {
       name: "bare",
       type: "user",
       content: "a fact",
@@ -97,7 +59,7 @@ describe("memory.remember route", () => {
   });
 
   it("fails on an invalid type", async () => {
-    const response = await callRoute("memory.remember", {
+    const response = await dispatchNodeRoute("memory.remember", {
       name: "x",
       type: "bogus",
       content: "y",
@@ -108,7 +70,7 @@ describe("memory.remember route", () => {
   });
 
   it("fails when a required string field is missing", async () => {
-    const response = await callRoute("memory.remember", {
+    const response = await dispatchNodeRoute("memory.remember", {
       type: "user",
       content: "y",
     });
@@ -127,13 +89,15 @@ describe("memory.read route", () => {
       body: "In ~/Samples/Analog.",
     });
 
-    const response = await callRoute("memory.read", { name: "kick-samples" });
+    const response = await dispatchNodeRoute("memory.read", {
+      name: "kick-samples",
+    });
 
     expect(response.result).toStrictEqual({ content: "In ~/Samples/Analog." });
   });
 
   it("returns a not-found note for a missing memory", async () => {
-    const response = await callRoute("memory.read", { name: "ghost" });
+    const response = await dispatchNodeRoute("memory.read", { name: "ghost" });
 
     expect(response.result).toStrictEqual({
       content: 'No memory found for "ghost".',
@@ -145,14 +109,16 @@ describe("memory.forget route", () => {
   it("removes an existing memory", async () => {
     rememberMemory({ name: "temp", type: "user", description: "", body: "b" });
 
-    const response = await callRoute("memory.forget", { name: "temp" });
+    const response = await dispatchNodeRoute("memory.forget", { name: "temp" });
 
     expect(response.result?.content).toContain('Forgot "temp".');
     expect(response.result?.content).toContain("(no memories stored)");
   });
 
   it("reports when there was nothing to forget", async () => {
-    const response = await callRoute("memory.forget", { name: "ghost" });
+    const response = await dispatchNodeRoute("memory.forget", {
+      name: "ghost",
+    });
 
     expect(response.result?.content).toContain(
       'No memory to forget for "ghost".',
@@ -162,7 +128,7 @@ describe("memory.forget route", () => {
 
 describe("memory.list route", () => {
   it("returns a placeholder when empty", async () => {
-    const response = await callRoute("memory.list", {});
+    const response = await dispatchNodeRoute("memory.list", {});
 
     expect(response.result).toStrictEqual({ content: "(no memories stored)" });
   });
@@ -170,7 +136,7 @@ describe("memory.list route", () => {
   it("returns the derived index when populated", async () => {
     rememberMemory({ name: "u", type: "user", description: "hook", body: "b" });
 
-    const response = await callRoute("memory.list", {});
+    const response = await dispatchNodeRoute("memory.list", {});
 
     expect(response.result?.content).toContain("# Producer Pal Memory");
     expect(response.result?.content).toContain("- `u` — hook");

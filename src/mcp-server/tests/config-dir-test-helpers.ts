@@ -5,8 +5,9 @@
 
 // Shared setup for tests that exercise the ~/.producer-pal config-dir stores
 // and their REST routes against a real (temp) filesystem. Centralizes the
-// PRODUCER_PAL_CONFIG_DIR override lifecycle and the tiny markdown-route server
-// so per-feature test files don't each re-clone the boilerplate.
+// PRODUCER_PAL_CONFIG_DIR override lifecycle, the tiny markdown-route server,
+// and the V8↔Node RPC-route dispatch harness so per-feature test files don't
+// each re-clone the boilerplate.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { type Server } from "node:http";
@@ -14,7 +15,10 @@ import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import express, { type Express } from "express";
-import { afterEach, beforeEach } from "vitest";
+import Max from "max-api";
+import { afterEach, beforeEach, expect, vi } from "vitest";
+import { handleNodeRequest } from "#src/mcp-server/rpc/node-request-protocol.ts";
+import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 
 /**
  * Register beforeEach/afterEach hooks that point PRODUCER_PAL_CONFIG_DIR at a
@@ -100,4 +104,47 @@ export function putJson(
   if (origin != null) headers.Origin = origin;
 
   return fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
+}
+
+/** The parsed `{ content }` payload every V8↔Node RPC route sends back. */
+export interface ParsedNodeResponse {
+  success: boolean;
+  result?: { content?: string };
+  error?: string;
+}
+
+/**
+ * Reassemble and parse the response JSON from the chunked `node_response`
+ * Max.outlet call the RPC dispatcher makes. Reads the first outlet call, so
+ * clear the Max.outlet mock between dispatches (per-test `vi.clearAllMocks`).
+ *
+ * @returns The parsed node response
+ */
+export function parseSentNodeResponse(): ParsedNodeResponse {
+  const [name, , ...rest] = vi.mocked(Max.outlet).mock.calls[0] ?? [];
+
+  expect(name).toBe("node_response");
+
+  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
+  const chunks = rest.slice(0, delimiterIndex) as string[];
+
+  return JSON.parse(chunks.join("")) as ParsedNodeResponse;
+}
+
+/**
+ * Dispatch one node route through the RPC protocol and return the parsed
+ * response. The shared harness for the config-dir node-route tests (global
+ * context, memory, custom skills).
+ *
+ * @param route - The route name (e.g. "memory.read")
+ * @param args - The route args
+ * @returns The parsed node response
+ */
+export async function dispatchNodeRoute(
+  route: string,
+  args: unknown,
+): Promise<ParsedNodeResponse> {
+  await handleNodeRequest("id", JSON.stringify({ route, args }));
+
+  return parseSentNodeResponse();
 }

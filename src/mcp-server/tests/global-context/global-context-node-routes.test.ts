@@ -6,14 +6,13 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerGlobalContextNodeRoutes } from "#src/mcp-server/helpers/global-context/global-context-node-routes.ts";
 import {
   clearNodeRoutes,
   handleNodeRequest,
 } from "#src/mcp-server/rpc/node-request-protocol.ts";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { parseSentNodeResponse } from "../config-dir-test-helpers.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   log: vi.fn(),
@@ -21,28 +20,6 @@ vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
-
-type ParsedNodeResponse = {
-  success: boolean;
-  result?: { content?: string };
-  error?: string;
-};
-
-/**
- * Reassemble and parse the response JSON from the chunked Max.outlet call.
- *
- * @returns Parsed response object
- */
-function parseSentResponse(): ParsedNodeResponse {
-  const [name, , ...rest] = vi.mocked(Max.outlet).mock.calls[0] ?? [];
-
-  expect(name).toBe("node_response");
-
-  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
-  const chunks = rest.slice(0, delimiterIndex) as string[];
-
-  return JSON.parse(chunks.join("")) as ParsedNodeResponse;
-}
 
 const ORIGINAL_DIR = process.env.PRODUCER_PAL_CONFIG_DIR;
 
@@ -76,7 +53,7 @@ describe("globalContext.read route", () => {
       JSON.stringify({ route: "globalContext.read", args: {} }),
     );
 
-    const response = parseSentResponse();
+    const response = parseSentNodeResponse();
 
     expect(response.success).toBe(true);
     expect(response.result).toStrictEqual({
@@ -90,7 +67,7 @@ describe("globalContext.read route", () => {
       JSON.stringify({ route: "globalContext.read", args: {} }),
     );
 
-    const response = parseSentResponse();
+    const response = parseSentNodeResponse();
 
     expect(response.success).toBe(true);
     expect(response.result).toStrictEqual({ content: "" });
@@ -107,7 +84,7 @@ describe("globalContext.write route", () => {
       }),
     );
 
-    const response = parseSentResponse();
+    const response = parseSentNodeResponse();
 
     expect(response.success).toBe(true);
     expect(response.result).toStrictEqual({
@@ -124,7 +101,7 @@ describe("globalContext.write route", () => {
       JSON.stringify({ route: "globalContext.write", args: { content: 42 } }),
     );
 
-    const response = parseSentResponse();
+    const response = parseSentNodeResponse();
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("content must be a string");
@@ -136,7 +113,7 @@ describe("globalContext.write route", () => {
       JSON.stringify({ route: "globalContext.write", args: null }),
     );
 
-    const response = parseSentResponse();
+    const response = parseSentNodeResponse();
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("content must be a string");

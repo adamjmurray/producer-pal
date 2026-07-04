@@ -6,11 +6,15 @@
 import {
   type MemoryResult,
   handleForgetMemory,
+  handleForgetSkill,
   handleListMemory,
+  handleListSkills,
   handleReadGlobalMemory,
   handleReadMemory,
   handleReadMemoryEntry,
+  handleReadSkill,
   handleRememberMemory,
+  handleRememberSkill,
   handleWriteGlobalMemory,
   handleWriteMemory,
 } from "./context-helpers.ts";
@@ -37,9 +41,9 @@ interface ContextArgs {
  * @param args - The parameters
  * @param args.action - Action to perform (read, write, remember, forget, list)
  * @param args.content - Memory content (write = context.md; remember = body)
- * @param args.scope - Which context to target (project | global; default project)
- * @param args.name - Memory entry name (read/remember/forget, global scope)
- * @param args.type - Memory type (remember): user | feedback | goal | reference
+ * @param args.scope - Which context to target (project | global | skills; default project)
+ * @param args.name - Entry name (read/remember/forget, global & skills scopes)
+ * @param args.type - Memory type (remember, global scope): user | feedback | goal | reference
  * @param args.description - One-line recall hook (remember)
  * @param toolContext - The context object
  * @returns Memory result
@@ -48,6 +52,23 @@ export async function context(
   { action, content, scope, name, type, description }: ContextArgs = {},
   toolContext: Partial<ToolContext> = {},
 ): Promise<MemoryResult> {
+  if (scope === "skills") {
+    switch (action) {
+      case "read":
+        if (!name) throw new Error("name required to read a skill");
+
+        return await handleReadSkill(name);
+      case "remember":
+        return await handleRememberSkill({ name, description, content });
+      case "forget":
+        return await handleForgetSkill(name);
+      case "list":
+        return await handleListSkills();
+      default:
+        throw new Error(`Unknown action for scope:skills: ${action}`);
+    }
+  }
+
   if (scope === "global") {
     switch (action) {
       case "read":
