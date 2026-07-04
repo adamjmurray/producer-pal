@@ -78,6 +78,25 @@ export function getSkillOverrideUrl(slot: string): string {
 }
 
 /**
+ * Gets the memory collection endpoint URL (lists every stored memory entry;
+ * the LLM-managed ~/.producer-pal/memory/ collection).
+ * @returns {string} The memory collection endpoint URL
+ */
+export function getMemoryCollectionUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/memory");
+}
+
+/**
+ * Gets the endpoint URL for a single memory entry (PUT to create/overwrite,
+ * DELETE to remove). The name is slugified server-side.
+ * @param name - The memory name
+ * @returns {string} The per-entry memory endpoint URL
+ */
+export function getMemoryEntryUrl(name: string): string {
+  return `${getMemoryCollectionUrl()}/${encodeURIComponent(name)}`;
+}
+
+/**
  * Gets the skills-preview endpoint URL for a notation + small-model combination
  * (the assembled "# Producer Pal Skills" blob ppal-connect would return for that
  * combination, with the user's fragment overrides applied).

@@ -6,10 +6,10 @@
 /**
  * Memory identity contract: the `MemoryType` union plus the constants used to
  * validate, order, label, and set the injection policy for the LLM-managed
- * memory collection (~/.producer-pal/memory/). Lives in `src/shared` (a leaf
- * layer) so both the V8-side tool schema (`ppal-context`) and the Node-side
- * store/injector reuse one source of truth. The filesystem store itself is
- * Node-only (`global-memory-store.ts`).
+ * memory collection (~/.producer-pal/memory/). Node-side (nothing V8-side
+ * imports it — the `ppal-context` tool schema hardcodes the enum), so it lives
+ * with the store/injector under `helpers/memory/`. The filesystem store itself
+ * is `global-memory-store.ts`.
  */
 
 /**

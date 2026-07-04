@@ -1,12 +1,13 @@
 # Producer Pal Memory System
 
-Status: **plan locked** (2026-07-03); **P1 implemented on the `memory-system`
-branch** (not yet landed on dev). Remaining: the drive-iteration eval and the P2
-webui manager. This is the v1.5 deliverable. It builds on the shipped
-global-context v1 (`~/.producer-pal/context.md`, injected verbatim into
-`ppal-connect`) and the auto-memory pattern used by Claude Code itself (indexed
-one-fact-per-file `.md` store). The `~/.producer-pal` content-override layer it
-sits on is ADR-0010 (`dev/decisions/0010-user-content-overrides-layer.md`).
+Status: **plan locked** (2026-07-03); **P1 + P2 implemented on the
+`memory-system` branch** (not yet landed on dev). Remaining: the drive-iteration
+eval (filed as a follow-up, does not gate). This is the v1.5 deliverable. It
+builds on the shipped global-context v1 (`~/.producer-pal/context.md`, injected
+verbatim into `ppal-connect`) and the auto-memory pattern used by Claude Code
+itself (indexed one-fact-per-file `.md` store). The `~/.producer-pal`
+content-override layer it sits on is ADR-0010
+(`dev/decisions/0010-user-content-overrides-layer.md`).
 
 ## The framing decision: memory is the first "loadable collection"
 
@@ -327,8 +328,23 @@ after custom skills — not a v1.5 commitment.
   `tests/server/*` subdirs were created to stay under the 12-item folder cap.)
 - **P1 follow-up — eval.** Not built yet. Drives skills-blob iteration; does not
   gate. Reuse the `evals/` notation-harness pattern.
-- **P2 — webui memory manager.** Two-pane, reusing the `SkillsScreen` collection
-  pattern + a new collection route.
+- **P2 — webui memory manager. DONE (on branch).** Two-pane manager on a new
+  Memory tab, reusing the collection-editor coordination
+  (`useSaveRefreshGuard` + focus/poll) from `useSkillOverrides`:
+  - Node REST collection route `routes/memory-collection-route.ts` (GET list,
+    PUT `:name`, DELETE `:name`; origin-gated writes), wired in
+    `create-express-app`.
+  - webui hook `hooks/context/use-memory-collection.ts` (list/save/delete +
+    save-overlap guard) and URL helpers in `utils/mcp-url.ts`.
+  - webui components under `components/context/memory/` (`MemoryScreen` two-pane
+    orchestration, `MemoryList` left index grouped by type, `MemoryEntryEditor`
+    right-pane form, `memory-types` UI config); Memory tab added to
+    `ContextTabs`. Unlike the fixed-slot Skills editor this is explicit-save (a
+    structured record, not one blob); the list still polls for the assistant's
+    own remember/forget.
+  - (Reorg note: `markdown-editor-theme.ts` was inlined into
+    `MarkdownEditor.tsx` to free a slot for the `memory/` subdir under the
+    12-item folder cap.)
 
 ```
 

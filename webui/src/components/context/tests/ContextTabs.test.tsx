@@ -71,6 +71,27 @@ vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
   }),
 }));
 
+vi.mock(import("#webui/hooks/context/use-memory-collection"), () => ({
+  useMemoryCollection: () => ({
+    status: {
+      kind: "ready",
+      entries: [
+        {
+          name: "prefers-c-minor",
+          type: "user",
+          description: "default key & genre",
+          body: "Composes in C minor.",
+        },
+      ],
+    },
+    saveStatus: "idle",
+    saveError: null,
+    saveEntry: vi.fn(),
+    deleteEntry: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 describe("ContextTabs", () => {
   it("defaults to the Project tab and shows the project document", () => {
     render(<ContextTabs />);
@@ -141,6 +162,21 @@ describe("ContextTabs", () => {
     // The slot dropdown and the read-only built-in pane render.
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
     expect(screen.getByText("CORE-BUILTIN")).toBeTruthy();
+  });
+
+  it("switches to the Memory tab and shows the collection manager", () => {
+    render(<ContextTabs />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Memory" }));
+
+    expect(
+      screen.getByRole("tab", { name: "Memory" }).getAttribute("aria-selected"),
+    ).toBe("true");
+    // The list shows the stored memory and the create form is available.
+    expect(
+      screen.getByRole("button", { name: /prefers-c-minor/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });
 
   it("renders a close button that calls onClose", () => {

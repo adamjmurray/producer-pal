@@ -40,6 +40,30 @@ export function jsonResponse(body: unknown): Response {
   });
 }
 
+/** An externally-resolvable promise plus its resolve/reject handles. */
+export interface Deferred<T> {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason: unknown) => void;
+}
+
+/**
+ * Externally-resolvable promise, so a test can pin the resolution order of a
+ * concurrent save and refresh independent of issue order.
+ * @returns A promise plus its resolve/reject handles
+ */
+export function deferred<T>(): Deferred<T> {
+  // The executor runs synchronously, so all three fields are set before return.
+  const box: Partial<Deferred<T>> = {};
+
+  box.promise = new Promise<T>((resolve, reject) => {
+    box.resolve = resolve;
+    box.reject = reject;
+  });
+
+  return box as Deferred<T>;
+}
+
 /**
  * Register the standard read/write behavioral tests for a useDocMemory
  * transport wrapper.

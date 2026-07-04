@@ -30,6 +30,7 @@ import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
 import { registerGlobalContextRoutes } from "./routes/global-context-route.ts";
+import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
 import { registerSkillsPreviewRoute } from "./routes/skills-preview-route.ts";
@@ -322,6 +323,7 @@ export function createExpressApp(): Express {
   registerRestApiRoutes(app, () => config, callLiveApiEnriched);
 
   registerGlobalContextRoutes(app);
+  registerMemoryCollectionRoutes(app);
   registerSystemPromptRoutes(app);
   registerSkillOverridesRoutes(app);
   registerSkillsPreviewRoute(app);

@@ -7,16 +7,21 @@ import { useState } from "preact/hooks";
 import { useContextMemory } from "#webui/hooks/context/use-context-memory";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
+import { useMemoryCollection } from "#webui/hooks/context/use-memory-collection";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
+import { MemoryScreen } from "./memory/MemoryScreen";
 import { SkillsScreen } from "./skills/SkillsScreen";
 
 /** Tabs backed by a single markdown document via useDocMemory. */
 type DocTab = "project" | "global" | "instructions";
-/** All context editor tabs (the doc tabs plus the multi-fragment Skills tab). */
-type ContextTab = DocTab | "skills";
+/**
+ * All context editor tabs: the doc tabs plus the multi-fragment Skills tab and
+ * the multi-entry Memory tab.
+ */
+type ContextTab = DocTab | "skills" | "memory";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
@@ -66,14 +71,15 @@ interface ContextTabsProps {
 }
 
 /**
- * Multi-document context editor: a Project | Global | Instructions | Skills tab
- * strip. The three document tabs share a {@link ContextScreen}; the Skills tab
- * renders a {@link SkillsScreen} instead (a multi-fragment override editor). All
- * hooks stay mounted (so each keeps polling for external writes and switching
- * tabs shows already-loaded content without a flash), while the active one is
- * handed to its screen. Keying the doc screen by tab remounts it on switch so
- * its uncontrolled editor re-seeds from the newly-active document, and the
- * outgoing editor flushes any pending save on unmount.
+ * Multi-document context editor: a Project | Global | Instructions | Skills |
+ * Memory tab strip. The three document tabs share a {@link ContextScreen}; the
+ * Skills tab renders a {@link SkillsScreen} (a multi-fragment override editor)
+ * and the Memory tab a {@link MemoryScreen} (a multi-entry collection manager).
+ * All hooks stay mounted (so each keeps polling for external writes and
+ * switching tabs shows already-loaded content without a flash), while the
+ * active one is handed to its screen. Keying the doc screen by tab remounts it
+ * on switch so its uncontrolled editor re-seeds from the newly-active document,
+ * and the outgoing editor flushes any pending save on unmount.
  * @param props - Tabs props
  * @returns Tabbed editor element
  */
@@ -83,6 +89,7 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const globalMemory = useGlobalContextMemory();
   const instructionsMemory = useSystemPromptMemory();
   const skillOverrides = useSkillOverrides();
+  const memoryCollection = useMemoryCollection();
 
   const memoryByTab: Record<DocTab, UseDocMemoryReturn> = {
     project: projectMemory,
@@ -100,6 +107,16 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
     return (
       <SkillsScreen
         overrides={skillOverrides}
+        tabSlot={tabStrip}
+        onClose={props.onClose}
+      />
+    );
+  }
+
+  if (tab === "memory") {
+    return (
+      <MemoryScreen
+        collection={memoryCollection}
         tabSlot={tabStrip}
         onClose={props.onClose}
       />
@@ -126,7 +143,7 @@ interface TabStripProps {
 
 /**
  * Header-left tab strip switching between the project, global, instructions,
- * and skills editors.
+ * skills, and memory editors.
  * @param props - Tab strip props
  * @returns Tab strip element
  */
@@ -158,6 +175,11 @@ function TabStrip(props: TabStripProps): preact.JSX.Element {
         label="Skills"
         active={tab === "skills"}
         onSelect={() => onSelect("skills")}
+      />
+      <TabButton
+        label="Memory"
+        active={tab === "memory"}
+        onSelect={() => onSelect("memory")}
       />
     </div>
   );

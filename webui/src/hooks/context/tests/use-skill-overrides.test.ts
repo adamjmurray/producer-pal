@@ -9,7 +9,7 @@
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
-import { jsonResponse } from "./doc-memory-transport-test-helpers";
+import { deferred, jsonResponse } from "./doc-memory-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/skill-overrides";
@@ -31,29 +31,6 @@ function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
     provenance: null,
     ...over,
   };
-}
-
-interface Deferred<T> {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason: unknown) => void;
-}
-
-/**
- * Externally-resolvable promise, so a test can pin the resolution order of a
- * concurrent save and refresh independent of issue order.
- * @returns A promise plus its resolve/reject handles
- */
-function deferred<T>(): Deferred<T> {
-  // The executor runs synchronously, so all three fields are set before return.
-  const box: Partial<Deferred<T>> = {};
-
-  box.promise = new Promise<T>((resolve, reject) => {
-    box.resolve = resolve;
-    box.reject = reject;
-  });
-
-  return box as Deferred<T>;
 }
 
 describe("useSkillOverrides", () => {
