@@ -34,11 +34,15 @@ import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 
 const HEADER = "# Producer Pal Skills";
 
-/** Standard-level driver: header + notation head + shared standard core. */
-const standardDriver = `${HEADER}\n\n@include "./{notation}-standard.md"\n\n@include "./core-standard.md"`;
+/**
+ * Standard-level driver: header + notation head + shared standard core. Exported
+ * so the editor registry (skill-slots.ts) surfaces the SAME string as an
+ * overridable slot — the include graph a user copies to fork is this text.
+ */
+export const standardDriver = `${HEADER}\n\n@include "./{notation}-standard.md"\n\n@include "./core-standard.md"`;
 
 /** Small-model driver: header + notation head + shared basic core. */
-const basicDriver = `${HEADER}\n\n@include "./{notation}-basic.md"\n\n@include "./core-basic.md"`;
+export const basicDriver = `${HEADER}\n\n@include "./{notation}-basic.md"\n\n@include "./core-basic.md"`;
 
 // midi-json has one head for both levels; these wrappers let the drivers use the
 // uniform `{notation}-{level}` include name without duplicating the head.

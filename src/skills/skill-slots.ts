@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { basicDriver, standardDriver } from "#src/skills/builtin-fragments.ts";
 import { coreBasic } from "#src/skills/core/core-basic.ts";
 import { coreStandard } from "#src/skills/core/core-standard.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
@@ -12,12 +13,16 @@ import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 
 // The user-facing override "slots" (~/.producer-pal skills overrides, ADR-0010).
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
-// buildSkills fragment. Renaming one orphans that user's override, so the set is
-// kept small, coarse, and stable. Every fragment buildSkills can emit has
-// exactly one slot; bar|beat and stark have a distinct head per level, while
-// midi-json reuses a single head across both the standard and basic (small-model)
-// levels, so it is one slot.
+// fragment. Renaming one orphans that user's override, so the set is kept coarse
+// and stable. Two tiers: the `standard`/`basic` DRIVERS are the top-level roots
+// (chosen by small-model mode) that compose the rest via `@include`; the notation
+// heads and core bodies are the fragments they pull in. bar|beat and stark have a
+// distinct head per level; midi-json reuses one head across both levels, so it is
+// a single slot (the drivers reach it through a level-named wrapper that is
+// plumbing, not an override slot).
 export const SKILL_SLOT_NAMES = [
+  "standard",
+  "basic",
   "core-standard",
   "core-basic",
   "barbeat-standard",
@@ -44,6 +49,18 @@ export interface SkillSlotDef {
 
 /** The overridable skills fragments, keyed by their stable slot name. */
 export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
+  standard: {
+    title: "Full skills (standard)",
+    description:
+      "The whole standard-model skills. Composes the notation guide and core below with @include — copy it to reorder sections, drop one, or point an include at a fragment of your own.",
+    builtIn: standardDriver,
+  },
+  basic: {
+    title: "Full skills (small-model)",
+    description:
+      "The whole small-model skills, composed with @include like the standard assembly above.",
+    builtIn: basicDriver,
+  },
   "core-standard": {
     title: "Core (standard)",
     description:
