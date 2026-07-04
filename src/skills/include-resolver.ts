@@ -97,7 +97,12 @@ function expandFragment(
 
   const body = options.lookup(name);
 
-  if (body == null) return "";
+  // Treat any non-string body as absent → "". Beyond the usual missing-fragment
+  // null, this catches an inherited Object.prototype member surfacing through a
+  // naive `map[name]` lookup — `@include "./constructor.md"` (or `__proto__`,
+  // `toString`, …) with no such fragment would otherwise return a function and
+  // crash on `.replaceAll` instead of resolving to nothing.
+  if (typeof body !== "string") return "";
 
   const nextStack = [...stack, name];
 

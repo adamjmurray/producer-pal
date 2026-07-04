@@ -121,6 +121,20 @@ describe("resolveIncludes - missing fragments", () => {
   it("returns empty for a missing root", () => {
     expect(resolveIncludes("nope", options({}))).toBe("");
   });
+
+  it("treats an Object.prototype name as a missing fragment, not a crash", () => {
+    // A naive `map[name]` lookup returns inherited members for names like
+    // "constructor" / "__proto__" (a function / an object), which would crash on
+    // `.replaceAll`. The resolver must treat any non-string body as absent → "".
+    for (const proto of ["constructor", "__proto__", "toString"]) {
+      const result = resolveIncludes(
+        "root",
+        options({ root: `x@include "./${proto}.md"y` }),
+      );
+
+      expect(result).toBe("xy");
+    }
+  });
 });
 
 describe("resolveIncludes - no loops", () => {

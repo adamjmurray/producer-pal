@@ -70,11 +70,14 @@ export interface SkillSlotState {
 }
 
 /**
- * Read every active override fragment for buildSkills. Only known slots are
- * consulted, so stray files under ~/.producer-pal/skills are ignored. Empty or
- * whitespace-only bodies are dropped so the slot falls back to the built-in.
+ * Read every override fragment for buildSkills. EVERY `.md` in the skills dir is
+ * read, not just the curated slots: a fork may override a driver, a notation
+ * head, or include a fragment of the user's own. `resolveIncludes` only pulls
+ * the names its graph references, and the readdir scope here plus the resolver's
+ * ref validation keep resolution inside the dir. Empty or whitespace-only bodies
+ * are dropped so that name falls back to the built-in.
  *
- * @returns Per-slot override bodies (only slots the user has overridden)
+ * @returns Fragment name → override body (only files the user has added)
  */
 export function readSkillOverrides(): SkillOverrides {
   const overrides: SkillOverrides = {};
