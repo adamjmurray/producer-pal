@@ -3,12 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useState } from "preact/hooks";
 import { makeContextIoHandlers } from "#webui/components/context/context-io";
 import { ContextIoButtons } from "#webui/components/context/ContextIoButtons";
 import {
   ContextHeader,
   DOUBLE_PANE_WIDTH,
   ExternalUpdateBanner,
+  SINGLE_WIDTH,
 } from "#webui/components/context/ContextScreen";
 import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";
 import { OverridePanes } from "#webui/components/context/OverridePanes";
@@ -62,6 +64,10 @@ export function SkillSlotScreen(
   const memory = slotAsDocMemory(overrides, slot);
   const editor = useContextEditorState(memory, RESET_CONFIRM);
   const io = makeContextIoHandlers(editor, `producer-pal-skill-${slot.name}`);
+  const [showBuiltIn, setShowBuiltIn] = useState(false);
+  // Match the other doc tabs at rest; widen to two columns only when the
+  // built-in reference is revealed.
+  const widthClass = showBuiltIn ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
@@ -80,12 +86,13 @@ export function SkillSlotScreen(
         onSelectSlot={onSelectSlot}
         slot={slot}
         viewSlot={viewSlot}
+        widthClass={widthClass}
         onReset={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
       />
       <div
-        className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
+        className={`mx-auto w-full ${widthClass} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
       >
         {editor.externalUpdate && (
           <ExternalUpdateBanner
@@ -102,6 +109,8 @@ export function SkillSlotScreen(
             value={slot.override}
             builtIn={slot.builtIn}
             overrideLabel="Your override"
+            showBuiltIn={showBuiltIn}
+            onToggleBuiltIn={setShowBuiltIn}
             onChange={editor.handleChange}
             onBlur={editor.handleBlur}
           />
@@ -141,6 +150,8 @@ interface SkillControlsProps {
   onSelectSlot: (name: string) => void;
   slot: SkillSlotView;
   viewSlot: preact.JSX.Element;
+  /** Content width — tracks the editor below so the strip stays aligned. */
+  widthClass: string;
   onReset: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -156,13 +167,11 @@ interface SkillControlsProps {
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
   const { slots, selected, onSelectSlot, slot, viewSlot, onReset } = props;
-  const { onImport, onExport } = props;
+  const { widthClass, onImport, onExport } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-      <div
-        className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex items-center gap-3`}
-      >
+      <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
         {viewSlot}
         <SkillSlotSelect
           slots={slots}

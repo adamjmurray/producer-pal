@@ -152,9 +152,12 @@ describe("ContextTabs", () => {
     expect(screen.getByTestId("editor").textContent).toBe("INSTRUCTIONS-DOC");
     // The controls strip warns that this document replaces the built-in prompt.
     expect(screen.getByText(/fully replaces/i)).toBeTruthy();
-    // The shipped default renders read-only beside the editor so users can fork
-    // it instead of starting from a blank slate.
+    // The override pane is labelled; the shipped default is hidden until asked
+    // for, then renders read-only so users can fork it.
     expect(screen.getByText("Your instructions")).toBeTruthy();
+    expect(screen.queryByText(/ai music composition assistant/i)).toBeNull();
+
+    fireEvent.click(screen.getByText("Show built-in"));
     expect(screen.getByText(/ai music composition assistant/i)).toBeTruthy();
   });
 
@@ -180,8 +183,11 @@ describe("ContextTabs", () => {
     expect(
       screen.getByRole("tab", { name: "Skills" }).getAttribute("aria-selected"),
     ).toBe("true");
-    // The slot dropdown and the read-only built-in pane render.
+    // The slot dropdown renders; the built-in is hidden until requested.
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
+    expect(screen.queryByText("CORE-BUILTIN")).toBeNull();
+
+    fireEvent.click(screen.getByText("Show built-in"));
     expect(screen.getByText("CORE-BUILTIN")).toBeTruthy();
   });
 

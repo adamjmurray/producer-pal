@@ -669,7 +669,7 @@ describe("ContextScreen", () => {
     expect(editorMountedValues).toStrictEqual(["old", "from-ai"]);
   });
 
-  describe("side-by-side built-in reference", () => {
+  describe("built-in reference", () => {
     const BUILTIN_LABELS: ContextEditorLabels = {
       ...TEST_LABELS,
       builtIn: "SHIPPED DEFAULT",
@@ -678,7 +678,7 @@ describe("ContextScreen", () => {
 
     /**
      * Render a ready ContextScreen bound to labels that carry a built-in
-     * reference, so the editor renders side-by-side (override | built-in).
+     * reference. The built-in is hidden by default and revealed on request.
      */
     function renderWithBuiltIn(): void {
       mockStatus.kind = "ready";
@@ -688,17 +688,31 @@ describe("ContextScreen", () => {
       );
     }
 
-    it("renders the override pane label and the read-only built-in", () => {
+    it("hides the built-in by default, showing the override editor", () => {
       renderWithBuiltIn();
 
       expect(screen.getByText("Your instructions")).toBeTruthy();
-      expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
-      expect(screen.getByText("SHIPPED DEFAULT")).toBeTruthy();
-      // The editable pane still seeds from the stored draft.
+      expect(screen.getByText("Show built-in")).toBeTruthy();
+      // The default is not on screen until requested.
+      expect(screen.queryByText("Built-in (read-only)")).toBeNull();
+      // The editable pane seeds from the stored draft.
       expect(lastEditorProps?.initialValue).toBe("MY DRAFT");
     });
 
-    it("copies the built-in to the clipboard", () => {
+    it("reveals the read-only built-in on request", async () => {
+      renderWithBuiltIn();
+
+      await act(() => {
+        fireEvent.click(screen.getByText("Show built-in"));
+      });
+
+      expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
+      // The revealed built-in mounts a second, read-only editor.
+      expect(lastEditorProps?.readOnly).toBe(true);
+      expect(editorMountedValues).toContain("SHIPPED DEFAULT");
+    });
+
+    it("copies the built-in to the clipboard", async () => {
       const writeText = vi.fn();
 
       Object.defineProperty(navigator, "clipboard", {
@@ -706,13 +720,16 @@ describe("ContextScreen", () => {
         value: { writeText },
       });
       renderWithBuiltIn();
+      await act(() => {
+        fireEvent.click(screen.getByText("Show built-in"));
+      });
 
       fireEvent.click(screen.getByRole("button", { name: "Copy" }));
 
       expect(writeText).toHaveBeenCalledWith("SHIPPED DEFAULT");
     });
 
-    it("autosaves edits made in the side-by-side override pane", async () => {
+    it("autosaves edits made in the override pane", async () => {
       renderWithBuiltIn();
 
       await act(() => {

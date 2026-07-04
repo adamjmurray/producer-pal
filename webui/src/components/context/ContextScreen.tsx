@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useState } from "preact/hooks";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
   type DocMemoryStatus,
@@ -87,11 +88,13 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
   const { memory, labels, tabSlot, onClose } = props;
   const editor = useContextEditorState(memory, labels.clearConfirmMessage);
   const io = makeContextIoHandlers(editor, labels.exportBasename);
+  const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Cap the editable region so it lines up with the chat column instead of
-  // sprawling across a wide monitor. Single-pane documents match the chat width;
-  // the side-by-side built-in view gets a little more room so neither pane is
-  // cramped (item: editors too wide on 4K).
-  const widthClass = labels.builtIn != null ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
+  // sprawling across a wide monitor. At rest the editor matches the chat width;
+  // it widens to the two-column layout only while the built-in reference is
+  // revealed, so neither pane is cramped (item: editors too wide on 4K).
+  const widthClass =
+    labels.builtIn != null && showBuiltIn ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
@@ -120,6 +123,8 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           externalUpdateMessage={labels.externalUpdateMessage}
           builtIn={labels.builtIn}
           overridePaneLabel={labels.overridePaneLabel}
+          showBuiltIn={showBuiltIn}
+          onToggleBuiltIn={setShowBuiltIn}
           widthClass={widthClass}
           editorKey={editor.editorKey}
           externalUpdate={editor.externalUpdate}
@@ -135,8 +140,11 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
 
 // --- Helpers below main export ---
 
-/** Single-pane editor width (matches the chat column, `max-w-5xl`). */
-const SINGLE_WIDTH = "max-w-5xl";
+/**
+ * Single-pane editor width (matches the chat column, `max-w-5xl`). Exported so
+ * the skills editor uses the same at-rest width when its built-in is hidden.
+ */
+export const SINGLE_WIDTH = "max-w-5xl";
 
 /**
  * Side-by-side editor width — a little wider than the chat column so neither
@@ -325,6 +333,8 @@ interface ContextBodyProps {
   externalUpdateMessage: string;
   builtIn?: string;
   overridePaneLabel?: string;
+  showBuiltIn: boolean;
+  onToggleBuiltIn: (show: boolean) => void;
   widthClass: string;
   editorKey: number;
   externalUpdate: boolean;
@@ -350,6 +360,8 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     externalUpdateMessage,
     builtIn,
     overridePaneLabel,
+    showBuiltIn,
+    onToggleBuiltIn,
     widthClass,
     editorKey,
     externalUpdate,
@@ -395,6 +407,8 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
             value={status.content}
             builtIn={builtIn}
             overrideLabel={overridePaneLabel ?? "Your override"}
+            showBuiltIn={showBuiltIn}
+            onToggleBuiltIn={onToggleBuiltIn}
             onChange={onChange}
             onBlur={onBlur}
           />

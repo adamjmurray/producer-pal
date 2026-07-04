@@ -83,6 +83,18 @@ function overrides(
   };
 }
 
+/**
+ * The seeded values of the currently-rendered editors (the textarea mock), in
+ * DOM order. When the built-in is revealed there are two: the override, then the
+ * read-only built-in.
+ * @returns Each editor's value
+ */
+function editorValues(): string[] {
+  return screen
+    .getAllByTestId("editor")
+    .map((editor) => (editor as HTMLTextAreaElement).value);
+}
+
 describe("SkillsScreen", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -124,7 +136,7 @@ describe("SkillsScreen", () => {
     expect(screen.getByText("No skills fragments available.")).toBeTruthy();
   });
 
-  it("renders the first slot's built-in and override, hiding reset when untracked", () => {
+  it("reveals the first slot's built-in on request, hiding reset when untracked", () => {
     render(
       <SkillsScreen
         overrides={overrides({ kind: "ready", slots: [slot()] })}
@@ -133,7 +145,10 @@ describe("SkillsScreen", () => {
     );
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
-    expect(screen.getByText("BUILT-IN")).toBeTruthy();
+    // The built-in is hidden until requested.
+    expect(screen.queryByText("Built-in (read-only)")).toBeNull();
+    fireEvent.click(screen.getByText("Show built-in"));
+    expect(editorValues()).toContain("BUILT-IN");
     expect(screen.queryByText("Reset to default")).toBeNull();
     expect(screen.queryByText(/Built-in changed since you forked/)).toBeNull();
     // Import/Export are available per-fragment even when there's no override.
@@ -278,13 +293,17 @@ describe("SkillsScreen", () => {
       />,
     );
 
-    expect(screen.getByText("CORE")).toBeTruthy();
+    fireEvent.click(screen.getByText("Show built-in"));
+    expect(editorValues()).toContain("CORE");
 
     fireEvent.change(screen.getByLabelText("Skill fragment"), {
       target: { value: "stark" },
     });
 
-    expect(screen.getByText("STARK")).toBeTruthy();
+    // Switching slots remounts the screen (built-in collapses again), so the
+    // stark built-in is only visible once re-revealed — proving the re-seed.
+    fireEvent.click(screen.getByText("Show built-in"));
+    expect(editorValues()).toContain("STARK");
   });
 
   it("toggles between the fragment editor and the preview", () => {
@@ -349,6 +368,7 @@ describe("SkillsScreen", () => {
         />,
       );
 
+      fireEvent.click(screen.getByText("Show built-in"));
       fireEvent.click(screen.getByText("Copy"));
 
       expect(writeText).toHaveBeenCalledWith("COPY-ME");

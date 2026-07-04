@@ -11,40 +11,77 @@ import { describe, expect, it, vi } from "vitest";
 import { OverridePanes } from "#webui/components/context/OverridePanes";
 
 // The MarkdownEditor wires CodeMirror; stub it to a plain node echoing the
-// seeded value so we can assert the editable pane without a real editor.
+// seeded value so we can assert each pane's content without a real editor. The
+// built-in pane renders through this same component (read-only), so a shown
+// built-in appears as a second editor node.
 vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
-  MarkdownEditor: (props: { initialValue: string }) => (
-    <div data-testid="editor">{props.initialValue}</div>
+  MarkdownEditor: (props: { initialValue: string; readOnly: boolean }) => (
+    <div data-testid="editor" data-readonly={String(props.readOnly)}>
+      {props.initialValue}
+    </div>
   ),
 }));
 
 /**
  * Render OverridePanes with sensible defaults.
  * @param over - Props to override on the defaults
- * @returns The render result
+ * @returns The render result and the toggle spy
  */
 function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
-  return render(
+  const onToggleBuiltIn = vi.fn();
+  const result = render(
     <OverridePanes
       editorKey={0}
       value="MY OVERRIDE"
       builtIn="SHIPPED DEFAULT"
       overrideLabel="Your override"
+      showBuiltIn={false}
+      onToggleBuiltIn={onToggleBuiltIn}
       onChange={vi.fn()}
       onBlur={vi.fn()}
       {...over}
     />,
   );
+
+  return { ...result, onToggleBuiltIn };
 }
 
 describe("OverridePanes", () => {
-  it("shows the editable override beside the read-only built-in", () => {
+  it("hides the built-in by default, showing only the editable override", () => {
     renderPanes();
 
     expect(screen.getByText("Your override")).toBeTruthy();
     expect(screen.getByTestId("editor").textContent).toBe("MY OVERRIDE");
+    // The built-in reference is not on screen until requested.
+    expect(screen.queryByText("Built-in (read-only)")).toBeNull();
+    expect(screen.queryByText("SHIPPED DEFAULT")).toBeNull();
+    expect(screen.getByText("Show built-in")).toBeTruthy();
+  });
+
+  it("requests the built-in when Show built-in is clicked", () => {
+    const { onToggleBuiltIn } = renderPanes();
+
+    fireEvent.click(screen.getByText("Show built-in"));
+
+    expect(onToggleBuiltIn).toHaveBeenCalledWith(true);
+  });
+
+  it("renders the built-in read-only beside the editor when shown", () => {
+    renderPanes({ showBuiltIn: true });
+
     expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
-    expect(screen.getByText("SHIPPED DEFAULT")).toBeTruthy();
+    const editors = screen.getAllByTestId("editor");
+
+    // Two editors: the editable override and the read-only built-in.
+    expect(editors.map((e) => e.textContent)).toStrictEqual([
+      "MY OVERRIDE",
+      "SHIPPED DEFAULT",
+    ]);
+    const builtIn = editors.find((e) => e.textContent === "SHIPPED DEFAULT");
+
+    expect(builtIn?.getAttribute("data-readonly")).toBe("true");
+    // No "Show built-in" affordance while it is already visible.
+    expect(screen.queryByText("Show built-in")).toBeNull();
   });
 
   it("copies the built-in to the clipboard", () => {
@@ -52,7 +89,7 @@ describe("OverridePanes", () => {
 
     vi.stubGlobal("navigator", { clipboard: { writeText } });
 
-    renderPanes();
+    renderPanes({ showBuiltIn: true });
     fireEvent.click(screen.getByText("Copy"));
 
     expect(writeText).toHaveBeenCalledWith("SHIPPED DEFAULT");
@@ -60,17 +97,11 @@ describe("OverridePanes", () => {
     vi.unstubAllGlobals();
   });
 
-  it("hides and re-shows the built-in pane", () => {
-    renderPanes();
+  it("requests hiding the built-in when Hide is clicked", () => {
+    const { onToggleBuiltIn } = renderPanes({ showBuiltIn: true });
 
     fireEvent.click(screen.getByText("Hide"));
-    // Built-in pane and its Copy button are gone; a "Show built-in" affordance
-    // takes their place so the editor can use the full width.
-    expect(screen.queryByText("Built-in (read-only)")).toBeNull();
-    expect(screen.queryByText("SHIPPED DEFAULT")).toBeNull();
 
-    fireEvent.click(screen.getByText("Show built-in"));
-    expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
-    expect(screen.getByText("SHIPPED DEFAULT")).toBeTruthy();
+    expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
   });
 });

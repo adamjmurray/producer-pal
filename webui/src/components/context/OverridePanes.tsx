@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { noop } from "#webui/components/mode-context";
 import { MarkdownEditor } from "./MarkdownEditor";
 
 interface OverridePanesProps {
@@ -15,25 +15,33 @@ interface OverridePanesProps {
   builtIn: string;
   /** Label above the editable pane (e.g. "Your override" / "Your instructions"). */
   overrideLabel: string;
+  /**
+   * Whether the built-in reference pane is revealed. Owned by the parent so it
+   * can widen the layout to two columns only while the reference is shown (and
+   * keep the editor at the normal single-column width the rest of the time).
+   */
+  showBuiltIn: boolean;
+  /** Reveal / collapse the built-in reference pane. */
+  onToggleBuiltIn: (show: boolean) => void;
   onChange: (value: string) => void;
   onBlur: () => void;
 }
 
 /**
- * Side-by-side editor body: an editable override pane (empty when tracking the
- * built-in) beside a read-only, selectable built-in pane with a Copy button, so
- * a user can fork the default by copying it into the override pane. Shared by
- * the skills-fragment editor and the custom-instructions editor — both override
- * a shipped default and benefit from seeing it next to their edit. The built-in
- * pane is deliberately subdued (it is reference, not the thing being edited) and
- * collapsible so the editor can take the full width when the reference isn't
- * needed.
+ * Editor body for a document that overrides a shipped default. The editable
+ * override pane is always shown; the built-in reference is hidden by default and
+ * revealed on demand (via "Show built-in"), so the default isn't on screen at
+ * all times and the editor can use the full single-column width. When revealed,
+ * the built-in renders in a read-only {@link MarkdownEditor} — same markdown
+ * formatting as the editable pane — beside the override, with a Copy button so a
+ * user can fork the default into the (empty-by-design) override pane. Shared by
+ * the skills-fragment editor and the custom-instructions editor.
  * @param props - Panes props
  * @returns Panes element
  */
 export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
-  const { editorKey, value, builtIn, overrideLabel, onChange, onBlur } = props;
-  const [showBuiltIn, setShowBuiltIn] = useState(true);
+  const { editorKey, value, builtIn, overrideLabel } = props;
+  const { showBuiltIn, onToggleBuiltIn, onChange, onBlur } = props;
 
   return (
     <div className="flex-1 min-h-0 flex gap-3">
@@ -45,7 +53,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
           {!showBuiltIn && (
             <button
               type="button"
-              onClick={() => setShowBuiltIn(true)}
+              onClick={() => onToggleBuiltIn(true)}
               className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
             >
               Show built-in
@@ -61,6 +69,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
           className="flex-1 min-h-0"
         />
       </div>
+
       {showBuiltIn && (
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           <div className="flex items-center justify-between h-5 gap-3">
@@ -77,16 +86,19 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
               </button>
               <button
                 type="button"
-                onClick={() => setShowBuiltIn(false)}
+                onClick={() => onToggleBuiltIn(false)}
                 className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
               >
                 Hide
               </button>
             </div>
           </div>
-          <pre className="flex-1 min-h-0 overflow-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 p-3 text-xs whitespace-pre-wrap text-zinc-500 dark:text-zinc-400">
-            {builtIn}
-          </pre>
+          <MarkdownEditor
+            initialValue={builtIn}
+            readOnly={true}
+            onChange={noop}
+            className="flex-1 min-h-0"
+          />
         </div>
       )}
     </div>
