@@ -168,11 +168,15 @@ describe("MemoryScreen — ready", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
-      expect(saveEntry).toHaveBeenCalledWith("prefers-c-minor", {
-        type: "user",
-        description: "default key & genre",
-        content: "Composes in C minor.",
-      });
+      expect(saveEntry).toHaveBeenCalledWith(
+        "prefers-c-minor",
+        {
+          type: "user",
+          description: "default key & genre",
+          content: "Composes in C minor.",
+        },
+        false,
+      );
     });
   });
 
@@ -193,6 +197,70 @@ describe("MemoryScreen — ready", () => {
       expect(deleteEntry).toHaveBeenCalledWith("prefers-c-minor");
     });
     // onDeleted returns the right pane to the create form.
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
+});
+
+describe("MemoryScreen — deleted externally", () => {
+  it("keeps the draft and shows a banner when a poll deletes the edited entry", () => {
+    const { rerender } = render(
+      <MemoryScreen
+        collection={fakeCollection({ kind: "ready", entries: ENTRIES })}
+        tabSlot={TAB_SLOT}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // Select an entry and start editing its body.
+    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "in-progress edit" },
+    });
+
+    // A poll (assistant forget / hand delete) drops it from the collection.
+    rerender(
+      <MemoryScreen
+        collection={fakeCollection({
+          kind: "ready",
+          entries: ENTRIES.slice(1),
+        })}
+        tabSlot={TAB_SLOT}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // The banner explains the state; the draft survives (not reset to blank).
+    expect(screen.getByText(/deleted outside the editor/i)).toBeTruthy();
+    expect(
+      (screen.getByRole("textbox", { name: /Memory/ }) as HTMLTextAreaElement)
+        .value,
+    ).toBe("in-progress edit");
+  });
+
+  it("discards the draft and returns to the create form", () => {
+    const { rerender } = render(
+      <MemoryScreen
+        collection={fakeCollection({ kind: "ready", entries: ENTRIES })}
+        tabSlot={TAB_SLOT}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    rerender(
+      <MemoryScreen
+        collection={fakeCollection({
+          kind: "ready",
+          entries: ENTRIES.slice(1),
+        })}
+        tabSlot={TAB_SLOT}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+    expect(screen.queryByText(/deleted outside the editor/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });
 });

@@ -99,6 +99,24 @@ export function readMemoryEntry(name: string): MemoryEntry | null {
 }
 
 /**
+ * Whether a memory with this name already exists on disk. Used by the create
+ * flow to reject a name collision (a PUT is create-or-overwrite, so without this
+ * a new entry would silently clobber an existing one). Returns false for an
+ * unslugifiable or reserved name so the caller falls through to the store's own
+ * (more specific) error for those.
+ *
+ * @param name - The memory name (slugified before lookup)
+ * @returns True when a non-empty memory file already exists for that slug
+ */
+export function memoryExists(name: string): boolean {
+  const slug = slugifyMemoryName(name);
+
+  if (!slug || isReservedMemorySlug(slug)) return false;
+
+  return readConfigMarkdown(filenameFor(slug)).trim() !== "";
+}
+
+/**
  * List every stored memory, sorted by type (index/injection order) then name.
  * The derived index file itself is skipped.
  *

@@ -42,11 +42,17 @@ interface MemoryEntry {
  * @param entry.type - The memory bucket
  * @param entry.description - Optional one-line recall hook
  * @param entry.content - The memory body
+ * @param entry.createOnly - When true, the server rejects a name collision (409)
  * @returns The fetch Response
  */
 function putMemory(
   name: string,
-  entry: { type: string; description?: string; content: string },
+  entry: {
+    type: string;
+    description?: string;
+    content: string;
+    createOnly?: boolean;
+  },
 ): Promise<Response> {
   return putJson(`${base}/${encodeURIComponent(name)}`, entry);
 }
@@ -130,6 +136,38 @@ describe("memory-collection route", () => {
 
     expect(await hit.json()).toStrictEqual({ existed: true });
     expect(await miss.json()).toStrictEqual({ existed: false });
+  });
+
+  it("rejects a create-only PUT that collides with an existing name (409)", async () => {
+    await putMemory("collide", { type: "user", content: "original" });
+
+    // Same slug via a differently-cased name, with createOnly set (the editor's
+    // Create flow) — must not overwrite the existing memory.
+    const res = await putMemory("Collide", {
+      type: "user",
+      content: "overwrite",
+      createOnly: true,
+    });
+
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /already exists/i,
+    );
+
+    const entries = await listEntries();
+    const kept = entries.find((e) => e.name === "collide");
+
+    expect(kept?.body).toBe("original");
+  });
+
+  it("allows a create-only PUT for a brand-new name", async () => {
+    const res = await putMemory("fresh-name", {
+      type: "user",
+      content: "hi",
+      createOnly: true,
+    });
+
+    expect(res.status).toBe(200);
   });
 
   it("rejects an invalid type with 400", async () => {

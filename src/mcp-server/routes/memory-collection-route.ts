@@ -15,7 +15,9 @@ import { type Express, type Request, type Response } from "express";
 import {
   forgetMemory,
   listMemoryEntries,
+  memoryExists,
   rememberMemory,
+  slugifyMemoryName,
 } from "../helpers/memory/global-memory-store.ts";
 import { isMemoryType, MEMORY_TYPES } from "../helpers/memory/memory.ts";
 import { rejectCrossOriginWrite } from "../helpers/request-origin.ts";
@@ -42,6 +44,7 @@ export function registerMemoryCollectionRoutes(app: Express): void {
       type?: unknown;
       description?: unknown;
       content?: unknown;
+      createOnly?: unknown;
     };
 
     if (!isMemoryType(body.type)) {
@@ -54,6 +57,17 @@ export function registerMemoryCollectionRoutes(app: Express): void {
 
     if (typeof body.content !== "string") {
       res.status(400).json({ error: "content must be a string" });
+
+      return;
+    }
+
+    // The editor's Create flow sets createOnly so a new memory can't silently
+    // overwrite an existing one that its name happens to slugify to (an edit,
+    // by contrast, targets a known slug and overwrite is intended).
+    if (body.createOnly === true && memoryExists(entryName(req))) {
+      res.status(409).json({
+        error: `A memory named "${slugifyMemoryName(entryName(req))}" already exists`,
+      });
 
       return;
     }

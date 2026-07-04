@@ -44,10 +44,15 @@ export interface UseMemoryCollectionReturn {
   status: MemoryCollectionStatus;
   saveStatus: SaveStatus;
   saveError: string | null;
-  /** Create or overwrite one memory. Resolves the stored entry, or null on failure. */
+  /**
+   * Create or overwrite one memory. Pass `createOnly` from the create flow so a
+   * name that collides with an existing slug is rejected (409) instead of
+   * silently overwriting. Resolves the stored entry, or null on failure.
+   */
   saveEntry: (
     name: string,
     input: MemoryEntryInput,
+    createOnly?: boolean,
   ) => Promise<MemoryEntryView | null>;
   /** Delete one memory. Resolves true on success, false on failure. */
   deleteEntry: (name: string) => Promise<boolean>;
@@ -95,13 +100,14 @@ export function useMemoryCollection(): UseMemoryCollectionReturn {
     async (
       name: string,
       input: MemoryEntryInput,
+      createOnly = false,
     ): Promise<MemoryEntryView | null> => {
       beginSave();
       setSaveStatus("saving");
       setSaveError(null);
 
       try {
-        const entry = await putEntry(name, input);
+        const entry = await putEntry(name, input, createOnly);
 
         setStatus((prev) => mergeEntry(prev, entry));
         setSaveStatus("saved");
@@ -186,16 +192,18 @@ async function fetchEntries(): Promise<MemoryEntryView[]> {
  * PUT one memory entry.
  * @param name - The desired name (slugified server-side)
  * @param input - The type/description/content payload
+ * @param createOnly - When true, the server rejects (409) a name collision
  * @returns The server's echo of the stored entry
  */
 async function putEntry(
   name: string,
   input: MemoryEntryInput,
+  createOnly: boolean,
 ): Promise<MemoryEntryView> {
   const response = await fetch(getMemoryEntryUrl(name), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify(createOnly ? { ...input, createOnly } : input),
   });
 
   if (!response.ok) {

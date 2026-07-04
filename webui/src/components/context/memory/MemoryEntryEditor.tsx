@@ -51,11 +51,13 @@ export function MemoryEntryEditor(
     collection.saveStatus !== "saving";
 
   const handleSave = async (): Promise<void> => {
-    const saved = await collection.saveEntry(targetName, {
-      type,
-      description,
-      content: body,
-    });
+    // Creating (or re-creating a memory deleted out from under us) is create-only
+    // so it can't silently overwrite an existing entry the name collides with.
+    const saved = await collection.saveEntry(
+      targetName,
+      { type, description, content: body },
+      isNew,
+    );
 
     if (saved) onSaved(saved.name);
   };

@@ -94,11 +94,16 @@ describe("MemoryEntryEditor — new entry", () => {
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith("loose-drums");
     });
-    expect(collection.saveEntry).toHaveBeenCalledWith("loose-drums", {
-      type: "feedback",
-      description: "swing",
-      content: "Apply groove.",
-    });
+    // Create flow is create-only so a colliding name can't silently overwrite.
+    expect(collection.saveEntry).toHaveBeenCalledWith(
+      "loose-drums",
+      {
+        type: "feedback",
+        description: "swing",
+        content: "Apply groove.",
+      },
+      true,
+    );
   });
 
   it("does not fire onSaved when the save fails", async () => {
@@ -159,11 +164,16 @@ describe("MemoryEntryEditor — existing entry", () => {
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith("prefers-c-minor");
     });
-    expect(collection.saveEntry).toHaveBeenCalledWith("prefers-c-minor", {
-      type: "user",
-      description: "default key & genre",
-      content: "Composes in C minor and F minor.",
-    });
+    // Editing an existing entry targets a known slug, so overwrite is intended.
+    expect(collection.saveEntry).toHaveBeenCalledWith(
+      "prefers-c-minor",
+      {
+        type: "user",
+        description: "default key & genre",
+        content: "Composes in C minor and F minor.",
+      },
+      false,
+    );
   });
 
   it("deletes after confirmation and calls onDeleted", async () => {

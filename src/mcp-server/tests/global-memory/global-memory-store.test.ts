@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   forgetMemory,
   listMemoryEntries,
+  memoryExists,
   readMemoryEntry,
   regenerateIndex,
   rememberMemory,
@@ -270,6 +271,40 @@ describe("listMemoryEntries", () => {
     rememberMemory({ name: "real", type: "user", description: "", body: "b" });
 
     expect(listMemoryEntries().map((e) => e.name)).toStrictEqual(["real"]);
+  });
+});
+
+describe("memoryExists", () => {
+  it("is true for a stored memory (matching by an un-slugified name)", () => {
+    rememberMemory({
+      name: "album-nyx",
+      type: "project",
+      description: "",
+      body: "b",
+    });
+
+    expect(memoryExists("Album Nyx")).toBe(true);
+  });
+
+  it("is false for a missing memory", () => {
+    expect(memoryExists("nope")).toBe(false);
+  });
+
+  it("is false for an unslugifiable name", () => {
+    expect(memoryExists("!!!")).toBe(false);
+  });
+
+  it("is false for the reserved index name", () => {
+    rememberMemory({
+      name: "keeper",
+      type: "user",
+      description: "",
+      body: "b",
+    });
+
+    // MEMORY.md exists on disk, but it is the derived index, not a memory —
+    // callers fall through to the store's specific "reserved" error instead.
+    expect(memoryExists("memory")).toBe(false);
   });
 });
 
