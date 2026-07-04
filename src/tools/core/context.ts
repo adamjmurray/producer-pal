@@ -5,8 +5,12 @@
 
 import {
   type MemoryResult,
+  handleForgetMemory,
+  handleListMemory,
   handleReadGlobalMemory,
   handleReadMemory,
+  handleReadMemoryEntry,
+  handleRememberMemory,
   handleWriteGlobalMemory,
   handleWriteMemory,
 } from "./context-helpers.ts";
@@ -15,6 +19,9 @@ interface ContextArgs {
   action?: string;
   content?: string;
   scope?: string;
+  name?: string;
+  type?: string;
+  description?: string;
 }
 
 /**
@@ -28,22 +35,33 @@ interface ContextArgs {
  * browser DB and the user-configured sampleFolder).
  *
  * @param args - The parameters
- * @param args.action - Action to perform (read, write)
- * @param args.content - Memory content (required for write)
+ * @param args.action - Action to perform (read, write, remember, forget, list)
+ * @param args.content - Memory content (write = context.md; remember = body)
  * @param args.scope - Which context to target (project | global; default project)
+ * @param args.name - Memory entry name (read/remember/forget, global scope)
+ * @param args.type - Memory type (remember): user | feedback | project | reference
+ * @param args.description - One-line recall hook (remember)
  * @param toolContext - The context object
  * @returns Memory result
  */
 export async function context(
-  { action, content, scope }: ContextArgs = {},
+  { action, content, scope, name, type, description }: ContextArgs = {},
   toolContext: Partial<ToolContext> = {},
 ): Promise<MemoryResult> {
   if (scope === "global") {
     switch (action) {
       case "read":
-        return await handleReadGlobalMemory();
+        return name
+          ? await handleReadMemoryEntry(name)
+          : await handleReadGlobalMemory();
       case "write":
         return await handleWriteGlobalMemory(content);
+      case "remember":
+        return await handleRememberMemory({ name, type, description, content });
+      case "forget":
+        return await handleForgetMemory(name);
+      case "list":
+        return await handleListMemory();
       default:
         throw new Error(`Unknown action: ${action}`);
     }

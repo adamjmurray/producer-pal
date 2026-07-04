@@ -15,7 +15,7 @@
  * Both read/write the same store so all three writers stay consistent.
  */
 
-import { registerNodeRoute } from "../rpc/node-request-protocol.ts";
+import { registerNodeRoute } from "../../rpc/node-request-protocol.ts";
 import {
   readGlobalContext,
   writeGlobalContext,

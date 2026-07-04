@@ -15,6 +15,7 @@
 
 import {
   mkdirSync,
+  readdirSync,
   readFileSync,
   renameSync,
   unlinkSync,
@@ -97,6 +98,30 @@ export function writeConfigMarkdown(filename: string, content: string): void {
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(tmpPath, content, "utf8");
   renameSync(tmpPath, target);
+}
+
+/**
+ * List the `.md` filenames directly inside a subdirectory of the config dir
+ * (e.g. "memory"), sorted. A missing subdir — the empty-by-default case —
+ * yields []. Non-`.md` entries are ignored; nested directories are not
+ * descended into. Used by multi-entry collections (memory) that discover their
+ * members dynamically, unlike the fixed-slot skills overrides.
+ *
+ * @param subdir - Subdirectory under the config dir (e.g. "memory")
+ * @returns Sorted list of `.md` basenames (e.g. ["a.md", "b.md"])
+ */
+export function listConfigMarkdownFiles(subdir: string): string[] {
+  if (isConfigDirInert()) return [];
+
+  try {
+    return readdirSync(join(configDir(), subdir))
+      .filter((name) => name.endsWith(".md"))
+      .sort();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+
+    throw error;
+  }
 }
 
 /**

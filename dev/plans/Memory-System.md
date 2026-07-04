@@ -1,42 +1,103 @@
 # Producer Pal Memory System
 
-Status: design agreed, implementation not started. Builds on the shipped
+Status: **plan locked** (2026-07-03); **P1 implemented on the `memory-system`
+branch** (not yet landed on dev). Remaining: the drive-iteration eval and the P2
+webui manager. This is the v1.5 deliverable. It builds on the shipped
 global-context v1 (`~/.producer-pal/context.md`, injected verbatim into
 `ppal-connect`) and the auto-memory pattern used by Claude Code itself (indexed
 one-fact-per-file `.md` store). The `~/.producer-pal` content-override layer it
-sits on is described in ADR-0010
-(`dev/decisions/0010-user-content-overrides-layer.md`).
+sits on is ADR-0010 (`dev/decisions/0010-user-content-overrides-layer.md`).
+
+## The framing decision: memory is the first "loadable collection"
+
+Memory, custom (user-authored) skills, and on-demand loading of built-in skills
+are **three configurations of one primitive**, not three subsystems:
+
+> a **loadable markdown collection** — a `~/.producer-pal/<collection>/`
+> directory of frontmatter'd `.md` entries, a **derived, always-injected index**
+> of `name → description` hooks, and **on-demand body load** via
+> `ppal-context read <name>`.
+
+The v1.5 build is **memory only**, but its store / index / injection / read code
+is written **collection-generic** so custom skills becomes a config object + a
+webui tab later, not a rewrite. The forward plan for skills is in
+[Reuse by later collections](#reuse-by-later-collections) so the primitive is
+designed right the first time.
+
+### Injection policy is per-entry (`eager` | `lazy`), not per-collection
+
+This is the design pivot that makes memory and skills coherent instead of
+fighting each other:
+
+- Memory wants **tiered-eager** — inject `user`/`feedback` bodies verbatim,
+  because PP has no recall harness and weak clients (Claude Desktop, LM Studio)
+  don't reliably do a two-step `read`.
+- Built-in skill-splitting wants **lazy** — load a specialized skill only when
+  relevant, to cut the ~10.9k-token skills blob.
+
+Resolve it by making the policy a property of the **entry**, resolved by a
+per-collection hook:
+
+| Collection    | Policy resolver                              |
+| ------------- | -------------------------------------------- |
+| memory        | `type ∈ {user, feedback}` → eager, else lazy |
+| custom skills | `frontmatter.pinned` → eager, else lazy      |
+| built-in core | always eager; specialized → lazy             |
+
+`context.md` is just the degenerate "one pinned eager blob." The injector is
+then **one function**: inject every `eager` body + a merged index of every
+`lazy` hook; `ppal-context read` pulls any lazy body on demand. Memory
+frontmatter needs no explicit `inject:` field in v1 — the policy derives from
+`type`.
 
 ## Goal
 
-Evolve the shipped single-file global context (`~/.producer-pal/context.md`,
-injected verbatim into `ppal-connect`) into an **indexed, LLM-managed memory
+Evolve the single-file global context into an **indexed, LLM-managed memory
 system**: many small typed fact files, a cheap always-loaded index, and
 on-demand retrieval of full bodies — without blowing the context budget or
 relying on a recall harness PP doesn't have.
 
 ## What already exists (don't rebuild)
 
-- `global-context-store.ts` — dir resolution (`PRODUCER_PAL_CONFIG_DIR`
-  override), missing-file→empty, atomic temp+rename write, Vitest-inert.
-- `global-context-node-routes.ts` — `globalContext.read` / `globalContext.write`
-  over the V8↔Node RPC bridge.
-- `context-helpers.ts` — V8-side `handleReadGlobalMemory` /
-  `handleWriteGlobalMemory` round-tripping through that bridge.
-- Express `GET`/`PUT /global-context` — webui editor.
-- Injection seam: `ppal-connect` result gets a labeled extra content block (same
-  mechanism as the `WARNING:` relay).
+Grounded in current code, post the shipped skills-fragment-override work:
 
-All of this is whole-blob today. The memory system reuses the store IO, the RPC
-bridge, and the injection seam; it adds structure on top.
+- `src/mcp-server/helpers/config-markdown-store.ts` — the generic single-file
+  store: `configDir()` (`PRODUCER_PAL_CONFIG_DIR` override else
+  `~/.producer-pal`), atomic temp+rename write, missing-file→`""`,
+  **Vitest-inert** guard (`isConfigDirInert`). Generalize this to a collection
+  store.
+- `src/mcp-server/helpers/frontmatter.ts` — flat `key: value` frontmatter
+  parse/serialize, no YAML dep. Reuse for memory frontmatter.
+- `src/mcp-server/helpers/connect-append.ts` —
+  `withConnectAppend(inner, produceBlock)`, the append seam (fires only on
+  `ppal-connect`, only on success). Global context and skills each compose one
+  producer onto `callLiveApiEnriched` in `create-express-app.ts`. Memory adds a
+  `withMemory` producer the same way.
+- `src/tools/core/context.ts` + `context.def.ts` — the `ppal-context` tool.
+  Today: `action: read | write` × `scope: project | global`. Global scope
+  round-trips to Node over the RPC bridge (`handleReadGlobalMemory` /
+  `handleWriteGlobalMemory` in `context-helpers.ts`).
+- `src/mcp-server/helpers/global-context-node-routes.ts` — the V8↔Node RPC
+  bridge (`globalContext.read` / `globalContext.write`). Memory adds sibling ops
+  here.
+- `src/mcp-server/routes/config-markdown-route.ts` — the REST route factory (GET
+  `{content}` no-store; PUT `{content}` origin-gated). webui editor path.
+- The collection-editor pattern already exists: `skill-overrides-store.ts` +
+  `skill-overrides-route.ts` + webui `use-skill-overrides.ts` / `SkillsScreen`
+  manage a **collection of slots** (list / per-item PUT / DELETE, 5s poll,
+  save/refresh race guard). The memory manager reuses this shape.
+
+All of the above is whole-blob or fixed-slot today. Memory reuses the store IO,
+the RPC bridge, the append seam, and the collection-editor pattern; it adds a
+**multi-entry, index-derived** collection on top.
 
 ## Directory layout
 
 ```
 ~/.producer-pal/
-  context.md              # PINNED always-on note (already built) — inject verbatim
+  context.md              # PINNED always-on note (already ships) — inject verbatim
   memory/
-    MEMORY.md             # the INDEX — always injected (small, ~1 line/memory)
+    MEMORY.md             # the INDEX — DERIVED, always injected (small, ~1 line/memory)
     prefers-c-minor.md    # one fact per file
     hates-quantized-hats.md
     album-project-nyx.md
@@ -44,19 +105,21 @@ bridge, and the injection seam; it adds structure on top.
 ```
 
 - `context.md` stays as the hand-authored, verbatim, pinned blob (global
-  `CLAUDE.md` equivalent). No structure. Simplest thing; still valuable.
+  `CLAUDE.md` equivalent). No structure. Untouched by this work.
 - `memory/` is the new indexed, LLM-managed layer.
 
 ## Memory file format
 
-Mirror Claude Code auto-memory. Lightweight frontmatter + typed body.
+Mirror Claude Code auto-memory. **Flat** frontmatter (reuses the existing
+flat-only `frontmatter.ts`; no nested `metadata:` — that was dropped when
+locking the format) + typed body. `name` is the filename slug (authoritative on
+read); `description` is collapsed to a single line on write.
 
 ```markdown
 ---
 name: hates-quantized-hats
 description: Dislikes rigidly quantized hi-hats; wants swing/humanization
-metadata:
-  type: feedback
+type: feedback
 ---
 
 Never hard-quantize hi-hats when generating drums for this user; apply swing or
@@ -67,30 +130,30 @@ apply:** When adding hats, offset off-beats or use a groove. Ask before snapping
 to grid. Related: [[prefers-loose-drums]].
 ```
 
-### Frontmatter is NOT the "eject trap"
+### Frontmatter here is NOT the "eject trap"
 
-The override-plan bans frontmatter/provenance for _forked built-in defaults_
-(they drift from upstream — the create-react-app eject problem). Memory files
-are **purely additive user content**: nothing upstream to drift from.
-Frontmatter here is just structure (name/description/type), exactly like Claude
-Code's own memory. Keep the two concepts separate in the docs.
+ADR-0010 bans frontmatter/provenance for _forked built-in defaults_ (they drift
+from upstream). Memory files are **purely additive user content**: nothing
+upstream to drift from. Frontmatter here is just structure (name/description/
+type), exactly like Claude Code's own memory. Keep the two concepts separate.
 
 ### Types (four buckets, remapped to music)
 
-| Type        | What it holds                           | Example                                      |
-| ----------- | --------------------------------------- | -------------------------------------------- |
-| `user`      | who they are as a musician              | "composes mostly in C minor, house/techno"   |
-| `feedback`  | how the assistant should work with them | "always propose 2 variations before writing" |
-| `project`   | cross-project creative goals            | "album 'Nyx', dark ambient, ~60bpm"          |
-| `reference` | external pointers                       | "kick samples in ~/Samples/Analog"           |
+| Type        | What it holds                           | Default injection | Example                                      |
+| ----------- | --------------------------------------- | ----------------- | -------------------------------------------- |
+| `user`      | who they are as a musician              | **eager**         | "composes mostly in C minor, house/techno"   |
+| `feedback`  | how the assistant should work with them | **eager**         | "always propose 2 variations before writing" |
+| `project`   | cross-project creative goals            | lazy              | "album 'Nyx', dark ambient, ~60bpm"          |
+| `reference` | external pointers                       | lazy              | "kick samples in ~/Samples/Analog"           |
 
 `feedback` is the highest-value tier: behavioral, almost always relevant.
 `project` here = cross-project goals, distinct from the device's per-project
 context (which is about ONE Live Set).
 
-## The index (`MEMORY.md`)
+## The index (`MEMORY.md`) — DERIVED, not authored
 
-One line per memory, description as the recall hook:
+One line per memory, description as the recall hook, grouped by type so the
+injector can slice eager vs lazy:
 
 ```markdown
 # Producer Pal Memory
@@ -102,86 +165,79 @@ One line per memory, description as the recall hook:
 ## Feedback
 
 - [No quantized hats](hates-quantized-hats.md) — swing/humanize drums
-- [Two variations](two-variations.md) — propose 2 options before writing
 
 ## Project
 
 - [Album: Nyx](album-project-nyx.md) — dark ambient, 60bpm
 ```
 
-Grouped by type so the injection tiering (below) can slice it.
+**Big divergence from Claude Code** (where the index is hand-maintained): here
+the backend **regenerates `MEMORY.md` from the files' frontmatter** on every
+`remember`/`forget`. Eliminates the "index drifted from files" failure mode and
+the discipline burden on the model. Hand-editing a file's frontmatter → next
+connect (or a `list`) re-derives.
 
-## Injection strategy — THE key decision
+## Injection strategy — tiered eager (locked)
 
-PP has **no recall harness** (Claude Code's harness injects relevant memories
-into system-reminders; PP has nothing equivalent). So either the LLM does a
-two-step recall (see index hook → call `ppal-context read`), or we inject
-eagerly. Two-step is fragile for weak/external clients (Claude Desktop, LM
-Studio), which only see the `ppal-connect` result.
+PP has **no recall harness**, and two-step recall is fragile for weak/external
+clients that only see the `ppal-connect` result. So on connect:
 
-Three options:
+- **Always inject**: `context.md` (pinned) + full bodies of all `eager` entries
+  (`user` + `feedback`) + the _index lines_ for `lazy` entries (`project` +
+  `reference`).
+- **On demand** (`ppal-context read <name>`): full `lazy` bodies when a hook
+  looks relevant.
 
-| Option           | Inject on connect                          | Pros / Cons                                        |
-| ---------------- | ------------------------------------------ | -------------------------------------------------- |
-| Index-only       | `MEMORY.md` only; pull files on demand     | cheapest; relies on fragile 2-step recall          |
-| **Tiered eager** | index + full `user`+`feedback` bodies      | robust for dumb clients; modest cost — RECOMMENDED |
-| Whole-dir        | every file (today's `context.md` behavior) | no recall step; reintroduces the scaling problem   |
-
-**Recommended: tiered eager.**
-
-- Always inject: `context.md` (pinned) + full bodies of `user` + `feedback`
-  (small, behavioral, always-relevant) + the _index lines_ for `project` +
-  `reference`.
-- On demand (`ppal-context read <name>`): full `project` / `reference` bodies
-  when a hook looks relevant.
+Injected as a new `withMemory` producer composed onto `callLiveApiEnriched`
+(same seam as `withGlobalContext` / `withSkills`), so external MCP clients see
+it in the `ppal-connect` result.
 
 ### Token budget check
 
-Skills blob is already ~10.9k tokens/turn (from the voice-token audit). Keep the
-always-on memory tier bounded:
+Skills blob is already ~10.9k tokens/turn; production floor ~18.4k. Keep the
+always-on tier bounded:
 
-- Assume ~40–80 tokens/memory body, ~15 tokens/index line.
-- A heavy user: ~10 `user`+`feedback` bodies (~600 tok) + ~20 index lines (~300
-  tok) ≈ **<1k tokens/turn**. Acceptable against the ~18.4k production floor.
-- Guard rail: soft-cap the eager tier (e.g. warn in the editor when
-  `user`+`feedback` bodies exceed N tokens; suggest demoting to `reference`).
+- ~40–80 tokens/memory body, ~15 tokens/index line.
+- Heavy user: ~10 eager bodies (~600 tok) + ~20 lazy index lines (~300 tok) ≈
+  **<1k tokens/turn**. Acceptable.
+- Guard rail: soft-cap the eager tier — warn in the editor when eager bodies
+  exceed N tokens; suggest demoting to `project`/`reference`.
 
 ## Write surface — extend `ppal-context`
 
-Reuse the existing V8→node bridge. Grow the action set from `read|write`
-(whole-blob) to memory-aware ops. Keep the schema TINY (PP rule).
+Reuse the existing V8→Node bridge. Grow the global-scope action set from
+`read | write` (whole-blob) to memory-aware ops. Keep the schema TINY (PP rule).
+Project scope is unchanged (single device blob; no `fs` in V8).
 
 ```
-ppal-context action: "read" | "remember" | "forget" | "list"
-  read:     { name?: string }            // name → one file; omit → pinned context.md
-  remember: { name, type, description, content }  // create/overwrite memory/<name>.md + reindex
-  forget:   { name }                     // delete file + index line
-  list:     {}                           // return the index (usually already in context)
+ppal-context
+  action: "read" | "write" | "remember" | "forget" | "list"
+  scope:  "project" | "global"        (memory ops are global-scope only in v1)
+  name:   string?                     (read/remember/forget target a memory entry)
+  type:   "user"|"feedback"|"project"|"reference"?   (remember)
+  description: string?                (remember — the index/recall hook)
+  content: string?                    (write = pinned context.md; remember = body)
 ```
 
-- `remember` owns index maintenance server-side (regenerate `MEMORY.md` from the
-  files' frontmatter — index is derived, never hand-synced, so it can't drift).
-- Keep the whole-blob `write` for `context.md` (the pinned note / webui editor).
-- Node side: new routes `memory.read` / `memory.remember` / `memory.forget` /
-  `memory.list` alongside the existing `globalContext.*`. Store gets a
-  `memory/`-aware module (`global-memory-store.ts`): slug validation, atomic
-  writes, frontmatter parse/serialize, index regeneration.
+- `read` — `name` → one memory file; omit `name` → pinned `context.md` (today's
+  behavior preserved).
+- `write` — whole-blob `context.md` (the pinned note / webui editor). Unchanged.
+- `remember` — create/overwrite `memory/<name>.md` + **reindex**.
+- `forget` — delete file + reindex.
+- `list` — return the derived index (usually already in context).
 
-### Index is DERIVED, not authored
-
-Big divergence from Claude Code (where I hand-maintain `MEMORY.md`). Here the
-backend regenerates `MEMORY.md` from the files on every `remember`/`forget`.
-Eliminates the "index drifted from files" failure mode and the discipline burden
-on the model. Hand-editing a memory file's frontmatter → next connect (or a
-`list`) can re-derive.
+Node side: new bridge ops `memory.read` / `memory.remember` / `memory.forget` /
+`memory.list` alongside `globalContext.*` in `global-context-node-routes.ts`,
+plus a `memory/`-aware store module (`global-memory-store.ts` — a thin config of
+the generalized collection store: slug validation, atomic writes, frontmatter
+parse/serialize, index regeneration). Server owns slug validation + dedupe on
+`remember`.
 
 ## Where discipline lives
 
-Claude Code's memory discipline (one fact/file, dedup, delete-when-wrong,
-`[[links]]`, absolute dates) lives in the system prompt. PP's equivalent is the
-**skills blob** (`ppal-connect` skills) — that's where the model already gets
-instructed. Must be terse (skills blob is already the biggest per-turn cost).
-Minimum viable instruction:
+Claude Code's memory discipline lives in its system prompt. PP's equivalent is
+the **skills blob** (`ppal-connect` skills) — where the model already gets
+instructed. Must be terse (biggest per-turn cost). Minimum viable instruction:
 
 - Before `remember`, check the index for an existing memory that covers it —
   update instead of duplicating.
@@ -189,43 +245,90 @@ Minimum viable instruction:
 - `forget` a memory that turns out wrong; don't leave "OUTDATED" markers.
 - Convert relative dates ("next week") to absolute before storing.
 
-## webui editor
+This lands in the shipped skills fragments (`core-standard` / `core-basic`) — so
+it participates in the per-slot override + small-model variants automatically.
 
-Phase-2 editor already edits `context.md`. Extend to a two-pane memory manager:
+## Eval — drives iteration, does NOT gate the ship
 
-- left: the index grouped by type (list/create/delete);
-- right: markdown editor for the selected memory (frontmatter + body).
-- "reset"/"delete" removes the file; backend re-derives the index. Reuses the
-  project-context editor component per the override plan.
+The write path ships in the first cut (decided). A shared eval measures, per
+model, whether it: (a) calls `remember` when it should and _not_ when it
+shouldn't (over-save is the main risk, esp. small models), (b) calls
+`ppal-context read` when a lazy hook is relevant. Reuse the `evals/` notation
+harness pattern. Eval misses drive skills-blob iteration; they are not a
+kill/rollback signal. This same harness is later reused to de-risk custom skills
+and built-in skill-splitting (same risk family).
+
+## webui memory manager
+
+Two-pane manager, reusing the `SkillsScreen` collection pattern (list + per-item
+editor + 5s poll + save/refresh race guard):
+
+- left: the derived index grouped by type (list / create / delete);
+- right: markdown editor for the selected memory (frontmatter + body);
+- "delete" removes the file; backend re-derives the index.
+
+New REST routes follow the `skill-overrides-route.ts` collection template (GET
+list, PUT/DELETE per entry, origin-gated writes). New webui hook mirrors
+`use-skill-overrides.ts`.
+
+## Reuse by later collections (v1.5.x fast-follows)
+
+Designed for now so the primitive is right; **not built in v1.5.**
+
+**Custom (user-authored) skills** — a second collection instance:
+
+- Same store / index / `ppal-context read` / append-seam machinery.
+- Policy resolver: lazy by default (index/trigger always injected, body on
+  demand), `frontmatter.pinned` → eager for small always-on skills.
+- Adds **enable/disable** per skill (surfaced in settings) — the one axis memory
+  doesn't have. This is a per-entry `enabled` flag the injector honors.
+- User-authored, so no LLM `remember`/`forget` — just the shared `read`. Schema
+  stays tiny.
+- Distinct from the shipped built-in fragment _override_ (which replaces one of
+  the 7 fixed `skill-slots`): custom skills **add** new entries; the slot names
+  stay a stable public contract per ADR-0010.
+
+**On-demand loading of built-in skills** — retrofit the ~10.9k blob into the
+same lazy-load registry (core eager, specialized lazy). **Highest-risk,
+least-proven** of the three: its beneficiary (context savings) is capable
+models, who need it least; its failure mode (model doesn't load the right
+specialized skill) hits small/local models hardest, who can't be trusted to
+two-step. Treat as an eval-gated experiment layered on the mechanism, sequenced
+after custom skills — not a v1.5 commitment.
 
 ## Open decisions / bikeshed
 
 1. **DECIDED: `memory/` coexists with `context.md`.** `context.md` = pinned
-   always-on prose (verbatim inject, hand/webui-authored); `memory/` =
-   structured LLM-managed facts (indexed, tiered inject). Two complementary
-   mechanisms, not one subsuming the other. `context.md` already ships and is
-   untouched by this work.
-2. **Injection tier** — confirm tiered-eager vs index-only. Depends on how much
-   we care about weak/external clients doing 2-step recall.
-3. **Per-project memory too?** Today per-project context is a single device
-   blob. Could later mirror this indexed structure per Live Set, but that's
-   device-side (no `fs` in V8) — bigger lift. Out of scope for v1.
-4. **Slug collisions / naming** — server owns slug validation + dedupe on
-   `remember`.
-5. **Migration** — existing `context.md` users: untouched. `memory/` is
-   empty-by-default, additive. Zero migration.
-6. **Do small models even call `remember`?** Behavior capture may need the
-   skills blob to nudge ("when the user states a lasting preference, save it").
-   Risk: over-eager saving. Eval before shipping the write path.
+   always-on prose; `memory/` = structured LLM-managed facts. Complementary.
+2. **DECIDED: tiered-eager injection**, generalized to a per-entry policy
+   (above).
+3. **DECIDED: collection-generic build**, memory as first consumer.
+4. **DECIDED: v1.5 = memory only**; custom skills + built-in split are v1.5.x.
+5. **DECIDED: full read+write from the first cut**; eval drives iteration, not
+   gating.
+6. **Per-project indexed memory?** Out of scope for v1 — per-project stays a
+   single device blob (device-side, no `fs` in V8; bigger lift).
+7. **Migration** — none. Existing `context.md` untouched; `memory/` is
+   empty-by-default and additive.
 
-## Suggested phasing
+## Phasing (v1.5)
 
-- **P1** `global-memory-store.ts` (files + derived index) + `memory.*` node
-  routes + `ppal-context` read/list (READ path only). Inject index + eager tier
-  into `ppal-connect`. No LLM writes yet — hand-author files to validate recall.
-- **P2** `remember`/`forget` write path + skills-blob discipline instructions +
-  eval that the model saves/dedupes sanely.
-- **P3** webui two-pane memory manager.
+- **P1 — primitive + full LLM-managed memory. DONE (on branch).** Shipped:
+  `listConfigMarkdownFiles` primitive on the config store;
+  `helpers/memory/global-memory-store.ts` (files + derived `MEMORY.md` index +
+  slug validation + frontmatter); `helpers/memory/memory.ts` (Node-side
+  `MemoryType` contract — not `src/shared`, since nothing V8-side imports it);
+  `memory.*` RPC bridge ops (`helpers/memory/global-memory-node-routes.ts`);
+  `ppal-context` grows `read | remember | forget | list` (global scope) with
+  `name`/`type`/`description` params; `withMemory` append producer
+  (`helpers/memory/memory-inject.ts`, eager `user`/`feedback` bodies + lazy
+  `project`/`reference` index); memory-discipline instructions in
+  `core-standard` / `core-basic`. (Reorg note: `helpers/global-context/*` and
+  `tests/server/*` subdirs were created to stay under the 12-item folder cap.)
+- **P1 follow-up — eval.** Not built yet. Drives skills-blob iteration; does not
+  gate. Reuse the `evals/` notation-harness pattern.
+- **P2 — webui memory manager.** Two-pane, reusing the `SkillsScreen` collection
+  pattern + a new collection route.
 
 ```
 

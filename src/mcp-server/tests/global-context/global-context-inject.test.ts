@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { withGlobalContext } from "#src/mcp-server/helpers/global-context-inject.ts";
+import { withGlobalContext } from "#src/mcp-server/helpers/global-context/global-context-inject.ts";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
 
 const ORIGINAL_DIR = process.env.PRODUCER_PAL_CONFIG_DIR;

@@ -21,7 +21,8 @@ import {
 } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
-import { withGlobalContext } from "./helpers/global-context-inject.ts";
+import { withGlobalContext } from "./helpers/global-context/global-context-inject.ts";
+import { withMemory } from "./helpers/memory/memory-inject.ts";
 import { rejectCrossOriginWrite } from "./helpers/request-origin.ts";
 import { revealConfigDir } from "./helpers/reveal-config-dir.ts";
 import { withSkills } from "./helpers/skills-inject.ts";
@@ -145,13 +146,17 @@ function applyLiveApiEnabled(next: boolean): void {
 }
 
 // Enrich ppal-connect Node-side: withSkills appends the (override-aware) skills
-// blob, withGlobalContext appends the machine-global context. Both read the
-// filesystem, which only Node can do — V8's connect() no longer builds skills.
-const callLiveApiEnriched = withGlobalContext(
-  withSkills(callLiveApi, () => ({
-    notation: config.notation,
-    smallModelMode: config.smallModelMode,
-  })),
+// blob, withGlobalContext appends the machine-global context, withMemory appends
+// the indexed user memory. All read the filesystem, which only Node can do —
+// V8's connect() no longer builds skills. Blocks appear in inner-to-outer order:
+// skills, then global context, then memory.
+const callLiveApiEnriched = withMemory(
+  withGlobalContext(
+    withSkills(callLiveApi, () => ({
+      notation: config.notation,
+      smallModelMode: config.smallModelMode,
+    })),
+  ),
 );
 
 interface JsonRpcError {

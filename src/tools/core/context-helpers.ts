@@ -53,7 +53,73 @@ export function handleWriteMemory(
  * @returns Memory result with the current global content
  */
 export async function handleReadGlobalMemory(): Promise<MemoryResult> {
-  return await callGlobalContextRoute("globalContext.read", {});
+  return await callNodeMemoryRoute("globalContext.read", {});
+}
+
+/**
+ * Read one indexed memory entry (~/.producer-pal/memory/&lt;name&gt;.md) by name,
+ * over the RPC bridge.
+ *
+ * @param name - The memory name/slug to read
+ * @returns Memory result with the entry body, or a not-found note
+ */
+export async function handleReadMemoryEntry(
+  name: string,
+): Promise<MemoryResult> {
+  return await callNodeMemoryRoute("memory.read", { name });
+}
+
+/**
+ * Create or overwrite an indexed memory entry, then re-derive the index. The
+ * Node side owns slug validation and index regeneration.
+ *
+ * @param args - The memory to store
+ * @param args.name - Desired memory name (slugified Node-side)
+ * @param args.type - Memory bucket (user | feedback | project | reference)
+ * @param args.description - One-line recall hook (optional)
+ * @param args.content - The memory body (the fact)
+ * @returns Memory result with the regenerated index
+ */
+export async function handleRememberMemory(args: {
+  name?: string;
+  type?: string;
+  description?: string;
+  content?: string;
+}): Promise<MemoryResult> {
+  if (!args.name) throw new Error("name required for remember action");
+  if (!args.type) throw new Error("type required for remember action");
+  if (!args.content) throw new Error("content required for remember action");
+
+  return await callNodeMemoryRoute("memory.remember", {
+    name: args.name,
+    type: args.type,
+    description: args.description ?? "",
+    content: args.content,
+  });
+}
+
+/**
+ * Delete an indexed memory entry (if present), then re-derive the index.
+ *
+ * @param name - The memory name/slug to forget
+ * @returns Memory result with the regenerated index
+ */
+export async function handleForgetMemory(
+  name: string | undefined,
+): Promise<MemoryResult> {
+  if (!name) throw new Error("name required for forget action");
+
+  return await callNodeMemoryRoute("memory.forget", { name });
+}
+
+/**
+ * List the derived memory index (already injected on connect; this is an
+ * explicit refresh).
+ *
+ * @returns Memory result with the current index
+ */
+export async function handleListMemory(): Promise<MemoryResult> {
+  return await callNodeMemoryRoute("memory.list", {});
 }
 
 /**
@@ -71,19 +137,20 @@ export async function handleWriteGlobalMemory(
     throw new Error("Content required for write action");
   }
 
-  return await callGlobalContextRoute("globalContext.write", { content });
+  return await callNodeMemoryRoute("globalContext.write", { content });
 }
 
 /**
- * Invoke a Node-side global-context route and unwrap the response, throwing on
- * failure so the MCP error path renders a clean message instead of leaking the
- * RPC envelope shape to the LLM.
+ * Invoke a Node-side global context/memory route and unwrap the response,
+ * throwing on failure so the MCP error path renders a clean message instead of
+ * leaking the RPC envelope shape to the LLM. Shared by the pinned-context and
+ * indexed-memory routes (both return a `{ content }` payload).
  *
  * @param route - Route name registered on the Node side
  * @param args - Arguments to pass to the route
  * @returns The route's success payload
  */
-async function callGlobalContextRoute(
+async function callNodeMemoryRoute(
   route: string,
   args: object,
 ): Promise<MemoryResult> {

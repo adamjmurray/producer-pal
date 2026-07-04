@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { registerGlobalContextNodeRoutes } from "#src/mcp-server/helpers/global-context-node-routes.ts";
+import { registerGlobalContextNodeRoutes } from "#src/mcp-server/helpers/global-context/global-context-node-routes.ts";
 import {
   clearNodeRoutes,
   handleNodeRequest,

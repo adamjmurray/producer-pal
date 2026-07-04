@@ -8,12 +8,14 @@ import Max from "max-api";
 import { VERSION } from "#src/shared/config.ts";
 import { checkForUpdate } from "#src/shared/version-check.ts";
 import { createExpressApp } from "./create-express-app.ts";
-import { registerGlobalContextNodeRoutes } from "./helpers/global-context-node-routes.ts";
+import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
+import { registerGlobalMemoryNodeRoutes } from "./helpers/memory/global-memory-node-routes.ts";
 import { registerLibraryRoutes } from "./live-library/library-routes.ts";
 import * as console from "./node-for-max-logger.ts";
 
 registerLibraryRoutes();
 registerGlobalContextNodeRoutes();
+registerGlobalMemoryNodeRoutes();
 
 interface ServerError extends Error {
   code?: string;

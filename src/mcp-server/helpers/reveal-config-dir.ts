@@ -15,7 +15,10 @@ import { pathToFileURL } from "node:url";
 import Max from "max-api";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "../node-for-max-logger.ts";
-import { configDir, isConfigDirInert } from "./global-context-store.ts";
+import {
+  configDir,
+  isConfigDirInert,
+} from "./global-context/global-context-store.ts";
 
 /**
  * Reveal ~/.producer-pal in the OS file browser. Ensures the directory exists

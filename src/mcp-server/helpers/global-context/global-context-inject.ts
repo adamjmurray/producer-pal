@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type CallLiveApiFunction } from "../create-mcp-server.ts";
+import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
-} from "./connect-append.ts";
+} from "../connect-append.ts";
 import { readGlobalContext } from "./global-context-store.ts";
 
 /**

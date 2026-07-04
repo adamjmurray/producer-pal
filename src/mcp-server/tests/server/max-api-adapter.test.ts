@@ -11,23 +11,23 @@ import {
   handleLiveApiResult,
   type RequestOverrides,
   setTimeoutForTesting,
-} from "../max-api-adapter.ts"; // eslint-disable-line import-x/no-duplicates -- separate side-effect import below registers handler
+} from "../../max-api-adapter.ts"; // eslint-disable-line import-x/no-duplicates -- separate side-effect import below registers handler
 
 // Make sure the module's handler is registered
 // eslint-disable-next-line import-x/no-duplicates -- intentional side-effect import
-import "../max-api-adapter.ts";
+import "../../max-api-adapter.ts";
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
-vi.mock(import("../code-exec-protocol.ts"), () => ({
+vi.mock(import("../../code-exec-protocol.ts"), () => ({
   handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock(import("../rpc/node-request-protocol.ts"), () => ({
+vi.mock(import("../../rpc/node-request-protocol.ts"), () => ({
   handleNodeRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { handleCodeExecRequest } from "../code-exec-protocol.ts";
-import { handleNodeRequest } from "../rpc/node-request-protocol.ts";
+import { handleCodeExecRequest } from "../../code-exec-protocol.ts";
+import { handleNodeRequest } from "../../rpc/node-request-protocol.ts";
 
 // Capture the timeoutMs handler before mocks are cleared
 let timeoutMsHandler: ((input: unknown) => void) | undefined;

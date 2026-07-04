@@ -20,7 +20,7 @@ import {
   readGlobalContext,
   resolveContextPath,
   writeGlobalContext,
-} from "#src/mcp-server/helpers/global-context-store.ts";
+} from "#src/mcp-server/helpers/global-context/global-context-store.ts";
 
 const ORIGINAL_DIR = process.env.PRODUCER_PAL_CONFIG_DIR;
 

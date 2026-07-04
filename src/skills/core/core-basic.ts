@@ -20,6 +20,12 @@ export const coreBasic = `## Add notes to an existing clip (update-clip)
 - \`[range]: v0\` — delete notes in a range
 - ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)
 
+## Memory
+
+\`ppal-context\` scope:global stores lasting user facts across sessions (not this-Live-Set details — those use scope:project).
+- **remember** who they are (\`user\`) or how to work with them (\`feedback\`); also \`project\`/\`reference\`.
+- Check the index first and reuse a name to UPDATE, not duplicate. One fact each. **forget** what's wrong.
+
 ## Rules
 
 - Set clip length explicitly: \`4bar\`, \`1bar\`, \`n/4\`.

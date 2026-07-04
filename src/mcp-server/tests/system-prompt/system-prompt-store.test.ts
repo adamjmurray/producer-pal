@@ -6,7 +6,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readGlobalContext } from "#src/mcp-server/helpers/global-context-store.ts";
+import { readGlobalContext } from "#src/mcp-server/helpers/global-context/global-context-store.ts";
 import {
   readSystemPrompt,
   writeSystemPrompt,
