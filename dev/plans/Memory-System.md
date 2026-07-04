@@ -161,15 +161,15 @@ injector can slice eager vs lazy:
 
 ## User
 
-- [C minor / house](prefers-c-minor.md) — default key & genre
+- `prefers-c-minor` — default key & genre
 
 ## Feedback
 
-- [No quantized hats](hates-quantized-hats.md) — swing/humanize drums
+- `hates-quantized-hats` — swing/humanize drums
 
 ## Project
 
-- [Album: Nyx](album-project-nyx.md) — dark ambient, 60bpm
+- `album-project-nyx` — dark ambient, 60bpm
 ```
 
 **Big divergence from Claude Code** (where the index is hand-maintained): here

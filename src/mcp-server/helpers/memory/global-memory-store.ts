@@ -32,6 +32,12 @@ import {
 
 const MEMORY_SUBDIR = "memory";
 const INDEX_FILENAME = "MEMORY.md";
+// The derived index lives at memory/MEMORY.md, so its slug ("memory") is
+// reserved. On case-insensitive filesystems (macOS APFS, Windows NTFS) a user
+// memory that slugifies to "memory" would write the SAME file as the index and
+// silently clobber it, so every read/write/forget guards this slug. Linux CI is
+// case-sensitive and can't see the collision — the guard is what protects it.
+const INDEX_SLUG = INDEX_FILENAME.replace(/\.md$/i, "").toLowerCase();
 
 /** One stored memory: its slug, type, one-line hook, and body. */
 export interface MemoryEntry {
@@ -83,7 +89,7 @@ export function slugifyMemoryName(name: string): string {
 export function readMemoryEntry(name: string): MemoryEntry | null {
   const slug = slugifyMemoryName(name);
 
-  if (!slug) return null;
+  if (!slug || isReservedMemorySlug(slug)) return null;
 
   const raw = readConfigMarkdown(filenameFor(slug));
 
@@ -100,7 +106,7 @@ export function readMemoryEntry(name: string): MemoryEntry | null {
  */
 export function listMemoryEntries(): MemoryEntry[] {
   return listConfigMarkdownFiles(MEMORY_SUBDIR)
-    .filter((file) => file !== INDEX_FILENAME)
+    .filter((file) => file.toLowerCase() !== INDEX_FILENAME.toLowerCase())
     .map((file) => {
       const slug = file.replace(/\.md$/, "");
 
@@ -125,6 +131,10 @@ export function rememberMemory(input: RememberMemoryInput): MemoryEntry {
   const slug = slugifyMemoryName(input.name);
 
   if (!slug) throw new Error("Memory name must contain letters or digits");
+
+  if (isReservedMemorySlug(slug)) {
+    throw new Error(`"${slug}" is a reserved memory name (the index file)`);
+  }
 
   if (!isMemoryType(input.type)) {
     throw new Error(`Invalid memory type: ${String(input.type)}`);
@@ -157,7 +167,7 @@ export function rememberMemory(input: RememberMemoryInput): MemoryEntry {
 export function forgetMemory(name: string): boolean {
   const slug = slugifyMemoryName(name);
 
-  if (!slug) return false;
+  if (!slug || isReservedMemorySlug(slug)) return false;
 
   const existed = readConfigMarkdown(filenameFor(slug)).trim() !== "";
 
@@ -191,6 +201,18 @@ export function regenerateIndex(): string {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Whether a slug collides with the derived index file (`memory/MEMORY.md`).
+ * Reserved so a memory named "memory" can't overwrite the index on a
+ * case-insensitive filesystem.
+ *
+ * @param slug - A slugified memory name (already lowercased)
+ * @returns True when the slug is reserved for the index
+ */
+function isReservedMemorySlug(slug: string): boolean {
+  return slug === INDEX_SLUG;
+}
 
 /**
  * The memory filename for a slug, under the memory/ subfolder of the config

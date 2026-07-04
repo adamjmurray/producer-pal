@@ -143,6 +143,27 @@ describe("rememberMemory", () => {
       }),
     ).toThrow(/body must not be empty/i);
   });
+
+  it("rejects the reserved index name so MEMORY.md can't be clobbered", () => {
+    rememberMemory({
+      name: "keeper",
+      type: "user",
+      description: "d",
+      body: "b",
+    });
+
+    // All slugify to "memory", which is the index file's basename. On a
+    // case-insensitive filesystem this would overwrite the index; the guard
+    // throws before any write on every platform.
+    for (const name of ["memory", "Memory", "MEMORY", "  memory!  "]) {
+      expect(() =>
+        rememberMemory({ name, type: "user", description: "x", body: "y" }),
+      ).toThrow(/reserved/i);
+    }
+
+    expect(readMemoryEntry("keeper")?.body).toBe("b");
+    expect(readFileSync(memoryPath("MEMORY.md"), "utf8")).toContain("keeper");
+  });
 });
 
 describe("readMemoryEntry", () => {
@@ -168,6 +189,18 @@ describe("readMemoryEntry", () => {
 
   it("returns null for an unslugifiable name", () => {
     expect(readMemoryEntry("!!!")).toBeNull();
+  });
+
+  it("returns null for the reserved index name", () => {
+    rememberMemory({
+      name: "keeper",
+      type: "user",
+      description: "d",
+      body: "b",
+    });
+
+    expect(readMemoryEntry("memory")).toBeNull();
+    expect(readMemoryEntry("MEMORY")).toBeNull();
   });
 
   it("reads a hand-authored file, taking the slug from the filename", () => {
@@ -229,6 +262,15 @@ describe("listMemoryEntries", () => {
       "r",
     ]);
   });
+
+  it("excludes the index filename case-insensitively", () => {
+    // A hand-created lowercase "memory.md" is a distinct file from "MEMORY.md"
+    // on case-sensitive Linux; the filter must still treat it as the index.
+    writeRaw("memory.md", "---\ntype: user\n---\n\nreserved");
+    rememberMemory({ name: "real", type: "user", description: "", body: "b" });
+
+    expect(listMemoryEntries().map((e) => e.name)).toStrictEqual(["real"]);
+  });
 });
 
 describe("forgetMemory", () => {
@@ -245,6 +287,18 @@ describe("forgetMemory", () => {
 
   it("reports false for an unslugifiable name", () => {
     expect(forgetMemory("!!!")).toBe(false);
+  });
+
+  it("refuses to forget the reserved index name", () => {
+    rememberMemory({
+      name: "keeper",
+      type: "user",
+      description: "d",
+      body: "b",
+    });
+
+    expect(forgetMemory("memory")).toBe(false);
+    expect(readFileSync(memoryPath("MEMORY.md"), "utf8")).toContain("keeper");
   });
 });
 
