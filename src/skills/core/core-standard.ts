@@ -3,8 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { codeTransformsSkills } from "#src/skills/code-transforms.ts";
-
 export const coreStandard = `## Time & Note Values
 
 Applies to every notation: transforms, clip \`length\`, and arrangement durations use these units regardless of how you write \`notes\`.
@@ -113,7 +111,7 @@ Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple sl
 ### preTransforms (editing notes already in the clip)
 
 \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`delete\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)
-${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
+@include "./code-transforms.md"
 ## Finding Library Content
 
 Use \`ppal-library\` to search Live's browser library and the user's configured sample folder.

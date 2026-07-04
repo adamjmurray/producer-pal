@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Notation } from "#src/shared/notation.ts";
 import { coreBasic } from "#src/skills/core/core-basic.ts";
 import { coreStandard } from "#src/skills/core/core-standard.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
@@ -88,39 +87,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     builtIn: starkBasic,
   },
 };
-
-/** The two slots buildSkills assembles for a given runtime context. */
-export interface ActiveSkillSlots {
-  /** The notation head slot prepended to the core body. */
-  head: SkillSlotName;
-  /** The shared core body slot. */
-  core: SkillSlotName;
-}
-
-/**
- * Resolve which head + core slots buildSkills uses for a runtime context. The
- * level (standard vs basic) selects the core body; the notation selects the
- * head. bar|beat and stark have a distinct head per level; midi-json reuses one
- * head across both levels, so its slot name equals the notation name.
- *
- * @param notation - The active notation
- * @param smallModelMode - Whether small-model (basic) skills are active
- * @returns The head and core slot names in effect
- */
-export function activeSkillSlots(
-  notation: Notation,
-  smallModelMode: boolean,
-): ActiveSkillSlots {
-  const core: SkillSlotName = smallModelMode ? "core-basic" : "core-standard";
-  const head: SkillSlotName =
-    notation === "midi-json"
-      ? "midi-json"
-      : smallModelMode
-        ? `${notation}-basic`
-        : `${notation}-standard`;
-
-  return { head, core };
-}
 
 /**
  * Type guard for a value being a known skill slot name (validates route params
