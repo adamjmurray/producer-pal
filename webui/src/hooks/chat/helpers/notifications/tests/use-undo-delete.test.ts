@@ -221,6 +221,27 @@ describe("useUndoDelete", () => {
     expect(result.current.undoNotification).toBeNull();
   });
 
+  it("undo is a no-op when the stack was emptied before a stale click fires", async () => {
+    const refreshList = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useUndoDelete(refreshList));
+
+    await act(() => result.current.pushDeleted(makeRecord({ title: "Gone" })));
+
+    // Capture the banner's undo handler, then dismiss so the stack is empty.
+    const staleUndo = result.current.undoNotification!.action!.onClick;
+
+    await act(() => result.current.dismissUndoNotification());
+
+    // Firing the captured handler now must bail on the empty stack.
+    await act(async () => {
+      staleUndo();
+      await Promise.resolve();
+    });
+
+    expect(vi.mocked(saveConversation)).not.toHaveBeenCalled();
+    expect(refreshList).not.toHaveBeenCalled();
+  });
+
   it("caps retained history at 10 deletions", async () => {
     const { result } = renderHook(() => useUndoDelete(vi.fn()));
     const records = Array.from({ length: 12 }, (_, i) =>

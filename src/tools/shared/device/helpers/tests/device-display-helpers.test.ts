@@ -662,6 +662,39 @@ describe("device-display-helpers", () => {
       expect(result.value).toBe("Repitch");
     });
 
+    it.each([
+      { min: "50L", label: "min label" },
+      { min: "0L", label: "default 50" },
+    ])(
+      "resolves pan maxPanValue via $label when the max label yields 0",
+      ({ min }) => {
+        // max label "0R" → extractMaxPanValue 0, forcing the || fallback chain.
+        setupParamMock({ name: "Pan", value: 0.25 });
+        setupValueLabels({ 0.25: "25L", 0: min, 1: "0R" });
+
+        const result = readParameter(createMockParamApi("param_pan_fallback"));
+
+        expect(result.unit).toBe("pan");
+      },
+    );
+
+    it("falls back to rawValue when label unparseable and display_value is absent", () => {
+      setupParamMock({ name: "Mode", value: 0.5 });
+
+      // Override only display_value to a nullish read so the `?? rawValue`
+      // tail of the value chain is exercised.
+      const base = mockGet.getMockImplementation() as (p: string) => unknown[];
+
+      mockGet.mockImplementation((prop: string) =>
+        prop === "display_value" ? [] : base(prop),
+      );
+      mockCall.mockImplementation(() => "Repitch"); // unparseable label
+
+      const result = readParameter(createMockParamApi("param_raw_fallback"));
+
+      expect(result.value).toBe(0.5); // rawValue
+    });
+
     it("handles division param detected via minLabel", () => {
       // Edge case: current value is "1" (not a fraction) but min is "1/64"
       setupParamMock({ name: "Division", value: 0, min: -2, max: 0 });

@@ -113,4 +113,18 @@ describe("MarkdownDropZone", () => {
     fireEvent.drop(child, { dataTransfer: dt });
     expect(onImportText).not.toHaveBeenCalled();
   });
+
+  it("passes non-file dragover and dragleave through without preventing default", () => {
+    const { child } = renderZone();
+    const preventDefault = vi.spyOn(Event.prototype, "preventDefault");
+    const dt = { types: ["text/plain"], files: [] };
+
+    // Both handlers early-return when the drag carries no files, so they never
+    // preventDefault (which would claim the drop) nor touch the overlay.
+    fireEvent.dragOver(child, { dataTransfer: dt });
+    fireEvent.dragLeave(child, { dataTransfer: dt });
+
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(screen.queryByText(OVERLAY_TEXT)).toBeNull();
+  });
 });

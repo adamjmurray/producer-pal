@@ -576,31 +576,8 @@ describe("duplicateSelfOverlappingClip", () => {
       properties: { is_arrangement_clip: 1, start_time: 120, end_time: 136 },
     });
 
-    // The full copy the second duplicate places at the target.
-    setupClip("500", { properties: { is_arrangement_clip: 1 } });
-
-    let dupCount = 0;
-
-    const trackMock = setupTrack(0, {
-      properties: { arrangement_clips: ["id", "100"] },
-      methods: {
-        duplicate_clip_to_arrangement: () => {
-          dupCount++;
-
-          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-        },
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
-
-    const result = duplicateSelfOverlappingClip(
-      LiveAPI.from(trackMock.path),
-      "100",
-      4,
-      true,
-      mockContext,
-    );
+    // The full copy the second duplicate places at the target ("500").
+    const { trackMock, result } = runTwoDupSelfOverlap(4);
 
     // Step 1: copy the source to the holding area, past both the existing clips
     // (maxEnd 16) and the target placement (4 + 16 = 20): max(16, 20) + 100 = 120.
@@ -646,30 +623,7 @@ describe("duplicateSelfOverlappingClip", () => {
     setupClip("400", {
       properties: { is_arrangement_clip: 1, start_time: 499, end_time: 699 },
     });
-    setupClip("500", { properties: { is_arrangement_clip: 1 } });
-
-    let dupCount = 0;
-
-    const trackMock = setupTrack(0, {
-      properties: { arrangement_clips: ["id", "100"] },
-      methods: {
-        duplicate_clip_to_arrangement: () => {
-          dupCount++;
-
-          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-        },
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
-
-    const result = duplicateSelfOverlappingClip(
-      LiveAPI.from(trackMock.path),
-      "100",
-      199,
-      true,
-      mockContext,
-    );
+    const { trackMock, result } = runTwoDupSelfOverlap(199);
 
     // The holding copy lands past the target placement (399), not at maxEnd + 100
     // (300) — so the holding clip cannot overlap the target copy.
@@ -694,6 +648,45 @@ describe("duplicateSelfOverlappingClip", () => {
     expect(result.id).toBe("500");
   });
 });
+
+/**
+ * Run the two-duplicate self-overlap workaround. The caller registers the source
+ * ("100") and holding ("400") clips; this sets up "500" (the placed full copy),
+ * the track with its dup/create/delete methods, and invokes the workaround.
+ * @param target - Target arrangement position for the duplicate
+ * @returns The track mock and the resulting clip
+ */
+function runTwoDupSelfOverlap(target: number): {
+  trackMock: ReturnType<typeof setupTrack>;
+  result: ReturnType<typeof duplicateSelfOverlappingClip>;
+} {
+  setupClip("500", { properties: { is_arrangement_clip: 1 } });
+
+  let dupCount = 0;
+
+  const trackMock = setupTrack(0, {
+    properties: { arrangement_clips: ["id", "100"] },
+    methods: {
+      duplicate_clip_to_arrangement: () => {
+        dupCount++;
+
+        return dupCount === 1 ? ["id", "400"] : ["id", "500"];
+      },
+      create_midi_clip: () => ["id", "300"],
+      delete_clip: () => null,
+    },
+  });
+
+  const result = duplicateSelfOverlappingClip(
+    LiveAPI.from(trackMock.path),
+    "100",
+    target,
+    true,
+    mockContext,
+  );
+
+  return { trackMock, result };
+}
 
 /**
  * Set up mocks for a clearClipAtDuplicateTarget test that expects no track calls.

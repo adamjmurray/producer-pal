@@ -6,6 +6,13 @@
 import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
 
+// Two independent sibling pitch streams: `[C3 E3]` then `[G3 A3]`. Shared by the
+// space-separated and abutting-bracket cases, whose ASTs are identical.
+const SIBLING_PITCH_STREAMS = [
+  { stream: { param: "pitch", values: [[{ pitch: 60 }], [{ pitch: 64 }]] } },
+  { stream: { param: "pitch", values: [[{ pitch: 67 }], [{ pitch: 69 }]] } },
+];
+
 describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
   describe("valid streams", () => {
     it("parses a bracketed pitch stream as chord values", () => {
@@ -77,39 +84,17 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
       // The grammar is unchanged by pitch layering: sibling brackets parse to
       // two independent pitch-stream elements. Layering them into a chord is an
       // interpreter concern (see barbeat-interpreter-pitch-streams.test.ts).
-      expect(parser.parse("[C3 E3] [G3 A3]")).toStrictEqual([
-        {
-          stream: {
-            param: "pitch",
-            values: [[{ pitch: 60 }], [{ pitch: 64 }]],
-          },
-        },
-        {
-          stream: {
-            param: "pitch",
-            values: [[{ pitch: 67 }], [{ pitch: 69 }]],
-          },
-        },
-      ]);
+      expect(parser.parse("[C3 E3] [G3 A3]")).toStrictEqual(
+        SIBLING_PITCH_STREAMS,
+      );
     });
 
     it("tolerates abutting sibling brackets with no separating space", () => {
       // A `[` is a self-delimiting boundary, so adjacent brackets need no space.
       // The AST is identical to the whitespace-separated form above.
-      expect(parser.parse("[C3 E3][G3 A3]")).toStrictEqual([
-        {
-          stream: {
-            param: "pitch",
-            values: [[{ pitch: 60 }], [{ pitch: 64 }]],
-          },
-        },
-        {
-          stream: {
-            param: "pitch",
-            values: [[{ pitch: 67 }], [{ pitch: 69 }]],
-          },
-        },
-      ]);
+      expect(parser.parse("[C3 E3][G3 A3]")).toStrictEqual(
+        SIBLING_PITCH_STREAMS,
+      );
     });
 
     it("tolerates abutting brackets of different parameter kinds", () => {

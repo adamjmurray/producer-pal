@@ -436,6 +436,62 @@ describe("updateDevice - wrapInRack", () => {
         }),
       ).toThrow("insert_device failed");
     });
+
+    it("defaults the instrument-rack insert position to 0 for an append toPath", () => {
+      // toPath "t2" is a track (append), so resolveInsertionPath returns a null
+      // position and insert_device falls back to 0.
+      const destTrack = registerMockObject("dest-track", {
+        path: livePath.track(2),
+        methods: { insert_device: () => ["id", "new-rack"] },
+      });
+
+      const result = updateDevice({
+        path: "t0/d3",
+        wrapInRack: true,
+        toPath: "t2",
+      });
+
+      expect(destTrack.call).toHaveBeenCalledWith(
+        "insert_device",
+        "Instrument Rack",
+        0,
+      );
+      expect((result as Record<string, unknown>).id).toBe("new-rack");
+    });
+
+    it("stops restoring stranded instruments when a temp-track slot is empty", () => {
+      // With unregistered objects non-existent, the temp track reports a device
+      // but its slot 0 resolves to nothing, so the restore loop breaks at once.
+      mockNonExistentObjects();
+      registerMockObject("device-3", {
+        path: livePath.track(0).device(3),
+        type: "RackDevice",
+        properties: { type: 1 },
+      });
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: {
+          insert_device: () => {
+            throw new Error("insert_device failed");
+          },
+        },
+      });
+      liveSet = registerTempTrackMocks();
+      registerMockObject("temp-track", {
+        path: livePath.track(1),
+        properties: { devices: children("phantom-device") },
+      });
+
+      expect(() => updateDevice({ path: "t0/d3", wrapInRack: true })).toThrow(
+        "insert_device failed",
+      );
+
+      // The temp track is still cleaned up after the (no-op) restore.
+      expect(liveSet.call).toHaveBeenCalledWith(
+        "delete_track",
+        expect.any(Number),
+      );
+    });
   });
 
   it("should warn and return null when mixing MIDI and Audio effects", () => {
@@ -572,5 +628,61 @@ describe("updateDevice - wrapInRack", () => {
       id: "new-rack",
       type: "audio-effect-rack",
     });
+  });
+
+  it("should warn but continue when insert_chain returns a non-id array", () => {
+    // A returned array whose first element isn't "id" also counts as a failure.
+    newRack.get.mockImplementation((prop: string) =>
+      prop === "chains" ? [] : [0],
+    );
+    newRack.call.mockImplementation((method: string) =>
+      method === "insert_chain" ? ["oops"] : null,
+    );
+
+    const result = updateDevice({ path: "t0/d0", wrapInRack: true });
+
+    expect(result).toMatchObject({
+      id: "new-rack",
+      type: "audio-effect-rack",
+    });
+  });
+
+  it("should return null for a path that resolves to a container, not a device", () => {
+    // "t0" (no device index) resolves to the track container itself; a Track is
+    // not a device, so there is nothing to wrap.
+    expect(updateDevice({ path: "t0", wrapInRack: true })).toBeNull();
+  });
+
+  it("should create a chain when the rack starts with none", () => {
+    // Rack with no pre-existing chains; insert_chain succeeds with a valid id.
+    newRack.get.mockImplementation((prop: string) =>
+      prop === "chains" ? [] : [0],
+    );
+    newRack.call.mockImplementation((method: string) =>
+      method === "insert_chain" ? ["id", "new-chain"] : null,
+    );
+
+    const result = updateDevice({ path: "t0/d0", wrapInRack: true });
+
+    expect(result).toMatchObject({ id: "new-rack", type: "audio-effect-rack" });
+  });
+
+  it("defaults the insertion position to 0 when the device path has no index", () => {
+    // A device whose path lacks a trailing "devices N" segment falls back to 0.
+    const oddDevice = registerMockObject("odd-device", {
+      path: "live_set tracks 5",
+      type: "Device",
+      properties: { type: 2 },
+      methods: { insert_device: () => ["id", "new-rack"] },
+    });
+
+    const result = updateDevice({ ids: "odd-device", wrapInRack: true });
+
+    expect(oddDevice.call).toHaveBeenCalledWith(
+      "insert_device",
+      "Audio Effect Rack",
+      0,
+    );
+    expect((result as Record<string, unknown>).id).toBe("new-rack");
   });
 });

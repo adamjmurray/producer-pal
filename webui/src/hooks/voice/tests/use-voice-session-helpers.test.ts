@@ -6,16 +6,20 @@
 /**
  * @vitest-environment happy-dom
  */
+import { type RealtimeItem } from "@openai/agents/realtime";
 import { describe, expect, it, vi } from "vitest";
 import {
   beginHalfDuplexMute,
+  buildSessionOptions,
   createPlaybackAudioElement,
   endHalfDuplexMute,
   extractResponseFailure,
   parseRetrySeconds,
   setAudioVolume,
   teardownAudioElement,
+  toSeedableHistory,
 } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+import { DEFAULT_VOICE_LANGUAGE } from "#webui/lib/constants/voice-language";
 
 const doneEvent = (response: unknown) => ({ type: "response.done", response });
 
@@ -117,6 +121,51 @@ describe("parseRetrySeconds", () => {
 
   it("returns null when there is no parseable wait", () => {
     expect(parseRetrySeconds("Rate limit reached. Try later.")).toBeNull();
+  });
+
+  it("returns null when the matched number is not finite", () => {
+    // A bare "." matches [\d.]+ but parses to NaN, which must not become a wait.
+    expect(parseRetrySeconds("Please try again in .s")).toBeNull();
+  });
+});
+
+describe("buildSessionOptions", () => {
+  it("defaults the transcription language to English when none is given", () => {
+    const options = buildSessionOptions({} as never, {}) as {
+      config: { audio: { input: { transcription: { language: string } } } };
+    };
+
+    expect(options.config.audio.input.transcription.language).toBe(
+      DEFAULT_VOICE_LANGUAGE,
+    );
+  });
+});
+
+describe("toSeedableHistory", () => {
+  it("rewrites an assistant audio message to text and drops one with no transcript", () => {
+    const history = [
+      {
+        itemId: "1",
+        type: "message",
+        role: "assistant",
+        status: "completed",
+        content: [{ type: "output_audio", transcript: "Hello" }],
+      },
+      {
+        itemId: "2",
+        type: "message",
+        role: "assistant",
+        status: "completed",
+        content: [{ type: "output_audio", transcript: null }],
+      },
+    ] as unknown as RealtimeItem[];
+
+    const out = toSeedableHistory(history);
+
+    expect(out).toHaveLength(1);
+    expect(out[0]?.content).toStrictEqual([
+      { type: "output_text", text: "Hello" },
+    ]);
   });
 });
 

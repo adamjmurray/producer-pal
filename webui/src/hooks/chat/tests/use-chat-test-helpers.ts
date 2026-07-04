@@ -142,6 +142,29 @@ export function createMockAdapter(): ChatAdapter<
 }
 
 /**
+ * Build a mock adapter whose createClient returns a fresh MockChatClient,
+ * optionally customized (override initialize/sendMessage to throw, seed
+ * chatHistory, or capture the instance). Collapses the repeated
+ * `{ ...createMockAdapter(), createClient: vi.fn(() => { ... }) }` setup.
+ * @param customize - Optional mutator applied to each created client
+ * @returns The adapter with a spying createClient
+ */
+export function adapterWithClient(
+  customize?: (client: MockChatClient) => void,
+): ChatAdapter<MockChatClient, TestMessage, TestConfig> {
+  return {
+    ...createMockAdapter(),
+    createClient: vi.fn(() => {
+      const client = new MockChatClient();
+
+      customize?.(client);
+
+      return client;
+    }),
+  };
+}
+
+/**
  * Creates default props for useChat hook tests
  * @param adapter - Mock adapter to use
  * @returns Default hook props

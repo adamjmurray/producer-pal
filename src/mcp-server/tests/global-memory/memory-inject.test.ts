@@ -3,37 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { rememberMemory } from "#src/mcp-server/helpers/memory/global-memory-store.ts";
 import { withMemory } from "#src/mcp-server/helpers/memory/memory-inject.ts";
-import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
-import { useTempConfigDir } from "../config-dir-test-helpers.ts";
+import {
+  connectResponse,
+  fakeInnerCall,
+  useTempConfigDir,
+} from "../config-dir-test-helpers.ts";
 
 useTempConfigDir();
-
-/**
- * Build a fake inner callLiveApi that resolves to the given response.
- * @param response - The McpResponse the fake should resolve with
- * @returns A vi.fn matching the callLiveApi signature
- */
-function fakeInner(response: McpResponse) {
-  return vi.fn(async () => response);
-}
-
-/**
- * A minimal successful connect-style response with a single content block.
- * @returns A fresh McpResponse
- */
-function connectResponse(): McpResponse {
-  return { content: [{ type: "text", text: "{connected:true}" }] };
-}
 
 /**
  * Run withMemory over a ppal-connect call and return the appended block text.
  * @returns The appended memory block, or undefined when none was appended
  */
 async function appendedBlock(): Promise<string | undefined> {
-  const result = await withMemory(fakeInner(connectResponse()))(
+  const result = await withMemory(fakeInnerCall(connectResponse()))(
     "ppal-connect",
     {},
   );
@@ -92,7 +78,7 @@ describe("withMemory", () => {
   });
 
   it("does not inject when there are no memories", async () => {
-    const result = await withMemory(fakeInner(connectResponse()))(
+    const result = await withMemory(fakeInnerCall(connectResponse()))(
       "ppal-connect",
       {},
     );
@@ -103,7 +89,7 @@ describe("withMemory", () => {
   it("leaves non-connect tool responses untouched", async () => {
     rememberMemory({ name: "u", type: "user", description: "d", body: "b" });
 
-    const result = await withMemory(fakeInner(connectResponse()))(
+    const result = await withMemory(fakeInnerCall(connectResponse()))(
       "ppal-read-track",
       {},
     );

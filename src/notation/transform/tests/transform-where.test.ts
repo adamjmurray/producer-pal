@@ -97,6 +97,25 @@ describe("where() predicate filtering", () => {
       expect(notes[2]!.velocity).toBe(64); // high
     });
 
+    it("AND-combines two predicates with && (both sides must hold)", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0, velocity: 100 }, // C3, loud → matches
+        { pitch: 64, start_time: 1, velocity: 100 }, // E3, loud → left false (short-circuit)
+        { pitch: 60, start_time: 2, velocity: 50 }, // C3, quiet → left true, right false
+      ]);
+
+      applyTransforms(
+        notes,
+        "where(note.pitch == C3 && note.velocity > 80): velocity = 64",
+        4,
+        4,
+      );
+
+      expect(notes[0]!.velocity).toBe(64); // C3 AND loud
+      expect(notes[1]!.velocity).toBe(100); // not C3 → right never evaluated
+      expect(notes[2]!.velocity).toBe(50); // C3 but not loud
+    });
+
     it("negates with !(...)", () => {
       const notes = createTestNotes([
         { start_time: 0, velocity: 110 },

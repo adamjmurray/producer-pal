@@ -3,17 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   configDir,
   isConfigDirInert,
@@ -21,29 +13,13 @@ import {
   resolveContextPath,
   writeGlobalContext,
 } from "#src/mcp-server/helpers/global-context/global-context-store.ts";
+import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
-const ORIGINAL_DIR = process.env.PRODUCER_PAL_CONFIG_DIR;
-
-let dir: string;
-
-beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "ppal-ctx-"));
-  process.env.PRODUCER_PAL_CONFIG_DIR = dir;
-});
-
-afterEach(() => {
-  if (ORIGINAL_DIR == null) {
-    delete process.env.PRODUCER_PAL_CONFIG_DIR;
-  } else {
-    process.env.PRODUCER_PAL_CONFIG_DIR = ORIGINAL_DIR;
-  }
-
-  rmSync(dir, { recursive: true, force: true });
-});
+const getDir = useTempConfigDir();
 
 describe("configDir", () => {
   it("uses the PRODUCER_PAL_CONFIG_DIR override when set", () => {
-    expect(configDir()).toBe(dir);
+    expect(configDir()).toBe(getDir());
   });
 
   it("defaults to ~/.producer-pal when no override is set", () => {
@@ -67,7 +43,7 @@ describe("isConfigDirInert", () => {
 
 describe("resolveContextPath", () => {
   it("uses the PRODUCER_PAL_CONFIG_DIR override when set", () => {
-    expect(resolveContextPath()).toBe(join(dir, "context.md"));
+    expect(resolveContextPath()).toBe(join(getDir(), "context.md"));
   });
 
   it("defaults to ~/.producer-pal/context.md when no override is set", () => {
@@ -83,7 +59,7 @@ describe("readGlobalContext", () => {
   it("returns file contents verbatim when the file exists", () => {
     // Not trimmed: a byte-faithful read keeps the editor's GET/PUT round-trip
     // stable (trimming happens at the ppal-connect injection point instead).
-    writeFileSync(join(dir, "context.md"), "  I make ambient techno.\n\n");
+    writeFileSync(join(getDir(), "context.md"), "  I make ambient techno.\n\n");
 
     expect(readGlobalContext()).toBe("  I make ambient techno.\n\n");
   });
@@ -97,7 +73,7 @@ describe("readGlobalContext", () => {
     // EISDIR (not ENOENT). Masking that as "" would let a subsequent editor save
     // overwrite recoverable content with empty; only a genuinely absent file
     // reads as "". Stands in for the transient-permission/IO case.
-    mkdirSync(join(dir, "context.md"));
+    mkdirSync(join(getDir(), "context.md"));
 
     expect(() => readGlobalContext()).toThrow();
   });
@@ -111,7 +87,7 @@ describe("readGlobalContext", () => {
 
 describe("writeGlobalContext", () => {
   it("round-trips through the filesystem, creating the dir if needed", () => {
-    const nested = join(dir, "nested");
+    const nested = join(getDir(), "nested");
 
     process.env.PRODUCER_PAL_CONFIG_DIR = nested;
 
@@ -123,7 +99,9 @@ describe("writeGlobalContext", () => {
   it("leaves no temp file behind (atomic temp+rename)", () => {
     writeGlobalContext("some context");
 
-    const leftovers = readdirSync(dir).filter((name) => name.endsWith(".tmp"));
+    const leftovers = readdirSync(getDir()).filter((name) =>
+      name.endsWith(".tmp"),
+    );
 
     expect(leftovers).toStrictEqual([]);
   });
@@ -133,6 +111,6 @@ describe("writeGlobalContext", () => {
 
     expect(() => writeGlobalContext("should not be written")).not.toThrow();
     // The override dir stays untouched — nothing leaked to a resolved path.
-    expect(existsSync(join(dir, "context.md"))).toBe(false);
+    expect(existsSync(join(getDir(), "context.md"))).toBe(false);
   });
 });

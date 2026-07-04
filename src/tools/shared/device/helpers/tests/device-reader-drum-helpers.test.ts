@@ -283,6 +283,65 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads![0]!.note).toBe(36);
     });
 
+    // Chain whose getChildren("devices") is non-empty, so processDrumRackChain
+    // expands nested devices (exercising the include-flag && expressions).
+    const createChainWithDevice = (inNote: number) =>
+      ({
+        _id: `chain-${inNote}`,
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "in_note") return inNote;
+          if (prop === "name") return "Layer";
+
+          return null;
+        }),
+        getChildren: vi.fn((child: string) =>
+          child === "devices" ? [{ id: "nested" }] : [],
+        ),
+      }) as Record<string, unknown>;
+
+    it.each([
+      { includeChains: true, includeDrumPads: true, expected: true },
+      { includeChains: true, includeDrumPads: false, expected: false },
+    ])(
+      "passes includeDrumPads && includeChains ($expected) to nested chain devices",
+      ({ includeChains, includeDrumPads, expected }) => {
+        const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
+        const device = {
+          path: "live_set tracks 0 devices 0",
+          getChildren: vi.fn(() => [createChainWithDevice(36)]),
+        };
+
+        processDrumPads(
+          device as unknown as LiveAPI,
+          {},
+          includeChains,
+          includeDrumPads,
+          0,
+          2,
+          readDeviceFn,
+        );
+
+        expect(readDeviceFn).toHaveBeenCalledWith(
+          { id: "nested" },
+          expect.objectContaining({
+            includeChains: expected,
+            includeDrumPads: expected,
+          }),
+        );
+      },
+    );
+
+    it("sorts a catch-all pad after a note pad when it is not first (aNote===-1 branch)", () => {
+      // Insertion order note-first, catch-all-second forces the sort comparator
+      // to be called with the catch-all as its first argument.
+      const deviceInfo = setupAndProcess([
+        { inNote: 36, name: "Low Note" },
+        { inNote: -1, name: "Catch All" },
+      ]);
+
+      expect(deviceInfo.drumPads!.map((p) => p.note)).toStrictEqual([36, -1]);
+    });
+
     it("should handle invalid in_note values outside MIDI range", () => {
       // Test with an invalid MIDI note (> 127) that's not the catch-all -1
       // This exercises the fallback path when midiToNoteName returns null

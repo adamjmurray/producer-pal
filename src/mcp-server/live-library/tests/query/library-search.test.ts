@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { fourCC } from "../../library-filters.ts";
 import { librarySearch } from "../../query/library-search.ts";
 import { setupLibraryFixtureLifecycle } from "../fixtures/library-fixture.ts";
 
@@ -458,6 +459,26 @@ describe("librarySearch", () => {
       expect(result.items.every((i) => i.pathExists === false)).toBe(true);
     });
 
+    it("skips stat for truncated paths, leaving pathExists unset", async () => {
+      // A path whose parent chain exceeds MAX_PARENT_DEPTH comes back
+      // truncated; verifyItemPaths must skip it (Promise.resolve(null)) even
+      // though stat would otherwise resolve.
+      const deep = createDbWithTruncatedPath();
+
+      try {
+        vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(deep.dbPath);
+        vi.mocked(stat).mockResolvedValue({} as never);
+
+        const result = await librarySearch({ verifyPaths: true });
+        const item = result.items.find((i) => i.name === "deep.wav");
+
+        expect(item?.pathTruncated).toBe(true);
+        expect(item?.pathExists).toBeUndefined();
+      } finally {
+        deep.cleanup();
+      }
+    });
+
     it("reports existence independently per path", async () => {
       const present = "/Users/test/Music/Ableton/User Library/user_kick.aif";
 
@@ -635,6 +656,61 @@ describe("librarySearch", () => {
     });
   });
 });
+
+/**
+ * Create a temp Live-files DB with a single leaf file whose parent-folder chain
+ * is deeper than MAX_PARENT_DEPTH (30), so its reconstructed path comes back
+ * `truncated: true`.
+ *
+ * @returns The DB path and a cleanup function removing the temp dir.
+ */
+function createDbWithTruncatedPath(): {
+  dbPath: string;
+  cleanup: () => void;
+} {
+  const dir = mkdtempSync(join(tmpdir(), "ppal-lib-truncated-"));
+  const dbPath = join(dir, "Live-files-12300.db");
+  const db = new DatabaseSync(dbPath);
+
+  db.exec(`
+    CREATE TABLE files (
+      file_id INTEGER PRIMARY KEY,
+      parent_id INTEGER,
+      file_type INTEGER,
+      name TEXT,
+      use_count INTEGER DEFAULT 0,
+      mod_date INTEGER DEFAULT 0,
+      place_id INTEGER,
+      subtype INTEGER
+    );
+    CREATE TABLE places (file_id INTEGER PRIMARY KEY, folder_kind INTEGER);
+    CREATE TABLE keywords (
+      file_id INTEGER, keyw_id INTEGER, is_auto INTEGER DEFAULT 0
+    );
+  `);
+
+  const fldr = fourCC("fldr");
+  const wav = fourCC("wav-");
+  const insert = db.prepare(
+    `INSERT INTO files (file_id, parent_id, file_type, name, use_count, mod_date, place_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  // Root + 39 nested folders (40 levels) then the leaf → chain exceeds depth 30.
+  insert.run(1, 0, fldr, "/", 0, 0, null);
+
+  for (let i = 2; i <= 40; i += 1) {
+    insert.run(i, i - 1, fldr, `folder${i}`, 0, 0, null);
+  }
+
+  insert.run(1000, 40, wav, "deep.wav", 5, 1_700_000_000, null);
+  db.close();
+
+  return {
+    dbPath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}
 
 /**
  * Create a temp Live-files DB whose `files` table omits the `subtype` column,

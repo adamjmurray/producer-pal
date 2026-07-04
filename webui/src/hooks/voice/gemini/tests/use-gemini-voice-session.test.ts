@@ -194,6 +194,44 @@ async function renderConnected(
   return view;
 }
 
+/**
+ * A one-shot gate promise plus its release trigger, for parking an async mock.
+ * @returns The gate promise and its resolver
+ */
+function makeGate(): { gate: Promise<void>; release: () => void } {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+
+  return { gate, release };
+}
+
+/**
+ * Render the hook, begin connect() (letting it reach its first await), unmount
+ * mid-connect, then release the parked gate and await connect. The caller parks
+ * the mock that awaits the gate before calling.
+ * @param release - The gate release captured by the test's parked mock
+ * @returns The renderHook result for post-teardown assertions
+ */
+async function connectUnmountRelease(release: () => void) {
+  const { result, unmount } = renderHook(() => useGeminiVoiceSession(PARAMS));
+  let connectPromise!: Promise<void>;
+
+  await act(async () => {
+    connectPromise = result.current.connect();
+    await Promise.resolve();
+  });
+
+  unmount();
+  await act(async () => {
+    release();
+    await connectPromise;
+  });
+
+  return result;
+}
+
 beforeEach(() => {
   h.fetchGeminiToken.mockResolvedValue({ value: "gem-key", ephemeral: false });
 });
@@ -685,30 +723,73 @@ describe("useGeminiVoiceSession", () => {
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, true);
   });
 
+  it("bails after MCP tools resolve if torn down first", async () => {
+    // Park createGeminiMcpTools so we can tear down before the first stale check
+    // (right after the MCP client is stored). The token fetch and session open
+    // must never run; cleanup closes the stored MCP client.
+    const { gate, release } = makeGate();
+
+    h.createGeminiMcpTools.mockReturnValueOnce(
+      gate.then(() => ({
+        functionDeclarations: [{ name: "ppal-x" }],
+        executeTool: h.executeTool,
+        mcpClient: { close: h.mcpClose },
+      })),
+    );
+
+    await connectUnmountRelease(release);
+
+    expect(h.fetchGeminiToken).not.toHaveBeenCalled();
+    expect(h.liveConnect).not.toHaveBeenCalled();
+    expect(h.mcpClose).toHaveBeenCalled();
+  });
+
+  it("closes the freshly opened session when torn down during session open", async () => {
+    // Park live.connect so teardown races the post-open stale check: the opened
+    // session must be closed (closeQuietly) rather than installed.
+    const { gate, release } = makeGate();
+
+    h.liveConnect.mockImplementationOnce(
+      async (params: {
+        callbacks: Record<string, (arg?: unknown) => void>;
+        config: unknown;
+        model: string;
+      }) => {
+        h.state.callbacks = params.callbacks;
+        h.state.connectParams = params;
+        params.callbacks.onopen?.();
+        await gate;
+
+        return h.fakeSession;
+      },
+    );
+
+    const result = await connectUnmountRelease(release);
+
+    expect(h.fakeSession.close).toHaveBeenCalled();
+    expect(h.mcpClose).toHaveBeenCalled();
+    expect(result.current.status).not.toBe("connected");
+  });
+
+  it("resets player volume to unity when the volume prop clears", async () => {
+    const view = await renderConnected({ volume: 1 });
+    const player = h.FakePlayer.last!;
+
+    player.setVolume.mockClear();
+    view.rerender({ ...PARAMS, volume: undefined });
+
+    expect(player.setVolume).toHaveBeenCalledWith(1);
+  });
+
   it("bails and closes the session if torn down during connect", async () => {
     // Suspend the token fetch, unmount mid-connect, then let it resolve.
-    let release!: () => void;
-    const gate = new Promise<void>((r) => {
-      release = r;
-    });
+    const { gate, release } = makeGate();
 
     h.fetchGeminiToken.mockReturnValueOnce(
       gate.then(() => ({ value: "gem-key", ephemeral: false })),
     );
 
-    const { result, unmount } = renderHook(() => useGeminiVoiceSession(PARAMS));
-    let connectPromise!: Promise<void>;
-
-    await act(async () => {
-      connectPromise = result.current.connect();
-      await Promise.resolve();
-    });
-
-    unmount();
-    await act(async () => {
-      release();
-      await connectPromise;
-    });
+    await connectUnmountRelease(release);
 
     // Torn down before the session opened: no live session leaked.
     expect(h.liveConnect).not.toHaveBeenCalled();

@@ -519,6 +519,147 @@ describe("useContextEditorState", () => {
     });
   });
 
+  describe("not-ready guards and pre-seed edge cases", () => {
+    const loading = (): UseDocMemoryReturn =>
+      makeMemory({ status: { kind: "loading" } });
+
+    it("handleClear is a no-op while memory is still loading", async () => {
+      const clear = vi.fn().mockResolvedValue(true);
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "loading" }, clear }),
+      );
+
+      await act(async () => {
+        await result.current.handleClear();
+      });
+
+      expect(clear).not.toHaveBeenCalled();
+    });
+
+    it("handleReload is a no-op while memory is still loading", async () => {
+      const { result } = renderEditor(loading());
+      const startingKey = result.current.editorKey;
+
+      await act(() => {
+        result.current.handleReload();
+      });
+
+      expect(result.current.editorKey).toBe(startingKey);
+    });
+
+    it("handleImport is a no-op while memory is still loading", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "loading" }, save }),
+      );
+
+      await act(async () => {
+        await result.current.handleImport("# imported");
+      });
+
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it("getContent returns an empty string before the draft is seeded", () => {
+      const { result } = renderEditor(loading());
+
+      expect(result.current.getContent()).toBe("");
+    });
+
+    it("flushSave bails when the memory is no longer ready (e.g. reloading)", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const { result, setMemory } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
+      );
+
+      await act(() => {
+        result.current.handleChange("typed");
+      });
+
+      // Only an error nulls the draft; a loading transition keeps it, so
+      // flushSave has a value but must bail on the not-ready status.
+      setMemory(makeMemory({ status: { kind: "loading" }, save }));
+
+      await act(() => {
+        result.current.handleBlur();
+      });
+
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it("skips external-update detection while a failed save has rolled back the baseline", async () => {
+      const save = vi.fn().mockResolvedValue(false);
+      const { result, setMemory } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
+      );
+
+      await act(() => {
+        result.current.handleChange("typed");
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // The failed save rolled lastSavedRef back to null. A subsequent status
+      // update must re-run the external-update effect and bail on the null
+      // baseline rather than surfacing a spurious banner.
+      setMemory(
+        makeMemory({ status: { kind: "ready", content: "server" }, save }),
+      );
+
+      expect(result.current.externalUpdate).toBe(false);
+    });
+
+    it("handleImport awaits an in-flight save before importing", async () => {
+      let resolveSave: (saved: boolean) => void = () => {};
+      const save = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<boolean>((resolve) => {
+              resolveSave = resolve;
+            }),
+        )
+        .mockResolvedValue(true);
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
+      );
+
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+      // Arm a debounced save and hold it in-flight.
+      await act(() => {
+        result.current.handleChange("draft");
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+        await Promise.resolve();
+      });
+      expect(save).toHaveBeenCalledTimes(1);
+
+      let importPromise: Promise<void> | null = null;
+
+      await act(() => {
+        importPromise = result.current.handleImport("# imported");
+      });
+      // Import must be blocked on the in-flight save; its POST hasn't gone yet.
+      await act(async () => {
+        for (let i = 0; i < 3; i++) await Promise.resolve();
+      });
+      expect(save).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveSave(true);
+        await importPromise;
+      });
+
+      expect(save).toHaveBeenCalledTimes(2);
+      expect(save).toHaveBeenLastCalledWith("# imported");
+    });
+  });
+
   describe("unmount flushes pending save", () => {
     it("flushes a debounced save when the editor unmounts mid-debounce (Esc close after typing)", async () => {
       // Regression: cleanup only cleared timers without flushing, so typing

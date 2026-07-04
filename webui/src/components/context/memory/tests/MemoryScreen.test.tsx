@@ -7,6 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { type VNode } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type MemoryCollectionStatus,
@@ -55,6 +56,25 @@ function fakeCollection(
 }
 
 /**
+ * Build a MemoryScreen element for the given collection.
+ * @param collection - The collection hook return to pass
+ * @param onClose - Close spy (defaults to a fresh no-op)
+ * @returns The MemoryScreen element
+ */
+function screenEl(
+  collection: UseMemoryCollectionReturn,
+  onClose: () => void = vi.fn(),
+): VNode {
+  return (
+    <MemoryScreen
+      collection={collection}
+      tabSlot={TAB_SLOT}
+      onClose={onClose}
+    />
+  );
+}
+
+/**
  * Render MemoryScreen with the given collection.
  * @param collection - The collection hook return to pass
  * @returns The onClose spy for close-button assertions
@@ -64,13 +84,7 @@ function renderWith(collection: UseMemoryCollectionReturn): {
 } {
   const onClose = vi.fn();
 
-  render(
-    <MemoryScreen
-      collection={collection}
-      tabSlot={TAB_SLOT}
-      onClose={onClose}
-    />,
-  );
+  render(screenEl(collection, onClose));
 
   return { onClose };
 }
@@ -204,11 +218,7 @@ describe("MemoryScreen — ready", () => {
 describe("MemoryScreen — deleted externally", () => {
   it("keeps the draft and shows a banner when a poll deletes the edited entry", () => {
     const { rerender } = render(
-      <MemoryScreen
-        collection={fakeCollection({ kind: "ready", entries: ENTRIES })}
-        tabSlot={TAB_SLOT}
-        onClose={vi.fn()}
-      />,
+      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES })),
     );
 
     // Select an entry and start editing its body.
@@ -219,14 +229,7 @@ describe("MemoryScreen — deleted externally", () => {
 
     // A poll (assistant forget / hand delete) drops it from the collection.
     rerender(
-      <MemoryScreen
-        collection={fakeCollection({
-          kind: "ready",
-          entries: ENTRIES.slice(1),
-        })}
-        tabSlot={TAB_SLOT}
-        onClose={vi.fn()}
-      />,
+      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES.slice(1) })),
     );
 
     // The banner explains the state; the draft survives (not reset to blank).
@@ -239,23 +242,12 @@ describe("MemoryScreen — deleted externally", () => {
 
   it("discards the draft and returns to the create form", () => {
     const { rerender } = render(
-      <MemoryScreen
-        collection={fakeCollection({ kind: "ready", entries: ENTRIES })}
-        tabSlot={TAB_SLOT}
-        onClose={vi.fn()}
-      />,
+      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES })),
     );
 
     fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
     rerender(
-      <MemoryScreen
-        collection={fakeCollection({
-          kind: "ready",
-          entries: ENTRIES.slice(1),
-        })}
-        tabSlot={TAB_SLOT}
-        onClose={vi.fn()}
-      />,
+      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES.slice(1) })),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));

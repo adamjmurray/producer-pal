@@ -14,6 +14,16 @@ const simplerDevice = {
   type: 1,
 };
 
+/** The C1 "Layer 1" DrumChain result (spread with a `devices` array per test). */
+const LAYER1_CHAIN = {
+  id: "chain-1",
+  path: "t1/d0/pC1/c0",
+  type: "DrumChain",
+  name: "Layer 1",
+  color: "#00FF00",
+  mappedPitch: "C3",
+};
+
 /**
  * Setup drum pad mocks with a standard C1/Kick pad and optional chain/device config.
  * @param overrides - Optional pad property overrides and chain/device config
@@ -146,15 +156,7 @@ describe("readDevice with drum pad path", () => {
 
     const result = readDevice({ path: "t1/d0/pC1/c0" });
 
-    expect(result).toStrictEqual({
-      id: "chain-1",
-      path: "t1/d0/pC1/c0",
-      type: "DrumChain",
-      name: "Layer 1",
-      color: "#00FF00",
-      mappedPitch: "C3",
-      devices: [],
-    });
+    expect(result).toStrictEqual({ ...LAYER1_CHAIN, devices: [] });
   });
 
   it("should read drum pad chain with devices", () => {
@@ -174,12 +176,7 @@ describe("readDevice with drum pad path", () => {
     const result = readDevice({ path: "t1/d0/pC1/c0" });
 
     expect(result).toStrictEqual({
-      id: "chain-1",
-      path: "t1/d0/pC1/c0",
-      type: "DrumChain",
-      name: "Layer 1",
-      color: "#00FF00",
-      mappedPitch: "C3",
+      ...LAYER1_CHAIN,
       devices: [
         {
           id: "device-1",

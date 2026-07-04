@@ -67,6 +67,24 @@ describe("deriveTitle", () => {
   it("returns currentTitle when no user messages", () => {
     expect(deriveTitle("Old Title", [])).toBe("Old Title");
   });
+
+  it("tolerates a first user message with no content", () => {
+    const history = [{ role: "user" }];
+
+    expect(deriveTitle(null, history)).toBeNull();
+  });
+
+  it("keeps the connect line when the second user message has no content", () => {
+    const history = [
+      { role: "user", content: "connect" },
+      { role: "assistant", content: "ok" },
+      { role: "user" },
+    ];
+
+    // The second user message is empty, so the derived title falls back to the
+    // (connect) first line rather than an empty string.
+    expect(deriveTitle(null, history)).toBe("connect");
+  });
 });
 
 describe("buildSaveRecord systemInstruction snapshot", () => {
@@ -139,6 +157,24 @@ describe("buildConversationSaveRecord fork inheritance", () => {
     });
 
     expect(rec.systemInstruction).toBe("CURRENT GLOBAL");
+  });
+
+  it("falls back to reuseId as the parent when the source record is gone", async () => {
+    // The trunk was deleted between fork signal and save: with no source to
+    // derive a parent from, the fork attaches directly to the reuse id.
+    vi.mocked(loadConversation).mockResolvedValue(null as never);
+
+    const rec = await buildConversationSaveRecord({
+      id: "fork-1",
+      reuseId: "trunk",
+      fork: { anchorIndex: 2 },
+      refs: refs(),
+      chatHistory: HISTORY,
+      updatedAt: undefined,
+    });
+
+    expect(rec.forkParentId).toBe("trunk");
+    expect(rec.forkedAtIndex).toBe(2);
   });
 });
 
@@ -234,6 +270,17 @@ describe("sumMessageUsage", () => {
       inputTokens: 150,
       outputTokens: 30,
       cacheReadTokens: 18500,
+    });
+  });
+
+  it("defaults missing input/output token fields to zero", () => {
+    // An assistant message with a usage object but no token fields still counts
+    // as usage; each missing field falls back to 0.
+    const history = [{ role: "assistant", content: "x", usage: {} }];
+
+    expect(sumMessageUsage(history)).toStrictEqual({
+      inputTokens: 0,
+      outputTokens: 0,
     });
   });
 

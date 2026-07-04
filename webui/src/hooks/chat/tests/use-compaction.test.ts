@@ -30,6 +30,7 @@ interface SetupOptions {
   messages?: UIMessage[];
   isAssistantResponding?: boolean;
   noClient?: boolean;
+  bootstrapClientRef?: { current: (() => Promise<void>) | null };
 }
 
 function setup(opts: SetupOptions = {}) {
@@ -49,6 +50,7 @@ function setup(opts: SetupOptions = {}) {
   const { result } = renderHook(() =>
     useCompaction({
       clientRef,
+      bootstrapClientRef: opts.bootstrapClientRef,
       adapter,
       autoSaveRef: { current: autoSave },
       messages,
@@ -209,6 +211,76 @@ describe("useCompaction", () => {
 
     expect(client.chatHistory).toBe(before);
     expect(setMessages).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the targeted message index has no message", async () => {
+    const { result, client, setMessages } = setup({ messages: [] });
+
+    await act(async () => {
+      await result.current.compact(0);
+    });
+
+    expect(client.summarize).not.toHaveBeenCalled();
+    expect(setMessages).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the client history is empty", async () => {
+    const { result, client, setMessages } = setup({ chatHistory: [] });
+
+    await act(async () => {
+      await result.current.compact(1);
+    });
+
+    expect(client.summarize).not.toHaveBeenCalled();
+    expect(setMessages).not.toHaveBeenCalled();
+  });
+
+  it("ignores a rejected summary after the conversation was switched away", async () => {
+    // Like the resolved-after-switch case, but the summary REJECTS post-switch:
+    // the catch must detect the stale client and bail without rendering an error.
+    const { result, client, clientRef, setMessages } = setup();
+
+    let rejectSummary: (err: unknown) => void = () => {};
+
+    client.summarize.mockReturnValueOnce(
+      new Promise<string>((_, reject) => {
+        rejectSummary = reject;
+      }),
+    );
+
+    await act(async () => {
+      const pending = result.current.compact(1);
+
+      clientRef.current = null;
+      rejectSummary(new Error("boom"));
+      await pending;
+    });
+
+    expect(setMessages).not.toHaveBeenCalled();
+  });
+
+  it("falls back to empty history in the error message when bootstrap fails before a client exists", async () => {
+    // A restored-but-not-sent conversation has no client; the bootstrap rejects
+    // before one is captured, so the catch renders the error with empty history.
+    const bootstrap = vi.fn().mockRejectedValue(new Error("bootstrap boom"));
+    const { result, adapter, setMessages } = setup({
+      noClient: true,
+      bootstrapClientRef: { current: bootstrap },
+    });
+
+    await act(async () => {
+      await result.current.compact(1);
+    });
+
+    expect(bootstrap).toHaveBeenCalled();
+    // The mock createErrorMessage mutates the array it receives, so assert the
+    // shape rather than an exact empty array. What matters for coverage is that
+    // the `?? []` fallback supplied a history when clientRef.current was null.
+    expect(adapter.createErrorMessage).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.any(Array),
+    );
+    expect(setMessages).toHaveBeenCalled();
   });
 
   it("invalidateCompactionUndo clears the undo availability", async () => {

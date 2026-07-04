@@ -252,6 +252,74 @@ describe("processDeviceChains", () => {
     expect(chains[0]).not.toHaveProperty("devices");
   });
 
+  it("builds null chain/device paths when devicePath is omitted", () => {
+    const mockChain = createMockChain("Chain A", {
+      devices: [{ id: "dev-1" }],
+    });
+    const mockDevice = {
+      getChildren: (child: string) => {
+        if (child === "chains") return [mockChain];
+        if (child === "return_chains") return [];
+
+        return [];
+      },
+    };
+
+    const deviceInfo: Record<string, unknown> = {};
+    const readDeviceCalls: Record<string, unknown>[] = [];
+
+    const mockReadDevice = (
+      d: { id: string },
+      opts: Record<string, unknown>,
+    ) => {
+      readDeviceCalls.push(opts);
+
+      return { id: d.id };
+    };
+
+    processDeviceChains(
+      mockDevice as unknown as LiveAPI,
+      deviceInfo,
+      DEVICE_TYPE.INSTRUMENT_RACK,
+      {
+        includeChains: true,
+        includeReturnChains: false,
+        includeDrumPads: false,
+        depth: 0,
+        maxDepth: 2,
+        readDeviceFn: mockReadDevice,
+        // devicePath intentionally omitted → chainPath and nested device path null
+      },
+    );
+
+    const chains = deviceInfo.chains as Record<string, unknown>[];
+
+    // buildChainInfo omits a falsy (null) path.
+    expect(chains[0]?.path).toBeUndefined();
+    // Nested device path is null too (chainPath was null).
+    expect(readDeviceCalls[0]?.parentPath).toBeNull();
+  });
+
+  it("builds null return-chain paths when devicePath is omitted", () => {
+    const mockDevice = {
+      getChildren: (child: string) => {
+        if (child === "chains") return [];
+        if (child === "return_chains") return [createMockChain("Return A")];
+
+        return [];
+      },
+    };
+
+    const deviceInfo: DeviceInfoResult = {};
+
+    callWithReturnChains(mockDevice, deviceInfo); // no devicePath
+
+    const chains = deviceInfo.returnChains as ReturnChain[];
+
+    expect(chains).toHaveLength(1);
+    expect(chains[0]?.path).toBeUndefined();
+  });
+
   it("sets hasSoloedChain when a rack chain is soloed", () => {
     const createSoloChain = (name: string, solo: number) => ({
       id: `chain-${name}`,

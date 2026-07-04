@@ -3,37 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
-import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
-import { useTempConfigDir } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
+import { describe, expect, it } from "vitest";
+import {
+  connectResponse,
+  fakeInnerCall,
+  useTempConfigDir,
+} from "#src/mcp-server/tests/config-dir-test-helpers.ts";
 import { rememberCustomSkill } from "../custom-skills-store.ts";
 import { withCustomSkills } from "../custom-skills-inject.ts";
 
 useTempConfigDir();
 
 /**
- * Build a fake inner callLiveApi that resolves to the given response.
- * @param response - The McpResponse the fake should resolve with
- * @returns A vi.fn matching the callLiveApi signature
- */
-function fakeInner(response: McpResponse) {
-  return vi.fn(async () => response);
-}
-
-/**
- * A minimal successful connect-style response with a single content block.
- * @returns A fresh McpResponse
- */
-function connectResponse(): McpResponse {
-  return { content: [{ type: "text", text: "{connected:true}" }] };
-}
-
-/**
  * Run withCustomSkills over a ppal-connect call and return the appended block.
  * @returns The appended skills block, or undefined when none was appended
  */
 async function appendedBlock(): Promise<string | undefined> {
-  const result = await withCustomSkills(fakeInner(connectResponse()))(
+  const result = await withCustomSkills(fakeInnerCall(connectResponse()))(
     "ppal-connect",
     {},
   );
@@ -90,7 +76,7 @@ describe("withCustomSkills", () => {
   });
 
   it("does not inject when there are no skills", async () => {
-    const result = await withCustomSkills(fakeInner(connectResponse()))(
+    const result = await withCustomSkills(fakeInnerCall(connectResponse()))(
       "ppal-connect",
       {},
     );
@@ -106,7 +92,7 @@ describe("withCustomSkills", () => {
       enabled: false,
     });
 
-    const result = await withCustomSkills(fakeInner(connectResponse()))(
+    const result = await withCustomSkills(fakeInnerCall(connectResponse()))(
       "ppal-connect",
       {},
     );
@@ -117,7 +103,7 @@ describe("withCustomSkills", () => {
   it("leaves non-connect tool responses untouched", async () => {
     rememberCustomSkill({ name: "on", description: "d", body: "b" });
 
-    const result = await withCustomSkills(fakeInner(connectResponse()))(
+    const result = await withCustomSkills(fakeInnerCall(connectResponse()))(
       "ppal-read-track",
       {},
     );

@@ -15,10 +15,16 @@ import { jsonResponse } from "./doc-memory-transport-test-helpers";
 const CONFIG_URL = "http://localhost:3000/config";
 
 interface StubOptions {
-  /** Live config to return, or "fail" for a non-ok /config response. */
-  config?: { notation: string; smallModelMode: boolean } | "fail";
-  /** How the preview endpoint responds ("ok" echoes the requested combo). */
-  preview?: "ok" | "fail" | "throw";
+  /**
+   * Live config to return, "fail" for a non-ok /config response, or "throw"
+   * for a rejected fetch (network error).
+   */
+  config?: { notation: string; smallModelMode: boolean } | "fail" | "throw";
+  /**
+   * How the preview endpoint responds ("ok" echoes the requested combo,
+   * "empty" returns a body with no head/driver/skills fields).
+   */
+  preview?: "ok" | "fail" | "throw" | "empty";
 }
 
 /**
@@ -33,6 +39,8 @@ function stubFetch(options: StubOptions = {}): ReturnType<typeof vi.fn> {
     const url = String(input);
 
     if (url.startsWith(CONFIG_URL)) {
+      if (config === "throw") return Promise.reject(new Error("config boom"));
+
       return config === "fail"
         ? Promise.resolve(new Response("no", { status: 500 }))
         : Promise.resolve(jsonResponse(config));
@@ -45,6 +53,8 @@ function stubFetch(options: StubOptions = {}): ReturnType<typeof vi.fn> {
     }
 
     if (preview === "throw") return Promise.reject("preview boom");
+
+    if (preview === "empty") return Promise.resolve(jsonResponse({}));
 
     const params = new URL(url).searchParams;
     const notation = params.get("notation");
@@ -229,6 +239,103 @@ describe("useSkillsPreview", () => {
         kind: "error",
         message: "preview boom",
       });
+    });
+  });
+
+  it("defaults missing head/driver/skills fields to empty strings", async () => {
+    stubFetch({ config: "fail", preview: "empty" });
+
+    const { result } = renderHook(useSkillsPreview);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.preview).toMatchObject({
+      head: "",
+      driver: "",
+      skills: "",
+      charCount: 0,
+    });
+  });
+
+  it("defaults the live notation to bar|beat when /config reports an unknown one", async () => {
+    stubFetch({
+      config: { notation: "bogus-notation", smallModelMode: false },
+    });
+
+    const { result } = renderHook(useSkillsPreview);
+
+    await waitFor(() => {
+      expect(result.current.currentMode).not.toBeNull();
+    });
+
+    expect(result.current.currentMode?.notation).toBe("barbeat");
+  });
+
+  it("treats a thrown /config fetch as no live mode", async () => {
+    stubFetch({ config: "throw" });
+
+    const { result } = renderHook(useSkillsPreview);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    expect(result.current.currentMode).toBeNull();
+  });
+
+  it("ignores a preview rejection from a superseded (aborted) request", async () => {
+    // The first preview is parked; a selection change aborts it, then it
+    // rejects late. The aborted-guard must swallow it and keep the newer result.
+    let rejectFirst: (err: unknown) => void = () => {};
+    let previewCall = 0;
+    const fetchMock = vi.fn((input: unknown) => {
+      const url = String(input);
+
+      if (url.startsWith(CONFIG_URL)) {
+        return Promise.resolve(new Response("no", { status: 500 }));
+      }
+
+      previewCall += 1;
+
+      if (previewCall === 1) {
+        return new Promise<Response>((_, reject) => {
+          rejectFirst = reject;
+        });
+      }
+
+      const params = new URL(url).searchParams;
+
+      return Promise.resolve(
+        jsonResponse({
+          head: params.get("notation"),
+          driver: "d",
+          skills: "later",
+        }),
+      );
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(useSkillsPreview);
+
+    await act(async () => {
+      result.current.setNotation("midi-json");
+    });
+
+    // Now reject the first (already-aborted) request; it must be swallowed.
+    await act(async () => {
+      rejectFirst(new Error("late failure"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      const status = result.current.status;
+
+      expect(status.kind === "ready" && status.preview.skills).toBe("later");
     });
   });
 });

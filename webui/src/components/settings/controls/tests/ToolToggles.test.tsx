@@ -137,6 +137,35 @@ describe("ToolToggles", () => {
       },
     );
 
+    it.each([{ button: "Enable default toolset" }, { button: "Disable all" }])(
+      "$button omits the Live API tool from the map",
+      ({ button }) => {
+        const setEnabledTools = vi.fn();
+        const tools: McpTool[] = [
+          ...TEST_TOOLS,
+          { id: "ppal-live-api", name: "Live API From Server" },
+        ];
+
+        render(
+          <ToolToggles
+            {...defaultProps}
+            tools={tools}
+            setEnabledTools={setEnabledTools}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: button }));
+
+        const map = setEnabledTools.mock.calls[0]?.[0] as Record<
+          string,
+          boolean
+        >;
+
+        expect(map).not.toHaveProperty("ppal-live-api");
+        expect(map).toHaveProperty("ppal-read-live-set");
+      },
+    );
+
     it("Enable default toolset preserves Live API when forced on", () => {
       const setLiveApiEnabled = vi.fn();
 
@@ -264,6 +293,21 @@ describe("ToolToggles", () => {
       const checkbox = screen.getByLabelText("Connect to Ableton");
 
       fireEvent.click(checkbox);
+
+      expect(setEnabledTools).not.toHaveBeenCalled();
+    });
+
+    it("handleToggle early-returns for an always-disabled tool", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+      );
+
+      // Dispatch the change event directly: disabled inputs suppress a synthetic
+      // click's change, so fire it explicitly to run handleToggle and hit its
+      // isToolDisabled guard for the always-enabled connect tool.
+      fireEvent.change(screen.getByLabelText("Connect to Ableton"));
 
       expect(setEnabledTools).not.toHaveBeenCalled();
     });

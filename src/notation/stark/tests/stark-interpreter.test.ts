@@ -407,3 +407,40 @@ describe("stark interpreter — velocity buckets are within range", () => {
     expect(notes.every((n: NoteEvent) => n.velocity >= 115)).toBe(true);
   });
 });
+
+describe("stark interpreter — additional branch coverage", () => {
+  it("warns with the plural noun for multiple collisions from mixed sections", () => {
+    // kick and melody C,, both resolve to MIDI 36 at t=0 and t=1 → 2 collisions.
+    const notes = interpretNotation("kick: X X\nmelody: C,, C,,");
+
+    expect(notes).toHaveLength(2);
+    expect(notes.every((n) => n.pitch === 36)).toBe(true);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("2 same-pitch+start collisions"),
+    );
+  });
+
+  it("melody: a sharp accidental raises the pitch a semitone", () => {
+    expect(interpretNotation("melody: C#")[0]?.pitch).toBe(61);
+  });
+
+  it("chords: a bare rest advances by the line default duration", () => {
+    // C (/1 = 4 beats), bare z rest (line default /1 = 4 beats), G at beat 8.
+    const notes = interpretNotation("chords: C z G");
+
+    expect(
+      notes.filter((n) => n.start_time === 8).map((n) => n.pitch),
+    ).toStrictEqual([55, 59, 62]);
+  });
+
+  it("warn-skips an unknown chord symbol that carries a slash bass", () => {
+    const notes = interpretNotation("chords: Cwat/B");
+
+    expect(notes).toHaveLength(0);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('unknown chord symbol "Cwat/B"'),
+    );
+  });
+});

@@ -533,6 +533,42 @@ describe("useConversations", () => {
       );
     });
 
+    it("hands a voice record found in the URL hash off to onForeignRecord on mount", async () => {
+      const voiceId = "voice-mount-1";
+
+      await saveVoiceConversation(voiceId);
+      window.location.hash = voiceId;
+
+      const onForeignRecord = vi.fn();
+      const { props } = createProps();
+
+      props.onForeignRecord = onForeignRecord;
+      renderHook(() => useConversations(props));
+
+      await waitForEffects();
+
+      expect(onForeignRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: voiceId }),
+      );
+    });
+
+    it("clears the active id for a hash voice record on mount when onForeignRecord is not provided", async () => {
+      const voiceId = "voice-mount-2";
+
+      await saveVoiceConversation(voiceId);
+      window.location.hash = voiceId;
+
+      const { props } = createProps();
+
+      expect(props.onForeignRecord).toBeUndefined();
+      const { result } = renderHook(() => useConversations(props));
+
+      await waitForEffects();
+
+      expect(result.current.activeConversationId).toBeNull();
+      expect(props.restoreChatHistory).not.toHaveBeenCalled();
+    });
+
     it("switchConversation clears the active id for voice records when onForeignRecord is not provided", async () => {
       const voiceId = "voice-conv-456";
 

@@ -17,8 +17,28 @@ import { join } from "node:path";
 import express, { type Express } from "express";
 import Max from "max-api";
 import { afterEach, beforeEach, expect, vi } from "vitest";
+import { type CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
+import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
 import { handleNodeRequest } from "#src/mcp-server/rpc/node-request-protocol.ts";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+
+/**
+ * Build a fake inner callLiveApi that resolves to the given response. Shared by
+ * the connect-append inject-seam tests (withMemory / withCustomSkills).
+ * @param response - The McpResponse the fake should resolve with
+ * @returns A callLiveApi that ignores its args and resolves to the response
+ */
+export function fakeInnerCall(response: McpResponse): CallLiveApiFunction {
+  return vi.fn(async () => response);
+}
+
+/**
+ * A minimal successful connect-style response with a single content block.
+ * @returns A fresh McpResponse
+ */
+export function connectResponse(): McpResponse {
+  return { content: [{ type: "text", text: "{connected:true}" }] };
+}
 
 /**
  * Register beforeEach/afterEach hooks that point PRODUCER_PAL_CONFIG_DIR at a

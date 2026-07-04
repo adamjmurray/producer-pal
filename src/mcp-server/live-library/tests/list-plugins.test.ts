@@ -330,6 +330,99 @@ describe("listPlugins — error handling", () => {
   });
 });
 
+describe("listPlugins — dev_identifier / vendor branch coverage", () => {
+  // Seeds targeting the derivation edge cases: a valid scheme with no known
+  // category token, a null dev_identifier, an empty scheme ("device:"), a
+  // scheme-only identifier ("device"), and a null-vendor row for the vendor
+  // filter's `?? ""` fallback.
+  const branchSeeds = [
+    row("SchemeNoCat", "Acme", "device:vst3:weird:Thing"),
+    row("NullDevId", null, null),
+    row("EmptyScheme", null, "device:"),
+    row("SchemeOnly", null, "device"),
+  ];
+  let fixture: PluginsFixture;
+
+  beforeAll(() => {
+    fixture = createPluginsDbFixture("v2", branchSeeds);
+  });
+
+  afterAll(() => {
+    fixture.cleanup();
+  });
+
+  it("returns null category for a valid scheme with no category token", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins();
+    const item = result.plugins.find((p) => p.name === "SchemeNoCat");
+
+    expect(item?.format).toBe("VST3");
+    expect(item?.category).toBeNull();
+  });
+
+  it("returns null format/category for null or malformed dev_identifiers", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins();
+    const byName = new Map(result.plugins.map((p) => [p.name, p]));
+
+    for (const name of ["NullDevId", "EmptyScheme", "SchemeOnly"]) {
+      expect(byName.get(name)?.format).toBeNull();
+      expect(byName.get(name)?.category).toBeNull();
+    }
+  });
+
+  it("applies the vendor filter across rows with a null vendor", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins({ vendor: "acme" });
+
+    expect(result.plugins.map((p) => p.name)).toStrictEqual(["SchemeNoCat"]);
+  });
+
+  it("degrades with String(error) when a non-Error is thrown during DB selection", async () => {
+    vi.mocked(dbPathMod.findLivePluginsDbPath).mockRejectedValue("boom");
+
+    const result = await listPlugins();
+
+    expect(result.dbAvailable).toBe(false);
+    expect(result.reason).toContain("boom");
+  });
+});
+
+/**
+ * Build a minimal enabled plugin row with an arbitrary vendor/dev_identifier.
+ *
+ * @param name - Plugin display name
+ * @param vendor - Vendor name (or null)
+ * @param devIdentifier - dev_identifier URI (or null)
+ * @returns A plugin row for createPluginsDbFixture
+ */
+function row(
+  name: string,
+  vendor: string | null,
+  devIdentifier: string | null,
+): {
+  name: string;
+  vendor: string | null;
+  version: string | null;
+  scanstate: number | null;
+  enabled: number;
+  subcategories: string | null;
+  dev_identifier: string | null;
+} {
+  return {
+    name,
+    vendor,
+    version: null,
+    scanstate: 1,
+    enabled: 1,
+    subcategories: null,
+    dev_identifier: devIdentifier,
+  };
+}
+
 /**
  * Build a minimal enabled PluginSeed for subcategory-parsing tests.
  *

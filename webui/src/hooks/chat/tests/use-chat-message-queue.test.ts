@@ -99,6 +99,31 @@ async function renderAndSendHello(
   return result;
 }
 
+/**
+ * Render with the adapter, send "Hello", queue a "B" follow-up, then retry the
+ * user turn — the shared setup for the retry-fork queue-flush tests.
+ * @param adapter - Recording adapter under test
+ * @returns The renderHook result for assertions
+ */
+async function sendQueueThenRetry(
+  adapter: ReturnType<typeof createRecordingAdapter>,
+) {
+  const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+  await act(async () => {
+    await result.current.handleSend("Hello");
+  });
+
+  const userIndex = result.current.messages.findIndex((m) => m.role === "user");
+
+  await act(() => result.current.enqueueMessage("B"));
+  await act(async () => {
+    await result.current.handleRetry(userIndex);
+  });
+
+  return result;
+}
+
 describe("useChat message queuing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -273,23 +298,10 @@ describe("useChat message queuing", () => {
     const sent: string[] = [];
     const adapter = createRecordingAdapter(sent);
 
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
-
-    await act(async () => {
-      await result.current.handleSend("Hello");
-    });
-
-    const userIndex = result.current.messages.findIndex(
-      (m) => m.role === "user",
-    );
-
     // A follow-up is queued, then the user retries the prior message. The fork
     // must neither drop the queued words nor strand them: once it streams a
     // response, the follow-up flushes through the normal send path.
-    await act(() => result.current.enqueueMessage("B"));
-    await act(async () => {
-      await result.current.handleRetry(userIndex);
-    });
+    const result = await sendQueueThenRetry(adapter);
 
     expect(result.current.queuedMessages).toStrictEqual([]);
     expect(sent).toContain("B");
@@ -390,20 +402,7 @@ describe("useChat message queuing", () => {
       if (calls > 1) throw new Error("fork stream failed");
     });
 
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
-
-    await act(async () => {
-      await result.current.handleSend("Hello");
-    });
-
-    const userIndex = result.current.messages.findIndex(
-      (m) => m.role === "user",
-    );
-
-    await act(() => result.current.enqueueMessage("B"));
-    await act(async () => {
-      await result.current.handleRetry(userIndex);
-    });
+    const result = await sendQueueThenRetry(adapter);
 
     // The fork errored mid-stream, so the follow-up must stay queued to flush on
     // a later send rather than being drained into the failed fork.
