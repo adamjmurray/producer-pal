@@ -742,5 +742,27 @@ describe("ContextScreen", () => {
 
       expect(saveMock).toHaveBeenCalledWith("edited");
     });
+
+    it("moves reset into the built-in header (no strip Clear when a default exists)", async () => {
+      const confirmMock = vi.fn().mockReturnValue(true);
+
+      vi.stubGlobal("confirm", confirmMock);
+      renderWithBuiltIn();
+
+      // The always-on strip Clear is gone; reset lives with the built-in.
+      expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
+      expect(screen.queryByText("Reset to default")).toBeNull();
+
+      await act(() => {
+        fireEvent.click(screen.getByText("Show built-in"));
+      });
+      await act(() => {
+        fireEvent.click(screen.getByText("Reset to default"));
+      });
+
+      expect(confirmMock).toHaveBeenCalled();
+      expect(clearMock).toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
   });
 });

@@ -25,10 +25,11 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
 /**
  * Render OverridePanes with sensible defaults.
  * @param over - Props to override on the defaults
- * @returns The render result and the toggle spy
+ * @returns The render result and the toggle/reset spies
  */
 function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
   const onToggleBuiltIn = vi.fn();
+  const onReset = vi.fn();
   const result = render(
     <OverridePanes
       editorKey={0}
@@ -37,13 +38,14 @@ function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
       overrideLabel="Your override"
       showBuiltIn={false}
       onToggleBuiltIn={onToggleBuiltIn}
+      onReset={onReset}
       onChange={vi.fn()}
       onBlur={vi.fn()}
       {...over}
     />,
   );
 
-  return { ...result, onToggleBuiltIn };
+  return { ...result, onToggleBuiltIn, onReset };
 }
 
 describe("OverridePanes", () => {
@@ -103,5 +105,20 @@ describe("OverridePanes", () => {
     fireEvent.click(screen.getByText("Hide"));
 
     expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
+  });
+
+  it("offers Reset to default in the built-in header when there is an override", () => {
+    const { onReset } = renderPanes({ showBuiltIn: true });
+
+    fireEvent.click(screen.getByText("Reset to default"));
+
+    expect(onReset).toHaveBeenCalledOnce();
+  });
+
+  it("omits Reset to default when the override is empty (nothing to reset)", () => {
+    renderPanes({ showBuiltIn: true, value: "" });
+
+    expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
+    expect(screen.queryByText("Reset to default")).toBeNull();
   });
 });

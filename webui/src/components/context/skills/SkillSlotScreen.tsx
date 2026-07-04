@@ -87,7 +87,6 @@ export function SkillSlotScreen(
         slot={slot}
         viewSlot={viewSlot}
         widthClass={widthClass}
-        onReset={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
       />
@@ -111,6 +110,7 @@ export function SkillSlotScreen(
             overrideLabel="Your override"
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
+            onReset={() => void editor.handleClear()}
             onChange={editor.handleChange}
             onBlur={editor.handleBlur}
           />
@@ -152,21 +152,20 @@ interface SkillControlsProps {
   viewSlot: preact.JSX.Element;
   /** Content width — tracks the editor below so the strip stays aligned. */
   widthClass: string;
-  onReset: () => void;
   onImport: () => void;
   onExport: () => void;
 }
 
 /**
  * Controls strip: the view toggle, the slot dropdown, a one-line explainer for
- * the selected slot, a drift note, and a "Reset to default" action shown only
- * when the slot has an override. The border spans full width while the content
- * is centered to match the editor below.
+ * the selected slot, and a drift note. The border spans full width while the
+ * content is centered to match the editor below. Resetting an override to the
+ * built-in lives in the revealed built-in header (see OverridePanes), not here.
  * @param props - Controls props
  * @returns Controls element
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
-  const { slots, selected, onSelectSlot, slot, viewSlot, onReset } = props;
+  const { slots, selected, onSelectSlot, slot, viewSlot } = props;
   const { widthClass, onImport, onExport } = props;
 
   return (
@@ -194,15 +193,6 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
           </span>
         )}
         <ContextIoButtons onImport={onImport} onExport={onExport} />
-        {slot.override !== "" && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-          >
-            Reset to default
-          </button>
-        )}
       </div>
     </div>
   );

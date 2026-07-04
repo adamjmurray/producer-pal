@@ -112,6 +112,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         description={labels.description}
         widthClass={widthClass}
         charCount={editor.charCount}
+        showClear={labels.builtIn == null}
         onClear={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
@@ -129,6 +130,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           editorKey={editor.editorKey}
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
+          onReset={() => void editor.handleClear()}
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
           onImportText={io.onImportText}
@@ -225,6 +227,12 @@ interface ContextControlsProps {
   description?: string;
   widthClass: string;
   charCount: number;
+  /**
+   * Whether to show the strip's Clear action. Documents with a built-in default
+   * (custom instructions) hide it — reset lives in the revealed built-in header
+   * instead — while the plain context tabs (no default) keep it here.
+   */
+  showClear: boolean;
   onClear: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -232,17 +240,18 @@ interface ContextControlsProps {
 
 /**
  * Controls strip below the header with an optional explainer, a live char/token
- * size readout, and a destructive clear action. Hidden until memory has loaded
- * so we don't flash a control whose state we haven't fetched yet. The border
- * spans full width while the content is centered to `widthClass` so it lines up
- * with the editor below.
+ * size readout, and (for documents without a built-in default) a destructive
+ * clear action. Hidden until memory has loaded so we don't flash a control whose
+ * state we haven't fetched yet. The border spans full width while the content is
+ * centered to `widthClass` so it lines up with the editor below.
  * @param props - Controls props
  * @returns Controls element (or null while loading)
  */
 function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
-  const { status, description, widthClass, charCount, onClear } = props;
+  const { status, description, widthClass, charCount, showClear, onClear } =
+    props;
 
   if (status.kind !== "ready") return null;
 
@@ -260,13 +269,15 @@ function ContextControls(
             onImport={props.onImport}
             onExport={props.onExport}
           />
-          <button
-            type="button"
-            onClick={onClear}
-            className="shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-          >
-            Clear
-          </button>
+          {showClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -339,6 +350,7 @@ interface ContextBodyProps {
   editorKey: number;
   externalUpdate: boolean;
   onReload: () => void;
+  onReset: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
   onImportText: (text: string) => void;
@@ -366,6 +378,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     editorKey,
     externalUpdate,
     onReload,
+    onReset,
     onChange,
     onBlur,
     onImportText,
@@ -409,6 +422,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
             overrideLabel={overridePaneLabel ?? "Your override"}
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={onToggleBuiltIn}
+            onReset={onReset}
             onChange={onChange}
             onBlur={onBlur}
           />

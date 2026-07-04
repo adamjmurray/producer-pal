@@ -23,6 +23,14 @@ interface OverridePanesProps {
   showBuiltIn: boolean;
   /** Reveal / collapse the built-in reference pane. */
   onToggleBuiltIn: (show: boolean) => void;
+  /**
+   * Reset the override back to the built-in (deletes the override). The button
+   * lives in the revealed built-in header and only shows when there's an
+   * override to discard (`value !== ""`).
+   */
+  onReset: () => void;
+
+  /** Editable-pane callbacks (autosave lifecycle). */
   onChange: (value: string) => void;
   onBlur: () => void;
 }
@@ -34,14 +42,15 @@ interface OverridePanesProps {
  * all times and the editor can use the full single-column width. When revealed,
  * the built-in renders in a read-only {@link MarkdownEditor} — same markdown
  * formatting as the editable pane — beside the override, with a Copy button so a
- * user can fork the default into the (empty-by-design) override pane. Shared by
+ * user can fork the default into the (empty-by-design) override pane, and (when
+ * there is an override) a "Reset to default" button to discard it. Shared by
  * the skills-fragment editor and the custom-instructions editor.
  * @param props - Panes props
  * @returns Panes element
  */
 export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   const { editorKey, value, builtIn, overrideLabel } = props;
-  const { showBuiltIn, onToggleBuiltIn, onChange, onBlur } = props;
+  const { showBuiltIn, onToggleBuiltIn, onReset, onChange, onBlur } = props;
 
   return (
     <div className="flex-1 min-h-0 flex gap-3">
@@ -71,12 +80,22 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
       </div>
 
       {showBuiltIn && (
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="built-in-reveal flex-1 min-w-0 flex flex-col gap-1">
           <div className="flex items-center justify-between h-5 gap-3">
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
               Built-in (read-only)
             </span>
             <div className="flex items-center gap-3">
+              {value !== "" && (
+                <button
+                  type="button"
+                  onClick={onReset}
+                  className="text-xs text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+                >
+                  Reset to default
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => void navigator.clipboard.writeText(builtIn)}

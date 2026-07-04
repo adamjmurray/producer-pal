@@ -252,6 +252,8 @@ describe("SkillsScreen", () => {
       />,
     );
 
+    // Reset lives in the revealed built-in header, so surface it first.
+    fireEvent.click(screen.getByText("Show built-in"));
     fireEvent.click(screen.getByText("Reset to default"));
 
     await waitFor(() => {
