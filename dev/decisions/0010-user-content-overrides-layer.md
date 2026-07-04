@@ -2,6 +2,12 @@
 
 - **Status:** Accepted
 - **Date logged:** 2026-07-01
+- **Amended:** 2026-07-04 — principle 5 revised when skills moved to an
+  `@include` composition model. The overridable surface became an **open
+  fragment namespace** (any `.md` under `skills/`, nested folders included)
+  resolved by the include graph, of which the curated slots are the
+  editor-tracked subset. This reverses the original "unknown files are
+  ignored/inactive" stance: they are now **active but untracked**.
 
 ## Context
 
@@ -59,10 +65,19 @@ and sidesteps all of this.)
    nudge_ is the only case needing stored provenance (fork-time version/hash in
    frontmatter), and is deferrable because case 2 already lets a user find drift
    manually.
-5. **Override slot names are a public contract.** Renaming/splitting a built-in
-   fragment orphans a user's override keyed to the old name, so the slot set is
-   kept **small, coarse, and stable** (the `buildSkills` fragment names become
-   that API). Unknown override files are ignored with a visible "inactive" note.
+5. **Curated slot names are a stable public contract; the fragment namespace
+   around them is open.** Skills compose via `@include "./name.md"` directives,
+   so any `.md` under `~/.producer-pal/skills/` — nested folders and files the
+   user names themselves included — is resolvable, letting a forked driver point
+   an include at its own fragment. The **curated slots** (`SKILL_SLOT_NAMES`)
+   are the subset the webui editor surfaces and drift-tracks: renaming/splitting
+   one orphans a user override keyed to the old name, so that set stays **small,
+   coarse, and stable** (those `buildSkills` fragment names are the API the
+   editor guarantees). Files outside it are **active but untracked** — resolved
+   by the include graph, but with no editor entry and no fork-time provenance,
+   so no "default changed" nudge; a fragment the graph never references is
+   simply inert. Resolution is confined to the skills dir (refs starting with
+   `/ . .. ~`, or containing `..`, are rejected).
 
 ## Alternatives rejected / deferred
 
@@ -94,5 +109,10 @@ and sidesteps all of this.)
   actually matters — not built speculatively.
 - Shipped so far: global context (v1), reveal-config-folder (Node side), the
   webui editor, `ppal-context` global read/write, and the custom system prompt.
-  Remaining override work (built-in skills-fragment override; custom /
-  disable-able skills) is tracked as project work and inherits these principles.
+  Remaining override work (custom / disable-able skills) is tracked as project
+  work and inherits these principles.
+- The open fragment namespace buys forkability (a driver can be reorganized,
+  extended with the user's own fragments, or repointed at nested files) at the
+  cost of a **two-tier surface**: curated slots get the editor + drift nudge;
+  hand-authored/nested fragments are power-user territory — resolvable but
+  self-managed, with no upgrade reconciliation.
