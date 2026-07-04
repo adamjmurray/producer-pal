@@ -86,6 +86,18 @@ describe("skills-preview route", () => {
     expect(body.core).toBe("core-basic");
   });
 
+  it("reports the level-invariant midi-json head at both levels", async () => {
+    const standard = await getPreview("notation=midi-json");
+
+    expect(standard.head).toBe("midi-json");
+    expect(standard.core).toBe("core-standard");
+
+    const small = await getPreview("notation=midi-json&smallModel=true");
+
+    expect(small.head).toBe("midi-json");
+    expect(small.core).toBe("core-basic");
+  });
+
   it("falls back to bar|beat for an unknown notation", async () => {
     const body = await getPreview("notation=bogus");
 

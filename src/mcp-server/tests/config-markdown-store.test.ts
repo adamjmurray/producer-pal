@@ -6,7 +6,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { listConfigMarkdownFiles } from "#src/mcp-server/helpers/config-markdown-store.ts";
+import {
+  listConfigMarkdownFiles,
+  listConfigMarkdownFilesRecursive,
+} from "#src/mcp-server/helpers/config-markdown-store.ts";
 import { useTempConfigDir } from "./config-dir-test-helpers.ts";
 
 const getDir = useTempConfigDir();
@@ -44,5 +47,29 @@ describe("listConfigMarkdownFiles", () => {
     delete process.env.PRODUCER_PAL_CONFIG_DIR;
 
     expect(listConfigMarkdownFiles("memory")).toStrictEqual([]);
+  });
+
+  it("does not descend into nested folders", () => {
+    writeInSubdir("skills", "core.md");
+    writeInSubdir("skills/drums", "backbeat.md");
+
+    expect(listConfigMarkdownFiles("skills")).toStrictEqual(["core.md"]);
+  });
+});
+
+describe("listConfigMarkdownFilesRecursive", () => {
+  it("descends into folders, returning sorted POSIX relative paths", () => {
+    writeInSubdir("skills", "core.md");
+    writeInSubdir("skills/drums", "backbeat.md");
+    writeInSubdir("skills/drums", "notes.txt"); // non-.md ignored
+
+    expect(listConfigMarkdownFilesRecursive("skills")).toStrictEqual([
+      "core.md",
+      "drums/backbeat.md",
+    ]);
+  });
+
+  it("returns [] when the subdir is missing", () => {
+    expect(listConfigMarkdownFilesRecursive("skills")).toStrictEqual([]);
   });
 });

@@ -22,7 +22,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 
 // Detect Vitest so unit tests never read or clobber the developer's real
 // ~/.producer-pal. A test opts back into real filesystem access by pointing
@@ -103,25 +103,43 @@ export function writeConfigMarkdown(filename: string, content: string): void {
 /**
  * List the `.md` filenames directly inside a subdirectory of the config dir
  * (e.g. "memory"), sorted. A missing subdir — the empty-by-default case —
- * yields []. Non-`.md` entries are ignored; nested directories are not
- * descended into. Used by multi-entry collections (memory) that discover their
- * members dynamically, unlike the fixed-slot skills overrides.
+ * yields []. Non-`.md` entries are ignored; nested directories are NOT descended
+ * into (memory's basenames are slugs, so it must stay flat — skills, which needs
+ * nesting, uses {@link listConfigMarkdownFilesRecursive}).
  *
  * @param subdir - Subdirectory under the config dir (e.g. "memory")
  * @returns Sorted list of `.md` basenames (e.g. ["a.md", "b.md"])
  */
 export function listConfigMarkdownFiles(subdir: string): string[] {
-  if (isConfigDirInert()) return [];
-
-  try {
-    return readdirSync(join(configDir(), subdir))
+  return safeReaddir(() =>
+    readdirSync(join(configDir(), subdir))
       .filter((name) => name.endsWith(".md"))
-      .sort();
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      .sort(),
+  );
+}
 
-    throw error;
-  }
+/**
+ * Recursively list the `.md` files under a subdirectory of the config dir, as
+ * POSIX-separated paths relative to that subdirectory, sorted. Unlike
+ * {@link listConfigMarkdownFiles} this DESCENDS into nested folders, so a skills
+ * override can live at `skills/drums/backbeat.md` and be pulled in with
+ * `@include "./drums/backbeat.md"`. Directories are skipped (only files are
+ * returned); a missing subdir yields [].
+ *
+ * @param subdir - Subdirectory under the config dir (e.g. "skills")
+ * @returns Sorted POSIX relative paths (e.g. ["core.md", "drums/backbeat.md"])
+ */
+export function listConfigMarkdownFilesRecursive(subdir: string): string[] {
+  const base = join(configDir(), subdir);
+
+  return safeReaddir(() =>
+    readdirSync(base, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) =>
+        relative(base, join(entry.parentPath, entry.name)).split(sep).join("/"),
+      )
+      .sort(),
+  );
 }
 
 /**
@@ -151,4 +169,24 @@ export function deleteConfigMarkdown(filename: string): void {
  */
 export function isConfigDirInert(): boolean {
   return isRunningInVitest && process.env.PRODUCER_PAL_CONFIG_DIR == null;
+}
+
+/**
+ * Run a readdir-based lister behind the config-dir guards shared by the flat and
+ * recursive markdown listers: inert under Vitest, a missing directory (ENOENT)
+ * yields [], and any other error propagates.
+ *
+ * @param read - Produces the listing (invoked only when the dir is live)
+ * @returns The listing, or [] when inert or the directory is absent
+ */
+function safeReaddir(read: () => string[]): string[] {
+  if (isConfigDirInert()) return [];
+
+  try {
+    return read();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+
+    throw error;
+  }
 }

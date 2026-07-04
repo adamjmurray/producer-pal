@@ -15,7 +15,6 @@
 import { type Express, type Request, type Response } from "express";
 import { DEFAULT_NOTATION, isNotation } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
-import { activeSkillSlots } from "#src/skills/skill-slots.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 
 /**
@@ -40,7 +39,13 @@ export function registerSkillsPreviewRoute(app: Express): void {
       : DEFAULT_NOTATION;
     const smallModelMode = req.query.smallModel === "true";
 
-    const { head, core } = activeSkillSlots(notation, smallModelMode);
+    // The two overridable fragments the driver pulls in for this combo, for the
+    // editor's label. midi-json is level-invariant, so its head has no suffix.
+    const core = smallModelMode ? "core-basic" : "core-standard";
+    const head =
+      notation === "midi-json"
+        ? "midi-json"
+        : `${notation}-${smallModelMode ? "basic" : "standard"}`;
     const skills = buildSkills(
       { notation, smallModelMode },
       readSkillOverrides(),

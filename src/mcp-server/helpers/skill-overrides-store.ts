@@ -26,6 +26,7 @@ import {
 } from "#src/skills/skill-slots.ts";
 import {
   deleteConfigMarkdown,
+  listConfigMarkdownFilesRecursive,
   readConfigMarkdown,
   writeConfigMarkdown,
 } from "./config-markdown-store.ts";
@@ -69,19 +70,27 @@ export interface SkillSlotState {
 }
 
 /**
- * Read every active override fragment for buildSkills. Only known slots are
- * consulted, so stray files under ~/.producer-pal/skills are ignored. Empty or
- * whitespace-only bodies are dropped so the slot falls back to the built-in.
+ * Read every override fragment for buildSkills. EVERY `.md` in the skills dir is
+ * read, not just the curated slots: a fork may override a driver, a notation
+ * head, or include a fragment of the user's own. `resolveIncludes` only pulls
+ * the names its graph references, and the readdir scope here plus the resolver's
+ * ref validation keep resolution inside the dir. Empty or whitespace-only bodies
+ * are dropped so that name falls back to the built-in.
  *
- * @returns Per-slot override bodies (only slots the user has overridden)
+ * @returns Fragment name → override body (only files the user has added)
  */
 export function readSkillOverrides(): SkillOverrides {
   const overrides: SkillOverrides = {};
 
-  for (const name of SKILL_SLOT_NAMES) {
-    const body = readOverrideBody(name);
+  // Read EVERY .md under the skills dir (nested included), not just the curated
+  // slots: an override may be a driver, a wrapper, or a fragment of the user's
+  // own that a fork includes — e.g. `skills/drums/backbeat.md` keyed as
+  // "drums/backbeat". `resolveIncludes` only pulls names the graph references,
+  // and its ref validation + this readdir scope keep resolution inside the dir.
+  for (const file of listConfigMarkdownFilesRecursive("skills")) {
+    const body = readFragmentBody(`skills/${file}`);
 
-    if (body) overrides[name] = body;
+    if (body) overrides[file.slice(0, -".md".length)] = body;
   }
 
   return overrides;
@@ -185,14 +194,14 @@ function filenameFor(name: SkillSlotName): string {
 }
 
 /**
- * The trimmed override body for a slot, with any frontmatter stripped ("" when
- * absent/empty).
+ * The trimmed body of a skills override file, with any frontmatter stripped
+ * ("" when absent/empty), for {@link readSkillOverrides}.
  *
- * @param name - The slot name
+ * @param filename - Config-relative path (e.g. "skills/core-standard.md")
  * @returns The override body to feed buildSkills
  */
-function readOverrideBody(name: SkillSlotName): string {
-  return parseFrontmatter(readConfigMarkdown(filenameFor(name))).body.trim();
+function readFragmentBody(filename: string): string {
+  return parseFrontmatter(readConfigMarkdown(filename)).body.trim();
 }
 
 /**

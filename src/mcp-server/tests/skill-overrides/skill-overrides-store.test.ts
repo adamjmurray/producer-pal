@@ -14,6 +14,7 @@ import {
   writeSkillOverride,
 } from "#src/mcp-server/helpers/skill-overrides-store.ts";
 import { VERSION } from "#src/shared/config.ts";
+import { buildSkills } from "#src/skills/build-skills.ts";
 import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
@@ -49,11 +50,15 @@ describe("readSkillOverrides", () => {
     expect(readSkillOverrides()).toStrictEqual({ "core-standard": "My core." });
   });
 
-  it("ignores stray files that are not registered slots", () => {
-    writeRaw("not-a-slot", "should be ignored");
+  it("reads every .md as a fragment, including custom names a fork can @include", () => {
+    // The include model resolves arbitrary fragment names, so a user's own file
+    // is surfaced (not ignored) — a forked driver can @include it. The resolver
+    // only expands names the graph actually references, so unused ones are inert.
+    writeRaw("my-notation", "custom fragment");
     writeSkillOverride("stark-standard", "custom stark");
 
     expect(readSkillOverrides()).toStrictEqual({
+      "my-notation": "custom fragment",
       "stark-standard": "custom stark",
     });
   });
@@ -64,6 +69,25 @@ describe("readSkillOverrides", () => {
     expect(readSkillOverrides()).toStrictEqual({
       "midi-json": "hand written, no provenance",
     });
+  });
+
+  it("surfaces a nested fragment file, keyed by its relative path", () => {
+    mkdirSync(join(getDir(), "skills", "drums"), { recursive: true });
+    writeFileSync(join(getDir(), "skills", "drums", "backbeat.md"), "boom bap");
+
+    expect(readSkillOverrides()).toStrictEqual({
+      "drums/backbeat": "boom bap",
+    });
+  });
+
+  it("lets a forked driver @include a nested fragment end to end", () => {
+    // The point of nesting: a user can group their own fragments in folders and
+    // pull one into a forked driver with a relative include.
+    writeSkillOverride("standard", 'HEAD\n\n@include "./drums/backbeat.md"');
+    mkdirSync(join(getDir(), "skills", "drums"), { recursive: true });
+    writeFileSync(join(getDir(), "skills", "drums", "backbeat.md"), "BOOM BAP");
+
+    expect(buildSkills({}, readSkillOverrides())).toBe("HEAD\n\nBOOM BAP");
   });
 });
 
