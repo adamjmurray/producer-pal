@@ -77,3 +77,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0009](0009-warn-and-skip-error-handling.md)       | Update tools warn-and-skip instead of throwing                       |
 | [0010](0010-user-content-overrides-layer.md)       | `~/.producer-pal` is a content-override layer, not a settings mirror |
 | [0011](0011-dotted-triplet-note-value-suffixes.md) | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`    |
+| [0012](0012-no-chord-symbols-in-bar-beat.md)       | No chord symbols in bar\|beat; they stay Stark-only                  |

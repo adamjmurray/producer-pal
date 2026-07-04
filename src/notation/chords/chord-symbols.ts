@@ -4,8 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Chord-symbol realization — a notation-agnostic layer shared by the note
- * notations (Stark today; bar|beat later). A chord symbol is a root + quality +
+ * Chord-symbol realization — a notation-agnostic layer (the register floor and
+ * octave shift are passed in), currently used only by Stark's chords line.
+ * bar|beat intentionally does NOT adopt chord symbols — see
+ * dev/decisions/0012-no-chord-symbols-in-bar-beat.md — so this is Stark-only,
+ * not a pending "add it everywhere" TODO. A chord symbol is a root + quality +
  * optional slash bass (`Cm7`, `G7/B`, `Fmaj9`); it names a SET of pitch classes
  * that {@link chordSymbolPitches} voices into concrete MIDI pitches — closed,
  * root position, stacked up from a register default.
