@@ -4,16 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Presentation config for the memory manager's four buckets: their display
-// order, headings, and a one-line injection hint. The canonical type contract
-// (validation, injection policy) lives Node-side in
+// order, headings, and a one-line purpose hint. Type is a GROUPING axis only —
+// every memory contributes just its index line and loads its body on demand, so
+// there is no per-type injection difference to surface here. The canonical type
+// contract (validation) lives Node-side in
 // src/mcp-server/helpers/memory/memory.ts and in the ppal-context tool schema;
 // this is UI copy only, so the webui doesn't reach across the server boundary.
 
-/** The four memory buckets, in list/injection order (mirrors MEMORY_TYPES). */
+/** The four memory buckets, in list/index order (mirrors MEMORY_TYPES). */
 export const MEMORY_TYPE_ORDER = [
   "user",
   "feedback",
-  "project",
+  "goal",
   "reference",
 ] as const;
 
@@ -24,19 +26,14 @@ export type MemoryTypeName = (typeof MEMORY_TYPE_ORDER)[number];
 export interface MemoryTypeMeta {
   /** Heading shown above the group and label in the type picker. */
   label: string;
-  /** One-line hint: whether entries of this type are always injected or lazy. */
-  injection: string;
+  /** One-line hint: what kind of fact this bucket holds. */
+  hint: string;
 }
 
-/**
- * Per-type display metadata. `user`/`feedback` are injected eagerly on connect;
- * `project`/`reference` are loaded on demand (see the Node-side injection
- * policy in memory.ts) — surfaced here so the manager can nudge users to keep
- * the always-on tiers small.
- */
+/** Per-type display metadata (grouping label + a short purpose hint). */
 export const MEMORY_TYPE_META: Record<MemoryTypeName, MemoryTypeMeta> = {
-  user: { label: "User", injection: "Always in context" },
-  feedback: { label: "Feedback", injection: "Always in context" },
-  project: { label: "Project", injection: "Loaded on demand" },
-  reference: { label: "Reference", injection: "Loaded on demand" },
+  user: { label: "User", hint: "Who they are" },
+  feedback: { label: "Feedback", hint: "How to work with them" },
+  goal: { label: "Goal", hint: "A cross-project goal" },
+  reference: { label: "Reference", hint: "An external pointer" },
 };

@@ -97,13 +97,13 @@ describe("rememberMemory", () => {
   it("overwrites in place when the same slug is remembered again", () => {
     rememberMemory({
       name: "album-nyx",
-      type: "project",
+      type: "goal",
       description: "v1",
       body: "first",
     });
     rememberMemory({
       name: "Album Nyx",
-      type: "project",
+      type: "goal",
       description: "v2",
       body: "second",
     });
@@ -278,7 +278,7 @@ describe("memoryExists", () => {
   it("is true for a stored memory (matching by an un-slugified name)", () => {
     rememberMemory({
       name: "album-nyx",
-      type: "project",
+      type: "goal",
       description: "",
       body: "b",
     });

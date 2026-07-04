@@ -75,7 +75,7 @@ export async function handleReadMemoryEntry(
  *
  * @param args - The memory to store
  * @param args.name - Desired memory name (slugified Node-side)
- * @param args.type - Memory bucket (user | feedback | project | reference)
+ * @param args.type - Memory bucket (user | feedback | goal | reference)
  * @param args.description - One-line recall hook (optional)
  * @param args.content - The memory body (the fact)
  * @returns Memory result with the regenerated index

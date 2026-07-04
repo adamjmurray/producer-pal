@@ -19,7 +19,7 @@ import {
 export interface MemoryEntryView {
   /** Slug (filename without extension); the stable handle for save/delete. */
   name: string;
-  /** Which bucket it belongs to (drives injection + list grouping). */
+  /** Which bucket it belongs to (drives list grouping). */
   type: string;
   /** One-line recall hook shown in the list. */
   description: string;

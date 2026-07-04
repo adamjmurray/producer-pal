@@ -100,12 +100,12 @@ describe("memory-collection route", () => {
 
   it("PUT overwrites in place when the same name is stored again", async () => {
     await putMemory("album-nyx", {
-      type: "project",
+      type: "goal",
       description: "v1",
       content: "first",
     });
     await putMemory("album-nyx", {
-      type: "project",
+      type: "goal",
       description: "v2",
       content: "second",
     });

@@ -43,7 +43,7 @@ const INDEX_SLUG = INDEX_FILENAME.replace(/\.md$/i, "").toLowerCase();
 export interface MemoryEntry {
   /** Slug (filename without extension); the stable handle for read/forget. */
   name: string;
-  /** Which bucket it belongs to (drives injection eager/lazy + index group). */
+  /** Which bucket it belongs to (its `## Label` group in the index). */
   type: MemoryType;
   /** One-line recall hook, shown in the index. */
   description: string;
@@ -117,8 +117,8 @@ export function memoryExists(name: string): boolean {
 }
 
 /**
- * List every stored memory, sorted by type (index/injection order) then name.
- * The derived index file itself is skipped.
+ * List every stored memory, sorted by type (index order) then name. The
+ * derived index file itself is skipped.
  *
  * @returns All memory entries
  */
@@ -211,7 +211,7 @@ export function regenerateIndex(): string {
     return "";
   }
 
-  const content = renderMemoryIndex(entries);
+  const content = `# Producer Pal Memory\n\n${renderMemoryIndexSections(entries)}\n`;
 
   writeConfigMarkdown(`${MEMORY_SUBDIR}/${INDEX_FILENAME}`, content);
 
@@ -246,7 +246,8 @@ function filenameFor(slug: string): string {
 /**
  * Parse a raw memory file into an entry. The filename slug is authoritative for
  * `name` (frontmatter is user-editable and may drift); type coerces to
- * `reference` (lazy, low-risk) when missing or invalid on a hand-edited file.
+ * `reference` (a low-risk default) when missing or invalid on a hand-edited
+ * file.
  *
  * @param slug - The slug from the filename
  * @param raw - The raw file contents
@@ -264,26 +265,36 @@ function toEntry(slug: string, raw: string): MemoryEntry {
 }
 
 /**
- * Render the derived index: entries grouped by type under `## Label` headings,
- * one `- \`name\` — description` line each (description omitted when blank).
+ * Render the memory index body: entries grouped by type under `## Label`
+ * headings, one `- \`name\` — description` line each (description omitted when
+ * blank). Shared by the derived `MEMORY.md` file and the always-injected
+ * connect block (see `memory-inject.ts`), so both show the identical recall
+ * index. The document title is added by the caller.
  *
  * @param entries - The entries to index (already sorted)
- * @returns The index markdown
+ * @returns The grouped index markdown (no document title)
  */
-function renderMemoryIndex(entries: MemoryEntry[]): string {
+export function renderMemoryIndexSections(entries: MemoryEntry[]): string {
   const sections = MEMORY_TYPES.flatMap((type) => {
-    const lines = entries
-      .filter((entry) => entry.type === type)
-      .map((entry) =>
-        entry.description
-          ? `- \`${entry.name}\` — ${entry.description}`
-          : `- \`${entry.name}\``,
-      );
+    const lines = entries.filter((entry) => entry.type === type).map(indexLine);
 
     if (lines.length === 0) return [];
 
     return [`## ${MEMORY_TYPE_LABELS[type]}\n\n${lines.join("\n")}`];
   });
 
-  return `# Producer Pal Memory\n\n${sections.join("\n\n")}\n`;
+  return sections.join("\n\n");
+}
+
+/**
+ * One index line for an entry: `- \`name\` — description`, or just the
+ * backticked slug when the description is blank.
+ *
+ * @param entry - The memory entry
+ * @returns The index line
+ */
+function indexLine(entry: MemoryEntry): string {
+  return entry.description
+    ? `- \`${entry.name}\` — ${entry.description}`
+    : `- \`${entry.name}\``;
 }

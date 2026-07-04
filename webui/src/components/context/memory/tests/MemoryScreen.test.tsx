@@ -127,8 +127,8 @@ describe("MemoryScreen — ready", () => {
     // Groups that have entries render their heading…
     expect(screen.getByText("User")).toBeTruthy();
     expect(screen.getByText("Feedback")).toBeTruthy();
-    // …empty groups do not (Project/Reference have no entries here).
-    expect(screen.queryByText("Project")).toBeNull();
+    // …empty groups do not (Goal/Reference have no entries here).
+    expect(screen.queryByText("Goal")).toBeNull();
     expect(screen.queryByText("Reference")).toBeNull();
     // Descriptions render as the recall hooks.
     expect(screen.getByText("default key & genre")).toBeTruthy();

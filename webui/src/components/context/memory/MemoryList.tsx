@@ -25,9 +25,9 @@ interface MemoryListProps {
 
 /**
  * Left pane: a "New memory" button above the derived index — entries grouped by
- * type (in injection order) with a per-group heading, each row showing the slug
- * and its one-line description. Mirrors the always-injected MEMORY.md the
- * assistant sees, so what the user edits here is what the model reads.
+ * type (in index order) with a per-group heading, each row showing the slug and
+ * its one-line description. Mirrors the always-injected MEMORY.md the assistant
+ * sees, so what the user edits here is what the model reads.
  * @param props - List props
  * @returns List element
  */
@@ -76,7 +76,7 @@ interface MemoryGroupProps {
 }
 
 /**
- * One type group: a heading (label + injection hint) and its entry rows. Renders
+ * One type group: a heading (label + purpose hint) and its entry rows. Renders
  * nothing when the group is empty.
  * @param props - Group props
  * @returns Group element (or null when empty)
@@ -95,7 +95,7 @@ function MemoryGroup(props: MemoryGroupProps): preact.JSX.Element | null {
           {meta.label}
         </span>
         <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
-          {meta.injection}
+          {meta.hint}
         </span>
       </div>
       {entries.map((entry) => (

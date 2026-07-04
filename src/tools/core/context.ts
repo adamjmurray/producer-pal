@@ -39,7 +39,7 @@ interface ContextArgs {
  * @param args.content - Memory content (write = context.md; remember = body)
  * @param args.scope - Which context to target (project | global; default project)
  * @param args.name - Memory entry name (read/remember/forget, global scope)
- * @param args.type - Memory type (remember): user | feedback | project | reference
+ * @param args.type - Memory type (remember): user | feedback | goal | reference
  * @param args.description - One-line recall hook (remember)
  * @param toolContext - The context object
  * @returns Memory result

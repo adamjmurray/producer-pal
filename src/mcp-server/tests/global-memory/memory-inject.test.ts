@@ -42,7 +42,7 @@ async function appendedBlock(): Promise<string | undefined> {
 }
 
 describe("withMemory", () => {
-  it("injects eager bodies and lazy hooks in one labeled block", async () => {
+  it("injects every memory as an index line, never a body", async () => {
     rememberMemory({
       name: "prefers-c-minor",
       type: "user",
@@ -57,47 +57,38 @@ describe("withMemory", () => {
     });
     rememberMemory({
       name: "album-nyx",
-      type: "project",
+      type: "goal",
       description: "dark ambient, 60bpm",
       body: "The Nyx album body.",
     });
 
     const block = (await appendedBlock()) ?? "";
 
-    // Eager: full bodies under headings.
-    expect(block).toContain("### prefers-c-minor\nComposes mostly in C minor.");
-    expect(block).toContain("### loose-drums\nNever hard-quantize hats.");
-    // Lazy: index hook only, not the body.
-    expect(block).toContain("- `album-nyx` — dark ambient, 60bpm");
+    // Grouped index lines, one recall hook per entry.
+    expect(block).toContain("## User\n\n- `prefers-c-minor` — default key");
+    expect(block).toContain("## Feedback\n\n- `loose-drums` — swing/humanize");
+    expect(block).toContain("## Goal\n\n- `album-nyx` — dark ambient, 60bpm");
+    // Bodies are NEVER injected — only the index.
+    expect(block).not.toContain("Composes mostly in C minor.");
+    expect(block).not.toContain("Never hard-quantize hats.");
     expect(block).not.toContain("The Nyx album body.");
-    expect(block).toContain("Always in context:");
-    expect(block).toContain("Available on demand");
+    // Tells the assistant how to load a body on demand.
+    expect(block).toContain('action:"read"');
   });
 
-  it("omits the on-demand section when every memory is eager", async () => {
-    rememberMemory({ name: "u", type: "user", description: "d", body: "b" });
-
-    const block = (await appendedBlock()) ?? "";
-
-    expect(block).toContain("Always in context:");
-    expect(block).not.toContain("Available on demand");
-  });
-
-  it("omits the always-in-context section when every memory is lazy", async () => {
+  it("renders a descriptionless entry without a trailing dash", async () => {
     rememberMemory({
       name: "r",
       type: "reference",
       description: "",
-      body: "b",
+      body: "SECRET_BODY",
     });
 
     const block = (await appendedBlock()) ?? "";
 
-    expect(block).not.toContain("Always in context:");
-    expect(block).toContain("Available on demand");
-    // A lazy entry with no description renders without a trailing dash.
     expect(block).toContain("- `r`");
     expect(block).not.toContain("- `r` —");
+    expect(block).not.toContain("SECRET_BODY");
   });
 
   it("does not inject when there are no memories", async () => {

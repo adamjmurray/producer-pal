@@ -27,8 +27,8 @@ export const coreBasic = `@include "./{notation}-basic.md"
 
 ## Memory
 
-\`ppal-context\` scope:global stores lasting user facts across sessions (not this-Live-Set details — those use scope:project).
-- **remember** who they are (\`user\`) or how to work with them (\`feedback\`); also \`project\`/\`reference\`.
+\`ppal-context\` scope:global stores lasting user facts across sessions (not this-Live-Set details — those use scope:project). Only the index (name + description) is shown; read one by name for its body.
+- **remember** who they are (\`user\`) or how to work with them (\`feedback\`); also \`goal\`/\`reference\`. Write a specific description — it's all you see until you read the memory.
 - Check the index first and reuse a name to UPDATE, not duplicate. One fact each. **forget** what's wrong.
 
 ## Rules

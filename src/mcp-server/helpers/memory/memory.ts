@@ -5,27 +5,33 @@
 
 /**
  * Memory identity contract: the `MemoryType` union plus the constants used to
- * validate, order, label, and set the injection policy for the LLM-managed
- * memory collection (~/.producer-pal/memory/). Node-side (nothing V8-side
- * imports it — the `ppal-context` tool schema hardcodes the enum), so it lives
- * with the store/injector under `helpers/memory/`. The filesystem store itself
- * is `global-memory-store.ts`.
+ * validate, order, and label the LLM-managed memory collection
+ * (~/.producer-pal/memory/). Node-side (nothing V8-side imports it — the
+ * `ppal-context` tool schema hardcodes the enum), so it lives with the
+ * store/injector under `helpers/memory/`. The filesystem store itself is
+ * `global-memory-store.ts`.
+ *
+ * Type is a GROUPING axis only — it decides which `## Label` section an entry
+ * lands under in the derived index. It does NOT control injection: every
+ * memory contributes only its index line, and every body loads on demand via
+ * `ppal-context read` (see `memory-inject.ts`). Pinning a body is the context
+ * layer's job, not memory's.
  */
 
 /**
  * The four memory buckets, remapped from Claude Code's auto-memory to music:
  *  - `user`: who they are as a musician (default key/genre, gear).
  *  - `feedback`: how the assistant should work with them (behavioral).
- *  - `project`: cross-project creative goals (an album, a sound).
+ *  - `goal`: cross-project creative goals (an album, a sound).
  *  - `reference`: external pointers (sample folders, links).
  */
-export type MemoryType = "user" | "feedback" | "project" | "reference";
+export type MemoryType = "user" | "feedback" | "goal" | "reference";
 
-/** Every memory type, in index/enum order (also the injection tier order). */
+/** Every memory type, in index/enum order. */
 export const MEMORY_TYPES: readonly MemoryType[] = [
   "user",
   "feedback",
-  "project",
+  "goal",
   "reference",
 ];
 
@@ -33,20 +39,9 @@ export const MEMORY_TYPES: readonly MemoryType[] = [
 export const MEMORY_TYPE_LABELS: Record<MemoryType, string> = {
   user: "User",
   feedback: "Feedback",
-  project: "Project",
+  goal: "Goal",
   reference: "Reference",
 };
-
-// Injection policy is per-type (the design pivot that keeps memory and future
-// skill collections coherent). `user`/`feedback` bodies are injected eagerly on
-// connect — Producer Pal has no recall harness and weak external clients don't
-// reliably do a two-step `read`. `project`/`reference` are lazy: only their
-// index hook is injected, and the body is fetched on demand via
-// `ppal-context read`.
-const EAGER_MEMORY_TYPES: ReadonlySet<MemoryType> = new Set([
-  "user",
-  "feedback",
-]);
 
 /**
  * Type guard for a {@link MemoryType} (validates the `type` arriving from the
@@ -60,15 +55,4 @@ export function isMemoryType(value: unknown): value is MemoryType {
     typeof value === "string" &&
     (MEMORY_TYPES as readonly string[]).includes(value)
   );
-}
-
-/**
- * Whether a memory type's body is injected eagerly on connect (vs lazily loaded
- * on demand).
- *
- * @param type - The memory type
- * @returns True for `user`/`feedback` (eager), false for `project`/`reference`
- */
-export function isEagerMemoryType(type: MemoryType): boolean {
-  return EAGER_MEMORY_TYPES.has(type);
 }

@@ -83,8 +83,7 @@ export function MemoryEntryEditor(
         >
           {MEMORY_TYPE_ORDER.map((value) => (
             <option key={value} value={value}>
-              {MEMORY_TYPE_META[value].label} —{" "}
-              {MEMORY_TYPE_META[value].injection}
+              {MEMORY_TYPE_META[value].label} — {MEMORY_TYPE_META[value].hint}
             </option>
           ))}
         </select>

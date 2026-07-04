@@ -1,12 +1,16 @@
 # Producer Pal Memory System
 
 Status: **plan locked** (2026-07-03); **P1 + P2 implemented on the
-`memory-system` branch** (not yet landed on dev). Remaining: the drive-iteration
-eval (filed as a follow-up, does not gate). This is the v1.5 deliverable. It
-builds on the shipped global-context v1 (`~/.producer-pal/context.md`, injected
-verbatim into `ppal-connect`) and the auto-memory pattern used by Claude Code
-itself (indexed one-fact-per-file `.md` store). The `~/.producer-pal`
-content-override layer it sits on is ADR-0010
+`memory-system` branch** (not yet landed on dev). **Reworked 2026-07-04**: the
+shipped tiered-eager injection is replaced by **index-only** injection, and
+category is **decoupled from pinning** — pinning now lives in the context layer;
+memory is a pure lazy recall store whose derived index is the only always-on
+part. See [Injection strategy](#injection-strategy--index-only-locked).
+Remaining: apply the rework; re-run the drive-iteration eval (does not gate).
+This is the v1.5 deliverable. It builds on the shipped global-context v1
+(`~/.producer-pal/context.md`, injected verbatim into `ppal-connect`) and the
+auto-memory pattern used by Claude Code itself (indexed one-fact-per-file `.md`
+store). The `~/.producer-pal` content-override layer it sits on is ADR-0010
 (`dev/decisions/0010-user-content-overrides-layer.md`).
 
 ## The framing decision: memory is the first "loadable collection"
@@ -30,26 +34,28 @@ designed right the first time.
 This is the design pivot that makes memory and skills coherent instead of
 fighting each other:
 
-- Memory wants **tiered-eager** — inject `user`/`feedback` bodies verbatim,
-  because PP has no recall harness and weak clients (Claude Desktop, LM Studio)
-  don't reliably do a two-step `read`.
+- Memory wants **index-only** — no memory body is ever pinned. The always-pinned
+  _index_ (name + one-line description per entry) is PP's minimal recall
+  harness; bodies load on demand. A fact that must be always-on doesn't belong
+  in memory — it belongs in **context** (the AI escalates there by asking; see
+  [Where discipline lives](#where-discipline-lives)).
 - Built-in skill-splitting wants **lazy** — load a specialized skill only when
   relevant, to cut the ~10.9k-token skills blob.
 
-Resolve it by making the policy a property of the **entry**, resolved by a
+Pinning is therefore a property of the **collection/entry**, resolved by a
 per-collection hook:
 
-| Collection    | Policy resolver                              |
-| ------------- | -------------------------------------------- |
-| memory        | `type ∈ {user, feedback}` → eager, else lazy |
-| custom skills | `frontmatter.pinned` → eager, else lazy      |
-| built-in core | always eager; specialized → lazy             |
+| Collection    | Policy resolver                                      |
+| ------------- | ---------------------------------------------------- |
+| memory        | bodies never eager; index always pinned, bodies lazy |
+| custom skills | `frontmatter.pinned` → eager, else lazy              |
+| built-in core | always eager; specialized → lazy                     |
 
-`context.md` is just the degenerate "one pinned eager blob." The injector is
-then **one function**: inject every `eager` body + a merged index of every
-`lazy` hook; `ppal-context read` pulls any lazy body on demand. Memory
-frontmatter needs no explicit `inject:` field in v1 — the policy derives from
-`type`.
+`context.md` is the degenerate "one pinned eager blob"; memory is the opposite
+end — nothing pinned but its index. The injector injects every `eager` body + a
+merged index of every `lazy` entry; `ppal-context read` pulls any lazy body on
+demand. Memory's **category is decoupled from injection** — it drives only index
+grouping, never eager/lazy (that coupling was the reworked-away confusion).
 
 ## Goal
 
@@ -140,21 +146,25 @@ type), exactly like Claude Code's own memory. Keep the two concepts separate.
 
 ### Types (four buckets, remapped to music)
 
-| Type        | What it holds                           | Default injection | Example                                      |
-| ----------- | --------------------------------------- | ----------------- | -------------------------------------------- |
-| `user`      | who they are as a musician              | **eager**         | "composes mostly in C minor, house/techno"   |
-| `feedback`  | how the assistant should work with them | **eager**         | "always propose 2 variations before writing" |
-| `project`   | cross-project creative goals            | lazy              | "album 'Nyx', dark ambient, ~60bpm"          |
-| `reference` | external pointers                       | lazy              | "kick samples in ~/Samples/Analog"           |
+Category is **index-grouping metadata only** — it no longer controls injection
+(all bodies are lazy). `reference` doubles as the catch-all/default bucket.
 
-`feedback` is the highest-value tier: behavioral, almost always relevant.
-`project` here = cross-project goals, distinct from the device's per-project
-context (which is about ONE Live Set).
+| Type        | What it holds                           | Example                                      |
+| ----------- | --------------------------------------- | -------------------------------------------- |
+| `user`      | who they are as a musician              | "composes mostly in C minor, house/techno"   |
+| `feedback`  | how the assistant should work with them | "always propose 2 variations before writing" |
+| `goal`      | cross-project creative goals            | "album 'Nyx', dark ambient, ~60bpm"          |
+| `reference` | external pointers                       | "kick samples in ~/Samples/Analog"           |
+
+`feedback` and `goal` are the categories most likely to warrant escalation to
+context (long-lived preference / core creative goal). `goal` (renamed from
+`project`) = cross-project goals, kept distinct from the device's per-project
+context (which is about ONE Live Set) — the rename removes that collision.
 
 ## The index (`MEMORY.md`) — DERIVED, not authored
 
-One line per memory, description as the recall hook, grouped by type so the
-injector can slice eager vs lazy:
+One line per memory, description as the recall hook, grouped by type (grouping
+only — the whole index is always injected):
 
 ```markdown
 # Producer Pal Memory
@@ -167,7 +177,7 @@ injector can slice eager vs lazy:
 
 - `hates-quantized-hats` — swing/humanize drums
 
-## Project
+## Goal
 
 - `album-project-nyx` — dark ambient, 60bpm
 ```
@@ -178,31 +188,37 @@ the backend **regenerates `MEMORY.md` from the files' frontmatter** on every
 the discipline burden on the model. Hand-editing a file's frontmatter → next
 connect (or a `list`) re-derives.
 
-## Injection strategy — tiered eager (locked)
+## Injection strategy — index-only (locked)
 
 PP has **no recall harness**, and two-step recall is fragile for weak/external
-clients that only see the `ppal-connect` result. So on connect:
+clients that only see the `ppal-connect` result. The fix is not to pin bodies
+(that bloats every turn and drops the AI's learned facts into the always-on
+budget) but to always pin the **index**, which _is_ the recall harness: it tells
+the model what exists to load. So on connect:
 
-- **Always inject**: `context.md` (pinned) + full bodies of all `eager` entries
-  (`user` + `feedback`) + the _index lines_ for `lazy` entries (`project` +
-  `reference`).
-- **On demand** (`ppal-context read <name>`): full `lazy` bodies when a hook
-  looks relevant.
+- **Always inject**: `context.md` (pinned prose) + the memory **index** (every
+  entry's name + one-line description). No memory bodies.
+- **On demand** (`ppal-context read <name>`): the full body of any entry whose
+  index hook looks relevant.
+- **Pinned content lives in context, not memory.** When the AI learns something
+  that must be always-on, it escalates to `context.md` / the project blob by
+  asking the user — memory itself never pins a body.
 
-Injected as a new `withMemory` producer composed onto `callLiveApiEnriched`
-(same seam as `withGlobalContext` / `withSkills`), so external MCP clients see
-it in the `ppal-connect` result.
+Injected as the `withMemory` producer composed onto `callLiveApiEnriched` (same
+seam as `withGlobalContext` / `withSkills`), so external MCP clients see it in
+the `ppal-connect` result.
 
 ### Token budget check
 
-Skills blob is already ~10.9k tokens/turn; production floor ~18.4k. Keep the
-always-on tier bounded:
+Skills blob is already ~10.9k tokens/turn; production floor ~18.4k. Index-only
+keeps the always-on tier tiny and bounded:
 
-- ~40–80 tokens/memory body, ~15 tokens/index line.
-- Heavy user: ~10 eager bodies (~600 tok) + ~20 lazy index lines (~300 tok) ≈
-  **<1k tokens/turn**. Acceptable.
-- Guard rail: soft-cap the eager tier — warn in the editor when eager bodies
-  exceed N tokens; suggest demoting to `project`/`reference`.
+- ~15 tokens/index line; bodies cost nothing until read.
+- Heavy user: ~40 index lines ≈ **~600 tok/turn**, independent of body size.
+  Acceptable.
+- Guard rail: the **index** is now the growing always-on cost (not bodies) —
+  cap/group/summarize the index if entry count gets large; warn in the editor
+  past N entries.
 
 ## Write surface — extend `ppal-context`
 
@@ -215,7 +231,7 @@ ppal-context
   action: "read" | "write" | "remember" | "forget" | "list"
   scope:  "project" | "global"        (memory ops are global-scope only in v1)
   name:   string?                     (read/remember/forget target a memory entry)
-  type:   "user"|"feedback"|"project"|"reference"?   (remember)
+  type:   "user"|"feedback"|"goal"|"reference"?      (remember; index grouping only)
   description: string?                (remember — the index/recall hook)
   content: string?                    (write = pinned context.md; remember = body)
 ```
@@ -241,10 +257,17 @@ the **skills blob** (`ppal-connect` skills) — where the model already gets
 instructed. Must be terse (biggest per-turn cost). Minimum viable instruction:
 
 - Before `remember`, check the index for an existing memory that covers it —
-  update instead of duplicating.
-- One fact per memory. Pick the narrowest `type`.
+  update (reuse the name) instead of duplicating.
+- One fact per memory. Pick the narrowest `type` (grouping only).
 - `forget` a memory that turns out wrong; don't leave "OUTDATED" markers.
 - Convert relative dates ("next week") to absolute before storing.
+- **Escalate to context, don't over-pin memory.** Default to a memory. Only when
+  a fact is clearly a long-lived preference or core creative goal, ask the user
+  whether to add it to global/project context — and on yes, write it there for
+  them. Memory is the notebook; context is the pinned, user-driven layer.
+- **Write the `description` as a recall hook**, not a title. It is the ONLY
+  always-on signal (bodies are lazy), so it must convey _when the memory is
+  relevant + what it holds_ so the model knows to `read` it.
 
 This lands in the shipped skills fragments (`core-standard` / `core-basic`) — so
 it participates in the per-slot override + small-model variants automatically.
@@ -301,8 +324,10 @@ after custom skills — not a v1.5 commitment.
 
 1. **DECIDED: `memory/` coexists with `context.md`.** `context.md` = pinned
    always-on prose; `memory/` = structured LLM-managed facts. Complementary.
-2. **DECIDED: tiered-eager injection**, generalized to a per-entry policy
-   (above).
+2. **DECIDED (revised 2026-07-04): index-only injection.** Memory pins no bodies
+   — only the derived index is always-on; pinning lives in the context layer.
+   Category is decoupled from injection (grouping only). Supersedes the original
+   tiered-eager decision.
 3. **DECIDED: collection-generic build**, memory as first consumer.
 4. **DECIDED: v1.5 = memory only**; custom skills + built-in split are v1.5.x.
 5. **DECIDED: full read+write from the first cut**; eval drives iteration, not
@@ -322,10 +347,13 @@ after custom skills — not a v1.5 commitment.
   `memory.*` RPC bridge ops (`helpers/memory/global-memory-node-routes.ts`);
   `ppal-context` grows `read | remember | forget | list` (global scope) with
   `name`/`type`/`description` params; `withMemory` append producer
-  (`helpers/memory/memory-inject.ts`, eager `user`/`feedback` bodies + lazy
-  `project`/`reference` index); memory-discipline instructions in
+  (`helpers/memory/memory-inject.ts`); memory-discipline instructions in
   `core-standard` / `core-basic`. (Reorg note: `helpers/global-context/*` and
   `tests/server/*` subdirs were created to stay under the 12-item folder cap.)
+  **2026-07-04 rework (to apply):** `memory-inject.ts` injects index-only (drop
+  eager bodies + `isEagerMemoryType`); `project` type renamed `goal` and
+  decoupled from injection; discipline gains the context-escalation +
+  description-as-recall-hook rules.
 - **P1 follow-up — eval.** Not built yet. Drives skills-blob iteration; does not
   gate. Reuse the `evals/` notation-harness pattern.
 - **P2 — webui memory manager. DONE (on branch).** Two-pane manager on a new

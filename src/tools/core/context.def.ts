@@ -52,10 +52,10 @@ export const toolDefContext = defineTool("ppal-context", {
       ),
 
     type: z
-      .enum(["user", "feedback", "project", "reference"])
+      .enum(["user", "feedback", "goal", "reference"])
       .optional()
       .describe(
-        "memory bucket (remember): user=who they are | feedback=how to work with them | project=cross-project goal | reference=external pointer",
+        "memory bucket (remember): user=who they are | feedback=how to work with them | goal=cross-project creative goal | reference=external pointer",
       ),
 
     description: z
