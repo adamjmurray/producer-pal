@@ -8,21 +8,24 @@
 // driver root down to the leaves.
 //
 // The graph:
-//   standard / basic ............ driver roots (chosen by small-model mode). Own
-//                                 the "# Producer Pal Skills" header + the two
-//                                 includes below, so the assembly order is
-//                                 visible in the fragment a user copies to edit.
+//   standard / basic ............ driver roots (chosen by small-model mode). Each
+//                                 is the "# Producer Pal Skills" header followed
+//                                 by the shared core body INLINED (coreStandard /
+//                                 coreBasic), so the whole document is the fragment
+//                                 a user copies to edit. The core body carries the
+//                                 notation `@include` inside it, so the notation
+//                                 guide can be positioned anywhere in the text.
 //     {notation}-standard ....... a notation head (barbeat-standard, stark-…);
 //     {notation}-basic            midi-json is level-invariant, so its two names
 //                                 are thin wrappers that both include midi-json.
-//     core-standard / core-basic  the shared body. core-standard includes
-//                                 code-transforms, which only EXISTS here when
-//                                 ENABLE_CODE_EXEC is set — a missing fragment
-//                                 resolves to "", so no directive-level branch.
+//                                 The inlined core also includes code-transforms,
+//                                 which only EXISTS here when ENABLE_CODE_EXEC is
+//                                 set — a missing fragment resolves to "", so no
+//                                 directive-level branch.
 //
-// Header + notation-ordering are plain text/includes in the drivers, not glue in
-// buildSkills; the seven notation/core fragment names remain the stable override
-// slots (see skill-slots.ts).
+// Header + core are plain text in the drivers, not glue in buildSkills; the
+// notation fragment names remain stable override slots (see skill-slots.ts). The
+// core body is no longer a separate slot — it lives inside the driver.
 
 import { codeTransformsSkills } from "#src/skills/code-transforms.ts";
 import { coreBasic } from "#src/skills/core/core-basic.ts";
@@ -35,14 +38,15 @@ import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 const HEADER = "# Producer Pal Skills";
 
 /**
- * Standard-level driver: header + notation head + shared standard core. Exported
- * so the editor registry (skill-slots.ts) surfaces the SAME string as an
- * overridable slot — the include graph a user copies to fork is this text.
+ * Standard-level driver: header + the standard core body inlined (which carries
+ * the notation `@include` inside it). Exported so the editor registry
+ * (skill-slots.ts) surfaces the SAME string as an overridable slot — the whole
+ * document a user copies to fork is this text.
  */
-export const standardDriver = `${HEADER}\n\n@include "./{notation}-standard.md"\n\n@include "./core-standard.md"`;
+export const standardDriver = `${HEADER}\n\n${coreStandard}`;
 
-/** Small-model driver: header + notation head + shared basic core. */
-export const basicDriver = `${HEADER}\n\n@include "./{notation}-basic.md"\n\n@include "./core-basic.md"`;
+/** Small-model driver: header + the basic core body inlined (notation include within). */
+export const basicDriver = `${HEADER}\n\n${coreBasic}`;
 
 // midi-json has one head for both levels; these wrappers let the drivers use the
 // uniform `{notation}-{level}` include name without duplicating the head.
@@ -63,8 +67,6 @@ export function builtinFragments(
   const fragments: Record<string, string> = {
     standard: standardDriver,
     basic: basicDriver,
-    "core-standard": coreStandard,
-    "core-basic": coreBasic,
     "barbeat-standard": barbeatStandard,
     "barbeat-basic": barbeatBasic,
     "stark-standard": starkStandard,

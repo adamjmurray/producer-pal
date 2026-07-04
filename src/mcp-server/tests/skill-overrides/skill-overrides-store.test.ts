@@ -45,9 +45,11 @@ describe("readSkillOverrides", () => {
   });
 
   it("returns only overridden slots, with frontmatter stripped and trimmed", () => {
-    writeSkillOverride("core-standard", "  My core.  ");
+    writeSkillOverride("barbeat-standard", "  My core.  ");
 
-    expect(readSkillOverrides()).toStrictEqual({ "core-standard": "My core." });
+    expect(readSkillOverrides()).toStrictEqual({
+      "barbeat-standard": "My core.",
+    });
   });
 
   it("reads every .md as a fragment, including custom names a fork can @include", () => {
@@ -93,9 +95,9 @@ describe("readSkillOverrides", () => {
 
 describe("writeSkillOverride", () => {
   it("stamps fork-time provenance and returns the new state", () => {
-    const state = writeSkillOverride("core-basic", "custom basic core");
+    const state = writeSkillOverride("barbeat-basic", "custom basic core");
 
-    expect(state.name).toBe("core-basic");
+    expect(state.name).toBe("barbeat-basic");
     expect(state.override).toBe("custom basic core");
     expect(state.drifted).toBe(false);
     expect(state.provenance?.producerPalVersion).toBe(VERSION);
@@ -124,11 +126,11 @@ describe("writeSkillOverride", () => {
 
 describe("readSkillSlotState", () => {
   it("reports the built-in and no override for an untouched slot", () => {
-    const state = readSkillSlotState("core-standard");
+    const state = readSkillSlotState("barbeat-standard");
 
-    expect(state.builtIn).toBe(SKILL_SLOTS["core-standard"].builtIn);
-    expect(state.title).toBe(SKILL_SLOTS["core-standard"].title);
-    expect(state.description).toBe(SKILL_SLOTS["core-standard"].description);
+    expect(state.builtIn).toBe(SKILL_SLOTS["barbeat-standard"].builtIn);
+    expect(state.title).toBe(SKILL_SLOTS["barbeat-standard"].title);
+    expect(state.description).toBe(SKILL_SLOTS["barbeat-standard"].description);
     expect(state.override).toBe("");
     expect(state.drifted).toBe(false);
     expect(state.provenance).toBeNull();
@@ -137,11 +139,11 @@ describe("readSkillSlotState", () => {
   it("flags drift when the stored hash differs from the current built-in", () => {
     // Simulate an override forked from an older, since-changed built-in.
     writeRaw(
-      "core-standard",
+      "barbeat-standard",
       "---\nproducerPalVersion: 0.0.1\nbuiltInHash: stalehash\n---\n\nmy fork",
     );
 
-    const state = readSkillSlotState("core-standard");
+    const state = readSkillSlotState("barbeat-standard");
 
     expect(state.override).toBe("my fork");
     expect(state.drifted).toBe(true);
@@ -152,9 +154,9 @@ describe("readSkillSlotState", () => {
   });
 
   it("does not flag drift for an override forked from the current built-in", () => {
-    writeSkillOverride("core-standard", "fresh fork");
+    writeSkillOverride("barbeat-standard", "fresh fork");
 
-    expect(readSkillSlotState("core-standard").drifted).toBe(false);
+    expect(readSkillSlotState("barbeat-standard").drifted).toBe(false);
   });
 });
 

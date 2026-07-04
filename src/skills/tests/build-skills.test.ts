@@ -6,7 +6,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NOTATIONS } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
-import { coreBasic } from "#src/skills/core/core-basic.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
 
 const HEADER = "# Producer Pal Skills";
@@ -40,8 +39,8 @@ describe("buildSkills - composition", () => {
   it("selects the basic core in small-model mode", () => {
     const basic = buildSkills({ notation: "barbeat", smallModelMode: true });
 
-    expect(basic).toContain("If a tool call errors, read the message"); // coreBasic
-    expect(basic).toContain(coreBasic.split("\n")[0]); // basic core body
+    expect(basic).toContain("If a tool call errors, read the message"); // coreBasic body
+    expect(basic).toContain("## Add notes to an existing clip"); // basic core heading
   });
 
   it("defaults to bar|beat at both levels", () => {
@@ -79,20 +78,23 @@ describe("buildSkills - overrides", () => {
     expect(result).toContain("## Time & Note Values"); // core still present
   });
 
-  it("replaces the shared core fragment", () => {
+  it("replaces the whole document when the driver slot is overridden", () => {
+    // The core is inlined into the driver, so there is no separate core slot to
+    // override — replacing `standard` replaces everything, and the notation
+    // include embedded in the override still resolves against the built-in head.
     const result = buildSkills(
       { notation: "barbeat" },
-      { "core-standard": "MY CUSTOM CORE" },
+      { standard: `MY CUSTOM CORE\n\n@include "./{notation}-standard.md"` },
     );
 
-    expect(result).toBe(`${HEADER}\n\n${barbeatStandard}\n\nMY CUSTOM CORE`);
+    expect(result).toBe(`MY CUSTOM CORE\n\n${barbeatStandard}`);
   });
 
   it("ignores overrides for fragments the active graph never includes", () => {
     const result = buildSkills(
       { notation: "barbeat" },
       {
-        "core-basic": "IGNORED",
+        basic: "IGNORED",
         "midi-json": "IGNORED",
         "stark-standard": "IGNORED",
       },

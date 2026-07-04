@@ -54,7 +54,7 @@ describe("skill-overrides route", () => {
   });
 
   it("PUT saves an override with provenance; GET reflects it", async () => {
-    const res = await putJson(`${base}/core-standard`, {
+    const res = await putJson(`${base}/barbeat-standard`, {
       content: "my custom core",
     });
 
@@ -66,7 +66,7 @@ describe("skill-overrides route", () => {
 
     const getRes = await fetch(base);
     const listed = (await getRes.json()) as { slots: SlotState[] };
-    const saved = listed.slots.find((s) => s.name === "core-standard");
+    const saved = listed.slots.find((s) => s.name === "barbeat-standard");
 
     expect(saved?.override).toBe("my custom core");
   });
@@ -92,7 +92,7 @@ describe("skill-overrides route", () => {
   });
 
   it("rejects a non-string content with 400", async () => {
-    const res = await putJson(`${base}/core-standard`, { content: 42 });
+    const res = await putJson(`${base}/barbeat-standard`, { content: 42 });
 
     expect(res.status).toBe(400);
   });
@@ -107,11 +107,11 @@ describe("skill-overrides route", () => {
 
   it("blocks cross-origin writes with 403 (localhost gate)", async () => {
     const putRes = await putJson(
-      `${base}/core-standard`,
+      `${base}/barbeat-standard`,
       { content: "x" },
       "https://evil.example.com",
     );
-    const delRes = await fetch(`${base}/core-standard`, {
+    const delRes = await fetch(`${base}/barbeat-standard`, {
       method: "DELETE",
       headers: { Origin: "https://evil.example.com" },
     });

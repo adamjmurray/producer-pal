@@ -22,8 +22,8 @@ export interface SkillsCombination {
 export interface SkillsPreview extends SkillsCombination {
   /** The active notation head slot name (e.g. "stark"). */
   head: string;
-  /** The active core body slot name (e.g. "core-basic"). */
-  core: string;
+  /** The active driver slot name (e.g. "basic"); it inlines the core body. */
+  driver: string;
   /** The assembled "# Producer Pal Skills" blob. */
   skills: string;
   /** Exact character count of the blob (token estimate is derived at display). */
@@ -131,7 +131,7 @@ interface RawPreview {
   notation?: unknown;
   smallModelMode?: unknown;
   head?: unknown;
-  core?: unknown;
+  driver?: unknown;
   skills?: unknown;
 }
 
@@ -163,7 +163,7 @@ async function fetchPreview(
     notation: combination.notation,
     smallModelMode: combination.smallModelMode,
     head: typeof raw.head === "string" ? raw.head : "",
-    core: typeof raw.core === "string" ? raw.core : "",
+    driver: typeof raw.driver === "string" ? raw.driver : "",
     skills,
     charCount: skills.length,
   };

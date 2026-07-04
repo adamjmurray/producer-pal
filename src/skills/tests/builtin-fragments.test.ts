@@ -12,16 +12,19 @@ describe("builtinFragments", () => {
     vi.unstubAllEnvs();
   });
 
-  it("exposes the driver roots with the header and their two includes", () => {
+  it("exposes the driver roots with the header, inlined core, and notation include", () => {
     const frags = builtinFragments(false);
 
-    for (const [root, level] of [
-      ["standard", "standard"],
-      ["basic", "basic"],
+    for (const [root, level, coreHeading] of [
+      ["standard", "standard", "## Time & Note Values"],
+      ["basic", "basic", "## Add notes to an existing clip"],
     ] as const) {
       expect(frags[root]).toContain("# Producer Pal Skills");
+      // Notation guide is pulled in via @include, positioned within the core.
       expect(frags[root]).toContain(`@include "./{notation}-${level}.md"`);
-      expect(frags[root]).toContain(`@include "./core-${level}.md"`);
+      // The core body is inlined, not @include'd.
+      expect(frags[root]).toContain(coreHeading);
+      expect(frags[root]).not.toContain(`@include "./core-${level}.md"`);
     }
   });
 

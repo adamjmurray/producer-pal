@@ -248,7 +248,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
     );
   }
 
-  const { skills, head, core } = status.preview;
+  const { skills, head, driver } = status.preview;
 
   return (
     <div
@@ -256,7 +256,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
     >
       <div className="flex items-center justify-between h-5 gap-3">
         <span className="min-w-0 truncate text-xs text-zinc-400 dark:text-zinc-500">
-          Fragments: {head} + {core}
+          Fragments: {driver} + {head}
         </span>
         <button
           type="button"

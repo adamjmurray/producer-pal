@@ -63,14 +63,14 @@ describe("withSkills", () => {
   });
 
   it("applies a user fragment override read from disk", async () => {
-    writeSkillOverride("core-standard", "MY OVERRIDDEN CORE");
+    writeSkillOverride("barbeat-standard", "MY OVERRIDDEN HEAD");
     const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
 
     const result = await wrapped("ppal-connect", {});
 
-    expect(lastText(result)).toContain("MY OVERRIDDEN CORE");
+    expect(lastText(result)).toContain("MY OVERRIDDEN HEAD");
     expect(lastText(result)).toBe(
-      buildSkills({}, { "core-standard": "MY OVERRIDDEN CORE" }),
+      buildSkills({}, { "barbeat-standard": "MY OVERRIDDEN HEAD" }),
     );
   });
 

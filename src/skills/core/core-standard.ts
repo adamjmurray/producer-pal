@@ -3,7 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-export const coreStandard = `## Time & Note Values
+// The standard skills body, inlined into the `standard` full-skills driver (see
+// builtin-fragments.ts) rather than pulled in via @include — so the notation
+// guide's `@include` lives INSIDE this text and can be moved wherever the
+// notation section should appear. It sits at the top here (matching the original
+// header → notation → core order); move the directive to reposition the guide.
+export const coreStandard = `@include "./{notation}-standard.md"
+
+## Time & Note Values
 
 Applies to every notation: transforms, clip \`length\`, and arrangement durations use these units regardless of how you write \`notes\`.
 

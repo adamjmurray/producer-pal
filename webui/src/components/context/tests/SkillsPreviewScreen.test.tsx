@@ -57,7 +57,7 @@ function stubFetch(
     return Promise.resolve(
       jsonResponse({
         head: notation,
-        core: small ? "core-basic" : "core-standard",
+        driver: small ? "basic" : "standard",
         skills: `S:${notation}:${small}`,
       }),
     );
@@ -81,9 +81,7 @@ describe("SkillsPreviewScreen", () => {
     expect(screen.getByText("Read-only preview")).toBeTruthy();
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Fragments: barbeat \+ core-standard/),
-      ).toBeTruthy();
+      expect(screen.getByText(/Fragments: standard \+ barbeat/)).toBeTruthy();
     });
 
     // "S:barbeat:false" is 15 chars → ceil(15/4) = 4 tokens.
@@ -115,9 +113,7 @@ describe("SkillsPreviewScreen", () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Fragments: stark \+ core-standard/),
-      ).toBeTruthy();
+      expect(screen.getByText(/Fragments: standard \+ stark/)).toBeTruthy();
     });
     expect(screen.queryByText("★ Current settings")).toBeNull();
   });
@@ -128,7 +124,7 @@ describe("SkillsPreviewScreen", () => {
     render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/core-standard/)).toBeTruthy();
+      expect(screen.getByText(/Fragments: standard \+ barbeat/)).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText("Preview model size"), {
@@ -136,7 +132,7 @@ describe("SkillsPreviewScreen", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: barbeat \+ core-basic/)).toBeTruthy();
+      expect(screen.getByText(/Fragments: basic \+ barbeat/)).toBeTruthy();
     });
   });
 

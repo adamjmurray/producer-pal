@@ -53,7 +53,7 @@ vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
       kind: "ready",
       slots: [
         {
-          name: "core-standard",
+          name: "barbeat-standard",
           title: "Core (standard)",
           description: "Slot description.",
           builtIn: "CORE-BUILTIN",

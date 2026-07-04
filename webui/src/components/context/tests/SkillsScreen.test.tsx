@@ -51,7 +51,7 @@ const TAB_SLOT = <div data-testid="tabs">tabs</div>;
  */
 function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
   return {
-    name: "core-standard",
+    name: "barbeat-standard",
     title: "Core (standard)",
     description: "Slot description.",
     builtIn: "BUILT-IN",
@@ -240,7 +240,7 @@ describe("SkillsScreen", () => {
     fireEvent.click(screen.getByText("Reset to default"));
 
     await waitFor(() => {
-      expect(resetSlot).toHaveBeenCalledWith("core-standard");
+      expect(resetSlot).toHaveBeenCalledWith("barbeat-standard");
     });
   });
 
@@ -260,7 +260,7 @@ describe("SkillsScreen", () => {
     fireEvent.blur(editor);
 
     await waitFor(() => {
-      expect(saveSlot).toHaveBeenCalledWith("core-standard", "MY OVERRIDE");
+      expect(saveSlot).toHaveBeenCalledWith("barbeat-standard", "MY OVERRIDE");
     });
   });
 
@@ -270,7 +270,7 @@ describe("SkillsScreen", () => {
         overrides={overrides({
           kind: "ready",
           slots: [
-            slot({ name: "core-standard", title: "Core", builtIn: "CORE" }),
+            slot({ name: "barbeat-standard", title: "Core", builtIn: "CORE" }),
             slot({ name: "stark", title: "Stark", builtIn: "STARK" }),
           ],
         })}

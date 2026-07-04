@@ -4,12 +4,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Shared basic (small-model) core skills. Appended after a notation's basic head
- * by {@link buildSkills}. Deliberately terse — this is the small-model budget's
- * shared tail (notes-merge behavior, preTransforms clearing, and the general
- * Rules), factored out of the per-notation basic docs so it lives in one place.
+ * Shared basic (small-model) core skills, inlined into the `basic` full-skills
+ * driver (see builtin-fragments.ts) rather than pulled in via @include — so the
+ * notation guide's `@include` lives INSIDE this text and can be moved wherever
+ * the notation section should appear. Deliberately terse — the small-model
+ * budget's shared tail (notes-merge, preTransforms clearing, the general Rules).
+ * The notation directive sits at the top (matching header → notation → core);
+ * move it to reposition the guide.
  */
-export const coreBasic = `## Add notes to an existing clip (update-clip)
+export const coreBasic = `@include "./{notation}-basic.md"
+
+## Add notes to an existing clip (update-clip)
 
 \`notes\` MERGES into the clip: a note at the *same* pitch+start overwrites that note; every other note stays. So to add, just pass the new notes — don't resend the whole clip.
 

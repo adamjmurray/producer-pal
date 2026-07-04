@@ -4,8 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { basicDriver, standardDriver } from "#src/skills/builtin-fragments.ts";
-import { coreBasic } from "#src/skills/core/core-basic.ts";
-import { coreStandard } from "#src/skills/core/core-standard.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
@@ -15,16 +13,15 @@ import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
 // fragment. Renaming one orphans that user's override, so the set is kept coarse
 // and stable. Two tiers: the `standard`/`basic` DRIVERS are the top-level roots
-// (chosen by small-model mode) that compose the rest via `@include`; the notation
-// heads and core bodies are the fragments they pull in. bar|beat and stark have a
-// distinct head per level; midi-json reuses one head across both levels, so it is
-// a single slot (the drivers reach it through a level-named wrapper that is
-// plumbing, not an override slot).
+// (chosen by small-model mode) that inline the shared core body and pull in a
+// notation head via `@include`; the notation heads are the fragments they pull
+// in. bar|beat and stark have a distinct head per level; midi-json reuses one
+// head across both levels, so it is a single slot (the drivers reach it through a
+// level-named wrapper that is plumbing, not an override slot). The core body is
+// NOT a slot — it is inlined into each driver, so editing a driver edits the core.
 export const SKILL_SLOT_NAMES = [
   "standard",
   "basic",
-  "core-standard",
-  "core-basic",
   "barbeat-standard",
   "barbeat-basic",
   "midi-json",
@@ -52,26 +49,14 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   standard: {
     title: "Full skills (standard)",
     description:
-      "The whole standard-model skills. Composes the notation guide and core below with @include — copy it to reorder sections, drop one, or point an include at a fragment of your own.",
+      "The whole standard-model skills: the core instructions with the notation guide pulled in via @include. Copy it to reorder sections, move where the notation guide appears, drop an include, or point one at a fragment of your own.",
     builtIn: standardDriver,
   },
   basic: {
     title: "Full skills (small-model)",
     description:
-      "The whole small-model skills, composed with @include like the standard assembly above.",
+      "The whole small-model skills: the trimmed core with the notation guide pulled in via @include, editable like the standard skills above.",
     builtIn: basicDriver,
-  },
-  "core-standard": {
-    title: "Core (standard)",
-    description:
-      "The main instructions: the tools, the workflow, and how Producer Pal drives Ableton Live. Used with capable models.",
-    builtIn: coreStandard,
-  },
-  "core-basic": {
-    title: "Core (small-model)",
-    description:
-      "A trimmed version of the core instructions for smaller or local models (small-model mode).",
-    builtIn: coreBasic,
   },
   "barbeat-standard": {
     title: "bar|beat notation (standard)",

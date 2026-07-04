@@ -39,9 +39,10 @@ export function registerSkillsPreviewRoute(app: Express): void {
       : DEFAULT_NOTATION;
     const smallModelMode = req.query.smallModel === "true";
 
-    // The two overridable fragments the driver pulls in for this combo, for the
-    // editor's label. midi-json is level-invariant, so its head has no suffix.
-    const core = smallModelMode ? "core-basic" : "core-standard";
+    // The two overridable slots this combo composes, for the editor's label: the
+    // driver root (which inlines the core) and the notation head it pulls in.
+    // midi-json is level-invariant, so its head has no suffix.
+    const driver = smallModelMode ? "basic" : "standard";
     const head =
       notation === "midi-json"
         ? "midi-json"
@@ -51,6 +52,6 @@ export function registerSkillsPreviewRoute(app: Express): void {
       readSkillOverrides(),
     );
 
-    res.json({ notation, smallModelMode, head, core, skills });
+    res.json({ notation, smallModelMode, head, driver, skills });
   });
 }

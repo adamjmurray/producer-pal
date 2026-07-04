@@ -147,7 +147,7 @@ export function listConfigMarkdownFilesRecursive(subdir: string): string[] {
  * to the built-in default (empty folder ⇒ latest built-ins, per ADR-0010). A
  * missing file is treated as already-reset, not an error.
  *
- * @param filename - Slot filename (e.g. "skills/core-standard.md")
+ * @param filename - Slot filename (e.g. "skills/barbeat-standard.md")
  */
 export function deleteConfigMarkdown(filename: string): void {
   if (isConfigDirInert()) return;

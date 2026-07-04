@@ -18,7 +18,7 @@ import { type SkillSlotView } from "#webui/hooks/context/use-skill-overrides";
  */
 function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
   return {
-    name: "core-standard",
+    name: "barbeat-standard",
     title: "Core (standard)",
     description: "Slot description.",
     builtIn: "BUILT-IN",

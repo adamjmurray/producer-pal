@@ -13,7 +13,7 @@ import { deferred, jsonResponse } from "./doc-memory-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/skill-overrides";
-const SLOT_URL = "http://localhost:3000/skill-overrides/core-standard";
+const SLOT_URL = "http://localhost:3000/skill-overrides/barbeat-standard";
 
 /**
  * Build a server slot record with overridable fields.
@@ -22,7 +22,7 @@ const SLOT_URL = "http://localhost:3000/skill-overrides/core-standard";
  */
 function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    name: "core-standard",
+    name: "barbeat-standard",
     title: "Core (standard)",
     description: "Slot description.",
     builtIn: "BUILT-IN",
@@ -71,7 +71,7 @@ describe("useSkillOverrides", () => {
 
     expect(status.kind === "ready" && status.slots).toStrictEqual([
       {
-        name: "core-standard",
+        name: "barbeat-standard",
         title: "Core (standard)",
         description: "Slot description.",
         builtIn: "BUILT-IN",
@@ -156,7 +156,7 @@ describe("useSkillOverrides", () => {
     let ok: boolean | undefined;
 
     await act(async () => {
-      ok = await result.current.saveSlot("core-standard", "MINE");
+      ok = await result.current.saveSlot("barbeat-standard", "MINE");
     });
 
     expect(ok).toBe(true);
@@ -164,7 +164,7 @@ describe("useSkillOverrides", () => {
     const status = result.current.status;
 
     expect(status.kind === "ready" && status.slots[0]).toMatchObject({
-      name: "core-standard",
+      name: "barbeat-standard",
       override: "MINE\n",
       forkedFromVersion: "1.5.0",
     });
@@ -196,7 +196,7 @@ describe("useSkillOverrides", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ slot: rawSlot() }));
 
     await act(async () => {
-      await result.current.resetSlot("core-standard");
+      await result.current.resetSlot("barbeat-standard");
     });
 
     const status = result.current.status;
@@ -224,7 +224,7 @@ describe("useSkillOverrides", () => {
     let ok: boolean | undefined;
 
     await act(async () => {
-      ok = await result.current.saveSlot("core-standard", "x");
+      ok = await result.current.saveSlot("barbeat-standard", "x");
     });
 
     expect(ok).toBe(false);
@@ -241,7 +241,7 @@ describe("useSkillOverrides", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ slot: rawSlot() }));
 
     await act(async () => {
-      await result.current.saveSlot("core-standard", "x");
+      await result.current.saveSlot("barbeat-standard", "x");
     });
 
     expect(result.current.status.kind).toBe("loading");
@@ -292,7 +292,7 @@ describe("useSkillOverrides", () => {
     fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (pre-save read)
 
     await act(async () => {
-      const savePromise = result.current.saveSlot("core-standard", "MINE");
+      const savePromise = result.current.saveSlot("barbeat-standard", "MINE");
       const refreshPromise = result.current.refresh();
 
       // The save echo lands first and sets the override.

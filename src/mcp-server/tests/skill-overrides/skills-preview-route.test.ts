@@ -40,7 +40,7 @@ interface PreviewBody {
   notation: string;
   smallModelMode: boolean;
   head: string;
-  core: string;
+  driver: string;
   skills: string;
 }
 
@@ -64,7 +64,7 @@ describe("skills-preview route", () => {
     expect(body.notation).toBe("barbeat");
     expect(body.smallModelMode).toBe(false);
     expect(body.head).toBe("barbeat-standard");
-    expect(body.core).toBe("core-standard");
+    expect(body.driver).toBe("standard");
     expect(body.skills).toBe(buildSkills({ notation: "barbeat" }));
   });
 
@@ -73,7 +73,7 @@ describe("skills-preview route", () => {
 
     expect(body.smallModelMode).toBe(true);
     expect(body.head).toBe("stark-basic");
-    expect(body.core).toBe("core-basic");
+    expect(body.driver).toBe("basic");
     expect(body.skills).toBe(
       buildSkills({ notation: "stark", smallModelMode: true }),
     );
@@ -83,19 +83,19 @@ describe("skills-preview route", () => {
     const body = await getPreview("notation=barbeat&smallModel=true");
 
     expect(body.head).toBe("barbeat-basic");
-    expect(body.core).toBe("core-basic");
+    expect(body.driver).toBe("basic");
   });
 
   it("reports the level-invariant midi-json head at both levels", async () => {
     const standard = await getPreview("notation=midi-json");
 
     expect(standard.head).toBe("midi-json");
-    expect(standard.core).toBe("core-standard");
+    expect(standard.driver).toBe("standard");
 
     const small = await getPreview("notation=midi-json&smallModel=true");
 
     expect(small.head).toBe("midi-json");
-    expect(small.core).toBe("core-basic");
+    expect(small.driver).toBe("basic");
   });
 
   it("falls back to bar|beat for an unknown notation", async () => {
@@ -109,7 +109,7 @@ describe("skills-preview route", () => {
     const body = await getPreview("smallModel=1");
 
     expect(body.smallModelMode).toBe(false);
-    expect(body.core).toBe("core-standard");
+    expect(body.driver).toBe("standard");
   });
 
   it("reflects a saved fragment override in the assembled blob", async () => {

@@ -187,7 +187,7 @@ export function deleteSkillOverride(name: SkillSlotName): SkillSlotState {
  * directory.
  *
  * @param name - The slot name
- * @returns Relative filename (e.g. "skills/core-standard.md")
+ * @returns Relative filename (e.g. "skills/barbeat-standard.md")
  */
 function filenameFor(name: SkillSlotName): string {
   return `skills/${name}.md`;
@@ -197,7 +197,7 @@ function filenameFor(name: SkillSlotName): string {
  * The trimmed body of a skills override file, with any frontmatter stripped
  * ("" when absent/empty), for {@link readSkillOverrides}.
  *
- * @param filename - Config-relative path (e.g. "skills/core-standard.md")
+ * @param filename - Config-relative path (e.g. "skills/barbeat-standard.md")
  * @returns The override body to feed buildSkills
  */
 function readFragmentBody(filename: string): string {

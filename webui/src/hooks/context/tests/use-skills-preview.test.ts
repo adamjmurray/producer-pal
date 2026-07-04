@@ -53,7 +53,7 @@ function stubFetch(options: StubOptions = {}): ReturnType<typeof vi.fn> {
     return Promise.resolve(
       jsonResponse({
         head: notation,
-        core: small ? "core-basic" : "core-standard",
+        driver: small ? "basic" : "standard",
         skills: `S:${notation}:${small}`,
       }),
     );
@@ -92,7 +92,7 @@ describe("useSkillsPreview", () => {
       notation: "stark",
       smallModelMode: true,
       head: "stark",
-      core: "core-basic",
+      driver: "basic",
       skills: "S:stark:true",
       charCount: "S:stark:true".length,
     });
@@ -158,7 +158,7 @@ describe("useSkillsPreview", () => {
     await waitFor(() => {
       const status = result.current.status;
 
-      expect(status.kind === "ready" && status.preview.core).toBe("core-basic");
+      expect(status.kind === "ready" && status.preview.driver).toBe("basic");
     });
   });
 
@@ -177,7 +177,11 @@ describe("useSkillsPreview", () => {
       const params = new URL(url).searchParams;
 
       return Promise.resolve(
-        jsonResponse({ head: params.get("notation"), core: "c", skills: "s" }),
+        jsonResponse({
+          head: params.get("notation"),
+          driver: "c",
+          skills: "s",
+        }),
       );
     });
 
