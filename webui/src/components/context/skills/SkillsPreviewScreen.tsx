@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { NOTATIONS, type Notation } from "#src/shared/notation";
-import { CharTokenCount } from "#webui/components/context/CharTokenCount";
+import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import {
   ContextHeader,
   DOUBLE_PANE_WIDTH,

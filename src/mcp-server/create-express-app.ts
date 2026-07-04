@@ -29,6 +29,7 @@ import { withCustomSkills } from "./helpers/skills-custom/custom-skills-inject.t
 import { withSkills } from "./helpers/skills-inject.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
+import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
 import { registerGlobalContextRoutes } from "./routes/global-context-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
@@ -328,6 +329,7 @@ export function createExpressApp(): Express {
 
   registerGlobalContextRoutes(app);
   registerMemoryCollectionRoutes(app);
+  registerCustomSkillsCollectionRoutes(app);
   registerSystemPromptRoutes(app);
   registerSkillOverridesRoutes(app);
   registerSkillsPreviewRoute(app);

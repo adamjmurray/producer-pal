@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  EntryRow,
+  NewEntryButton,
+} from "#webui/components/context/collection/collection-list-parts";
 import { type MemoryEntryView } from "#webui/hooks/context/use-memory-collection";
 import {
   MEMORY_TYPE_META,
@@ -36,17 +40,7 @@ export function MemoryList(props: MemoryListProps): preact.JSX.Element {
 
   return (
     <div className="flex flex-col gap-3 overflow-y-auto p-3">
-      <button
-        type="button"
-        onClick={onNew}
-        className={`shrink-0 rounded-md border border-dashed px-3 py-1.5 text-sm font-medium transition-colors ${
-          creating
-            ? "border-blue-500 text-blue-600 dark:text-blue-400"
-            : "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600"
-        }`}
-      >
-        + New memory
-      </button>
+      <NewEntryButton label="+ New memory" active={creating} onClick={onNew} />
       {entries.length === 0 ? (
         <p className="px-1 text-xs text-zinc-400 dark:text-zinc-500">
           No memories yet.
@@ -99,50 +93,15 @@ function MemoryGroup(props: MemoryGroupProps): preact.JSX.Element | null {
         </span>
       </div>
       {entries.map((entry) => (
-        <MemoryRow
+        <EntryRow
           key={entry.name}
-          entry={entry}
+          name={entry.name}
+          description={entry.description}
           selected={entry.name === selectedName}
           onSelect={onSelect}
         />
       ))}
     </div>
-  );
-}
-
-interface MemoryRowProps {
-  entry: MemoryEntryView;
-  selected: boolean;
-  onSelect: (name: string) => void;
-}
-
-/**
- * One entry row: the slug over its description, highlighted when selected.
- * @param props - Row props
- * @returns Row element
- */
-function MemoryRow(props: MemoryRowProps): preact.JSX.Element {
-  const { entry, selected, onSelect } = props;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(entry.name)}
-      className={`flex flex-col items-start rounded-md px-2 py-1 text-left transition-colors ${
-        selected
-          ? "bg-zinc-200 dark:bg-zinc-700/70"
-          : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
-      }`}
-    >
-      <span className="font-mono text-xs text-zinc-800 dark:text-zinc-200">
-        {entry.name}
-      </span>
-      {entry.description !== "" && (
-        <span className="w-full truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-          {entry.description}
-        </span>
-      )}
-    </button>
   );
 }
 

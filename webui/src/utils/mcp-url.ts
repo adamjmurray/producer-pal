@@ -97,6 +97,25 @@ export function getMemoryEntryUrl(name: string): string {
 }
 
 /**
+ * Gets the custom-skills collection endpoint URL (lists every user-authored
+ * skill; the ~/.producer-pal/skills-custom/ collection).
+ * @returns {string} The custom-skills collection endpoint URL
+ */
+export function getCustomSkillsCollectionUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/custom-skills");
+}
+
+/**
+ * Gets the endpoint URL for a single custom skill (PUT to create/overwrite,
+ * DELETE to remove). The name is slugified server-side.
+ * @param name - The custom skill name
+ * @returns {string} The per-entry custom-skills endpoint URL
+ */
+export function getCustomSkillEntryUrl(name: string): string {
+  return `${getCustomSkillsCollectionUrl()}/${encodeURIComponent(name)}`;
+}
+
+/**
  * Gets the skills-preview endpoint URL for a notation + small-model combination
  * (the assembled "# Producer Pal Skills" blob ppal-connect would return for that
  * combination, with the user's fragment overrides applied).

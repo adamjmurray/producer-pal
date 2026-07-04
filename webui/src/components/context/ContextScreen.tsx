@@ -9,7 +9,7 @@ import {
   type SaveStatus,
   type UseDocMemoryReturn,
 } from "#webui/hooks/context/use-doc-memory";
-import { CharTokenCount } from "./CharTokenCount";
+import { CharTokenCount } from "./collection/CharTokenCount";
 import { makeContextIoHandlers } from "./context-io";
 import { ContextIoButtons } from "./ContextIoButtons";
 import { MarkdownDropZone } from "./MarkdownDropZone";

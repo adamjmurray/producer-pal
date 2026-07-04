@@ -12,39 +12,37 @@ import {
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
 import {
-  type MemoryEntryView,
-  type UseMemoryCollectionReturn,
-} from "#webui/hooks/context/use-memory-collection";
-import { MEMORY_TYPE_META, MEMORY_TYPE_ORDER } from "./memory-types";
+  type CustomSkillView,
+  type UseCustomSkillsCollectionReturn,
+} from "#webui/hooks/context/use-custom-skills-collection";
 
-interface MemoryEntryEditorProps {
+interface CustomSkillEditorProps {
   /** The collection hook (per-entry save/delete lives here). */
-  collection: UseMemoryCollectionReturn;
-  /** The entry being edited, or null when creating a new one. */
-  entry: MemoryEntryView | null;
-  /** Called after a successful save with the stored entry's slug. */
+  collection: UseCustomSkillsCollectionReturn;
+  /** The skill being edited, or null when creating a new one. */
+  entry: CustomSkillView | null;
+  /** Called after a successful save with the stored skill's slug. */
   onSaved: (name: string) => void;
   /** Called after a successful delete. */
   onDeleted: () => void;
 }
 
 /**
- * Right-pane form for one memory: name (editable only when creating — the slug
- * is the stable handle), type, one-line description, and a markdown body. Keyed
- * by the selected entry in the parent so the local draft re-seeds on selection
- * change. Saves explicitly (memory records are structured, so autosave-on-idle
- * would be surprising); the list still polls for the assistant's own writes.
+ * Right-pane form for one custom skill: name (editable only when creating — the
+ * slug is the stable handle), a one-line description hook, an enabled toggle, and
+ * the instruction body the assistant loads on demand. Keyed by the selected
+ * entry in the parent so the draft re-seeds on selection change.
  * @param props - Editor props
  * @returns Editor element
  */
-export function MemoryEntryEditor(
-  props: MemoryEntryEditorProps,
+export function CustomSkillEditor(
+  props: CustomSkillEditorProps,
 ): preact.JSX.Element {
   const { collection, entry, onSaved, onDeleted } = props;
   const isNew = entry == null;
   const [name, setName] = useState(entry?.name ?? "");
-  const [type, setType] = useState<string>(entry?.type ?? "user");
   const [description, setDescription] = useState(entry?.description ?? "");
+  const [enabled, setEnabled] = useState(entry?.enabled ?? true);
   const [body, setBody] = useState(entry?.body ?? "");
 
   const targetName = isNew ? name : entry.name;
@@ -54,11 +52,9 @@ export function MemoryEntryEditor(
     collection.saveStatus !== "saving";
 
   const handleSave = async (): Promise<void> => {
-    // Creating (or re-creating a memory deleted out from under us) is create-only
-    // so it can't silently overwrite an existing entry the name collides with.
     const saved = await collection.saveEntry(
       targetName,
-      { type, description, content: body },
+      { description, content: body, enabled },
       isNew,
     );
 
@@ -68,7 +64,9 @@ export function MemoryEntryEditor(
   const handleDelete = async (): Promise<void> => {
     if (isNew) return;
     if (
-      !window.confirm(`Delete memory "${entry.name}"? This cannot be undone.`)
+      !window.confirm(
+        `Delete custom skill "${entry.name}"? This cannot be undone.`,
+      )
     )
       return;
 
@@ -81,25 +79,12 @@ export function MemoryEntryEditor(
         isNew={isNew}
         name={name}
         displayName={entry?.name}
-        placeholder="prefers-c-minor"
+        placeholder="jazz-voicings"
         onChange={setName}
       />
-      <Field label="Type">
-        <select
-          value={type}
-          onChange={(e) => setType((e.target as HTMLSelectElement).value)}
-          className={INPUT_CLASS}
-        >
-          {MEMORY_TYPE_ORDER.map((value) => (
-            <option key={value} value={value}>
-              {MEMORY_TYPE_META[value].label} — {MEMORY_TYPE_META[value].hint}
-            </option>
-          ))}
-        </select>
-      </Field>
       <Field
         label="Description"
-        hint="One-line recall hook shown in the index."
+        hint="One-line “load me when…” hook shown in the index."
       >
         <input
           type="text"
@@ -108,11 +93,23 @@ export function MemoryEntryEditor(
           className={INPUT_CLASS}
         />
       </Field>
-      <Field label="Memory">
+      <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled((e.target as HTMLInputElement).checked)}
+          className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
+        />
+        Enabled
+        <span className="font-normal text-xs text-zinc-400 dark:text-zinc-500">
+          Only enabled skills are offered to the assistant.
+        </span>
+      </label>
+      <Field label="Instructions">
         <textarea
           value={body}
           onInput={(e) => setBody((e.target as HTMLTextAreaElement).value)}
-          rows={10}
+          rows={12}
           className={`${INPUT_CLASS} resize-none font-mono leading-relaxed`}
         />
         <div className="mt-1 flex justify-end">
@@ -124,7 +121,7 @@ export function MemoryEntryEditor(
         saveError={collection.saveError}
         isNew={isNew}
         canSave={canSave}
-        createLabel="Create memory"
+        createLabel="Create skill"
         onSave={() => void handleSave()}
         onDelete={() => void handleDelete()}
       />

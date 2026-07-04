@@ -92,6 +92,27 @@ vi.mock(import("#webui/hooks/context/use-memory-collection"), () => ({
   }),
 }));
 
+vi.mock(import("#webui/hooks/context/use-custom-skills-collection"), () => ({
+  useCustomSkillsCollection: () => ({
+    status: {
+      kind: "ready",
+      entries: [
+        {
+          name: "jazz-voicings",
+          description: "rich chord voicings",
+          enabled: true,
+          body: "Voice with 3rds and 7ths.",
+        },
+      ],
+    },
+    saveStatus: "idle",
+    saveError: null,
+    saveEntry: vi.fn(),
+    deleteEntry: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 describe("ContextTabs", () => {
   it("defaults to the Project tab and shows the project document", () => {
     render(<ContextTabs />);

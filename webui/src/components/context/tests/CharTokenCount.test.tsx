@@ -8,7 +8,7 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { CharTokenCount } from "#webui/components/context/CharTokenCount";
+import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 
 describe("CharTokenCount", () => {
   it("shows the char count and an approximate token count", () => {

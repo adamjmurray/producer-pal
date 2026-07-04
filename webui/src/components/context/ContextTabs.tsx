@@ -5,6 +5,7 @@
 
 import { useState } from "preact/hooks";
 import { useContextMemory } from "#webui/hooks/context/use-context-memory";
+import { useCustomSkillsCollection } from "#webui/hooks/context/use-custom-skills-collection";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
 import { useMemoryCollection } from "#webui/hooks/context/use-memory-collection";
@@ -13,15 +14,16 @@ import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-me
 import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
 import { MemoryScreen } from "./memory/MemoryScreen";
+import { CustomSkillsScreen } from "./skills/CustomSkillsScreen";
 import { SkillsScreen } from "./skills/SkillsScreen";
 
 /** Tabs backed by a single markdown document via useDocMemory. */
 type DocTab = "project" | "global" | "instructions";
 /**
- * All context editor tabs: the doc tabs plus the multi-fragment Skills tab and
- * the multi-entry Memory tab.
+ * All context editor tabs: the doc tabs plus the multi-fragment Skills override
+ * tab, the additive Custom Skills tab, and the multi-entry Memory tab.
  */
-type ContextTab = DocTab | "skills" | "memory";
+type ContextTab = DocTab | "skills" | "custom-skills" | "memory";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
@@ -90,6 +92,7 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const instructionsMemory = useSystemPromptMemory();
   const skillOverrides = useSkillOverrides();
   const memoryCollection = useMemoryCollection();
+  const customSkills = useCustomSkillsCollection();
 
   const memoryByTab: Record<DocTab, UseDocMemoryReturn> = {
     project: projectMemory,
@@ -107,6 +110,16 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
     return (
       <SkillsScreen
         overrides={skillOverrides}
+        tabSlot={tabStrip}
+        onClose={props.onClose}
+      />
+    );
+  }
+
+  if (tab === "custom-skills") {
+    return (
+      <CustomSkillsScreen
+        collection={customSkills}
         tabSlot={tabStrip}
         onClose={props.onClose}
       />
@@ -141,9 +154,19 @@ interface TabStripProps {
   onSelect: (tab: ContextTab) => void;
 }
 
+/** The tab strip's tabs, in display order (id + button label). */
+const TABS: readonly { id: ContextTab; label: string }[] = [
+  { id: "project", label: "Project" },
+  { id: "global", label: "Global" },
+  { id: "instructions", label: "Instructions" },
+  { id: "skills", label: "Skills" },
+  { id: "custom-skills", label: "Custom Skills" },
+  { id: "memory", label: "Memory" },
+];
+
 /**
  * Header-left tab strip switching between the project, global, instructions,
- * skills, and memory editors.
+ * skills, custom-skills, and memory editors.
  * @param props - Tab strip props
  * @returns Tab strip element
  */
@@ -156,31 +179,14 @@ function TabStrip(props: TabStripProps): preact.JSX.Element {
       aria-label="Context editor tabs"
       className="flex items-center gap-1"
     >
-      <TabButton
-        label="Project"
-        active={tab === "project"}
-        onSelect={() => onSelect("project")}
-      />
-      <TabButton
-        label="Global"
-        active={tab === "global"}
-        onSelect={() => onSelect("global")}
-      />
-      <TabButton
-        label="Instructions"
-        active={tab === "instructions"}
-        onSelect={() => onSelect("instructions")}
-      />
-      <TabButton
-        label="Skills"
-        active={tab === "skills"}
-        onSelect={() => onSelect("skills")}
-      />
-      <TabButton
-        label="Memory"
-        active={tab === "memory"}
-        onSelect={() => onSelect("memory")}
-      />
+      {TABS.map(({ id, label }) => (
+        <TabButton
+          key={id}
+          label={label}
+          active={tab === id}
+          onSelect={() => onSelect(id)}
+        />
+      ))}
     </div>
   );
 }
