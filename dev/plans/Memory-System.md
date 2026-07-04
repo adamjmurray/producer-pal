@@ -297,28 +297,42 @@ list, PUT/DELETE per entry, origin-gated writes). New webui hook mirrors
 
 ## Reuse by later collections (v1.5.x fast-follows)
 
-Designed for now so the primitive is right; **not built in v1.5.**
+The collection primitive was built generic so this reuse is real. Custom skills
+**SHIPPED** to `dev` on it; the built-in split is still deferred.
 
-**Custom (user-authored) skills** — a second collection instance:
+**Custom (user-authored) skills — SHIPPED to `dev`.** A second collection
+instance at `~/.producer-pal/skills-custom/`, plus a "Custom Skills" webui tab:
 
-- Same store / index / `ppal-context read` / append-seam machinery.
-- Policy resolver: lazy by default (index/trigger always injected, body on
-  demand), `frontmatter.pinned` → eager for small always-on skills.
-- Adds **enable/disable** per skill (surfaced in settings) — the one axis memory
-  doesn't have. This is a per-entry `enabled` flag the injector honors.
-- User-authored, so no LLM `remember`/`forget` — just the shared `read`. Schema
-  stays tiny.
-- Distinct from the shipped built-in fragment _override_ (which replaces one of
-  the 7 fixed `skill-slots`): custom skills **add** new entries; the slot names
-  stay a stable public contract per ADR-0010.
+- Same store / derived index (`SKILLS.md`) / `ppal-context` / append-seam
+  machinery as memory, plus a per-entry **`enabled`** flag the injector honors
+  (a disabled skill is omitted from the index entirely).
+- **Injection is lazy-only** (revised from the original `frontmatter.pinned` →
+  eager plan): only the enabled index (`name — description`) is appended on
+  connect; every body loads on demand via `read` (`scope:"skills"`). Eager
+  `pinned` skills are a possible future add — deferred to keep the always-on
+  budget minimal.
+- **The assistant CAN author** (revised from "no LLM remember/forget"):
+  `ppal-context` gains `scope:"skills"` with `read`/`remember`/`forget`/`list`,
+  but the skills discipline says to create/edit a skill **only when the user
+  asks**. Enable/disable stays a user action (webui toggle / hand-edit), never
+  the assistant's.
+- Distinct from the built-in fragment _override_ (which replaces one of the 7
+  fixed `skill-slots`): custom skills **add** new entries; slot names stay a
+  stable public contract per ADR-0010.
+- The build extracted the intended generic kit: `useDocCollection` (webui hook),
+  `registerCollectionRoutes` (REST factory), and a
+  `components/context/collection/` UI kit (`CollectionScreen` + editor/list
+  parts); memory was refactored onto all three as a thin binding (behavior
+  unchanged, tests green).
 
 **On-demand loading of built-in skills** — retrofit the ~10.9k blob into the
 same lazy-load registry (core eager, specialized lazy). **Highest-risk,
 least-proven** of the three: its beneficiary (context savings) is capable
 models, who need it least; its failure mode (model doesn't load the right
 specialized skill) hits small/local models hardest, who can't be trusted to
-two-step. Treat as an eval-gated experiment layered on the mechanism, sequenced
-after custom skills — not a v1.5 commitment.
+two-step. Now that custom skills have shipped, this is the remaining reuse — but
+it stays an eval-gated experiment on the shared lazy-load mechanism, not a
+committed feature.
 
 ## Open decisions / bikeshed
 
