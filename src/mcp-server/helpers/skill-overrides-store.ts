@@ -26,7 +26,7 @@ import {
 } from "#src/skills/skill-slots.ts";
 import {
   deleteConfigMarkdown,
-  listConfigMarkdownFiles,
+  listConfigMarkdownFilesRecursive,
   readConfigMarkdown,
   writeConfigMarkdown,
 } from "./config-markdown-store.ts";
@@ -82,11 +82,12 @@ export interface SkillSlotState {
 export function readSkillOverrides(): SkillOverrides {
   const overrides: SkillOverrides = {};
 
-  // Read EVERY .md in the skills dir, not just the curated slots: an override
-  // may be a driver, a wrapper, or a fragment of the user's own that a fork
-  // includes. `resolveIncludes` only pulls names the graph actually references,
+  // Read EVERY .md under the skills dir (nested included), not just the curated
+  // slots: an override may be a driver, a wrapper, or a fragment of the user's
+  // own that a fork includes — e.g. `skills/drums/backbeat.md` keyed as
+  // "drums/backbeat". `resolveIncludes` only pulls names the graph references,
   // and its ref validation + this readdir scope keep resolution inside the dir.
-  for (const file of listConfigMarkdownFiles("skills")) {
+  for (const file of listConfigMarkdownFilesRecursive("skills")) {
     const body = readFragmentBody(`skills/${file}`);
 
     if (body) overrides[file.slice(0, -".md".length)] = body;
