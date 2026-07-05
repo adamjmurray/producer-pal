@@ -206,3 +206,9 @@
     transform: translateX(0);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .built-in-reveal {
+    animation: none;
+  }
+}

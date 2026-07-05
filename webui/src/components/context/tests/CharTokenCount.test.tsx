@@ -31,4 +31,10 @@ describe("CharTokenCount", () => {
 
     expect(container.querySelector("span")?.className).toContain("shrink-0");
   });
+
+  it("prefixes an optional label to clarify what's being counted", () => {
+    render(<CharTokenCount chars={400} label="Built-in" />);
+
+    expect(screen.getByText(/Built-in: 400 chars · ≈100 tokens/)).toBeTruthy();
+  });
 });

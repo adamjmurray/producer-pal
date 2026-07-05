@@ -757,6 +757,9 @@ describe("ContextScreen", () => {
       expect(screen.queryByText("Show built-in")).toBeNull();
       expect(lastEditorProps?.readOnly).toBe(true);
       expect(editorMountedValues).toContain("SHIPPED DEFAULT");
+      // The size readout reflects the 15-char built-in that's on screen,
+      // labelled so it isn't mistaken for the (empty) override.
+      expect(screen.getByText(/Built-in: 15 chars · ≈4 tokens/)).toBeTruthy();
 
       // Customize forks the built-in into the override (persists it via the
       // import path so the view flips to editing).

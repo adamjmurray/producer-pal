@@ -10,6 +10,12 @@ interface CharTokenCountProps {
   chars: number;
   /** Extra classes (e.g. `shrink-0`) merged onto the readout. */
   className?: string;
+  /**
+   * Optional prefix clarifying what the count is for (e.g. "Built-in") when the
+   * readout would otherwise be ambiguous — such as the built-in-only view,
+   * where the count reflects the displayed default rather than an override.
+   */
+  label?: string;
 }
 
 /**
@@ -21,7 +27,7 @@ interface CharTokenCountProps {
  * @returns Readout element
  */
 export function CharTokenCount(props: CharTokenCountProps): preact.JSX.Element {
-  const { chars, className } = props;
+  const { chars, className, label } = props;
 
   return (
     <span
@@ -30,6 +36,7 @@ export function CharTokenCount(props: CharTokenCountProps): preact.JSX.Element {
         className ? ` ${className}` : ""
       }`}
     >
+      {label != null && `${label}: `}
       {chars.toLocaleString()} chars · ≈
       {estimateTokensFromChars(chars).toLocaleString()} tokens
     </span>

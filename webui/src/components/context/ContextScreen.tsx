@@ -114,7 +114,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         description={labels.description}
         widthClass={widthClass}
         charCount={editor.charCount}
-        showClear={labels.builtIn == null}
+        builtIn={labels.builtIn}
         onClear={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
@@ -231,11 +231,12 @@ interface ContextControlsProps {
   widthClass: string;
   charCount: number;
   /**
-   * Whether to show the strip's Clear action. Documents with a built-in default
-   * (custom instructions) hide it — reset lives in the revealed built-in header
-   * instead — while the plain context tabs (no default) keep it here.
+   * The document's built-in default, when it has one (custom instructions). Its
+   * presence hides the strip Clear (reset lives in the revealed built-in header)
+   * and, with no override yet, makes the size readout reflect the built-in shown
+   * on screen rather than the empty override.
    */
-  showClear: boolean;
+  builtIn?: string;
   onClear: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -243,20 +244,26 @@ interface ContextControlsProps {
 
 /**
  * Controls strip below the header with an optional explainer, a live char/token
- * size readout, and (for documents without a built-in default) a destructive
- * clear action. Hidden until memory has loaded so we don't flash a control whose
- * state we haven't fetched yet. The border spans full width while the content is
- * centered to `widthClass` so it lines up with the editor below.
+ * size readout (labelled "Built-in" while an un-customized default is shown, so
+ * the count matches what's on screen), and (for documents without a built-in
+ * default) a destructive clear action. Hidden until memory has loaded so we
+ * don't flash a control whose state we haven't fetched yet. The border spans
+ * full width while the content is centered to `widthClass` so it lines up with
+ * the editor below.
  * @param props - Controls props
  * @returns Controls element (or null while loading)
  */
 function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
-  const { status, description, widthClass, charCount, showClear, onClear } =
-    props;
+  const { status, description, widthClass, charCount, builtIn } = props;
+  const { onClear, onImport, onExport } = props;
 
   if (status.kind !== "ready") return null;
+
+  // With a built-in default and no override yet, the strip's size readout must
+  // reflect the built-in that's actually on screen (not the empty override).
+  const builtInShown = builtIn != null && status.content === "";
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
@@ -267,12 +274,13 @@ function ContextControls(
           </span>
         )}
         <div className="ml-auto flex items-center gap-3">
-          <CharTokenCount chars={charCount} className="shrink-0" />
-          <ContextIoButtons
-            onImport={props.onImport}
-            onExport={props.onExport}
+          <CharTokenCount
+            chars={builtInShown ? builtIn.length : charCount}
+            label={builtInShown ? "Built-in" : undefined}
+            className="shrink-0"
           />
-          {showClear && (
+          <ContextIoButtons onImport={onImport} onExport={onExport} />
+          {builtIn == null && (
             <button
               type="button"
               onClick={onClear}
