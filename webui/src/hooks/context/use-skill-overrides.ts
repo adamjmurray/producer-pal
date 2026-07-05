@@ -10,6 +10,7 @@ import {
   getSkillOverridesUrl,
 } from "#webui/utils/mcp-url";
 import {
+  runGuardedRefresh,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
   useSaveRefreshGuard,
@@ -73,21 +74,16 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   // clobber it), just over the slot collection instead of one document.
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
-  const refresh = useCallback(async (): Promise<void> => {
-    const discardRefresh = guardRefresh();
-
-    try {
-      const slots = await fetchSlots();
-
-      if (discardRefresh()) return;
-
-      setStatus({ kind: "ready", slots });
-    } catch (error: unknown) {
-      if (discardRefresh()) return;
-
-      setStatus({ kind: "error", message: errorMessage(error) });
-    }
-  }, [guardRefresh]);
+  const refresh = useCallback(
+    (): Promise<void> =>
+      runGuardedRefresh(
+        guardRefresh,
+        fetchSlots,
+        (slots) => setStatus({ kind: "ready", slots }),
+        (message) => setStatus({ kind: "error", message }),
+      ),
+    [guardRefresh],
+  );
 
   const writeSlot = useCallback(
     async (write: () => Promise<SkillSlotView>): Promise<boolean> => {

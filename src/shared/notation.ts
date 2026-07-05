@@ -24,6 +24,17 @@ export const DEFAULT_NOTATION: Notation = "barbeat";
 export const NOTATIONS: readonly Notation[] = ["barbeat", "midi-json", "stark"];
 
 /**
+ * Human-friendly display name for each notation (the notation dropdown and the
+ * skills preview picker). Typed as a full Record so adding a notation to the
+ * union forces a label here — the single source both UI pickers read.
+ */
+export const NOTATION_LABELS: Record<Notation, string> = {
+  barbeat: "bar|beat",
+  "midi-json": "MIDI JSON",
+  stark: "Stark",
+};
+
+/**
  * Type guard for a {@link Notation} value (validates the config setting coming
  * from REST / the device UI).
  *

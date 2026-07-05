@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import {
+  runGuardedRefresh,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
   useSaveRefreshGuard,
@@ -83,21 +84,16 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
   const [saveError, setSaveError] = useState<string | null>(null);
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
-  const refresh = useCallback(async (): Promise<void> => {
-    const discardRefresh = guardRefresh();
-
-    try {
-      const entries = await fetchEntries<TView>(collectionUrl(), label);
-
-      if (discardRefresh()) return;
-
-      setStatus({ kind: "ready", entries });
-    } catch (error: unknown) {
-      if (discardRefresh()) return;
-
-      setStatus({ kind: "error", message: errorMessage(error) });
-    }
-  }, [guardRefresh, collectionUrl, label]);
+  const refresh = useCallback(
+    (): Promise<void> =>
+      runGuardedRefresh(
+        guardRefresh,
+        () => fetchEntries<TView>(collectionUrl(), label),
+        (entries) => setStatus({ kind: "ready", entries }),
+        (message) => setStatus({ kind: "error", message }),
+      ),
+    [guardRefresh, collectionUrl, label],
+  );
 
   const saveEntry = useCallback(
     async (

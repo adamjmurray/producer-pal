@@ -4,12 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { ContextHeader } from "#webui/components/context/ContextScreen";
+import { CollectionStatusScreen } from "#webui/components/context/collection/CollectionScreen";
 import { type UseSkillOverridesReturn } from "#webui/hooks/context/use-skill-overrides";
 import { SkillSlotScreen } from "./SkillSlotScreen";
 import { SkillsPreviewScreen } from "./SkillsPreviewScreen";
-
-const CLOSE_ARIA_LABEL = "Close context editor";
 
 /** The two Skills-tab views: edit the fragment overrides, or preview the blob. */
 type SkillsView = "fragments" | "preview";
@@ -52,9 +50,10 @@ export function SkillsScreen(props: SkillsScreenProps): preact.JSX.Element {
 
   if (overrides.status.kind !== "ready") {
     return (
-      <StatusScreen
+      <CollectionStatusScreen
+        title="Skills"
         tabSlot={tabSlot}
-        viewSlot={viewSlot}
+        belowHeader={viewSlot}
         onClose={onClose}
         message={
           overrides.status.kind === "error"
@@ -70,9 +69,10 @@ export function SkillsScreen(props: SkillsScreenProps): preact.JSX.Element {
 
   if (slots.length === 0) {
     return (
-      <StatusScreen
+      <CollectionStatusScreen
+        title="Skills"
         tabSlot={tabSlot}
-        viewSlot={viewSlot}
+        belowHeader={viewSlot}
         onClose={onClose}
         message="No skills fragments available."
         tone="muted"
@@ -164,50 +164,5 @@ function ViewToggleButton(props: ViewToggleButtonProps): preact.JSX.Element {
     >
       {label}
     </button>
-  );
-}
-
-interface StatusScreenProps {
-  tabSlot: preact.JSX.Element;
-  viewSlot: preact.JSX.Element;
-  onClose?: () => void;
-  message: string;
-  tone: "muted" | "error";
-}
-
-/**
- * Loading/error/empty state for the fragments view: the shared header, a controls
- * row holding the view toggle (so Preview stays reachable), and a centered
- * message.
- * @param props - Status screen props
- * @returns Status screen element
- */
-function StatusScreen(props: StatusScreenProps): preact.JSX.Element {
-  const { tabSlot, viewSlot, onClose, message, tone } = props;
-  const status =
-    tone === "error" ? ({ kind: "error", message } as const) : undefined;
-
-  return (
-    <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
-      <ContextHeader
-        title="Skills"
-        tabSlot={tabSlot}
-        closeAriaLabel={CLOSE_ARIA_LABEL}
-        status={status ?? { kind: "loading" }}
-        saveStatus="idle"
-        dirty={false}
-        onClose={onClose}
-      />
-      <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-        {viewSlot}
-      </div>
-      <div
-        className={`flex items-center justify-center flex-1 px-8 text-center ${
-          tone === "error" ? "text-red-600 dark:text-red-400" : "text-zinc-500"
-        }`}
-      >
-        {message}
-      </div>
-    </div>
   );
 }

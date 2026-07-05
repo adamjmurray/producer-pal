@@ -162,24 +162,30 @@ function DeletedExternallyBanner(props: {
   );
 }
 
-interface CollectionStatusScreenProps {
+export interface CollectionStatusScreenProps {
   title: string;
   tabSlot: preact.JSX.Element;
   onClose?: () => void;
   message: string;
   tone: "muted" | "error";
+  /**
+   * Optional controls row rendered below the header (e.g. the Skills tab's
+   * Fragments | Preview toggle, so it stays reachable while the list loads).
+   */
+  belowHeader?: preact.JSX.Element;
 }
 
 /**
- * Loading/error state for a collection tab: the shared header and a centered
- * message.
+ * Loading/error state for a collection tab: the shared header, an optional
+ * controls row, and a centered message. Shared by the two-pane collection tabs
+ * and the Skills tab (which passes its view toggle as `belowHeader`).
  * @param props - Status screen props
  * @returns Status screen element
  */
-function CollectionStatusScreen(
+export function CollectionStatusScreen(
   props: CollectionStatusScreenProps,
 ): preact.JSX.Element {
-  const { title, tabSlot, onClose, message, tone } = props;
+  const { title, tabSlot, onClose, message, tone, belowHeader } = props;
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
@@ -192,6 +198,11 @@ function CollectionStatusScreen(
         }
         onClose={onClose}
       />
+      {belowHeader != null && (
+        <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
+          {belowHeader}
+        </div>
+      )}
       <div
         className={`flex items-center justify-center flex-1 px-8 text-center ${
           tone === "error" ? "text-red-600 dark:text-red-400" : "text-zinc-500"

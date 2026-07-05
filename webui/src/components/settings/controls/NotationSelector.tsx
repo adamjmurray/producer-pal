@@ -3,16 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Notation, NOTATIONS } from "#src/shared/notation";
+import {
+  type Notation,
+  NOTATION_LABELS,
+  NOTATIONS,
+} from "#src/shared/notation";
 import { Tooltip } from "./Tooltip";
-
-// Human-friendly labels for the notation dropdown. Typed as a full Record so
-// adding a notation to the shared `Notation` union forces a label here.
-const NOTATION_LABELS: Record<Notation, string> = {
-  barbeat: "bar|beat",
-  "midi-json": "MIDI JSON",
-  stark: "Stark",
-};
 
 interface NotationSelectorProps {
   notation: Notation;

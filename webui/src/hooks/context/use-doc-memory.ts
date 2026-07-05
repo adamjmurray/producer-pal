@@ -55,21 +55,16 @@ export function useDocMemory(
   const [saveError, setSaveError] = useState<string | null>(null);
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
-  const refresh = useCallback(async (): Promise<void> => {
-    const discardRefresh = guardRefresh();
-
-    try {
-      const content = await read();
-
-      if (discardRefresh()) return;
-
-      setStatus({ kind: "ready", content });
-    } catch (error: unknown) {
-      if (discardRefresh()) return;
-
-      setStatus({ kind: "error", message: errorMessage(error) });
-    }
-  }, [read, guardRefresh]);
+  const refresh = useCallback(
+    (): Promise<void> =>
+      runGuardedRefresh(
+        guardRefresh,
+        read,
+        (content) => setStatus({ kind: "ready", content }),
+        (message) => setStatus({ kind: "error", message }),
+      ),
+    [read, guardRefresh],
+  );
 
   const save = useCallback(
     async (content: string): Promise<boolean> => {
@@ -174,6 +169,39 @@ export function useSaveRefreshGuard(): SaveRefreshGuard {
   }, []);
 
   return { beginSave, endSave, guardRefresh };
+}
+
+/**
+ * Run one guarded refresh: load via `load`, then commit through `onReady` UNLESS
+ * the read was superseded — the component unmounted or a concurrent save landed
+ * after this read started (see {@link useSaveRefreshGuard}) — in which case the
+ * result is dropped. A failure commits through `onError` under the same guard.
+ * The document, collection, and slot hooks all need this exact discard-on-stale
+ * shape, so it lives here in one place rather than copied into each refresh.
+ * @param guardRefresh - The guard snapshot factory from {@link useSaveRefreshGuard}
+ * @param load - Fetches the fresh data
+ * @param onReady - Commit for successful data (typically a setStatus "ready")
+ * @param onError - Commit for a failure message (typically a setStatus "error")
+ */
+export async function runGuardedRefresh<T>(
+  guardRefresh: () => () => boolean,
+  load: () => Promise<T>,
+  onReady: (data: T) => void,
+  onError: (message: string) => void,
+): Promise<void> {
+  const discardRefresh = guardRefresh();
+
+  try {
+    const data = await load();
+
+    if (discardRefresh()) return;
+
+    onReady(data);
+  } catch (error: unknown) {
+    if (discardRefresh()) return;
+
+    onError(errorMessage(error));
+  }
 }
 
 /**

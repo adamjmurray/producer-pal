@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { NOTATIONS, type Notation } from "#src/shared/notation";
+import {
+  type Notation,
+  NOTATION_LABELS,
+  NOTATIONS,
+} from "#src/shared/notation";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
 import {
@@ -17,13 +21,6 @@ import {
 } from "#webui/hooks/context/use-skills-preview";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
-
-/** How each notation reads in the preview's picker. */
-const NOTATION_LABELS: Record<Notation, string> = {
-  barbeat: "bar|beat",
-  "midi-json": "MIDI JSON",
-  stark: "Stark",
-};
 
 const SELECT_CLASS =
   "text-sm rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-zinc-900 dark:text-zinc-100";
