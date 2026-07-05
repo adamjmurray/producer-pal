@@ -14,6 +14,10 @@ import {
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
+import {
+  parseIncludeArray,
+  READ_CLIP_DEFAULTS,
+} from "#src/tools/shared/tool-framework/include-params.ts";
 import { stripFields } from "#src/tools/shared/utils.ts";
 import {
   processAvailableRouting,
@@ -58,7 +62,7 @@ export function readSessionClips(
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
-  const drumMode = isDrumRackForTrack(track);
+  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
 
   return track
     .getChildIds("clip_slots")
@@ -114,7 +118,7 @@ export function readArrangementClips(
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
-  const drumMode = isDrumRackForTrack(track);
+  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
 
   return track
     .getChildIds("arrangement_clips")
@@ -155,7 +159,7 @@ export function readTakeLanes(
 ): ReadTakeLaneResult[] {
   // 1-based to match the write-side `takeLane` param (0 = main lane, which the
   // take_lanes collection excludes — so the first non-main lane is takeLane:1).
-  const drumMode = isDrumRackForTrack(track);
+  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
 
   return track.getChildren("take_lanes").map((lane, i) => {
     const clips = lane
@@ -442,4 +446,16 @@ export function readMixerProperties(
   }
 
   return result;
+}
+
+/**
+ * Whether nested clip reads for this track will serialize notes — the only case
+ * drum-rack detection feeds. Mirrors readClip's own include gating
+ * (READ_CLIP_DEFAULTS), so the drum-rack device walk is skipped when notes
+ * aren't requested (e.g. a clips-without-notes track read).
+ * @param include - The include array threaded to the nested clip reads
+ * @returns True when the nested reads will format notes
+ */
+function clipReadsWantNotes(include?: string[]): boolean {
+  return parseIncludeArray(include, READ_CLIP_DEFAULTS).includeClipNotes;
 }

@@ -82,6 +82,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     notes: param(z.string().optional(), {
       default:
         "MIDI in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only",
+      smallModel:
+        "MIDI notes (bar|beat): v0-127 n<dur> note(s) bar|beat(s) - MIDI clips only",
       "midi-json":
         "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (see Skills) - MIDI clips only",
       stark:
