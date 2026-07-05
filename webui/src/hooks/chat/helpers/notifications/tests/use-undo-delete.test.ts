@@ -17,6 +17,7 @@ import {
   resetDbCache,
   saveConversation,
 } from "#webui/lib/conversation-db";
+import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
 // Wrap saveConversation in a spy that delegates to the real fake-indexeddb
 // implementation by default, so most tests exercise the real DB. Failure tests
@@ -35,25 +36,7 @@ vi.mock(import("#webui/lib/conversation-db"), async (importOriginal) => {
 function makeRecord(
   overrides: Partial<ConversationRecord> = {},
 ): ConversationRecord {
-  return {
-    id: crypto.randomUUID(),
-    title: null,
-    createdAt: 1000,
-    updatedAt: 1000,
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-    totalUsage: null,
-    sessionType: "text",
-    messages: [{ role: "user", content: "hello" }],
-    voiceHistory: null,
-    ...overrides,
-  };
+  return createTestRecord({ createdAt: 1000, updatedAt: 1000, ...overrides });
 }
 
 describe("useUndoDelete", () => {

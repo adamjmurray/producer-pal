@@ -11,9 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SkillsScreen } from "#webui/components/context/skills/SkillsScreen";
 import {
   type SkillOverridesStatus,
-  type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
+import { slot } from "./skill-slot-test-helpers";
 
 // Stub the CodeMirror editor to a textarea seeded with the override, so tests
 // can drive onChange/onBlur (the autosave path) without CodeMirror.
@@ -43,24 +43,6 @@ vi.mock(import("#webui/components/context/skills/SkillsPreviewScreen"), () => ({
 }));
 
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
-
-/**
- * Build a slot view with overridable fields.
- * @param over - Fields to override on the default slot
- * @returns A slot view
- */
-function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
-  return {
-    name: "barbeat-standard",
-    title: "Core (standard)",
-    description: "Slot description.",
-    builtIn: "BUILT-IN",
-    override: "",
-    drifted: false,
-    forkedFromVersion: null,
-    ...over,
-  };
-}
 
 /**
  * Build a skills-overrides hook return with the given status.

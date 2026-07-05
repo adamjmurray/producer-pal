@@ -16,6 +16,7 @@ import {
   resetDbCache,
   saveConversation,
 } from "#webui/lib/conversation-db";
+import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
 /**
  * Persist a minimal conversation record.
@@ -26,25 +27,15 @@ async function saveRecord(
   id: string,
   overrides: Partial<ConversationRecord> = {},
 ): Promise<void> {
-  await saveConversation({
-    id,
-    title: null,
-    createdAt: 1000,
-    updatedAt: 1000,
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-    totalUsage: null,
-    sessionType: "text",
-    messages: [{ role: "user", content: "hi" }],
-    voiceHistory: null,
-    ...overrides,
-  });
+  await saveConversation(
+    createTestRecord({
+      id,
+      createdAt: 1000,
+      updatedAt: 1000,
+      messages: [{ role: "user", content: "hi" }],
+      ...overrides,
+    }),
+  );
 }
 
 describe("useBranchNav", () => {

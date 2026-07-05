@@ -8,7 +8,9 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
+  type CustomSkillInput,
   type CustomSkillsStatus,
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
@@ -42,15 +44,7 @@ function fakeCollection(
   status: CustomSkillsStatus,
   over: Partial<UseCustomSkillsCollectionReturn> = {},
 ): UseCustomSkillsCollectionReturn {
-  return {
-    status,
-    saveStatus: "idle",
-    saveError: null,
-    saveEntry: vi.fn().mockResolvedValue(null),
-    deleteEntry: vi.fn().mockResolvedValue(true),
-    refresh: vi.fn().mockResolvedValue(undefined),
-    ...over,
-  };
+  return fakeDocCollection<CustomSkillView, CustomSkillInput>(status, over);
 }
 
 /**

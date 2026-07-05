@@ -9,8 +9,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { type VNode } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
   type MemoryCollectionStatus,
+  type MemoryEntryInput,
   type MemoryEntryView,
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
@@ -44,15 +46,7 @@ function fakeCollection(
   status: MemoryCollectionStatus,
   over: Partial<UseMemoryCollectionReturn> = {},
 ): UseMemoryCollectionReturn {
-  return {
-    status,
-    saveStatus: "idle",
-    saveError: null,
-    saveEntry: vi.fn().mockResolvedValue(null),
-    deleteEntry: vi.fn().mockResolvedValue(true),
-    refresh: vi.fn().mockResolvedValue(undefined),
-    ...over,
-  };
+  return fakeDocCollection<MemoryEntryView, MemoryEntryInput>(status, over);
 }
 
 /**

@@ -9,25 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { SkillSlotSelect } from "#webui/components/context/skills/SkillSlotSelect";
-import { type SkillSlotView } from "#webui/hooks/context/use-skill-overrides";
-
-/**
- * Build a slot view with overridable fields.
- * @param over - Fields to override on the default slot
- * @returns A slot view
- */
-function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
-  return {
-    name: "barbeat-standard",
-    title: "Core (standard)",
-    description: "Slot description.",
-    builtIn: "BUILT-IN",
-    override: "",
-    drifted: false,
-    forkedFromVersion: null,
-    ...over,
-  };
-}
+import { slot } from "./skill-slot-test-helpers";
 
 describe("SkillSlotSelect", () => {
   it("glyph-marks drifted, customized, and tracking slots", () => {

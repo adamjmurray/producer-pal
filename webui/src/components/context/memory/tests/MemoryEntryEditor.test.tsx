@@ -8,8 +8,9 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
+import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
+  type MemoryEntryInput,
   type MemoryEntryView,
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
@@ -23,15 +24,10 @@ import { MemoryEntryEditor } from "#webui/components/context/memory/MemoryEntryE
 function fakeCollection(
   over: Partial<UseMemoryCollectionReturn> = {},
 ): UseMemoryCollectionReturn {
-  return {
-    status: { kind: "ready", entries: [] },
-    saveStatus: "idle" as SaveStatus,
-    saveError: null,
-    saveEntry: vi.fn().mockResolvedValue(null),
-    deleteEntry: vi.fn().mockResolvedValue(true),
-    refresh: vi.fn().mockResolvedValue(undefined),
-    ...over,
-  };
+  return fakeDocCollection<MemoryEntryView, MemoryEntryInput>(
+    { kind: "ready", entries: [] },
+    over,
+  );
 }
 
 const EXISTING: MemoryEntryView = {
