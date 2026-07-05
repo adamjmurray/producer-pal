@@ -197,7 +197,7 @@ const tripletBeats = (n: StarkDurationN): number =>
   durationBeats({ n, dotted: false, triplet: true });
 
 const DURATION_GRID: ReadonlyArray<DurationGridEntry> = [
-  { beats: 6, token: "1." },
+  { beats: 6, token: "1." }, // coarsest — MAX_GRID_BEATS derives from this entry
   { beats: 4, token: "1" },
   { beats: 3, token: "2." },
   { beats: tripletBeats(1), token: "1t" }, // 8/3 ≈ 2.667
@@ -213,6 +213,15 @@ const DURATION_GRID: ReadonlyArray<DurationGridEntry> = [
   { beats: 0.25, token: "16" },
   { beats: tripletBeats(16), token: "16t" }, // 1/6 ≈ 0.167
 ];
+
+/**
+ * The longest duration Stark can spell: the coarsest grid note value (a dotted
+ * whole note, 6 beats). Stark has no tie or multi-bar duration token, so a note
+ * held longer than this snaps down to it — a lossy truncation the serializer
+ * warns about (there is no rest compensation that can restore a note's own tail).
+ */
+export const MAX_GRID_BEATS: number = (DURATION_GRID[0] as DurationGridEntry)
+  .beats;
 
 /**
  * Snap an arbitrary duration to the nearest grid note value. On an exact tie the

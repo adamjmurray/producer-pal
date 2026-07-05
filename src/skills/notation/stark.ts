@@ -45,7 +45,7 @@ const starkHeadPitched = `
 // Bracket voicings — an advanced escape hatch taught to the standard head only;
 // the parser accepts them in every mode, so small models simply aren't shown them.
 const starkBracketVoicings = `
-- **Voicings** — a \`[C E G]\` bracket is an explicit simultaneous stack sharing one \`/N\` + dynamic: \`melody: [C E G]/2!\`. Valid on melody/bass (their register) and on a \`chords:\` line (chord register), alongside symbols: \`chords: Cm7 [Eb G C']\`.`;
+- **Voicings** — a \`[C E G]\` bracket is an explicit simultaneous stack sharing one \`/N\` + dynamic: \`melody: [C E G]/2!\`. Separate the notes with SPACES only: inside a bracket \`,\` and \`'\` are octave marks (\`[C, E]\` = C and E each an octave down, still one stack), so write \`[C E G]\`, NEVER \`[C, E, G]\` — commas there would silently drop those notes an octave. Valid on melody/bass (their register) and on a \`chords:\` line (chord register), alongside symbols: \`chords: Cm7 [Eb G C']\`.`;
 
 // The merge note closes both heads.
 const starkMergeNote = `

@@ -236,6 +236,38 @@ describe("stark serializer — overlapping notes trim to legato, onsets preserve
   });
 });
 
+describe("stark serializer — warns when a note is too long to spell", () => {
+  it("warns and truncates a note longer than the 6-beat grid maximum", () => {
+    // 8 beats (two 4/4 bars) exceeds Stark's coarsest value (/1. = 6 beats) and
+    // there is no tie token, so the note snaps to 6 and reads back short. That
+    // loss is the note's own tail (no rest can restore it), so it must warn.
+    const out = formatNotation([note(60, 0, 8)]);
+    const back = interpretNotation(out);
+
+    expect(back.map((n) => n.duration)).toStrictEqual([6]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("longer than 6 beats"),
+    );
+  });
+
+  it("does not warn when every note fits the grid (a 6-beat note is exact)", () => {
+    formatNotation([note(60, 0, 6), note(62, 6, 2)]);
+
+    expect(outlet).not.toHaveBeenCalled();
+  });
+
+  it("uses the plural noun and warns once for multiple overlong notes", () => {
+    formatNotation([note(60, 0, 8), note(62, 8, 7)]);
+
+    expect(outlet).toHaveBeenCalledTimes(1);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("2 notes longer than 6 beats"),
+    );
+  });
+});
+
 describe("stark serializer — dotted durations round-trip exactly", () => {
   it("a dotted-quarter melody note round-trips losslessly", () => {
     // 1.5 beats is now the grid value /4. — emitted exactly, no compensating rest.

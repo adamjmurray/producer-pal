@@ -56,6 +56,7 @@ import {
   floorDuration,
   groupNotesByPitch,
   groupSimultaneousNotes,
+  MAX_GRID_BEATS,
   octaveMarks,
   pitchParts,
   restNoteValues,
@@ -63,6 +64,7 @@ import {
 } from "#src/notation/stark/stark-serializer-helpers.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 /** Options for {@link formatNotation}. */
 export interface StarkFormatOptions {
@@ -95,11 +97,36 @@ export function formatNotation(
 ): string {
   if (notes.length === 0) return "";
 
+  warnOnOverlongNotes(notes);
+
   if (options.drumMode) {
     return serializeStarkDrums(notes).join("\n");
   }
 
   return serializeStarkPitched(notes);
+}
+
+// Stark's coarsest note value is a dotted whole note (MAX_GRID_BEATS = 6 beats),
+// with no tie or multi-bar token, so a longer sustain snaps down to it and reads
+// back short. Unlike an off-grid snap or an overlap trim, this loss can't be
+// compensated by a rest (it's the note's OWN tail), so warn — the WARNING block
+// is relayed to the LLM so a lossy read-back isn't silent. Onsets are unaffected.
+function warnOnOverlongNotes(notes: NoteEvent[]): void {
+  const overlong = notes.filter(
+    (note) => note.duration > MAX_GRID_BEATS + SAME_TIME_EPSILON,
+  ).length;
+
+  if (overlong === 0) return;
+
+  const noun = overlong === 1 ? "note" : "notes";
+  const verb = overlong === 1 ? "is" : "are";
+
+  console.warn(
+    `Stark: ${overlong} ${noun} longer than ${MAX_GRID_BEATS} beats ${verb} ` +
+      `shortened on read-back — Stark's longest note value is a dotted whole ` +
+      `(${MAX_GRID_BEATS} beats). Use bar|beat or midi-json notation to ` +
+      `preserve longer sustains.`,
+  );
 }
 
 // ---- Shared line machinery (drums + pitched) ----
