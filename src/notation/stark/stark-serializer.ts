@@ -19,6 +19,14 @@
  * triplet values ARE on the grid now — a dotted quarter and an eighth-note
  * triplet each round-trip exactly.)
  *
+ * The dual hazard — a note that OVERLAPS the next onset (a held bass under a
+ * moving melody, a legato line with release tails) — is normalized the other
+ * direction: its emitted sustain is trimmed to the coarsest grid value that ends
+ * no later than the next note starts (see legatoDuration). Trimming an overlap's
+ * tail is the single-line timing model's documented loss; without it a long note
+ * would advance the cursor past every following onset and shift the whole line.
+ * Onsets are exact for any input; only an overlapping note's own tail is lost.
+ *
  * Every line is serialized the same way: walk the notes, fill gaps with `z`
  * rests, take each note's own duration as its absolute `/N`, then FACTOR OUT the
  * line default — emit a header `/N` only when it differs from the line-type
@@ -45,6 +53,7 @@ import {
   drumHeader,
   durationEntry,
   dynamicSuffix,
+  floorDuration,
   groupNotesByPitch,
   groupSimultaneousNotes,
   octaveMarks,
@@ -99,11 +108,13 @@ export function formatNotation(
 // filled with `z` rests. `makeHit` supplies each note's glyph + dynamic; the
 // note's own duration becomes its /N (durations round-trip for legato input).
 //
-// The cursor tracks EMITTED (grid-snapped) time, not real time. A note whose
-// real duration isn't a grid value (e.g. a sample-derived 2.3-beat sustain) snaps
-// its own sustain, but that error is NOT allowed to cascade into later onsets:
-// the gap-fill below re-anchors each note to its true start_time, inserting a
-// compensating rest when the previous emitted duration undershot.
+// The cursor tracks EMITTED (grid-snapped) time, not real time. Two error
+// sources are prevented from cascading into later onsets: an UNDERSHOOT (a note
+// shorter than the gap to the next onset, incl. a sample-derived off-grid sustain
+// that snaps down) is re-anchored by a compensating rest; an OVERSHOOT (a note
+// that overlaps the following onset) is trimmed to legato via {@link
+// legatoDuration}, so its own tail is shortened rather than shoving every later
+// onset rightward. Onsets are preserved in both cases.
 function walkLine(
   notes: NoteEvent[],
   makeHit: (note: NoteEvent) => { core: string; dynamic: string },
@@ -112,7 +123,10 @@ function walkLine(
   const tokens: LineToken[] = [];
   let time = 0;
 
-  for (const note of sorted) {
+  for (let i = 0; i < sorted.length; i++) {
+    // i is bounded by sorted.length, so this access is always present.
+    const note = sorted[i] as NoteEvent;
+
     if (note.start_time > time + SAME_TIME_EPSILON) {
       const rests = restTokens(note.start_time - time);
 
@@ -121,13 +135,35 @@ function walkLine(
     }
 
     const { core, dynamic } = makeHit(note);
-    const duration = snapDuration(note.duration);
+    const next = sorted[i + 1];
+    const duration = legatoDuration(
+      note.duration,
+      next != null ? next.start_time - note.start_time : Infinity,
+    );
 
     tokens.push({ core, dynamic, duration });
     time += duration.beats;
   }
 
   return tokens;
+}
+
+// Choose the grid note value to emit for a note whose real sustain is
+// `naturalBeats`, capped so it never runs past the next onset (`capBeats` beats
+// away; Infinity for the final note). Within the cap this is the ordinary
+// nearest-grid snap; an overlapping note (sustain past the next onset) is trimmed
+// to the coarsest grid value that fits the gap. Trimming the overlap's tail is
+// the documented monophonic-legato normalization — it keeps every onset exact,
+// which a raw snapDuration of the full sustain would not.
+function legatoDuration(
+  naturalBeats: number,
+  capBeats: number,
+): DurationGridEntry {
+  const snapped = snapDuration(naturalBeats);
+
+  if (snapped.beats <= capBeats + SAME_TIME_EPSILON) return snapped;
+
+  return floorDuration(capBeats);
 }
 
 // Fill a gap with `z` rest tokens (greedy, largest grid note value first).
@@ -252,11 +288,14 @@ function isBetterDefault(
 // Chord SYMBOLS are input-only, so read-back is always literal notes here.
 function serializeStarkPitched(notes: NoteEvent[]): string {
   const { lineType, registerDefault, sorted } = classifyPitchedLine(notes);
+  const groups = groupSimultaneousNotes(sorted);
   const tokens: LineToken[] = [];
   let time = 0;
 
-  for (const group of groupSimultaneousNotes(sorted)) {
-    // group is non-empty (groupSimultaneousNotes only emits matched groups).
+  for (let i = 0; i < groups.length; i++) {
+    // groups are non-empty (groupSimultaneousNotes only emits matched groups),
+    // and i is bounded by groups.length.
+    const group = groups[i] as NoteEvent[];
     const rep = group[0] as NoteEvent;
 
     if (rep.start_time > time + SAME_TIME_EPSILON) {
@@ -266,7 +305,16 @@ function serializeStarkPitched(notes: NoteEvent[]): string {
       time += emittedBeats(rests);
     }
 
-    const duration = snapDuration(rep.duration);
+    // Cap the group's sustain at the next group's onset so a held note (e.g. a
+    // sustained bass under a moving melody) is trimmed to legato instead of
+    // shoving the melody's onsets later. The final group has no cap.
+    const nextGroup = groups[i + 1];
+    const duration = legatoDuration(
+      rep.duration,
+      nextGroup != null
+        ? (nextGroup[0] as NoteEvent).start_time - rep.start_time
+        : Infinity,
+    );
 
     tokens.push({
       core: groupCore(group, registerDefault),

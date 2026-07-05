@@ -188,6 +188,54 @@ describe("stark serializer — off-grid durations preserve onsets", () => {
   });
 });
 
+describe("stark serializer — overlapping notes trim to legato, onsets preserved", () => {
+  it("a held bass under an 8th-note melody does not shift the melody's onsets", () => {
+    // C3 held a whole note under an E-F-G-A run of 8ths. The single-line model
+    // can't sustain the bass under the melody, but its overlap must NOT push the
+    // melody's onsets late (the bug: the 4-beat bass advanced the cursor past
+    // every 8th, so F/G/A drifted to beats 4/4.5/5). The bass is trimmed to the
+    // gap before the next onset instead; every onset stays exact.
+    const out = formatNotation([
+      note(48, 0, 4),
+      note(64, 0, 0.5),
+      note(65, 0.5, 0.5),
+      note(67, 1, 0.5),
+      note(69, 1.5, 0.5),
+    ]);
+
+    const back = interpretNotation(out);
+
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 0, 0.5, 1, 1.5]);
+    // Pitches survive; the bass (grouped with E at the shared onset) is trimmed
+    // to the 8th that precedes the next onset rather than held for 4 beats.
+    expect(back.map((n) => n.pitch)).toStrictEqual([48, 64, 65, 67, 69]);
+  });
+
+  it("an overlapping melody note is trimmed so the next onset stays put", () => {
+    // C sustains 2 beats but D starts at beat 1 — a 1-beat overlap. C is trimmed
+    // to a quarter so D lands on beat 1, not beat 2.
+    const out = formatNotation([note(60, 0, 2), note(62, 1, 1)]);
+
+    expect(out).toBe("melody: C D");
+
+    const back = interpretNotation(out);
+
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 1]);
+    expect(back.map((n) => n.duration)).toStrictEqual([1, 1]);
+  });
+
+  it("overlapping same-pitch drum hits keep their onsets", () => {
+    // Two kicks a 16th apart, each ringing a full beat (a 0.75-beat overlap). The
+    // first is trimmed to the /16 that fits the gap, so the second hit stays on
+    // beat 0.25 rather than sliding to beat 1.
+    const out = formatNotation([note(36, 0, 1), note(36, 0.25, 1)], DRUM);
+
+    const back = interpretNotation(out);
+
+    expect(back.map((n) => n.start_time)).toStrictEqual([0, 0.25]);
+  });
+});
+
 describe("stark serializer — dotted durations round-trip exactly", () => {
   it("a dotted-quarter melody note round-trips losslessly", () => {
     // 1.5 beats is now the grid value /4. — emitted exactly, no compensating rest.

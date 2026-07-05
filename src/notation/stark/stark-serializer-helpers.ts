@@ -241,6 +241,27 @@ export function snapDuration(beats: number): DurationGridEntry {
 }
 
 /**
+ * The largest grid note value that fits within a cap (`beats ≤ capBeats`). Used
+ * to trim a note that overlaps the following onset down to legato: the emitted
+ * sustain ends no later than the next note starts, so that onset — and every
+ * onset after it — stays exact. Falls back to the shortest grid value when the
+ * cap is below even that (sub-resolution onset spacing), since a note token can
+ * never be zero-length.
+ * @param capBeats - The maximum allowed length in Ableton beats
+ * @returns The coarsest grid entry that fits within the cap
+ */
+export function floorDuration(capBeats: number): DurationGridEntry {
+  // DURATION_GRID is strictly descending, so the first entry within the cap is
+  // the largest that fits.
+  for (const entry of DURATION_GRID) {
+    if (entry.beats <= capBeats + SAME_TIME_EPSILON) return entry;
+  }
+
+  // The grid's last (shortest) entry is the floor when nothing else fits.
+  return DURATION_GRID.at(-1) as DurationGridEntry;
+}
+
+/**
  * Build the grid entry for a parsed { n, dotted } note value — used to spell the
  * line-type defaults (bass /4, chords /1, …) the serializer factors against.
  * @param duration - The parsed note value
