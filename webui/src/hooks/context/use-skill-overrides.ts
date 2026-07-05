@@ -74,16 +74,16 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
   const refresh = useCallback(async (): Promise<void> => {
-    const supersededBySave = guardRefresh();
+    const discardRefresh = guardRefresh();
 
     try {
       const slots = await fetchSlots();
 
-      if (supersededBySave()) return;
+      if (discardRefresh()) return;
 
       setStatus({ kind: "ready", slots });
     } catch (error: unknown) {
-      if (supersededBySave()) return;
+      if (discardRefresh()) return;
 
       setStatus({ kind: "error", message: errorMessage(error) });
     }

@@ -56,16 +56,16 @@ export function useDocMemory(
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
   const refresh = useCallback(async (): Promise<void> => {
-    const supersededBySave = guardRefresh();
+    const discardRefresh = guardRefresh();
 
     try {
       const content = await read();
 
-      if (supersededBySave()) return;
+      if (discardRefresh()) return;
 
       setStatus({ kind: "ready", content });
     } catch (error: unknown) {
-      if (supersededBySave()) return;
+      if (discardRefresh()) return;
 
       setStatus({ kind: "error", message: errorMessage(error) });
     }
@@ -124,7 +124,9 @@ export interface SaveRefreshGuard {
   /** Mark a save finished (in the write's finally). */
   endSave: () => void;
   /** Snapshot the guard at a refresh's start; the returned predicate reports
-   *  whether a save overlapped the refresh's round-trip and should win. */
+   *  whether the refresh's result should be DISCARDED — because a save overlapped
+   *  its round-trip (the save's echo should win) or the component unmounted while
+   *  it was in flight (nothing left to update). */
   guardRefresh: () => () => boolean;
 }
 
@@ -135,12 +137,22 @@ export interface SaveRefreshGuard {
  * save's echo and, landing last, clobber it. `beginSave`/`endSave` bracket each
  * write (an in-flight counter plus a monotonic generation counter); a refresh
  * calls `guardRefresh()` at its start and trusts its result only if no save
- * overlapped the round-trip.
+ * overlapped the round-trip. The same predicate also reports true once the
+ * component has unmounted, so a late-resolving fetch can't setState on a dead
+ * component (matching the AbortController guard the preview/config hooks use).
  * @returns The save-bracketing and refresh-guard helpers
  */
 export function useSaveRefreshGuard(): SaveRefreshGuard {
   const saveCountRef = useRef(0);
   const saveGenRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    [],
+  );
 
   const beginSave = useCallback((): void => {
     saveCountRef.current++;
@@ -156,7 +168,9 @@ export function useSaveRefreshGuard(): SaveRefreshGuard {
     const genAtStart = saveGenRef.current;
 
     return (): boolean =>
-      inFlightAtStart > 0 || saveGenRef.current !== genAtStart;
+      !mountedRef.current ||
+      inFlightAtStart > 0 ||
+      saveGenRef.current !== genAtStart;
   }, []);
 
   return { beginSave, endSave, guardRefresh };

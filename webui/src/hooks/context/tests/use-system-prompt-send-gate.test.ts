@@ -60,4 +60,26 @@ describe("useSystemPromptSendGate", () => {
     expect(staleSend).not.toHaveBeenCalled();
     expect(freshSend).toHaveBeenCalledWith("hold me", undefined);
   });
+
+  it("releases a parked send on unmount so its caller can't hang forever", async () => {
+    const send = vi.fn().mockResolvedValue(undefined);
+    const { result, unmount } = renderHook(() =>
+      useSystemPromptSendGate(LOADING, send),
+    );
+
+    // Parked while loading (registers a waiter, doesn't fire yet).
+    const sendPromise = result.current("hold me");
+
+    await Promise.resolve();
+    expect(send).not.toHaveBeenCalled();
+
+    // Unmount before the status ever resolves: the cleanup releases the parked
+    // waiter so the awaiting caller settles instead of hanging.
+    await act(async () => {
+      unmount();
+      await sendPromise;
+    });
+
+    expect(send).toHaveBeenCalledWith("hold me", undefined);
+  });
 });

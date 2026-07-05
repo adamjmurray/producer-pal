@@ -306,6 +306,33 @@ describe("useContextMemory", () => {
     });
   });
 
+  it("discards a refresh GET that resolves after the editor unmounts", async () => {
+    mockResponses({ memoryContent: "old" });
+
+    const { result, unmount } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.status).toMatchObject({ content: "old" });
+    });
+
+    const lateGet = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(lateGet.promise); // refresh GET (still pending)
+
+    await act(async () => {
+      const refreshPromise = result.current.refresh();
+
+      // Tear the hook down while the GET is in flight, then let it land: the
+      // guard must drop it rather than setState on the torn-down hook.
+      unmount();
+      lateGet.resolve(jsonResponse({ memoryContent: "external" }));
+      await refreshPromise;
+    });
+
+    // The last-rendered status stays "old"; the post-unmount GET was discarded.
+    expect(result.current.status).toMatchObject({ content: "old" });
+  });
+
   // While the editor is open AND the window is focused, poll so
   // external writes (ppal-context tool, Max textedit) surface without a manual
   // refocus. Fake timers + a stubbed document.hasFocus drive the cases.

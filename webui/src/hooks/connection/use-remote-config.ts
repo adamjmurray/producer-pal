@@ -93,6 +93,9 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
     let controller: AbortController | undefined;
 
     const handleFocus = () => {
+      // Abort any prior focus refetch still in flight before starting a new one,
+      // so rapid refocus doesn't leak controllers (cleanup only aborts the last).
+      controller?.abort();
       controller = new AbortController();
       void fetchConfig(controller.signal);
     };

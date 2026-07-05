@@ -59,6 +59,18 @@ export function useSystemPromptSendGate(
     for (const resolve of waiters) resolve();
   }, [status.kind]);
 
+  // On unmount, release any still-parked sends so a caller awaiting the gate
+  // can't hang forever when the status never resolves before teardown.
+  useEffect(
+    () => () => {
+      const waiters = waitersRef.current;
+
+      waitersRef.current = [];
+      for (const resolve of waiters) resolve();
+    },
+    [],
+  );
+
   return useCallback(async (message: string, options?: MessageOverrides) => {
     if (isLoadingRef.current) {
       await new Promise<void>((resolve) => waitersRef.current.push(resolve));

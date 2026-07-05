@@ -83,6 +83,34 @@ describe("useRemoteConfig", () => {
     });
   });
 
+  it("aborts a prior in-flight focus refetch when focus fires again", async () => {
+    const signals: AbortSignal[] = [];
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
+      const signal = (init as RequestInit | undefined)?.signal;
+
+      if (signal) signals.push(signal);
+
+      return Promise.resolve(mockConfigResponse({ smallModelMode: false }));
+    });
+
+    renderHook(() => useRemoteConfig("connecting"));
+
+    // Two focus events back-to-back: the second must abort the first focus
+    // controller before starting its own, so rapid refocus can't leak
+    // controllers (cleanup alone only aborts the last one).
+    await act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    // Last two signals are the two focus refetches; the earlier one is aborted.
+    expect(signals.at(-2)?.aborted).toBe(true);
+    expect(signals.at(-1)?.aborted).toBe(false);
+  });
+
   it("POSTs to config endpoint when postSmallModelMode called", async () => {
     const { result } = await setupRemoteConfigHook({ smallModelMode: false });
 

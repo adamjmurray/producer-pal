@@ -184,7 +184,7 @@ async function fetchCurrentMode(
   signal: AbortSignal,
 ): Promise<SkillsCombination | null> {
   try {
-    const response = await fetch(getConfigUrl(), { signal });
+    const response = await fetch(getConfigUrl(), { signal, cache: "no-store" });
 
     if (!response.ok) return null;
 
