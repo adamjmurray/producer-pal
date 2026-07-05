@@ -211,6 +211,29 @@ describe("parseCompactJSLiteral - round-trips with toCompactJSLiteral", () => {
   }
 });
 
+describe("parseCompactJSLiteral - prototype pollution guard", () => {
+  it("stores a __proto__ key as own data, not the object's prototype", () => {
+    const result = parseCompactJSLiteral("{__proto__:{polluted:1}}") as Record<
+      string,
+      unknown
+    >;
+
+    // Matches JSON.parse: the key round-trips as an own data property while the
+    // prototype stays Object.prototype (a plain obj[key]= would mutate it).
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.hasOwn(result, "__proto__")).toBe(true);
+    expect(
+      Object.getOwnPropertyDescriptor(result, "__proto__")?.value,
+    ).toStrictEqual({ polluted: 1 });
+  });
+
+  it("does not pollute Object.prototype", () => {
+    parseCompactJSLiteral("{__proto__:{polluted:1}}");
+
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+});
+
 describe("parseCompactJSLiteral - malformed input throws", () => {
   const cases: Array<[string, string]> = [
     ["empty string", ""],

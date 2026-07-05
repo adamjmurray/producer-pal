@@ -93,7 +93,7 @@ function parseObject(s: ParseState): Record<string, unknown> {
     if (peek(s) !== ":") fail(s, "expected ':' after object key");
     s.pos++;
 
-    obj[key] = parseValue(s);
+    assignKey(obj, key, parseValue(s));
 
     skipWs(s);
 
@@ -112,6 +112,35 @@ function parseObject(s: ParseState): Record<string, unknown> {
 
     fail(s, "expected ',' or '}' in object");
   }
+}
+
+/**
+ * Store a parsed key/value on the object. A plain `obj[key] = value` would invoke
+ * the `__proto__` setter for that key and mutate the object's prototype (a
+ * pollution vector) instead of storing data, so `__proto__` is defined as an own
+ * data property — exactly how `JSON.parse` treats the same key.
+ *
+ * @param obj - The object under construction
+ * @param key - The parsed key
+ * @param value - The parsed value
+ */
+function assignKey(
+  obj: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void {
+  if (key === "__proto__") {
+    Object.defineProperty(obj, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+
+    return;
+  }
+
+  obj[key] = value;
 }
 
 /**
