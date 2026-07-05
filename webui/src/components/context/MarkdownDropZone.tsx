@@ -3,11 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import {
+  classifyDroppedFile,
   dragHasFiles,
-  markdownFileFromDataTransfer,
+  MAX_IMPORT_BYTES,
 } from "#webui/utils/text-file-io";
+
+/** How long a rejection notice stays up after a bad drop. */
+const NOTICE_MS = 4000;
+
+/** Message shown when a dropped file is not an importable markdown/text file. */
+const NOT_MARKDOWN_MESSAGE = "Not a markdown file";
+
+/** Message shown when a dropped file exceeds the import size cap. */
+const TOO_LARGE_MESSAGE = `File too large (max ${MAX_IMPORT_BYTES / (1024 * 1024)} MB)`;
 
 interface MarkdownDropZoneProps {
   /** Called with the dropped file's text once read. */
@@ -33,9 +43,21 @@ export function MarkdownDropZone(
 ): preact.JSX.Element {
   const { onImportText, children, className } = props;
   const [dragging, setDragging] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   // Enter/leave fire per child element; a depth counter keeps the overlay from
   // flickering as the pointer crosses the editor's nested nodes.
   const depthRef = useRef(0);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => () => clearTimeout(noticeTimerRef.current), []);
+
+  const showNotice = (message: string): void => {
+    setNotice(message);
+    clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS);
+  };
 
   const handleDragEnter = (event: DragEvent): void => {
     if (!dragHasFiles(event.dataTransfer)) return;
@@ -66,10 +88,16 @@ export function MarkdownDropZone(
     depthRef.current = 0;
     setDragging(false);
 
-    const file = markdownFileFromDataTransfer(event.dataTransfer);
+    const result = classifyDroppedFile(event.dataTransfer);
 
-    if (file == null) return;
-    void file.text().then((text) => onImportText(text));
+    if (result.kind === "file") {
+      void result.file.text().then((text) => onImportText(text));
+    } else if (result.kind === "not-markdown") {
+      showNotice(NOT_MARKDOWN_MESSAGE);
+    } else if (result.kind === "too-large") {
+      showNotice(TOO_LARGE_MESSAGE);
+    }
+    // kind "none": the drop carried no file at all — nothing to report.
   };
 
   return (
@@ -84,6 +112,14 @@ export function MarkdownDropZone(
       {dragging && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-blue-500/70 bg-blue-500/10 dark:bg-blue-400/10 text-sm font-medium text-blue-700 dark:text-blue-200">
           Drop a .md file to import
+        </div>
+      )}
+      {notice != null && !dragging && (
+        <div
+          role="alert"
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-red-500/70 bg-red-500/10 dark:bg-red-400/10 text-sm font-medium text-red-700 dark:text-red-200"
+        >
+          {notice}
         </div>
       )}
     </div>

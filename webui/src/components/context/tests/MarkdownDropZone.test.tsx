@@ -37,10 +37,21 @@ function renderZone(): {
  * @param name - File name
  * @param type - MIME type
  * @param text - Body returned by text()
+ * @param size - Byte size (defaults to 0, i.e. under the import cap)
  * @returns A File-shaped object
  */
-function fakeFile(name: string, type: string, text = "dropped body"): File {
-  return { name, type, text: () => Promise.resolve(text) } as unknown as File;
+function fakeFile(
+  name: string,
+  type: string,
+  text = "dropped body",
+  size = 0,
+): File {
+  return {
+    name,
+    type,
+    size,
+    text: () => Promise.resolve(text),
+  } as unknown as File;
 }
 
 /**
@@ -92,7 +103,7 @@ describe("MarkdownDropZone", () => {
     );
   });
 
-  it("ignores a dropped non-text file", () => {
+  it("rejects a dropped non-text file with a notice", () => {
     const { child, onImportText } = renderZone();
 
     fireEvent.drop(child, {
@@ -100,6 +111,47 @@ describe("MarkdownDropZone", () => {
     });
 
     expect(onImportText).not.toHaveBeenCalled();
+    expect(screen.getByText("Not a markdown file")).toBeTruthy();
+  });
+
+  it("rejects a dropped file over the size cap with a notice", () => {
+    const { child, onImportText } = renderZone();
+    // 2 MB — over the 1 MB import cap.
+    const tooBig = fakeFile("huge.md", "text/markdown", "x", 2 * 1024 * 1024);
+
+    fireEvent.drop(child, { dataTransfer: fileTransfer([tooBig]) });
+
+    expect(onImportText).not.toHaveBeenCalled();
+    expect(screen.getByText(/File too large/)).toBeTruthy();
+  });
+
+  it("says nothing when a drop carries no file at all", () => {
+    const { child, onImportText } = renderZone();
+
+    // types include "Files" (so the drop is handled) but the file list is empty.
+    fireEvent.drop(child, { dataTransfer: fileTransfer([]) });
+
+    expect(onImportText).not.toHaveBeenCalled();
+    expect(screen.queryByText("Not a markdown file")).toBeNull();
+  });
+
+  it("clears a rejection notice after the timeout", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { child } = renderZone();
+
+      fireEvent.drop(child, {
+        dataTransfer: fileTransfer([fakeFile("cover.png", "image/png")]),
+      });
+      expect(screen.getByText("Not a markdown file")).toBeTruthy();
+
+      await vi.advanceTimersByTimeAsync(4000);
+
+      expect(screen.queryByText("Not a markdown file")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("ignores a non-file drag (e.g. editor text reorder) and shows no overlay", () => {

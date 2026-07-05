@@ -8,10 +8,11 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  classifyDroppedFile,
   dragHasFiles,
   downloadTextFile,
   markdownExportFilename,
-  markdownFileFromDataTransfer,
+  MAX_IMPORT_BYTES,
   pickTextFile,
 } from "#webui/utils/text-file-io";
 
@@ -21,14 +22,16 @@ import {
  * @param name - File name
  * @param type - MIME type
  * @param text - Resolved/rejected body
+ * @param size - Byte size (defaults to 0, i.e. under the import cap)
  * @returns A File-shaped object
  */
 function fakeFile(
   name: string,
   type: string,
   text: () => Promise<string> = () => Promise.resolve("body"),
+  size = 0,
 ): File {
-  return { name, type, text } as unknown as File;
+  return { name, type, text, size } as unknown as File;
 }
 
 afterEach(() => {
@@ -116,6 +119,37 @@ describe("pickTextFile", () => {
 
     await expect(pickTextFile(".md")).resolves.toBeNull();
   });
+
+  it("resolves null when the picked file exceeds the size cap", async () => {
+    stubInput([
+      fakeFile(
+        "big.md",
+        "text/markdown",
+        () => Promise.resolve("x"),
+        MAX_IMPORT_BYTES + 1,
+      ),
+    ]);
+
+    await expect(pickTextFile(".md")).resolves.toBeNull();
+  });
+
+  it("resolves null when the picker is cancelled", async () => {
+    const input = {
+      type: "",
+      accept: "",
+      files: [] as File[],
+      onchange: null as (() => void) | null,
+      oncancel: null as (() => void) | null,
+      // A cancelled picker fires `cancel`, not `change`.
+      click: (): void => input.oncancel?.(),
+    };
+
+    vi.spyOn(document, "createElement").mockReturnValue(
+      input as unknown as HTMLElement,
+    );
+
+    await expect(pickTextFile(".md")).resolves.toBeNull();
+  });
 });
 
 describe("dragHasFiles", () => {
@@ -133,34 +167,46 @@ describe("dragHasFiles", () => {
   });
 });
 
-describe("markdownFileFromDataTransfer", () => {
-  it("returns a .md file by extension even when the MIME type is blank", () => {
+describe("classifyDroppedFile", () => {
+  it("classifies a .md file (blank MIME) as importable", () => {
     const file = fakeFile("notes.md", "");
     const dt = { files: [file] } as unknown as DataTransfer;
 
-    expect(markdownFileFromDataTransfer(dt)).toBe(file);
+    expect(classifyDroppedFile(dt)).toStrictEqual({ kind: "file", file });
   });
 
-  it("returns a text/* file by MIME type", () => {
+  it("classifies a text/* file by MIME type as importable", () => {
     const file = fakeFile("weird-name", "text/plain");
     const dt = { files: [file] } as unknown as DataTransfer;
 
-    expect(markdownFileFromDataTransfer(dt)).toBe(file);
+    expect(classifyDroppedFile(dt)).toStrictEqual({ kind: "file", file });
   });
 
-  it("rejects a non-text file", () => {
+  it("rejects a non-text file as not-markdown", () => {
     const dt = {
       files: [fakeFile("cover.png", "image/png")],
     } as unknown as DataTransfer;
 
-    expect(markdownFileFromDataTransfer(dt)).toBeNull();
+    expect(classifyDroppedFile(dt)).toStrictEqual({ kind: "not-markdown" });
   });
 
-  it("returns null when the transfer has no files", () => {
+  it("rejects a file over the size cap as too-large", () => {
+    const file = fakeFile(
+      "huge.md",
+      "text/markdown",
+      () => Promise.resolve("x"),
+      MAX_IMPORT_BYTES + 1,
+    );
+    const dt = { files: [file] } as unknown as DataTransfer;
+
+    expect(classifyDroppedFile(dt)).toStrictEqual({ kind: "too-large" });
+  });
+
+  it("returns none when the transfer has no file", () => {
     expect(
-      markdownFileFromDataTransfer({ files: [] } as unknown as DataTransfer),
-    ).toBeNull();
-    expect(markdownFileFromDataTransfer(null)).toBeNull();
+      classifyDroppedFile({ files: [] } as unknown as DataTransfer),
+    ).toStrictEqual({ kind: "none" });
+    expect(classifyDroppedFile(null)).toStrictEqual({ kind: "none" });
   });
 });
 
