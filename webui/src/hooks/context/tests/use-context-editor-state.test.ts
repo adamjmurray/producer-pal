@@ -679,5 +679,34 @@ describe("useContextEditorState", () => {
 
       expect(save).toHaveBeenCalledWith("typed-but-not-yet-saved");
     });
+
+    it("does not schedule a retry loop when the unmount flush's save fails", async () => {
+      // Regression: the unmount flush's save promise resolved AFTER cleanup, so
+      // a persistent failure re-scheduled a 5s retry forever (re-POSTing and
+      // calling setState on a dead component). The mountedRef guard stops it.
+      const save = vi.fn().mockResolvedValue(false);
+      const { result, unmount } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
+      );
+
+      await act(() => {
+        result.current.handleChange("typed-but-not-yet-saved");
+      });
+
+      // Unmount flushes the pending save; let its (failing) promise settle.
+      unmount();
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(save).toHaveBeenCalledTimes(1);
+
+      // Well past the 5s retry interval: no zombie re-POST fired.
+      await act(async () => {
+        vi.advanceTimersByTime(30000);
+        await Promise.resolve();
+      });
+      expect(save).toHaveBeenCalledTimes(1);
+    });
   });
 });

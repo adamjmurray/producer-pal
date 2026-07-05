@@ -220,6 +220,27 @@ describe("stark interpreter — chord symbols (chords line)", () => {
     );
   });
 
+  it("warn-skips a chord with unlexable trailing junk instead of aborting the parse", () => {
+    // `/9` (not a valid /N duration or /letter bass) and `-7` can't lex, so the
+    // whole token is captured as trailing junk and warn-skipped — one bad token
+    // must not throw a parse error that fails the entire clip write.
+    const notes = interpretNotation("chords: Cm7 C6/9 Dm7");
+
+    // Cm7 at 0, C6/9 skipped (still advances 4 beats), Dm7 at 8 — nothing at 4.
+    expect(notes.filter((n) => n.start_time === 0)).toHaveLength(4);
+    expect(notes.filter((n) => n.start_time === 8)).toHaveLength(4);
+    expect(notes.some((n) => n.start_time === 4)).toBe(false);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('unknown chord symbol "C6/9"'),
+    );
+  });
+
+  it("degrades a conventional-but-unsupported spelling (C-7) to a warn-skip, not a throw", () => {
+    expect(() => interpretNotation("chords: C-7")).not.toThrow();
+    expect(interpretNotation("chords: C-7")).toHaveLength(0);
+  });
+
   it("uses ! / ? for dynamics; letter case is insignificant (not a dynamic)", () => {
     expect(
       interpretNotation("chords: C?").every(

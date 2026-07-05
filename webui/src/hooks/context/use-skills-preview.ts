@@ -28,6 +28,8 @@ export interface SkillsPreview extends SkillsCombination {
   skills: string;
   /** Exact character count of the blob (token estimate is derived at display). */
   charCount: number;
+  /** Non-fatal assembly warnings (override cycles/unsafe refs); [] when clean. */
+  warnings: string[];
 }
 
 /** Status of the currently-selected combination's preview. */
@@ -133,6 +135,7 @@ interface RawPreview {
   head?: unknown;
   driver?: unknown;
   skills?: unknown;
+  warnings?: unknown;
 }
 
 /**
@@ -166,6 +169,9 @@ async function fetchPreview(
     driver: typeof raw.driver === "string" ? raw.driver : "",
     skills,
     charCount: skills.length,
+    warnings: Array.isArray(raw.warnings)
+      ? raw.warnings.filter((w): w is string => typeof w === "string")
+      : [],
   };
 }
 

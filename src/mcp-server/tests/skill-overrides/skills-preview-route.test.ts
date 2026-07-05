@@ -42,6 +42,7 @@ interface PreviewBody {
   head: string;
   driver: string;
   skills: string;
+  warnings: string[];
 }
 
 /**
@@ -66,6 +67,7 @@ describe("skills-preview route", () => {
     expect(body.head).toBe("barbeat-standard");
     expect(body.driver).toBe("standard");
     expect(body.skills).toBe(buildSkills({ notation: "barbeat" }));
+    expect(body.warnings).toStrictEqual([]);
   });
 
   it("selects the small-model core and notation head", async () => {
@@ -120,5 +122,17 @@ describe("skills-preview route", () => {
     const body = await getPreview("notation=stark");
 
     expect(body.skills).toContain("MY CUSTOM STARK");
+  });
+
+  it("surfaces assembly warnings when a saved override is broken (cycle)", async () => {
+    // A driver override that includes itself is a cycle: the preview must flag
+    // it instead of silently returning a truncated blob.
+    await putJson(`${overridesBase}/standard`, {
+      content: `INTRO\n\n@include "./standard.md"`,
+    });
+
+    const body = await getPreview("notation=barbeat");
+
+    expect(body.warnings.some((w) => w.includes("cycle"))).toBe(true);
   });
 });

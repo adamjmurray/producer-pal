@@ -43,6 +43,15 @@ describe("listConfigMarkdownFiles", () => {
     expect(() => listConfigMarkdownFiles("memory")).toThrow();
   });
 
+  it("ignores a .md-named directory instead of listing it", () => {
+    // A directory named like an entry would list as "weird.md" and then throw
+    // EISDIR when a later read tried to open it, wedging the whole collection.
+    writeInSubdir("memory", "a.md");
+    mkdirSync(join(getDir(), "memory", "weird.md"), { recursive: true });
+
+    expect(listConfigMarkdownFiles("memory")).toStrictEqual(["a.md"]);
+  });
+
   it("is inert under Vitest without a dir override", () => {
     delete process.env.PRODUCER_PAL_CONFIG_DIR;
 

@@ -248,12 +248,13 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
     );
   }
 
-  const { skills, head, driver } = status.preview;
+  const { skills, head, driver, warnings } = status.preview;
 
   return (
     <div
       className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-col h-full p-4 gap-2 overflow-hidden`}
     >
+      {warnings.length > 0 && <PreviewWarnings warnings={warnings} />}
       <div className="flex items-center justify-between h-5 gap-3">
         <span className="min-w-0 truncate text-xs text-zinc-400 dark:text-zinc-500">
           Fragments: {driver} + {head}
@@ -269,6 +270,36 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
       <pre className="flex-1 min-h-0 overflow-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 p-3 text-xs whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
         {skills}
       </pre>
+    </div>
+  );
+}
+
+interface PreviewWarningsProps {
+  warnings: string[];
+}
+
+/**
+ * Banner listing assembly warnings (override cycles, unsafe/too-deep refs) so a
+ * broken user override is visible here rather than silently truncating the blob.
+ * @param props - Warnings props
+ * @returns Banner element
+ */
+function PreviewWarnings(props: PreviewWarningsProps): preact.JSX.Element {
+  const { warnings } = props;
+
+  return (
+    <div
+      role="alert"
+      className="shrink-0 rounded-md border border-amber-400 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300"
+    >
+      <span className="font-medium">
+        ⚠ This override didn't fully assemble:
+      </span>
+      <ul className="mt-1 ml-4 list-disc space-y-0.5">
+        {warnings.map((warning) => (
+          <li key={warning}>{warning}</li>
+        ))}
+      </ul>
     </div>
   );
 }

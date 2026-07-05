@@ -31,11 +31,13 @@ function jsonResponse(body: unknown): Response {
  * requested combination so assertions can key off the selected values.
  * @param config - Live config to return, or "fail" for a non-ok response
  * @param preview - "ok" echoes the combo; "fail" returns a non-ok response
+ * @param previewWarnings - Assembly warnings to include in the preview response
  * @returns The fetch mock
  */
 function stubFetch(
   config: { notation: string; smallModelMode: boolean } | "fail",
   preview: "ok" | "fail" = "ok",
+  previewWarnings: string[] = [],
 ): ReturnType<typeof vi.fn> {
   const fetchMock = vi.fn((input: unknown) => {
     const url = String(input);
@@ -59,6 +61,7 @@ function stubFetch(
         head: notation,
         driver: small ? "basic" : "standard",
         skills: `S:${notation}:${small}`,
+        warnings: previewWarnings,
       }),
     );
   });
@@ -134,6 +137,33 @@ describe("SkillsPreviewScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/Fragments: basic \+ barbeat/)).toBeTruthy();
     });
+  });
+
+  it("surfaces override assembly warnings above the blob", async () => {
+    stubFetch({ notation: "barbeat", smallModelMode: false }, "ok", [
+      "skills include cycle refused: standard → standard",
+    ]);
+
+    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeTruthy();
+    });
+    expect(
+      screen.getByText(/This override didn't fully assemble/),
+    ).toBeTruthy();
+    expect(screen.getByText(/cycle refused/)).toBeTruthy();
+  });
+
+  it("shows no warning banner when the blob assembled cleanly", async () => {
+    stubFetch({ notation: "barbeat", smallModelMode: false });
+
+    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Fragments:/)).toBeTruthy();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("shows an error when the preview request fails", async () => {

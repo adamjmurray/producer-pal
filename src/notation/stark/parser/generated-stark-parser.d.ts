@@ -137,6 +137,13 @@ export interface ChordSymbolItem {
   dynamic: StarkDynamic;
   /** `*N` repeat count (expand into N copies), or null (once) */
   repeat: number | null;
+  /**
+   * Leftover non-separator chars after the token's grammar was consumed (up to
+   * whitespace or a `|` bar), e.g. "/9" in "C6/9" or "-7" in "C-7". "" for a
+   * well-formed token; when non-empty the interpreter treats the whole token as
+   * unrecognized and warn-skips it (so one bad token can't abort the parse).
+   */
+  trailing: string;
 }
 
 /**

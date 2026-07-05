@@ -90,6 +90,11 @@ export function useContextEditorState(
   // it (prevents a stale draft POST from landing after clear's POST).
   const inFlightSaveRef = useRef<Promise<boolean> | null>(null);
   const memoryRef = useRef(memory);
+  // False once the hook has unmounted, so the unmount flush's save promise
+  // can't schedule a retry or setState after teardown (a persistent failure
+  // would otherwise re-POST every SAVE_RETRY_MS forever — an unbounded zombie
+  // loop — and call setDirty on a dead component).
+  const mountedRef = useRef(true);
   // Bumped on Clear / Reload to remount the uncontrolled MarkdownEditor
   // (state, not a ref, because the editor's `key` prop is read during render).
   const [editorKey, setEditorKey] = useState(0);
@@ -182,6 +187,11 @@ export function useContextEditorState(
       if (inFlightSaveRef.current === savePromise) {
         inFlightSaveRef.current = null;
       }
+
+      // The hook unmounted mid-save: don't touch state or reschedule. The
+      // flush already went out (best-effort); retrying after teardown would
+      // loop forever against a persistent failure.
+      if (!mountedRef.current) return;
 
       if (saved) {
         // Only clear dirty if the user hasn't typed past the saved value
@@ -340,6 +350,7 @@ export function useContextEditorState(
   // (no draft yet, no changes, status not ready).
   useEffect(
     () => () => {
+      mountedRef.current = false;
       flushSaveRef.current?.();
       clearTimer(debounceTimerRef);
       clearTimer(retryTimerRef);

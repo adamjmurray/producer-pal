@@ -21,10 +21,12 @@ import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
  * Register the GET /skills-preview endpoint on the Express app. Query params
  * `notation` (defaults to bar|beat when absent/invalid) and `smallModel`
  * (`"true"` enables basic/small-model skills) select the combination. The
- * response carries the assembled blob plus the two active slot names, so the
- * editor can label which fragments a combination uses without re-deriving the
- * selection logic. Read-only, so it is not origin-gated (unlike the override
- * writes) — it exposes nothing a GET /skill-overrides didn't already.
+ * response carries the assembled blob, the two active slot names (so the editor
+ * can label which fragments a combination uses without re-deriving the selection
+ * logic), and any assembly `warnings` (cycles/unsafe refs in a user override) so
+ * the editor can flag a broken override instead of showing a truncated blob.
+ * Read-only, so it is not origin-gated (unlike the override writes) — it exposes
+ * nothing a GET /skill-overrides didn't already.
  *
  * @param app - Express application
  */
@@ -47,11 +49,16 @@ export function registerSkillsPreviewRoute(app: Express): void {
       notation === "midi-json"
         ? "midi-json"
         : `${notation}-${smallModelMode ? "basic" : "standard"}`;
+    // Collect assembly warnings (override cycles, unsafe/too-deep refs) so the
+    // editor can surface a broken override instead of showing a silently
+    // truncated blob.
+    const warnings: string[] = [];
     const skills = buildSkills(
       { notation, smallModelMode },
       readSkillOverrides(),
+      (message) => warnings.push(message),
     );
 
-    res.json({ notation, smallModelMode, head, driver, skills });
+    res.json({ notation, smallModelMode, head, driver, skills, warnings });
   });
 }

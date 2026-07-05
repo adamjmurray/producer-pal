@@ -8,6 +8,7 @@ import {
   type BuildSkillsOptions,
 } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
+import * as console from "../node-for-max-logger.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
@@ -23,7 +24,9 @@ import { readSkillOverrides } from "./skill-overrides-store.ts";
  * override files are only readable from Node (V8 has no filesystem). The block
  * is self-labeled (it starts with the "# Producer Pal Skills" header), so it is
  * appended raw — no extra framing. Notation/small-model context is read from
- * the live device config via `getContext` at call time.
+ * the live device config via `getContext` at call time. Assembly warnings from
+ * a broken user override (cycles, unsafe/too-deep refs) are logged to the Max
+ * window so the blob doesn't silently truncate.
  *
  * @param inner - The underlying callLiveApi to wrap
  * @param getContext - Reads the current notation/small-model settings
@@ -34,6 +37,8 @@ export function withSkills(
   getContext: () => BuildSkillsOptions,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, () =>
-    buildSkills(getContext(), readSkillOverrides()),
+    buildSkills(getContext(), readSkillOverrides(), (message) =>
+      console.warn(`Producer Pal Skills: ${message}`),
+    ),
   );
 }

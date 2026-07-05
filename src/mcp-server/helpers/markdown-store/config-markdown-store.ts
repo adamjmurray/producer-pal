@@ -103,17 +103,20 @@ export function writeConfigMarkdown(filename: string, content: string): void {
 /**
  * List the `.md` filenames directly inside a subdirectory of the config dir
  * (e.g. "memory"), sorted. A missing subdir — the empty-by-default case —
- * yields []. Non-`.md` entries are ignored; nested directories are NOT descended
- * into (memory's basenames are slugs, so it must stay flat — skills, which needs
- * nesting, uses {@link listConfigMarkdownFilesRecursive}).
+ * yields []. Only regular files count: non-`.md` entries AND any `.md`-named
+ * directory are ignored (a `foo.md` directory would otherwise make a later read
+ * throw EISDIR and wedge the whole collection). Nested directories are NOT
+ * descended into (memory's basenames are slugs, so it must stay flat — skills,
+ * which needs nesting, uses {@link listConfigMarkdownFilesRecursive}).
  *
  * @param subdir - Subdirectory under the config dir (e.g. "memory")
  * @returns Sorted list of `.md` basenames (e.g. ["a.md", "b.md"])
  */
 export function listConfigMarkdownFiles(subdir: string): string[] {
   return safeReaddir(() =>
-    readdirSync(join(configDir(), subdir))
-      .filter((name) => name.endsWith(".md"))
+    readdirSync(join(configDir(), subdir), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) => entry.name)
       .sort(),
   );
 }

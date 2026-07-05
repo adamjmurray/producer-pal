@@ -134,6 +134,23 @@ describe("buildSkills - overrides", () => {
     expect(basic).not.toContain("STD HEAD");
   });
 
+  it("reports assembly warnings (cycles) to onWarn while still producing output", () => {
+    // A forked driver that includes itself is a cycle: the resolver drops the
+    // cyclic include with a warning rather than looping. Without an onWarn sink
+    // that warning is silently lost (the bug this thread fixes).
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { standard: `INTRO\n\n@include "./standard.md"\n\nOUTRO` },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain("INTRO");
+    expect(result).toContain("OUTRO");
+    expect(result).not.toContain("@include");
+    expect(warnings.some((w) => w.includes("cycle"))).toBe(true);
+  });
+
   it("lets a user fork the driver: delete an include, add their own file", () => {
     // The customization story — a forked driver drops the core include and
     // points the notation include at a fragment of the user's own.

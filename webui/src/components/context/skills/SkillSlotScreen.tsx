@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
 import { makeContextIoHandlers } from "#webui/components/context/context-io";
 import { ContextIoButtons } from "#webui/components/context/ContextIoButtons";
 import {
@@ -62,7 +62,7 @@ export function SkillSlotScreen(
 ): preact.JSX.Element {
   const { overrides, slots, slot, onSelectSlot, tabSlot, viewSlot, onClose } =
     props;
-  const memory = slotAsDocMemory(overrides, slot);
+  const memory = useSlotDocMemory(overrides, slot);
   const editor = useContextEditorState(memory, RESET_CONFIRM);
   const io = makeContextIoHandlers(editor, `producer-pal-skill-${slot.name}`);
   const [showBuiltIn, setShowBuiltIn] = useState(false);
@@ -129,22 +129,36 @@ export function SkillSlotScreen(
  * Adapt one slot of the collection hook to the single-document memory shape
  * `useContextEditorState` expects. The screen is keyed by slot, so this is
  * rebuilt (and re-seeded) on every slot switch.
+ *
+ * The `status` object is memoized on `slot.override` alone: `useContextEditorState`
+ * keys its external-update effect on `status` identity, so a fresh object on
+ * every render (e.g. the intermediate `saveStatus:"saving"` render) would fire it
+ * spuriously — flashing a false "updated outside the editor" banner during each
+ * autosave, and risking a Reload that adopts the stale pre-echo value.
  * @param overrides - The collection hook
  * @param slot - The slot being edited
  * @returns A document-memory view of that slot
  */
-function slotAsDocMemory(
+function useSlotDocMemory(
   overrides: UseSkillOverridesReturn,
   slot: SkillSlotView,
 ): UseDocMemoryReturn {
-  return {
-    status: { kind: "ready", content: slot.override },
-    saveStatus: overrides.saveStatus,
-    saveError: overrides.saveError,
-    save: (content: string) => overrides.saveSlot(slot.name, content),
-    clear: () => overrides.resetSlot(slot.name),
-    refresh: overrides.refresh,
-  };
+  const status = useMemo<UseDocMemoryReturn["status"]>(
+    () => ({ kind: "ready", content: slot.override }),
+    [slot.override],
+  );
+
+  return useMemo<UseDocMemoryReturn>(
+    () => ({
+      status,
+      saveStatus: overrides.saveStatus,
+      saveError: overrides.saveError,
+      save: (content: string) => overrides.saveSlot(slot.name, content),
+      clear: () => overrides.resetSlot(slot.name),
+      refresh: overrides.refresh,
+    }),
+    [status, overrides, slot.name],
+  );
 }
 
 interface SkillControlsProps {

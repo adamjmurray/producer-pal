@@ -34,6 +34,10 @@ export type SkillOverrides = Record<string, string>;
  * @param options.notation - The global notation setting (defaults to bar|beat).
  * @param options.smallModelMode - Whether small-model mode is active.
  * @param overrides - Per-fragment user overrides (empty by default).
+ * @param onWarn - Sink for non-fatal assembly warnings (include cycles, unsafe
+ *   or too-deep refs). Omitted by default; callers that can surface the problem
+ *   (the Skills preview, the live inject) pass one so a broken user override
+ *   doesn't degrade the blob silently.
  * @returns The skills string returned in the ppal-connect tool result.
  */
 export function buildSkills(
@@ -42,6 +46,7 @@ export function buildSkills(
     smallModelMode = false,
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
+  onWarn?: (message: string) => void,
 ): string {
   const builtIns = builtinFragments();
   const root = smallModelMode ? "basic" : "standard";
@@ -49,5 +54,6 @@ export function buildSkills(
   return resolveIncludes(root, {
     notation,
     lookup: (name) => overrides[name] ?? builtIns[name] ?? null,
+    onWarn,
   });
 }

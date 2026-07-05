@@ -10,6 +10,18 @@ import { writeSkillOverride } from "#src/mcp-server/helpers/skill-overrides-stor
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
+// Capture the Node-for-Max logger so a broken-override warning can be asserted
+// (and to keep Max.post out of the test). vi.hoisted keeps the factory free of
+// import references (see the async-mock guard meta test).
+const loggerWarn = vi.hoisted(() => vi.fn());
+
+vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
+  warn: loggerWarn,
+  log: vi.fn(),
+  info: vi.fn(),
+  error: vi.fn(),
+}));
+
 useTempConfigDir();
 
 /**
@@ -89,6 +101,18 @@ describe("withSkills", () => {
     const result = await wrapped("ppal-read-track", {});
 
     expect(result.content).toHaveLength(1);
+  });
+
+  it("logs assembly warnings from a broken override instead of failing silently", async () => {
+    // A driver override that includes itself is a cycle: the blob is still
+    // returned (degraded), and the warning is logged rather than swallowed.
+    writeSkillOverride("standard", `INTRO\n\n@include "./standard.md"`);
+    const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
+
+    const result = await wrapped("ppal-connect", {});
+
+    expect(lastText(result)).toContain("INTRO");
+    expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining("cycle"));
   });
 
   it("does not inject when the connect response is an error", async () => {

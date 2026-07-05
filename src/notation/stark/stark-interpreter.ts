@@ -267,17 +267,22 @@ function processChordItem(
   }
 
   const beats = durationBeats(item.duration ?? lineDefault);
-  const pitches = chordSymbolPitches(
-    item.root,
-    item.quality,
-    item.bass,
-    CHORDS_REGISTER_DEFAULT,
-    item.octaveShift,
-  );
+  // Leftover chars the grammar couldn't lex (e.g. `/9` in `C6/9`, `-7` in `C-7`)
+  // mark the whole token as malformed — skip it rather than realize a partial
+  // chord from the part that did parse.
+  const pitches = item.trailing
+    ? null
+    : chordSymbolPitches(
+        item.root,
+        item.quality,
+        item.bass,
+        CHORDS_REGISTER_DEFAULT,
+        item.octaveShift,
+      );
 
   if (pitches == null) {
     const slash = item.bass == null ? "" : `/${item.bass}`;
-    const label = `${item.root}${item.quality}${slash}`;
+    const label = `${item.root}${item.quality}${slash}${item.trailing}`;
 
     console.warn(`Stark: unknown chord symbol "${label}" — skipping`);
 
