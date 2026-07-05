@@ -15,11 +15,11 @@
  *
  * Grading is notation-INDEPENDENT and deterministic: after the model's turn the
  * grader flips the server to midi-json (a `notation` override on the state
- * assertion) and reads the clip back as raw `{p,t,d}` objects, then compares to
- * the expected notes. No grammar interpretation, no per-notation read-back
- * branch — every variant is graded by the exact same code path regardless of
- * which notation the model wrote in. There is no LLM judge: the state assertion
- * is the sole gate.
+ * assertion), reads the clip back as midi-json, and interprets it through the one
+ * shared midi-json seam, then compares to the expected notes. No per-notation
+ * read-back branch — every variant is graded by the exact same code path
+ * regardless of which notation the model wrote in. There is no LLM judge: the
+ * state assertion is the sole gate.
  *
  * A spec lists only the notations its target is exactly representable in. Stark
  * is literal and round-trippable (exact chromatic pitch, accidentals, octave
@@ -28,7 +28,7 @@
  * or triplet timing that no /N note value reaches).
  */
 
-import { parseToolResult } from "#evals/chat/mcp.ts";
+import { interpretMidiJson } from "#src/notation/midi-json/midi-json-notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
@@ -132,8 +132,9 @@ export function notationNeutralScenarios(
  *
  * @param meter - Expected time signature (e.g. "4/4"), also gates the read
  * @param expected - Exact notes the clip must contain (pitch + start, optional
- *   duration); midi-json `t`/`d` are musical beats (a quarter = 1 beat in x/4),
- *   which equal Ableton quarter beats in the 4/4 matrix scenarios
+ *   duration) in Ableton quarter beats; the read-back is scaled from midi-json's
+ *   musical beats to quarter beats by the meter denominator, so the comparison is
+ *   like-for-like in any meter (not only 4/4)
  * @returns State assertion
  */
 function midiJsonNotesAssertion(
@@ -172,41 +173,32 @@ function midiJsonNotesAssertion(
 
 /**
  * Parse a read-clip result (read back in midi-json) into note events, or null
- * when the meter is wrong or the notes payload is missing/unparseable. Shared by
- * the grading `expect` (pass/fail) and `explain` (diff) so both read the clip
- * identically.
+ * when the meter is wrong or the notes payload is missing/unparseable. Routes the
+ * raw notes string through the real {@link interpretMidiJson} seam (same code the
+ * tool uses), so ratio durations (`d:1/3` tuplets) parse and musical beats are
+ * scaled to Ableton quarter beats by the clip's meter denominator — exactly like
+ * the sibling bar|beat/stark path in `clipStateAssertion`. Shared by the grading
+ * `expect` (pass/fail) and `explain` (diff) so both read the clip identically.
  *
  * @param result - The parsed read-clip tool result
- * @param meter - Required time signature; a mismatch returns null (fails closed)
+ * @param meter - Required time signature; a mismatch returns null (fails closed).
+ *   Its denominator scales musical beats → Ableton quarter beats.
  * @returns The clip's notes as events, or null when ungradeable
  */
 function parseMidiJsonClip(result: unknown, meter: string): NoteEvent[] | null {
   const clip = result as { notes?: unknown; timeSignature?: string };
 
-  if (clip.timeSignature !== meter || clip.notes == null) return null;
-
-  let raw: unknown = clip.notes;
-
-  if (typeof raw === "string") {
-    try {
-      raw = parseToolResult(raw);
-    } catch {
-      return null; // unparseable midi-json payload
-    }
+  if (clip.timeSignature !== meter || typeof clip.notes !== "string") {
+    return null;
   }
 
-  if (!Array.isArray(raw)) return null;
+  const [, timeSigDenominator] = meter.split("/").map(Number);
 
-  return raw.map((n) => {
-    const o = (n ?? {}) as { p?: number; t?: number; d?: number };
-
-    return {
-      pitch: Number(o.p),
-      start_time: Number(o.t),
-      duration: Number(o.d),
-      velocity: 0,
-    };
-  });
+  try {
+    return interpretMidiJson(clip.notes, { timeSigDenominator });
+  } catch {
+    return null; // unparseable midi-json payload
+  }
 }
 
 /**
