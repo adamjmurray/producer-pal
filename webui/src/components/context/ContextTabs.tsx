@@ -174,8 +174,12 @@ function TabStrip(props: TabStripProps): preact.JSX.Element {
   const { tab, onSelect } = props;
 
   return (
+    // A button group (not an ARIA tablist): each button switches the whole
+    // editor screen — which remounts the strip — so the canonical roving-tabindex
+    // / arrow-key tab model doesn't fit. Native buttons stay Tab-focusable and
+    // Enter/Space-activatable; aria-pressed marks the active view.
     <div
-      role="tablist"
+      role="group"
       aria-label="Context editor tabs"
       className="flex items-center gap-1"
     >
@@ -209,8 +213,7 @@ function TabButton(props: TabButtonProps): preact.JSX.Element {
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={active}
+      aria-pressed={active}
       onClick={onSelect}
       className={`px-2 py-1 text-base rounded transition-colors ${
         active

@@ -180,7 +180,7 @@ describe("SkillsPreviewScreen", () => {
     let writeText: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-      writeText = vi.fn();
+      writeText = vi.fn().mockResolvedValue(undefined);
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
         value: { writeText },
@@ -203,6 +203,8 @@ describe("SkillsPreviewScreen", () => {
       fireEvent.click(screen.getByText("Copy"));
 
       expect(writeText).toHaveBeenCalledWith("S:barbeat:false");
+      // The button confirms the copy by flipping its label.
+      expect(await screen.findByText("Copied")).toBeTruthy();
     });
   });
 });

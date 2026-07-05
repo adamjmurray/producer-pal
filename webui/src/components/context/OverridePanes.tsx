@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { noop } from "#webui/components/mode-context";
+import { CopyButton } from "./collection/CopyButton";
 import { MarkdownEditor } from "./MarkdownEditor";
 
 interface OverridePanesProps {
@@ -128,13 +129,10 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
                 Reset to default
               </button>
 
-              <button
-                type="button"
-                onClick={() => void navigator.clipboard.writeText(builtIn)}
+              <CopyButton
+                text={builtIn}
                 className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
-              >
-                Copy
-              </button>
+              />
               <button
                 type="button"
                 onClick={() => onToggleBuiltIn(false)}

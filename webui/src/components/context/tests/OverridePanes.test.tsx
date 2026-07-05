@@ -88,7 +88,7 @@ describe("OverridePanes", () => {
     expect(screen.queryByText("Show built-in")).toBeNull();
   });
 
-  it("copies the built-in to the clipboard", () => {
+  it("copies the built-in to the clipboard", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
 
     vi.stubGlobal("navigator", { clipboard: { writeText } });
@@ -97,6 +97,8 @@ describe("OverridePanes", () => {
     fireEvent.click(screen.getByText("Copy"));
 
     expect(writeText).toHaveBeenCalledWith("SHIPPED DEFAULT");
+    // The shared CopyButton confirms by flipping its label.
+    expect(await screen.findByText("Copied")).toBeTruthy();
 
     vi.unstubAllGlobals();
   });

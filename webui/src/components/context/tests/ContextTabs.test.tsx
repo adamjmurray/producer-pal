@@ -117,24 +117,24 @@ describe("ContextTabs", () => {
   it("defaults to the Project tab and shows the project document", () => {
     render(<ContextTabs />);
 
-    const projectTab = screen.getByRole("tab", { name: "Project" });
+    const projectTab = screen.getByRole("button", { name: "Project" });
 
-    expect(projectTab.getAttribute("aria-selected")).toBe("true");
+    expect(projectTab.getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("editor").textContent).toBe("PROJECT-DOC");
   });
 
   it("switches to the Global tab and shows the global document", () => {
     render(<ContextTabs />);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Global" }));
+    fireEvent.click(screen.getByRole("button", { name: "Global" }));
 
-    const globalTab = screen.getByRole("tab", { name: "Global" });
+    const globalTab = screen.getByRole("button", { name: "Global" });
 
-    expect(globalTab.getAttribute("aria-selected")).toBe("true");
+    expect(globalTab.getAttribute("aria-pressed")).toBe("true");
     expect(
       screen
-        .getByRole("tab", { name: "Project" })
-        .getAttribute("aria-selected"),
+        .getByRole("button", { name: "Project" })
+        .getAttribute("aria-pressed"),
     ).toBe("false");
     expect(screen.getByTestId("editor").textContent).toBe("GLOBAL-DOC");
   });
@@ -142,12 +142,12 @@ describe("ContextTabs", () => {
   it("switches to the Instructions tab, shows the custom prompt doc and its full-replace note", () => {
     render(<ContextTabs />);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Instructions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Instructions" }));
 
     expect(
       screen
-        .getByRole("tab", { name: "Instructions" })
-        .getAttribute("aria-selected"),
+        .getByRole("button", { name: "Instructions" })
+        .getAttribute("aria-pressed"),
     ).toBe("true");
     expect(screen.getByTestId("editor").textContent).toBe("INSTRUCTIONS-DOC");
     // The controls strip warns that this document replaces the built-in prompt.
@@ -164,13 +164,13 @@ describe("ContextTabs", () => {
   it("switches back to the Project tab", () => {
     render(<ContextTabs />);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Global" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Global" }));
+    fireEvent.click(screen.getByRole("button", { name: "Project" }));
 
     expect(
       screen
-        .getByRole("tab", { name: "Project" })
-        .getAttribute("aria-selected"),
+        .getByRole("button", { name: "Project" })
+        .getAttribute("aria-pressed"),
     ).toBe("true");
     expect(screen.getByTestId("editor").textContent).toBe("PROJECT-DOC");
   });
@@ -178,10 +178,12 @@ describe("ContextTabs", () => {
   it("switches to the Skills tab and shows the fragment editor", () => {
     render(<ContextTabs />);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Skills" }));
+    fireEvent.click(screen.getByRole("button", { name: "Skills" }));
 
     expect(
-      screen.getByRole("tab", { name: "Skills" }).getAttribute("aria-selected"),
+      screen
+        .getByRole("button", { name: "Skills" })
+        .getAttribute("aria-pressed"),
     ).toBe("true");
     // The slot dropdown renders; with no override the built-in shows directly,
     // read-only, offered with a Customize fork.
@@ -193,10 +195,12 @@ describe("ContextTabs", () => {
   it("switches to the Memory tab and shows the collection manager", () => {
     render(<ContextTabs />);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Memory" }));
+    fireEvent.click(screen.getByRole("button", { name: "Memory" }));
 
     expect(
-      screen.getByRole("tab", { name: "Memory" }).getAttribute("aria-selected"),
+      screen
+        .getByRole("button", { name: "Memory" })
+        .getAttribute("aria-pressed"),
     ).toBe("true");
     // The list shows the stored memory and the create form is available.
     expect(

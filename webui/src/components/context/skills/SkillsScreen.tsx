@@ -115,8 +115,11 @@ function SkillsViewToggle(props: SkillsViewToggleProps): preact.JSX.Element {
   const { view, onSelect } = props;
 
   return (
+    // A button group (not an ARIA tablist): switching view remounts the strip,
+    // so the roving-tabindex tab model doesn't fit. aria-pressed marks the active
+    // segment; native buttons stay Tab-focusable and Enter/Space-activatable.
     <div
-      role="tablist"
+      role="group"
       aria-label="Skills view"
       className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-700 overflow-hidden text-xs"
     >
@@ -151,8 +154,7 @@ function ViewToggleButton(props: ViewToggleButtonProps): preact.JSX.Element {
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={active}
+      aria-pressed={active}
       onClick={onSelect}
       className={`px-2.5 py-1 transition-colors ${
         active

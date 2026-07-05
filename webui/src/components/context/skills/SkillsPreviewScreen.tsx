@@ -5,6 +5,7 @@
 
 import { NOTATIONS, type Notation } from "#src/shared/notation";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
+import { CopyButton } from "#webui/components/context/collection/CopyButton";
 import {
   ContextHeader,
   DOUBLE_PANE_WIDTH,
@@ -259,13 +260,10 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
         <span className="min-w-0 truncate text-xs text-zinc-400 dark:text-zinc-500">
           Fragments: {driver} + {head}
         </span>
-        <button
-          type="button"
-          onClick={() => void navigator.clipboard.writeText(skills)}
+        <CopyButton
+          text={skills}
           className="shrink-0 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
-        >
-          Copy
-        </button>
+        />
       </div>
       <pre className="flex-1 min-h-0 overflow-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 p-3 text-xs whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
         {skills}
