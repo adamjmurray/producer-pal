@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseFrontmatter,
   serializeFrontmatter,
-} from "#src/mcp-server/helpers/frontmatter.ts";
+} from "#src/mcp-server/helpers/markdown-store/frontmatter.ts";
 
 describe("parseFrontmatter", () => {
   it("returns the whole string as body when there is no fence", () => {

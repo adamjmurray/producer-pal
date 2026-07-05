@@ -13,11 +13,14 @@ import {
   readConfigMarkdown,
   resolveConfigPath,
   writeConfigMarkdown,
-} from "../config-markdown-store.ts";
+} from "../markdown-store/config-markdown-store.ts";
 
 // Re-exported so existing importers (reveal-config-dir, the node routes) keep
 // resolving these from here rather than reaching into the shared store.
-export { configDir, isConfigDirInert } from "../config-markdown-store.ts";
+export {
+  configDir,
+  isConfigDirInert,
+} from "../markdown-store/config-markdown-store.ts";
 
 const CONTEXT_FILENAME = "context.md";
 

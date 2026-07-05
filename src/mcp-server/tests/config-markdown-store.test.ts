@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   listConfigMarkdownFiles,
   listConfigMarkdownFilesRecursive,
-} from "#src/mcp-server/helpers/config-markdown-store.ts";
+} from "#src/mcp-server/helpers/markdown-store/config-markdown-store.ts";
 import { useTempConfigDir } from "./config-dir-test-helpers.ts";
 
 const getDir = useTempConfigDir();

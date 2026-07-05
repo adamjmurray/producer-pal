@@ -12,7 +12,7 @@
 import {
   readConfigMarkdown,
   writeConfigMarkdown,
-} from "./config-markdown-store.ts";
+} from "./markdown-store/config-markdown-store.ts";
 
 const SYSTEM_PROMPT_FILENAME = "system-prompt.md";
 

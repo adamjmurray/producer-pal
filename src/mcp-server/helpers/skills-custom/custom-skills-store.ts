@@ -4,37 +4,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Node-side store for user-authored custom skills under
-// ~/.producer-pal/skills-custom/<slug>.md — one instruction pack per file, plus
-// a DERIVED index (SKILLS.md) the backend regenerates on every write. This is
-// the second "loadable markdown collection" (see dev/plans/Memory-System.md →
-// "Reuse by later collections"), a sibling of helpers/memory: a dynamic set of
-// frontmatter'd entries whose index is always injected and whose bodies load on
-// demand via `ppal-context read`.
+// ~/.producer-pal/skills-custom/<slug>.md — one instruction pack per file, plus a
+// DERIVED index (SKILLS.md) the backend regenerates on every write. A thin
+// binding over the shared markdown-collection store (helpers/markdown-collection-
+// store.ts), a sibling of helpers/memory: the CRUD, slugging + traversal guard,
+// and reserved-index protection live there; here we supply only what's skills-
+// specific — the `enabled` flag (a disabled skill is omitted from the injected
+// index) and its default-preserving logic on update.
 //
-// Two axes distinguish it from memory: an `enabled` flag (a disabled skill is
-// omitted from the injected index entirely) and lazy-only injection (no body is
-// ever pinned in v1 — every enabled skill contributes just its index line).
 // Distinct from the fixed-slot skills OVERRIDES (helpers/skill-overrides-store):
 // those replace a built-in fragment in the always-on blob; custom skills ADD new
-// on-demand entries. The filesystem lives Node-side; V8's ppal-context
-// round-trips through the skills.* RPC routes.
+// on-demand entries whose bodies load via `ppal-context read`. The filesystem
+// lives Node-side; V8's ppal-context round-trips through the skills.* RPC routes.
 
+import { parseFrontmatter } from "../markdown-store/frontmatter.ts";
 import {
-  deleteConfigMarkdown,
-  listConfigMarkdownFiles,
-  readConfigMarkdown,
-  writeConfigMarkdown,
-} from "../config-markdown-store.ts";
-import { parseFrontmatter, serializeFrontmatter } from "../frontmatter.ts";
-
-const SKILLS_SUBDIR = "skills-custom";
-const INDEX_FILENAME = "SKILLS.md";
-// The derived index lives at skills-custom/SKILLS.md, so its slug ("skills") is
-// reserved: on case-insensitive filesystems (macOS APFS, Windows NTFS) a skill
-// that slugifies to "skills" would write the SAME file as the index and silently
-// clobber it. Every read/write/forget guards it; Linux CI is case-sensitive and
-// can't see the collision, so the guard is what protects it.
-const INDEX_SLUG = INDEX_FILENAME.replace(/\.md$/i, "").toLowerCase();
+  type BuildStoredArgs,
+  collectionIndexLine,
+  makeMarkdownCollectionStore,
+} from "../markdown-store/markdown-collection-store.ts";
 
 /** One stored custom skill: its slug, hook, enabled flag, and instructions. */
 export interface CustomSkillEntry {
@@ -64,155 +52,34 @@ export interface RememberCustomSkillInput {
   enabled?: boolean;
 }
 
-/**
- * Normalize an arbitrary name into a filesystem-safe slug: lowercase, non
- * alphanumerics collapsed to single hyphens, edges trimmed. Also the path
- * traversal guard — the result can only match `[a-z0-9-]`, so it can never
- * escape the skills-custom subdir.
- *
- * @param name - The raw name (may be a title, phrase, or existing slug)
- * @returns The slug, or "" when the name has no usable characters
- */
-export function slugifyCustomSkillName(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^\da-z]+/g, "-")
-    .replaceAll(/^-+|-+$/g, "");
-}
+const store = makeMarkdownCollectionStore<
+  CustomSkillEntry,
+  RememberCustomSkillInput
+>({
+  subdir: "skills-custom",
+  indexFilename: "SKILLS.md",
+  indexTitle: "# Producer Pal Custom Skills",
+  noun: "Skill",
+  toEntry,
+  sort: sortByName,
+  renderIndexSections: renderSkillsIndexSections,
+  buildStored: buildStoredSkill,
+});
 
-/**
- * Read one custom skill by name (slugified to locate the file).
- *
- * @param name - The skill name (slugified before lookup)
- * @returns The entry, or null when no such skill exists
- */
-export function readCustomSkill(name: string): CustomSkillEntry | null {
-  const slug = slugifyCustomSkillName(name);
-
-  if (!slug || slug === INDEX_SLUG) return null;
-
-  const raw = readConfigMarkdown(filenameFor(slug));
-
-  if (!raw.trim()) return null;
-
-  return toEntry(slug, raw);
-}
-
-/**
- * Whether a custom skill with this name already exists on disk. Used by the
- * create flow to reject a name collision (a PUT is create-or-overwrite, so
- * without this a new entry would silently clobber an existing one).
- *
- * @param name - The skill name (slugified before lookup)
- * @returns True when a non-empty skill file already exists for that slug
- */
-export function customSkillExists(name: string): boolean {
-  const slug = slugifyCustomSkillName(name);
-
-  if (!slug || slug === INDEX_SLUG) return false;
-
-  return readConfigMarkdown(filenameFor(slug)).trim() !== "";
-}
-
-/**
- * List every stored custom skill, sorted by name. The derived index file itself
- * is skipped.
- *
- * @returns All custom skill entries
- */
-export function listCustomSkills(): CustomSkillEntry[] {
-  return listConfigMarkdownFiles(SKILLS_SUBDIR)
-    .filter((file) => file.toLowerCase() !== INDEX_FILENAME.toLowerCase())
-    .map((file) => {
-      const slug = file.replace(/\.md$/, "");
-
-      return toEntry(slug, readConfigMarkdown(`${SKILLS_SUBDIR}/${file}`));
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-/**
- * Create or overwrite a custom skill (same slug ⇒ update in place), then
- * regenerate the index. Rejects an empty slug or body so a malformed call can't
- * write a useless or path-unsafe file. An omitted `enabled` preserves the
- * existing flag (or defaults to enabled on create) — see
- * {@link RememberCustomSkillInput}.
- *
- * @param input - The skill to store
- * @returns The stored entry
- */
-export function rememberCustomSkill(
-  input: RememberCustomSkillInput,
-): CustomSkillEntry {
-  const slug = slugifyCustomSkillName(input.name);
-
-  if (!slug) throw new Error("Skill name must contain letters or digits");
-
-  if (slug === INDEX_SLUG) {
-    throw new Error(`"${slug}" is a reserved skill name (the index file)`);
-  }
-
-  const body = input.body.trim();
-
-  if (!body) throw new Error("Skill body must not be empty");
-
-  const description = input.description.trim().replaceAll(/\s+/g, " ");
-  const enabled = input.enabled ?? readCustomSkill(slug)?.enabled ?? true;
-
-  writeConfigMarkdown(
-    filenameFor(slug),
-    serializeFrontmatter(
-      { name: slug, description, enabled: String(enabled) },
-      `${body}\n`,
-    ),
-  );
-  regenerateSkillsIndex();
-
-  return { name: slug, description, enabled, body };
-}
-
-/**
- * Delete a custom skill (if present) and regenerate the index.
- *
- * @param name - The skill name (slugified before lookup)
- * @returns True when a skill existed and was removed
- */
-export function forgetCustomSkill(name: string): boolean {
-  const slug = slugifyCustomSkillName(name);
-
-  if (!slug || slug === INDEX_SLUG) return false;
-
-  const existed = readConfigMarkdown(filenameFor(slug)).trim() !== "";
-
-  deleteConfigMarkdown(filenameFor(slug));
-  regenerateSkillsIndex();
-
-  return existed;
-}
-
-/**
- * Rebuild SKILLS.md from the current skill files' frontmatter. Deletes the index
- * when there are no skills so an empty collection leaves no stale file. Called
- * after every mutation, and by `list` to self-heal a hand-edited store.
- *
- * @returns The rendered index markdown ("" when there are no skills)
- */
-export function regenerateSkillsIndex(): string {
-  const entries = listCustomSkills();
-
-  if (entries.length === 0) {
-    deleteConfigMarkdown(`${SKILLS_SUBDIR}/${INDEX_FILENAME}`);
-
-    return "";
-  }
-
-  const content = `# Producer Pal Custom Skills\n\n${renderSkillsIndexSections(entries)}\n`;
-
-  writeConfigMarkdown(`${SKILLS_SUBDIR}/${INDEX_FILENAME}`, content);
-
-  return content;
-}
+/** Normalize a name to a filesystem-safe skill slug (see the shared store). */
+export const slugifyCustomSkillName = store.slugify;
+/** Read one custom skill by name, or null when absent/reserved/unslugifiable. */
+export const readCustomSkill = store.read;
+/** Whether a non-empty custom-skill file already exists for a name. */
+export const customSkillExists = store.exists;
+/** Every stored custom skill, sorted by name. */
+export const listCustomSkills = store.list;
+/** Create or overwrite a custom skill (same slug ⇒ update), then rebuild index. */
+export const rememberCustomSkill = store.remember;
+/** Delete a custom skill (if present) and rebuild the index. */
+export const forgetCustomSkill = store.forget;
+/** Rebuild SKILLS.md from the current files; "" when there are no skills. */
+export const regenerateSkillsIndex = store.regenerateIndex;
 
 /**
  * Render the enabled skills as index lines (`- \`name\` — description`), one per
@@ -225,21 +92,11 @@ export function regenerateSkillsIndex(): string {
 export function renderEnabledSkillsIndex(entries: CustomSkillEntry[]): string {
   return entries
     .filter((entry) => entry.enabled)
-    .map(indexLine)
+    .map(collectionIndexLine)
     .join("\n");
 }
 
-// --- Helpers below main exports ---
-
-/**
- * The skill filename for a slug, under the skills-custom/ subfolder.
- *
- * @param slug - The skill slug
- * @returns Relative filename (e.g. "skills-custom/jazz-voicings.md")
- */
-function filenameFor(slug: string): string {
-  return `${SKILLS_SUBDIR}/${slug}.md`;
-}
+// --- Skill-specific config helpers (passed to the shared store) ---
 
 /**
  * Parse a raw skill file into an entry. The filename slug is authoritative for
@@ -263,6 +120,35 @@ function toEntry(slug: string, raw: string): CustomSkillEntry {
 }
 
 /**
+ * Order skills by name.
+ *
+ * @param entries - The freshly-read entries to sort
+ * @returns The same array, sorted in place
+ */
+function sortByName(entries: CustomSkillEntry[]): CustomSkillEntry[] {
+  return entries.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Build a custom skill's stored frontmatter + returned entry, resolving the
+ * `enabled` flag (explicit ⇒ preserved existing ⇒ default true).
+ *
+ * @param args - The slug, raw input, existing entry, description, and body
+ * @returns The frontmatter fields to write and the entry to return
+ */
+function buildStoredSkill(
+  args: BuildStoredArgs<CustomSkillEntry, RememberCustomSkillInput>,
+): { data: Record<string, string>; entry: CustomSkillEntry } {
+  const { slug, input, existing, description, body } = args;
+  const enabled = input.enabled ?? existing?.enabled ?? true;
+
+  return {
+    data: { name: slug, description, enabled: String(enabled) },
+    entry: { name: slug, description, enabled, body },
+  };
+}
+
+/**
  * Render the derived SKILLS.md body: enabled skills as a flat list, then a
  * `## Disabled` section for any that are off (so a user browsing the file sees
  * everything, while the injected index — {@link renderEnabledSkillsIndex} —
@@ -273,7 +159,9 @@ function toEntry(slug: string, raw: string): CustomSkillEntry {
  */
 function renderSkillsIndexSections(entries: CustomSkillEntry[]): string {
   const enabled = renderEnabledSkillsIndex(entries);
-  const disabled = entries.filter((entry) => !entry.enabled).map(indexLine);
+  const disabled = entries
+    .filter((entry) => !entry.enabled)
+    .map(collectionIndexLine);
   const sections = enabled ? [enabled] : [];
 
   if (disabled.length > 0) {
@@ -281,17 +169,4 @@ function renderSkillsIndexSections(entries: CustomSkillEntry[]): string {
   }
 
   return sections.join("\n\n");
-}
-
-/**
- * One index line for an entry: `- \`name\` — description`, or just the
- * backticked slug when the description is blank.
- *
- * @param entry - The skill entry
- * @returns The index line
- */
-function indexLine(entry: CustomSkillEntry): string {
-  return entry.description
-    ? `- \`${entry.name}\` — ${entry.description}`
-    : `- \`${entry.name}\``;
 }

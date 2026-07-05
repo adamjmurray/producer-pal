@@ -29,8 +29,11 @@ import {
   listConfigMarkdownFilesRecursive,
   readConfigMarkdown,
   writeConfigMarkdown,
-} from "./config-markdown-store.ts";
-import { parseFrontmatter, serializeFrontmatter } from "./frontmatter.ts";
+} from "./markdown-store/config-markdown-store.ts";
+import {
+  parseFrontmatter,
+  serializeFrontmatter,
+} from "./markdown-store/frontmatter.ts";
 
 // Built-in fragments are static module imports, so their hashes never change at
 // runtime. Precompute them once: GET /skill-overrides is polled every 5s and
