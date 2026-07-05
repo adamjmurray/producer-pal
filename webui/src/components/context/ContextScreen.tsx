@@ -185,12 +185,18 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
   const { title, tabSlot, closeAriaLabel, status, rightSlot, onClose } = props;
 
   return (
-    // Center the tab strip in the header; the save indicator / close button sit
-    // absolutely at the right so they don't pull the tabs off-center (and so the
-    // save text changing width never nudges them).
-    <header className="relative flex items-center justify-center px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
-      {tabSlot ?? <h1 className="text-base font-semibold">{title}</h1>}
-      <div className="absolute inset-y-0 right-4 flex items-center gap-3">
+    // Three columns: an empty left cell balances the right cluster (save indicator
+    // + close) so the centered tab strip stays centered — the two 1fr side columns
+    // are equal regardless of the save text's changing width, so it never nudges
+    // the tabs. The cluster lives in its own column (not absolutely positioned), so
+    // the six tabs can't slide under it; the center cell scrolls horizontally
+    // instead when they outgrow a narrow viewport.
+    <header className="grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
+      <div aria-hidden="true" />
+      <div className="min-w-0 overflow-x-auto">
+        {tabSlot ?? <h1 className="text-base font-semibold">{title}</h1>}
+      </div>
+      <div className="flex items-center justify-end gap-3">
         {rightSlot ??
           (status != null && (
             <SaveIndicator
@@ -308,45 +314,35 @@ interface SaveIndicatorProps {
  * @returns Indicator element
  */
 function SaveIndicator(props: SaveIndicatorProps): preact.JSX.Element {
+  const { text, className } = saveIndicatorLabel(props);
+
+  return <span className={`text-xs ${className}`}>{text}</span>;
+}
+
+/**
+ * Resolve the indicator's text + color for the current read/save state. Order
+ * matters: a load/read error shows first, then the live save outcome, with
+ * "Editing…" beating a stale "Saved" while the debounce window is still open.
+ * @param props - The indicator's status, save status, and dirty flag
+ * @returns The text to show and its Tailwind color classes
+ */
+function saveIndicatorLabel(props: SaveIndicatorProps): {
+  text: string;
+  className: string;
+} {
   const { status, saveStatus, dirty } = props;
+  const muted = "text-zinc-500";
+  const red = "text-red-600 dark:text-red-400";
 
-  if (status.kind === "loading") {
-    return <span className="text-xs text-zinc-500">Loading…</span>;
-  }
+  if (status.kind === "loading") return { text: "Loading…", className: muted };
+  if (status.kind === "error") return { text: status.message, className: red };
+  if (saveStatus === "saving") return { text: "Saving…", className: muted };
+  if (saveStatus === "error") return { text: "Save failed", className: red };
+  if (dirty) return { text: "Editing…", className: muted };
+  if (saveStatus === "saved")
+    return { text: "Saved", className: "text-green-600 dark:text-green-400" };
 
-  if (status.kind === "error") {
-    return (
-      <span className="text-xs text-red-600 dark:text-red-400">
-        {status.message}
-      </span>
-    );
-  }
-
-  if (saveStatus === "saving") {
-    return <span className="text-xs text-zinc-500">Saving…</span>;
-  }
-
-  if (saveStatus === "error") {
-    return (
-      <span className="text-xs text-red-600 dark:text-red-400">
-        Save failed
-      </span>
-    );
-  }
-
-  // "Editing…" beats "Saved" when the user has typed more since the last
-  // save — otherwise "Saved" would linger through the debounce window.
-  if (dirty) {
-    return <span className="text-xs text-zinc-500">Editing…</span>;
-  }
-
-  if (saveStatus === "saved") {
-    return (
-      <span className="text-xs text-green-600 dark:text-green-400">Saved</span>
-    );
-  }
-
-  return <span className="text-xs text-zinc-500">Auto-save on</span>;
+  return { text: "Auto-save on", className: muted };
 }
 
 interface ContextBodyProps {
