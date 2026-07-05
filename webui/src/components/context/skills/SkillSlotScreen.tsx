@@ -46,13 +46,14 @@ interface SkillSlotScreenProps {
 }
 
 /**
- * Editor for one skills-fragment override, shown side by side with the built-in
- * for reference. Keyed by the selected slot so the uncontrolled editor re-seeds
- * on slot switch. Reuses the context-editor autosave lifecycle by adapting the
- * selected slot to a single-document {@link UseDocMemoryReturn}: save writes the
- * override, clear resets it to the built-in (deleting the file). The built-in
- * pane is selectable read-only text with a Copy button, so a user can fork the
- * default by copying it into the (empty-by-design) override pane.
+ * Editor for one skills-fragment override. With no override the built-in is
+ * shown read-only with a "Customize" button; once customized, the editable
+ * override shows and the built-in is revealed on demand (see
+ * {@link OverridePanes}). Keyed by the selected slot so the uncontrolled editor
+ * re-seeds on slot switch. Reuses the context-editor autosave lifecycle by
+ * adapting the selected slot to a single-document {@link UseDocMemoryReturn}:
+ * save writes the override, clear resets it to the built-in (deleting the file),
+ * and Customize forks the built-in into the override via the import handler.
  * @param props - Screen props
  * @returns Screen element
  */
@@ -66,7 +67,8 @@ export function SkillSlotScreen(
   const io = makeContextIoHandlers(editor, `producer-pal-skill-${slot.name}`);
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Match the other doc tabs at rest; widen to two columns only when the
-  // built-in reference is revealed.
+  // built-in reference is revealed. Resetting collapses the reveal (see
+  // OverridePanes), so the built-in-only view that follows stays single-column.
   const widthClass = showBuiltIn ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
 
   return (
@@ -111,6 +113,7 @@ export function SkillSlotScreen(
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
             onReset={() => void editor.handleClear()}
+            onCustomize={() => void editor.handleImport(slot.builtIn)}
             onChange={editor.handleChange}
             onBlur={editor.handleBlur}
           />

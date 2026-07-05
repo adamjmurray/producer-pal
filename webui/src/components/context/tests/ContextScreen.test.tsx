@@ -743,6 +743,31 @@ describe("ContextScreen", () => {
       expect(saveMock).toHaveBeenCalledWith("edited");
     });
 
+    it("shows only the built-in with a Customize fork when there is no override", async () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "";
+      render(
+        <ContextScreen memory={buildHookValue()} labels={BUILTIN_LABELS} />,
+      );
+
+      // Built-in-only view: the default is shown read-only with a Customize
+      // button; the editable pane and its reveal affordance are absent.
+      expect(screen.getByText("Customize")).toBeTruthy();
+      expect(screen.queryByText("Your instructions")).toBeNull();
+      expect(screen.queryByText("Show built-in")).toBeNull();
+      expect(lastEditorProps?.readOnly).toBe(true);
+      expect(editorMountedValues).toContain("SHIPPED DEFAULT");
+
+      // Customize forks the built-in into the override (persists it via the
+      // import path so the view flips to editing).
+      await act(async () => {
+        fireEvent.click(screen.getByText("Customize"));
+        await Promise.resolve();
+      });
+
+      expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT");
+    });
+
     it("moves reset into the built-in header (no strip Clear when a default exists)", async () => {
       const confirmMock = vi.fn().mockReturnValue(true);
 

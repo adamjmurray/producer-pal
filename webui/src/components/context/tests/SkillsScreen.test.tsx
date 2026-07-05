@@ -136,7 +136,7 @@ describe("SkillsScreen", () => {
     expect(screen.getByText("No skills fragments available.")).toBeTruthy();
   });
 
-  it("reveals the first slot's built-in on request, hiding reset when untracked", () => {
+  it("shows the built-in with a Customize button for an untracked slot", () => {
     render(
       <SkillsScreen
         overrides={overrides({ kind: "ready", slots: [slot()] })}
@@ -145,15 +145,39 @@ describe("SkillsScreen", () => {
     );
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
-    // The built-in is hidden until requested.
-    expect(screen.queryByText("Built-in (read-only)")).toBeNull();
-    fireEvent.click(screen.getByText("Show built-in"));
+    // With no override the built-in is the sole (read-only) content, offered
+    // with a Customize fork — no editable pane, reveal toggle, reset, or drift.
     expect(editorValues()).toContain("BUILT-IN");
+    expect(screen.getByText("Customize")).toBeTruthy();
+    expect(screen.queryByText("Show built-in")).toBeNull();
     expect(screen.queryByText("Reset to default")).toBeNull();
     expect(screen.queryByText(/Built-in changed since you forked/)).toBeNull();
     // Import/Export are available per-fragment even when there's no override.
     expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
+  });
+
+  it("forks the built-in into an override when Customize is clicked", async () => {
+    const saveSlot = vi.fn().mockResolvedValue(true);
+
+    render(
+      <SkillsScreen
+        overrides={overrides(
+          {
+            kind: "ready",
+            slots: [slot({ builtIn: "FORK-ME", override: "" })],
+          },
+          { saveSlot },
+        )}
+        tabSlot={TAB_SLOT}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Customize"));
+
+    await waitFor(() => {
+      expect(saveSlot).toHaveBeenCalledWith("barbeat-standard", "FORK-ME");
+    });
   });
 
   it("shows the selected slot's one-line explainer", () => {
@@ -266,7 +290,10 @@ describe("SkillsScreen", () => {
 
     render(
       <SkillsScreen
-        overrides={overrides({ kind: "ready", slots: [slot()] }, { saveSlot })}
+        overrides={overrides(
+          { kind: "ready", slots: [slot({ override: "MINE" })] },
+          { saveSlot },
+        )}
         tabSlot={TAB_SLOT}
       />,
     );
@@ -295,16 +322,14 @@ describe("SkillsScreen", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Show built-in"));
+    // Untracked slots show their built-in directly (built-in-only view).
     expect(editorValues()).toContain("CORE");
 
     fireEvent.change(screen.getByLabelText("Skill fragment"), {
       target: { value: "stark" },
     });
 
-    // Switching slots remounts the screen (built-in collapses again), so the
-    // stark built-in is only visible once re-revealed — proving the re-seed.
-    fireEvent.click(screen.getByText("Show built-in"));
+    // Switching slots remounts the screen and re-seeds from the new slot.
     expect(editorValues()).toContain("STARK");
   });
 
@@ -364,7 +389,7 @@ describe("SkillsScreen", () => {
         <SkillsScreen
           overrides={overrides({
             kind: "ready",
-            slots: [slot({ builtIn: "COPY-ME" })],
+            slots: [slot({ builtIn: "COPY-ME", override: "MINE" })],
           })}
           tabSlot={TAB_SLOT}
         />,

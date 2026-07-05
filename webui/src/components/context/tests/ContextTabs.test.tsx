@@ -183,12 +183,11 @@ describe("ContextTabs", () => {
     expect(
       screen.getByRole("tab", { name: "Skills" }).getAttribute("aria-selected"),
     ).toBe("true");
-    // The slot dropdown renders; the built-in is hidden until requested.
+    // The slot dropdown renders; with no override the built-in shows directly,
+    // read-only, offered with a Customize fork.
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
-    expect(screen.queryByText("CORE-BUILTIN")).toBeNull();
-
-    fireEvent.click(screen.getByText("Show built-in"));
     expect(screen.getByText("CORE-BUILTIN")).toBeTruthy();
+    expect(screen.getByText("Customize")).toBeTruthy();
   });
 
   it("switches to the Memory tab and shows the collection manager", () => {

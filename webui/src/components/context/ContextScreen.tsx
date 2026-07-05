@@ -92,7 +92,9 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
   // Cap the editable region so it lines up with the chat column instead of
   // sprawling across a wide monitor. At rest the editor matches the chat width;
   // it widens to the two-column layout only while the built-in reference is
-  // revealed, so neither pane is cramped (item: editors too wide on 4K).
+  // revealed, so neither pane is cramped (editors too wide on 4K). Resetting
+  // collapses the reveal (see OverridePanes), so the built-in-only view that
+  // follows a reset stays single-column.
   const widthClass =
     labels.builtIn != null && showBuiltIn ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
 
@@ -131,6 +133,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
           onReset={() => void editor.handleClear()}
+          onCustomize={() => void editor.handleImport(labels.builtIn ?? "")}
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
           onImportText={io.onImportText}
@@ -351,6 +354,7 @@ interface ContextBodyProps {
   externalUpdate: boolean;
   onReload: () => void;
   onReset: () => void;
+  onCustomize: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
   onImportText: (text: string) => void;
@@ -379,6 +383,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     externalUpdate,
     onReload,
     onReset,
+    onCustomize,
     onChange,
     onBlur,
     onImportText,
@@ -423,6 +428,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={onToggleBuiltIn}
             onReset={onReset}
+            onCustomize={onCustomize}
             onChange={onChange}
             onBlur={onBlur}
           />

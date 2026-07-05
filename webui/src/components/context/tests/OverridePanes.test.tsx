@@ -25,11 +25,12 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
 /**
  * Render OverridePanes with sensible defaults.
  * @param over - Props to override on the defaults
- * @returns The render result and the toggle/reset spies
+ * @returns The render result and the toggle/reset/customize spies
  */
 function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
   const onToggleBuiltIn = vi.fn();
   const onReset = vi.fn();
+  const onCustomize = vi.fn();
   const result = render(
     <OverridePanes
       editorKey={0}
@@ -39,13 +40,14 @@ function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
       showBuiltIn={false}
       onToggleBuiltIn={onToggleBuiltIn}
       onReset={onReset}
+      onCustomize={onCustomize}
       onChange={vi.fn()}
       onBlur={vi.fn()}
       {...over}
     />,
   );
 
-  return { ...result, onToggleBuiltIn, onReset };
+  return { ...result, onToggleBuiltIn, onReset, onCustomize };
 }
 
 describe("OverridePanes", () => {
@@ -107,18 +109,40 @@ describe("OverridePanes", () => {
     expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
   });
 
-  it("offers Reset to default in the built-in header when there is an override", () => {
-    const { onReset } = renderPanes({ showBuiltIn: true });
+  it("resets and collapses the built-in when Reset to default is clicked", () => {
+    const { onReset, onToggleBuiltIn } = renderPanes({ showBuiltIn: true });
 
     fireEvent.click(screen.getByText("Reset to default"));
 
     expect(onReset).toHaveBeenCalledOnce();
+    // Collapsing the reveal returns the parent to single-column width for the
+    // built-in-only view that follows the reset.
+    expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
   });
 
-  it("omits Reset to default when the override is empty (nothing to reset)", () => {
-    renderPanes({ showBuiltIn: true, value: "" });
+  describe("no override yet", () => {
+    it("shows only the built-in default with a Customize button", () => {
+      renderPanes({ value: "" });
 
-    expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
-    expect(screen.queryByText("Reset to default")).toBeNull();
+      // The built-in is the sole content, read-only; no editable pane or its
+      // reveal affordance is shown.
+      const editors = screen.getAllByTestId("editor");
+
+      expect(editors).toHaveLength(1);
+      expect(editors[0]?.textContent).toBe("SHIPPED DEFAULT");
+      expect(editors[0]?.getAttribute("data-readonly")).toBe("true");
+      expect(screen.getByText("Customize")).toBeTruthy();
+      expect(screen.queryByText("Your override")).toBeNull();
+      expect(screen.queryByText("Show built-in")).toBeNull();
+      expect(screen.queryByText("Reset to default")).toBeNull();
+    });
+
+    it("forks the built-in into an override when Customize is clicked", () => {
+      const { onCustomize } = renderPanes({ value: "" });
+
+      fireEvent.click(screen.getByText("Customize"));
+
+      expect(onCustomize).toHaveBeenCalledOnce();
+    });
   });
 });
