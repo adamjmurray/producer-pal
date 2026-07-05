@@ -409,7 +409,13 @@ function serializeStarkDrums(
 ): string[] {
   const lines: string[] = [];
 
-  for (const [pitch, pitchNotes] of groupNotesByPitch(notes)) {
+  // Emit drum lines in ascending-pitch order (a canonical order independent of
+  // input order) — groupNotesByPitch keeps first-seen order, which made the line
+  // sequence depend on how the caller ordered notes, so re-serializing the
+  // interpreter's (pitch-sorted) output reordered the lines: a fixpoint break.
+  const byPitch = [...groupNotesByPitch(notes)].sort((a, b) => a[0] - b[0]);
+
+  for (const [pitch, pitchNotes] of byPitch) {
     const tokens = walkLine(
       pitchNotes,
       (note) => ({

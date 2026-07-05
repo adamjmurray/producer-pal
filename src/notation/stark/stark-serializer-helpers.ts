@@ -11,6 +11,7 @@
  * knows about the line-default factoring the serializer layers on top.
  */
 
+import { sortNotes } from "#src/notation/note-sort.ts";
 import {
   type StarkDuration,
   type StarkDurationN,
@@ -43,7 +44,12 @@ export interface PitchedClassification {
  * @returns The classification plus the start-sorted notes
  */
 export function classifyPitchedLine(notes: NoteEvent[]): PitchedClassification {
-  const sorted = [...notes].sort((a, b) => a.start_time - b.start_time);
+  // Sort by (start_time, pitch) — the interpreter's canonical order (sortNotes)
+  // — so a simultaneous group serializes to a pitch-ascending [..] stack
+  // regardless of input order. A start-only sort left the bracket order at the
+  // mercy of the caller's ordering, so re-serializing the interpreter's
+  // (pitch-sorted) output produced a different string — a fixpoint break.
+  const sorted = sortNotes(notes);
   const pitches = sorted.map((n) => n.pitch).sort((a, b) => a - b);
   const medianPitch = pitches[Math.floor(pitches.length / 2)] ?? 60;
   const lineType = medianPitch < 48 ? "bass" : "melody";

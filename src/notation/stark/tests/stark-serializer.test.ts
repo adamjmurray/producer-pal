@@ -115,9 +115,12 @@ describe("stark serializer — drum lines (drumMode)", () => {
     expect(formatNotation([note(60, 0, 1)], DRUM)).toBe("C3: X");
   });
 
-  it("one line per pitch, first-seen order (no trailing rest padding)", () => {
+  it("one line per pitch, ascending-pitch order (no trailing rest padding)", () => {
+    // Snare (38) is seen BEFORE kick (36), but lines emit in ascending-pitch
+    // order (kick then snare) — a canonical order independent of input order, so
+    // re-serializing round-tripped notes reproduces the same line sequence.
     const out = formatNotation(
-      [note(36, 0, 1), note(38, 1, 1), note(36, 2, 1), note(38, 3, 1)],
+      [note(38, 1, 1), note(36, 0, 1), note(38, 3, 1), note(36, 2, 1)],
       DRUM,
     );
 
