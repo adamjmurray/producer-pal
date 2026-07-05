@@ -27,6 +27,25 @@ afterEach(() => {
 });
 
 /**
+ * The duplicate/create/delete method stubs shared by the tiling setups. The
+ * duplicate op returns clip 400 on its first call and 500 thereafter.
+ * @returns Method stubs for setupTrack
+ */
+function tilingTrackMethods() {
+  let dupCount = 0;
+
+  return {
+    duplicate_clip_to_arrangement: () => {
+      dupCount++;
+
+      return dupCount === 1 ? ["id", "400"] : ["id", "500"];
+    },
+    create_midi_clip: () => ["id", "300"],
+    delete_clip: () => null,
+  };
+}
+
+/**
  * Sets up a source clip, existing arrangement clip, and holding clip with
  * a track mock that supports duplicate/create/delete operations.
  * Used by tests that exercise the holding-clip workaround (after-only and
@@ -68,21 +87,11 @@ function setupHoldingClipScenario(
     },
   });
 
-  let dupCount = 0;
-
   return setupTrack(0, {
     properties: {
       arrangement_clips: ["id", existingClip.id],
     },
-    methods: {
-      duplicate_clip_to_arrangement: () => {
-        dupCount++;
-
-        return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-      },
-      create_midi_clip: () => ["id", "300"],
-      delete_clip: () => null,
-    },
+    methods: tilingTrackMethods(),
   });
 }
 
@@ -662,19 +671,9 @@ function runTwoDupSelfOverlap(target: number): {
 } {
   setupClip("500", { properties: { is_arrangement_clip: 1 } });
 
-  let dupCount = 0;
-
   const trackMock = setupTrack(0, {
     properties: { arrangement_clips: ["id", "100"] },
-    methods: {
-      duplicate_clip_to_arrangement: () => {
-        dupCount++;
-
-        return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-      },
-      create_midi_clip: () => ["id", "300"],
-      delete_clip: () => null,
-    },
+    methods: tilingTrackMethods(),
   });
 
   const result = duplicateSelfOverlappingClip(

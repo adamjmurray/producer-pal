@@ -30,6 +30,26 @@ async function renderAndNotify(params: {
   return result;
 }
 
+/**
+ * Assert a notification is showing, advance past the 4s dismiss timer, and
+ * assert it cleared. Restores real timers before returning.
+ * @param result - Hook result ref (fake timers must already be installed)
+ * @param result.current - The current hook return value
+ */
+async function expectAutoDismissAfter4s(result: {
+  current: ReturnType<typeof useLimitNotification>;
+}): Promise<void> {
+  expect(result.current.limitNotification).not.toBeNull();
+
+  await act(() => {
+    vi.advanceTimersByTime(4000);
+  });
+
+  expect(result.current.limitNotification).toBeNull();
+
+  vi.useRealTimers();
+}
+
 describe("useLimitNotification", () => {
   it("starts with null notification", () => {
     const { result } = renderHook(() => useLimitNotification());
@@ -104,15 +124,7 @@ describe("useLimitNotification", () => {
       limitReached: false,
     });
 
-    expect(result.current.limitNotification).not.toBeNull();
-
-    await act(() => {
-      vi.advanceTimersByTime(4000);
-    });
-
-    expect(result.current.limitNotification).toBeNull();
-
-    vi.useRealTimers();
+    await expectAutoDismissAfter4s(result);
   });
 
   it("clears previous timer when show is called again", async () => {
@@ -190,15 +202,7 @@ describe("useLimitNotification", () => {
         result.current.showSaveError(new Error("boom"));
       });
 
-      expect(result.current.limitNotification).not.toBeNull();
-
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-
-      expect(result.current.limitNotification).toBeNull();
-
-      vi.useRealTimers();
+      await expectAutoDismissAfter4s(result);
     });
   });
 

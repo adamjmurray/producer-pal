@@ -71,15 +71,36 @@ function stubFetch(
   return fetchMock;
 }
 
+/**
+ * Stub `fetch` and render the screen with the standard slots.
+ * @param config - Live config to return, or "fail" for a non-ok response
+ * @param preview - "ok" echoes the combo; "fail" returns a non-ok response
+ * @param previewWarnings - Assembly warnings to include in the preview response
+ * @returns The fetch mock
+ */
+function renderPreview(
+  config?: { notation: string; smallModelMode: boolean } | "fail",
+  preview: "ok" | "fail" = "ok",
+  previewWarnings: string[] = [],
+): ReturnType<typeof vi.fn> {
+  const fetchMock = stubFetch(
+    config ?? { notation: "barbeat", smallModelMode: false },
+    preview,
+    previewWarnings,
+  );
+
+  render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+
+  return fetchMock;
+}
+
 describe("SkillsPreviewScreen", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   it("shows the header note, active fragments, and the blob size", async () => {
-    stubFetch({ notation: "barbeat", smallModelMode: false });
-
-    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+    renderPreview();
 
     expect(screen.getByText("Read-only preview")).toBeTruthy();
 
@@ -93,9 +114,7 @@ describe("SkillsPreviewScreen", () => {
   });
 
   it("badges the combination that matches the live settings", async () => {
-    stubFetch({ notation: "barbeat", smallModelMode: false });
-
-    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+    renderPreview();
 
     await waitFor(() => {
       expect(screen.getByText("★ Current settings")).toBeTruthy();
@@ -103,9 +122,7 @@ describe("SkillsPreviewScreen", () => {
   });
 
   it("drops the live badge and refetches when the notation changes", async () => {
-    stubFetch({ notation: "barbeat", smallModelMode: false });
-
-    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+    renderPreview();
 
     await waitFor(() => {
       expect(screen.getByText("★ Current settings")).toBeTruthy();
@@ -122,9 +139,7 @@ describe("SkillsPreviewScreen", () => {
   });
 
   it("refetches the small-model core when the model size changes", async () => {
-    stubFetch({ notation: "barbeat", smallModelMode: false });
-
-    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+    renderPreview();
 
     await waitFor(() => {
       expect(screen.getByText(/Fragments: standard \+ barbeat/)).toBeTruthy();
@@ -140,11 +155,9 @@ describe("SkillsPreviewScreen", () => {
   });
 
   it("surfaces override assembly warnings above the blob", async () => {
-    stubFetch({ notation: "barbeat", smallModelMode: false }, "ok", [
+    renderPreview({ notation: "barbeat", smallModelMode: false }, "ok", [
       "skills include cycle refused: standard → standard",
     ]);
-
-    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeTruthy();
@@ -156,9 +169,7 @@ describe("SkillsPreviewScreen", () => {
   });
 
   it("shows no warning banner when the blob assembled cleanly", async () => {
-    stubFetch({ notation: "barbeat", smallModelMode: false });
-
-    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+    renderPreview();
 
     await waitFor(() => {
       expect(screen.getByText(/Fragments:/)).toBeTruthy();
@@ -167,9 +178,7 @@ describe("SkillsPreviewScreen", () => {
   });
 
   it("shows an error when the preview request fails", async () => {
-    stubFetch("fail", "fail");
-
-    render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+    renderPreview("fail", "fail");
 
     await waitFor(() => {
       expect(screen.getByText(/Skills preview failed/)).toBeTruthy();
@@ -192,9 +201,7 @@ describe("SkillsPreviewScreen", () => {
     });
 
     it("copies the assembled blob to the clipboard", async () => {
-      stubFetch({ notation: "barbeat", smallModelMode: false });
-
-      render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
+      renderPreview();
 
       await waitFor(() => {
         expect(screen.getByText("Copy")).toBeTruthy();
