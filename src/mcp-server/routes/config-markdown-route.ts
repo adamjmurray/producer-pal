@@ -10,7 +10,7 @@
 // round-trip through here.
 
 import { type Express, type Request, type Response } from "express";
-import { rejectCrossOriginWrite } from "../helpers/request-origin.ts";
+import { rejectForeignOriginWrite } from "../helpers/request-origin.ts";
 
 /** Read/write transport for one config markdown slot. */
 export interface ConfigMarkdownHandlers {
@@ -45,13 +45,14 @@ export function registerConfigMarkdownRoute(
   });
 
   app.put(routePath, (req: Request, res: Response): void => {
-    // Same localhost gate as POST /config (see handleConfigUpdate): same-origin
-    // and non-browser (Origin-less) clients pass; a cross-origin browser 403s.
+    // Content write: same-origin (incl. a LAN/tunnel webui saving its own
+    // content), localhost, and non-browser clients pass; only a genuinely
+    // foreign browser origin 403s. See rejectForeignOriginWrite.
     if (
-      rejectCrossOriginWrite(
+      rejectForeignOriginWrite(
         req,
         res,
-        `cross-origin ${routePath} writes are not allowed`,
+        `cross-site ${routePath} writes are not allowed`,
       )
     ) {
       return;

@@ -59,3 +59,52 @@ export function rejectCrossOriginWrite(
 
   return false;
 }
+
+/**
+ * Whether a browser Origin names the same server this request hit — a true
+ * same-origin check by host (hostname + port). Scheme-insensitive on purpose so
+ * a TLS-terminating tunnel (public https, internal http) still matches: the
+ * browser's Origin host equals the forwarded `Host` header either way.
+ *
+ * @param origin - Origin header value
+ * @param req - Express request (its `Host` header names the server's own host)
+ * @returns true when the origin's host equals the request's Host header
+ */
+export function isSameOriginRequest(origin: string, req: Request): boolean {
+  try {
+    return new URL(origin).host === req.get("host");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Gate a browser CONTENT write, allowing same-origin remote clients. Same-origin
+ * (the webui served by THIS server, including over LAN/tunnel), localhost, and
+ * non-browser (Origin-less) clients pass; only a genuinely foreign browser
+ * origin gets a 403. Applied to the content endpoints (global context / custom
+ * instructions, skills overrides, memory, custom skills) so a remote webui can
+ * save its own content — consistent with /mcp and /api/tools, which are already
+ * remotely writable. The stricter localhost-only {@link rejectCrossOriginWrite}
+ * still guards /config and voice-token minting.
+ *
+ * @param req - Express request
+ * @param res - Express response (a 403 is written when rejected)
+ * @param message - Error body for the 403 (endpoint-specific wording)
+ * @returns true if the request was rejected (403 written); false to proceed
+ */
+export function rejectForeignOriginWrite(
+  req: Request,
+  res: Response,
+  message: string,
+): boolean {
+  const origin = req.get("Origin");
+
+  if (!origin || isLocalOrigin(origin) || isSameOriginRequest(origin, req)) {
+    return false;
+  }
+
+  res.status(403).json({ error: message });
+
+  return true;
+}

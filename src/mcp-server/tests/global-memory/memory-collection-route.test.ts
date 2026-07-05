@@ -209,7 +209,7 @@ describe("memory-collection route", () => {
     );
   });
 
-  it("blocks cross-origin writes with 403 (localhost gate)", async () => {
+  it("blocks genuinely cross-site writes with 403", async () => {
     const putRes = await putJson(
       `${base}/evil`,
       { type: "user", content: "x" },

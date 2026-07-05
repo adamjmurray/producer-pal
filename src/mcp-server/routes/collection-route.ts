@@ -11,7 +11,7 @@
 // the webui's useDocCollection hook.
 
 import { type Express, type Request, type Response } from "express";
-import { rejectCrossOriginWrite } from "../helpers/request-origin.ts";
+import { rejectForeignOriginWrite } from "../helpers/request-origin.ts";
 
 /** buildInput's result: the store input, or a 400 error message. */
 export type BuildInputResult<TInput> = TInput | { error: string };
@@ -131,9 +131,9 @@ function entryName(req: Request): string {
 }
 
 /**
- * Reject a cross-origin write with 403 (the same localhost gate as POST
- * /config). Returns true when the request was rejected and the caller should
- * stop.
+ * Reject a genuinely cross-site write with 403. Same-origin (incl. a LAN/tunnel
+ * webui saving its own content), localhost, and non-browser clients pass. Returns
+ * true when the request was rejected and the caller should stop.
  *
  * @param req - Express request
  * @param res - Express response (written on rejection)
@@ -141,9 +141,9 @@ function entryName(req: Request): string {
  * @returns True when the request was rejected
  */
 function rejectWrite(req: Request, res: Response, basePath: string): boolean {
-  return rejectCrossOriginWrite(
+  return rejectForeignOriginWrite(
     req,
     res,
-    `cross-origin ${basePath} writes are not allowed`,
+    `cross-site ${basePath} writes are not allowed`,
   );
 }

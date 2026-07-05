@@ -105,7 +105,7 @@ describe("skill-overrides route", () => {
     expect(delRes.status).toBe(404);
   });
 
-  it("blocks cross-origin writes with 403 (localhost gate)", async () => {
+  it("blocks genuinely cross-site writes with 403", async () => {
     const putRes = await putJson(
       `${base}/barbeat-standard`,
       { content: "x" },

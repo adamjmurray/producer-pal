@@ -95,7 +95,7 @@ describe("global-context route", () => {
     expect(body.error).toContain("content must be a string");
   });
 
-  it("PUT rejects a cross-origin browser write with 403", async () => {
+  it("PUT rejects a genuinely cross-site browser write with 403", async () => {
     const res = await putContext(
       { content: "blocked" },
       "https://evil.example.com",
@@ -103,7 +103,7 @@ describe("global-context route", () => {
     const body = await res.json();
 
     expect(res.status).toBe(403);
-    expect(body.error).toContain("cross-origin");
+    expect(body.error).toContain("cross-site");
   });
 
   it("PUT accepts a localhost Origin", async () => {
