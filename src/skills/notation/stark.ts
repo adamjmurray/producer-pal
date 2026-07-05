@@ -14,8 +14,9 @@
  * The parser reads both in EVERY mode — the serializer still emits `C3:` headers
  * and bracket stacks — so read-back is unchanged; the basic head only narrows
  * what a small model is TAUGHT to generate (chord symbols + the 16 named pads).
- * The matching core body ({@link coreStandard} / {@link coreBasic}) is appended
- * by {@link buildSkills}.
+ * The matching core body ({@link coreStandard} / {@link coreBasic}) `@include`s
+ * whichever head small-model mode selects — `resolveIncludes` composes them,
+ * buildSkills glues nothing.
  */
 
 // Preamble + the drum line, through the 16 named pads (shared by both heads).

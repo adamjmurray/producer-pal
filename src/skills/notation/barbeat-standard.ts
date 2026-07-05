@@ -7,7 +7,8 @@
  * bar|beat standard notation head. Just the bar|beat-specific syntax (positions,
  * the note-writing grammar, bar copying). The notation-neutral note-value /
  * `Nbar` / dual-meter grammar lives in {@link coreStandard} (shared by every
- * notation's transforms and length fields) and is appended by {@link buildSkills}.
+ * notation's transforms and length fields), which `@include`s this head at the
+ * position it chooses — `resolveIncludes` composes them, buildSkills glues nothing.
  */
 export const barbeatStandard = `## Positions & Meter
 

@@ -7,7 +7,7 @@
  * MIDI JSON notation head. A literal array-of-objects notes format. One shared
  * head used at both skill levels (standard and basic) — the format has no
  * simplified variant, so the only standard/basic difference is which core body
- * ({@link coreStandard} / {@link coreBasic}) {@link buildSkills} appends.
+ * ({@link coreStandard} / {@link coreBasic}) `@include`s this shared head.
  */
 export const midiJson = `## MIDI Notation — MIDI JSON
 

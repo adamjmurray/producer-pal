@@ -192,6 +192,7 @@ describe("resolveIncludes - path safety", () => {
     ["dotfile", `@include "./.env"`],
     ["mid-path traversal", `@include "./a/../../b.md"`],
     ["backslash", `@include "a\\b.md"`],
+    ["null byte", `@include "a\0b.md"`],
     ["empty ref", `@include ""`],
     ["bare current dir", `@include "./"`],
   ] as const;

@@ -262,10 +262,12 @@ async function main(): Promise<void> {
     count++;
   }
 
+  // Both use the default notation (bar|beat) so the only difference the two docs
+  // show is the standard/small-model level — not a notation swap on top of it.
   const skillsFiles: [string, string, string][] = [
     [buildSkills(), "Standard Skills", "skills-standard.md"],
     [
-      buildSkills({ notation: "stark", smallModelMode: true }),
+      buildSkills({ smallModelMode: true }),
       "Basic Skills (small model mode)",
       "skills-basic.md",
     ],

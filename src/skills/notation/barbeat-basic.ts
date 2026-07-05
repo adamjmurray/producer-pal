@@ -5,8 +5,8 @@
 
 /**
  * bar|beat basic (small-model) notation head. Just the bar|beat notes syntax;
- * the shared tail (notes-merge, preTransforms, Rules) lives in {@link coreBasic}
- * and is appended by {@link buildSkills}.
+ * the shared tail (notes-merge, preTransforms, Rules) lives in {@link coreBasic},
+ * which `@include`s this head — `resolveIncludes` composes them, not buildSkills.
  */
 export const barbeatBasic = `## MIDI Notation
 

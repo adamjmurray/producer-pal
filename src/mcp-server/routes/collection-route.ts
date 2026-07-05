@@ -112,7 +112,7 @@ function isError<TInput>(
 ): result is { error: string } {
   return (
     typeof result === "object" &&
-    result !== null &&
+    result != null &&
     "error" in result &&
     typeof (result as { error: unknown }).error === "string"
   );
