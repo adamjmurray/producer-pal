@@ -89,15 +89,16 @@ export function interpretNotation(
     });
   }
 
-  // Warn on mixed section types (drums + melody etc in one clip is unusual).
-  const sectionKinds = new Set(
-    ast.map((s) => ("midi" in s ? "drums" : s.type)),
-  );
+  // Warn only when drum and pitched lines share a clip — that crosses the
+  // Drum-Rack/instrument track boundary and is usually a mistake. Mixing pitched
+  // registers (bass:+melody:, melody:+chords:) is normal multi-part writing, so
+  // it must NOT warn (that was noise). Genuine same-pitch overlaps are caught
+  // separately by the dedupe warning below.
+  const hasDrums = ast.some((s) => "midi" in s);
+  const hasPitched = ast.some((s) => !("midi" in s));
 
-  if (sectionKinds.size > 1) {
-    console.warn(
-      `Stark: mixed section types (${[...sectionKinds].join(", ")}) in one clip`,
-    );
+  if (hasDrums && hasPitched) {
+    console.warn("Stark: mixed drum and pitched sections in one clip");
   }
 
   const notes: NoteEvent[] = [];

@@ -136,7 +136,7 @@ describe("stark interpreter — pitched lines", () => {
     expect(notes.every((n) => n.start_time === 0)).toBe(true);
   });
 
-  it("warns on mixed section types but interprets all", () => {
+  it("warns when drum and pitched lines share a clip but interprets all", () => {
     const notes = interpretNotation("kick: X\nmelody: C'''''");
 
     expect(notes.map((n) => n.pitch).sort((a, b) => a - b)).toStrictEqual([
@@ -144,8 +144,17 @@ describe("stark interpreter — pitched lines", () => {
     ]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("mixed section types"),
+      expect.stringContaining("mixed drum and pitched sections"),
     );
+  });
+
+  it("does not warn for a legit two-register pitched clip (bass + melody)", () => {
+    const notes = interpretNotation("bass: C\nmelody: G");
+
+    expect(notes.map((n) => n.pitch).sort((a, b) => a - b)).toStrictEqual([
+      36, 67,
+    ]);
+    expect(outlet).not.toHaveBeenCalled();
   });
 });
 

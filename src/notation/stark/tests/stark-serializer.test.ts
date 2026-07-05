@@ -257,6 +257,19 @@ describe("stark serializer — warns when a note is too long to spell", () => {
     expect(outlet).not.toHaveBeenCalled();
   });
 
+  it("does not warn for a long note trimmed by legato overlap, not the ceiling", () => {
+    // The first note's raw sustain is 8 beats (> 6), but the next onset is only 2
+    // beats away, so legatoDuration trims it to a 2-beat gap — a compensated
+    // overlap trim, NOT a ceiling clip. Warning "shortened to 6 beats" here would
+    // misattribute the loss (the old flat scan of raw durations did exactly that).
+    const out = formatNotation([note(60, 0, 8), note(62, 2, 1)]);
+
+    expect(interpretNotation(out).map((n) => n.start_time)).toStrictEqual([
+      0, 2,
+    ]);
+    expect(outlet).not.toHaveBeenCalled();
+  });
+
   it("uses the plural noun and warns once for multiple overlong notes", () => {
     formatNotation([note(60, 0, 8), note(62, 8, 7)]);
 

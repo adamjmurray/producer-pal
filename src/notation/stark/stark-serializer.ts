@@ -85,6 +85,14 @@ interface LineToken {
   duration: DurationGridEntry;
 }
 
+// Threaded through the walks to tally notes truly clipped by the grid ceiling.
+interface SerializeStats {
+  // Notes whose OWN tail is lost to Stark's 6-beat ceiling (see isCeilingClipped)
+  // — as opposed to an overlapping note trimmed to its gap, a compensated legato
+  // loss that must NOT warn about the ceiling.
+  ceilingClipped: number;
+}
+
 /**
  * Serialize MIDI note events into a Stark notation string.
  * @param notes - Note events to serialize
@@ -97,32 +105,44 @@ export function formatNotation(
 ): string {
   if (notes.length === 0) return "";
 
-  warnOnOverlongNotes(notes);
+  const stats: SerializeStats = { ceilingClipped: 0 };
+  const result = options.drumMode
+    ? serializeStarkDrums(notes, stats).join("\n")
+    : serializeStarkPitched(notes, stats);
 
-  if (options.drumMode) {
-    return serializeStarkDrums(notes).join("\n");
-  }
+  warnOnCeilingClippedNotes(stats.ceilingClipped);
 
-  return serializeStarkPitched(notes);
+  return result;
 }
 
-// Stark's coarsest note value is a dotted whole note (MAX_GRID_BEATS = 6 beats),
-// with no tie or multi-bar token, so a longer sustain snaps down to it and reads
-// back short. Unlike an off-grid snap or an overlap trim, this loss can't be
-// compensated by a rest (it's the note's OWN tail), so warn — the WARNING block
-// is relayed to the LLM so a lossy read-back isn't silent. Onsets are unaffected.
-function warnOnOverlongNotes(notes: NoteEvent[]): void {
-  const overlong = notes.filter(
-    (note) => note.duration > MAX_GRID_BEATS + SAME_TIME_EPSILON,
-  ).length;
+// A note loses its OWN tail to Stark's grid ceiling only when it is longer than
+// the coarsest grid value (MAX_GRID_BEATS = 6 beats) AND has room ≥ 6 beats
+// before the next onset — then legatoDuration returns the snapped ceiling. An
+// overlapping long note (cap < 6) is instead trimmed to its gap, a compensated
+// legato loss, so it must NOT be counted as a ceiling clip. Tallying during the
+// walk (where the cap is known) is why this replaced a flat scan of raw
+// durations, which mis-warned every overlapping held note as "shortened to 6".
+function isCeilingClipped(naturalBeats: number, capBeats: number): boolean {
+  return (
+    naturalBeats > MAX_GRID_BEATS + SAME_TIME_EPSILON &&
+    capBeats >= MAX_GRID_BEATS - SAME_TIME_EPSILON
+  );
+}
 
-  if (overlong === 0) return;
+// Stark's coarsest note value is a dotted whole note (6 beats), with no tie or
+// multi-bar token, so a note whose own sustain exceeds 6 beats (with room to
+// spell it) snaps down and reads back short. Unlike an off-grid snap or an
+// overlap trim, this loss can't be compensated by a rest (it's the note's OWN
+// tail), so warn — the WARNING block is relayed to the LLM so the lossy read-back
+// isn't silent. Onsets are unaffected.
+function warnOnCeilingClippedNotes(count: number): void {
+  if (count === 0) return;
 
-  const noun = overlong === 1 ? "note" : "notes";
-  const verb = overlong === 1 ? "is" : "are";
+  const noun = count === 1 ? "note" : "notes";
+  const verb = count === 1 ? "is" : "are";
 
   console.warn(
-    `Stark: ${overlong} ${noun} longer than ${MAX_GRID_BEATS} beats ${verb} ` +
+    `Stark: ${count} ${noun} longer than ${MAX_GRID_BEATS} beats ${verb} ` +
       `shortened on read-back — Stark's longest note value is a dotted whole ` +
       `(${MAX_GRID_BEATS} beats). Use bar|beat or midi-json notation to ` +
       `preserve longer sustains.`,
@@ -145,6 +165,7 @@ function warnOnOverlongNotes(notes: NoteEvent[]): void {
 function walkLine(
   notes: NoteEvent[],
   makeHit: (note: NoteEvent) => { core: string; dynamic: string },
+  stats: SerializeStats,
 ): LineToken[] {
   const sorted = [...notes].sort((a, b) => a.start_time - b.start_time);
   const tokens: LineToken[] = [];
@@ -163,10 +184,10 @@ function walkLine(
 
     const { core, dynamic } = makeHit(note);
     const next = sorted[i + 1];
-    const duration = legatoDuration(
-      note.duration,
-      next != null ? next.start_time - note.start_time : Infinity,
-    );
+    const cap = next != null ? next.start_time - note.start_time : Infinity;
+    const duration = legatoDuration(note.duration, cap);
+
+    if (isCeilingClipped(note.duration, cap)) stats.ceilingClipped++;
 
     tokens.push({ core, dynamic, duration });
     time += duration.beats;
@@ -313,7 +334,10 @@ function isBetterDefault(
 // Serialize a pitched line: bass or melody by median pitch, with any
 // simultaneous notes rendered as a [..] bracket stack. Gaps become z rests.
 // Chord SYMBOLS are input-only, so read-back is always literal notes here.
-function serializeStarkPitched(notes: NoteEvent[]): string {
+function serializeStarkPitched(
+  notes: NoteEvent[],
+  stats: SerializeStats,
+): string {
   const { lineType, registerDefault, sorted } = classifyPitchedLine(notes);
   const groups = groupSimultaneousNotes(sorted);
   const tokens: LineToken[] = [];
@@ -336,12 +360,13 @@ function serializeStarkPitched(notes: NoteEvent[]): string {
     // sustained bass under a moving melody) is trimmed to legato instead of
     // shoving the melody's onsets later. The final group has no cap.
     const nextGroup = groups[i + 1];
-    const duration = legatoDuration(
-      rep.duration,
+    const cap =
       nextGroup != null
         ? (nextGroup[0] as NoteEvent).start_time - rep.start_time
-        : Infinity,
-    );
+        : Infinity;
+    const duration = legatoDuration(rep.duration, cap);
+
+    if (isCeilingClipped(rep.duration, cap)) stats.ceilingClipped++;
 
     tokens.push({
       core: groupCore(group, registerDefault),
@@ -378,14 +403,21 @@ function pitchCore(midi: number, registerDefault: number): string {
 // ---- Drum lines (event-based, one line per pitch) ----
 
 // Serialize drum notes into one factored `<header> [/N]: <tokens>` line per pitch.
-function serializeStarkDrums(notes: NoteEvent[]): string[] {
+function serializeStarkDrums(
+  notes: NoteEvent[],
+  stats: SerializeStats,
+): string[] {
   const lines: string[] = [];
 
   for (const [pitch, pitchNotes] of groupNotesByPitch(notes)) {
-    const tokens = walkLine(pitchNotes, (note) => ({
-      core: drumChar(note.velocity),
-      dynamic: "",
-    }));
+    const tokens = walkLine(
+      pitchNotes,
+      (note) => ({
+        core: drumChar(note.velocity),
+        dynamic: "",
+      }),
+      stats,
+    );
 
     lines.push(
       renderLine(drumHeader(pitch), tokens, durationEntry(DRUM_DEFAULT)),
