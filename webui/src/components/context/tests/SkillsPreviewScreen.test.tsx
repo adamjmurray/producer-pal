@@ -6,7 +6,13 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SkillsPreviewScreen } from "#webui/components/context/skills/SkillsPreviewScreen";
 
@@ -152,6 +158,30 @@ describe("SkillsPreviewScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/Fragments: basic \+ barbeat/)).toBeTruthy();
     });
+  });
+
+  it("does not refetch when the live mode already matches the selection", async () => {
+    // The live config equals the default selection. Adopting it must not re-run
+    // the preview effect (which flashes the loading state and refetches an
+    // identical blob, and could clobber a mid-flight interaction like a copy).
+    const fetchMock = renderPreview({
+      notation: "barbeat",
+      smallModelMode: false,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("★ Current settings")).toBeTruthy();
+    });
+    // Flush any effect the config resolution might have queued.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const previewCalls = fetchMock.mock.calls.filter(
+      ([input]) => !String(input).startsWith(CONFIG_URL),
+    );
+
+    expect(previewCalls).toHaveLength(1);
   });
 
   it("surfaces override assembly warnings above the blob", async () => {

@@ -93,7 +93,13 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
       if (mode == null || controller.signal.aborted) return;
 
       setCurrentMode(mode);
-      if (!userPickedRef.current) setSelected(mode);
+
+      // Adopt the live mode as the selection, but keep the same object when it
+      // already matches: a new-but-equal reference would re-run the preview
+      // effect, flashing the loading state and refetching an identical blob.
+      if (!userPickedRef.current) {
+        setSelected((prev) => (sameCombination(prev, mode) ? prev : mode));
+      }
     })();
 
     return () => controller.abort();
@@ -127,6 +133,16 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Whether two combinations select the same skills blob (value equality).
+ * @param a - First combination
+ * @param b - Second combination
+ * @returns True when both fields match
+ */
+function sameCombination(a: SkillsCombination, b: SkillsCombination): boolean {
+  return a.notation === b.notation && a.smallModelMode === b.smallModelMode;
+}
 
 /** Server shape of a /skills-preview response. */
 interface RawPreview {
