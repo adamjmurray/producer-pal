@@ -12,6 +12,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
+import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
+import { lockedSettings } from "#webui/hooks/chat/tests/use-chat-test-helpers";
 import {
   createConversationsProps as createProps,
   fireHashChange,
@@ -41,25 +43,11 @@ async function saveTestConversation(
   const messages = overrides.messages ?? [
     { role: "user" as const, content: "test" },
   ];
+  const createdAt = overrides.createdAt ?? 1000;
 
-  await saveConversation({
-    id,
-    title: null,
-    createdAt: overrides.createdAt ?? 1000,
-    updatedAt: overrides.createdAt ?? 1000,
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-    totalUsage: null,
-    sessionType: "text",
-    messages,
-    voiceHistory: null,
-  });
+  await saveConversation(
+    createTestRecord({ id, createdAt, updatedAt: createdAt, messages }),
+  );
 
   return id;
 }
@@ -107,24 +95,15 @@ describe("useConversations", () => {
   it("preserves existing updatedAt when no timestamp provided", async () => {
     const existingId = crypto.randomUUID();
 
-    await saveConversation({
-      id: existingId,
-      title: null,
-      createdAt: 1000,
-      updatedAt: 2000,
-      bookmarked: false,
-      provider: "gemini",
-      model: null,
-      modelLabel: null,
-      thinking: null,
-      temperature: null,
-      showThoughts: null,
-      smallModelMode: null,
-      totalUsage: null,
-      sessionType: "text",
-      messages: [{ role: "user", content: "original" }],
-      voiceHistory: null,
-    });
+    await saveConversation(
+      createTestRecord({
+        id: existingId,
+        createdAt: 1000,
+        updatedAt: 2000,
+        provider: "gemini",
+        messages: [{ role: "user", content: "original" }],
+      }),
+    );
 
     const { props, state } = createProps();
 
@@ -208,24 +187,17 @@ describe("useConversations", () => {
     // Pre-populate DB with a conversation
     const existingId = crypto.randomUUID();
 
-    await saveConversation({
-      id: existingId,
-      title: null,
-      createdAt: 1000,
-      updatedAt: 1000,
-      bookmarked: false,
-      provider: "gemini",
-      model: "gemini-2.5-pro",
-      modelLabel: "Gemini 2.5 Pro",
-      thinking: null,
-      temperature: null,
-      showThoughts: null,
-      smallModelMode: null,
-      totalUsage: null,
-      sessionType: "text",
-      messages: [{ role: "user", content: "existing conversation" }],
-      voiceHistory: null,
-    });
+    await saveConversation(
+      createTestRecord({
+        id: existingId,
+        createdAt: 1000,
+        updatedAt: 1000,
+        provider: "gemini",
+        model: "gemini-2.5-pro",
+        modelLabel: "Gemini 2.5 Pro",
+        messages: [{ role: "user", content: "existing conversation" }],
+      }),
+    );
 
     const { result } = renderHook(() => useConversations(props));
 
@@ -247,15 +219,7 @@ describe("useConversations", () => {
     expect(props.clearConversation).toHaveBeenCalled();
     expect(props.restoreChatHistory).toHaveBeenCalledWith(
       [{ role: "user", content: "existing conversation" }],
-      {
-        model: "gemini-2.5-pro",
-        provider: "gemini",
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        systemInstruction: null,
-      },
+      lockedSettings({ model: "gemini-2.5-pro", provider: "gemini" }),
     );
   });
 
@@ -313,24 +277,17 @@ describe("useConversations", () => {
   it("restores conversation from URL hash on mount", async () => {
     const existingId = crypto.randomUUID();
 
-    await saveConversation({
-      id: existingId,
-      title: null,
-      createdAt: 1000,
-      updatedAt: 1000,
-      bookmarked: false,
-      provider: "anthropic",
-      model: "claude-sonnet-4-6-20250514",
-      modelLabel: "Claude Sonnet 4.6",
-      thinking: null,
-      temperature: null,
-      showThoughts: null,
-      smallModelMode: null,
-      totalUsage: null,
-      sessionType: "text",
-      messages: [{ role: "user", content: "restored" }],
-      voiceHistory: null,
-    });
+    await saveConversation(
+      createTestRecord({
+        id: existingId,
+        createdAt: 1000,
+        updatedAt: 1000,
+        provider: "anthropic",
+        model: "claude-sonnet-4-6-20250514",
+        modelLabel: "Claude Sonnet 4.6",
+        messages: [{ role: "user", content: "restored" }],
+      }),
+    );
     window.location.hash = existingId;
 
     const { props } = createProps();
@@ -341,15 +298,10 @@ describe("useConversations", () => {
     expect(result.current.activeConversationId).toBe(existingId);
     expect(props.restoreChatHistory).toHaveBeenCalledWith(
       [{ role: "user", content: "restored" }],
-      {
+      lockedSettings({
         model: "claude-sonnet-4-6-20250514",
         provider: "anthropic",
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        systemInstruction: null,
-      },
+      }),
     );
   });
 
@@ -485,24 +437,18 @@ describe("useConversations", () => {
      * @param id - Conversation id to use
      */
     async function saveVoiceConversation(id: string): Promise<void> {
-      await saveConversation({
-        id,
-        title: null,
-        createdAt: 1000,
-        updatedAt: 1000,
-        bookmarked: false,
-        provider: "openai",
-        model: "gpt-realtime-2",
-        modelLabel: null,
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        totalUsage: null,
-        sessionType: "voice",
-        messages: [],
-        voiceHistory: [],
-      });
+      await saveConversation(
+        createTestRecord({
+          id,
+          createdAt: 1000,
+          updatedAt: 1000,
+          provider: "openai",
+          model: "gpt-realtime-2",
+          sessionType: "voice",
+          messages: [],
+          voiceHistory: [],
+        }),
+      );
     }
 
     it("switchConversation updates the hash to the foreign id before invoking onForeignRecord", async () => {
@@ -602,15 +548,7 @@ describe("useConversations", () => {
       expect(result.current.activeConversationId).toBe(existingId);
       expect(props.restoreChatHistory).toHaveBeenCalledWith(
         [{ role: "user", content: "from hash" }],
-        {
-          model: null,
-          provider: null,
-          thinking: null,
-          temperature: null,
-          showThoughts: null,
-          smallModelMode: null,
-          systemInstruction: null,
-        },
+        lockedSettings(),
       );
     });
 

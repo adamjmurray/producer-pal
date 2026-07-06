@@ -15,6 +15,7 @@ import {
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
+  lockedSettings,
   RESTORED_HISTORY,
 } from "./use-chat-test-helpers";
 
@@ -473,15 +474,7 @@ describe("useChat", () => {
             { role: "user", content: "hello" },
             { role: "assistant", content: "hi" },
           ],
-          {
-            model: "gemini-2.5-pro",
-            provider: "gemini",
-            thinking: null,
-            temperature: null,
-            showThoughts: null,
-            smallModelMode: null,
-            systemInstruction: null,
-          },
+          lockedSettings({ model: "gemini-2.5-pro", provider: "gemini" }),
         );
       });
 
@@ -503,15 +496,10 @@ describe("useChat", () => {
       );
 
       await act(async () => {
-        result.current.restoreChatHistory([{ role: "user", content: "hi" }], {
-          model: "claude-x",
-          provider: "anthropic",
-          thinking: null,
-          temperature: null,
-          showThoughts: null,
-          smallModelMode: null,
-          systemInstruction: null,
-        });
+        result.current.restoreChatHistory(
+          [{ role: "user", content: "hi" }],
+          lockedSettings({ model: "claude-x", provider: "anthropic" }),
+        );
       });
 
       await act(async () => {

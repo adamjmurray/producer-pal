@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
+import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 
 vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: () => null,
@@ -344,22 +345,12 @@ describe("ChatScreen", () => {
           conversationPanel={{
             ...defaultProps.conversationPanel,
             conversations: [
-              {
+              createTestSummary({
                 id: "conv-1",
                 title: "Test",
                 createdAt: 1000,
                 updatedAt: 1000,
-                bookmarked: false,
-                provider: null,
-                model: null,
-                modelLabel: null,
-                thinking: null,
-                temperature: null,
-                showThoughts: null,
-                smallModelMode: null,
-                totalUsage: null,
-                sessionType: "text",
-              },
+              }),
             ],
             activeConversationId: "conv-1",
             onToggleBookmark,

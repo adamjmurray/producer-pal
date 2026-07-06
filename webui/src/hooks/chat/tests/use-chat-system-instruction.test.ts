@@ -10,7 +10,11 @@
 import { act, renderHook } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
-import { createDefaultProps, createMockAdapter } from "./use-chat-test-helpers";
+import {
+  createDefaultProps,
+  createMockAdapter,
+  lockedSettings,
+} from "./use-chat-test-helpers";
 
 const mockAdapter = createMockAdapter();
 const defaultProps = createDefaultProps(mockAdapter);
@@ -23,15 +27,12 @@ describe("useChat system instruction locking", () => {
     const { result } = renderHook(() => useChat(defaultProps));
 
     await act(async () => {
-      result.current.restoreChatHistory([{ role: "user", content: "hi" }], {
-        model: null,
-        provider: null,
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        systemInstruction: "Locked prompt from when the chat started.",
-      });
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings({
+          systemInstruction: "Locked prompt from when the chat started.",
+        }),
+      );
     });
 
     await act(async () => {

@@ -9,6 +9,7 @@ import type * as StreamingHelpers from "#webui/hooks/chat/helpers/streaming-help
 import {
   type ChatAdapter,
   type ChatClient,
+  type ConversationLockedSettings,
 } from "#webui/hooks/chat/use-chat-types";
 import { type UIMessage } from "#webui/types/messages";
 
@@ -198,6 +199,27 @@ export const RESTORED_HISTORY: TestMessage[] = [
   { role: "user", content: "restored msg" },
   { role: "assistant", content: "restored reply" },
 ];
+
+/**
+ * Build a ConversationLockedSettings object, defaulting every field to null.
+ * Shared by the restore/continue tests that pass or assert locked settings.
+ * @param over - Fields to override on the all-null default
+ * @returns Locked settings for restoreChatHistory
+ */
+export function lockedSettings(
+  over: Partial<ConversationLockedSettings> = {},
+): ConversationLockedSettings {
+  return {
+    model: null,
+    provider: null,
+    thinking: null,
+    temperature: null,
+    showThoughts: null,
+    smallModelMode: null,
+    systemInstruction: null,
+    ...over,
+  };
+}
 
 /**
  * Factory body for `vi.mock("#webui/hooks/chat/helpers/streaming-helpers", ...)`.
