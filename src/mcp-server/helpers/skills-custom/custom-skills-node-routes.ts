@@ -21,6 +21,7 @@
  */
 
 import { registerNodeRoute } from "../../rpc/node-request-protocol.ts";
+import { optionalString, requireString } from "../../rpc/route-args.ts";
 import {
   forgetCustomSkill,
   readCustomSkill,
@@ -113,33 +114,4 @@ function listRoute(): SkillsRouteResult {
  */
 function currentIndex(): string {
   return regenerateSkillsIndex() || "(no custom skills)";
-}
-
-/**
- * Extract a required string field from route args, throwing a clean message so
- * the RPC error path renders it for the LLM.
- *
- * @param args - The raw route args
- * @param key - The field name
- * @returns The string value
- */
-function requireString(args: unknown, key: string): string {
-  const value = (args as Record<string, unknown> | null)?.[key];
-
-  if (typeof value !== "string") throw new Error(`${key} must be a string`);
-
-  return value;
-}
-
-/**
- * Extract an optional string field from route args, defaulting to "".
- *
- * @param args - The raw route args
- * @param key - The field name
- * @returns The string value, or "" when absent
- */
-function optionalString(args: unknown, key: string): string {
-  const value = (args as Record<string, unknown> | null)?.[key];
-
-  return typeof value === "string" ? value : "";
 }

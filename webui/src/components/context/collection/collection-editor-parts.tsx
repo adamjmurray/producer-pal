@@ -9,6 +9,7 @@
 // dropdown, an enabled toggle) live in each collection's own editor; these are
 // the parts they have in common so the two editors read identically.
 
+import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
 
 /** Shared input styling for the collection editors' text controls. */
@@ -79,6 +80,62 @@ export function NameField(props: NameFieldProps): preact.JSX.Element {
         placeholder={placeholder}
         className={INPUT_CLASS}
       />
+    </Field>
+  );
+}
+
+interface DescriptionFieldProps {
+  hint: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+/**
+ * The one-line description row: a text input whose value becomes the entry's
+ * recall hook in the index. The hint text differs per collection.
+ * @param props - Description field props
+ * @returns Description field element
+ */
+export function DescriptionField(
+  props: DescriptionFieldProps,
+): preact.JSX.Element {
+  return (
+    <Field label="Description" hint={props.hint}>
+      <input
+        type="text"
+        value={props.value}
+        onInput={(e) => props.onChange((e.target as HTMLInputElement).value)}
+        className={INPUT_CLASS}
+      />
+    </Field>
+  );
+}
+
+interface BodyFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  rows: number;
+}
+
+/**
+ * The main body row: a monospace textarea with a live character/token count.
+ * The label (e.g. "Memory", "Instructions") and row count differ per collection.
+ * @param props - Body field props
+ * @returns Body field element
+ */
+export function BodyField(props: BodyFieldProps): preact.JSX.Element {
+  return (
+    <Field label={props.label}>
+      <textarea
+        value={props.value}
+        onInput={(e) => props.onChange((e.target as HTMLTextAreaElement).value)}
+        rows={props.rows}
+        className={`${INPUT_CLASS} resize-none font-mono leading-relaxed`}
+      />
+      <div className="mt-1 flex justify-end">
+        <CharTokenCount chars={props.value.length} />
+      </div>
     </Field>
   );
 }

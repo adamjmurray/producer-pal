@@ -4,8 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import {
+  BodyField,
+  DescriptionField,
   EditorFooter,
   Field,
   INPUT_CLASS,
@@ -97,28 +98,12 @@ export function MemoryEntryEditor(
           ))}
         </select>
       </Field>
-      <Field
-        label="Description"
+      <DescriptionField
         hint="One-line recall hook shown in the index."
-      >
-        <input
-          type="text"
-          value={description}
-          onInput={(e) => setDescription((e.target as HTMLInputElement).value)}
-          className={INPUT_CLASS}
-        />
-      </Field>
-      <Field label="Memory">
-        <textarea
-          value={body}
-          onInput={(e) => setBody((e.target as HTMLTextAreaElement).value)}
-          rows={10}
-          className={`${INPUT_CLASS} resize-none font-mono leading-relaxed`}
-        />
-        <div className="mt-1 flex justify-end">
-          <CharTokenCount chars={body.length} />
-        </div>
-      </Field>
+        value={description}
+        onChange={setDescription}
+      />
+      <BodyField label="Memory" value={body} onChange={setBody} rows={10} />
       <EditorFooter
         saveStatus={collection.saveStatus}
         saveError={collection.saveError}

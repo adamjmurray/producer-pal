@@ -4,11 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import {
+  BodyField,
+  DescriptionField,
   EditorFooter,
-  Field,
-  INPUT_CLASS,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
 import {
@@ -82,17 +81,11 @@ export function CustomSkillEditor(
         placeholder="jazz-voicings"
         onChange={setName}
       />
-      <Field
-        label="Description"
+      <DescriptionField
         hint="One-line “load me when…” hook shown in the index."
-      >
-        <input
-          type="text"
-          value={description}
-          onInput={(e) => setDescription((e.target as HTMLInputElement).value)}
-          className={INPUT_CLASS}
-        />
-      </Field>
+        value={description}
+        onChange={setDescription}
+      />
       <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
         <input
           type="checkbox"
@@ -105,17 +98,12 @@ export function CustomSkillEditor(
           Only enabled skills are offered to the assistant.
         </span>
       </label>
-      <Field label="Instructions">
-        <textarea
-          value={body}
-          onInput={(e) => setBody((e.target as HTMLTextAreaElement).value)}
-          rows={12}
-          className={`${INPUT_CLASS} resize-none font-mono leading-relaxed`}
-        />
-        <div className="mt-1 flex justify-end">
-          <CharTokenCount chars={body.length} />
-        </div>
-      </Field>
+      <BodyField
+        label="Instructions"
+        value={body}
+        onChange={setBody}
+        rows={12}
+      />
       <EditorFooter
         saveStatus={collection.saveStatus}
         saveError={collection.saveError}

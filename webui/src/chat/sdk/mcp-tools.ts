@@ -9,6 +9,7 @@ import {
   createConnectedMcpClient,
   filterEnabledTools,
 } from "#webui/chat/helpers/mcp-client-helpers";
+import { extractMcpText } from "#webui/lib/utils/mcp-content";
 
 /** Result of creating AI SDK tools from MCP */
 export interface McpTools {
@@ -61,18 +62,4 @@ export async function createMcpTools(
   }
 
   return { tools, mcpClient };
-}
-
-/**
- * Extract text content from an MCP content array.
- * @param content - MCP content items (text, image, etc.)
- * @returns Concatenated text from all text content items
- */
-function extractMcpText(
-  content: Array<{ type: string; text?: string }>,
-): string {
-  return content
-    .filter((c): c is { type: "text"; text: string } => c.type === "text")
-    .map((c) => c.text)
-    .join("\n");
 }

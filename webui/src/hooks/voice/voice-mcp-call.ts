@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { extractMcpText } from "#webui/lib/utils/mcp-content";
 
 // Cap how long a voice tool call can run. The MCP SDK's default is 60s; a stuck
 // Live operation would otherwise block the voice turn that long with no
@@ -50,20 +51,4 @@ export async function callMcpToolToString(
 
     return `Error calling ${name}: ${message}`;
   }
-}
-
-/**
- * Extract and join text content from an MCP content array, dropping non-text
- * items (images, etc.).
- *
- * @param content - MCP content items
- * @returns Concatenated text from all text content items
- */
-export function extractMcpText(
-  content: Array<{ type: string; text?: string }>,
-): string {
-  return content
-    .filter((c): c is { type: "text"; text: string } => c.type === "text")
-    .map((c) => c.text)
-    .join("\n");
 }

@@ -4,37 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
-import { type ModeContext } from "#webui/components/mode-context";
+import { type ModeAppProps } from "#webui/components/mode-context";
 import { useChatModeState } from "#webui/hooks/chat/use-chat-mode-state";
-import {
-  type McpStatus,
-  type McpTool,
-} from "#webui/hooks/connection/use-mcp-connection";
+import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
-import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/view-state/use-view-state";
-import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { type UseSettingsReturn } from "#webui/types/settings";
 
-interface ChatAppProps {
-  settings: UseSettingsReturn;
-  display: PreferencesSettings;
-  viewState: ViewState;
-  setViewState: (partial: Partial<ViewState>) => void;
-  mcpStatus: McpStatus;
+interface ChatAppProps extends ModeAppProps {
   mcpError: string | null;
   mcpTools?: McpTool[] | null;
   checkMcpConnection: () => Promise<void>;
   remoteConfig: UseRemoteConfigReturn;
-  totalToolsCount: number;
-  enabledToolsCount: number;
-  onOpenSettings: () => void;
-  onOpenToolsSettings: () => void;
-  onOpenConnectionSettings: () => void;
-  onOpenContext: () => void;
-  onForeignRecord: (record: ConversationRecord) => void;
-  clearViewingMode: () => void;
-  setModeContext: (ctx: ModeContext) => void;
 }
 
 /**

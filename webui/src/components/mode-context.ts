@@ -4,6 +4,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ConversationLock } from "#webui/components/settings/LockedSettingsNotice";
+import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
+import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
+import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { type UseSettingsReturn } from "#webui/types/settings";
+
+/**
+ * Props shared by every mode's top-level app component (ChatApp, VoiceApp): the
+ * settings/display state, MCP status, tool counts, and the App-level callbacks
+ * that open shared modals and report per-mode context. Each mode extends this
+ * with its own extras (chat adds the live MCP connection handles).
+ */
+export interface ModeAppProps {
+  settings: UseSettingsReturn;
+  display: PreferencesSettings;
+  viewState: ViewState;
+  setViewState: (partial: Partial<ViewState>) => void;
+  mcpStatus: McpStatus;
+  totalToolsCount: number;
+  enabledToolsCount: number;
+  onOpenSettings: () => void;
+  onOpenToolsSettings: () => void;
+  onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
+  onForeignRecord: (record: ConversationRecord) => void;
+  clearViewingMode: () => void;
+  setModeContext: (ctx: ModeContext) => void;
+}
 
 /** Per-mode context that App needs to render its shared SettingsScreen. The
  * active mode reports this via a callback so the modal can display the lock
