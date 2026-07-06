@@ -16,6 +16,7 @@ is not recommended for personal use.
 ## What You Need
 
 - A Google account
+
 <!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Get a Gemini API Key

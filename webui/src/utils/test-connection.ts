@@ -7,8 +7,7 @@ import { type Provider } from "#webui/types/settings";
 import { getBaseUrl } from "#webui/utils/provider-url";
 
 export type TestConnectionResult =
-  | { ok: true; message: string }
-  | { ok: false; message: string };
+  { ok: true; message: string } | { ok: false; message: string };
 
 const CLOUD_PROVIDERS = new Set<Provider>([
   "anthropic",

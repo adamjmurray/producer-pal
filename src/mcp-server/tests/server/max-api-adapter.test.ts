@@ -37,8 +37,7 @@ let nodeRequestHandler: ((...args: unknown[]) => void) | undefined;
 const timeoutMsCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
 ).mock.calls.find((call: unknown[]) => call[0] === "timeoutMs") as
-  | unknown[]
-  | undefined;
+  unknown[] | undefined;
 
 if (timeoutMsCall) {
   timeoutMsHandler = timeoutMsCall[1] as (input: unknown) => void;
@@ -47,8 +46,7 @@ if (timeoutMsCall) {
 const codeExecCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
 ).mock.calls.find((call: unknown[]) => call[0] === "code_exec_request") as
-  | unknown[]
-  | undefined;
+  unknown[] | undefined;
 
 if (codeExecCall) {
   codeExecRequestHandler = codeExecCall[1] as (...args: unknown[]) => void;
@@ -57,8 +55,7 @@ if (codeExecCall) {
 const nodeRequestCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
 ).mock.calls.find((call: unknown[]) => call[0] === "node_request") as
-  | unknown[]
-  | undefined;
+  unknown[] | undefined;
 
 if (nodeRequestCall) {
   nodeRequestHandler = nodeRequestCall[1] as (...args: unknown[]) => void;

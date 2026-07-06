@@ -15,6 +15,7 @@ OpenAI subscription instead.
 ## What You Need
 
 - An [OpenAI account](https://platform.openai.com) with API credits
+
 <!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Get an OpenAI API Key

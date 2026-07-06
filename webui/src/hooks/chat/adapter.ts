@@ -191,12 +191,9 @@ export const chatAdapter: ChatAdapter<
     // started with, even after the global override changes; a brand-new
     // conversation has none and resolves the current override instead.
     const systemInstructionOverride = extraParams?.systemInstructionOverride as
-      | string
-      | undefined;
+      string | undefined;
     const lockedSystemInstruction = extraParams?.lockedSystemInstruction as
-      | string
-      | null
-      | undefined;
+      string | null | undefined;
     const systemInstruction =
       lockedSystemInstruction ??
       resolveSystemInstruction(systemInstructionOverride);

@@ -249,8 +249,7 @@ export function resolveFileIdForPath(
 }
 
 export type InFolderResolution =
-  | { ok: true; parentId: number | undefined }
-  | { ok: false; reason: string };
+  { ok: true; parentId: number | undefined } | { ok: false; reason: string };
 
 /**
  * Normalize an optional `inFolder` filter (treating "" as absent) and resolve

@@ -29,14 +29,11 @@ export type NonDefaultNotation = Exclude<Notation, "barbeat">;
  * notation), or a compound `smallModel:{notation}` cell pinning both axes.
  */
 export type ModeKey =
-  | NonDefaultNotation
-  | "smallModel"
-  | `smallModel:${NonDefaultNotation}`;
+  NonDefaultNotation | "smallModel" | `smallModel:${NonDefaultNotation}`;
 
 /** Tool `description`: a plain string, or per-mode text over a required base. */
 export type ModalDescription =
-  | string
-  | ({ default: string } & Partial<Record<ModeKey, string>>);
+  string | ({ default: string } & Partial<Record<ModeKey, string>>);
 
 /**
  * A param's value in one mode: a replacement description string, `null` to hide
@@ -44,9 +41,7 @@ export type ModalDescription =
  * optional description). Absent key ⇒ a less-specific key (or `default`) applies.
  */
 export type ParamModeValue =
-  | string
-  | null
-  | { description?: string; excludeEnumValues?: string[] };
+  string | null | { description?: string; excludeEnumValues?: string[] };
 
 /** A param's per-mode overrides over its required base description. */
 export type ParamModeMap = { default: string } & Partial<

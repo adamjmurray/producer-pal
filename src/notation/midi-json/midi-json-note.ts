@@ -84,8 +84,7 @@ export function codeNoteToNoteEvent(
  * or an error message describing why the value was rejected.
  */
 export type ValidateCodeNotesResult =
-  | { success: true; notes: CodeNote[] }
-  | { success: false; error: string };
+  { success: true; notes: CodeNote[] } | { success: false; error: string };
 
 /**
  * Validate a raw value (parsed user code result or MIDI JSON) as a notes array.
