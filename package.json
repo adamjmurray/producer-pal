@@ -106,7 +106,7 @@
     "@ai-sdk/mistral": "3.0.43",
     "@ai-sdk/openai": "3.0.77",
     "@ai-sdk/openai-compatible": "2.0.54",
-    "@codemirror/commands": "6.10.3",
+    "@codemirror/commands": "6.10.4",
     "@codemirror/lang-markdown": "6.5.0",
     "@codemirror/language": "6.12.3",
     "@codemirror/state": "6.7.0",
