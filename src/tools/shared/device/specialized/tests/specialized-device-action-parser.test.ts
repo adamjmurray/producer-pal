@@ -106,6 +106,12 @@ describe("parseAction", () => {
     expect(parseAction("setName('unterminated)")).toBeNull();
   });
 
+  it("returns null when a quoted token has trailing content after the closing quote", () => {
+    // The tokenizer closes the quote and keeps appending, producing a complete
+    // token that starts with a quote but does not end with the matching one.
+    expect(parseAction("setName('a'b)")).toBeNull();
+  });
+
   it("returns null for a trailing comma (empty arg)", () => {
     expect(parseAction("setModulation('a',)")).toBeNull();
   });

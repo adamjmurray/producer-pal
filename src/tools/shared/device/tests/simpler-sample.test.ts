@@ -13,6 +13,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  probeSimplerSample,
   setSimplerGain,
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
@@ -206,6 +207,29 @@ describe("setSimplerSample", () => {
       1,
       expect.stringContaining("createDevice:"),
     );
+  });
+});
+
+describe("probeSimplerSample", () => {
+  it("reports empty when the loaded sample has no file path", () => {
+    registerMockObject("sample-1", {
+      type: "Sample",
+      properties: { file_path: "" },
+    });
+    registerMockObject("simpler-1", {
+      path: livePath.track(0).device(0),
+      type: "SimplerDevice",
+      properties: {
+        class_display_name: "Simpler",
+        multi_sample_mode: 0,
+        parameters: children(),
+        sample: ["id", "sample-1"],
+      },
+    });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "empty" });
   });
 });
 

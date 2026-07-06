@@ -158,6 +158,20 @@ describe("computeNonSurvivorClipIds", () => {
     expect(computeNonSurvivorClipIds(clips, 32, null)).toBeNull();
   });
 
+  it("skips single-clip tracks while optimizing multi-clip tracks", () => {
+    const clips = [
+      mockArrangementClip("1", 0, 0, 4), // track 0: 4 beats
+      mockArrangementClip("2", 0, 8, 16), // track 0: 8 beats
+      mockArrangementClip("3", 1, 0, 4), // track 1: lone clip → skipped
+    ];
+
+    const result = computeNonSurvivorClipIds(clips, 32, null);
+
+    // Track 0 has multiple clips (A(4) covered by B(8) → "1" non-survivor), so
+    // hasMultiClipTrack is true; track 1's single-clip group is skipped.
+    expect(result).toStrictEqual(new Set(["1"]));
+  });
+
   it("handles mixed tracks independently", () => {
     const clips = [
       mockArrangementClip("1", 0, 0, 4), // track 0: 4 beats
