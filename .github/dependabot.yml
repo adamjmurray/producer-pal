@@ -20,10 +20,16 @@ updates:
           - "ai"
           - "@ai-sdk/*"
           - "@openrouter/ai-sdk-provider"
+          - "@openai/agents"
+          - "@google/genai"
       anthropic:
         patterns:
           - "@anthropic-ai/*"
           - "@modelcontextprotocol/*"
+      codemirror:
+        patterns:
+          - "@codemirror/*"
+          - "@lezer/*"
       rollup:
         patterns:
           - "rollup"
@@ -54,6 +60,9 @@ updates:
       tailwind:
         patterns:
           - "@tailwindcss/*"
+      stryker:
+        patterns:
+          - "@stryker-mutator/*"
       types:
         patterns:
           - "@types/*"
