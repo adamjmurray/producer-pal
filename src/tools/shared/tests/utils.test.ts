@@ -517,6 +517,11 @@ describe("parseCommaSeparatedIndices", () => {
 
     expect(result).toStrictEqual([0, 1, 2]);
   });
+
+  it("returns empty array for null or undefined input", () => {
+    expect(parseCommaSeparatedIndices(null)).toStrictEqual([]);
+    expect(parseCommaSeparatedIndices(undefined)).toStrictEqual([]);
+  });
 });
 
 describe("parseCommaSeparatedFloats", () => {

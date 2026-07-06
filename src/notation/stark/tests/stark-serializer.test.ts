@@ -282,6 +282,18 @@ describe("stark serializer — warns when a note is too long to spell", () => {
       expect.stringContaining("2 notes longer than 6 beats"),
     );
   });
+
+  it("counts a ceiling clip when the overlong note is a *N repeat group", () => {
+    // Three identical 8-beat notes, each spaced far enough apart that the cap
+    // stays above the 6-beat grid, collapse into a single repeat group. The
+    // repeat-emission path must still tally the ceiling clip and warn.
+    formatNotation([note(60, 0, 8), note(60, 8, 8), note(60, 16, 8)]);
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("longer than 6 beats"),
+    );
+  });
 });
 
 describe("stark serializer — dotted durations round-trip exactly", () => {

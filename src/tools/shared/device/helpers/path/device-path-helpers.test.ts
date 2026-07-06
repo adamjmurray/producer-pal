@@ -358,6 +358,10 @@ describe("device-path-helpers", () => {
         );
       });
 
+      it("throws when the first segment is empty (leading slash)", () => {
+        expect(() => resolvePathToLiveApi("/d0")).toThrow("Invalid path: /d0");
+      });
+
       it("throws on invalid track prefix", () => {
         expect(() => resolvePathToLiveApi("abc/d0")).toThrow(
           "Invalid track segment",
