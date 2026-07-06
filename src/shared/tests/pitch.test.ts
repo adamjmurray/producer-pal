@@ -542,6 +542,24 @@ describe("quantizePitchToScale", () => {
     expect(quantizePitchToScale(-5, cMajorMask)).toBe(0);
   });
 
+  it("snaps down across an out-of-scale gap at the MIDI ceiling", () => {
+    // Sparse scale: only pitch class 8 (Ab). Quantizing 127 rounds up to Ab at
+    // 128 (out of range), so clamping must scan DOWN past out-of-scale pitch
+    // classes 127..117 before landing on the highest in-scale pitch, 116.
+    const abOnlyMask = scaleIntervalsToPitchClassMask([0], 8);
+
+    expect(quantizePitchToScale(127, abOnlyMask)).toBe(116);
+  });
+
+  it("snaps up across an out-of-scale gap at the MIDI floor", () => {
+    // Sparse scale: only pitch class 11 (B). Quantizing 0 finds B at -1 (below
+    // range), so clamping must scan UP past out-of-scale pitch classes 0..10
+    // before landing on the lowest in-scale pitch, 11.
+    const bOnlyMask = scaleIntervalsToPitchClassMask([0], 11);
+
+    expect(quantizePitchToScale(0, bOnlyMask)).toBe(11);
+  });
+
   it("works with pentatonic scale", () => {
     // C Minor Pentatonic: C Eb F G Bb → pitch classes 0,3,5,7,10
     const cMinorPentMask = scaleIntervalsToPitchClassMask([0, 3, 5, 7, 10], 0);

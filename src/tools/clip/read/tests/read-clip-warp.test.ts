@@ -88,6 +88,25 @@ describe("readClip - warp markers", () => {
     expect(result.warpMarkers).toBeUndefined();
   });
 
+  it('reports an unrecognized warp mode as "unknown"', () => {
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
+        is_midi_clip: 0,
+        name: "Future Warp Mode",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        // A warp mode Live could add in the future, absent from WARP_MODE_MAPPING
+        warp_mode: 999,
+        warping: 1,
+      },
+    });
+
+    expect(readClipWithWarp().warpMode).toBe("unknown");
+  });
+
   it("does not include warp markers for MIDI clips", () => {
     setupMidiClipMock({
       trackIndex: 0,
