@@ -173,4 +173,24 @@ describe("createClip take lanes", () => {
       expect.stringContaining("takeLane ignored for session clips"),
     );
   });
+
+  it("warns that takeLane is ignored for the session portion of a mixed request", async () => {
+    // A request targeting BOTH an arrangement position and a session slot: the
+    // takeLane applies to the arrangement clip but must be flagged as ignored
+    // for the accompanying session slot.
+    registerEmptySessionSlot();
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    await createClip({
+      trackIndex: 0,
+      slot: "0/0",
+      arrangementStart: "1|1",
+      notes: "C3",
+      takeLane: "new",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane ignored for session clips"),
+    );
+  });
 });

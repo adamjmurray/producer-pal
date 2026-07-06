@@ -180,5 +180,26 @@ describe("Transform Branch Coverage", () => {
       expect(result.velocity).toBeUndefined();
       expect(Object.keys(result)).toHaveLength(0);
     });
+
+    it("skips note-count ops in per-note evaluation", () => {
+      // Note-count ops (ratchet/merge/split/repeat) act on the whole note list,
+      // so the per-note evaluator must skip them (they carry no scalar result).
+      // applyTransforms routes note ops separately, so this per-note path is
+      // only reached by calling the evaluator directly with a note op present.
+      const ast = [{ kind: "noteOp", name: "ratchet", args: [] }];
+
+      const result = evaluateTransformAST(
+        ast as unknown as TransformAssignment[],
+        {
+          position: 0,
+          pitch: 60,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        { pitch: 60 },
+      );
+
+      // The note op is skipped, contributing no parameter results.
+      expect(Object.keys(result)).toHaveLength(0);
+    });
   });
 });
