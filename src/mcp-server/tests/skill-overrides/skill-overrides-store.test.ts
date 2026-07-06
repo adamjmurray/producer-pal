@@ -73,6 +73,18 @@ describe("readSkillOverrides", () => {
     });
   });
 
+  it("drops a file that has only frontmatter (empty body)", () => {
+    // A file can linger with provenance frontmatter but a blank body — e.g. the
+    // user cleared the text without deleting the file. It must not register an
+    // override; the slot falls back to the built-in.
+    writeRaw(
+      "midi-json",
+      "---\nproducerPalVersion: 0.0.1\nbuiltInHash: h\n---\n\n   \n",
+    );
+
+    expect(readSkillOverrides()).toStrictEqual({});
+  });
+
   it("surfaces a nested fragment file, keyed by its relative path", () => {
     mkdirSync(join(getDir(), "skills", "drums"), { recursive: true });
     writeFileSync(join(getDir(), "skills", "drums", "backbeat.md"), "boom bap");
@@ -157,6 +169,22 @@ describe("readSkillSlotState", () => {
     writeSkillOverride("barbeat-standard", "fresh fork");
 
     expect(readSkillSlotState("barbeat-standard").drifted).toBe(false);
+  });
+
+  it("reports null provenance for an override with incomplete frontmatter", () => {
+    // A hand-edited override missing the builtInHash can't report drift — there
+    // is no fork-time hash to compare against — so provenance is null and it is
+    // never flagged as drifted.
+    writeRaw(
+      "barbeat-standard",
+      "---\nproducerPalVersion: 0.0.1\n---\n\nhand-edited fork",
+    );
+
+    const state = readSkillSlotState("barbeat-standard");
+
+    expect(state.override).toBe("hand-edited fork");
+    expect(state.provenance).toBeNull();
+    expect(state.drifted).toBe(false);
   });
 });
 

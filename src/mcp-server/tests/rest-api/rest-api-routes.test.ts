@@ -588,6 +588,21 @@ describe("REST API Routes", () => {
 
       expect(response.status).toBe(400);
     });
+
+    it("should return 400 when timeoutMs is repeated (array-valued)", async () => {
+      // Express parses a repeated query key into an array; a non-string timeout
+      // is rejected as invalid rather than silently picking one of the values.
+      const response = await callToolWithQuery(
+        "ppal-connect",
+        "timeoutMs=1&timeoutMs=2",
+      );
+
+      expect(response.status).toBe(400);
+
+      const body = await response.json();
+
+      expect(body.error).toContain("Invalid timeoutMs query param");
+    });
   });
 
   describe("tool-call timeout", () => {
