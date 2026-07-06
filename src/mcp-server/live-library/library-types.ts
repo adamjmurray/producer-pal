@@ -76,12 +76,7 @@ export type LibraryItemType = "loop" | "oneshot" | "impulse-response";
  * scan, not in Live's DB).
  */
 export type LibrarySource =
-  | "sampleFolder"
-  | "user"
-  | "pack"
-  | "builtin"
-  | "cloud"
-  | "plugin";
+  "sampleFolder" | "user" | "pack" | "builtin" | "cloud" | "plugin";
 
 /** Sort order for search results */
 export type LibrarySort = "use_count" | "mod_date" | "name";

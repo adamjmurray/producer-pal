@@ -411,8 +411,7 @@ async function printJudgeSection(
     results.push(result);
 
     const details = result.details as
-      | { pass: boolean; issues: string[] }
-      | undefined;
+      { pass: boolean; issues: string[] } | undefined;
 
     printJudgeDetails(details);
   }

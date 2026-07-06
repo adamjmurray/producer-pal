@@ -225,8 +225,7 @@ function createSimplerInChain(
   toolName: string,
 ): LiveAPI | null {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
-    | [string, string | number]
-    | undefined;
+    [string, string | number] | undefined;
   const rawId = result?.[1];
   const id = rawId ? String(rawId) : null;
 

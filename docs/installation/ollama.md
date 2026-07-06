@@ -5,6 +5,7 @@ Run Producer Pal completely offline with local models.
 ## What You Need
 
 - [Ollama](https://ollama.com/) installed
+
 <!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Install Ollama

@@ -40,10 +40,7 @@ import {
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
 type DurationReach =
-  | "n-absolute"
-  | "bare-fraction"
-  | "decimal-beats"
-  | "unrecognized";
+  "n-absolute" | "bare-fraction" | "decimal-beats" | "unrecognized";
 
 /**
  * Classify how the model expressed a "quarter note" duration in the transforms

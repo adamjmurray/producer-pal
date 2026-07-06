@@ -36,8 +36,7 @@ export function createConversationsProps() {
         activeSystemInstruction: null as string | null,
       },
       onForeignRecord: undefined as
-        | ((record: ConversationRecord) => void)
-        | undefined,
+        ((record: ConversationRecord) => void) | undefined,
     },
   };
 }

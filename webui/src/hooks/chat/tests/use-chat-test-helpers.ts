@@ -130,13 +130,15 @@ export function createMockAdapter(): ChatAdapter<
       return message.role === "user" ? message.content : undefined;
     }),
 
-    createUserMessage: vi.fn(
-      (text: string): TestMessage => ({ role: "user", content: text }),
-    ),
+    createUserMessage: vi.fn((text: string): TestMessage => ({
+      role: "user",
+      content: text,
+    })),
 
-    createCompactionSummary: vi.fn(
-      (summary: string): TestMessage => ({ role: "user", content: summary }),
-    ),
+    createCompactionSummary: vi.fn((summary: string): TestMessage => ({
+      role: "user",
+      content: summary,
+    })),
   };
 
   return adapter;

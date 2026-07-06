@@ -256,8 +256,7 @@ function isAnthropicThinkingEnabled(
   providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
 ): boolean {
   const anthropic = providerOptions?.anthropic as
-    | { thinking?: unknown }
-    | undefined;
+    { thinking?: unknown } | undefined;
 
   return anthropic?.thinking != null;
 }
@@ -402,8 +401,7 @@ function captureReasoningSignature(
   msg: ChatMessage,
 ): void {
   const providerMetadata = part.providerMetadata as
-    | { anthropic?: { signature?: unknown; redactedData?: unknown } }
-    | undefined;
+    { anthropic?: { signature?: unknown; redactedData?: unknown } } | undefined;
   const meta = providerMetadata?.anthropic;
   const last = msg.reasoningParts?.at(-1);
 

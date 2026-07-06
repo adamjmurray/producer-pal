@@ -12,14 +12,7 @@ export type ReasoningSummary = "auto" | "concise" | "detailed";
 
 /** Thinking level — named levels or numeric token budget strings */
 export type ThinkingLevel =
-  | "off"
-  | "low"
-  | "medium"
-  | "high"
-  | "ultra"
-  | "auto"
-  | "none"
-  | (string & {});
+  "off" | "low" | "medium" | "high" | "ultra" | "auto" | "none" | (string & {});
 
 export interface ChatOptions {
   provider: EvalProvider;
