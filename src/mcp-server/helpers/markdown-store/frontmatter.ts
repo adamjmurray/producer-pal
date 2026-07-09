@@ -46,19 +46,29 @@ export function parseFrontmatter(raw: string): ParsedFrontmatter {
   const data: Record<string, string> = {};
 
   for (const line of lines.slice(1, closeIndex)) {
+    if (line.trim() === "") continue; // blank lines inside the block are ignored
+
     const sep = line.indexOf(":");
+    const key = sep === -1 ? "" : line.slice(0, sep).trim();
 
-    if (sep === -1) continue;
+    // Any non-blank line that isn't an `identifier: value` pair means this
+    // leading `---…---` block is a markdown thematic break wrapping content, not
+    // a provenance block. Keep the WHOLE document as body: parsing the pairs out
+    // and dropping the rest would silently delete the surrounding lines (a
+    // heading, a prose sentence, a bare URL), and a later re-serialize would
+    // make that loss permanent. Every block serializeFrontmatter writes is all
+    // identifier keys, so this never rejects a real provenance block.
+    if (!/^[\w-]+$/.test(key)) {
+      return { data: {}, body: raw };
+    }
 
-    const key = line.slice(0, sep).trim();
-
-    if (key) data[key] = line.slice(sep + 1).trim();
+    data[key] = line.slice(sep + 1).trim();
   }
 
-  // A leading `---` fence with no `key: value` pairs is a markdown thematic
-  // break, not a provenance block — keep the whole document as body rather than
-  // swallowing its content into empty metadata (ADR-0010 supports hand-edited
-  // files with no frontmatter). A serialized provenance block always has fields.
+  // An all-blank fenced block (`---` immediately followed by `---`, or only
+  // blank lines between the fences) is a thematic break too — no pairs, so keep
+  // the whole document as body rather than swallowing it into empty metadata
+  // (ADR-0010 supports hand-edited files with no frontmatter).
   if (Object.keys(data).length === 0) {
     return { data: {}, body: raw };
   }

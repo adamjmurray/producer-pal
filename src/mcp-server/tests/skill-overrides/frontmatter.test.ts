@@ -39,10 +39,34 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter(raw)).toStrictEqual({ data: {}, body: raw });
   });
 
-  it("ignores blank and separator-less lines inside the block", () => {
+  it("allows blank lines between pairs inside the block", () => {
+    const raw = "---\na: 1\n\nb: 2\n---\nbody";
+
+    expect(parseFrontmatter(raw).data).toStrictEqual({ a: "1", b: "2" });
+  });
+
+  it("keeps the whole file as body when a block has a non-`key: value` line", () => {
+    // A stray prose line inside the fence means it's a thematic break wrapping
+    // content, not frontmatter. Parsing the pairs and dropping the prose would
+    // silently lose it (and a re-serialize would make that permanent), so the
+    // whole document stays in the body.
     const raw = "---\n\nkey: value\nnot a pair\n---\nbody";
 
-    expect(parseFrontmatter(raw).data).toStrictEqual({ key: "value" });
+    expect(parseFrontmatter(raw)).toStrictEqual({ data: {}, body: raw });
+  });
+
+  it("keeps a block with a non-identifier key (e.g. a bare URL) as body", () => {
+    // "See https://example.com" splits at the "https:" colon into the key
+    // "See https", which has a space — not an identifier, so it's content.
+    const raw = "---\n\nSee https://example.com for details\n\n---\n\nbody";
+
+    expect(parseFrontmatter(raw)).toStrictEqual({ data: {}, body: raw });
+  });
+
+  it("keeps an all-blank fenced block as body (thematic break)", () => {
+    const raw = "---\n\n---\n\nbody";
+
+    expect(parseFrontmatter(raw)).toStrictEqual({ data: {}, body: raw });
   });
 
   it("keeps content when a leading --- is a thematic break, not frontmatter", () => {
