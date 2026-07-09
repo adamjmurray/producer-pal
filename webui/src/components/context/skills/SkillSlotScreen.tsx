@@ -113,7 +113,7 @@ export function SkillSlotScreen(
             overrideLabel="Your override"
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
-            onReset={() => void editor.handleClear()}
+            onReset={editor.handleClear}
             onCustomize={() => void editor.handleImport(slot.builtIn)}
             onChange={editor.handleChange}
             onBlur={editor.handleBlur}

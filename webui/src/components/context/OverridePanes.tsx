@@ -37,9 +37,11 @@ interface OverridePanesProps {
   /**
    * Reset the override back to the built-in (deletes the override). The button
    * lives in the revealed built-in header, shown only in override mode
-   * (`hasOverride`).
+   * (`hasOverride`). Resolves whether the reset actually happened (`false`
+   * when the user cancels its confirm), so the reveal only collapses on an
+   * actual reset.
    */
-  onReset: () => void;
+  onReset: () => Promise<boolean>;
   /**
    * Fork the built-in into an editable override (the "Customize" action shown
    * while there is no override yet). Persists the built-in as the starting
@@ -130,10 +132,13 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  onToggleBuiltIn(false);
-                  onReset();
-                }}
+                onClick={() =>
+                  // Collapse the reveal only when the reset actually happened
+                  // — cancelling its confirm must leave the comparison open.
+                  void onReset().then((ok) => {
+                    if (ok) onToggleBuiltIn(false);
+                  })
+                }
                 className="text-xs text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
               >
                 Reset to default

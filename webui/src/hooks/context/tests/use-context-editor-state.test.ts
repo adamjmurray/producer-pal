@@ -241,7 +241,7 @@ describe("useContextEditorState", () => {
       expect(clear).not.toHaveBeenCalled();
 
       // Fire Clear. Promise stays pending until we resolve the save below.
-      let clearPromise: Promise<void> | null = null;
+      let clearPromise: Promise<boolean> | null = null;
 
       await act(() => {
         clearPromise = result.current.handleClear();
@@ -269,7 +269,8 @@ describe("useContextEditorState", () => {
       vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
 
       await act(async () => {
-        await result.current.handleClear();
+        // Resolves true so callers (OverridePanes) collapse the reveal.
+        await expect(result.current.handleClear()).resolves.toBe(true);
       });
 
       expect(clear).toHaveBeenCalledTimes(1);
@@ -284,7 +285,8 @@ describe("useContextEditorState", () => {
       vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
 
       await act(async () => {
-        await result.current.handleClear();
+        // Resolves false so callers (OverridePanes) keep the reveal open.
+        await expect(result.current.handleClear()).resolves.toBe(false);
       });
 
       expect(clear).not.toHaveBeenCalled();

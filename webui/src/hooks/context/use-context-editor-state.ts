@@ -58,8 +58,14 @@ export interface UseContextEditorStateReturn {
   handleChange: (value: string) => void;
   /** Editor `onBlur` handler — flushes any pending save immediately. */
   handleBlur: () => void;
-  /** Confirms with the user, then clears memory after any in-flight save. */
-  handleClear: () => Promise<void>;
+  /**
+   * Confirms with the user, then clears memory after any in-flight save.
+   * Resolves whether the clear actually happened (`false` when the user
+   * cancels the confirm or the POST fails), so callers can gate follow-up UI
+   * changes — e.g. OverridePanes only collapses the built-in reveal on an
+   * actual reset.
+   */
+  handleClear: () => Promise<boolean>;
   /** Adopts the server's current content and remounts the editor. */
   handleReload: () => void;
   /**
@@ -258,11 +264,11 @@ export function useContextEditorState(
     flushSave();
   }, [flushSave]);
 
-  const handleClear = useCallback(async (): Promise<void> => {
-    if (memory.status.kind !== "ready") return;
+  const handleClear = useCallback(async (): Promise<boolean> => {
+    if (memory.status.kind !== "ready") return false;
 
     if (!window.confirm(clearConfirmMessage)) {
-      return;
+      return false;
     }
 
     // Reset draft markers so a pending debounced save doesn't echo the old
@@ -296,6 +302,8 @@ export function useContextEditorState(
       // The override is gone — revert to the built-in "Customize" view.
       setHasOverride(false);
     }
+
+    return ok;
   }, [memory, clearConfirmMessage]);
 
   const handleReload = useCallback((): void => {

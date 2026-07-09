@@ -267,6 +267,33 @@ describe("SkillsScreen", () => {
     });
   });
 
+  it("keeps the built-in revealed and the override intact when the reset is cancelled", async () => {
+    // Regression: cancelling the reset confirm used to still collapse the
+    // built-in reveal, as if the reset had gone through.
+    const resetSlot = vi.fn().mockResolvedValue(true);
+
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+
+    render(
+      <SkillsScreen
+        overrides={overrides(
+          { kind: "ready", slots: [slot({ override: "MINE" })] },
+          { resetSlot },
+        )}
+        tabSlot={TAB_SLOT}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Show built-in"));
+    fireEvent.click(screen.getByText("Reset to default"));
+
+    await waitFor(() => {
+      expect(resetSlot).not.toHaveBeenCalled();
+    });
+    // The comparison view stays open — nothing was reset.
+    expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
+  });
+
   it("autosaves the override on edit + blur", async () => {
     const saveSlot = vi.fn().mockResolvedValue(true);
 

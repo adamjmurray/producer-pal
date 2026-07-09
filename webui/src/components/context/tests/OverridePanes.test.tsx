@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { OverridePanes } from "#webui/components/context/OverridePanes";
 
@@ -29,7 +29,7 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
  */
 function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
   const onToggleBuiltIn = vi.fn();
-  const onReset = vi.fn();
+  const onReset = vi.fn().mockResolvedValue(true);
   const onCustomize = vi.fn();
   const result = render(
     <OverridePanes
@@ -112,15 +112,33 @@ describe("OverridePanes", () => {
     expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
   });
 
-  it("resets and collapses the built-in when Reset to default is clicked", () => {
+  it("resets and collapses the built-in when Reset to default is clicked", async () => {
     const { onReset, onToggleBuiltIn } = renderPanes({ showBuiltIn: true });
 
     fireEvent.click(screen.getByText("Reset to default"));
 
     expect(onReset).toHaveBeenCalledOnce();
     // Collapsing the reveal returns the parent to single-column width for the
-    // built-in-only view that follows the reset.
-    expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
+    // built-in-only view that follows the reset. It waits for the reset to
+    // actually happen (onReset resolves true).
+    await waitFor(() => {
+      expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("keeps the built-in revealed when the reset is cancelled", async () => {
+    // Regression: the collapse used to fire unconditionally BEFORE onReset,
+    // so cancelling the reset's confirm dialog still closed the comparison
+    // view even though nothing was reset.
+    const onReset = vi.fn().mockResolvedValue(false);
+    const { onToggleBuiltIn } = renderPanes({ showBuiltIn: true, onReset });
+
+    fireEvent.click(screen.getByText("Reset to default"));
+
+    expect(onReset).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(onToggleBuiltIn).not.toHaveBeenCalled();
+    });
   });
 
   it("keeps the editable pane mounted when the override is edited to empty", () => {

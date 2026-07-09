@@ -134,7 +134,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           hasOverride={editor.hasOverride}
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
-          onReset={() => void editor.handleClear()}
+          onReset={editor.handleClear}
           onCustomize={() => void editor.handleImport(labels.builtIn ?? "")}
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
@@ -369,7 +369,8 @@ interface ContextBodyProps {
   hasOverride: boolean;
   externalUpdate: boolean;
   onReload: () => void;
-  onReset: () => void;
+  /** See {@link OverridePanes}: resolves whether the reset actually happened. */
+  onReset: () => Promise<boolean>;
   onCustomize: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
