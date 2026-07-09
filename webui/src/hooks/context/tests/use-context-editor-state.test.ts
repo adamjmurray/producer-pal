@@ -381,6 +381,67 @@ describe("useContextEditorState", () => {
     });
   });
 
+  describe("hasOverride latch", () => {
+    it("seeds true when the slot has stored content, false when empty", () => {
+      expect(renderEditor(makeReady("stored")).result.current.hasOverride).toBe(
+        true,
+      );
+      expect(renderEditor(makeReady("")).result.current.hasOverride).toBe(
+        false,
+      );
+    });
+
+    it("stays true when the override is edited down to empty (latched, not derived)", async () => {
+      const { result } = renderEditor(makeReady("stored"));
+
+      expect(result.current.hasOverride).toBe(true);
+
+      await act(() => {
+        result.current.handleChange("");
+      });
+
+      // Editing to empty must NOT collapse the editable pane — hasOverride holds.
+      expect(result.current.hasOverride).toBe(true);
+    });
+
+    it("flips false after a successful Clear (revert to the built-in view)", async () => {
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      const { result } = renderEditor(makeReady("stored"));
+
+      await act(async () => {
+        await result.current.handleClear();
+      });
+
+      expect(result.current.hasOverride).toBe(false);
+    });
+
+    it("flips true after Customize/import forks the built-in", async () => {
+      const { result } = renderEditor(makeReady(""));
+
+      expect(result.current.hasOverride).toBe(false);
+
+      await act(async () => {
+        await result.current.handleImport("BUILT-IN DEFAULT");
+      });
+
+      expect(result.current.hasOverride).toBe(true);
+    });
+
+    it("reflects the adopted content on Reload (external clear ⇒ built-in view)", async () => {
+      const { result, setMemory } = renderEditor(makeReady("stored"));
+
+      expect(result.current.hasOverride).toBe(true);
+
+      // An external clear lands (server content now ""); the user Reloads.
+      setMemory(makeReady(""));
+      await act(() => {
+        result.current.handleReload();
+      });
+
+      expect(result.current.hasOverride).toBe(false);
+    });
+  });
+
   describe("import", () => {
     it("imports into an empty editor without confirming, saves, and remounts", async () => {
       const save = vi.fn().mockResolvedValue(true);

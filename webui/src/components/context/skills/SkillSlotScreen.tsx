@@ -107,6 +107,7 @@ export function SkillSlotScreen(
         >
           <OverridePanes
             editorKey={editor.editorKey}
+            hasOverride={editor.hasOverride}
             value={slot.override}
             builtIn={slot.builtIn}
             overrideLabel="Your override"

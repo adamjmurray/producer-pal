@@ -115,6 +115,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         widthClass={widthClass}
         charCount={editor.charCount}
         builtIn={labels.builtIn}
+        hasOverride={editor.hasOverride}
         onClear={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
@@ -130,6 +131,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           onToggleBuiltIn={setShowBuiltIn}
           widthClass={widthClass}
           editorKey={editor.editorKey}
+          hasOverride={editor.hasOverride}
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
           onReset={() => void editor.handleClear()}
@@ -243,6 +245,13 @@ interface ContextControlsProps {
    * on screen rather than the empty override.
    */
   builtIn?: string;
+  /**
+   * Whether the slot has an override (latched; see `useContextEditorState`). In
+   * override mode the size readout reflects the draft; otherwise it shows the
+   * built-in that's on screen. Latched so editing the override to empty doesn't
+   * flip the readout to "Built-in" mid-edit.
+   */
+  hasOverride: boolean;
   onClear: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -263,13 +272,15 @@ function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
   const { status, description, widthClass, charCount, builtIn } = props;
-  const { onClear, onImport, onExport } = props;
+  const { hasOverride, onClear, onImport, onExport } = props;
 
   if (status.kind !== "ready") return null;
 
   // With a built-in default and no override yet, the strip's size readout must
   // reflect the built-in that's actually on screen (not the empty override).
-  const builtInShown = builtIn != null && status.content === "";
+  // Keyed off the latched override flag, NOT live content, so editing an
+  // override to empty doesn't momentarily flip the readout to "Built-in".
+  const builtInShown = builtIn != null && !hasOverride;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
@@ -355,6 +366,7 @@ interface ContextBodyProps {
   onToggleBuiltIn: (show: boolean) => void;
   widthClass: string;
   editorKey: number;
+  hasOverride: boolean;
   externalUpdate: boolean;
   onReload: () => void;
   onReset: () => void;
@@ -384,6 +396,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     onToggleBuiltIn,
     widthClass,
     editorKey,
+    hasOverride,
     externalUpdate,
     onReload,
     onReset,
@@ -426,6 +439,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
         {builtIn != null ? (
           <OverridePanes
             editorKey={editorKey}
+            hasOverride={hasOverride}
             value={status.content}
             builtIn={builtIn}
             overrideLabel={overridePaneLabel ?? "Your override"}

@@ -10,7 +10,17 @@ import { MarkdownEditor } from "./MarkdownEditor";
 interface OverridePanesProps {
   /** Remount key for the uncontrolled editor (bumped on reset/reload). */
   editorKey: number;
-  /** The editable override body (empty when the slot tracks the built-in). */
+  /**
+   * Whether the slot is in "override" mode (see `useContextEditorState`). Drives
+   * the editable-vs-built-in structure — LATCHED, not derived from `value`, so
+   * editing the override down to empty doesn't collapse the editable pane.
+   */
+  hasOverride: boolean;
+  /**
+   * The editor's seed content for the editable pane. Only read at (re)mount
+   * (the editor is uncontrolled, keyed by `editorKey`); the structural branch
+   * uses `hasOverride`, never this.
+   */
   value: string;
   /** The read-only built-in reference shown alongside the override. */
   builtIn: string;
@@ -26,8 +36,8 @@ interface OverridePanesProps {
   onToggleBuiltIn: (show: boolean) => void;
   /**
    * Reset the override back to the built-in (deletes the override). The button
-   * lives in the revealed built-in header and only shows when there's an
-   * override to discard (`value !== ""`).
+   * lives in the revealed built-in header, shown only in override mode
+   * (`hasOverride`).
    */
   onReset: () => void;
   /**
@@ -45,7 +55,7 @@ interface OverridePanesProps {
 /**
  * Editor body for a document that overrides a shipped default, in two states:
  *
- * - **No override yet** (`value === ""`): shows only the built-in default,
+ * - **No override yet** (`!hasOverride`): shows only the built-in default,
  *   read-only, with a "Customize" button that forks it into an editable
  *   override. The default is the content worth showing when there's nothing to
  *   edit, and nothing extra is on screen.
@@ -60,11 +70,11 @@ interface OverridePanesProps {
  * @returns Panes element
  */
 export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
-  const { editorKey, value, builtIn, overrideLabel } = props;
+  const { editorKey, hasOverride, value, builtIn, overrideLabel } = props;
   const { showBuiltIn, onToggleBuiltIn, onReset, onCustomize } = props;
   const { onChange, onBlur } = props;
 
-  if (value === "") {
+  if (!hasOverride) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-1">
         <div className="flex items-center justify-between h-5 gap-3">

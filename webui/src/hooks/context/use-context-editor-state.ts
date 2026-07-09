@@ -44,6 +44,16 @@ export interface UseContextEditorStateReturn {
    * linger after the user has typed more.
    */
   dirty: boolean;
+  /**
+   * `true` when this slot is in "override" mode — it had stored content at
+   * load, or the user forked the built-in (Customize) / imported a file — and
+   * stays true until an explicit Reset. Drives the OverridePanes editable-vs-
+   * built-in structure, LATCHED rather than derived from live content: editing
+   * an override down to empty (or a debounced `save("")` echo) must not unmount
+   * the editable pane mid-edit and drop the next keystrokes. Only meaningful
+   * for documents with a built-in default; plain context tabs ignore it.
+   */
+  hasOverride: boolean;
   /** Editor `onChange` handler — updates the draft and debounces a save. */
   handleChange: (value: string) => void;
   /** Editor `onBlur` handler — flushes any pending save immediately. */
@@ -105,6 +115,10 @@ export function useContextEditorState(
   // Drives the "Editing…" indicator so "Saved" doesn't linger after the
   // user has typed more in the debounce window between save and re-save.
   const [dirty, setDirty] = useState(false);
+  // True when the slot is in "override" mode (see the return-type doc). Latched
+  // at the seed/lifecycle points — NOT derived from live content — so editing an
+  // override down to empty doesn't structurally collapse the editable pane.
+  const [hasOverride, setHasOverride] = useState(false);
   // Live character count of the draft (draftRef is a ref, so a separate piece
   // of reactive state drives the size readout). Kept in sync at every point
   // draftRef changes: seed-on-ready, keystroke, Clear, Reload.
@@ -119,6 +133,8 @@ export function useContextEditorState(
     draftRef.current = memory.status.content;
     lastSavedRef.current = memory.status.content;
     setCharCount(memory.status.content.length);
+    // Decide override-vs-built-in structure from the seed content, once.
+    setHasOverride(memory.status.content !== "");
   }, [memory.status]);
 
   // Null the draft markers on transition to error. Without this, a recovery
@@ -275,7 +291,11 @@ export function useContextEditorState(
     // re-seed with the pre-clear content and the next edit would save it back.
     const ok = await memory.clear();
 
-    if (ok) setEditorKey((k) => k + 1);
+    if (ok) {
+      setEditorKey((k) => k + 1);
+      // The override is gone — revert to the built-in "Customize" view.
+      setHasOverride(false);
+    }
   }, [memory, clearConfirmMessage]);
 
   const handleReload = useCallback((): void => {
@@ -288,6 +308,9 @@ export function useContextEditorState(
     setExternalUpdate(false);
     setDirty(false);
     setCharCount(memory.status.content.length);
+    // Re-decide structure from the adopted server content (an external clear
+    // reverts to the built-in view; adopted content keeps the editable pane).
+    setHasOverride(memory.status.content !== "");
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
     setEditorKey((k) => k + 1);
@@ -323,7 +346,11 @@ export function useContextEditorState(
 
       const ok = await memory.save(content);
 
-      if (ok) setEditorKey((k) => k + 1);
+      if (ok) {
+        setEditorKey((k) => k + 1);
+        // Imported/forked content means the slot now overrides the built-in.
+        setHasOverride(true);
+      }
     },
     [memory],
   );
@@ -362,6 +389,7 @@ export function useContextEditorState(
     editorKey,
     externalUpdate,
     dirty,
+    hasOverride,
     handleChange,
     handleBlur,
     handleClear,

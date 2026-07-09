@@ -34,6 +34,7 @@ function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
   const result = render(
     <OverridePanes
       editorKey={0}
+      hasOverride={true}
       value="MY OVERRIDE"
       builtIn="SHIPPED DEFAULT"
       overrideLabel="Your override"
@@ -122,9 +123,25 @@ describe("OverridePanes", () => {
     expect(onToggleBuiltIn).toHaveBeenCalledWith(false);
   });
 
+  it("keeps the editable pane mounted when the override is edited to empty", () => {
+    // Regression: the structural branch used to key off `value` (server
+    // content), so editing an override down to "" — or a debounced save("")
+    // echo — unmounted the editable pane mid-edit and dropped the next
+    // keystrokes. `hasOverride` is latched, so an empty draft stays editable.
+    renderPanes({ value: "", hasOverride: true });
+
+    expect(screen.getByText("Your override")).toBeTruthy();
+    const editors = screen.getAllByTestId("editor");
+
+    // A single editable pane (built-in hidden), NOT the read-only built-in.
+    expect(editors).toHaveLength(1);
+    expect(editors[0]?.getAttribute("data-readonly")).toBe("false");
+    expect(screen.queryByText("Customize")).toBeNull();
+  });
+
   describe("no override yet", () => {
     it("shows only the built-in default with a Customize button", () => {
-      renderPanes({ value: "" });
+      renderPanes({ value: "", hasOverride: false });
 
       // The built-in is the sole content, read-only; no editable pane or its
       // reveal affordance is shown.
@@ -140,7 +157,7 @@ describe("OverridePanes", () => {
     });
 
     it("forks the built-in into an override when Customize is clicked", () => {
-      const { onCustomize } = renderPanes({ value: "" });
+      const { onCustomize } = renderPanes({ value: "", hasOverride: false });
 
       fireEvent.click(screen.getByText("Customize"));
 
