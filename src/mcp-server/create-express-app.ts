@@ -25,7 +25,6 @@ import { withGlobalContext } from "./helpers/global-context/global-context-injec
 import { withMemory } from "./helpers/memory/memory-inject.ts";
 import { rejectCrossOriginWrite } from "./helpers/request-origin.ts";
 import { revealConfigDir } from "./helpers/reveal-config-dir.ts";
-import { withCustomSkills } from "./helpers/skills-custom/custom-skills-inject.ts";
 import { withSkills } from "./helpers/skills-inject.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -150,18 +149,15 @@ function applyLiveApiEnabled(next: boolean): void {
 
 // Enrich ppal-connect Node-side: withSkills appends the (override-aware) skills
 // blob, withGlobalContext appends the machine-global context, withMemory appends
-// the indexed user memory, withCustomSkills appends the user's custom-skills
-// index. All read the filesystem, which only Node can do — V8's connect() no
-// longer builds skills. Blocks appear in inner-to-outer order: skills, then
-// global context, memory, then the custom-skills index.
-const callLiveApiEnriched = withCustomSkills(
-  withMemory(
-    withGlobalContext(
-      withSkills(callLiveApi, () => ({
-        notation: config.notation,
-        smallModelMode: config.smallModelMode,
-      })),
-    ),
+// the indexed user memory. All read the filesystem, which only Node can do —
+// V8's connect() no longer builds skills. Blocks appear in inner-to-outer
+// order: skills, then global context, then memory.
+const callLiveApiEnriched = withMemory(
+  withGlobalContext(
+    withSkills(callLiveApi, () => ({
+      notation: config.notation,
+      smallModelMode: config.smallModelMode,
+    })),
   ),
 );
 

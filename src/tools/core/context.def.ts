@@ -9,16 +9,12 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
   description:
-    "Read or write user context/memory/skills.\n" +
+    "Read or write user context/memory.\n" +
     "scope=project (default): facts about THIS Live Set (single blob). " +
     "scope=global (~/.producer-pal): cross-project user memory.\n" +
     "Global actions: read (name → one memory; no name → pinned context.md), " +
     "write (replace context.md), remember (save/update a memory: name+type+content), " +
     "forget (delete by name), list (the memory index).\n" +
-    "scope=skills (~/.producer-pal): user-authored skills (instruction packs) " +
-    "loaded on demand. Actions: read (name → a skill's instructions), " +
-    "remember (save/update: name+content+description), forget, list. " +
-    "Create or edit a skill only when the user asks.\n" +
     "Reuse an existing name to UPDATE, not duplicate. One fact per memory. " +
     "write/remember/forget are destructive — read the same scope first.",
 
@@ -33,10 +29,10 @@ export const toolDefContext = defineTool("ppal-context", {
       .describe("read | write | remember | forget | list"),
 
     scope: z
-      .enum(["project", "global", "skills"])
+      .enum(["project", "global"])
       .optional()
       .describe(
-        "project (default): this Live Set | global: user memory & context | skills: user-authored skills",
+        "project (default): this Live Set | global: user memory & context",
       ),
 
     content: z
@@ -52,7 +48,7 @@ export const toolDefContext = defineTool("ppal-context", {
       .max(200)
       .optional()
       .describe(
-        "entry name (read one, remember, forget — global memory & skills scopes)",
+        "entry name (read one, remember, forget — global memory scope)",
       ),
 
     type: z

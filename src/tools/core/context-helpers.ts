@@ -141,72 +141,10 @@ export async function handleWriteGlobalMemory(
 }
 
 /**
- * Read one custom skill's instruction body by name (global scope:skills), over
- * the RPC bridge.
- *
- * @param name - The skill name/slug to read
- * @returns Memory result with the skill body, or a not-found note
- */
-export async function handleReadSkill(name: string): Promise<MemoryResult> {
-  return await callNodeMemoryRoute("skills.read", { name });
-}
-
-/**
- * Create or overwrite a custom skill, then re-derive the index. The Node side
- * owns slug validation, the enabled flag, and index regeneration. Authoring is
- * user-driven, so this runs only when the user asks the assistant to save a
- * skill.
- *
- * @param args - The skill to store
- * @param args.name - Desired skill name (slugified Node-side)
- * @param args.description - One-line "load me when…" hook (optional)
- * @param args.content - The instruction body
- * @returns Memory result with the regenerated index
- */
-export async function handleRememberSkill(args: {
-  name?: string;
-  description?: string;
-  content?: string;
-}): Promise<MemoryResult> {
-  if (!args.name) throw new Error("name required for remember action");
-  if (!args.content) throw new Error("content required for remember action");
-
-  return await callNodeMemoryRoute("skills.remember", {
-    name: args.name,
-    description: args.description ?? "",
-    content: args.content,
-  });
-}
-
-/**
- * Delete a custom skill (if present), then re-derive the index.
- *
- * @param name - The skill name/slug to delete
- * @returns Memory result with the regenerated index
- */
-export async function handleForgetSkill(
-  name: string | undefined,
-): Promise<MemoryResult> {
-  if (!name) throw new Error("name required for forget action");
-
-  return await callNodeMemoryRoute("skills.forget", { name });
-}
-
-/**
- * List the derived custom-skills index (already injected on connect; this is an
- * explicit refresh).
- *
- * @returns Memory result with the current index
- */
-export async function handleListSkills(): Promise<MemoryResult> {
-  return await callNodeMemoryRoute("skills.list", {});
-}
-
-/**
- * Invoke a Node-side global context/memory/skills route and unwrap the response,
+ * Invoke a Node-side global context/memory route and unwrap the response,
  * throwing on failure so the MCP error path renders a clean message instead of
- * leaking the RPC envelope shape to the LLM. Shared by the pinned-context,
- * indexed-memory, and custom-skills routes (all return a `{ content }` payload).
+ * leaking the RPC envelope shape to the LLM. Shared by the pinned-context and
+ * indexed-memory routes (both return a `{ content }` payload).
  *
  * @param route - Route name registered on the Node side
  * @param args - Arguments to pass to the route

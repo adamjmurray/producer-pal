@@ -31,10 +31,6 @@ export const coreBasic = `@include "./{notation}-basic.md"
 - **remember** who they are (\`user\`) or how to work with them (\`feedback\`); also \`goal\`/\`reference\`. Write a specific description — it's all you see until you read the memory.
 - Check the index first and reuse a name to UPDATE, not duplicate. One fact each. **forget** what's wrong.
 
-## Custom Skills
-
-The user may author skills (instruction packs), shown as an index (name + description) on connect. When one fits the task, load it: \`ppal-context\` action:read, scope:skills, name:<name>, then follow it. Save or delete a skill only when the user asks (action:remember/forget, scope:skills).
-
 ## Rules
 
 - Set clip length explicitly: \`4bar\`, \`1bar\`, \`n/4\`.
