@@ -58,7 +58,10 @@ export function registerConfigMarkdownRoute(
       return;
     }
 
-    const content = (req.body as { content?: unknown }).content;
+    // req.body is undefined when the request carries no JSON body (e.g. a
+    // missing Content-Type: application/json), so guard before dereferencing —
+    // otherwise it TypeErrors into a 500 instead of the intended 400.
+    const content = (req.body as { content?: unknown } | undefined)?.content;
 
     if (typeof content !== "string") {
       res.status(400).json({ error: "content must be a string" });

@@ -95,6 +95,16 @@ describe("global-context route", () => {
     expect(body.error).toContain("content must be a string");
   });
 
+  it("PUT rejects a request with no JSON body with 400, not 500", async () => {
+    // No Content-Type: application/json → express leaves req.body undefined;
+    // the handler must 400 (bad request) rather than TypeError into a 500.
+    const res = await fetch(url, { method: "PUT" });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toContain("content must be a string");
+  });
+
   it("PUT rejects a genuinely cross-site browser write with 403", async () => {
     const res = await putContext(
       { content: "blocked" },
