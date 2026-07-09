@@ -109,3 +109,71 @@ describe("CustomSkillEditor delete confirmation", () => {
     expect(onDeleted).not.toHaveBeenCalled();
   });
 });
+
+describe("CustomSkillEditor external update banner", () => {
+  const BANNER_TEXT =
+    "This skill was changed elsewhere (another tab or a hand edit).";
+
+  it("appears when the entry prop changes externally while the draft is clean, and Reload re-seeds it", () => {
+    const collection = stubCollection(vi.fn());
+    const { rerender } = render(
+      <CustomSkillEditor
+        collection={collection}
+        entry={ENTRY}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+
+    rerender(
+      <CustomSkillEditor
+        collection={collection}
+        entry={{ ...ENTRY, enabled: false, body: "Voice with 9ths now." }}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+
+    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+    expect(
+      screen.getByRole("textbox", { name: /Instructions/ }),
+    ).toHaveProperty("value", "Voice with 9ths now.");
+    expect(screen.getByRole("checkbox", { name: /Enabled/ })).toHaveProperty(
+      "checked",
+      false,
+    );
+  });
+
+  it("stays suppressed while the user is typing (dirty draft)", () => {
+    const collection = stubCollection(vi.fn());
+    const { rerender } = render(
+      <CustomSkillEditor
+        collection={collection}
+        entry={ENTRY}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Instructions/ }), {
+      target: { value: "Still editing this myself." },
+    });
+
+    rerender(
+      <CustomSkillEditor
+        collection={collection}
+        entry={{ ...ENTRY, body: "Voice with 9ths now." }}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+  });
+});

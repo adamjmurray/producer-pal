@@ -10,6 +10,7 @@ import {
   EditorFooter,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
+import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
 import {
   type MemoryEntryView,
@@ -34,7 +35,9 @@ interface MemoryEntryEditorProps {
  * change. Autosaves so a draft is never lost on close/switch: idle-debounced for
  * an existing entry and flushed on unmount; a new entry persists on close (its
  * explicit Create button forks it into an existing entry). The list still polls
- * for the assistant's own writes.
+ * for the assistant's own writes, surfacing a Reload banner when this entry
+ * changed elsewhere (the assistant's own context tool, another tab) while the
+ * draft here is clean.
  * @param props - Editor props
  * @returns Editor element
  */
@@ -58,18 +61,24 @@ export function MemoryEntryEditor(
   const doSave = (): Promise<MemoryEntryView | null> =>
     collection.saveEntry(targetName, { description, content: body }, isNew);
 
-  const { noteSaved } = useCollectionEntryAutosave({
-    canSave,
-    draftKey: JSON.stringify([targetName, description, body]),
-    autosaveOnIdle: !isNew,
-    persist: async () => (await doSave()) != null,
-  });
+  const { noteSaved, externalUpdate, adoptExternal } =
+    useCollectionEntryAutosave({
+      canSave,
+      draftKey: memoryEntryKey({ name: targetName, description, body }),
+      autosaveOnIdle: !isNew,
+      persist: async () => {
+        const saved = await doSave();
+
+        return saved ? memoryEntryKey(saved) : null;
+      },
+      externalKey: entry != null ? memoryEntryKey(entry) : undefined,
+    });
 
   const handleSave = async (): Promise<void> => {
     const saved = await doSave();
 
     if (saved) {
-      noteSaved();
+      noteSaved(memoryEntryKey(saved));
       onSaved(saved.name);
     }
   };
@@ -84,8 +93,27 @@ export function MemoryEntryEditor(
     if (await collection.deleteEntry(entry.name)) onDeleted();
   };
 
+  // Adopt the server's current fields as the new draft AND advance the
+  // autosave baseline. Order matters: adoptExternal reads externalKey off a
+  // ref that isn't affected by these setState calls, so it's safe to call
+  // after them (see the hook's adoptExternal doc for why the analogous
+  // noteSaved-after-setState order would be unsafe).
+  const handleReload = (): void => {
+    if (entry == null) return;
+    setName(entry.name);
+    setDescription(entry.description);
+    setBody(entry.body);
+    adoptExternal();
+  };
+
   return (
     <div className="flex flex-col gap-3 min-h-0 flex-1 overflow-y-auto p-4">
+      {externalUpdate && (
+        <ExternalUpdateBanner
+          message="This memory was changed elsewhere (the assistant or another tab)."
+          onReload={handleReload}
+        />
+      )}
       <NameField
         isNew={isNew}
         name={name}
@@ -110,4 +138,25 @@ export function MemoryEntryEditor(
       />
     </div>
   );
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Serialize a memory entry's persisted fields into one comparable key, used as
+ * both the autosave `draftKey` (the local form fields) and `externalKey` (the
+ * live `entry` prop) — the identical shape is what makes them comparable for
+ * external-update detection.
+ * @param fields - The entry's persisted fields
+ * @param fields.name - The entry's slug
+ * @param fields.description - The one-line recall hook
+ * @param fields.body - The markdown body
+ * @returns A stable, order-sensitive serialization of the three fields
+ */
+function memoryEntryKey(fields: {
+  name: string;
+  description: string;
+  body: string;
+}): string {
+  return JSON.stringify([fields.name, fields.description, fields.body]);
 }

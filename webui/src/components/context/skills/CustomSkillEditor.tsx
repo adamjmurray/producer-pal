@@ -10,6 +10,7 @@ import {
   EditorFooter,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
+import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import {
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
@@ -34,7 +35,8 @@ interface CustomSkillEditorProps {
  * entry in the parent so the draft re-seeds on selection change. Autosaves so a
  * draft is never lost on close/switch: idle-debounced for an existing skill and
  * flushed on unmount; a new skill persists on close (its explicit Create button
- * forks it into an existing skill).
+ * forks it into an existing skill). Surfaces a Reload banner when this skill
+ * changed elsewhere (a hand edit, another tab) while the draft here is clean.
  * @param props - Editor props
  * @returns Editor element
  */
@@ -61,18 +63,29 @@ export function CustomSkillEditor(
       isNew,
     );
 
-  const { noteSaved } = useCollectionEntryAutosave({
-    canSave,
-    draftKey: JSON.stringify([targetName, description, enabled, body]),
-    autosaveOnIdle: !isNew,
-    persist: async () => (await doSave()) != null,
-  });
+  const { noteSaved, externalUpdate, adoptExternal } =
+    useCollectionEntryAutosave({
+      canSave,
+      draftKey: customSkillKey({
+        name: targetName,
+        description,
+        enabled,
+        body,
+      }),
+      autosaveOnIdle: !isNew,
+      persist: async () => {
+        const saved = await doSave();
+
+        return saved ? customSkillKey(saved) : null;
+      },
+      externalKey: entry != null ? customSkillKey(entry) : undefined,
+    });
 
   const handleSave = async (): Promise<void> => {
     const saved = await doSave();
 
     if (saved) {
-      noteSaved();
+      noteSaved(customSkillKey(saved));
       onSaved(saved.name);
     }
   };
@@ -89,8 +102,27 @@ export function CustomSkillEditor(
     if (await collection.deleteEntry(entry.name)) onDeleted();
   };
 
+  // Adopt the server's current fields as the new draft AND advance the
+  // autosave baseline. See MemoryEntryEditor's handleReload for why calling
+  // adoptExternal AFTER these setState calls is safe (it reads externalKey off
+  // a ref unaffected by them), unlike noteSaved.
+  const handleReload = (): void => {
+    if (entry == null) return;
+    setName(entry.name);
+    setDescription(entry.description);
+    setEnabled(entry.enabled);
+    setBody(entry.body);
+    adoptExternal();
+  };
+
   return (
     <div className="flex flex-col gap-3 min-h-0 flex-1 overflow-y-auto p-4">
+      {externalUpdate && (
+        <ExternalUpdateBanner
+          message="This skill was changed elsewhere (another tab or a hand edit)."
+          onReload={handleReload}
+        />
+      )}
       <NameField
         isNew={isNew}
         name={name}
@@ -132,4 +164,32 @@ export function CustomSkillEditor(
       />
     </div>
   );
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Serialize a custom skill's persisted fields into one comparable key, used as
+ * both the autosave `draftKey` (the local form fields) and `externalKey` (the
+ * live `entry` prop) — the identical shape is what makes them comparable for
+ * external-update detection.
+ * @param fields - The skill's persisted fields
+ * @param fields.name - The skill's slug
+ * @param fields.description - The one-line "load me when…" hook
+ * @param fields.enabled - Whether the skill is offered to the assistant
+ * @param fields.body - The instruction body
+ * @returns A stable, order-sensitive serialization of the four fields
+ */
+function customSkillKey(fields: {
+  name: string;
+  description: string;
+  enabled: boolean;
+  body: string;
+}): string {
+  return JSON.stringify([
+    fields.name,
+    fields.description,
+    fields.enabled,
+    fields.body,
+  ]);
 }

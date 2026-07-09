@@ -190,19 +190,57 @@ export interface CollectionEntryAutosaveParams {
   autosaveOnIdle: boolean;
   /**
    * Persist the current draft — saveEntry ONLY, no navigation (`onSaved`), which
-   * would fight the user's selection when this fires on unmount. Resolves true
-   * on success so a failed save is retried on the next change or close.
+   * would fight the user's selection when this fires on unmount. Resolves the
+   * server's echo, serialized in the SAME shape as `draftKey`/`externalKey`
+   * (e.g. `JSON.stringify([saved.name, saved.description, saved.body])`), on
+   * success, or null on failure so a failed save is retried on the next change
+   * or close. The echo (not the sent draft) becomes the new baseline: the
+   * server may normalize fields (slugified name, trimmed body,
+   * whitespace-collapsed description), so seeding the baseline from what was
+   * SENT would make the very next external-update comparison mistake our own
+   * echo for a foreign write.
    */
-  persist: () => Promise<boolean>;
+  persist: () => Promise<string | null>;
+  /**
+   * Serialization of the live entry prop's persisted fields, in the SAME shape
+   * as `draftKey` (e.g. `JSON.stringify([entry.name, entry.description,
+   * entry.body])`). Omitted in new-entry mode (`entry == null`) — there is no
+   * baseline yet to diverge from, so external-update detection stays off.
+   */
+  externalKey?: string;
 }
 
 /** The return of {@link useCollectionEntryAutosave}. */
 export interface CollectionEntryAutosaveReturn {
   /**
-   * Advance the autosave baseline to the current draft after an explicit manual
-   * save, so the unmount flush doesn't redundantly re-persist the same content.
+   * Advance the baseline to the save's echo (see `persist`'s doc) after an
+   * explicit manual save, so the unmount flush doesn't redundantly re-persist
+   * the same content and the next external-update comparison sees our own
+   * echo as in sync rather than a foreign write.
+   * @param echoKey - The saved entry's key, in the SAME shape as `draftKey`
    */
-  noteSaved: () => void;
+  noteSaved: (echoKey: string) => void;
+  /**
+   * True when the live entry prop has diverged from the baseline (the
+   * assistant's own context tool, or another tab, wrote to this entry while it
+   * was open) AND the draft is clean (`draftKey` === baseline). A dirty draft
+   * suppresses this — typing is an implicit last-write-wins choice, and the
+   * debounced autosave would clobber the external change within
+   * `AUTOSAVE_DEBOUNCE_MS` anyway, so there is nothing more to solve there.
+   * Always false in new-entry mode (no `externalKey`).
+   */
+  externalUpdate: boolean;
+  /**
+   * Adopt the live entry prop as the new baseline (the Reload button). Reads
+   * the current `externalKey` off a ref rather than a fresh closure: a caller
+   * that also re-seeds its local field state via `setState` in the same click
+   * handler hasn't run the ref-sync effect for THIS render yet (effects run
+   * after render, once), so a value read through `draftKeyRef` at that point
+   * would still be the PRE-reload draft. `externalKey` isn't affected by the
+   * caller's own re-seed (it derives from the `entry` prop, not local state),
+   * so reading it off the same ref is safe here.
+   */
+  adoptExternal: () => void;
 }
 
 /**
@@ -210,32 +248,39 @@ export interface CollectionEntryAutosaveReturn {
  * debounced idle save for existing entries plus a flush on unmount and on tab
  * close, so a draft is never lost when the overlay closes, the tab switches, or
  * the selected entry changes. Modeled on the document editors'
- * `useContextEditorState` flush logic. The explicit Save button owns navigation
+ * `useContextEditorState` flush logic, including its external-update detection:
+ * one shared baseline (`lastSavedRef`) drives both the dirty check (autosave
+ * arming) and the external-update banner, exactly as `useContextEditorState`
+ * does with its own `lastSavedRef`. The explicit Save button owns navigation
  * (new→edit) and calls {@link CollectionEntryAutosaveReturn.noteSaved} to keep
  * this baseline in sync so the unmount flush doesn't redundantly re-save.
  *
  * @param params - Draft state + the persist thunk
- * @returns The manual-save sync handle
+ * @returns The manual-save sync handle plus external-update state/adoption
  */
 export function useCollectionEntryAutosave(
   params: CollectionEntryAutosaveParams,
 ): CollectionEntryAutosaveReturn {
-  const { canSave, draftKey, autosaveOnIdle, persist } = params;
+  const { canSave, draftKey, autosaveOnIdle, persist, externalKey } = params;
   const canSaveRef = useRef(canSave);
   const draftKeyRef = useRef(draftKey);
   const persistRef = useRef(persist);
+  const externalKeyRef = useRef(externalKey);
   const lastSavedRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const seededRef = useRef(false);
+  const [externalUpdate, setExternalUpdate] = useState(false);
 
-  // Keep refs current so the flush callback (stable identity) sees the latest
-  // draft/persist. Synced in an effect (not during render) so we never write a
-  // ref while rendering; flush only ever runs later (timer, event, unmount).
+  // Keep refs current so the flush/adopt callbacks (stable identity) see the
+  // latest draft/persist/externalKey. Synced in an effect (not during render)
+  // so we never write a ref while rendering; these callbacks only ever run
+  // later (timer, event, unmount, click).
   useEffect(() => {
     canSaveRef.current = canSave;
     draftKeyRef.current = draftKey;
     persistRef.current = persist;
+    externalKeyRef.current = externalKey;
   });
 
   const flush = useCallback((): void => {
@@ -247,21 +292,26 @@ export function useCollectionEntryAutosave(
 
     if (key === lastSavedRef.current) return;
 
-    // Mark optimistically so overlapping flushes don't double-dispatch; roll the
-    // marker back on failure so the next change or close retries.
+    // Mark optimistically so overlapping flushes don't double-dispatch; roll
+    // the marker back on failure (or adopt the echo on success) so the next
+    // change or close retries/reconciles — unless a newer flush already moved
+    // the marker past this one (the `lastSavedRef.current === key` guard).
     const previous = lastSavedRef.current;
 
     lastSavedRef.current = key;
-    void persistRef.current().then((ok) => {
-      if (!ok && mountedRef.current && lastSavedRef.current === key) {
-        lastSavedRef.current = previous;
-      }
+    void persistRef.current().then((echoKey) => {
+      if (!mountedRef.current || lastSavedRef.current !== key) return;
+
+      lastSavedRef.current = echoKey ?? previous;
     });
   }, []);
 
   // Seed the baseline once (an unedited existing entry must not re-save on
   // mount), then debounce an idle autosave on every later change — but only for
-  // existing entries (see autosaveOnIdle).
+  // existing entries (see autosaveOnIdle). draftKey equals externalKey at this
+  // first render for an existing entry (both derive from the same seed
+  // fields), so this single baseline is already correct for the
+  // external-update comparison below too — no separate external seed needed.
   useEffect(() => {
     if (!seededRef.current) {
       seededRef.current = true;
@@ -278,6 +328,27 @@ export function useCollectionEntryAutosave(
 
     return () => clearTimer(timerRef);
   }, [canSave, draftKey, autosaveOnIdle, flush]);
+
+  // Surface the external-update banner when the live entry prop diverges from
+  // the baseline (an assistant write or another tab) AND the draft is clean.
+  // A dirty draft (draftKey !== baseline) bails out, matching
+  // useContextEditorState's identical guard: the user has already chosen to
+  // keep editing. Always off in new-entry mode (externalKey undefined).
+  useEffect(() => {
+    if (externalKey == null) {
+      setExternalUpdate(false);
+
+      return;
+    }
+
+    if (externalKey === lastSavedRef.current) {
+      setExternalUpdate(false);
+
+      return;
+    }
+
+    setExternalUpdate(draftKey === lastSavedRef.current);
+  }, [externalKey, draftKey]);
 
   // Flush on tab close so a pending draft isn't dropped.
   useEffect(() => {
@@ -298,11 +369,16 @@ export function useCollectionEntryAutosave(
     [flush],
   );
 
-  const noteSaved = useCallback((): void => {
-    lastSavedRef.current = draftKeyRef.current;
+  const noteSaved = useCallback((echoKey: string): void => {
+    lastSavedRef.current = echoKey;
   }, []);
 
-  return { noteSaved };
+  const adoptExternal = useCallback((): void => {
+    lastSavedRef.current = externalKeyRef.current ?? null;
+    setExternalUpdate(false);
+  }, []);
+
+  return { noteSaved, externalUpdate, adoptExternal };
 }
 
 // --- Helpers below main export ---

@@ -13,6 +13,19 @@ import {
   useCollectionEntryAutosave,
 } from "#webui/hooks/context/use-doc-collection";
 
+/**
+ * Render the hook with initial params and a rerender helper. Shared by both
+ * describe blocks below (autosave lifecycle, external-update detection).
+ * @param initial - Initial params
+ * @returns The hook result plus rerender/unmount
+ */
+function setup(initial: CollectionEntryAutosaveParams) {
+  return renderHook(
+    (p: CollectionEntryAutosaveParams) => useCollectionEntryAutosave(p),
+    { initialProps: initial },
+  );
+}
+
 describe("useCollectionEntryAutosave", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -23,20 +36,8 @@ describe("useCollectionEntryAutosave", () => {
     vi.unstubAllGlobals();
   });
 
-  /**
-   * Render the hook with initial params and a rerender helper.
-   * @param initial - Initial params
-   * @returns The hook result plus rerender/unmount
-   */
-  function setup(initial: CollectionEntryAutosaveParams) {
-    return renderHook(
-      (p: CollectionEntryAutosaveParams) => useCollectionEntryAutosave(p),
-      { initialProps: initial },
-    );
-  }
-
   it("idle-autosaves an existing entry after the debounce elapses", async () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("edited");
     const { rerender } = setup({
       canSave: true,
       draftKey: "seed",
@@ -61,7 +62,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("does NOT idle-autosave a new entry (would remount and drop focus)", async () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("typed");
     const { rerender } = setup({
       canSave: false,
       draftKey: "",
@@ -84,7 +85,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("flushes a dirty savable draft on unmount (overlay close / tab switch)", () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("typed");
     const { rerender, unmount } = setup({
       canSave: false,
       draftKey: "",
@@ -104,7 +105,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("flushes on unmount even if the idle debounce hasn't fired yet", () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("edited");
     const { rerender, unmount } = setup({
       canSave: true,
       draftKey: "seed",
@@ -125,7 +126,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("does not flush an unedited existing entry on unmount", () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("seed");
     const { unmount } = setup({
       canSave: true,
       draftKey: "seed",
@@ -139,7 +140,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("does not flush when the draft is not savable", () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("partial");
     const { rerender, unmount } = setup({
       canSave: false,
       draftKey: "",
@@ -159,10 +160,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("retries on the next change after a failed persist (baseline rolled back)", async () => {
-    const persist = vi
-      .fn()
-      .mockResolvedValueOnce(false)
-      .mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValueOnce(null).mockResolvedValue("v2");
     const { rerender } = setup({
       canSave: true,
       draftKey: "seed",
@@ -187,7 +185,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("noteSaved advances the baseline so a manual save isn't re-flushed on unmount", async () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("manual");
     const { result, rerender, unmount } = setup({
       canSave: true,
       draftKey: "seed",
@@ -195,7 +193,9 @@ describe("useCollectionEntryAutosave", () => {
       persist,
     });
 
-    // The editor persisted the draft out-of-band (the Save button), then syncs.
+    // The editor persisted the draft out-of-band (the Save button), then syncs
+    // the baseline from the save's echo (not the sent draft — see the
+    // externalUpdate describe block below for why that distinction matters).
     rerender({
       canSave: true,
       draftKey: "manual",
@@ -203,7 +203,7 @@ describe("useCollectionEntryAutosave", () => {
       persist,
     });
     await act(() => {
-      result.current.noteSaved();
+      result.current.noteSaved("manual");
     });
     unmount();
 
@@ -211,7 +211,7 @@ describe("useCollectionEntryAutosave", () => {
   });
 
   it("flushes on beforeunload (tab close)", async () => {
-    const persist = vi.fn().mockResolvedValue(true);
+    const persist = vi.fn().mockResolvedValue("typed");
     const { rerender } = setup({
       canSave: false,
       draftKey: "",
@@ -230,5 +230,170 @@ describe("useCollectionEntryAutosave", () => {
     });
 
     expect(persist).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useCollectionEntryAutosave — externalUpdate", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is false while the entry prop matches the baseline", () => {
+    const { result } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist: vi.fn().mockResolvedValue("seed"),
+      externalKey: "seed",
+    });
+
+    expect(result.current.externalUpdate).toBe(false);
+  });
+
+  it("is true when the draft is clean and the entry prop diverges (an assistant write, or another tab)", () => {
+    const { result, rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist: vi.fn().mockResolvedValue("seed"),
+      externalKey: "seed",
+    });
+
+    // The entry prop changed externally; the local draft did not.
+    rerender({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist: vi.fn().mockResolvedValue("seed"),
+      externalKey: "changed-elsewhere",
+    });
+
+    expect(result.current.externalUpdate).toBe(true);
+  });
+
+  it("is false when the draft is dirty, even if the entry prop diverges (last-write-wins)", () => {
+    const { result, rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist: vi.fn().mockResolvedValue("seed"),
+      externalKey: "seed",
+    });
+
+    // The user typed (draftKey moves off the baseline) in the same tick the
+    // entry prop diverges — the dirty draft must suppress the banner.
+    rerender({
+      canSave: true,
+      draftKey: "typed-by-user",
+      autosaveOnIdle: true,
+      persist: vi.fn().mockResolvedValue("seed"),
+      externalKey: "changed-elsewhere",
+    });
+
+    expect(result.current.externalUpdate).toBe(false);
+  });
+
+  it("stays false after our own save echo, even when the echo differs from the sent draft", async () => {
+    // Simulates server-side normalization (slugified name, trimmed body): the
+    // persist resolves an echo key that differs from the draftKey that was
+    // sent, and the entry prop then updates to match that echo.
+    const persist = vi.fn().mockResolvedValue("normalized-echo");
+    const { result, rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+
+    rerender({
+      canSave: true,
+      draftKey: "raw-typed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // The entry prop updates to the server's echo (mergeEntry in the parent).
+    rerender({
+      canSave: true,
+      draftKey: "raw-typed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "normalized-echo",
+    });
+
+    expect(result.current.externalUpdate).toBe(false);
+  });
+
+  it("is always false in new-entry mode (no externalKey)", () => {
+    const { result, rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: false,
+      persist: vi.fn().mockResolvedValue("seed"),
+    });
+
+    rerender({
+      canSave: true,
+      draftKey: "still-typing",
+      autosaveOnIdle: false,
+      persist: vi.fn().mockResolvedValue("seed"),
+    });
+
+    expect(result.current.externalUpdate).toBe(false);
+  });
+
+  it("adoptExternal resets externalUpdate and does not re-arm the idle autosave", async () => {
+    const persist = vi.fn().mockResolvedValue("seed");
+    const { result, rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+
+    rerender({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "changed-elsewhere",
+    });
+    expect(result.current.externalUpdate).toBe(true);
+
+    // The Reload handler re-seeds the local draft to match the external
+    // content, then calls adoptExternal — mirroring the editor's handleReload.
+    rerender({
+      canSave: true,
+      draftKey: "changed-elsewhere",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "changed-elsewhere",
+    });
+    await act(() => {
+      result.current.adoptExternal();
+    });
+
+    expect(result.current.externalUpdate).toBe(false);
+
+    // The re-seed must not have armed a redundant autosave PUT: the baseline
+    // now matches the (re-seeded) draft, so idle-debounce should no-op.
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+      await Promise.resolve();
+    });
+    expect(persist).not.toHaveBeenCalled();
   });
 });

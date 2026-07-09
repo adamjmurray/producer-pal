@@ -294,3 +294,102 @@ describe("MemoryEntryEditor — save status", () => {
     expect(screen.getByText("Save failed")).toBeTruthy();
   });
 });
+
+describe("MemoryEntryEditor — external update banner", () => {
+  const BANNER_TEXT =
+    "This memory was changed elsewhere (the assistant or another tab).";
+
+  it("appears when the entry prop changes externally while the draft is clean", () => {
+    const collection = fakeCollection();
+    const { rerender } = render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+
+    // The assistant's own context tool (or another tab) wrote to this entry
+    // while it's open — the same instance stays mounted (the collection just
+    // polled), so only the entry prop changes.
+    rerender(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={{ ...EXISTING, body: "Composes in D minor now." }}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
+  });
+
+  it("Reload re-seeds the fields from the entry prop and dismisses the banner", () => {
+    const collection = fakeCollection();
+    const updated: MemoryEntryView = {
+      name: "prefers-c-minor",
+      description: "updated by the assistant",
+      body: "Composes in D minor now.",
+    };
+    const { rerender } = render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={updated}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+
+    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+    expect(screen.getByRole("textbox", { name: /Description/ })).toHaveProperty(
+      "value",
+      "updated by the assistant",
+    );
+    expect(screen.getByRole("textbox", { name: /Memory/ })).toHaveProperty(
+      "value",
+      "Composes in D minor now.",
+    );
+  });
+
+  it("stays suppressed while the user is typing (dirty draft), even if the entry changes externally", () => {
+    const collection = fakeCollection();
+    const { rerender } = render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Still editing this myself." },
+    });
+
+    rerender(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={{ ...EXISTING, body: "Composes in D minor now." }}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(BANNER_TEXT)).toBeNull();
+  });
+});
