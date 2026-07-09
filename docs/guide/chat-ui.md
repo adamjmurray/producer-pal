@@ -39,10 +39,11 @@ The header is organized into two areas:
   **Project** (notes about the current Live Set), **Global** (facts that apply
   across every project, stored in `~/.producer-pal`), **Instructions** (a custom
   system prompt that replaces Producer Pal's built-in one), **Skills** (advanced
-  overrides for the built-in skill fragments the AI is taught), and **Memory**
-  (the assistant's own notes about you across sessions — each entry has a name,
-  a one-line description, and a body; only the descriptions are always visible
-  to the AI, bodies load on demand). Press the close (✕) button to return to the
+  overrides for the built-in skill fragments the AI is taught — see
+  [Customizing Skills](/guide/customizing-skills)), and **Memory** (the
+  assistant's own notes about you across sessions — each entry has a name, a
+  one-line description, and a body; only the descriptions are always visible to
+  the AI, bodies load on demand). Press the close (✕) button to return to the
   chat
 - **Settings gear** - Open settings dialog
 - **Help (?)** - Link to documentation

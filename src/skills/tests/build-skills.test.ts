@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NOTATIONS } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
+import { standardDriver } from "#src/skills/builtin-fragments.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
 
 const HEADER = "# Producer Pal Skills";
@@ -149,6 +150,24 @@ describe("buildSkills - overrides", () => {
     expect(result).toContain("OUTRO");
     expect(result).not.toContain("@include");
     expect(warnings.some((w) => w.includes("cycle"))).toBe(true);
+  });
+
+  it("suppresses one core section when a driver override deletes its include", () => {
+    // The suppression story the core-* carve exists for: fork the driver,
+    // delete one include line, and that section is gone while every section
+    // still included keeps resolving the LIVE built-ins (no frozen fork).
+    const directive = `@include "./core-devices.md"\n\n`;
+
+    expect(standardDriver).toContain(directive); // guard: replace() below is real
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { standard: standardDriver.replace(directive, "") },
+    );
+
+    expect(result).not.toContain("## Devices & Instruments");
+    expect(result).toContain("## Transforms");
+    expect(result).toContain("## Finding Library Content");
+    expect(result).toContain("## Arrangement");
   });
 
   it("lets a user fork the driver: delete an include, add their own file", () => {

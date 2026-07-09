@@ -18,18 +18,27 @@
 //     {notation}-standard ....... a notation head (barbeat-standard, stark-…);
 //     {notation}-basic            midi-json is level-invariant, so its two names
 //                                 are thin wrappers that both include midi-json.
-//                                 The inlined core also includes code-transforms,
-//                                 which only EXISTS here when ENABLE_CODE_EXEC is
-//                                 set — a missing fragment resolves to "", so no
-//                                 directive-level branch.
+//     core-transforms ........... the standard core's task-oriented sections,
+//     core-library                pulled in by coreStandard's include manifest so
+//     core-devices                a driver override can suppress one by deleting
+//     core-arrangement            its include line. core-transforms in turn
+//                                 includes code-transforms, which only EXISTS
+//                                 here when ENABLE_CODE_EXEC is set — a missing
+//                                 fragment resolves to "", so no directive-level
+//                                 branch. (The basic core stays fully inlined.)
 //
 // Header + core are plain text in the drivers, not glue in buildSkills; the
-// notation fragment names remain stable override slots (see skill-slots.ts). The
-// core body is no longer a separate slot — it lives inside the driver.
+// notation and core-section fragment names are stable override slots (see
+// skill-slots.ts). The core body itself is not a slot — what remains inline
+// (units, workflow, memory, help) is edited by overriding the driver.
 
 import { codeTransformsSkills } from "#src/skills/code-transforms.ts";
+import { coreArrangement } from "#src/skills/core/core-arrangement.ts";
 import { coreBasic } from "#src/skills/core/core-basic.ts";
+import { coreDevices } from "#src/skills/core/core-devices.ts";
+import { coreLibrary } from "#src/skills/core/core-library.ts";
 import { coreStandard } from "#src/skills/core/core-standard.ts";
+import { coreTransforms } from "#src/skills/core/core-transforms.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
@@ -67,6 +76,10 @@ export function builtinFragments(
   const fragments: Record<string, string> = {
     standard: standardDriver,
     basic: basicDriver,
+    "core-transforms": coreTransforms,
+    "core-library": coreLibrary,
+    "core-devices": coreDevices,
+    "core-arrangement": coreArrangement,
     "barbeat-standard": barbeatStandard,
     "barbeat-basic": barbeatBasic,
     "stark-standard": starkStandard,

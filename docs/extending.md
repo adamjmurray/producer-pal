@@ -22,7 +22,10 @@ Shape how the LLM uses Producer Pal's existing tools — no code required.
 
 - **Skills** — Teach the LLM new workflow patterns, or override the built-in
   skills with your own. Skills are text that describe how to accomplish tasks
-  using Producer Pal's tools — like recipes the LLM follows.
+  using Producer Pal's tools — like recipes the LLM follows. Overriding and
+  trimming the built-in skills is available today — see
+  [Customizing Skills](/guide/customizing-skills). (Adding new custom skills
+  alongside the built-ins is still planned.)
 - **Tool description overrides** — Tune how the LLM interprets specific tools
   and parameters for your workflow.
 - **Tool presets** — Curate which tools are available for focused tasks.
@@ -34,10 +37,13 @@ Shape how the LLM uses Producer Pal's existing tools — no code required.
 **Who it's for:** Anyone who can write clear instructions. If you can describe a
 music production workflow in plain language, you can create a skill.
 
-::: info COMING SOON
+::: info PARTIALLY AVAILABLE
 
-Context customization is planned for Producer Pal 1.5. See the
-[roadmap](/roadmap) for details.
+Built-in skill overrides ([Customizing Skills](/guide/customizing-skills)) and
+custom system instructions (the Chat UI's
+[context editor](/guide/chat-ui#header-bar)) shipped in Producer Pal 1.5. The
+rest of context customization is planned — see the [roadmap](/roadmap) for
+details.
 
 :::
 
