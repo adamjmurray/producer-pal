@@ -443,12 +443,53 @@ describe("StdioHttpBridge", () => {
         body: JSON.stringify({ smallModelMode: true }),
       });
       expect(logger.info).toHaveBeenCalledWith(
-        "Enabled small model mode on server",
+        'Pushed config overrides to server: {"smallModelMode":true}',
       );
       fetchSpy.mockRestore();
     });
 
-    it("does not push config when small model mode is disabled", async () => {
+    it("pushes notation config after connection when set", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+      const notationBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        notation: "midi-json",
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await notationBridge._ensureHttpConnection();
+
+      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notation: "midi-json" }),
+      });
+      fetchSpy.mockRestore();
+    });
+
+    it("pushes both small model mode and notation in one request", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+      const bothBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        smallModelMode: true,
+        notation: "stark",
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await bothBridge._ensureHttpConnection();
+
+      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smallModelMode: true, notation: "stark" }),
+      });
+      fetchSpy.mockRestore();
+    });
+
+    it("does not push config when no overrides are set", async () => {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
         .mockResolvedValue(new Response("{}"));
@@ -475,7 +516,7 @@ describe("StdioHttpBridge", () => {
 
       expect(smBridge.isConnected).toBe(true);
       expect(logger.error).toHaveBeenCalledWith(
-        "Failed to push small model mode config: Network error",
+        "Failed to push config overrides: Network error",
       );
       fetchSpy.mockRestore();
     });

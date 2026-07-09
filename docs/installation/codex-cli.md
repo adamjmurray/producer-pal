@@ -46,6 +46,23 @@ command = "npx"
 args = ["-y", "producer-pal"]
 ```
 
+::: tip Recommended: MIDI JSON notation
+
+Coding agents work best with `midi-json` notation — MIDI notes are a JSON array
+the agent can generate and parse programmatically. Add `--notation midi-json` to
+the args:
+
+```toml
+[mcp_servers.producer-pal]
+command = "npx"
+args = ["-y", "producer-pal", "--notation", "midi-json"]
+```
+
+This is a global device setting, so it also changes the notation shown in the
+chat UI and any other connected clients.
+
+:::
+
 **Option B: Direct HTTP** - Requires Ableton running first, no
 auto-reconnection:
 

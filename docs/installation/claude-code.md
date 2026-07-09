@@ -32,6 +32,22 @@ auto-reconnection:
 claude mcp add producer-pal npx producer-pal
 ```
 
+::: tip Recommended: MIDI JSON notation
+
+Coding agents work best with `midi-json` notation — MIDI notes are a JSON array
+the agent can generate and parse programmatically. Add `--notation midi-json`
+when registering the server (the `--` separates it from `claude mcp add`'s own
+options):
+
+```bash
+claude mcp add producer-pal -- npx producer-pal --notation midi-json
+```
+
+This is a global device setting, so it also changes the notation shown in the
+chat UI and any other connected clients.
+
+:::
+
 **Option B: Direct HTTP** - Requires Ableton running first, no
 auto-reconnection:
 

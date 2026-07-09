@@ -75,6 +75,28 @@ when connected, so you don't need to enable it in both places. The producer-pal
 package is a proxy that responds to requests even when Ableton Live or the
 Producer Pal device are not running, to let you know there's a problem.
 
+::: tip Recommended for small models: Stark notation
+
+Small/local models tend to handle `stark` notation — a simple literal
+`type: content` format with event-based drum hits — better than the default
+bar|beat text. Add `--notation stark` alongside `-s`:
+
+```json
+{
+  "mcpServers": {
+    "producer-pal": {
+      "command": "npx",
+      "args": ["-y", "producer-pal", "-s", "--notation", "stark"]
+    }
+  }
+}
+```
+
+Notation is a global device setting, so it also changes the notation shown in
+the chat UI and any other connected clients.
+
+:::
+
 **Option B: Direct HTTP**:
 
 ```json

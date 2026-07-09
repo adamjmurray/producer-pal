@@ -30,30 +30,37 @@ vi.mock(import("./file-logger.ts"), () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
+/**
+ * Restore an env var to its pre-test value, deleting it when it was unset.
+ * @param name - Environment variable name
+ * @param original - The value captured before the test (undefined if unset)
+ */
+function restoreEnv(name: string, original: string | undefined): void {
+  if (original !== undefined) {
+    process.env[name] = original;
+  } else {
+    delete process.env[name];
+  }
+}
+
 describe("producer-pal-portal", () => {
   const originalArgv = process.argv;
   const originalSmallModelMode = process.env.SMALL_MODEL_MODE;
+  const originalNotation = process.env.NOTATION;
   const originalOrigin = process.env.MCP_SERVER_ORIGIN;
 
   beforeEach(() => {
     delete process.env.SMALL_MODEL_MODE;
+    delete process.env.NOTATION;
     delete process.env.MCP_SERVER_ORIGIN;
   });
 
   afterEach(() => {
     process.argv = originalArgv;
 
-    if (originalSmallModelMode !== undefined) {
-      process.env.SMALL_MODEL_MODE = originalSmallModelMode;
-    } else {
-      delete process.env.SMALL_MODEL_MODE;
-    }
-
-    if (originalOrigin !== undefined) {
-      process.env.MCP_SERVER_ORIGIN = originalOrigin;
-    } else {
-      delete process.env.MCP_SERVER_ORIGIN;
-    }
+    restoreEnv("SMALL_MODEL_MODE", originalSmallModelMode);
+    restoreEnv("NOTATION", originalNotation);
+    restoreEnv("MCP_SERVER_ORIGIN", originalOrigin);
   });
 
   async function importPortalAndGetCalls(): Promise<unknown[][]> {
@@ -81,12 +88,15 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[0]).toBe("http://localhost:3350/mcp");
   });
 
-  it("passes smallModelMode: false when no flag or env var", async () => {
+  it("passes smallModelMode: false and no notation when no flag or env var", async () => {
     process.argv = ["node", "producer-pal-portal.js"];
 
     const calls = await importPortalAndGetCalls();
 
-    expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: false });
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+    });
   });
 
   it("enables small model mode with -s flag", async () => {
@@ -94,7 +104,10 @@ describe("producer-pal-portal", () => {
 
     const calls = await importPortalAndGetCalls();
 
-    expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: true });
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: true,
+      notation: undefined,
+    });
   });
 
   it("enables small model mode with --small-model-mode flag", async () => {
@@ -102,7 +115,10 @@ describe("producer-pal-portal", () => {
 
     const calls = await importPortalAndGetCalls();
 
-    expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: true });
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: true,
+      notation: undefined,
+    });
   });
 
   it("enables small model mode with SMALL_MODEL_MODE env var", async () => {
@@ -111,6 +127,71 @@ describe("producer-pal-portal", () => {
 
     const calls = await importPortalAndGetCalls();
 
-    expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: true });
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: true,
+      notation: undefined,
+    });
+  });
+
+  it("passes notation from the --notation <value> flag", async () => {
+    process.argv = [
+      "node",
+      "producer-pal-portal.js",
+      "--notation",
+      "midi-json",
+    ];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "midi-json",
+    });
+  });
+
+  it("passes notation from the --notation=<value> flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--notation=stark"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "stark",
+    });
+  });
+
+  it("passes notation from the NOTATION env var", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+    process.env.NOTATION = "midi-json";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "midi-json",
+    });
+  });
+
+  it("ignores an invalid --notation value and leaves notation unset", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--notation", "bogus"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+    });
+  });
+
+  it("prefers the --notation flag over the NOTATION env var", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--notation", "stark"];
+    process.env.NOTATION = "midi-json";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "stark",
+    });
   });
 });

@@ -145,6 +145,12 @@ Consult your client's documentation for MCP server configuration syntax.
   [small model mode](https://producer-pal.org/installation/lm-studio)
   (simplifies tool interface for smaller LLMs and automatically enables it on
   the device)
+- `--notation <barbeat|midi-json|stark>` - Set the MIDI note notation the tools
+  use (default: `barbeat`). **Recommended for coding agents** (Claude Code,
+  Codex CLI, Gemini CLI, etc.): `--notation midi-json` represents notes as a
+  JSON array, which agents can generate and parse programmatically. This is a
+  global device setting, so it also affects the chat UI and any other connected
+  clients.
 
 ### Environment Variables
 
@@ -154,6 +160,8 @@ Optional environment variables can be configured through your MCP client:
   `http://localhost:3350`)
 - `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Equivalent to
   the `-s` flag above.
+- `NOTATION` - MIDI note notation (`barbeat`, `midi-json`, or `stark`; default:
+  `barbeat`). Equivalent to the `--notation` flag above.
 - `ENABLE_LOGGING` - Enable file logging (default: `false`)
 - `VERBOSE_LOGGING` - Detailed debug logs (default: `false`)
 

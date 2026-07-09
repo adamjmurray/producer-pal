@@ -19,12 +19,14 @@ import {
 import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";
 
 interface BridgeOptions {
   smallModelMode?: boolean;
+  notation?: Notation;
 }
 
 interface FallbackTool {
@@ -60,17 +62,22 @@ export class StdioHttpBridge {
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
   private smallModelMode: boolean;
+  private notation?: Notation;
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
     this.smallModelMode = options.smallModelMode ?? false;
+    this.notation = options.notation;
     this.fallbackTools = this._generateFallbackTools();
   }
 
   private _generateFallbackTools(): { tools: FallbackTool[] } {
-    // Create MCP server to extract tool definitions (callLiveApi not used)
+    // Create MCP server to extract tool definitions (callLiveApi not used).
+    // Thread notation + small-model mode so the offline fallback descriptions
+    // match what the live server would return for the same config.
     const server = createMcpServer(null as unknown as CallLiveApiFunction, {
       smallModelMode: this.smallModelMode,
+      notation: this.notation,
     });
     const tools: FallbackTool[] = [];
 
@@ -169,9 +176,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
 
-      if (this.smallModelMode) {
-        await this._pushSmallModelModeConfig();
-      }
+      await this._pushConfigOverrides();
     } catch (error) {
       logger.error(`HTTP connection failed: ${errorMessage(error)}`);
       this.isConnected = false;
@@ -195,20 +200,35 @@ Tell the user to check ${SETUP_URL} for configuration help.
     }
   }
 
-  private async _pushSmallModelModeConfig(): Promise<void> {
+  /**
+   * Push the CLI/env config overrides (small-model mode, notation) to the
+   * device via POST /config after connecting. Only the explicitly-requested
+   * settings are sent, so an unset option leaves the device's own setting
+   * alone. No-ops when nothing was requested. Runs before the client's first
+   * tools/list because the server re-reads config per request, so the tool
+   * descriptions reflect the override. The setting is global to the device.
+   */
+  private async _pushConfigOverrides(): Promise<void> {
+    const overrides: { smallModelMode?: boolean; notation?: Notation } = {};
+
+    if (this.smallModelMode) overrides.smallModelMode = true;
+    if (this.notation) overrides.notation = this.notation;
+
+    if (Object.keys(overrides).length === 0) return;
+
     const configUrl = this.httpUrl.replace(/\/mcp$/, "/config");
 
     try {
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ smallModelMode: true }),
+        body: JSON.stringify(overrides),
       });
-      logger.info("Enabled small model mode on server");
-    } catch (error) {
-      logger.error(
-        `Failed to push small model mode config: ${errorMessage(error)}`,
+      logger.info(
+        `Pushed config overrides to server: ${JSON.stringify(overrides)}`,
       );
+    } catch (error) {
+      logger.error(`Failed to push config overrides: ${errorMessage(error)}`);
     }
   }
 
