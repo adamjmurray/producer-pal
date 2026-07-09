@@ -76,24 +76,20 @@ export async function handleReadMemoryEntry(
  *
  * @param args - The memory to store
  * @param args.name - Desired memory name (slugified Node-side)
- * @param args.type - Memory bucket (user | feedback | goal | reference)
  * @param args.description - One-line recall hook (optional)
  * @param args.content - The memory body (the fact)
  * @returns Memory result with the regenerated index
  */
 export async function handleRememberMemory(args: {
   name?: string;
-  type?: string;
   description?: string;
   content?: string;
 }): Promise<MemoryResult> {
   if (!args.name) throw new Error("name required for remember action");
-  if (!args.type) throw new Error("type required for remember action");
   if (!args.content) throw new Error("content required for remember action");
 
   return await callNodeMemoryRoute("memory.remember", {
     name: args.name,
-    type: args.type,
     description: args.description ?? "",
     content: args.content,
   });

@@ -20,7 +20,6 @@ interface ContextArgs {
   content?: string;
   scope?: string;
   name?: string;
-  type?: string;
   description?: string;
 }
 
@@ -42,13 +41,12 @@ interface ContextArgs {
  * @param args.content - Memory content (write = blob content; remember = entry body)
  * @param args.scope - Which context to target (project | global | memory; default project)
  * @param args.name - Entry name (read/remember/forget, memory scope)
- * @param args.type - Memory type (remember, memory scope): user | feedback | goal | reference
  * @param args.description - One-line recall hook (remember)
  * @param toolContext - The context object
  * @returns Memory result
  */
 export async function context(
-  { action, content, scope, name, type, description }: ContextArgs = {},
+  { action, content, scope, name, description }: ContextArgs = {},
   toolContext: Partial<ToolContext> = {},
 ): Promise<MemoryResult> {
   if (scope === "memory") {
@@ -58,7 +56,7 @@ export async function context(
 
         return await handleReadMemoryEntry(name);
       case "remember":
-        return await handleRememberMemory({ name, type, description, content });
+        return await handleRememberMemory({ name, description, content });
       case "forget":
         return await handleForgetMemory(name);
       case "list":

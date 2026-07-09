@@ -8,10 +8,7 @@ import {
   withConnectAppend,
   type WrappedCallLiveApi,
 } from "../connect-append.ts";
-import {
-  listMemoryEntries,
-  renderMemoryIndexSections,
-} from "./global-memory-store.ts";
+import { listMemoryEntries, renderMemoryIndex } from "./global-memory-store.ts";
 
 /**
  * Wrap a callLiveApi so a successful ppal-connect response carries the user's
@@ -34,10 +31,10 @@ export function withMemory(inner: CallLiveApiFunction): WrappedCallLiveApi {
 
 /**
  * The memory index block to append, or null when there are no memories. Only
- * the index (grouped `name — description` hooks) is injected; bodies load on
+ * the index (flat `name — description` hooks) is injected; bodies load on
  * demand.
  *
- * @returns The labeled memory index text, or null to skip
+ * @returns The memory index text, or null to skip
  */
 function memoryBlock(): string | null {
   const entries = listMemoryEntries();
@@ -49,6 +46,6 @@ function memoryBlock(): string | null {
     "across sessions and projects (distinct from this Live Set's per-project " +
     "context). This is the index; to load a memory's full body call " +
     'ppal-context (action:"read", scope:"memory", name:"<name>").\n\n' +
-    renderMemoryIndexSections(entries)
+    renderMemoryIndex(entries)
   );
 }

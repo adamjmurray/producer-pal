@@ -23,14 +23,12 @@ const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 const ENTRIES: MemoryEntryView[] = [
   {
     name: "prefers-c-minor",
-    type: "user",
     description: "default key & genre",
     body: "Composes in C minor.",
   },
-  { name: "no-desc", type: "user", description: "", body: "x" },
+  { name: "no-desc", description: "", body: "x" },
   {
     name: "loose-drums",
-    type: "feedback",
     description: "swing/humanize",
     body: "Apply groove.",
   },
@@ -129,18 +127,18 @@ describe("MemoryScreen — ready", () => {
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });
 
-  it("groups entries by type, omitting empty groups", () => {
+  it("renders a flat, name-sorted list of entries", () => {
     renderScreen({ kind: "ready", entries: ENTRIES });
 
-    // Groups that have entries render their heading…
-    expect(screen.getByText("User")).toBeTruthy();
-    expect(screen.getByText("Feedback")).toBeTruthy();
-    // …empty groups do not (Goal/Reference have no entries here).
-    expect(screen.queryByText("Goal")).toBeNull();
-    expect(screen.queryByText("Reference")).toBeNull();
     // Descriptions render as the recall hooks.
     expect(screen.getByText("default key & genre")).toBeTruthy();
     expect(screen.getByText("swing/humanize")).toBeTruthy();
+
+    const names = screen
+      .getAllByText(/^(loose-drums|no-desc|prefers-c-minor)$/)
+      .map((el) => el.textContent);
+
+    expect(names).toStrictEqual(["loose-drums", "no-desc", "prefers-c-minor"]);
   });
 
   it("selects an entry to edit, then returns to the create form", () => {
@@ -179,7 +177,6 @@ describe("MemoryScreen — ready", () => {
       expect(saveEntry).toHaveBeenCalledWith(
         "prefers-c-minor",
         {
-          type: "user",
           description: "default key & genre",
           content: "Composes in C minor.",
         },

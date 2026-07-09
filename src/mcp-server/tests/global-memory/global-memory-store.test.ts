@@ -13,7 +13,6 @@ import {
   readMemoryEntry,
   regenerateIndex,
   rememberMemory,
-  type RememberMemoryInput,
   slugifyMemoryName,
 } from "#src/mcp-server/helpers/memory/global-memory-store.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
@@ -61,14 +60,12 @@ describe("rememberMemory", () => {
   it("writes a frontmatter'd file and returns the stored entry", () => {
     const entry = rememberMemory({
       name: "Prefers C Minor",
-      type: "user",
       description: "default key & genre",
       body: "  Composes mostly in C minor, house/techno.  ",
     });
 
     expect(entry).toStrictEqual({
       name: "prefers-c-minor",
-      type: "user",
       description: "default key & genre",
       body: "Composes mostly in C minor, house/techno.",
     });
@@ -77,7 +74,6 @@ describe("rememberMemory", () => {
 
     expect(raw.startsWith("---\n")).toBe(true);
     expect(raw).toContain("name: prefers-c-minor");
-    expect(raw).toContain("type: user");
     expect(
       raw.trimEnd().endsWith("Composes mostly in C minor, house/techno."),
     ).toBe(true);
@@ -86,7 +82,6 @@ describe("rememberMemory", () => {
   it("collapses multi-line/whitespace descriptions to a single line", () => {
     const entry = rememberMemory({
       name: "loose-drums",
-      type: "feedback",
       description: "swing  and\nhumanize   drums",
       body: "Apply groove.",
     });
@@ -97,13 +92,11 @@ describe("rememberMemory", () => {
   it("overwrites in place when the same slug is remembered again", () => {
     rememberMemory({
       name: "album-nyx",
-      type: "goal",
       description: "v1",
       body: "first",
     });
     rememberMemory({
       name: "Album Nyx",
-      type: "goal",
       description: "v2",
       body: "second",
     });
@@ -116,29 +109,16 @@ describe("rememberMemory", () => {
     expect(() =>
       rememberMemory({
         name: "!!!",
-        type: "user",
         description: "x",
         body: "y",
       }),
     ).toThrow(/name must contain/i);
   });
 
-  it("throws on an invalid type", () => {
-    const badInput = {
-      name: "x",
-      type: "bogus",
-      description: "x",
-      body: "y",
-    } as unknown as RememberMemoryInput;
-
-    expect(() => rememberMemory(badInput)).toThrow(/invalid memory type/i);
-  });
-
   it("throws on an empty body", () => {
     expect(() =>
       rememberMemory({
         name: "x",
-        type: "user",
         description: "x",
         body: "   ",
       }),
@@ -148,7 +128,6 @@ describe("rememberMemory", () => {
   it("rejects the reserved index name so MEMORY.md can't be clobbered", () => {
     rememberMemory({
       name: "keeper",
-      type: "user",
       description: "d",
       body: "b",
     });
@@ -158,7 +137,7 @@ describe("rememberMemory", () => {
     // throws before any write on every platform.
     for (const name of ["memory", "Memory", "MEMORY", "  memory!  "]) {
       expect(() =>
-        rememberMemory({ name, type: "user", description: "x", body: "y" }),
+        rememberMemory({ name, description: "x", body: "y" }),
       ).toThrow(/reserved/i);
     }
 
@@ -171,14 +150,12 @@ describe("readMemoryEntry", () => {
   it("reads a stored memory by an un-slugified name", () => {
     rememberMemory({
       name: "kick-samples",
-      type: "reference",
       description: "analog kicks",
       body: "In ~/Samples/Analog.",
     });
 
     expect(readMemoryEntry("Kick Samples")).toStrictEqual({
       name: "kick-samples",
-      type: "reference",
       description: "analog kicks",
       body: "In ~/Samples/Analog.",
     });
@@ -195,7 +172,6 @@ describe("readMemoryEntry", () => {
   it("returns null for the reserved index name", () => {
     rememberMemory({
       name: "keeper",
-      type: "user",
       description: "d",
       body: "b",
     });
@@ -207,25 +183,36 @@ describe("readMemoryEntry", () => {
   it("reads a hand-authored file, taking the slug from the filename", () => {
     writeRaw(
       "hand-note.md",
-      "---\ndescription: hand written\ntype: feedback\n---\n\nBe terse.",
+      "---\ndescription: hand written\n---\n\nBe terse.",
     );
 
     expect(readMemoryEntry("hand-note")).toStrictEqual({
       name: "hand-note",
-      type: "feedback",
       description: "hand written",
       body: "Be terse.",
     });
   });
 
-  it("coerces a missing/invalid type to reference and defaults description", () => {
+  it("defaults a missing description to an empty string", () => {
     writeRaw("no-fm.md", "Just a body, no frontmatter.");
 
     expect(readMemoryEntry("no-fm")).toStrictEqual({
       name: "no-fm",
-      type: "reference",
       description: "",
       body: "Just a body, no frontmatter.",
+    });
+  });
+
+  it("ignores a legacy `type:` frontmatter line and still parses the entry", () => {
+    writeRaw(
+      "legacy.md",
+      "---\ndescription: from before the type axis\ntype: feedback\n---\n\nStill readable.",
+    );
+
+    expect(readMemoryEntry("legacy")).toStrictEqual({
+      name: "legacy",
+      description: "from before the type axis",
+      body: "Still readable.",
     });
   });
 });
@@ -235,40 +222,25 @@ describe("listMemoryEntries", () => {
     expect(listMemoryEntries()).toStrictEqual([]);
   });
 
-  it("sorts by type order then name, skipping the index file", () => {
-    rememberMemory({
-      name: "z-fb",
-      type: "feedback",
-      description: "",
-      body: "b",
-    });
-    rememberMemory({
-      name: "a-fb",
-      type: "feedback",
-      description: "",
-      body: "b",
-    });
-    rememberMemory({ name: "u", type: "user", description: "", body: "b" });
-    rememberMemory({
-      name: "r",
-      type: "reference",
-      description: "",
-      body: "b",
-    });
+  it("sorts alphabetically by name, skipping the index file", () => {
+    rememberMemory({ name: "z-fb", description: "", body: "b" });
+    rememberMemory({ name: "a-fb", description: "", body: "b" });
+    rememberMemory({ name: "u", description: "", body: "b" });
+    rememberMemory({ name: "r", description: "", body: "b" });
 
     expect(listMemoryEntries().map((e) => e.name)).toStrictEqual([
-      "u",
       "a-fb",
-      "z-fb",
       "r",
+      "u",
+      "z-fb",
     ]);
   });
 
   it("excludes the index filename case-insensitively", () => {
     // A hand-created lowercase "memory.md" is a distinct file from "MEMORY.md"
     // on case-sensitive Linux; the filter must still treat it as the index.
-    writeRaw("memory.md", "---\ntype: user\n---\n\nreserved");
-    rememberMemory({ name: "real", type: "user", description: "", body: "b" });
+    writeRaw("memory.md", "---\ndescription: reserved\n---\n\nreserved");
+    rememberMemory({ name: "real", description: "", body: "b" });
 
     expect(listMemoryEntries().map((e) => e.name)).toStrictEqual(["real"]);
   });
@@ -278,7 +250,6 @@ describe("memoryExists", () => {
   it("is true for a stored memory (matching by an un-slugified name)", () => {
     rememberMemory({
       name: "album-nyx",
-      type: "goal",
       description: "",
       body: "b",
     });
@@ -297,7 +268,6 @@ describe("memoryExists", () => {
   it("is false for the reserved index name", () => {
     rememberMemory({
       name: "keeper",
-      type: "user",
       description: "",
       body: "b",
     });
@@ -310,7 +280,7 @@ describe("memoryExists", () => {
 
 describe("forgetMemory", () => {
   it("removes an existing memory and reports it existed", () => {
-    rememberMemory({ name: "temp", type: "user", description: "", body: "b" });
+    rememberMemory({ name: "temp", description: "", body: "b" });
 
     expect(forgetMemory("Temp")).toBe(true);
     expect(readMemoryEntry("temp")).toBeNull();
@@ -327,7 +297,6 @@ describe("forgetMemory", () => {
   it("refuses to forget the reserved index name", () => {
     rememberMemory({
       name: "keeper",
-      type: "user",
       description: "d",
       body: "b",
     });
@@ -341,7 +310,7 @@ describe("hand-authored non-canonical filenames", () => {
   it("lists, reads, and matches a freely-named file under its canonical slug", () => {
     writeRaw(
       "Kick Drum Samples.md",
-      "---\ndescription: analog kicks\ntype: reference\n---\n\nIn ~/Samples/Analog.",
+      "---\ndescription: analog kicks\n---\n\nIn ~/Samples/Analog.",
     );
 
     expect(listMemoryEntries().map((e) => e.name)).toStrictEqual([
@@ -349,7 +318,6 @@ describe("hand-authored non-canonical filenames", () => {
     ]);
     expect(readMemoryEntry("kick-drum-samples")).toStrictEqual({
       name: "kick-drum-samples",
-      type: "reference",
       description: "analog kicks",
       body: "In ~/Samples/Analog.",
     });
@@ -357,14 +325,10 @@ describe("hand-authored non-canonical filenames", () => {
   });
 
   it("updates a freely-named file in place instead of creating a duplicate", () => {
-    writeRaw(
-      "Kick Drum Samples.md",
-      "---\ndescription: old\ntype: reference\n---\n\nold body",
-    );
+    writeRaw("Kick Drum Samples.md", "---\ndescription: old\n---\n\nold body");
 
     rememberMemory({
       name: "kick-drum-samples",
-      type: "reference",
       description: "new",
       body: "new body",
     });
@@ -379,10 +343,7 @@ describe("hand-authored non-canonical filenames", () => {
   });
 
   it("forgets a freely-named file", () => {
-    writeRaw(
-      "Kick Drum Samples.md",
-      "---\ndescription: x\ntype: reference\n---\n\nbody",
-    );
+    writeRaw("Kick Drum Samples.md", "---\ndescription: x\n---\n\nbody");
 
     expect(forgetMemory("kick-drum-samples")).toBe(true);
     expect(listMemoryEntries()).toStrictEqual([]);
@@ -390,16 +351,14 @@ describe("hand-authored non-canonical filenames", () => {
 });
 
 describe("regenerateIndex / MEMORY.md", () => {
-  it("groups entries by type under headings with description hooks", () => {
+  it("renders a flat, alphabetical-by-name index with description hooks", () => {
     rememberMemory({
       name: "prefers-c-minor",
-      type: "user",
       description: "default key & genre",
       body: "b",
     });
     rememberMemory({
       name: "loose-drums",
-      type: "feedback",
       description: "swing/humanize",
       body: "b",
     });
@@ -408,20 +367,20 @@ describe("regenerateIndex / MEMORY.md", () => {
 
     expect(index).toBe(
       "# Producer Pal Memory\n\n" +
-        "## User\n\n- `prefers-c-minor` — default key & genre\n\n" +
-        "## Feedback\n\n- `loose-drums` — swing/humanize\n",
+        "- `loose-drums` — swing/humanize\n" +
+        "- `prefers-c-minor` — default key & genre\n",
     );
     expect(readFileSync(memoryPath("MEMORY.md"), "utf8")).toBe(index);
   });
 
   it("omits the description dash when a memory has no description", () => {
-    rememberMemory({ name: "bare", type: "user", description: "", body: "b" });
+    rememberMemory({ name: "bare", description: "", body: "b" });
 
     expect(regenerateIndex()).toContain("- `bare`\n");
   });
 
   it("deletes the index and returns '' when the last memory is forgotten", () => {
-    rememberMemory({ name: "solo", type: "user", description: "d", body: "b" });
+    rememberMemory({ name: "solo", description: "d", body: "b" });
     forgetMemory("solo");
 
     expect(regenerateIndex()).toBe("");

@@ -24,7 +24,6 @@ import {
   regenerateIndex,
   rememberMemory,
 } from "./global-memory-store.ts";
-import { isMemoryType, MEMORY_TYPES } from "./memory.ts";
 
 /** Result shape shared by every memory route: a text payload for the LLM. */
 interface MemoryRouteResult {
@@ -61,19 +60,12 @@ function readRoute(args: unknown): MemoryRouteResult {
 /**
  * Create or overwrite a memory, then echo the regenerated index.
  *
- * @param args - Route args (name, type, description, content=body)
+ * @param args - Route args (name, description, content=body)
  * @returns Confirmation plus the current index
  */
 function rememberRoute(args: unknown): MemoryRouteResult {
-  const type = (args as Record<string, unknown> | null)?.type;
-
-  if (!isMemoryType(type)) {
-    throw new Error(`type must be one of: ${MEMORY_TYPES.join(", ")}`);
-  }
-
   const entry = rememberMemory({
     name: requireString(args, "name"),
-    type,
     description: optionalString(args, "description"),
     body: requireString(args, "content"),
   });

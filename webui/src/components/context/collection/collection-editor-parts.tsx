@@ -5,9 +5,9 @@
 
 // Shared right-pane form chrome for the collection managers (memory, custom
 // skills): a labeled Field row, the create-editable / edit-readonly NameField,
-// and the Save/Delete + status EditorFooter. The domain-specific fields (a type
-// dropdown, an enabled toggle) live in each collection's own editor; these are
-// the parts they have in common so the two editors read identically.
+// and the Save/Delete + status EditorFooter. The domain-specific fields (custom
+// skills' enabled toggle) live in each collection's own editor; these are the
+// parts they have in common so the two editors read identically.
 
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";

@@ -34,14 +34,12 @@ describe("memory.remember route", () => {
   it("stores a memory and echoes the regenerated index", async () => {
     const response = await dispatchNodeRoute("memory.remember", {
       name: "Prefers C Minor",
-      type: "user",
       description: "default key",
       content: "Composes in C minor.",
     });
 
     expect(response.success).toBe(true);
     expect(response.result?.content).toContain('Remembered "prefers-c-minor".');
-    expect(response.result?.content).toContain("## User");
     expect(response.result?.content).toContain(
       "- `prefers-c-minor` — default key",
     );
@@ -50,7 +48,6 @@ describe("memory.remember route", () => {
   it("stores a memory with no description (index line has no dash)", async () => {
     const response = await dispatchNodeRoute("memory.remember", {
       name: "bare",
-      type: "user",
       content: "a fact",
     });
 
@@ -58,20 +55,8 @@ describe("memory.remember route", () => {
     expect(response.result?.content).toContain("- `bare`\n");
   });
 
-  it("fails on an invalid type", async () => {
-    const response = await dispatchNodeRoute("memory.remember", {
-      name: "x",
-      type: "bogus",
-      content: "y",
-    });
-
-    expect(response.success).toBe(false);
-    expect(response.error).toContain("type must be one of");
-  });
-
   it("fails when a required string field is missing", async () => {
     const response = await dispatchNodeRoute("memory.remember", {
-      type: "user",
       content: "y",
     });
 
@@ -84,7 +69,6 @@ describe("memory.read route", () => {
   it("returns the stored body", async () => {
     rememberMemory({
       name: "kick-samples",
-      type: "reference",
       description: "analog",
       body: "In ~/Samples/Analog.",
     });
@@ -107,7 +91,7 @@ describe("memory.read route", () => {
 
 describe("memory.forget route", () => {
   it("removes an existing memory", async () => {
-    rememberMemory({ name: "temp", type: "user", description: "", body: "b" });
+    rememberMemory({ name: "temp", description: "", body: "b" });
 
     const response = await dispatchNodeRoute("memory.forget", { name: "temp" });
 
@@ -134,7 +118,7 @@ describe("memory.list route", () => {
   });
 
   it("returns the derived index when populated", async () => {
-    rememberMemory({ name: "u", type: "user", description: "hook", body: "b" });
+    rememberMemory({ name: "u", description: "hook", body: "b" });
 
     const response = await dispatchNodeRoute("memory.list", {});
 

@@ -32,7 +32,6 @@ function fakeCollection(
 
 const EXISTING: MemoryEntryView = {
   name: "prefers-c-minor",
-  type: "user",
   description: "default key & genre",
   body: "Composes in C minor.",
 };
@@ -46,7 +45,6 @@ describe("MemoryEntryEditor — new entry", () => {
   it("disables Create until a name and body are present, then saves", async () => {
     const saved: MemoryEntryView = {
       name: "loose-drums",
-      type: "feedback",
       description: "swing",
       body: "Apply groove.",
     };
@@ -73,9 +71,6 @@ describe("MemoryEntryEditor — new entry", () => {
     fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
       target: { value: "loose-drums" },
     });
-    fireEvent.change(screen.getByRole("combobox"), {
-      target: { value: "feedback" },
-    });
     fireEvent.input(screen.getByRole("textbox", { name: /Description/ }), {
       target: { value: "swing" },
     });
@@ -94,7 +89,6 @@ describe("MemoryEntryEditor — new entry", () => {
     expect(collection.saveEntry).toHaveBeenCalledWith(
       "loose-drums",
       {
-        type: "feedback",
         description: "swing",
         content: "Apply groove.",
       },
@@ -136,7 +130,6 @@ describe("MemoryEntryEditor — autosave on close", () => {
   it("persists a new draft on unmount so closing before Create doesn't lose it", () => {
     const saved: MemoryEntryView = {
       name: "loose-drums",
-      type: "user",
       description: "",
       body: "groove",
     };
@@ -165,7 +158,7 @@ describe("MemoryEntryEditor — autosave on close", () => {
 
     expect(collection.saveEntry).toHaveBeenCalledWith(
       "loose-drums",
-      { type: "user", description: "", content: "groove" },
+      { description: "", content: "groove" },
       true,
     );
   });
@@ -203,7 +196,6 @@ describe("MemoryEntryEditor — existing entry", () => {
     expect(collection.saveEntry).toHaveBeenCalledWith(
       "prefers-c-minor",
       {
-        type: "user",
         description: "default key & genre",
         content: "Composes in C minor and F minor.",
       },

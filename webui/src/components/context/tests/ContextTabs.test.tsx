@@ -78,7 +78,6 @@ vi.mock(import("#webui/hooks/context/use-memory-collection"), () => ({
       entries: [
         {
           name: "prefers-c-minor",
-          type: "user",
           description: "default key & genre",
           body: "Composes in C minor.",
         },

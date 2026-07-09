@@ -5,9 +5,9 @@
 
 // Shared left-pane list chrome for the collection managers (memory, custom
 // skills): the dashed "+ New …" button and one entry row (slug over its
-// description). Memory groups its rows by type and custom skills lists them flat
-// with an enabled/disabled treatment, but the button and row render identically,
-// so they live here.
+// description). Both list flat, name-sorted entries; custom skills additionally
+// dims disabled rows via `dimmed`/`trailing`, but the button and row render
+// identically, so they live here.
 
 interface NewEntryButtonProps {
   /** Button text, e.g. "+ New memory". */

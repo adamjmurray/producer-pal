@@ -14,7 +14,7 @@ export const toolDefContext = defineTool("ppal-context", {
     "(~/.producer-pal/context.md): pinned cross-project context. Both are " +
     "single documents — actions: read, write (replace).\n" +
     "scope=memory (~/.producer-pal/memory/): indexed memories, loaded on " +
-    "demand. Actions: remember (save/update: name+type+content), " +
+    "demand. Actions: remember (save/update: name+content), " +
     "forget (delete by name), list (the index), read (name → one memory).\n" +
     "Reuse an existing name to UPDATE, not duplicate. One fact per memory. " +
     "write/remember/forget are destructive — read the same scope first.",
@@ -49,13 +49,6 @@ export const toolDefContext = defineTool("ppal-context", {
       .max(200)
       .optional()
       .describe("entry name (read, remember, forget — memory scope)"),
-
-    type: z
-      .enum(["user", "feedback", "goal", "reference"])
-      .optional()
-      .describe(
-        "memory bucket (remember): user=who they are | feedback=how to work with them | goal=cross-project creative goal | reference=external pointer",
-      ),
 
     description: z
       .string()

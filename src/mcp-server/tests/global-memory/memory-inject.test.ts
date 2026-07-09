@@ -31,29 +31,26 @@ describe("withMemory", () => {
   it("injects every memory as an index line, never a body", async () => {
     rememberMemory({
       name: "prefers-c-minor",
-      type: "user",
       description: "default key",
       body: "Composes mostly in C minor.",
     });
     rememberMemory({
       name: "loose-drums",
-      type: "feedback",
       description: "swing/humanize",
       body: "Never hard-quantize hats.",
     });
     rememberMemory({
       name: "album-nyx",
-      type: "goal",
       description: "dark ambient, 60bpm",
       body: "The Nyx album body.",
     });
 
     const block = (await appendedBlock()) ?? "";
 
-    // Grouped index lines, one recall hook per entry.
-    expect(block).toContain("## User\n\n- `prefers-c-minor` — default key");
-    expect(block).toContain("## Feedback\n\n- `loose-drums` — swing/humanize");
-    expect(block).toContain("## Goal\n\n- `album-nyx` — dark ambient, 60bpm");
+    // Flat, alphabetical-by-name index lines, one recall hook per entry.
+    expect(block).toContain("- `album-nyx` — dark ambient, 60bpm");
+    expect(block).toContain("- `loose-drums` — swing/humanize");
+    expect(block).toContain("- `prefers-c-minor` — default key");
     // Bodies are NEVER injected — only the index.
     expect(block).not.toContain("Composes mostly in C minor.");
     expect(block).not.toContain("Never hard-quantize hats.");
@@ -65,7 +62,6 @@ describe("withMemory", () => {
   it("renders a descriptionless entry without a trailing dash", async () => {
     rememberMemory({
       name: "r",
-      type: "reference",
       description: "",
       body: "SECRET_BODY",
     });
@@ -87,7 +83,7 @@ describe("withMemory", () => {
   });
 
   it("leaves non-connect tool responses untouched", async () => {
-    rememberMemory({ name: "u", type: "user", description: "d", body: "b" });
+    rememberMemory({ name: "u", description: "d", body: "b" });
 
     const result = await withMemory(fakeInnerCall(connectResponse()))(
       "ppal-read-track",

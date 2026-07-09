@@ -62,13 +62,11 @@ describe("context - memory scope", () => {
         action: "remember",
         scope: "memory",
         name: "loose drums",
-        type: "feedback",
         content: "Apply groove.",
       });
 
       expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.remember", {
         name: "loose drums",
-        type: "feedback",
         description: "",
         content: "Apply groove.",
       });
@@ -81,7 +79,6 @@ describe("context - memory scope", () => {
         action: "remember",
         scope: "memory",
         name: "loose-drums",
-        type: "feedback",
         description: "swing/humanize",
         content: "Apply groove.",
       });
@@ -93,9 +90,8 @@ describe("context - memory scope", () => {
     });
 
     it.each([
-      [{ type: "user", content: "b" }, "name required for remember action"],
-      [{ name: "x", content: "b" }, "type required for remember action"],
-      [{ name: "x", type: "user" }, "content required for remember action"],
+      [{ content: "b" }, "name required for remember action"],
+      [{ name: "x" }, "content required for remember action"],
     ])(
       "rejects an incomplete remember before touching the node route",
       async (extra, message) => {

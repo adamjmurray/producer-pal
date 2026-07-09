@@ -17,8 +17,6 @@ import {
 export interface MemoryEntryView {
   /** Slug (filename without extension); the stable handle for save/delete. */
   name: string;
-  /** Which bucket it belongs to (drives list grouping). */
-  type: string;
   /** One-line recall hook shown in the list. */
   description: string;
   /** The fact body (markdown). */
@@ -27,7 +25,6 @@ export interface MemoryEntryView {
 
 /** The fields a save writes (the slug comes from the entry name / URL). */
 export interface MemoryEntryInput {
-  type: string;
   description: string;
   content: string;
 }
@@ -43,9 +40,9 @@ export type UseMemoryCollectionReturn = UseDocCollectionReturn<
 /**
  * Read/write the LLM-managed memory collection (~/.producer-pal/memory/) as one
  * collection — a thin binding of the generic {@link useDocCollection} to the
- * memory endpoints. The list GET returns every entry (name/type/description/
- * body); a PUT echoes the saved entry, a DELETE removes one; focus/interval
- * polling surfaces external writes.
+ * memory endpoints. The list GET returns every entry (name/description/body);
+ * a PUT echoes the saved entry, a DELETE removes one; focus/interval polling
+ * surfaces external writes.
  *
  * @returns Collection state plus save/delete and refresh actions
  */

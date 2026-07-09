@@ -30,7 +30,6 @@ afterAll(async () => {
 
 interface MemoryEntry {
   name: string;
-  type: string;
   description: string;
   body: string;
 }
@@ -38,8 +37,7 @@ interface MemoryEntry {
 /**
  * PUT one memory entry and return the parsed response.
  * @param name - Desired memory name (path segment, slugified server-side)
- * @param entry - The type/description/content payload
- * @param entry.type - The memory bucket
+ * @param entry - The description/content payload
  * @param entry.description - Optional one-line recall hook
  * @param entry.content - The memory body
  * @param entry.createOnly - When true, the server rejects a name collision (409)
@@ -48,7 +46,6 @@ interface MemoryEntry {
 function putMemory(
   name: string,
   entry: {
-    type: string;
     description?: string;
     content: string;
     createOnly?: boolean;
@@ -78,7 +75,6 @@ describe("memory-collection route", () => {
 
   it("PUT stores an entry (slugifying the name); GET reflects it", async () => {
     const res = await putMemory("Prefers C Minor", {
-      type: "user",
       description: "default key & genre",
       content: "Composes mostly in C minor, house/techno.",
     });
@@ -88,7 +84,6 @@ describe("memory-collection route", () => {
 
     expect(entry).toStrictEqual({
       name: "prefers-c-minor",
-      type: "user",
       description: "default key & genre",
       body: "Composes mostly in C minor, house/techno.",
     });
@@ -100,12 +95,10 @@ describe("memory-collection route", () => {
 
   it("PUT overwrites in place when the same name is stored again", async () => {
     await putMemory("album-nyx", {
-      type: "goal",
       description: "v1",
       content: "first",
     });
     await putMemory("album-nyx", {
-      type: "goal",
       description: "v2",
       content: "second",
     });
@@ -119,7 +112,6 @@ describe("memory-collection route", () => {
 
   it("defaults a missing description to an empty string", async () => {
     const res = await putMemory("loose-drums", {
-      type: "feedback",
       content: "Apply groove.",
     });
 
@@ -129,7 +121,7 @@ describe("memory-collection route", () => {
   });
 
   it("DELETE removes an entry and reports whether it existed", async () => {
-    await putMemory("temp-note", { type: "user", content: "x" });
+    await putMemory("temp-note", { content: "x" });
 
     const hit = await fetch(`${base}/temp-note`, { method: "DELETE" });
     const miss = await fetch(`${base}/temp-note`, { method: "DELETE" });
@@ -139,12 +131,11 @@ describe("memory-collection route", () => {
   });
 
   it("rejects a create-only PUT that collides with an existing name (409)", async () => {
-    await putMemory("collide", { type: "user", content: "original" });
+    await putMemory("collide", { content: "original" });
 
     // Same slug via a differently-cased name, with createOnly set (the editor's
     // Create flow) — must not overwrite the existing memory.
     const res = await putMemory("Collide", {
-      type: "user",
       content: "overwrite",
       createOnly: true,
     });
@@ -162,7 +153,6 @@ describe("memory-collection route", () => {
 
   it("allows a create-only PUT for a brand-new name", async () => {
     const res = await putMemory("fresh-name", {
-      type: "user",
       content: "hi",
       createOnly: true,
     });
@@ -170,21 +160,8 @@ describe("memory-collection route", () => {
     expect(res.status).toBe(200);
   });
 
-  it("rejects an invalid type with 400", async () => {
-    const res = await putMemory("bad-type", {
-      type: "bogus",
-      content: "x",
-    });
-
-    expect(res.status).toBe(400);
-    expect(((await res.json()) as { error: string }).error).toMatch(
-      /type must be one of/i,
-    );
-  });
-
   it("rejects a non-string content with 400", async () => {
     const res = await putJson(`${base}/bad-content`, {
-      type: "user",
       content: 42,
     });
 
@@ -192,7 +169,7 @@ describe("memory-collection route", () => {
   });
 
   it("rejects an empty body with 400 (store validation)", async () => {
-    const res = await putMemory("blank", { type: "user", content: "   " });
+    const res = await putMemory("blank", { content: "   " });
 
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toMatch(
@@ -201,7 +178,7 @@ describe("memory-collection route", () => {
   });
 
   it("rejects an unslugifiable name with 400", async () => {
-    const res = await putMemory("!!!", { type: "user", content: "x" });
+    const res = await putMemory("!!!", { content: "x" });
 
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toMatch(
@@ -212,7 +189,7 @@ describe("memory-collection route", () => {
   it("blocks genuinely cross-site writes with 403", async () => {
     const putRes = await putJson(
       `${base}/evil`,
-      { type: "user", content: "x" },
+      { content: "x" },
       "https://evil.example.com",
     );
     const delRes = await fetch(`${base}/evil`, {

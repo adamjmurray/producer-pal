@@ -32,7 +32,6 @@ type HookResult = { current: UseMemoryCollectionReturn };
 function rawEntry(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     name: "prefers-c-minor",
-    type: "user",
     description: "default key & genre",
     body: "Composes in C minor.",
     ...over,
@@ -85,7 +84,6 @@ function badRequest(body: unknown): Response {
 }
 
 const SAMPLE_INPUT = {
-  type: "user",
   description: "default key & genre",
   content: "Composes in C minor.",
 };
@@ -109,13 +107,11 @@ describe("useMemoryCollection", () => {
     expect(readyEntries(result)).toStrictEqual([
       {
         name: "prefers-c-minor",
-        type: "user",
         description: "default key & genre",
         body: "Composes in C minor.",
       },
       {
         name: "loose-drums",
-        type: "user",
         description: "default key & genre",
         body: "Composes in C minor.",
       },

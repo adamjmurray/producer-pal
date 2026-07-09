@@ -19,7 +19,7 @@ interface MemoryScreenProps {
 
 /**
  * The Memory tab: the shared two-pane {@link CollectionScreen} bound to the
- * memory collection — a left index grouped by type ({@link MemoryList}) and a
+ * memory collection — a flat, name-sorted left index ({@link MemoryList}) and a
  * right per-entry form ({@link MemoryEntryEditor}).
  * @param props - Screen props
  * @returns Screen element
