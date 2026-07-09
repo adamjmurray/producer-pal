@@ -40,7 +40,8 @@ advances time by its own duration:
 Headers are case-insensitive. Mixed section types in one string (e.g. `drums` +
 `melody`) are **legal but warned**. When two voices produce the same pitch at
 the same start, the later note wins (a collision warning is emitted). Invalid
-syntax throws a wrapped `Stark notation parse error`.
+syntax throws a wrapped `Stark notation parse error`; an unknown chord symbol
+throws an interpreter error naming the token (see Chord symbols).
 
 ---
 
@@ -139,7 +140,7 @@ On a `chords` line a **bare** token is a chord symbol (never a single note):
 - **root** — `letter` (`A`–`G`, case-insensitive) + optional **accidental**
   `#`/`b` bound immediately, exactly like a note root (`Ebm7`, `Bb7`).
 - **quality** — the suffix that names the chord. **Bare root = major triad**
-  (`C` = C major); `m`/`min` = minor. The vocabulary (`stark-config`'s
+  (`C` = C major); `m`/`min` = minor. The vocabulary (`chord-symbols.ts`'s
   `CHORD_QUALITY_INTERVALS`) covers triads (`maj`/`M`, `m`/`min`, `dim`,
   `aug`/`+`, `sus2`, `sus4`/`sus`, `5`), sixths (`6`, `m6`, `69`), sevenths
   (`7`, `maj7`/`M7`, `m7`/`min7`, `m7b5`, `dim7`, `mMaj7`), extensions (`9`,
@@ -156,8 +157,11 @@ On a `chords` line a **bare** token is a chord symbol (never a single note):
 **Voicing (v1):** closed, root position, stacked up from the chords register (C2
 = 48); a slash bass is placed at the highest octave strictly below the root (a
 chord tone → inversion, else an added bottom). Octave marks shift the whole
-chord. No drop/open/spread voicings. An **unknown quality** warn-skips the token
-(and still advances time, so later chords stay aligned).
+chord. No drop/open/spread voicings. An **unknown quality is an error** — the
+interpreter rejects the token by name (like any other invalid syntax) rather
+than guessing. This is what catches a missing space: `CG` lexes as one token
+(root `C`, quality `G`), and silently skipping it would drop both intended
+chords and desync everything after.
 
 > **Chord symbols are INPUT-ONLY sugar.** They name a set of pitch classes; the
 > interpreter realizes them into concrete notes. The **serializer never emits a

@@ -235,12 +235,15 @@ ChordsItem
 // suffixes and `*N` repeat as a note. `/`+letter is the slash bass, `/`+digit is
 // a duration — disjoint, so `G7/B/2` = G7 over B, half note. The quality class
 // stops at any suffix/terminator (`/ ' , ! ? * |`) and whitespace; the
-// interpreter (not the grammar) validates the quality and warns on unknowns.
+// interpreter (not the grammar) validates the quality against the chord
+// vocabulary and rejects unknowns with an error (so `CG` — a missing space —
+// can't silently swallow the `G`).
 //
 // A `trailing` run of any leftover non-separator chars (up to whitespace or a
 // `|` bar) is captured last so a malformed chord like `C6/9` or `C-7` — whose
-// `/9`/`-7` can't lex as a duration/bass/suffix — is swallowed into ONE token the
-// interpreter warn-skips, rather than being left over to abort the whole parse.
+// `/9`/`-7` can't lex as a duration/bass/suffix — is swallowed into ONE token
+// the interpreter can name in its error message, rather than being left over to
+// fail the parse with a cryptic position-only Peggy error.
 // Any well-formed token leaves `trailing` empty, so this can't change valid input.
 ChordSymbolToken
   = letter:[A-Ga-g] acc:[#b]? quality:$([A-Za-z0-9#+]*) bass:SlashBass? suffixes:NoteTokenSuffix* rep:Repeat? trailing:$([^ \t\r\n|]*) {

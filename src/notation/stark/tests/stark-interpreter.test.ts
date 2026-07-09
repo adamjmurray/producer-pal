@@ -212,42 +212,34 @@ describe("stark interpreter — chord symbols (chords line)", () => {
     ).toHaveLength(3);
   });
 
-  it("warn-skips an unknown quality but keeps later chords aligned", () => {
-    const notes = interpretNotation("chords: C Cwat G");
-
-    // C at 0, Cwat skipped (still advances 4 beats), G at 8 — nothing at 4.
-    expect(
-      notes.filter((n) => n.start_time === 0).map((n) => n.pitch),
-    ).toStrictEqual([48, 52, 55]);
-    expect(
-      notes.filter((n) => n.start_time === 8).map((n) => n.pitch),
-    ).toStrictEqual([55, 59, 62]);
-    expect(notes.some((n) => n.start_time === 4)).toBe(false);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("unknown chord symbol"),
+  it("throws on an unknown quality instead of silently dropping the chord", () => {
+    expect(() => interpretNotation("chords: C Cwat G")).toThrow(
+      'unknown chord symbol "Cwat"',
     );
   });
 
-  it("warn-skips a chord with unlexable trailing junk instead of aborting the parse", () => {
-    // `/9` (not a valid /N duration or /letter bass) and `-7` can't lex, so the
-    // whole token is captured as trailing junk and warn-skipped — one bad token
-    // must not throw a parse error that fails the entire clip write.
-    const notes = interpretNotation("chords: Cm7 C6/9 Dm7");
-
-    // Cm7 at 0, C6/9 skipped (still advances 4 beats), Dm7 at 8 — nothing at 4.
-    expect(notes.filter((n) => n.start_time === 0)).toHaveLength(4);
-    expect(notes.filter((n) => n.start_time === 8)).toHaveLength(4);
-    expect(notes.some((n) => n.start_time === 4)).toBe(false);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining('unknown chord symbol "C6/9"'),
+  it("throws on two chords with a missing space, naming the merged token", () => {
+    // `CG` lexes as ONE token (root C, quality "G"). Warn-skipping it would
+    // silently drop both intended chords AND advance only one slot, desyncing
+    // everything after — so it must hard-error like any other invalid token.
+    expect(() => interpretNotation("chords: CG Am")).toThrow(
+      'unknown chord symbol "CG"',
     );
   });
 
-  it("degrades a conventional-but-unsupported spelling (C-7) to a warn-skip, not a throw", () => {
-    expect(() => interpretNotation("chords: C-7")).not.toThrow();
-    expect(interpretNotation("chords: C-7")).toHaveLength(0);
+  it("throws on a chord with unlexable trailing junk, naming the whole token", () => {
+    // `/9` (not a valid /N duration or /letter bass) can't lex, so the whole
+    // token is captured as trailing junk and rejected by name — a clearer
+    // error than a position-only Peggy parse failure.
+    expect(() => interpretNotation("chords: Cm7 C6/9 Dm7")).toThrow(
+      'unknown chord symbol "C6/9"',
+    );
+  });
+
+  it("rejects a conventional-but-unsupported spelling (C-7) by name", () => {
+    expect(() => interpretNotation("chords: C-7")).toThrow(
+      'unknown chord symbol "C-7"',
+    );
   });
 
   it("uses ! / ? for dynamics; letter case is insignificant (not a dynamic)", () => {
@@ -464,13 +456,9 @@ describe("stark interpreter — additional branch coverage", () => {
     ).toStrictEqual([55, 59, 62]);
   });
 
-  it("warn-skips an unknown chord symbol that carries a slash bass", () => {
-    const notes = interpretNotation("chords: Cwat/B");
-
-    expect(notes).toHaveLength(0);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining('unknown chord symbol "Cwat/B"'),
+  it("throws on an unknown chord symbol that carries a slash bass", () => {
+    expect(() => interpretNotation("chords: Cwat/B")).toThrow(
+      'unknown chord symbol "Cwat/B"',
     );
   });
 });

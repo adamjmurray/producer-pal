@@ -243,8 +243,9 @@ function processChordsSection(
 
 // Process one chords-line item; returns the updated time cursor. Tokens are chord
 // symbols (realized from the vocab) or explicit [..] bracket voicings (voiced in
-// the chord register). An unknown symbol quality warns and skips but STILL
-// advances time, so a later chord stays aligned.
+// the chord register). An unknown symbol quality is a hard error — like any other
+// invalid Stark token — so a missing space (`CG` = root C, quality "G") can't
+// silently drop chords and desync the rest of the line.
 function processChordItem(
   item: ChordsContentItem,
   time: number,
@@ -269,7 +270,7 @@ function processChordItem(
 
   const beats = durationBeats(item.duration ?? lineDefault);
   // Leftover chars the grammar couldn't lex (e.g. `/9` in `C6/9`, `-7` in `C-7`)
-  // mark the whole token as malformed — skip it rather than realize a partial
+  // mark the whole token as malformed — reject it rather than realize a partial
   // chord from the part that did parse.
   const pitches = item.trailing
     ? null
@@ -285,9 +286,10 @@ function processChordItem(
     const slash = item.bass == null ? "" : `/${item.bass}`;
     const label = `${item.root}${item.quality}${slash}${item.trailing}`;
 
-    console.warn(`Stark: unknown chord symbol "${label}" — skipping`);
-
-    return time + beats;
+    throw new Error(
+      `Stark: unknown chord symbol "${label}" — separate chords with spaces ` +
+        `and use a known quality (m, maj7, m7, 7, dim, aug, sus2, sus4, add9, 7b9, ...)`,
+    );
   }
 
   const velocity = velocityFor(item.dynamic);
