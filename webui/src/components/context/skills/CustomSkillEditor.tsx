@@ -14,6 +14,7 @@ import {
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
+import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
 
 interface CustomSkillEditorProps {
   /** The collection hook (per-entry save/delete lives here). */
@@ -30,7 +31,10 @@ interface CustomSkillEditorProps {
  * Right-pane form for one custom skill: name (editable only when creating — the
  * slug is the stable handle), a one-line description hook, an enabled toggle, and
  * the instruction body the assistant loads on demand. Keyed by the selected
- * entry in the parent so the draft re-seeds on selection change.
+ * entry in the parent so the draft re-seeds on selection change. Autosaves so a
+ * draft is never lost on close/switch: idle-debounced for an existing skill and
+ * flushed on unmount; a new skill persists on close (its explicit Create button
+ * forks it into an existing skill).
  * @param props - Editor props
  * @returns Editor element
  */
@@ -50,14 +54,27 @@ export function CustomSkillEditor(
     body.trim().length > 0 &&
     collection.saveStatus !== "saving";
 
-  const handleSave = async (): Promise<void> => {
-    const saved = await collection.saveEntry(
+  const doSave = (): Promise<CustomSkillView | null> =>
+    collection.saveEntry(
       targetName,
       { description, content: body, enabled },
       isNew,
     );
 
-    if (saved) onSaved(saved.name);
+  const { noteSaved } = useCollectionEntryAutosave({
+    canSave,
+    draftKey: JSON.stringify([targetName, description, enabled, body]),
+    autosaveOnIdle: !isNew,
+    persist: async () => (await doSave()) != null,
+  });
+
+  const handleSave = async (): Promise<void> => {
+    const saved = await doSave();
+
+    if (saved) {
+      noteSaved();
+      onSaved(saved.name);
+    }
   };
 
   const handleDelete = async (): Promise<void> => {

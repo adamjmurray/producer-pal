@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import {
   runGuardedRefresh,
@@ -11,6 +11,10 @@ import {
   useRefreshOnFocusAndPoll,
   useSaveRefreshGuard,
 } from "./use-doc-memory";
+
+const AUTOSAVE_DEBOUNCE_MS = 800;
+
+type TimerRef = { current: ReturnType<typeof setTimeout> | null };
 
 /**
  * Read/write one ~/.producer-pal collection (a dynamic set of markdown entries
@@ -164,7 +168,155 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
   return { status, saveStatus, saveError, saveEntry, deleteEntry, refresh };
 }
 
+/** Params for {@link useCollectionEntryAutosave}. */
+export interface CollectionEntryAutosaveParams {
+  /**
+   * Whether the current draft is valid to persist (name + body present and no
+   * save in flight). A non-savable draft is never flushed.
+   */
+  canSave: boolean;
+  /**
+   * A serialization of the draft; any change from the last persisted value marks
+   * it dirty. (e.g. `JSON.stringify([name, type, description, body])`.)
+   */
+  draftKey: string;
+  /**
+   * Whether to persist on idle (debounced). True for existing entries — a save
+   * doesn't change identity there, so nothing remounts. False for a new entry,
+   * whose first persist flips it to an existing entry and would remount the
+   * editor mid-type (dropping focus); a new entry still persists on close via
+   * the unmount flush.
+   */
+  autosaveOnIdle: boolean;
+  /**
+   * Persist the current draft — saveEntry ONLY, no navigation (`onSaved`), which
+   * would fight the user's selection when this fires on unmount. Resolves true
+   * on success so a failed save is retried on the next change or close.
+   */
+  persist: () => Promise<boolean>;
+}
+
+/** The return of {@link useCollectionEntryAutosave}. */
+export interface CollectionEntryAutosaveReturn {
+  /**
+   * Advance the autosave baseline to the current draft after an explicit manual
+   * save, so the unmount flush doesn't redundantly re-persist the same content.
+   */
+  noteSaved: () => void;
+}
+
+/**
+ * Autosave lifecycle for a collection entry editor (memory, custom skills): a
+ * debounced idle save for existing entries plus a flush on unmount and on tab
+ * close, so a draft is never lost when the overlay closes, the tab switches, or
+ * the selected entry changes. Modeled on the document editors'
+ * `useContextEditorState` flush logic. The explicit Save button owns navigation
+ * (new→edit) and calls {@link CollectionEntryAutosaveReturn.noteSaved} to keep
+ * this baseline in sync so the unmount flush doesn't redundantly re-save.
+ *
+ * @param params - Draft state + the persist thunk
+ * @returns The manual-save sync handle
+ */
+export function useCollectionEntryAutosave(
+  params: CollectionEntryAutosaveParams,
+): CollectionEntryAutosaveReturn {
+  const { canSave, draftKey, autosaveOnIdle, persist } = params;
+  const canSaveRef = useRef(canSave);
+  const draftKeyRef = useRef(draftKey);
+  const persistRef = useRef(persist);
+  const lastSavedRef = useRef<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  const seededRef = useRef(false);
+
+  // Keep refs current so the flush callback (stable identity) sees the latest
+  // draft/persist. Synced in an effect (not during render) so we never write a
+  // ref while rendering; flush only ever runs later (timer, event, unmount).
+  useEffect(() => {
+    canSaveRef.current = canSave;
+    draftKeyRef.current = draftKey;
+    persistRef.current = persist;
+  });
+
+  const flush = useCallback((): void => {
+    clearTimer(timerRef);
+
+    if (!canSaveRef.current) return;
+
+    const key = draftKeyRef.current;
+
+    if (key === lastSavedRef.current) return;
+
+    // Mark optimistically so overlapping flushes don't double-dispatch; roll the
+    // marker back on failure so the next change or close retries.
+    const previous = lastSavedRef.current;
+
+    lastSavedRef.current = key;
+    void persistRef.current().then((ok) => {
+      if (!ok && mountedRef.current && lastSavedRef.current === key) {
+        lastSavedRef.current = previous;
+      }
+    });
+  }, []);
+
+  // Seed the baseline once (an unedited existing entry must not re-save on
+  // mount), then debounce an idle autosave on every later change — but only for
+  // existing entries (see autosaveOnIdle).
+  useEffect(() => {
+    if (!seededRef.current) {
+      seededRef.current = true;
+      lastSavedRef.current = canSave ? draftKey : null;
+
+      return;
+    }
+
+    if (!autosaveOnIdle || !canSave || draftKey === lastSavedRef.current) {
+      return;
+    }
+
+    timerRef.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
+
+    return () => clearTimer(timerRef);
+  }, [canSave, draftKey, autosaveOnIdle, flush]);
+
+  // Flush on tab close so a pending draft isn't dropped.
+  useEffect(() => {
+    const onBeforeUnload = (): void => flush();
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [flush]);
+
+  // Flush on unmount: overlay close, tab switch, and entry-selection change all
+  // unmount this editor, and the draft must persist first.
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+      flush();
+    },
+    [flush],
+  );
+
+  const noteSaved = useCallback((): void => {
+    lastSavedRef.current = draftKeyRef.current;
+  }, []);
+
+  return { noteSaved };
+}
+
 // --- Helpers below main export ---
+
+/**
+ * Clear a setTimeout ref if armed, and null it out.
+ * @param ref - The timer ref to clear
+ */
+function clearTimer(ref: TimerRef): void {
+  if (ref.current != null) {
+    clearTimeout(ref.current);
+    ref.current = null;
+  }
+}
 
 /**
  * GET the full collection.

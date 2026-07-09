@@ -43,6 +43,50 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("CustomSkillEditor autosave on close", () => {
+  it("persists a new draft on unmount so closing before Create doesn't lose it", () => {
+    const saveEntry = vi.fn().mockResolvedValue({
+      name: "jazz-voicings",
+      description: "",
+      enabled: true,
+      body: "Voice with 3rds.",
+    });
+    const collection: UseCustomSkillsCollectionReturn = {
+      status: { kind: "ready", entries: [] },
+      saveStatus: "idle",
+      saveError: null,
+      saveEntry,
+      deleteEntry: vi.fn(),
+      refresh: vi.fn(),
+    };
+
+    const { unmount } = render(
+      <CustomSkillEditor
+        collection={collection}
+        entry={null}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
+      target: { value: "jazz-voicings" },
+    });
+    fireEvent.input(screen.getByRole("textbox", { name: /Instructions/ }), {
+      target: { value: "Voice with 3rds." },
+    });
+
+    // Close the overlay (Escape / backdrop / ×) WITHOUT clicking Create.
+    unmount();
+
+    expect(saveEntry).toHaveBeenCalledWith(
+      "jazz-voicings",
+      { description: "", content: "Voice with 3rds.", enabled: true },
+      true,
+    );
+  });
+});
+
 describe("CustomSkillEditor delete confirmation", () => {
   it("aborts the delete when the confirm dialog is dismissed", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));

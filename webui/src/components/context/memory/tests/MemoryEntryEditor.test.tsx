@@ -132,6 +132,45 @@ describe("MemoryEntryEditor — new entry", () => {
   });
 });
 
+describe("MemoryEntryEditor — autosave on close", () => {
+  it("persists a new draft on unmount so closing before Create doesn't lose it", () => {
+    const saved: MemoryEntryView = {
+      name: "loose-drums",
+      type: "user",
+      description: "",
+      body: "groove",
+    };
+    const collection = fakeCollection({
+      saveEntry: vi.fn().mockResolvedValue(saved),
+    });
+
+    const { unmount } = render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={null}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
+      target: { value: "loose-drums" },
+    });
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "groove" },
+    });
+
+    // Close the overlay (Escape / backdrop / ×) WITHOUT clicking Create.
+    unmount();
+
+    expect(collection.saveEntry).toHaveBeenCalledWith(
+      "loose-drums",
+      { type: "user", description: "", content: "groove" },
+      true,
+    );
+  });
+});
+
 describe("MemoryEntryEditor — existing entry", () => {
   it("shows the slug read-only and saves edits under the same name", async () => {
     const collection = fakeCollection({

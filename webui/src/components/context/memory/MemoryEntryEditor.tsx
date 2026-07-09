@@ -12,6 +12,7 @@ import {
   INPUT_CLASS,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
+import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
 import {
   type MemoryEntryView,
   type UseMemoryCollectionReturn,
@@ -33,8 +34,10 @@ interface MemoryEntryEditorProps {
  * Right-pane form for one memory: name (editable only when creating — the slug
  * is the stable handle), type, one-line description, and a markdown body. Keyed
  * by the selected entry in the parent so the local draft re-seeds on selection
- * change. Saves explicitly (memory records are structured, so autosave-on-idle
- * would be surprising); the list still polls for the assistant's own writes.
+ * change. Autosaves so a draft is never lost on close/switch: idle-debounced for
+ * an existing entry and flushed on unmount; a new entry persists on close (its
+ * explicit Create button forks it into an existing entry). The list still polls
+ * for the assistant's own writes.
  * @param props - Editor props
  * @returns Editor element
  */
@@ -54,16 +57,29 @@ export function MemoryEntryEditor(
     body.trim().length > 0 &&
     collection.saveStatus !== "saving";
 
-  const handleSave = async (): Promise<void> => {
-    // Creating (or re-creating a memory deleted out from under us) is create-only
-    // so it can't silently overwrite an existing entry the name collides with.
-    const saved = await collection.saveEntry(
+  // Creating (or re-creating a memory deleted out from under us) is create-only
+  // so it can't silently overwrite an existing entry the name collides with.
+  const doSave = (): Promise<MemoryEntryView | null> =>
+    collection.saveEntry(
       targetName,
       { type, description, content: body },
       isNew,
     );
 
-    if (saved) onSaved(saved.name);
+  const { noteSaved } = useCollectionEntryAutosave({
+    canSave,
+    draftKey: JSON.stringify([targetName, type, description, body]),
+    autosaveOnIdle: !isNew,
+    persist: async () => (await doSave()) != null,
+  });
+
+  const handleSave = async (): Promise<void> => {
+    const saved = await doSave();
+
+    if (saved) {
+      noteSaved();
+      onSaved(saved.name);
+    }
   };
 
   const handleDelete = async (): Promise<void> => {
