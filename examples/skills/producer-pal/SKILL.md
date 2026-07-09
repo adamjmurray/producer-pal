@@ -15,16 +15,26 @@ you control Ableton Live without an MCP client.
 
 ## Bootstrap (do this every session before other tool calls)
 
-1. **List tools** to see what's available and read each tool's input schema:
+1. **Set the notation to `midi-json`** — do this _first_, before listing tools:
+   the active notation changes the note syntax baked into every tool and
+   argument description, so it must be set before you read the schemas.
+   `midi-json` represents MIDI notes as a plain JSON array, which you can
+   generate and parse directly in scripts (see the Notation section below):
+
+   ```bash
+   node ppal.mjs --set-config '{"notation":"midi-json"}'
+   ```
+
+2. **List tools** to see what's available and read each tool's input schema:
 
    ```bash
    node ppal.mjs --list-tools
    ```
 
-2. **Call `ppal-connect` first** — its response includes the up-to-date Producer
-   Pal Skills (bar|beat notation, MIDI syntax, code transforms, conventions).
-   Treat the returned content as authoritative instructions for using all other
-   tools:
+3. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
+   Skills (MIDI note syntax for the active notation, code transforms,
+   conventions). Treat the returned content as authoritative instructions for
+   using all other tools:
 
    ```bash
    node ppal.mjs ppal-connect
@@ -33,11 +43,32 @@ you control Ableton Live without an MCP client.
    `ppal-connect` also confirms the device is running and reports the current
    Live Set state.
 
+## Notation
+
+Producer Pal encodes MIDI notes in one of three notations, selected by the
+global device setting you set during bootstrap. The active notation determines
+the note syntax in every tool description and in the `ppal-connect` Skills:
+
+- **`midi-json`** (recommended for coding agents) — notes as a JSON array, e.g.
+  `[{p:60,t:0,d:4,v:100}]`: `p` pitch, `t` start beat, `d` duration in beats,
+  `v` velocity. Trivial to build and parse programmatically.
+- **`bar|beat`** (Producer Pal's default) — a compact human-readable text format
+  (e.g. `v100 n1/4 C3 1|1`), tuned for models writing notes by hand.
+- **`stark`** — a simpler literal per-line `type: content` format with
+  event-based drum hits.
+
+The setting is global to the device, so it also affects the chat UI and any
+connected MCP clients. Set it at the start of each session (step 1) so the
+schemas and Skills you read match the notation you'll write.
+
 ## Bundled CLI
 
 `ppal.mjs` (Node 18+, no dependencies) lives next to this file.
 
 ```bash
+# Set device settings, e.g. the active notation (do this FIRST, before listing tools)
+node ppal.mjs --set-config '{"notation":"midi-json"}'
+
 # Discovery
 node ppal.mjs --list-tools
 
