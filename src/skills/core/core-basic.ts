@@ -25,11 +25,9 @@ export const coreBasic = `@include "./{notation}-basic.md"
 - \`[range]: v0\` — delete notes in a range
 - ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)
 
-## Memory
+## Context
 
-\`ppal-context\` scope:memory stores lasting user facts across sessions (not this-Live-Set details — those use scope:project). Only the index (name + description) is shown; read one by name for its body.
-- **remember** who they are or how to work with them, plus cross-project goals and external pointers. Write a specific description — it's all you see until you read the memory.
-- Check the index first and reuse a name to UPDATE, not duplicate. One fact each. **forget** what's wrong.
+\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores facts that apply across all projects. Both are single documents — read the same scope before writing (write replaces the whole document).
 
 ## Rules
 

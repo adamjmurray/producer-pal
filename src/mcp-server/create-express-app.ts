@@ -159,6 +159,7 @@ const callLiveApiEnriched = withMemory(
       smallModelMode: config.smallModelMode,
     })),
   ),
+  () => config.smallModelMode,
 );
 
 interface JsonRpcError {

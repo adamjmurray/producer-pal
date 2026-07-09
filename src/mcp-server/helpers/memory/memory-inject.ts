@@ -20,23 +20,34 @@ import { listMemoryEntries, renderMemoryIndex } from "./global-memory-store.ts";
  * assembled Node-side, the only path reaching external MCP clients (Claude
  * Desktop, LM Studio), which have no recall harness of their own.
  *
+ * Skipped entirely in small-model mode: `ppal-context`'s small-model surface
+ * drops scope=memory (remember/forget/list/read-by-name), so an injected index
+ * pointing at those actions would be a dead end.
+ *
  * @param inner - The underlying callLiveApi to wrap
+ * @param getSmallModelMode - Reads the current small-model-mode setting
  * @returns A callLiveApi that appends the memory index to ppal-connect results
  */
-export function withMemory(inner: CallLiveApiFunction): WrappedCallLiveApi {
-  return withConnectAppend(inner, memoryBlock);
+export function withMemory(
+  inner: CallLiveApiFunction,
+  getSmallModelMode: () => boolean,
+): WrappedCallLiveApi {
+  return withConnectAppend(inner, () => memoryBlock(getSmallModelMode()));
 }
 
 // --- Helpers below main export ---
 
 /**
- * The memory index block to append, or null when there are no memories. Only
- * the index (flat `name — description` hooks) is injected; bodies load on
- * demand.
+ * The memory index block to append, or null when there are no memories or
+ * small-model mode is active. Only the index (flat `name — description` hooks)
+ * is injected; bodies load on demand.
  *
+ * @param smallModelMode - Whether small-model mode is active
  * @returns The memory index text, or null to skip
  */
-function memoryBlock(): string | null {
+function memoryBlock(smallModelMode: boolean): string | null {
+  if (smallModelMode) return null;
+
   const entries = listMemoryEntries();
 
   if (entries.length === 0) return null;

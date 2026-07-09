@@ -101,10 +101,10 @@ describe("shouldSkipScenario", () => {
     });
 
     it("does not skip under small-model mode when the param is not excluded", () => {
-      // `name` is a descriptionOverride, never an excludeParam, so it stays
-      // available even in small-model mode.
+      // `query` (ppal-library) is a descriptionOverride, never an
+      // excludeParam, so it stays available even in small-model mode.
       expect(
-        shouldSkipScenario(makeScenario({ params: ["name"] }), smallModelEnv),
+        shouldSkipScenario(makeScenario({ params: ["query"] }), smallModelEnv),
       ).toBeNull();
     });
 

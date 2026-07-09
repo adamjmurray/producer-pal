@@ -16,13 +16,16 @@ useTempConfigDir();
 
 /**
  * Run withMemory over a ppal-connect call and return the appended block text.
+ * @param smallModelMode - Whether small-model mode is active
  * @returns The appended memory block, or undefined when none was appended
  */
-async function appendedBlock(): Promise<string | undefined> {
-  const result = await withMemory(fakeInnerCall(connectResponse()))(
-    "ppal-connect",
-    {},
-  );
+async function appendedBlock(
+  smallModelMode = false,
+): Promise<string | undefined> {
+  const result = await withMemory(
+    fakeInnerCall(connectResponse()),
+    () => smallModelMode,
+  )("ppal-connect", {});
 
   return result.content.length > 1 ? result.content[1]?.text : undefined;
 }
@@ -74,10 +77,10 @@ describe("withMemory", () => {
   });
 
   it("does not inject when there are no memories", async () => {
-    const result = await withMemory(fakeInnerCall(connectResponse()))(
-      "ppal-connect",
-      {},
-    );
+    const result = await withMemory(
+      fakeInnerCall(connectResponse()),
+      () => false,
+    )("ppal-connect", {});
 
     expect(result.content).toHaveLength(1);
   });
@@ -85,10 +88,29 @@ describe("withMemory", () => {
   it("leaves non-connect tool responses untouched", async () => {
     rememberMemory({ name: "u", description: "d", body: "b" });
 
-    const result = await withMemory(fakeInnerCall(connectResponse()))(
-      "ppal-read-track",
-      {},
-    );
+    const result = await withMemory(
+      fakeInnerCall(connectResponse()),
+      () => false,
+    )("ppal-read-track", {});
+
+    expect(result.content).toHaveLength(1);
+  });
+
+  it("injects the index when small-model mode is off", async () => {
+    rememberMemory({ name: "prefers-c-minor", description: "d", body: "b" });
+
+    const block = await appendedBlock(false);
+
+    expect(block).toContain("prefers-c-minor");
+  });
+
+  it("skips the index when small-model mode is active", async () => {
+    rememberMemory({ name: "prefers-c-minor", description: "d", body: "b" });
+
+    const result = await withMemory(
+      fakeInnerCall(connectResponse()),
+      () => true,
+    )("ppal-connect", {});
 
     expect(result.content).toHaveLength(1);
   });
