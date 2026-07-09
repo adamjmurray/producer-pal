@@ -137,8 +137,9 @@ export interface ChordSymbolItem {
   /**
    * Leftover non-separator chars after the token's grammar was consumed (up to
    * whitespace or a `|` bar), e.g. "/9" in "C6/9" or "-7" in "C-7". "" for a
-   * well-formed token; when non-empty the interpreter treats the whole token as
-   * unrecognized and warn-skips it (so one bad token can't abort the parse).
+   * well-formed token; when non-empty the interpreter rejects the whole token,
+   * throwing "unknown chord symbol" with the full token in the message (rather
+   * than realizing a partial chord from the part that did parse).
    */
   trailing: string;
 }
