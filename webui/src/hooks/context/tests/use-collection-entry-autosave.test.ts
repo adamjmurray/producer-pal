@@ -139,6 +139,91 @@ describe("useCollectionEntryAutosave", () => {
     expect(persist).not.toHaveBeenCalled();
   });
 
+  it("does NOT flush on unmount after the entry was deleted externally (Discard must not resurrect it)", () => {
+    const persist = vi.fn().mockResolvedValue("typed");
+    const { rerender, unmount } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+
+    // The user edits, then the entry is deleted out from under the editor
+    // (entry prop goes null, so externalKey becomes undefined and the editor
+    // flips to new-entry mode). Discard's selection change unmounts the
+    // editor — the flush must not re-create the entry from the kept draft.
+    rerender({
+      canSave: true,
+      draftKey: "typed",
+      autosaveOnIdle: false,
+      persist,
+      externalKey: "seed",
+    });
+    rerender({
+      canSave: true,
+      draftKey: "typed",
+      autosaveOnIdle: false,
+      persist,
+    });
+    unmount();
+
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("does NOT flush on beforeunload after the entry was deleted externally", async () => {
+    const persist = vi.fn().mockResolvedValue("typed");
+    const { rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+
+    rerender({
+      canSave: true,
+      draftKey: "typed",
+      autosaveOnIdle: false,
+      persist,
+    });
+    await act(() => {
+      window.dispatchEvent(new Event("beforeunload"));
+    });
+
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("flushes again when the deleted entry reappears (deletion state is not sticky)", () => {
+    const persist = vi.fn().mockResolvedValue("typed");
+    const { rerender, unmount } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+
+    // Deleted externally, then restored (e.g. re-created elsewhere and picked
+    // up by a poll) — the normal unmount flush applies again.
+    rerender({
+      canSave: true,
+      draftKey: "typed",
+      autosaveOnIdle: false,
+      persist,
+    });
+    rerender({
+      canSave: true,
+      draftKey: "typed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+    unmount();
+
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
+
   it("does not flush when the draft is not savable", () => {
     const persist = vi.fn().mockResolvedValue("partial");
     const { rerender, unmount } = setup({

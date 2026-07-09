@@ -247,7 +247,10 @@ export interface CollectionEntryAutosaveReturn {
  * Autosave lifecycle for a collection entry editor (memory, custom skills): a
  * debounced idle save for existing entries plus a flush on unmount and on tab
  * close, so a draft is never lost when the overlay closes, the tab switches, or
- * the selected entry changes. Modeled on the document editors'
+ * the selected entry changes. Exception: once the edited entry is deleted
+ * externally (`externalKey` goes from defined to undefined), flushes are
+ * suppressed — only the explicit Save button may re-create a deleted entry
+ * from the kept draft. Modeled on the document editors'
  * `useContextEditorState` flush logic, including its external-update detection:
  * one shared baseline (`lastSavedRef`) drives both the dirty check (autosave
  * arming) and the external-update banner, exactly as `useContextEditorState`
@@ -266,6 +269,8 @@ export function useCollectionEntryAutosave(
   const draftKeyRef = useRef(draftKey);
   const persistRef = useRef(persist);
   const externalKeyRef = useRef(externalKey);
+  const hadExternalKeyRef = useRef(externalKey != null);
+  const deletedExternallyRef = useRef(false);
   const lastSavedRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
@@ -275,16 +280,29 @@ export function useCollectionEntryAutosave(
   // Keep refs current so the flush/adopt callbacks (stable identity) see the
   // latest draft/persist/externalKey. Synced in an effect (not during render)
   // so we never write a ref while rendering; these callbacks only ever run
-  // later (timer, event, unmount, click).
+  // later (timer, event, unmount, click). An `externalKey` that was defined
+  // during this mount and is now undefined means the entry was deleted out
+  // from under the editor (a genuinely-new entry never has one) — tracked so
+  // flush can refuse to resurrect it.
   useEffect(() => {
     canSaveRef.current = canSave;
     draftKeyRef.current = draftKey;
     persistRef.current = persist;
     externalKeyRef.current = externalKey;
+    if (externalKey != null) hadExternalKeyRef.current = true;
+    deletedExternallyRef.current =
+      hadExternalKeyRef.current && externalKey == null;
   });
 
   const flush = useCallback((): void => {
     clearTimer(timerRef);
+
+    // An entry deleted out from under the editor must never be re-created by
+    // an implicit flush: Discard's unmount would resurrect the entry it just
+    // dropped, and closing the overlay/tab would silently undo the deletion.
+    // Re-creating from the kept draft is the explicit Save button's job (see
+    // CollectionScreen's deleted-externally banner).
+    if (deletedExternallyRef.current) return;
 
     if (!canSaveRef.current) return;
 

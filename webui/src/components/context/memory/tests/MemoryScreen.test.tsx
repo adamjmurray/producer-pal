@@ -246,4 +246,35 @@ describe("MemoryScreen — deleted externally", () => {
     expect(screen.queryByText(/deleted outside the editor/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });
+
+  it("does NOT re-create the deleted entry when a dirty draft is discarded", () => {
+    // Regression: Discard changes the editor key, and the unmounting editor's
+    // autosave flush used to persist the dirty draft — silently re-creating
+    // the entry the user just chose to drop.
+    const saveEntry = vi.fn().mockResolvedValue(null);
+    const { rerender } = render(
+      screenEl(
+        fakeCollection({ kind: "ready", entries: ENTRIES }, { saveEntry }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    rerender(
+      screenEl(
+        fakeCollection(
+          { kind: "ready", entries: ENTRIES.slice(1) },
+          { saveEntry },
+        ),
+      ),
+    );
+
+    // Edit AFTER the deletion (banner visible), then bail out via Discard.
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "in-progress edit" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+    expect(saveEntry).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
 });
