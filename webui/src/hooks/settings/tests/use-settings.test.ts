@@ -526,7 +526,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gpt-5.5",
+      model: "gpt-5.6-terra",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,

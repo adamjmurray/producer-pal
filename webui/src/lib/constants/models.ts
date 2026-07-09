@@ -144,6 +144,9 @@ export const GEMINI_MODELS: ModelPresetItem[] = [
 ];
 
 export const OPENAI_MODELS: ModelPresetItem[] = [
+  { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
+  { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
+  { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
   { value: "gpt-5.5", label: "GPT-5.5" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
@@ -185,11 +188,8 @@ export const OPENROUTER_MODELS = [
     value: "anthropic/claude-fable-5",
     label: "[Paid] Anthropic Claude Fable 5",
   },
-  { value: "openai/gpt-5.5", label: "[Paid] OpenAI GPT-5.5" },
-  {
-    value: "openai/gpt-5.3-codex",
-    label: "[Paid] OpenAI GPT-5.3 Codex",
-  },
+  { value: "openai/gpt-5.6-terra", label: "[Paid] GPT-5.6 Terra" },
+  { value: "openai/gpt-5.6-sol", label: "[Paid] GPT-5.6 Sol" },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
   { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6 Plus" },
