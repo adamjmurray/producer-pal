@@ -209,6 +209,19 @@ describe("ratio durations (tuplets)", () => {
     expect(formatMidiJson(notes)).toBe("[{p:60,t:1/6,d:1/12,v:100}]");
   });
 
+  it("serializes a fine tuplet whose denominator exceeds 16 (d:1/24)", () => {
+    // A 32nd-note triplet (denominator 24) was beyond the old cap of 16, so it
+    // used to drift back through a lossy decimal. Now it round-trips exactly.
+    const notes: NoteEvent[] = [
+      { pitch: 60, start_time: 1 / 24, duration: 1 / 24, velocity: 100 },
+    ];
+
+    expect(formatMidiJson(notes)).toBe("[{p:60,t:1/24,d:1/24,v:100}]");
+    expect(
+      formatMidiJson(interpretMidiJson("[{p:60,t:1/24,d:1/24,v:100}]")),
+    ).toBe("[{p:60,t:1/24,d:1/24,v:100}]");
+  });
+
   it("keeps exact decimals decimal (integers, halves, 0.1 never become ratios)", () => {
     const notes: NoteEvent[] = [
       { pitch: 60, start_time: 0.5, duration: 0.1, velocity: 100 },

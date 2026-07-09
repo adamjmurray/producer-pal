@@ -17,6 +17,7 @@
  * barbeat's interpret/format seams.
  */
 
+import { NOTE_VALUE_DENOMINATORS } from "#src/notation/barbeat/barbeat-config.ts";
 import {
   codeNoteToNoteEvent,
   noteEventToCodeNote,
@@ -30,10 +31,6 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 const DEFAULT_DENOMINATOR = 4;
-
-// Largest denominator {@link findExactRatio} will spell (covers common tuplets:
-// triplets, quintuplets, sextuplets, septuplets, and their compounds).
-const MAX_RATIO_DENOMINATOR = 16;
 
 /** Options for the MIDI JSON interpret/format seams. */
 export interface MidiJsonOptions {
@@ -183,16 +180,24 @@ function formatBeats(value: number): string {
 }
 
 /**
- * Find the smallest-denominator ratio `p/q` (q up to {@link
- * MAX_RATIO_DENOMINATOR}) that equals `value` within same-time tolerance, or
- * null if none does. Ascending `q` yields the reduced fraction; the tolerance
- * lets a device-jittered read-back (e.g. 0.33333334) still snap to `1/3`.
+ * Find a ratio `p/q` that equals `value` within same-time tolerance, or null if
+ * none does. Candidate denominators are barbeat's canonical
+ * {@link NOTE_VALUE_DENOMINATORS} — the same curated set (powers of two, then
+ * the triplet/quintuplet/septuplet families up to 256) barbeat can represent —
+ * so MIDI JSON round-trips exactly the tuplets barbeat does, and finer tuplets
+ * (32nd/64th triplets, denominator > 16) no longer drift back through a lossy
+ * decimal. The preference order (simplest binary fraction first) picks the
+ * cleanest spelling; the tolerance lets a device-jittered read-back (e.g.
+ * 0.33333334) still snap to `1/3`. Only reached for values whose 4-decimal form
+ * is already lossy, so ordinary values never turn into fractions.
  *
  * @param value - Timing value in musical beats
- * @returns The exact ratio string, or null when no small fraction matches
+ * @returns The exact ratio string, or null when no canonical fraction matches
  */
 function findExactRatio(value: number): string | null {
-  for (let den = 2; den <= MAX_RATIO_DENOMINATOR; den++) {
+  for (const den of NOTE_VALUE_DENOMINATORS) {
+    if (den < 2) continue;
+
     const num = value * den;
 
     if (Math.abs(num - Math.round(num)) < SAME_TIME_EPSILON) {
