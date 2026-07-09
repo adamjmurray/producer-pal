@@ -48,7 +48,7 @@ function memoryBlock(): string | null {
     "Producer Pal user memory — persistent facts about this user, remembered " +
     "across sessions and projects (distinct from this Live Set's per-project " +
     "context). This is the index; to load a memory's full body call " +
-    'ppal-context (action:"read", scope:"global", name:"<name>").\n\n' +
+    'ppal-context (action:"read", scope:"memory", name:"<name>").\n\n' +
     renderMemoryIndexSections(entries)
   );
 }

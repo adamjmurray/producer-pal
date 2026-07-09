@@ -92,113 +92,18 @@ describe("context - global scope", () => {
 
   it("throws for an unknown action under the global scope", async () => {
     await expect(context({ action: "nope", scope: "global" })).rejects.toThrow(
-      "Unknown action: nope",
+      "Unknown action for scope:global: nope",
     );
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
-  describe("memory actions", () => {
-    /**
-     * Make requestNode resolve with a content payload.
-     * @param content - The content string the route should return
-     */
-    function mockNodeContent(content: string): void {
-      vi.mocked(protocolMock.requestNode).mockResolvedValue({
-        success: true,
-        result: { content },
-      });
-    }
-
-    it("reads one memory entry when a name is given", async () => {
-      mockNodeContent("the fact");
-
-      const result = await context({
-        action: "read",
-        scope: "global",
-        name: "prefers-c-minor",
-      });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.read", {
-        name: "prefers-c-minor",
-      });
-      expect(result).toStrictEqual({ content: "the fact" });
-    });
-
-    it("remembers a memory, defaulting a missing description to ''", async () => {
-      mockNodeContent("index");
-
-      await context({
-        action: "remember",
-        scope: "global",
-        name: "loose drums",
-        type: "feedback",
-        content: "Apply groove.",
-      });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.remember", {
-        name: "loose drums",
-        type: "feedback",
-        description: "",
-        content: "Apply groove.",
-      });
-    });
-
-    it("passes the description through when provided", async () => {
-      mockNodeContent("index");
-
-      await context({
-        action: "remember",
-        scope: "global",
-        name: "loose-drums",
-        type: "feedback",
-        description: "swing/humanize",
-        content: "Apply groove.",
-      });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith(
-        "memory.remember",
-        expect.objectContaining({ description: "swing/humanize" }),
-      );
-    });
-
-    it.each([
-      [{ type: "user", content: "b" }, "name required for remember action"],
-      [{ name: "x", content: "b" }, "type required for remember action"],
-      [{ name: "x", type: "user" }, "content required for remember action"],
-    ])(
-      "rejects an incomplete remember before touching the node route",
-      async (extra, message) => {
-        await expect(
-          context({ action: "remember", scope: "global", ...extra }),
-        ).rejects.toThrow(message);
-        expect(protocolMock.requestNode).not.toHaveBeenCalled();
-      },
-    );
-
-    it("forgets a memory by name", async () => {
-      mockNodeContent("index");
-
-      await context({ action: "forget", scope: "global", name: "stale" });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.forget", {
-        name: "stale",
-      });
-    });
-
-    it("rejects a forget with no name", async () => {
+  it.each(["remember", "forget", "list"])(
+    "rejects %s under the global scope (memory ops live under scope:memory)",
+    async (action) => {
       await expect(
-        context({ action: "forget", scope: "global" }),
-      ).rejects.toThrow("name required for forget action");
+        context({ action, scope: "global", name: "x" }),
+      ).rejects.toThrow(`Unknown action for scope:global: ${action}`);
       expect(protocolMock.requestNode).not.toHaveBeenCalled();
-    });
-
-    it("lists the memory index", async () => {
-      mockNodeContent("# Producer Pal Memory");
-
-      const result = await context({ action: "list", scope: "global" });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.list", {});
-      expect(result).toStrictEqual({ content: "# Producer Pal Memory" });
-    });
-  });
+    },
+  );
 });

@@ -58,7 +58,7 @@ export async function handleReadGlobalMemory(): Promise<MemoryResult> {
 
 /**
  * Read one indexed memory entry (~/.producer-pal/memory/&lt;name&gt;.md) by name,
- * over the RPC bridge.
+ * over the RPC bridge. Backs the `memory` scope's `read` action.
  *
  * @param name - The memory name/slug to read
  * @returns Memory result with the entry body, or a not-found note
@@ -71,7 +71,8 @@ export async function handleReadMemoryEntry(
 
 /**
  * Create or overwrite an indexed memory entry, then re-derive the index. The
- * Node side owns slug validation and index regeneration.
+ * Node side owns slug validation and index regeneration. Backs the `memory`
+ * scope's `remember` action.
  *
  * @param args - The memory to store
  * @param args.name - Desired memory name (slugified Node-side)
@@ -100,6 +101,7 @@ export async function handleRememberMemory(args: {
 
 /**
  * Delete an indexed memory entry (if present), then re-derive the index.
+ * Backs the `memory` scope's `forget` action.
  *
  * @param name - The memory name/slug to forget
  * @returns Memory result with the regenerated index
@@ -114,7 +116,7 @@ export async function handleForgetMemory(
 
 /**
  * List the derived memory index (already injected on connect; this is an
- * explicit refresh).
+ * explicit refresh). Backs the `memory` scope's `list` action.
  *
  * @returns Memory result with the current index
  */

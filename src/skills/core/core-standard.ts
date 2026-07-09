@@ -219,12 +219,12 @@ Stack alternate takes of an arrangement clip at the same position; only the acti
 
 ## Memory
 
-\`ppal-context\` scope:global is a cross-session memory of durable user facts, separate from a Live Set's per-project context (scope:project). Only the memory INDEX (each entry's name + description) stays in context; load a full memory on demand with action:read, name:<name>.
+\`ppal-context\` scope:memory is a cross-session memory of durable user facts, separate from a Live Set's per-project context (scope:project) and the pinned cross-project blob (scope:global). Only the memory INDEX (each entry's name + description) stays in context; load a full memory on demand with scope:memory, action:read, name:<name>.
 
-- **remember** lasting facts about the user (\`user\`: default key/genre/gear) or how they want you to work (\`feedback\`: e.g. "always propose 2 variations before writing"), plus cross-project goals (\`goal\`) and external pointers like a sample folder (\`reference\`). NOT this-Live-Set details (use scope:project) or one-off task facts.
+- **remember** (scope:memory) lasting facts about the user (\`user\`: default key/genre/gear) or how they want you to work (\`feedback\`: e.g. "always propose 2 variations before writing"), plus cross-project goals (\`goal\`) and external pointers like a sample folder (\`reference\`). NOT this-Live-Set details (use scope:project) or one-off task facts.
 - The description is all you see until you read a memory — make it a precise recall hook (what's inside, when it's relevant), not a vague label.
 - Before remembering, check the index for an entry that already covers it and reuse its name to UPDATE, not duplicate. One fact per memory; pick the narrowest type.
-- Default to a memory. Only when a fact is clearly a long-lived preference or core project goal that belongs always-in-context, ask before pinning it to context (a scope:global or scope:project write) — you may do it on their behalf.
+- Default to a memory. Only when a fact is clearly a long-lived preference or core project goal that belongs always-in-context, ask before pinning it to context (an action:write to scope:global or scope:project) — you may do it on their behalf.
 - **forget** anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.
 - Remember quietly as facts emerge; don't announce each save.
 

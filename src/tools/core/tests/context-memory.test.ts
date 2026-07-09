@@ -3,78 +3,149 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { context } from "../context.ts";
 
-describe("context - project memory actions", () => {
-  let toolContext: Partial<ToolContext>;
+vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
+  requestNode: vi.fn(),
+  handleNodeResponse: vi.fn(),
+}));
 
+const protocolMock =
+  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+
+/**
+ * Make requestNode resolve with a content payload.
+ * @param content - The content string the route should return
+ */
+function mockNodeContent(content: string): void {
+  vi.mocked(protocolMock.requestNode).mockResolvedValue({
+    success: true,
+    result: { content },
+  });
+}
+
+describe("context - memory scope", () => {
   beforeEach(() => {
-    toolContext = {
-      memory: { content: "" },
-    };
+    vi.clearAllMocks();
   });
 
   describe("read action", () => {
-    it("returns current content", async () => {
-      toolContext.memory!.content = "test content";
+    it("reads one memory entry when a name is given", async () => {
+      mockNodeContent("the fact");
 
-      const result = await context({ action: "read" }, toolContext);
+      const result = await context({
+        action: "read",
+        scope: "memory",
+        name: "prefers-c-minor",
+      });
 
-      expect(result).toStrictEqual({ content: "test content" });
-      expect(outlet).not.toHaveBeenCalled();
+      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.read", {
+        name: "prefers-c-minor",
+      });
+      expect(result).toStrictEqual({ content: "the fact" });
     });
 
-    it("returns empty string when memory is missing", async () => {
-      const result = await context({ action: "read" }, {});
-
-      expect(result).toStrictEqual({ content: "" });
-      expect(outlet).not.toHaveBeenCalled();
+    it("rejects a read with no name (name is required for scope:memory)", async () => {
+      await expect(
+        context({ action: "read", scope: "memory" }),
+      ).rejects.toThrow("name required to read a memory");
+      expect(protocolMock.requestNode).not.toHaveBeenCalled();
     });
   });
 
-  describe("write action", () => {
-    it("throws error when content is missing", async () => {
-      await expect(context({ action: "write" }, toolContext)).rejects.toThrow(
-        "Content required for write action",
-      );
-      expect(outlet).not.toHaveBeenCalled();
+  describe("remember action", () => {
+    it("remembers a memory, defaulting a missing description to ''", async () => {
+      mockNodeContent("index");
+
+      await context({
+        action: "remember",
+        scope: "memory",
+        name: "loose drums",
+        type: "feedback",
+        content: "Apply groove.",
+      });
+
+      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.remember", {
+        name: "loose drums",
+        type: "feedback",
+        description: "",
+        content: "Apply groove.",
+      });
     });
 
-    it("throws error when content is empty string", async () => {
-      await expect(
-        context({ action: "write", content: "" }, toolContext),
-      ).rejects.toThrow("Content required for write action");
-      expect(outlet).not.toHaveBeenCalled();
+    it("passes the description through when provided", async () => {
+      mockNodeContent("index");
+
+      await context({
+        action: "remember",
+        scope: "memory",
+        name: "loose-drums",
+        type: "feedback",
+        description: "swing/humanize",
+        content: "Apply groove.",
+      });
+
+      expect(protocolMock.requestNode).toHaveBeenCalledWith(
+        "memory.remember",
+        expect.objectContaining({ description: "swing/humanize" }),
+      );
     });
 
     it.each([
-      ["updates content when memory is present", ""],
-      ["overwrites existing content", "old content"],
-    ])("%s", async (_, initialContent) => {
-      if (initialContent) toolContext.memory!.content = initialContent;
+      [{ type: "user", content: "b" }, "name required for remember action"],
+      [{ name: "x", content: "b" }, "type required for remember action"],
+      [{ name: "x", type: "user" }, "content required for remember action"],
+    ])(
+      "rejects an incomplete remember before touching the node route",
+      async (extra, message) => {
+        await expect(
+          context({ action: "remember", scope: "memory", ...extra }),
+        ).rejects.toThrow(message);
+        expect(protocolMock.requestNode).not.toHaveBeenCalled();
+      },
+    );
+  });
 
-      const result = await context(
-        { action: "write", content: "new content" },
-        toolContext,
-      );
+  describe("forget action", () => {
+    it("forgets a memory by name", async () => {
+      mockNodeContent("index");
 
-      expect(toolContext.memory!.content).toBe("new content");
-      expect(result).toStrictEqual({ content: "new content" });
-      expect(outlet).toHaveBeenCalledWith(0, "update_memory", "new content");
+      await context({ action: "forget", scope: "memory", name: "stale" });
+
+      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.forget", {
+        name: "stale",
+      });
     });
 
-    it("writes content via outlet even when memory context is missing", async () => {
-      const result = await context({ action: "write", content: "fresh" }, {});
-
-      expect(result).toStrictEqual({ content: "fresh" });
-      expect(outlet).toHaveBeenCalledWith(0, "update_memory", "fresh");
+    it("rejects a forget with no name", async () => {
+      await expect(
+        context({ action: "forget", scope: "memory" }),
+      ).rejects.toThrow("name required for forget action");
+      expect(protocolMock.requestNode).not.toHaveBeenCalled();
     });
   });
 
-  it("throws error for unknown action", async () => {
-    await expect(context({ action: "unknown-action" })).rejects.toThrow(
-      "Unknown action: unknown-action",
+  it("lists the memory index", async () => {
+    mockNodeContent("# Producer Pal Memory");
+
+    const result = await context({ action: "list", scope: "memory" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.list", {});
+    expect(result).toStrictEqual({ content: "# Producer Pal Memory" });
+  });
+
+  it("rejects write under the memory scope (write is the blob-scope action)", async () => {
+    await expect(
+      context({ action: "write", scope: "memory", content: "x" }),
+    ).rejects.toThrow("Unknown action for scope:memory: write");
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("throws for an unknown action under the memory scope", async () => {
+    await expect(context({ action: "nope", scope: "memory" })).rejects.toThrow(
+      "Unknown action for scope:memory: nope",
     );
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 });
