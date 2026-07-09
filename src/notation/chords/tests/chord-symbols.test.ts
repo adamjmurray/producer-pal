@@ -120,6 +120,23 @@ describe("chordSymbolPitches — root spelling", () => {
       48, 51, 55,
     ]);
   });
+
+  it("accepts theoretical enharmonic roots (Cb, Fb, E#, B#) like the melody line", () => {
+    // Arithmetic resolution wraps at the octave edges — matching Stark's melody
+    // line and bar|beat; the shared 12-entry table would reject these.
+    expect(resolveChordSymbol("Cb", "", null)?.rootPc).toBe(11); // → B
+    expect(resolveChordSymbol("Fb", "", null)?.rootPc).toBe(4); // → E
+    expect(resolveChordSymbol("E#", "", null)?.rootPc).toBe(5); // → F
+    expect(resolveChordSymbol("B#", "", null)?.rootPc).toBe(0); // → C
+  });
+
+  it("accepts an enharmonic slash bass too (Cb → B)", () => {
+    expect(resolveChordSymbol("C", "", "Cb")?.bassPc).toBe(11);
+  });
+
+  it("null on a malformed accidental in the root", () => {
+    expect(chordSymbolPitches("Cx", "", null, C2, 0)).toBeNull();
+  });
 });
 
 describe("chordSymbolPitches — slash bass", () => {
