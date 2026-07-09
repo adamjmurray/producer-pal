@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -334,6 +334,58 @@ describe("forgetMemory", () => {
 
     expect(forgetMemory("memory")).toBe(false);
     expect(readFileSync(memoryPath("MEMORY.md"), "utf8")).toContain("keeper");
+  });
+});
+
+describe("hand-authored non-canonical filenames", () => {
+  it("lists, reads, and matches a freely-named file under its canonical slug", () => {
+    writeRaw(
+      "Kick Drum Samples.md",
+      "---\ndescription: analog kicks\ntype: reference\n---\n\nIn ~/Samples/Analog.",
+    );
+
+    expect(listMemoryEntries().map((e) => e.name)).toStrictEqual([
+      "kick-drum-samples",
+    ]);
+    expect(readMemoryEntry("kick-drum-samples")).toStrictEqual({
+      name: "kick-drum-samples",
+      type: "reference",
+      description: "analog kicks",
+      body: "In ~/Samples/Analog.",
+    });
+    expect(memoryExists("Kick Drum Samples")).toBe(true);
+  });
+
+  it("updates a freely-named file in place instead of creating a duplicate", () => {
+    writeRaw(
+      "Kick Drum Samples.md",
+      "---\ndescription: old\ntype: reference\n---\n\nold body",
+    );
+
+    rememberMemory({
+      name: "kick-drum-samples",
+      type: "reference",
+      description: "new",
+      body: "new body",
+    });
+
+    expect(listMemoryEntries()).toHaveLength(1);
+    expect(readMemoryEntry("kick-drum-samples")?.body).toBe("new body");
+    // Written back to the original file — no canonical duplicate created.
+    expect(existsSync(memoryPath("kick-drum-samples.md"))).toBe(false);
+    expect(readFileSync(memoryPath("Kick Drum Samples.md"), "utf8")).toContain(
+      "new body",
+    );
+  });
+
+  it("forgets a freely-named file", () => {
+    writeRaw(
+      "Kick Drum Samples.md",
+      "---\ndescription: x\ntype: reference\n---\n\nbody",
+    );
+
+    expect(forgetMemory("kick-drum-samples")).toBe(true);
+    expect(listMemoryEntries()).toStrictEqual([]);
   });
 });
 

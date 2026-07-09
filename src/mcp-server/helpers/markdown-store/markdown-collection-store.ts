@@ -163,12 +163,33 @@ export function makeMarkdownCollectionStore<
   const filenameFor = (slug: string): string => `${config.subdir}/${slug}.md`;
   const isReservedSlug = (slug: string): boolean => slug === indexSlug;
 
+  // Resolve a slug to the relative path of the file backing it. The canonical
+  // <subdir>/<slug>.md wins when it exists; otherwise scan for a hand-authored
+  // file whose own basename slugifies to the same slug (e.g. "Kick Drum
+  // Samples.md" backs the slug "kick-drum-samples"), so a freely-named file
+  // still reads, updates in place, and deletes rather than being unreadable or
+  // silently duplicated. Falls back to the canonical path when nothing matches —
+  // the create target for remember.
+  const resolveFile = (slug: string): string => {
+    const canonical = filenameFor(slug);
+
+    if (readConfigMarkdown(canonical).trim() !== "") return canonical;
+
+    const match = listConfigMarkdownFiles(config.subdir).find(
+      (file) =>
+        file.toLowerCase() !== config.indexFilename.toLowerCase() &&
+        slugifyCollectionName(file.replace(/\.md$/, "")) === slug,
+    );
+
+    return match ? `${config.subdir}/${match}` : canonical;
+  };
+
   const read = (name: string): Entry | null => {
     const slug = slugifyCollectionName(name);
 
     if (!slug || isReservedSlug(slug)) return null;
 
-    const raw = readConfigMarkdown(filenameFor(slug));
+    const raw = readConfigMarkdown(resolveFile(slug));
 
     if (!raw.trim()) return null;
 
@@ -180,7 +201,7 @@ export function makeMarkdownCollectionStore<
 
     if (!slug || isReservedSlug(slug)) return false;
 
-    return readConfigMarkdown(filenameFor(slug)).trim() !== "";
+    return readConfigMarkdown(resolveFile(slug)).trim() !== "";
   };
 
   const list = (): Entry[] => {
@@ -189,7 +210,11 @@ export function makeMarkdownCollectionStore<
         (file) => file.toLowerCase() !== config.indexFilename.toLowerCase(),
       )
       .map((file) => {
-        const slug = file.replace(/\.md$/, "");
+        // Normalize the basename to the canonical slug so a hand-authored
+        // filename (spaces, caps, punctuation) lists under the same handle that
+        // read/forget/remember derive — otherwise the index would surface an
+        // entry no lookup could resolve. resolveFile maps that slug back here.
+        const slug = slugifyCollectionName(file.replace(/\.md$/, ""));
 
         return config.toEntry(
           slug,
@@ -243,7 +268,7 @@ export function makeMarkdownCollectionStore<
     });
 
     writeConfigMarkdown(
-      filenameFor(slug),
+      resolveFile(slug),
       serializeFrontmatter(data, `${body}\n`),
     );
     regenerateIndex();
@@ -256,9 +281,10 @@ export function makeMarkdownCollectionStore<
 
     if (!slug || isReservedSlug(slug)) return false;
 
-    const existed = readConfigMarkdown(filenameFor(slug)).trim() !== "";
+    const file = resolveFile(slug);
+    const existed = readConfigMarkdown(file).trim() !== "";
 
-    deleteConfigMarkdown(filenameFor(slug));
+    deleteConfigMarkdown(file);
     regenerateIndex();
 
     return existed;
