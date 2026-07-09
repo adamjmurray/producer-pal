@@ -72,10 +72,12 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
  * across all standard tools. Derived from each tool's co-located param modes
  * (params whose `smallModel` mode is `null`) so it stays a single source of
  * truth. The eval framework consults this to SKIP (not fail) scenarios that
- * depend on
- * a param small models never receive — keeping small-model scores
- * apples-to-apples. Param names are descriptive and, where shared across tools,
- * are excluded by every tool that has them, so a flat union is unambiguous.
+ * depend on a param small models never receive — keeping small-model scores
+ * apples-to-apples. NOTE: a flat union skips CONSERVATIVELY — a shared param
+ * name hidden by only SOME tools (e.g. `name`: hidden on ppal-context along
+ * with its memory scope, still live on the create/update tools) skips every
+ * scenario requiring that name. If a scenario ever legitimately requires such
+ * a param on a tool that keeps it, the skip check must become tool-scoped.
  */
 export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
   STANDARD_TOOL_DEFS.flatMap(
