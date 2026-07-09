@@ -9,6 +9,7 @@ import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
 import {
+  isLegacyNonThinkingModel,
   isLegacyThinkingModel,
   isOpenAIReasoningModel,
   mapThinkingToAnthropicEffort,
@@ -94,7 +95,8 @@ function buildProviderOptions(
 /**
  * Build Anthropic-specific provider options for extended thinking.
  * Uses adaptive thinking with effort for most models, falls back to legacy
- * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet.
+ * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet, and
+ * omits the `thinking` field entirely for pre-3.7 models that don't support it.
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
  * @returns Anthropic provider options or undefined
@@ -103,6 +105,11 @@ function buildAnthropicOptions(
   thinking: string,
   model: string,
 ): ProviderOptions | undefined {
+  // Pre-3.7 Anthropic models (reachable only via the free-text "Other..." input)
+  // reject ANY `thinking` field with a 400, so never send one regardless of the
+  // UI thinking level — otherwise the default adaptive payload 400s on first send.
+  if (isLegacyNonThinkingModel(model)) return undefined;
+
   // Legacy path for models that don't support adaptive thinking (Haiku 4.5)
   if (isLegacyThinkingModel(model)) {
     const budgetTokens = getThinkingBudget(thinking);
@@ -215,9 +222,12 @@ export const chatAdapter: ChatAdapter<
     // regardless of thinking level, including "Off". Haiku uses legacy enabled
     // thinking, which requires temperature=1 only when thinking is active, so
     // suppress there only when thinking is on; "Off" on Haiku keeps temperature.
+    // Pre-3.7 models (via the "Other..." input) support temperature normally and
+    // aren't adaptive, so always keep it — dropping it there was a regression.
     const suppressTemperature =
       (provider === "openai" && isOpenAIReasoningModel(model)) ||
       (provider === "anthropic" &&
+        !isLegacyNonThinkingModel(model) &&
         (!isLegacyThinkingModel(model) || thinking !== "Off"));
 
     return {

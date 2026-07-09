@@ -538,6 +538,49 @@ describe("chatAdapter", () => {
       });
     });
 
+    it("omits thinking for a pre-3.7 anthropic model even when thinking is active", () => {
+      // Pre-3.7 ids (only reachable via the "Other..." input) reject any
+      // `thinking` field with a 400, so no adaptive payload must be sent.
+      const config = chatAdapter.buildConfig(
+        "claude-3-5-sonnet-20241022",
+        1.0,
+        "Max",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.providerOptions).toBeUndefined();
+    });
+
+    it("preserves temperature for a pre-3.7 anthropic model with active thinking", () => {
+      // Pre-3.7 models support temperature normally and aren't adaptive, so it
+      // must be kept regardless of the UI thinking level (regression guard).
+      const config = chatAdapter.buildConfig(
+        "claude-3-opus-20240229",
+        0.7,
+        "Max",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.temperature).toBe(0.7);
+    });
+
+    it("preserves temperature for a pre-3.7 anthropic model with Off thinking", () => {
+      const config = chatAdapter.buildConfig(
+        "claude-3-5-sonnet-20241022",
+        0.7,
+        "Off",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.temperature).toBe(0.7);
+    });
+
     it("returns undefined provider options for mistral provider", () => {
       const config = chatAdapter.buildConfig(
         "mistral-large",
