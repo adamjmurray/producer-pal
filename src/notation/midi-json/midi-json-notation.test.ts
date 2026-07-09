@@ -174,6 +174,25 @@ describe("ratio durations (tuplets)", () => {
     expect(note?.duration).toBe(4 / 3);
   });
 
+  it("filters out a note whose ratio divides by zero (Infinity / NaN)", () => {
+    // d:5/0 → Infinity and d:0/0 → NaN both slip past the `duration <= 0`
+    // guard, and a non-finite pitch/start survives clamping — all must be
+    // dropped before reaching add_new_notes rather than corrupting the clip.
+    expect(interpretMidiJson("[{p:60,t:0,d:5/0,v:100}]")).toStrictEqual([]);
+    expect(interpretMidiJson("[{p:60,t:0,d:0/0,v:100}]")).toStrictEqual([]);
+    expect(interpretMidiJson("[{p:60,t:5/0,d:1,v:100}]")).toStrictEqual([]);
+    expect(interpretMidiJson("[{p:5/0,t:0,d:1,v:100}]")).toStrictEqual([]);
+  });
+
+  it("keeps valid notes alongside a filtered div-by-zero note", () => {
+    const events = interpretMidiJson(
+      "[{p:60,t:0,d:5/0,v:100},{p:62,t:1,d:1,v:90}]",
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.pitch).toBe(62);
+  });
+
   it("serializes a repeating-decimal tuplet as an exact ratio", () => {
     const notes: NoteEvent[] = [
       { pitch: 60, start_time: 1 / 3, duration: 2 / 3, velocity: 100 },

@@ -136,13 +136,22 @@ export function validateAndSanitizeNote(
     return { valid: false };
   }
 
+  // Reject non-finite pitch/start. A MIDI JSON div-by-zero ratio (p:5/0 →
+  // Infinity, p:0/0 → NaN) is typeof "number" but would otherwise survive
+  // clamping (Math.max/min pass NaN through) and reach add_new_notes.
+  if (!Number.isFinite(n.pitch) || !Number.isFinite(n.start)) {
+    return { valid: false };
+  }
+
   // Default duration and velocity if not provided
   const duration = typeof n.duration === "number" ? n.duration : 1;
   const velocity =
     typeof n.velocity === "number" ? n.velocity : DEFAULT_VELOCITY;
 
-  // Validate ranges (start can be negative for notes before clip start)
-  if (duration <= 0) {
+  // Validate ranges (start can be negative for notes before clip start). A
+  // non-finite duration (d:5/0 → Infinity, d:0/0 → NaN) slips past `<= 0`, so
+  // reject it explicitly before it reaches add_new_notes.
+  if (!Number.isFinite(duration) || duration <= 0) {
     return { valid: false };
   }
 
