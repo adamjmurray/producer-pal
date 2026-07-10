@@ -14,6 +14,125 @@
         "boxes": [
             {
                 "box": {
+                    "angle": 270.0,
+                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for maniuplating MIDI with code",
+                    "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
+                    "hint": "",
+                    "id": "obj-96",
+                    "ignoreclick": 0,
+                    "maxclass": "panel",
+                    "mode": 0,
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 2.0000000596046448, 155.00000461935997, 63.0, 83.5 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 4.0, 123.0, 114.00000339746475, 24.00000098347664 ],
+                    "proportion": 0.39,
+                    "varname": "Notation"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-94",
+                    "maxclass": "live.comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 62.66666853427887, 122.00000363588333, 49.0, 18.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 65.66666862368584, 124.66667038202286, 46.00000137090683, 18.0 ],
+                    "text": "Notation",
+                    "textjustification": 0
+                }
+            },
+            {
+                "box": {
+                    "fontface": 1,
+                    "fontsize": 11.0,
+                    "id": "obj-91",
+                    "maxclass": "live.comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 100.33333632349968, 158.33333805203438, 58.0, 20.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 5.6666668355464935, 83.3333358168602, 57.33333343267441, 20.0 ],
+                    "text": "Behavior",
+                    "textjustification": 0
+                }
+            },
+            {
+                "box": {
+                    "bubble": 1,
+                    "bubblepoint": 0.0,
+                    "bubbleside": 0,
+                    "bubbletextmargin": 2,
+                    "fontsize": 9.5,
+                    "hidden": 1,
+                    "id": "obj-38",
+                    "linecount": 2,
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 193.0, 418.0, 66.0, 41.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 56.0, 14.0, 92.0, 30.0 ],
+                    "text": "See Max Console",
+                    "textjustification": 1,
+                    "varname": "see-console"
+                }
+            },
+            {
+                "box": {
+                    "activebgcolor": [ 0.0, 0.0, 0.0, 1.0 ],
+                    "activebgoncolor": [ 0.4, 0.0, 0.0, 1.0 ],
+                    "id": "obj-55",
+                    "ignoreclick": 1,
+                    "maxclass": "live.button",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "parameter_enable": 1,
+                    "patching_rect": [ 373.0, 483.0, 15.0, 15.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 53.5, 6.5, 15.0, 15.0 ],
+                    "saved_attribute_attributes": {
+                        "activebgcolor": {
+                            "expression": ""
+                        },
+                        "activebgoncolor": {
+                            "expression": ""
+                        },
+                        "valueof": {
+                            "parameter_enum": [ "off", "on" ],
+                            "parameter_longname": "live.button",
+                            "parameter_mmax": 1,
+                            "parameter_modmode": 0,
+                            "parameter_shortname": "live.button",
+                            "parameter_type": 2
+                        }
+                    },
+                    "varname": "live.button"
+                }
+            },
+            {
+                "box": {
+                    "angle": 270.0,
+                    "annotation": "Displays the current status of the Producer Pal server that AI uses to control Live. If it says anything other than \"Running\", AI will not be able to connect. Click the \"start\" button to manually start the server.",
+                    "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
+                    "id": "obj-33",
+                    "ignoreclick": 0,
+                    "maxclass": "panel",
+                    "mode": 0,
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 385.0, 584.0, 19.0, 49.5 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 5.6666668355464935, 4.0000001192092896, 112.3333331644535, 20.000000596046448 ],
+                    "proportion": 0.39,
+                    "varname": "Producer Pal Status"
+                }
+            },
+            {
+                "box": {
                     "id": "obj-95",
                     "maxclass": "newobj",
                     "numinlets": 1,
@@ -36,8 +155,8 @@
             },
             {
                 "box": {
-                    "annotation": "TODO",
-                    "annotation_name": "notation",
+                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for maniuplating MIDI with code",
+                    "annotation_name": "Notation",
                     "id": "obj-90",
                     "maxclass": "live.menu",
                     "numinlets": 1,
@@ -46,7 +165,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 744.25, 219.0, 49.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 181.0, 56.52770707011223, 54.0, 15.0 ],
+                    "presentation_rect": [ 9.000000268220901, 126.33333709836006, 54.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "barbeat", "stark", "midi-json" ],
@@ -73,7 +192,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 207.5, 85.0, 15.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 8.999998450279236, 125.25000195205212, 15.0, 15.0 ],
+                    "presentation_rect": [ 138.0000041127205, 91.66666939854622, 15.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "off", "on" ],
@@ -102,7 +221,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 318.0, 83.0, 15.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 9.0, 102.0, 15.0, 15.0 ],
+                    "presentation_rect": [ 9.000000268220901, 105.00000312924385, 15.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "off", "on" ],
@@ -131,7 +250,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 23.0, 83.0, 44.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 55.00000163912773, 75.00000223517418, 44.0, 15.0 ],
+                    "presentation_rect": [ 55.00000163912773, 62.00000184774399, 44.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_initial": [ 30.0 ],
@@ -162,7 +281,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 439.0, 534.0, 44.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 55.00000163912773, 58.0000017285347, 44.0, 15.0 ],
+                    "presentation_rect": [ 55.00000163912773, 45.00000134110451, 44.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_initial": [ 3350 ],
@@ -216,7 +335,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 249.0, 574.0, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0, 119.0, 114.00000339746475, 26.999996453523636 ],
+                    "presentation_rect": [ 133.00000396370888, 85.33333587646484, 114.00000339746475, 22.33333346247673 ],
                     "proportion": 0.39,
                     "varname": "Direct Live API"
                 }
@@ -230,7 +349,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 222.0, 105.5, 49.0, 29.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 25.999998956918716, 123.25000189244747, 87.0, 18.0 ],
+                    "presentation_rect": [ 155.00000461935997, 89.66666933894157, 87.0, 18.0 ],
                     "text": "Direct Live API",
                     "textjustification": 0
                 }
@@ -249,7 +368,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 296.0, 496.0, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0, 93.0, 114.00000339746475, 26.999996453523636 ],
+                    "presentation_rect": [ 4.16666679084301, 100.00000257790089, 114.00000339746475, 24.00000098347664 ],
                     "proportion": 0.39,
                     "varname": "Small Model Mode"
                 }
@@ -268,7 +387,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 341.0, 541.0, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0, 74.0, 114.00000339746475, 18.0 ],
+                    "presentation_rect": [ 4.0000001192092896, 61.000001817941666, 114.00000339746475, 18.0 ],
                     "proportion": 0.39,
                     "varname": "Timeout"
                 }
@@ -287,30 +406,9 @@
                     "numoutlets": 0,
                     "patching_rect": [ 356.0, 556.0, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0, 54.0, 114.00000339746475, 20.055414140224457 ],
+                    "presentation_rect": [ 4.0000001192092896, 41.00000122189522, 114.00000339746475, 20.055414140224457 ],
                     "proportion": 0.39,
                     "varname": "Server Port"
-                }
-            },
-            {
-                "box": {
-                    "bubble": 1,
-                    "bubblepoint": 0.0,
-                    "bubbleside": 0,
-                    "bubbletextmargin": 2,
-                    "fontsize": 9.5,
-                    "hidden": 1,
-                    "id": "obj-38",
-                    "linecount": 2,
-                    "maxclass": "comment",
-                    "numinlets": 1,
-                    "numoutlets": 0,
-                    "patching_rect": [ 193.0, 418.0, 66.0, 41.0 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 13.0, 35.0, 92.0, 30.0 ],
-                    "text": "See Max Console",
-                    "textjustification": 1,
-                    "varname": "see-console"
                 }
             },
             {
@@ -354,7 +452,7 @@
                     "numoutlets": 6,
                     "outlettype": [ "", "", "", "", "", "" ],
                     "patching_rect": [ 602.0, 32.0, 218.0, 35.0 ],
-                    "text": "route smallModelMode compactOutput samplePath liveApiEnabled notation"
+                    "text": "route smallModelMode compactOutput sampleFolder liveApiEnabled notation"
                 }
             },
             {
@@ -600,7 +698,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 682.0, 261.0, 42.0, 18.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 181.0, 26.0, 42.0, 18.0 ],
+                    "presentation_rect": [ 181.0, 24.0, 42.0, 18.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "val1", "val2" ],
@@ -628,7 +726,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 578.0, 170.0, 48.0, 18.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 128.96725463867188, 25.94458442926407, 48.0, 18.0 ],
+                    "presentation_rect": [ 129.0, 24.0, 48.0, 18.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "val1", "val2" ],
@@ -697,7 +795,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 718.0, 624.0, 61.0, 18.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 128.0, 46.0, 122.0, 18.0 ],
+                    "presentation_rect": [ 128.0, 44.0, 122.0, 18.0 ],
                     "text": "(none)",
                     "textjustification": 0
                 }
@@ -753,18 +851,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 268.0, 517.0, 5.0, 100.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0, 55.0, 114.0, 13.0 ]
-                }
-            },
-            {
-                "box": {
-                    "id": "obj-56",
-                    "maxclass": "live.line",
-                    "numinlets": 1,
-                    "numoutlets": 0,
-                    "patching_rect": [ 278.0, 555.0, 5.0, 100.0 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 4.0, 94.0, 114.0, 13.0 ]
+                    "presentation_rect": [ 4.0000001192092896, 42.00000125169754, 114.0, 13.0 ]
                 }
             },
             {
@@ -777,7 +864,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 324.0, 212.0, 58.0, 20.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 134.0, 78.0, 53.846161, 20.0 ],
+                    "presentation_rect": [ 134.0000039935112, 71.00000211596489, 53.846161, 20.0 ],
                     "text": "Debug",
                     "textjustification": 0
                 }
@@ -813,57 +900,6 @@
                     "outlettype": [ "" ],
                     "patching_rect": [ 428.0, 450.0, 129.0, 22.0 ],
                     "text": "activebgcolor 0.9 0 0 1"
-                }
-            },
-            {
-                "box": {
-                    "activebgcolor": [ 0.0, 0.0, 0.0, 1.0 ],
-                    "activebgoncolor": [ 0.4, 0.0, 0.0, 1.0 ],
-                    "id": "obj-55",
-                    "ignoreclick": 1,
-                    "maxclass": "live.button",
-                    "numinlets": 1,
-                    "numoutlets": 1,
-                    "outlettype": [ "" ],
-                    "parameter_enable": 1,
-                    "patching_rect": [ 373.0, 483.0, 15.0, 15.0 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 9.0, 28.0, 15.0, 15.0 ],
-                    "saved_attribute_attributes": {
-                        "activebgcolor": {
-                            "expression": ""
-                        },
-                        "activebgoncolor": {
-                            "expression": ""
-                        },
-                        "valueof": {
-                            "parameter_enum": [ "off", "on" ],
-                            "parameter_longname": "live.button",
-                            "parameter_mmax": 1,
-                            "parameter_modmode": 0,
-                            "parameter_shortname": "live.button",
-                            "parameter_type": 2
-                        }
-                    },
-                    "varname": "live.button"
-                }
-            },
-            {
-                "box": {
-                    "angle": 270.0,
-                    "annotation": "Displays the current status of the Producer Pal server that AI uses to control Live. If it says anything other than \"Running\", AI will not be able to connect. Click the \"start\" button to manually start the server.",
-                    "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
-                    "id": "obj-33",
-                    "ignoreclick": 0,
-                    "maxclass": "panel",
-                    "mode": 0,
-                    "numinlets": 1,
-                    "numoutlets": 0,
-                    "patching_rect": [ 385.0, 584.0, 19.0, 49.5 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 6.0, 21.0, 61.0, 32.0 ],
-                    "proportion": 0.39,
-                    "varname": "Producer Pal Status"
                 }
             },
             {
@@ -986,7 +1022,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 281.0, 439.0, 65.0, 18.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 24.0, 27.0, 50.0, 18.0 ],
+                    "presentation_rect": [ 68.0, 5.0, 50.0, 18.0 ],
                     "text": "Stopped",
                     "textjustification": 0
                 }
@@ -1047,7 +1083,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 441.0, 83.0, 15.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 138.0, 102.0, 15.0, 15.0 ],
+                    "presentation_rect": [ 138.0000041127205, 111.00000330805779, 15.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "off", "on" ],
@@ -1076,7 +1112,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 134.0, 85.0, 15.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 138.0, 125.0, 15.0, 15.0 ],
+                    "presentation_rect": [ 138.0000041127205, 130.0000038743019, 15.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "off", "on" ],
@@ -1107,7 +1143,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 326.0, 526.0, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 131.0, 119.0, 96.0, 27.5 ],
+                    "presentation_rect": [ 133.00000396370888, 126.33333709836006, 110.66666996479034, 21.00000062584877 ],
                     "proportion": 0.39,
                     "varname": "Verbose Logs"
                 }
@@ -1126,7 +1162,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 311.0, 511.0, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 131.0, 94.25, 96.0, 27.25 ],
+                    "presentation_rect": [ 133.00000396370888, 105.33333647251129, 110.66666996479034, 22.66666680574417 ],
                     "proportion": 0.39,
                     "varname": "JSON Output"
                 }
@@ -1162,7 +1198,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 337.0, 83.0, 49.0, 41.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 26.0, 100.0, 87.0, 18.0 ],
+                    "presentation_rect": [ 26.000000774860382, 103.0000030696392, 87.0, 18.0 ],
                     "text": "Small Model Mode",
                     "textjustification": 0
                 }
@@ -1187,7 +1223,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 459.0, 82.0, 47.0, 29.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 154.0, 100.0, 70.064096, 18.0 ],
+                    "presentation_rect": [ 154.00000458955765, 110.00000327825546, 70.064096, 18.0 ],
                     "text": "JSON Output",
                     "textjustification": 0
                 }
@@ -1205,7 +1241,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 600.0, 609.0, 44.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 70.0, 28.0, 34.0, 18.0 ],
+                    "presentation_rect": [ 70.666669, 23.000001, 34.0, 18.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "val1", "val2" ],
@@ -1232,9 +1268,9 @@
                     "numoutlets": 2,
                     "outlettype": [ "", "" ],
                     "parameter_enable": 1,
-                    "patching_rect": [ 604.0, 518.0, 44.0, 15.0 ],
+                    "patching_rect": [ 604.0, 518.0, 44.0, 16.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 70.0, 8.0, 34.0, 18.0 ],
+                    "presentation_rect": [ 9.0, 23.000001, 34.0, 18.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "val1", "val2" ],
@@ -1258,7 +1294,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 69.0, 82.0, 44.0, 18.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 8.000000238418579, 74.00000220537186, 45.0, 18.0 ],
+                    "presentation_rect": [ 8.000000238418579, 61.000001817941666, 45.0, 18.0 ],
                     "text": "Timeout",
                     "textjustification": 2
                 }
@@ -1271,7 +1307,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 440.0, 502.0, 43.0, 18.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 8.000000238418579, 56.000001668930054, 45.0, 18.0 ],
+                    "presentation_rect": [ 8.000000238418579, 44.000001311302185, 45.0, 18.0 ],
                     "text": "Port",
                     "textjustification": 2
                 }
@@ -1327,7 +1363,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 145.5, 105.5, 45.0, 29.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 153.0, 124.0, 71.39743, 18.0 ],
+                    "presentation_rect": [ 153.00000455975533, 129.0000038444996, 71.39743, 18.0 ],
                     "text": "Verbose Logs",
                     "textjustification": 0
                 }
@@ -1420,7 +1456,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 130.0, 589.0, 83.0, 75.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 131.0, 78.0, 93.39742999999999, 68.0 ],
+                    "presentation_rect": [ 131.69871295800021, 72.00000214576721, 111.967960970499, 75.33333557844162 ],
                     "proportion": 0.39,
                     "saved_attribute_attributes": {
                         "bgfillcolor": {
@@ -1440,7 +1476,27 @@
                     "numoutlets": 0,
                     "patching_rect": [ 91.0, 557.0, 83.0, 75.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0, 4.0, 114.0, 142.0 ],
+                    "presentation_rect": [ 4.0000001192092896, 4.0000001192092896, 114.00000339746475, 75.00000169873238 ],
+                    "proportion": 0.39,
+                    "saved_attribute_attributes": {
+                        "bgfillcolor": {
+                            "expression": "themecolor.live_assignment_text_bg"
+                        }
+                    }
+                }
+            },
+            {
+                "box": {
+                    "angle": 270.0,
+                    "bgcolor": [ 0.27450980392156865, 0.27450980392156865, 0.27450980392156865, 1.0 ],
+                    "id": "obj-56",
+                    "maxclass": "panel",
+                    "mode": 0,
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4.0000001192092896, 83.66666916012764, 83.0, 75.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 4.0000001192092896, 83.3333358168602, 114.3333367407322, 64.00000190734863 ],
                     "proportion": 0.39,
                     "saved_attribute_attributes": {
                         "bgfillcolor": {
