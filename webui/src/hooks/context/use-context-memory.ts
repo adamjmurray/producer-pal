@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { getConfigUrl } from "#webui/utils/mcp-url";
-import { type UseDocMemoryReturn, useDocMemory } from "./use-doc-memory";
+import {
+  type DocRead,
+  type UseDocMemoryReturn,
+  useDocMemory,
+} from "./use-doc-memory";
 
 interface ConfigResponse {
   memoryContent?: string;
@@ -26,12 +30,13 @@ export function useContextMemory(): UseDocMemoryReturn {
 
 /**
  * Read the project memory from the config endpoint.
- * @returns The current memoryContent ("" when absent)
+ * @returns The current memoryContent ("" when absent). Project memory has no
+ *   built-in default, so it never carries drift.
  */
-async function readConfigMemory(): Promise<string> {
+async function readConfigMemory(): Promise<DocRead> {
   const config = await fetchConfig();
 
-  return config.memoryContent ?? "";
+  return { content: config.memoryContent ?? "" };
 }
 
 /**
@@ -39,10 +44,10 @@ async function readConfigMemory(): Promise<string> {
  * @param content - New memory content
  * @returns The stored memoryContent echoed by the server
  */
-async function writeConfigMemory(content: string): Promise<string> {
+async function writeConfigMemory(content: string): Promise<DocRead> {
   const config = await postConfig({ memoryContent: content });
 
-  return config.memoryContent ?? "";
+  return { content: config.memoryContent ?? "" };
 }
 
 /**

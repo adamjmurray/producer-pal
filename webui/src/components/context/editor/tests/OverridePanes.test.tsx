@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { OverridePanes } from "#webui/components/context/OverridePanes";
+import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
 
 // The MarkdownEditor wires CodeMirror; stub it to a plain node echoing the
 // seeded value so we can assert each pane's content without a real editor. The

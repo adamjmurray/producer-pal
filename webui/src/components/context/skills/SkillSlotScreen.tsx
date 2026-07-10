@@ -12,8 +12,9 @@ import {
   ExternalUpdateBanner,
   SINGLE_WIDTH,
 } from "#webui/components/context/ContextScreen";
+import { DriftNote } from "#webui/components/context/editor/DriftNote";
+import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
 import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";
-import { OverridePanes } from "#webui/components/context/OverridePanes";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import {
@@ -198,15 +199,10 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
         <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
           {slot.description}
         </span>
-        {slot.drifted && (
-          <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">
-            ⚠ Default changed since you forked
-            {slot.forkedFromVersion != null
-              ? ` (v${slot.forkedFromVersion})`
-              : ""}
-            .
-          </span>
-        )}
+        <DriftNote
+          drifted={slot.drifted}
+          forkedFromVersion={slot.forkedFromVersion}
+        />
         <ContextIoButtons onImport={onImport} onExport={onExport} />
       </div>
     </div>

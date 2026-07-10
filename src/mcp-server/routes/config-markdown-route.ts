@@ -18,6 +18,12 @@ export interface ConfigMarkdownHandlers {
   read: () => string;
   /** Overwrite the file contents. */
   write: (content: string) => void;
+  /**
+   * Optional extra JSON fields merged into GET/PUT responses alongside
+   * `content` (e.g. the system prompt's fork-time drift state). Slots without
+   * it (global context) respond with `{ content }` only.
+   */
+  meta?: () => Record<string, unknown>;
 }
 
 /**
@@ -41,7 +47,7 @@ export function registerConfigMarkdownRoute(
   app.get(routePath, (_req: Request, res: Response): void => {
     // Device/AI/hand writes must surface on the next fetch — never cache.
     res.set("Cache-Control", "no-store");
-    res.json({ content: handlers.read() });
+    res.json({ content: handlers.read(), ...handlers.meta?.() });
   });
 
   app.put(routePath, (req: Request, res: Response): void => {
@@ -71,8 +77,9 @@ export function registerConfigMarkdownRoute(
 
     handlers.write(content);
     // Echo back the stored content so the client can confirm the write. Reads
-    // are byte-faithful, so this equals what was PUT (keeps the editor's saved
-    // draft and the server echo in sync).
-    res.json({ content: handlers.read() });
+    // are content-faithful, so this equals what was PUT (keeps the editor's
+    // saved draft and the server echo in sync); `meta` reflects the post-write
+    // state (e.g. drift cleared).
+    res.json({ content: handlers.read(), ...handlers.meta?.() });
   });
 }

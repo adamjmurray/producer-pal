@@ -771,6 +771,40 @@ describe("ContextScreen", () => {
       expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT");
     });
 
+    it("shows the drift note when the built-in changed since the user forked", () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "MY DRAFT";
+      render(
+        <ContextScreen
+          memory={{
+            ...buildHookValue(),
+            drift: { drifted: true, forkedFromVersion: "1.4.0" },
+          }}
+          labels={BUILTIN_LABELS}
+        />,
+      );
+
+      expect(
+        screen.getByText(/Default changed since you forked \(v1\.4\.0\)\./),
+      ).toBeTruthy();
+    });
+
+    it("shows no drift note when the fork matches the current built-in", () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "MY DRAFT";
+      render(
+        <ContextScreen
+          memory={{
+            ...buildHookValue(),
+            drift: { drifted: false, forkedFromVersion: "1.5.0" },
+          }}
+          labels={BUILTIN_LABELS}
+        />,
+      );
+
+      expect(screen.queryByText(/Default changed since you forked/)).toBeNull();
+    });
+
     it("puts reset beside the editable content (no strip Clear when a default exists)", async () => {
       const confirmMock = vi.fn().mockReturnValue(true);
 

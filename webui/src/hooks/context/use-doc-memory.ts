@@ -18,6 +18,23 @@ export type DocMemoryStatus =
 /** Save lifecycle state */
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+/**
+ * Fork-time drift for a document that overrides a shipped built-in (custom
+ * instructions): whether the built-in changed since this override was forked,
+ * and the Producer Pal version it was forked from. Documents with no built-in
+ * (project/global context) never carry it.
+ */
+export interface DocDrift {
+  drifted: boolean;
+  forkedFromVersion: string | null;
+}
+
+/** The content plus optional drift metadata a transport read/write resolves to. */
+export interface DocRead {
+  content: string;
+  drift?: DocDrift;
+}
+
 export interface UseDocMemoryReturn {
   status: DocMemoryStatus;
   saveStatus: SaveStatus;
@@ -28,6 +45,8 @@ export interface UseDocMemoryReturn {
   clear: () => Promise<boolean>;
   /** Re-read the document from the server (e.g. when the tab becomes visible). */
   refresh: () => Promise<void>;
+  /** Fork-time drift, for documents that override a built-in (undefined otherwise). */
+  drift?: DocDrift;
 }
 
 /**
@@ -47,12 +66,13 @@ export interface UseDocMemoryReturn {
  * @returns Document state plus save/clear/refresh actions
  */
 export function useDocMemory(
-  read: () => Promise<string>,
-  write: (content: string) => Promise<string>,
+  read: () => Promise<DocRead>,
+  write: (content: string) => Promise<DocRead>,
 ): UseDocMemoryReturn {
   const [status, setStatus] = useState<DocMemoryStatus>({ kind: "loading" });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [drift, setDrift] = useState<DocDrift | undefined>(undefined);
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
   const refresh = useCallback(
@@ -60,7 +80,10 @@ export function useDocMemory(
       runGuardedRefresh(
         guardRefresh,
         read,
-        (content) => setStatus({ kind: "ready", content }),
+        (result) => {
+          setStatus({ kind: "ready", content: result.content });
+          setDrift(result.drift);
+        },
         (message) => setStatus({ kind: "error", message }),
       ),
     [read, guardRefresh],
@@ -75,7 +98,8 @@ export function useDocMemory(
       try {
         const stored = await write(content);
 
-        setStatus({ kind: "ready", content: stored });
+        setStatus({ kind: "ready", content: stored.content });
+        setDrift(stored.drift);
         setSaveStatus("saved");
 
         return true;
@@ -107,6 +131,7 @@ export function useDocMemory(
     save,
     clear,
     refresh,
+    drift,
   };
 }
 
@@ -235,23 +260,30 @@ export function useRefreshOnFocusAndPoll(
 
 // --- Content transport factory (single-content markdown endpoints) ---
 
-/** Server shape for the single-content markdown doc endpoints. */
+/**
+ * Server shape for the single-content markdown doc endpoints. `drifted` /
+ * `forkedFromVersion` are present only for endpoints that back an override of a
+ * shipped built-in (the custom system prompt); absent otherwise.
+ */
 interface ContentResponse {
   content?: string;
+  drifted?: boolean;
+  forkedFromVersion?: string | null;
 }
 
 /** A stable read/write transport pair for {@link useDocMemory}. */
 export interface ContentTransport {
-  read: () => Promise<string>;
-  write: (content: string) => Promise<string>;
+  read: () => Promise<DocRead>;
+  write: (content: string) => Promise<DocRead>;
 }
 
 /**
  * Build a read/write transport for a single-content markdown endpoint that
  * speaks GET(no-store)→{content} and PUT(JSON {content})→{content}. The system
- * prompt and global context endpoints are byte-identical but for their URL and
- * error label, so they share this factory. Call it once at module scope so the
- * pair is a stable reference (see {@link useDocMemory}).
+ * prompt and global context endpoints are identical but for their URL and error
+ * label, so they share this factory; the system prompt's response also carries
+ * drift fields, surfaced when present. Call it once at module scope so the pair
+ * is a stable reference (see {@link useDocMemory}).
  * @param url - The endpoint URL
  * @param label - Human label for error copy (e.g. "System prompt")
  * @returns The stable { read, write } transport pair
@@ -260,7 +292,7 @@ export function makeContentTransport(
   url: string,
   label: string,
 ): ContentTransport {
-  const read = async (): Promise<string> => {
+  const read = async (): Promise<DocRead> => {
     const response = await fetch(url, { cache: "no-store" });
 
     if (!response.ok) {
@@ -269,12 +301,10 @@ export function makeContentTransport(
       );
     }
 
-    const body = (await response.json()) as ContentResponse;
-
-    return body.content ?? "";
+    return toDocRead((await response.json()) as ContentResponse);
   };
 
-  const write = async (content: string): Promise<string> => {
+  const write = async (content: string): Promise<DocRead> => {
     const response = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -287,10 +317,27 @@ export function makeContentTransport(
       );
     }
 
-    const body = (await response.json()) as ContentResponse;
-
-    return body.content ?? "";
+    return toDocRead((await response.json()) as ContentResponse);
   };
 
   return { read, write };
+}
+
+/**
+ * Map a single-content endpoint response to a {@link DocRead}, attaching drift
+ * only when the endpoint reported it (`drifted` present).
+ * @param body - The parsed endpoint response
+ * @returns The content plus optional drift
+ */
+function toDocRead(body: ContentResponse): DocRead {
+  return {
+    content: body.content ?? "",
+    drift:
+      body.drifted == null
+        ? undefined
+        : {
+            drifted: body.drifted,
+            forkedFromVersion: body.forkedFromVersion ?? null,
+          },
+  };
 }

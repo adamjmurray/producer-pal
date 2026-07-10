@@ -7,9 +7,9 @@ import {
   NewConversationIcon,
   TrashIcon,
 } from "#webui/components/chat/controls/header/HeaderIcons";
+import { CopyButton } from "#webui/components/context/collection/CopyButton";
+import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
-import { CopyButton } from "./collection/CopyButton";
-import { MarkdownEditor } from "./MarkdownEditor";
 
 /** Small text-link style shared by the pane-header toggles (Show default / Hide). */
 const HEADER_LINK_CLASS =

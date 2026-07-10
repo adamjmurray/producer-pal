@@ -7,6 +7,7 @@ import { useState } from "preact/hooks";
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
+  type DocDrift,
   type DocMemoryStatus,
   type SaveStatus,
   type UseDocMemoryReturn,
@@ -14,9 +15,11 @@ import {
 import { CharTokenCount } from "./collection/CharTokenCount";
 import { makeContextIoHandlers } from "./context-io";
 import { ContextIoButtons } from "./ContextIoButtons";
+import { DriftNote } from "./editor/DriftNote";
+import { OverridePanes } from "./editor/OverridePanes";
+import { SaveIndicator } from "./editor/SaveIndicator";
 import { MarkdownDropZone } from "./MarkdownDropZone";
 import { MarkdownEditor } from "./MarkdownEditor";
-import { OverridePanes } from "./OverridePanes";
 
 /** Copy that distinguishes one document editor (project vs. global context). */
 export interface ContextEditorLabels {
@@ -35,6 +38,9 @@ export interface ContextEditorLabels {
   exportBasename: string;
   /** Banner text when the server content changed under a clean draft. */
   externalUpdateMessage: string;
+
+  // Optional framing + built-in-reference mode (the custom-instructions tab):
+
   /**
    * Optional one-line explainer shown in the controls strip (e.g. the custom
    * instructions tab warns that its content fully replaces the built-in
@@ -117,6 +123,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         charCount={editor.charCount}
         builtIn={labels.builtIn}
         hasOverride={editor.hasOverride}
+        drift={memory.drift}
         onClear={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
@@ -253,6 +260,12 @@ interface ContextControlsProps {
    * flip the readout to "Built-in" mid-edit.
    */
   hasOverride: boolean;
+  /**
+   * Fork-time drift for the document, when it overrides a built-in (custom
+   * instructions). Renders a "default changed since you forked" note; undefined
+   * for documents with no built-in (project/global).
+   */
+  drift?: DocDrift;
   onClear: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -273,7 +286,7 @@ function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
   const { status, description, widthClass, charCount, builtIn } = props;
-  const { hasOverride, onClear, onImport, onExport } = props;
+  const { hasOverride, drift, onClear, onImport, onExport } = props;
 
   if (status.kind !== "ready") return null;
 
@@ -292,6 +305,10 @@ function ContextControls(
           </span>
         )}
         <div className="ml-auto flex items-center gap-3">
+          <DriftNote
+            drifted={drift?.drifted ?? false}
+            forkedFromVersion={drift?.forkedFromVersion ?? null}
+          />
           <CharTokenCount
             chars={builtInShown ? builtIn.length : charCount}
             label={builtInShown ? "Default" : undefined}
@@ -313,50 +330,6 @@ function ContextControls(
       </div>
     </div>
   );
-}
-
-interface SaveIndicatorProps {
-  status: DocMemoryStatus;
-  saveStatus: SaveStatus;
-  dirty: boolean;
-}
-
-/**
- * Small text indicator describing the editor's read/write availability and
- * the most recent save outcome.
- * @param props - Indicator props
- * @returns Indicator element
- */
-function SaveIndicator(props: SaveIndicatorProps): preact.JSX.Element {
-  const { text, className } = saveIndicatorLabel(props);
-
-  return <span className={`text-xs ${className}`}>{text}</span>;
-}
-
-/**
- * Resolve the indicator's text + color for the current read/save state. Order
- * matters: a load/read error shows first, then the live save outcome, with
- * "Editing…" beating a stale "Saved" while the debounce window is still open.
- * @param props - The indicator's status, save status, and dirty flag
- * @returns The text to show and its Tailwind color classes
- */
-function saveIndicatorLabel(props: SaveIndicatorProps): {
-  text: string;
-  className: string;
-} {
-  const { status, saveStatus, dirty } = props;
-  const muted = "text-zinc-500";
-  const red = "text-red-600 dark:text-red-400";
-
-  if (status.kind === "loading") return { text: "Loading…", className: muted };
-  if (status.kind === "error") return { text: status.message, className: red };
-  if (saveStatus === "saving") return { text: "Saving…", className: muted };
-  if (saveStatus === "error") return { text: "Save failed", className: red };
-  if (dirty) return { text: "Editing…", className: muted };
-  if (saveStatus === "saved")
-    return { text: "Saved", className: "text-green-600 dark:text-green-400" };
-
-  return { text: "Auto-save on", className: muted };
 }
 
 interface ContextBodyProps {
