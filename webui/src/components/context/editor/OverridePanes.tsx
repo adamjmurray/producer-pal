@@ -56,6 +56,12 @@ interface OverridePanesProps {
    * override, which flips this component into the editing view.
    */
   onCustomize: () => void;
+  /**
+   * Optional control centered in the pane header (the Skills tab passes its
+   * Preview/Source view toggle here). Omitted by the custom-instructions editor,
+   * which has no such view.
+   */
+  centerControl?: preact.JSX.Element;
 
   /** Editable-pane callbacks (autosave lifecycle). */
   onChange: (value: string) => void;
@@ -83,19 +89,20 @@ interface OverridePanesProps {
 export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   const { editorKey, hasOverride, value, builtIn, overrideLabel } = props;
   const { showBuiltIn, onToggleBuiltIn, onReset, onCustomize } = props;
-  const { onChange, onBlur } = props;
+  const { centerControl, onChange, onBlur } = props;
 
   if (!hasOverride) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <span className="min-w-0 truncate text-xs font-medium text-zinc-400 dark:text-zinc-500">
             Default
           </span>
+          <div className="justify-self-center">{centerControl}</div>
           <button
             type="button"
             onClick={onCustomize}
-            className="shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+            className="justify-self-end shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
           >
             <NewConversationIcon />
             Customize
@@ -109,11 +116,12 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   return (
     <div className="flex-1 min-h-0 flex gap-3">
       <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="flex items-center justify-between h-5 gap-3">
-          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-5 gap-3">
+          <span className="min-w-0 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
             {overrideLabel}
           </span>
-          <div className="flex items-center gap-3">
+          <div className="justify-self-center">{centerControl}</div>
+          <div className="justify-self-end flex items-center gap-3">
             <button
               type="button"
               onClick={() =>

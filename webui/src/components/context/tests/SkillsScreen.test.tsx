@@ -35,7 +35,7 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
 }));
 
 // Stub the preview screen (it fetches on mount) to a marker that still renders
-// the view toggle, so the Fragments/Preview switch is exercised without network.
+// the view toggle, so the Preview/Source switch is exercised without network.
 vi.mock(import("#webui/components/context/skills/SkillsPreviewScreen"), () => ({
   SkillsPreviewScreen: (props: { viewSlot: preact.JSX.Element }) => (
     <div data-testid="preview-screen">{props.viewSlot}</div>
@@ -354,13 +354,22 @@ describe("SkillsScreen", () => {
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
     expect(screen.queryByTestId("preview-screen")).toBeNull();
 
-    fireEvent.click(screen.getByText("Preview"));
+    // The toggle offers the preview (with its included fragments) and switches.
+    const toPreview = screen.getByText("Preview");
+
+    expect(toPreview.getAttribute("title")).toBe(
+      "Preview with included fragments inserted",
+    );
+    fireEvent.click(toPreview);
 
     expect(screen.getByTestId("preview-screen")).toBeTruthy();
     expect(screen.queryByLabelText("Skill fragment")).toBeNull();
 
-    // The toggle is still reachable inside the preview screen; switch back.
-    fireEvent.click(screen.getByText("Fragments"));
+    // Still reachable inside the preview, now offering the raw fragment source.
+    const toSource = screen.getByText("Source");
+
+    expect(toSource.getAttribute("title")).toBe("Show the raw skill fragment");
+    fireEvent.click(toSource);
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
   });

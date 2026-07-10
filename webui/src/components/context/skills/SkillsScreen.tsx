@@ -22,7 +22,7 @@ interface SkillsScreenProps {
 }
 
 /**
- * The Skills tab. A Fragments | Preview toggle switches between editing the
+ * The Skills tab. A Preview/Source toggle switches between editing the
  * built-in fragment overrides ({@link SkillSlotScreen}) and previewing the
  * assembled blob for any combination ({@link SkillsPreviewScreen}). The preview
  * is independent of the overrides collection, so it is reachable even while the
@@ -106,63 +106,30 @@ interface SkillsViewToggleProps {
 }
 
 /**
- * Segmented control switching the Skills tab between the fragment editor and the
- * assembled-blob preview.
+ * A single compact link toggling the Skills tab between the fragment editor and
+ * the assembled-blob preview, labelled with the view it switches TO ("Preview"
+ * while editing, "Source" while previewing). Compact by design so it fits the
+ * row above the editor on narrow screens, where the old two-segment control
+ * crowded the controls strip.
  * @param props - Toggle props
- * @returns Toggle element
+ * @returns Toggle link element
  */
 function SkillsViewToggle(props: SkillsViewToggleProps): preact.JSX.Element {
   const { view, onSelect } = props;
-
-  return (
-    // A button group (not an ARIA tablist): switching view remounts the strip,
-    // so the roving-tabindex tab model doesn't fit. aria-pressed marks the active
-    // segment; native buttons stay Tab-focusable and Enter/Space-activatable.
-    <div
-      role="group"
-      aria-label="Skills view"
-      className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-700 overflow-hidden text-xs"
-    >
-      <ViewToggleButton
-        label="Fragments"
-        active={view === "fragments"}
-        onSelect={() => onSelect("fragments")}
-      />
-      <ViewToggleButton
-        label="Preview"
-        active={view === "preview"}
-        onSelect={() => onSelect("preview")}
-      />
-    </div>
-  );
-}
-
-interface ViewToggleButtonProps {
-  label: string;
-  active: boolean;
-  onSelect: () => void;
-}
-
-/**
- * A single segment of the Fragments | Preview toggle.
- * @param props - Button props
- * @returns Button element
- */
-function ViewToggleButton(props: ViewToggleButtonProps): preact.JSX.Element {
-  const { label, active, onSelect } = props;
+  const previewing = view === "preview";
 
   return (
     <button
       type="button"
-      aria-pressed={active}
-      onClick={onSelect}
-      className={`px-2.5 py-1 transition-colors ${
-        active
-          ? "bg-zinc-200 dark:bg-zinc-700 font-medium text-zinc-900 dark:text-zinc-100"
-          : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-      }`}
+      onClick={() => onSelect(previewing ? "fragments" : "preview")}
+      title={
+        previewing
+          ? "Show the raw skill fragment"
+          : "Preview with included fragments inserted"
+      }
+      className="shrink-0 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 hover:underline transition-colors"
     >
-      {label}
+      {previewing ? "Source" : "Preview"}
     </button>
   );
 }

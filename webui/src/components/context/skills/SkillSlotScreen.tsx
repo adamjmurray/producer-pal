@@ -40,7 +40,7 @@ interface SkillSlotScreenProps {
   onSelectSlot: (name: string) => void;
   /** The Project | Global | Instructions | Skills tab strip. */
   tabSlot: preact.JSX.Element;
-  /** The Fragments | Preview view toggle for the Skills tab. */
+  /** The Preview/Source view toggle for the Skills tab. */
   viewSlot: preact.JSX.Element;
   /** Close the overlay (omitted on the standalone /context page). */
   onClose?: () => void;
@@ -88,7 +88,6 @@ export function SkillSlotScreen(
         selected={slot.name}
         onSelectSlot={onSelectSlot}
         slot={slot}
-        viewSlot={viewSlot}
         widthClass={widthClass}
         onImport={io.onImport}
         onExport={io.onExport}
@@ -112,6 +111,7 @@ export function SkillSlotScreen(
             value={slot.override}
             builtIn={slot.builtIn}
             overrideLabel="Your override"
+            centerControl={viewSlot}
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
             onReset={editor.handleClear}
@@ -168,7 +168,6 @@ interface SkillControlsProps {
   selected: string;
   onSelectSlot: (name: string) => void;
   slot: SkillSlotView;
-  viewSlot: preact.JSX.Element;
   /** Content width — tracks the editor below so the strip stays aligned. */
   widthClass: string;
   onImport: () => void;
@@ -176,21 +175,21 @@ interface SkillControlsProps {
 }
 
 /**
- * Controls strip: the view toggle, the slot dropdown, a one-line explainer for
- * the selected slot, and a drift note. The border spans full width while the
- * content is centered to match the editor below. Resetting an override to the
- * built-in lives in the revealed built-in header (see OverridePanes), not here.
+ * Controls strip: the slot dropdown, a one-line explainer for the selected slot,
+ * and a drift note. The border spans full width while the content is centered to
+ * match the editor below. The Preview/Source view toggle sits in the editor's
+ * pane header (see OverridePanes), and resetting an override to the built-in
+ * lives in the revealed built-in header there — neither belongs here.
  * @param props - Controls props
  * @returns Controls element
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
-  const { slots, selected, onSelectSlot, slot, viewSlot } = props;
+  const { slots, selected, onSelectSlot, slot } = props;
   const { widthClass, onImport, onExport } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
       <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
-        {viewSlot}
         <SkillSlotSelect
           slots={slots}
           selected={selected}

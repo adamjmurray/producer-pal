@@ -28,7 +28,7 @@ const SELECT_CLASS =
 interface SkillsPreviewScreenProps {
   /** The Project | Global | Instructions | Skills tab strip. */
   tabSlot: preact.JSX.Element;
-  /** The Fragments | Preview view toggle for the Skills tab. */
+  /** The Preview/Source view toggle for the Skills tab. */
   viewSlot: preact.JSX.Element;
   /** Close the overlay (omitted on the standalone /context page). */
   onClose?: () => void;
@@ -63,7 +63,6 @@ export function SkillsPreviewScreen(
         onClose={onClose}
       />
       <PreviewControls
-        viewSlot={viewSlot}
         selected={preview.selected}
         currentMode={preview.currentMode}
         status={preview.status}
@@ -71,7 +70,7 @@ export function SkillsPreviewScreen(
         onSmallModel={preview.setSmallModelMode}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
-        <PreviewBody status={preview.status} />
+        <PreviewBody status={preview.status} viewSlot={viewSlot} />
       </div>
     </div>
   );
@@ -80,7 +79,6 @@ export function SkillsPreviewScreen(
 // --- Helpers below main export ---
 
 interface PreviewControlsProps {
-  viewSlot: preact.JSX.Element;
   selected: SkillsCombination;
   currentMode: SkillsCombination | null;
   status: SkillsPreviewStatus;
@@ -89,21 +87,21 @@ interface PreviewControlsProps {
 }
 
 /**
- * Controls strip: the view toggle, the notation + model-size pickers, and (right
- * aligned) the live-combination badge and the assembled blob's size.
+ * Controls strip: the notation + model-size pickers, and (right aligned) the
+ * live-combination badge and the assembled blob's size. The Preview/Source view
+ * toggle sits centered in the body header below (see PreviewFrame), matching the
+ * editor's toggle position so switching views never moves it.
  * @param props - Controls props
  * @returns Controls element
  */
 function PreviewControls(props: PreviewControlsProps): preact.JSX.Element {
-  const { viewSlot, selected, currentMode, status, onNotation, onSmallModel } =
-    props;
+  const { selected, currentMode, status, onNotation, onSmallModel } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
       <div
         className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-wrap items-center gap-x-3 gap-y-2`}
       >
-        {viewSlot}
         <NotationSelect value={selected.notation} onSelect={onNotation} />
         <ModelSelect value={selected.smallModelMode} onSelect={onSmallModel} />
         <div className="ml-auto flex items-center gap-3">
@@ -219,49 +217,59 @@ function PreviewSize(props: PreviewSizeProps): preact.JSX.Element {
 
 interface PreviewBodyProps {
   status: SkillsPreviewStatus;
+  /** The Preview/Source view toggle, centered in the body header (all states). */
+  viewSlot: preact.JSX.Element;
 }
 
 /**
  * The assembled-blob body: a loading/error state, or the read-only skills text
- * with a caption naming its two active slots and a Copy button.
+ * with a caption naming its two active slots and a Copy button. Every state is
+ * wrapped in {@link PreviewFrame} so the view toggle stays centered in the same
+ * on-screen spot as the editor's toggle — switching views never moves it.
  * @param props - Body props
  * @returns Body element
  */
 function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
-  const { status } = props;
+  const { status, viewSlot } = props;
 
   if (status.kind === "loading") {
     return (
-      <div className="flex items-center justify-center h-full text-zinc-500">
-        Assembling preview…
-      </div>
+      <PreviewFrame viewSlot={viewSlot}>
+        <div className="flex-1 flex items-center justify-center text-zinc-500">
+          Assembling preview…
+        </div>
+      </PreviewFrame>
     );
   }
 
   if (status.kind === "error") {
     return (
-      <div className="flex items-center justify-center h-full px-8 text-center text-red-600 dark:text-red-400">
-        {status.message}
-      </div>
+      <PreviewFrame viewSlot={viewSlot}>
+        <div className="flex-1 flex items-center justify-center px-8 text-center text-red-600 dark:text-red-400">
+          {status.message}
+        </div>
+      </PreviewFrame>
     );
   }
 
   const { skills, head, driver, warnings } = status.preview;
 
   return (
-    <div
-      className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-col h-full p-4 gap-2 overflow-hidden`}
-    >
-      {warnings.length > 0 && <PreviewWarnings warnings={warnings} />}
-      <div className="flex items-center justify-between h-5 gap-3">
+    <PreviewFrame
+      viewSlot={viewSlot}
+      left={
         <span className="min-w-0 truncate text-xs text-zinc-400 dark:text-zinc-500">
           Fragments: {driver} + {head}
         </span>
+      }
+      right={
         <CopyButton
           text={skills}
           className="shrink-0 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
         />
-      </div>
+      }
+    >
+      {warnings.length > 0 && <PreviewWarnings warnings={warnings} />}
       <MarkdownEditor
         key={skills}
         ariaLabel="Assembled skills preview"
@@ -270,6 +278,40 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
         onChange={noop}
         className="flex-1 min-h-0"
       />
+    </PreviewFrame>
+  );
+}
+
+interface PreviewFrameProps {
+  viewSlot: preact.JSX.Element;
+  /** Left cell of the toggle row (the fragment caption in the ready state). */
+  left?: preact.JSX.Element;
+  /** Right cell of the toggle row (the Copy button in the ready state). */
+  right?: preact.JSX.Element;
+  children: preact.ComponentChildren;
+}
+
+/**
+ * The preview content frame: the shared centered column plus a top row that
+ * keeps the Preview/Source toggle at the page center — the SAME spot as the
+ * editor's toggle — across the loading, error, and ready states. The caption and
+ * Copy button fill the row's sides only when there's a blob to describe.
+ * @param props - Frame props
+ * @returns Frame element
+ */
+function PreviewFrame(props: PreviewFrameProps): preact.JSX.Element {
+  const { viewSlot, left, right, children } = props;
+
+  return (
+    <div
+      className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-col h-full p-4 gap-2 overflow-hidden`}
+    >
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-5 gap-3">
+        <div className="min-w-0 justify-self-start">{left}</div>
+        <div className="justify-self-center">{viewSlot}</div>
+        <div className="justify-self-end">{right}</div>
+      </div>
+      {children}
     </div>
   );
 }
