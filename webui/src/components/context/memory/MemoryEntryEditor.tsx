@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { useCallback, useState } from "preact/hooks";
 import {
   BodyField,
   DescriptionField,
@@ -11,6 +11,7 @@ import {
 } from "#webui/components/context/collection/collection-editor-parts";
 import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
+import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
 import {
   type MemoryEntryView,
   type UseMemoryCollectionReturn,
@@ -48,10 +49,10 @@ export function MemoryEntryEditor(
   const [body, setBody] = useState(entry?.body ?? "");
 
   const targetName = isNew ? name : entry.name;
-  const canSave =
-    targetName.trim().length > 0 &&
-    body.trim().length > 0 &&
-    collection.saveStatus !== "saving";
+  const validation = useMemoryValidation(isNew, name, description, body);
+  // Autosave/create only when name (new only), description, and body are all
+  // non-empty — clearing a required field blocks the write and shows its error.
+  const canSave = validation.isValid && collection.saveStatus !== "saving";
 
   // Creating (or re-creating a memory deleted out from under us) is create-only
   // so it can't silently overwrite an existing entry the name collides with.
@@ -78,6 +79,19 @@ export function MemoryEntryEditor(
       noteSaved(memoryEntryKey(saved));
       onSaved(saved.name);
     }
+  };
+
+  // Create button: reveal every field's error when the draft is incomplete
+  // (so a blank field can't silently disable the button with no explanation),
+  // otherwise persist it.
+  const handleCreate = (): void => {
+    if (!validation.isValid) {
+      validation.revealAll();
+
+      return;
+    }
+
+    void handleSave();
   };
 
   // Commit a rename (blur / Enter on the name field). A no-op or empty change
@@ -136,36 +150,136 @@ export function MemoryEntryEditor(
         displayName={entry?.name}
         placeholder="prefers-c-minor"
         onChange={setName}
+        onBlur={() => validation.markTouched("name")}
+        error={validation.errors.name}
         onRename={handleRename}
       />
       <DescriptionField
         hint="One-line recall hook shown in the index."
         value={description}
         onChange={setDescription}
+        onBlur={() => validation.markTouched("description")}
+        error={validation.errors.description}
       />
-      <BodyField label="Memory" value={body} onChange={setBody} rows={10} />
+      <BodyField
+        label="Memory"
+        value={body}
+        onChange={setBody}
+        rows={10}
+        onBlur={() => validation.markTouched("body")}
+        error={validation.errors.body}
+      />
       {isNew && (
-        <div className="flex items-center gap-3 pt-1">
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!canSave}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Create memory
-          </button>
-          {collection.saveStatus === "error" && (
-            <span className="text-xs text-red-600 dark:text-red-400">
-              {collection.saveError ?? "Save failed"}
-            </span>
-          )}
-        </div>
+        <CreateMemoryFooter
+          onCreate={handleCreate}
+          saveStatus={collection.saveStatus}
+          saveError={collection.saveError}
+        />
       )}
     </div>
   );
 }
 
 // --- Helpers below main export ---
+
+/**
+ * The create-flow footer: the Create button plus an inline error when a create
+ * fails (an existing memory autosaves instead, showing its status in the header).
+ * @param props - Footer props
+ * @param props.onCreate - Validate + create the draft
+ * @param props.saveStatus - The collection's current save status
+ * @param props.saveError - The collection's current save error, if any
+ * @returns Footer element
+ */
+function CreateMemoryFooter(props: {
+  onCreate: () => void;
+  saveStatus: SaveStatus;
+  saveError: string | null;
+}): preact.JSX.Element {
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <button
+        type="button"
+        onClick={props.onCreate}
+        disabled={props.saveStatus === "saving"}
+        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        Create memory
+      </button>
+      {props.saveStatus === "error" && (
+        <span className="text-xs text-red-600 dark:text-red-400">
+          {props.saveError ?? "Save failed"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The three required memory fields. */
+type MemoryField = "name" | "description" | "body";
+
+/** Per-field validation state for the memory editor. */
+interface MemoryValidation {
+  /** The error message for each field, or undefined when valid/untouched. */
+  errors: Partial<Record<MemoryField, string>>;
+  /** Whether every required field is non-empty (name only for a new memory). */
+  isValid: boolean;
+  /** Mark a field touched so its error can surface (on blur). */
+  markTouched: (field: MemoryField) => void;
+  /** Reveal every field's error (a failed Create). */
+  revealAll: () => void;
+}
+
+/**
+ * Track required-field validity + which fields have been touched, so errors are
+ * deferred: a blank new form stays quiet until a field is left or Create is
+ * attempted, while an existing memory starts "touched" so an already-empty
+ * required field (e.g. an assistant-made memory with no description) is flagged
+ * immediately. Name is required only when creating — an existing memory's slug
+ * is fixed (renaming is its own control).
+ * @param isNew - Whether this is a new (create) draft
+ * @param name - The current name draft (validated only when creating)
+ * @param description - The current description draft
+ * @param body - The current body draft
+ * @returns The per-field errors, overall validity, and touch controls
+ */
+function useMemoryValidation(
+  isNew: boolean,
+  name: string,
+  description: string,
+  body: string,
+): MemoryValidation {
+  const [touched, setTouched] = useState<Record<MemoryField, boolean>>(() => ({
+    name: !isNew,
+    description: !isNew,
+    body: !isNew,
+  }));
+
+  const markTouched = useCallback((field: MemoryField): void => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  }, []);
+
+  const revealAll = useCallback((): void => {
+    setTouched({ name: true, description: true, body: true });
+  }, []);
+
+  const nameMissing = isNew && name.trim() === "";
+  const errors: Partial<Record<MemoryField, string>> = {
+    name: touched.name && nameMissing ? "Name is required." : undefined,
+    description:
+      touched.description && description.trim() === ""
+        ? "Description is required."
+        : undefined,
+    body:
+      touched.body && body.trim() === ""
+        ? "Memory contents are required."
+        : undefined,
+  };
+  const isValid =
+    !nameMissing && description.trim() !== "" && body.trim() !== "";
+
+  return { errors, isValid, markTouched, revealAll };
+}
 
 /**
  * Serialize a memory entry's persisted fields into one comparable key, used as

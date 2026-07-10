@@ -20,11 +20,23 @@ export const INPUT_CLASS =
 interface FieldProps {
   label: string;
   hint?: string;
+  /** A validation message shown in red below the control when present. */
+  error?: string;
   children: preact.ComponentChildren;
 }
 
 /**
- * A labeled form row: a small heading (with optional hint) above its control.
+ * The shared input class, plus a red error ring when the field is invalid.
+ * @param error - The field's validation message, if any
+ * @returns The input's className
+ */
+export function inputClass(error?: string): string {
+  return error == null ? INPUT_CLASS : `${INPUT_CLASS} ring-2 ring-red-500/50`;
+}
+
+/**
+ * A labeled form row: a small heading (with optional hint) above its control,
+ * plus a red validation message below it when `error` is set.
  * @param props - Field props
  * @returns Field element
  */
@@ -40,6 +52,11 @@ export function Field(props: FieldProps): preact.JSX.Element {
         )}
       </span>
       {props.children}
+      {props.error != null && (
+        <span className="text-xs text-red-600 dark:text-red-400">
+          {props.error}
+        </span>
+      )}
     </label>
   );
 }
@@ -50,6 +67,10 @@ interface NameFieldProps {
   displayName?: string;
   placeholder: string;
   onChange: (name: string) => void;
+  /** Mark the create-mode name field touched (for deferred validation). */
+  onBlur?: () => void;
+  /** Validation message for the create-mode name field. */
+  error?: string;
   /**
    * Rename an existing entry, committed on blur / Enter. When provided (and not
    * creating), the slug becomes an editable field; without it the slug stays
@@ -70,13 +91,18 @@ export function NameField(props: NameFieldProps): preact.JSX.Element {
 
   if (isNew) {
     return (
-      <Field label="Name" hint="Letters and digits; spaces become hyphens.">
+      <Field
+        label="Name"
+        hint="Letters and digits; spaces become hyphens."
+        error={props.error}
+      >
         <input
           type="text"
           value={name}
           onInput={(e) => onChange((e.target as HTMLInputElement).value)}
+          onBlur={props.onBlur}
           placeholder={placeholder}
-          className={INPUT_CLASS}
+          className={inputClass(props.error)}
         />
       </Field>
     );
@@ -114,6 +140,8 @@ interface DescriptionFieldProps {
   hint: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
+  error?: string;
 }
 
 /**
@@ -126,12 +154,13 @@ export function DescriptionField(
   props: DescriptionFieldProps,
 ): preact.JSX.Element {
   return (
-    <Field label="Description" hint={props.hint}>
+    <Field label="Description" hint={props.hint} error={props.error}>
       <input
         type="text"
         value={props.value}
         onInput={(e) => props.onChange((e.target as HTMLInputElement).value)}
-        className={INPUT_CLASS}
+        onBlur={props.onBlur}
+        className={inputClass(props.error)}
       />
     </Field>
   );
@@ -142,6 +171,8 @@ interface BodyFieldProps {
   value: string;
   onChange: (value: string) => void;
   rows: number;
+  onBlur?: () => void;
+  error?: string;
 }
 
 /**
@@ -152,12 +183,13 @@ interface BodyFieldProps {
  */
 export function BodyField(props: BodyFieldProps): preact.JSX.Element {
   return (
-    <Field label={props.label}>
+    <Field label={props.label} error={props.error}>
       <textarea
         value={props.value}
         onInput={(e) => props.onChange((e.target as HTMLTextAreaElement).value)}
+        onBlur={props.onBlur}
         rows={props.rows}
-        className={`${INPUT_CLASS} resize-none font-mono leading-relaxed`}
+        className={`${inputClass(props.error)} resize-none font-mono leading-relaxed`}
       />
       <div className="mt-1 flex justify-end">
         <CharTokenCount chars={props.value.length} />

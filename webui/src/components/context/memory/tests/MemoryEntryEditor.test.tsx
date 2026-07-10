@@ -41,8 +41,31 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * Fill the create form's three required fields.
+ * @param values - The name, description, and body to type
+ * @param values.name - The name to type
+ * @param values.description - The description to type
+ * @param values.body - The body to type
+ */
+function fillCreateForm(values: {
+  name: string;
+  description: string;
+  body: string;
+}): void {
+  fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
+    target: { value: values.name },
+  });
+  fireEvent.input(screen.getByRole("textbox", { name: /Description/ }), {
+    target: { value: values.description },
+  });
+  fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+    target: { value: values.body },
+  });
+}
+
 describe("MemoryEntryEditor — new entry", () => {
-  it("disables Create until a name and body are present, then saves", async () => {
+  it("reveals every field error and blocks Create until name, description, and body are filled", async () => {
     const saved: MemoryEntryView = {
       name: "loose-drums",
       description: "swing",
@@ -61,25 +84,21 @@ describe("MemoryEntryEditor — new entry", () => {
       />,
     );
 
-    const create = screen.getByRole("button", {
-      name: "Create memory",
-    }) as HTMLButtonElement;
+    // Clicking Create on a blank form reveals each required-field error and
+    // does not save (rather than a silently-disabled button with no reason).
+    fireEvent.click(screen.getByRole("button", { name: "Create memory" }));
 
-    expect(create.disabled).toBe(true);
+    expect(screen.getByText("Name is required.")).toBeTruthy();
+    expect(screen.getByText("Description is required.")).toBeTruthy();
+    expect(screen.getByText("Memory contents are required.")).toBeTruthy();
+    expect(collection.saveEntry).not.toHaveBeenCalled();
 
-    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
-      target: { value: "loose-drums" },
+    fillCreateForm({
+      name: "loose-drums",
+      description: "swing",
+      body: "Apply groove.",
     });
-    fireEvent.input(screen.getByRole("textbox", { name: /Description/ }), {
-      target: { value: "swing" },
-    });
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "Apply groove." },
-    });
-
-    expect(create.disabled).toBe(false);
-
-    fireEvent.click(create);
+    fireEvent.click(screen.getByRole("button", { name: "Create memory" }));
 
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalledWith("loose-drums");
@@ -95,7 +114,40 @@ describe("MemoryEntryEditor — new entry", () => {
     );
   });
 
-  it("does not fire onSaved when the save fails", async () => {
+  it("shows the description error on blur without touching the others", () => {
+    render(
+      <MemoryEntryEditor
+        collection={fakeCollection()}
+        entry={null}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    // Leaving the (empty) description flags only it; name/body stay quiet.
+    fireEvent.blur(screen.getByRole("textbox", { name: /Description/ }));
+
+    expect(screen.getByText("Description is required.")).toBeTruthy();
+    expect(screen.queryByText("Name is required.")).toBeNull();
+    expect(screen.queryByText("Memory contents are required.")).toBeNull();
+  });
+
+  it("flags the name and contents fields on blur too", () => {
+    render(
+      <MemoryEntryEditor
+        collection={fakeCollection()}
+        entry={null}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.blur(screen.getByRole("textbox", { name: /Name/ }));
+    fireEvent.blur(screen.getByRole("textbox", { name: /Memory/ }));
+
+    expect(screen.getByText("Name is required.")).toBeTruthy();
+    expect(screen.getByText("Memory contents are required.")).toBeTruthy();
+  });
+
+  it("does not fire onSaved when a valid save fails", async () => {
     const collection = fakeCollection({
       saveEntry: vi.fn().mockResolvedValue(null),
     });
@@ -109,12 +161,7 @@ describe("MemoryEntryEditor — new entry", () => {
       />,
     );
 
-    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
-      target: { value: "x" },
-    });
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "y" },
-    });
+    fillCreateForm({ name: "x", description: "d", body: "y" });
     fireEvent.click(screen.getByRole("button", { name: "Create memory" }));
 
     await waitFor(() => {
@@ -125,10 +172,10 @@ describe("MemoryEntryEditor — new entry", () => {
 });
 
 describe("MemoryEntryEditor — autosave on close", () => {
-  it("persists a new draft on unmount so closing before Create doesn't lose it", () => {
+  it("persists a complete new draft on unmount so closing before Create doesn't lose it", () => {
     const saved: MemoryEntryView = {
       name: "loose-drums",
-      description: "",
+      description: "swing",
       body: "groove",
     };
     const collection = fakeCollection({
@@ -143,11 +190,10 @@ describe("MemoryEntryEditor — autosave on close", () => {
       />,
     );
 
-    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
-      target: { value: "loose-drums" },
-    });
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "groove" },
+    fillCreateForm({
+      name: "loose-drums",
+      description: "swing",
+      body: "groove",
     });
 
     // Close the overlay (Escape / backdrop / ×) WITHOUT clicking Create.
@@ -155,9 +201,34 @@ describe("MemoryEntryEditor — autosave on close", () => {
 
     expect(collection.saveEntry).toHaveBeenCalledWith(
       "loose-drums",
-      { description: "", content: "groove" },
+      { description: "swing", content: "groove" },
       true,
     );
+  });
+
+  it("does not persist an incomplete new draft on unmount", () => {
+    const collection = fakeCollection({
+      saveEntry: vi.fn().mockResolvedValue(null),
+    });
+
+    const { unmount } = render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={null}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    // Name + body but no description — the draft is invalid, so nothing saves.
+    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
+      target: { value: "loose-drums" },
+    });
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "groove" },
+    });
+    unmount();
+
+    expect(collection.saveEntry).not.toHaveBeenCalled();
   });
 });
 
@@ -212,6 +283,48 @@ describe("MemoryEntryEditor — existing entry", () => {
 
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+  });
+
+  it("flags a cleared required field and blocks its autosave (no silent loss)", () => {
+    const collection = fakeCollection({
+      saveEntry: vi.fn().mockResolvedValue(EXISTING),
+    });
+
+    const { unmount } = render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    // Clearing the required description surfaces its error (existing entries are
+    // pre-touched, so it shows at once) and blocks the autosave.
+    fireEvent.input(screen.getByRole("textbox", { name: /Description/ }), {
+      target: { value: "" },
+    });
+
+    expect(screen.getByText("Description is required.")).toBeTruthy();
+
+    unmount();
+
+    expect(collection.saveEntry).not.toHaveBeenCalled();
+  });
+
+  it("flags cleared contents on an existing memory", () => {
+    render(
+      <MemoryEntryEditor
+        collection={fakeCollection()}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "" },
+    });
+
+    expect(screen.getByText("Memory contents are required.")).toBeTruthy();
   });
 });
 
