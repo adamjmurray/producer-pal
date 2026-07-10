@@ -120,15 +120,4 @@ describe("Handler Registration", () => {
     handler("barbeat");
     expect(await getConfigField("notation")).toBe("barbeat");
   });
-
-  it("should register an openConfigFolder handler (inert without a dir override)", () => {
-    const handler = mockMax.handlers.get("openConfigFolder") as (
-      input: unknown,
-    ) => void;
-
-    expect(handler).toBeDefined();
-    // No PRODUCER_PAL_CONFIG_DIR override in this suite, so revealConfigDir is
-    // inert under Vitest — it must not spawn a file browser or throw.
-    expect(() => handler("bang")).not.toThrow();
-  });
 });

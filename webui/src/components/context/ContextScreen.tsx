@@ -17,6 +17,7 @@ import { makeContextIoHandlers } from "./context-io";
 import { ContextIoButtons } from "./ContextIoButtons";
 import { DriftNote } from "./editor/DriftNote";
 import { OverridePanes } from "./editor/OverridePanes";
+import { RevealFolderButton } from "./editor/RevealFolderButton";
 import { SaveIndicator } from "./editor/SaveIndicator";
 import { MarkdownDropZone } from "./MarkdownDropZone";
 import { MarkdownEditor } from "./MarkdownEditor";
@@ -215,6 +216,7 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
               dirty={props.dirty ?? false}
             />
           ))}
+        <RevealFolderButton />
         {onClose != null && (
           <button
             type="button"

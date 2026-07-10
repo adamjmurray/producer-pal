@@ -292,6 +292,36 @@ describe("MCP Express App - Config", () => {
     });
   });
 
+  describe("Reveal Config Folder", () => {
+    let revealUrl: string;
+
+    beforeAll(() => {
+      revealUrl = appState.serverUrl.replace("/mcp", "/reveal-config-folder");
+    });
+
+    it("returns { ok: true } for a same-origin POST", async () => {
+      // No PRODUCER_PAL_CONFIG_DIR override here, so revealConfigDir is inert
+      // under Vitest — the route must still succeed without spawning a file
+      // browser or touching the filesystem.
+      const response = await fetch(revealUrl, { method: "POST" });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toStrictEqual({ ok: true });
+    });
+
+    it("rejects a cross-origin POST with 403", async () => {
+      const response = await fetch(revealUrl, {
+        method: "POST",
+        headers: { Origin: "https://evil.example.com" },
+      });
+
+      expect(response.status).toBe(403);
+      const body = await response.json();
+
+      expect(body.error).toContain("cross-origin");
+    });
+  });
+
   describe("Tools Whitelist Filtering", () => {
     let configUrl: string;
 

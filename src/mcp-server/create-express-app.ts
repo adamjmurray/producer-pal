@@ -24,7 +24,6 @@ import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { withGlobalContext } from "./helpers/global-context/global-context-inject.ts";
 import { withMemory } from "./helpers/memory/memory-inject.ts";
 import { rejectCrossOriginWrite } from "./helpers/request-origin.ts";
-import { revealConfigDir } from "./helpers/reveal-config-dir.ts";
 import { withSkills } from "./helpers/skills-inject.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -117,14 +116,6 @@ Max.addHandler("liveApiEnabled", (enabled: unknown) => {
   }
 
   applyLiveApiEnabled(next);
-});
-
-// Device button: reveal ~/.producer-pal in the OS file browser. The button
-// sends "openConfigFolder"; Node resolves the home dir and emits it back as a
-// file:// URL for the patch to open via `max launchbrowser` (see
-// reveal-config-dir.ts).
-Max.addHandler("openConfigFolder", () => {
-  revealConfigDir();
 });
 
 /**

@@ -4,11 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Reveals the machine-global config directory (~/.producer-pal) in the OS file
-// browser. Triggered by a Max device button that sends an "openConfigFolder"
-// message to the Node-for-Max process. Shipped src/ is barred from shelling out
+// browser. Triggered by the chat UI's "Open folder" button via the
+// POST /reveal-config-folder route. Shipped src/ is barred from shelling out
 // (eslint no-restricted-imports on child_process), so Node only resolves the
-// home dir (which Max can't do cross-platform) and hands the patch a file:// URL
-// to open with `max launchbrowser`.
+// home dir (which Max can't do cross-platform) and emits a file:// URL that the
+// Max patch opens with `max launchbrowser` (its existing openConfigFolder
+// receiver).
 
 import { mkdirSync } from "node:fs";
 import { pathToFileURL } from "node:url";

@@ -35,17 +35,6 @@
             },
             {
                 "box": {
-                    "id": "obj-14",
-                    "maxclass": "message",
-                    "numinlets": 2,
-                    "numoutlets": 1,
-                    "outlettype": [ "" ],
-                    "patching_rect": [ 105.0, 344.0, 104.0, 22.0 ],
-                    "text": "openConfigFolder"
-                }
-            },
-            {
-                "box": {
                     "id": "obj-11",
                     "maxclass": "newobj",
                     "numinlets": 0,
@@ -65,36 +54,6 @@
                     "outlettype": [ "" ],
                     "patching_rect": [ 233.0, 441.0, 136.0, 35.0 ],
                     "text": ";\rmax launch_browser $1"
-                }
-            },
-            {
-                "box": {
-                    "annotation": "Open the folder containing global context and customizations.",
-                    "annotation_name": "Open Folder",
-                    "fontsize": 10.0,
-                    "id": "obj-7",
-                    "maxclass": "live.text",
-                    "mode": 0,
-                    "numinlets": 1,
-                    "numoutlets": 2,
-                    "outlettype": [ "", "" ],
-                    "parameter_enable": 1,
-                    "patching_rect": [ 105.0, 308.0, 83.0, 24.0 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 174.0, 133.0, 66.0, 19.0 ],
-                    "saved_attribute_attributes": {
-                        "valueof": {
-                            "parameter_enum": [ "val1", "val2" ],
-                            "parameter_invisible": 2,
-                            "parameter_longname": "live.text[1]",
-                            "parameter_mmax": 1,
-                            "parameter_modmode": 0,
-                            "parameter_shortname": "live.text[3]",
-                            "parameter_type": 2
-                        }
-                    },
-                    "text": "Open Folder",
-                    "varname": "open-chat-ui[1]"
                 }
             },
             {
@@ -389,12 +348,6 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-13", 0 ],
-                    "source": [ "obj-14", 0 ]
-                }
-            },
-            {
-                "patchline": {
                     "destination": [ "obj-2", 0 ],
                     "source": [ "obj-15", 0 ]
                 }
@@ -455,12 +408,6 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-14", 0 ],
-                    "source": [ "obj-7", 0 ]
-                }
-            },
-            {
-                "patchline": {
                     "destination": [ "obj-35", 1 ],
                     "source": [ "obj-71", 0 ]
                 }
@@ -475,7 +422,6 @@
         "parameters": {
             "obj-2": [ "memoryContent", "memoryContent", 0 ],
             "obj-32": [ "live.text[3]", "live.text[3]", 0 ],
-            "obj-7": [ "live.text[1]", "live.text[3]", 0 ],
             "parameterbanks": {
                 "0": {
                     "index": 0,
