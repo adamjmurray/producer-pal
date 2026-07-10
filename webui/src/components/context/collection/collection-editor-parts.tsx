@@ -50,37 +50,62 @@ interface NameFieldProps {
   displayName?: string;
   placeholder: string;
   onChange: (name: string) => void;
+  /**
+   * Rename an existing entry, committed on blur / Enter. When provided (and not
+   * creating), the slug becomes an editable field; without it the slug stays
+   * read-only (the collection doesn't support renaming).
+   */
+  onRename?: (name: string) => void;
 }
 
 /**
- * The name row: an editable slug input when creating, or the fixed slug (shown
- * read-only) when editing an existing entry — the slug is the stable handle, so
- * a rename is a delete + create, not an in-place edit.
+ * The name row. Creating: an editable slug input for the new draft. Editing:
+ * an editable slug that renames on blur / Enter when `onRename` is supplied
+ * (Escape reverts), else the fixed slug shown read-only.
  * @param props - Name field props
  * @returns Name field element
  */
 export function NameField(props: NameFieldProps): preact.JSX.Element {
-  const { isNew, name, displayName, placeholder, onChange } = props;
+  const { isNew, name, displayName, placeholder, onChange, onRename } = props;
 
-  if (!isNew) {
+  if (isNew) {
     return (
-      <Field label="Name">
-        <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">
-          {displayName}
-        </div>
+      <Field label="Name" hint="Letters and digits; spaces become hyphens.">
+        <input
+          type="text"
+          value={name}
+          onInput={(e) => onChange((e.target as HTMLInputElement).value)}
+          placeholder={placeholder}
+          className={INPUT_CLASS}
+        />
+      </Field>
+    );
+  }
+
+  if (onRename != null) {
+    return (
+      <Field label="Name" hint="Edit to rename (commits on Enter or blur).">
+        <input
+          type="text"
+          value={name}
+          aria-label="Rename"
+          onInput={(e) => onChange((e.target as HTMLInputElement).value)}
+          onBlur={() => onRename(name)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") onChange(displayName ?? "");
+          }}
+          className={`${INPUT_CLASS} font-mono`}
+        />
       </Field>
     );
   }
 
   return (
-    <Field label="Name" hint="Letters and digits; spaces become hyphens.">
-      <input
-        type="text"
-        value={name}
-        onInput={(e) => onChange((e.target as HTMLInputElement).value)}
-        placeholder={placeholder}
-        className={INPUT_CLASS}
-      />
+    <Field label="Name">
+      <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">
+        {displayName}
+      </div>
     </Field>
   );
 }

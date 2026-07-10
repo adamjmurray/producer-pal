@@ -31,6 +31,12 @@ export interface CollectionRouteConfig<TInput, TEntry> {
   forget: (name: string) => boolean;
   /** Persist an entry (throws on store-level validation failure). */
   remember: (input: TInput) => TEntry;
+  /**
+   * Rename an entry (write its current fields under the new name, delete the
+   * old). Optional — only collections that expose renaming register the extra
+   * `PUT /:name/rename` route.
+   */
+  rename?: (oldName: string, input: TInput) => TEntry;
   /** Validate a request body + name into a store input, or a 400 message. */
   buildInput: (
     name: string,
@@ -98,9 +104,70 @@ export function registerCollectionRoutes<TInput, TEntry>(
 
     res.json({ existed: config.forget(entryName(req)) });
   });
+
+  registerRenameRoute(app, config);
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Register `PUT /:name/rename` when the collection supports renaming: writes the
+ * entry's current fields (from the request body) under `newName` and deletes the
+ * old file. A collision with a *different* existing entry is a 409, exactly like
+ * the create-only PUT; an invalid name / empty body surfaces the store's message
+ * as a 400. Distinct two-segment path, so it never shadows `PUT /:name`.
+ *
+ * @param app - Express application
+ * @param config - The collection's endpoints, store bindings, and validation
+ */
+function registerRenameRoute<TInput, TEntry>(
+  app: Express,
+  config: CollectionRouteConfig<TInput, TEntry>,
+): void {
+  const { basePath, noun, rename } = config;
+
+  if (rename == null) return;
+
+  app.put(`${basePath}/:name/rename`, (req: Request, res: Response): void => {
+    if (rejectWrite(req, res, basePath)) return;
+
+    const oldName = entryName(req);
+    const reqBody = req.body as Record<string, unknown>;
+
+    if (typeof reqBody.newName !== "string") {
+      res.status(400).json({ error: "newName must be a string" });
+
+      return;
+    }
+
+    const newName = reqBody.newName;
+    const built = config.buildInput(newName, reqBody);
+
+    if (isError(built)) {
+      res.status(400).json({ error: built.error });
+
+      return;
+    }
+
+    // Renaming to a slug a different entry already owns would clobber it.
+    if (
+      config.slugify(newName) !== config.slugify(oldName) &&
+      config.exists(newName)
+    ) {
+      res.status(409).json({
+        error: `A ${noun} named "${config.slugify(newName)}" already exists`,
+      });
+
+      return;
+    }
+
+    try {
+      res.json({ entry: rename(oldName, built) });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
+}
 
 /**
  * Narrow a buildInput result to its error variant.

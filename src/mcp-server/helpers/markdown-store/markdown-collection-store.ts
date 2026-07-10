@@ -105,6 +105,14 @@ export interface MarkdownCollectionStore<
   list: () => Entry[];
   /** Create or overwrite an entry (same slug ⇒ update), then rebuild the index. */
   remember: (input: Input) => Entry;
+  /**
+   * Rename an entry: write `input` (the current fields) under its new slug,
+   * delete the old file, and rebuild the index — atomic from the caller's view.
+   * Throws on an invalid/reserved/empty new name or a collision with a
+   * different existing entry. A no-op slug change (same slug) just updates in
+   * place. Preserves fields not in `input` from the old entry via `buildStored`.
+   */
+  rename: (oldName: string, input: Input) => Entry;
   /** Delete an entry (if present), then rebuild the index. */
   forget: (name: string) => boolean;
   /** Rebuild the derived index from the current files; "" when the set is empty. */
@@ -241,40 +249,12 @@ export function makeMarkdownCollectionStore<
     return content;
   };
 
-  const remember = (input: Input): Entry => {
-    const slug = slugifyCollectionName(input.name);
-
-    if (!slug) {
-      throw new Error(`${config.noun} name must contain letters or digits`);
-    }
-
-    if (isReservedSlug(slug)) {
-      throw new Error(
-        `"${slug}" is a reserved ${config.noun.toLowerCase()} name (the index file)`,
-      );
-    }
-
-    const body = input.body.trim();
-
-    if (!body) throw new Error(`${config.noun} body must not be empty`);
-
-    const description = input.description.trim().replaceAll(/\s+/g, " ");
-    const { data, entry } = config.buildStored({
-      slug,
-      input,
-      existing: read(slug),
-      description,
-      body,
-    });
-
-    writeConfigMarkdown(
-      resolveFile(slug),
-      serializeFrontmatter(data, `${body}\n`),
-    );
-    regenerateIndex();
-
-    return entry;
-  };
+  const { remember, rename } = makeCollectionWriteOps(config, {
+    isReservedSlug,
+    resolveFile,
+    read,
+    regenerateIndex,
+  });
 
   const forget = (name: string): boolean => {
     const slug = slugifyCollectionName(name);
@@ -297,7 +277,127 @@ export function makeMarkdownCollectionStore<
     exists,
     list,
     remember,
+    rename,
     forget,
     regenerateIndex,
   };
+}
+
+/** The store closures the write operations depend on. */
+interface WriteOpsDeps<Entry extends CollectionEntry> {
+  /** Whether a slug collides with the derived index file. */
+  isReservedSlug: (slug: string) => boolean;
+  /** Resolve a slug to the relative path of the file backing it. */
+  resolveFile: (slug: string) => string;
+  /** Read one entry by name, or null when absent. */
+  read: (name: string) => Entry | null;
+  /** Rebuild the derived index from the current files. */
+  regenerateIndex: () => string;
+}
+
+/**
+ * Build the create ({@link MarkdownCollectionStore.remember}) and
+ * {@link MarkdownCollectionStore.rename} write closures. Extracted from
+ * {@link makeMarkdownCollectionStore} so that factory stays within the
+ * function-size limit; it shares the store's slug guard, file resolver, reader,
+ * and index rebuilder via `deps`.
+ *
+ * @param config - The per-collection configuration
+ * @param deps - The store closures the writers depend on
+ * @returns The remember + rename closures
+ */
+function makeCollectionWriteOps<
+  Entry extends CollectionEntry,
+  Input extends CollectionInput,
+>(
+  config: MarkdownCollectionConfig<Entry, Input>,
+  deps: WriteOpsDeps<Entry>,
+): {
+  remember: (input: Input) => Entry;
+  rename: (oldName: string, input: Input) => Entry;
+} {
+  const { isReservedSlug, resolveFile, read, regenerateIndex } = deps;
+
+  // Slugify + guard a create/rename target, throwing the user-facing message on
+  // an empty (no usable characters) or reserved (index-file) name.
+  const validateTargetSlug = (name: string): string => {
+    const slug = slugifyCollectionName(name);
+
+    if (!slug) {
+      throw new Error(`${config.noun} name must contain letters or digits`);
+    }
+
+    if (isReservedSlug(slug)) {
+      throw new Error(
+        `"${slug}" is a reserved ${config.noun.toLowerCase()} name (the index file)`,
+      );
+    }
+
+    return slug;
+  };
+
+  // Validate the body, build the frontmatter+entry (preserving fields not in
+  // `input` from `existing`), and write the file. The slug is assumed already
+  // validated. Shared by remember (existing = same slug) and rename (existing =
+  // the old slug). Does NOT rebuild the index — the caller does, once.
+  const validateAndWrite = (
+    slug: string,
+    input: Input,
+    existing: Entry | null,
+  ): Entry => {
+    const body = input.body.trim();
+
+    if (!body) throw new Error(`${config.noun} body must not be empty`);
+
+    const description = input.description.trim().replaceAll(/\s+/g, " ");
+    const { data, entry } = config.buildStored({
+      slug,
+      input,
+      existing,
+      description,
+      body,
+    });
+
+    writeConfigMarkdown(
+      resolveFile(slug),
+      serializeFrontmatter(data, `${body}\n`),
+    );
+
+    return entry;
+  };
+
+  const remember = (input: Input): Entry => {
+    const slug = validateTargetSlug(input.name);
+    const entry = validateAndWrite(slug, input, read(slug));
+
+    regenerateIndex();
+
+    return entry;
+  };
+
+  const rename = (oldName: string, input: Input): Entry => {
+    const oldSlug = slugifyCollectionName(oldName);
+    const newSlug = validateTargetSlug(input.name);
+
+    if (
+      newSlug !== oldSlug &&
+      readConfigMarkdown(resolveFile(newSlug)).trim() !== ""
+    ) {
+      throw new Error(
+        `A ${config.noun.toLowerCase()} named "${newSlug}" already exists`,
+      );
+    }
+
+    // Read the old entry BEFORE writing the new file so buildStored can carry
+    // over any field not in `input` (e.g. a custom skill's enabled flag).
+    const entry = validateAndWrite(newSlug, input, read(oldSlug));
+
+    if (newSlug !== oldSlug) deleteConfigMarkdown(resolveFile(oldSlug));
+
+    regenerateIndex();
+
+    return entry;
+  };
+
+  return { remember, rename };
 }

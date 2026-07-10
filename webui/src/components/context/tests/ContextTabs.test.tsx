@@ -86,6 +86,7 @@ vi.mock(import("#webui/hooks/context/use-memory-collection"), () => ({
     saveStatus: "idle",
     saveError: null,
     saveEntry: vi.fn(),
+    renameEntry: vi.fn(),
     deleteEntry: vi.fn(),
     refresh: vi.fn(),
   }),

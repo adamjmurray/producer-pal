@@ -15,6 +15,7 @@ import {
   listMemoryEntries,
   memoryExists,
   rememberMemory,
+  renameMemory,
   slugifyMemoryName,
 } from "../helpers/memory/global-memory-store.ts";
 import { registerCollectionRoutes } from "./collection-route.ts";
@@ -32,6 +33,7 @@ export function registerMemoryCollectionRoutes(app: Express): void {
     slugify: slugifyMemoryName,
     forget: forgetMemory,
     remember: rememberMemory,
+    rename: renameMemory,
     buildInput: (name, reqBody) => {
       if (typeof reqBody.content !== "string") {
         return { error: "content must be a string" };

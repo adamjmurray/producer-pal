@@ -81,6 +81,35 @@ export function MemoryEntryEditor(
     }
   };
 
+  // Commit a rename (blur / Enter on the name field). A no-op or empty change
+  // just reverts the field. On success, mark the OLD-name draft as saved so the
+  // unmount flush the navigation triggers can't re-create the old slug, then
+  // navigate to the renamed entry. The current draft fields ride along, so a
+  // dirty body isn't lost; a collision surfaces via saveError and reverts.
+  const handleRename = (raw: string): void => {
+    if (entry == null) return;
+    const trimmed = raw.trim();
+
+    if (trimmed === "" || trimmed === entry.name) {
+      setName(entry.name);
+
+      return;
+    }
+
+    void collection
+      .renameEntry(entry.name, trimmed, { description, content: body })
+      .then((renamed) => {
+        if (renamed == null) {
+          setName(entry.name);
+
+          return;
+        }
+
+        noteSaved(memoryEntryKey({ name: entry.name, description, body }));
+        onSaved(renamed.name);
+      });
+  };
+
   // Adopt the server's current fields as the new draft AND advance the
   // autosave baseline. Order matters: adoptExternal reads externalKey off a
   // ref that isn't affected by these setState calls, so it's safe to call
@@ -108,6 +137,7 @@ export function MemoryEntryEditor(
         displayName={entry?.name}
         placeholder="prefers-c-minor"
         onChange={setName}
+        onRename={handleRename}
       />
       <DescriptionField
         hint="One-line recall hook shown in the index."

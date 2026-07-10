@@ -54,6 +54,16 @@ export interface UseDocCollectionReturn<TView, TInput> {
     input: TInput,
     createOnly?: boolean,
   ) => Promise<TView | null>;
+  /**
+   * Rename one entry: persist its current fields under `newName` and drop the
+   * old slug. Resolves the stored entry, or null on failure (e.g. a name
+   * collision, surfaced via saveError). A no-op slug change updates in place.
+   */
+  renameEntry: (
+    oldName: string,
+    newName: string,
+    input: TInput,
+  ) => Promise<TView | null>;
   /** Delete one entry. Resolves true on success, false on failure. */
   deleteEntry: (name: string) => Promise<boolean>;
   /** Re-read all entries from the server. */
@@ -99,28 +109,27 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
     [guardRefresh, collectionUrl, label],
   );
 
-  const saveEntry = useCallback(
-    async (
-      name: string,
-      input: TInput,
-      createOnly = false,
-    ): Promise<TView | null> => {
+  // Shared save lifecycle for the mutators: mark saving, run `op`, commit its
+  // result (a setStatus) on success, record the error on failure, and always
+  // clear the in-flight guard. Resolves `op`'s result, or null on failure — so
+  // saveEntry/renameEntry return the entry (or null) and deleteEntry maps the
+  // void result to a boolean.
+  const mutate = useCallback(
+    async <T>(
+      op: () => Promise<T>,
+      commit: (result: T) => void,
+    ): Promise<T | null> => {
       beginSave();
       setSaveStatus("saving");
       setSaveError(null);
 
       try {
-        const entry = await putEntry<TView, TInput>(
-          entryUrl(name),
-          input,
-          createOnly,
-          label,
-        );
+        const result = await op();
 
-        setStatus((prev) => mergeEntry(prev, entry));
+        commit(result);
         setSaveStatus("saved");
 
-        return entry;
+        return result;
       } catch (error: unknown) {
         setSaveError(errorMessage(error));
         setSaveStatus("error");
@@ -130,32 +139,48 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
         endSave();
       }
     },
-    [beginSave, endSave, entryUrl, label],
+    [beginSave, endSave],
+  );
+
+  const saveEntry = useCallback(
+    (name: string, input: TInput, createOnly = false): Promise<TView | null> =>
+      mutate(
+        () => putEntry<TView, TInput>(entryUrl(name), input, createOnly, label),
+        (entry) => setStatus((prev) => mergeEntry(prev, entry)),
+      ),
+    [mutate, entryUrl, label],
+  );
+
+  const renameEntry = useCallback(
+    (oldName: string, newName: string, input: TInput): Promise<TView | null> =>
+      mutate(
+        () =>
+          putRename<TView, TInput>(
+            `${entryUrl(oldName)}/rename`,
+            newName,
+            input,
+            label,
+          ),
+        // Drop the old slug and merge the new entry (a no-op slug change just
+        // re-adds it; the list re-sorts by name, so order is irrelevant).
+        (entry) =>
+          setStatus((prev) => mergeEntry(removeEntry(prev, oldName), entry)),
+      ),
+    [mutate, entryUrl, label],
   );
 
   const deleteEntry = useCallback(
     async (name: string): Promise<boolean> => {
-      beginSave();
-      setSaveStatus("saving");
-      setSaveError(null);
+      // deleteEntryRequest resolves void, so mutate returns undefined on success
+      // and null on failure — the null check is the success signal.
+      const result = await mutate(
+        () => deleteEntryRequest(entryUrl(name), label),
+        () => setStatus((prev) => removeEntry(prev, name)),
+      );
 
-      try {
-        await deleteEntryRequest(entryUrl(name), label);
-
-        setStatus((prev) => removeEntry(prev, name));
-        setSaveStatus("saved");
-
-        return true;
-      } catch (error: unknown) {
-        setSaveError(errorMessage(error));
-        setSaveStatus("error");
-
-        return false;
-      } finally {
-        endSave();
-      }
+      return result !== null;
     },
-    [beginSave, endSave, entryUrl, label],
+    [mutate, entryUrl, label],
   );
 
   // Initial load.
@@ -165,7 +190,15 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
 
   useRefreshOnFocusAndPoll(refresh);
 
-  return { status, saveStatus, saveError, saveEntry, deleteEntry, refresh };
+  return {
+    status,
+    saveStatus,
+    saveError,
+    saveEntry,
+    renameEntry,
+    deleteEntry,
+    refresh,
+  };
 }
 
 /** Params for {@link useCollectionEntryAutosave}. */
@@ -453,6 +486,35 @@ async function putEntry<TView, TInput>(
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(createOnly ? { ...input, createOnly } : input),
+  });
+
+  if (!response.ok) {
+    throw new Error(await writeErrorMessage(response, label));
+  }
+
+  const body = (await response.json()) as { entry: TView };
+
+  return body.entry;
+}
+
+/**
+ * PUT one entry rename (its current fields under a new name).
+ * @param url - The per-entry rename endpoint (`.../:oldName/rename`)
+ * @param newName - The requested new name (slugified server-side)
+ * @param input - The entry's current fields to carry over
+ * @param label - Error-message label (e.g. "Memory")
+ * @returns The server's echo of the renamed entry
+ */
+async function putRename<TView, TInput>(
+  url: string,
+  newName: string,
+  input: TInput,
+  label: string,
+): Promise<TView> {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, newName }),
   });
 
   if (!response.ok) {

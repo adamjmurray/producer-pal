@@ -162,7 +162,7 @@ describe("MemoryEntryEditor — autosave on close", () => {
 });
 
 describe("MemoryEntryEditor — existing entry", () => {
-  it("shows the slug read-only and saves edits under the same name", async () => {
+  it("seeds the editable name with the slug and saves edits under the same name", async () => {
     const collection = fakeCollection({
       saveEntry: vi.fn().mockResolvedValue(EXISTING),
     });
@@ -176,9 +176,11 @@ describe("MemoryEntryEditor — existing entry", () => {
       />,
     );
 
-    // The name is not an editable field for an existing entry.
-    expect(screen.queryByRole("textbox", { name: /Name/ })).toBeNull();
-    expect(screen.getByText("prefers-c-minor")).toBeTruthy();
+    // The name is an editable Rename field seeded with the current slug.
+    expect(
+      (screen.getByRole("textbox", { name: "Rename" }) as HTMLInputElement)
+        .value,
+    ).toBe("prefers-c-minor");
 
     fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
       target: { value: "Composes in C minor and F minor." },
@@ -211,6 +213,153 @@ describe("MemoryEntryEditor — existing entry", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+  });
+});
+
+describe("MemoryEntryEditor — rename", () => {
+  const RENAMED: MemoryEntryView = {
+    name: "new-slug",
+    description: "default key & genre",
+    body: "Composes in C minor.",
+  };
+
+  it("renames on blur, carrying the current fields and navigating to the new slug", async () => {
+    const renameEntry = vi.fn().mockResolvedValue(RENAMED);
+    const collection = fakeCollection({ renameEntry });
+    const onSaved = vi.fn();
+
+    render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={onSaved}
+      />,
+    );
+
+    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+
+    fireEvent.input(nameInput, { target: { value: "New Slug" } });
+    fireEvent.blur(nameInput);
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalledWith("new-slug");
+    });
+    expect(renameEntry).toHaveBeenCalledWith("prefers-c-minor", "New Slug", {
+      description: "default key & genre",
+      content: "Composes in C minor.",
+    });
+  });
+
+  it("commits the rename on Enter", async () => {
+    const renameEntry = vi.fn().mockResolvedValue(RENAMED);
+    const collection = fakeCollection({ renameEntry });
+
+    render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+
+    nameInput.focus();
+    fireEvent.input(nameInput, { target: { value: "New Slug" } });
+    fireEvent.keyDown(nameInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(renameEntry).toHaveBeenCalledWith(
+        "prefers-c-minor",
+        "New Slug",
+        expect.anything(),
+      );
+    });
+  });
+
+  it("does not rename when the name is unchanged", () => {
+    const renameEntry = vi.fn();
+    const collection = fakeCollection({ renameEntry });
+
+    render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    // Blur without editing the name.
+    fireEvent.blur(screen.getByRole("textbox", { name: "Rename" }));
+
+    expect(renameEntry).not.toHaveBeenCalled();
+  });
+
+  it("reverts to Escape and does not rename on an emptied name", () => {
+    const renameEntry = vi.fn();
+    const collection = fakeCollection({ renameEntry });
+
+    render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    const nameInput = screen.getByRole("textbox", {
+      name: "Rename",
+    }) as HTMLInputElement;
+
+    fireEvent.input(nameInput, { target: { value: "half-typed" } });
+    fireEvent.keyDown(nameInput, { key: "Escape" });
+
+    // Escape restores the current slug in the field.
+    expect(nameInput.value).toBe("prefers-c-minor");
+
+    // Clearing the name and blurring is a no-op (can't rename to nothing).
+    fireEvent.input(nameInput, { target: { value: "   " } });
+    fireEvent.blur(nameInput);
+
+    expect(renameEntry).not.toHaveBeenCalled();
+  });
+
+  it("reverts the name field when the rename fails (collision)", async () => {
+    const renameEntry = vi.fn().mockResolvedValue(null);
+    const collection = fakeCollection({
+      renameEntry,
+      saveStatus: "error",
+      saveError: 'A memory named "taken" already exists',
+    });
+
+    render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    const nameInput = screen.getByRole("textbox", {
+      name: "Rename",
+    }) as HTMLInputElement;
+
+    fireEvent.input(nameInput, { target: { value: "taken" } });
+    fireEvent.blur(nameInput);
+
+    await waitFor(() => {
+      expect(renameEntry).toHaveBeenCalled();
+    });
+    // The field snaps back to the original slug; the error shows in the footer.
+    await waitFor(() => {
+      expect(
+        (screen.getByRole("textbox", { name: "Rename" }) as HTMLInputElement)
+          .value,
+      ).toBe("prefers-c-minor");
+    });
+    expect(
+      screen.getByText('A memory named "taken" already exists'),
+    ).toBeTruthy();
   });
 });
 

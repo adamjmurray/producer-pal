@@ -251,6 +251,87 @@ describe("useMemoryCollection", () => {
     expect(result.current.saveError).toContain("Memory update failed");
   });
 
+  it("renameEntry PUTs to the rename endpoint and swaps the entry in the list", async () => {
+    const result = await mountReady([rawEntry()]);
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ entry: rawEntry({ name: "renamed" }) }),
+    );
+
+    let renamed: unknown;
+
+    await act(async () => {
+      renamed = await result.current.renameEntry(
+        "prefers-c-minor",
+        "Renamed",
+        SAMPLE_INPUT,
+      );
+    });
+
+    expect(renamed).toMatchObject({ name: "renamed" });
+    expect(readyEntries(result).map((e) => e.name)).toStrictEqual(["renamed"]);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `${ENTRY_URL}/rename`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ ...SAMPLE_INPUT, newName: "Renamed" }),
+      }),
+    );
+  });
+
+  it("renameEntry updates in place on a no-op slug change", async () => {
+    const result = await mountReady([rawEntry({ body: "old" })]);
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ entry: rawEntry({ body: "kept" }) }),
+    );
+
+    await act(async () => {
+      await result.current.renameEntry("prefers-c-minor", "Prefers C Minor", {
+        ...SAMPLE_INPUT,
+        content: "kept",
+      });
+    });
+
+    const entries = readyEntries(result);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.body).toBe("kept");
+  });
+
+  it("renameEntry returns null and surfaces the server error on a collision", async () => {
+    const result = await mountReady([rawEntry()]);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ error: 'A memory named "taken" already exists' }),
+        {
+          status: 409,
+          statusText: "Conflict",
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    let renamed: unknown;
+
+    await act(async () => {
+      renamed = await result.current.renameEntry(
+        "prefers-c-minor",
+        "taken",
+        SAMPLE_INPUT,
+      );
+    });
+
+    expect(renamed).toBeNull();
+    expect(result.current.saveStatus).toBe("error");
+    expect(result.current.saveError).toMatch(/already exists/i);
+    // The original entry is left untouched.
+    expect(readyEntries(result).map((e) => e.name)).toStrictEqual([
+      "prefers-c-minor",
+    ]);
+  });
+
   it("deleteEntry DELETEs and removes the entry", async () => {
     const result = await mountReady([rawEntry()]);
 

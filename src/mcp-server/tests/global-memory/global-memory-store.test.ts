@@ -13,6 +13,7 @@ import {
   readMemoryEntry,
   regenerateIndex,
   rememberMemory,
+  renameMemory,
   slugifyMemoryName,
 } from "#src/mcp-server/helpers/memory/global-memory-store.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
@@ -143,6 +144,93 @@ describe("rememberMemory", () => {
 
     expect(readMemoryEntry("keeper")?.body).toBe("b");
     expect(readFileSync(memoryPath("MEMORY.md"), "utf8")).toContain("keeper");
+  });
+});
+
+describe("renameMemory", () => {
+  it("moves the file to the new slug, preserving fields, and rebuilds the index", () => {
+    rememberMemory({ name: "old-name", description: "d", body: "the fact" });
+
+    const renamed = renameMemory("old-name", {
+      name: "New Name",
+      description: "d",
+      body: "the fact",
+    });
+
+    expect(renamed).toStrictEqual({
+      name: "new-name",
+      description: "d",
+      body: "the fact",
+    });
+    expect(readMemoryEntry("old-name")).toBeNull();
+    expect(existsSync(memoryPath("old-name.md"))).toBe(false);
+    expect(readMemoryEntry("new-name")?.body).toBe("the fact");
+
+    const index = readFileSync(memoryPath("MEMORY.md"), "utf8");
+
+    expect(index).toContain("new-name");
+    expect(index).not.toContain("old-name");
+  });
+
+  it("persists edited fields sent alongside the rename", () => {
+    rememberMemory({ name: "draft", description: "old", body: "old body" });
+
+    const renamed = renameMemory("draft", {
+      name: "final",
+      description: "new hook",
+      body: "new body",
+    });
+
+    expect(renamed).toStrictEqual({
+      name: "final",
+      description: "new hook",
+      body: "new body",
+    });
+  });
+
+  it("updates in place when the slug is unchanged (a no-op rename)", () => {
+    rememberMemory({ name: "keep", description: "old", body: "old" });
+
+    const renamed = renameMemory("keep", {
+      name: "Keep",
+      description: "updated",
+      body: "updated body",
+    });
+
+    expect(renamed.name).toBe("keep");
+    expect(listMemoryEntries()).toHaveLength(1);
+    expect(readMemoryEntry("keep")?.body).toBe("updated body");
+  });
+
+  it("throws on a collision with a different existing memory, touching neither", () => {
+    rememberMemory({ name: "one", description: "", body: "b1" });
+    rememberMemory({ name: "two", description: "", body: "b2" });
+
+    expect(() =>
+      renameMemory("one", { name: "two", description: "", body: "b1" }),
+    ).toThrow(/already exists/i);
+    expect(readMemoryEntry("one")?.body).toBe("b1");
+    expect(readMemoryEntry("two")?.body).toBe("b2");
+  });
+
+  it("rejects an unslugifiable or reserved new name, leaving the source intact", () => {
+    rememberMemory({ name: "src", description: "", body: "b" });
+
+    expect(() =>
+      renameMemory("src", { name: "!!!", description: "", body: "b" }),
+    ).toThrow(/name must contain/i);
+    expect(() =>
+      renameMemory("src", { name: "memory", description: "", body: "b" }),
+    ).toThrow(/reserved/i);
+    expect(readMemoryEntry("src")?.body).toBe("b");
+  });
+
+  it("rejects an empty body", () => {
+    rememberMemory({ name: "src", description: "", body: "b" });
+
+    expect(() =>
+      renameMemory("src", { name: "dst", description: "", body: "  " }),
+    ).toThrow(/body must not be empty/i);
   });
 });
 

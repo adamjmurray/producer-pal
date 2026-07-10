@@ -67,6 +67,8 @@ export const memoryExists = store.exists;
 export const listMemoryEntries = store.list;
 /** Create or overwrite a memory (same slug ⇒ update), then rebuild the index. */
 export const rememberMemory = store.remember;
+/** Rename a memory (write under the new slug, delete the old), rebuild the index. */
+export const renameMemory = store.rename;
 /** Delete a memory (if present) and rebuild the index. */
 export const forgetMemory = store.forget;
 /** Rebuild MEMORY.md from the current files; "" when there are no memories. */

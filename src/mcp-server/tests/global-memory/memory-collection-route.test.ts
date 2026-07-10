@@ -55,6 +55,22 @@ function putMemory(
 }
 
 /**
+ * PUT a rename for an existing memory and return the Response.
+ * @param oldName - Current name (path segment)
+ * @param body - The rename payload
+ * @param body.newName - Requested new name (slugified server-side)
+ * @param body.description - The description to carry over
+ * @param body.content - The body to carry over
+ * @returns The fetch Response
+ */
+function putRename(
+  oldName: string,
+  body: { newName?: string; description?: string; content?: string },
+): Promise<Response> {
+  return putJson(`${base}/${encodeURIComponent(oldName)}/rename`, body);
+}
+
+/**
  * GET the collection and return its parsed entries.
  * @returns The stored entries
  */
@@ -199,5 +215,68 @@ describe("memory-collection route", () => {
 
     expect(putRes.status).toBe(403);
     expect(delRes.status).toBe(403);
+  });
+
+  it("PUT /:name/rename moves the entry to the new slug; GET reflects it", async () => {
+    await putMemory("rename-src", {
+      description: "hook",
+      content: "the fact",
+    });
+
+    const res = await putRename("rename-src", {
+      newName: "Rename Dst",
+      description: "hook",
+      content: "the fact",
+    });
+
+    expect(res.status).toBe(200);
+    const { entry } = (await res.json()) as { entry: MemoryEntry };
+
+    expect(entry.name).toBe("rename-dst");
+
+    const entries = await listEntries();
+    const names = entries.map((e) => e.name);
+
+    expect(names).toContain("rename-dst");
+    expect(names).not.toContain("rename-src");
+  });
+
+  it("rejects a rename that collides with a different memory (409)", async () => {
+    await putMemory("keep-a", { content: "a" });
+    await putMemory("keep-b", { content: "b" });
+
+    const res = await putRename("keep-a", {
+      newName: "keep-b",
+      content: "a",
+    });
+
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /already exists/i,
+    );
+    // Both survive.
+    const entries = await listEntries();
+    const names = entries.map((e) => e.name);
+
+    expect(names).toStrictEqual(expect.arrayContaining(["keep-a", "keep-b"]));
+  });
+
+  it("rejects a rename with a missing newName (400)", async () => {
+    await putMemory("rn-missing", { content: "x" });
+
+    const res = await putRename("rn-missing", { content: "x" });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/newname/i);
+  });
+
+  it("blocks a cross-site rename with 403", async () => {
+    const res = await putJson(
+      `${base}/whatever/rename`,
+      { newName: "x", content: "x" },
+      "https://evil.example.com",
+    );
+
+    expect(res.status).toBe(403);
   });
 });
