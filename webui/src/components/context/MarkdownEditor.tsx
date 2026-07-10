@@ -23,6 +23,14 @@ interface MarkdownEditorProps {
   onFocus?: () => void;
   onBlur?: () => void;
   className?: string;
+  /**
+   * Accessible name for the editable region, applied to the content DOM via
+   * CodeMirror's contentAttributes. Read once at mount like the seed props.
+   * Set it wherever a plain `<textarea>` would have carried a label (the
+   * memory / custom-skill body, the skills preview) so the editor isn't a
+   * nameless textbox to screen readers.
+   */
+  ariaLabel?: string;
 }
 
 /**
@@ -39,6 +47,7 @@ interface MarkdownEditorProps {
 export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
   const { initialValue, readOnly, onChange, onFocus, onBlur, className } =
     props;
+  const { ariaLabel } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const readOnlyCompartment = useRef(new Compartment());
@@ -81,6 +90,9 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
           keymap.of([...defaultKeymap, ...historyKeymap]),
           markdown(),
           EditorView.lineWrapping,
+          ...(ariaLabel != null
+            ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })]
+            : []),
           markdownEditorTheme,
           updateListener,
           readOnlyCompartment.current.of(EditorState.readOnly.of(readOnly)),

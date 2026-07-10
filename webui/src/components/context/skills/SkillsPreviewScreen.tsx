@@ -14,6 +14,8 @@ import {
   ContextHeader,
   DOUBLE_PANE_WIDTH,
 } from "#webui/components/context/ContextScreen";
+import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
+import { noop } from "#webui/components/mode-context";
 import {
   type SkillsCombination,
   type SkillsPreviewStatus,
@@ -262,9 +264,14 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
           className="shrink-0 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
         />
       </div>
-      <pre className="flex-1 min-h-0 overflow-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 p-3 text-xs whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
-        {skills}
-      </pre>
+      <MarkdownEditor
+        key={skills}
+        ariaLabel="Assembled skills preview"
+        initialValue={skills}
+        readOnly={true}
+        onChange={noop}
+        className="flex-1 min-h-0"
+      />
     </div>
   );
 }
