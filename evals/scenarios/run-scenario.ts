@@ -16,7 +16,7 @@ import {
   orange,
 } from "#evals/chat/shared/formatting.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
-import { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction.ts";
+import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
 import { assertWithLlmJudge, type CheckSummary } from "./assertions/index.ts";
 import {
   createEvalSession,

@@ -52,8 +52,8 @@ export interface EvalScenario {
    * unreliable gate (LLM judges miscount bar|beat notation). Default: false. */
   judgeAdvisory?: boolean;
 
-  /** System instructions override. Default: SYSTEM_INSTRUCTION from webui.
-   *  Set to null for no instructions. */
+  /** System instructions override. Default: SYSTEM_INSTRUCTION from
+   *  #src/shared. Set to null for no instructions. */
   instructions?: string | null;
 
   /** Optional config to apply before running scenario */

@@ -14,7 +14,7 @@ import {
 export {
   SYSTEM_INSTRUCTION,
   resolveSystemInstruction,
-} from "#webui/lib/system-instruction";
+} from "#src/shared/config";
 
 export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
 
