@@ -489,6 +489,46 @@ describe("StdioHttpBridge", () => {
       fetchSpy.mockRestore();
     });
 
+    it("pushes JSON output config after connection when requested", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+      const jsonBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        jsonOutput: true,
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await jsonBridge._ensureHttpConnection();
+
+      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonOutput: true }),
+      });
+      fetchSpy.mockRestore();
+    });
+
+    it("pushes compact output config when explicitly requested", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+      const compactBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        jsonOutput: false,
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await compactBridge._ensureHttpConnection();
+
+      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonOutput: false }),
+      });
+      fetchSpy.mockRestore();
+    });
+
     it("does not push config when no overrides are set", async () => {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")

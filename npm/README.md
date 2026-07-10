@@ -145,12 +145,16 @@ Consult your client's documentation for MCP server configuration syntax.
   [small model mode](https://producer-pal.org/installation/lm-studio)
   (simplifies tool interface for smaller LLMs and automatically enables it on
   the device)
-- `--notation <barbeat|midi-json|stark>` - Set the MIDI note notation the tools
-  use (default: `barbeat`). **Recommended for coding agents** (Claude Code,
-  Codex CLI, Gemini CLI, etc.): `--notation midi-json` represents notes as a
-  JSON array, which agents can generate and parse programmatically. This is a
-  global device setting, so it also affects the chat UI and any other connected
-  clients.
+- `-n` / `--notation <barbeat|midi-json|stark>` - Set the MIDI note notation the
+  tools use (default: `barbeat`). When using a coding agent to **script or
+  build** against Producer Pal (generating/parsing MIDI programmatically), pair
+  `--notation midi-json` (notes as a JSON array) with `--format json`. For a
+  normal music-making conversation, keep the default. This is a global device
+  setting, so it also affects the chat UI and any other connected clients.
+- `-f` / `--format <json|compact>` - Set the tool response format (default:
+  `compact`, a token-optimized literal). `--format json` returns standard JSON
+  that coding agents can parse with JSON tooling; keep the default `compact` for
+  normal conversations to save tokens. Also a global device setting.
 
 ### Environment Variables
 
@@ -162,6 +166,8 @@ Optional environment variables can be configured through your MCP client:
   the `-s` flag above.
 - `NOTATION` - MIDI note notation (`barbeat`, `midi-json`, or `stark`; default:
   `barbeat`). Equivalent to the `--notation` flag above.
+- `FORMAT` - Tool response format (`json` or `compact`; default: `compact`).
+  Equivalent to the `--format` flag above.
 - `ENABLE_LOGGING` - Enable file logging (default: `false`)
 - `VERBOSE_LOGGING` - Detailed debug logs (default: `false`)
 

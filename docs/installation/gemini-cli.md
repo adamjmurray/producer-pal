@@ -56,25 +56,39 @@ auto-reconnection:
 }
 ```
 
-::: tip Recommended: MIDI JSON notation
+::: tip Scripting or building against Producer Pal?
 
-Coding agents work best with `midi-json` notation — MIDI notes are a JSON array
-the agent can generate and parse programmatically. Add `--notation midi-json` to
-the args:
+If you'll have the agent **write code that generates or parses** Producer Pal
+data — building MIDI programmatically, or piping tool output through JSON
+tooling — add `--format json` and `--notation midi-json` to the args:
 
 ```json
 {
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal", "--notation", "midi-json"]
+      "args": [
+        "-y",
+        "producer-pal",
+        "--format",
+        "json",
+        "--notation",
+        "midi-json"
+      ]
     }
   }
 }
 ```
 
-This is a global device setting, so it also changes the notation shown in the
-chat UI and any other connected clients.
+`--format json` returns standard JSON instead of the token-optimized compact
+form, and `midi-json` represents notes as a JSON array the agent can generate
+and read directly.
+
+For a **normal music-making conversation**, keep the defaults (compact output,
+bar|beat notation) — they use fewer tokens and the agent reads them fine.
+
+Both are global device settings, so they also change what the chat UI and any
+other connected clients see.
 
 :::
 

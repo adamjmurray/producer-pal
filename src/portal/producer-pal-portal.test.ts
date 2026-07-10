@@ -47,11 +47,13 @@ describe("producer-pal-portal", () => {
   const originalArgv = process.argv;
   const originalSmallModelMode = process.env.SMALL_MODEL_MODE;
   const originalNotation = process.env.NOTATION;
+  const originalFormat = process.env.FORMAT;
   const originalOrigin = process.env.MCP_SERVER_ORIGIN;
 
   beforeEach(() => {
     delete process.env.SMALL_MODEL_MODE;
     delete process.env.NOTATION;
+    delete process.env.FORMAT;
     delete process.env.MCP_SERVER_ORIGIN;
   });
 
@@ -60,6 +62,7 @@ describe("producer-pal-portal", () => {
 
     restoreEnv("SMALL_MODEL_MODE", originalSmallModelMode);
     restoreEnv("NOTATION", originalNotation);
+    restoreEnv("FORMAT", originalFormat);
     restoreEnv("MCP_SERVER_ORIGIN", originalOrigin);
   });
 
@@ -96,6 +99,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: false,
       notation: undefined,
+      jsonOutput: undefined,
     });
   });
 
@@ -107,6 +111,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: true,
       notation: undefined,
+      jsonOutput: undefined,
     });
   });
 
@@ -118,6 +123,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: true,
       notation: undefined,
+      jsonOutput: undefined,
     });
   });
 
@@ -130,6 +136,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: true,
       notation: undefined,
+      jsonOutput: undefined,
     });
   });
 
@@ -146,6 +153,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: false,
       notation: "midi-json",
+      jsonOutput: undefined,
     });
   });
 
@@ -157,6 +165,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: false,
       notation: "stark",
+      jsonOutput: undefined,
     });
   });
 
@@ -169,6 +178,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: false,
       notation: "midi-json",
+      jsonOutput: undefined,
     });
   });
 
@@ -180,6 +190,7 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: false,
       notation: undefined,
+      jsonOutput: undefined,
     });
   });
 
@@ -192,6 +203,117 @@ describe("producer-pal-portal", () => {
     expect(calls[0]?.[1]).toStrictEqual({
       smallModelMode: false,
       notation: "stark",
+      jsonOutput: undefined,
+    });
+  });
+
+  it("passes notation from the -n short flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "-n", "midi-json"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "midi-json",
+      jsonOutput: undefined,
+    });
+  });
+
+  it("passes notation from the -n=<value> short flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "-n=stark"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "stark",
+      jsonOutput: undefined,
+    });
+  });
+
+  it("requests JSON output from the --format json flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--format", "json"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: true,
+    });
+  });
+
+  it("requests compact output from the --format compact flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--format", "compact"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: false,
+    });
+  });
+
+  it("requests JSON output from the -f short flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "-f", "json"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: true,
+    });
+  });
+
+  it("requests JSON output from the --format=json flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--format=json"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: true,
+    });
+  });
+
+  it("requests JSON output from the FORMAT env var", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+    process.env.FORMAT = "json";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: true,
+    });
+  });
+
+  it("ignores an invalid --format value and leaves jsonOutput unset", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--format", "bogus"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: undefined,
+    });
+  });
+
+  it("prefers the --format flag over the FORMAT env var", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--format", "compact"];
+    process.env.FORMAT = "json";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: false,
     });
   });
 });

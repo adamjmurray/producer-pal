@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -27,6 +28,7 @@ const SETUP_URL = "https://producer-pal.org/installation";
 interface BridgeOptions {
   smallModelMode?: boolean;
   notation?: Notation;
+  jsonOutput?: boolean;
 }
 
 interface FallbackTool {
@@ -63,11 +65,13 @@ export class StdioHttpBridge {
   private fallbackTools: { tools: FallbackTool[] };
   private smallModelMode: boolean;
   private notation?: Notation;
+  private jsonOutput?: boolean;
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
     this.smallModelMode = options.smallModelMode ?? false;
     this.notation = options.notation;
+    this.jsonOutput = options.jsonOutput;
     this.fallbackTools = this._generateFallbackTools();
   }
 
@@ -201,18 +205,24 @@ Tell the user to check ${SETUP_URL} for configuration help.
   }
 
   /**
-   * Push the CLI/env config overrides (small-model mode, notation) to the
-   * device via POST /config after connecting. Only the explicitly-requested
-   * settings are sent, so an unset option leaves the device's own setting
-   * alone. No-ops when nothing was requested. Runs before the client's first
-   * tools/list because the server re-reads config per request, so the tool
-   * descriptions reflect the override. The setting is global to the device.
+   * Push the CLI/env config overrides (small-model mode, notation, response
+   * format) to the device via POST /config after connecting. Only the
+   * explicitly-requested settings are sent, so an unset option leaves the
+   * device's own setting alone. No-ops when nothing was requested. Runs before
+   * the client's first tools/list because the server re-reads config per
+   * request, so the tool descriptions reflect the override. The settings are
+   * global to the device.
    */
   private async _pushConfigOverrides(): Promise<void> {
-    const overrides: { smallModelMode?: boolean; notation?: Notation } = {};
+    const overrides: {
+      smallModelMode?: boolean;
+      notation?: Notation;
+      jsonOutput?: boolean;
+    } = {};
 
     if (this.smallModelMode) overrides.smallModelMode = true;
     if (this.notation) overrides.notation = this.notation;
+    if (this.jsonOutput != null) overrides.jsonOutput = this.jsonOutput;
 
     if (Object.keys(overrides).length === 0) return;
 
