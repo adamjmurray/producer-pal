@@ -51,7 +51,12 @@ function putMemory(
     createOnly?: boolean;
   },
 ): Promise<Response> {
-  return putJson(`${base}/${encodeURIComponent(name)}`, entry);
+  // Memory now requires a non-empty description; default one so tests that
+  // don't exercise the description supply a valid write.
+  return putJson(`${base}/${encodeURIComponent(name)}`, {
+    description: "hook",
+    ...entry,
+  });
 }
 
 /**
@@ -126,14 +131,16 @@ describe("memory-collection route", () => {
     expect(nyx[0]?.body).toBe("second");
   });
 
-  it("defaults a missing description to an empty string", async () => {
-    const res = await putMemory("loose-drums", {
+  it("rejects a missing/blank description with 400 (store validation)", async () => {
+    const res = await putJson(`${base}/loose-drums`, {
       content: "Apply groove.",
+      description: "   ",
     });
 
-    const { entry } = (await res.json()) as { entry: MemoryEntry };
-
-    expect(entry.description).toBe("");
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /description must not be empty/i,
+    );
   });
 
   it("DELETE removes an entry and reports whether it existed", async () => {

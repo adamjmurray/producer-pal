@@ -70,6 +70,13 @@ export interface MarkdownCollectionConfig<
   indexTitle: string;
   /** Capitalized noun for user-facing error messages, e.g. "Memory" or "Skill". */
   noun: string;
+  /**
+   * Reject a create/overwrite/rename whose description is blank (memory).
+   * Collections where a description is optional (custom skills) leave it unset.
+   * Only the WRITE path enforces — a legacy/hand-authored file with no
+   * description still reads and renders (its index line just omits the dash).
+   */
+  requireDescription?: boolean;
   /** Parse a raw file into an entry (the filename slug is authoritative). */
   toEntry: (slug: string, raw: string) => Entry;
   /** Order entries for listing and the index (returns a new sorted array). */
@@ -350,6 +357,11 @@ function makeCollectionWriteOps<
     if (!body) throw new Error(`${config.noun} body must not be empty`);
 
     const description = input.description.trim().replaceAll(/\s+/g, " ");
+
+    if (config.requireDescription && !description) {
+      throw new Error(`${config.noun} description must not be empty`);
+    }
+
     const { data, entry } = config.buildStored({
       slug,
       input,

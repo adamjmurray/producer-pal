@@ -51,6 +51,7 @@ const store = makeMarkdownCollectionStore<MemoryEntry, RememberMemoryInput>({
   indexFilename: "MEMORY.md",
   indexTitle: "# Producer Pal Memory",
   noun: "Memory",
+  requireDescription: true,
   toEntry,
   sort: sortByName,
   renderIndexSections: renderMemoryIndex,

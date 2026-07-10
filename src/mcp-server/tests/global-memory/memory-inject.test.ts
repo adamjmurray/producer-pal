@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { rememberMemory } from "#src/mcp-server/helpers/memory/global-memory-store.ts";
 import { withMemory } from "#src/mcp-server/helpers/memory/memory-inject.ts";
@@ -12,7 +14,19 @@ import {
   useTempConfigDir,
 } from "../config-dir-test-helpers.ts";
 
-useTempConfigDir();
+const getDir = useTempConfigDir();
+
+/**
+ * Write a raw memory file (bypassing the store) to simulate a legacy or
+ * hand-authored entry — e.g. one with no description, which the store's write
+ * path rejects but the index render still tolerates.
+ * @param file - Basename under memory/ (e.g. "r.md")
+ * @param contents - Raw file contents
+ */
+function writeRawMemory(file: string, contents: string): void {
+  mkdirSync(join(getDir(), "memory"), { recursive: true });
+  writeFileSync(join(getDir(), "memory", file), contents);
+}
 
 /**
  * Run withMemory over a ppal-connect call and return the appended block text.
@@ -63,11 +77,9 @@ describe("withMemory", () => {
   });
 
   it("renders a descriptionless entry without a trailing dash", async () => {
-    rememberMemory({
-      name: "r",
-      description: "",
-      body: "SECRET_BODY",
-    });
+    // Empty-description writes are rejected, but a legacy/hand-authored file
+    // with no description must still inject its index line (no dash).
+    writeRawMemory("r.md", "SECRET_BODY");
 
     const block = (await appendedBlock()) ?? "";
 

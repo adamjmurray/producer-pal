@@ -126,6 +126,16 @@ describe("rememberMemory", () => {
     ).toThrow(/body must not be empty/i);
   });
 
+  it("throws on an empty description (memory requires one)", () => {
+    expect(() =>
+      rememberMemory({
+        name: "x",
+        description: "   ",
+        body: "y",
+      }),
+    ).toThrow(/description must not be empty/i);
+  });
+
   it("rejects the reserved index name so MEMORY.md can't be clobbered", () => {
     rememberMemory({
       name: "keeper",
@@ -203,34 +213,42 @@ describe("renameMemory", () => {
   });
 
   it("throws on a collision with a different existing memory, touching neither", () => {
-    rememberMemory({ name: "one", description: "", body: "b1" });
-    rememberMemory({ name: "two", description: "", body: "b2" });
+    rememberMemory({ name: "one", description: "d", body: "b1" });
+    rememberMemory({ name: "two", description: "d", body: "b2" });
 
     expect(() =>
-      renameMemory("one", { name: "two", description: "", body: "b1" }),
+      renameMemory("one", { name: "two", description: "d", body: "b1" }),
     ).toThrow(/already exists/i);
     expect(readMemoryEntry("one")?.body).toBe("b1");
     expect(readMemoryEntry("two")?.body).toBe("b2");
   });
 
   it("rejects an unslugifiable or reserved new name, leaving the source intact", () => {
-    rememberMemory({ name: "src", description: "", body: "b" });
+    rememberMemory({ name: "src", description: "d", body: "b" });
 
     expect(() =>
-      renameMemory("src", { name: "!!!", description: "", body: "b" }),
+      renameMemory("src", { name: "!!!", description: "d", body: "b" }),
     ).toThrow(/name must contain/i);
     expect(() =>
-      renameMemory("src", { name: "memory", description: "", body: "b" }),
+      renameMemory("src", { name: "memory", description: "d", body: "b" }),
     ).toThrow(/reserved/i);
     expect(readMemoryEntry("src")?.body).toBe("b");
   });
 
   it("rejects an empty body", () => {
-    rememberMemory({ name: "src", description: "", body: "b" });
+    rememberMemory({ name: "src", description: "d", body: "b" });
 
     expect(() =>
-      renameMemory("src", { name: "dst", description: "", body: "  " }),
+      renameMemory("src", { name: "dst", description: "d", body: "  " }),
     ).toThrow(/body must not be empty/i);
+  });
+
+  it("rejects an empty description", () => {
+    rememberMemory({ name: "src", description: "d", body: "b" });
+
+    expect(() =>
+      renameMemory("src", { name: "dst", description: "  ", body: "b" }),
+    ).toThrow(/description must not be empty/i);
   });
 });
 
@@ -311,10 +329,10 @@ describe("listMemoryEntries", () => {
   });
 
   it("sorts alphabetically by name, skipping the index file", () => {
-    rememberMemory({ name: "z-fb", description: "", body: "b" });
-    rememberMemory({ name: "a-fb", description: "", body: "b" });
-    rememberMemory({ name: "u", description: "", body: "b" });
-    rememberMemory({ name: "r", description: "", body: "b" });
+    rememberMemory({ name: "z-fb", description: "d", body: "b" });
+    rememberMemory({ name: "a-fb", description: "d", body: "b" });
+    rememberMemory({ name: "u", description: "d", body: "b" });
+    rememberMemory({ name: "r", description: "d", body: "b" });
 
     expect(listMemoryEntries().map((e) => e.name)).toStrictEqual([
       "a-fb",
@@ -328,7 +346,7 @@ describe("listMemoryEntries", () => {
     // A hand-created lowercase "memory.md" is a distinct file from "MEMORY.md"
     // on case-sensitive Linux; the filter must still treat it as the index.
     writeRaw("memory.md", "---\ndescription: reserved\n---\n\nreserved");
-    rememberMemory({ name: "real", description: "", body: "b" });
+    rememberMemory({ name: "real", description: "d", body: "b" });
 
     expect(listMemoryEntries().map((e) => e.name)).toStrictEqual(["real"]);
   });
@@ -338,7 +356,7 @@ describe("memoryExists", () => {
   it("is true for a stored memory (matching by an un-slugified name)", () => {
     rememberMemory({
       name: "album-nyx",
-      description: "",
+      description: "d",
       body: "b",
     });
 
@@ -356,7 +374,7 @@ describe("memoryExists", () => {
   it("is false for the reserved index name", () => {
     rememberMemory({
       name: "keeper",
-      description: "",
+      description: "d",
       body: "b",
     });
 
@@ -368,7 +386,7 @@ describe("memoryExists", () => {
 
 describe("forgetMemory", () => {
   it("removes an existing memory and reports it existed", () => {
-    rememberMemory({ name: "temp", description: "", body: "b" });
+    rememberMemory({ name: "temp", description: "d", body: "b" });
 
     expect(forgetMemory("Temp")).toBe(true);
     expect(readMemoryEntry("temp")).toBeNull();
@@ -462,7 +480,9 @@ describe("regenerateIndex / MEMORY.md", () => {
   });
 
   it("omits the description dash when a memory has no description", () => {
-    rememberMemory({ name: "bare", description: "", body: "b" });
+    // Empty-description writes are rejected, but a legacy/hand-authored file
+    // with no description must still render — the index just omits the dash.
+    writeRaw("bare.md", "Just a body, no description.");
 
     expect(regenerateIndex()).toContain("- `bare`\n");
   });

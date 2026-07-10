@@ -45,14 +45,14 @@ describe("memory.remember route", () => {
     );
   });
 
-  it("stores a memory with no description (index line has no dash)", async () => {
+  it("fails when the description is missing (memory requires one)", async () => {
     const response = await dispatchNodeRoute("memory.remember", {
       name: "bare",
       content: "a fact",
     });
 
-    expect(response.success).toBe(true);
-    expect(response.result?.content).toContain("- `bare`\n");
+    expect(response.success).toBe(false);
+    expect(response.error).toContain("description must not be empty");
   });
 
   it("fails when a required string field is missing", async () => {
@@ -91,7 +91,7 @@ describe("memory.read route", () => {
 
 describe("memory.forget route", () => {
   it("removes an existing memory", async () => {
-    rememberMemory({ name: "temp", description: "", body: "b" });
+    rememberMemory({ name: "temp", description: "d", body: "b" });
 
     const response = await dispatchNodeRoute("memory.forget", { name: "temp" });
 

@@ -55,24 +55,7 @@ describe("context - memory scope", () => {
   });
 
   describe("remember action", () => {
-    it("remembers a memory, defaulting a missing description to ''", async () => {
-      mockNodeContent("index");
-
-      await context({
-        action: "remember",
-        scope: "memory",
-        name: "loose drums",
-        content: "Apply groove.",
-      });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.remember", {
-        name: "loose drums",
-        description: "",
-        content: "Apply groove.",
-      });
-    });
-
-    it("passes the description through when provided", async () => {
+    it("passes name, description, and content through to the node route", async () => {
       mockNodeContent("index");
 
       await context({
@@ -83,15 +66,21 @@ describe("context - memory scope", () => {
         content: "Apply groove.",
       });
 
-      expect(protocolMock.requestNode).toHaveBeenCalledWith(
-        "memory.remember",
-        expect.objectContaining({ description: "swing/humanize" }),
-      );
+      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.remember", {
+        name: "loose-drums",
+        description: "swing/humanize",
+        content: "Apply groove.",
+      });
     });
 
     it.each([
-      [{ content: "b" }, "name required for remember action"],
-      [{ name: "x" }, "content required for remember action"],
+      [{ description: "d", content: "b" }, "name required for remember action"],
+      [{ name: "x", description: "d" }, "content required for remember action"],
+      [{ name: "x", content: "b" }, "description required for remember action"],
+      [
+        { name: "x", content: "b", description: "   " },
+        "description required for remember action",
+      ],
     ])(
       "rejects an incomplete remember before touching the node route",
       async (extra, message) => {
