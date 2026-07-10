@@ -23,6 +23,8 @@ export interface CollectionListRenderArgs<TView> {
   creating: boolean;
   onSelect: (name: string) => void;
   onNew: () => void;
+  /** Delete an entry from the list; resets to the create form if it was open. */
+  onDelete: (name: string) => void;
 }
 
 /** Args passed to the caller's right-pane editor renderer. */
@@ -101,6 +103,18 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     onDeleted: () => setSelected({ mode: "new" }),
   });
 
+  // Delete from the list (the row trash). Return to the create form when the
+  // deleted entry was the one open, so the right pane never lingers on a gone
+  // entry — this is a deliberate delete, so no "deleted outside the editor"
+  // banner (that path is for external deletes of a still-open draft).
+  const handleDeleteEntry = async (name: string): Promise<void> => {
+    const ok = await collection.deleteEntry(name);
+
+    if (ok && selected.mode === "edit" && selected.name === name) {
+      setSelected({ mode: "new" });
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
       <ContextHeader
@@ -117,6 +131,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             creating: activeEntry == null,
             onSelect: (name) => setSelected({ mode: "edit", name }),
             onNew: () => setSelected({ mode: "new" }),
+            onDelete: (name) => void handleDeleteEntry(name),
           })}
         </aside>
         <div className="flex-1 min-h-0 flex flex-col">

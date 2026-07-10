@@ -24,8 +24,6 @@ interface MemoryEntryEditorProps {
   entry: MemoryEntryView | null;
   /** Called after a successful save with the stored entry's slug. */
   onSaved: (name: string) => void;
-  /** Called after a successful delete. */
-  onDeleted: () => void;
 }
 
 /**
@@ -44,7 +42,7 @@ interface MemoryEntryEditorProps {
 export function MemoryEntryEditor(
   props: MemoryEntryEditorProps,
 ): preact.JSX.Element {
-  const { collection, entry, onSaved, onDeleted } = props;
+  const { collection, entry, onSaved } = props;
   const isNew = entry == null;
   const [name, setName] = useState(entry?.name ?? "");
   const [description, setDescription] = useState(entry?.description ?? "");
@@ -81,16 +79,6 @@ export function MemoryEntryEditor(
       noteSaved(memoryEntryKey(saved));
       onSaved(saved.name);
     }
-  };
-
-  const handleDelete = async (): Promise<void> => {
-    if (isNew) return;
-    if (
-      !window.confirm(`Delete memory "${entry.name}"? This cannot be undone.`)
-    )
-      return;
-
-    if (await collection.deleteEntry(entry.name)) onDeleted();
   };
 
   // Adopt the server's current fields as the new draft AND advance the
@@ -134,7 +122,6 @@ export function MemoryEntryEditor(
         canSave={canSave}
         createLabel="Create memory"
         onSave={() => void handleSave()}
-        onDelete={() => void handleDelete()}
       />
     </div>
   );

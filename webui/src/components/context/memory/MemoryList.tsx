@@ -20,38 +20,52 @@ interface MemoryListProps {
   onSelect: (name: string) => void;
   /** Start a new (empty) entry. */
   onNew: () => void;
+  /** Delete an entry (a confirm is shown here before it fires). */
+  onDelete: (name: string) => void;
 }
 
 /**
- * Left pane: a "New memory" button above a flat, name-sorted list of the
- * derived index — each row showing the slug and its one-line description.
- * Mirrors the always-injected MEMORY.md the assistant sees, so what the user
+ * Left pane: a fixed "New memory" toolbar above a flat, name-sorted, scrolling
+ * list of the derived index — each row showing the slug over its one-line
+ * description, with a hover trash. Mirrors both the conversation-history panel's
+ * look and the always-injected MEMORY.md the assistant sees, so what the user
  * edits here is what the model reads.
  * @param props - List props
  * @returns List element
  */
 export function MemoryList(props: MemoryListProps): preact.JSX.Element {
-  const { entries, selectedName, creating, onSelect, onNew } = props;
+  const { entries, selectedName, creating, onSelect, onNew, onDelete } = props;
   const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
 
+  const confirmDelete = (name: string): void => {
+    if (window.confirm(`Delete memory "${name}"? This cannot be undone.`)) {
+      onDelete(name);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-3 overflow-y-auto p-3">
-      <NewEntryButton label="+ New memory" active={creating} onClick={onNew} />
-      {entries.length === 0 ? (
-        <p className="px-1 text-xs text-zinc-400 dark:text-zinc-500">
-          No memories yet.
-        </p>
-      ) : (
-        sorted.map((entry) => (
-          <EntryRow
-            key={entry.name}
-            name={entry.name}
-            description={entry.description}
-            selected={entry.name === selectedName}
-            onSelect={onSelect}
-          />
-        ))
-      )}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-b border-zinc-300 px-2 py-2 dark:border-zinc-700">
+        <NewEntryButton label="New memory" active={creating} onClick={onNew} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {entries.length === 0 ? (
+          <p className="px-3 py-3 text-xs text-zinc-400 dark:text-zinc-500">
+            No memories yet.
+          </p>
+        ) : (
+          sorted.map((entry) => (
+            <EntryRow
+              key={entry.name}
+              name={entry.name}
+              description={entry.description}
+              selected={entry.name === selectedName}
+              onSelect={onSelect}
+              onDelete={confirmDelete}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }

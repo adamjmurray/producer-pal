@@ -38,7 +38,7 @@ export function CustomSkillsList(
 
   return (
     <div className="flex flex-col gap-2 overflow-y-auto p-3">
-      <NewEntryButton label="+ New skill" active={creating} onClick={onNew} />
+      <NewEntryButton label="New skill" active={creating} onClick={onNew} />
       {entries.length === 0 ? (
         <p className="px-1 text-xs text-zinc-400 dark:text-zinc-500">
           No custom skills yet.

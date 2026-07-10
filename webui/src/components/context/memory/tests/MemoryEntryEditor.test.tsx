@@ -58,7 +58,6 @@ describe("MemoryEntryEditor — new entry", () => {
         collection={collection}
         entry={null}
         onSaved={onSaved}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -107,7 +106,6 @@ describe("MemoryEntryEditor — new entry", () => {
         collection={collection}
         entry={null}
         onSaved={onSaved}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -142,7 +140,6 @@ describe("MemoryEntryEditor — autosave on close", () => {
         collection={collection}
         entry={null}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -176,7 +173,6 @@ describe("MemoryEntryEditor — existing entry", () => {
         collection={collection}
         entry={EXISTING}
         onSaved={onSaved}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -203,48 +199,18 @@ describe("MemoryEntryEditor — existing entry", () => {
     );
   });
 
-  it("deletes after confirmation and calls onDeleted", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-    const collection = fakeCollection({
-      deleteEntry: vi.fn().mockResolvedValue(true),
-    });
-    const onDeleted = vi.fn();
-
+  // Delete moved to the list row (see MemoryList.test) — the editor footer no
+  // longer renders a Delete button.
+  it("does not render a footer Delete button", () => {
     render(
       <MemoryEntryEditor
-        collection={collection}
+        collection={fakeCollection()}
         entry={EXISTING}
         onSaved={vi.fn()}
-        onDeleted={onDeleted}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-
-    await waitFor(() => {
-      expect(onDeleted).toHaveBeenCalledOnce();
-    });
-    expect(collection.deleteEntry).toHaveBeenCalledWith("prefers-c-minor");
-  });
-
-  it("does not delete when the user cancels the confirm", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-    const collection = fakeCollection();
-    const onDeleted = vi.fn();
-
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-        onDeleted={onDeleted}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-
-    expect(collection.deleteEntry).not.toHaveBeenCalled();
-    expect(onDeleted).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
   });
 });
 
@@ -258,7 +224,6 @@ describe("MemoryEntryEditor — save status", () => {
         collection={fakeCollection({ saveStatus })}
         entry={EXISTING}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -274,7 +239,6 @@ describe("MemoryEntryEditor — save status", () => {
         })}
         entry={EXISTING}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -287,7 +251,6 @@ describe("MemoryEntryEditor — save status", () => {
         collection={fakeCollection({ saveStatus: "error", saveError: null })}
         entry={EXISTING}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -306,7 +269,6 @@ describe("MemoryEntryEditor — external update banner", () => {
         collection={collection}
         entry={EXISTING}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -320,7 +282,6 @@ describe("MemoryEntryEditor — external update banner", () => {
         collection={collection}
         entry={{ ...EXISTING, body: "Composes in D minor now." }}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -339,7 +300,6 @@ describe("MemoryEntryEditor — external update banner", () => {
         collection={collection}
         entry={EXISTING}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -348,7 +308,6 @@ describe("MemoryEntryEditor — external update banner", () => {
         collection={collection}
         entry={updated}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
     expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
@@ -373,7 +332,6 @@ describe("MemoryEntryEditor — external update banner", () => {
         collection={collection}
         entry={EXISTING}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 
@@ -386,7 +344,6 @@ describe("MemoryEntryEditor — external update banner", () => {
         collection={collection}
         entry={{ ...EXISTING, body: "Composes in D minor now." }}
         onSaved={vi.fn()}
-        onDeleted={vi.fn()}
       />,
     );
 

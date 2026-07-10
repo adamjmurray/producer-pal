@@ -149,12 +149,17 @@ interface EditorFooterProps {
   /** Primary-button label when creating (e.g. "Create memory"). */
   createLabel: string;
   onSave: () => void;
-  onDelete: () => void;
+  /**
+   * Delete this entry — renders a trash button (existing entries only) when
+   * provided. Omitted when delete lives elsewhere (memory's per-row trash).
+   */
+  onDelete?: () => void;
 }
 
 /**
- * The action row: Save (primary; the create label when new), Delete (existing
- * entries only), and the inline save status / error text.
+ * The action row: Save (primary; the create label when new), an optional Delete
+ * (existing entries only, when `onDelete` is supplied), and the inline save
+ * status / error text.
  * @param props - Footer props
  * @returns Footer element
  */
@@ -179,7 +184,7 @@ export function EditorFooter(props: EditorFooterProps): preact.JSX.Element {
       >
         {isNew ? createLabel : "Save"}
       </button>
-      {!isNew && (
+      {!isNew && onDelete != null && (
         <button
           type="button"
           onClick={onDelete}

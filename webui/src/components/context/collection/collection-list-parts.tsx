@@ -4,22 +4,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Shared left-pane list chrome for the collection managers (memory, custom
-// skills): the dashed "+ New …" button and one entry row (slug over its
-// description). Both list flat, name-sorted entries; custom skills additionally
-// dims disabled rows via `dimmed`/`trailing`, but the button and row render
-// identically, so they live here.
+// skills): the solid "New …" button and one entry row (slug over its
+// description). Both mirror the conversation-history panel — a filled action
+// button above flush, divider-separated rows with a full-cell hover and a blue
+// selected accent. Custom skills additionally dims disabled rows via
+// `dimmed`/`trailing`, and memory reveals a per-row trash via `onDelete`, but
+// the button and row otherwise render identically, so they live here.
+
+import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 
 interface NewEntryButtonProps {
-  /** Button text, e.g. "+ New memory". */
+  /** Button text, e.g. "New memory". */
   label: string;
-  /** Whether the create form is active (highlights the button). */
+  /** Whether the create form is active (deepens the button). */
   active: boolean;
   /** Start a new (empty) entry. */
   onClick: () => void;
 }
 
 /**
- * The dashed "+ New …" button above a collection list.
+ * The filled "New …" button above a collection list, styled like the
+ * conversation panel's New Conversation button (a leading plus icon + label).
  * @param props - Button props
  * @returns Button element
  */
@@ -28,12 +33,11 @@ export function NewEntryButton(props: NewEntryButtonProps): preact.JSX.Element {
     <button
       type="button"
       onClick={props.onClick}
-      className={`shrink-0 rounded-md border border-dashed px-3 py-1.5 text-sm font-medium transition-colors ${
-        props.active
-          ? "border-blue-500 text-blue-600 dark:text-blue-400"
-          : "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600"
+      className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors ${
+        props.active ? "bg-blue-600" : "bg-blue-500 hover:bg-blue-600"
       }`}
     >
+      <PlusIcon />
       {props.label}
     </button>
   );
@@ -52,38 +56,85 @@ interface EntryRowProps {
   dimmed?: boolean;
   /** Optional element beside the name (e.g. an "off" tag). */
   trailing?: preact.ComponentChildren;
+  /** Delete this entry — renders a hover-revealed trash button when provided. */
+  onDelete?: (name: string) => void;
 }
 
 /**
- * One entry row: the slug (with optional trailing tag) over its description,
- * highlighted when selected and dimmed when requested.
+ * One entry row: the slug (with optional trailing tag) over its description.
+ * Flush with a bottom divider and a full-cell hover, a blue accent when
+ * selected, and dimmed when requested — mirroring a conversation-history row.
+ * A trash button appears on hover/focus when `onDelete` is supplied.
  * @param props - Row props
  * @returns Row element
  */
 export function EntryRow(props: EntryRowProps): preact.JSX.Element {
-  const { name, description, selected, onSelect, dimmed, trailing } = props;
+  const { name, description, selected, onSelect, dimmed, trailing, onDelete } =
+    props;
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(name)}
-      className={`flex flex-col items-start rounded-md px-2 py-1 text-left transition-colors ${
+    <div
+      className={`group flex items-stretch border-b border-l-2 border-b-zinc-100 transition-colors dark:border-b-zinc-800 ${
         selected
-          ? "bg-zinc-200 dark:bg-zinc-700/70"
-          : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          ? "border-l-blue-500 bg-blue-50 dark:bg-blue-900/30"
+          : "border-l-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800"
       }${dimmed ? " opacity-50" : ""}`}
     >
-      <span className="flex items-center gap-1.5">
-        <span className="font-mono text-xs text-zinc-800 dark:text-zinc-200">
-          {name}
+      <button
+        type="button"
+        onClick={() => onSelect(name)}
+        aria-label={`Edit ${name}`}
+        className="flex min-w-0 flex-1 flex-col items-start px-3 py-2 text-left"
+      >
+        <span className="flex max-w-full items-center gap-1.5">
+          <span
+            className={`truncate font-mono text-xs ${
+              selected
+                ? "text-blue-700 dark:text-blue-300"
+                : "text-zinc-800 dark:text-zinc-200"
+            }`}
+          >
+            {name}
+          </span>
+          {trailing}
         </span>
-        {trailing}
-      </span>
-      {description !== "" && (
-        <span className="w-full truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-          {description}
-        </span>
+        {description !== "" && (
+          <span className="w-full truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+            {description}
+          </span>
+        )}
+      </button>
+      {onDelete != null && (
+        <button
+          type="button"
+          onClick={() => onDelete(name)}
+          aria-label={`Delete ${name}`}
+          title="Delete"
+          className="shrink-0 self-center px-2 text-zinc-400 opacity-0 transition-opacity hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 dark:text-zinc-500 dark:hover:text-red-400"
+        >
+          <TrashIcon size={13} />
+        </button>
       )}
-    </button>
+    </div>
+  );
+}
+
+/**
+ * A small plus glyph for the New-entry button (no shared PlusIcon exists).
+ * @returns SVG element
+ */
+function PlusIcon(): preact.JSX.Element {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    >
+      <path d="M7 2.5v9M2.5 7h9" />
+    </svg>
   );
 }

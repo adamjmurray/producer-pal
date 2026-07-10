@@ -101,7 +101,7 @@ describe("CustomSkillsScreen", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "+ New skill" }));
+    fireEvent.click(screen.getByRole("button", { name: "New skill" }));
 
     expect(screen.getByRole("button", { name: "Create skill" })).toBeTruthy();
   });

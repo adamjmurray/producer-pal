@@ -182,7 +182,7 @@ describe("ContextTabs", () => {
     ).toBe("true");
     // The list shows the stored memory and the create form is available.
     expect(
-      screen.getByRole("button", { name: /prefers-c-minor/ }),
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });

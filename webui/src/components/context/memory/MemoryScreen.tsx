@@ -35,21 +35,28 @@ export function MemoryScreen(props: MemoryScreenProps): preact.JSX.Element {
       collection={collection}
       tabSlot={tabSlot}
       onClose={onClose}
-      renderList={({ entries, selectedName, creating, onSelect, onNew }) => (
+      renderList={({
+        entries,
+        selectedName,
+        creating,
+        onSelect,
+        onNew,
+        onDelete,
+      }) => (
         <MemoryList
           entries={entries}
           selectedName={selectedName}
           creating={creating}
           onSelect={onSelect}
           onNew={onNew}
+          onDelete={onDelete}
         />
       )}
-      renderEditor={({ entry, onSaved, onDeleted }) => (
+      renderEditor={({ entry, onSaved }) => (
         <MemoryEntryEditor
           collection={collection}
           entry={entry}
           onSaved={onSaved}
-          onDeleted={onDeleted}
         />
       )}
     />

@@ -147,14 +147,16 @@ describe("MemoryScreen — ready", () => {
     // Defaults to the create form.
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
 
-    // The editor switches to the existing entry (Save + Delete, no create).
+    // The editor switches to the existing entry (Save, no create; delete now
+    // lives on the list row, not the footer).
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Create memory" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "+ New memory" }));
+    fireEvent.click(screen.getByRole("button", { name: "New memory" }));
 
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
@@ -170,7 +172,9 @@ describe("MemoryScreen — ready", () => {
 
     renderWith(collection);
 
-    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
@@ -185,7 +189,7 @@ describe("MemoryScreen — ready", () => {
     });
   });
 
-  it("returns to the create form after deleting the selected entry", async () => {
+  it("returns to the create form after deleting the selected entry via its row", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     const deleteEntry = vi.fn().mockResolvedValue(true);
     const collection = fakeCollection(
@@ -195,13 +199,56 @@ describe("MemoryScreen — ready", () => {
 
     renderWith(collection);
 
-    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+    // Delete lives on the list row (hover trash), not the editor footer.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete prefers-c-minor" }),
+    );
 
     await waitFor(() => {
       expect(deleteEntry).toHaveBeenCalledWith("prefers-c-minor");
     });
-    // onDeleted returns the right pane to the create form.
+    // Deleting the open entry returns the right pane to the create form.
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
+
+  it("does not delete when the row-trash confirm is cancelled", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    const deleteEntry = vi.fn().mockResolvedValue(true);
+    const collection = fakeCollection(
+      { kind: "ready", entries: ENTRIES },
+      { deleteEntry },
+    );
+
+    renderWith(collection);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete prefers-c-minor" }),
+    );
+
+    expect(deleteEntry).not.toHaveBeenCalled();
+  });
+
+  it("deletes a non-open row without disturbing the create form", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    const deleteEntry = vi.fn().mockResolvedValue(true);
+    const collection = fakeCollection(
+      { kind: "ready", entries: ENTRIES },
+      { deleteEntry },
+    );
+
+    renderWith(collection);
+
+    // No entry is open (create form). Deleting a row leaves the form as-is.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete prefers-c-minor" }),
+    );
+
+    await waitFor(() => {
+      expect(deleteEntry).toHaveBeenCalledWith("prefers-c-minor");
+    });
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });
 });
@@ -213,7 +260,9 @@ describe("MemoryScreen — deleted externally", () => {
     );
 
     // Select an entry and start editing its body.
-    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
     fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
       target: { value: "in-progress edit" },
     });
@@ -236,7 +285,9 @@ describe("MemoryScreen — deleted externally", () => {
       screenEl(fakeCollection({ kind: "ready", entries: ENTRIES })),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
     rerender(
       screenEl(fakeCollection({ kind: "ready", entries: ENTRIES.slice(1) })),
     );
@@ -258,7 +309,9 @@ describe("MemoryScreen — deleted externally", () => {
       ),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /prefers-c-minor/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
     rerender(
       screenEl(
         fakeCollection(
