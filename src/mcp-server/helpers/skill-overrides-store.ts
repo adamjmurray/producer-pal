@@ -16,8 +16,6 @@
 // save — never authored by hand — keeping all filesystem + hashing logic
 // Node-side.
 
-import { createHash } from "node:crypto";
-import { VERSION } from "#src/shared/config.ts";
 import { type SkillOverrides } from "#src/skills/build-skills.ts";
 import {
   SKILL_SLOT_NAMES,
@@ -30,10 +28,14 @@ import {
   readConfigMarkdown,
   writeConfigMarkdown,
 } from "./markdown-store/config-markdown-store.ts";
+import { parseFrontmatter } from "./markdown-store/frontmatter.ts";
 import {
-  parseFrontmatter,
-  serializeFrontmatter,
-} from "./markdown-store/frontmatter.ts";
+  hashBuiltIn,
+  isDrifted,
+  type OverrideProvenance,
+  readProvenance,
+  stampProvenance,
+} from "./override-provenance.ts";
 
 // Built-in fragments are static module imports, so their hashes never change at
 // runtime. Precompute them once: GET /skill-overrides is polled every 5s and
@@ -42,17 +44,9 @@ import {
 const BUILT_IN_HASHES: Record<SkillSlotName, string> = Object.fromEntries(
   SKILL_SLOT_NAMES.map((name) => [
     name,
-    hashFragment(SKILL_SLOTS[name].builtIn),
+    hashBuiltIn(SKILL_SLOTS[name].builtIn),
   ]),
 ) as Record<SkillSlotName, string>;
-
-/** Fork-time provenance recorded in a saved override's frontmatter. */
-export interface SkillOverrideProvenance {
-  /** Producer Pal version the override was forked from. */
-  producerPalVersion: string;
-  /** SHA-256 of the built-in fragment at fork time. */
-  builtInHash: string;
-}
 
 /** Full state of one override slot, for the webui editor. */
 export interface SkillSlotState {
@@ -69,7 +63,7 @@ export interface SkillSlotState {
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
   /** Fork-time provenance (null when there is no override). */
-  provenance: SkillOverrideProvenance | null;
+  provenance: OverrideProvenance | null;
 }
 
 /**
@@ -129,8 +123,7 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
     description: slot.description,
     builtIn: slot.builtIn,
     override,
-    drifted:
-      provenance != null && provenance.builtInHash !== BUILT_IN_HASHES[name],
+    drifted: isDrifted(provenance, BUILT_IN_HASHES[name]),
     provenance,
   };
 }
@@ -152,20 +145,9 @@ export function writeSkillOverride(
 
   if (!body) return deleteSkillOverride(name);
 
-  const provenance: SkillOverrideProvenance = {
-    producerPalVersion: VERSION,
-    builtInHash: BUILT_IN_HASHES[name],
-  };
-
   writeConfigMarkdown(
     filenameFor(name),
-    serializeFrontmatter(
-      {
-        producerPalVersion: provenance.producerPalVersion,
-        builtInHash: provenance.builtInHash,
-      },
-      `${body}\n`,
-    ),
+    stampProvenance(`${body}\n`, BUILT_IN_HASHES[name]),
   );
 
   return readSkillSlotState(name);
@@ -205,32 +187,4 @@ function filenameFor(name: SkillSlotName): string {
  */
 function readFragmentBody(filename: string): string {
   return parseFrontmatter(readConfigMarkdown(filename)).body.trim();
-}
-
-/**
- * Extract provenance from parsed frontmatter, or null when either field is
- * missing (a hand-authored override without provenance).
- *
- * @param data - Parsed frontmatter fields
- * @returns Provenance when both fields are present, else null
- */
-function readProvenance(
-  data: Record<string, string>,
-): SkillOverrideProvenance | null {
-  const producerPalVersion = data.producerPalVersion;
-  const builtInHash = data.builtInHash;
-
-  if (!producerPalVersion || !builtInHash) return null;
-
-  return { producerPalVersion, builtInHash };
-}
-
-/**
- * SHA-256 of a fragment, used for fork-time provenance and drift detection.
- *
- * @param fragment - The built-in fragment string
- * @returns Hex-encoded SHA-256 digest
- */
-function hashFragment(fragment: string): string {
-  return createHash("sha256").update(fragment).digest("hex");
 }
