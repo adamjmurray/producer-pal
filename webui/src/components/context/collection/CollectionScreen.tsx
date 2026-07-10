@@ -4,14 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { cloneElement } from "preact";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { ContextHeader } from "#webui/components/context/ContextScreen";
 import {
   type DocCollectionEntry,
   type UseDocCollectionReturn,
 } from "#webui/hooks/context/use-doc-collection";
+import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
+
+// A synthetic "ready" status for the header's save indicator while an existing
+// entry is open — the per-entry editor is always ready (its content is in hand);
+// only the collection-level save status varies.
+const EDITING_STATUS: DocMemoryStatus = { kind: "ready", content: "" };
 
 /** Which entry the right pane is editing: an existing one, or a fresh one. */
 type Selection = { mode: "edit"; name: string } | { mode: "new" };
@@ -73,6 +79,16 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
   const { collection, tabSlot, onClose, title, loadingLabel, deletedBanner } =
     props;
   const [selected, setSelected] = useState<Selection>({ mode: "new" });
+  const selectionKey = selected.mode === "edit" ? selected.name : "__new__";
+
+  // Reset the save indicator whenever the edited entry (or the create form)
+  // changes, so it never carries the previous entry's "Saved" onto the next one
+  // or onto the create form.
+  const { resetSaveStatus } = collection;
+
+  useEffect(() => {
+    resetSaveStatus();
+  }, [selectionKey, resetSaveStatus]);
 
   if (collection.status.kind !== "ready") {
     return (
@@ -121,6 +137,8 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
         title={title}
         tabSlot={tabSlot}
         closeAriaLabel={CLOSE_ARIA_LABEL}
+        status={activeEntry != null ? EDITING_STATUS : undefined}
+        saveStatus={collection.saveStatus}
         onClose={onClose}
       />
       <div className="flex flex-1 min-h-0">

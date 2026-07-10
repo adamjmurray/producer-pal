@@ -28,6 +28,7 @@ export function fakeDocCollection<TView, TInput>(
     saveEntry: vi.fn().mockResolvedValue(null),
     renameEntry: vi.fn().mockResolvedValue(null),
     deleteEntry: vi.fn().mockResolvedValue(true),
+    resetSaveStatus: vi.fn(),
     refresh: vi.fn().mockResolvedValue(undefined),
     ...over,
   };

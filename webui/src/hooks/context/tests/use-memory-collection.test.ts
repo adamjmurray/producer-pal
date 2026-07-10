@@ -332,6 +332,26 @@ describe("useMemoryCollection", () => {
     ]);
   });
 
+  it("resetSaveStatus clears a prior save outcome back to idle", async () => {
+    const result = await mountReady([]);
+
+    // Drive it into an error state, then reset.
+    fetchMock.mockResolvedValueOnce(badRequest({ error: "nope" }));
+
+    await act(async () => {
+      await result.current.saveEntry("x", { ...SAMPLE_INPUT, content: "y" });
+    });
+
+    expect(result.current.saveStatus).toBe("error");
+
+    await act(async () => {
+      result.current.resetSaveStatus();
+    });
+
+    expect(result.current.saveStatus).toBe("idle");
+    expect(result.current.saveError).toBeNull();
+  });
+
   it("deleteEntry DELETEs and removes the entry", async () => {
     const result = await mountReady([rawEntry()]);
 

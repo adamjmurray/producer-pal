@@ -36,6 +36,7 @@ function stubCollection(
     saveEntry: vi.fn(),
     renameEntry: vi.fn(),
     deleteEntry,
+    resetSaveStatus: vi.fn(),
     refresh: vi.fn(),
   };
 }
@@ -59,6 +60,7 @@ describe("CustomSkillEditor autosave on close", () => {
       saveEntry,
       renameEntry: vi.fn(),
       deleteEntry: vi.fn(),
+      resetSaveStatus: vi.fn(),
       refresh: vi.fn(),
     };
 

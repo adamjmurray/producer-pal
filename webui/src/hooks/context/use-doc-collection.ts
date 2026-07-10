@@ -66,6 +66,12 @@ export interface UseDocCollectionReturn<TView, TInput> {
   ) => Promise<TView | null>;
   /** Delete one entry. Resolves true on success, false on failure. */
   deleteEntry: (name: string) => Promise<boolean>;
+  /**
+   * Reset the save status to idle (clearing any "saved"/error). Called when the
+   * edited entry changes so a header indicator doesn't carry the prior entry's
+   * outcome onto the next one (or onto the create form).
+   */
+  resetSaveStatus: () => void;
   /** Re-read all entries from the server. */
   refresh: () => Promise<void>;
 }
@@ -183,6 +189,11 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
     [mutate, entryUrl, label],
   );
 
+  const resetSaveStatus = useCallback((): void => {
+    setSaveStatus("idle");
+    setSaveError(null);
+  }, []);
+
   // Initial load.
   useEffect(() => {
     void refresh();
@@ -197,6 +208,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
     saveEntry,
     renameEntry,
     deleteEntry,
+    resetSaveStatus,
     refresh,
   };
 }

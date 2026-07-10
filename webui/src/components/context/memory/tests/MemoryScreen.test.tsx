@@ -141,7 +141,7 @@ describe("MemoryScreen — ready", () => {
     expect(names).toStrictEqual(["loose-drums", "no-desc", "prefers-c-minor"]);
   });
 
-  it("selects an entry to edit, then returns to the create form", () => {
+  it("selects an entry to edit (autosave, no Save button), then returns to the create form", () => {
     renderScreen({ kind: "ready", entries: ENTRIES });
 
     // Defaults to the create form.
@@ -151,18 +151,19 @@ describe("MemoryScreen — ready", () => {
       screen.getByRole("button", { name: "Edit prefers-c-minor" }),
     );
 
-    // The editor switches to the existing entry (Save, no create; delete now
-    // lives on the list row, not the footer).
-    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+    // The editor switches to the existing entry — an editable Rename field,
+    // no Save button (it autosaves), and no create button.
+    expect(screen.getByRole("textbox", { name: "Rename" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Create memory" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "New memory" }));
 
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Rename" })).toBeNull();
   });
 
-  it("saves edits to the selected entry through the collection hook", async () => {
+  it("autosaves edits to the selected entry when navigating away", async () => {
     const first = ENTRIES[0] as MemoryEntryView;
     const saveEntry = vi.fn().mockResolvedValue(first);
     const collection = fakeCollection(
@@ -175,18 +176,60 @@ describe("MemoryScreen — ready", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Edit prefers-c-minor" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Composes in C minor and F minor." },
+    });
+    // Switching away unmounts the editor, flushing the autosave under the slug.
+    fireEvent.click(screen.getByRole("button", { name: "New memory" }));
 
     await waitFor(() => {
       expect(saveEntry).toHaveBeenCalledWith(
         "prefers-c-minor",
         {
           description: "default key & genre",
-          content: "Composes in C minor.",
+          content: "Composes in C minor and F minor.",
         },
         false,
       );
     });
+  });
+
+  it("shows the save status in the header while editing, but not on the create form", () => {
+    // A "saved" collection status: the header indicator shows it when an entry
+    // is open, and must NOT leak onto the create form (the reported bug).
+    const collection = fakeCollection(
+      { kind: "ready", entries: ENTRIES },
+      { saveStatus: "saved" },
+    );
+
+    renderWith(collection);
+
+    // Create form (default): no "Saved" indicator in the header.
+    expect(screen.queryByText("Saved")).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+
+    // Editing an entry: the header surfaces the save status.
+    expect(screen.getByText("Saved")).toBeTruthy();
+  });
+
+  it("resets the save status when the edited entry changes", () => {
+    const resetSaveStatus = vi.fn();
+    const collection = fakeCollection(
+      { kind: "ready", entries: ENTRIES },
+      { resetSaveStatus },
+    );
+
+    renderWith(collection);
+    resetSaveStatus.mockClear();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+
+    expect(resetSaveStatus).toHaveBeenCalled();
   });
 
   it("returns to the create form after deleting the selected entry via its row", async () => {

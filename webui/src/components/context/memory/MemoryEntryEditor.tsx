@@ -7,7 +7,6 @@ import { useState } from "preact/hooks";
 import {
   BodyField,
   DescriptionField,
-  EditorFooter,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
 import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
@@ -27,15 +26,15 @@ interface MemoryEntryEditorProps {
 }
 
 /**
- * Right-pane form for one memory: name (editable only when creating — the slug
- * is the stable handle), one-line description, and a markdown body. Keyed
- * by the selected entry in the parent so the local draft re-seeds on selection
- * change. Autosaves so a draft is never lost on close/switch: idle-debounced for
- * an existing entry and flushed on unmount; a new entry persists on close (its
- * explicit Create button forks it into an existing entry). The list still polls
- * for the assistant's own writes, surfacing a Reload banner when this entry
- * changed elsewhere (the assistant's own context tool, another tab) while the
- * draft here is clean.
+ * Right-pane form for one memory: an editable name (rename in place, or the new
+ * draft's slug), a one-line description, and a markdown body. Keyed by the
+ * selected entry in the parent so the local draft re-seeds on selection change.
+ *
+ * An existing memory autosaves — there is no Save button; the save state shows
+ * in the header (see {@link CollectionScreen}). A new memory is created only by
+ * the explicit Create button. The list polls for the assistant's own writes,
+ * surfacing a Reload banner when this entry changed elsewhere while the draft
+ * here is clean.
  * @param props - Editor props
  * @returns Editor element
  */
@@ -145,14 +144,23 @@ export function MemoryEntryEditor(
         onChange={setDescription}
       />
       <BodyField label="Memory" value={body} onChange={setBody} rows={10} />
-      <EditorFooter
-        saveStatus={collection.saveStatus}
-        saveError={collection.saveError}
-        isNew={isNew}
-        canSave={canSave}
-        createLabel="Create memory"
-        onSave={() => void handleSave()}
-      />
+      {isNew && (
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={!canSave}
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Create memory
+          </button>
+          {collection.saveStatus === "error" && (
+            <span className="text-xs text-red-600 dark:text-red-400">
+              {collection.saveError ?? "Save failed"}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

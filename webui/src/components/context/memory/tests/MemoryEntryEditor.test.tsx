@@ -162,17 +162,16 @@ describe("MemoryEntryEditor — autosave on close", () => {
 });
 
 describe("MemoryEntryEditor — existing entry", () => {
-  it("seeds the editable name with the slug and saves edits under the same name", async () => {
+  it("seeds the editable name and autosaves body edits on close under the same slug", () => {
     const collection = fakeCollection({
       saveEntry: vi.fn().mockResolvedValue(EXISTING),
     });
-    const onSaved = vi.fn();
 
-    render(
+    const { unmount } = render(
       <MemoryEntryEditor
         collection={collection}
         entry={EXISTING}
-        onSaved={onSaved}
+        onSaved={vi.fn()}
       />,
     );
 
@@ -185,12 +184,11 @@ describe("MemoryEntryEditor — existing entry", () => {
     fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
       target: { value: "Composes in C minor and F minor." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    await waitFor(() => {
-      expect(onSaved).toHaveBeenCalledWith("prefers-c-minor");
-    });
-    // Editing an existing entry targets a known slug, so overwrite is intended.
+    // Existing memories autosave — closing/navigating away flushes the edit
+    // under the same slug (no Save button; the status shows in the header).
+    unmount();
+
     expect(collection.saveEntry).toHaveBeenCalledWith(
       "prefers-c-minor",
       {
@@ -201,9 +199,9 @@ describe("MemoryEntryEditor — existing entry", () => {
     );
   });
 
-  // Delete moved to the list row (see MemoryList.test) — the editor footer no
-  // longer renders a Delete button.
-  it("does not render a footer Delete button", () => {
+  // Existing memories autosave; the editor has neither a Save button (autosave)
+  // nor a Delete button (delete lives on the list row, see MemoryList.test).
+  it("renders neither a Save nor a Delete button for an existing memory", () => {
     render(
       <MemoryEntryEditor
         collection={fakeCollection()}
@@ -212,6 +210,7 @@ describe("MemoryEntryEditor — existing entry", () => {
       />,
     );
 
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
   });
 });
@@ -350,55 +349,42 @@ describe("MemoryEntryEditor — rename", () => {
     await waitFor(() => {
       expect(renameEntry).toHaveBeenCalled();
     });
-    // The field snaps back to the original slug; the error shows in the footer.
+    // The field snaps back to the original slug (the collision error itself
+    // surfaces in the header's save indicator, not here).
     await waitFor(() => {
       expect(
         (screen.getByRole("textbox", { name: "Rename" }) as HTMLInputElement)
           .value,
       ).toBe("prefers-c-minor");
     });
-    expect(
-      screen.getByText('A memory named "taken" already exists'),
-    ).toBeTruthy();
   });
 });
 
-describe("MemoryEntryEditor — save status", () => {
-  it.each([
-    ["saving", "Saving…"],
-    ["saved", "Saved"],
-  ] as const)("shows %s status text", (saveStatus, text) => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection({ saveStatus })}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText(text)).toBeTruthy();
-  });
-
-  it("shows the save error message", () => {
+// For an existing memory the save status lives in the header (see
+// MemoryScreen.test); only the create flow shows an inline error by the button.
+describe("MemoryEntryEditor — create error", () => {
+  it("shows the create error inline beside the Create button", () => {
     render(
       <MemoryEntryEditor
         collection={fakeCollection({
           saveStatus: "error",
-          saveError: "Memory body must not be empty",
+          saveError: 'A memory named "taken" already exists',
         })}
-        entry={EXISTING}
+        entry={null}
         onSaved={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("Memory body must not be empty")).toBeTruthy();
+    expect(
+      screen.getByText('A memory named "taken" already exists'),
+    ).toBeTruthy();
   });
 
-  it("falls back to 'Save failed' when there is no error message", () => {
+  it("falls back to 'Save failed' inline when there is no error message", () => {
     render(
       <MemoryEntryEditor
         collection={fakeCollection({ saveStatus: "error", saveError: null })}
-        entry={EXISTING}
+        entry={null}
         onSaved={vi.fn()}
       />,
     );
