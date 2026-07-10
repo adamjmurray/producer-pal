@@ -15,7 +15,7 @@
             {
                 "box": {
                     "angle": 270.0,
-                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for maniuplating MIDI with code",
+                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for manipulating MIDI with code",
                     "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
                     "hint": "",
                     "id": "obj-96",
@@ -155,7 +155,7 @@
             },
             {
                 "box": {
-                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for maniuplating MIDI with code",
+                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for manipulating MIDI with code",
                     "annotation_name": "Notation",
                     "id": "obj-90",
                     "maxclass": "live.menu",
