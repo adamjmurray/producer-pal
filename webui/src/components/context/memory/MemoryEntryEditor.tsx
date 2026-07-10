@@ -48,6 +48,9 @@ export function MemoryEntryEditor(
   const [name, setName] = useState(entry?.name ?? "");
   const [description, setDescription] = useState(entry?.description ?? "");
   const [body, setBody] = useState(entry?.body ?? "");
+  // Remount key for the seed-only body editor; bumped on an external reload so
+  // the adopted body reaches the (otherwise uncontrolled) markdown editor.
+  const [bodyEditorKey, setBodyEditorKey] = useState(0);
 
   const targetName = isNew ? name : entry.name;
   const validation = useMemoryValidation(isNew, name, description, body);
@@ -151,6 +154,7 @@ export function MemoryEntryEditor(
     setName(entry.name);
     setDescription(entry.description);
     setBody(entry.body);
+    setBodyEditorKey((key) => key + 1);
     adoptExternal();
   };
 
@@ -183,7 +187,8 @@ export function MemoryEntryEditor(
         label="Memory"
         value={body}
         onChange={setBody}
-        rows={10}
+        editorKey={bodyEditorKey}
+        heightClass="h-72"
         onBlur={() => validation.markTouched("body")}
         error={validation.errors.body}
       />

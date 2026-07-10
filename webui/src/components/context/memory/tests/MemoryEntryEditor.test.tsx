@@ -8,6 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
   type MemoryEntryInput,
@@ -15,6 +16,11 @@ import {
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
 import { MemoryEntryEditor } from "#webui/components/context/memory/MemoryEntryEditor";
+
+// Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
+vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+  markdownEditorTestMock(),
+);
 
 /**
  * Build a fake collection hook return with overridable fields.

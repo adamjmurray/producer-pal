@@ -9,6 +9,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { type VNode } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import {
   type LeaveGuard,
   LeaveGuardContext,
@@ -21,6 +22,11 @@ import {
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
 import { MemoryScreen } from "#webui/components/context/memory/MemoryScreen";
+
+// Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
+vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+  markdownEditorTestMock(),
+);
 
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 

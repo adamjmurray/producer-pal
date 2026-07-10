@@ -49,6 +49,9 @@ export function CustomSkillEditor(
   const [description, setDescription] = useState(entry?.description ?? "");
   const [enabled, setEnabled] = useState(entry?.enabled ?? true);
   const [body, setBody] = useState(entry?.body ?? "");
+  // Remount key for the seed-only body editor; bumped on an external reload so
+  // the adopted body reaches the (otherwise uncontrolled) markdown editor.
+  const [bodyEditorKey, setBodyEditorKey] = useState(0);
 
   const targetName = isNew ? name : entry.name;
   const canSave =
@@ -112,6 +115,7 @@ export function CustomSkillEditor(
     setDescription(entry.description);
     setEnabled(entry.enabled);
     setBody(entry.body);
+    setBodyEditorKey((key) => key + 1);
     adoptExternal();
   };
 
@@ -151,7 +155,8 @@ export function CustomSkillEditor(
         label="Instructions"
         value={body}
         onChange={setBody}
-        rows={12}
+        editorKey={bodyEditorKey}
+        heightClass="h-80"
       />
       <EditorFooter
         saveStatus={collection.saveStatus}

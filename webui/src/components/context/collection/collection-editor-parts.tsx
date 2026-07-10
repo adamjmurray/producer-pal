@@ -11,6 +11,7 @@
 
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
+import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
 
 /** Shared input styling for the collection editors' text controls. */
@@ -174,28 +175,44 @@ interface BodyFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  rows: number;
+  /**
+   * Remount key for the (uncontrolled, seed-only) markdown editor. Bump it when
+   * the parent reseeds the body without a full editor remount — an
+   * external-update reload — so the adopted content actually reaches the editor.
+   */
+  editorKey: number;
+  /** Tailwind height for the fixed-height editor frame (e.g. "h-72"). */
+  heightClass: string;
   onBlur?: () => void;
   error?: string;
 }
 
 /**
- * The main body row: a monospace textarea with a live character/token count.
- * The label (e.g. "Memory", "Instructions") and row count differ per collection.
- * The validation error sits on the count row (right by the input), not below it,
- * so it reads next to the field like the name/description errors.
+ * The main body row: a markdown editor (headings/emphasis render, matching the
+ * other context editors) with a live character/token count below it. The label
+ * (e.g. "Memory", "Instructions") and height differ per collection. The
+ * validation error sits on the count row (right by the input), not below it, so
+ * it reads next to the field like the name/description errors. Unlike the name
+ * and description inputs the editor is NOT wrapped in a <label> — a <label>
+ * around its contenteditable region would hijack clicks/focus — so the label is
+ * a plain heading and the editor carries its own accessible name (ariaLabel).
  * @param props - Body field props
  * @returns Body field element
  */
 export function BodyField(props: BodyFieldProps): preact.JSX.Element {
   return (
-    <Field label={props.label}>
-      <textarea
-        value={props.value}
-        onInput={(e) => props.onChange((e.target as HTMLTextAreaElement).value)}
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+        {props.label}
+      </span>
+      <MarkdownEditor
+        key={props.editorKey}
+        ariaLabel={props.label}
+        initialValue={props.value}
+        readOnly={false}
+        onChange={props.onChange}
         onBlur={props.onBlur}
-        rows={props.rows}
-        className={`${inputClass(props.error)} resize-none font-mono leading-relaxed`}
+        className={props.heightClass}
       />
       <div className="mt-1 flex items-center justify-between gap-2">
         <span className="text-xs text-red-600 dark:text-red-400">
@@ -203,7 +220,7 @@ export function BodyField(props: BodyFieldProps): preact.JSX.Element {
         </span>
         <CharTokenCount chars={props.value.length} />
       </div>
-    </Field>
+    </div>
   );
 }
 

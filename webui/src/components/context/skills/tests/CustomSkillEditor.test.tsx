@@ -8,11 +8,17 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import {
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { CustomSkillEditor } from "#webui/components/context/skills/CustomSkillEditor";
+
+// Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
+vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+  markdownEditorTestMock(),
+);
 
 const ENTRY: CustomSkillView = {
   name: "jazz-voicings",

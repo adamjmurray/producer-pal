@@ -8,6 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
   type CustomSkillInput,
@@ -16,6 +17,11 @@ import {
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { CustomSkillsScreen } from "#webui/components/context/skills/CustomSkillsScreen";
+
+// Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
+vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+  markdownEditorTestMock(),
+);
 
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 
