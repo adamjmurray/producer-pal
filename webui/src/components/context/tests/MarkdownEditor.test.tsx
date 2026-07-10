@@ -46,6 +46,17 @@ describe("MarkdownEditor", () => {
     expect(container.textContent).toContain("hello");
   });
 
+  it("renders bulleted markers as • but leaves ordered markers alone", () => {
+    const { container } = renderEditor({
+      initialValue: "- one\n* two\n+ three\n1. first",
+    });
+
+    // Each of the three bullet styles is replaced by a • widget…
+    expect(container.querySelectorAll(".cm-bullet-marker")).toHaveLength(3);
+    // …while the ordered marker's digit survives verbatim.
+    expect(container.textContent).toContain("1.");
+  });
+
   it("ignores initialValue prop changes after mount (uncontrolled)", () => {
     const { container, rerender } = renderEditor({ initialValue: "first" });
 

@@ -5,9 +5,26 @@
 
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, EditorState, type Extension } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import {
+  HighlightStyle,
+  syntaxHighlighting,
+  syntaxTree,
+} from "@codemirror/language";
+import {
+  Compartment,
+  EditorState,
+  RangeSetBuilder,
+  type Extension,
+} from "@codemirror/state";
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  keymap,
+  ViewPlugin,
+  type ViewUpdate,
+  WidgetType,
+} from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 import { useEffect, useRef } from "preact/hooks";
 
@@ -93,6 +110,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
           ...(ariaLabel != null
             ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })]
             : []),
+          bulletMarkerPlugin,
           markdownEditorTheme,
           updateListener,
           readOnlyCompartment.current.of(EditorState.readOnly.of(readOnly)),
@@ -164,10 +182,19 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: t.strong, fontWeight: "700" },
   { tag: t.emphasis, fontStyle: "italic" },
   { tag: t.strikethrough, textDecoration: "line-through" },
+  // Inline `code` and ``` fenced ``` bodies: monospace on a translucent chip
+  // so they read unmistakably as code. The chip is a theme-neutral grey (works
+  // on both the light and dark editor backgrounds); text color stays inherited
+  // so it never loses contrast. No vertical padding — the chip box tracks the
+  // line height, so a multi-line fenced block reads as one continuous block
+  // rather than a stack of gapped pills.
   {
     tag: t.monospace,
     fontFamily:
       "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    backgroundColor: "rgba(135, 131, 120, 0.18)",
+    borderRadius: "3px",
+    padding: "0 0.28em",
   },
   { tag: t.link, textDecoration: "underline" },
   { tag: t.url, textDecoration: "underline" },
@@ -206,6 +233,13 @@ const editorTheme = EditorView.theme({
   ".cm-line": {
     padding: "0 0.25rem",
   },
+  // The `•` glyph that replaces a `-`/`*`/`+` list marker (see
+  // bulletMarkerPlugin). Full-opacity and nudged for optical alignment so it
+  // reads as a real bullet, not the faded punctuation the raw marker would be.
+  ".cm-bullet-marker": {
+    color: "inherit",
+    paddingRight: "0.15em",
+  },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "currentColor",
   },
@@ -226,6 +260,82 @@ const markdownEditorTheme: Extension[] = [
   editorTheme,
   syntaxHighlighting(markdownHighlightStyle),
 ];
+
+// --- Bullet-marker prettifier ---
+
+/**
+ * Widget standing in for a bulleted list's raw marker, rendering a real `•`
+ * where the source has `-`/`*`/`+`. The character stays in the document; only
+ * its rendering changes (like the dimmed `#` kept beside a styled heading).
+ */
+class BulletMarkerWidget extends WidgetType {
+  /**
+   * Build the bullet element.
+   * @returns A span rendering the `•` glyph.
+   */
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+
+    span.className = "cm-bullet-marker";
+    span.textContent = "•";
+
+    return span;
+  }
+}
+
+const bulletMarkerDecoration = Decoration.replace({
+  widget: new BulletMarkerWidget(),
+});
+
+/**
+ * Build replace-decorations swapping each bulleted-list marker (`-`, `*`, `+`)
+ * for a `•`. Ordered-list markers (`1.`, `2)`) are left as-is.
+ * @param view - The editor view to scan (visible ranges only)
+ * @returns The decoration set to render
+ */
+function buildBulletMarkers(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const tree = syntaxTree(view.state);
+
+  for (const { from, to } of view.visibleRanges) {
+    tree.iterate({
+      from,
+      to,
+      enter: (node) => {
+        if (node.name !== "ListMark") return;
+        const marker = view.state.doc.sliceString(node.from, node.to);
+
+        if (marker === "-" || marker === "*" || marker === "+") {
+          builder.add(node.from, node.to, bulletMarkerDecoration);
+        }
+      },
+    });
+  }
+
+  return builder.finish();
+}
+
+/**
+ * View plugin keeping the bullet-marker decorations in sync with the document.
+ * Rebuilds unconditionally on every update — cheap for note-sized docs and it
+ * keeps the plugin branch-free.
+ */
+const bulletMarkerPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    /** @param view - The editor view being initialized */
+    constructor(view: EditorView) {
+      this.decorations = buildBulletMarkers(view);
+    }
+
+    /** @param update - The view update to react to */
+    update(update: ViewUpdate): void {
+      this.decorations = buildBulletMarkers(update.view);
+    }
+  },
+  { decorations: (plugin) => plugin.decorations },
+);
 
 /**
  * Dispatch a focus or blur callback based on whether the editor has focus.
