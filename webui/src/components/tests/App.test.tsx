@@ -477,6 +477,35 @@ describe("App", () => {
       expect(contextStub()).not.toBe(null);
     });
 
+    it("opens the context overlay from the Settings tools-tab Edit Context link", async () => {
+      vi.useFakeTimers();
+      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+        viewState: {
+          historyPanelOpen: false,
+          settingsOpen: true,
+          settingsTab: "tools",
+        },
+        setViewState: vi.fn(),
+      });
+
+      const { container } = render(<App />);
+
+      expect(contextStub()).toBe(null);
+      const editBtn = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent.includes("Edit Context"),
+      );
+
+      expect(editBtn).toBeDefined();
+      if (editBtn) fireEvent.click(editBtn);
+      // Settings runs its close animation first, then Context opens.
+      await act(() => {
+        vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
+      });
+
+      expect(contextStub()).not.toBe(null);
+      vi.useRealTimers();
+    });
+
     it("closes the context overlay when the close button is clicked", async () => {
       vi.useFakeTimers();
       const { container } = render(<App />);

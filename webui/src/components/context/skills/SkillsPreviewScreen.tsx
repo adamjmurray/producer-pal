@@ -10,10 +10,8 @@ import {
 } from "#src/shared/notation";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
-import {
-  ContextHeader,
-  DOUBLE_PANE_WIDTH,
-} from "#webui/components/context/ContextScreen";
+import { DOUBLE_PANE_WIDTH } from "#webui/components/context/ContextScreen";
+import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
 import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
 import {

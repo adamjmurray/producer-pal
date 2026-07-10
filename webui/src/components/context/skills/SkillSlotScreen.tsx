@@ -7,11 +7,11 @@ import { useMemo, useState } from "preact/hooks";
 import { makeContextIoHandlers } from "#webui/components/context/context-io";
 import { ContextIoButtons } from "#webui/components/context/ContextIoButtons";
 import {
-  ContextHeader,
   DOUBLE_PANE_WIDTH,
   ExternalUpdateBanner,
   SINGLE_WIDTH,
 } from "#webui/components/context/ContextScreen";
+import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
 import { DriftNote } from "#webui/components/context/editor/DriftNote";
 import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
 import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";

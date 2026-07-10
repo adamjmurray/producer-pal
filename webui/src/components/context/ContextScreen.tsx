@@ -9,16 +9,14 @@ import { useContextEditorState } from "#webui/hooks/context/use-context-editor-s
 import {
   type DocDrift,
   type DocMemoryStatus,
-  type SaveStatus,
   type UseDocMemoryReturn,
 } from "#webui/hooks/context/use-doc-memory";
 import { CharTokenCount } from "./collection/CharTokenCount";
 import { makeContextIoHandlers } from "./context-io";
 import { ContextIoButtons } from "./ContextIoButtons";
+import { ContextHeader } from "./editor/ContextHeader";
 import { DriftNote } from "./editor/DriftNote";
 import { OverridePanes } from "./editor/OverridePanes";
-import { RevealFolderButton } from "./editor/RevealFolderButton";
-import { SaveIndicator } from "./editor/SaveIndicator";
 import { MarkdownDropZone } from "./MarkdownDropZone";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -167,81 +165,6 @@ export const SINGLE_WIDTH = "max-w-5xl";
  * pane is cramped. Exported so the skills editor (also side-by-side) matches.
  */
 export const DOUBLE_PANE_WIDTH = "max-w-7xl";
-
-interface ContextHeaderProps {
-  title: string;
-  tabSlot?: preact.JSX.Element;
-  closeAriaLabel: string;
-  status?: DocMemoryStatus;
-  saveStatus?: SaveStatus;
-  dirty?: boolean;
-  /**
-   * Replaces the save indicator when provided. Read-only screens (the skills
-   * preview) pass their own status text here so the header doesn't show a
-   * misleading "Auto-save on" for content that is never saved.
-   */
-  rightSlot?: preact.JSX.Element;
-  onClose?: () => void;
-}
-
-/**
- * Header strip showing the title (or tab strip), save indicator (or a custom
- * `rightSlot`), and (when mounted inside the chat-app overlay) a close button.
- * Exported so the skills editor and preview reuse the identical tab strip +
- * close affordance.
- * @param props - Header props
- * @returns Header element
- */
-export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
-  const { title, tabSlot, closeAriaLabel, status, rightSlot, onClose } = props;
-
-  return (
-    // Three columns: an empty left cell balances the right cluster (save indicator
-    // + close) so the centered tab strip stays centered — the two 1fr side columns
-    // are equal regardless of the save text's changing width, so it never nudges
-    // the tabs. The cluster lives in its own column (not absolutely positioned), so
-    // the six tabs can't slide under it; the center cell scrolls horizontally
-    // instead when they outgrow a narrow viewport.
-    <header className="grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
-      <div aria-hidden="true" />
-      <div className="min-w-0 overflow-x-auto">
-        {tabSlot ?? <h1 className="text-base font-semibold">{title}</h1>}
-      </div>
-      <div className="flex items-center justify-end gap-3">
-        {rightSlot ??
-          (status != null && (
-            <SaveIndicator
-              status={status}
-              saveStatus={props.saveStatus ?? "idle"}
-              dirty={props.dirty ?? false}
-            />
-          ))}
-        <RevealFolderButton />
-        {onClose != null && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={closeAriaLabel}
-            title="Close (Esc)"
-            className="p-1 -mr-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 18 18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            >
-              <path d="M4 4L14 14M14 4L4 14" />
-            </svg>
-          </button>
-        )}
-      </div>
-    </header>
-  );
-}
 
 interface ContextControlsProps {
   status: DocMemoryStatus;

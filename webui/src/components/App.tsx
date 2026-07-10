@@ -173,6 +173,14 @@ export function App() {
     }, CONTEXT_ANIMATION_MS);
   }, []);
 
+  // Jump from the Settings "Edit Context" shortcut straight into the context
+  // editor. Settings and Context are sibling overlays with Settings stacked on
+  // top, so leaving Settings open would hide the editor behind it — close
+  // Settings first (its exit animation runs), then open Context.
+  const handleEditContext = useCallback(() => {
+    closeSettings(() => openContext());
+  }, [closeSettings, openContext]);
+
   // Escape closes the context overlay (consistent with native modal idioms).
   useEffect(() => {
     if (!contextOpen) return;
@@ -284,6 +292,7 @@ export function App() {
             conversationLock={modeContext.conversationLock}
             liveApiForcedOn={remoteConfig.serverLiveApiForcedOn}
             activeVoice={modeContext.activeVoice}
+            onEditContext={handleEditContext}
           />
         </div>
       )}

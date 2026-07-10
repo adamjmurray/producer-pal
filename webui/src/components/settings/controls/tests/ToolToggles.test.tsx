@@ -492,4 +492,22 @@ describe("ToolToggles", () => {
       expect(setNotation).toHaveBeenCalledWith("stark");
     });
   });
+
+  describe("Edit Context shortcut", () => {
+    it("omits the Edit Context button when onEditContext is not provided", () => {
+      render(<ToolToggles {...defaultProps} />);
+
+      expect(screen.queryByRole("button", { name: "Edit Context" })).toBeNull();
+    });
+
+    it("renders an Edit Context button (Core group) and fires the handler", () => {
+      const onEditContext = vi.fn();
+
+      render(<ToolToggles {...defaultProps} onEditContext={onEditContext} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit Context" }));
+
+      expect(onEditContext).toHaveBeenCalledOnce();
+    });
+  });
 });

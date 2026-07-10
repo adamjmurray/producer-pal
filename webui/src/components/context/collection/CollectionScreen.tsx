@@ -6,7 +6,7 @@
 import { cloneElement } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { useLeaveGuardContext } from "#webui/components/context/collection/leave-guard";
-import { ContextHeader } from "#webui/components/context/ContextScreen";
+import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
 import {
   type DocCollectionEntry,
   type UseDocCollectionReturn,

@@ -202,6 +202,7 @@ describe("SettingsScreen", () => {
     },
     liveApiForcedOn: false,
     activeVoice: null,
+    onEditContext: vi.fn(),
   };
 
   /**
