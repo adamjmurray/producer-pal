@@ -192,6 +192,26 @@ describe("useContextEditorState", () => {
       expect(result.current.editorKey).toBe(startingKey + 1);
     });
 
+    it("does NOT surface the banner when the server echoes a whitespace-normalized (trimmed) copy of our own save", async () => {
+      // Regression: the Node-side stores trim on save, so forking a built-in
+      // that ends in a newline (Customize) records an untrimmed baseline while
+      // the save echo comes back trimmed. That must not read as an external
+      // write — the first Customize used to flash a spurious Reload banner.
+      const save = vi.fn().mockResolvedValue(true);
+      const { result, setMemory } = renderEditor(makeMemory({ save }));
+
+      // Customize forks the built-in (trailing newline) as the baseline.
+      await act(async () => {
+        await result.current.handleImport("BUILT-IN DEFAULT\n");
+      });
+      expect(save).toHaveBeenCalledWith("BUILT-IN DEFAULT\n");
+
+      // The server echoes the trimmed override back through status.content.
+      setMemory(makeReady("BUILT-IN DEFAULT"));
+
+      expect(result.current.externalUpdate).toBe(false);
+    });
+
     it("clears the banner when the server content matches the editor baseline again", async () => {
       const { result, setMemory } = renderEditor(makeReady("old"));
 

@@ -166,7 +166,14 @@ export function useContextEditorState(
     if (lastSavedRef.current == null) return;
     const serverContent = memory.status.content;
 
-    if (serverContent === lastSavedRef.current) {
+    // Compare against the server's canonical (trimmed) form of our baseline:
+    // the Node-side stores trim on save, so our OWN save echo comes back
+    // whitespace-normalized. Without this, forking a built-in that ends in a
+    // newline (Customize) — or simply saving a draft with trailing blank
+    // lines — would echo trimmed content that looks like an external write and
+    // flash a spurious "updated outside the editor" banner. A whitespace-only
+    // difference is never a meaningful external edit worth a Reload prompt.
+    if (serverContent.trim() === lastSavedRef.current.trim()) {
       setExternalUpdate(false);
 
       return;
