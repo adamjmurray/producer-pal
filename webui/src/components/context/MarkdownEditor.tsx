@@ -207,9 +207,8 @@ const markdownHighlightStyle = HighlightStyle.define([
 
 // Single theme. Text color and caret inherit from the Tailwind-styled
 // wrapper, so `dark:text-...` on the host element controls visibility in
-// both light and dark modes. Selection backgrounds are set explicitly per
-// mode using an ancestor selector keyed on the `html.dark` class set by
-// useTheme().
+// both light and dark modes. The selection background is set per mode via
+// `::selection`, keyed on the `html.dark` class useTheme() sets on the root.
 const editorTheme = EditorView.theme({
   "&": {
     height: "100%",
@@ -243,16 +242,21 @@ const editorTheme = EditorView.theme({
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "currentColor",
   },
-  // Light-mode selection (default).
-  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection":
-    {
-      backgroundColor: "rgb(228 228 231)", // zinc-200
-    },
-  // Dark-mode selection — `html.dark` is set by useTheme() on document root.
-  "html.dark &.cm-focused .cm-selectionBackground, html.dark .cm-selectionBackground, html.dark ::selection":
-    {
-      backgroundColor: "rgb(63 63 70)", // zinc-700
-    },
+  // Native browser selection (there is no drawSelection extension, so
+  // `.cm-selectionBackground` never renders — only `::selection` applies). Both
+  // rules scope `::selection` to the editor via `&`, which CodeMirror's theme
+  // system replaces with the generated editor class. The dark override MUST
+  // keep the `&`: a bare `html.dark ::selection` is rewritten to the impossible
+  // `.cm-editor html.dark ::selection` (html as a descendant of the editor) and
+  // never matches — which left selected text invisible in dark mode (light text
+  // over the light-mode selection). `html.dark & ::selection` becomes
+  // `html.dark .cm-editor ::selection`, which wins under the `html.dark` class.
+  "& ::selection": {
+    backgroundColor: "rgb(228 228 231)", // zinc-200
+  },
+  "html.dark & ::selection": {
+    backgroundColor: "rgb(63 63 70)", // zinc-700
+  },
 });
 
 /** CodeMirror extensions providing markdown styling for both themes. */
