@@ -109,9 +109,12 @@ export function MemoryEntryEditor(
     void handleSave();
   };
 
-  // Commit a rename (blur / Enter on the name field). A no-op or empty change
-  // just reverts the field. On success, mark the OLD-name draft as saved so the
-  // unmount flush the navigation triggers can't re-create the old slug, then
+  // Commit a rename (blur / Enter on the name field). An emptied name is kept
+  // empty so its "Name is required" error stays visible and the save stays
+  // blocked (validation) — the user recovers by typing a new name, exactly like
+  // the description/body fields; an unchanged name just normalizes whitespace.
+  // Neither triggers a rename. On success, mark the OLD-name draft as saved so
+  // the unmount flush the navigation triggers can't re-create the old slug, then
   // navigate to the renamed entry. The current draft fields ride along, so a
   // dirty body isn't lost; a collision surfaces via saveError and reverts.
   const handleRename = (raw: string): void => {
@@ -119,7 +122,7 @@ export function MemoryEntryEditor(
     const trimmed = raw.trim();
 
     if (trimmed === "" || trimmed === entry.name) {
-      setName(entry.name);
+      if (trimmed !== "") setName(entry.name);
 
       return;
     }
@@ -241,7 +244,7 @@ type MemoryField = "name" | "description" | "body";
 interface MemoryValidation {
   /** The error message for each field, or undefined when valid/untouched. */
   errors: Partial<Record<MemoryField, string>>;
-  /** Whether every required field is non-empty (name only for a new memory). */
+  /** Whether every required field (name, description, body) is non-empty. */
   isValid: boolean;
   /** Mark a field touched so its error can surface (on blur). */
   markTouched: (field: MemoryField) => void;
@@ -254,10 +257,12 @@ interface MemoryValidation {
  * deferred: a blank new form stays quiet until a field is left or Create is
  * attempted, while an existing memory starts "touched" so an already-empty
  * required field (e.g. an assistant-made memory with no description) is flagged
- * immediately. Name is required only when creating — an existing memory's slug
- * is fixed (renaming is its own control).
+ * immediately. All three fields (name, description, body) are required in both
+ * modes: emptying an existing memory's name shows the error and blocks the save
+ * (the rename control keeps the field empty until a valid name is typed) just
+ * like the description and body.
  * @param isNew - Whether this is a new (create) draft
- * @param name - The current name draft (validated only when creating)
+ * @param name - The current name draft (or the rename value for an existing one)
  * @param description - The current description draft
  * @param body - The current body draft
  * @returns The per-field errors, overall validity, and touch controls
@@ -282,7 +287,7 @@ function useMemoryValidation(
     setTouched({ name: true, description: true, body: true });
   }, []);
 
-  const nameMissing = isNew && name.trim() === "";
+  const nameMissing = name.trim() === "";
   const errors: Partial<Record<MemoryField, string>> = {
     name: touched.name && nameMissing ? "Name is required." : undefined,
     description:

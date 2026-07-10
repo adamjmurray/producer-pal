@@ -300,6 +300,34 @@ describe("MemoryEntryEditor — existing entry", () => {
 
     expect(screen.getByText("Memory contents are required.")).toBeTruthy();
   });
+
+  it("flags a cleared name and blocks the save, like the other fields", () => {
+    const collection = fakeCollection({
+      saveEntry: vi.fn().mockResolvedValue(EXISTING),
+    });
+
+    const { unmount } = render(
+      <MemoryEntryEditor
+        collection={collection}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    // Emptying the name surfaces its error (existing entries are pre-touched),
+    // and a later body edit can't autosave while the form is invalid.
+    fireEvent.input(screen.getByRole("textbox", { name: "Rename" }), {
+      target: { value: "" },
+    });
+    expect(screen.getByText("Name is required.")).toBeTruthy();
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "edited while name is blank" },
+    });
+    unmount();
+
+    expect(collection.saveEntry).not.toHaveBeenCalled();
+  });
 });
 
 describe("MemoryEntryEditor — rename", () => {
@@ -381,7 +409,7 @@ describe("MemoryEntryEditor — rename", () => {
     expect(renameEntry).not.toHaveBeenCalled();
   });
 
-  it("reverts to Escape and does not rename on an emptied name", () => {
+  it("reverts on Escape, but keeps an emptied name (with its error) rather than reverting", () => {
     const renameEntry = vi.fn();
     const collection = fakeCollection({ renameEntry });
 
@@ -397,17 +425,38 @@ describe("MemoryEntryEditor — rename", () => {
       name: "Rename",
     }) as HTMLInputElement;
 
+    // Escape restores the current slug in the field.
     fireEvent.input(nameInput, { target: { value: "half-typed" } });
     fireEvent.keyDown(nameInput, { key: "Escape" });
-
-    // Escape restores the current slug in the field.
     expect(nameInput.value).toBe("prefers-c-minor");
 
-    // Clearing the name and blurring is a no-op (can't rename to nothing).
+    // Clearing the name keeps the field empty (no silent revert), surfaces the
+    // required error, and does not rename to nothing — consistent with the
+    // description/body fields.
     fireEvent.input(nameInput, { target: { value: "   " } });
     fireEvent.blur(nameInput);
 
+    expect(nameInput.value).toBe("   ");
+    expect(screen.getByText("Name is required.")).toBeTruthy();
     expect(renameEntry).not.toHaveBeenCalled();
+  });
+
+  it("clears the name error as soon as a valid name is typed", () => {
+    render(
+      <MemoryEntryEditor
+        collection={fakeCollection()}
+        entry={EXISTING}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+
+    fireEvent.input(nameInput, { target: { value: "" } });
+    expect(screen.getByText("Name is required.")).toBeTruthy();
+
+    fireEvent.input(nameInput, { target: { value: "new-name" } });
+    expect(screen.queryByText("Name is required.")).toBeNull();
   });
 
   it("reverts the name field when the rename fails (collision)", async () => {

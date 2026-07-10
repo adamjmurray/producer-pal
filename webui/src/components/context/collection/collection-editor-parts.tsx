@@ -110,7 +110,11 @@ export function NameField(props: NameFieldProps): preact.JSX.Element {
 
   if (onRename != null) {
     return (
-      <Field label="Name" hint="Edit to rename (commits on Enter or blur).">
+      <Field
+        label="Name"
+        hint="Edit to rename (commits on Enter or blur)."
+        error={props.error}
+      >
         <input
           type="text"
           value={name}
@@ -121,7 +125,7 @@ export function NameField(props: NameFieldProps): preact.JSX.Element {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             if (e.key === "Escape") onChange(displayName ?? "");
           }}
-          className={`${INPUT_CLASS} font-mono`}
+          className={`${inputClass(props.error)} font-mono`}
         />
       </Field>
     );
@@ -178,12 +182,14 @@ interface BodyFieldProps {
 /**
  * The main body row: a monospace textarea with a live character/token count.
  * The label (e.g. "Memory", "Instructions") and row count differ per collection.
+ * The validation error sits on the count row (right by the input), not below it,
+ * so it reads next to the field like the name/description errors.
  * @param props - Body field props
  * @returns Body field element
  */
 export function BodyField(props: BodyFieldProps): preact.JSX.Element {
   return (
-    <Field label={props.label} error={props.error}>
+    <Field label={props.label}>
       <textarea
         value={props.value}
         onInput={(e) => props.onChange((e.target as HTMLTextAreaElement).value)}
@@ -191,7 +197,10 @@ export function BodyField(props: BodyFieldProps): preact.JSX.Element {
         rows={props.rows}
         className={`${inputClass(props.error)} resize-none font-mono leading-relaxed`}
       />
-      <div className="mt-1 flex justify-end">
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="text-xs text-red-600 dark:text-red-400">
+          {props.error}
+        </span>
         <CharTokenCount chars={props.value.length} />
       </div>
     </Field>
