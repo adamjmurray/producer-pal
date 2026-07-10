@@ -9,6 +9,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { type VNode } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  type LeaveGuard,
+  LeaveGuardContext,
+} from "#webui/components/context/collection/leave-guard";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
   type MemoryCollectionStatus,
@@ -88,6 +92,36 @@ function renderWith(collection: UseMemoryCollectionReturn): {
  */
 function renderScreen(status: MemoryCollectionStatus): { onClose: () => void } {
   return renderWith(fakeCollection(status));
+}
+
+/**
+ * A real ref-backed leave guard (matching {@link useLeaveGuard}), so the editor
+ * that registers a discard-confirm and the list that calls confirmLeave share
+ * one registry — the same wiring ContextTabs provides in the app.
+ * @returns A leave guard for a test provider
+ */
+function makeGuard(): LeaveGuard {
+  let registered: (() => boolean) | null = null;
+
+  return {
+    register: (guard) => {
+      registered = guard;
+    },
+    confirmLeave: () => registered == null || registered(),
+  };
+}
+
+/**
+ * Render MemoryScreen wrapped in a leave-guard provider (as ContextTabs does),
+ * so the new-draft discard confirm is wired end to end.
+ * @param collection - The collection hook return to pass
+ */
+function renderGuarded(collection: UseMemoryCollectionReturn): void {
+  render(
+    <LeaveGuardContext.Provider value={makeGuard()}>
+      {screenEl(collection)}
+    </LeaveGuardContext.Provider>,
+  );
 }
 
 afterEach(() => {
@@ -372,5 +406,56 @@ describe("MemoryScreen — deleted externally", () => {
 
     expect(saveEntry).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
+});
+
+describe("MemoryScreen — new-draft discard guard", () => {
+  // Type a value into the (new) create form's Name field.
+  const typeNewName = (value: string): void => {
+    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
+      target: { value },
+    });
+  };
+
+  it("confirms before leaving a filled new draft; cancelling keeps the form", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    renderGuarded(fakeCollection({ kind: "ready", entries: ENTRIES }));
+
+    typeNewName("half-typed");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+
+    // Cancelled → the create form (with its draft) stays put.
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Rename" })).toBeNull();
+  });
+
+  it("leaves the new draft when the discard is confirmed", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    renderGuarded(fakeCollection({ kind: "ready", entries: ENTRIES }));
+
+    typeNewName("half-typed");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+
+    // Confirmed → navigation proceeds to the existing entry (Rename field).
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(screen.getByRole("textbox", { name: "Rename" })).toBeTruthy();
+  });
+
+  it("does not confirm when the new draft is still blank", () => {
+    vi.stubGlobal("confirm", vi.fn());
+    renderGuarded(fakeCollection({ kind: "ready", entries: ENTRIES }));
+
+    // No fields typed — nothing to discard, so navigation is silent.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Rename" })).toBeTruthy();
   });
 });

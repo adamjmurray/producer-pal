@@ -171,8 +171,11 @@ describe("MemoryEntryEditor — new entry", () => {
   });
 });
 
-describe("MemoryEntryEditor — autosave on close", () => {
-  it("persists a complete new draft on unmount so closing before Create doesn't lose it", () => {
+describe("MemoryEntryEditor — new draft is not auto-saved on close", () => {
+  it("never persists a new draft on unmount — Create is the only create path", () => {
+    // Even a complete draft is created ONLY by the explicit Create button; a
+    // navigate-away confirms a discard (see MemoryScreen.test) instead of
+    // silently saving.
     const saved: MemoryEntryView = {
       name: "loose-drums",
       description: "swing",
@@ -197,35 +200,6 @@ describe("MemoryEntryEditor — autosave on close", () => {
     });
 
     // Close the overlay (Escape / backdrop / ×) WITHOUT clicking Create.
-    unmount();
-
-    expect(collection.saveEntry).toHaveBeenCalledWith(
-      "loose-drums",
-      { description: "swing", content: "groove" },
-      true,
-    );
-  });
-
-  it("does not persist an incomplete new draft on unmount", () => {
-    const collection = fakeCollection({
-      saveEntry: vi.fn().mockResolvedValue(null),
-    });
-
-    const { unmount } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={null}
-        onSaved={vi.fn()}
-      />,
-    );
-
-    // Name + body but no description — the draft is invalid, so nothing saves.
-    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
-      target: { value: "loose-drums" },
-    });
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "groove" },
-    });
     unmount();
 
     expect(collection.saveEntry).not.toHaveBeenCalled();

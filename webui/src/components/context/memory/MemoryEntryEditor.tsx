@@ -9,6 +9,7 @@ import {
   DescriptionField,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
+import { useDraftLeaveGuard } from "#webui/components/context/collection/leave-guard";
 import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
 import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
@@ -64,6 +65,10 @@ export function MemoryEntryEditor(
       canSave,
       draftKey: memoryEntryKey({ name: targetName, description, body }),
       autosaveOnIdle: !isNew,
+      // A new draft is created only by the explicit Create button — never
+      // silently flushed on navigate-away. Leaving a dirty new draft is guarded
+      // by a discard confirm (useNewMemoryLeaveGuard) instead.
+      flushOnLeave: !isNew,
       persist: async () => {
         const saved = await doSave();
 
@@ -71,6 +76,16 @@ export function MemoryEntryEditor(
       },
       externalKey: entry != null ? memoryEntryKey(entry) : undefined,
     });
+
+  // A new draft with any field filled guards against silent loss: leaving it
+  // (select another memory, switch tabs, close, or close the browser tab)
+  // confirms a discard first. A blank draft (or an existing entry) guards
+  // nothing.
+  const isDirtyNew =
+    isNew &&
+    (name.trim() !== "" || description.trim() !== "" || body.trim() !== "");
+
+  useDraftLeaveGuard(isDirtyNew, DISCARD_NEW_MEMORY_MESSAGE);
 
   const handleSave = async (): Promise<void> => {
     const saved = await doSave();
@@ -181,6 +196,10 @@ export function MemoryEntryEditor(
 }
 
 // --- Helpers below main export ---
+
+/** Confirm text shown before abandoning an unsaved new-memory draft. */
+const DISCARD_NEW_MEMORY_MESSAGE =
+  "Discard this new memory? Your changes will be lost.";
 
 /**
  * The create-flow footer: the Create button plus an inline error when a create

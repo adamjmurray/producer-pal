@@ -5,6 +5,7 @@
 
 import { cloneElement } from "preact";
 import { useEffect, useState } from "preact/hooks";
+import { useLeaveGuardContext } from "#webui/components/context/collection/leave-guard";
 import { ContextHeader } from "#webui/components/context/ContextScreen";
 import {
   type DocCollectionEntry,
@@ -80,6 +81,9 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     props;
   const [selected, setSelected] = useState<Selection>({ mode: "new" });
   const selectionKey = selected.mode === "edit" ? selected.name : "__new__";
+  // Selecting another entry unmounts the active editor; confirm a discard first
+  // if it holds an unsaved new draft (the editor registers the guard).
+  const leaveGuard = useLeaveGuardContext();
 
   // Reset the save indicator whenever the edited entry (or the create form)
   // changes, so it never carries the previous entry's "Saved" onto the next one
@@ -147,7 +151,12 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             entries,
             selectedName: activeEntry?.name ?? null,
             creating: activeEntry == null,
-            onSelect: (name) => setSelected({ mode: "edit", name }),
+            onSelect: (name) => {
+              if (leaveGuard.confirmLeave())
+                setSelected({ mode: "edit", name });
+            },
+            // New keeps the create form mounted (same key), so a dirty new draft
+            // isn't abandoned — no guard needed here.
             onNew: () => setSelected({ mode: "new" }),
             onDelete: (name) => void handleDeleteEntry(name),
           })}

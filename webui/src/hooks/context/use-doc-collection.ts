@@ -229,10 +229,17 @@ export interface CollectionEntryAutosaveParams {
    * Whether to persist on idle (debounced). True for existing entries — a save
    * doesn't change identity there, so nothing remounts. False for a new entry,
    * whose first persist flips it to an existing entry and would remount the
-   * editor mid-type (dropping focus); a new entry still persists on close via
-   * the unmount flush.
+   * editor mid-type (dropping focus).
    */
   autosaveOnIdle: boolean;
+  /**
+   * Whether to flush the draft on unmount and on tab close (defaults true). True
+   * for existing entries — an in-flight edit must survive a navigation/close.
+   * False for a NEW draft, which is created ONLY by the explicit Create button,
+   * never silently on navigate-away; a nav guard confirms the discard instead
+   * (see {@link import("#webui/components/context/collection/leave-guard")}).
+   */
+  flushOnLeave?: boolean;
   /**
    * Persist the current draft — saveEntry ONLY, no navigation (`onSaved`), which
    * would fight the user's selection when this fires on unmount. Resolves the
@@ -310,6 +317,9 @@ export function useCollectionEntryAutosave(
   params: CollectionEntryAutosaveParams,
 ): CollectionEntryAutosaveReturn {
   const { canSave, draftKey, autosaveOnIdle, persist, externalKey } = params;
+  // Constant per mount (isNew is fixed per editor key), so the leave effects can
+  // gate on it directly without a ref.
+  const flushOnLeave = params.flushOnLeave ?? true;
   const canSaveRef = useRef(canSave);
   const draftKeyRef = useRef(draftKey);
   const persistRef = useRef(persist);
@@ -413,23 +423,29 @@ export function useCollectionEntryAutosave(
     setExternalUpdate(draftKey === lastSavedRef.current);
   }, [externalKey, draftKey]);
 
-  // Flush on tab close so a pending draft isn't dropped.
+  // Flush on tab close so a pending draft isn't dropped — but only when
+  // flushOnLeave (existing entries). A new draft is created explicitly (Create),
+  // so its editor prompts a discard confirm on close instead of silently saving.
   useEffect(() => {
+    if (!flushOnLeave) return;
+
     const onBeforeUnload = (): void => flush();
 
     window.addEventListener("beforeunload", onBeforeUnload);
 
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [flush]);
+  }, [flush, flushOnLeave]);
 
-  // Flush on unmount: overlay close, tab switch, and entry-selection change all
-  // unmount this editor, and the draft must persist first.
+  // On unmount always mark unmounted (so the async flush callback can't setState
+  // afterward), then flush the pending draft — overlay close, tab switch, and
+  // entry-selection change all unmount this editor. A new draft skips the flush
+  // (flushOnLeave false); its discard is confirmed by the nav guard instead.
   useEffect(
     () => () => {
       mountedRef.current = false;
-      flush();
+      if (flushOnLeave) flush();
     },
-    [flush],
+    [flush, flushOnLeave],
   );
 
   const noteSaved = useCallback((echoKey: string): void => {

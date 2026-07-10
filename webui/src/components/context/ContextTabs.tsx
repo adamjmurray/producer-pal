@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import {
+  LeaveGuardContext,
+  useLeaveGuard,
+} from "#webui/components/context/collection/leave-guard";
 import { useContextMemory } from "#webui/hooks/context/use-context-memory";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
@@ -101,36 +105,59 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
     global: GLOBAL_LABELS,
     instructions: INSTRUCTIONS_LABELS,
   };
-  const tabStrip = <TabStrip tab={tab} onSelect={setTab} />;
+
+  // Switching tabs or closing the overlay unmounts the active editor; an
+  // unsaved new-memory draft registers a leave guard, so confirm a discard
+  // first (a no-op elsewhere — nothing registers a guard).
+  const leaveGuard = useLeaveGuard();
+
+  const selectTab = (next: ContextTab): void => {
+    if (leaveGuard.confirmLeave()) setTab(next);
+  };
+
+  const guardedClose =
+    props.onClose == null
+      ? undefined
+      : (): void => {
+          if (leaveGuard.confirmLeave()) props.onClose?.();
+        };
+
+  const tabStrip = <TabStrip tab={tab} onSelect={selectTab} />;
+
+  let screen: preact.JSX.Element;
 
   if (tab === "skills") {
-    return (
+    screen = (
       <SkillsScreen
         overrides={skillOverrides}
         tabSlot={tabStrip}
-        onClose={props.onClose}
+        onClose={guardedClose}
       />
     );
-  }
-
-  if (tab === "memory") {
-    return (
+  } else if (tab === "memory") {
+    screen = (
       <MemoryScreen
         collection={memoryCollection}
         tabSlot={tabStrip}
-        onClose={props.onClose}
+        onClose={guardedClose}
+      />
+    );
+  } else {
+    screen = (
+      <ContextScreen
+        key={tab}
+        memory={memoryByTab[tab]}
+        labels={labelsByTab[tab]}
+        tabSlot={tabStrip}
+        onClose={guardedClose}
       />
     );
   }
 
   return (
-    <ContextScreen
-      key={tab}
-      memory={memoryByTab[tab]}
-      labels={labelsByTab[tab]}
-      tabSlot={tabStrip}
-      onClose={props.onClose}
-    />
+    <LeaveGuardContext.Provider value={leaveGuard}>
+      {screen}
+    </LeaveGuardContext.Provider>
   );
 }
 
