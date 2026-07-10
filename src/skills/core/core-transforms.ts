@@ -10,7 +10,12 @@
 // The Transforms + preTransforms section of the standard core: the note/audio
 // transform DSL. Carries the optional code-transforms include inside it (the
 // fragment only exists when ENABLE_CODE_EXEC is set; a missing fragment
-// resolves to "").
+// resolves to ""). The include is glued to the end of the preTransforms
+// paragraph (no preceding newline) on purpose: when the fragment is absent it
+// then leaves no dangling trailing newline, so core-transforms follows the
+// "no trailing blank line" fragment convention like the other core sections —
+// the manifest's own blank line spaces it from the next section. code-transforms
+// supplies its own leading blank line, so it's still separated when present.
 export const coreTransforms = `## Transforms
 
 Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
@@ -98,5 +103,4 @@ Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple sl
 
 ### preTransforms (editing notes already in the clip)
 
-\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`delete\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)
-@include "./code-transforms.md"`;
+\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`delete\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)@include "./code-transforms.md"`;

@@ -14,10 +14,11 @@
 // slot, so a user's driver override can suppress one by deleting its include
 // line while everything still included keeps tracking the release built-ins.
 // What stays inline is small and universal (units, audio basics, workflow,
-// memory, help). Blank lines around the manifest are load-bearing: fragments
-// carry no leading/trailing blank lines, so the spacing between includes IS the
-// spacing between sections (core-transforms ends in the code-transforms
-// include, which is why core-library follows with no blank line).
+// memory, help). Blank lines in the manifest are load-bearing: fragments carry
+// no leading/trailing blank lines, so the blank line between two includes IS the
+// blank line between their sections. (core-transforms glues its code-transforms
+// include so it too ends with no trailing newline — see core-transforms.ts — so
+// every include gets a uniform blank line here.)
 export const coreStandard = `@include "./{notation}-standard.md"
 
 ## Time & Note Values
@@ -41,6 +42,7 @@ Audio params ignored when updating MIDI clips.
 What Producer Pal **can** do with audio: set gain/pitch/warp settings, change clip length, place and arrange audio clips in the Arrangement, and load/manage samples on Simpler instruments (including Drum Rack pads). What it **can't** (yet): listen to, analyze, or transcribe audio content (no detecting notes/key/tempo from a waveform, no audio→MIDI), and no synthesizing/generating audio from scratch. Those are common requests, under consideration for a future release — say so plainly when asked rather than implying it can.
 
 @include "./core-transforms.md"
+
 @include "./core-library.md"
 
 @include "./core-devices.md"

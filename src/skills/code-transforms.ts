@@ -41,5 +41,4 @@ All times are musical beats (the meter's beat — an eighth in 6/8), matching \`
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number (musical beats per bar)
 
-**Processing order:** notes → transforms → code — code receives the notes after parsing and transforms, and can further transform them.
-`;
+**Processing order:** notes → transforms → code — code receives the notes after parsing and transforms, and can further transform them.`;
