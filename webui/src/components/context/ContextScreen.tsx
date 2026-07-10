@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
   type DocMemoryStatus,
@@ -259,7 +260,7 @@ interface ContextControlsProps {
 
 /**
  * Controls strip below the header with an optional explainer, a live char/token
- * size readout (labelled "Built-in" while an un-customized default is shown, so
+ * size readout (labelled "Default" while an un-customized default is shown, so
  * the count matches what's on screen), and (for documents without a built-in
  * default) a destructive clear action. Hidden until memory has loaded so we
  * don't flash a control whose state we haven't fetched yet. The border spans
@@ -277,9 +278,9 @@ function ContextControls(
   if (status.kind !== "ready") return null;
 
   // With a built-in default and no override yet, the strip's size readout must
-  // reflect the built-in that's actually on screen (not the empty override).
+  // reflect the default that's actually on screen (not the empty override).
   // Keyed off the latched override flag, NOT live content, so editing an
-  // override to empty doesn't momentarily flip the readout to "Built-in".
+  // override to empty doesn't momentarily flip the readout to "Default".
   const builtInShown = builtIn != null && !hasOverride;
 
   return (
@@ -293,7 +294,7 @@ function ContextControls(
         <div className="ml-auto flex items-center gap-3">
           <CharTokenCount
             chars={builtInShown ? builtIn.length : charCount}
-            label={builtInShown ? "Built-in" : undefined}
+            label={builtInShown ? "Default" : undefined}
             className="shrink-0"
           />
           <ContextIoButtons onImport={onImport} onExport={onExport} />
@@ -301,9 +302,11 @@ function ContextControls(
             <button
               type="button"
               onClick={onClear}
-              className="shrink-0 text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              aria-label="Clear"
+              title="Clear"
+              className="shrink-0 rounded p-0.5 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
             >
-              Clear
+              <TrashIcon />
             </button>
           )}
         </div>

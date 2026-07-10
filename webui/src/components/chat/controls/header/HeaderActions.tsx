@@ -120,7 +120,7 @@ export function HeaderActions({
         onClick={onOpenContext}
         className={iconBtn}
         aria-label="Context"
-        title="Context (project & global)"
+        title="Customize context"
       >
         <ContextIcon />
       </button>

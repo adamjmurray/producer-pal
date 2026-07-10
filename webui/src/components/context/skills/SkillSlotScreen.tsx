@@ -23,7 +23,7 @@ import {
 import { SkillSlotSelect } from "./SkillSlotSelect";
 
 const RESET_CONFIRM =
-  "Reset this skill fragment to Producer Pal's built-in? This deletes your override.";
+  "Reset this skill fragment to Producer Pal's default? This deletes your override.";
 const EXTERNAL_UPDATE_MESSAGE =
   "This skill fragment was updated outside the editor.";
 const CLOSE_ARIA_LABEL = "Close context editor";
@@ -195,15 +195,12 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
           selected={selected}
           onSelect={onSelectSlot}
         />
-        <span
-          className="min-w-0 flex-1 truncate text-xs text-zinc-500 dark:text-zinc-400"
-          title={slot.description}
-        >
+        <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
           {slot.description}
         </span>
         {slot.drifted && (
           <span className="shrink-0 text-xs text-amber-600 dark:text-amber-400">
-            ⚠ Built-in changed since you forked
+            ⚠ Default changed since you forked
             {slot.forkedFromVersion != null
               ? ` (v${slot.forkedFromVersion})`
               : ""}

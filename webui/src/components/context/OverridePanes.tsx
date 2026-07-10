@@ -3,9 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  NewConversationIcon,
+  TrashIcon,
+} from "#webui/components/chat/controls/header/HeaderIcons";
 import { noop } from "#webui/components/mode-context";
 import { CopyButton } from "./collection/CopyButton";
 import { MarkdownEditor } from "./MarkdownEditor";
+
+/** Small text-link style shared by the pane-header toggles (Show default / Hide). */
+const HEADER_LINK_CLASS =
+  "shrink-0 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors";
 
 interface OverridePanesProps {
   /** Remount key for the uncontrolled editor (bumped on reset/reload). */
@@ -35,16 +43,16 @@ interface OverridePanesProps {
   /** Reveal / collapse the built-in reference pane. */
   onToggleBuiltIn: (show: boolean) => void;
   /**
-   * Reset the override back to the built-in (deletes the override). The button
-   * lives in the revealed built-in header, shown only in override mode
-   * (`hasOverride`). Resolves whether the reset actually happened (`false`
-   * when the user cancels its confirm), so the reveal only collapses on an
-   * actual reset.
+   * Reset the override back to the built-in default (deletes the override). The
+   * trash button lives beside the editable content whenever there's an override
+   * (`hasOverride`), so it's reachable without first revealing the default.
+   * Resolves whether the reset actually happened (`false` when the user cancels
+   * its confirm), so the reveal only collapses on an actual reset.
    */
   onReset: () => Promise<boolean>;
   /**
-   * Fork the built-in into an editable override (the "Customize" action shown
-   * while there is no override yet). Persists the built-in as the starting
+   * Fork the built-in default into an editable override (the "Customize" action
+   * shown while there is no override yet). Persists the default as the starting
    * override, which flips this component into the editing view.
    */
   onCustomize: () => void;
@@ -57,15 +65,16 @@ interface OverridePanesProps {
 /**
  * Editor body for a document that overrides a shipped default, in two states:
  *
- * - **No override yet** (`!hasOverride`): shows only the built-in default,
- *   read-only, with a "Customize" button that forks it into an editable
- *   override. The default is the content worth showing when there's nothing to
- *   edit, and nothing extra is on screen.
+ * - **No override yet** (`!hasOverride`): shows only the default, read-only,
+ *   with a pen "Customize" button that forks it into an editable override. The
+ *   default is the content worth showing when there's nothing to edit, and
+ *   nothing extra is on screen.
  * - **Has an override**: shows the editable override at full single-column
- *   width; the built-in is hidden until requested (via "Show built-in"), then
- *   renders in a read-only {@link MarkdownEditor} — same markdown formatting as
- *   the editable pane — beside the override, with Copy and (to discard the
- *   override) "Reset to default" buttons.
+ *   width, with a trash "Reset to default" button beside its label (reachable
+ *   without revealing the default first). The default is hidden until requested
+ *   (via "Show default"), then renders in a read-only {@link MarkdownEditor} —
+ *   same markdown formatting as the editable pane — beside the override, with a
+ *   Copy button.
  *
  * Shared by the skills-fragment editor and the custom-instructions editor.
  * @param props - Panes props
@@ -79,15 +88,16 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   if (!hasOverride) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-1">
-        <div className="flex items-center justify-between h-5 gap-3">
+        <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-            Built-in default
+            Default
           </span>
           <button
             type="button"
             onClick={onCustomize}
-            className="shrink-0 px-2 py-1 rounded text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
           >
+            <NewConversationIcon />
             Customize
           </button>
         </div>
@@ -99,19 +109,36 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   return (
     <div className="flex-1 min-h-0 flex gap-3">
       <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="flex items-center justify-between h-5">
+        <div className="flex items-center justify-between h-5 gap-3">
           <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
             {overrideLabel}
           </span>
-          {!showBuiltIn && (
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => onToggleBuiltIn(true)}
-              className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
+              onClick={() =>
+                // Collapse the reveal only when the reset actually happened —
+                // cancelling its confirm must leave the comparison open.
+                void onReset().then((ok) => {
+                  if (ok) onToggleBuiltIn(false);
+                })
+              }
+              aria-label="Reset to default"
+              title="Reset to default"
+              className="shrink-0 rounded p-0.5 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
             >
-              Show built-in
+              <TrashIcon />
             </button>
-          )}
+            {!showBuiltIn && (
+              <button
+                type="button"
+                onClick={() => onToggleBuiltIn(true)}
+                className={HEADER_LINK_CLASS}
+              >
+                Show default
+              </button>
+            )}
+          </div>
         </div>
         <MarkdownEditor
           key={editorKey}
@@ -127,31 +154,14 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
         <div className="built-in-reveal flex-1 min-w-0 flex flex-col gap-1">
           <div className="flex items-center justify-between h-5 gap-3">
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-              Built-in (read-only)
+              Default
             </span>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  // Collapse the reveal only when the reset actually happened
-                  // — cancelling its confirm must leave the comparison open.
-                  void onReset().then((ok) => {
-                    if (ok) onToggleBuiltIn(false);
-                  })
-                }
-                className="text-xs text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
-              >
-                Reset to default
-              </button>
-
-              <CopyButton
-                text={builtIn}
-                className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
-              />
+              <CopyButton text={builtIn} className={HEADER_LINK_CLASS} />
               <button
                 type="button"
                 onClick={() => onToggleBuiltIn(false)}
-                className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
+                className={HEADER_LINK_CLASS}
               >
                 Hide
               </button>

@@ -135,7 +135,7 @@ describe("ContextTabs", () => {
     expect(screen.getByText("Your instructions")).toBeTruthy();
     expect(screen.queryByText(/ai music composition assistant/i)).toBeNull();
 
-    fireEvent.click(screen.getByText("Show built-in"));
+    fireEvent.click(screen.getByText("Show default"));
     expect(screen.getByText(/ai music composition assistant/i)).toBeTruthy();
   });
 

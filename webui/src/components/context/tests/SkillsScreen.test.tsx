@@ -131,9 +131,9 @@ describe("SkillsScreen", () => {
     // with a Customize fork — no editable pane, reveal toggle, reset, or drift.
     expect(editorValues()).toContain("BUILT-IN");
     expect(screen.getByText("Customize")).toBeTruthy();
-    expect(screen.queryByText("Show built-in")).toBeNull();
-    expect(screen.queryByText("Reset to default")).toBeNull();
-    expect(screen.queryByText(/Built-in changed since you forked/)).toBeNull();
+    expect(screen.queryByText("Show default")).toBeNull();
+    expect(screen.queryByLabelText("Reset to default")).toBeNull();
+    expect(screen.queryByText(/Default changed since you forked/)).toBeNull();
     // Import/Export are available per-fragment even when there's no override.
     expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
@@ -193,7 +193,7 @@ describe("SkillsScreen", () => {
       />,
     );
 
-    const note = screen.getByText(/Built-in changed since you forked/);
+    const note = screen.getByText(/Default changed since you forked/);
 
     expect(note.textContent).toContain("v1.4.0");
   });
@@ -211,7 +211,7 @@ describe("SkillsScreen", () => {
       />,
     );
 
-    const note = screen.getByText(/Built-in changed since you forked/);
+    const note = screen.getByText(/Default changed since you forked/);
 
     expect(note.textContent).not.toContain("(v");
   });
@@ -259,8 +259,8 @@ describe("SkillsScreen", () => {
     );
 
     // Reset lives in the revealed built-in header, so surface it first.
-    fireEvent.click(screen.getByText("Show built-in"));
-    fireEvent.click(screen.getByText("Reset to default"));
+    fireEvent.click(screen.getByText("Show default"));
+    fireEvent.click(screen.getByLabelText("Reset to default"));
 
     await waitFor(() => {
       expect(resetSlot).toHaveBeenCalledWith("barbeat-standard");
@@ -284,14 +284,14 @@ describe("SkillsScreen", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Show built-in"));
-    fireEvent.click(screen.getByText("Reset to default"));
+    fireEvent.click(screen.getByText("Show default"));
+    fireEvent.click(screen.getByLabelText("Reset to default"));
 
     await waitFor(() => {
       expect(resetSlot).not.toHaveBeenCalled();
     });
     // The comparison view stays open — nothing was reset.
-    expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
+    expect(screen.getByText("Default")).toBeTruthy();
   });
 
   it("autosaves the override on edit + blur", async () => {
@@ -404,7 +404,7 @@ describe("SkillsScreen", () => {
         />,
       );
 
-      fireEvent.click(screen.getByText("Show built-in"));
+      fireEvent.click(screen.getByText("Show default"));
       fireEvent.click(screen.getByText("Copy"));
 
       expect(writeText).toHaveBeenCalledWith("COPY-ME");

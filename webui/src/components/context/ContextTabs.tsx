@@ -52,7 +52,7 @@ const INSTRUCTIONS_LABELS: ContextEditorLabels = {
   loadingLabel: "Loading custom instructions…",
   closeAriaLabel: CLOSE_ARIA_LABEL,
   clearConfirmMessage:
-    "Reset to Producer Pal's built-in instructions? This deletes your custom system prompt.",
+    "Reset to Producer Pal's default instructions? This deletes your custom system prompt.",
   externalUpdateMessage: "Custom instructions were updated outside the editor.",
   exportBasename: "producer-pal-custom-instructions",
   description:

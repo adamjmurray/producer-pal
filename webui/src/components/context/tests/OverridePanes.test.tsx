@@ -57,24 +57,24 @@ describe("OverridePanes", () => {
 
     expect(screen.getByText("Your override")).toBeTruthy();
     expect(screen.getByTestId("editor").textContent).toBe("MY OVERRIDE");
-    // The built-in reference is not on screen until requested.
-    expect(screen.queryByText("Built-in (read-only)")).toBeNull();
+    // The default reference is not on screen until requested.
+    expect(screen.queryByText("Default")).toBeNull();
     expect(screen.queryByText("SHIPPED DEFAULT")).toBeNull();
-    expect(screen.getByText("Show built-in")).toBeTruthy();
+    expect(screen.getByText("Show default")).toBeTruthy();
   });
 
-  it("requests the built-in when Show built-in is clicked", () => {
+  it("requests the default when Show default is clicked", () => {
     const { onToggleBuiltIn } = renderPanes();
 
-    fireEvent.click(screen.getByText("Show built-in"));
+    fireEvent.click(screen.getByText("Show default"));
 
     expect(onToggleBuiltIn).toHaveBeenCalledWith(true);
   });
 
-  it("renders the built-in read-only beside the editor when shown", () => {
+  it("renders the default read-only beside the editor when shown", () => {
     renderPanes({ showBuiltIn: true });
 
-    expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
+    expect(screen.getByText("Default")).toBeTruthy();
     const editors = screen.getAllByTestId("editor");
 
     // Two editors: the editable override and the read-only built-in.
@@ -85,8 +85,8 @@ describe("OverridePanes", () => {
     const builtIn = editors.find((e) => e.textContent === "SHIPPED DEFAULT");
 
     expect(builtIn?.getAttribute("data-readonly")).toBe("true");
-    // No "Show built-in" affordance while it is already visible.
-    expect(screen.queryByText("Show built-in")).toBeNull();
+    // No "Show default" affordance while it is already visible.
+    expect(screen.queryByText("Show default")).toBeNull();
   });
 
   it("copies the built-in to the clipboard", async () => {
@@ -115,7 +115,7 @@ describe("OverridePanes", () => {
   it("resets and collapses the built-in when Reset to default is clicked", async () => {
     const { onReset, onToggleBuiltIn } = renderPanes({ showBuiltIn: true });
 
-    fireEvent.click(screen.getByText("Reset to default"));
+    fireEvent.click(screen.getByLabelText("Reset to default"));
 
     expect(onReset).toHaveBeenCalledOnce();
     // Collapsing the reveal returns the parent to single-column width for the
@@ -133,7 +133,7 @@ describe("OverridePanes", () => {
     const onReset = vi.fn().mockResolvedValue(false);
     const { onToggleBuiltIn } = renderPanes({ showBuiltIn: true, onReset });
 
-    fireEvent.click(screen.getByText("Reset to default"));
+    fireEvent.click(screen.getByLabelText("Reset to default"));
 
     expect(onReset).toHaveBeenCalledOnce();
     await waitFor(() => {
@@ -158,10 +158,10 @@ describe("OverridePanes", () => {
   });
 
   describe("no override yet", () => {
-    it("shows only the built-in default with a Customize button", () => {
+    it("shows only the default with a Customize button", () => {
       renderPanes({ value: "", hasOverride: false });
 
-      // The built-in is the sole content, read-only; no editable pane or its
+      // The default is the sole content, read-only; no editable pane or its
       // reveal affordance is shown.
       const editors = screen.getAllByTestId("editor");
 
@@ -170,8 +170,8 @@ describe("OverridePanes", () => {
       expect(editors[0]?.getAttribute("data-readonly")).toBe("true");
       expect(screen.getByText("Customize")).toBeTruthy();
       expect(screen.queryByText("Your override")).toBeNull();
-      expect(screen.queryByText("Show built-in")).toBeNull();
-      expect(screen.queryByText("Reset to default")).toBeNull();
+      expect(screen.queryByText("Show default")).toBeNull();
+      expect(screen.queryByLabelText("Reset to default")).toBeNull();
     });
 
     it("forks the built-in into an override when Customize is clicked", () => {

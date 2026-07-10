@@ -692,9 +692,9 @@ describe("ContextScreen", () => {
       renderWithBuiltIn();
 
       expect(screen.getByText("Your instructions")).toBeTruthy();
-      expect(screen.getByText("Show built-in")).toBeTruthy();
+      expect(screen.getByText("Show default")).toBeTruthy();
       // The default is not on screen until requested.
-      expect(screen.queryByText("Built-in (read-only)")).toBeNull();
+      expect(screen.queryByText("Default")).toBeNull();
       // The editable pane seeds from the stored draft.
       expect(lastEditorProps?.initialValue).toBe("MY DRAFT");
     });
@@ -703,10 +703,10 @@ describe("ContextScreen", () => {
       renderWithBuiltIn();
 
       await act(() => {
-        fireEvent.click(screen.getByText("Show built-in"));
+        fireEvent.click(screen.getByText("Show default"));
       });
 
-      expect(screen.getByText("Built-in (read-only)")).toBeTruthy();
+      expect(screen.getByText("Default")).toBeTruthy();
       // The revealed built-in mounts a second, read-only editor.
       expect(lastEditorProps?.readOnly).toBe(true);
       expect(editorMountedValues).toContain("SHIPPED DEFAULT");
@@ -721,7 +721,7 @@ describe("ContextScreen", () => {
       });
       renderWithBuiltIn();
       await act(() => {
-        fireEvent.click(screen.getByText("Show built-in"));
+        fireEvent.click(screen.getByText("Show default"));
       });
 
       fireEvent.click(screen.getByRole("button", { name: "Copy" }));
@@ -754,12 +754,12 @@ describe("ContextScreen", () => {
       // button; the editable pane and its reveal affordance are absent.
       expect(screen.getByText("Customize")).toBeTruthy();
       expect(screen.queryByText("Your instructions")).toBeNull();
-      expect(screen.queryByText("Show built-in")).toBeNull();
+      expect(screen.queryByText("Show default")).toBeNull();
       expect(lastEditorProps?.readOnly).toBe(true);
       expect(editorMountedValues).toContain("SHIPPED DEFAULT");
-      // The size readout reflects the 15-char built-in that's on screen,
+      // The size readout reflects the 15-char default that's on screen,
       // labelled so it isn't mistaken for the (empty) override.
-      expect(screen.getByText(/Built-in: 15 chars · ≈4 tokens/)).toBeTruthy();
+      expect(screen.getByText(/Default: 15 chars · ≈4 tokens/)).toBeTruthy();
 
       // Customize forks the built-in into the override (persists it via the
       // import path so the view flips to editing).
@@ -771,21 +771,18 @@ describe("ContextScreen", () => {
       expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT");
     });
 
-    it("moves reset into the built-in header (no strip Clear when a default exists)", async () => {
+    it("puts reset beside the editable content (no strip Clear when a default exists)", async () => {
       const confirmMock = vi.fn().mockReturnValue(true);
 
       vi.stubGlobal("confirm", confirmMock);
       renderWithBuiltIn();
 
-      // The always-on strip Clear is gone; reset lives with the built-in.
+      // The always-on strip Clear is gone; the reset trash lives beside the
+      // editable content and is reachable without first revealing the default.
       expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
-      expect(screen.queryByText("Reset to default")).toBeNull();
 
       await act(() => {
-        fireEvent.click(screen.getByText("Show built-in"));
-      });
-      await act(() => {
-        fireEvent.click(screen.getByText("Reset to default"));
+        fireEvent.click(screen.getByLabelText("Reset to default"));
       });
 
       expect(confirmMock).toHaveBeenCalled();

@@ -9,6 +9,7 @@
 // skills' enabled toggle) live in each collection's own editor; these are the
 // parts they have in common so the two editors read identically.
 
+import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
 
@@ -182,9 +183,11 @@ export function EditorFooter(props: EditorFooterProps): preact.JSX.Element {
         <button
           type="button"
           onClick={onDelete}
-          className="text-xs text-zinc-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          aria-label="Delete"
+          title="Delete"
+          className="rounded p-1 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
         >
-          Delete
+          <TrashIcon />
         </button>
       )}
       <SaveText saveStatus={saveStatus} saveError={saveError} />
