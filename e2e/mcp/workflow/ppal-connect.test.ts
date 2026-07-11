@@ -24,25 +24,23 @@ async function callConnectRaw(): Promise<unknown> {
   return ctx.client!.callTool({ name: "ppal-connect", arguments: {} });
 }
 
-/** Helper to call ppal-connect and parse the JSON body (first content block). */
-async function callConnect(): Promise<ConnectResult> {
-  return parseToolResult<ConnectResult>(await callConnectRaw());
-}
-
 /**
- * Extract the injected skills block. Skills are assembled Node-side and appended
- * to the connect result as their own content block (starting with the
- * "# Producer Pal Skills" header), not carried in the JSON body.
+ * Extract the injected connect content block whose text starts with `prefix`,
+ * or "" when absent. Skills, project context, global context, and memory are
+ * each appended Node-side as their own labeled content block (see
+ * create-express-app.ts), not carried in the ppal-connect JSON body.
  */
-function extractSkills(result: unknown): string {
+function extractBlock(result: unknown, prefix: string): string {
   const typed = result as {
     content?: Array<{ text?: string; type?: string }>;
   } | null;
 
-  return (
-    typed?.content?.find((c) => c.text?.startsWith("# Producer Pal Skills"))
-      ?.text ?? ""
-  );
+  return typed?.content?.find((c) => c.text?.startsWith(prefix))?.text ?? "";
+}
+
+/** Extract the injected "# Producer Pal Skills" block (see {@link extractBlock}). */
+function extractSkills(result: unknown): string {
+  return extractBlock(result, "# Producer Pal Skills");
 }
 
 describe("ppal-connect", () => {
@@ -100,21 +98,28 @@ describe("ppal-connect", () => {
     expect(skills).not.toBe(buildSkills({ notation: "barbeat" }));
   });
 
-  describe("memory contents", () => {
-    const TEST_NOTES = "Test memory content for e2e testing";
+  describe("project context", () => {
+    // config.memoryContent is the per-Live-Set project context blob — the field
+    // name predates the memory system. It is no longer embedded in the connect
+    // JSON; it's injected Node-side as its own "Project context (this Live Set):"
+    // block (the same shape as the skills/global/memory blocks).
+    const TEST_CONTEXT = "Test project context for e2e testing";
+    const PROJECT_CONTEXT_PREFIX = "Project context (this Live Set):";
 
-    it("includes memory when content is non-empty", async () => {
-      await setConfig({ memoryContent: TEST_NOTES });
-      const parsed = await callConnect();
+    it("injects a project context block when content is non-empty", async () => {
+      await setConfig({ memoryContent: TEST_CONTEXT });
+      const result = await callConnectRaw();
 
-      expect(parsed.memoryContent).toBe(TEST_NOTES);
+      expect(extractBlock(result, PROJECT_CONTEXT_PREFIX)).toBe(
+        `${PROJECT_CONTEXT_PREFIX}\n\n${TEST_CONTEXT}`,
+      );
     });
 
-    it("excludes memory when content is empty", async () => {
+    it("omits the project context block when content is empty", async () => {
       await setConfig({ memoryContent: "" });
-      const parsed = await callConnect();
+      const result = await callConnectRaw();
 
-      expect(parsed.memoryContent).toBeUndefined();
+      expect(extractBlock(result, PROJECT_CONTEXT_PREFIX)).toBe("");
     });
   });
 });
@@ -137,5 +142,4 @@ interface ConnectResult {
     scale?: string;
     scalePitches?: string;
   };
-  memoryContent?: string;
 }
