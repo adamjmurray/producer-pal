@@ -54,8 +54,7 @@ const starkMergeNote = `
 
 Round-trip preserves pitch, timing, and duration exactly; velocity is the lossy axis — on read-back it snaps to the three dynamics (soft/normal/accent) and is re-randomized within each range, so use bar|beat or midi-json when exact velocities matter.
 
-\`notes\` MERGES into an existing clip; use \`preTransforms\` to delete or edit notes already in the clip.
-`;
+\`notes\` MERGES into an existing clip; use \`preTransforms\` to delete or edit notes already in the clip.`;
 
 /**
  * Standard stark head: adds the absolute pitch-name fallback for unnamed pads and
