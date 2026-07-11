@@ -97,6 +97,17 @@ describe("skill-overrides route", () => {
     expect(res.status).toBe(400);
   });
 
+  it("PUT with no JSON body rejects with 400, not 500", async () => {
+    // Valid slot so origin + slot checks pass; the bodyless request must fall
+    // through to the "content must be a string" 400, not TypeError into a 500.
+    const res = await fetch(`${base}/barbeat-standard`, { method: "PUT" });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /content must be a string/i,
+    );
+  });
+
   it("rejects an unknown slot with 404 on PUT and DELETE", async () => {
     const putRes = await putJson(`${base}/not-a-slot`, { content: "x" });
     const delRes = await fetch(`${base}/not-a-slot`, { method: "DELETE" });

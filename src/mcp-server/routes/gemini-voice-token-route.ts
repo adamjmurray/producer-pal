@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Express, type Request, type Response } from "express";
-import { rejectCrossOriginWrite } from "../helpers/request-origin.ts";
+import { rejectCrossOriginWrite } from "../helpers/http/request-origin.ts";
 
 const GEMINI_KEY_HEADER = "x-gemini-key";
 

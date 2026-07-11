@@ -191,6 +191,24 @@ describe("memory-collection route", () => {
     expect(res.status).toBe(400);
   });
 
+  it("PUT with no JSON body rejects with 400, not 500", async () => {
+    // No Content-Type: application/json → express leaves req.body undefined;
+    // the handler must 400 (bad request) rather than TypeError into a 500.
+    const res = await fetch(`${base}/no-body`, { method: "PUT" });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /content must be a string/i,
+    );
+  });
+
+  it("rename PUT with no JSON body rejects with 400, not 500", async () => {
+    const res = await fetch(`${base}/no-body/rename`, { method: "PUT" });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/newname/i);
+  });
+
   it("rejects an empty body with 400 (store validation)", async () => {
     const res = await putMemory("blank", { content: "   " });
 

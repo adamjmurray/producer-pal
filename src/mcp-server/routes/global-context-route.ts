@@ -16,7 +16,7 @@ import {
   readGlobalContext,
   writeGlobalContext,
 } from "../helpers/global-context/global-context-store.ts";
-import { rejectCrossOriginWrite } from "../helpers/request-origin.ts";
+import { rejectCrossOriginWrite } from "../helpers/http/request-origin.ts";
 import { revealConfigDir } from "../helpers/reveal-config-dir.ts";
 import { registerConfigMarkdownRoute } from "./config-markdown-route.ts";
 

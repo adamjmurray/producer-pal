@@ -15,7 +15,8 @@ import {
   isSkillSlotName,
   type SkillSlotName,
 } from "#src/skills/skill-slots.ts";
-import { rejectForeignOriginWrite } from "../helpers/request-origin.ts";
+import { requestBody } from "../helpers/http/request-body.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
 import {
   deleteSkillOverride,
   listSkillSlotStates,
@@ -42,7 +43,7 @@ export function registerSkillOverridesRoutes(app: Express): void {
 
     if (!slot) return;
 
-    const content = (req.body as { content?: unknown }).content;
+    const content = requestBody(req).content;
 
     if (typeof content !== "string") {
       res.status(400).json({ error: "content must be a string" });

@@ -242,6 +242,18 @@ describe("MCP Express App - Config", () => {
       ]);
     });
 
+    it("POST /config with no JSON body is a benign no-op, not a 500", async () => {
+      // No Content-Type: application/json → express leaves req.body undefined;
+      // the handler must treat the missing body as an empty update (200 echoing
+      // the current config) rather than TypeError into a 500.
+      const response = await fetch(configUrl, { method: "POST" });
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      expect(config).toMatchObject({ tools: expect.any(Array) });
+    });
+
     it("should reject POST /config from a cross-origin browser request", async () => {
       const response = await fetch(configUrl, {
         method: "POST",

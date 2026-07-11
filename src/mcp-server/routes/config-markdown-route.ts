@@ -10,7 +10,7 @@
 // round-trip through here.
 
 import { type Express, type Request, type Response } from "express";
-import { rejectForeignOriginWrite } from "../helpers/request-origin.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
 
 /** Read/write transport for one config markdown slot. */
 export interface ConfigMarkdownHandlers {

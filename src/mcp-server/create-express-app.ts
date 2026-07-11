@@ -22,8 +22,9 @@ import {
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { withGlobalContext } from "./helpers/global-context/global-context-inject.ts";
+import { requestBody } from "./helpers/http/request-body.ts";
+import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import { withMemory } from "./helpers/memory/memory-inject.ts";
-import { rejectCrossOriginWrite } from "./helpers/request-origin.ts";
 import { withSkills } from "./helpers/skills-inject.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -377,7 +378,10 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const incoming = req.body as Partial<ProducerPalConfig>;
+  // requestBody normalizes a missing/non-object body to {} so a bodyless POST
+  // /config (no Content-Type: application/json) is a benign no-op update
+  // instead of a TypeError → 500.
+  const incoming = requestBody(req) as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
   if (incoming.memoryContent !== undefined) {

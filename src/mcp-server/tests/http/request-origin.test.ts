@@ -9,7 +9,7 @@ import {
   isLocalOrigin,
   isSameOriginRequest,
   rejectForeignOriginWrite,
-} from "../helpers/request-origin.ts";
+} from "../../helpers/http/request-origin.ts";
 
 /**
  * A minimal Express request exposing only the `Origin`/`Host` headers the

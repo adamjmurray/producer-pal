@@ -11,7 +11,8 @@
 // the webui's useDocCollection hook.
 
 import { type Express, type Request, type Response } from "express";
-import { rejectForeignOriginWrite } from "../helpers/request-origin.ts";
+import { requestBody } from "../helpers/http/request-body.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
 
 /** buildInput's result: the store input, or a 400 error message. */
 export type BuildInputResult<TInput> = TInput | { error: string };
@@ -69,7 +70,8 @@ export function registerCollectionRoutes<TInput, TEntry>(
     if (rejectWrite(req, res, basePath)) return;
 
     const name = entryName(req);
-    const built = config.buildInput(name, req.body as Record<string, unknown>);
+    const body = requestBody(req);
+    const built = config.buildInput(name, body);
 
     if (isError(built)) {
       res.status(400).json({ error: built.error });
@@ -80,7 +82,7 @@ export function registerCollectionRoutes<TInput, TEntry>(
     // The editor's Create flow sets createOnly so a new entry can't silently
     // overwrite an existing one its name happens to slugify to (an edit targets
     // a known slug, where overwrite is intended).
-    const createOnly = (req.body as { createOnly?: unknown }).createOnly;
+    const createOnly = body.createOnly;
 
     if (createOnly === true && config.exists(name)) {
       res.status(409).json({
@@ -132,7 +134,7 @@ function registerRenameRoute<TInput, TEntry>(
     if (rejectWrite(req, res, basePath)) return;
 
     const oldName = entryName(req);
-    const reqBody = req.body as Record<string, unknown>;
+    const reqBody = requestBody(req);
 
     if (typeof reqBody.newName !== "string") {
       res.status(400).json({ error: "newName must be a string" });
