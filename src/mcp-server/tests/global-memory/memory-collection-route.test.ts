@@ -313,6 +313,39 @@ describe("memory-collection route", () => {
     expect(((await res.json()) as { error: string }).error).toMatch(/newname/i);
   });
 
+  it("rejects a rename whose body fails buildInput (non-string content, 400)", async () => {
+    await putMemory("rn-bad-body", { content: "x" });
+
+    const res = await putRename("rn-bad-body", {
+      newName: "rn-anything",
+      content: 42 as unknown as string,
+    });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /content must be a string/i,
+    );
+  });
+
+  it("rejects a rename to an unslugifiable name with the store's error (400)", async () => {
+    await putMemory("rn-bad-target", { content: "x" });
+
+    const res = await putRename("rn-bad-target", {
+      newName: "!!!",
+      content: "x",
+    });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /must contain letters or digits/i,
+    );
+    // The original survives untouched.
+    const entries = await listEntries();
+    const names = entries.map((e) => e.name);
+
+    expect(names).toContain("rn-bad-target");
+  });
+
   it("blocks a cross-site rename with 403", async () => {
     const res = await putJson(
       `${base}/whatever/rename`,

@@ -97,7 +97,49 @@ describe("CustomSkillEditor autosave on close", () => {
   });
 });
 
+describe("CustomSkillEditor save", () => {
+  it("notifies onSaved with the saved name when Save succeeds", async () => {
+    const collection = stubCollection(vi.fn());
+
+    collection.saveEntry = vi.fn().mockResolvedValue(ENTRY);
+    const onSaved = vi.fn();
+
+    render(
+      <CustomSkillEditor
+        collection={collection}
+        entry={ENTRY}
+        onSaved={onSaved}
+        onDeleted={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledWith(ENTRY.name));
+  });
+});
+
 describe("CustomSkillEditor delete confirmation", () => {
+  it("deletes the entry and notifies onDeleted when confirmed", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    const deleteEntry = vi.fn().mockResolvedValue(true);
+    const onDeleted = vi.fn();
+
+    render(
+      <CustomSkillEditor
+        collection={stubCollection(deleteEntry)}
+        entry={ENTRY}
+        onSaved={vi.fn()}
+        onDeleted={onDeleted}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledOnce());
+    expect(deleteEntry).toHaveBeenCalledWith(ENTRY.name);
+  });
+
   it("aborts the delete when the confirm dialog is dismissed", async () => {
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     const deleteEntry = vi.fn().mockResolvedValue(true);
