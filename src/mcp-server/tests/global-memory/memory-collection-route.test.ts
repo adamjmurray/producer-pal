@@ -286,6 +286,24 @@ describe("memory-collection route", () => {
     expect(names).toStrictEqual(expect.arrayContaining(["keep-a", "keep-b"]));
   });
 
+  it("rejects a rename of a nonexistent memory with 404, creating nothing", async () => {
+    const res = await putRename("never-created", {
+      newName: "revived",
+      content: "x",
+    });
+
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as { error: string }).error).toMatch(
+      /no memory named "never-created" exists/i,
+    );
+    // No phantom entry under either name.
+    const entries = await listEntries();
+    const names = entries.map((e) => e.name);
+
+    expect(names).not.toContain("never-created");
+    expect(names).not.toContain("revived");
+  });
+
   it("rejects a rename with a missing newName (400)", async () => {
     await putMemory("rn-missing", { content: "x" });
 

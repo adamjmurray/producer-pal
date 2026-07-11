@@ -115,9 +115,10 @@ export interface MarkdownCollectionStore<
   /**
    * Rename an entry: write `input` (the current fields) under its new slug,
    * delete the old file, and rebuild the index — atomic from the caller's view.
-   * Throws on an invalid/reserved/empty new name or a collision with a
-   * different existing entry. A no-op slug change (same slug) just updates in
-   * place. Preserves fields not in `input` from the old entry via `buildStored`.
+   * Throws when no entry exists under `oldName`, on an invalid/reserved/empty
+   * new name, or on a collision with a different existing entry. A no-op slug
+   * change (same slug) just updates in place. Preserves fields not in `input`
+   * from the old entry via `buildStored`.
    */
   rename: (oldName: string, input: Input) => Entry;
   /** Delete an entry (if present), then rebuild the index. */
@@ -394,6 +395,20 @@ function makeCollectionWriteOps<
 
   const rename = (oldName: string, input: Input): Entry => {
     const oldSlug = slugifyCollectionName(oldName);
+    // Rename moves an EXISTING entry. Read it first (also carried over to
+    // buildStored so fields absent from `input` — e.g. a custom skill's enabled
+    // flag — survive), and reject a missing source: without this guard a rename
+    // of a never-created slug falls through to validateAndWrite and silently
+    // creates a brand-new entry under the new name (the old-file delete being a
+    // harmless no-op) — a create masquerading as a rename.
+    const existing = read(oldSlug);
+
+    if (existing == null) {
+      throw new Error(
+        `No ${config.noun.toLowerCase()} named "${oldSlug}" exists`,
+      );
+    }
+
     const newSlug = validateTargetSlug(input.name);
 
     if (
@@ -405,9 +420,7 @@ function makeCollectionWriteOps<
       );
     }
 
-    // Read the old entry BEFORE writing the new file so buildStored can carry
-    // over any field not in `input` (e.g. a custom skill's enabled flag).
-    const entry = validateAndWrite(newSlug, input, read(oldSlug));
+    const entry = validateAndWrite(newSlug, input, existing);
 
     if (newSlug !== oldSlug) deleteConfigMarkdown(resolveFile(oldSlug));
 

@@ -223,6 +223,17 @@ describe("renameMemory", () => {
     expect(readMemoryEntry("two")?.body).toBe("b2");
   });
 
+  it("throws when no entry exists under the old name, creating nothing", () => {
+    // A rename of a never-created slug must NOT fall through to a silent create
+    // under the new name — it's a create masquerading as a rename.
+    expect(() =>
+      renameMemory("ghost", { name: "revived", description: "d", body: "b" }),
+    ).toThrow(/no memory named "ghost" exists/i);
+    expect(readMemoryEntry("ghost")).toBeNull();
+    expect(readMemoryEntry("revived")).toBeNull();
+    expect(listMemoryEntries()).toStrictEqual([]);
+  });
+
   it("rejects an unslugifiable or reserved new name, leaving the source intact", () => {
     rememberMemory({ name: "src", description: "d", body: "b" });
 

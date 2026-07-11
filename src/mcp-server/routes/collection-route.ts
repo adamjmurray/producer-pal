@@ -115,9 +115,11 @@ export function registerCollectionRoutes<TInput, TEntry>(
 /**
  * Register `PUT /:name/rename` when the collection supports renaming: writes the
  * entry's current fields (from the request body) under `newName` and deletes the
- * old file. A collision with a *different* existing entry is a 409, exactly like
- * the create-only PUT; an invalid name / empty body surfaces the store's message
- * as a 400. Distinct two-segment path, so it never shadows `PUT /:name`.
+ * old file. Renaming a never-created `:name` is a 404 (the store backstops this,
+ * but the route owns the HTTP status). A collision with a *different* existing
+ * entry is a 409, exactly like the create-only PUT; an invalid name / empty body
+ * surfaces the store's message as a 400. Distinct two-segment path, so it never
+ * shadows `PUT /:name`.
  *
  * @param app - Express application
  * @param config - The collection's endpoints, store bindings, and validation
@@ -147,6 +149,17 @@ function registerRenameRoute<TInput, TEntry>(
 
     if (isError(built)) {
       res.status(400).json({ error: built.error });
+
+      return;
+    }
+
+    // Rename addresses an existing entry; a never-created oldName is a 404, not
+    // a silent create. (Checked after body validation so a malformed rename body
+    // still 400s, matching the missing-newName case.)
+    if (!config.exists(oldName)) {
+      res.status(404).json({
+        error: `No ${noun} named "${config.slugify(oldName)}" exists`,
+      });
 
       return;
     }
