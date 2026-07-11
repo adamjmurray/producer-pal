@@ -71,9 +71,28 @@ describe("context - global scope", () => {
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("rejects an empty write before touching the node route", async () => {
+    it("allows an empty write to clear the file (matches the webui editor)", async () => {
+      vi.mocked(protocolMock.requestNode).mockResolvedValue({
+        success: true,
+        result: { content: "" },
+      });
+
+      const result = await context({
+        action: "write",
+        scope: "global",
+        content: "",
+      });
+
+      expect(protocolMock.requestNode).toHaveBeenCalledWith(
+        "globalContext.write",
+        { content: "" },
+      );
+      expect(result).toStrictEqual({ content: "" });
+    });
+
+    it("rejects a write with no content before touching the node route", async () => {
       await expect(
-        context({ action: "write", scope: "global", content: "" }),
+        context({ action: "write", scope: "global" }),
       ).rejects.toThrow("Content required for write action");
       expect(protocolMock.requestNode).not.toHaveBeenCalled();
     });

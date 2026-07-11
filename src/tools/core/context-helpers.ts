@@ -30,7 +30,9 @@ export function handleWriteMemory(
   content: string | undefined,
   context: Partial<ToolContext> = {},
 ): MemoryResult {
-  if (!content) {
+  // "" is a valid clear; only an omitted content param is rejected so an
+  // accidental write can't silently wipe the context.
+  if (content == null) {
     throw new Error("Content required for write action");
   }
 
@@ -126,16 +128,17 @@ export async function handleListMemory(): Promise<MemoryResult> {
 
 /**
  * Overwrite the machine-global context, echoing back what was persisted. Like
- * the project write, an empty/missing content is rejected so an accidental
- * write can't silently wipe the file.
+ * the project write, "" is a valid clear (matches the webui/REST editor, which
+ * lets the user empty the file); only an omitted content param is rejected so
+ * an accidental write can't silently wipe it.
  *
- * @param content - Global context content to write
+ * @param content - Global context content to write ("" clears it)
  * @returns Memory result with the stored content
  */
 export async function handleWriteGlobalMemory(
   content: string | undefined,
 ): Promise<MemoryResult> {
-  if (!content) {
+  if (content == null) {
     throw new Error("Content required for write action");
   }
 

@@ -41,11 +41,17 @@ describe("context - project scope (default)", () => {
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("throws error when content is empty string", async () => {
-      await expect(
-        context({ action: "write", content: "" }, toolContext),
-      ).rejects.toThrow("Content required for write action");
-      expect(outlet).not.toHaveBeenCalled();
+    it("clears content when content is an empty string", async () => {
+      toolContext.memory!.content = "existing content";
+
+      const result = await context(
+        { action: "write", content: "" },
+        toolContext,
+      );
+
+      expect(toolContext.memory!.content).toBe("");
+      expect(result).toStrictEqual({ content: "" });
+      expect(outlet).toHaveBeenCalledWith(0, "update_memory", "");
     });
 
     it.each([
