@@ -179,25 +179,34 @@ function formatBeats(value: number): string {
   return findExactRatio(value) ?? decimal;
 }
 
+// Candidate denominators {@link findExactRatio} will spell, in two bands scanned
+// simplest-first so the reduced fraction wins (a value equal to 1/3 matches den 3
+// before 6 or 9). First every denominator 2..16 for dense small-tuplet fidelity —
+// including 9/11/13/15, which barbeat's canonical set omits — then the finer
+// members of NOTE_VALUE_DENOMINATORS (> 16: 32nd/64th triplets etc.) so those
+// round-trip exactly too. Deliberately NOT a dense 2..256 range, which would emit
+// spurious high-prime ratios for ordinary lossy decimals.
+const SMALL_TUPLET_DENOMINATORS = [
+  2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+];
+const RATIO_DENOMINATORS = [
+  ...SMALL_TUPLET_DENOMINATORS,
+  ...NOTE_VALUE_DENOMINATORS.filter((den) => den > 16),
+];
+
 /**
  * Find a ratio `p/q` that equals `value` within same-time tolerance, or null if
- * none does. Candidate denominators are barbeat's canonical
- * {@link NOTE_VALUE_DENOMINATORS} — the same curated set (powers of two, then
- * the triplet/quintuplet/septuplet families up to 256) barbeat can represent —
- * so MIDI JSON round-trips exactly the tuplets barbeat does, and finer tuplets
- * (32nd/64th triplets, denominator > 16) no longer drift back through a lossy
- * decimal. The preference order (simplest binary fraction first) picks the
- * cleanest spelling; the tolerance lets a device-jittered read-back (e.g.
- * 0.33333334) still snap to `1/3`. Only reached for values whose 4-decimal form
- * is already lossy, so ordinary values never turn into fractions.
+ * none does. Candidates ({@link RATIO_DENOMINATORS}) cover every denominator
+ * 2..16 plus barbeat's finer canonical tuplets (> 16), scanned simplest-first so
+ * the reduced fraction wins (1/3 before 6/18) and a device-jittered read-back
+ * (e.g. 0.33333334) still snaps to `1/3`. Only reached for values whose 4-decimal
+ * form is already lossy, so ordinary values never turn into fractions.
  *
  * @param value - Timing value in musical beats
- * @returns The exact ratio string, or null when no canonical fraction matches
+ * @returns The exact ratio string, or null when no candidate fraction matches
  */
 function findExactRatio(value: number): string | null {
-  for (const den of NOTE_VALUE_DENOMINATORS) {
-    if (den < 2) continue;
-
+  for (const den of RATIO_DENOMINATORS) {
     const num = value * den;
 
     if (Math.abs(num - Math.round(num)) < SAME_TIME_EPSILON) {

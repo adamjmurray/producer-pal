@@ -228,6 +228,22 @@ describe("ratio durations (tuplets)", () => {
     ).toBe("[{p:60,t:1/24,d:1/24,v:100}]");
   });
 
+  it("serializes odd small tuplets (/9 /11 /13 /15) as exact ratios", () => {
+    // Regression: narrowing the candidate set to barbeat's canonical
+    // denominators dropped 9/11/13/15 (which the original dense 2..16 sweep
+    // covered), so these odd tuplets fell back to a lossy decimal and drifted
+    // ~1e-5 on round-trip. Every denominator 2..16 must spell exactly again.
+    for (const den of [9, 11, 13, 15]) {
+      const notes: NoteEvent[] = [
+        { pitch: 60, start_time: 1 / den, duration: 1 / den, velocity: 100 },
+      ];
+      const source = `[{p:60,t:1/${den},d:1/${den},v:100}]`;
+
+      expect(formatMidiJson(notes)).toBe(source);
+      expect(formatMidiJson(interpretMidiJson(source))).toBe(source);
+    }
+  });
+
   it("keeps exact decimals decimal (integers, halves, 0.1 never become ratios)", () => {
     const notes: NoteEvent[] = [
       { pitch: 60, start_time: 0.5, duration: 0.1, velocity: 100 },
