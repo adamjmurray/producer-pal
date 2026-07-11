@@ -77,8 +77,7 @@ vocabulary wins):
    | hihat (hh)   | 42   | ride (rc)    | 51   |
    | tom3 (lt)    | 43   | pedal (ph)   | 44   |
 
-   (toms run high→low: tom1=47 … tom4=41). `hats` is also accepted as an alias
-   for `hihat`.
+   (toms run high→low: tom1=47 … tom4=41).
 
 2. **Absolute pitch name** — `letter [#|b]? (-?octave)`, e.g. `C3`, `F#1`,
    `Gb-1`, using the **Ableton convention (C3 = MIDI 60)** via `pitch.ts`. A
