@@ -213,8 +213,10 @@ right-pane form):
 
 - Left pane: the flat index (no grouping) with create/select/delete.
 - Right pane: an editor for the selected entry's name, description, and body.
-  `name` is only editable while creating a new entry — it is the file's stable
-  slug, so renaming is delete-then-create, not an in-place edit.
+  `name` is the file's stable slug but is editable for an existing entry too:
+  committing an edited name renames in place (the entry moves to the new slug),
+  and a rename onto a name another entry already owns is rejected with the
+  collision surfaced under the field.
 - New/edited entries autosave (idle-debounced, flushed on unmount); creating a
   new entry uses the REST route's create-only mode so it can't silently
   overwrite an existing entry its name happens to slugify to.
@@ -223,7 +225,8 @@ right-pane form):
 
 REST routes: `src/mcp-server/routes/memory-collection-route.ts`, a thin binding
 of the generic `registerCollectionRoutes` (GET list, PUT `:name`, DELETE
-`:name`; writes origin-gated the same way as `POST /config`).
+`:name`, and PUT `:name/rename`; writes origin-gated the same way as
+`POST /config`).
 
 ## Testing
 

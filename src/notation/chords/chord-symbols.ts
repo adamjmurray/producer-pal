@@ -37,7 +37,7 @@ export interface ResolvedChord {
 /**
  * Realize a chord symbol into concrete MIDI pitches: closed, root position,
  * stacked up from a register default. Returns null when the root is unspellable
- * or the quality is unknown — the caller warns and skips.
+ * or the quality is unknown — the caller throws to reject the token.
  * @param root - Root pitch-class name (e.g. "C", "Eb", "F#")
  * @param quality - Quality string as written ("" = major triad; "m7", "maj9", …)
  * @param bass - Slash-bass pitch-class name (e.g. "B"), or null
