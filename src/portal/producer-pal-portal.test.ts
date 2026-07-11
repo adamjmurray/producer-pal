@@ -48,12 +48,14 @@ describe("producer-pal-portal", () => {
   const originalSmallModelMode = process.env.SMALL_MODEL_MODE;
   const originalNotation = process.env.NOTATION;
   const originalFormat = process.env.FORMAT;
+  const originalLiveApi = process.env.LIVE_API;
   const originalOrigin = process.env.MCP_SERVER_ORIGIN;
 
   beforeEach(() => {
     delete process.env.SMALL_MODEL_MODE;
     delete process.env.NOTATION;
     delete process.env.FORMAT;
+    delete process.env.LIVE_API;
     delete process.env.MCP_SERVER_ORIGIN;
   });
 
@@ -63,6 +65,7 @@ describe("producer-pal-portal", () => {
     restoreEnv("SMALL_MODEL_MODE", originalSmallModelMode);
     restoreEnv("NOTATION", originalNotation);
     restoreEnv("FORMAT", originalFormat);
+    restoreEnv("LIVE_API", originalLiveApi);
     restoreEnv("MCP_SERVER_ORIGIN", originalOrigin);
   });
 
@@ -314,6 +317,60 @@ describe("producer-pal-portal", () => {
       smallModelMode: false,
       notation: undefined,
       jsonOutput: false,
+    });
+  });
+
+  it("enables the Direct Live API with the --live-api flag", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--live-api"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: undefined,
+      liveApiEnabled: true,
+    });
+  });
+
+  it("enables the Direct Live API with the LIVE_API env var", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+    process.env.LIVE_API = "true";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: undefined,
+      liveApiEnabled: true,
+    });
+  });
+
+  it("omits liveApiEnabled entirely when the flag/env are unset", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).not.toHaveProperty("liveApiEnabled");
+  });
+
+  it("combines --live-api with other overrides", async () => {
+    process.argv = [
+      "node",
+      "producer-pal-portal.js",
+      "--live-api",
+      "--notation",
+      "midi-json",
+    ];
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "midi-json",
+      jsonOutput: undefined,
+      liveApiEnabled: true,
     });
   });
 });

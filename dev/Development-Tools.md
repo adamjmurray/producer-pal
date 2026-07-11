@@ -175,6 +175,13 @@ The portal is a Node-side stdio→HTTP bridge to `localhost:3350/mcp`, so it
 sidesteps CORS entirely (server-to-server fetch, no browser involved). Use an
 absolute path — `npx` resolves relative paths against its own cwd.
 
+The portal also accepts config-override flags it pushes to the device via
+`POST /config` on connect (each also has an env var, and only ever _sets_ the
+value — it never reverts a device setting): `-s`/`--small-model-mode`,
+`-n`/`--notation <value>`, `-f`/`--format <json|compact>`, and `--live-api`
+(enables the opt-in `ppal-live-api` tool). Handy for exercising a specific
+config against a release build through the inspector.
+
 ## Build Warnings
 
 ### Expected Warnings

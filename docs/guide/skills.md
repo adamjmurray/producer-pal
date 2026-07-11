@@ -117,6 +117,23 @@ trims the tool descriptions) and consider `stark` instead of `midi-json`:
 node ppal.mjs --set-config '{"notation":"stark","smallModelMode":true}'
 ```
 
+### Direct Live API (advanced)
+
+The `ppal-live-api` tool gives direct, low-level access to the
+[Live Object Model](https://docs.cycling74.com/apiref/lom/) for reads and writes
+the higher-level tools don't cover. It's off by default (absent from
+`--list-tools`). An agent can turn it on itself — the setting is global to the
+device:
+
+```bash
+node ppal.mjs --set-config '{"liveApiEnabled":true}'
+```
+
+It's not the default for a reason: the specialized tools are tuned for reliable
+results, while the raw Live API is easy to misuse. Reach for it for custom
+integrations, scripting, or debugging directly against the Live API when the
+standard tools aren't enough.
+
 ::: tip Saving tokens: compact responses
 
 The REST API returns JSON by default — a parsed `result` plus a separate

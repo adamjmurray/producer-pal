@@ -57,6 +57,29 @@ it on the device when connected:
 
 :::
 
+::: details Advanced: enabling the Direct Live API
+
+Add the `--live-api` flag to turn on the opt-in
+[Direct Live API](/features#ppal-live-api) tool (`ppal-live-api`) when the
+server connects — the same setting as the device's **Setup** tab, so it's global
+to the device:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "producer-pal", "--live-api"]
+}
+```
+
+Not recommended as a default — the specialized tools are tuned for reliable
+results, while the raw Live API is low-level and easy to misuse. Use it for
+custom control, integrations, or debugging directly against the
+[Live Object Model](https://docs.cycling74.com/apiref/lom/) when the standard
+tools aren't enough. The flag only ever _enables_ the tool; it never turns off a
+setting you toggled on the device.
+
+:::
+
 ### Option B: Local MCP via HTTP
 
 Requires Ableton running first, no auto-reconnection. Use the URL:

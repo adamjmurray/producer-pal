@@ -286,7 +286,10 @@ results across most models. The raw Live API is low-level and can give weaker
 results out of the box, so it's hidden rather than competing with the focused
 tools. It's a powerful escape hatch for scripting and advanced workflows,
 especially with capable coding agents. Enable it on the **Setup** tab of the
-Producer Pal Max for Live device. When disabled, MCP clients and the
+Producer Pal Max for Live device, or programmatically via
+[`POST /config`](/guide/rest-api#live-api) (coding agents driving the
+[Agent Skill](/guide/skills) can flip it themselves, and the `npx producer-pal`
+MCP server accepts a `--live-api` flag). When disabled, MCP clients and the
 [REST API](/guide/rest-api) both stop seeing the tool. See the
 [REST API Live API section](/guide/rest-api#live-api) for the full operation
 reference and examples.

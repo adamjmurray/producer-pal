@@ -47,6 +47,15 @@ const smallModelMode =
   flags.has("--small-model-mode") ||
   process.env.SMALL_MODEL_MODE === "true";
 
+// Direct Live API opt-in: `--live-api` (or LIVE_API env). Enables the low-level
+// `ppal-live-api` tool at the device level (global — MCP clients, REST API, and
+// the chat UI all see it). Advanced escape hatch for custom integrations,
+// scripting, and debugging directly against the Live Object Model; not
+// recommended as a default. Like the other overrides, this only ever turns the
+// setting ON — it never disables a setting the user enabled on the device.
+const liveApiEnabled =
+  flags.has("--live-api") || process.env.LIVE_API === "true";
+
 // Notation override: `--notation <value>` / `-n <value>` (or NOTATION env).
 // Invalid values are ignored (device keeps its own setting) with a log line
 // rather than crashing the bridge.
@@ -87,6 +96,9 @@ const bridge = new StdioHttpBridge(mcpUrl, {
   smallModelMode,
   notation,
   jsonOutput,
+  // Only pass the flag when enabling — an unset override leaves the device's own
+  // Direct Live API setting alone (the bridge never pushes a `false`).
+  ...(liveApiEnabled ? { liveApiEnabled: true } : {}),
 });
 
 // Handle graceful shutdown

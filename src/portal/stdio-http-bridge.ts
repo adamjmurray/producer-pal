@@ -29,6 +29,7 @@ interface BridgeOptions {
   smallModelMode?: boolean;
   notation?: Notation;
   jsonOutput?: boolean;
+  liveApiEnabled?: boolean;
 }
 
 interface FallbackTool {
@@ -66,12 +67,14 @@ export class StdioHttpBridge {
   private smallModelMode: boolean;
   private notation?: Notation;
   private jsonOutput?: boolean;
+  private liveApiEnabled?: boolean;
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
     this.smallModelMode = options.smallModelMode ?? false;
     this.notation = options.notation;
     this.jsonOutput = options.jsonOutput;
+    this.liveApiEnabled = options.liveApiEnabled;
     this.fallbackTools = this._generateFallbackTools();
   }
 
@@ -206,23 +209,28 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
   /**
    * Push the CLI/env config overrides (small-model mode, notation, response
-   * format) to the device via POST /config after connecting. Only the
-   * explicitly-requested settings are sent, so an unset option leaves the
-   * device's own setting alone. No-ops when nothing was requested. Runs before
-   * the client's first tools/list because the server re-reads config per
-   * request, so the tool descriptions reflect the override. The settings are
-   * global to the device.
+   * format, Direct Live API) to the device via POST /config after connecting.
+   * Only the explicitly-requested settings are sent, so an unset option leaves
+   * the device's own setting alone. No-ops when nothing was requested. Runs
+   * before the client's first tools/list because the server re-reads config per
+   * request, so the tool list and descriptions reflect the override (enabling
+   * Direct Live API here makes `ppal-live-api` show up in that first list). The
+   * settings are global to the device.
    */
   private async _pushConfigOverrides(): Promise<void> {
     const overrides: {
       smallModelMode?: boolean;
       notation?: Notation;
       jsonOutput?: boolean;
+      liveApiEnabled?: boolean;
     } = {};
 
     if (this.smallModelMode) overrides.smallModelMode = true;
     if (this.notation) overrides.notation = this.notation;
     if (this.jsonOutput != null) overrides.jsonOutput = this.jsonOutput;
+    // Only push when enabling — never send `false`, so the portal can't turn off
+    // a Direct Live API setting the user enabled on the device.
+    if (this.liveApiEnabled) overrides.liveApiEnabled = true;
 
     if (Object.keys(overrides).length === 0) return;
 

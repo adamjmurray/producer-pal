@@ -95,9 +95,20 @@ The REST API returns JSON by default, so:
 
 `ppal-live-api` provides direct access to the
 [Live Object Model](https://docs.cycling74.com/apiref/lom/) for reads and writes
-that aren't covered by the higher-level tools. It's off by default — if it's
-missing from `--list-tools`, ask the user to enable **Direct Live API** on the
-**Setup** tab of the Producer Pal device.
+that aren't covered by the higher-level tools. It's off by default and missing
+from `--list-tools` until enabled.
+
+Enable it programmatically (global device setting) with:
+
+```bash
+node ppal.mjs --set-config '{"liveApiEnabled":true}'
+```
+
+Not recommended as a default — the higher-level tools are tuned for reliable
+results, while the raw Live API is low-level and easy to misuse. Reach for it
+for custom integrations, scripting, or debugging directly against the Live
+Object Model when the standard tools aren't enough. (The user can also toggle
+**Direct Live API** on the device's **Setup** tab.)
 
 ## Prerequisites
 

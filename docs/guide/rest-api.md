@@ -203,7 +203,19 @@ The `ppal-live-api` tool provides direct access to the
 scripting and debugging.
 
 It is opt-in: enable **Direct Live API** on the **Setup** tab of the Producer
-Pal Max for Live device.
+Pal Max for Live device, or programmatically with a `POST /config` request:
+
+```bash
+curl -X POST http://localhost:3350/config \
+  -H 'Content-Type: application/json' \
+  -d '{"liveApiEnabled": true}'
+```
+
+The setting is global to the device (it also affects the chat UI and any
+connected MCP clients). This is an advanced escape hatch — the higher-level
+tools are tuned for reliable results, so reach for the raw Live API only for
+custom integrations, scripting, or debugging when the standard tools aren't
+enough.
 
 ### Request structure
 
