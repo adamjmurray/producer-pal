@@ -44,18 +44,23 @@ context editor has no tab beyond the five below.
 ## `ppal-context` tool
 
 `src/tools/core/context.def.ts` + `context.ts` + `context-helpers.ts`. One tool,
-three scopes, each a single storage shape:
+three scopes, each a single storage shape.
 
-| Scope     | Storage                                       | Actions                                          |
-| --------- | --------------------------------------------- | ------------------------------------------------ |
-| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace)                        |
-| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace)                        |
-| `memory`  | indexed collection, `~/.producer-pal/memory/` | `remember`, `forget`, `list`, `read` (by `name`) |
+The action verbs are uniform across scopes — `read` / `write` / `delete` — and
+their meaning is driven by `scope`, so there is one verb set to learn rather
+than scope-specific verbs:
 
-`scope` defaults to `project`; `action` defaults to `read`. An action not valid
-for the given scope (e.g. `remember` on `scope:project`) throws before touching
-any state — `context.ts` switches on scope first, then validates the action
-within it.
+| Scope     | Storage                                       | Actions                                                                                         |
+| --------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace)                                                                       |
+| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace)                                                                       |
+| `memory`  | indexed collection, `~/.producer-pal/memory/` | `read` (entry by `name`, or the index if no `name`), `write` (upsert `name`), `delete` (`name`) |
+
+`scope` defaults to `project`; `action` defaults to `read`. `read` on `memory`
+with no `name` returns the whole index (there is no separate `list` action).
+`delete` is only valid under `scope:memory` — issued on `project`/`global` it
+throws before touching any state, because `context.ts` switches on scope first,
+then validates the action within it.
 
 `project` and `global` are unchanged from the pre-memory tool: `project` is a
 device-held blob (V8 has no filesystem, so nothing here round-trips to Node);
@@ -66,19 +71,20 @@ to reach `context.md`.
 `memory` also round-trips to Node, via sibling RPC ops (`memory.read` /
 `memory.remember` / `memory.forget` / `memory.list` in
 `helpers/memory/global-memory-node-routes.ts`), which call directly into the
-store in `helpers/memory/global-memory-store.ts`. Every mutating route
-(`remember`, `forget`) echoes back the freshly regenerated index, so the tool
-result always reflects the current memory list even for a client that never
-re-connects.
+store in `helpers/memory/global-memory-store.ts`. The wire route names still
+read `remember`/`forget`/`list` — internal identifiers that predate the verb
+unification and never reach the AI; the tool's `write`/`delete`/`read`(no-name)
+actions map onto them. Every mutating route echoes back the freshly regenerated
+index, so the tool result always reflects the current memory list even for a
+client that never re-connects.
 
 ### Small-model mode
 
 `context.def.ts`'s modal config narrows the tool to blobs only: `scope` drops
-the `memory` enum value, `action` drops `remember` / `forget` / `list` (leaving
-`read` / `write`), and `name` / `description` are hidden params. A small model
-therefore only ever sees `project` / `global` read-write — it cannot address the
-memory collection at all, and (see below) the memory-index injection is skipped
-for the same reason.
+the `memory` enum value, `action` drops `delete` (leaving `read` / `write`), and
+`name` / `description` are hidden params. A small model therefore only ever sees
+`project` / `global` read-write — it cannot address the memory collection at
+all, and (see below) the memory-index injection is skipped for the same reason.
 
 ## Memory entry format
 
@@ -139,18 +145,22 @@ file and the injected connect block below, so the two can never drift from each
 other.
 
 The backend regenerates `MEMORY.md` from the entry files' frontmatter on every
-`remember` / `forget` (and self-heals it on `list`). There is no hand-maintained
-index to fall out of sync — editing a file's frontmatter directly and then
-hitting `list` (or reconnecting) re-derives it.
+`write` / `delete` (and self-heals it on a no-name `read`). There is no
+hand-maintained index to fall out of sync — editing a file's frontmatter
+directly and then issuing a no-name `read` (or reconnecting) re-derives it.
 
 ## Injection — index-only
 
-On a successful `ppal-connect`, the memory index (every entry's
-`name — description`, nothing else) is appended as a distinct text block:
+On a successful `ppal-connect`, the three context layers are each appended as
+their own distinct, labeled text block, in order: project context, global
+context, then the memory index. Each block is just a header plus its data — the
+layer purpose/ownership teaching lives in the (customizable) skills, not here.
+For memory, only the index (every entry's `name — description`, nothing else) is
+injected:
 
-- **Always injected** (large-model mode, memory non-empty): the full index, with
-  a short explanation of what it is and how to load a body (`ppal-context`
-  `action:"read"`, `scope:"memory"`, `name:"<name>"`).
+- **Always injected** (large-model mode, memory non-empty): the full index,
+  headed with how to load a body (`ppal-context` `action:"read"`,
+  `scope:"memory"`, `name:"<name>"`).
 - **Never injected**: any memory _body_. A fact that must be always-on belongs
   in context (`global`/`project`), not memory — the model escalates there by
   asking the user (see Discipline below).
@@ -159,47 +169,53 @@ On a successful `ppal-connect`, the memory index (every entry's
 This is the `withMemory` producer in `helpers/memory/memory-inject.ts`, composed
 onto `callLiveApiEnriched` via the shared append seam
 (`helpers/connect-append.ts`'s `withConnectAppend` — the same mechanism
-`withGlobalContext` and the `WARNING:` relay use). Because it runs Node-side on
-the `ppal-connect` response, every MCP client sees it, including external
-clients with no memory/recall harness of their own (Claude Desktop, LM Studio) —
-the index _is_ the recall harness.
+`withProjectContext`, `withGlobalContext`, and the `WARNING:` relay use).
+Because it runs Node-side on the `ppal-connect` response, every MCP client sees
+it, including external clients with no memory/recall harness of their own
+(Claude Desktop, LM Studio) — the index _is_ the recall harness. (Project
+context is likewise injected Node-side rather than embedded in V8's `connect()`
+result, so all clients see the same shape; see `withProjectContext` in
+`helpers/global-context/global-context-inject.ts`, which co-hosts both context
+blob injectors.)
 
 ## Write surface
 
 `ppal-context` `scope:"memory"`:
 
-- `read` — `name` required; returns that entry's body, or a not-found note.
-- `remember` — `name` + `content` required, `description` optional; creates or
-  overwrites `memory/<name>.md` (same slug ⇒ update) and re-derives the index.
-- `forget` — `name` required; deletes the file (if present) and re-derives the
+- `read` — with a `name`, returns that entry's body (or a not-found note); with
+  no `name`, returns the whole index.
+- `write` — `name` + `content` + `description` required; creates or overwrites
+  `memory/<name>.md` (same slug ⇒ update) and re-derives the index.
+- `delete` — `name` required; deletes the file (if present) and re-derives the
   index.
-- `list` — returns the current derived index (usually already visible from
-  connect; this is an explicit refresh).
 
-`remember`/`forget` responses append the freshly regenerated index so the
-model's view of what's stored never goes stale mid-conversation.
+`write`/`delete` responses append the freshly regenerated index so the model's
+view of what's stored never goes stale mid-conversation.
 
 ## Discipline
 
 Instructions for the model live in the shipped skills fragments
-(`src/skills/core/core-standard.ts`; large-model mode only — small-model mode
-has no memory instructions since the tool surface excludes it):
+(`src/skills/core/core-standard.ts`, the `## Context & Memory` section;
+large-model mode only — small-model mode has no memory instructions since the
+tool surface excludes it). The section frames all three layers and their
+ownership: `project`/`global` context are the user's (confirm before writing),
+`memory` is the assistant's to manage freely.
 
-- `remember` lasting facts: who the user is as a musician, how they want the
-  assistant to work with them, cross-project goals, external pointers (e.g. a
-  sample folder) — not this-Live-Set details (`scope:project`) or one-off task
+- `write` lasting facts to memory: who the user is as a musician, how they want
+  the assistant to work with them, cross-project goals, external pointers (e.g.
+  a sample folder) — not this-Live-Set details (`scope:project`) or one-off task
   facts.
 - The description is the only signal visible before a `read` — write it as a
   precise recall hook (what's inside, when it's relevant), not a vague label.
-- Before remembering, check the index for an entry that already covers it and
-  reuse its name to update rather than duplicate. One fact per memory.
+- Before writing, check the index for an entry that already covers it and reuse
+  its name to update rather than duplicate. One fact per memory.
 - Default to a memory. Only escalate to context (`action:write` on
   `scope:global` or `scope:project`) when a fact is clearly a long-lived
   preference or core project goal that belongs always-in-context — ask first,
   then write it on the user's behalf.
-- `forget` anything wrong or outdated rather than leaving stale entries. Convert
+- `delete` anything wrong or outdated rather than leaving stale entries. Convert
   relative dates ("next week") to absolute before storing.
-- Remember quietly as facts emerge; don't announce each save.
+- Save quietly as facts emerge; don't announce each one.
 
 ## Webui memory manager
 
@@ -221,7 +237,7 @@ right-pane form):
   new entry uses the REST route's create-only mode so it can't silently
   overwrite an existing entry its name happens to slugify to.
 - The list keeps polling on an interval and on window focus, so an entry the
-  assistant remembers or forgets mid-session appears without a manual refresh.
+  assistant writes or deletes mid-session appears without a manual refresh.
 
 REST routes: `src/mcp-server/routes/memory-collection-route.ts`, a thin binding
 of the generic `registerCollectionRoutes` (GET list, PUT `:name`, DELETE
