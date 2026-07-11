@@ -6,7 +6,13 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import {
+  fireEvent,
+  render,
+  type RenderResult,
+  screen,
+  waitFor,
+} from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
@@ -34,6 +40,40 @@ function fakeCollection(
     { kind: "ready", entries: [] },
     over,
   );
+}
+
+/** Overrides for the shared editor render helpers. */
+interface EditorProps {
+  /** The collection hook stub (default: an idle, no-op fake). */
+  collection?: UseMemoryCollectionReturn;
+  /** The entry to edit, or null to create (default: null / create mode). */
+  entry?: MemoryEntryView | null;
+  /** The onSaved callback (default: a spy). */
+  onSaved?: (name: string) => void;
+}
+
+/**
+ * The editor element with test defaults, so render and rerender share one shape.
+ * @param props - Overrides for the collection, entry, and onSaved
+ * @returns The MemoryEntryEditor element
+ */
+function editorElement(props: EditorProps = {}): preact.JSX.Element {
+  return (
+    <MemoryEntryEditor
+      collection={props.collection ?? fakeCollection()}
+      entry={props.entry ?? null}
+      onSaved={props.onSaved ?? vi.fn()}
+    />
+  );
+}
+
+/**
+ * Render the editor with test defaults (idle collection, create mode).
+ * @param props - Overrides for the collection, entry, and onSaved
+ * @returns The Testing Library render result (for unmount / rerender)
+ */
+function renderEditor(props: EditorProps = {}): RenderResult {
+  return render(editorElement(props));
 }
 
 const EXISTING: MemoryEntryView = {
@@ -82,13 +122,7 @@ describe("MemoryEntryEditor — new entry", () => {
     });
     const onSaved = vi.fn();
 
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={null}
-        onSaved={onSaved}
-      />,
-    );
+    renderEditor({ collection, onSaved });
 
     // Clicking Create on a blank form reveals each required-field error and
     // does not save (rather than a silently-disabled button with no reason).
@@ -121,13 +155,7 @@ describe("MemoryEntryEditor — new entry", () => {
   });
 
   it("shows the description error on blur without touching the others", () => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection()}
-        entry={null}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor();
 
     // Leaving the (empty) description flags only it; name/body stay quiet.
     fireEvent.blur(screen.getByRole("textbox", { name: /Description/ }));
@@ -138,13 +166,7 @@ describe("MemoryEntryEditor — new entry", () => {
   });
 
   it("flags the name and contents fields on blur too", () => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection()}
-        entry={null}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor();
 
     fireEvent.blur(screen.getByRole("textbox", { name: /Name/ }));
     fireEvent.blur(screen.getByRole("textbox", { name: /Memory/ }));
@@ -159,13 +181,7 @@ describe("MemoryEntryEditor — new entry", () => {
     });
     const onSaved = vi.fn();
 
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={null}
-        onSaved={onSaved}
-      />,
-    );
+    renderEditor({ collection, onSaved });
 
     fillCreateForm({ name: "x", description: "d", body: "y" });
     fireEvent.click(screen.getByRole("button", { name: "Create memory" }));
@@ -191,13 +207,7 @@ describe("MemoryEntryEditor — new draft is not auto-saved on close", () => {
       saveEntry: vi.fn().mockResolvedValue(saved),
     });
 
-    const { unmount } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={null}
-        onSaved={vi.fn()}
-      />,
-    );
+    const { unmount } = renderEditor({ collection });
 
     fillCreateForm({
       name: "loose-drums",
@@ -218,13 +228,7 @@ describe("MemoryEntryEditor — existing entry", () => {
       saveEntry: vi.fn().mockResolvedValue(EXISTING),
     });
 
-    const { unmount } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    const { unmount } = renderEditor({ collection, entry: EXISTING });
 
     // The name is an editable Rename field seeded with the current slug.
     expect(
@@ -253,13 +257,7 @@ describe("MemoryEntryEditor — existing entry", () => {
   // Existing memories autosave; the editor has neither a Save button (autosave)
   // nor a Delete button (delete lives on the list row, see MemoryList.test).
   it("renders neither a Save nor a Delete button for an existing memory", () => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection()}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({ entry: EXISTING });
 
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
@@ -270,13 +268,7 @@ describe("MemoryEntryEditor — existing entry", () => {
       saveEntry: vi.fn().mockResolvedValue(EXISTING),
     });
 
-    const { unmount } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    const { unmount } = renderEditor({ collection, entry: EXISTING });
 
     // Clearing the required description surfaces its error (existing entries are
     // pre-touched, so it shows at once) and blocks the autosave.
@@ -292,13 +284,7 @@ describe("MemoryEntryEditor — existing entry", () => {
   });
 
   it("flags cleared contents on an existing memory", () => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection()}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({ entry: EXISTING });
 
     fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
       target: { value: "" },
@@ -312,13 +298,7 @@ describe("MemoryEntryEditor — existing entry", () => {
       saveEntry: vi.fn().mockResolvedValue(EXISTING),
     });
 
-    const { unmount } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    const { unmount } = renderEditor({ collection, entry: EXISTING });
 
     // Emptying the name surfaces its error (existing entries are pre-touched),
     // and a later body edit can't autosave while the form is invalid.
@@ -348,13 +328,7 @@ describe("MemoryEntryEditor — rename", () => {
     const collection = fakeCollection({ renameEntry });
     const onSaved = vi.fn();
 
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={onSaved}
-      />,
-    );
+    renderEditor({ collection, entry: EXISTING, onSaved });
 
     const nameInput = screen.getByRole("textbox", { name: "Rename" });
 
@@ -374,13 +348,7 @@ describe("MemoryEntryEditor — rename", () => {
     const renameEntry = vi.fn().mockResolvedValue(RENAMED);
     const collection = fakeCollection({ renameEntry });
 
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({ collection, entry: EXISTING });
 
     const nameInput = screen.getByRole("textbox", { name: "Rename" });
 
@@ -401,13 +369,7 @@ describe("MemoryEntryEditor — rename", () => {
     const renameEntry = vi.fn();
     const collection = fakeCollection({ renameEntry });
 
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({ collection, entry: EXISTING });
 
     // Blur without editing the name.
     fireEvent.blur(screen.getByRole("textbox", { name: "Rename" }));
@@ -419,13 +381,7 @@ describe("MemoryEntryEditor — rename", () => {
     const renameEntry = vi.fn();
     const collection = fakeCollection({ renameEntry });
 
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({ collection, entry: EXISTING });
 
     const nameInput = screen.getByRole("textbox", {
       name: "Rename",
@@ -448,13 +404,7 @@ describe("MemoryEntryEditor — rename", () => {
   });
 
   it("clears the name error as soon as a valid name is typed", () => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection()}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({ entry: EXISTING });
 
     const nameInput = screen.getByRole("textbox", { name: "Rename" });
 
@@ -465,7 +415,7 @@ describe("MemoryEntryEditor — rename", () => {
     expect(screen.queryByText("Name is required.")).toBeNull();
   });
 
-  it("reverts the name field when the rename fails (collision)", async () => {
+  it("reverts the field AND surfaces the collision reason under the name on a failed rename", async () => {
     const renameEntry = vi.fn().mockResolvedValue(null);
     const collection = fakeCollection({
       renameEntry,
@@ -473,13 +423,7 @@ describe("MemoryEntryEditor — rename", () => {
       saveError: 'A memory named "taken" already exists',
     });
 
-    render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({ collection, entry: EXISTING });
 
     const nameInput = screen.getByRole("textbox", {
       name: "Rename",
@@ -491,14 +435,20 @@ describe("MemoryEntryEditor — rename", () => {
     await waitFor(() => {
       expect(renameEntry).toHaveBeenCalled();
     });
-    // The field snaps back to the original slug (the collision error itself
-    // surfaces in the header's save indicator, not here).
+    // The field snaps back to the original slug AND the specific reason shows
+    // right under it — not just a generic "Save failed" in the header.
     await waitFor(() => {
-      expect(
-        (screen.getByRole("textbox", { name: "Rename" }) as HTMLInputElement)
-          .value,
-      ).toBe("prefers-c-minor");
+      expect(nameInput.value).toBe("prefers-c-minor");
     });
+    expect(
+      screen.getByText('A memory named "taken" already exists'),
+    ).toBeTruthy();
+
+    // Editing the name dismisses the stale collision error.
+    fireEvent.input(nameInput, { target: { value: "prefers-c-minor-2" } });
+    expect(
+      screen.queryByText('A memory named "taken" already exists'),
+    ).toBeNull();
   });
 });
 
@@ -506,16 +456,12 @@ describe("MemoryEntryEditor — rename", () => {
 // MemoryScreen.test); only the create flow shows an inline error by the button.
 describe("MemoryEntryEditor — create error", () => {
   it("shows the create error inline beside the Create button", () => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection({
-          saveStatus: "error",
-          saveError: 'A memory named "taken" already exists',
-        })}
-        entry={null}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({
+      collection: fakeCollection({
+        saveStatus: "error",
+        saveError: 'A memory named "taken" already exists',
+      }),
+    });
 
     expect(
       screen.getByText('A memory named "taken" already exists'),
@@ -523,13 +469,9 @@ describe("MemoryEntryEditor — create error", () => {
   });
 
   it("falls back to 'Save failed' inline when there is no error message", () => {
-    render(
-      <MemoryEntryEditor
-        collection={fakeCollection({ saveStatus: "error", saveError: null })}
-        entry={null}
-        onSaved={vi.fn()}
-      />,
-    );
+    renderEditor({
+      collection: fakeCollection({ saveStatus: "error", saveError: null }),
+    });
 
     expect(screen.getByText("Save failed")).toBeTruthy();
   });
@@ -541,13 +483,7 @@ describe("MemoryEntryEditor — external update banner", () => {
 
   it("appears when the entry prop changes externally while the draft is clean", () => {
     const collection = fakeCollection();
-    const { rerender } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    const { rerender } = renderEditor({ collection, entry: EXISTING });
 
     expect(screen.queryByText(BANNER_TEXT)).toBeNull();
 
@@ -555,11 +491,10 @@ describe("MemoryEntryEditor — external update banner", () => {
     // while it's open — the same instance stays mounted (the collection just
     // polled), so only the entry prop changes.
     rerender(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={{ ...EXISTING, body: "Composes in D minor now." }}
-        onSaved={vi.fn()}
-      />,
+      editorElement({
+        collection,
+        entry: { ...EXISTING, body: "Composes in D minor now." },
+      }),
     );
 
     expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
@@ -572,21 +507,9 @@ describe("MemoryEntryEditor — external update banner", () => {
       description: "updated by the assistant",
       body: "Composes in D minor now.",
     };
-    const { rerender } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    const { rerender } = renderEditor({ collection, entry: EXISTING });
 
-    rerender(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={updated}
-        onSaved={vi.fn()}
-      />,
-    );
+    rerender(editorElement({ collection, entry: updated }));
     expect(screen.getByText(BANNER_TEXT)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Reload" }));
@@ -604,24 +527,17 @@ describe("MemoryEntryEditor — external update banner", () => {
 
   it("stays suppressed while the user is typing (dirty draft), even if the entry changes externally", () => {
     const collection = fakeCollection();
-    const { rerender } = render(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={EXISTING}
-        onSaved={vi.fn()}
-      />,
-    );
+    const { rerender } = renderEditor({ collection, entry: EXISTING });
 
     fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
       target: { value: "Still editing this myself." },
     });
 
     rerender(
-      <MemoryEntryEditor
-        collection={collection}
-        entry={{ ...EXISTING, body: "Composes in D minor now." }}
-        onSaved={vi.fn()}
-      />,
+      editorElement({
+        collection,
+        entry: { ...EXISTING, body: "Composes in D minor now." },
+      }),
     );
 
     expect(screen.queryByText(BANNER_TEXT)).toBeNull();

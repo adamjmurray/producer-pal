@@ -90,6 +90,19 @@ export function MemoryEntryEditor(
 
   useDraftLeaveGuard(isDirtyNew, DISCARD_NEW_MEMORY_MESSAGE);
 
+  // The name field's error + change/rename handlers (rename commit, and
+  // surfacing a failed rename's reason under the field). See useMemoryRename.
+  const { nameError, onNameChange, onRename } = useMemoryRename({
+    collection,
+    entry,
+    setName,
+    description,
+    body,
+    requiredError: validation.errors.name,
+    noteSaved,
+    onSaved,
+  });
+
   const handleSave = async (): Promise<void> => {
     const saved = await doSave();
 
@@ -110,38 +123,6 @@ export function MemoryEntryEditor(
     }
 
     void handleSave();
-  };
-
-  // Commit a rename (blur / Enter on the name field). An emptied name is kept
-  // empty so its "Name is required" error stays visible and the save stays
-  // blocked (validation) — the user recovers by typing a new name, exactly like
-  // the description/body fields; an unchanged name just normalizes whitespace.
-  // Neither triggers a rename. On success, mark the OLD-name draft as saved so
-  // the unmount flush the navigation triggers can't re-create the old slug, then
-  // navigate to the renamed entry. The current draft fields ride along, so a
-  // dirty body isn't lost; a collision surfaces via saveError and reverts.
-  const handleRename = (raw: string): void => {
-    if (entry == null) return;
-    const trimmed = raw.trim();
-
-    if (trimmed === "" || trimmed === entry.name) {
-      if (trimmed !== "") setName(entry.name);
-
-      return;
-    }
-
-    void collection
-      .renameEntry(entry.name, trimmed, { description, content: body })
-      .then((renamed) => {
-        if (renamed == null) {
-          setName(entry.name);
-
-          return;
-        }
-
-        noteSaved(memoryEntryKey({ name: entry.name, description, body }));
-        onSaved(renamed.name);
-      });
   };
 
   // Adopt the server's current fields as the new draft AND advance the
@@ -171,10 +152,10 @@ export function MemoryEntryEditor(
         name={name}
         displayName={entry?.name}
         placeholder="prefers-c-minor"
-        onChange={setName}
+        onChange={onNameChange}
         onBlur={() => validation.markTouched("name")}
-        error={validation.errors.name}
-        onRename={handleRename}
+        error={nameError}
+        onRename={onRename}
       />
       <DescriptionField
         hint="One-line recall hook shown in the index."
@@ -208,6 +189,88 @@ export function MemoryEntryEditor(
 /** Confirm text shown before abandoning an unsaved new-memory draft. */
 const DISCARD_NEW_MEMORY_MESSAGE =
   "Discard this new memory? Your changes will be lost.";
+
+/** What {@link useMemoryRename} needs from the editor's live draft. */
+interface MemoryRenameParams {
+  /** The collection hook (owns renameEntry + the shared saveError). */
+  collection: UseMemoryCollectionReturn;
+  /** The entry being edited, or null when creating (no rename in that mode). */
+  entry: MemoryEntryView | null;
+  /** Set the name draft (revert on a failed/empty rename). */
+  setName: (name: string) => void;
+  /** The current description draft (carried into the rename write). */
+  description: string;
+  /** The current body draft (carried into the rename write). */
+  body: string;
+  /** The client-side required-name error; it takes priority over a rename error. */
+  requiredError?: string;
+  /** Advance the autosave baseline for the OLD name after a successful rename. */
+  noteSaved: (echoKey: string) => void;
+  /** Navigate to the renamed entry's new slug. */
+  onSaved: (name: string) => void;
+}
+
+/**
+ * The name field's error plus its change/rename handlers. The error is a
+ * required-field miss, else the reason a rename was refused (a name collision or
+ * a server-rejected slug) — read fresh from the collection each render, not off
+ * the stale rename closure — cleared as soon as the user edits the name. An
+ * emptied/unchanged name never renames (an emptied one keeps its required error
+ * visible; an unchanged one just normalizes whitespace). On success, the OLD
+ * name's draft is marked saved so the navigation's unmount flush can't re-create
+ * the old slug; the current draft fields ride along so a dirty body isn't lost.
+ * Extracted so the editor body stays within the line limit.
+ * @param params - The live draft + collection the rename needs
+ * @returns The name field's error and its change/rename handlers
+ */
+function useMemoryRename(params: MemoryRenameParams): {
+  nameError?: string;
+  onNameChange: (value: string) => void;
+  onRename: (raw: string) => void;
+} {
+  const { collection, entry, setName, description, body } = params;
+  const { requiredError, noteSaved, onSaved } = params;
+  const [renameFailed, setRenameFailed] = useState(false);
+
+  const nameError =
+    requiredError ??
+    (renameFailed ? (collection.saveError ?? undefined) : undefined);
+
+  // Drive the name input and dismiss any stale rename error as the user edits.
+  const onNameChange = (value: string): void => {
+    setName(value);
+    setRenameFailed(false);
+  };
+
+  // Commit a rename on blur / Enter; see the hook's doc for the full contract.
+  const onRename = (raw: string): void => {
+    if (entry == null) return;
+    const trimmed = raw.trim();
+
+    if (trimmed === "" || trimmed === entry.name) {
+      if (trimmed !== "") setName(entry.name);
+
+      return;
+    }
+
+    void collection
+      .renameEntry(entry.name, trimmed, { description, content: body })
+      .then((renamed) => {
+        if (renamed == null) {
+          setRenameFailed(true);
+          setName(entry.name);
+
+          return;
+        }
+
+        setRenameFailed(false);
+        noteSaved(memoryEntryKey({ name: entry.name, description, body }));
+        onSaved(renamed.name);
+      });
+  };
+
+  return { nameError, onNameChange, onRename };
+}
 
 /**
  * The create-flow footer: the Create button plus an inline error when a create
