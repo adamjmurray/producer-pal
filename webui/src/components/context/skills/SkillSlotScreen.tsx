@@ -14,7 +14,10 @@ import {
 import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
 import { DriftNote } from "#webui/components/context/editor/DriftNote";
 import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
-import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";
+import {
+  MarkdownDropZone,
+  useImportNotice,
+} from "#webui/components/context/MarkdownDropZone";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 import {
@@ -65,7 +68,12 @@ export function SkillSlotScreen(
     props;
   const memory = useSlotDocMemory(overrides, slot);
   const editor = useContextEditorState(memory, RESET_CONFIRM);
-  const io = makeContextIoHandlers(editor, `producer-pal-skill-${slot.name}`);
+  const importNotice = useImportNotice();
+  const io = makeContextIoHandlers(
+    editor,
+    `producer-pal-skill-${slot.name}`,
+    importNotice.showNotice,
+  );
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Match the other doc tabs at rest; widen to two columns only when the
   // built-in reference is revealed. Resetting collapses the reveal (see
@@ -103,6 +111,8 @@ export function SkillSlotScreen(
         )}
         <MarkdownDropZone
           onImportText={io.onImportText}
+          notice={importNotice.notice}
+          onReject={importNotice.showNotice}
           className="flex-1 min-h-0 flex flex-col"
         >
           <OverridePanes

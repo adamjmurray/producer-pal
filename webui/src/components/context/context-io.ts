@@ -8,6 +8,8 @@ import {
   MARKDOWN_ACCEPT,
   markdownExportFilename,
   pickTextFile,
+  READ_ERROR_MESSAGE,
+  TOO_LARGE_MESSAGE,
 } from "#webui/utils/text-file-io";
 
 /** The subset of the editor-state hook the import/export handlers need. */
@@ -32,17 +34,24 @@ export interface ContextIoHandlers {
  * their controls-strip buttons and {@link MarkdownDropZone} to these.
  * @param editor - The editor-state hook (import/getContent surface)
  * @param exportBasename - Human basename for the export file (dated + slugified)
+ * @param onImportError - Surface a picker rejection (too-large/unreadable) to the
+ *   user, mirroring the drop zone's notice; a plain cancel stays silent
  * @returns The wired handlers
  */
 export function makeContextIoHandlers(
   editor: EditorIoTarget,
   exportBasename: string,
+  onImportError?: (message: string) => void,
 ): ContextIoHandlers {
   const onImportText = (text: string): void => void editor.handleImport(text);
 
   const onImport = (): void => {
-    void pickTextFile(MARKDOWN_ACCEPT).then((text) => {
-      if (text != null) onImportText(text);
+    void pickTextFile(MARKDOWN_ACCEPT).then((result) => {
+      if (result.kind === "text") onImportText(result.text);
+      else if (result.kind === "too-large") onImportError?.(TOO_LARGE_MESSAGE);
+      else if (result.kind === "read-error")
+        onImportError?.(READ_ERROR_MESSAGE);
+      // "cancel": the user dismissed the picker — nothing to report.
     });
   };
 

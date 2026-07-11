@@ -8,9 +8,36 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";
+import {
+  MarkdownDropZone,
+  useImportNotice,
+} from "#webui/components/context/MarkdownDropZone";
 
 const OVERLAY_TEXT = "Drop a .md file to import";
+
+/**
+ * A wired drop zone: threads the real {@link useImportNotice} hook into the
+ * (now controlled) drop zone, exactly as the screens do, so rejection notices
+ * render and auto-clear under test.
+ * @param props - The onImportText spy to forward
+ * @param props.onImportText - Called with a dropped file's text once read
+ * @returns The wired drop zone element
+ */
+function DropZoneHarness(props: {
+  onImportText: (text: string) => void;
+}): preact.JSX.Element {
+  const { notice, showNotice } = useImportNotice();
+
+  return (
+    <MarkdownDropZone
+      onImportText={props.onImportText}
+      notice={notice}
+      onReject={showNotice}
+    >
+      <div data-testid="child">editor</div>
+    </MarkdownDropZone>
+  );
+}
 
 /**
  * Render a drop zone wrapping a child target, returning the child element and
@@ -23,11 +50,7 @@ function renderZone(): {
 } {
   const onImportText = vi.fn();
 
-  render(
-    <MarkdownDropZone onImportText={onImportText}>
-      <div data-testid="child">editor</div>
-    </MarkdownDropZone>,
-  );
+  render(<DropZoneHarness onImportText={onImportText} />);
 
   return { child: screen.getByTestId("child"), onImportText };
 }

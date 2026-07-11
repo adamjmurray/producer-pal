@@ -93,7 +93,10 @@ describe("pickTextFile", () => {
   it("resolves the chosen file's text", async () => {
     stubInput([fakeFile("x.md", "text/markdown", () => Promise.resolve("hi"))]);
 
-    await expect(pickTextFile(".md")).resolves.toBe("hi");
+    await expect(pickTextFile(".md")).resolves.toStrictEqual({
+      kind: "text",
+      text: "hi",
+    });
   });
 
   it("sets the accept filter on the input", async () => {
@@ -104,23 +107,27 @@ describe("pickTextFile", () => {
     expect(input.accept).toBe(".md,.markdown");
   });
 
-  it("resolves null when no file is picked", async () => {
+  it("resolves a cancel result when no file is picked", async () => {
     stubInput([]);
 
-    await expect(pickTextFile(".md")).resolves.toBeNull();
+    await expect(pickTextFile(".md")).resolves.toStrictEqual({
+      kind: "cancel",
+    });
   });
 
-  it("resolves null when the read fails", async () => {
+  it("resolves a read-error result when the read fails", async () => {
     stubInput([
       fakeFile("x.md", "text/markdown", () =>
         Promise.reject(new Error("boom")),
       ),
     ]);
 
-    await expect(pickTextFile(".md")).resolves.toBeNull();
+    await expect(pickTextFile(".md")).resolves.toStrictEqual({
+      kind: "read-error",
+    });
   });
 
-  it("resolves null when the picked file exceeds the size cap", async () => {
+  it("resolves a too-large result when the picked file exceeds the size cap", async () => {
     stubInput([
       fakeFile(
         "big.md",
@@ -130,10 +137,12 @@ describe("pickTextFile", () => {
       ),
     ]);
 
-    await expect(pickTextFile(".md")).resolves.toBeNull();
+    await expect(pickTextFile(".md")).resolves.toStrictEqual({
+      kind: "too-large",
+    });
   });
 
-  it("resolves null when the picker is cancelled", async () => {
+  it("resolves a cancel result when the picker is cancelled", async () => {
     const input = {
       type: "",
       accept: "",
@@ -148,7 +157,9 @@ describe("pickTextFile", () => {
       input as unknown as HTMLElement,
     );
 
-    await expect(pickTextFile(".md")).resolves.toBeNull();
+    await expect(pickTextFile(".md")).resolves.toStrictEqual({
+      kind: "cancel",
+    });
   });
 });
 

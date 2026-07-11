@@ -17,7 +17,7 @@ import { ContextIoButtons } from "./ContextIoButtons";
 import { ContextHeader } from "./editor/ContextHeader";
 import { DriftNote } from "./editor/DriftNote";
 import { OverridePanes } from "./editor/OverridePanes";
-import { MarkdownDropZone } from "./MarkdownDropZone";
+import { MarkdownDropZone, useImportNotice } from "./MarkdownDropZone";
 import { MarkdownEditor } from "./MarkdownEditor";
 
 /** Copy that distinguishes one document editor (project vs. global context). */
@@ -93,7 +93,12 @@ interface ContextScreenProps {
 export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
   const { memory, labels, tabSlot, onClose } = props;
   const editor = useContextEditorState(memory, labels.clearConfirmMessage);
-  const io = makeContextIoHandlers(editor, labels.exportBasename);
+  const importNotice = useImportNotice();
+  const io = makeContextIoHandlers(
+    editor,
+    labels.exportBasename,
+    importNotice.showNotice,
+  );
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Cap the editable region so it lines up with the chat column instead of
   // sprawling across a wide monitor. At rest the editor matches the chat width;
@@ -146,6 +151,8 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
           onImportText={io.onImportText}
+          notice={importNotice.notice}
+          onReject={importNotice.showNotice}
         />
       </div>
     </div>
@@ -276,6 +283,10 @@ interface ContextBodyProps {
   onChange: (value: string) => void;
   onBlur: () => void;
   onImportText: (text: string) => void;
+  /** The current import-rejection notice (shared with the file-picker button). */
+  notice: string | null;
+  /** Report a rejected drop to the shared notice. */
+  onReject: (message: string) => void;
 }
 
 /**
@@ -306,6 +317,8 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     onChange,
     onBlur,
     onImportText,
+    notice,
+    onReject,
   } = props;
 
   if (status.kind === "error") {
@@ -336,6 +349,8 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
       )}
       <MarkdownDropZone
         onImportText={onImportText}
+        notice={notice}
+        onReject={onReject}
         className="flex-1 min-h-0 flex flex-col"
       >
         {builtIn != null ? (

@@ -18,6 +18,16 @@ export const MARKDOWN_ACCEPT = [
  *  with `file.text()` would freeze the tab, so a bigger drop is rejected. */
 export const MAX_IMPORT_BYTES = 1024 * 1024; // 1 MB
 
+/** Rejection message when an imported file exceeds {@link MAX_IMPORT_BYTES}.
+ *  Shared by the file-picker button and the drag-drop zone so both read alike. */
+export const TOO_LARGE_MESSAGE = `File too large (max ${MAX_IMPORT_BYTES / (1024 * 1024)} MB)`;
+
+/** Rejection message when a chosen file can't be read. */
+export const READ_ERROR_MESSAGE = "Couldn't read that file";
+
+/** Rejection message when a dropped file isn't an importable markdown/text file. */
+export const NOT_MARKDOWN_MESSAGE = "Not a markdown file";
+
 /**
  * Download a string as a file via a transient object-URL anchor. Mirrors the
  * conversation exporter's Blob → anchor → revoke pattern.
@@ -35,33 +45,53 @@ export function downloadTextFile(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** Outcome of a file-picker import: the text, or why nothing was imported.
+ *  A discriminated result (rather than text-or-null) lets the caller tell an
+ *  oversized/unreadable file from a plain cancel, so the button can explain a
+ *  rejection the way the drop zone already does. */
+export type PickedTextResult =
+  | { kind: "text"; text: string }
+  | { kind: "too-large" }
+  | { kind: "read-error" }
+  | { kind: "cancel" };
+
 /**
- * Open a native file picker and resolve the chosen file's text. Resolves null
- * when nothing usable is picked, the file exceeds {@link MAX_IMPORT_BYTES}, or
- * the read fails. Resolves null on cancel too (via the input's `cancel` event),
- * so the promise never dangles on modern browsers; older ones without the event
- * fall back to staying pending, which callers already tolerate.
+ * Open a native file picker and resolve the chosen file's text. Resolves a
+ * `cancel` result when nothing is picked (via the input's `cancel` event, so
+ * the promise never dangles on modern browsers; older ones without the event
+ * fall back to staying pending, which callers already tolerate), `too-large`
+ * when the file exceeds {@link MAX_IMPORT_BYTES}, and `read-error` when the read
+ * fails.
  * @param accept - Input `accept` filter (e.g. {@link MARKDOWN_ACCEPT})
- * @returns The file's text, or null
+ * @returns The picked text, or the reason nothing was imported
  */
-export function pickTextFile(accept: string): Promise<string | null> {
+export function pickTextFile(accept: string): Promise<PickedTextResult> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
 
     input.type = "file";
     input.accept = accept;
-    input.oncancel = () => resolve(null);
+    input.oncancel = () => resolve({ kind: "cancel" });
 
     input.onchange = () => {
       const file = input.files?.[0];
 
-      if (file == null || file.size > MAX_IMPORT_BYTES) {
-        resolve(null);
+      if (file == null) {
+        resolve({ kind: "cancel" });
 
         return;
       }
 
-      void file.text().then(resolve, () => resolve(null));
+      if (file.size > MAX_IMPORT_BYTES) {
+        resolve({ kind: "too-large" });
+
+        return;
+      }
+
+      void file.text().then(
+        (text) => resolve({ kind: "text", text }),
+        () => resolve({ kind: "read-error" }),
+      );
     };
 
     input.click();

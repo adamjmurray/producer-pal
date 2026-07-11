@@ -7,21 +7,53 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import {
   classifyDroppedFile,
   dragHasFiles,
-  MAX_IMPORT_BYTES,
+  NOT_MARKDOWN_MESSAGE,
+  TOO_LARGE_MESSAGE,
 } from "#webui/utils/text-file-io";
 
-/** How long a rejection notice stays up after a bad drop. */
+/** How long a rejection notice stays up after a bad import. */
 const NOTICE_MS = 4000;
 
-/** Message shown when a dropped file is not an importable markdown/text file. */
-const NOT_MARKDOWN_MESSAGE = "Not a markdown file";
+/** A transient rejection notice shown over the editor region. */
+export interface ImportNotice {
+  /** The message to show, or null when nothing is showing. */
+  notice: string | null;
+  /** Show a rejection message; auto-clears after {@link NOTICE_MS}. */
+  showNotice: (message: string) => void;
+}
 
-/** Message shown when a dropped file exceeds the import size cap. */
-const TOO_LARGE_MESSAGE = `File too large (max ${MAX_IMPORT_BYTES / (1024 * 1024)} MB)`;
+/**
+ * Owns the transient import-rejection notice (state + auto-dismiss timer) so a
+ * screen can share one notice surface between the file-picker button and the
+ * {@link MarkdownDropZone} — a rejected pick and a rejected drop both surface in
+ * the same overlay. Lives here (not a standalone hook file) to stay under the
+ * context folder's file cap.
+ * @returns The current notice and a setter that auto-clears it
+ */
+export function useImportNotice(): ImportNotice {
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => () => clearTimeout(noticeTimerRef.current), []);
+
+  const showNotice = (message: string): void => {
+    setNotice(message);
+    clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS);
+  };
+
+  return { notice, showNotice };
+}
 
 interface MarkdownDropZoneProps {
   /** Called with the dropped file's text once read. */
   onImportText: (text: string) => void;
+  /** The current rejection notice to show (from {@link useImportNotice}). */
+  notice: string | null;
+  /** Report a rejected drop (too-large / not-markdown) to the shared notice. */
+  onReject: (message: string) => void;
   /** The editor region to wrap. */
   children: preact.ComponentChildren;
   /** Extra classes for the wrapping element (layout for the editor inside). */
@@ -34,30 +66,19 @@ interface MarkdownDropZoneProps {
  * CodeMirror editor never receives the file drop (its default handling would
  * otherwise insert the file). Non-file drags (e.g. CodeMirror's own text
  * reordering) are ignored and pass straight through. A dashed overlay shows
- * while a file is over the region.
+ * while a file is over the region; a rejected drop (or a rejected file-picker
+ * import, via the shared {@link useImportNotice} `notice`) shows a red overlay.
  * @param props - Drop zone props
  * @returns Drop zone element
  */
 export function MarkdownDropZone(
   props: MarkdownDropZoneProps,
 ): preact.JSX.Element {
-  const { onImportText, children, className } = props;
+  const { onImportText, notice, onReject, children, className } = props;
   const [dragging, setDragging] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   // Enter/leave fire per child element; a depth counter keeps the overlay from
   // flickering as the pointer crosses the editor's nested nodes.
   const depthRef = useRef(0);
-  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
-
-  useEffect(() => () => clearTimeout(noticeTimerRef.current), []);
-
-  const showNotice = (message: string): void => {
-    setNotice(message);
-    clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS);
-  };
 
   const handleDragEnter = (event: DragEvent): void => {
     if (!dragHasFiles(event.dataTransfer)) return;
@@ -93,9 +114,9 @@ export function MarkdownDropZone(
     if (result.kind === "file") {
       void result.file.text().then((text) => onImportText(text));
     } else if (result.kind === "not-markdown") {
-      showNotice(NOT_MARKDOWN_MESSAGE);
+      onReject(NOT_MARKDOWN_MESSAGE);
     } else if (result.kind === "too-large") {
-      showNotice(TOO_LARGE_MESSAGE);
+      onReject(TOO_LARGE_MESSAGE);
     }
     // kind "none": the drop carried no file at all — nothing to report.
   };
