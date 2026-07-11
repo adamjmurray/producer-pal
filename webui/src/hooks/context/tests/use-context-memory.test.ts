@@ -9,22 +9,18 @@
 import { renderHook, waitFor, act } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useContextMemory } from "#webui/hooks/context/use-context-memory";
+import {
+  deferred,
+  installFetchMock,
+  jsonResponse,
+} from "./doc-memory-transport-test-helpers";
 
 // happy-dom defaults to http://localhost:3000/, so the same-origin /config
 // endpoint resolves to localhost:3000.
 const CONFIG_URL = "http://localhost:3000/config";
 
 describe("useContextMemory", () => {
-  let fetchMock: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  const fetchMock = installFetchMock();
 
   function mockResponses(...responses: Array<object | Response>): void {
     for (const r of responses) {
@@ -409,33 +405,3 @@ describe("useContextMemory", () => {
     });
   });
 });
-
-function jsonResponse(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-interface Deferred<T> {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason: unknown) => void;
-}
-
-/**
- * Externally-resolvable promise, so a test can pin the resolution order of a
- * concurrent save POST and refresh GET independent of issue order.
- * @returns A promise plus its resolve/reject handles
- */
-function deferred<T>(): Deferred<T> {
-  // The executor runs synchronously, so all three fields are set before return.
-  const box: Partial<Deferred<T>> = {};
-
-  box.promise = new Promise<T>((resolve, reject) => {
-    box.resolve = resolve;
-    box.reject = reject;
-  });
-
-  return box as Deferred<T>;
-}

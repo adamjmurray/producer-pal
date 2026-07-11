@@ -9,7 +9,10 @@
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSkillsPreview } from "#webui/hooks/context/use-skills-preview";
-import { jsonResponse } from "./doc-memory-transport-test-helpers";
+import {
+  jsonResponse,
+  renderAndWait,
+} from "./doc-memory-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const CONFIG_URL = "http://localhost:3000/config";
@@ -74,6 +77,19 @@ function stubFetch(options: StubOptions = {}): ReturnType<typeof vi.fn> {
   return fetchMock;
 }
 
+/**
+ * Stub fetch for the given scenario, render the hook, and wait for ready.
+ * @param options - Which config + preview behavior to simulate
+ * @returns The rendered hook result handle
+ */
+async function renderReady(
+  options: StubOptions = {},
+): Promise<{ current: ReturnType<typeof useSkillsPreview> }> {
+  stubFetch(options);
+
+  return await renderAndWait(useSkillsPreview, "ready");
+}
+
 describe("useSkillsPreview", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -109,13 +125,7 @@ describe("useSkillsPreview", () => {
   });
 
   it("falls back to bar|beat standard when /config fails", async () => {
-    stubFetch({ config: "fail" });
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady({ config: "fail" });
 
     expect(result.current.currentMode).toBeNull();
     expect(result.current.selected).toStrictEqual({
@@ -130,13 +140,7 @@ describe("useSkillsPreview", () => {
   });
 
   it("refetches when the notation changes", async () => {
-    stubFetch({ config: "fail" });
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady({ config: "fail" });
 
     await act(async () => {
       result.current.setNotation("midi-json");
@@ -153,13 +157,7 @@ describe("useSkillsPreview", () => {
   });
 
   it("refetches when the model size changes", async () => {
-    stubFetch({ config: "fail" });
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady({ config: "fail" });
 
     await act(async () => {
       result.current.setSmallModelMode(true);
@@ -218,11 +216,7 @@ describe("useSkillsPreview", () => {
   it("reports an error when the preview request is not ok", async () => {
     stubFetch({ config: "fail", preview: "fail" });
 
-    const { result } = renderHook(useSkillsPreview);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("error");
-    });
+    const result = await renderAndWait(useSkillsPreview, "error");
 
     expect(
       result.current.status.kind === "error" && result.current.status.message,
@@ -232,24 +226,16 @@ describe("useSkillsPreview", () => {
   it("stringifies a non-Error preview rejection", async () => {
     stubFetch({ config: "fail", preview: "throw" });
 
-    const { result } = renderHook(useSkillsPreview);
+    const result = await renderAndWait(useSkillsPreview, "error");
 
-    await waitFor(() => {
-      expect(result.current.status).toStrictEqual({
-        kind: "error",
-        message: "preview boom",
-      });
+    expect(result.current.status).toStrictEqual({
+      kind: "error",
+      message: "preview boom",
     });
   });
 
   it("defaults missing head/driver/skills fields to empty strings", async () => {
-    stubFetch({ config: "fail", preview: "empty" });
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady({ config: "fail", preview: "empty" });
 
     const status = result.current.status;
 
@@ -276,13 +262,7 @@ describe("useSkillsPreview", () => {
   });
 
   it("treats a thrown /config fetch as no live mode", async () => {
-    stubFetch({ config: "throw" });
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady({ config: "throw" });
 
     expect(result.current.currentMode).toBeNull();
   });

@@ -40,6 +40,49 @@ export function jsonResponse(body: unknown): Response {
   });
 }
 
+/**
+ * Stub the global `fetch` with a mock: reset and re-stubbed before each test,
+ * unstubbed after. Returns a stable mock reference (reset, not reassigned) so
+ * callers capture it once at describe/module scope and keep using it directly.
+ * Register at the same scope the fetch stub should live in (module or describe).
+ * @returns The stable fetch mock
+ */
+export function installFetchMock(): ReturnType<typeof vi.fn> {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  return fetchMock;
+}
+
+/**
+ * Render a hook and wait until its `status.kind` reaches the expected value.
+ * Shared across the context hooks, whose loads all expose a `status.kind`
+ * state; queue the mount responses on the fetch mock before calling.
+ * @param useHook - The hook to render
+ * @param kind - The status kind to wait for (e.g. "ready", "error")
+ * @returns The rendered hook result handle
+ */
+export async function renderAndWait<T extends { status: { kind: string } }>(
+  useHook: () => T,
+  kind: string,
+): Promise<{ current: T }> {
+  const { result } = renderHook(useHook);
+
+  await waitFor(() => {
+    expect(result.current.status.kind).toBe(kind);
+  });
+
+  return result;
+}
+
 /** An externally-resolvable promise plus its resolve/reject handles. */
 export interface Deferred<T> {
   promise: Promise<T>;
@@ -71,16 +114,16 @@ export function deferred<T>(): Deferred<T> {
  */
 export function describeDocMemoryTransport(spec: DocMemoryTransportSpec): void {
   describe(spec.hookName, () => {
-    let fetchMock: ReturnType<typeof vi.fn>;
+    const fetchMock = installFetchMock();
 
-    beforeEach(() => {
-      fetchMock = vi.fn();
-      vi.stubGlobal("fetch", fetchMock);
-    });
+    // Load the wrapper past its mount GET so a save test can exercise the write.
+    const renderReady = (
+      content = "",
+    ): Promise<{ current: UseDocMemoryReturn }> => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ content }));
 
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
+      return renderAndWait(spec.useHook, "ready");
+    };
 
     it("loads content on mount via a no-store GET", async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse({ content: "# doc" }));
@@ -118,11 +161,7 @@ export function describeDocMemoryTransport(spec: DocMemoryTransportSpec): void {
         new Response("boom", { status: 500, statusText: "Server Error" }),
       );
 
-      const { result } = renderHook(spec.useHook);
-
-      await waitFor(() => {
-        expect(result.current.status.kind).toBe("error");
-      });
+      const result = await renderAndWait(spec.useHook, "error");
 
       expect(
         result.current.status.kind === "error" && result.current.status.message,
@@ -130,13 +169,7 @@ export function describeDocMemoryTransport(spec: DocMemoryTransportSpec): void {
     });
 
     it("save() PUTs the content and echoes the stored value", async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse({ content: "" }));
-
-      const { result } = renderHook(spec.useHook);
-
-      await waitFor(() => {
-        expect(result.current.status.kind).toBe("ready");
-      });
+      const result = await renderReady();
 
       fetchMock.mockResolvedValueOnce(jsonResponse({ content: "saved\n" }));
 
@@ -161,13 +194,7 @@ export function describeDocMemoryTransport(spec: DocMemoryTransportSpec): void {
     });
 
     it("save() surfaces an error when the PUT is not ok", async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse({ content: "" }));
-
-      const { result } = renderHook(spec.useHook);
-
-      await waitFor(() => {
-        expect(result.current.status.kind).toBe("ready");
-      });
+      const result = await renderReady();
 
       fetchMock.mockResolvedValueOnce(
         new Response("nope", { status: 403, statusText: "Forbidden" }),
@@ -185,13 +212,7 @@ export function describeDocMemoryTransport(spec: DocMemoryTransportSpec): void {
     });
 
     it("save() echoes empty string when the PUT omits content", async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse({ content: "x" }));
-
-      const { result } = renderHook(spec.useHook);
-
-      await waitFor(() => {
-        expect(result.current.status.kind).toBe("ready");
-      });
+      const result = await renderReady("x");
 
       fetchMock.mockResolvedValueOnce(jsonResponse({}));
 

@@ -7,10 +7,11 @@
  * @vitest-environment happy-dom
  */
 import { act, renderHook, waitFor } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import {
   describeDocMemoryTransport,
+  installFetchMock,
   jsonResponse,
 } from "./doc-memory-transport-test-helpers";
 
@@ -27,16 +28,7 @@ describeDocMemoryTransport({
 // The system prompt overrides a shipped built-in, so its endpoint also carries
 // fork-time drift state — unlike the plain content endpoints (global context).
 describe("useSystemPromptMemory drift", () => {
-  let fetchMock: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  const fetchMock = installFetchMock();
 
   it("surfaces drift state from the /system-prompt response", async () => {
     fetchMock.mockResolvedValueOnce(

@@ -26,6 +26,46 @@ function setup(initial: CollectionEntryAutosaveParams) {
   );
 }
 
+/**
+ * Mount as an empty new entry, then rerender to a typed, savable draft with
+ * idle-autosave off — the arrangement the flush tests share before dispatching.
+ * @param persist - The persist spy threaded through both renders
+ * @returns The rendered hook (rerender/unmount/result)
+ */
+function setupDraft(persist: CollectionEntryAutosaveParams["persist"]) {
+  const rendered = setup({
+    canSave: false,
+    draftKey: "",
+    autosaveOnIdle: false,
+    persist,
+  });
+
+  rendered.rerender({
+    canSave: true,
+    draftKey: "typed",
+    autosaveOnIdle: false,
+    persist,
+  });
+
+  return rendered;
+}
+
+/**
+ * Mount an existing entry that also carries an externalKey — the starting point
+ * for the "deleted out from under the editor" tests.
+ * @param persist - The persist spy for the render
+ * @returns The rendered hook (rerender/unmount/result)
+ */
+function setupSeedExternal(persist: CollectionEntryAutosaveParams["persist"]) {
+  return setup({
+    canSave: true,
+    draftKey: "seed",
+    autosaveOnIdle: true,
+    persist,
+    externalKey: "seed",
+  });
+}
+
 describe("useCollectionEntryAutosave", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -63,19 +103,9 @@ describe("useCollectionEntryAutosave", () => {
 
   it("does NOT idle-autosave a new entry (would remount and drop focus)", async () => {
     const persist = vi.fn().mockResolvedValue("typed");
-    const { rerender } = setup({
-      canSave: false,
-      draftKey: "",
-      autosaveOnIdle: false,
-      persist,
-    });
 
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: false,
-      persist,
-    });
+    setupDraft(persist);
+
     await act(async () => {
       vi.advanceTimersByTime(2000);
       await Promise.resolve();
@@ -86,19 +116,8 @@ describe("useCollectionEntryAutosave", () => {
 
   it("flushes a dirty savable draft on unmount (overlay close / tab switch)", () => {
     const persist = vi.fn().mockResolvedValue("typed");
-    const { rerender, unmount } = setup({
-      canSave: false,
-      draftKey: "",
-      autosaveOnIdle: false,
-      persist,
-    });
+    const { unmount } = setupDraft(persist);
 
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: false,
-      persist,
-    });
     unmount();
 
     expect(persist).toHaveBeenCalledTimes(1);
@@ -141,13 +160,7 @@ describe("useCollectionEntryAutosave", () => {
 
   it("does NOT flush on unmount after the entry was deleted externally (Discard must not resurrect it)", () => {
     const persist = vi.fn().mockResolvedValue("typed");
-    const { rerender, unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-      externalKey: "seed",
-    });
+    const { rerender, unmount } = setupSeedExternal(persist);
 
     // The user edits, then the entry is deleted out from under the editor
     // (entry prop goes null, so externalKey becomes undefined and the editor
@@ -173,13 +186,7 @@ describe("useCollectionEntryAutosave", () => {
 
   it("does NOT flush on beforeunload after the entry was deleted externally", async () => {
     const persist = vi.fn().mockResolvedValue("typed");
-    const { rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-      externalKey: "seed",
-    });
+    const { rerender } = setupSeedExternal(persist);
 
     rerender({
       canSave: true,
@@ -196,13 +203,7 @@ describe("useCollectionEntryAutosave", () => {
 
   it("flushes again when the deleted entry reappears (deletion state is not sticky)", () => {
     const persist = vi.fn().mockResolvedValue("typed");
-    const { rerender, unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-      externalKey: "seed",
-    });
+    const { rerender, unmount } = setupSeedExternal(persist);
 
     // Deleted externally, then restored (e.g. re-created elsewhere and picked
     // up by a poll) — the normal unmount flush applies again.
@@ -297,19 +298,9 @@ describe("useCollectionEntryAutosave", () => {
 
   it("flushes on beforeunload (tab close)", async () => {
     const persist = vi.fn().mockResolvedValue("typed");
-    const { rerender } = setup({
-      canSave: false,
-      draftKey: "",
-      autosaveOnIdle: false,
-      persist,
-    });
 
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: false,
-      persist,
-    });
+    setupDraft(persist);
+
     await act(() => {
       window.dispatchEvent(new Event("beforeunload"));
     });

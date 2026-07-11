@@ -66,6 +66,51 @@ function renderEditor(memory: UseDocMemoryReturn) {
 const makeReady = (content: string): UseDocMemoryReturn =>
   makeMemory({ status: { kind: "ready", content } });
 
+/**
+ * Render the editor over a ready memory (content "old") with the given spy
+ * overrides — the starting point most edit/save/clear tests share.
+ * @param overrides - Extra memory fields (save/clear spies, saveStatus, …)
+ * @returns The rendered editor (result/setMemory/unmount)
+ */
+function renderReadyEditor(overrides: MemoryOverrides = {}) {
+  return renderEditor(
+    makeMemory({ status: { kind: "ready", content: "old" }, ...overrides }),
+  );
+}
+
+/**
+ * A save spy that stays pending until the test resolves it, so a test can
+ * assert the intermediate saving state before the write settles.
+ * @returns The save spy and a trigger to resolve the pending save
+ */
+function deferredSave(): {
+  save: ReturnType<typeof vi.fn>;
+  resolveSave: (saved: boolean) => void;
+} {
+  let resolve: (saved: boolean) => void = () => {};
+  const save = vi.fn().mockImplementation(
+    () =>
+      new Promise<boolean>((r) => {
+        resolve = r;
+      }),
+  );
+
+  return { save, resolveSave: (saved) => resolve(saved) };
+}
+
+/**
+ * Stub `window.confirm` to return the given answer.
+ * @param answer - What confirm() should return (accept vs cancel)
+ * @returns The confirm spy, for asserting whether/how it was called
+ */
+function stubConfirm(answer: boolean): ReturnType<typeof vi.fn> {
+  const confirm = vi.fn().mockReturnValue(answer);
+
+  vi.stubGlobal("confirm", confirm);
+
+  return confirm;
+}
+
 describe("useContextEditorState", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -82,9 +127,7 @@ describe("useContextEditorState", () => {
       // never fired (timer cleared on status change in real life). Refs end
       // up as draftRef="draft", lastSavedRef="old".
       const save = vi.fn().mockResolvedValue(true);
-      const { result, setMemory } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result, setMemory } = renderReadyEditor({ save });
 
       // User types — populates draftRef. Don't advance the debounce timer.
       await act(() => {
@@ -114,9 +157,7 @@ describe("useContextEditorState", () => {
 
     it("still allows a fresh save after error → ready when the user makes new edits", async () => {
       const save = vi.fn().mockResolvedValue(true);
-      const { result, setMemory } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result, setMemory } = renderReadyEditor({ save });
 
       setMemory(
         makeMemory({ status: { kind: "error", message: "boom" }, save }),
@@ -231,23 +272,11 @@ describe("useContextEditorState", () => {
       // it, simulating a slow network. handleClear must not call clear()
       // until that promise settles, otherwise the older draft's POST could
       // land at the server AFTER clear's POST and undo the clear.
-      let resolveSave: (saved: boolean) => void = () => {};
-      const save = vi.fn().mockImplementation(
-        () =>
-          new Promise<boolean>((resolve) => {
-            resolveSave = resolve;
-          }),
-      );
+      const { save, resolveSave } = deferredSave();
       const clear = vi.fn().mockResolvedValue(true);
-      const { result } = renderEditor(
-        makeMemory({
-          status: { kind: "ready", content: "old" },
-          save,
-          clear,
-        }),
-      );
+      const { result } = renderReadyEditor({ save, clear });
 
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      stubConfirm(true);
 
       // Trigger a debounced save that the test will hold in-flight.
       await act(() => {
@@ -282,11 +311,9 @@ describe("useContextEditorState", () => {
 
     it("handleClear works when no save is in flight", async () => {
       const clear = vi.fn().mockResolvedValue(true);
-      const { result } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, clear }),
-      );
+      const { result } = renderReadyEditor({ clear });
 
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      stubConfirm(true);
 
       await act(async () => {
         // Resolves true so callers (OverridePanes) collapse the reveal.
@@ -298,11 +325,9 @@ describe("useContextEditorState", () => {
 
     it("handleClear is a no-op when the user cancels confirm", async () => {
       const clear = vi.fn().mockResolvedValue(true);
-      const { result } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, clear }),
-      );
+      const { result } = renderReadyEditor({ clear });
 
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+      stubConfirm(false);
 
       await act(async () => {
         // Resolves false so callers (OverridePanes) keep the reveal open.
@@ -316,9 +341,7 @@ describe("useContextEditorState", () => {
   describe("dirty flag", () => {
     it("starts false, flips true on edit, flips false after a successful save", async () => {
       const save = vi.fn().mockResolvedValue(true);
-      const { result } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result } = renderReadyEditor({ save });
 
       expect(result.current.dirty).toBe(false);
 
@@ -340,16 +363,8 @@ describe("useContextEditorState", () => {
       // The save() promise is held until we explicitly resolve it. During the
       // in-flight save, the user types more — draftRef advances past the
       // value being saved, so the save's resolution must NOT clear dirty.
-      let resolveSave: (saved: boolean) => void = () => {};
-      const save = vi.fn().mockImplementation(
-        () =>
-          new Promise<boolean>((resolve) => {
-            resolveSave = resolve;
-          }),
-      );
-      const { result } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { save, resolveSave } = deferredSave();
+      const { result } = renderReadyEditor({ save });
 
       await act(() => {
         result.current.handleChange("first");
@@ -427,7 +442,7 @@ describe("useContextEditorState", () => {
     });
 
     it("flips false after a successful Clear (revert to the built-in view)", async () => {
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      stubConfirm(true);
       const { result } = renderEditor(makeReady("stored"));
 
       await act(async () => {
@@ -467,9 +482,7 @@ describe("useContextEditorState", () => {
   describe("import", () => {
     it("imports into an empty editor without confirming, saves, and remounts", async () => {
       const save = vi.fn().mockResolvedValue(true);
-      const confirm = vi.fn().mockReturnValue(true);
-
-      vi.stubGlobal("confirm", confirm);
+      const confirm = stubConfirm(true);
       const { result } = renderEditor(makeMemory({ save }));
       const startingKey = result.current.editorKey;
 
@@ -486,9 +499,7 @@ describe("useContextEditorState", () => {
 
     it("confirms before overwriting non-empty content and imports on accept", async () => {
       const save = vi.fn().mockResolvedValue(true);
-      const confirm = vi.fn().mockReturnValue(true);
-
-      vi.stubGlobal("confirm", confirm);
+      const confirm = stubConfirm(true);
       const { result } = renderEditor(
         makeMemory({ status: { kind: "ready", content: "existing" }, save }),
       );
@@ -504,7 +515,7 @@ describe("useContextEditorState", () => {
     it("is a no-op when the user cancels the overwrite confirm", async () => {
       const save = vi.fn().mockResolvedValue(true);
 
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+      stubConfirm(false);
       const { result } = renderEditor(
         makeMemory({ status: { kind: "ready", content: "existing" }, save }),
       );
@@ -565,7 +576,7 @@ describe("useContextEditorState", () => {
     });
 
     it("resets to 0 on Clear", async () => {
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      stubConfirm(true);
       const { result } = renderEditor(makeReady("hello"));
 
       await act(async () => {
@@ -651,9 +662,7 @@ describe("useContextEditorState", () => {
 
     it("flushSave bails when the memory is no longer ready (e.g. reloading)", async () => {
       const save = vi.fn().mockResolvedValue(true);
-      const { result, setMemory } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result, setMemory } = renderReadyEditor({ save });
 
       await act(() => {
         result.current.handleChange("typed");
@@ -672,9 +681,7 @@ describe("useContextEditorState", () => {
 
     it("skips external-update detection while a failed save has rolled back the baseline", async () => {
       const save = vi.fn().mockResolvedValue(false);
-      const { result, setMemory } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result, setMemory } = renderReadyEditor({ save });
 
       await act(() => {
         result.current.handleChange("typed");
@@ -706,11 +713,9 @@ describe("useContextEditorState", () => {
             }),
         )
         .mockResolvedValue(true);
-      const { result } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result } = renderReadyEditor({ save });
 
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      stubConfirm(true);
 
       // Arm a debounced save and hold it in-flight.
       await act(() => {
@@ -748,9 +753,7 @@ describe("useContextEditorState", () => {
       // Regression: cleanup only cleared timers without flushing, so typing
       // then Esc inside the 800ms debounce window dropped the edit.
       const save = vi.fn().mockResolvedValue(true);
-      const { result, unmount } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result, unmount } = renderReadyEditor({ save });
 
       await act(() => {
         result.current.handleChange("typed-but-not-yet-saved");
@@ -768,9 +771,7 @@ describe("useContextEditorState", () => {
       // a persistent failure re-scheduled a 5s retry forever (re-POSTing and
       // calling setState on a dead component). The mountedRef guard stops it.
       const save = vi.fn().mockResolvedValue(false);
-      const { result, unmount } = renderEditor(
-        makeMemory({ status: { kind: "ready", content: "old" }, save }),
-      );
+      const { result, unmount } = renderReadyEditor({ save });
 
       await act(() => {
         result.current.handleChange("typed-but-not-yet-saved");

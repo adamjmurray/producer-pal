@@ -9,7 +9,12 @@
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
-import { deferred, jsonResponse } from "./doc-memory-transport-test-helpers";
+import {
+  deferred,
+  installFetchMock,
+  jsonResponse,
+  renderAndWait,
+} from "./doc-memory-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/skill-overrides";
@@ -34,38 +39,29 @@ function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
 }
 
 describe("useSkillOverrides", () => {
-  let fetchMock: ReturnType<typeof vi.fn>;
+  const fetchMock = installFetchMock();
 
-  beforeEach(() => {
-    fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-  });
+  // Render the hook with an initial slots GET and wait for the ready status.
+  // Most tests only need the mount to succeed before exercising a write.
+  async function renderReady(
+    slots: Array<Record<string, unknown>> = [rawSlot()],
+  ): Promise<{ current: ReturnType<typeof useSkillOverrides> }> {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ slots }));
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+    return await renderAndWait(useSkillOverrides, "ready");
+  }
 
   it("loads and maps all slots on mount via a no-store GET", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        slots: [
-          rawSlot(),
-          rawSlot({
-            name: "stark",
-            title: "stark notation",
-            override: "MINE",
-            drifted: true,
-            provenance: { producerPalVersion: "1.4.0", builtInHash: "old" },
-          }),
-        ],
+    const result = await renderReady([
+      rawSlot(),
+      rawSlot({
+        name: "stark",
+        title: "stark notation",
+        override: "MINE",
+        drifted: true,
+        provenance: { producerPalVersion: "1.4.0", builtInHash: "old" },
       }),
-    );
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    ]);
 
     const status = result.current.status;
 
@@ -107,11 +103,7 @@ describe("useSkillOverrides", () => {
       new Response("boom", { status: 500, statusText: "Server Error" }),
     );
 
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("error");
-    });
+    const result = await renderAndWait(useSkillOverrides, "error");
 
     expect(
       result.current.status.kind === "error" && result.current.status.message,
@@ -121,28 +113,19 @@ describe("useSkillOverrides", () => {
   it("stringifies a non-Error rejection", async () => {
     fetchMock.mockRejectedValueOnce("plain string error");
 
-    const { result } = renderHook(useSkillOverrides);
+    const result = await renderAndWait(useSkillOverrides, "error");
 
-    await waitFor(() => {
-      expect(result.current.status).toStrictEqual({
-        kind: "error",
-        message: "plain string error",
-      });
+    expect(result.current.status).toStrictEqual({
+      kind: "error",
+      message: "plain string error",
     });
   });
 
   it("saveSlot PUTs the content and merges only the echoed slot", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        slots: [rawSlot(), rawSlot({ name: "stark", title: "stark notation" })],
-      }),
-    );
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady([
+      rawSlot(),
+      rawSlot({ name: "stark", title: "stark notation" }),
+    ]);
 
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
@@ -183,15 +166,7 @@ describe("useSkillOverrides", () => {
   });
 
   it("resetSlot DELETEs the slot and merges the reset echo", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ slots: [rawSlot({ override: "MINE\n" })] }),
-    );
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady([rawSlot({ override: "MINE\n" })]);
 
     fetchMock.mockResolvedValueOnce(jsonResponse({ slot: rawSlot() }));
 
@@ -209,13 +184,7 @@ describe("useSkillOverrides", () => {
   });
 
   it("surfaces a save error when the write is not ok", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ slots: [rawSlot()] }));
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady();
 
     fetchMock.mockResolvedValueOnce(
       new Response("nope", { status: 403, statusText: "Forbidden" }),
@@ -233,13 +202,7 @@ describe("useSkillOverrides", () => {
   });
 
   it("resetSaveStatus clears the indicator when the edited slot changes", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ slots: [rawSlot()] }));
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady();
 
     fetchMock.mockResolvedValueOnce(jsonResponse({ slot: rawSlot() }));
 
@@ -258,13 +221,7 @@ describe("useSkillOverrides", () => {
   });
 
   it("does not paint a save outcome onto a slot switched to mid-flight", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ slots: [rawSlot()] }));
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady();
 
     const putEcho = deferred<Response>();
 
@@ -304,15 +261,7 @@ describe("useSkillOverrides", () => {
   });
 
   it("re-fetches on window focus so external writes surface", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ slots: [rawSlot({ override: "v1" })] }),
-    );
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady([rawSlot({ override: "v1" })]);
 
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ slots: [rawSlot({ override: "v2" })] }),
@@ -331,15 +280,7 @@ describe("useSkillOverrides", () => {
   });
 
   it("drops a refresh that a concurrent save superseded", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ slots: [rawSlot({ override: "loaded" })] }),
-    );
-
-    const { result } = renderHook(useSkillOverrides);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("ready");
-    });
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
 
     const putEcho = deferred<Response>();
     const staleGet = deferred<Response>();

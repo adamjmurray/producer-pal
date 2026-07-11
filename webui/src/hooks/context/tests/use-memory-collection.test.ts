@@ -7,19 +7,24 @@
  * @vitest-environment happy-dom
  */
 import { act, renderHook, waitFor } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   type MemoryEntryView,
   type UseMemoryCollectionReturn,
   useMemoryCollection,
 } from "#webui/hooks/context/use-memory-collection";
-import { deferred, jsonResponse } from "./doc-memory-transport-test-helpers";
+import {
+  deferred,
+  installFetchMock,
+  jsonResponse,
+  renderAndWait,
+} from "./doc-memory-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/memory";
 const ENTRY_URL = "http://localhost:3000/memory/prefers-c-minor";
 
-let fetchMock: ReturnType<typeof vi.fn>;
+const fetchMock = installFetchMock();
 
 /** A rendered hook's `result` handle. */
 type HookResult = { current: UseMemoryCollectionReturn };
@@ -46,13 +51,7 @@ function rawEntry(over: Record<string, unknown> = {}): Record<string, unknown> {
 async function mountReady(entries: unknown[] = []): Promise<HookResult> {
   fetchMock.mockResolvedValueOnce(jsonResponse({ entries }));
 
-  const { result } = renderHook(useMemoryCollection);
-
-  await waitFor(() => {
-    expect(result.current.status.kind).toBe("ready");
-  });
-
-  return result;
+  return await renderAndWait(useMemoryCollection, "ready");
 }
 
 /**
@@ -87,15 +86,6 @@ const SAMPLE_INPUT = {
   description: "default key & genre",
   content: "Composes in C minor.",
 };
-
-beforeEach(() => {
-  fetchMock = vi.fn();
-  vi.stubGlobal("fetch", fetchMock);
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("useMemoryCollection", () => {
   it("loads and maps all entries on mount via a no-store GET", async () => {
@@ -137,11 +127,7 @@ describe("useMemoryCollection", () => {
       new Response("boom", { status: 500, statusText: "Server Error" }),
     );
 
-    const { result } = renderHook(useMemoryCollection);
-
-    await waitFor(() => {
-      expect(result.current.status.kind).toBe("error");
-    });
+    const result = await renderAndWait(useMemoryCollection, "error");
 
     expect(
       result.current.status.kind === "error" && result.current.status.message,
@@ -151,13 +137,11 @@ describe("useMemoryCollection", () => {
   it("stringifies a non-Error rejection", async () => {
     fetchMock.mockRejectedValueOnce("plain string error");
 
-    const { result } = renderHook(useMemoryCollection);
+    const result = await renderAndWait(useMemoryCollection, "error");
 
-    await waitFor(() => {
-      expect(result.current.status).toStrictEqual({
-        kind: "error",
-        message: "plain string error",
-      });
+    expect(result.current.status).toStrictEqual({
+      kind: "error",
+      message: "plain string error",
     });
   });
 
