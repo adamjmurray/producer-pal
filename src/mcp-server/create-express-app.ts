@@ -21,7 +21,10 @@ import {
 } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
-import { withGlobalContext } from "./helpers/global-context/global-context-inject.ts";
+import {
+  withGlobalContext,
+  withProjectContext,
+} from "./helpers/global-context/global-context-inject.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import { withMemory } from "./helpers/memory/memory-inject.ts";
@@ -140,16 +143,20 @@ function applyLiveApiEnabled(next: boolean): void {
 }
 
 // Enrich ppal-connect Node-side: withSkills appends the (override-aware) skills
-// blob, withGlobalContext appends the machine-global context, withMemory appends
-// the indexed user memory. All read the filesystem, which only Node can do —
-// V8's connect() no longer builds skills. Blocks appear in inner-to-outer
-// order: skills, then global context, then memory.
+// blob, withProjectContext appends this Live Set's context blob (config, no fs),
+// withGlobalContext appends the machine-global context, withMemory appends the
+// indexed user memory. All but project context read the filesystem, which only
+// Node can do — V8's connect() no longer builds skills or embeds the project
+// blob. Blocks appear in inner-to-outer order: skills, project, global, memory.
 const callLiveApiEnriched = withMemory(
   withGlobalContext(
-    withSkills(callLiveApi, () => ({
-      notation: config.notation,
-      smallModelMode: config.smallModelMode,
-    })),
+    withProjectContext(
+      withSkills(callLiveApi, () => ({
+        notation: config.notation,
+        smallModelMode: config.smallModelMode,
+      })),
+      () => config.memoryContent,
+    ),
   ),
   () => config.smallModelMode,
 );

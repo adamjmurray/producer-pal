@@ -25,20 +25,19 @@ interface ConnectResult {
   producerPalVersion: string;
   abletonLiveVersion: string;
   liveSet: LiveSetInfo;
-  memoryContent?: string;
   nextStep: string;
 }
 
 /**
- * Initialize connection to Ableton Live with minimal data for safety
+ * Initialize connection to Ableton Live with minimal data for safety. The
+ * per-project context blob is no longer embedded in this result — it is
+ * appended Node-side as its own labeled block (withProjectContext), the same
+ * shape as the global-context and memory blocks, so V8 (no filesystem) and
+ * external MCP clients all see the same consistent connect response.
  * @param _params - No parameters used
- * @param context - The userContext from main.js
  * @returns Connection status and basic Live Set info
  */
-export function connect(
-  _params: object = {},
-  context: Partial<ToolContext> = {},
-): ConnectResult {
+export function connect(_params: object = {}): ConnectResult {
   const liveSet = LiveAPI.from("live_set");
   const liveApp = LiveAPI.from("live_app");
 
@@ -85,7 +84,7 @@ export function connect(
     ).join(",");
   }
 
-  const result: ConnectResult = {
+  return {
     connected: true,
     producerPalVersion: VERSION,
     abletonLiveVersion,
@@ -93,10 +92,4 @@ export function connect(
     nextStep:
       "Report the connection status and Live Set overview to the user, then wait for their instructions.",
   };
-
-  if (context.memory?.content) {
-    result.memoryContent = context.memory.content;
-  }
-
-  return result;
 }

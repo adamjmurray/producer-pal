@@ -53,10 +53,8 @@ function memoryBlock(smallModelMode: boolean): string | null {
   if (entries.length === 0) return null;
 
   return (
-    "Producer Pal user memory — persistent facts about this user, remembered " +
-    "across sessions and projects (distinct from this Live Set's per-project " +
-    "context). This is the index; to load a memory's full body call " +
-    'ppal-context (action:"read", scope:"memory", name:"<name>").\n\n' +
+    'Memory index — load a body with ppal-context (action:"read", ' +
+    'scope:"memory", name:"<name>"):\n\n' +
     renderMemoryIndex(entries)
   );
 }

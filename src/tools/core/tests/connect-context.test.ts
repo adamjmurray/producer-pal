@@ -17,39 +17,15 @@ vi.mock(
 );
 
 describe("connect", () => {
-  it("includes memory content when non-empty", () => {
+  it("does not embed the per-project context blob in the result", () => {
+    // Project context used to ride along as result.memoryContent. It now ships
+    // as its own labeled connect block, injected Node-side (withProjectContext),
+    // so the V8 result must stay context-free — the same shape as global context
+    // and the memory index.
     setupConnectMocks({ liveSetName: "Project with Notes" });
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const context: Partial<ToolContext> = {
-      memory: { content: "Working on a house track with heavy bass" },
-    };
-
-    const result = connect({}, context);
-
-    expect(result.memoryContent).toStrictEqual(
-      "Working on a house track with heavy bass",
-    );
-  });
-
-  it("excludes memory when content is empty", () => {
-    setupConnectMocks({ liveSetName: "Empty Memory Project" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const context: Partial<ToolContext> = {
-      memory: { content: "" },
-    };
-
-    const result = connect({}, context);
-
-    expect(result.memoryContent).toBeUndefined();
-  });
-
-  it("handles missing context gracefully", () => {
-    setupConnectMocks({ liveSetName: "No Context Project" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const result = connect();
+    const result = connect({}) as unknown as Record<string, unknown>;
 
     expect(result.memoryContent).toBeUndefined();
   });
@@ -61,9 +37,7 @@ describe("connect", () => {
     setupConnectMocks();
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const result = connect({}, { smallModelMode: true }) as {
-      skills?: unknown;
-    };
+    const result = connect({}) as { skills?: unknown };
 
     expect(result.skills).toBeUndefined();
   });

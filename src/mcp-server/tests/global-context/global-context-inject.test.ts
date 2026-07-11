@@ -6,7 +6,10 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { withGlobalContext } from "#src/mcp-server/helpers/global-context/global-context-inject.ts";
+import {
+  withGlobalContext,
+  withProjectContext,
+} from "#src/mcp-server/helpers/global-context/global-context-inject.ts";
 import {
   connectResponse,
   fakeInnerCall,
@@ -83,6 +86,60 @@ describe("withGlobalContext", () => {
     });
 
     const result = await withGlobalContext(inner)("ppal-connect", {});
+
+    expect(result.content).toHaveLength(1);
+  });
+});
+
+// Project context reads from the Max device config (a getter), not the
+// filesystem, so these tests pass the blob directly instead of writing a file.
+describe("withProjectContext", () => {
+  it("appends a labeled project-context block to a ppal-connect response", async () => {
+    const inner = fakeInnerCall(connectResponse());
+
+    const result = await withProjectContext(
+      inner,
+      () => "House track, heavy bass.",
+    )("ppal-connect", {});
+
+    expect(result.content).toHaveLength(2);
+    const appended = result.content[1]?.text ?? "";
+
+    expect(appended).toContain("Project context (this Live Set):");
+    expect(appended).toContain("House track, heavy bass.");
+  });
+
+  it("trims surrounding whitespace from the injected block", async () => {
+    const inner = fakeInnerCall(connectResponse());
+
+    const result = await withProjectContext(inner, () => "  House track.\n\n")(
+      "ppal-connect",
+      {},
+    );
+
+    const appended = result.content[1]?.text ?? "";
+
+    expect(appended.endsWith("House track.")).toBe(true);
+  });
+
+  it("does not inject when the project context is empty or only whitespace", async () => {
+    const inner = fakeInnerCall(connectResponse());
+
+    const result = await withProjectContext(inner, () => "   \n")(
+      "ppal-connect",
+      {},
+    );
+
+    expect(result.content).toHaveLength(1);
+  });
+
+  it("leaves non-connect tool responses untouched", async () => {
+    const inner = fakeInnerCall(connectResponse());
+
+    const result = await withProjectContext(inner, () => "notes")(
+      "ppal-read-track",
+      {},
+    );
 
     expect(result.content).toHaveLength(1);
   });

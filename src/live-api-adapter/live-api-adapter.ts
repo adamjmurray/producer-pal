@@ -117,7 +117,7 @@ This ensures all tools have access to context (holdingAreaStartBeats, silenceWav
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
-  "ppal-connect": (args, ctx) => connect(args as any, ctx),
+  "ppal-connect": (args) => connect(args as any),
   "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
   "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
   "ppal-create-track": (args, ctx) => createTrack(args as any, ctx),
