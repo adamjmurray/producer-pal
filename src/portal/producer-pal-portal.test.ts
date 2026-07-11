@@ -49,6 +49,7 @@ describe("producer-pal-portal", () => {
   const originalNotation = process.env.NOTATION;
   const originalFormat = process.env.FORMAT;
   const originalLiveApi = process.env.LIVE_API;
+  const originalJsonOutput = process.env.JSON_OUTPUT;
   const originalOrigin = process.env.MCP_SERVER_ORIGIN;
 
   beforeEach(() => {
@@ -56,6 +57,7 @@ describe("producer-pal-portal", () => {
     delete process.env.NOTATION;
     delete process.env.FORMAT;
     delete process.env.LIVE_API;
+    delete process.env.JSON_OUTPUT;
     delete process.env.MCP_SERVER_ORIGIN;
   });
 
@@ -66,6 +68,7 @@ describe("producer-pal-portal", () => {
     restoreEnv("NOTATION", originalNotation);
     restoreEnv("FORMAT", originalFormat);
     restoreEnv("LIVE_API", originalLiveApi);
+    restoreEnv("JSON_OUTPUT", originalJsonOutput);
     restoreEnv("MCP_SERVER_ORIGIN", originalOrigin);
   });
 
@@ -234,6 +237,32 @@ describe("producer-pal-portal", () => {
     });
   });
 
+  it("normalizes notation case and surrounding whitespace", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+    process.env.NOTATION = "  MIDI-JSON  ";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: "midi-json",
+      jsonOutput: undefined,
+    });
+  });
+
+  it("treats an empty NOTATION value as no override", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+    process.env.NOTATION = "";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: undefined,
+    });
+  });
+
   it("requests JSON output from the --format json flag", async () => {
     process.argv = ["node", "producer-pal-portal.js", "--format", "json"];
 
@@ -310,6 +339,45 @@ describe("producer-pal-portal", () => {
   it("prefers the --format flag over the FORMAT env var", async () => {
     process.argv = ["node", "producer-pal-portal.js", "--format", "compact"];
     process.env.FORMAT = "json";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: false,
+    });
+  });
+
+  it("requests JSON output from the JSON_OUTPUT env var", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+    process.env.JSON_OUTPUT = "true";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: true,
+    });
+  });
+
+  it("leaves jsonOutput unset when JSON_OUTPUT is false", async () => {
+    process.argv = ["node", "producer-pal-portal.js"];
+    process.env.JSON_OUTPUT = "false";
+
+    const calls = await importPortalAndGetCalls();
+
+    expect(calls[0]?.[1]).toStrictEqual({
+      smallModelMode: false,
+      notation: undefined,
+      jsonOutput: undefined,
+    });
+  });
+
+  it("prefers an explicit --format compact over JSON_OUTPUT=true", async () => {
+    process.argv = ["node", "producer-pal-portal.js", "--format", "compact"];
+    process.env.JSON_OUTPUT = "true";
 
     const calls = await importPortalAndGetCalls();
 

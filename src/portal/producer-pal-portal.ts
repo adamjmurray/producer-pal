@@ -57,17 +57,25 @@ const liveApiEnabled =
   flags.has("--live-api") || process.env.LIVE_API === "true";
 
 // Notation override: `--notation <value>` / `-n <value>` (or NOTATION env).
-// Invalid values are ignored (device keeps its own setting) with a log line
-// rather than crashing the bridge.
-const notationValue =
+// Trimmed and lower-cased so the Claude Desktop extension's free-text notation
+// field is forgiving (mcpb user_config has no enum type, so it can't be a
+// dropdown). An empty value — the extension's blank default — means "no
+// override": leave the device's own setting alone. Other invalid values are
+// ignored (device keeps its setting) with a log line rather than crashing.
+const rawNotation =
   readOptionArg(argv, ["--notation", "-n"]) ?? process.env.NOTATION;
+const notationValue = rawNotation?.trim().toLowerCase();
 let notation: Notation | undefined;
 
-if (notationValue != null && isNotation(notationValue)) {
+if (
+  notationValue != null &&
+  notationValue !== "" &&
+  isNotation(notationValue)
+) {
   notation = notationValue;
-} else if (notationValue != null) {
+} else if (notationValue != null && notationValue !== "") {
   logger.error(
-    `Ignoring invalid notation "${notationValue}" (expected one of: ${NOTATIONS.join(", ")})`,
+    `Ignoring invalid notation "${rawNotation}" (expected one of: ${NOTATIONS.join(", ")})`,
   );
 }
 
@@ -84,10 +92,18 @@ if (formatValue === "json") {
   jsonOutput = true;
 } else if (formatValue === "compact") {
   jsonOutput = false;
-} else if (formatValue != null) {
+} else if (formatValue != null && formatValue !== "") {
   logger.error(
     `Ignoring invalid format "${formatValue}" (expected one of: json, compact)`,
   );
+}
+
+// JSON_OUTPUT=true is a boolean alias for `--format json`, for the Claude Desktop
+// extension's toggle (mcpb user_config has no enum type, so it can't offer a
+// json/compact dropdown). Only ever forces JSON on: an explicit --format/FORMAT
+// wins, and "false"/unset leaves the device's own setting alone.
+if (jsonOutput == null && process.env.JSON_OUTPUT === "true") {
+  jsonOutput = true;
 }
 
 logger.info(`Starting Producer Pal bridge (mcpUrl ${mcpUrl})`);

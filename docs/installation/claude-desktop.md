@@ -89,6 +89,41 @@ enabled when starting a conversation):
 
 ![Producer Pal start a conversation](/img/screenshot.png)
 
+## Advanced settings
+
+The extension exposes a few optional settings under **Claude Desktop → Settings
+→ Extensions → Producer Pal**. Most people never need to touch these — the
+defaults are recommended. **Restart the extension after changing any of them.**
+
+- **Ableton device URL** — where to reach the Max for Live device (default
+  `http://localhost:3350`). Change only if you moved the device's port or are
+  connecting over the network.
+- **MIDI notation** — overrides how Producer Pal reads and writes clip notes.
+  Three valid values: `barbeat` (recommended for Claude Sonnet, Opus, and
+  Fable), `stark` (pairs well with **Small model mode**), or `midi-json` (pairs
+  well with **JSON output**). Leave blank, or enter anything else, to keep the
+  device's current setting (`barbeat` by default).
+- **Small model mode** — simplifies the tools and instructions for smaller
+  models. May improve results with **Claude Haiku**; not recommended otherwise,
+  since Claude Sonnet, Opus, and Fable handle the full toolset.
+- **Direct Live API** — enables the advanced
+  [`ppal-live-api`](/features#ppal-live-api) tool for direct access to the
+  [Live Object Model](https://docs.cycling74.com/apiref/lom/). An escape hatch
+  for custom control and debugging when the standard tools aren't enough — not
+  recommended as a default.
+- **JSON output** — returns tool results as JSON instead of the compact default.
+  Not recommended for normal use (it increases token usage), but useful when you
+  want Claude to run code on the results.
+
+::: info These are global device settings
+
+They're pushed to the device when the extension connects, so they also change in
+the [chat UI](/guide/chat-ui) and for any other connected MCP client. The
+extension only pushes a setting when you enable a toggle (or enter a notation) —
+it never turns off or resets a setting you configured on the device itself.
+
+:::
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).
