@@ -109,7 +109,11 @@ export function renderEnabledSkillsIndex(entries: CustomSkillEntry[]): string {
  * @returns The parsed entry
  */
 function toEntry(slug: string, raw: string): CustomSkillEntry {
-  const { data, body } = parseFrontmatter(raw);
+  const { data, body } = parseFrontmatter(raw, [
+    "name",
+    "description",
+    "enabled",
+  ]);
 
   return {
     name: slug,

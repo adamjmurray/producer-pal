@@ -23,10 +23,23 @@ const FENCE = "---";
  * leading `---` fence (the common case) yields empty `data` and the whole string
  * as `body`.
  *
+ * The leading `---…---` block is only treated as frontmatter when EVERY line is
+ * a `key: value` pair whose key is in `knownKeys` — the exact set the caller
+ * writes. This is the discriminator between our frontmatter and a markdown
+ * thematic break the user hand-authored: a single content line inside the fence
+ * (`Remember: check the mix` → key "Remember"; a bare `https://…` → key "https")
+ * matches the `identifier: value` shape but isn't a key we write, so it — and
+ * the whole document — stays in the body rather than being silently swallowed
+ * into metadata and dropped on the next re-serialize.
+ *
  * @param raw - Full file contents
+ * @param knownKeys - The frontmatter keys this caller recognizes/writes
  * @returns The parsed frontmatter fields and body
  */
-export function parseFrontmatter(raw: string): ParsedFrontmatter {
+export function parseFrontmatter(
+  raw: string,
+  knownKeys: readonly string[],
+): ParsedFrontmatter {
   // Split on CRLF or LF: a Windows editor rewrites the file with `\r\n`, and a
   // trailing `\r` on the close line ("---\r") would otherwise never match FENCE,
   // dropping the provenance block AND injecting the literal fence into the body.
@@ -43,6 +56,7 @@ export function parseFrontmatter(raw: string): ParsedFrontmatter {
     return { data: {}, body: raw };
   }
 
+  const known = new Set(knownKeys);
   const data: Record<string, string> = {};
 
   for (const line of lines.slice(1, closeIndex)) {
@@ -51,14 +65,14 @@ export function parseFrontmatter(raw: string): ParsedFrontmatter {
     const sep = line.indexOf(":");
     const key = sep === -1 ? "" : line.slice(0, sep).trim();
 
-    // Any non-blank line that isn't an `identifier: value` pair means this
-    // leading `---…---` block is a markdown thematic break wrapping content, not
-    // a provenance block. Keep the WHOLE document as body: parsing the pairs out
-    // and dropping the rest would silently delete the surrounding lines (a
-    // heading, a prose sentence, a bare URL), and a later re-serialize would
-    // make that loss permanent. Every block serializeFrontmatter writes is all
-    // identifier keys, so this never rejects a real provenance block.
-    if (!/^[\w-]+$/.test(key)) {
+    // A line whose key isn't one we write means this leading `---…---` block is
+    // a markdown thematic break wrapping content, not a frontmatter block. Keep
+    // the WHOLE document as body: parsing the recognized-looking pairs out and
+    // dropping the rest would silently delete the surrounding lines (a heading,
+    // a prose sentence, a bare URL, a lone `Remember: …` note), and a later
+    // re-serialize would make that loss permanent. `known.has("")` is false, so
+    // a non-`key: value` line (no colon) is rejected here too.
+    if (!known.has(key)) {
       return { data: {}, body: raw };
     }
 

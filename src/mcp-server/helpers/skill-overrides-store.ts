@@ -33,6 +33,7 @@ import {
   hashBuiltIn,
   isDrifted,
   type OverrideProvenance,
+  PROVENANCE_FRONTMATTER_KEYS,
   readProvenance,
   stampProvenance,
 } from "./override-provenance.ts";
@@ -113,6 +114,7 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
   const slot = SKILL_SLOTS[name];
   const { data, body } = parseFrontmatter(
     readConfigMarkdown(filenameFor(name)),
+    PROVENANCE_FRONTMATTER_KEYS,
   );
   const override = body.trim();
   const provenance = override ? readProvenance(data) : null;
@@ -186,5 +188,8 @@ function filenameFor(name: SkillSlotName): string {
  * @returns The override body to feed buildSkills
  */
 function readFragmentBody(filename: string): string {
-  return parseFrontmatter(readConfigMarkdown(filename)).body.trim();
+  return parseFrontmatter(
+    readConfigMarkdown(filename),
+    PROVENANCE_FRONTMATTER_KEYS,
+  ).body.trim();
 }

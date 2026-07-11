@@ -102,7 +102,9 @@ export function renderMemoryIndex(entries: MemoryEntry[]): string {
  * @returns The parsed entry
  */
 function toEntry(slug: string, raw: string): MemoryEntry {
-  const { data, body } = parseFrontmatter(raw);
+  // `type` is a legacy key (the removed grouping axis) — kept in the recognized
+  // set so a pre-existing `type:` line still reads as frontmatter, not body.
+  const { data, body } = parseFrontmatter(raw, ["name", "description", "type"]);
 
   return {
     name: slug,

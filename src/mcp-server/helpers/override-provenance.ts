@@ -24,6 +24,18 @@ export interface OverrideProvenance {
 }
 
 /**
+ * The frontmatter keys a provenance-stamped override writes and reads. Passed to
+ * `parseFrontmatter` so a leading `---…---` block is only treated as our
+ * frontmatter when its keys are these — a hand-authored thematic break wrapping
+ * content stays in the body. Kept beside {@link stampProvenance} /
+ * {@link readProvenance} so the key set has one source of truth.
+ */
+export const PROVENANCE_FRONTMATTER_KEYS = [
+  "producerPalVersion",
+  "builtInHash",
+] as const;
+
+/**
  * SHA-256 of a built-in string, for fork-time provenance and drift detection.
  * Callers hash their (static) built-in once and reuse the digest.
  *

@@ -26,6 +26,7 @@ import { parseFrontmatter } from "./markdown-store/frontmatter.ts";
 import {
   hashBuiltIn,
   isDrifted,
+  PROVENANCE_FRONTMATTER_KEYS,
   readProvenance,
   stampProvenance,
 } from "./override-provenance.ts";
@@ -67,6 +68,7 @@ export function readSystemPrompt(): string {
 export function readSystemPromptState(): SystemPromptState {
   const { data, body } = parseFrontmatter(
     readConfigMarkdown(SYSTEM_PROMPT_FILENAME),
+    PROVENANCE_FRONTMATTER_KEYS,
   );
   const provenance = body.trim() ? readProvenance(data) : null;
 
