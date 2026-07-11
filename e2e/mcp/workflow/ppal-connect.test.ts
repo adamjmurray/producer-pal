@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
+  CONFIG_URL,
   parseToolResult,
   setConfig,
   setupMcpTestContext,
@@ -120,6 +121,52 @@ describe("ppal-connect", () => {
       const result = await callConnectRaw();
 
       expect(extractBlock(result, PROJECT_CONTEXT_PREFIX)).toBe("");
+    });
+  });
+
+  describe("memory index", () => {
+    // The memory index (a flat `name — description` list of the user's
+    // ~/.producer-pal/memory/ entries) is injected Node-side as its own
+    // "Memory index —" block in standard mode, but SKIPPED in small-model mode:
+    // that mode's ppal-context surface drops scope=memory, so an index pointing
+    // at those actions would dead-end (see memory-inject.ts).
+    const MEMORY_INDEX_PREFIX = "Memory index";
+    const MEMORY_NAME = "e2e-memory-index-probe";
+    const MEMORY_URL = `${CONFIG_URL.replace("/config", "")}/memory/${MEMORY_NAME}`;
+
+    it("injects the index in standard mode but omits it in small-model mode", async () => {
+      // Seed a transient memory so the standard-mode presence is real, not
+      // vacuous. Localhost write — a node fetch sends no Origin, so it passes
+      // the collection route's foreign-origin gate.
+      const putRes = await fetch(MEMORY_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: "e2e probe body",
+          description: "e2e probe — safe to delete",
+        }),
+      });
+
+      try {
+        expect(putRes.ok).toBe(true);
+
+        // Standard mode: the index block is present and lists the probe entry.
+        await setConfig({ smallModelMode: false });
+        expect(
+          extractBlock(await callConnectRaw(), MEMORY_INDEX_PREFIX),
+        ).toContain(MEMORY_NAME);
+
+        // Small-model mode: no memory index block at all.
+        await setConfig({ smallModelMode: true });
+        expect(extractBlock(await callConnectRaw(), MEMORY_INDEX_PREFIX)).toBe(
+          "",
+        );
+      } finally {
+        // Always restore standard mode and delete the probe so the dev machine's
+        // real ~/.producer-pal/memory/ is left untouched.
+        await setConfig({ smallModelMode: false });
+        await fetch(MEMORY_URL, { method: "DELETE" });
+      }
     });
   });
 });
