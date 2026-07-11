@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import {
   getSkillOverrideUrl,
@@ -50,6 +50,8 @@ export interface UseSkillOverridesReturn {
   resetSlot: (name: string) => Promise<boolean>;
   /** Re-read all slots from the server. */
   refresh: () => Promise<void>;
+  /** Clear the save indicator (call when the edited slot changes). */
+  resetSaveStatus: () => void;
 }
 
 /**
@@ -69,6 +71,12 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Bumped whenever the edited slot changes (via resetSaveStatus). A save
+  // captures this at dispatch; if it has advanced by the time the save
+  // resolves, the user switched slots, so the outcome must not paint the
+  // shared "saved"/"error" indicator onto the now-active slot (the list merge
+  // still applies — only the status indicator is slot-scoped).
+  const saveGenerationRef = useRef(0);
   // Same refresh-vs-save coordination as useDocMemory (a focus/poll read can
   // resolve older slot data than a concurrent save's echo and, landing last,
   // clobber it), just over the slot collection instead of one document.
@@ -87,6 +95,8 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
 
   const writeSlot = useCallback(
     async (write: () => Promise<SkillSlotView>): Promise<boolean> => {
+      const generation = saveGenerationRef.current;
+
       beginSave();
       setSaveStatus("saving");
       setSaveError(null);
@@ -95,12 +105,14 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
         const updated = await write();
 
         setStatus((prev) => mergeSlot(prev, updated));
-        setSaveStatus("saved");
+        if (saveGenerationRef.current === generation) setSaveStatus("saved");
 
         return true;
       } catch (error: unknown) {
-        setSaveError(errorMessage(error));
-        setSaveStatus("error");
+        if (saveGenerationRef.current === generation) {
+          setSaveError(errorMessage(error));
+          setSaveStatus("error");
+        }
 
         return false;
       } finally {
@@ -121,6 +133,12 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
     [writeSlot],
   );
 
+  const resetSaveStatus = useCallback((): void => {
+    saveGenerationRef.current += 1;
+    setSaveStatus("idle");
+    setSaveError(null);
+  }, []);
+
   // Initial load.
   useEffect(() => {
     void refresh();
@@ -128,7 +146,15 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
 
   useRefreshOnFocusAndPoll(refresh);
 
-  return { status, saveStatus, saveError, saveSlot, resetSlot, refresh };
+  return {
+    status,
+    saveStatus,
+    saveError,
+    saveSlot,
+    resetSlot,
+    refresh,
+    resetSaveStatus,
+  };
 }
 
 // --- Helpers below main export ---

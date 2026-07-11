@@ -232,6 +232,62 @@ describe("useSkillOverrides", () => {
     expect(result.current.saveError).toContain("Skills update failed");
   });
 
+  it("resetSaveStatus clears the indicator when the edited slot changes", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ slots: [rawSlot()] }));
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ slot: rawSlot() }));
+
+    await act(async () => {
+      await result.current.saveSlot("barbeat-standard", "x");
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
+
+    await act(async () => {
+      result.current.resetSaveStatus();
+    });
+
+    expect(result.current.saveStatus).toBe("idle");
+    expect(result.current.saveError).toBeNull();
+  });
+
+  it("does not paint a save outcome onto a slot switched to mid-flight", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ slots: [rawSlot()] }));
+
+    const { result } = renderHook(useSkillOverrides);
+
+    await waitFor(() => {
+      expect(result.current.status.kind).toBe("ready");
+    });
+
+    const putEcho = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(putEcho.promise);
+
+    await act(async () => {
+      const savePromise = result.current.saveSlot("barbeat-standard", "MINE");
+
+      // The user switches slots (the screen calls resetSaveStatus) before the
+      // save echoes — the pending save must not repaint the indicator.
+      result.current.resetSaveStatus();
+
+      putEcho.resolve(jsonResponse({ slot: rawSlot({ override: "MINE\n" }) }));
+      await savePromise;
+    });
+
+    // The slot merge still applied, but the shared indicator stays idle.
+    expect(result.current.saveStatus).toBe("idle");
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]?.override).toBe("MINE\n");
+  });
+
   it("leaves the status untouched when a write resolves before the load", async () => {
     // GET never resolves, so status is still "loading" when the write echoes.
     fetchMock.mockReturnValueOnce(new Promise<Response>(() => {}));

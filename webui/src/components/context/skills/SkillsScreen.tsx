@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { CollectionStatusScreen } from "#webui/components/context/collection/CollectionScreen";
 import { CHIP_BUTTON_CLASS } from "#webui/components/context/editor/context-buttons";
 import { type UseSkillOverridesReturn } from "#webui/hooks/context/use-skill-overrides";
@@ -38,6 +38,15 @@ export function SkillsScreen(props: SkillsScreenProps): preact.JSX.Element {
   const [view, setView] = useState<SkillsView>("fragments");
   const [selected, setSelected] = useState<string | null>(null);
   const viewSlot = <SkillsViewToggle view={view} onSelect={setView} />;
+
+  // Reset the save indicator whenever the edited slot changes, so it never
+  // carries the previous slot's "Saved" onto the next one (the overrides hook
+  // outlives the per-slot SkillSlotScreen remount, so its status persists).
+  const { resetSaveStatus } = overrides;
+
+  useEffect(() => {
+    resetSaveStatus();
+  }, [selected, resetSaveStatus]);
 
   if (view === "preview") {
     return (

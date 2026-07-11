@@ -61,6 +61,7 @@ function overrides(
     saveSlot: vi.fn().mockResolvedValue(true),
     resetSlot: vi.fn().mockResolvedValue(true),
     refresh: vi.fn().mockResolvedValue(undefined),
+    resetSaveStatus: vi.fn(),
     ...over,
   };
 }

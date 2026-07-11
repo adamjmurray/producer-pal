@@ -68,6 +68,7 @@ vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
     saveSlot: vi.fn(),
     resetSlot: vi.fn(),
     refresh: vi.fn(),
+    resetSaveStatus: vi.fn(),
   }),
 }));
 
