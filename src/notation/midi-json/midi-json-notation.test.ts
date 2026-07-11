@@ -175,13 +175,19 @@ describe("ratio durations (tuplets)", () => {
   });
 
   it("filters out a note whose ratio divides by zero (Infinity / NaN)", () => {
-    // d:5/0 → Infinity and d:0/0 → NaN both slip past the `duration <= 0`
-    // guard, and a non-finite pitch/start survives clamping — all must be
+    // A div-by-zero ratio (5/0 → Infinity, 0/0 → NaN) is typeof "number" in
+    // every num/den field but slips past the range checks (`duration <= 0`
+    // misses Infinity/NaN; Math.max/min pass NaN through), so all must be
     // dropped before reaching add_new_notes rather than corrupting the clip.
     expect(interpretMidiJson("[{p:60,t:0,d:5/0,v:100}]")).toStrictEqual([]);
     expect(interpretMidiJson("[{p:60,t:0,d:0/0,v:100}]")).toStrictEqual([]);
     expect(interpretMidiJson("[{p:60,t:5/0,d:1,v:100}]")).toStrictEqual([]);
     expect(interpretMidiJson("[{p:5/0,t:0,d:1,v:100}]")).toStrictEqual([]);
+    // velocity (v) and probability (c) are also num/den fields.
+    expect(interpretMidiJson("[{p:60,t:0,d:1,v:5/0}]")).toStrictEqual([]);
+    expect(interpretMidiJson("[{p:60,t:0,d:1,v:0/0}]")).toStrictEqual([]);
+    expect(interpretMidiJson("[{p:60,t:0,d:1,v:100,c:5/0}]")).toStrictEqual([]);
+    expect(interpretMidiJson("[{p:60,t:0,d:1,v:100,c:0/0}]")).toStrictEqual([]);
   });
 
   it("keeps valid notes alongside a filtered div-by-zero note", () => {

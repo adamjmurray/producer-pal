@@ -143,15 +143,24 @@ export function validateAndSanitizeNote(
     return { valid: false };
   }
 
-  // Default duration and velocity if not provided
+  // Default duration, velocity, and probability if not provided
   const duration = typeof n.duration === "number" ? n.duration : 1;
   const velocity =
     typeof n.velocity === "number" ? n.velocity : DEFAULT_VELOCITY;
+  const probability = n.probability == null ? 1 : Number(n.probability);
 
   // Validate ranges (start can be negative for notes before clip start). A
-  // non-finite duration (d:5/0 → Infinity, d:0/0 → NaN) slips past `<= 0`, so
-  // reject it explicitly before it reaches add_new_notes.
-  if (!Number.isFinite(duration) || duration <= 0) {
+  // div-by-zero ratio in any num/den field (d:5/0 → Infinity, v:0/0 → NaN,
+  // c:0/0 → NaN) is typeof "number" but slips past the range checks below —
+  // `<= 0` misses Infinity/NaN and Math.max/min pass NaN through — so reject any
+  // non-finite value before it reaches add_new_notes. (velocityDeviation is
+  // already coerced with `|| 0` below.)
+  if (
+    !Number.isFinite(duration) ||
+    duration <= 0 ||
+    !Number.isFinite(velocity) ||
+    !Number.isFinite(probability)
+  ) {
     return { valid: false };
   }
 
@@ -165,10 +174,7 @@ export function validateAndSanitizeNote(
       0,
       Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),
     ),
-    probability: Math.max(
-      0,
-      Math.min(1, n.probability == null ? 1 : Number(n.probability)),
-    ),
+    probability: Math.max(0, Math.min(1, probability)),
   };
 
   return { valid: true, note: sanitized };
