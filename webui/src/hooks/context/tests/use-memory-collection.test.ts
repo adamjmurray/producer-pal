@@ -352,6 +352,50 @@ describe("useMemoryCollection", () => {
     expect(result.current.saveError).toBeNull();
   });
 
+  it("does not paint 'saved' for a save that resolved after the edited entry changed", async () => {
+    // Cross-entry leak: switching entries mid-save reset the shared indicator,
+    // then the prior entry's late echo flipped it back to "saved" — surfacing
+    // as the newly-selected entry's status. resetSaveStatus advances a
+    // generation the resolution checks, so the outcome is entry-scoped.
+    const result = await mountReady([rawEntry()]);
+
+    const put = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(put.promise);
+
+    await act(async () => {
+      const saving = result.current.saveEntry("prefers-c-minor", SAMPLE_INPUT);
+
+      // The user switches to another entry while the PUT is in flight.
+      result.current.resetSaveStatus();
+      put.resolve(jsonResponse({ entry: rawEntry() }));
+      await saving;
+    });
+
+    // The save still merged into the list, but its "saved" must not surface.
+    expect(result.current.saveStatus).toBe("idle");
+    expect(readyEntries(result)).toHaveLength(1);
+  });
+
+  it("does not paint 'error' for a failed save that resolved after the edited entry changed", async () => {
+    const result = await mountReady([rawEntry()]);
+
+    const put = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(put.promise);
+
+    await act(async () => {
+      const saving = result.current.saveEntry("prefers-c-minor", SAMPLE_INPUT);
+
+      result.current.resetSaveStatus();
+      put.resolve(badRequest({ error: "boom" }));
+      await saving;
+    });
+
+    expect(result.current.saveStatus).toBe("idle");
+    expect(result.current.saveError).toBeNull();
+  });
+
   it("deleteEntry DELETEs and removes the entry", async () => {
     const result = await mountReady([rawEntry()]);
 

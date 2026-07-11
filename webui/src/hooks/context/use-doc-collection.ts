@@ -6,6 +6,12 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import {
+  deleteEntryRequest,
+  fetchEntries,
+  putEntry,
+  putRename,
+} from "#webui/utils/collection-transport";
+import {
   runGuardedRefresh,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
@@ -69,7 +75,10 @@ export interface UseDocCollectionReturn<TView, TInput> {
   /**
    * Reset the save status to idle (clearing any "saved"/error). Called when the
    * edited entry changes so a header indicator doesn't carry the prior entry's
-   * outcome onto the next one (or onto the create form).
+   * outcome onto the next one (or onto the create form). Also advances a
+   * generation token so a save that was still in flight for the prior entry
+   * (its unmount-flush, or a debounce that already fired) can't paint its late
+   * "saved"/"error" onto the newly-selected entry.
    */
   resetSaveStatus: () => void;
   /** Re-read all entries from the server. */
@@ -102,6 +111,12 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
   });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Bumped whenever the edited entry changes (via resetSaveStatus). A save
+  // captures this at dispatch; if it has advanced by the time the save
+  // resolves, the user switched entries, so the outcome must not paint the
+  // shared "saved"/"error" indicator onto the now-active entry (the list merge
+  // still applies — only the status indicator is entry-scoped).
+  const saveGenerationRef = useRef(0);
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
 
   const refresh = useCallback(
@@ -125,6 +140,8 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
       op: () => Promise<T>,
       commit: (result: T) => void,
     ): Promise<T | null> => {
+      const generation = saveGenerationRef.current;
+
       beginSave();
       setSaveStatus("saving");
       setSaveError(null);
@@ -133,12 +150,14 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
         const result = await op();
 
         commit(result);
-        setSaveStatus("saved");
+        if (saveGenerationRef.current === generation) setSaveStatus("saved");
 
         return result;
       } catch (error: unknown) {
-        setSaveError(errorMessage(error));
-        setSaveStatus("error");
+        if (saveGenerationRef.current === generation) {
+          setSaveError(errorMessage(error));
+          setSaveStatus("error");
+        }
 
         return null;
       } finally {
@@ -190,6 +209,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
   );
 
   const resetSaveStatus = useCallback((): void => {
+    saveGenerationRef.current += 1;
     setSaveStatus("idle");
     setSaveError(null);
   }, []);
@@ -470,122 +490,6 @@ function clearTimer(ref: TimerRef): void {
   if (ref.current != null) {
     clearTimeout(ref.current);
     ref.current = null;
-  }
-}
-
-/**
- * GET the full collection.
- * @param url - The collection list endpoint
- * @param label - Error-message label (e.g. "Memory")
- * @returns Every stored entry
- */
-async function fetchEntries<TView>(
-  url: string,
-  label: string,
-): Promise<TView[]> {
-  const response = await fetch(url, { cache: "no-store" });
-
-  if (!response.ok) {
-    throw new Error(
-      `${label} request failed (${response.status} ${response.statusText})`,
-    );
-  }
-
-  const body = (await response.json()) as { entries?: TView[] };
-
-  return body.entries ?? [];
-}
-
-/**
- * PUT one entry.
- * @param url - The per-entry endpoint
- * @param input - The save payload
- * @param createOnly - When true, the server rejects (409) a name collision
- * @param label - Error-message label (e.g. "Memory")
- * @returns The server's echo of the stored entry
- */
-async function putEntry<TView, TInput>(
-  url: string,
-  input: TInput,
-  createOnly: boolean,
-  label: string,
-): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(createOnly ? { ...input, createOnly } : input),
-  });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
-
-  const body = (await response.json()) as { entry: TView };
-
-  return body.entry;
-}
-
-/**
- * PUT one entry rename (its current fields under a new name).
- * @param url - The per-entry rename endpoint (`.../:oldName/rename`)
- * @param newName - The requested new name (slugified server-side)
- * @param input - The entry's current fields to carry over
- * @param label - Error-message label (e.g. "Memory")
- * @returns The server's echo of the renamed entry
- */
-async function putRename<TView, TInput>(
-  url: string,
-  newName: string,
-  input: TInput,
-  label: string,
-): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...input, newName }),
-  });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
-
-  const body = (await response.json()) as { entry: TView };
-
-  return body.entry;
-}
-
-/**
- * DELETE one entry.
- * @param url - The per-entry endpoint
- * @param label - Error-message label (e.g. "Memory")
- */
-async function deleteEntryRequest(url: string, label: string): Promise<void> {
-  const response = await fetch(url, { method: "DELETE" });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
-}
-
-/**
- * Build a save/delete error message, preferring the server's JSON `error` field
- * (e.g. the store's "body must not be empty") over a bare status line.
- * @param response - The failed fetch response
- * @param label - Error-message label (e.g. "Memory")
- * @returns A human-readable error message
- */
-async function writeErrorMessage(
-  response: Response,
-  label: string,
-): Promise<string> {
-  const fallback = `${label} update failed (${response.status} ${response.statusText})`;
-
-  try {
-    const body = (await response.json()) as { error?: string };
-
-    return body.error ?? fallback;
-  } catch {
-    return fallback;
   }
 }
 
