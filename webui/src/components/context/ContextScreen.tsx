@@ -42,8 +42,8 @@ export interface ContextEditorLabels {
 
   /**
    * Optional one-line explainer shown in the controls strip (e.g. the custom
-   * instructions tab warns that its content fully replaces the built-in
-   * prompt). Omitted for documents that need no framing.
+   * instructions tab notes that only Producer Pal's own chat uses the prompt).
+   * Omitted for documents that need no framing.
    */
   description?: string;
   /**

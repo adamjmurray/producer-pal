@@ -32,6 +32,7 @@ export function MemoryScreen(props: MemoryScreenProps): preact.JSX.Element {
       title="Memory"
       loadingLabel="Loading memory…"
       deletedBanner="This memory was deleted outside the editor. Save to re-create it."
+      description="Facts Producer Pal remembers about you across every project. The AI saves and recalls these as you work. You can add or edit entries too."
       collection={collection}
       tabSlot={tabSlot}
       onClose={onClose}

@@ -119,7 +119,7 @@ describe("ContextTabs", () => {
     expect(screen.getByTestId("editor").textContent).toBe("GLOBAL-DOC");
   });
 
-  it("switches to the Instructions tab, shows the custom prompt doc and its full-replace note", () => {
+  it("switches to the Instructions tab, shows the custom prompt doc and its scope note", () => {
     render(<ContextTabs />);
 
     fireEvent.click(screen.getByRole("button", { name: "Instructions" }));
@@ -130,8 +130,8 @@ describe("ContextTabs", () => {
         .getAttribute("aria-pressed"),
     ).toBe("true");
     expect(screen.getByTestId("editor").textContent).toBe("INSTRUCTIONS-DOC");
-    // The controls strip warns that this document replaces the built-in prompt.
-    expect(screen.getByText(/fully replaces/i)).toBeTruthy();
+    // The controls strip explains only Producer Pal's own chat uses this prompt.
+    expect(screen.getByText(/only that chat uses it/i)).toBeTruthy();
     // The override pane is labelled; the shipped default is hidden until asked
     // for, then renders read-only so users can fork it.
     expect(screen.getByText("Your instructions")).toBeTruthy();

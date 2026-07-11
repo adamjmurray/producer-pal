@@ -37,7 +37,7 @@ const PROJECT_LABELS: ContextEditorLabels = {
   externalUpdateMessage: "Memory was updated outside the editor.",
   exportBasename: "producer-pal-project-context",
   description:
-    "Notes about this Ableton project — song direction, section plans, naming conventions — that Producer Pal keeps in mind. Saved with this project.",
+    "Notes about this Ableton project, like its genre and song structure, included in every conversation. Saved in this project's Max for Live device (delete the device and it's gone). The AI can edit them too.",
 };
 
 const GLOBAL_LABELS: ContextEditorLabels = {
@@ -48,7 +48,7 @@ const GLOBAL_LABELS: ContextEditorLabels = {
   externalUpdateMessage: "Global context was updated outside the editor.",
   exportBasename: "producer-pal-global-context",
   description:
-    "Notes that apply to every project — your style, gear, and preferences — that Producer Pal keeps in mind in every chat.",
+    "Notes that apply across all your projects, like your musical style and preferences, included in every conversation. Saved on your computer. The AI can edit them too.",
 };
 
 const INSTRUCTIONS_LABELS: ContextEditorLabels = {
@@ -60,7 +60,7 @@ const INSTRUCTIONS_LABELS: ContextEditorLabels = {
   externalUpdateMessage: "Custom instructions were updated outside the editor.",
   exportBasename: "producer-pal-custom-instructions",
   description:
-    "Fully replaces Producer Pal's built-in chat system prompt, including its tool-use and notation guidance. Leave empty to use the default.",
+    "Customize the system prompt for Producer Pal's chat. Only that chat uses it. External apps like Claude Desktop or Claude Code bring their own.",
   // Show the shipped default beside the editor with a Copy button, so users can
   // fork it instead of starting from a blank slate. This is the webui chat's
   // built-in instruction (not the ppal-connect skills blob), the same constant

@@ -62,13 +62,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   standard: {
     title: "Full skills (standard)",
     description:
-      "The whole standard-model skills: the core instructions with the notation guide pulled in via @include. Copy it to reorder sections, move where the notation guide appears, drop an include, or point one at a fragment of your own.",
+      "The full standard skills: Producer Pal's instructions to the AI, sent when it connects. Core guidance plus specialized guides (notation, transforms, devices…) pulled in via @include. Edit it to drop @includes you don't need, or rewrite freely.",
     builtIn: standardDriver,
   },
   basic: {
     title: "Full skills (small-model)",
     description:
-      "The whole small-model skills: the trimmed core with the notation guide pulled in via @include, editable like the standard skills above.",
+      "The full skills for smaller or local models: a trimmed version of the standard skills. Same core guidance plus @include guides; edit or drop @includes as you like.",
     builtIn: basicDriver,
   },
   "core-transforms": {

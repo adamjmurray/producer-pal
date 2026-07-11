@@ -50,6 +50,8 @@ interface CollectionScreenProps<TView extends DocCollectionEntry, TInput> {
   deletedBanner: string;
   /** The collection hook (mounted in ContextTabs). */
   collection: UseDocCollectionReturn<TView, TInput>;
+  /** One-line explainer shown in a strip below the header (like the doc tabs). */
+  description?: string;
   /** The tab strip rendered in the header. */
   tabSlot: preact.JSX.Element;
   /** Close the overlay (omitted on the standalone /context page). */
@@ -79,6 +81,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
 ): preact.JSX.Element {
   const { collection, tabSlot, onClose, title, loadingLabel, deletedBanner } =
     props;
+  const { description } = props;
   const [selected, setSelected] = useState<Selection>({ mode: "new" });
   const selectionKey = selected.mode === "edit" ? selected.name : "__new__";
   // Selecting another entry unmounts the active editor; confirm a discard first
@@ -145,6 +148,13 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
         saveStatus={collection.saveStatus}
         onClose={onClose}
       />
+      {description != null && (
+        <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            {description}
+          </span>
+        </div>
+      )}
       <div className="flex flex-1 min-h-0">
         <aside className="w-64 shrink-0 flex flex-col min-h-0 border-r border-zinc-200 dark:border-zinc-700">
           {props.renderList({
