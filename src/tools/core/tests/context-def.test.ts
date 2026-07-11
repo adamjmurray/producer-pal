@@ -63,15 +63,8 @@ describe("ppal-context modal config — default (large-model) mode", () => {
     const config = registerContext();
 
     expect(config.description).toBe(
-      "Read or write user context/memory.\n" +
-        "scope=project (default): facts about THIS Live Set. scope=global " +
-        "(~/.producer-pal/context.md): pinned cross-project context. Both are " +
-        "single documents — actions: read, write (replace).\n" +
-        "scope=memory (~/.producer-pal/memory/): indexed memories, loaded on " +
-        "demand. Actions: remember (save/update: name+description+content), " +
-        "forget (delete by name), list (the index), read (name → one memory).\n" +
-        "Reuse an existing name to UPDATE, not duplicate. One fact per memory. " +
-        "write/remember/forget are destructive — read the same scope first.",
+      "The user's persistent context and memory. `scope` picks the layer, " +
+        "`action` reads or writes it. Prefer read before any write/delete.",
     );
 
     const shape = getShape(config);
@@ -86,9 +79,7 @@ describe("ppal-context modal config — default (large-model) mode", () => {
     expect(enumOptions(shape.action as unknown as ZodType)).toStrictEqual([
       "read",
       "write",
-      "remember",
-      "forget",
-      "list",
+      "delete",
     ]);
     expect(enumOptions(shape.scope as unknown as ZodType)).toStrictEqual([
       "project",
@@ -107,7 +98,9 @@ describe("ppal-context modal config — small-model mode", () => {
       "read",
       "write",
     ]);
-    expect(shape.action?.description).toBe("read | write");
+    expect(shape.action?.description).toBe(
+      "read (default): the document. write: replace it.",
+    );
   });
 
   it("narrows scope to project | global", () => {
@@ -127,22 +120,19 @@ describe("ppal-context modal config — small-model mode", () => {
     expect(Object.keys(shape)).toStrictEqual(["action", "scope", "content"]);
   });
 
-  it("overrides the content description to drop the remember clause", () => {
+  it("overrides the content description to drop the memory-entry clause", () => {
     const config = registerContext({ smallModelMode: true });
     const shape = getShape(config);
 
-    expect(shape.content?.description).toBe("write: the full document content");
+    expect(shape.content?.description).toBe("The full document text to write.");
   });
 
   it("uses the shorter blobs-only tool description", () => {
     const config = registerContext({ smallModelMode: true });
 
     expect(config.description).toBe(
-      "Read or write user context.\n" +
-        "scope=project (default): facts about THIS Live Set. scope=global: " +
-        "pinned cross-project context. Actions: read, write (replace the whole " +
-        "document).\n" +
-        "write is destructive — read the same scope first.",
+      "The user's persistent context. `scope` picks the layer, `action` reads " +
+        "or writes it. Read before you write.",
     );
   });
 });

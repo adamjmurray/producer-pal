@@ -140,17 +140,17 @@ describe("ppal-context (global scope)", () => {
 });
 
 describe("ppal-context (memory scope)", () => {
-  it("remembers, reads, lists, then forgets a uniquely-named entry", async () => {
+  it("writes, reads, reads the index, then deletes a uniquely-named entry", async () => {
     // A random name isolates this from the developer's real memories; the
-    // finally-forget guarantees cleanup even if an assertion throws.
+    // finally-delete guarantees cleanup even if an assertion throws.
     const name = `e2e-test-${randomUUID()}`;
     const description = "e2e temporary memory (safe to delete)";
     const content = `e2e memory body ${randomUUID()}`;
 
     try {
-      const remembered = parseToolResult<MemoryResult>(
+      const written = parseToolResult<MemoryResult>(
         await callContextTool({
-          action: "remember",
+          action: "write",
           scope: "memory",
           name,
           description,
@@ -158,7 +158,7 @@ describe("ppal-context (memory scope)", () => {
         }),
       );
 
-      expect(remembered.content).toContain(`Remembered "${name}"`);
+      expect(written.content).toContain(`Saved memory "${name}"`);
 
       const readBack = parseToolResult<MemoryResult>(
         await callContextTool({ action: "read", scope: "memory", name }),
@@ -166,27 +166,28 @@ describe("ppal-context (memory scope)", () => {
 
       expect(readBack.content).toBe(content);
 
+      // read with no name returns the whole index (folds in the old list action)
       const listed = parseToolResult<MemoryResult>(
-        await callContextTool({ action: "list", scope: "memory" }),
+        await callContextTool({ action: "read", scope: "memory" }),
       );
 
       expect(listed.content).toContain(name);
       expect(listed.content).toContain(description);
 
-      const forgotten = parseToolResult<MemoryResult>(
-        await callContextTool({ action: "forget", scope: "memory", name }),
+      const deleted = parseToolResult<MemoryResult>(
+        await callContextTool({ action: "delete", scope: "memory", name }),
       );
 
-      expect(forgotten.content).toContain(`Forgot "${name}"`);
+      expect(deleted.content).toContain(`Deleted memory "${name}"`);
 
       const listedAfter = parseToolResult<MemoryResult>(
-        await callContextTool({ action: "list", scope: "memory" }),
+        await callContextTool({ action: "read", scope: "memory" }),
       );
 
       expect(listedAfter.content).not.toContain(name);
     } finally {
       try {
-        await callContextTool({ action: "forget", scope: "memory", name });
+        await callContextTool({ action: "delete", scope: "memory", name });
       } catch {
         console.warn(
           `e2e cleanup failed — manually delete ~/.producer-pal/memory/${name}.md`,

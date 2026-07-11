@@ -70,7 +70,7 @@ function rememberRoute(args: unknown): MemoryRouteResult {
     body: requireString(args, "content"),
   });
 
-  return { content: `Remembered "${entry.name}".\n\n${currentIndex()}` };
+  return { content: `Saved memory "${entry.name}".\n\n${currentIndex()}` };
 }
 
 /**
@@ -83,8 +83,8 @@ function forgetRoute(args: unknown): MemoryRouteResult {
   const name = requireString(args, "name");
   const existed = forgetMemory(name);
   const note = existed
-    ? `Forgot "${name}".`
-    : `No memory to forget for "${name}".`;
+    ? `Deleted memory "${name}".`
+    : `No memory named "${name}" to delete.`;
 
   return { content: `${note}\n\n${currentIndex()}` };
 }

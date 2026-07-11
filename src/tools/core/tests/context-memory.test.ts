@@ -46,20 +46,22 @@ describe("context - memory scope", () => {
       expect(result).toStrictEqual({ content: "the fact" });
     });
 
-    it("rejects a read with no name (name is required for scope:memory)", async () => {
-      await expect(
-        context({ action: "read", scope: "memory" }),
-      ).rejects.toThrow("name required to read a memory");
-      expect(protocolMock.requestNode).not.toHaveBeenCalled();
+    it("reads the whole index when no name is given (folds in the old list action)", async () => {
+      mockNodeContent("# Producer Pal Memory");
+
+      const result = await context({ action: "read", scope: "memory" });
+
+      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.list", {});
+      expect(result).toStrictEqual({ content: "# Producer Pal Memory" });
     });
   });
 
-  describe("remember action", () => {
+  describe("write action", () => {
     it("passes name, description, and content through to the node route", async () => {
       mockNodeContent("index");
 
       await context({
-        action: "remember",
+        action: "write",
         scope: "memory",
         name: "loose-drums",
         description: "swing/humanize",
@@ -74,57 +76,50 @@ describe("context - memory scope", () => {
     });
 
     it.each([
-      [{ description: "d", content: "b" }, "name required for remember action"],
-      [{ name: "x", description: "d" }, "content required for remember action"],
-      [{ name: "x", content: "b" }, "description required for remember action"],
+      [
+        { description: "d", content: "b" },
+        "name required to write a memory entry",
+      ],
+      [
+        { name: "x", description: "d" },
+        "content required to write a memory entry",
+      ],
+      [
+        { name: "x", content: "b" },
+        "description required to write a memory entry",
+      ],
       [
         { name: "x", content: "b", description: "   " },
-        "description required for remember action",
+        "description required to write a memory entry",
       ],
     ])(
-      "rejects an incomplete remember before touching the node route",
+      "rejects an incomplete write before touching the node route",
       async (extra, message) => {
         await expect(
-          context({ action: "remember", scope: "memory", ...extra }),
+          context({ action: "write", scope: "memory", ...extra }),
         ).rejects.toThrow(message);
         expect(protocolMock.requestNode).not.toHaveBeenCalled();
       },
     );
   });
 
-  describe("forget action", () => {
-    it("forgets a memory by name", async () => {
+  describe("delete action", () => {
+    it("deletes a memory entry by name", async () => {
       mockNodeContent("index");
 
-      await context({ action: "forget", scope: "memory", name: "stale" });
+      await context({ action: "delete", scope: "memory", name: "stale" });
 
       expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.forget", {
         name: "stale",
       });
     });
 
-    it("rejects a forget with no name", async () => {
+    it("rejects a delete with no name", async () => {
       await expect(
-        context({ action: "forget", scope: "memory" }),
-      ).rejects.toThrow("name required for forget action");
+        context({ action: "delete", scope: "memory" }),
+      ).rejects.toThrow("name required to delete a memory entry");
       expect(protocolMock.requestNode).not.toHaveBeenCalled();
     });
-  });
-
-  it("lists the memory index", async () => {
-    mockNodeContent("# Producer Pal Memory");
-
-    const result = await context({ action: "list", scope: "memory" });
-
-    expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.list", {});
-    expect(result).toStrictEqual({ content: "# Producer Pal Memory" });
-  });
-
-  it("rejects write under the memory scope (write is the blob-scope action)", async () => {
-    await expect(
-      context({ action: "write", scope: "memory", content: "x" }),
-    ).rejects.toThrow("Unknown action for scope:memory: write");
-    expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
   it("throws for an unknown action under the memory scope", async () => {

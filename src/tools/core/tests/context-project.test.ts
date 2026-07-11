@@ -84,13 +84,10 @@ describe("context - project scope (default)", () => {
     );
   });
 
-  it.each(["remember", "forget", "list"])(
-    "fails safe: %s with no scope (project default) errors instead of touching memory",
-    async (action) => {
-      await expect(context({ action, name: "x" }, toolContext)).rejects.toThrow(
-        `Unknown action for scope:project: ${action}`,
-      );
-      expect(outlet).not.toHaveBeenCalled();
-    },
-  );
+  it("fails safe: delete (a memory-only verb) with no scope errors instead of touching project context", async () => {
+    await expect(
+      context({ action: "delete", name: "x" }, toolContext),
+    ).rejects.toThrow("Unknown action for scope:project: delete");
+    expect(outlet).not.toHaveBeenCalled();
+  });
 });

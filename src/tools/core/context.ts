@@ -5,14 +5,14 @@
 
 import {
   type MemoryResult,
-  handleForgetMemory,
-  handleListMemory,
+  handleDeleteMemoryEntry,
   handleReadGlobalMemory,
   handleReadMemory,
   handleReadMemoryEntry,
-  handleRememberMemory,
+  handleReadMemoryIndex,
   handleWriteGlobalMemory,
   handleWriteMemory,
+  handleWriteMemoryEntry,
 } from "./context-helpers.ts";
 
 interface ContextArgs {
@@ -37,11 +37,11 @@ interface ContextArgs {
  * browser DB and the user-configured sampleFolder).
  *
  * @param args - The parameters
- * @param args.action - Action to perform (read, write, remember, forget, list)
- * @param args.content - Memory content (write = blob content; remember = entry body)
+ * @param args.action - Action to perform (read, write, delete)
+ * @param args.content - Content to write (blob document, or memory entry body)
  * @param args.scope - Which context to target (project | global | memory; default project)
- * @param args.name - Entry name (read/remember/forget, memory scope)
- * @param args.description - One-line recall hook (remember)
+ * @param args.name - Memory entry name (read/write/delete, memory scope)
+ * @param args.description - One-line recall hook (memory write)
  * @param toolContext - The context object
  * @returns Memory result
  */
@@ -52,15 +52,15 @@ export async function context(
   if (scope === "memory") {
     switch (action) {
       case "read":
-        if (!name) throw new Error("name required to read a memory");
-
-        return await handleReadMemoryEntry(name);
-      case "remember":
-        return await handleRememberMemory({ name, description, content });
-      case "forget":
-        return await handleForgetMemory(name);
-      case "list":
-        return await handleListMemory();
+        // Uniform verb, scope-driven target: a name reads that entry, no name
+        // reads the whole index (the old dedicated `list` action folded in).
+        return name
+          ? await handleReadMemoryEntry(name)
+          : await handleReadMemoryIndex();
+      case "write":
+        return await handleWriteMemoryEntry({ name, description, content });
+      case "delete":
+        return await handleDeleteMemoryEntry(name);
       default:
         throw new Error(`Unknown action for scope:memory: ${action}`);
     }

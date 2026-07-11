@@ -73,8 +73,10 @@ export async function handleReadMemoryEntry(
 
 /**
  * Create or overwrite an indexed memory entry, then re-derive the index. The
- * Node side owns slug validation and index regeneration. Backs the `memory`
- * scope's `remember` action.
+ * Node side owns slug validation and index regeneration. Backs scope:memory
+ * `write` (a name'd entry upsert). The wire route is still named
+ * `memory.remember` — an internal identifier left for the terminology sweep, so
+ * it doesn't reach the AI.
  *
  * @param args - The memory to store
  * @param args.name - Desired memory name (slugified Node-side)
@@ -82,16 +84,17 @@ export async function handleReadMemoryEntry(
  * @param args.content - The memory body (the fact)
  * @returns Memory result with the regenerated index
  */
-export async function handleRememberMemory(args: {
+export async function handleWriteMemoryEntry(args: {
   name?: string;
   description?: string;
   content?: string;
 }): Promise<MemoryResult> {
-  if (!args.name) throw new Error("name required for remember action");
-  if (!args.content) throw new Error("content required for remember action");
+  if (!args.name) throw new Error("name required to write a memory entry");
+  if (!args.content)
+    throw new Error("content required to write a memory entry");
 
   if (!args.description?.trim()) {
-    throw new Error("description required for remember action");
+    throw new Error("description required to write a memory entry");
   }
 
   return await callNodeMemoryRoute("memory.remember", {
@@ -102,27 +105,30 @@ export async function handleRememberMemory(args: {
 }
 
 /**
- * Delete an indexed memory entry (if present), then re-derive the index.
- * Backs the `memory` scope's `forget` action.
+ * Delete an indexed memory entry (if present), then re-derive the index. Backs
+ * scope:memory `delete`. The wire route is still named `memory.forget` — an
+ * internal identifier left for the terminology sweep.
  *
- * @param name - The memory name/slug to forget
+ * @param name - The memory name/slug to delete
  * @returns Memory result with the regenerated index
  */
-export async function handleForgetMemory(
+export async function handleDeleteMemoryEntry(
   name: string | undefined,
 ): Promise<MemoryResult> {
-  if (!name) throw new Error("name required for forget action");
+  if (!name) throw new Error("name required to delete a memory entry");
 
   return await callNodeMemoryRoute("memory.forget", { name });
 }
 
 /**
- * List the derived memory index (already injected on connect; this is an
- * explicit refresh). Backs the `memory` scope's `list` action.
+ * Read the derived memory index (already injected on connect; this is an
+ * explicit refresh). Backs scope:memory `read` with no `name`. The wire route
+ * is still named `memory.list` — an internal identifier left for the
+ * terminology sweep.
  *
  * @returns Memory result with the current index
  */
-export async function handleListMemory(): Promise<MemoryResult> {
+export async function handleReadMemoryIndex(): Promise<MemoryResult> {
   return await callNodeMemoryRoute("memory.list", {});
 }
 

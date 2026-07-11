@@ -9,34 +9,29 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
+  // Mechanical only: what each scope is, what each action does, how to address
+  // a memory by name. The behavioral discipline (confirm before writing the
+  // user-owned context layers; manage memory freely; avoid duplicate entries;
+  // write precise recall hooks) lives in the customizable skills, not here — so
+  // a user tuning their skills can't contradict a hardcoded rule in the schema.
   description: {
     default:
-      "Read or write user context/memory.\n" +
-      "scope=project (default): facts about THIS Live Set. scope=global " +
-      "(~/.producer-pal/context.md): pinned cross-project context. Both are " +
-      "single documents — actions: read, write (replace).\n" +
-      "scope=memory (~/.producer-pal/memory/): indexed memories, loaded on " +
-      "demand. Actions: remember (save/update: name+description+content), " +
-      "forget (delete by name), list (the index), read (name → one memory).\n" +
-      "Reuse an existing name to UPDATE, not duplicate. One fact per memory. " +
-      "write/remember/forget are destructive — read the same scope first.",
+      "The user's persistent context and memory. `scope` picks the layer, " +
+      "`action` reads or writes it. Prefer read before any write/delete.",
     smallModel:
-      "Read or write user context.\n" +
-      "scope=project (default): facts about THIS Live Set. scope=global: " +
-      "pinned cross-project context. Actions: read, write (replace the whole " +
-      "document).\n" +
-      "write is destructive — read the same scope first.",
+      "The user's persistent context. `scope` picks the layer, `action` reads " +
+      "or writes it. Read before you write.",
   },
 
   annotations: {
     readOnlyHint: false,
-    destructiveHint: true, // write/remember/forget mutate stored content
+    destructiveHint: true, // write replaces, delete removes stored content
   },
 
   inputSchema: {
     action: param(
       z
-        .enum(["read", "write", "remember", "forget", "list"])
+        .enum(["read", "write", "delete"])
         // Default required so the smallModel excludeEnumValues override can
         // filter it — filterEnumValues only accepts a schema with a top-level
         // .default(). Matches library.ts's action param. "read" is the safe,
@@ -45,10 +40,14 @@ export const toolDefContext = defineTool("ppal-context", {
         .optional()
         .default("read"),
       {
-        default: "read | write | remember | forget | list",
+        default:
+          "read (default): project/global → the document; memory → the entry " +
+          "named `name`, or the whole index if no `name`. write: replace the " +
+          "document, or create/update the memory entry `name`. delete: remove " +
+          "the memory entry `name`.",
         smallModel: {
-          description: "read | write",
-          excludeEnumValues: ["remember", "forget", "list"],
+          description: "read (default): the document. write: replace it.",
+          excludeEnumValues: ["delete"],
         },
       },
     ),
@@ -63,28 +62,38 @@ export const toolDefContext = defineTool("ppal-context", {
         .default("project"),
       {
         default:
-          "project (default): this Live Set | global: pinned user context | memory: indexed user memories",
+          "project (default): facts about THIS Live Set (genre, song " +
+          "structure), always in its context. global: preferences across ALL " +
+          "projects (style, gear), always in context. memory: durable facts " +
+          "about the user and rules that matter only in certain situations, " +
+          "loaded on demand by name.",
         smallModel: {
           description:
-            "project (default): this Live Set | global: pinned user context",
+            "project (default): facts about THIS Live Set. global: " +
+            "preferences across all projects.",
           excludeEnumValues: ["memory"],
         },
       },
     ),
 
     content: param(z.string().max(10_000).optional(), {
-      default: "write: full context.md | remember: the memory body (the fact)",
-      smallModel: "write: the full document content",
+      default:
+        "Text to write — project/global: the whole document; memory: the " +
+        "entry body (one fact).",
+      smallModel: "The full document text to write.",
     }),
 
     name: param(z.string().max(200).optional(), {
-      default: "entry name (read, remember, forget — memory scope)",
+      default:
+        "Memory entry name (read/write/delete on scope:memory). Reuse a name " +
+        "to update, not duplicate.",
       smallModel: null,
     }),
 
     description: param(z.string().max(500).optional(), {
       default:
-        "one-line recall hook shown in the index (required for remember)",
+        "Memory entry's one-line recall hook for the index — what's inside and " +
+        "when it's relevant (set on write).",
       smallModel: null,
     }),
   },

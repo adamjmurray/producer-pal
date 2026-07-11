@@ -39,7 +39,9 @@ describe("memory.remember route", () => {
     });
 
     expect(response.success).toBe(true);
-    expect(response.result?.content).toContain('Remembered "prefers-c-minor".');
+    expect(response.result?.content).toContain(
+      'Saved memory "prefers-c-minor".',
+    );
     expect(response.result?.content).toContain(
       "- `prefers-c-minor` — default key",
     );
@@ -95,17 +97,17 @@ describe("memory.forget route", () => {
 
     const response = await dispatchNodeRoute("memory.forget", { name: "temp" });
 
-    expect(response.result?.content).toContain('Forgot "temp".');
+    expect(response.result?.content).toContain('Deleted memory "temp".');
     expect(response.result?.content).toContain("(no memories stored)");
   });
 
-  it("reports when there was nothing to forget", async () => {
+  it("reports when there was nothing to delete", async () => {
     const response = await dispatchNodeRoute("memory.forget", {
       name: "ghost",
     });
 
     expect(response.result?.content).toContain(
-      'No memory to forget for "ghost".',
+      'No memory named "ghost" to delete.',
     );
   });
 });

@@ -116,13 +116,10 @@ describe("context - global scope", () => {
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
-  it.each(["remember", "forget", "list"])(
-    "rejects %s under the global scope (memory ops live under scope:memory)",
-    async (action) => {
-      await expect(
-        context({ action, scope: "global", name: "x" }),
-      ).rejects.toThrow(`Unknown action for scope:global: ${action}`);
-      expect(protocolMock.requestNode).not.toHaveBeenCalled();
-    },
-  );
+  it("rejects delete under the global scope (delete lives under scope:memory)", async () => {
+    await expect(
+      context({ action: "delete", scope: "global", name: "x" }),
+    ).rejects.toThrow("Unknown action for scope:global: delete");
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
 });
