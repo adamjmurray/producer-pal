@@ -11,6 +11,7 @@ import {
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
 import { DOUBLE_PANE_WIDTH } from "#webui/components/context/ContextScreen";
+import { CHIP_BUTTON_CLASS } from "#webui/components/context/editor/context-buttons";
 import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
 import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
@@ -263,10 +264,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
         </span>
       }
       right={
-        <CopyButton
-          text={skills}
-          className="shrink-0 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
-        />
+        <CopyButton text={skills} className={`shrink-0 ${CHIP_BUTTON_CLASS}`} />
       }
     >
       {warnings.length > 0 && <PreviewWarnings warnings={warnings} />}
@@ -306,7 +304,7 @@ function PreviewFrame(props: PreviewFrameProps): preact.JSX.Element {
     <div
       className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-col h-full p-4 gap-2 overflow-hidden`}
     >
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-5 gap-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-7 gap-3">
         <div className="min-w-0 justify-self-start">{left}</div>
         <div className="justify-self-center">{viewSlot}</div>
         <div className="justify-self-end">{right}</div>

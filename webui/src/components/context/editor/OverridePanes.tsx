@@ -10,10 +10,7 @@ import {
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
 import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
-
-/** Small text-link style shared by the pane-header toggles (Show default / Hide). */
-const HEADER_LINK_CLASS =
-  "shrink-0 text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors";
+import { CHIP_BUTTON_CLASS } from "./context-buttons";
 
 interface OverridePanesProps {
   /** Remount key for the uncontrolled editor (bumped on reset/reload). */
@@ -56,6 +53,7 @@ interface OverridePanesProps {
    * override, which flips this component into the editing view.
    */
   onCustomize: () => void;
+
   /**
    * Optional control centered in the pane header (the Skills tab passes its
    * Preview/Source view toggle here). Omitted by the custom-instructions editor,
@@ -94,7 +92,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   if (!hasOverride) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-1">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-7 gap-3">
           <span className="min-w-0 truncate text-xs font-medium text-zinc-400 dark:text-zinc-500">
             Default
           </span>
@@ -102,7 +100,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
           <button
             type="button"
             onClick={onCustomize}
-            className="justify-self-end shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+            className={`justify-self-end shrink-0 ${CHIP_BUTTON_CLASS}`}
           >
             <NewConversationIcon />
             Customize
@@ -116,12 +114,12 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   return (
     <div className="flex-1 min-h-0 flex gap-3">
       <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-5 gap-3">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-7 gap-3">
           <span className="min-w-0 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
             {overrideLabel}
           </span>
           <div className="justify-self-center">{centerControl}</div>
-          <div className="justify-self-end flex items-center gap-3">
+          <div className="justify-self-end flex items-center gap-2">
             <button
               type="button"
               onClick={() =>
@@ -141,7 +139,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
               <button
                 type="button"
                 onClick={() => onToggleBuiltIn(true)}
-                className={HEADER_LINK_CLASS}
+                className={`shrink-0 ${CHIP_BUTTON_CLASS}`}
               >
                 Show default
               </button>
@@ -160,16 +158,19 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
 
       {showBuiltIn && (
         <div className="built-in-reveal flex-1 min-w-0 flex flex-col gap-1">
-          <div className="flex items-center justify-between h-5 gap-3">
+          <div className="flex items-center justify-between h-7 gap-3">
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
               Default
             </span>
-            <div className="flex items-center gap-3">
-              <CopyButton text={builtIn} className={HEADER_LINK_CLASS} />
+            <div className="flex items-center gap-2">
+              <CopyButton
+                text={builtIn}
+                className={`shrink-0 ${CHIP_BUTTON_CLASS}`}
+              />
               <button
                 type="button"
                 onClick={() => onToggleBuiltIn(false)}
-                className={HEADER_LINK_CLASS}
+                className={`shrink-0 ${CHIP_BUTTON_CLASS}`}
               >
                 Hide
               </button>

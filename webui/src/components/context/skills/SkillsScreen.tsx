@@ -5,6 +5,7 @@
 
 import { useState } from "preact/hooks";
 import { CollectionStatusScreen } from "#webui/components/context/collection/CollectionScreen";
+import { CHIP_BUTTON_CLASS } from "#webui/components/context/editor/context-buttons";
 import { type UseSkillOverridesReturn } from "#webui/hooks/context/use-skill-overrides";
 import { SkillSlotScreen } from "./SkillSlotScreen";
 import { SkillsPreviewScreen } from "./SkillsPreviewScreen";
@@ -106,13 +107,14 @@ interface SkillsViewToggleProps {
 }
 
 /**
- * A single compact link toggling the Skills tab between the fragment editor and
- * the assembled-blob preview, labelled with the view it switches TO ("Preview"
- * while editing, "Source" while previewing). Compact by design so it fits the
- * row above the editor on narrow screens, where the old two-segment control
- * crowded the controls strip.
+ * A single compact chip button toggling the Skills tab between the fragment
+ * editor and the assembled-blob preview, labelled with the view it switches TO
+ * ("Preview" while editing, "Source" while previewing). Compact by design so it
+ * fits the row above the editor on narrow screens, where the old two-segment
+ * control crowded the controls strip. Shares the pane controls' button styling
+ * (see CHIP_BUTTON_CLASS).
  * @param props - Toggle props
- * @returns Toggle link element
+ * @returns Toggle button element
  */
 function SkillsViewToggle(props: SkillsViewToggleProps): preact.JSX.Element {
   const { view, onSelect } = props;
@@ -127,7 +129,7 @@ function SkillsViewToggle(props: SkillsViewToggleProps): preact.JSX.Element {
           ? "Show the raw skill fragment"
           : "Preview with included fragments inserted"
       }
-      className="shrink-0 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 hover:underline transition-colors"
+      className={`shrink-0 ${CHIP_BUTTON_CLASS}`}
     >
       {previewing ? "Source" : "Preview"}
     </button>
