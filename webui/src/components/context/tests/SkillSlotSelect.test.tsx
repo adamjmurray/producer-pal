@@ -24,7 +24,7 @@ describe("SkillSlotSelect", () => {
     const options = screen.getAllByRole("option");
 
     expect(options[0]?.textContent).toBe("Tracking");
-    expect(options[1]?.textContent).toBe("● Customized");
+    expect(options[1]?.textContent).toBe("✎ Customized");
     expect(options[2]?.textContent).toBe("⚠ Drifted");
   });
 
