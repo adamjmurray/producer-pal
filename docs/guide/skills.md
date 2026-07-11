@@ -117,6 +117,19 @@ trims the tool descriptions) and consider `stark` instead of `midi-json`:
 node ppal.mjs --set-config '{"notation":"stark","smallModelMode":true}'
 ```
 
+::: tip Saving tokens: compact responses
+
+The REST API returns JSON by default — a parsed `result` plus a separate
+`warnings` list — which is what you want when the agent generates or parses MIDI
+data in scripts. If you're mostly reading state or having a conversational
+back-and-forth (not processing the data programmatically), you can save tokens
+by requesting the compact format instead: pass `?format=compact` on tool calls
+(a one-line change in `ppal.mjs`'s `callTool`:
+`params.set("format", "compact")`). The trade-off is that `result` then comes
+back as a raw string rather than parsed JSON, and warnings fold into it.
+
+:::
+
 ## The bundled script
 
 `ppal.mjs` is a zero-dependency Node 18+ script that wraps Producer Pal's REST
