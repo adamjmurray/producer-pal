@@ -220,22 +220,27 @@ export function makeMarkdownCollectionStore<
   };
 
   const list = (): Entry[] => {
-    const entries = listConfigMarkdownFiles(config.subdir)
-      .filter(
-        (file) => file.toLowerCase() !== config.indexFilename.toLowerCase(),
-      )
-      .map((file) => {
-        // Normalize the basename to the canonical slug so a hand-authored
-        // filename (spaces, caps, punctuation) lists under the same handle that
-        // read/forget/remember derive — otherwise the index would surface an
-        // entry no lookup could resolve. resolveFile maps that slug back here.
-        const slug = slugifyCollectionName(file.replace(/\.md$/, ""));
+    // Normalize each basename to its canonical slug so a hand-authored filename
+    // (spaces, caps, punctuation) lists under the same handle read/forget/
+    // remember derive. De-dupe by slug and read each back through resolveFile:
+    // when two files collide on one slug (e.g. a hand-authored "Kick Drum.md"
+    // beside "kick-drum.md") only the one resolveFile targets is reachable, so
+    // listing exactly that one keeps the index from surfacing a ghost line no
+    // lookup could resolve — and keeps the listed entry identical to the one
+    // read/forget/remember act on, by construction.
+    const seen = new Set<string>();
+    const entries: Entry[] = [];
 
-        return config.toEntry(
-          slug,
-          readConfigMarkdown(`${config.subdir}/${file}`),
-        );
-      });
+    for (const file of listConfigMarkdownFiles(config.subdir)) {
+      if (file.toLowerCase() === config.indexFilename.toLowerCase()) continue;
+
+      const slug = slugifyCollectionName(file.replace(/\.md$/, ""));
+
+      if (seen.has(slug)) continue;
+      seen.add(slug);
+
+      entries.push(config.toEntry(slug, readConfigMarkdown(resolveFile(slug))));
+    }
 
     return config.sort(entries);
   };

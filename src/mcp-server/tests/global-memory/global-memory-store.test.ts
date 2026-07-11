@@ -454,6 +454,29 @@ describe("hand-authored non-canonical filenames", () => {
     expect(forgetMemory("kick-drum-samples")).toBe(true);
     expect(listMemoryEntries()).toStrictEqual([]);
   });
+
+  it("collapses two files colliding on one slug to the resolvable entry", () => {
+    // Two hand-authored files slugify to "kick-drum". Only the one resolveFile
+    // targets (the canonical basename) is reachable by read/forget/remember, so
+    // list must surface exactly it — not a second ghost line the index can show
+    // but no lookup could resolve.
+    writeRaw(
+      "kick-drum.md",
+      "---\ndescription: canonical\n---\n\ncanonical body",
+    );
+    writeRaw("Kick Drum.md", "---\ndescription: ghost\n---\n\nghost body");
+
+    const listed = listMemoryEntries();
+
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toStrictEqual({
+      name: "kick-drum",
+      description: "canonical",
+      body: "canonical body",
+    });
+    // The listed entry is the one read/forget resolve — no unreachable ghost.
+    expect(readMemoryEntry("kick-drum")?.body).toBe("canonical body");
+  });
 });
 
 describe("regenerateIndex / MEMORY.md", () => {
