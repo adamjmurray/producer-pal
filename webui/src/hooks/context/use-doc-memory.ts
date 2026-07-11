@@ -305,6 +305,12 @@ export function makeContentTransport(
   };
 
   const write = async (content: string): Promise<DocRead> => {
+    // Deliberately NOT `keepalive: true` (unlike the collection transport's
+    // small-entry writes): a context / custom-system-prompt body can be imported
+    // up to ~1MB, and a keepalive fetch whose body exceeds the browser's ~64KB
+    // quota rejects outright — that would regress ordinary large-doc saves to fix
+    // only the rare beforeunload drop. On localhost the flush completes in a few
+    // ms, so that drop window is negligible; the size safety is the better trade.
     const response = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

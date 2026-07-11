@@ -179,6 +179,8 @@ describe("useMemoryCollection", () => {
       expect.objectContaining({
         method: "PUT",
         body: JSON.stringify(SAMPLE_INPUT),
+        // keepalive so a beforeunload/unmount-flush save survives a tab close.
+        keepalive: true,
       }),
     );
   });
@@ -411,7 +413,7 @@ describe("useMemoryCollection", () => {
     expect(readyEntries(result)).toStrictEqual([]);
     expect(fetchMock).toHaveBeenLastCalledWith(
       ENTRY_URL,
-      expect.objectContaining({ method: "DELETE" }),
+      expect.objectContaining({ method: "DELETE", keepalive: true }),
     );
   });
 

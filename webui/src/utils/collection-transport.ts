@@ -33,6 +33,15 @@ export async function fetchEntries<TView>(
   return body.entries ?? [];
 }
 
+// The mutating writes below set `keepalive: true` so a save/delete dispatched
+// from the editor's beforeunload/unmount flush can finish after the page starts
+// tearing down — a fast tab-close otherwise aborts the in-flight request and
+// drops the last autosave. Collection entries (memory facts, skill fragments)
+// are small, so the browser's ~64KB keepalive body quota is never a concern
+// here — unlike the single-doc context/system-prompt writes (see
+// #webui/hooks/context/use-doc-memory `makeContentTransport`), whose imported
+// bodies can far exceed it, so those deliberately stay a plain fetch.
+
 /**
  * PUT one entry.
  * @param url - The per-entry endpoint
@@ -51,6 +60,7 @@ export async function putEntry<TView, TInput>(
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(createOnly ? { ...input, createOnly } : input),
+    keepalive: true,
   });
 
   if (!response.ok) {
@@ -80,6 +90,7 @@ export async function putRename<TView, TInput>(
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...input, newName }),
+    keepalive: true,
   });
 
   if (!response.ok) {
@@ -100,7 +111,7 @@ export async function deleteEntryRequest(
   url: string,
   label: string,
 ): Promise<void> {
-  const response = await fetch(url, { method: "DELETE" });
+  const response = await fetch(url, { method: "DELETE", keepalive: true });
 
   if (!response.ok) {
     throw new Error(await writeErrorMessage(response, label));
