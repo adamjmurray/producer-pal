@@ -171,6 +171,7 @@ function SettingsTabContent(props: SettingsScreenProps) {
           notation={settings.notation}
           setNotation={settings.setNotation}
           onEditContext={props.onEditContext}
+          settingsConfigured={settings.settingsConfigured}
         />
       )}
 

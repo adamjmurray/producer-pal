@@ -43,6 +43,10 @@ interface ToolTogglesProps {
   // group's Context toggle, so the feature is discoverable here and not only
   // from the chat header. Omitted where the shortcut isn't wanted.
   onEditContext?: () => void;
+  // On a fresh/unconfigured install Settings is force-shown and can't close, so
+  // the context editor would open behind it (a dead end). Disable the shortcut
+  // until settings are configured; it works normally once the user saves once.
+  settingsConfigured: boolean;
 }
 
 /**
@@ -65,6 +69,7 @@ export function ToolToggles({
   notation,
   setNotation,
   onEditContext,
+  settingsConfigured,
 }: ToolTogglesProps) {
   if (!tools) {
     return (
@@ -173,7 +178,10 @@ export function ToolToggles({
             footer={group.label === "Advanced" ? notationFooter : undefined}
             cta={
               group.label === "Core" && onEditContext ? (
-                <EditContextButton onClick={onEditContext} />
+                <EditContextButton
+                  onClick={onEditContext}
+                  disabled={!settingsConfigured}
+                />
               ) : undefined
             }
           />
@@ -299,17 +307,27 @@ function ToolGroupSection({
  * "Edit Context" shortcut shown under the Core group's Context toggle. Uses the
  * same icon as the chat header's Context button (with a text label here for
  * clarity) and opens the context editor, making the feature discoverable from
- * Settings.
+ * Settings. Disabled until settings are configured — Settings is force-shown and
+ * can't close in that state, so the editor would open behind it (a dead end).
  * @param props - Button props
  * @param props.onClick - Opens the context editor
+ * @param props.disabled - Whether the shortcut is unavailable (unconfigured)
  * @returns Button element
  */
-function EditContextButton({ onClick }: { onClick: () => void }): VNode {
+function EditContextButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}): VNode {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors"
+      disabled={disabled}
+      title={disabled ? "Configure settings first" : undefined}
+      className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline disabled:hover:text-blue-600 dark:disabled:hover:text-blue-400"
     >
       <ContextIcon />
       Edit Context

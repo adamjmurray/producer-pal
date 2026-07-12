@@ -189,6 +189,12 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
  * The read-only built-in reference editor, rendered identically whether it is
  * the sole content (no override yet) or the revealed reference beside an
  * override. Read-only markdown so it matches the editable pane's formatting.
+ *
+ * Keyed by `value`: MarkdownEditor is uncontrolled (seeds at mount only), so
+ * without a content key a built-in that changes server-side while the pane is
+ * open — e.g. the notation switch re-tuning the fragment, picked up by the 5s
+ * poll — would leave a stale preview even though Customize forks from the fresh
+ * value. Remounting on content change keeps the shown default in sync.
  * @param props - Editor props
  * @param props.value - The built-in markdown to display
  * @returns Read-only editor element
@@ -196,6 +202,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
 function ReadOnlyBuiltIn(props: { value: string }): preact.JSX.Element {
   return (
     <MarkdownEditor
+      key={props.value}
       initialValue={props.value}
       readOnly={true}
       onChange={noop}

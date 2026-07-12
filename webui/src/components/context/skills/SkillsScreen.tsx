@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useState } from "preact/hooks";
+import { useLayoutEffect, useState } from "preact/hooks";
 import { CollectionStatusScreen } from "#webui/components/context/collection/CollectionScreen";
 import { CHIP_BUTTON_CLASS } from "#webui/components/context/editor/context-buttons";
 import { type UseSkillOverridesReturn } from "#webui/hooks/context/use-skill-overrides";
@@ -40,11 +40,14 @@ export function SkillsScreen(props: SkillsScreenProps): preact.JSX.Element {
   const viewSlot = <SkillsViewToggle view={view} onSelect={setView} />;
 
   // Reset the save indicator whenever the edited slot changes, so it never
-  // carries the previous slot's "Saved" onto the next one (the overrides hook
-  // outlives the per-slot SkillSlotScreen remount, so its status persists).
+  // carries the previous slot's "Saved"/"Save failed" onto the next one (the
+  // overrides hook outlives the per-slot SkillSlotScreen remount, so its status
+  // persists). A LAYOUT effect (not a passive one) so the reset lands before the
+  // freshly-keyed SkillSlotScreen paints — a passive effect runs after paint,
+  // flashing the prior slot's status for one frame on the new slot.
   const { resetSaveStatus } = overrides;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     resetSaveStatus();
   }, [selected, resetSaveStatus]);
 
