@@ -90,8 +90,20 @@ describe("stark interpreter — drums (event-based)", () => {
     expect(notes.map((n) => n.start_time)).toStrictEqual([0, 2]);
   });
 
+  it("resolves enharmonic pitch-name headers arithmetically (Cb/E#/Fb/B#)", () => {
+    // pitch.ts's exact table lacks these spellings; the arithmetic path accepts
+    // them, matching how melody/bass note tokens resolve pitch. Ableton C3=60:
+    // Cb2=47, E#3=65 (=F3), Fb2=52, B#3=72 (=C4).
+    expect(interpretNotation("Cb2: X X X X").map((n) => n.pitch)).toStrictEqual(
+      [47, 47, 47, 47],
+    );
+    expect(interpretNotation("E#3: X").map((n) => n.pitch)).toStrictEqual([65]);
+    expect(interpretNotation("Fb2: X").map((n) => n.pitch)).toStrictEqual([52]);
+    expect(interpretNotation("B#3: X").map((n) => n.pitch)).toStrictEqual([72]);
+  });
+
   it("skips a drum line whose pitch cannot resolve (out-of-range pitch name)", () => {
-    // C9 = MIDI 132, out of range → noteNameToMidi returns null.
+    // C9 = MIDI 132, out of range → drumHeaderPitch returns null.
     expect(interpretNotation("C9: X X")).toStrictEqual([]);
   });
 

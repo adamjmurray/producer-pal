@@ -46,7 +46,6 @@ import {
   VELOCITY_SOFT_MIN,
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 /** Natural pitch class offsets (semitones above C). */
@@ -132,11 +131,11 @@ function isDrumSection(section: StarkSection): section is DrumSection {
 // Process an event-based drum section: each token is a hit or rest whose
 // duration is its glued /N, else the line default (header /N, else /4). The
 // pitch is fixed — the named drum's GM pitch (section.midi) or a pitch-name
-// header resolved via pitch.ts (Ableton C3=60).
+// header resolved arithmetically (Ableton C3=60).
 function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
   const pitch =
     section.midi ??
-    (section.noteName ? noteNameToMidi(section.noteName) : null);
+    (section.noteName ? drumHeaderPitch(section.noteName) : null);
 
   if (pitch == null) {
     console.warn(
@@ -171,6 +170,25 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
       time += beats;
     }
   }
+}
+
+// Resolve a drum header's absolute pitch name (e.g. "Cb2", "F#3") to MIDI the
+// same arithmetic way Stark note tokens resolve pitch, so enharmonic spellings
+// (Cb/E#/Fb/B#) work. pitch.ts's noteNameToMidi rejects those — its exact table
+// omits them — silently dropping the whole drum line. Ableton C3 = 60; returns
+// null for an unparseable name or an out-of-MIDI-range result.
+function drumHeaderPitch(noteName: string): number | null {
+  // Anchored match → all three groups present (accidental is "" when absent).
+  const match = noteName.match(/^([A-Ga-g])([#b]?)(-?\d+)$/);
+
+  if (match == null) return null;
+
+  const letter = (match[1] as string).toUpperCase();
+  const accidental = match[2] === "#" ? "#" : match[2] === "b" ? "b" : null;
+  const octave = Number.parseInt(match[3] as string);
+  const midi = (octave + 2) * 12 + pitchOffset(letter, accidental);
+
+  return midi < 0 || midi > 127 ? null : midi;
 }
 
 // Convert a dynamic level to a random velocity within its range.
