@@ -44,6 +44,20 @@ function extractSkills(result: unknown): string {
   return extractBlock(result, "# Producer Pal Skills");
 }
 
+/**
+ * The position of the first content block whose text starts with `prefix`, or -1
+ * when absent. Unlike {@link extractBlock} (which finds a block by prefix
+ * regardless of position), this exposes ORDER, so a test can assert the injected
+ * blocks appear in the documented skills → project → global → memory sequence.
+ */
+function blockIndex(result: unknown, prefix: string): number {
+  const typed = result as {
+    content?: Array<{ text?: string }>;
+  } | null;
+
+  return typed?.content?.findIndex((c) => c.text?.startsWith(prefix)) ?? -1;
+}
+
 describe("ppal-connect", () => {
   it("returns standard mode skills (smallModelMode=false)", async () => {
     // Ensure standard mode is active, with notation pinned so the assertion is
@@ -166,6 +180,84 @@ describe("ppal-connect", () => {
         // real ~/.producer-pal/memory/ is left untouched.
         await setConfig({ smallModelMode: false });
         await fetch(MEMORY_URL, { method: "DELETE" });
+      }
+    });
+  });
+
+  describe("injected block order", () => {
+    // The per-block tests above use extractBlock, which finds a block by prefix
+    // regardless of its position — so none of them catch a reordered
+    // composition. This locks the documented sequence: because
+    // withMemory(withGlobalContext(withProjectContext(withSkills(…)))) pushes
+    // inner-to-outer, the appended content[] blocks must run
+    // skills → project → global → memory. Seed all three context layers so every
+    // block is present and the ordering check is real, not vacuous.
+    const SKILLS_PREFIX = "# Producer Pal Skills";
+    const PROJECT_PREFIX = "Project context (this Live Set):";
+    const GLOBAL_PREFIX = "Global context (all projects):";
+    const MEMORY_PREFIX = "Memory index";
+    const ROOT_URL = CONFIG_URL.replace("/config", "");
+    const GLOBAL_CONTEXT_URL = `${ROOT_URL}/global-context`;
+    const ORDER_MEMORY_NAME = "e2e-connect-order-probe";
+    const ORDER_MEMORY_URL = `${ROOT_URL}/memory/${ORDER_MEMORY_NAME}`;
+
+    it("appends blocks in skills → project → global → memory order", async () => {
+      // Snapshot the dev machine's real global context BEFORE mutating it, so the
+      // finally can restore it byte-for-byte. context.md is a persistent,
+      // hand-authored file — unlike per-test project context, which the shared
+      // beforeEach resetConfig already clears, so it needs no restore here.
+      const priorGlobalRes = await fetch(GLOBAL_CONTEXT_URL);
+      const priorGlobalContent =
+        ((await priorGlobalRes.json()) as { content?: string }).content ?? "";
+
+      try {
+        // Localhost writes — a node fetch sends no Origin, so both pass the
+        // routes' foreign-origin gate.
+        await fetch(GLOBAL_CONTEXT_URL, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: "e2e order-probe global context" }),
+        });
+        const putRes = await fetch(ORDER_MEMORY_URL, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: "e2e order-probe body",
+            description: "e2e order probe — safe to delete",
+          }),
+        });
+
+        expect(putRes.ok).toBe(true);
+
+        // Standard mode injects the memory index; seed project context too so all
+        // four blocks are present. (smallModelMode is already false via the shared
+        // beforeEach, but set both together for a self-contained arrange step.)
+        await setConfig({
+          smallModelMode: false,
+          memoryContent: "e2e order-probe project context",
+        });
+
+        const result = await callConnectRaw();
+        const iSkills = blockIndex(result, SKILLS_PREFIX);
+        const iProject = blockIndex(result, PROJECT_PREFIX);
+        const iGlobal = blockIndex(result, GLOBAL_PREFIX);
+        const iMemory = blockIndex(result, MEMORY_PREFIX);
+
+        // All four present, in the documented sequence.
+        expect(iSkills).toBeGreaterThanOrEqual(0);
+        expect(iProject).toBeGreaterThan(iSkills);
+        expect(iGlobal).toBeGreaterThan(iProject);
+        expect(iMemory).toBeGreaterThan(iGlobal);
+      } finally {
+        // Restore the dev machine's global context and remove the probe memory so
+        // ~/.producer-pal is left untouched. Project context needs no restore —
+        // the next test's beforeEach resetConfig clears memoryContent.
+        await fetch(GLOBAL_CONTEXT_URL, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: priorGlobalContent }),
+        });
+        await fetch(ORDER_MEMORY_URL, { method: "DELETE" });
       }
     });
   });
