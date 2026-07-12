@@ -160,7 +160,7 @@
     "fake-indexeddb": "6.2.5",
     "globals": "17.7.0",
     "happy-dom": "20.10.6",
-    "jscpd": "4.2.5",
+    "jscpd": "5.0.8",
     "peggy": "5.1.0",
     "prettier": "3.9.4",
     "rollup": "4.62.2",
