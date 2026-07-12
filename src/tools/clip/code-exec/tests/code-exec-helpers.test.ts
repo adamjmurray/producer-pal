@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as v8Console from "#src/shared/v8-max-console.ts";
 import { type CodeNote } from "../code-exec-types.ts";
 import {
   buildCodeExecutionContext,
@@ -258,6 +259,53 @@ describe("code-exec-helpers", () => {
           },
         ],
       });
+    });
+
+    it("dedupes same-pitch+start duplicates (keep-last) and warns", () => {
+      // User code returned two notes at the same pitch and onset. add_new_notes
+      // deletes the earlier one when the later overlaps its onset, so without the
+      // dedupe one note is silently dropped. Collapse keep-last and warn.
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const mockClip = {
+        getProperty: vi.fn().mockReturnValue(4), // signature_denominator
+        call: vi.fn(),
+      };
+      const notes: CodeNote[] = [
+        {
+          pitch: 60,
+          start: 0,
+          duration: 1,
+          velocity: 100,
+          velocityDeviation: 0,
+          probability: 1,
+        },
+        {
+          pitch: 60,
+          start: 0,
+          duration: 2,
+          velocity: 80,
+          velocityDeviation: 0,
+          probability: 1,
+        },
+      ];
+
+      applyNotesToClip(mockClip as unknown as LiveAPI, notes);
+
+      expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 2, // kept the last write
+            velocity: 80,
+            velocity_deviation: 0,
+            probability: 1,
+          },
+        ],
+      });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Dropped 1 duplicate note"),
+      );
     });
 
     it("converts musical beats back to Ableton beats using the clip meter", () => {

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import * as v8Console from "#src/shared/v8-max-console.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -332,6 +333,30 @@ describe("createClip - advanced features", () => {
         note(60, 1, 1), // collision at beat 1 collapsed to one note
         note(60, 2, 1), // echo of the beat-1 note
       ]);
+    });
+
+    it("dedupes same-pitch+start duplicates on the no-transform path and warns", async () => {
+      // Two identical p:60,t:0 notes, no transform. The create path only sorted
+      // before, so both reached add_new_notes and Live silently dropped one. The
+      // dedupe collapses them keep-last and warns so the LLM sees the drop.
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip(
+        {
+          slot: "0/0",
+          notes:
+            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
+        },
+        { notation: "midi-json" },
+      );
+
+      expectNotesAdded(clip, [note(60, 0, 1)]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Dropped 1 duplicate note"),
+      );
     });
 
     it("reports the actual stored note count, not the interpreted input count", async () => {

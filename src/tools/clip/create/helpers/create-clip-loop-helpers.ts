@@ -8,7 +8,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation } from "#src/notation/notation.ts";
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -290,10 +290,18 @@ export function prepareClipData(
         })
       : [];
 
-  // Sort ascending by start_time before the eventual add_new_notes write:
-  // out-of-order same-pitch notes whose onsets overlap get deleted by Live.
-  // Per-clip transforms in createClips re-sort each transformed copy.
-  const notes = sortNotes(interpretedNotes);
+  // Dedupe same-pitch+start collisions (keep-last) then sort ascending by
+  // start_time before the eventual add_new_notes write: duplicate onsets in the
+  // notation (e.g. two C3 at the same beat) would otherwise make Live silently
+  // delete the earlier note. Done once on the shared notes here; per-clip
+  // transforms in createClips re-dedupe each transformed copy.
+  const { notes, collisions } = dedupeAndSortNotes(interpretedNotes);
+
+  if (collisions > 0) {
+    console.warn(
+      `Dropped ${collisions} duplicate note${collisions === 1 ? "" : "s"} at the same pitch and start`,
+    );
+  }
 
   // Determine clip length
   let clipLength: number;

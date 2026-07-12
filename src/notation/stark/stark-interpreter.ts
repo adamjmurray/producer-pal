@@ -17,7 +17,7 @@
  */
 
 import { chordSymbolPitches } from "#src/notation/chords/chord-symbols.ts";
-import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import {
   type ChordItem,
   type ChordsContentItem,
@@ -111,8 +111,7 @@ export function interpretNotation(
   }
 
   // Resolve same-pitch+start collisions (can arise from mixed sections).
-  const deduped = dedupeNotesKeepingLast(notes);
-  const collisions = notes.length - deduped.length;
+  const { notes: sorted, collisions } = dedupeAndSortNotes(notes);
 
   if (collisions > 0) {
     console.warn(
@@ -120,7 +119,7 @@ export function interpretNotation(
     );
   }
 
-  return sortNotes(deduped);
+  return sorted;
 }
 
 // Drum sections carry a `midi`/`noteName` header; pitched sections do not.

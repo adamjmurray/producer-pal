@@ -12,9 +12,10 @@ import {
   codeNoteToNoteEvent,
   noteEventToCodeNote,
 } from "#src/notation/midi-json/midi-json-note.ts";
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   readAllClipNotes,
   rawNotesToNoteEvents,
@@ -63,17 +64,24 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
     return;
   }
 
-  // Convert musical beats back to Ableton beats, then sort ascending by
-  // start_time before adding. User code returns notes in arbitrary order, but
-  // add_new_notes deletes an earlier same-pitch note when a later-written note
-  // overlaps its onset — so an unsorted write silently drops notes. Every other
-  // write path sorts first (see note-sort.ts for the invariant); this one didn't.
+  // Convert musical beats back to Ableton beats, then dedupe same-pitch+start
+  // collisions (keep-last) and sort ascending by start_time before adding. User
+  // code returns notes in arbitrary order and may emit two notes at the same
+  // pitch+onset; add_new_notes deletes an earlier same-pitch note when a
+  // later-written note overlaps its onset, so an unsorted or duplicated write
+  // silently drops notes. Every other write path does this (see note-sort.ts).
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  const noteEvents = sortNotes(
+  const { notes: noteEvents, collisions } = dedupeAndSortNotes(
     notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
   );
+
+  if (collisions > 0) {
+    console.warn(
+      `Dropped ${collisions} duplicate note${collisions === 1 ? "" : "s"} at the same pitch and start`,
+    );
+  }
 
   clip.call("add_new_notes", { notes: noteEvents });
 }
