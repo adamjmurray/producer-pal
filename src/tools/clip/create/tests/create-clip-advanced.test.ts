@@ -359,6 +359,33 @@ describe("createClip - advanced features", () => {
       );
     });
 
+    it("treats a blank transforms string as no transform: dedupes and warns", async () => {
+      // transforms:"" is not undefined, so before the entry-point normalization
+      // it took the sortNotes (has-transform) branch — skipping the no-transform
+      // dedupe warning — while applyTransforms no-oped on "". Written notes stayed
+      // correct (the post-transform dedupe still collapsed them) but the
+      // LLM-visible "Dropped N duplicate note(s)" warning was silently lost.
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip(
+        {
+          slot: "0/0",
+          notes:
+            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
+          transforms: "",
+        },
+        { notation: "midi-json" },
+      );
+
+      expectNotesAdded(clip, [note(60, 0, 1)]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Dropped 1 duplicate note"),
+      );
+    });
+
     it("keeps notes a separating transform pulls apart (transforms then dedupes, like update-clip)", async () => {
       // Two identical p60/start0 notes + `timing += note.index`, which shifts the
       // second note (index 1) to beat 1 — separating the pair. create-clip must

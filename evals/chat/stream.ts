@@ -300,10 +300,16 @@ function attachToolResult(
   toolCallId: string,
   output: unknown,
 ): void {
-  // Match on the id first: two same-name calls in one step (the SDK emits both
-  // tool-call parts before either result) would otherwise get their results
-  // swapped by name-only matching, silently mis-scoring per-clip grading.
-  const byId = toolCalls.find((tc) => tc.toolCallId === toolCallId);
+  // Match on the id first, but only a non-empty id: two same-name calls in one
+  // step (the SDK emits both tool-call parts before either result) would
+  // otherwise get their results swapped by name-only matching, silently
+  // mis-scoring per-clip grading. A spec-violating server that emits
+  // empty-string ids would cross-match every "" result onto the first ""-id
+  // call (overwriting it, starving the rest), so "" falls through to the
+  // name-based fallback — which is exactly what the fallback exists to handle.
+  const byId = toolCallId
+    ? toolCalls.find((tc) => tc.toolCallId === toolCallId)
+    : undefined;
 
   if (byId != null) {
     byId.result = formatOutput(output);

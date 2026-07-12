@@ -120,6 +120,9 @@ export async function createClip(
 ): Promise<object | object[]> {
   const deadline = computeLoopDeadline(_context.timeoutMs);
 
+  // Treat a blank/whitespace-only transforms string as "no transform".
+  transformString = normalizeTransforms(transformString);
+
   // Parse position lists
   const sessionSlots = parseSlotList(slot);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
@@ -224,6 +227,19 @@ export async function createClip(
   const createdClips = [...sessionClips, ...arrangementClips];
 
   return finalizeCreatedClips(createdClips, auto, sessionSlots, focus);
+}
+
+/**
+ * Normalize a blank/whitespace-only transforms string to null so both the
+ * dedupe-warning path (prepareClipData) and per-clip resolveClipTransform treat
+ * it as "no transform". An LLM-supplied `transforms: ""` otherwise skips the
+ * "Dropped N duplicate note(s)" warning while applyTransforms no-ops on "", and
+ * a whitespace-only string would reach applyTransforms and throw a parse error.
+ * @param transformString - Raw transforms param, or null
+ * @returns The original string when it has non-whitespace content, else null
+ */
+function normalizeTransforms(transformString: string | null): string | null {
+  return transformString?.trim() ? transformString : null;
 }
 
 /**

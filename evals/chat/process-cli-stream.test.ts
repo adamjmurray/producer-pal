@@ -74,6 +74,52 @@ describe("processCliStream — tool-result matching", () => {
       result: "result-for-B",
     });
   });
+
+  it("falls back to name matching when a server emits empty-string ids", async () => {
+    // A spec-violating server can emit id: "" on parallel calls. The id-first
+    // match must NOT treat "" === "" as a hit — otherwise every "" result lands
+    // on the first ""-id call (overwriting it) and the second call is starved.
+    // Empty ids fall through to the name-based fallback so each call still gets
+    // its own result.
+    const result = await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        {
+          type: "tool-call",
+          toolCallId: "",
+          toolName: "ppal-create-clip",
+          input: { slot: "0/0" },
+        },
+        {
+          type: "tool-call",
+          toolCallId: "",
+          toolName: "ppal-update-clip",
+          input: { ids: "1" },
+        },
+        {
+          type: "tool-result",
+          toolCallId: "",
+          toolName: "ppal-create-clip",
+          output: "result-for-create",
+        },
+        {
+          type: "tool-result",
+          toolCallId: "",
+          toolName: "ppal-update-clip",
+          output: "result-for-update",
+        },
+      ]),
+    );
+
+    expect(result.toolCalls[0]).toMatchObject({
+      args: { slot: "0/0" },
+      result: "result-for-create",
+    });
+    expect(result.toolCalls[1]).toMatchObject({
+      args: { ids: "1" },
+      result: "result-for-update",
+    });
+  });
 });
 
 describe("processCliStream — empty-turn warning", () => {
