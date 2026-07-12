@@ -301,13 +301,17 @@ async function runAllScenarios(
   ctx: RunContext,
 ): Promise<ResultsByScenario> {
   const resultsByScenario: ResultsByScenario = new Map();
+  // The Live Set left open by the previous scenario. A `reuseLiveSet` scenario
+  // that wants the same one runs against it instead of paying another open.
+  let lastOpenedLiveSet: string | null = null;
 
   for (const scenario of scenarios) {
     const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
     // The skip decision depends only on the scenario + run env, so it is the
     // same for every model.
     const skipReason = shouldSkipScenario(scenario, runEnv);
-    let liveSetOpened = false;
+    let liveSetOpened =
+      scenario.reuseLiveSet === true && lastOpenedLiveSet === scenario.liveSet;
 
     for (const spec of modelSpecs) {
       const modelKey = `${spec.provider}/${spec.model}`;
@@ -327,6 +331,7 @@ async function runAllScenarios(
           liveSetOpened,
         );
         liveSetOpened = true;
+        lastOpenedLiveSet = scenario.liveSet;
       }
 
       modelResults.set(modelKey, new Map([[label, results]]));

@@ -71,6 +71,29 @@ export interface EvalScenario {
    *  slots) so repeat trials (`-r N`, which reuse the already-open Live Set)
    *  each start from a clean slate. */
   setup?: (mcpClient: Client) => Promise<void>;
+
+  /** Optional async cleanup run after the turns and assertions complete —
+   *  success OR failure — while the MCP session is still open. Use to restore
+   *  state a `setup` seeded OUTSIDE the Live Set and outside `config`, which
+   *  the runner's `resetConfig()` cannot revert: chiefly the machine-global
+   *  context document (~/.producer-pal/context.md) and memory entries
+   *  (~/.producer-pal/memory/), which are real files on the machine running
+   *  Live. Without this, an eval that seeds them would leave them behind in the
+   *  developer's own config. A throw here is logged and swallowed so it can't
+   *  mask the scenario's real result. */
+  teardown?: (mcpClient: Client) => Promise<void>;
+
+  /** When true, the runner may skip reopening the Live Set and run against an
+   *  already-open one — an open costs seconds of app launch + save-dialog
+   *  handling, so a run of N such scenarios pays it once. Only honored when the
+   *  PREVIOUS scenario used the same `liveSet`.
+   *
+   *  Opt in only when the scenario starts from a clean slate on its own: either
+   *  it touches no Live Set state, or its `setup` resets everything it writes
+   *  (e.g. `clearSessionSlots` on the slots it fills) — the same self-reset that
+   *  repeat trials (`-r N`) already require. Leaving it unset keeps the default
+   *  fresh-Set isolation, which most clip/track/device scenarios depend on. */
+  reuseLiveSet?: boolean;
 }
 
 /**

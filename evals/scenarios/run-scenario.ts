@@ -165,6 +165,23 @@ export async function runScenario(
     };
   } finally {
     if (session) {
+      // Scenario-specific cleanup, while the MCP session is still usable:
+      // restores machine-global state (~/.producer-pal context + memory) that
+      // resetConfig() below knows nothing about. Swallow failures — the
+      // scenario result is already determined and must not be masked.
+      try {
+        await scenario.teardown?.(session.mcpClient);
+      } catch (error) {
+        console.warn(
+          styleText(
+            "yellow",
+            `teardown failed for "${scenario.id}": ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          ),
+        );
+      }
+
       await session.close();
     }
 

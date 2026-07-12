@@ -38,6 +38,21 @@ export {
   barBeatZipStreams,
 } from "./clip/notation/bar-beat/bar-beat-value-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
+export {
+  contextFollowGlobal,
+  contextFollowProject,
+  contextMemoryNoSpuriousRecall,
+  contextMemoryRecall,
+} from "./context/context-follow.ts";
+export {
+  contextMemoryDelete,
+  contextMemoryUpdateNotDuplicate,
+} from "./context/context-memory-hygiene.ts";
+export {
+  contextWriteLayerGlobal,
+  contextWriteLayerMemory,
+  contextWriteLayerProject,
+} from "./context/context-write-layers.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
 export { deviceSoundDesign } from "./workflow/device-sound-design.ts";
