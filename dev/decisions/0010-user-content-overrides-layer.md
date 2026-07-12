@@ -11,7 +11,7 @@
 
 ## Context
 
-The v1.5 "make it _your_ assistant" theme adds user-authored customization:
+The v2.0 "make it _your_ assistant" theme adds user-authored customization:
 global context/memory, a custom system prompt, and (later) skills overrides. The
 open questions were _where_ this lives and _what shape_ it takes.
 

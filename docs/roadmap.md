@@ -2,7 +2,7 @@
 
 ## Upcoming
 
-### 1.5 - Personalization and Extensibility
+### 2.0 - Personalization and Extensibility
 
 - Global context: add your own reference material and custom instructions across
   all Live projects
@@ -95,9 +95,9 @@ Expanded features and support for multiple AI platforms.
 Initial public release with Claude Desktop support and a focus on MIDI clip
 manipulation and basic Live Set management.
 
-## Beyond 1.5
+## Beyond 2.0
 
-After 1.5, the core stabilizes — future core changes focus on bug fixes and
+After 2.0, the core stabilizes — future core changes focus on bug fixes and
 supporting new Live API features as they become available. New capabilities will
 come through [extensions](/extending): community skills, workflows, and
 companion MCP servers.

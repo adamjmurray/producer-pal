@@ -10,7 +10,7 @@ on your needs.
 
 ::: warning WORK IN PROGRESS
 
-Most of the extension points described on this page are planned for version 1.5
+Most of the extension points described on this page are planned for version 2.0
 and are not yet available. This page describes the direction Producer Pal is
 heading. See the [roadmap](/roadmap).
 
@@ -41,7 +41,7 @@ music production workflow in plain language, you can create a skill.
 
 Built-in skill overrides ([Customizing Skills](/guide/customizing-skills)) and
 custom system instructions (the Chat UI's
-[context editor](/guide/chat-ui#header-bar)) shipped in Producer Pal 1.5. The
+[context editor](/guide/chat-ui#header-bar)) shipped in Producer Pal 2.0. The
 rest of context customization is planned — see the [roadmap](/roadmap) for
 details.
 
@@ -64,7 +64,7 @@ triggers them but doesn't improvise the steps.
 
 ::: info COMING SOON
 
-Workflows are planned for a later 1.5.x release, after context customization is
+Workflows are planned for a later 2.0.x release, after context customization is
 stable.
 
 :::
@@ -121,15 +121,15 @@ infrastructure.
 ## The Ecosystem Vision
 
 The goal is a vibrant ecosystem where people create and share extensions. The
-core repo is deliberately stable — it won't change often after 1.5 — and that
+core repo is deliberately stable — it won't change often after 2.0 — and that
 stability is a feature. Extensions don't break when the core doesn't change.
 
 Innovation happens at the edges: writers sharing skills, developers building
 companion servers, and the community finding creative new ways to use AI in
 music production. The core repo is not the bottleneck.
 
-Starting with 1.5, breaking changes will require at least a minor version bump
-(e.g., 1.6 or 2.0) — patch releases are always backward-compatible. This gives
+Starting with 2.0, breaking changes will require at least a minor version bump
+(e.g., 2.1 or 3.0) — patch releases are always backward-compatible. This gives
 extension authors a stable foundation to build on.
 
 ## Contributing Back to Core
