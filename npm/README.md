@@ -166,14 +166,22 @@ Optional environment variables can be configured through your MCP client:
 
 - `MCP_SERVER_ORIGIN` - URL for the Max for Live device (default:
   `http://localhost:3350`)
-- `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Equivalent to
-  the `--small-model-mode` flag above.
+- `ALLOW_CONFIGURATION_OVERRIDES` - Gate for the setting env vars below
+  (default: `false`). `SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`, `JSON_OUTPUT`,
+  and `LIVE_API` are honored only when this is `true`; otherwise the device's
+  own settings stay authoritative. The equivalent CLI flags above are always
+  applied — this gate covers env vars only, which are ambient and easily
+  inherited.
+- `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Env form of
+  the `--small-model-mode` flag; requires the gate above.
 - `NOTATION` - MIDI note notation (`barbeat`, `midi-json`, or `stark`; default:
-  `barbeat`). Equivalent to the `--notation` flag above.
-- `FORMAT` - Tool response format (`json` or `compact`; default: `compact`).
-  Equivalent to the `--format` flag above.
-- `LIVE_API` - Enable the Direct Live API tool (default: `false`). Equivalent to
-  the `--live-api` flag above.
+  `barbeat`). Env form of the `--notation` flag; requires the gate above.
+- `FORMAT` - Tool response format (`json` or `compact`; default: `compact`). Env
+  form of the `--format` flag; requires the gate above.
+- `JSON_OUTPUT` - Boolean alias for `FORMAT` (`true` = json; default: `false`);
+  requires the gate above.
+- `LIVE_API` - Enable the Direct Live API tool (default: `false`). Env form of
+  the `--live-api` flag; requires the gate above.
 - `ENABLE_LOGGING` - Enable file logging (default: `false`)
 - `VERBOSE_LOGGING` - Detailed debug logs (default: `false`)
 
