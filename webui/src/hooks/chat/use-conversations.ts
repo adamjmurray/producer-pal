@@ -115,6 +115,13 @@ export function useConversations({
   // Serializes conversation saves so a later save's read-back can't race ahead
   // of an earlier save's write (see saveCurrentConversation).
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  // Ids whose pending/in-flight save must be abandoned because the row was
+  // deleted. The delete paths drain saveChainRef, but that only covers saves
+  // already queued — a save enqueued *after* the drain (chiefly the
+  // stream-teardown autosave effect that stopResponse() triggers) would still
+  // resurrect the just-deleted row. Every save checks this set right before its
+  // DB write and bails. Mirrors the voice layer's canceledIdsRef guard.
+  const canceledIdsRef = useRef<Set<string>>(new Set());
 
   useSyncActiveMeta(activeMetaRef, activeMeta);
 
@@ -240,6 +247,12 @@ export function useConversations({
           // — or any sibling, which would orphan the family's ‹ n/m › navigation.
           const protectedIds =
             fork != null ? await forkProtectedIds(record, reuseId) : undefined;
+
+          // A delete for this id can land while this save was queued or while
+          // the awaits above resolved. Check as late as possible — right before
+          // the write — so a just-deleted conversation isn't resurrected.
+          if (canceledIdsRef.current.has(id)) return;
+
           const result = await saveConversation(record, protectedIds);
 
           limit.showLimitNotification(result);
@@ -303,12 +316,17 @@ export function useConversations({
 
   const deleteConversation = useCallback(
     async (id: string) => {
-      // Let any in-flight autosave finish writing before we remove the row: a
-      // save that started before this delete could otherwise land afterward and
-      // resurrect the record. handleDelete stops the stream first, so no new
-      // autosave enqueues here; this only drains one already in flight. The save
-      // chain never rejects (saveCurrentConversation's chained body swallows its
-      // own errors), so awaiting it directly is safe.
+      // Mark this id canceled before any async work. handleDelete calls
+      // stopResponse() first, which flips isAssistantResponding and — from a
+      // passive effect — fires one more autosave for this id *after* the drain
+      // below has already captured the save chain. That late save would
+      // otherwise resurrect the row; instead it checks canceledIdsRef right
+      // before its write and bails.
+      canceledIdsRef.current.add(id);
+      // Drain any autosave already in flight before removing the row, so its
+      // write can't land afterward and resurrect the record. The save chain
+      // never rejects (saveCurrentConversation's chained body swallows its own
+      // errors), so awaiting it directly is safe.
       await saveChainRef.current;
       await deleteConversationWithSnapshot(id, undoDelete.pushDeleted);
 
@@ -323,6 +341,17 @@ export function useConversations({
   );
 
   const deleteAllConversations = useCallback(async () => {
+    // Cancel the active (streaming) conversation's pending/in-flight autosave —
+    // the only id that can have one — then drain the chain, mirroring
+    // deleteConversation. handleDeleteAll stops the stream first, so the two
+    // producers are the in-flight save (the drain covers it) and the
+    // stream-teardown autosave effect (the id guard covers it); either way the
+    // just-cleared row can't be resurrected.
+    const activeId = activeIdRef.current;
+
+    if (activeId != null) canceledIdsRef.current.add(activeId);
+
+    await saveChainRef.current;
     await dbDeleteAllConversations();
     clearConversation();
     clearActiveId();
@@ -330,10 +359,19 @@ export function useConversations({
   }, [clearConversation, clearActiveId, refreshList]);
 
   const deleteUnbookmarkedConversations = useCallback(async () => {
+    // The active conversation is removed only when it's unbookmarked. In that
+    // case cancel its pending/in-flight autosave (same resurrection guard as the
+    // other delete paths); a bookmarked active conversation survives, so its
+    // save must still land — hence the conditional add but unconditional drain.
+    const activeId = activeIdRef.current;
+    const clearsActive = activeId != null && !activeMetaRef.current?.bookmarked;
+
+    if (clearsActive) canceledIdsRef.current.add(activeId);
+
+    await saveChainRef.current;
     await dbDeleteUnbookmarkedConversations();
 
-    // Clear active conversation only if it was unbookmarked
-    if (activeIdRef.current && !activeMetaRef.current?.bookmarked) {
+    if (clearsActive) {
       clearConversation();
       clearActiveId();
     }
