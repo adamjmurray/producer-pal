@@ -62,10 +62,13 @@ export async function callTool(name, args = {}, options = {}) {
 
 /**
  * POST /config — update device settings remotely and return the full updated
- * config. `patch` is a partial object; the server ignores unrecognized keys but
- * rejects an invalid value for a known field with a 400. The main use for
- * coding agents is the active MIDI
- * notation, e.g. `setConfig({ notation: "midi-json" })`; pass
+ * config. `patch` is a partial object; the server ignores unrecognized keys and
+ * also silently ignores an invalid value for a known field (an unknown
+ * `notation` is dropped, keeping the current setting; booleans are coerced). The
+ * only field that rejects with a 400 is an invalid `tools` list. Because bad
+ * values are dropped rather than reported, read the returned config to confirm a
+ * setting actually took effect. The main use for coding agents is the active
+ * MIDI notation, e.g. `setConfig({ notation: "midi-json" })`; pass
  * `{ liveApiEnabled: true }` to turn on the advanced `ppal-live-api` tool. The
  * setting is global to the device (it also affects the chat UI and any
  * connected MCP clients).

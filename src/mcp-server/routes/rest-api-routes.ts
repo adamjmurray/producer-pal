@@ -260,9 +260,10 @@ const WARNING_PREFIX = "WARNING: ";
  * JSON mode (parseJson=true, set by `?format=json`): parses the first
  * content item as JSON and exposes warnings as a separate string array.
  * Items past the first prefixed with `WARNING: ` become warnings; any other
- * extra items are Node-appended text blocks (the ppal-connect skills blob and
- * `~/.producer-pal/context.md` global context pushed by `withConnectAppend`)
- * and are surfaced as an `appended` string array rather than dropped. If the
+ * extra items are Node-appended text blocks (the ppal-connect skills blob plus
+ * the self-labeling project-context, global-context, and memory-index blocks
+ * pushed by `withConnectAppend`) and are surfaced as an `appended` string array
+ * rather than dropped. If the
  * first item is not valid JSON (a V8 contract regression), it falls back to
  * returning the raw text.
  *
@@ -284,8 +285,9 @@ function unwrapMcpResponse(
 
   // First content item is the tool result. Subsequent items prefixed with
   // `WARNING: ` are warnings emitted by the V8 layer; the remaining extra
-  // items are Node-appended blocks (ppal-connect skills + global context) and
-  // are surfaced under `appended` rather than dropped.
+  // items are Node-appended blocks (ppal-connect skills, project context,
+  // global context, and memory index) and are surfaced under `appended` rather
+  // than dropped.
   const [resultText = "", ...rest] = items;
   const warnings: string[] = [];
   const appended: string[] = [];
