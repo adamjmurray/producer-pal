@@ -33,10 +33,15 @@ export function useConversationHandlers(
   );
   const handleDelete = useCallback(
     (id: string) => {
-      // Stop the active stream first — like new/select/delete-all — so no
-      // further autosave fires mid-delete and writes the record back to the DB
-      // after it was removed (which would resurrect it on the next reload).
-      stopResponse();
+      // Only stop the stream when deleting the *active* conversation. Autosaves
+      // only ever target the active id (saveCurrentConversation reuses
+      // activeIdRef, minting a new id only for a fork or brand-new chat, which it
+      // then makes active), so a non-active row has no pending save to resurrect.
+      // Stopping unconditionally would needlessly abort the user's in-flight
+      // response and, mid-fork, let the teardown autosave overwrite the source
+      // record with the fork's truncated history. deleteConversation's own drain
+      // plus the canceledIds guard cover the active-delete resurrection case.
+      if (id === manager.activeConversationId) stopResponse();
       manager.deleteConversation(id).catch(console.error);
     },
     [manager, stopResponse],
