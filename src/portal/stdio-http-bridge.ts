@@ -135,8 +135,15 @@ Tell the user to check ${SETUP_URL} for configuration help.
   }
 
   private async _ensureHttpConnection(): Promise<void> {
-    // If we have a client and think we're connected, reuse it
+    // If we have a client and think we're connected, reuse it — but still
+    // re-assert the config overrides first. The transport is stateless HTTP, so
+    // we never observe the device's server restarting (e.g. a fresh device
+    // dragged in with default settings, or a connector toggle). Re-pushing on
+    // every request keeps the server's config in sync; it no-ops when no
+    // overrides are set, so non-override users pay nothing.
     if (this.httpClient && this.isConnected) {
+      await this._pushConfigOverrides();
+
       return;
     }
 
@@ -209,13 +216,15 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
   /**
    * Push the CLI/env config overrides (small-model mode, notation, response
-   * format, Direct Live API) to the device via POST /config after connecting.
-   * Only the explicitly-requested settings are sent, so an unset option leaves
-   * the device's own setting alone. No-ops when nothing was requested. Runs
-   * before the client's first tools/list because the server re-reads config per
-   * request, so the tool list and descriptions reflect the override (enabling
-   * Direct Live API here makes `ppal-live-api` show up in that first list). The
-   * settings are global to the device.
+   * format, Direct Live API) to the device via POST /config. Only the
+   * explicitly-requested settings are sent, so an unset option leaves the
+   * device's own setting alone, and it no-ops (no request) when nothing was
+   * requested. Runs before every tools/list and tools/call (via
+   * `_ensureHttpConnection`), not just on connect: the server is stateless and
+   * global config can reset out from under us (a fresh device with default
+   * settings), so we re-assert the overrides each request. This also guarantees
+   * the tool list/descriptions reflect the override (e.g. enabling Direct Live
+   * API makes `ppal-live-api` appear). The settings are global to the device.
    */
   private async _pushConfigOverrides(): Promise<void> {
     const overrides: {

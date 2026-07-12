@@ -516,6 +516,27 @@ describe("StdioHttpBridge", () => {
       await expectPushedConfig({}, null);
     });
 
+    it("re-pushes config on a later request when already connected", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+      const smBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        smallModelMode: true,
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await smBridge._ensureHttpConnection(); // connects + pushes
+      await smBridge._ensureHttpConnection(); // already connected → re-pushes
+
+      const configPosts = fetchSpy.mock.calls.filter(
+        (call) => call[0] === "http://localhost:3350/config",
+      );
+
+      expect(configPosts).toHaveLength(2);
+      fetchSpy.mockRestore();
+    });
+
     it("handles config push failure gracefully", async () => {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
