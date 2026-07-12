@@ -25,7 +25,7 @@ import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";
 
-interface BridgeOptions {
+export interface BridgeOptions {
   smallModelMode?: boolean;
   notation?: Notation;
   jsonOutput?: boolean;
@@ -64,14 +64,14 @@ export class StdioHttpBridge {
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
-  private smallModelMode: boolean;
+  private smallModelMode?: boolean;
   private notation?: Notation;
   private jsonOutput?: boolean;
   private liveApiEnabled?: boolean;
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
-    this.smallModelMode = options.smallModelMode ?? false;
+    this.smallModelMode = options.smallModelMode;
     this.notation = options.notation;
     this.jsonOutput = options.jsonOutput;
     this.liveApiEnabled = options.liveApiEnabled;
@@ -225,12 +225,15 @@ Tell the user to check ${SETUP_URL} for configuration help.
       liveApiEnabled?: boolean;
     } = {};
 
-    if (this.smallModelMode) overrides.smallModelMode = true;
+    // Each override is tri-state: push the value only when set (true OR false),
+    // so an unset option leaves the device's own setting alone but an explicit
+    // false can turn a setting off.
+    if (this.smallModelMode != null)
+      overrides.smallModelMode = this.smallModelMode;
     if (this.notation) overrides.notation = this.notation;
     if (this.jsonOutput != null) overrides.jsonOutput = this.jsonOutput;
-    // Only push when enabling — never send `false`, so the portal can't turn off
-    // a Direct Live API setting the user enabled on the device.
-    if (this.liveApiEnabled) overrides.liveApiEnabled = true;
+    if (this.liveApiEnabled != null)
+      overrides.liveApiEnabled = this.liveApiEnabled;
 
     if (Object.keys(overrides).length === 0) return;
 

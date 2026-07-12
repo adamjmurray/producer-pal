@@ -108,7 +108,7 @@ vi.mock(import("./file-logger.ts"), () => ({
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { VERSION } from "#src/shared/config.ts";
 import { logger } from "./file-logger.ts";
-import { StdioHttpBridge } from "./stdio-http-bridge.ts";
+import { type BridgeOptions, StdioHttpBridge } from "./stdio-http-bridge.ts";
 
 /**
  * Get a registered handler from mockServer.setRequestHandler calls
@@ -157,6 +157,42 @@ interface BridgeInternals {
 
 // Cast to BridgeInternals to access private properties in tests
 type TestBridge = BridgeInternals;
+
+/**
+ * Connect a fresh bridge built with `options` and assert the JSON body it POSTed
+ * to /config — or, when `expectedBody` is null, that it pushed nothing. Restores
+ * the fetch spy before returning.
+ * @param options - Bridge constructor options
+ * @param expectedBody - Expected POST /config body, or null to assert no push
+ */
+async function expectPushedConfig(
+  options: BridgeOptions,
+  expectedBody: Record<string, unknown> | null,
+): Promise<void> {
+  const fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(new Response("{}"));
+  const testBridge = new StdioHttpBridge(
+    "http://localhost:3350/mcp",
+    options,
+  ) as unknown as TestBridge;
+
+  mockClient.connect.mockResolvedValue(undefined);
+
+  await testBridge._ensureHttpConnection();
+
+  if (expectedBody == null) {
+    expect(fetchSpy).not.toHaveBeenCalled();
+  } else {
+    expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(expectedBody),
+    });
+  }
+
+  fetchSpy.mockRestore();
+}
 
 /**
  * Create a tool call request object for handler tests.
@@ -424,142 +460,60 @@ describe("StdioHttpBridge", () => {
     });
 
     it("pushes small model mode config after connection when enabled", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(
-          new Response(JSON.stringify({ smallModelMode: true })),
-        );
-      const smBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        smallModelMode: true,
-      }) as unknown as TestBridge;
-
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await smBridge._ensureHttpConnection();
-
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ smallModelMode: true }),
-      });
+      await expectPushedConfig(
+        { smallModelMode: true },
+        { smallModelMode: true },
+      );
       expect(logger.info).toHaveBeenCalledWith(
         'Pushed config overrides to server: {"smallModelMode":true}',
       );
-      fetchSpy.mockRestore();
+    });
+
+    it("pushes smallModelMode: false to force the setting off", async () => {
+      await expectPushedConfig(
+        { smallModelMode: false },
+        { smallModelMode: false },
+      );
     });
 
     it("pushes notation config after connection when set", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-      const notationBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        notation: "midi-json",
-      }) as unknown as TestBridge;
-
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await notationBridge._ensureHttpConnection();
-
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notation: "midi-json" }),
-      });
-      fetchSpy.mockRestore();
+      await expectPushedConfig(
+        { notation: "midi-json" },
+        { notation: "midi-json" },
+      );
     });
 
     it("pushes both small model mode and notation in one request", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-      const bothBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        smallModelMode: true,
-        notation: "stark",
-      }) as unknown as TestBridge;
-
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await bothBridge._ensureHttpConnection();
-
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ smallModelMode: true, notation: "stark" }),
-      });
-      fetchSpy.mockRestore();
+      await expectPushedConfig(
+        { smallModelMode: true, notation: "stark" },
+        { smallModelMode: true, notation: "stark" },
+      );
     });
 
     it("pushes liveApiEnabled config after connection when enabled", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-      const liveApiBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        liveApiEnabled: true,
-      }) as unknown as TestBridge;
+      await expectPushedConfig(
+        { liveApiEnabled: true },
+        { liveApiEnabled: true },
+      );
+    });
 
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await liveApiBridge._ensureHttpConnection();
-
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ liveApiEnabled: true }),
-      });
-      fetchSpy.mockRestore();
+    it("pushes liveApiEnabled: false to force the tool off", async () => {
+      await expectPushedConfig(
+        { liveApiEnabled: false },
+        { liveApiEnabled: false },
+      );
     });
 
     it("pushes JSON output config after connection when requested", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-      const jsonBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        jsonOutput: true,
-      }) as unknown as TestBridge;
-
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await jsonBridge._ensureHttpConnection();
-
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonOutput: true }),
-      });
-      fetchSpy.mockRestore();
+      await expectPushedConfig({ jsonOutput: true }, { jsonOutput: true });
     });
 
     it("pushes compact output config when explicitly requested", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-      const compactBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        jsonOutput: false,
-      }) as unknown as TestBridge;
-
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await compactBridge._ensureHttpConnection();
-
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonOutput: false }),
-      });
-      fetchSpy.mockRestore();
+      await expectPushedConfig({ jsonOutput: false }, { jsonOutput: false });
     });
 
     it("does not push config when no overrides are set", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await bridge._ensureHttpConnection();
-
-      expect(fetchSpy).not.toHaveBeenCalled();
-      fetchSpy.mockRestore();
+      await expectPushedConfig({}, null);
     });
 
     it("handles config push failure gracefully", async () => {

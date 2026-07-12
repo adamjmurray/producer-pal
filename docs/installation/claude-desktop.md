@@ -93,11 +93,15 @@ enabled when starting a conversation):
 
 The extension exposes a few optional settings under **Claude Desktop → Settings
 → Extensions → Producer Pal**. Most people never need to touch these — the
-defaults are recommended. **Restart the extension after changing any of them.**
+defaults are recommended.
 
 - **Ableton device URL** — where to reach the Max for Live device (default
   `http://localhost:3350`). Change only if you moved the device's port or are
   connecting over the network.
+- **Allow configuration overrides** — off by default. While off, the settings
+  below are ignored and Producer Pal uses whatever is set on the device and in
+  the [chat UI](/guide/chat-ui). Turn it on to let these settings override the
+  device — including forcing a setting _off_.
 - **MIDI notation** — overrides how Producer Pal reads and writes clip notes.
   Three valid values: `barbeat` (recommended for Claude Sonnet, Opus, and
   Fable), `stark` (pairs well with **Small model mode**), or `midi-json` (pairs
@@ -115,12 +119,13 @@ defaults are recommended. **Restart the extension after changing any of them.**
   Not recommended for normal use (it increases token usage), but useful when you
   want Claude to run code on the results.
 
-::: info These are global device settings
+::: info Device stays authoritative by default
 
-They're pushed to the device when the extension connects, so they also change in
-the [chat UI](/guide/chat-ui) and for any other connected MCP client. The
-extension only pushes a setting when you enable a toggle (or enter a notation) —
-it never turns off or resets a setting you configured on the device itself.
+The four settings below **Allow configuration overrides** take effect only when
+that toggle is on. When they do, MIDI notation, Small model mode, and Direct
+Live API are pushed to the device as global settings — they also change in the
+[chat UI](/guide/chat-ui) and for any other connected MCP client. While the
+toggle is off, the extension leaves every device setting untouched.
 
 :::
 

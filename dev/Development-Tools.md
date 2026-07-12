@@ -176,11 +176,14 @@ sidesteps CORS entirely (server-to-server fetch, no browser involved). Use an
 absolute path — `npx` resolves relative paths against its own cwd.
 
 The portal also accepts config-override flags it pushes to the device via
-`POST /config` on connect (each also has an env var, and only ever _sets_ the
-value — it never reverts a device setting): `-s`/`--small-model-mode`,
-`-n`/`--notation <value>`, `-f`/`--format <json|compact>`, and `--live-api`
-(enables the opt-in `ppal-live-api` tool). Handy for exercising a specific
-config against a release build through the inspector.
+`POST /config` on connect: `-s`/`--small-model-mode`, `-n`/`--notation <value>`,
+`-f`/`--format <json|compact>`, and `--live-api` (enables the opt-in
+`ppal-live-api` tool). Explicit flags always apply. The same settings also have
+env vars (`SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`/`JSON_OUTPUT`, `LIVE_API`),
+but those are gated behind `ALLOW_CONFIGURATION_OVERRIDES=true` — and, unlike
+the enable-only flags, a boolean env can send `false` to force a setting off.
+This env path is what the Claude Desktop extension's toggles use. Handy for
+exercising a specific config against a release build through the inspector.
 
 ## Build Warnings
 
