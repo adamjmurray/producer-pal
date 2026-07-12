@@ -359,6 +359,34 @@ describe("createClip - advanced features", () => {
       );
     });
 
+    it("keeps notes a separating transform pulls apart (transforms then dedupes, like update-clip)", async () => {
+      // Two identical p60/start0 notes + `timing += note.index`, which shifts the
+      // second note (index 1) to beat 1 — separating the pair. create-clip must
+      // NOT dedupe before transforming: it has to feed both notes into the
+      // transform and dedupe AFTER, so both survive. This matches update-clip's
+      // transform-then-dedupe order (update-clip-notes-helpers.ts). Before the
+      // fix, prepareClipData dropped one note pre-transform and only 1 reached
+      // add_new_notes — a silent create/update parity divergence.
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip(
+        {
+          slot: "0/0",
+          notes:
+            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
+          transforms: "timing += note.index",
+        },
+        { notation: "midi-json" },
+      );
+
+      expectNotesAdded(clip, [
+        note(60, 0, 1), // note.index 0 stays at beat 0
+        note(60, 1, 1), // note.index 1 pushed to beat 1 — survives (not pre-deduped)
+      ]);
+    });
+
     it("reports the actual stored note count, not the interpreted input count", async () => {
       const { clip } = setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },

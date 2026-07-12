@@ -161,6 +161,7 @@ export async function createClip(
     timeSigNumerator,
     timeSigDenominator,
     _context.notation,
+    transformString,
   );
 
   // Parse comma-separated names/colors for multi-clip creation
