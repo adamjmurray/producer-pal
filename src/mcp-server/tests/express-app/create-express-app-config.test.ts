@@ -3,9 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { TOOL_NAMES } from "../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
@@ -331,6 +334,40 @@ describe("MCP Express App - Config", () => {
       const body = await response.json();
 
       expect(body.error).toContain("cross-origin");
+    });
+
+    describe("when the config dir can't be created", () => {
+      // Point the config dir under a regular file so mkdirSync -recursive fails
+      // (ENOTDIR): revealConfigDir returns false. Env is swapped in sync
+      // before/after hooks (not after an await) to avoid require-atomic-updates.
+      let original: string | undefined;
+      let tmp: string;
+
+      beforeEach(() => {
+        original = process.env.PRODUCER_PAL_CONFIG_DIR;
+        tmp = mkdtempSync(join(tmpdir(), "ppal-reveal-"));
+        const blocker = join(tmp, "file");
+
+        writeFileSync(blocker, "x");
+        process.env.PRODUCER_PAL_CONFIG_DIR = join(blocker, "nested");
+      });
+
+      afterEach(() => {
+        if (original == null) {
+          delete process.env.PRODUCER_PAL_CONFIG_DIR;
+        } else {
+          process.env.PRODUCER_PAL_CONFIG_DIR = original;
+        }
+
+        rmSync(tmp, { recursive: true, force: true });
+      });
+
+      it("surfaces the failure as 500 { ok: false } (webui checks res.ok)", async () => {
+        const response = await fetch(revealUrl, { method: "POST" });
+
+        expect(response.status).toBe(500);
+        expect(await response.json()).toStrictEqual({ ok: false });
+      });
     });
   });
 

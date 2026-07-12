@@ -23,6 +23,8 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "../../node-for-max-logger.ts";
 
 // Detect Vitest so unit tests never read or clobber the developer's real
 // ~/.producer-pal. A test opts back into real filesystem access by pointing
@@ -155,10 +157,19 @@ export function listConfigMarkdownFilesRecursive(subdir: string): string[] {
 export function deleteConfigMarkdown(filename: string): void {
   if (isConfigDirInert()) return;
 
+  const target = resolveConfigPath(filename);
+
   try {
-    unlinkSync(resolveConfigPath(filename));
-  } catch {
-    // Missing file, permissions, etc. — nothing to reset.
+    unlinkSync(target);
+  } catch (error) {
+    // A missing file is the normal "already reset" case — nothing to do. Any
+    // OTHER error (EPERM/EBUSY from a sync client or AV scanner, EACCES) leaves
+    // the file on disk, so warn-and-skip rather than swallow silently: e.g. a
+    // rename that couldn't remove the old slug otherwise reports success while
+    // regenerateIndex double-lists old + new as a phantom duplicate.
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.warn(`Failed to delete ${target}: ${errorMessage(error)}`);
+    }
   }
 }
 

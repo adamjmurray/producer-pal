@@ -27,9 +27,12 @@ import {
  * authored), then emits it as a properly-encoded file:// URL for the patch to
  * open via `max launchbrowser`. No-op under Vitest without a dir override, so
  * importing modules can't create folders or emit during tests.
+ *
+ * @returns true when the folder was revealed (or skipped as inert); false when
+ *   the directory couldn't be created, so the route can report the failure
  */
-export function revealConfigDir(): void {
-  if (isConfigDirInert()) return;
+export function revealConfigDir(): boolean {
+  if (isConfigDirInert()) return true;
 
   const dir = configDir();
 
@@ -38,10 +41,12 @@ export function revealConfigDir(): void {
   } catch (error) {
     console.error(`Failed to create ${dir}: ${errorMessage(error)}`);
 
-    return;
+    return false;
   }
 
   // pathToFileURL handles cross-platform paths and URL-encodes spaces — the
   // whole reason to build the URL here rather than in the patch.
   void Max.outlet("openConfigFolder", pathToFileURL(dir).href);
+
+  return true;
 }

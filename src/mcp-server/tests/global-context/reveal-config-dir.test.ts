@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe("revealConfigDir", () => {
   it("creates the dir and emits it as an encoded file:// URL for the patch", () => {
-    revealConfigDir();
+    expect(revealConfigDir()).toBe(true);
 
     expect(mkdirMock).toHaveBeenCalledWith(DIR, { recursive: true });
     expect(outletMock).toHaveBeenCalledWith(
@@ -48,20 +48,20 @@ describe("revealConfigDir", () => {
     );
   });
 
-  it("does not emit when directory creation fails", () => {
+  it("returns false and does not emit when directory creation fails", () => {
     mkdirMock.mockImplementationOnce(() => {
       throw new Error("EACCES");
     });
 
-    revealConfigDir();
+    expect(revealConfigDir()).toBe(false);
 
     expect(outletMock).not.toHaveBeenCalled();
   });
 
-  it("is inert under Vitest without a dir override", () => {
+  it("is inert (returns true) under Vitest without a dir override", () => {
     delete process.env.PRODUCER_PAL_CONFIG_DIR;
 
-    revealConfigDir();
+    expect(revealConfigDir()).toBe(true);
 
     expect(mkdirMock).not.toHaveBeenCalled();
     expect(outletMock).not.toHaveBeenCalled();

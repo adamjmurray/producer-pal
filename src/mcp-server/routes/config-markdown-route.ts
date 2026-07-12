@@ -30,10 +30,10 @@ export interface ConfigMarkdownHandlers {
  * Register GET/PUT handlers for a single config markdown slot on the Express
  * app.
  *
- * GET returns the current file contents; PUT overwrites them. Writes are
- * localhost-origin-gated exactly like POST /config: editing user content is a
- * local authoring action, so a cross-origin (LAN/tunnel) browser must not be
- * able to rewrite it. Reads stay ungated (mirrors GET /config).
+ * GET returns the current file contents; PUT overwrites them. The PUT is a
+ * same-origin content write (see rejectForeignOriginWrite): a LAN/tunnel webui
+ * saving its OWN content passes, only a genuinely foreign browser origin 403s —
+ * unlike POST /config, which is strictly localhost-only. Reads stay ungated.
  *
  * @param app - Express application
  * @param routePath - Endpoint path (e.g. "/global-context")

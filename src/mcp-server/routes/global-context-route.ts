@@ -22,8 +22,9 @@ import { registerConfigMarkdownRoute } from "./config-markdown-route.ts";
 
 /**
  * Register the /global-context REST endpoints on the Express app. GET returns
- * the file contents; PUT overwrites them (localhost-origin-gated). Also
- * registers POST /reveal-config-folder, which opens ~/.producer-pal in the OS
+ * the file contents; PUT overwrites them (same-origin content write — see
+ * rejectForeignOriginWrite). Also registers POST /reveal-config-folder, which
+ * opens ~/.producer-pal in the OS
  * file browser — the folder behind this global context (and the custom
  * instructions, skills, and memory files).
  *
@@ -51,7 +52,10 @@ export function registerGlobalContextRoutes(app: Express): void {
       return;
     }
 
-    revealConfigDir();
-    res.json({ ok: true });
+    // Reflect a failed folder-create as a non-2xx status so the webui's
+    // `!res.ok` branch surfaces it (it otherwise ignores the JSON body).
+    const ok = revealConfigDir();
+
+    res.status(ok ? 200 : 500).json({ ok });
   });
 }

@@ -26,8 +26,10 @@ import {
 /**
  * Register the /skill-overrides REST endpoints on the Express app. GET lists
  * every slot with its built-in, current override, and drift; PUT saves one
- * override; DELETE resets one to the built-in. Writes are localhost-origin-gated
- * exactly like POST /config (authoring is a local action).
+ * override; DELETE resets one to the built-in. Writes are same-origin content
+ * writes (see rejectForeignOriginWrite): a LAN/tunnel webui saving its own
+ * content passes, only a foreign browser origin 403s — not strictly
+ * localhost-only like POST /config.
  *
  * @param app - Express application
  */

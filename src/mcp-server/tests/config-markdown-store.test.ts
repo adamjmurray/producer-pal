@@ -3,14 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  deleteConfigMarkdown,
   listConfigMarkdownFiles,
   listConfigMarkdownFilesRecursive,
 } from "#src/mcp-server/helpers/markdown-store/config-markdown-store.ts";
+import { warn } from "#src/mcp-server/node-for-max-logger.ts";
 import { useTempConfigDir } from "./config-dir-test-helpers.ts";
+
+vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
+  log: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 const getDir = useTempConfigDir();
 
@@ -80,5 +89,34 @@ describe("listConfigMarkdownFilesRecursive", () => {
 
   it("returns [] when the subdir is missing", () => {
     expect(listConfigMarkdownFilesRecursive("skills")).toStrictEqual([]);
+  });
+});
+
+describe("deleteConfigMarkdown", () => {
+  it("removes an existing file without warning", () => {
+    writeFileSync(join(getDir(), "context.md"), "x");
+
+    deleteConfigMarkdown("context.md");
+
+    expect(existsSync(join(getDir(), "context.md"))).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("silently ignores a missing file (ENOENT)", () => {
+    deleteConfigMarkdown("nope.md");
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("warns and continues when unlink fails for a non-ENOENT reason", () => {
+    // Unlinking a directory throws EISDIR (Linux) / EPERM (macOS) — a real
+    // non-ENOENT failure with no mocking. The old file surviving on such an
+    // error is the rename phantom-duplicate case, so it must warn rather than
+    // swallow silently.
+    mkdirSync(join(getDir(), "adir.md"), { recursive: true });
+
+    deleteConfigMarkdown("adir.md");
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("adir.md"));
   });
 });
