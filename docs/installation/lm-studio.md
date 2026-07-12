@@ -36,8 +36,9 @@ _It should display "Producer Pal Running" or something isn't working._
 Small model mode provides a smaller, simpler interface optimized for small/local
 language models.
 
-If you're using Option A below, the `-s` flag in the configuration automatically
-enables small model mode on the device when connected.
+If you're using Option A below, the `--small-model-mode` flag in the
+configuration automatically enables small model mode on the device when
+connected.
 
 Alternatively, you can enable it manually in Producer Pal's "Setup" tab:
 
@@ -64,29 +65,36 @@ mcp.json:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal", "-s"]
+      "args": ["-y", "producer-pal", "--small-model-mode"]
     }
   }
 }
 ```
 
-The `-s` flag enables small model mode. It automatically configures the device
-when connected, so you don't need to enable it in both places. The producer-pal
-package is a proxy that responds to requests even when Ableton Live or the
-Producer Pal device are not running, to let you know there's a problem.
+The `--small-model-mode` flag enables small model mode. It automatically
+configures the device when connected, so you don't need to enable it in both
+places. The producer-pal package is a proxy that responds to requests even when
+Ableton Live or the Producer Pal device are not running, to let you know there's
+a problem.
 
 ::: tip Recommended for small models: Stark notation
 
 Small/local models tend to handle `stark` notation — a simple literal
 `type: content` format with event-based drum hits — better than the default
-bar|beat text. Add `--notation stark` alongside `-s`:
+bar|beat text. Add `--notation stark` alongside `--small-model-mode`:
 
 ```json
 {
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal", "-s", "--notation", "stark"]
+      "args": [
+        "-y",
+        "producer-pal",
+        "--small-model-mode",
+        "--notation",
+        "stark"
+      ]
     }
   }
 }

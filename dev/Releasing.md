@@ -177,11 +177,11 @@ in CI — see `e2e/ui/README.md`.
    ```json
    "producer-pal": {
      "command": "npx",
-     "args": ["-y", "producer-pal@latest", "-s"]
+     "args": ["-y", "producer-pal@latest", "--small-model-mode"]
    }
    ```
 
-The `-s` option should automatically enable small model mode.
+The `--small-model-mode` option should automatically enable small model mode.
 
 4. Connect and confirm `ppal-read-live-set` is called
 

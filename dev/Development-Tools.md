@@ -177,7 +177,7 @@ absolute path — `npx` resolves relative paths against its own cwd.
 
 The portal also accepts config-override flags it pushes to the device via
 `POST /config` on connect: `-s`/`--small-model-mode`, `-n`/`--notation <value>`,
-`-f`/`--format <json|compact>`, and `--live-api` (enables the opt-in
+`-f`/`--format <json|compact>`, and `-l`/`--live-api` (enables the opt-in
 `ppal-live-api` tool). Explicit flags always apply. The same settings also have
 env vars (`SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`/`JSON_OUTPUT`, `LIVE_API`),
 but those are gated behind `ALLOW_CONFIGURATION_OVERRIDES=true` — and, unlike

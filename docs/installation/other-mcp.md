@@ -43,7 +43,7 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 ::: details Using a small/local model?
 
-Add the `-s` flag to enable
+Add the `--small-model-mode` flag to enable
 [Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended),
 which simplifies the tool interface for smaller LLMs and automatically enables
 it on the device when connected:
@@ -51,7 +51,7 @@ it on the device when connected:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "producer-pal", "-s"]
+  "args": ["-y", "producer-pal", "--small-model-mode"]
 }
 ```
 

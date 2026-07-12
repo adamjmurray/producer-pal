@@ -133,6 +133,12 @@ describe("producer-pal-portal", () => {
       });
     });
 
+    it("enables the Direct Live API with -l", async () => {
+      expect(await bridgeOptionsFor(["-l"])).toStrictEqual({
+        liveApiEnabled: true,
+      });
+    });
+
     it("passes notation from --notation <value>", async () => {
       expect(await bridgeOptionsFor(["--notation", "midi-json"])).toStrictEqual(
         {

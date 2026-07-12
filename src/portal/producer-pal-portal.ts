@@ -80,7 +80,7 @@ if (flags.has("-s") || flags.has("--small-model-mode")) {
   smallModelMode = parseBoolEnv(process.env.SMALL_MODEL_MODE);
 }
 
-// Direct Live API opt-in: `--live-api` flag (ungated) or LIVE_API env (gated).
+// Direct Live API opt-in: `-l` / `--live-api` flag (ungated) or LIVE_API env (gated).
 // Enables the low-level `ppal-live-api` tool at the device level (global — MCP
 // clients, REST API, and the chat UI all see it). Advanced escape hatch for
 // custom integrations, scripting, and debugging directly against the Live Object
@@ -88,7 +88,7 @@ if (flags.has("-s") || flags.has("--small-model-mode")) {
 // turns it off, undefined leaves the device alone.
 let liveApiEnabled: boolean | undefined;
 
-if (flags.has("--live-api")) {
+if (flags.has("-l") || flags.has("--live-api")) {
   liveApiEnabled = true;
 } else if (allowEnvOverrides) {
   liveApiEnabled = parseBoolEnv(process.env.LIVE_API);
