@@ -65,6 +65,6 @@ durations/lengths/`@step` carry the suffix on read-back.
   its period number is matched without the note-value suffix, so a bare-fraction
   period (`1/2t`) still surfaces the "no longer supported" steer while a
   note-value triplet (`n/4t`) parses.
-- Follow-ups, tracked separately: add a triplet `t` to stark (which keeps `.`
-  for dotted), and support ratio/fraction durations in midi-json (currently
-  float-only, so tuplets are lossy decimals there).
+- Follow-up, tracked separately: support ratio/fraction durations in midi-json
+  (currently float-only, so tuplets are lossy decimals there). (The triplet `t`
+  suffix for stark — which keeps `.` for dotted — has since shipped.)

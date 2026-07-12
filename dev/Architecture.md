@@ -242,10 +242,11 @@ writes are handled Node-side, and these features do not touch the Live API.**
 From the outside it is one MCP/REST service — it does not matter which runtime
 services which part of a request. So content that must reach an external MCP
 client is **injected into the `ppal-connect` result Node-side** (the same append
-seam the `WARNING:` relay uses; see `helpers/global-context-inject.ts`), rather
-than built in a V8 tool handler that has no way to read the files. The webui,
-which also has no filesystem, round-trips through Node REST routes
-(`config-markdown-route.ts` and friends) for the same reason.
+seam the `WARNING:` relay uses; see
+`helpers/global-context/global-context-inject.ts`), rather than built in a V8
+tool handler that has no way to read the files. The webui, which also has no
+filesystem, round-trips through Node REST routes (`config-markdown-route.ts` and
+friends) for the same reason.
 
 This is why the built-in skills blob — historically assembled in the V8
 `connect()` handler — is assembled **Node-side** once overrides enter the

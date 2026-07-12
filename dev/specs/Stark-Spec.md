@@ -12,14 +12,14 @@ section is **event-based**: drums are a line of drum hits with `/N` durations
 > on pitch / start_time / **duration** for any legato line (every note starting
 > where the previous ends — anything Stark itself produces), modulo: velocity
 > bucketing (3 dynamics) and snapping any sub-16th onset gap or off-grid
-> duration to the note-value grid (the ten spellable values — plain `/1`…`/16`
-> plus their dotted partners; see § Durations). Overlapping notes on one line
-> are normalized to legato exactly as a melody line is — **drums and pitched
-> lines share ONE timing model**, so drum note-length round-trips like a melody
-> note's. The authoritative implementation is the source files:
-> `parser/stark-grammar.peggy`, `stark-interpreter.ts`, `stark-serializer.ts`,
-> `stark-config.ts`. The serializer's line-default factoring keeps the read-back
-> clean.
+> duration to the note-value grid (the fifteen spellable values — plain
+> `/1`…`/16`, their dotted partners, and their triplets; see § Durations).
+> Overlapping notes on one line are normalized to legato exactly as a melody
+> line is — **drums and pitched lines share ONE timing model**, so drum
+> note-length round-trips like a melody note's. The authoritative implementation
+> is the source files: `parser/stark-grammar.peggy`, `stark-interpreter.ts`,
+> `stark-serializer.ts`, `stark-config.ts`. The serializer's line-default
+> factoring keeps the read-back clean.
 
 ---
 
@@ -201,12 +201,18 @@ ordering of the `' , ! ?` suffixes. A dot is legal everywhere a `/N` is: note,
 drum hit, rest (`z/4.`), chord (`[C E]/2.`), and the line-default header
 (`melody /4.:`).
 
-This gives ten spellable note values — the five plain (`/1`…`/16`) and their
-dotted partners. The serializer **snaps** every duration to the nearest of these
-ten (ties resolve to the shorter value); a duration off the grid (a triplet, a
-sample-derived sustain) snaps its own length but the walk advances by _emitted_
-grid-time, so a shortfall is absorbed by a compensating rest and later onsets
-never shift. Beats here are internal Ableton quarter-note beats.
+A single trailing **`t`** makes the value a **triplet** (× 2/3): `/4t` = quarter
+triplet ≈ 0.667 beats, `/8t` ≈ 0.333, `/16t` ≈ 0.167. The dot and the `t` are
+**mutually exclusive** — at most one modifier, they never stack. Like the dot,
+`t` binds tightly to its `/N` (no whitespace) and is legal everywhere a `/N` is.
+
+This gives fifteen spellable note values — the five plain (`/1`…`/16`), their
+dotted partners, and their triplets. The serializer **snaps** every duration to
+the nearest of these fifteen (ties resolve to the shorter value); a duration off
+the grid (a quintuplet, a sample-derived sustain) snaps its own length but the
+walk advances by _emitted_ grid-time, so a shortfall is absorbed by a
+compensating rest and later onsets never shift. Beats here are internal Ableton
+quarter-note beats.
 
 ---
 

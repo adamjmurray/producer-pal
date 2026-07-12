@@ -169,9 +169,9 @@ architecture.
   (`~/.producer-pal` overrides, global context, custom system prompt) are pure
   MCP/REST concerns — they do NOT use the Live API. Content that must reach
   external MCP clients is injected into the `ppal-connect` result Node-side (the
-  append seam in `helpers/global-context-inject.ts`), never in a V8 tool handler
-  that can't read the files. The webui round-trips through Node REST routes for
-  the same reason. See `dev/Architecture.md` → Runtime Boundary.
+  append seam in `helpers/global-context/global-context-inject.ts`), never in a
+  V8 tool handler that can't read the files. The webui round-trips through Node
+  REST routes for the same reason. See `dev/Architecture.md` → Runtime Boundary.
 
 - **Live API**: Always use the `src/live-api-adapter/live-api-extensions.ts`
   interface instead of raw `.get("property")?.[0]` calls.
