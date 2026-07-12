@@ -115,10 +115,14 @@ export function seedContext(seed: {
         await callContext(mcpClient, { action: "read", scope: "global" }),
       );
 
-      saved.set(
-        "memoryNames",
-        JSON.stringify(await readMemoryNames(mcpClient)),
-      );
+      const memoryNames = await readMemoryNames(mcpClient);
+
+      // null ⇒ the memory scope isn't reachable (small-model mode strips it from
+      // the enum). Nothing can write memory in that run, so there's nothing to
+      // clean up — record no snapshot and teardown will skip the diff.
+      if (memoryNames != null) {
+        saved.set("memoryNames", JSON.stringify(memoryNames));
+      }
 
       // Always install a KNOWN global document — defaulting to empty, not to
       // "whatever this developer happens to have". Global context is injected on
@@ -143,17 +147,20 @@ export function seedContext(seed: {
     },
 
     teardown: async (mcpClient) => {
-      const before = new Set<string>(
-        JSON.parse(saved.get("memoryNames") ?? "[]") as string[],
-      );
+      const snapshot = saved.get("memoryNames");
 
-      for (const name of await readMemoryNames(mcpClient)) {
-        if (!before.has(name)) {
-          await callContext(mcpClient, {
-            action: "delete",
-            scope: "memory",
-            name,
-          });
+      // Absent ⇒ memory was unreachable this run (see setup); skip the diff.
+      if (snapshot != null) {
+        const before = new Set<string>(JSON.parse(snapshot) as string[]);
+
+        for (const name of (await readMemoryNames(mcpClient)) ?? []) {
+          if (!before.has(name)) {
+            await callContext(mcpClient, {
+              action: "delete",
+              scope: "memory",
+              name,
+            });
+          }
         }
       }
 
@@ -177,14 +184,24 @@ export function seedContext(seed: {
  * `` - `name` — description `` line per entry, so the backtick-quoted name is
  * the stable thing to parse.
  *
+ * Returns null when the memory scope isn't reachable at all: small-model mode
+ * strips "memory" from the `scope` enum, so the call comes back as an error
+ * string rather than a result. That must not blow up the non-memory context
+ * scenarios (follow/write-layer/preserve), which DO run in small-model mode —
+ * and since nothing can write memory in such a run, "no index" is the truthful
+ * answer, not a failure.
+ *
  * @param mcpClient - The scenario's MCP client
- * @returns Every stored memory name
+ * @returns Every stored memory name, or null when the memory scope is unavailable
  */
-async function readMemoryNames(mcpClient: Client): Promise<string[]> {
-  const index = await callContext(mcpClient, {
-    action: "read",
-    scope: "memory",
-  });
+async function readMemoryNames(mcpClient: Client): Promise<string[] | null> {
+  let index: string;
+
+  try {
+    index = await callContext(mcpClient, { action: "read", scope: "memory" });
+  } catch {
+    return null;
+  }
 
   return [...index.matchAll(/^-\s+`([^`]+)`/gm)].map((m) => m[1] as string);
 }
