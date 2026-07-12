@@ -36,14 +36,20 @@ export interface ContextIoHandlers {
  * @param exportBasename - Human basename for the export file (dated + slugified)
  * @param onImportError - Surface a picker rejection (too-large/unreadable) to the
  *   user, mirroring the drop zone's notice; a plain cancel stays silent
+ * @param onImportSuccess - Called when an import applies text (drop or pick), so a
+ *   caller can clear any stale rejection notice a prior bad import left showing
  * @returns The wired handlers
  */
 export function makeContextIoHandlers(
   editor: EditorIoTarget,
   exportBasename: string,
   onImportError?: (message: string) => void,
+  onImportSuccess?: () => void,
 ): ContextIoHandlers {
-  const onImportText = (text: string): void => void editor.handleImport(text);
+  const onImportText = (text: string): void => {
+    onImportSuccess?.();
+    void editor.handleImport(text);
+  };
 
   const onImport = (): void => {
     void pickTextFile(MARKDOWN_ACCEPT).then((result) => {

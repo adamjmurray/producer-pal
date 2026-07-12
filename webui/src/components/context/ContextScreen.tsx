@@ -98,6 +98,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
     editor,
     labels.exportBasename,
     importNotice.showNotice,
+    importNotice.clearNotice,
   );
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Cap the editable region so it lines up with the chat column instead of

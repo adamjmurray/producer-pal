@@ -20,6 +20,13 @@ export interface ImportNotice {
   notice: string | null;
   /** Show a rejection message; auto-clears after {@link NOTICE_MS}. */
   showNotice: (message: string) => void;
+  /**
+   * Clear any showing notice at once (and cancel its auto-dismiss timer). The
+   * screens call this when an import succeeds, so a stale rejection notice from
+   * a prior bad drop/pick doesn't linger over the freshly-imported content for
+   * the rest of its {@link NOTICE_MS} window.
+   */
+  clearNotice: () => void;
 }
 
 /**
@@ -44,7 +51,12 @@ export function useImportNotice(): ImportNotice {
     noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS);
   };
 
-  return { notice, showNotice };
+  const clearNotice = (): void => {
+    clearTimeout(noticeTimerRef.current);
+    setNotice(null);
+  };
+
+  return { notice, showNotice, clearNotice };
 }
 
 interface MarkdownDropZoneProps {

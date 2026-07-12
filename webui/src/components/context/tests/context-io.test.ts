@@ -70,6 +70,38 @@ describe("makeContextIoHandlers", () => {
     expect(handleImport).toHaveBeenCalledWith("dropped body");
   });
 
+  it("onImportText fires onImportSuccess so a stale notice is cleared", () => {
+    const { editor, handleImport } = makeEditor();
+    const onImportSuccess = vi.fn();
+    const { onImportText } = makeContextIoHandlers(
+      editor,
+      "base",
+      undefined,
+      onImportSuccess,
+    );
+
+    onImportText("dropped body");
+
+    expect(onImportSuccess).toHaveBeenCalledOnce();
+    expect(handleImport).toHaveBeenCalledWith("dropped body");
+  });
+
+  it("onImport fires onImportSuccess on a successful pick", async () => {
+    pickTextFile.mockResolvedValue({ kind: "text", text: "picked body" });
+    const { editor } = makeEditor();
+    const onImportSuccess = vi.fn();
+    const { onImport } = makeContextIoHandlers(
+      editor,
+      "base",
+      undefined,
+      onImportSuccess,
+    );
+
+    onImport();
+
+    await vi.waitFor(() => expect(onImportSuccess).toHaveBeenCalledOnce());
+  });
+
   it("onImport reads a picked file and imports it", async () => {
     pickTextFile.mockResolvedValue({ kind: "text", text: "picked body" });
     const { editor, handleImport } = makeEditor();

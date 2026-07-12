@@ -177,6 +177,44 @@ describe("MarkdownDropZone", () => {
     }
   });
 
+  it("clearNotice removes a showing rejection notice immediately", () => {
+    // Reproduces the stale-notice bug: a rejected drop shows the red notice
+    // (which otherwise lingers for the full 4s), but a *successful* import
+    // landing within that window must clear it at once — else the error overlay
+    // sits over freshly-imported content. The screens call clearNotice from the
+    // import success path (context-io's onImportSuccess); here a button stands in
+    // for that path so this test targets the hook seam directly.
+    function ClearHarness(): preact.JSX.Element {
+      const { notice, showNotice, clearNotice } = useImportNotice();
+
+      return (
+        <div>
+          <MarkdownDropZone
+            onImportText={() => {}}
+            notice={notice}
+            onReject={showNotice}
+          >
+            <div data-testid="child">editor</div>
+          </MarkdownDropZone>
+          <button type="button" onClick={clearNotice}>
+            import ok
+          </button>
+        </div>
+      );
+    }
+
+    render(<ClearHarness />);
+
+    fireEvent.drop(screen.getByTestId("child"), {
+      dataTransfer: fileTransfer([fakeFile("cover.png", "image/png")]),
+    });
+    expect(screen.getByText("Not a markdown file")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("import ok"));
+
+    expect(screen.queryByText("Not a markdown file")).toBeNull();
+  });
+
   it("ignores a non-file drag (e.g. editor text reorder) and shows no overlay", () => {
     const { child, onImportText } = renderZone();
 

@@ -73,6 +73,7 @@ export function SkillSlotScreen(
     editor,
     `producer-pal-skill-${slot.name}`,
     importNotice.showNotice,
+    importNotice.clearNotice,
   );
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Match the other doc tabs at rest; widen to two columns only when the
