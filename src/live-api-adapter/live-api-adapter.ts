@@ -114,6 +114,8 @@ function initHoldingArea(ctx: ToolContext): void {
 **IMPORTANT**: Always pass args AND ctx to tool functions
 Use the `(args, ctx) => toolFunction(args, ctx)` pattern
 This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
+Exception: ppal-connect takes args only — its signature intentionally dropped ctx
+(see the `connect(args)` line below), so it does not follow this pattern.
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {

@@ -209,13 +209,12 @@ ownership: `project`/`global` context are the user's (confirm before writing),
   precise recall hook (what's inside, when it's relevant), not a vague label.
 - Before writing, check the index for an entry that already covers it and reuse
   its name to update rather than duplicate. One fact per memory.
-- Default to a memory. Only escalate to context (`action:write` on
-  `scope:global` or `scope:project`) when a fact is clearly a long-lived
-  preference or core project goal that belongs always-in-context — ask first,
-  then write it on the user's behalf.
 - `delete` anything wrong or outdated rather than leaving stale entries. Convert
   relative dates ("next week") to absolute before storing.
-- Save quietly as facts emerge; don't announce each one.
+- Save quietly as facts emerge; don't announce each one. When a fact is a
+  long-lived preference that should ALWAYS apply, offer to pin it to
+  global/project context instead — write it on the user's behalf once they
+  agree.
 
 ## Webui memory manager
 

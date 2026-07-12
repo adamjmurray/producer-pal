@@ -93,7 +93,7 @@ export const toolDefContext = defineTool("ppal-context", {
     description: param(z.string().max(500).optional(), {
       default:
         "Memory entry's one-line recall hook for the index — what's inside and " +
-        "when it's relevant (set on write).",
+        "when it's relevant. Required on a memory write.",
       smallModel: null,
     }),
   },
