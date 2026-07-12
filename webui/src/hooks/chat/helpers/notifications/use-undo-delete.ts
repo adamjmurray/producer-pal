@@ -38,10 +38,14 @@ export interface UndoDeleteReturn {
  * a restore that fails to save keeps the record on the stack and turns the banner
  * into a retryable error rather than losing the conversation.
  * @param refreshList - Refreshes the conversation list after a restore
+ * @param onRestore - Optional callback invoked with the restored id after a
+ *   successful undo save. The conversation manager uses it to un-cancel the id
+ *   in its delete guard so post-undo autosaves aren't silently dropped.
  * @returns Undo banner state and handlers
  */
 export function useUndoDelete(
   refreshList: () => Promise<void>,
+  onRestore?: (id: string) => void,
 ): UndoDeleteReturn {
   // stackRef is the source of truth (read synchronously by undo); `stack` state
   // mirrors it only to re-render the banner. Records are small metadata +
@@ -86,13 +90,18 @@ export function useUndoDelete(
         return;
       }
 
+      // Un-cancel the restored id before anything else in the success path: the
+      // row is back under its original id, so the manager's add-only delete
+      // guard must stop dropping its autosaves. Skipped on the failure path
+      // above — a row that didn't come back stays canceled, correctly.
+      onRestore?.(restored.id);
       setRestoreError(null);
       sync(stackRef.current.filter((record) => record !== restored));
       await refreshList();
     })().finally(() => {
       undoInFlightRef.current = false;
     });
-  }, [refreshList, sync]);
+  }, [refreshList, sync, onRestore]);
 
   const pushDeleted = useCallback(
     (record: ConversationRecord) => {

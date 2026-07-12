@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useEffect } from "preact/hooks";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
@@ -76,6 +77,61 @@ export function setLocationHash(id: string | null): void {
       window.location.pathname + window.location.search,
     );
   }
+}
+
+/**
+ * Route browser back/forward (hashchange) to the matching conversation: switch
+ * to the hashed id, or start a new conversation when the hash clears. Ignores
+ * the programmatic hash writes the manager makes itself (guarded by a ref flag).
+ * @param params - Navigation dependencies
+ * @param params.programmaticHashRef - Flag set when the manager wrote the hash itself
+ * @param params.programmaticHashRef.current - The mutable flag value
+ * @param params.activeIdRef - Ref holding the current active conversation id
+ * @param params.activeIdRef.current - The mutable active-id value
+ * @param params.switchConversation - Loads and activates a conversation by id
+ * @param params.startNewConversation - Clears state for a brand-new conversation
+ */
+export function useHashNavigation(params: {
+  programmaticHashRef: { current: boolean };
+  activeIdRef: { current: string | null };
+  switchConversation: (id: string) => Promise<void>;
+  startNewConversation: () => void;
+}): void {
+  const {
+    programmaticHashRef,
+    activeIdRef,
+    switchConversation,
+    startNewConversation,
+  } = params;
+
+  useEffect(() => {
+    const handler = () => {
+      if (programmaticHashRef.current) {
+        programmaticHashRef.current = false;
+
+        return;
+      }
+
+      const hashId = getHashConversationId();
+
+      if (hashId === activeIdRef.current) return;
+
+      if (hashId) {
+        void switchConversation(hashId);
+      } else {
+        void startNewConversation();
+      }
+    };
+
+    window.addEventListener("hashchange", handler);
+
+    return () => window.removeEventListener("hashchange", handler);
+  }, [
+    programmaticHashRef,
+    activeIdRef,
+    switchConversation,
+    startNewConversation,
+  ]);
 }
 
 /**

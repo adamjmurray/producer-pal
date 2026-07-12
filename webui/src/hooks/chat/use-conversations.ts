@@ -18,6 +18,7 @@ import {
   getHashConversationId,
   resolvePanelNotification,
   setLocationHash,
+  useHashNavigation,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
 import {
   type SyncActiveMetaParams,
@@ -134,7 +135,16 @@ export function useConversations({
     setConversations(list);
   }, []);
 
-  const undoDelete = useUndoDelete(refreshList);
+  // Un-cancel a restored conversation's id. canceledIdsRef is otherwise
+  // add-only; undo restores under the same id via a raw saveConversation that
+  // bypasses the guard, but the stale canceled flag would then bail every later
+  // autosave for that id at the check below (line ~254), silently losing all
+  // post-undo messages. Clearing it on a successful restore re-enables saving.
+  const uncancelRestoredId = useCallback((id: string) => {
+    canceledIdsRef.current.delete(id);
+  }, []);
+
+  const undoDelete = useUndoDelete(refreshList, uncancelRestoredId);
 
   const setActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -411,30 +421,13 @@ export function useConversations({
     [conversations, refreshList],
   );
 
-  // Handle browser back/forward navigation
-  useEffect(() => {
-    const handler = () => {
-      if (programmaticHashRef.current) {
-        programmaticHashRef.current = false;
-
-        return;
-      }
-
-      const hashId = getHashConversationId();
-
-      if (hashId === activeIdRef.current) return;
-
-      if (hashId) {
-        void switchConversation(hashId);
-      } else {
-        void startNewConversation();
-      }
-    };
-
-    window.addEventListener("hashchange", handler);
-
-    return () => window.removeEventListener("hashchange", handler);
-  }, [switchConversation, startNewConversation]);
+  // Route browser back/forward navigation to the matching conversation.
+  useHashNavigation({
+    programmaticHashRef,
+    activeIdRef,
+    switchConversation,
+    startNewConversation,
+  });
 
   return {
     conversations,

@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act } from "@testing-library/preact";
+import { act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation } from "#webui/lib/conversation-db";
@@ -195,5 +195,49 @@ describe("useConversations delete/save races", () => {
     // Its autosave wrote through — the bookmarked conversation is still present.
     expect(await loadConversation(savedId)).toBeDefined();
     restore();
+  });
+
+  it("re-enables autosave after a deleted conversation is undone", async () => {
+    // F5: deleteConversation marks the id canceled to block a resurrecting late
+    // save, but the flag was add-only. Undo restores the row under the same id
+    // (raw saveConversation, bypassing the guard); without un-canceling, every
+    // later autosave for it bailed at the guard, silently dropping post-undo
+    // messages. Undo must clear the flag so saving works again.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "original");
+    const savedId = result.current.activeConversationId!;
+
+    // Delete the active conversation — adds savedId to the canceled set.
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+    expect(await loadConversation(savedId)).toBeUndefined();
+
+    // Undo via the banner. action.onClick fires `void undo()`, so wait for the
+    // restore to land in the DB before continuing.
+    await act(async () => {
+      result.current.notification!.action!.onClick();
+    });
+    await waitFor(async () =>
+      expect(await loadConversation(savedId)).toBeDefined(),
+    );
+
+    // Reopen the restored conversation and keep chatting: the new autosave must
+    // reach the DB, not bail at the now-cleared canceled-id guard.
+    await act(async () => {
+      await result.current.switchConversation(savedId);
+    });
+    state.chatHistory = [
+      { role: "user", content: "original" },
+      { role: "user", content: "after undo" },
+    ];
+    await act(async () => {
+      await result.current.saveCurrentConversation(Date.now());
+    });
+
+    const reloaded = await loadConversation(savedId);
+
+    expect(reloaded?.messages).toHaveLength(2);
   });
 });
