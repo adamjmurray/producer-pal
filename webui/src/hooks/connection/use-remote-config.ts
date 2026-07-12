@@ -37,16 +37,24 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverLiveApiForcedOn, setServerLiveApiForcedOn] = useState(false);
   const [serverNotation, setServerNotation] =
     useState<Notation>(DEFAULT_NOTATION);
-  // Monotonic counter shared by every config operation — each GET (mount,
-  // reconnect, focus) and each POST bumps it. A GET applies its response only
-  // while it is still the latest op, and a POST's failure-revert refetch is
-  // skipped once a newer op supersedes it. Without this, out-of-order arrivals
-  // (an older GET resolving after a newer GET, or a stale GET landing after a
-  // POST's optimistic update) could clobber fresher config state.
+  // Two counters coordinate overlapping config operations:
+  //   configSeqRef       — monotonic allocator; every GET (mount, reconnect,
+  //                        focus) and every POST takes a unique, issue-ordered
+  //                        token from it at initiation.
+  //   latestConfigSeqRef — token of the operation that currently OWNS the
+  //                        displayed state. A POST claims ownership synchronously
+  //                        (it sets state optimistically); a GET claims it only
+  //                        when it actually applies a response. A GET that is
+  //                        aborted or non-OK allocates a token but never claims
+  //                        ownership, so it can't falsely supersede an in-flight
+  //                        POST's failure-revert, and a stale GET can't clobber
+  //                        fresher state. postConfigField skips its revert only
+  //                        when a newer op has genuinely taken ownership.
+  const configSeqRef = useRef(0);
   const latestConfigSeqRef = useRef(0);
 
   const fetchConfig = useCallback(async (signal?: AbortSignal) => {
-    const seq = ++latestConfigSeqRef.current;
+    const seq = ++configSeqRef.current;
 
     try {
       const response = await fetch(getConfigUrl(), { signal });
@@ -59,9 +67,11 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
           notation?: unknown;
         };
 
-        // Drop a response that a newer GET or POST superseded while it was in
-        // flight, so an out-of-order arrival can't overwrite fresher state.
-        if (seq !== latestConfigSeqRef.current) return;
+        // Drop a response a newer operation already owns, and otherwise claim
+        // ownership at apply time (not call time) so a GET that never applies
+        // can't supersede an in-flight POST's revert.
+        if (seq < latestConfigSeqRef.current) return;
+        latestConfigSeqRef.current = seq;
 
         setServerSmallModelMode(Boolean(config.smallModelMode));
         setServerLiveApiEnabled(Boolean(config.liveApiEnabled));
@@ -118,8 +128,9 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postSmallModelMode = useCallback(
     (enabled: boolean) => {
       setServerSmallModelMode(enabled);
-      const seq = ++latestConfigSeqRef.current;
+      const seq = ++configSeqRef.current;
 
+      latestConfigSeqRef.current = seq;
       void postConfigField(
         "smallModelMode",
         enabled,
@@ -134,8 +145,9 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postLiveApiEnabled = useCallback(
     async (enabled: boolean) => {
       setServerLiveApiEnabled(enabled);
-      const seq = ++latestConfigSeqRef.current;
+      const seq = ++configSeqRef.current;
 
+      latestConfigSeqRef.current = seq;
       await postConfigField(
         "liveApiEnabled",
         enabled,
@@ -150,8 +162,9 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postNotation = useCallback(
     (notation: Notation) => {
       setServerNotation(notation);
-      const seq = ++latestConfigSeqRef.current;
+      const seq = ++configSeqRef.current;
 
+      latestConfigSeqRef.current = seq;
       void postConfigField(
         "notation",
         notation,
@@ -181,10 +194,12 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
  * the most we can do without adding one. A non-OK HTTP response (e.g. 400
  * validation) is treated the same as a network error.
  *
- * The revert is skipped when a newer config op (POST or GET) has bumped
- * `latestSeqRef.current` past `seq`. That newer op owns the authoritative
- * state from here on; the older POST's refetch would otherwise race it and
- * could overwrite its value with stale server state.
+ * The revert is skipped when a newer config op (a POST, or a GET that applied
+ * a response) has taken ownership past `seq` — i.e. `latestSeqRef.current`
+ * advanced. That newer op owns the authoritative state from here on; the older
+ * POST's refetch would otherwise race it and could overwrite its value with
+ * stale server state. A GET that was aborted or non-OK never takes ownership,
+ * so it can't suppress this revert.
  *
  * @param field - Config field name
  * @param value - New value

@@ -321,6 +321,74 @@ describe("useRemoteConfig", () => {
     );
   });
 
+  it("reverts a failed POST even when a non-applying GET fired while it was in flight", async () => {
+    // Regression: fetchConfig used to bump the shared sequence at call time, so
+    // an intervening GET that applied nothing (aborted focus/reconnect refetch,
+    // or a non-OK response) still consumed a sequence and made the pending POST
+    // look superseded — its failure-revert was skipped and the server-rejected
+    // optimistic value stuck. Ownership is now claimed only when a GET actually
+    // applies, so the POST stays owner and reverts.
+    const { result } = await setupRemoteConfigHook({
+      smallModelMode: false,
+      liveApiEnabled: false,
+    });
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Hold the POST so a GET can fire — and bump the shared sequence — while it
+    // is still pending.
+    let resolvePost!: (r: Response) => void;
+    const postPending = new Promise<Response>((resolve) => {
+      resolvePost = resolve;
+    });
+
+    let getCount = 0;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
+      if ((init as RequestInit | undefined)?.method === "POST") {
+        return postPending;
+      }
+
+      getCount++;
+
+      // The intervening focus GET (1st) is non-OK → applies nothing but bumps
+      // the sequence; the revert refetch (2nd) returns authoritative state.
+      return getCount === 1
+        ? Promise.resolve({ ok: false } as Response)
+        : Promise.resolve(
+            mockConfigResponse({
+              smallModelMode: false,
+              liveApiEnabled: false,
+            }),
+          );
+    });
+
+    let postPromise!: Promise<void>;
+
+    await act(() => {
+      postPromise = result.current.postLiveApiEnabled(true);
+    });
+    expect(result.current.serverLiveApiEnabled).toBe(true); // optimistic
+
+    // A focus refetch fires while the POST is in flight, consuming a sequence
+    // without applying any state.
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await Promise.resolve();
+    });
+
+    // Fail the POST: its revert must NOT be suppressed by the non-applying GET.
+    await act(async () => {
+      resolvePost({ ok: false, status: 400 } as Response);
+      await postPromise;
+    });
+
+    expect(result.current.serverLiveApiEnabled).toBe(false); // reverted
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("reverting"),
+    );
+  });
+
   it("defaults serverNotation to barbeat", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: false }),
