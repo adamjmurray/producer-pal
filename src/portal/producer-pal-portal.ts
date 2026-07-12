@@ -65,7 +65,9 @@ const flags = new Set(argv);
 // they apply only when explicitly opted in via ALLOW_CONFIGURATION_OVERRIDES=
 // "true"; otherwise the device / chat UI stay authoritative. Explicit CLI flags
 // below are NOT gated: passing a flag is already an intentional per-invocation
-// opt-in.
+// opt-in. Opt-in (=== "true"), NOT opt-out (!== "false") — see
+// dev/decisions/0013-config-override-gate.md for why the intuitive polarity is
+// wrong (a stock extension would clobber the device's own settings).
 const allowEnvOverrides = process.env.ALLOW_CONFIGURATION_OVERRIDES === "true";
 
 // Small model mode: `-s` / `--small-model-mode` flag (ungated) or the
