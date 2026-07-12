@@ -60,6 +60,23 @@ describe("useConversationHandlers", () => {
     spy.mockRestore();
   });
 
+  it("stops response before delegating to deleteConversation", async () => {
+    // Deleting the actively-streaming conversation must stop the stream first
+    // (like new/select/delete-all) so no further autosave writes the record
+    // back to the DB after it is removed.
+    const manager = createMockManager();
+    const stop = vi.fn();
+
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stop, vi.fn()),
+    );
+
+    await act(() => result.current.handleDelete("conv-1"));
+
+    expect(stop).toHaveBeenCalled();
+    expect(manager.deleteConversation).toHaveBeenCalledWith("conv-1");
+  });
+
   it("stops response when selecting a conversation", async () => {
     const manager = createMockManager();
     const stop = vi.fn();

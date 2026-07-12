@@ -372,6 +372,60 @@ describe("useConversations", () => {
     expect(props.clearConversation).toHaveBeenCalled();
   });
 
+  it("defers deletion until an in-flight save settles", async () => {
+    // Regression: deleting the actively-streaming conversation must not race
+    // its autosave. The delete drains the save chain first, so an in-flight
+    // save's write can't land after the row is removed and resurrect it.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result);
+    const savedId = result.current.activeConversationId!;
+
+    // Hold the NEXT save pending, and watch the DB-level delete.
+    let releaseSave!: (r: {
+      deletedCount: number;
+      limitReached: boolean;
+    }) => void;
+    const savePending = new Promise<{
+      deletedCount: number;
+      limitReached: boolean;
+    }>((resolve) => {
+      releaseSave = resolve;
+    });
+    const saveSpy = vi
+      .spyOn(conversationDb, "saveConversation")
+      .mockReturnValueOnce(savePending as never);
+    const deleteSpy = vi.spyOn(conversationDb, "deleteConversation");
+
+    // Start an autosave (now pending in the chain), then start the delete —
+    // which must block on the chain rather than deleting immediately.
+    let savePromise!: Promise<void>;
+    let deletePromise!: Promise<void>;
+
+    await act(async () => {
+      state.chatHistory = [{ role: "user", content: "streaming…" }];
+      savePromise = result.current.saveCurrentConversation();
+      deletePromise = result.current.deleteConversation(savedId);
+      await Promise.resolve();
+    });
+
+    // Nothing deleted yet — the delete is waiting on the pending save.
+    expect(deleteSpy).not.toHaveBeenCalled();
+
+    // Release the save; the delete now proceeds and removes the row for good.
+    await act(async () => {
+      releaseSave({ deletedCount: 0, limitReached: false });
+      await savePromise;
+      await deletePromise;
+    });
+
+    expect(deleteSpy).toHaveBeenCalledWith(savedId);
+    expect(await loadConversation(savedId)).toBeUndefined();
+
+    saveSpy.mockRestore();
+    deleteSpy.mockRestore();
+  });
+
   it("deletes a non-active conversation without clearing chat", async () => {
     const otherId = await saveTestConversation({
       messages: [{ role: "user", content: "other" }],

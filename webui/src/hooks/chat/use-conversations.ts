@@ -303,6 +303,13 @@ export function useConversations({
 
   const deleteConversation = useCallback(
     async (id: string) => {
+      // Let any in-flight autosave finish writing before we remove the row: a
+      // save that started before this delete could otherwise land afterward and
+      // resurrect the record. handleDelete stops the stream first, so no new
+      // autosave enqueues here; this only drains one already in flight. The save
+      // chain never rejects (saveCurrentConversation's chained body swallows its
+      // own errors), so awaiting it directly is safe.
+      await saveChainRef.current;
       await deleteConversationWithSnapshot(id, undoDelete.pushDeleted);
 
       if (activeIdRef.current === id) {

@@ -334,8 +334,11 @@ export async function deleteConversationWithSnapshot(
 
 /**
  * Pick which banner the conversation panel shows and the matching dismiss
- * handler. A pending undo-delete banner (a fresh user action) takes precedence
- * over the passive conversation-limit/save-error banner.
+ * handler. Rank by severity first — an error (a save failure / data-loss
+ * signal) outranks a warning — then let the fresher undo-delete banner win
+ * within the same severity. Severity-first matters because the undo banner
+ * never auto-expires, so without it a stale "Deleted …" banner would
+ * indefinitely mask a later save-error banner.
  * @param undo - Undo-delete notification state and dismiss handler
  * @param undo.undoNotification - The pending undo banner, or null when none
  * @param undo.dismissUndoNotification - Clears all pending undos
@@ -357,9 +360,25 @@ export function resolvePanelNotification(
   notification: TransferNotificationData | null;
   dismissNotification: () => void;
 } {
+  const undoNote = undo.undoNotification;
+  const limitNote = limit.limitNotification;
+  // The limit/save-error banner wins when there is no undo to defer to, or when
+  // it is an error and the undo banner is merely a warning.
+  const limitWins =
+    limitNote != null &&
+    (undoNote == null ||
+      (limitNote.type === "error" && undoNote.type !== "error"));
+
+  if (limitWins) {
+    return {
+      notification: limitNote,
+      dismissNotification: limit.dismissLimitNotification,
+    };
+  }
+
   return {
-    notification: undo.undoNotification ?? limit.limitNotification,
-    dismissNotification: undo.undoNotification
+    notification: undoNote ?? limitNote,
+    dismissNotification: undoNote
       ? undo.dismissUndoNotification
       : limit.dismissLimitNotification,
   };

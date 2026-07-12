@@ -172,6 +172,41 @@ describe("useUndoDelete", () => {
     expect(result.current.undoNotification).toBeNull();
   });
 
+  it("ignores a second undo click while the first restore is still saving", async () => {
+    // Double-clicking Undo must not fire two concurrent restores of the same
+    // record: the in-flight guard drops the second click.
+    let releaseSave!: () => void;
+    const savePending = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+
+    vi.mocked(saveConversation).mockReturnValueOnce(savePending as never);
+
+    const refreshList = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useUndoDelete(refreshList));
+
+    await act(() => result.current.pushDeleted(makeRecord({ title: "Once" })));
+
+    const click = result.current.undoNotification!.action!.onClick;
+
+    await act(async () => {
+      click(); // enters, arms the guard, awaits the pending save
+      click(); // guard bails before a second save
+      await Promise.resolve();
+    });
+
+    // Only one save attempt despite two clicks.
+    expect(vi.mocked(saveConversation)).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      releaseSave();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.undoNotification).toBeNull());
+    expect(refreshList).toHaveBeenCalledTimes(1);
+  });
+
   it("clears a prior restore error when a new deletion is pushed", async () => {
     vi.mocked(saveConversation).mockRejectedValueOnce(new Error("boom"));
     const { result } = renderHook(() => useUndoDelete(vi.fn()));

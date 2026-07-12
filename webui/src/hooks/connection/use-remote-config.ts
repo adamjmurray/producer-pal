@@ -37,14 +37,17 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverLiveApiForcedOn, setServerLiveApiForcedOn] = useState(false);
   const [serverNotation, setServerNotation] =
     useState<Notation>(DEFAULT_NOTATION);
-  // Monotonic counter to detect when a POST's failure-revert refetch is
-  // stale (i.e. a newer POST has been initiated since). Without this an
-  // older failed POST's refetch can clobber the newer POST's optimistic
-  // state — or read server state mid-flight before the newer POST has
-  // been processed.
-  const latestPostSeqRef = useRef(0);
+  // Monotonic counter shared by every config operation — each GET (mount,
+  // reconnect, focus) and each POST bumps it. A GET applies its response only
+  // while it is still the latest op, and a POST's failure-revert refetch is
+  // skipped once a newer op supersedes it. Without this, out-of-order arrivals
+  // (an older GET resolving after a newer GET, or a stale GET landing after a
+  // POST's optimistic update) could clobber fresher config state.
+  const latestConfigSeqRef = useRef(0);
 
   const fetchConfig = useCallback(async (signal?: AbortSignal) => {
+    const seq = ++latestConfigSeqRef.current;
+
     try {
       const response = await fetch(getConfigUrl(), { signal });
 
@@ -55,6 +58,10 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
           liveApiForcedOn?: boolean;
           notation?: unknown;
         };
+
+        // Drop a response that a newer GET or POST superseded while it was in
+        // flight, so an out-of-order arrival can't overwrite fresher state.
+        if (seq !== latestConfigSeqRef.current) return;
 
         setServerSmallModelMode(Boolean(config.smallModelMode));
         setServerLiveApiEnabled(Boolean(config.liveApiEnabled));
@@ -111,14 +118,14 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postSmallModelMode = useCallback(
     (enabled: boolean) => {
       setServerSmallModelMode(enabled);
-      const seq = ++latestPostSeqRef.current;
+      const seq = ++latestConfigSeqRef.current;
 
       void postConfigField(
         "smallModelMode",
         enabled,
         fetchConfig,
         seq,
-        latestPostSeqRef,
+        latestConfigSeqRef,
       );
     },
     [fetchConfig],
@@ -127,14 +134,14 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postLiveApiEnabled = useCallback(
     async (enabled: boolean) => {
       setServerLiveApiEnabled(enabled);
-      const seq = ++latestPostSeqRef.current;
+      const seq = ++latestConfigSeqRef.current;
 
       await postConfigField(
         "liveApiEnabled",
         enabled,
         fetchConfig,
         seq,
-        latestPostSeqRef,
+        latestConfigSeqRef,
       );
     },
     [fetchConfig],
@@ -143,14 +150,14 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postNotation = useCallback(
     (notation: Notation) => {
       setServerNotation(notation);
-      const seq = ++latestPostSeqRef.current;
+      const seq = ++latestConfigSeqRef.current;
 
       void postConfigField(
         "notation",
         notation,
         fetchConfig,
         seq,
-        latestPostSeqRef,
+        latestConfigSeqRef,
       );
     },
     [fetchConfig],
@@ -174,17 +181,17 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
  * the most we can do without adding one. A non-OK HTTP response (e.g. 400
  * validation) is treated the same as a network error.
  *
- * The revert is skipped when a newer POST has bumped `latestSeqRef.current`
- * past `seq`. The newer POST owns the authoritative state from here on;
- * the older POST's refetch would otherwise race the newer POST's request
- * and could overwrite its optimistic value with stale server state.
+ * The revert is skipped when a newer config op (POST or GET) has bumped
+ * `latestSeqRef.current` past `seq`. That newer op owns the authoritative
+ * state from here on; the older POST's refetch would otherwise race it and
+ * could overwrite its value with stale server state.
  *
  * @param field - Config field name
  * @param value - New value
  * @param refetch - Function to re-read authoritative server state
  * @param seq - This POST's sequence number, captured at initiation
  * @param latestSeqRef - Ref holding the hook's latest sequence number
- * @param latestSeqRef.current - Most recently issued POST sequence number
+ * @param latestSeqRef.current - Most recently issued config-op sequence number
  */
 async function postConfigField(
   field: string,
@@ -204,7 +211,7 @@ async function postConfigField(
       const latest = seq === latestSeqRef.current;
 
       console.error(
-        `POST /config (${field}) returned ${response.status}${latest ? "; reverting" : "; skipping revert (newer POST in flight)"}`,
+        `POST /config (${field}) returned ${response.status}${latest ? "; reverting" : "; skipping revert (newer request in flight)"}`,
       );
       if (latest) await refetch();
     }
@@ -212,7 +219,7 @@ async function postConfigField(
     const latest = seq === latestSeqRef.current;
 
     console.error(
-      `POST /config (${field}) failed${latest ? "" : " (skipping revert; newer POST in flight)"}:`,
+      `POST /config (${field}) failed${latest ? "" : " (skipping revert; newer request in flight)"}:`,
       err,
     );
     if (latest) await refetch();

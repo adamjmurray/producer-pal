@@ -376,6 +376,44 @@ describe("useRemoteConfig", () => {
     expect(result.current.serverNotation).toBe("stark");
   });
 
+  it("ignores a stale config fetch that resolves after a newer one", async () => {
+    // Two overlapping GETs: the mount fetch is held so it resolves LAST with
+    // stale data, while the reconnect fetch resolves first with fresh data. The
+    // stale arrival must not clobber the fresher state — the GET path is now
+    // sequence-guarded like the POST path.
+    let resolveStale!: (r: Response) => void;
+    const stale = new Promise<Response>((resolve) => {
+      resolveStale = resolve;
+    });
+    let callCount = 0;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      callCount++;
+
+      // First call = mount fetch (held, stale); later = reconnect fetch (fresh).
+      return callCount === 1
+        ? stale
+        : Promise.resolve(mockConfigResponse({ notation: "stark" }));
+    });
+
+    const { result, rerender } = renderHook(
+      ({ status }: { status: McpStatus }) => useRemoteConfig(status),
+      { initialProps: { status: "connecting" as McpStatus } },
+    );
+
+    // Reconnect triggers the fresh fetch, which resolves first and wins.
+    rerender({ status: "connected" });
+    await waitFor(() => expect(result.current.serverNotation).toBe("stark"));
+
+    // The held mount fetch now resolves with older data — it must be dropped.
+    await act(async () => {
+      resolveStale(mockConfigResponse({ notation: "barbeat" }));
+      await Promise.resolve();
+    });
+
+    expect(result.current.serverNotation).toBe("stark");
+  });
+
   it("cleans up focus listener on unmount", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: false }),

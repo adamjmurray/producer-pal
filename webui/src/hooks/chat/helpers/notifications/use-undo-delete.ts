@@ -51,6 +51,9 @@ export function useUndoDelete(
   // Set when a restore save rejects: the record stays on the stack (so the user
   // can retry) and the banner turns into an error until the next successful undo.
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  // Guards against a double-click firing two concurrent restores of the same
+  // record (redundant saves + refreshes); released once the restore settles.
+  const undoInFlightRef = useRef(false);
 
   const sync = useCallback((next: ConversationRecord[]) => {
     stackRef.current = next;
@@ -58,25 +61,37 @@ export function useUndoDelete(
   }, []);
 
   const undo = useCallback(async () => {
+    if (undoInFlightRef.current) return;
+
     const restored = stackRef.current.at(-1);
 
     if (!restored) return;
 
+    undoInFlightRef.current = true;
+
+    // Run the restore, releasing the guard once it settles. The release lives in
+    // a .finally() callback (its own scope), not an `await … finally` in this
+    // async body, which would trip require-atomic-updates on the ref write.
+    //
     // Save BEFORE popping. The DB row was already deleted at delete-time, so the
     // record survives only on this stack; popping before the save would lose it
     // permanently if the save rejects (e.g. QuotaExceededError). Pop only on
     // success, and remove by identity in case a delete raced in during the await.
-    try {
-      await saveConversation(restored);
-    } catch (error) {
-      setRestoreError(formatSaveErrorMessage(error));
+    await (async () => {
+      try {
+        await saveConversation(restored);
+      } catch (error) {
+        setRestoreError(formatSaveErrorMessage(error));
 
-      return;
-    }
+        return;
+      }
 
-    setRestoreError(null);
-    sync(stackRef.current.filter((record) => record !== restored));
-    await refreshList();
+      setRestoreError(null);
+      sync(stackRef.current.filter((record) => record !== restored));
+      await refreshList();
+    })().finally(() => {
+      undoInFlightRef.current = false;
+    });
   }, [refreshList, sync]);
 
   const pushDeleted = useCallback(
