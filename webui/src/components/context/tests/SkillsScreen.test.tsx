@@ -343,6 +343,43 @@ describe("SkillsScreen", () => {
     expect(editorValues()).toContain("STARK");
   });
 
+  it("resets the save indicator when the edited slot changes", () => {
+    // Guards the slot-switch reset effect: without it, a "Saved"/"error" status
+    // from the previous slot would bleed onto the next (the overrides hook
+    // outlives the per-slot remount). Mirrors the memory editor's entry-switch
+    // reset test.
+    const resetSaveStatus = vi.fn();
+
+    render(
+      <SkillsScreen
+        overrides={overrides(
+          {
+            kind: "ready",
+            slots: [
+              slot({
+                name: "barbeat-standard",
+                title: "Core",
+                builtIn: "CORE",
+              }),
+              slot({ name: "stark", title: "Stark", builtIn: "STARK" }),
+            ],
+          },
+          { resetSaveStatus },
+        )}
+        tabSlot={TAB_SLOT}
+      />,
+    );
+
+    // Clear the mount-time reset so the assertion targets the slot switch.
+    resetSaveStatus.mockClear();
+
+    fireEvent.change(screen.getByLabelText("Skill fragment"), {
+      target: { value: "stark" },
+    });
+
+    expect(resetSaveStatus).toHaveBeenCalled();
+  });
+
   it("toggles between the fragment editor and the preview", () => {
     render(
       <SkillsScreen
