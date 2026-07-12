@@ -165,9 +165,15 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
               if (leaveGuard.confirmLeave())
                 setSelected({ mode: "edit", name });
             },
-            // New keeps the create form mounted (same key), so a dirty new draft
-            // isn't abandoned — no guard needed here.
-            onNew: () => setSelected({ mode: "new" }),
+            // From the create form, New keeps it mounted (same key), so a dirty
+            // draft isn't abandoned — no guard. But from an entry (including one
+            // deleted out from under us, whose kept draft is a dirty NEW entry)
+            // New unmounts the editor, so confirm a discard first like onSelect.
+            onNew: () => {
+              if (selected.mode === "edit" && !leaveGuard.confirmLeave())
+                return;
+              setSelected({ mode: "new" });
+            },
             onDelete: (name) => void handleDeleteEntry(name),
           })}
         </aside>

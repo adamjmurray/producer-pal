@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import {
   LeaveGuardContext,
   useLeaveGuard,
@@ -72,6 +72,13 @@ const INSTRUCTIONS_LABELS: ContextEditorLabels = {
 interface ContextTabsProps {
   /** Close the overlay; omitted on the standalone `/context` page. */
   onClose?: () => void;
+  /**
+   * A ref the parent (the App overlay) reads to route its own close paths —
+   * Escape and backdrop click, which fire outside this subtree — through the
+   * same leave guard the tab strip and header close use. Populated with
+   * confirmLeave while mounted, cleared on unmount. Omitted on `/context`.
+   */
+  confirmLeaveRef?: { current: (() => boolean) | null };
 }
 
 /**
@@ -111,7 +118,23 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   // first (a no-op elsewhere — nothing registers a guard).
   const leaveGuard = useLeaveGuard();
 
+  // Publish confirmLeave so the parent overlay's Escape/backdrop close paths can
+  // consult the same guard (leaveGuard has stable identity, so this runs once).
+  const { confirmLeaveRef } = props;
+
+  useEffect(() => {
+    if (confirmLeaveRef == null) return;
+    confirmLeaveRef.current = leaveGuard.confirmLeave;
+
+    return () => {
+      confirmLeaveRef.current = null;
+    };
+  }, [confirmLeaveRef, leaveGuard]);
+
   const selectTab = (next: ContextTab): void => {
+    // Clicking the already-active tab unmounts nothing, so don't run the leave
+    // guard — it would pop a spurious discard prompt over a dirty new draft.
+    if (next === tab) return;
     if (leaveGuard.confirmLeave()) setTab(next);
   };
 

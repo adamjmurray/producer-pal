@@ -60,7 +60,11 @@ import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
-import { ContextTabsStub, systemPromptMemoryMock } from "./App-context-mocks";
+import {
+  ContextTabsStub,
+  setStubLeaveGuard,
+  systemPromptMemoryMock,
+} from "./App-context-mocks";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
@@ -68,6 +72,7 @@ describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultMocks();
+    setStubLeaveGuard(null);
   });
 
   describe("screen routing", () => {
@@ -559,6 +564,56 @@ describe("App", () => {
       });
 
       // Backdrop-only dismissal: a click on content shouldn't fire close.
+      expect(contextStub()).not.toBe(null);
+      vi.useRealTimers();
+    });
+
+    it("keeps the overlay open on Escape when the leave guard vetoes a dirty draft", async () => {
+      vi.useFakeTimers();
+      // ContextTabs publishes a guard that refuses to leave (unsaved new draft).
+      setStubLeaveGuard(() => false);
+      const { container } = render(<App />);
+
+      openContext(container);
+      fireEvent.keyDown(window, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Escape consulted the guard and was vetoed — overlay stays up.
+      expect(contextStub()).not.toBe(null);
+      vi.useRealTimers();
+    });
+
+    it("closes the overlay on Escape when the leave guard approves", async () => {
+      vi.useFakeTimers();
+      setStubLeaveGuard(() => true);
+      const { container } = render(<App />);
+
+      openContext(container);
+      fireEvent.keyDown(window, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      expect(contextStub()).toBe(null);
+      vi.useRealTimers();
+    });
+
+    it("keeps the overlay open on a backdrop click when the leave guard vetoes", async () => {
+      vi.useFakeTimers();
+      setStubLeaveGuard(() => false);
+      const { container } = render(<App />);
+
+      openContext(container);
+      const overlay = container.querySelector(".settings-overlay");
+
+      // A backdrop hit (target === currentTarget) routes through the guard.
+      if (overlay) fireEvent.click(overlay);
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
       expect(contextStub()).not.toBe(null);
       vi.useRealTimers();
     });

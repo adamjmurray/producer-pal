@@ -3,7 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import {
   deleteEntryRequest,
@@ -353,17 +359,25 @@ export function useCollectionEntryAutosave(
   const [externalUpdate, setExternalUpdate] = useState(false);
 
   // Keep refs current so the flush/adopt callbacks (stable identity) see the
-  // latest draft/persist/externalKey. Synced in an effect (not during render)
-  // so we never write a ref while rendering; these callbacks only ever run
-  // later (timer, event, unmount, click). An `externalKey` that was defined
-  // during this mount and is now undefined means the entry was deleted out
-  // from under the editor (a genuinely-new entry never has one) — tracked so
-  // flush can refuse to resurrect it.
+  // latest draft/persist/externalKey. Synced in an effect (never during render);
+  // these callbacks only ever run later (timer, event, unmount, click). None of
+  // these gate the resurrect-on-unmount decision, so deferred timing is fine.
   useEffect(() => {
     canSaveRef.current = canSave;
     draftKeyRef.current = draftKey;
     persistRef.current = persist;
     externalKeyRef.current = externalKey;
+  });
+
+  // Deletion detection is synced in a LAYOUT effect — it runs synchronously at
+  // commit, before the next microtask can re-render/unmount this editor. When
+  // the edited entry is deleted out from under the editor, its `externalKey`
+  // goes undefined and the editor unmounts (a switch to the create form) in the
+  // very next microtask; a plain (deferred) effect would NOT have run by then,
+  // leaving a stale `deletedExternallyRef` that lets the unmount flush RESURRECT
+  // the just-deleted entry from the kept draft. A genuinely-new entry never
+  // latches the flag, so it stays false here.
+  useLayoutEffect(() => {
     if (externalKey != null) hadExternalKeyRef.current = true;
     deletedExternallyRef.current =
       hadExternalKeyRef.current && externalKey == null;

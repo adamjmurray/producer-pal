@@ -130,6 +130,27 @@ function renderGuarded(collection: UseMemoryCollectionReturn): void {
   );
 }
 
+/**
+ * Render MemoryScreen under ONE shared leave guard, returning a rerender bound
+ * to that same guard so a mid-edit external delete can be simulated with the
+ * guard wired (a poll dropping the open entry, as ContextTabs provides live).
+ * @param entries - The initial entries
+ * @returns rerender(entries) that swaps the collection under the same guard
+ */
+function renderGuardedRerender(entries: MemoryEntryView[]): {
+  rerender: (entries: MemoryEntryView[]) => void;
+} {
+  const guard = makeGuard();
+  const el = (e: MemoryEntryView[]): VNode => (
+    <LeaveGuardContext.Provider value={guard}>
+      {screenEl(fakeCollection({ kind: "ready", entries: e }))}
+    </LeaveGuardContext.Provider>
+  );
+  const { rerender } = render(el(entries));
+
+  return { rerender: (e) => rerender(el(e)) };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -411,6 +432,43 @@ describe("MemoryScreen — deleted externally", () => {
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
 
     expect(saveEntry).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
+
+  it("confirms a discard before New abandons a deleted-entry draft (cancel keeps it)", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    const { rerender } = renderGuardedRerender(ENTRIES);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+    // The open entry is deleted out from under the editor; its kept draft is now
+    // a new (unsaveable-until-Save) draft, arming the discard guard.
+    rerender(ENTRIES.slice(1));
+    expect(screen.getByText(/deleted outside the editor/i)).toBeTruthy();
+
+    // Clicking New used to bypass the guard (silent draft loss); now it confirms.
+    fireEvent.click(screen.getByRole("button", { name: "New memory" }));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    // Cancelled → the deleted-entry draft (and its banner) stay put.
+    expect(screen.getByText(/deleted outside the editor/i)).toBeTruthy();
+  });
+
+  it("New abandons the deleted-entry draft once the discard is confirmed", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    const { rerender } = renderGuardedRerender(ENTRIES);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
+    );
+    rerender(ENTRIES.slice(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "New memory" }));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    // Confirmed → a fresh blank create form (the deleted-entry banner is gone).
+    expect(screen.queryByText(/deleted outside the editor/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
   });
 });

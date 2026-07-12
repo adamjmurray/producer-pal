@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContextTabs } from "#webui/components/context/ContextTabs";
 import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
 
@@ -93,6 +93,11 @@ vi.mock(import("#webui/hooks/context/use-memory-collection"), () => ({
     refresh: vi.fn(),
   }),
 }));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("ContextTabs", () => {
   it("defaults to the Project tab and shows the project document", () => {
@@ -204,5 +209,55 @@ describe("ContextTabs", () => {
     render(<ContextTabs />);
 
     expect(screen.queryByLabelText("Close context editor")).toBeNull();
+  });
+});
+
+describe("ContextTabs — leave guard on tab clicks", () => {
+  // Arm the new-memory discard guard by typing into the create form's Name.
+  const armMemoryDraft = (): void => {
+    fireEvent.click(screen.getByRole("button", { name: "Memory" }));
+    fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
+      target: { value: "half-typed" },
+    });
+  };
+
+  it("does NOT prompt a discard when clicking the already-active tab", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    render(<ContextTabs />);
+
+    armMemoryDraft();
+    // Clicking the active Memory tab unmounts nothing, so the guard must not run.
+    fireEvent.click(screen.getByRole("button", { name: "Memory" }));
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    // Still on Memory with the draft intact (the create form is present).
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
+
+  it("prompts a discard when switching AWAY from a dirty new-memory draft", () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    render(<ContextTabs />);
+
+    armMemoryDraft();
+    fireEvent.click(screen.getByRole("button", { name: "Project" }));
+
+    // Cancelled discard → stayed on Memory (the guard fired and vetoed).
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
+  });
+});
+
+describe("ContextTabs — confirmLeaveRef", () => {
+  it("publishes confirmLeave into the ref and clears it on unmount", () => {
+    const ref: { current: (() => boolean) | null } = { current: null };
+    const { unmount } = render(<ContextTabs confirmLeaveRef={ref} />);
+
+    // The App overlay reads this to guard its Escape / backdrop close paths.
+    // With no dirty draft registered, the guard approves leaving.
+    expect(typeof ref.current).toBe("function");
+    expect(ref.current?.()).toBe(true);
+
+    unmount();
+    expect(ref.current).toBeNull();
   });
 });

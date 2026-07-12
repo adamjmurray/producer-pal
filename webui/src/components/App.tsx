@@ -173,6 +173,19 @@ export function App() {
     }, CONTEXT_ANIMATION_MS);
   }, []);
 
+  // The context editor's leave guard lives inside ContextTabs (which also mounts
+  // standalone on /context, so the guard can't move up here). ContextTabs
+  // publishes its confirmLeave into this ref so the overlay's Escape and
+  // backdrop-click paths — which close from OUTSIDE that subtree — honor an
+  // unsaved new-entry draft instead of silently discarding it. The header close
+  // button is already guarded inside ContextTabs.
+  const contextConfirmLeaveRef = useRef<(() => boolean) | null>(null);
+  const attemptCloseContext = useCallback(() => {
+    const confirmLeave = contextConfirmLeaveRef.current;
+
+    if (confirmLeave == null || confirmLeave()) closeContext();
+  }, [closeContext]);
+
   // Jump from the Settings "Edit Context" shortcut straight into the context
   // editor. Settings and Context are sibling overlays with Settings stacked on
   // top, so leaving Settings open would hide the editor behind it — close
@@ -181,18 +194,19 @@ export function App() {
     closeSettings(() => openContext());
   }, [closeSettings, openContext]);
 
-  // Escape closes the context overlay (consistent with native modal idioms).
+  // Escape closes the context overlay (consistent with native modal idioms),
+  // honoring the editor's leave guard for an unsaved draft.
   useEffect(() => {
     if (!contextOpen) return;
 
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") closeContext();
+      if (e.key === "Escape") attemptCloseContext();
     };
 
     window.addEventListener("keydown", onKey);
 
     return () => window.removeEventListener("keydown", onKey);
-  }, [contextOpen, closeContext]);
+  }, [contextOpen, attemptCloseContext]);
 
   // The active mode reports its conversation lock + delete handlers here via
   // setModeContext so the shared SettingsScreen renders them.
@@ -258,12 +272,16 @@ export function App() {
         <div
           className={`settings-overlay ${contextClosing ? "settings-closing" : ""}`}
           onClick={(e) => {
-            // Auto-save makes click-outside-to-close safe; only close on
-            // backdrop hits, not clicks inside the editor.
-            if (e.target === e.currentTarget) closeContext();
+            // Existing entries autosave, so a backdrop click is safe for them;
+            // an unsaved new-entry draft is guarded (confirm before discard).
+            // Only close on backdrop hits, not clicks inside the editor.
+            if (e.target === e.currentTarget) attemptCloseContext();
           }}
         >
-          <ContextTabs onClose={closeContext} />
+          <ContextTabs
+            onClose={closeContext}
+            confirmLeaveRef={contextConfirmLeaveRef}
+          />
         </div>
       )}
       {showSettings && (
