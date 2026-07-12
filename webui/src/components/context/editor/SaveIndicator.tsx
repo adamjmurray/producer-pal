@@ -23,7 +23,11 @@ interface SaveIndicatorProps {
 export function SaveIndicator(props: SaveIndicatorProps): preact.JSX.Element {
   const { text, className } = saveIndicatorLabel(props);
 
-  return <span className={`text-xs ${className}`}>{text}</span>;
+  // Never wrap: a narrow window would otherwise break "Auto-save on" across
+  // three lines and stretch the header. The tab strip scrolls instead.
+  return (
+    <span className={`text-xs whitespace-nowrap ${className}`}>{text}</span>
+  );
 }
 
 /**

@@ -149,8 +149,11 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
         onClose={onClose}
       />
       {description != null && (
-        <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+        // Flex (like the doc tabs' controls strip) so the explainer is a block
+        // box with its own text-xs leading — as an inline span it would inherit
+        // the page's looser line-height and read differently from the doc tabs.
+        <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm flex items-center">
+          <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
             {description}
           </span>
         </div>

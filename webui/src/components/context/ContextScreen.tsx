@@ -211,7 +211,9 @@ interface ContextControlsProps {
  * default) a destructive clear action. Hidden until memory has loaded so we
  * don't flash a control whose state we haven't fetched yet. The border spans
  * full width while the content is centered to `widthClass` so it lines up with
- * the editor below.
+ * the editor below. The explainer shrinks and wraps (`min-w-0 flex-1`) while the
+ * action cluster holds its size, so a narrow window never pushes the readout or
+ * the buttons out of view.
  * @param props - Controls props
  * @returns Controls element (or null while loading)
  */
@@ -233,11 +235,11 @@ function ContextControls(
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
       <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
         {description != null && (
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
             {description}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto shrink-0 flex items-center gap-3">
           <DriftNote
             drifted={drift?.drifted ?? false}
             forkedFromVersion={drift?.forkedFromVersion ?? null}
