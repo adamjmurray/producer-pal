@@ -89,6 +89,10 @@ describe("Transform Parser - Function Keywords", () => {
       "velocity += cos(1:0t)",
       "velocity += cos(4:0t, sync)",
       "velocity += cos(1/2t)",
+      // Mixed-number periods (`int+fraction`), bare and colon-prefixed: the
+      // fraction must not swallow the trailing `t` and mask the removed syntax.
+      "velocity += cos(1+1/2t)",
+      "velocity += cos(2:1+1/2t)",
       "timing = quant(1/4t)",
       "timing = swing(0.05, 1/2t)",
     ])("rejects %s", (expr) => {

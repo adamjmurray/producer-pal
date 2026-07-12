@@ -872,12 +872,15 @@ oneOrMoreDecimal
   }
 
 // The number in the removed synced-period syntax (`Nt`, `N:Nt`) — used ONLY by
-// `badPeriod`. Its fraction alternative is spelled inline WITHOUT the `d`/`t`
-// note-value suffix that `unsignedFraction` now carries, so a bare-fraction period
-// (`1/2t`) leaves its trailing `t` for badPeriod to detect. (Routing through
-// `unsignedFraction` would let it swallow the `t` and mask the removed syntax.)
+// `badPeriod`. BOTH the mixed-number and bare-fraction alternatives spell the
+// fraction inline WITHOUT the `d`/`t` note-value suffix that `unsignedFraction`
+// now carries, so a bare-fraction (`1/2t`) OR mixed-number (`1+1/2t`, incl. the
+// colon form `2:1+1/2t`) period leaves its trailing `t` for badPeriod to detect.
+// (Routing the mixed number through `unsignedMixedNumber`/`unsignedFraction` would
+// let it swallow the `t` and mask the removed syntax — the friendly steer is lost
+// and a raw parser error surfaces instead.)
 unsignedFloat
-  = unsignedMixedNumber
+  = unsignedInt "+" ([0-9]+ "." [0-9]+ / [0-9]*) "/" [1-9] [0-9]*
   / ([0-9]+ "." [0-9]+ / [0-9]*) "/" [1-9] [0-9]*
   / unsignedDecimal
 

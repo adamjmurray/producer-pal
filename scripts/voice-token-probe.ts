@@ -36,6 +36,7 @@ import {
 } from "@openai/agents/realtime";
 import { z, type ZodType } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
+import { type Notation, DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
@@ -139,10 +140,18 @@ async function measureScenario(
   turns: number,
 ): Promise<TurnUsage[]> {
   const lang = getVoiceLanguage("en");
+  // Match the tools' notation to the scenario's skills blob (basic = Stark,
+  // standard/none = the bar|beat default) so the modal tool descriptions resolve
+  // to the same cell production ships, not always the bar|beat one.
+  const notation: Notation =
+    scenario.skills === "basic" ? "stark" : DEFAULT_NOTATION;
   const agent = new RealtimeAgent({
     name: "Producer Pal Voice",
     instructions: buildOpenAIVoiceInstructions(lang),
-    tools: scenario.tools === "none" ? [] : buildAgentTools(scenario.tools),
+    tools:
+      scenario.tools === "none"
+        ? []
+        : buildAgentTools(scenario.tools, notation),
   });
 
   const transport = new OpenAIRealtimeWebSocket();
@@ -198,10 +207,12 @@ async function measureScenario(
  * listTools does (the realtime agent uploads these per session).
  * @param mode - "full" = schemas as-is; "small" = small-model-mode filtered
  *   (excludeParams + descriptionOverrides + toolDescription override applied)
+ * @param notation - Active notation, matching the scenario's skills blob, so the
+ *   modal tool/param descriptions resolve to the SAME cell production uploads
  * @returns SDK tool descriptors (execute is a no-op; we only measure schema cost)
  */
-function buildAgentTools(mode: "full" | "small"): Tool[] {
-  return STANDARD_TOOL_DEFS.map((td) => toRealtimeTool(td, mode));
+function buildAgentTools(mode: "full" | "small", notation: Notation): Tool[] {
+  return STANDARD_TOOL_DEFS.map((td) => toRealtimeTool(td, mode, notation));
 }
 
 /**
@@ -210,15 +221,19 @@ function buildAgentTools(mode: "full" | "small"): Tool[] {
  * uploaded schema's token cost, never execute).
  * @param td - A standard tool definition
  * @param mode - "full" or "small" (small resolves each param's small-model mode)
+ * @param notation - Active notation; feeds the modal-config key ladder alongside
+ *   smallModelMode so descriptions/enums resolve to the production cell
  * @returns A Realtime SDK tool
  */
 function toRealtimeTool(
   td: (typeof STANDARD_TOOL_DEFS)[number],
   mode: "full" | "small",
+  notation: Notation,
 ): Tool {
   const smallModelMode = mode === "small";
   const resolved = resolveParamModes(td.toolOptions.inputSchema, {
     smallModelMode,
+    notation,
   });
   const inputSchema = smallModelMode
     ? filterSchemaForSmallModel(
@@ -230,6 +245,7 @@ function toRealtimeTool(
     : td.toolOptions.inputSchema;
   const description = resolveModalDescription(td.toolOptions.description, {
     smallModelMode,
+    notation,
   });
 
   return tool({
