@@ -64,29 +64,38 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
   ErrorCode: { ConnectionClosed: -32000 },
 }));
 
-const mockMcpServer = {
-  _registeredTools: {
-    "ppal-read-live-set": {
-      title: "Read Live Set",
-      description: "Read comprehensive information about the Live Set",
-      inputSchema: { type: "object", properties: {} },
-    },
-    "ppal-create-clip": {
-      title: "Create Clip",
-      description: "Creates MIDI clips in Session or Arrangement",
-      inputSchema: { type: "object", properties: {} },
-    },
-    "ppal-live-api": {
-      title: "Live API",
-      description: "Direct access to the Ableton Live Object Model.",
-      inputSchema: { type: "object", properties: {} },
-    },
+const mockStandardTools = {
+  "ppal-read-live-set": {
+    title: "Read Live Set",
+    description: "Read comprehensive information about the Live Set",
+    inputSchema: { type: "object", properties: {} },
+  },
+  "ppal-create-clip": {
+    title: "Create Clip",
+    description: "Creates MIDI clips in Session or Arrangement",
+    inputSchema: { type: "object", properties: {} },
+  },
+};
+
+const mockLiveApiTool = {
+  "ppal-live-api": {
+    title: "Live API",
+    description: "Direct access to the Ableton Live Object Model.",
+    inputSchema: { type: "object", properties: {} },
   },
 };
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () => ({
-  createMcpServer: vi.fn(() => mockMcpServer),
+  // Mirror the real server's opt-in gating: ppal-live-api is registered only
+  // when liveApiEnabled is set, so the portal's offline fallback reflects it.
+  createMcpServer: vi.fn(
+    (_callLiveApi: unknown, opts?: { liveApiEnabled?: boolean }) => ({
+      _registeredTools: opts?.liveApiEnabled
+        ? { ...mockStandardTools, ...mockLiveApiTool }
+        : mockStandardTools,
+    }),
+  ),
 }));
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
@@ -317,10 +326,10 @@ describe("StdioHttpBridge", () => {
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
     });
 
-    it("generates fallback tools excluding ppal-live-api", () => {
+    it("excludes ppal-live-api from the fallback when not enabled", () => {
       const tools = bridge.fallbackTools.tools;
 
-      expect(tools).toHaveLength(2); // Based on our mock that has 3 tools minus ppal-live-api
+      expect(tools).toHaveLength(2); // createMcpServer omits ppal-live-api when liveApiEnabled is unset
       expect(tools.map((t) => t.name)).not.toContain("ppal-live-api");
 
       // Check expected tools are present
@@ -336,6 +345,17 @@ describe("StdioHttpBridge", () => {
         description: "Read comprehensive information about the Live Set",
         inputSchema: { type: "object", properties: {} },
       });
+    });
+
+    it("includes ppal-live-api in the fallback when liveApiEnabled is forced on", () => {
+      const liveApiBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        liveApiEnabled: true,
+      }) as unknown as TestBridge;
+
+      const toolNames = liveApiBridge.fallbackTools.tools.map((t) => t.name);
+
+      expect(toolNames).toContain("ppal-live-api");
+      expect(toolNames).toContain("ppal-read-live-set");
     });
   });
 

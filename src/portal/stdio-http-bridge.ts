@@ -79,16 +79,23 @@ export class StdioHttpBridge {
   }
 
   private _generateFallbackTools(): { tools: FallbackTool[] } {
-    // Create MCP server to extract tool definitions (callLiveApi not used).
-    // Thread notation + small-model mode so the offline fallback descriptions
-    // match what the live server would return for the same config.
+    // Build the offline fallback from the same createMcpServer logic the live
+    // server uses, threading small-model mode, notation, AND liveApiEnabled so
+    // the offline list matches what the live server would return for this config
+    // — including whether the opt-in ppal-live-api tool is present. Clients cache
+    // the tool list and the stateless server has no tools/list_changed signal to
+    // force a re-fetch, so an inaccurate offline list (e.g. missing a forced-on
+    // ppal-live-api) can persist even after the device comes online.
     const server = createMcpServer(null as unknown as CallLiveApiFunction, {
       smallModelMode: this.smallModelMode,
       notation: this.notation,
+      liveApiEnabled: this.liveApiEnabled,
     });
     const tools: FallbackTool[] = [];
 
-    // Access private _registeredTools for fallback tool list
+    // Access private _registeredTools for fallback tool list. No filtering here:
+    // createMcpServer already applied the opt-in gating (ppal-live-api is
+    // registered only when liveApiEnabled), so the list mirrors the live server.
     const registeredTools = (
       server as unknown as {
         _registeredTools: Record<string, RegisteredToolInfo>;
@@ -96,10 +103,6 @@ export class StdioHttpBridge {
     )._registeredTools;
 
     for (const [name, toolInfo] of Object.entries(registeredTools)) {
-      if (name === "ppal-live-api") {
-        continue;
-      } // Skip opt-in low-level tool from offline fallback list
-
       tools.push({
         name: name,
         title: toolInfo.title,
