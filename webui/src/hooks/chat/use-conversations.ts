@@ -123,6 +123,18 @@ export function useConversations({
   // resurrect the just-deleted row. Every save checks this set right before its
   // DB write and bails. Mirrors the voice layer's canceledIdsRef guard.
   const canceledIdsRef = useRef<Set<string>>(new Set());
+  // Id reserved by a bulk delete for a brand-new conversation streaming its
+  // first turn but not yet saved (activeIdRef still null). Such a conversation's
+  // id is minted — fresh and uncancelable — inside the teardown autosave the
+  // delete triggers, so canceling activeIdRef (null) misses it and the save
+  // resurrects the just-cleared row. The bulk-delete paths reserve the id here
+  // and cancel it; saveCurrentConversation adopts it when minting a brand-new
+  // id, so the canceledIds guard catches that teardown save. Unlike the voice
+  // layer's same-named ref (held for the whole live session), this is non-null
+  // only transiently during a bulk delete — every setActiveId/clearActiveId
+  // clears it, so a canceled reservation never leaks into the next brand-new
+  // conversation's save. Mirrors the voice layer's pendingNewIdRef.
+  const pendingNewIdRef = useRef<string | null>(null);
 
   useSyncActiveMeta(activeMetaRef, activeMeta);
 
@@ -149,6 +161,10 @@ export function useConversations({
   const setActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
     activeIdRef.current = id;
+    // The active id now owns this conversation, so any bulk-delete reservation
+    // is spent — clear it (see pendingNewIdRef) before it can leak into a later
+    // brand-new save.
+    pendingNewIdRef.current = null;
     // Only guard if the hash will actually change — setting the same hash
     // doesn't fire hashchange, leaving the flag stuck
     const currentHash = getHashConversationId();
@@ -164,6 +180,9 @@ export function useConversations({
     setActiveConversationId(null);
     activeIdRef.current = null;
     activeMetaRef.current = null;
+    // Drop any bulk-delete reservation (see pendingNewIdRef) so a canceled id
+    // can't be adopted by the next brand-new conversation.
+    pendingNewIdRef.current = null;
     // No programmaticHashRef here — setLocationHash(null) uses replaceState
     // which doesn't fire hashchange, so no guard is needed
     setLocationHash(null);
@@ -224,10 +243,14 @@ export function useConversations({
 
       const reuseId = activeIdRef.current;
       // A fork mints a new id and switches to it (leaving the source intact); a
-      // normal save reuses the active id, minting one only for a brand-new chat.
-      // Set synchronously before any async work so concurrent saves hit this id.
+      // normal save reuses the active id. A brand-new chat adopts an id a bulk
+      // delete may have reserved (pendingNewIdRef) so the delete's guard can
+      // cancel this save, otherwise mints a fresh one. Set synchronously before
+      // any async work so concurrent saves hit this id.
       const id =
-        fork != null || reuseId == null ? crypto.randomUUID() : reuseId;
+        fork != null
+          ? crypto.randomUUID()
+          : (reuseId ?? pendingNewIdRef.current ?? crypto.randomUUID());
 
       setActiveId(id);
 
@@ -351,15 +374,19 @@ export function useConversations({
   );
 
   const deleteAllConversations = useCallback(async () => {
-    // Cancel the active (streaming) conversation's pending/in-flight autosave —
-    // the only id that can have one — then drain the chain, mirroring
-    // deleteConversation. handleDeleteAll stops the stream first, so the two
-    // producers are the in-flight save (the drain covers it) and the
-    // stream-teardown autosave effect (the id guard covers it); either way the
-    // just-cleared row can't be resurrected.
+    // Cancel the active (streaming) conversation's pending/in-flight autosave,
+    // then drain the chain, mirroring deleteConversation. handleDeleteAll stops
+    // the stream first, so the two producers are the in-flight save (the drain
+    // covers it) and the stream-teardown autosave effect (the id guard covers
+    // it). A brand-new chat streaming its first turn has no active id yet — its
+    // id is minted lazily inside that teardown save — so reserve it here
+    // (pendingNewIdRef) and cancel that; the save adopts the reserved id instead
+    // of a fresh uncancelable one. Either way the just-cleared row can't be
+    // resurrected.
     const activeId = activeIdRef.current;
+    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
 
-    if (activeId != null) canceledIdsRef.current.add(activeId);
+    canceledIdsRef.current.add(liveId);
 
     await saveChainRef.current;
     await dbDeleteAllConversations();
@@ -369,14 +396,18 @@ export function useConversations({
   }, [clearConversation, clearActiveId, refreshList]);
 
   const deleteUnbookmarkedConversations = useCallback(async () => {
-    // The active conversation is removed only when it's unbookmarked. In that
-    // case cancel its pending/in-flight autosave (same resurrection guard as the
+    // The active conversation is removed only when it's unbookmarked. A
+    // brand-new chat streaming its first turn (no active id yet) is implicitly
+    // unbookmarked, so it's swept too — reserve its lazily-minted id
+    // (pendingNewIdRef) so the teardown autosave adopts it and the guard cancels
+    // it. When it clears, cancel that live id (same resurrection guard as the
     // other delete paths); a bookmarked active conversation survives, so its
     // save must still land — hence the conditional add but unconditional drain.
     const activeId = activeIdRef.current;
-    const clearsActive = activeId != null && !activeMetaRef.current?.bookmarked;
+    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
+    const clearsActive = activeId == null || !activeMetaRef.current?.bookmarked;
 
-    if (clearsActive) canceledIdsRef.current.add(activeId);
+    if (clearsActive) canceledIdsRef.current.add(liveId);
 
     await saveChainRef.current;
     await dbDeleteUnbookmarkedConversations();

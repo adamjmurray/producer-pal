@@ -197,6 +197,91 @@ describe("useConversations delete/save races", () => {
     restore();
   });
 
+  it("deleteAll drops a late autosave for a never-saved conversation (activeId null)", async () => {
+    // G2: a brand-new chat streaming its first turn has activeConversationId ===
+    // null; its id is minted lazily inside the teardown autosave. Without
+    // reserving that id the bulk delete can't cancel it, so the late save writes
+    // a surviving zombie row after the store was cleared.
+    const { state, result } = await setupHook();
+
+    expect(result.current.activeConversationId).toBeNull();
+
+    const { release, restore } = gateNextSave();
+    let bulkPromise!: Promise<void>;
+    let latePromise!: Promise<void>;
+
+    await act(async () => {
+      bulkPromise = result.current.deleteAllConversations();
+      // The stream-teardown autosave for the never-saved conversation, enqueued
+      // after the bulk delete reserved its pending-new id.
+      state.chatHistory = [{ role: "user", content: "late chunk" }];
+      latePromise = result.current.saveCurrentConversation(Date.now());
+      await bulkPromise;
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+
+    await act(async () => {
+      release();
+      await latePromise;
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+    restore();
+  });
+
+  it("deleteUnbookmarked drops a late autosave for a never-saved conversation (activeId null)", async () => {
+    // G2 sibling: a never-saved conversation is implicitly unbookmarked, so the
+    // unbookmarked bulk delete sweeps it too and must cancel its lazily-minted id.
+    const { state, result } = await setupHook();
+
+    expect(result.current.activeConversationId).toBeNull();
+
+    const { release, restore } = gateNextSave();
+    let bulkPromise!: Promise<void>;
+    let latePromise!: Promise<void>;
+
+    await act(async () => {
+      bulkPromise = result.current.deleteUnbookmarkedConversations();
+      state.chatHistory = [{ role: "user", content: "late chunk" }];
+      latePromise = result.current.saveCurrentConversation(Date.now());
+      await bulkPromise;
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+
+    await act(async () => {
+      release();
+      await latePromise;
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+    restore();
+  });
+
+  it("re-enables a brand-new save after a bulk delete reserved and canceled an id", async () => {
+    // F5-class lifecycle guard: the pending-new id the bulk delete reserves and
+    // cancels must be cleared (via clearActiveId), or the NEXT brand-new
+    // conversation reuses the canceled id and its save silently bails. Prove a
+    // fresh conversation still saves after a delete-all.
+    const { state, result } = await setupHook();
+
+    await act(async () => {
+      await result.current.deleteAllConversations();
+    });
+
+    state.chatHistory = [{ role: "user", content: "new after delete-all" }];
+    await act(async () => {
+      await result.current.saveCurrentConversation(Date.now());
+    });
+
+    const id = result.current.activeConversationId;
+
+    expect(id).not.toBeNull();
+    expect(await loadConversation(id!)).toBeDefined();
+    expect(result.current.conversations).toHaveLength(1);
+  });
+
   it("re-enables autosave after a deleted conversation is undone", async () => {
     // F5: deleteConversation marks the id canceled to block a resurrecting late
     // save, but the flag was add-only. Undo restores the row under the same id
