@@ -11,8 +11,13 @@
  * silently dropped. Both write paths sort before the write:
  * - create-clip (interpreted notes),
  * - update-clip's transform-only path (re-adding mutated notes), and
- * - update-clip's merge path (existing + new notes), which also dedupes
- *   same-pitch+start collisions so the new note wins deterministically.
+ * - update-clip's merge path (existing + new notes).
+ *
+ * Genuine same-pitch+start duplicates can't be saved by sorting, so both tools
+ * dedupe keep-last before the write, and the new note wins deterministically.
+ * create-clip warns about the dropped duplicates (an accident in the input);
+ * update-clip's merge stays quiet, since restating a note there is an
+ * intentional overwrite.
  *
  * Also covers create-clip's noteCount reporting the count Live actually stored
  * (read back) rather than the interpreted-input count.
@@ -27,6 +32,7 @@ import {
   type CreateClipResult,
   type CreateTrackResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
@@ -75,9 +81,10 @@ describe("note write ordering (create + update transforms)", () => {
     expect(sortedClip.notes).toContain("1|2.5");
     expect(sortedClip.notes).toContain("1|3");
 
-    // Two identical same-pitch + same-start notes. Live collapses them to one
-    // (sorting can't help — they're genuine duplicates), so the reported count
-    // must be the actual stored 1, not the interpreted input 2.
+    // Two identical same-pitch + same-start notes. Sorting can't help — they're
+    // genuine duplicates — so create-clip drops the earlier one before the write
+    // (keep-last) and warns, rather than letting Live silently delete it. The
+    // reported count is the actual stored 1, not the interpreted input 2.
     const dupResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -85,8 +92,12 @@ describe("note write ordering (create + update transforms)", () => {
         notes: "C1 C1 1|1",
       },
     });
-    const dup = parseToolResult<CreateClipResult>(dupResult);
+    const { data: dup, warnings: dupWarnings } =
+      parseToolResultWithWarnings<CreateClipResult>(dupResult);
 
+    expect(dupWarnings).toStrictEqual([
+      "WARNING: Dropped 1 duplicate note at the same pitch and start",
+    ]);
     expect(dup.noteCount).toBe(1);
 
     await sleep(100);
