@@ -141,8 +141,9 @@ async function measureScenario(
 ): Promise<TurnUsage[]> {
   const lang = getVoiceLanguage("en");
   // Match the tools' notation to the scenario's skills blob (basic = Stark,
-  // standard/none = the bar|beat default) so the modal tool descriptions resolve
-  // to the same cell production ships, not always the bar|beat one.
+  // standard/none = the bar|beat default) so the modal tool AND param
+  // descriptions resolve to the same cell production ships, not always the
+  // bar|beat one.
   const notation: Notation =
     scenario.skills === "basic" ? "stark" : DEFAULT_NOTATION;
   const agent = new RealtimeAgent({
@@ -205,8 +206,9 @@ async function measureScenario(
  * Build the OpenAI Realtime SDK tool list from the standard MCP tool defs,
  * converting each Zod input schema to JSON Schema exactly as the MCP server's
  * listTools does (the realtime agent uploads these per session).
- * @param mode - "full" = schemas as-is; "small" = small-model-mode filtered
- *   (excludeParams + descriptionOverrides + toolDescription override applied)
+ * @param mode - "full" = large-model schemas (notation param overrides only);
+ *   "small" = additionally small-model-filtered (excludeParams + small-model
+ *   descriptionOverrides + toolDescription override). Both filter like define-tool.
  * @param notation - Active notation, matching the scenario's skills blob, so the
  *   modal tool/param descriptions resolve to the SAME cell production uploads
  * @returns SDK tool descriptors (execute is a no-op; we only measure schema cost)
@@ -220,7 +222,9 @@ function buildAgentTools(mode: "full" | "small", notation: Notation): Tool[] {
  * (JSON Schema from Zod, strict disabled, no-op executor — we only measure the
  * uploaded schema's token cost, never execute).
  * @param td - A standard tool definition
- * @param mode - "full" or "small" (small resolves each param's small-model mode)
+ * @param mode - "full" or "small"; both resolve param modes via resolveParamModes
+ *   (full = notation only, small = notation + small-model) and filter the schema
+ *   unconditionally, exactly as define-tool.ts does
  * @param notation - Active notation; feeds the modal-config key ladder alongside
  *   smallModelMode so descriptions/enums resolve to the production cell
  * @returns A Realtime SDK tool
@@ -235,14 +239,17 @@ function toRealtimeTool(
     smallModelMode,
     notation,
   });
-  const inputSchema = smallModelMode
-    ? filterSchemaForSmallModel(
-        td.toolOptions.inputSchema,
-        resolved.excludeParams,
-        resolved.descriptionOverrides,
-        resolved.excludeEnumValues,
-      )
-    : td.toolOptions.inputSchema;
+  // Filter unconditionally, exactly as production's define-tool.ts does:
+  // resolveParamModes already folded in the notation cell, so even large-model
+  // ("full") mode ships the active notation's param overrides (e.g. the stark
+  // `notes` descriptions on create-clip/update-clip). Gating this on
+  // smallModelMode undercounted a large-model stark session's schema tokens.
+  const inputSchema = filterSchemaForSmallModel(
+    td.toolOptions.inputSchema,
+    resolved.excludeParams,
+    resolved.descriptionOverrides,
+    resolved.excludeEnumValues,
+  );
   const description = resolveModalDescription(td.toolOptions.description, {
     smallModelMode,
     notation,

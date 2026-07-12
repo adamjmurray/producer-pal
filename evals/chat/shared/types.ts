@@ -54,4 +54,10 @@ export interface ToolCall {
   name: string;
   args: Record<string, unknown>;
   result?: string;
+  /**
+   * AI SDK tool-call id. Used to attach each tool-result to its originating
+   * call so parallel same-name calls in one step don't get their results
+   * swapped (the SDK emits both tool-call parts before either result).
+   */
+  toolCallId?: string;
 }
