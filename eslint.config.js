@@ -228,7 +228,6 @@ const sonarCoreRules = {
 
 const unicornRules = {
   "unicorn/prefer-node-protocol": "error", // Use node: prefix for Node.js builtins
-  "unicorn/better-regex": "error", // Optimize regex patterns
   "unicorn/prefer-string-replace-all": "error", // Use replaceAll() instead of replace(/g)
   "unicorn/prefer-array-find": "error", // Use find() instead of filter()[0]
   "unicorn/no-array-push-push": "error", // Combine multiple push() calls

@@ -9,7 +9,6 @@ import { describe, it, expect } from "vitest";
 const WORKFLOW_DIR = ".github/workflows";
 
 // Matches: uses: owner/repo@<40-hex-char-sha>
-// eslint-disable-next-line unicorn/better-regex -- [0-9a-f] is clearer for hex than [\da-f]
 const SHA_PINNED = /uses:\s+[\w-]+\/[\w.-]+@[0-9a-f]{40}\b/;
 
 // Matches any `uses:` line (ignoring local actions like ./)
