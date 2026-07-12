@@ -53,6 +53,10 @@ export {
   contextWriteLayerMemory,
   contextWriteLayerProject,
 } from "./context/context-write-layers.ts";
+export {
+  contextWritePreservesGlobal,
+  contextWritePreservesProject,
+} from "./context/context-write-preserve.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
 export { deviceSoundDesign } from "./workflow/device-sound-design.ts";

@@ -344,6 +344,55 @@ export function assertContextWrite(opts: {
 }
 
 /**
+ * Assert that a write to a user-owned layer PRESERVED what was already in the
+ * document. `action:write` replaces the whole thing, so the model has to carry
+ * the existing content forward in the `content` it sends — the document is
+ * already injected into its context on connect, so it has everything it needs
+ * to do that without reading first.
+ *
+ * This is the difference between a skipped confirmation (annoying) and silent
+ * data loss (serious): a model that writes only the NEW fact wipes everything
+ * the user had accumulated.
+ *
+ * @param opts - What the write must preserve
+ * @param opts.scope - The user-owned layer being written
+ * @param opts.turn - Turn to check
+ * @param opts.mustContain - Snippets of the pre-existing document that must survive
+ * @returns Custom assertion
+ */
+export function assertContextWritePreserves(opts: {
+  scope: "project" | "global";
+  turn: number | "any";
+  mustContain: string[];
+}): EvalAssertion {
+  return {
+    type: "custom",
+    description: `scope:${opts.scope} write kept the existing document`,
+    assert: (turns) => {
+      const writes = contextCalls(turns, opts.turn, "write", opts.scope);
+
+      if (writes.length === 0) {
+        throw new Error(`no ${TOOL_CONTEXT} write to scope:${opts.scope}`);
+      }
+
+      // The LAST write is what the document ends up as.
+      const content = String(writes.at(-1)?.content ?? "");
+      const dropped = opts.mustContain.filter((s) => !content.includes(s));
+
+      if (dropped.length > 0) {
+        throw new Error(
+          `write DESTROYED existing content — dropped: ${dropped
+            .map((s) => `"${s}"`)
+            .join(", ")}`,
+        );
+      }
+
+      return true;
+    },
+  };
+}
+
+/**
  * Assert the model did NOT write a user-owned layer on this turn. The skills
  * require confirming before writing project/global (a write REPLACES the whole
  * document), so an unprompted write on the turn the fact was merely stated is
