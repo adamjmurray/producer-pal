@@ -7,8 +7,7 @@ directly from within Producer Pal.
 
 ## Getting Started
 
-1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab (make
-   sure the Chat UI is enabled)
+1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab
 2. Configure your AI provider in [Settings](#settings) (opens automatically on
    first use)
 3. Click "Quick Connect" to connect to Ableton Live
@@ -323,7 +322,8 @@ controls differ because each provider exposes its own voice-activity-detection
 (VAD) knobs. **Speed** is OpenAI only (the Gemini Live API has no playback-speed
 setting).
 
-- **Volume** - Output loudness of the assistant's voice (0–100%, default 100%).
+- **Volume** - Output loudness of the assistant's voice (0–125%, default 100%).
+  It boosts above 100% so you can lift the assistant over loud playback.
   Adjustable live during a session, so you can balance the assistant against the
   music coming from Ableton without touching Live's mixer.
 - **Speed** _(OpenAI only)_ - Playback speed of the assistant's voice

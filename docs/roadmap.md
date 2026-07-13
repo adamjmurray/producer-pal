@@ -50,8 +50,8 @@ New tools and broader Live API coverage:
 Other improvements:
 
 - Split arrangement clips at specified positions
-- Multi-object create / update / duplicate operations. `transforms`/`code` on
-  update-clip and duplicate are single strings broadcast across every clip/copy
+- Multi-object create / update / duplicate operations. `transforms` on
+  update-clip and duplicate is a single string broadcast across every clip/copy
   — use `clip.index` arithmetic or `clipseq()` inside the string for per-clip
   variation, or make separate calls for structurally-distinct edits.
 - Per-project notes: improved UI, now always enabled by default (disable the

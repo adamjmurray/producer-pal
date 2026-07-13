@@ -67,13 +67,22 @@ Live, or make sure your standalone Max is up to date. See
 :::
 
 - Search Live's browser library by name, tags, content kind, device kind, or
-  source category (User Library, Pack, Built-in, Cloud, Plugin)
+  source category (User Library, Pack, Built-in, Cloud, Plugin, or your sample
+  folder)
 - Also includes the user-configured sample folder when set, with results merged
   and de-duplicated against Live's library
 - Sort by `use_count` (Live's persistent usage counter — surfaces what you
   actually use most), `mod_date`, or `name`
 - Enumerate available tags with `action: "listTags"` so the AI can discover the
-  tag vocabulary on your machine
+  tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
+  Drums, Genres, …) with `action: "listCategories"`
+- Run many filtered searches in one call with `action: "searchBatch"` — results
+  grouped per query, so the AI can assemble a whole drum kit in one round trip
+- List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
+  (filter by query, vendor, format, device kind, or subcategory)
+- Find samples that _sound_ like a seed sample with `action: "findSimilar"`, or
+  group library samples with identical audio (re-shipped duplicates) with
+  `action: "findDuplicates"` — both can be narrowed with the search filters
 
 <!--@include: ./_generated/ppal-library-schema.md-->
 
@@ -409,9 +418,11 @@ required. For fully remote control, use
 Adapts Producer Pal for less capable AI models by returning simplified
 [skills](#skills) and removing advanced parameters from tool schemas. This is an
 ongoing R&D effort aimed at making [local models](/installation/choose-local)
-viable for completely offline, free, and private usage. Enable it in the
-[Chat UI](/guide/chat-ui) settings or with `--small-model-mode` on the command
-line.
+viable for completely offline, free, and private usage. Enable it on the
+[device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
+settings, or with `--small-model-mode` on the command line — like
+[notation](/features/midi-notation), it's a global device setting that applies
+to MCP clients too.
 
 ## Skills {#skills}
 

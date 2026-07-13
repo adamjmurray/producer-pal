@@ -56,7 +56,7 @@ of these places:
 
 - **Max for Live device** — the **Notation** control on the
   [Setup tab](/guide/device#behavior)
-- **Chat UI** — Settings → Advanced → **Notation**
+- **Chat UI** — Settings → Tools → Advanced → **Notation**
 - **REST API** — `POST /config` with `{"notation": "stark"}`
 - **Command line** — `npx producer-pal --notation stark`
 - **Coding agents** — the [Agent Skill](/guide/skills) sets it itself with

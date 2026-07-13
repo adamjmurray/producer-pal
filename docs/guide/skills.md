@@ -96,10 +96,10 @@ follows its bootstrap:
    with input schemas, so the agent knows what's available without baking it
    into the skill.
 3. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
-   Skills (the note syntax for the active notation, code transforms,
-   conventions) — the same instructions Producer Pal's MCP clients receive at
-   session start. The skill stays small; the heavy guidance comes from Producer
-   Pal itself.
+   Skills (the note syntax for the active notation,
+   [transforms](/features/midi-notation#transforms), conventions) — the same
+   instructions Producer Pal's MCP clients receive at session start. The skill
+   stays small; the heavy guidance comes from Producer Pal itself.
 4. **Use the other tools** per those instructions, via
    `node ppal.mjs <tool> [json-args]`.
 

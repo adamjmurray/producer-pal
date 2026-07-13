@@ -85,8 +85,11 @@ few rules:
   optional content.
 - You can include your own files: drop `my-style.md` in
   `~/.producer-pal/skills/` and add `@include "./my-style.md"` to a fragment.
-- Names are confined to the skills folder (no paths), and circular includes are
-  skipped with a warning.
+- Subfolders work: a file at `~/.producer-pal/skills/drums/backbeat.md` is
+  included as `@include "./drums/backbeat.md"`.
+- Names are confined to the skills folder — a reference can't climb out of it
+  with `..`, `~`, or a leading `/` — and circular includes are skipped with a
+  warning.
 
 ## Trimming skills you don't need
 

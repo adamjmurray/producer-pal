@@ -68,7 +68,11 @@ editor — the same editor the **Open Editor** button opens. See
 - **Status light** - Green while the server is running
 - **Start/Stop** - Control the server that connects AI to Live
 - **Port** - Network port for connections (default: 3350, change only if another
-  app uses this port)
+  app uses this port). If you do change it, point your clients at the new port
+  too: use the new URL directly wherever a doc shows `http://localhost:3350`,
+  and for the `npx producer-pal` bridge set the `MCP_SERVER_ORIGIN` environment
+  variable (e.g. `MCP_SERVER_ORIGIN=http://localhost:3400`) — it defaults to
+  `http://localhost:3350`.
 - **Timeout** - Maximum time for AI operations (default: 30 sec, increase on
   slow computers if experiencing timeouts during complex operations)
 
