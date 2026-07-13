@@ -35,16 +35,11 @@ The header is organized into two areas:
 - **Provider & Model** - Click to open connection settings
 - **Tools count** - Click to open tools settings
 - **Model size** - Shows "large model" or "small model" mode
-- **Context** - Open the context editor in a larger view. It has five tabs:
-  **Project** (notes about the current Live Set), **Global** (facts that apply
-  across every project, stored in `~/.producer-pal`), **Instructions** (a custom
-  system prompt that replaces Producer Pal's built-in one), **Skills** (advanced
-  overrides for the built-in skill fragments the AI is taught — see
-  [Customizing Skills](/guide/customizing-skills)), and **Memory** (the
-  assistant's own notes about you across sessions — each entry has a name, a
-  one-line description, and a body; only the descriptions are always visible to
-  the AI, bodies load on demand). Press the close (✕) button to return to the
-  chat
+- **Context** - Open the [context editor](/guide/context) in a larger view,
+  where you teach AI about your project (**Project**), your preferences
+  (**Global**), and review what it remembers about you (**Memory**) — plus
+  customize its system prompt (**Instructions**) and skills (**Skills**). Press
+  the close (✕) button to return to the chat
 - **Settings gear** - Open settings dialog
 - **Help (?)** - Link to documentation
 
@@ -365,6 +360,13 @@ you want to prevent the AI from using a specific tool, you can disable it here.
 Consult [the Features page](/features) for more info on what each tool does.
 
 <img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
+
+The **Context** checkbox under **Core** controls the Context tool, which AI uses
+to _edit_ your [context and memory](/guide/context) and to load a memory entry
+it wants to read in full. Turn it off to keep AI from changing them. Your
+project context, global context, and the memory index are attached when AI
+connects either way, so to stop it reading a layer, empty that layer. **Edit
+Context** below the checkbox opens the context editor.
 
 The **Live API** checkbox under **Advanced** behaves differently from the other
 toggles. The rest only filter which tools the chat UI's AI can see, but this one

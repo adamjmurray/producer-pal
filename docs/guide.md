@@ -47,6 +47,8 @@ After installation:
 
 - [Device Interface](/guide/device) - The Max for Live device tabs and settings
 - [Chat UI](/guide/chat-ui) - The built-in browser-based chat interface
+- [Context & Memory](/guide/context) - Teach AI about your project and your
+  preferences, and see what it remembers about you
 
 ## Next Steps
 

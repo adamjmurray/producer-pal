@@ -114,6 +114,7 @@ export default defineConfig({
         items: [
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
+          { text: "Context & Memory", link: "/guide/context" },
           { text: "Usage Examples", link: "/guide/examples" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "REST API", link: "/guide/rest-api" },

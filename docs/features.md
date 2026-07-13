@@ -35,8 +35,9 @@ It works with virtually any AI, including its
 
 ### 🔧 Context (`ppal-context`) {#ppal-context}
 
-- Read and write project memory — persistent notes that help the AI understand
-  your goals across conversations
+- Read and write the three [context layers](/guide/context): project context
+  (notes about this Live Set), global context (preferences that apply to every
+  project), and memory (facts AI records about you as you work)
 
 <!--@include: ./_generated/ppal-context-schema.md-->
 

@@ -52,13 +52,14 @@ lives directly in the driver text.
 
 ## Editing fragments
 
-**In the Chat UI:** open the context editor (the **Context** button in the
-header) and switch to the **Skills** tab. The **Fragments** view lets you pick
-any fragment, pre-populated with the current built-in text — edit and **Save**
-to create your override, or **Reset** to delete it and return to the built-in. A
-marker next to the fragment name shows when it's customized, and when the
-built-in has changed since you forked it. The **Preview** view shows the fully
-assembled skills exactly as the AI will receive them.
+**In the Chat UI:** open the [context editor](/guide/context) (the **Context**
+button in the header) and switch to the **Skills** tab. Pick a fragment from the
+dropdown: it shows read-only until you press **Customize**, which forks the
+built-in into an editable override that auto-saves as you type. The trash button
+resets a fragment, deleting your override. In the dropdown, ✎ marks a customized
+fragment and ⚠ one whose built-in has changed since you forked it. **Preview**
+shows the fully assembled skills exactly as the AI will receive them. See
+[Context & Memory](/guide/context#skills) for screenshots.
 
 **On disk:** overrides are plain Markdown files in `~/.producer-pal/skills/`,
 named after the fragment (`core-devices.md`, `standard.md`, …). A file's

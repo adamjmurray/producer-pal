@@ -53,9 +53,9 @@ other MCP clients have their own way to disable a tool.
 
 Project context lives with this Live Set. **Global context** (notes that apply
 across all your projects) and **memory** (facts AI records about you as you
-work) are stored on your computer instead, and are edited in the
-[Chat UI](/guide/chat-ui)'s context editor — the same editor the **Open Editor**
-button opens.
+work) are stored on your computer instead. All three are edited in the context
+editor — the same editor the **Open Editor** button opens. See
+[Context & Memory](/guide/context).
 
 :::
 
