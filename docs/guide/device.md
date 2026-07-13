@@ -29,13 +29,14 @@ error message.
 
 <img src="/img/device-context-tab.png" alt="Context tab" width="500"/>
 
-Project memory helps AI understand your creative goals and preferences. Memory
-is saved with your Ableton Live Set file. To stop AI from reading your memory,
-clear the text area; to stop AI from writing to it, disable the `ppal-context`
-tool on the Setup tab.
+The Context tab holds your **project context**: notes about this Live Set — its
+genre, structure, track layout, and the rules you want AI to follow — included
+in every conversation. It is saved in this project's Producer Pal device, so it
+travels with the Live Set (and is gone if you delete the device). AI can read
+and edit these notes too.
 
-- **Memory text area** - Your project-specific instructions and preferences
-- **Open Editor** - Open the memory editor in a larger view in your web browser
+- **Context text area** - Your project-specific notes and preferences
+- **Open Editor** - Open the context editor in a larger view in your web browser
 
 Example notes:
 
@@ -43,29 +44,55 @@ Example notes:
 - "Use occasional triplet rhythms"
 - "Use strong harmonies with one chord per bar"
 
+To stop AI from reading your project context, clear the text area. To stop AI
+from writing to it, turn off the Context tool — in the built-in
+[Chat UI](/guide/chat-ui) that's the **Context** checkbox under Tools settings;
+other MCP clients have their own way to disable a tool.
+
+::: tip Project context is one of several layers
+
+Project context lives with this Live Set. **Global context** (notes that apply
+across all your projects) and **memory** (facts AI records about you as you
+work) are stored on your computer instead, and are edited in the
+[Chat UI](/guide/chat-ui)'s context editor — the same editor the **Open Editor**
+button opens.
+
+:::
+
 ## Setup Tab
 
 <img src="/img/device-setup-tab.png" alt="Setup tab" width="500"/>
 
 ### Server
 
+- **Status light** - Green while the server is running
 - **Start/Stop** - Control the server that connects AI to Live
 - **Port** - Network port for connections (default: 3350, change only if another
   app uses this port)
 - **Timeout** - Maximum time for AI operations (default: 30 sec, increase on
   slow computers if experiencing timeouts during complex operations)
+
+### Behavior
+
+These settings belong to the device, not to one conversation: they apply to the
+built-in [Chat UI](/guide/chat-ui), external MCP clients, and the
+[REST API](/guide/rest-api) alike.
+
 - **Small Model Mode** - Reduces prompt size for local/smaller models like
   Ollama and LM Studio
-- **Direct Live API** - Enables the opt-in
-  [Direct Live API](/features#ppal-live-api) tool, giving the AI direct access
-  to the [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-  scripting, debugging, and covering gaps in Producer Pal's specialized tools
+- **Notation** - How AI reads and writes clip notes: `barbeat` (the default),
+  `midi-json`, or `stark`. See
+  [custom notation](/features#custom-music-notation)
+
+AI is taught the notation at the start of a conversation, so switching notation
+takes full effect in a **new conversation**. In an ongoing chat, AI can still
+read your existing notes in the new notation but will keep writing the old one.
 
 ### Sample Folder
 
 Configure a folder of audio samples to expose to the
 [Library](/features#ppal-library) tool. Items from this folder appear before
-Live's library results in searches.
+Live's library results in searches. Shows `(none)` when no folder is configured.
 
 - **Choose** - Select your sample folder
 - **Clear** - Remove the configured folder
@@ -75,5 +102,9 @@ Live's library results in searches.
 For development and diagnostic purposes. Generally not needed for day-to-day
 use.
 
+- **Direct Live API** - Enables the opt-in
+  [Direct Live API](/features#ppal-live-api) tool, giving AI direct access to
+  the [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+  scripting, debugging, and covering gaps in Producer Pal's specialized tools
 - **JSON Output** - Display raw JSON in tool responses
 - **Verbose Logs** - Enable detailed logging in the Max console
