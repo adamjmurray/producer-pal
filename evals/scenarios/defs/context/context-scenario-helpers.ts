@@ -337,10 +337,13 @@ export function assertContextWrite(opts: {
 
         writes = writes.filter((args) => args.name === opts.name);
 
-        if (writes.length === 0 && wrongNames.length > 0) {
+        if (wrongNames.length > 0) {
           throw new Error(
-            `wrote a NEW memory "${wrongNames.join('", "')}" instead of ` +
-              `updating the existing "${opts.name}"`,
+            writes.length === 0
+              ? `wrote a NEW memory "${wrongNames.join('", "')}" instead of ` +
+                  `updating the existing "${opts.name}"`
+              : `updated "${opts.name}" but ALSO wrote ` +
+                  `"${wrongNames.join('", "')}" — the fact is now duplicated`,
           );
         }
       }

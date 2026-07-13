@@ -64,8 +64,9 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
 
     // The superseding fact belongs in the entry that already covers it. Writing
     // a NEW name (e.g. "synth-preference") leaves the Serum entry behind, and
-    // the index then asserts two contradictory things. `count: 1` also catches
-    // updating the right entry AND spawning a duplicate alongside it.
+    // the index then asserts two contradictory things. Pinning `name` also
+    // fails a run that updates the right entry AND spawns a duplicate alongside
+    // it; `count: 1` rejects double-writes to the pinned name itself.
     assertContextWrite({
       scope: "memory",
       turn: 1,
