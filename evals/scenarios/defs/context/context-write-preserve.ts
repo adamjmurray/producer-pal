@@ -18,6 +18,10 @@
  * silently destroys everything the user had accumulated. These scenarios seed a
  * NON-EMPTY document — which the layer-routing scenarios deliberately do not —
  * and inspect the `content` the model actually sends.
+ *
+ * The judge is ADVISORY here: what survived the write is read straight off the
+ * `content` argument, so the custom assertion pins it exactly. See
+ * context-write-layers.ts for why an un-advisory judge misfires on these.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -52,6 +56,8 @@ export const contextWritePreservesProject: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
+  // Judge is commentary, not a gate — see the file header.
+  judgeAdvisory: true,
 
   config: { memoryContent: EXISTING_PROJECT },
 
@@ -91,6 +97,8 @@ export const contextWritePreservesGlobal: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
+  // Judge is commentary, not a gate — see the file header.
+  judgeAdvisory: true,
 
   ...seedContext({ global: EXISTING_GLOBAL }),
 

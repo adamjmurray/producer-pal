@@ -15,6 +15,13 @@
  * project/global are user-owned documents and a write REPLACES the whole thing,
  * so the skills require confirming first — hence the two-turn shape (state the
  * fact, then approve). Memory is the model's to manage, so it may write at once.
+ *
+ * The judge is ADVISORY here. Everything these scenarios ask is a tool-call
+ * argument — which scope, on which turn — so the custom assertions pin the
+ * outcome exactly and the judge adds nothing a gate could use. Left un-advisory
+ * it actively misfires: it has failed runs for unrelated behavior (writing clips
+ * unprompted, giving no closing message) and once marked a quiet memory write as
+ * a violation, which the skills explicitly permit.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -35,6 +42,8 @@ export const contextWriteLayerProject: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
+  // Judge is commentary, not a gate — see the file header.
+  judgeAdvisory: true,
 
   config: { memoryContent: "" },
 
@@ -80,6 +89,8 @@ export const contextWriteLayerGlobal: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
+  // Judge is commentary, not a gate — see the file header.
+  judgeAdvisory: true,
 
   // The model writes the real global context here — restore is mandatory.
   ...seedContext({}),
@@ -117,6 +128,8 @@ export const contextWriteLayerMemory: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
+  // Judge is commentary, not a gate — see the file header.
+  judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
   // The model invents the entry name here, so teardown can only find it by

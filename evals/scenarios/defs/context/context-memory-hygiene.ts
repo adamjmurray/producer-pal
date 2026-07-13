@@ -11,6 +11,10 @@
  * starts contradicting itself, so the skills teach two habits — reuse a name to
  * UPDATE rather than duplicate, and DELETE what's wrong. Neither had any
  * LLM-level coverage.
+ *
+ * The judge is ADVISORY here: the entry name and the action are tool-call
+ * arguments, so the custom assertions already pin the outcome exactly. See
+ * context-write-layers.ts for why an un-advisory judge misfires on these.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -34,6 +38,8 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
+  // Judge is commentary, not a gate — see the file header.
+  judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
   ...seedContext({
@@ -83,6 +89,8 @@ export const contextMemoryDelete: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
+  // Judge is commentary, not a gate — see the file header.
+  judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
   ...seedContext({
