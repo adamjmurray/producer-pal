@@ -14,7 +14,6 @@ import {
   NOTATIONS,
   type Notation,
 } from "#src/shared/notation.ts";
-import { buildSkills } from "#src/skills/build-skills.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -275,57 +274,6 @@ function generateNotationParamsPartial(
 }
 
 /**
- * Wraps a skills markdown string in a details/summary disclosure block
- * @param skills - Raw skills markdown content
- * @param label - Summary label for the disclosure
- * @returns Markdown string with a details/summary block and adjusted headings
- */
-function generateSkillsPartial(skills: string, label: string): string {
-  const adjusted = skills
-    .replace(/^# [^\n]+\n*/m, "") // strip top-level heading
-    .replaceAll(/^### /gm, "##### ") // ### → #####
-    .replaceAll(/^## /gm, "#### "); // ## → ####
-
-  // Escape <angle brackets> outside code blocks/spans so Vue doesn't parse them
-  const escaped = escapeAngleBrackets(adjusted.trim());
-
-  return `::: details ${label}\n\n${escaped}\n\n:::\n`;
-}
-
-/**
- * Escapes angle brackets in markdown text, preserving code blocks and inline code
- * @param text - Markdown text with potential bare angle brackets
- * @returns Text with angle brackets escaped outside of code contexts
- */
-function escapeAngleBrackets(text: string): string {
-  const lines = text.split("\n");
-  let inCodeBlock = false;
-  const result: string[] = [];
-
-  for (const line of lines) {
-    if (line.startsWith("```")) {
-      inCodeBlock = !inCodeBlock;
-      result.push(line);
-      continue;
-    }
-
-    if (inCodeBlock) {
-      result.push(line);
-      continue;
-    }
-
-    // Escape <word> patterns outside of backtick spans
-    result.push(
-      line.replaceAll(/`[^`]+`|<(\w+)>/g, (match, word: string | undefined) =>
-        word != null ? `&lt;${word}&gt;` : match,
-      ),
-    );
-  }
-
-  return result.join("\n");
-}
-
-/**
  * Generates tool schema documentation partials for the docs site
  */
 async function main(): Promise<void> {
@@ -358,24 +306,6 @@ async function main(): Promise<void> {
       path.join(OUTPUT_DIR, `notation-params-${notation}.md`),
       content,
     );
-    count++;
-  }
-
-  // Both use the default notation (bar|beat) so the only difference the two docs
-  // show is the standard/small-model level — not a notation swap on top of it.
-  const skillsFiles: [string, string, string][] = [
-    [buildSkills(), "Standard Skills", "skills-standard.md"],
-    [
-      buildSkills({ smallModelMode: true }),
-      "Basic Skills (small model mode)",
-      "skills-basic.md",
-    ],
-  ];
-
-  for (const [skills, label, filename] of skillsFiles) {
-    const content = generateSkillsPartial(skills, label);
-
-    await fs.writeFile(path.join(OUTPUT_DIR, filename), content);
     count++;
   }
 

@@ -416,10 +416,21 @@ line.
 ## Skills {#skills}
 
 The [Connect tool](#ppal-connect) returns a skill set that teaches the AI how to
-use Producer Pal's [custom notation](#custom-music-notation),
-[transforms](#transforms), device paths, and other conventions. Two variants are
-available depending on [small model mode](#small-model-mode):
+use Producer Pal's [notation](/features/midi-notation),
+[transforms](/features/midi-notation#transforms), device paths, and other
+conventions. It's sent to external MCP clients in the `ppal-connect` result and
+used by the built-in [Chat UI](/guide/chat-ui) on every conversation.
 
-<!--@include: ./_generated/skills-standard.md-->
+The exact text depends on the active [notation](/features/midi-notation) and on
+[small model mode](#small-model-mode) — six combinations in all — so rather than
+reproduce them here:
 
-<!--@include: ./_generated/skills-basic.md-->
+- **Read them** in the Chat UI's [Skills tab](/guide/context#skills) →
+  **Preview**, which assembles the whole document for any notation and model
+  size, with your own overrides applied. A ★ marks the combination your current
+  settings use, and a size readout shows what it costs you per conversation.
+- **Change them** — every fragment can be overridden or dropped. See
+  [Customizing Skills](/guide/customizing-skills).
+- **Browse the source** in
+  [`src/skills/`](https://github.com/adamjmurray/producer-pal/tree/main/src/skills)
+  on GitHub.

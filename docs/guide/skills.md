@@ -43,21 +43,32 @@ agent decides the skill is relevant. The same folder works across all three:
 
 ::: info When to use this vs MCP
 
-Producer Pal's [MCP server](/installation) is the recommended path when your
-agent supports MCP — the tools come with rich descriptions and the LLM picks
-them up automatically.
+Both paths give the AI the same thing. The skill's bootstrap calls
+`ppal-connect`, which returns the same tool catalog, Producer Pal Skills, and
+[context](/guide/context) that MCP clients receive at session start — so neither
+route is "more automatic" than the other.
 
-The skill is for **REST-API-driven workflows**: agents not configured with the
-Producer Pal MCP server, scripts and pipelines that don't run an MCP client, or
-environments where you want a single drop-in folder rather than per-tool MCP
-setup.
+Use **MCP** when your client speaks it and isn't a coding agent: chat apps like
+[Claude Desktop](/installation/claude-desktop), the [Chat UI](/guide/chat-ui),
+and web clients. Tools appear natively in the client and nothing has to shell
+out.
+
+Use the **skill** with coding agents that can run commands. Because it drives
+the [REST API](/guide/rest-api) directly, it can change device settings
+mid-session — flip the [notation](/features/midi-notation), turn on
+[Direct Live API](/features#ppal-live-api), toggle small-model mode — and then
+re-read the schemas, all with `--set-config`. MCP clients bake the tool
+descriptions at the start of a conversation and have no tool for changing these
+settings, so the same switch means editing the device and starting a new
+conversation. It's also the answer for scripts and pipelines that don't run an
+MCP client at all.
 
 :::
 
 ## Install
 
 Copy the
-[`producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
+[`examples/skills/producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
 folder from the Producer Pal repo into your agent's skills directory.
 
 ```bash
