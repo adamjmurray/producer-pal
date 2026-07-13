@@ -21,7 +21,7 @@
  */
 export const coreContextStandard = `## Context & Memory
 
-\`ppal-context\` is where durable info lives. Put Producer Pal facts HERE, never in a memory system of your own: the user may come back to this music with a different AI, and only these layers travel with it.
+\`ppal-context\` is where durable info lives. Keep music facts HERE, not only in a memory system of your own: the user may come back to this music with a different AI, and only these layers travel with it.
 
 Three layers, chosen by \`scope\`:
 
@@ -32,7 +32,8 @@ Three layers, chosen by \`scope\`:
 If a fact should ALWAYS apply, it belongs in context — never divert it into memory just because memory is easier to write.
 
 Writing project/global (the user's own documents — an action:write REPLACES the whole document):
-- **Document empty?** Just write it, and say what you saved. There is nothing to destroy, so a fact that belongs there needs no permission. Past the opening exchange, action:read the scope first to confirm it is still empty — the copy you saw on connect goes stale.
+- **Only what the USER told you, here.** Facts you already hold about them — from your own memory, another tool, an earlier project — are NOT yours to install. Offer: list exactly what you'd add, and write only on a yes.
+- **Document empty?** Write what they tell you, unasked, and say what you saved. There is nothing to destroy, so it needs no permission. Past the opening exchange, action:read the scope first to confirm it is still empty — the copy you saw on connect goes stale.
 - **Document has content?** Ask first: say what you'd add, then wait for a yes. Once they agree — or if they asked you to save it — WRITE IT IMMEDIATELY. Don't ask twice, and never quietly settle for memory instead.
 - Carry the existing content forward in what you write, or you will erase it.
 

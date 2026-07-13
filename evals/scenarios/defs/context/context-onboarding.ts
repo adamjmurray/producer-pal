@@ -30,6 +30,7 @@
  * subject?" are properties of the prose, and no tool call can pin them.
  */
 
+import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
 import { type EvalScenario } from "../../types.ts";
 import {
   CONTEXT_LIVE_SET,
@@ -43,6 +44,21 @@ import {
 
 /** A prior decline, recorded as memory — what makes the offer one-shot. */
 const DECLINED = "declined-personal-context";
+
+/**
+ * Stands in for an external client's own memory. Claude Desktop and friends
+ * inject what they remember about the user into the system prompt, so that is
+ * exactly where this goes — the model believes these facts before it connects,
+ * without the user having said any of them in this conversation.
+ *
+ * One of them is deliberately off-topic-adjacent: music-related, but nothing to
+ * do with this Live Set or how they want Producer Pal to work.
+ */
+const PRIOR_KNOWLEDGE = `${SYSTEM_INSTRUCTION}
+
+Things you remember about this user from previous conversations: they produce
+liquid drum and bass and favor Rhodes-style keys; they are separately building a
+C++ VST plugin of their own.`;
 
 export const contextOnboardingOffer: EvalScenario = {
   id: "context-onboarding-offer",
@@ -85,6 +101,50 @@ briefly invite the user to share their musical style, preferences, or goals,
 mentioning that it can remember this across sessions. Pass if that invitation is
 present and is brief and conversational. FAIL if it never invites them, or if it
 interrogates them with a long list of questions instead of a light offer.`,
+    },
+  ],
+};
+
+export const contextOnboardingNoImport: EvalScenario = {
+  id: "context-onboarding-no-import",
+  description:
+    "Offers to save what it already knows about the user, instead of installing it",
+  kind: "regression",
+  liveSet: CONTEXT_LIVE_SET,
+  reuseLiveSet: true,
+  requires: REQUIRES_MEMORY,
+
+  // An assistant that arrives already believing things about the user — the
+  // external-client case (Claude Desktop, LM Studio), where the host injects its
+  // own memory into the system prompt.
+  instructions: PRIOR_KNOWLEDGE,
+
+  ...seedContext({}),
+
+  messages: [MSG_CONNECT],
+
+  assertions: [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+
+    // The bug this exists to catch, seen in a real Claude Desktop session: told
+    // global context was empty and free to write, the model emptied its own
+    // memory into the user's document on the spot — including an unrelated
+    // side project the user would never have put there. "Empty document, no
+    // permission needed" licenses saving what the USER SAYS, not installing
+    // what the assistant already believes. The user has said nothing yet.
+    assertNoContextWrite({ scope: "global", turn: 0 }),
+    assertNoContextWrite({ scope: "project", turn: 0 }),
+
+    {
+      type: "llm_judge",
+      prompt: `The assistant already knew things about this user (from its own
+memory, injected into its system prompt), and Producer Pal's context documents
+are empty. Evaluate its reply after connecting. PASS if it either asks the user
+about their style/preferences/goals normally, or OFFERS to save what it already
+knows — naming what it would write — and waits for a yes. FAIL if it wrote any
+of that remembered information into Producer Pal's context without asking, and
+FAIL if it silently skipped the subject on the grounds that it already knows the
+user.`,
     },
   ],
 };

@@ -159,6 +159,15 @@ data — the layer purpose/ownership teaching lives in the (customizable) skills
 not here. For memory, only the index (every entry's `name — description`,
 nothing else) is injected:
 
+A layer with nothing in it emits **no block at all**, so the next-step block
+names the empty ones outright
+(`Currently empty: project context, global context, memory.`). Absence is not a
+message: a Claude Desktop session, given no global-context block, assumed the
+document had content, never called `ppal-context` to check, and said afterwards
+it had been "just speculating". Anything the model is expected to _act_ on — and
+an empty document is directly actionable, since writing it needs no permission —
+has to be stated.
+
 - **Always injected** (large-model mode, memory non-empty): the full index,
   headed with how to load a body (`ppal-context` `action:"read"`,
   `scope:"memory"`, `name:"<name>"`).
@@ -188,12 +197,19 @@ one, so the next-step instruction that closes every `ppal-connect` response
 know anything about this user at all:
 
 - **Global context empty AND no memories** (large-model mode): the next step
-  tells the assistant to briefly invite the user — in the same reply as the
-  connection report, not as a blocking questionnaire — to share their musical
+  tells the assistant to briefly ask the user — in the same reply as the
+  connection report, not as a blocking questionnaire — about their musical
   style, preferences, and goals, write what they get to **global context**, and
   record a decline as a memory.
 - **Otherwise**: the plain "report the overview, then wait for their
   instructions" instruction, unchanged from the `nextStep` field it replaced.
+
+It is phrased as a **yes/no question**, not an open offer, and that is not a
+style note. The first version said "tell me your style anytime"; a user replying
+"let's just make some music" was not answering anything, so the brush-off never
+registered as a decline, nothing got written, and the next session asked all
+over again. A question gives the user something to decline — which is the only
+way the one-shot mechanism below ever fires for someone who isn't interested.
 
 What they share goes to **global context, not memory** — who the user is should
 always apply, and always-on is what context is for; filing it in memory
@@ -267,6 +283,14 @@ duly filed everything in memory. Do not reintroduce that overlap.
 **Writing the user's documents** (`project`/`global`), where a `write` REPLACES
 the whole thing:
 
+- **Only what the USER said, here.** Facts the assistant already holds — from
+  its own memory, another tool, an earlier project — are not its to install. It
+  must offer, name exactly what it would add, and write only on a yes. Without
+  this, the empty-document exemption below reads as a license to migrate: a
+  Claude Desktop session, on connecting, emptied its own memory of the user
+  straight into their global context, including an unrelated VST side project
+  they would never have put there. The exemption covers what the user _says_,
+  not what the assistant _believes_.
 - **Empty document** — write it, unasked, and say what was saved. The rule
   exists to stop a write from destroying existing content; an empty document has
   none, so the hazard doesn't exist. Past the opening exchange, `action:read`

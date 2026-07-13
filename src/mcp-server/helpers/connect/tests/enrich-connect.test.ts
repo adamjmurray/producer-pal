@@ -78,6 +78,24 @@ describe("enrichConnect", () => {
     expect(blocks.at(-1)).toContain("musical style, preferences, and goals");
   });
 
+  // The project blob reaches the next step by a different route than the other
+  // two layers — it's a device config value, not a file — so only the composed
+  // chain proves it arrives at all. Get this wiring wrong and the report claims
+  // project context is empty when the user has written pages of it.
+  it("reports the empty layers, project context included", async () => {
+    const blocks = await enrichedBlocks();
+
+    expect(blocks.at(-1)).toContain(
+      "Currently empty: project context, global context, memory.",
+    );
+  });
+
+  it("leaves a filled project blob out of the empty-layer report", async () => {
+    const blocks = await enrichedBlocks({ projectContext: "House track." });
+
+    expect(blocks.at(-1)).toContain("Currently empty: global context, memory.");
+  });
+
   it("drops the offer once a memory exists, and keeps the next step last", async () => {
     rememberMemory({
       name: "prefers-dark-techno",
