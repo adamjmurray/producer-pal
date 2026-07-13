@@ -98,14 +98,16 @@ Producer Pal evolves: new tools, schema changes, and skill updates land in
 
 ### Notation and small-model mode
 
-Producer Pal encodes MIDI notes in one of three notations, chosen by a **global
-device setting**: `bar|beat` (the default — compact human-readable text),
-`midi-json` (notes as a JSON array), and `stark` (a literal `type: content`
-format with event-based drum hits). The setting changes the note syntax in every
-tool/argument description and in the `ppal-connect` Skills, and it also applies
-to the chat UI and any connected MCP clients. The skill sets `midi-json` because
-coding agents generate and parse JSON directly, rather than composing text
-notation by hand.
+Producer Pal encodes MIDI notes in one of three
+[notations](/features/midi-notation), chosen by a **global device setting**:
+[`bar|beat`](/features/midi-notation#bar-beat) (the default — compact
+human-readable text), [`midi-json`](/features/midi-notation#midi-json) (notes as
+a JSON array), and [`stark`](/features/midi-notation#stark) (a literal
+`type: content` format with event-based drum hits). The setting changes the note
+syntax in every tool/argument description and in the `ppal-connect` Skills, and
+it also applies to the chat UI and any connected MCP clients. The skill sets
+`midi-json` because coding agents generate and parse JSON directly, rather than
+composing text notation by hand.
 
 The skill also assumes **small-model mode is off** — coding agents generally run
 capable models that handle the full tool descriptions, so it's left at the

@@ -9,6 +9,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { toJSONSchema, z } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  NOTATION_LABELS,
+  NOTATIONS,
+  type Notation,
+} from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
@@ -189,6 +194,87 @@ function generateToolPartial(toolDef: ToolDefFunction): string {
 }
 
 /**
+ * Finds the params whose description is notation-keyed — i.e. any param that a
+ * non-default notation overrides. Derived from the defs rather than hardcoded,
+ * so a newly notation-keyed param shows up in the docs automatically.
+ * @param toolDefs - All tool definitions to scan
+ * @returns Param keys, per tool name, that vary by notation
+ */
+function findNotationKeyedParams(
+  toolDefs: ToolDefFunction[],
+): Map<string, string[]> {
+  const byTool = new Map<string, string[]>();
+
+  for (const toolDef of toolDefs) {
+    const { inputSchema } = toolDef.toolOptions;
+    const keys = new Set<string>();
+
+    for (const notation of NOTATIONS) {
+      const { descriptionOverrides } = resolveParamModes(inputSchema, {
+        notation,
+      });
+
+      for (const key of Object.keys(descriptionOverrides)) keys.add(key);
+    }
+
+    if (keys.size > 0) byTool.set(toolDef.toolName, [...keys]);
+  }
+
+  return byTool;
+}
+
+/**
+ * Generates a markdown partial showing how the notation-keyed tool params read
+ * under one notation — the text the AI actually receives in the tool schema.
+ * @param toolDefs - All tool definitions to scan
+ * @param notation - The notation to resolve descriptions for
+ * @returns Markdown table of tool/param descriptions under that notation
+ */
+function generateNotationParamsPartial(
+  toolDefs: ToolDefFunction[],
+  notation: Notation,
+): string {
+  const notationKeyed = findNotationKeyedParams(toolDefs);
+
+  const lines: string[] = [
+    "<details>",
+    `<summary>Tool parameters under ${NOTATION_LABELS[notation]}</summary>`,
+    "",
+    "| Tool | Parameter | Description |",
+    "|------|-----------|-------------|",
+  ];
+
+  for (const toolDef of toolDefs) {
+    const params = notationKeyed.get(toolDef.toolName);
+
+    if (params == null) continue;
+
+    const { inputSchema } = toolDef.toolOptions;
+    const { descriptionOverrides } = resolveParamModes(inputSchema, {
+      notation,
+    });
+    const objectSchema = z.object(inputSchema);
+    const jsonSchema = toJSONSchema(objectSchema) as JsonSchema;
+    const properties = jsonSchema.properties ?? {};
+
+    for (const key of params) {
+      // The notation override when there is one, else the param's default text
+      // (bar|beat is the default notation, so it has no override cell).
+      const desc =
+        descriptionOverrides[key] ?? properties[key]?.description ?? "";
+
+      lines.push(
+        `| \`${toolDef.toolName}\` | \`${key}\` | ${escapeTableCell(desc)} |`,
+      );
+    }
+  }
+
+  lines.push("", "</details>", "");
+
+  return lines.join("\n");
+}
+
+/**
  * Wraps a skills markdown string in a details/summary disclosure block
  * @param skills - Raw skills markdown content
  * @param label - Summary label for the disclosure
@@ -259,6 +345,19 @@ async function main(): Promise<void> {
     const filename = `${toolDef.toolName}-schema.md`;
 
     await fs.writeFile(path.join(OUTPUT_DIR, filename), content);
+    count++;
+  }
+
+  // The per-tool tables above resolve at the default notation (bar|beat), so the
+  // MIDI Notation page embeds one of these per notation to show how the
+  // notation-keyed params actually read under each.
+  for (const notation of NOTATIONS) {
+    const content = generateNotationParamsPartial(allToolDefs, notation);
+
+    await fs.writeFile(
+      path.join(OUTPUT_DIR, `notation-params-${notation}.md`),
+      content,
+    );
     count++;
   }
 

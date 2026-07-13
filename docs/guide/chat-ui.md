@@ -69,7 +69,7 @@ Each conversation in the list has action buttons that appear on hover:
 Conversations are stored in your browser's built-in database (IndexedDB), and
 settings (including API keys) are stored in local storage. This means all your
 data lives in that specific browser and user profile — it won't be available if
-you switch browsers or profiles. Use [Export & Import](#export--import) to move
+you switch browsers or profiles. Use [Export & Import](#export-import) to move
 conversations between browsers.
 
 Up to 200 conversations are kept; when the limit is reached, the oldest
@@ -376,14 +376,17 @@ also turns the tool on at the device level (MCP clients and the
 [Direct Live API](/features#ppal-live-api) for why.
 
 The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
-clip notes — **bar|beat** (the default), **MIDI JSON**, or **Stark** (a literal,
-round-trippable notation with chord symbols, friendly to small/local models).
-Like the Live API toggle, this is a global device setting rather than a
-per-conversation one: it mirrors the device's Setup pane and applies to MCP
-clients and the REST API too. Because the AI's notation instructions are fixed
-at the start of a conversation, the switch takes full effect in a **new
-conversation** — changing it mid-chat re-parses your notes under the new
-notation but the AI keeps writing the old one until then.
+clip notes — **[bar|beat](/features/midi-notation#bar-beat)** (the default),
+**[MIDI JSON](/features/midi-notation#midi-json)**, or
+**[Stark](/features/midi-notation#stark)** (a literal, round-trippable notation
+with chord symbols, friendly to small/local models). See
+[MIDI Notation](/features/midi-notation) for the tradeoffs. Like the Live API
+toggle, this is a global device setting rather than a per-conversation one: it
+mirrors the device's Setup pane and applies to MCP clients and the REST API too.
+Because the AI's notation instructions are fixed at the start of a conversation,
+the switch takes full effect in a **new conversation** — changing it mid-chat
+re-parses your notes under the new notation but the AI keeps writing the old one
+until then.
 
 ### Preferences
 

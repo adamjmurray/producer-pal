@@ -80,9 +80,11 @@ built-in [Chat UI](/guide/chat-ui), external MCP clients, and the
 
 - **Small Model Mode** - Reduces prompt size for local/smaller models like
   Ollama and LM Studio
-- **Notation** - How AI reads and writes clip notes: `barbeat` (the default),
-  `midi-json`, or `stark`. See
-  [custom notation](/features#custom-music-notation)
+- **Notation** - How AI reads and writes clip notes:
+  [`barbeat`](/features/midi-notation#bar-beat) (the default),
+  [`midi-json`](/features/midi-notation#midi-json), or
+  [`stark`](/features/midi-notation#stark). See
+  [MIDI Notation](/features/midi-notation) for what each one is good at
 
 AI is taught the notation at the start of a conversation, so switching notation
 takes full effect in a **new conversation**. In an ongoing chat, AI can still

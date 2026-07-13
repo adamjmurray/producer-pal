@@ -201,6 +201,16 @@ limitation).
 
 ## Clip Tools
 
+::: info Parameters shown use the default notation
+
+The `notes` parameter on Create Clip and Update Clip is rewritten to match the
+active [notation](/features/midi-notation). The tables below show it in
+`bar|beat`, the default — see [MIDI Notation](/features/midi-notation#bar-beat)
+for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
+[Stark](/features/midi-notation#stark).
+
+:::
+
 ### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
 
 - Generate MIDI clips with notes, velocities, and timing using
@@ -297,37 +307,37 @@ reference and examples.
 
 <!--@include: ./_generated/ppal-live-api-schema.md-->
 
-## Custom Music Notation {#custom-music-notation}
+## MIDI Notation {#custom-music-notation}
 
-Producer Pal uses a text-based music notation syntax called `bar|beat` to work
-with MIDI clips. Used by [Create Clip](#ppal-create-clip),
+Producer Pal gives the AI a text-based music notation to compose in, rather than
+raw MIDI note data. Used by [Create Clip](#ppal-create-clip),
 [Update Clip](#ppal-update-clip), and [Read Clip](#ppal-read-clip). It helps
 LLMs translate natural language expressions of time to the correct time
 positions in Ableton Live clips and the arrangement timeline.
 
-- **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
-- **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
-- **Durations**: absolute note values (n/4 = quarter note, n/8 = eighth, n/12 =
-  eighth triplet); clip length can also use bars (4bar = 4 bars, 1bar+n/4)
-- **Time units**: a plain "beat" is your meter's beat (a quarter in 4/4, an
-  eighth in 6/8), while note values (`n/4`, `±n` offsets, durations) are
-  absolute — a quarter is a quarter in any meter. `arrangementStart` and
-  `arrangementLength` are read in the song's time signature; a clip's own
-  `start`/`length` use the clip's time signature, so when they differ the same
-  bar|beat literal means different absolute times.
-- **Velocity**: Values from 1-127 (or ranges like 80-100)
-- **Probability**: 0.0 to 1.0 (1.0 = always plays)
-- **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
-  1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
-  bars 3-10)
+Three notations are available, chosen by a global device setting:
+
+- **[`bar|beat`](/features/midi-notation#bar-beat)** — the default. Compact and
+  expressive: pitches are names (`C3`, `F#4`), time is `bar|beat` (`1|1`,
+  `2|3`), durations are note values (`n/4`, `n/8`), plus velocity ranges,
+  probability, and bar copying.
+- **[MIDI JSON](/features/midi-notation#midi-json)** — notes as a compact JSON
+  array. The most exact, and the easiest for coding agents to generate and
+  parse.
+- **[Stark](/features/midi-notation#stark)** — a literal, round-trippable
+  notation with chord symbols and event-based drum lines, friendly to small and
+  local models.
+
+[Read the full notation guide →](/features/midi-notation)
 
 ## Transforms {#transforms}
 
 Apply complex changes to clips using math expressions via
 [Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
-[Duplicate](#ppal-duplicate). When updating or duplicating multiple clips at
-once, one transform string broadcasts across every clip/copy — use `clip.index`
-arithmetic or `clipseq()` inside the string for per-clip variation:
+[Duplicate](#ppal-duplicate). Transforms work the same way in every notation.
+When updating or duplicating multiple clips at once, one transform string
+broadcasts across every clip/copy — use `clip.index` arithmetic or `clipseq()`
+inside the string for per-clip variation:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
@@ -338,6 +348,8 @@ arithmetic or `clipseq()` inside the string for per-clip variation:
 - **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
+
+[Read the full transforms guide →](/features/midi-notation#transforms)
 
 ## Take Lanes {#take-lanes}
 
