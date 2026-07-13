@@ -11,7 +11,13 @@ export default defineConfig({
   // GitHub Pages base URL
   base: "/",
 
-  sitemap: { hostname: "https://producer-pal.org" },
+  // Pages that only exist to redirect an old URL to its replacement. They set their
+  // own canonical in frontmatter and stay out of the sitemap.
+  sitemap: {
+    hostname: "https://producer-pal.org",
+    transformItems: (items) =>
+      items.filter((item) => item.url !== "installation/codex-app"),
+  },
 
   cleanUrls: true,
 
@@ -24,10 +30,18 @@ export default defineConfig({
       .replace(/^index$/, "");
     const canonicalUrl = `https://producer-pal.org/${path}`;
     pageData.frontmatter.head ??= [];
-    pageData.frontmatter.head.push([
-      "link",
-      { rel: "canonical", href: canonicalUrl },
-    ]);
+    // Don't override a canonical the page set for itself (redirect stubs point at
+    // their replacement); two canonicals would make search engines ignore both.
+    const hasCanonical = pageData.frontmatter.head.some(
+      ([tag, attrs]: [string, Record<string, string>]) =>
+        tag === "link" && attrs?.rel === "canonical",
+    );
+    if (!hasCanonical) {
+      pageData.frontmatter.head.push([
+        "link",
+        { rel: "canonical", href: canonicalUrl },
+      ]);
+    }
     pageData.frontmatter.version = VERSION;
   },
 
@@ -185,7 +199,7 @@ export default defineConfig({
                 text: "Claude Desktop",
                 link: "/installation/claude-desktop",
               },
-              { text: "Codex App", link: "/installation/codex-app" },
+              { text: "ChatGPT App", link: "/installation/chatgpt-app" },
               { text: "LM Studio", link: "/installation/lm-studio" },
             ],
           },
@@ -204,7 +218,7 @@ export default defineConfig({
             link: "/installation/web-apps",
             items: [
               { text: "claude.ai", link: "/installation/claude-web" },
-              { text: "ChatGPT", link: "/installation/chatgpt-web" },
+              { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
               { text: "Le Chat", link: "/installation/mistral-le-chat" },
             ],
           },

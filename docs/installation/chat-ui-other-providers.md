@@ -66,7 +66,7 @@ For detailed setup, see the [dedicated OpenAI guide](./openai).
 
 ::: tip Subscription Alternative
 
-Prefer flat-rate pricing? The [Codex App](./codex-app) or
+Prefer flat-rate pricing? The [ChatGPT App](./chatgpt-app) or
 [Codex CLI](./codex-cli) work with OpenAI's subscription plans.
 
 :::
