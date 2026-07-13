@@ -307,6 +307,14 @@ the whole thing:
   precise recall hook (what's inside, when it's relevant), not a vague label.
 - Before writing, check the index for an entry that already covers it and reuse
   its name to update rather than duplicate. One fact per memory.
+- **An existing entry overrides the layer rules.** If the fact already lives in
+  a memory, update it THERE — don't write it to context and leave the memory
+  contradicting it. Without this, the layer rules chain into a trap: a go-to
+  synth is a cross-project preference, preferences belong in global context, and
+  an empty global document may be written unasked — so the model writes "uses
+  Vital" to global while the index still says Serum, forever. gpt-5.6-luna
+  walked that exact chain in an eval and said so in its own reflection. Two
+  layers disagreeing is worse than either layer being wrong.
 - `delete` anything wrong or outdated rather than leaving stale entries. Convert
   relative dates ("next week") to absolute before storing.
 - Save quietly as facts emerge; don't announce each one.
