@@ -27,9 +27,9 @@ interface MemoryListProps {
 /**
  * Left pane: a fixed "New memory" toolbar above a flat, name-sorted, scrolling
  * list of the derived index — each row showing the slug over its one-line
- * description, with a hover trash. Mirrors both the conversation-history panel's
- * look and the always-injected MEMORY.md the assistant sees, so what the user
- * edits here is what the model reads.
+ * description, with a trash button. Mirrors both the conversation-history
+ * panel's look and the always-injected MEMORY.md the assistant sees, so what the
+ * user edits here is what the model reads.
  * @param props - List props
  * @returns List element
  */

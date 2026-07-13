@@ -7,9 +7,10 @@
 // skills): the solid "New …" button and one entry row (slug over its
 // description). Both mirror the conversation-history panel — a filled action
 // button above flush, divider-separated rows with a full-cell hover and a blue
-// selected accent. Custom skills additionally dims disabled rows via
-// `dimmed`/`trailing`, and memory reveals a per-row trash via `onDelete`, but
-// the button and row otherwise render identically, so they live here.
+// selected accent, and an always-visible per-row trash. Custom skills
+// additionally dims disabled rows via `dimmed`/`trailing`, and memory adds the
+// trash via `onDelete`, but the button and row otherwise render identically, so
+// they live here.
 
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 
@@ -56,7 +57,7 @@ interface EntryRowProps {
   dimmed?: boolean;
   /** Optional element beside the name (e.g. an "off" tag). */
   trailing?: preact.ComponentChildren;
-  /** Delete this entry — renders a hover-revealed trash button when provided. */
+  /** Delete this entry — renders a trash button when provided. */
   onDelete?: (name: string) => void;
 }
 
@@ -64,7 +65,7 @@ interface EntryRowProps {
  * One entry row: the slug (with optional trailing tag) over its description.
  * Flush with a bottom divider and a full-cell hover, a blue accent when
  * selected, and dimmed when requested — mirroring a conversation-history row.
- * A trash button appears on hover/focus when `onDelete` is supplied.
+ * An always-visible trash button is rendered when `onDelete` is supplied.
  * @param props - Row props
  * @returns Row element
  */
@@ -74,7 +75,7 @@ export function EntryRow(props: EntryRowProps): preact.JSX.Element {
 
   return (
     <div
-      className={`group flex items-stretch border-b border-l-2 border-b-zinc-100 transition-colors dark:border-b-zinc-800 ${
+      className={`flex items-stretch border-b border-l-2 border-b-zinc-100 transition-colors dark:border-b-zinc-800 ${
         selected
           ? "border-l-blue-500 bg-blue-50 dark:bg-blue-900/30"
           : "border-l-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800"
@@ -110,7 +111,7 @@ export function EntryRow(props: EntryRowProps): preact.JSX.Element {
           onClick={() => onDelete(name)}
           aria-label={`Delete ${name}`}
           title="Delete"
-          className="shrink-0 self-center px-2 text-zinc-400 opacity-0 transition-opacity hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 dark:text-zinc-500 dark:hover:text-red-400"
+          className="shrink-0 self-center px-2 text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
         >
           <TrashIcon size={13} />
         </button>

@@ -306,7 +306,7 @@ describe("MemoryScreen — ready", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Edit prefers-c-minor" }),
     );
-    // Delete lives on the list row (hover trash), not the editor footer.
+    // Delete lives on the list row trash, not the editor footer.
     fireEvent.click(
       screen.getByRole("button", { name: "Delete prefers-c-minor" }),
     );
