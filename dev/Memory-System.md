@@ -179,27 +179,34 @@ result, so all clients see the same shape; see `withProjectContext` in
 `helpers/global-context/global-context-inject.ts`, which co-hosts both context
 blob injectors.)
 
-## Onboarding — how memory gets discovered
+## Onboarding — how context and memory get discovered
 
-Memory only earns its keep if something is in it, and nothing goes in unless the
-assistant asks. A user who never hears about the feature never gets one, so the
-next-step instruction that closes every `ppal-connect` response
+These layers only earn their keep if something is in them, and nothing goes in
+unless the assistant asks. A user who never hears about the feature never gets
+one, so the next-step instruction that closes every `ppal-connect` response
 (`helpers/connect/next-step-inject.ts`, `withNextStep`) varies on whether we
 know anything about this user at all:
 
 - **Global context empty AND no memories** (large-model mode): the next step
   tells the assistant to briefly invite the user — in the same reply as the
   connection report, not as a blocking questionnaire — to share their musical
-  style, preferences, and goals, save what they get, and record a decline.
+  style, preferences, and goals, write what they get to **global context**, and
+  record a decline as a memory.
 - **Otherwise**: the plain "report the overview, then wait for their
   instructions" instruction, unchanged from the `nextStep` field it replaced.
 
-The offer is **one-shot without any dedicated flag**: whatever the user says
-produces a memory — their preferences if they share, a "don't ask me this" entry
-if they decline — and _any_ memory flips the check, so the next connect gets the
-plain instruction. Deleting that entry in the Memory tab brings the offer back,
-which is the semantics you'd want anyway. Nothing else records the "already
-asked" state; there is deliberately no sentinel file and no frontmatter flag.
+What they share goes to **global context, not memory** — who the user is should
+always apply, and always-on is what context is for; filing it in memory
+downgrades it to a fact the assistant may never load again. It needs no
+confirmation despite being a user-owned document, because the empty-document
+exemption applies (see Layer discipline below).
+
+The offer is **one-shot without any dedicated flag**: sharing fills global
+context, declining writes a memory, and _either_ flips the check, so the next
+connect gets the plain instruction. Clearing both in the context editor brings
+the offer back, which is the semantics you'd want anyway. Nothing else records
+the "already asked" state; there is deliberately no sentinel file and no
+frontmatter flag.
 
 Two design constraints worth preserving:
 
@@ -233,30 +240,59 @@ would re-ask on every single connect forever.
 `write`/`delete` responses append the freshly regenerated index so the model's
 view of what's stored never goes stale mid-conversation.
 
-## Discipline
+## Layer discipline
 
 Instructions for the model live in the shipped skills fragments
 (`src/skills/core/core-context.ts`, the `core-context-standard` fragment;
 large-model mode only — the `core-context-basic` fragment it ships alongside has
-no memory instructions since the small-model tool surface excludes it). The
-section frames all three layers and their ownership: `project`/`global` context
-are the user's (confirm before writing), `memory` is the assistant's to manage
-freely.
+no memory instructions since the small-model tool surface excludes it).
 
-- `write` lasting facts to memory: who the user is as a musician, how they want
-  the assistant to work with them, cross-project goals, external pointers (e.g.
-  a sample folder) — not this-Live-Set details (`scope:project`) or one-off task
-  facts.
+**What goes where.** The split is by _how often the fact applies_, not by who it
+is about:
+
+- `global` — who this user is: musical style, preferences, how they want the
+  assistant to work, high-level goals that outlive any one project.
+- `project` — THIS Live Set: its genre, structure, the goals for this track.
+- `memory` — durable facts and rules that only matter in CERTAIN situations
+  (e.g. the sample folder they raid for jungle).
+
+A fact that should ALWAYS apply belongs in context, and the skills say so
+explicitly, because the failure mode is one-directional: memory is the layer the
+assistant may write without asking, so every ambiguity resolves toward it unless
+the text pushes back. An earlier version of this fragment listed "preferences,
+how they want you to work, cross-project goals" as things to write to _memory_,
+which contradicted the `global` description a few lines above it — and the model
+duly filed everything in memory. Do not reintroduce that overlap.
+
+**Writing the user's documents** (`project`/`global`), where a `write` REPLACES
+the whole thing:
+
+- **Empty document** — write it, unasked, and say what was saved. The rule
+  exists to stop a write from destroying existing content; an empty document has
+  none, so the hazard doesn't exist. Past the opening exchange, `action:read`
+  first, since the copy injected at connect can be stale. This exemption is what
+  lets onboarding fill global context on the spot.
+- **Non-empty document** — say what you'd add and wait for a yes. Once they
+  agree (or asked in the first place), write immediately; don't ask twice, and
+  don't fall back to memory as a way of avoiding the question.
+- Carry the existing content forward, or the write erases it.
+
+**Managing memory** (the assistant's own layer):
+
 - The description is the only signal visible before a `read` — write it as a
   precise recall hook (what's inside, when it's relevant), not a vague label.
 - Before writing, check the index for an entry that already covers it and reuse
   its name to update rather than duplicate. One fact per memory.
 - `delete` anything wrong or outdated rather than leaving stale entries. Convert
   relative dates ("next week") to absolute before storing.
-- Save quietly as facts emerge; don't announce each one. When a fact is a
-  long-lived preference that should ALWAYS apply, offer to pin it to
-  global/project context instead — write it on the user's behalf once they
-  agree.
+- Save quietly as facts emerge; don't announce each one.
+
+**Cross-provider durability.** The skills tell the assistant to put Producer Pal
+facts in _these_ layers and never in a memory system of its own. External MCP
+clients (Claude Desktop, LM Studio) increasingly ship their own memory, and a
+preference stored there is invisible the moment the user opens the same music
+with a different AI. Only `~/.producer-pal` and the Live Set travel with the
+work.
 
 ## Webui memory manager
 

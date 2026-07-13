@@ -21,13 +21,21 @@ import {
 // context or memories.
 //
 // The variance buys onboarding. A user with no global context and no memories
-// is one we know nothing about, and the memory system is invisible unless the
-// assistant raises it — so for exactly that case the next step also asks them
-// about themselves. Anything they share becomes memory; a decline becomes a
-// memory too, which is what makes the offer one-shot: writing any memory flips
-// this check, so the next connect gets the plain instruction. Deleting that
-// entry in the Memory tab brings the offer back, which is the right semantics
-// and costs no code.
+// is one we know nothing about, and these layers are invisible unless the
+// assistant raises them — so for exactly that case the next step also asks them
+// about themselves.
+//
+// What they say lands in GLOBAL context, not memory: style, preferences, and
+// high-level goals should always apply, and always-on is what context is for
+// (the skills teach the same split). It needs no confirmation because an empty
+// document has nothing to destroy — the write-REPLACES-everything hazard that
+// makes context the user's call simply isn't there yet.
+//
+// Either way the offer is one-shot, with no dedicated "already asked" flag:
+// sharing fills global context and declining writes a memory, and EITHER one
+// flips the check below, so the next connect gets the plain instruction.
+// Clearing both in the context editor brings the offer back, which is the right
+// semantics and costs no code.
 
 const BASE_NEXT_STEP =
   "Report the connection status and Live Set overview to the user, then wait for their instructions.";
@@ -35,12 +43,13 @@ const BASE_NEXT_STEP =
 const ONBOARDING_NEXT_STEP =
   "Report the connection status and Live Set overview to the user. " +
   "You have no context or memories about this user yet, so in that same reply, " +
-  "briefly invite them to tell you about their musical style, preferences, and goals — " +
-  "mention you'll remember it across sessions. Keep it to a sentence or two and " +
-  "don't interrogate them. Save what they share to memory (ppal-context " +
-  'action:"write", scope:"memory"). If they decline or just get on with the ' +
-  "music, write a memory recording that they don't want to be asked, so you " +
-  "never raise it again. Then wait for their instructions.";
+  "briefly invite them to tell you about their musical style, preferences, and " +
+  "goals — mention you'll remember it across sessions. Keep it to a sentence or " +
+  "two and don't interrogate them. Save what they share to GLOBAL context " +
+  '(ppal-context action:"write", scope:"global"): that document is empty, so ' +
+  "write it without asking. If they decline or just get on with the music, " +
+  "write a memory recording that they don't want to be asked, so you never " +
+  "raise it again. Then wait for their instructions.";
 
 /**
  * Wrap a callLiveApi so a successful ppal-connect response ends with the next-

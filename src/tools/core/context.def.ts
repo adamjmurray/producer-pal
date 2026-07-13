@@ -63,14 +63,14 @@ export const toolDefContext = defineTool("ppal-context", {
       {
         default:
           "project (default): facts about THIS Live Set (genre, song " +
-          "structure), always in its context. global: preferences across ALL " +
-          "projects (style, workflow), always in context. memory: durable facts " +
-          "about the user and rules that matter only in certain situations, " +
-          "loaded on demand by name.",
+          "structure), always in its context. global: who the user is across " +
+          "ALL projects (style, preferences, high-level goals), always in " +
+          "context. memory: durable facts and rules that matter only in " +
+          "CERTAIN situations, loaded on demand by name.",
         smallModel: {
           description:
-            "project (default): facts about THIS Live Set. global: " +
-            "preferences across all projects.",
+            "project (default): facts about THIS Live Set. global: who the " +
+            "user is across all projects (style, preferences, goals).",
           excludeEnumValues: ["memory"],
         },
       },

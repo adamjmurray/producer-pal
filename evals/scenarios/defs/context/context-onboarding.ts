@@ -12,9 +12,14 @@
  * (`src/mcp-server/helpers/connect/next-step-inject.ts`) tells the assistant to
  * invite the user to share their style, preferences, and goals.
  *
- * The offer must be ONE-SHOT, and nothing tracks "already asked" except memory
- * itself: whatever the user says produces an entry — their preferences if they
- * share, a decline record if they don't — and any entry at all flips the check
+ * What they share goes to GLOBAL context, not memory — an always-on fact about
+ * who they are belongs in an always-on layer — and it needs no confirmation
+ * because that document is empty, so a write destroys nothing. Getting the
+ * LAYER right is half of what these grade; the pull toward memory is strong,
+ * since memory is the one layer the assistant may write freely.
+ *
+ * The offer must also be ONE-SHOT, and nothing tracks "already asked": sharing
+ * fills global context, declining writes a memory, and EITHER flips the check
  * back to the plain next step. So these grade both directions, which is the
  * whole risk surface: an assistant that never asks leaves the feature
  * undiscovered, and one that asks every session is a nag. The unit tests
@@ -32,6 +37,7 @@ import {
   REQUIRES_MEMORY,
   TOOL_CONNECT,
   assertContextWrite,
+  assertNoContextWrite,
   seedContext,
 } from "./context-scenario-helpers.ts";
 
@@ -41,7 +47,7 @@ const DECLINED = "declined-personal-context";
 export const contextOnboardingOffer: EvalScenario = {
   id: "context-onboarding-offer",
   description:
-    "Invites a brand-new user to share their style, then remembers what they share",
+    "Invites a brand-new user to share their style, then saves it to global context",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
@@ -59,20 +65,25 @@ export const contextOnboardingOffer: EvalScenario = {
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
-    // What they volunteered is exactly what memory is for. Note the scope: an
-    // assistant that pins this to global context unasked has violated the
-    // user-owns-that-layer rule, so scope:memory is the assertion, not "wrote
-    // something somewhere".
-    assertContextWrite({ scope: "memory", turn: 1 }),
+    // GLOBAL, not memory. Style, preferences, and career-level goals should
+    // always apply, and always-on is precisely what context is for — a model
+    // that files them in memory has downgraded them to lazy-loaded facts it may
+    // never load again. It's the tempting mistake, too: memory is the layer it
+    // may write without asking, so the pull is toward the wrong answer unless
+    // it understands that an EMPTY global document also needs no permission.
+    assertContextWrite({ scope: "global", turn: 1 }),
+
+    // ...and it must not hedge by writing both.
+    assertNoContextWrite({ scope: "memory", turn: 1 }),
 
     {
       type: "llm_judge",
       prompt: `The user is brand new: the assistant has no stored context or
 memories about them. Evaluate the assistant's FIRST reply (right after
 connecting to Live). It should report the connection/Live Set overview AND
-briefly invite the user to share their musical style, preferences, or goals, mentioning
-that it can remember this across sessions. Pass if that invitation is present
-and is brief and conversational. FAIL if it never invites them, or if it
+briefly invite the user to share their musical style, preferences, or goals,
+mentioning that it can remember this across sessions. Pass if that invitation is
+present and is brief and conversational. FAIL if it never invites them, or if it
 interrogates them with a long list of questions instead of a light offer.`,
     },
   ],
