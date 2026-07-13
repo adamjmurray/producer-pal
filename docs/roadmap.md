@@ -2,7 +2,7 @@
 
 ## Upcoming
 
-### 2.0 - Personalization and Extensibility
+### 2.0.x - Personalization and Extensibility
 
 - Global context: add your own reference material and custom instructions across
   all Live projects

@@ -225,6 +225,8 @@ function findNotationKeyedParams(
 /**
  * Generates a markdown partial showing how the notation-keyed tool params read
  * under one notation — the text the AI actually receives in the tool schema.
+ * Resolves the standard (large-model) cell only: small model mode rewrites these
+ * descriptions and hides other params, so the summary says which mode this is.
  * @param toolDefs - All tool definitions to scan
  * @param notation - The notation to resolve descriptions for
  * @returns Markdown table of tool/param descriptions under that notation
@@ -237,7 +239,7 @@ function generateNotationParamsPartial(
 
   const lines: string[] = [
     "<details>",
-    `<summary>Tool parameters under ${NOTATION_LABELS[notation]}</summary>`,
+    `<summary>Tool parameters under ${NOTATION_LABELS[notation]} (standard mode)</summary>`,
     "",
     "| Tool | Parameter | Description |",
     "|------|-----------|-------------|",

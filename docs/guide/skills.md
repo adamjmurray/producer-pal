@@ -43,10 +43,10 @@ agent decides the skill is relevant. The same folder works across all three:
 
 ::: info When to use this vs MCP
 
-Both paths give the AI the same thing. The skill's bootstrap calls
-`ppal-connect`, which returns the same tool catalog, Producer Pal Skills, and
-[context](/guide/context) that MCP clients receive at session start — so neither
-route is "more automatic" than the other.
+Both paths give the AI the same thing. The skill's bootstrap discovers the tools
+and their schemas (`--list-tools`) and calls `ppal-connect`, which returns the
+same Producer Pal Skills and [context](/guide/context) that MCP clients receive
+at session start — so neither route is "more automatic" than the other.
 
 Use **MCP** when your client speaks it and isn't a coding agent: chat apps like
 [Claude Desktop](/installation/claude-desktop), the [Chat UI](/guide/chat-ui),

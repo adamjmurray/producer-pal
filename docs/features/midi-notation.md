@@ -72,7 +72,9 @@ but it will keep _writing_ the old one until you start a new conversation.
 
 The notation also rewrites the clip tools' own parameter descriptions, so the AI
 is told what to send in the notation that's actually active. Each section below
-ends with the exact `notes` parameter text the AI receives under that notation.
+ends with the `notes` parameter text the AI receives under that notation.
+[Small model mode](/features#small-model-mode) shortens these further and hides
+some parameters outright, so the text shown is the standard-mode wording.
 
 ## bar|beat {#bar-beat}
 
