@@ -278,7 +278,6 @@ describe("connect", () => {
         returnTrackCount: 0,
         isPlaying: true,
       },
-      nextStep: expect.stringMatching(/wait for.* instructions/),
     });
   });
 

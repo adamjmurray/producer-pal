@@ -28,7 +28,7 @@ export const coreContextStandard = `## Context & Memory
 - **memory** (scope:memory) is yours to manage freely: durable facts about the user and rules that only matter in certain situations. Only the INDEX (each entry's name + description) stays in context; load a full body on demand with action:read, name:<name>.
 
 Managing memory:
-- **write** (scope:memory) lasting facts about the user — default key/genre/gear, how they want you to work (e.g. "always propose 2 variations first"), cross-project goals, external pointers like a sample folder. NOT this-Live-Set details (scope:project) or one-off task facts.
+- **write** (scope:memory) lasting facts about the user — default key/genre, musical preferences, how they want you to work (e.g. "always propose 2 variations first"), cross-project goals, external pointers like a sample folder. NOT this-Live-Set details (scope:project) or one-off task facts.
 - The description is all you see until you read an entry — make it a precise recall hook (what's inside, when it's relevant), not a vague label.
 - Before writing, check the index for an entry that already covers it and reuse its name to UPDATE, not duplicate. One fact per memory.
 - **delete** (scope:memory) anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.

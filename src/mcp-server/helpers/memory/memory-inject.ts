@@ -7,7 +7,7 @@ import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
-} from "../connect-append.ts";
+} from "../connect/connect-append.ts";
 import { listMemoryEntries, renderMemoryIndex } from "./global-memory-store.ts";
 
 /**

@@ -153,10 +153,11 @@ directly and then issuing a no-name `read` (or reconnecting) re-derives it.
 
 On a successful `ppal-connect`, the three context layers are each appended as
 their own distinct, labeled text block, in order: project context, global
-context, then the memory index. Each block is just a header plus its data — the
-layer purpose/ownership teaching lives in the (customizable) skills, not here.
-For memory, only the index (every entry's `name — description`, nothing else) is
-injected:
+context, then the memory index — followed by the next-step instruction, which
+always comes last (see Onboarding below). Each block is just a header plus its
+data — the layer purpose/ownership teaching lives in the (customizable) skills,
+not here. For memory, only the index (every entry's `name — description`,
+nothing else) is injected:
 
 - **Always injected** (large-model mode, memory non-empty): the full index,
   headed with how to load a body (`ppal-context` `action:"read"`,
@@ -168,7 +169,7 @@ injected:
 
 This is the `withMemory` producer in `helpers/memory/memory-inject.ts`, composed
 onto `callLiveApiEnriched` via the shared append seam
-(`helpers/connect-append.ts`'s `withConnectAppend` — the same mechanism
+(`helpers/connect/connect-append.ts`'s `withConnectAppend` — the same mechanism
 `withProjectContext`, `withGlobalContext`, and the `WARNING:` relay use).
 Because it runs Node-side on the `ppal-connect` response, every MCP client sees
 it, including external clients with no memory/recall harness of their own
@@ -177,6 +178,46 @@ context is likewise injected Node-side rather than embedded in V8's `connect()`
 result, so all clients see the same shape; see `withProjectContext` in
 `helpers/global-context/global-context-inject.ts`, which co-hosts both context
 blob injectors.)
+
+## Onboarding — how memory gets discovered
+
+Memory only earns its keep if something is in it, and nothing goes in unless the
+assistant asks. A user who never hears about the feature never gets one, so the
+next-step instruction that closes every `ppal-connect` response
+(`helpers/connect/next-step-inject.ts`, `withNextStep`) varies on whether we
+know anything about this user at all:
+
+- **Global context empty AND no memories** (large-model mode): the next step
+  tells the assistant to briefly invite the user — in the same reply as the
+  connection report, not as a blocking questionnaire — to share their musical
+  style, preferences, and goals, save what they get, and record a decline.
+- **Otherwise**: the plain "report the overview, then wait for their
+  instructions" instruction, unchanged from the `nextStep` field it replaced.
+
+The offer is **one-shot without any dedicated flag**: whatever the user says
+produces a memory — their preferences if they share, a "don't ask me this" entry
+if they decline — and _any_ memory flips the check, so the next connect gets the
+plain instruction. Deleting that entry in the Memory tab brings the offer back,
+which is the semantics you'd want anyway. Nothing else records the "already
+asked" state; there is deliberately no sentinel file and no frontmatter flag.
+
+Two design constraints worth preserving:
+
+- **It lives here, not in the skills.** As a connect-response block it costs
+  tokens only for the users who need it (zero for everyone else), and it arrives
+  as a just-in-time instruction rather than one rule inside a ~10k-token skills
+  blob. It also keeps the skills free of a contradiction: `core-context.ts` says
+  to save memories _quietly, as facts emerge_, which reads as the opposite of
+  "interview the user up front" when both sit in the same always-on document.
+- **`withNextStep` must stay outermost.** The old static `nextStep` field lived
+  inside V8's connect result, which put "wait for their instructions" _before_
+  the four appended blocks — a stop instruction the model read and then kept
+  reading past. As the final block it is the last word, and it can react to what
+  the blocks before it carried (which V8, having no filesystem, cannot see).
+
+Skipped in small-model mode, where `ppal-context` has no `scope:memory` at all:
+a small model could neither save what it learned nor record a decline, so it
+would re-ask on every single connect forever.
 
 ## Write surface
 
