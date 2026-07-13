@@ -5,6 +5,10 @@
 
 import { basicDriver, standardDriver } from "#src/skills/builtin-fragments.ts";
 import { coreArrangement } from "#src/skills/core/core-arrangement.ts";
+import {
+  coreContextBasic,
+  coreContextStandard,
+} from "#src/skills/core/core-context.ts";
 import { coreDevices } from "#src/skills/core/core-devices.ts";
 import { coreLibrary } from "#src/skills/core/core-library.ts";
 import { coreTransforms } from "#src/skills/core/core-transforms.ts";
@@ -18,14 +22,18 @@ import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 // fragment. Renaming one orphans that user's override, so the set is kept coarse
 // and stable. Three tiers: the `standard`/`basic` DRIVERS are the top-level
 // roots (chosen by small-model mode) that inline the shared core body and pull
-// in a notation head via `@include`; the `core-*` SECTIONS are the standard
-// core's task-oriented chunks, pulled in by the driver's include manifest (so a
-// driver override can suppress one by deleting its include line); the notation
-// heads are the note-format guides. bar|beat and stark have a distinct head per
-// level; midi-json reuses one head across both levels, so it is a single slot
-// (the drivers reach it through a level-named wrapper that is plumbing, not an
-// override slot). What remains inline in a driver (units, workflow, memory,
-// help) is not a slot — editing a driver edits it directly.
+// in a notation head via `@include`; the `core-*` SECTIONS are the core's
+// task-oriented chunks, pulled in by a driver's includes (so a driver override
+// can suppress one by deleting its include line) — all of them the standard
+// core's, except the context pair, which is carved out at BOTH levels and so
+// takes the same `-standard`/`-basic` suffix the notation heads use
+// (`core-context-standard`, `core-context-basic`); the notation heads are the
+// note-format guides. bar|beat and
+// stark have a distinct head per level; midi-json reuses one head across both
+// levels, so it is a single slot (the drivers reach it through a level-named
+// wrapper that is plumbing, not an override slot). What remains inline in a
+// driver (units, workflow, help) is not a slot — editing a driver edits it
+// directly.
 export const SKILL_SLOT_NAMES = [
   "standard",
   "basic",
@@ -34,6 +42,8 @@ export const SKILL_SLOT_NAMES = [
   "core-library",
   "core-devices",
   "core-arrangement",
+  "core-context-standard",
+  "core-context-basic",
 
   "barbeat-standard",
   "barbeat-basic",
@@ -94,6 +104,18 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Moving clips on the arrangement timeline and working with take lanes.",
     builtIn: coreArrangement,
+  },
+  "core-context-standard": {
+    title: "Core: context & memory",
+    description:
+      "How the AI uses ppal-context: the project, global, and memory layers, when it may write each, and how it curates its own memories. Used with capable models.",
+    builtIn: coreContextStandard,
+  },
+  "core-context-basic": {
+    title: "Core: context (small-model)",
+    description:
+      "A trimmed context guide for smaller or local models (small-model mode): the project and global documents only — small-model mode has no memory.",
+    builtIn: coreContextBasic,
   },
   "barbeat-standard": {
     title: "bar|beat notation (standard)",

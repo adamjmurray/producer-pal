@@ -33,22 +33,23 @@ Each fragment can be overridden independently. When you override one, your
 version replaces the built-in; every fragment you _don't_ override keeps
 tracking Producer Pal's built-ins as they improve from release to release.
 
-| Fragment                             | What it teaches                                                                   |
-| ------------------------------------ | --------------------------------------------------------------------------------- |
-| `standard`                           | The whole standard skills document — the include manifest plus core guidance      |
-| `basic`                              | The trimmed equivalent used in small model mode                                   |
-| `core-transforms`                    | The transforms/preTransforms DSL for editing notes and audio clip parameters      |
-| `core-library`                       | Searching Live's browser library and your sample folder                           |
-| `core-devices`                       | Device paths, building Simpler/Drum Rack instruments, specialized device controls |
-| `core-arrangement`                   | Moving clips on the Arrangement timeline and take lanes                           |
-| `barbeat-standard` / `barbeat-basic` | The bar\|beat note notation guide (default notation)                              |
-| `stark-standard` / `stark-basic`     | The stark note notation guide                                                     |
-| `midi-json`                          | The midi-json note notation guide                                                 |
+| Fragment                                       | What it teaches                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| `standard`                                     | The whole standard skills document — the include manifest plus core guidance      |
+| `basic`                                        | The trimmed equivalent used in small model mode                                   |
+| `core-transforms`                              | The transforms/preTransforms DSL for editing notes and audio clip parameters      |
+| `core-library`                                 | Searching Live's browser library and your sample folder                           |
+| `core-devices`                                 | Device paths, building Simpler/Drum Rack instruments, specialized device controls |
+| `core-arrangement`                             | Moving clips on the Arrangement timeline and take lanes                           |
+| `core-context-standard` / `core-context-basic` | [Context & Memory](/guide/context) — the project, global, and memory layers       |
+| `barbeat-standard` / `barbeat-basic`           | The bar\|beat note notation guide (default notation)                              |
+| `stark-standard` / `stark-basic`               | The stark note notation guide                                                     |
+| `midi-json`                                    | The midi-json note notation guide                                                 |
 
 The `standard` driver also contains guidance that isn't a separate fragment —
 time units and note values, audio clip basics, general Ableton Live workflow,
-memory, and getting help. That content is small and applies to everyone, so it
-lives directly in the driver text.
+and getting help. That content is small and applies to everyone, so it lives
+directly in the driver text.
 
 ## Editing fragments
 
@@ -93,13 +94,14 @@ If you never use a whole area of Producer Pal, remove its guidance: override the
 **Full skills (standard)** fragment and delete the include line for that area.
 Everything you keep continues to track the built-ins.
 
-| If you never…                                           | Delete this line                      |
-| ------------------------------------------------------- | ------------------------------------- |
-| Use transforms to edit notes/audio params               | `@include "./core-transforms.md"`     |
-| Search Live's library or your sample folder with the AI | `@include "./core-library.md"`        |
-| Build or tweak instruments and effects with the AI      | `@include "./core-devices.md"`        |
-| Work in the Arrangement view with the AI                | `@include "./core-arrangement.md"`    |
-| Write or edit MIDI notes at all                         | `@include "./{notation}-standard.md"` |
+| If you never…                                           | Delete this line                        |
+| ------------------------------------------------------- | --------------------------------------- |
+| Use transforms to edit notes/audio params               | `@include "./core-transforms.md"`       |
+| Search Live's library or your sample folder with the AI | `@include "./core-library.md"`          |
+| Build or tweak instruments and effects with the AI      | `@include "./core-devices.md"`          |
+| Work in the Arrangement view with the AI                | `@include "./core-arrangement.md"`      |
+| Use project/global context or memory                    | `@include "./core-context-standard.md"` |
+| Write or edit MIDI notes at all                         | `@include "./{notation}-standard.md"`   |
 
 ::: tip Check the result
 
@@ -110,18 +112,19 @@ document, and start a new conversation for the change to take effect.
 
 ::: warning What a driver override freezes
 
-Overriding `standard` freezes its _inline_ text (time units, workflow, memory,
-help) at your copy — future improvements to those parts won't reach you until
-you reset or re-fork. The sections you still `@include` are unaffected: they
-keep resolving to the latest built-ins. To change just one area, override that
+Overriding `standard` freezes its _inline_ text (time units, workflow, help) at
+your copy — future improvements to those parts won't reach you until you reset
+or re-fork. The sections you still `@include` are unaffected: they keep
+resolving to the latest built-ins. To change just one area, override that
 fragment instead of the driver.
 
 :::
 
 ::: details Small model mode
 
-Small model mode uses the `basic` driver, which is already heavily trimmed and
-has no include manifest beyond the notation guide. To customize it, override
-`basic` (or the `*-basic` notation fragments) the same way.
+Small model mode uses the `basic` driver, which is already heavily trimmed: it
+includes only the notation guide and the context fragment, and inlines the rest.
+To customize it, override `basic` (or the `*-basic` fragments — notation and
+context) the same way.
 
 :::

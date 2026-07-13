@@ -22,19 +22,28 @@
 //     core-library                pulled in by coreStandard's include manifest so
 //     core-devices                a driver override can suppress one by deleting
 //     core-arrangement            its include line. core-transforms in turn
-//                                 includes code-transforms, which only EXISTS
+//     core-context-standard       includes code-transforms, which only EXISTS
 //                                 here when ENABLE_CODE_EXEC is set — a missing
 //                                 fragment resolves to "", so no directive-level
-//                                 branch. (The basic core stays fully inlined.)
+//                                 branch. core-context-standard is the
+//                                 ppal-context guide (its include sits where the
+//                                 section reads, not in the manifest).
+//     core-context-basic ........ the basic core's terse context section — the
+//                                 one non-notation include in the basic driver
+//                                 (everything else there stays inlined).
 //
 // Header + core are plain text in the drivers, not glue in buildSkills; the
 // notation and core-section fragment names are stable override slots (see
 // skill-slots.ts). The core body itself is not a slot — what remains inline
-// (units, workflow, memory, help) is edited by overriding the driver.
+// (units, workflow, help) is edited by overriding the driver.
 
 import { codeTransformsSkills } from "#src/skills/code-transforms.ts";
 import { coreArrangement } from "#src/skills/core/core-arrangement.ts";
 import { coreBasic } from "#src/skills/core/core-basic.ts";
+import {
+  coreContextBasic,
+  coreContextStandard,
+} from "#src/skills/core/core-context.ts";
 import { coreDevices } from "#src/skills/core/core-devices.ts";
 import { coreLibrary } from "#src/skills/core/core-library.ts";
 import { coreStandard } from "#src/skills/core/core-standard.ts";
@@ -80,6 +89,8 @@ export function builtinFragments(
     "core-library": coreLibrary,
     "core-devices": coreDevices,
     "core-arrangement": coreArrangement,
+    "core-context-standard": coreContextStandard,
+    "core-context-basic": coreContextBasic,
     "barbeat-standard": barbeatStandard,
     "barbeat-basic": barbeatBasic,
     "stark-standard": starkStandard,

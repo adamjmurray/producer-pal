@@ -44,6 +44,15 @@ describe("buildSkills - composition", () => {
     expect(basic).toContain("## Add notes to an existing clip"); // basic core heading
   });
 
+  it("pulls in each level's context fragment", () => {
+    expect(buildSkills({ notation: "barbeat" })).toContain(
+      "## Context & Memory", // core-context-standard
+    );
+    expect(
+      buildSkills({ notation: "barbeat", smallModelMode: true }),
+    ).toContain("scope:project stores facts about THIS Live Set"); // core-context-basic
+  });
+
   it("defaults to bar|beat at both levels", () => {
     expect(buildSkills()).toBe(buildSkills({ notation: "barbeat" }));
     expect(buildSkills({ smallModelMode: true })).toBe(
@@ -133,6 +142,28 @@ describe("buildSkills - overrides", () => {
     expect(standard).not.toContain("BASIC HEAD");
     expect(basic).toContain("BASIC HEAD");
     expect(basic).not.toContain("STD HEAD");
+  });
+
+  it("overrides the context fragment per level, never across levels", () => {
+    // The context section is the one core section carved out at BOTH levels, so
+    // each level has its own slot (like the notation heads) and the small-model
+    // fragment stays out of the standard skills.
+    const overrides = {
+      "core-context-standard": "STD CONTEXT",
+      "core-context-basic": "BASIC CONTEXT",
+    };
+    const standard = buildSkills({ notation: "barbeat" }, overrides);
+    const basic = buildSkills(
+      { notation: "barbeat", smallModelMode: true },
+      overrides,
+    );
+
+    expect(standard).toContain("STD CONTEXT");
+    expect(standard).not.toContain("BASIC CONTEXT");
+    expect(standard).not.toContain("## Context & Memory");
+    expect(basic).toContain("BASIC CONTEXT");
+    expect(basic).not.toContain("STD CONTEXT");
+    expect(basic).toContain("## Rules"); // rest of the basic core intact
   });
 
   it("reports assembly warnings (cycles) to onWarn while still producing output", () => {

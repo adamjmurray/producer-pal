@@ -195,11 +195,12 @@ view of what's stored never goes stale mid-conversation.
 ## Discipline
 
 Instructions for the model live in the shipped skills fragments
-(`src/skills/core/core-standard.ts`, the `## Context & Memory` section;
-large-model mode only — small-model mode has no memory instructions since the
-tool surface excludes it). The section frames all three layers and their
-ownership: `project`/`global` context are the user's (confirm before writing),
-`memory` is the assistant's to manage freely.
+(`src/skills/core/core-context.ts`, the `core-context-standard` fragment;
+large-model mode only — the `core-context-basic` fragment it ships alongside has
+no memory instructions since the small-model tool surface excludes it). The
+section frames all three layers and their ownership: `project`/`global` context
+are the user's (confirm before writing), `memory` is the assistant's to manage
+freely.
 
 - `write` lasting facts to memory: who the user is as a musician, how they want
   the assistant to work with them, cross-project goals, external pointers (e.g.

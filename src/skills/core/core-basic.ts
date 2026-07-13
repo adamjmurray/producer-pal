@@ -8,9 +8,11 @@
  * driver (see builtin-fragments.ts) rather than pulled in via @include — so the
  * notation guide's `@include` lives INSIDE this text and can be moved wherever
  * the notation section should appear. Deliberately terse — the small-model
- * budget's shared tail (notes-merge, preTransforms clearing, the general Rules).
- * The notation directive sits at the top (matching header → notation → core);
- * move it to reposition the guide.
+ * budget's shared tail (notes-merge, preTransforms clearing, context, the
+ * general Rules). The notation directive sits at the top (matching header →
+ * notation → core); move it to reposition the guide. The context section is the
+ * one non-notation `@include` here (core-context-basic), so it can be overridden
+ * or dropped on its own like the standard core's sections.
  */
 export const coreBasic = `@include "./{notation}-basic.md"
 
@@ -25,9 +27,7 @@ export const coreBasic = `@include "./{notation}-basic.md"
 - \`[range]: v0\` — delete notes in a range
 - ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)
 
-## Context
-
-\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores facts that apply across all projects. Both are single documents — read the same scope before writing (write replaces the whole document).
+@include "./core-context-basic.md"
 
 ## Rules
 
