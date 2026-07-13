@@ -434,3 +434,20 @@ reproduce them here:
 - **Browse the source** in
   [`src/skills/`](https://github.com/adamjmurray/producer-pal/tree/main/src/skills)
   on GitHub.
+
+### Agent Skill (for coding agents) {#agent-skill}
+
+Not to be confused with the skills above: an **[Agent Skill](/guide/skills)** is
+the portable `SKILL.md` convention that Claude Code, Codex CLI, and Gemini CLI
+share. Producer Pal ships one — a drop-in folder that drives the
+[REST API](/guide/rest-api), so a coding agent can control Ableton Live with no
+MCP client at all.
+
+It stays a thin bootstrap rather than a copy of the guidance: it tells the agent
+to call [`ppal-connect`](#ppal-connect) first, which returns the same skill set
+described above. So the two fit together — the Agent Skill is _how_ a coding
+agent reaches Producer Pal, and the skills it loads on connect are _what_ it
+learns. New tools and skill updates land in that response automatically, and the
+`SKILL.md` never needs to change.
+
+[Set up the Agent Skill →](/guide/skills)
