@@ -128,4 +128,17 @@ describe("context - memory scope", () => {
     );
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
+
+  it("throws when the node route reports failure, defaulting the error text", async () => {
+    // success:false with a truthy result still fails (|| not &&); the absent
+    // error field falls back to "unknown error".
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: false,
+      result: { content: "ignored" },
+    });
+
+    await expect(
+      context({ action: "read", scope: "memory", name: "x" }),
+    ).rejects.toThrow("memory.read failed: unknown error");
+  });
 });

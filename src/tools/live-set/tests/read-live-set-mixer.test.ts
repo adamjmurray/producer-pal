@@ -81,33 +81,9 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("excludes mixer properties from tracks when mixer is not included", () => {
-    setupLiveSetPathMappedMocks({
-      liveSetId: "live_set_id",
-      pathIdMap: {
-        "live_set tracks 0": "track1",
-        [String(livePath.masterTrack())]: "master",
-      },
-      objects: {
-        LiveSet: {
-          name: "Mixer Test Set",
-          tracks: children("track1"),
-          return_tracks: children(),
-          scenes: [],
-        },
-        "live_set tracks 0": {
-          has_midi_input: 1,
-          name: "Test Track",
-          mixer_device: children("mixer_1"),
-          clip_slots: [],
-          devices: [],
-        },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          devices: [],
-        },
-      },
-    });
+    // Full mixer-param mocks are registered, so gainDb/pan WOULD appear if the
+    // "mixer" include were (wrongly) propagated — guarding the includeMixer gate.
+    setupSingleTrackMixerMock({ displayValue: -6, panValue: 0.5 });
 
     const result = readLiveSet({
       include: ["tracks"],
