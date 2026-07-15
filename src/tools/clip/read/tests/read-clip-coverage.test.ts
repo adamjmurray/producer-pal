@@ -31,6 +31,31 @@ const DRUM_CHORD_NOTES = [
 const DRUM_MODE_OUTPUT = "v100 n/16 C1 1|1,3\nE1 1|1";
 const MELODIC_MODE_OUTPUT = "v100 n/16 C1 E1 1|1\nC1 1|3";
 
+// Set up a standalone 4/4 MIDI clip holding DRUM_CHORD_NOTES in slot 0/0, then
+// read its notes. `readOverrides` tweaks the readClip args (e.g. drumMode).
+function readDrumChordNotes(
+  readOverrides: Partial<Parameters<typeof readClip>[0]> = {},
+) {
+  setupMidiClipMock({
+    trackIndex: 0,
+    sceneIndex: 0,
+    notes: DRUM_CHORD_NOTES,
+    clipProps: {
+      is_midi_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      length: 4,
+    },
+  });
+
+  return readClip({
+    trackIndex: 0,
+    sceneIndex: 0,
+    include: ["notes"],
+    ...readOverrides,
+  }).notes;
+}
+
 describe("readClip - include flag gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -306,71 +331,17 @@ describe("readClip - drum mode resolution", () => {
       type: "Device",
       properties: { can_have_drum_pads: 1 },
     });
-    setupMidiClipMock({
-      trackIndex: 0,
-      sceneIndex: 0,
-      notes: DRUM_CHORD_NOTES,
-      clipProps: {
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
 
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["notes"],
-    });
-
-    expect(result.notes).toBe(DRUM_MODE_OUTPUT);
+    expect(readDrumChordNotes()).toBe(DRUM_MODE_OUTPUT);
   });
 
   it("uses melodic notation for a standalone read of a non-drum track", () => {
-    setupMidiClipMock({
-      trackIndex: 0,
-      sceneIndex: 0,
-      notes: DRUM_CHORD_NOTES,
-      clipProps: {
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
-
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["notes"],
-    });
-
-    expect(result.notes).toBe(MELODIC_MODE_OUTPUT);
+    expect(readDrumChordNotes()).toBe(MELODIC_MODE_OUTPUT);
   });
 
   it("honors an explicit precomputed drumMode over the track scan", () => {
     // drumMode:true is passed even though the track is NOT a drum rack. The
     // precomputed value must win (nullish-coalesce), yielding drum notation.
-    setupMidiClipMock({
-      trackIndex: 0,
-      sceneIndex: 0,
-      notes: DRUM_CHORD_NOTES,
-      clipProps: {
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-      },
-    });
-
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["notes"],
-      drumMode: true,
-    });
-
-    expect(result.notes).toBe(DRUM_MODE_OUTPUT);
+    expect(readDrumChordNotes({ drumMode: true })).toBe(DRUM_MODE_OUTPUT);
   });
 });

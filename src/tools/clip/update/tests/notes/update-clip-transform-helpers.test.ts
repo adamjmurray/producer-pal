@@ -9,21 +9,7 @@ import {
   applyTransformsToExistingNotes,
   buildClipContext,
 } from "../../helpers/update-clip-transform-helpers.ts";
-
-// Helper to create raw notes as returned by Live API (with extra properties)
-function rawNote(pitch: number, startTime: number, noteId: number) {
-  return {
-    note_id: noteId,
-    pitch,
-    start_time: startTime,
-    duration: 1,
-    velocity: 100,
-    mute: 0,
-    probability: 1,
-    velocity_deviation: 0,
-    release_velocity: 64,
-  };
-}
+import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 
 function createSessionClipMock(length = 8) {
   return {
@@ -34,37 +20,6 @@ function createSessionClipMock(length = 8) {
       return 0;
     }),
   };
-}
-
-// Mock clip that returns `existingNotes` from get_notes_extended and captures
-// every note passed to add_new_notes into the returned `addedNotes` array.
-function makeNotesMockClip<T extends object = Record<string, number>>(
-  existingNotes: object[],
-  length = 4,
-): {
-  mockClip: {
-    getProperty: ReturnType<typeof vi.fn>;
-    call: ReturnType<typeof vi.fn>;
-  };
-  addedNotes: T[];
-} {
-  const addedNotes: T[] = [];
-  const mockClip = {
-    getProperty: vi.fn((prop: string) => (prop === "length" ? length : 0)),
-    call: vi.fn((method: string, ...args: unknown[]) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: existingNotes });
-      }
-
-      if (method === "add_new_notes") {
-        addedNotes.push(...(args[0] as { notes: T[] }).notes);
-      }
-
-      return "[]";
-    }),
-  };
-
-  return { mockClip, addedNotes };
 }
 
 describe("update-clip-transform-helpers", () => {
