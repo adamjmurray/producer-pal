@@ -482,6 +482,22 @@ describe("App", () => {
       expect(contextStub()).not.toBe(null);
     });
 
+    it("wraps the editor in a stable element so tab switches don't re-flash the panel", () => {
+      // The overlay fade-in animation targets `.settings-overlay > *`, and
+      // ContextTabs remounts its screen root on every tab switch. The editor must
+      // sit inside a stable wrapper — remounting the overlay's direct child would
+      // re-run the opacity 0→1 fade and flash the blurred chat UI through the panel.
+      const { container } = render(<App />);
+
+      openContext(container);
+      const overlay = container.querySelector(".settings-overlay");
+      const stub = contextStub();
+
+      // The animated direct child is the stable wrapper, not the editor itself.
+      expect(stub?.parentElement).not.toBe(overlay);
+      expect(overlay?.firstElementChild).toBe(stub?.parentElement);
+    });
+
     it("opens the context overlay from the Settings tools-tab Edit Context link", async () => {
       vi.useFakeTimers();
       (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({

@@ -278,10 +278,19 @@ export function App() {
             if (e.target === e.currentTarget) attemptCloseContext();
           }}
         >
-          <ContextTabs
-            onClose={closeContext}
-            confirmLeaveRef={contextConfirmLeaveRef}
-          />
+          {/* Stable panel wrapper. The overlay's fade-in/out animation targets
+              `.settings-overlay > *` (see main.css), and ContextTabs remounts
+              its screen root on every tab switch — doc tabs are keyed, Skills and
+              Memory are different components. Without this wrapper each switch
+              re-ran the opacity 0→1 fade and flashed the blurred chat UI through
+              the panel. The wrapper stays mounted across tab switches, so the
+              panel fades once on open (matching the Settings overlay). */}
+          <div>
+            <ContextTabs
+              onClose={closeContext}
+              confirmLeaveRef={contextConfirmLeaveRef}
+            />
+          </div>
         </div>
       )}
       {showSettings && (
