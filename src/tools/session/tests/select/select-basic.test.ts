@@ -273,6 +273,15 @@ describe("view", () => {
         "highlighted_clip_slot",
         `id ${clipSlot.id}`,
       );
+      // No view was requested, so the conflict warn (which is gated on a
+      // non-null requestedView) must not fire.
+      const outletMock = (globalThis as Record<string, unknown>)
+        .outlet as ReturnType<typeof vi.fn>;
+
+      expect(outletMock).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("ignoring view="),
+      );
     });
   });
 
@@ -294,6 +303,24 @@ describe("view", () => {
       // Live switches to the clip's required (session) view, so the response
       // must report that — not the overridden requested "arrangement" view.
       expect(result.view).toBe("session");
+    });
+
+    it("does not warn when the requested view already matches the clip's required view", () => {
+      // Negative control for the conflict warn: a session clip requested with
+      // view="session" agrees with its required view, so no warning fires.
+      const { clip } = setupSessionClipMock("session_clip_match", 1, 2);
+
+      setupSongViewMock();
+
+      select({ id: `id ${clip.id}`, view: "session" });
+
+      const outletMock = (globalThis as Record<string, unknown>)
+        .outlet as ReturnType<typeof vi.fn>;
+
+      expect(outletMock).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("ignoring view="),
+      );
     });
   });
 

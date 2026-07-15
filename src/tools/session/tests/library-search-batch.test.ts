@@ -233,6 +233,31 @@ describe("library tool — searchBatch action", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("exceeds cap of 20"),
     );
+    // The dropped count must be queries - cap (25 - 20 = 5), not a sum.
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("ignoring the extra 5"),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("does not warn when the batch is exactly at the cap of 20", async () => {
+    // Boundary of the > cap guard: 20 queries is allowed in full, so no warn.
+    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
+
+    mockSearchByFilter({});
+
+    const queries = Array.from({ length: 20 }, (_, i) => ({
+      query: String(i),
+    }));
+    const result = await library({ action: "searchBatch", queries });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results).toHaveLength(20);
+    expect(warnSpy).not.toHaveBeenCalled();
 
     warnSpy.mockRestore();
   });
@@ -356,6 +381,60 @@ describe("library tool — searchBatch action", () => {
 
     if (!("results" in result)) throw new Error("expected results");
     expect("stalenessRisk" in result).toBe(false);
+  });
+
+  it("keeps the first stalenessRisk reading when two queries report different ones", async () => {
+    // Staleness is a single global DB property; the batch captures the first
+    // non-null reading and must not overwrite it with a later query's copy.
+    const first = {
+      kind: "wal-pending" as const,
+      dbMtime: 1_000_000,
+      walMtime: 4_600_000,
+      walSizeMb: 12,
+      ageSeconds: 3_600,
+    };
+    const second = {
+      kind: "wal-pending" as const,
+      dbMtime: 9_000_000,
+      walMtime: 9_600_000,
+      walSizeMb: 99,
+      ageSeconds: 9_999,
+    };
+
+    vi.mocked(protocolMock.requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: { dbAvailable: true, stalenessRisk: first, items: [] },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        result: { dbAvailable: true, stalenessRisk: second, items: [] },
+      });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ tags: "Kick" }, { tags: "Snare" }],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.stalenessRisk).toStrictEqual(first);
+  });
+
+  it("omits the reason key on an entry whose query returned no reason", async () => {
+    // A matched query with no diagnostic must yield { label, items } exactly —
+    // no reason: undefined leaking into the entry.
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ label: "Kicks", tags: "Kick" }],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    const entry = result.results[0];
+
+    expect(entry).toBeDefined();
+    expect(entry && "reason" in entry).toBe(false);
   });
 
   it("preserves entries from other queries when a single query throws (per-query graceful degrade)", async () => {
