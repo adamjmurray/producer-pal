@@ -12,7 +12,7 @@ import {
   registerMockObject,
   registerSimplerDevice,
   updateDevice,
-} from "./update-device-test-helpers.ts";
+} from "../update-device-test-helpers.ts";
 
 describe("updateDevice - param value conversion", () => {
   describe("non-linear params (binary search)", () => {

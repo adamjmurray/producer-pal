@@ -32,6 +32,11 @@ describe("updateDevice - focus functionality", () => {
       path: livePath.track(0).device(1),
       type: "Device",
     });
+
+    registerMockObject("789", {
+      path: livePath.track(0).device(2),
+      type: "Device",
+    });
   });
 
   it("should select device and show device detail when focus=true", () => {
@@ -44,10 +49,12 @@ describe("updateDevice - focus functionality", () => {
   });
 
   it("should select last device when focus=true with multiple devices", () => {
-    updateDevice({ ids: "123,456", name: "Test", focus: true });
+    // Three devices so "last" (789) is distinct from index +1 (456): pins
+    // result.at(-1), not a coincidental two-element match.
+    updateDevice({ ids: "123,456,789", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
-      deviceId: "456",
+      deviceId: "789",
       detailView: "device",
     });
     expect(selectMock.get()).toHaveBeenCalledTimes(1);

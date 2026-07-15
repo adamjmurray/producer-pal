@@ -211,6 +211,25 @@ describe("readDevice with drum pad path", () => {
     );
   });
 
+  it("should throw for a chain index equal to the chain count (boundary)", () => {
+    // One chain (index 0); "c1" is one past the end. Pins the `>=` bound: a `>`
+    // mutant would fall through to an assertDefined error instead.
+    setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
+
+    expect(() => readDevice({ path: "t1/d0/pC1/c1" })).toThrow(
+      "Invalid chain index in path: t1/d0/pC1/c1",
+    );
+  });
+
+  it("should throw for a non-numeric chain segment", () => {
+    // "cX" parses to NaN; the NaN guard must reject it with the index error.
+    setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
+
+    expect(() => readDevice({ path: "t1/d0/pC1/cX" })).toThrow(
+      "Invalid chain index in path: t1/d0/pC1/cX",
+    );
+  });
+
   it("should read device inside drum pad chain", () => {
     setupKickPadMocks({
       padExtra: { chainIds: ["chain-1"] },
@@ -251,6 +270,36 @@ describe("readDevice with drum pad path", () => {
 
     expect(() => readDevice({ path: "t1/d0/pC1/c0/d5" })).toThrow(
       "Invalid device index in path: t1/d0/pC1/c0/d5",
+    );
+  });
+
+  it("should throw for a device index equal to the device count (boundary)", () => {
+    // One device (index 0); "d1" is one past the end (pins the `>=` bound).
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
+      chainProperties: {
+        "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
+      },
+      deviceProperties: { "device-1": simplerDevice },
+    });
+
+    expect(() => readDevice({ path: "t1/d0/pC1/c0/d1" })).toThrow(
+      "Invalid device index in path: t1/d0/pC1/c0/d1",
+    );
+  });
+
+  it("should throw for a non-numeric device segment", () => {
+    // "dX" parses to NaN; the NaN guard must reject it with the index error.
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
+      chainProperties: {
+        "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
+      },
+      deviceProperties: { "device-1": simplerDevice },
+    });
+
+    expect(() => readDevice({ path: "t1/d0/pC1/c0/dX" })).toThrow(
+      "Invalid device index in path: t1/d0/pC1/c0/dX",
     );
   });
 });

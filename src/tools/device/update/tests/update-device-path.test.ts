@@ -345,6 +345,18 @@ describe("updateDevice with path parameter", () => {
 
       expect(result).toStrictEqual([]);
     });
+
+    it("should warn and skip a malformed path that fails to resolve", () => {
+      // "zzz" is not a valid path segment, so resolvePathToLiveApi throws; the
+      // safe resolver catches it, warns, and drops the item instead of aborting.
+      const result = updateDevice({ path: "zzz", name: "Test" });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("updateDevice:"),
+      );
+      expect(result).toStrictEqual([]);
+    });
   });
 
   describe("multiple comma-separated paths", () => {

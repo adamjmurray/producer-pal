@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { paramsInputSchema } from "../device-params-schema.ts";
-import { normalizeParamValue } from "../update-device-param-parser.ts";
+import { paramsInputSchema } from "../../device-params-schema.ts";
+import { normalizeParamValue } from "../../update-device-param-parser.ts";
 
 describe("normalizeParamValue", () => {
   it("coerces numeric values", () => {
