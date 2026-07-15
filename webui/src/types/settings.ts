@@ -31,8 +31,63 @@ export type Provider =
   | "ollama"
   | "custom";
 
+/**
+ * Voice-mode settings fields shared between the full settings hook
+ * (UseSettingsReturn) and the voice-only hook (UseVoiceModeSettingsReturn).
+ * The voice session reads these at connect time; the in-modal / saved split
+ * lets an edit during a live session take effect only on the next Stop → Talk
+ * (except voiceVolume, which applies live).
+ */
+export interface VoiceModeSettingsFields {
+  /** In-modal voice selection for the OpenAI Realtime API. Editing this
+   * during a live voice session does NOT change the active voice — the
+   * RealtimeAgent locks the voice at connect time. Takes effect on the next
+   * Stop → Talk cycle. */
+  realtimeVoice: string;
+  setRealtimeVoice: (voice: string) => void;
+
+  /** Persisted voice setting (last save). Used by useVoiceSession at connect
+   * time so an in-modal edit doesn't reach into the live session. */
+  savedRealtimeVoice: string;
+
+  /** In-modal voice playback speed multiplier (audio.output.speed for the
+   * OpenAI Realtime API). Mid-session edits don't affect the live session —
+   * applied on the next Stop → Talk. */
+  voiceSpeed: number;
+  setVoiceSpeed: (speed: number) => void;
+
+  /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
+  savedVoiceSpeed: number;
+
+  /** Client-side playback volume (0.0–1.25, applied via a Web Audio GainNode
+   * so it can boost above unity). Unlike the other voice settings, this is
+   * applied live — useVoiceSession reads this value directly and a mid-session
+   * change updates loudness immediately. */
+  voiceVolume: number;
+  setVoiceVolume: (volume: number) => void;
+
+  /** In-modal OpenAI Realtime turn-detection (VAD) settings. Mid-session edits
+   * don't affect the live session — applied on the next Stop → Talk. */
+  turnDetection: TurnDetectionSettings;
+  setTurnDetection: (settings: TurnDetectionSettings) => void;
+
+  /** Persisted turn-detection settings (last save). Read by useVoiceSession at
+   * connect time. */
+  savedTurnDetection: TurnDetectionSettings;
+
+  /** In-modal voice-chat language (ISO-639-1 code). Provider-agnostic — locks
+   * both backends to the chosen language. Mid-session edits don't affect the
+   * live session; applied on the next Stop → Talk. */
+  voiceLanguage: string;
+  setVoiceLanguage: (language: string) => void;
+
+  /** Persisted voice language (last save). Read by the voice session hooks at
+   * connect time. */
+  savedVoiceLanguage: string;
+}
+
 // Hook return type for useSettings
-export interface UseSettingsReturn {
+export interface UseSettingsReturn extends VoiceModeSettingsFields {
   provider: Provider;
   setProvider: (provider: Provider) => void;
   apiKey: string;
@@ -122,50 +177,4 @@ export interface UseSettingsReturn {
   notationDirty: boolean;
   setNotation: (notation: Notation) => void;
   seedNotation: (notation: Notation) => void;
-
-  /** In-modal voice selection for the OpenAI Realtime API. Editing this
-   * during a live voice session does NOT change the active voice — the
-   * RealtimeAgent locks the voice at connect time. Takes effect on the next
-   * Stop → Talk cycle. */
-  realtimeVoice: string;
-  setRealtimeVoice: (voice: string) => void;
-
-  /** Persisted voice setting (last save). Used by useVoiceSession at connect
-   * time so an in-modal edit doesn't reach into the live session. */
-  savedRealtimeVoice: string;
-
-  /** In-modal voice playback speed multiplier (audio.output.speed for the
-   * OpenAI Realtime API). Mid-session edits don't affect the live session —
-   * applied on the next Stop → Talk. */
-  voiceSpeed: number;
-  setVoiceSpeed: (speed: number) => void;
-
-  /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
-  savedVoiceSpeed: number;
-
-  /** Client-side playback volume (0.0–1.25, applied via a Web Audio GainNode
-   * so it can boost above unity). Unlike the other voice settings, this is
-   * applied live — useVoiceSession reads this value directly and a mid-session
-   * change updates loudness immediately. */
-  voiceVolume: number;
-  setVoiceVolume: (volume: number) => void;
-
-  /** In-modal OpenAI Realtime turn-detection (VAD) settings. Mid-session edits
-   * don't affect the live session — applied on the next Stop → Talk. */
-  turnDetection: TurnDetectionSettings;
-  setTurnDetection: (settings: TurnDetectionSettings) => void;
-
-  /** Persisted turn-detection settings (last save). Read by useVoiceSession at
-   * connect time. */
-  savedTurnDetection: TurnDetectionSettings;
-
-  /** In-modal voice-chat language (ISO-639-1 code). Provider-agnostic — locks
-   * both backends to the chosen language. Mid-session edits don't affect the
-   * live session; applied on the next Stop → Talk. */
-  voiceLanguage: string;
-  setVoiceLanguage: (language: string) => void;
-
-  /** Persisted voice language (last save). Read by the voice session hooks at
-   * connect time. */
-  savedVoiceLanguage: string;
 }

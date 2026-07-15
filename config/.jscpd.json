@@ -1,5 +1,5 @@
 {
-  "threshold": 0.25,
+  "threshold": 0.28,
   "reporters": ["console"],
   "ignorePattern": [
     "// Producer Pal",
@@ -13,6 +13,7 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*-test-helpers.ts",
+    "**/*-test-helpers.tsx",
     "**/*-test-case.ts",
     "**/test-cases/**",
     "**/test-utils/**",

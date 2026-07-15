@@ -227,11 +227,18 @@ jobs:
           | Code Group | Files Scanned | Duplications Found | Duplicated Lines | Max Allowed |
           |------------|---------------|--------------|------------------|-------------|
           EOF
-          grep "^Source " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \3 | \1 | \2% | ${MAX_SOURCE}% |/" >> /tmp/summary.md
-          grep "^Tests " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \3 | \1 | \2% | ${MAX_TESTS}% |/" >> /tmp/summary.md
-          grep "^Scripts " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Scripts | \3 | \1 | \2% | ${MAX_SCRIPTS}% |/" >> /tmp/summary.md
-          grep "^Evals " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Evals | \3 | \1 | \2% | ${MAX_EVALS}% |/" >> /tmp/summary.md
-          grep "^E2E " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| E2E | \3 | \1 | \2% | ${MAX_E2E}% |/" >> /tmp/summary.md
+          # jscpd 5 prints the group label ("Source ") and the "Found ..." data on
+          # separate lines (label lands on the stderr "Using config" banner; data is
+          # on stdout). Grab the labeled block, isolate its "Found" line, then parse.
+          dup_row() { # $1=label $2=max-threshold
+            grep -A3 "^$1" duplication-output.txt | grep "Found" | head -1 | \
+              sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| $1 | \3 | \1 | \2% | $2% |/"
+          }
+          dup_row Source "${MAX_SOURCE}" >> /tmp/summary.md
+          dup_row Tests "${MAX_TESTS}" >> /tmp/summary.md
+          dup_row Scripts "${MAX_SCRIPTS}" >> /tmp/summary.md
+          dup_row Evals "${MAX_EVALS}" >> /tmp/summary.md
+          dup_row E2E "${MAX_E2E}" >> /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
