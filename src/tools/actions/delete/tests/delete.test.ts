@@ -415,5 +415,69 @@ describe("deleteObject", () => {
     ]);
   });
 
+  it("should delete multi-digit track indices in descending order", () => {
+    // Two-digit indices guard both the sort regex and the delete regex: a
+    // `\d`-only match reads "13" as "1", which would collapse the descending
+    // order AND pass a truncated index to delete_track.
+    setupTrackMocks({
+      track_2: String(livePath.track(2)),
+      track_13: String(livePath.track(13)),
+    });
+
+    deleteObject({ ids: "track_2,track_13", type: "track" });
+
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_track", 13);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_track", 2);
+  });
+
+  it("should delete a return track at a multi-digit index", () => {
+    registerMockObject("return_12", {
+      path: livePath.returnTrack(12),
+      type: "Track",
+    });
+
+    const result = deleteObject({ ids: "return_12", type: "track" });
+
+    expect(result).toStrictEqual({
+      id: "return_12",
+      type: "track",
+      deleted: true,
+    });
+    expect(liveSet.call).toHaveBeenCalledWith("delete_return_track", 12);
+  });
+
+  it("should delete multi-digit scene indices in descending order", () => {
+    setupSceneMocks({
+      scene_3: livePath.scene(3),
+      scene_12: livePath.scene(12),
+    });
+
+    deleteObject({ ids: "scene_3,scene_12", type: "scene" });
+
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_scene", 12);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_scene", 3);
+  });
+
+  it("should delete a clip on a multi-digit track index", () => {
+    registerMockObject("clip_10_0", {
+      path: livePath.track(10).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    const track10 = registerMockObject("live_set/tracks/10", {
+      path: livePath.track(10),
+    });
+
+    const result = deleteObject({ ids: "clip_10_0", type: "clip" });
+
+    expect(result).toStrictEqual({
+      id: "clip_10_0",
+      type: "clip",
+      deleted: true,
+    });
+    // A truncated "\d" would resolve track index 1, calling delete_clip on the
+    // wrong track — assert the two-digit track's own parent was called.
+    expect(track10.call).toHaveBeenCalledWith("delete_clip", "id clip_10_0");
+  });
+
   // Device deletion tests are in delete-device.test.js
 });

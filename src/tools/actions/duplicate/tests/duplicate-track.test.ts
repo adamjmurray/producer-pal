@@ -222,6 +222,11 @@ describe("duplicate - track duplication", () => {
       "delete_device",
       1, // Index 1 where the Producer Pal device is
     );
+    // ...and the removal is reported to the user.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
+    );
   });
 
   it("should not remove Producer Pal device when withoutDevices is true", async () => {
@@ -254,7 +259,7 @@ describe("duplicate - track duplication", () => {
     });
 
     it("should configure routing when routeToSource is true", async () => {
-      setupRoutingMocks({
+      const { sourceTrack, newTrack } = setupRoutingMocks({
         monitoringState: 1,
         inputRoutingName: "Audio In",
       });
@@ -266,6 +271,68 @@ describe("duplicate - track duplication", () => {
       });
 
       expect(result).toStrictEqual(createTrackResult(1));
+
+      // Source input was "Audio In" (not "No Input"), so it is switched to the
+      // "No Input" routing type and the change is reported.
+      expect(sourceTrack.set).toHaveBeenCalledWith(
+        "input_routing_type",
+        JSON.stringify({ input_routing_type: { identifier: "no_input_id" } }),
+      );
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'Changed track "Source Track" input routing from "Audio In" to "No Input"',
+      );
+
+      // New track output is routed to the (single-name-match) source track.
+      expect(newTrack.set).toHaveBeenCalledWith(
+        "output_routing_type",
+        JSON.stringify({
+          output_routing_type: { identifier: "source_track_id" },
+        }),
+      );
+    });
+
+    it("warns when the source track name is absent from the output routing options", async () => {
+      // newTrack advertises only "Master" as an output — the source name has no
+      // match, so no output routing is applied and the miss is reported.
+      registerMockObject("track1", { path: livePath.track(0) });
+      registerMockObject("live_set", { path: livePath.liveSet });
+      registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+        properties: {
+          name: "Source Track",
+          // Already "No Input" so the input-routing branch is skipped; JSON
+          // string form matches what getProperty() parses.
+          input_routing_type: JSON.stringify({
+            input_routing_type: { display_name: "No Input" },
+          }),
+          arm: 1,
+        },
+      });
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
+          available_output_routing_types: JSON.stringify({
+            available_output_routing_types: [
+              { display_name: "Master", identifier: "master_id" },
+            ],
+          }),
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+        },
+      });
+
+      await duplicate({ type: "track", id: "track1", routeToSource: true });
+
+      expect(newTrack.set).not.toHaveBeenCalledWith(
+        "output_routing_type",
+        expect.anything(),
+      );
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'Could not find track "Source Track" in routing options',
+      );
     });
 
     it("should not change source track monitoring if already set to In", async () => {
@@ -337,6 +404,7 @@ describe("duplicate - track duplication", () => {
     it("should arm the source track when routeToSource is true", async () => {
       const { sourceTrack } = setupRoutingMocks({
         inputRoutingName: "Audio In",
+        arm: 0,
       });
 
       await duplicate({
@@ -347,6 +415,12 @@ describe("duplicate - track duplication", () => {
 
       // Verify the source track was armed
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
+
+      // It wasn't already armed, so the arm action is reported.
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "routeToSource: Armed the source track",
+      );
     });
 
     it("should not emit arm warning when source track is already armed", async () => {

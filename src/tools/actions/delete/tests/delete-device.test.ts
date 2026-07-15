@@ -64,6 +64,17 @@ describe("deleteObject device deletion", () => {
     );
   });
 
+  it("should delete a device at a multi-digit index", () => {
+    // A `\d`-only device-index regex would read "12" as "1" and delete the
+    // wrong device.
+    expectDeviceDeleted(
+      "device_12",
+      String(livePath.track(0).device(12)),
+      String(livePath.track(0)),
+      12,
+    );
+  });
+
   it("should delete multiple devices", () => {
     const ids = "device_1,device_2";
 
@@ -112,6 +123,23 @@ describe("deleteObject device deletion", () => {
       { id: "device_0_1", type: "device", deleted: true },
       { id: "device_0_0", type: "device", deleted: true },
     ]);
+  });
+
+  it("should order multi-digit sibling device indices highest-first", () => {
+    // parsePathSegments must read the FULL index: a `\d`-only match reads
+    // "devices 13" as index 1, sorting it below index 2 and flipping the
+    // positional delete order (which would then shift the survivor down).
+    const { parents } = setupDeviceMocks(["d2", "d13"], {
+      d2: String(livePath.track(0).device(2)),
+      d13: String(livePath.track(0).device(13)),
+    });
+
+    deleteObject({ ids: "d2,d13", type: "device" });
+
+    const parent = parents.get(String(livePath.track(0)));
+
+    expect(parent?.call).toHaveBeenNthCalledWith(1, "delete_device", 13);
+    expect(parent?.call).toHaveBeenNthCalledWith(2, "delete_device", 2);
   });
 
   it("should delete a device referenced by a duplicate id only once", () => {
@@ -263,33 +291,47 @@ describe("deleteObject device deletion", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("orders cross-collection siblings (chains vs return_chains) by a stable name comparison", () => {
+    it("orders cross-collection siblings (chains before return_chains) deterministically", () => {
       // When two device paths diverge at a sub-collection name (chains vs
       // return_chains under the same device) the deletes are independent, so the
-      // order is correctness-irrelevant — the comparator falls back to a stable
-      // name comparison. Run both input orders so both arms of that comparison
-      // are exercised; either way both devices delete successfully.
+      // order is correctness-irrelevant — but the comparator still returns a
+      // DETERMINISTIC order (a stable name compare: "chains" < "return_chains" →
+      // chains first) to keep the sort transitive. Pin that order's sign in BOTH
+      // input orders: forward exercises the natural compare, reversed proves the
+      // tiebreaker (not input order) decides — which a blanked/flipped comparator
+      // would get wrong.
       const rack = String(livePath.track(0).device(0));
 
-      const firstResult = (() => {
-        setupDeviceMocks(["ch", "rc"], {
-          ch: `${rack} chains 0 devices 0`,
-          rc: `${rack} return_chains 0 devices 0`,
+      function deleteAndMeasure(
+        ids: string,
+        chId: string,
+        rcId: string,
+      ): { result: unknown; chainOrder: number; returnChainOrder: number } {
+        const { parents } = setupDeviceMocks([chId, rcId], {
+          [chId]: `${rack} chains 0 devices 0`,
+          [rcId]: `${rack} return_chains 0 devices 0`,
         });
 
-        return deleteObject({ ids: "ch, rc", type: "device" });
-      })();
+        const result = deleteObject({ ids, type: "device" });
+        const chainOrder =
+          parents.get(`${rack} chains 0`)?.call.mock.invocationCallOrder[0] ??
+          0;
+        const returnChainOrder =
+          parents.get(`${rack} return_chains 0`)?.call.mock
+            .invocationCallOrder[0] ?? 0;
 
-      const secondResult = (() => {
-        setupDeviceMocks(["ch2", "rc2"], {
-          ch2: `${rack} chains 0 devices 0`,
-          rc2: `${rack} return_chains 0 devices 0`,
-        });
+        return { result, chainOrder, returnChainOrder };
+      }
 
-        return deleteObject({ ids: "rc2, ch2", type: "device" });
-      })();
+      const forward = deleteAndMeasure("ch, rc", "ch", "rc");
+      const reversed = deleteAndMeasure("rc2, ch2", "ch2", "rc2");
 
-      for (const result of [firstResult, secondResult]) {
+      for (const { result, chainOrder, returnChainOrder } of [
+        forward,
+        reversed,
+      ]) {
+        // chains deletes before return_chains regardless of input order.
+        expect(chainOrder).toBeLessThan(returnChainOrder);
         expect(result).toHaveLength(2);
         expect(result).toStrictEqual(
           expect.arrayContaining([
