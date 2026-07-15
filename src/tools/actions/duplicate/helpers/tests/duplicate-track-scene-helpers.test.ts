@@ -118,7 +118,7 @@ describe("duplicate-track-scene-helpers", () => {
         properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
       });
 
-      registerMockObject("live_set/tracks/1", {
+      const newTrack = registerMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
@@ -131,6 +131,12 @@ describe("duplicate-track-scene-helpers", () => {
       });
 
       expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
+      // No name/color/routeToSource → none of those side effects fire.
+      expect(newTrack.set).not.toHaveBeenCalledWith("name", expect.anything());
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("routing options"),
+      );
     });
 
     it("should set name when provided", () => {
@@ -365,7 +371,7 @@ describe("duplicate-track-scene-helpers", () => {
         path: livePath.track(1),
         properties: {
           devices: [],
-          clip_slots: children("slot0"),
+          clip_slots: children("slot0", "emptySlot"),
           arrangement_clips: [],
         },
       });
@@ -373,10 +379,16 @@ describe("duplicate-track-scene-helpers", () => {
         path: livePath.track(1).clipSlot(0),
         properties: { has_clip: 1 },
       });
+      const emptySlot = registerMockObject("emptySlot", {
+        path: livePath.track(1).clipSlot(1),
+        properties: { has_clip: 0 },
+      });
 
       duplicateTrack(0, undefined, undefined, true);
 
       expect(slot0.call).toHaveBeenCalledWith("delete_clip");
+      // An empty slot (has_clip 0) is skipped, not deleted.
+      expect(emptySlot.call).not.toHaveBeenCalledWith("delete_clip");
     });
 
     it("should not set color when color is not provided", () => {
@@ -448,6 +460,10 @@ describe("duplicate-track-scene-helpers", () => {
       // Should collect arrangement clips
       expect(result.clips.length).toBeGreaterThan(0);
       expect(result.clips[0]!.id).toBe(arrClipId);
+      // Arrangement clips on a duplicated track omit trackIndex (they all share
+      // the new track) but keep arrangementStart.
+      expect(result.clips[0]).not.toHaveProperty("trackIndex");
+      expect(result.clips[0]).toHaveProperty("arrangementStart");
     });
   });
 
@@ -474,7 +490,7 @@ describe("duplicate-track-scene-helpers", () => {
 
   describe("duplicateScene", () => {
     it("should duplicate a scene and return basic info", () => {
-      const { liveSet } = setupDuplicateSceneMocks();
+      const { liveSet, scene } = setupDuplicateSceneMocks();
 
       const result = duplicateScene(0);
 
@@ -484,6 +500,8 @@ describe("duplicate-track-scene-helpers", () => {
       });
 
       expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
+      // No name provided → the name setter is skipped.
+      expect(scene.set).not.toHaveBeenCalledWith("name", expect.anything());
     });
 
     it("should set name when provided", () => {

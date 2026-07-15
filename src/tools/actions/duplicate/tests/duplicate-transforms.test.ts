@@ -68,6 +68,11 @@ describe("duplicate - transforms/code", () => {
         { ids: destId, transforms: "velocity *= 0.5", code: undefined },
         expect.anything(),
       );
+      // A clip legitimately supports transforms — the "ignored" warn (gated on
+      // type !== "clip") must NOT fire here.
+      expect(consoleMock.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("transforms/code ignored"),
+      );
       expect(result).toStrictEqual({
         id: destId,
         slot: "0/1",
@@ -154,6 +159,28 @@ describe("duplicate - transforms/code", () => {
         type: "track",
         id: "track1",
         transforms: "velocity *= 0.5",
+      });
+
+      expect(updateClipMock).not.toHaveBeenCalled();
+      expect(consoleMock.warn).toHaveBeenCalledWith(
+        expect.stringContaining("transforms/code ignored"),
+      );
+    });
+
+    it("warns and skips code (no transforms) for non-clip types", async () => {
+      // Exercises the `code != null` arm of the ignore condition independently
+      // of transforms, so a mutated `code == null` no longer suppresses the warn.
+      registerMockObject("track1", { path: livePath.track(0) });
+      registerMockObject("live_set", { path: livePath.liveSet });
+      registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+      });
+
+      await duplicate({
+        type: "track",
+        id: "track1",
+        code: "return notes;",
       });
 
       expect(updateClipMock).not.toHaveBeenCalled();

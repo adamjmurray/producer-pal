@@ -52,12 +52,23 @@ export function registerClipSlot(
 interface SourceTrackMock {
   name: string;
   current_monitoring_state: number;
-  input_routing_type: { display_name: string };
-  available_input_routing_types: Array<{
-    display_name: string;
-    identifier: string;
-  }>;
+  // Live returns routing-type properties as JSON strings that getProperty()
+  // parses (an object/array here would trip its JSON.parse and yield null,
+  // silently skipping the real routing-change branches under test).
+  input_routing_type: string;
+  available_input_routing_types: string;
   arm?: number;
+}
+
+/**
+ * Wrap a routing-type value the way Live's API delivers it: a JSON string keyed
+ * by the property name, which getProperty() parses back out.
+ * @param property - Routing property name (e.g. "input_routing_type")
+ * @param value - The object or array value to wrap
+ * @returns JSON string as the raw Live API value
+ */
+function routingValue(property: string, value: unknown): string {
+  return JSON.stringify({ [property]: value });
 }
 
 /**
@@ -112,11 +123,16 @@ export function setupRouteToSourceMock(
   const sourceTrackMock: SourceTrackMock = {
     name: trackName,
     current_monitoring_state: monitoringState,
-    input_routing_type: { display_name: inputRoutingName },
-    available_input_routing_types: [
-      { display_name: "No Input", identifier: "no_input_id" },
-      { display_name: "Audio In", identifier: "audio_in_id" },
-    ],
+    input_routing_type: routingValue("input_routing_type", {
+      display_name: inputRoutingName,
+    }),
+    available_input_routing_types: routingValue(
+      "available_input_routing_types",
+      [
+        { display_name: "No Input", identifier: "no_input_id" },
+        { display_name: "Audio In", identifier: "audio_in_id" },
+      ],
+    ),
   };
 
   if (arm !== undefined) {
@@ -129,10 +145,13 @@ export function setupRouteToSourceMock(
       unknown
     >,
     [livePath.track(1).toString()]: {
-      available_output_routing_types: [
-        { display_name: "Master", identifier: "master_id" },
-        { display_name: trackName, identifier: "source_track_id" },
-      ],
+      available_output_routing_types: routingValue(
+        "available_output_routing_types",
+        [
+          { display_name: "Master", identifier: "master_id" },
+          { display_name: trackName, identifier: "source_track_id" },
+        ],
+      ),
     },
   };
 }

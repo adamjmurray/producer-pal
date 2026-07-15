@@ -70,6 +70,35 @@ describe("duplicate-focus-helpers", () => {
       expect(selectMock.get()).not.toHaveBeenCalled();
     });
 
+    it("does nothing for a track even when the destination would map to a view", () => {
+      // determineTargetView short-circuits to null for track/device BEFORE the
+      // destination is consulted, so a "session" destination must not select.
+      focusIfRequested(true, "session", "track", [{ id: "track1" }]);
+
+      expect(selectMock.get()).not.toHaveBeenCalled();
+    });
+
+    it("does nothing for a device even when the destination would map to a view", () => {
+      focusIfRequested(true, "session", "device", [{ id: "device1" }]);
+
+      expect(selectMock.get()).not.toHaveBeenCalled();
+    });
+
+    it("switches to session view for a scene without id and no destination", () => {
+      // Reaches determineTargetView's `type === "scene"` arm (a scene WITH id
+      // returns earlier), independent of the destination === "session" arm.
+      focusIfRequested(true, undefined, "scene", [{}]);
+
+      expect(selectMock.get()).toHaveBeenCalledWith({ view: "session" });
+    });
+
+    it("handles an empty createdObjects array without throwing", () => {
+      // `.at(-1)` is undefined here; the optional chain must not dereference it.
+      focusIfRequested(true, "session", "clip", []);
+
+      expect(selectMock.get()).toHaveBeenCalledWith({ view: "session" });
+    });
+
     it("falls back to view switch for clips without id", () => {
       focusIfRequested(true, "session", "clip", [{}]);
 

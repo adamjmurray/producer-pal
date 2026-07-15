@@ -46,7 +46,7 @@ describe("duplicate - device duplication", () => {
       path: livePath.liveSet,
     });
 
-    registerMockObject("live_set/tracks/1/devices/2", {
+    const tempDevice = registerMockObject("live_set/tracks/1/devices/2", {
       path: livePath.track(1).device(2),
     });
 
@@ -55,6 +55,12 @@ describe("duplicate - device duplication", () => {
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/devices/2",
     });
+
+    // Default count (1) and no name → neither the count warn nor the name set fire.
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("count parameter ignored"),
+    );
+    expect(tempDevice.set).not.toHaveBeenCalledWith("name", expect.anything());
 
     // Should duplicate track 0
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
@@ -253,6 +259,50 @@ describe("duplicate - device duplication", () => {
     // Should call duplicateDevice twice (once per path)
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(2);
+  });
+
+  it("should duplicate a device from a multi-digit source track index", async () => {
+    // extractRegularTrackIndex / extractDevicePathWithinTrack read the track
+    // index with \d+; a \d-only match would read "12" as "1" and look for the
+    // temp device on the wrong track, throwing "device not found".
+    registerMockObject("device1", {
+      path: livePath.track(12).device(0),
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/13/devices/0", {
+      path: livePath.track(13).device(0),
+    });
+
+    const result = await duplicate({ type: "device", id: "device1" });
+
+    expect(result).toStrictEqual({ id: "live_set/tracks/13/devices/0" });
+    // Default destination places the copy after the original on the source track.
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t12/d1",
+    );
+  });
+
+  it("should adjust a multi-digit destination track index after the source", async () => {
+    // adjustTrackIndicesForTempTrack matches and rewrites the destination track
+    // with \d+; a \d-only match would mangle "t12" into "t2"/"t132".
+    registerMockObject("device1", {
+      path: livePath.track(0).device(0),
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1/devices/0", {
+      path: livePath.track(1).device(0),
+    });
+
+    await duplicate({ type: "device", id: "device1", toPath: "t12/d0" });
+
+    // Temp track inserted at index 1 shifts t12 → t13.
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t13/d0",
+    );
   });
 
   it("should handle device path ending with chain segment (not device)", async () => {
