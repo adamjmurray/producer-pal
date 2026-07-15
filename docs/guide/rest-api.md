@@ -82,6 +82,19 @@ Returns (the default `json` format — see
   path, execution error)
 - **404** — unknown or disabled tool
 - **400** — invalid input (includes validation details)
+- **504** — the tool didn't finish before the timeout (see
+  [Per-request timeout](#per-request-timeout-timeoutms-n))
+- **500** — internal server error
+
+::: warning 504 and 500 use a different body shape
+
+The error responses do **not** carry `result` / `isError`. A 504 returns
+`{ "error": "...", "errorCode": "timeout" }` — check `errorCode` to distinguish
+a timeout from other failures — and a 500 returns `{ "error": "..." }`. Client
+code that reads `body.result` unconditionally will break on exactly the case the
+`timeoutMs` parameter below invites you to hit.
+
+:::
 
 Warnings from the Live API surface as a separate `warnings` string array (or
 inline in the `result` text under `?format=compact`). The `ppal-update-*` tools
@@ -123,12 +136,14 @@ With the default `json` format (or explicit `?format=json`):
 - **`appended`** is a `string[]` of extra Markdown text blocks the server
   attaches after the result. Currently only `ppal-connect` uses it, to deliver —
   in order — the Producer Pal skills (notation instructions), this Live Set's
-  project context, your `~/.producer-pal/context.md` global context, and your
-  memory index. Each block after the skills is self-labeling
+  project context, your `~/.producer-pal/context.md` global context, your memory
+  index, and a final next-step block. The context blocks are self-labeling
   (`Project context (this Live Set):`, `Global context (all projects):`,
-  `Memory index — …`), and only the blocks you have configured are present.
-  Present only when non-empty. In compact mode these blocks are joined into the
-  `result` string instead.
+  `Memory index — …`) and only appear when you've configured them; the skills
+  and the next-step block are always present, so `appended` is never empty on
+  `ppal-connect`. The next-step block names any empty context layers and tells
+  the AI what to do next, so don't assume the last element is context. In
+  compact mode these blocks are joined into the `result` string instead.
 - On **error** (`isError: true`), `result` is still a plain error string
   regardless of format — error messages are not JSON.
 

@@ -337,10 +337,13 @@ export function assertContextWrite(opts: {
 
         writes = writes.filter((args) => args.name === opts.name);
 
-        if (writes.length === 0 && wrongNames.length > 0) {
+        if (wrongNames.length > 0) {
           throw new Error(
-            `wrote a NEW memory "${wrongNames.join('", "')}" instead of ` +
-              `updating the existing "${opts.name}"`,
+            writes.length === 0
+              ? `wrote a NEW memory "${wrongNames.join('", "')}" instead of ` +
+                  `updating the existing "${opts.name}"`
+              : `updated "${opts.name}" but ALSO wrote ` +
+                  `"${wrongNames.join('", "')}" — the fact is now duplicated`,
           );
         }
       }
@@ -410,10 +413,45 @@ export function assertContextWritePreserves(opts: {
 }
 
 /**
+ * Assert the model did NOT write a given layer. The layer split only holds if
+ * the WRONG layer stays untouched: a model that dutifully writes global context
+ * and ALSO copies the same fact into memory has duplicated it into a place that
+ * will drift, and one that writes only memory has quietly downgraded an
+ * always-on fact to a lazy-loaded one. Neither is visible to an assertion that
+ * merely checks the right layer got written.
+ *
+ * @param opts - What must not have been written
+ * @param opts.scope - The layer that must NOT have been written
+ * @param opts.turn - Turn to check
+ * @returns Custom assertion
+ */
+export function assertNoContextWrite(opts: {
+  scope: "project" | "global" | "memory";
+  turn: number | "any";
+}): EvalAssertion {
+  return {
+    type: "custom",
+    description: `did not write context scope:${opts.scope}`,
+    assert: (turns) => {
+      const writes = contextCalls(turns, opts.turn, "write", opts.scope);
+
+      if (writes.length > 0) {
+        throw new Error(
+          `wrote scope:${opts.scope} — that fact belongs in another layer`,
+        );
+      }
+
+      return true;
+    },
+  };
+}
+
+/**
  * Assert the model did NOT write a user-owned layer on this turn. The skills
- * require confirming before writing project/global (a write REPLACES the whole
- * document), so an unprompted write on the turn the fact was merely stated is
- * the failure this catches.
+ * require confirming before REPLACING a project/global document that already
+ * has content, so an unprompted write on the turn the fact was merely stated is
+ * the failure this catches. Only meaningful when the document is non-empty: an
+ * empty one carries no such rule, since a write there destroys nothing.
  *
  * @param turn - Turn that should contain no project/global write
  * @returns Custom assertion

@@ -68,7 +68,11 @@ editor — the same editor the **Open Editor** button opens. See
 - **Status light** - Green while the server is running
 - **Start/Stop** - Control the server that connects AI to Live
 - **Port** - Network port for connections (default: 3350, change only if another
-  app uses this port)
+  app uses this port). If you do change it, point your clients at the new port
+  too: use the new URL directly wherever a doc shows `http://localhost:3350`,
+  and for the `npx producer-pal` bridge set the `MCP_SERVER_ORIGIN` environment
+  variable (e.g. `MCP_SERVER_ORIGIN=http://localhost:3400`) — it defaults to
+  `http://localhost:3350`.
 - **Timeout** - Maximum time for AI operations (default: 30 sec, increase on
   slow computers if experiencing timeouts during complex operations)
 
@@ -80,9 +84,11 @@ built-in [Chat UI](/guide/chat-ui), external MCP clients, and the
 
 - **Small Model Mode** - Reduces prompt size for local/smaller models like
   Ollama and LM Studio
-- **Notation** - How AI reads and writes clip notes: `barbeat` (the default),
-  `midi-json`, or `stark`. See
-  [custom notation](/features#custom-music-notation)
+- **Notation** - How AI reads and writes clip notes:
+  [`barbeat`](/features/midi-notation#bar-beat) (the default),
+  [`midi-json`](/features/midi-notation#midi-json), or
+  [`stark`](/features/midi-notation#stark). See
+  [MIDI Notation](/features/midi-notation) for what each one is good at
 
 AI is taught the notation at the start of a conversation, so switching notation
 takes full effect in a **new conversation**. In an ongoing chat, AI can still

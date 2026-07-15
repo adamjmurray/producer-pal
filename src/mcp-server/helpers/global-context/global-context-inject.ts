@@ -7,7 +7,7 @@ import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
-} from "../connect-append.ts";
+} from "../connect/connect-append.ts";
 import { readGlobalContext } from "./global-context-store.ts";
 
 // Hosts the connect-block injectors for BOTH machine-context blobs: the pinned

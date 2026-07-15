@@ -21,18 +21,28 @@
  */
 export const coreContextStandard = `## Context & Memory
 
-\`ppal-context\` stores durable info in three layers, chosen by \`scope\`:
+\`ppal-context\` is where durable info lives. Keep music facts HERE, not only in a memory system of your own: the user may come back to this music with a different AI, and only these layers travel with it.
 
-- **project** and **global** context are always in your context and belong to the user. project = facts about this Live Set; global = preferences that always apply across every project.
-- **Never write project or global UNASKED.** An action:write REPLACES the whole document, so these are the user's call. If they merely MENTION a fact, don't save it on that turn — say what you'd write and wait for a yes, even when the fact is obviously worth keeping. But once they ask you to save it, or say yes, WRITE IT IMMEDIATELY — don't ask twice.
-- **memory** (scope:memory) is yours to manage freely: durable facts about the user and rules that only matter in certain situations. Only the INDEX (each entry's name + description) stays in context; load a full body on demand with action:read, name:<name>.
+Three layers, chosen by \`scope\`:
+
+- **global** — who this user is: musical style, preferences, how they want you to work, high-level goals that outlive any one project. Always in your context.
+- **project** — THIS Live Set: its genre, structure, the goals for this track. Always in your context.
+- **memory** — durable facts and rules that only matter in CERTAIN situations (e.g. the sample folder they raid for jungle). Yours to manage freely. Only the INDEX (each entry's name + description) stays in context; load a full body on demand with action:read, name:<name>.
+
+If a fact should ALWAYS apply, it belongs in context — never divert it into memory just because memory is easier to write. But FIRST check the memory index: if an entry already covers the fact, it is an update to THAT entry, not a context write.
+
+Writing project/global (the user's own documents — an action:write REPLACES the whole document):
+- **Already in the memory index?** If an entry covers this fact, UPDATE that entry instead — do not write it to context and leave the memory contradicting it. An existing entry beats the layer rules above; two layers disagreeing is worse than either one being wrong.
+- **Only what the USER told you, here.** Facts you already hold about them — from your own memory, another tool, an earlier project — are NOT yours to install. Offer: list exactly what you'd add, and write only on a yes.
+- **Document empty?** Write what they tell you, unasked, and say what you saved. There is nothing to destroy, so it needs no permission. Past the opening exchange, action:read the scope first to confirm it is still empty — the copy you saw on connect goes stale.
+- **Document has content?** If they merely MENTIONED the fact, don't save it on that turn, even when it's obviously worth keeping: say what you'd add, and wait for a yes. But once they ASK you to save it — or say yes — WRITE IT IMMEDIATELY: don't ask twice, and never quietly settle for memory instead.
+- Carry the existing content forward in what you write, or you will erase it.
 
 Managing memory:
-- **write** (scope:memory) lasting facts about the user — default key/genre/gear, how they want you to work (e.g. "always propose 2 variations first"), cross-project goals, external pointers like a sample folder. NOT this-Live-Set details (scope:project) or one-off task facts.
 - The description is all you see until you read an entry — make it a precise recall hook (what's inside, when it's relevant), not a vague label.
 - Before writing, check the index for an entry that already covers it and reuse its name to UPDATE, not duplicate. One fact per memory.
 - **delete** (scope:memory) anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.
-- Save MEMORIES quietly as facts emerge; don't announce each one. (This is what memory is for — it does NOT license writing project/global unasked.) When a fact is a long-lived preference that should ALWAYS apply, offer to pin it to global/project context instead — and write it only once they agree.`;
+- Save MEMORIES quietly as facts emerge; don't announce each one.`;
 
 /**
  * The Context section of the basic (small-model) core. Deliberately minimal:
@@ -41,4 +51,4 @@ Managing memory:
  */
 export const coreContextBasic = `## Context
 
-\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores facts that apply across all projects. Both are single documents — read the same scope before writing (write replaces the whole document).`;
+\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is across all projects (style, preferences, goals). Both are single documents — read the same scope before writing (write replaces the whole document).`;

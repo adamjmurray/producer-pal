@@ -12,7 +12,7 @@ import * as console from "../node-for-max-logger.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
-} from "./connect-append.ts";
+} from "./connect/connect-append.ts";
 import { readSkillOverrides } from "./skill-overrides-store.ts";
 
 /**

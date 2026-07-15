@@ -139,6 +139,7 @@ export default defineConfig({
         text: "Features",
         link: "/features",
         items: [
+          { text: "MIDI Notation", link: "/features/midi-notation" },
           { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },
         ],

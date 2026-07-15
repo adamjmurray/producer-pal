@@ -29,11 +29,13 @@ envelopes (parameter values that change over time). See
 
 ## Claude Desktop Caches Tool Definitions
 
-If you change the "small model mode" setting in the Max for Live device while
-Claude Desktop is running, Claude Desktop will continue using the previously
-cached tool definitions. For example, if you launch Claude Desktop with small
-model mode enabled and then disable it, Claude Desktop will remain stuck in
-small model mode.
+If you change a setting that rewrites the tool definitions — **small model
+mode** or the **[notation](/features/midi-notation)** — in the Max for Live
+device while Claude Desktop is running, Claude Desktop will continue using the
+previously cached definitions. For example, if you launch Claude Desktop with
+small model mode enabled and then disable it, Claude Desktop will remain stuck
+in small model mode; switch the notation to Stark and it will keep writing
+bar|beat.
 
 **Workaround:** Either fully quit Claude Desktop (not just close the window) and
 relaunch it, or go to Settings → Extensions → Producer Pal → Configure and

@@ -43,21 +43,32 @@ agent decides the skill is relevant. The same folder works across all three:
 
 ::: info When to use this vs MCP
 
-Producer Pal's [MCP server](/installation) is the recommended path when your
-agent supports MCP — the tools come with rich descriptions and the LLM picks
-them up automatically.
+Both paths give the AI the same thing. The skill's bootstrap discovers the tools
+and their schemas (`--list-tools`) and calls `ppal-connect`, which returns the
+same Producer Pal Skills and [context](/guide/context) that MCP clients receive
+at session start — so neither route is "more automatic" than the other.
 
-The skill is for **REST-API-driven workflows**: agents not configured with the
-Producer Pal MCP server, scripts and pipelines that don't run an MCP client, or
-environments where you want a single drop-in folder rather than per-tool MCP
-setup.
+Use **MCP** when your client speaks it and isn't a coding agent: chat apps like
+[Claude Desktop](/installation/claude-desktop), the [Chat UI](/guide/chat-ui),
+and web clients. Tools appear natively in the client and nothing has to shell
+out.
+
+Use the **skill** with coding agents that can run commands. Because it drives
+the [REST API](/guide/rest-api) directly, it can change device settings
+mid-session — flip the [notation](/features/midi-notation), turn on
+[Direct Live API](/features#ppal-live-api), toggle small-model mode — and then
+re-read the schemas, all with `--set-config`. MCP clients bake the tool
+descriptions at the start of a conversation and have no tool for changing these
+settings, so the same switch means editing the device and starting a new
+conversation. It's also the answer for scripts and pipelines that don't run an
+MCP client at all.
 
 :::
 
 ## Install
 
 Copy the
-[`producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
+[`examples/skills/producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
 folder from the Producer Pal repo into your agent's skills directory.
 
 ```bash
@@ -85,10 +96,10 @@ follows its bootstrap:
    with input schemas, so the agent knows what's available without baking it
    into the skill.
 3. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
-   Skills (the note syntax for the active notation, code transforms,
-   conventions) — the same instructions Producer Pal's MCP clients receive at
-   session start. The skill stays small; the heavy guidance comes from Producer
-   Pal itself.
+   Skills (the note syntax for the active notation,
+   [transforms](/features/midi-notation#transforms), conventions) — the same
+   instructions Producer Pal's MCP clients receive at session start. The skill
+   stays small; the heavy guidance comes from Producer Pal itself.
 4. **Use the other tools** per those instructions, via
    `node ppal.mjs <tool> [json-args]`.
 
@@ -98,14 +109,16 @@ Producer Pal evolves: new tools, schema changes, and skill updates land in
 
 ### Notation and small-model mode
 
-Producer Pal encodes MIDI notes in one of three notations, chosen by a **global
-device setting**: `bar|beat` (the default — compact human-readable text),
-`midi-json` (notes as a JSON array), and `stark` (a literal `type: content`
-format with event-based drum hits). The setting changes the note syntax in every
-tool/argument description and in the `ppal-connect` Skills, and it also applies
-to the chat UI and any connected MCP clients. The skill sets `midi-json` because
-coding agents generate and parse JSON directly, rather than composing text
-notation by hand.
+Producer Pal encodes MIDI notes in one of three
+[notations](/features/midi-notation), chosen by a **global device setting**:
+[`bar|beat`](/features/midi-notation#bar-beat) (the default — compact
+human-readable text), [`midi-json`](/features/midi-notation#midi-json) (notes as
+a JSON array), and [`stark`](/features/midi-notation#stark) (a literal
+`type: content` format with event-based drum hits). The setting changes the note
+syntax in every tool/argument description and in the `ppal-connect` Skills, and
+it also applies to the chat UI and any connected MCP clients. The skill sets
+`midi-json` because coding agents generate and parse JSON directly, rather than
+composing text notation by hand.
 
 The skill also assumes **small-model mode is off** — coding agents generally run
 capable models that handle the full tool descriptions, so it's left at the

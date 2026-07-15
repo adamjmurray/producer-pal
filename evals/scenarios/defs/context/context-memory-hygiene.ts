@@ -25,6 +25,7 @@ import {
   TOOL_CONNECT,
   assertContextWrite,
   assertMemoryDeleted,
+  assertNoContextWrite,
   seedContext,
 } from "./context-scenario-helpers.ts";
 
@@ -64,8 +65,9 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
 
     // The superseding fact belongs in the entry that already covers it. Writing
     // a NEW name (e.g. "synth-preference") leaves the Serum entry behind, and
-    // the index then asserts two contradictory things. `count: 1` also catches
-    // updating the right entry AND spawning a duplicate alongside it.
+    // the index then asserts two contradictory things. Pinning `name` also
+    // fails a run that updates the right entry AND spawns a duplicate alongside
+    // it; `count: 1` rejects double-writes to the pinned name itself.
     assertContextWrite({
       scope: "memory",
       turn: 1,
@@ -73,12 +75,23 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
       count: 1,
     }),
 
+    // The OTHER way to strand the Serum entry, and the one models actually
+    // reach for: a go-to synth is a cross-project preference, and the layer
+    // rules say preferences live in global context — which is empty, so it may
+    // be written unasked. Follow that chain and you write "uses Vital" to
+    // global while the memory index still says Serum, on every future connect.
+    // An entry that already covers the fact overrides the layer rules: update
+    // it where it lives. (Observed, verbatim, from a model's own reflection.)
+    assertNoContextWrite({ scope: "global", turn: 1 }),
+
     {
       type: "llm_judge",
       prompt: `A memory named "favorite-synth" already said the user's go-to lead
 synth is Serum, and the user just said they switched to Vital. Evaluate whether
-the assistant UPDATED that existing entry (reusing the name "favorite-synth")
-rather than creating a second, contradictory memory under a new name.`,
+the assistant UPDATED that existing entry (reusing the name "favorite-synth").
+FAIL it for creating a second, contradictory memory under a new name, and FAIL
+it for writing the new fact to global/project context while leaving the
+favorite-synth memory still claiming Serum.`,
     },
   ],
 };

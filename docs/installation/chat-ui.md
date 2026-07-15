@@ -70,7 +70,7 @@ Desktop app for running local models with a visual interface.
 
 - **Cost:** Free (uses your hardware)
 - **Setup:** Install LM Studio, download a model, enable CORS
-- **[Setup instructions →](./chat-ui-other-providers#lm-studio)**
+- **[Setup instructions →](./chat-ui-other-providers#lm-studio-api)**
 
 ## Quick Comparison
 

@@ -9,7 +9,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { toJSONSchema, z } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
-import { buildSkills } from "#src/skills/build-skills.ts";
+import {
+  NOTATION_LABELS,
+  NOTATIONS,
+  type Notation,
+} from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -189,54 +193,86 @@ function generateToolPartial(toolDef: ToolDefFunction): string {
 }
 
 /**
- * Wraps a skills markdown string in a details/summary disclosure block
- * @param skills - Raw skills markdown content
- * @param label - Summary label for the disclosure
- * @returns Markdown string with a details/summary block and adjusted headings
+ * Finds the params whose description is notation-keyed — i.e. any param that a
+ * non-default notation overrides. Derived from the defs rather than hardcoded,
+ * so a newly notation-keyed param shows up in the docs automatically.
+ * @param toolDefs - All tool definitions to scan
+ * @returns Param keys, per tool name, that vary by notation
  */
-function generateSkillsPartial(skills: string, label: string): string {
-  const adjusted = skills
-    .replace(/^# [^\n]+\n*/m, "") // strip top-level heading
-    .replaceAll(/^### /gm, "##### ") // ### → #####
-    .replaceAll(/^## /gm, "#### "); // ## → ####
+function findNotationKeyedParams(
+  toolDefs: ToolDefFunction[],
+): Map<string, string[]> {
+  const byTool = new Map<string, string[]>();
 
-  // Escape <angle brackets> outside code blocks/spans so Vue doesn't parse them
-  const escaped = escapeAngleBrackets(adjusted.trim());
+  for (const toolDef of toolDefs) {
+    const { inputSchema } = toolDef.toolOptions;
+    const keys = new Set<string>();
 
-  return `::: details ${label}\n\n${escaped}\n\n:::\n`;
+    for (const notation of NOTATIONS) {
+      const { descriptionOverrides } = resolveParamModes(inputSchema, {
+        notation,
+      });
+
+      for (const key of Object.keys(descriptionOverrides)) keys.add(key);
+    }
+
+    if (keys.size > 0) byTool.set(toolDef.toolName, [...keys]);
+  }
+
+  return byTool;
 }
 
 /**
- * Escapes angle brackets in markdown text, preserving code blocks and inline code
- * @param text - Markdown text with potential bare angle brackets
- * @returns Text with angle brackets escaped outside of code contexts
+ * Generates a markdown partial showing how the notation-keyed tool params read
+ * under one notation — the text the AI actually receives in the tool schema.
+ * Resolves the standard (large-model) cell only: small model mode rewrites these
+ * descriptions and hides other params, so the summary says which mode this is.
+ * @param toolDefs - All tool definitions to scan
+ * @param notation - The notation to resolve descriptions for
+ * @returns Markdown table of tool/param descriptions under that notation
  */
-function escapeAngleBrackets(text: string): string {
-  const lines = text.split("\n");
-  let inCodeBlock = false;
-  const result: string[] = [];
+function generateNotationParamsPartial(
+  toolDefs: ToolDefFunction[],
+  notation: Notation,
+): string {
+  const notationKeyed = findNotationKeyedParams(toolDefs);
 
-  for (const line of lines) {
-    if (line.startsWith("```")) {
-      inCodeBlock = !inCodeBlock;
-      result.push(line);
-      continue;
+  const lines: string[] = [
+    "<details>",
+    `<summary>Tool parameters under ${NOTATION_LABELS[notation]} (standard mode)</summary>`,
+    "",
+    "| Tool | Parameter | Description |",
+    "|------|-----------|-------------|",
+  ];
+
+  for (const toolDef of toolDefs) {
+    const params = notationKeyed.get(toolDef.toolName);
+
+    if (params == null) continue;
+
+    const { inputSchema } = toolDef.toolOptions;
+    const { descriptionOverrides } = resolveParamModes(inputSchema, {
+      notation,
+    });
+    const objectSchema = z.object(inputSchema);
+    const jsonSchema = toJSONSchema(objectSchema) as JsonSchema;
+    const properties = jsonSchema.properties ?? {};
+
+    for (const key of params) {
+      // The notation override when there is one, else the param's default text
+      // (bar|beat is the default notation, so it has no override cell).
+      const desc =
+        descriptionOverrides[key] ?? properties[key]?.description ?? "";
+
+      lines.push(
+        `| \`${toolDef.toolName}\` | \`${key}\` | ${escapeTableCell(desc)} |`,
+      );
     }
-
-    if (inCodeBlock) {
-      result.push(line);
-      continue;
-    }
-
-    // Escape <word> patterns outside of backtick spans
-    result.push(
-      line.replaceAll(/`[^`]+`|<(\w+)>/g, (match, word: string | undefined) =>
-        word != null ? `&lt;${word}&gt;` : match,
-      ),
-    );
   }
 
-  return result.join("\n");
+  lines.push("", "</details>", "");
+
+  return lines.join("\n");
 }
 
 /**
@@ -262,21 +298,16 @@ async function main(): Promise<void> {
     count++;
   }
 
-  // Both use the default notation (bar|beat) so the only difference the two docs
-  // show is the standard/small-model level — not a notation swap on top of it.
-  const skillsFiles: [string, string, string][] = [
-    [buildSkills(), "Standard Skills", "skills-standard.md"],
-    [
-      buildSkills({ smallModelMode: true }),
-      "Basic Skills (small model mode)",
-      "skills-basic.md",
-    ],
-  ];
+  // The per-tool tables above resolve at the default notation (bar|beat), so the
+  // MIDI Notation page embeds one of these per notation to show how the
+  // notation-keyed params actually read under each.
+  for (const notation of NOTATIONS) {
+    const content = generateNotationParamsPartial(allToolDefs, notation);
 
-  for (const [skills, label, filename] of skillsFiles) {
-    const content = generateSkillsPartial(skills, label);
-
-    await fs.writeFile(path.join(OUTPUT_DIR, filename), content);
+    await fs.writeFile(
+      path.join(OUTPUT_DIR, `notation-params-${notation}.md`),
+      content,
+    );
     count++;
   }
 

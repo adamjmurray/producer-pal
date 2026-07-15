@@ -49,6 +49,12 @@ export {
   contextMemoryUpdateNotDuplicate,
 } from "./context/context-memory-hygiene.ts";
 export {
+  contextOnboardingNoImport,
+  contextOnboardingOffer,
+  contextOnboardingRecordsDecline,
+  contextOnboardingStaysQuiet,
+} from "./context/context-onboarding.ts";
+export {
   contextWriteLayerGlobal,
   contextWriteLayerMemory,
   contextWriteLayerProject,

@@ -11,8 +11,11 @@
 // helper owns the "only ppal-connect, only on success" guard so the wrappers
 // stay tiny and consistent.
 
-import { type CallLiveApiFunction } from "../create-mcp-server.ts";
-import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
+import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
+import {
+  type McpResponse,
+  type RequestOverrides,
+} from "../../max-api-adapter.ts";
 
 /** A wrapped callLiveApi with the same signature as the inner one. */
 export type WrappedCallLiveApi = (

@@ -16,6 +16,14 @@
  * so the skills require confirming first — hence the two-turn shape (state the
  * fact, then approve). Memory is the model's to manage, so it may write at once.
  *
+ * Both user-owned layers are therefore seeded NON-EMPTY here, and that is load-
+ * bearing rather than incidental colour. The confirm-first rule exists to stop a
+ * write from destroying what is already in the document, so the skills exempt an
+ * EMPTY one — nothing to destroy, no permission needed (that exemption is what
+ * lets onboarding fill global context on the spot; see context-onboarding.ts).
+ * Seed nothing and these scenarios would assert the model asks permission in
+ * exactly the case where the skills tell it not to.
+ *
  * The judge is ADVISORY here. Everything these scenarios ask is a tool-call
  * argument — which scope, on which turn — so the custom assertions pin the
  * outcome exactly and the judge adds nothing a gate could use. Left un-advisory
@@ -35,6 +43,11 @@ import {
   seedContext,
 } from "./context-scenario-helpers.ts";
 
+/** Pre-existing documents, so "ask before replacing this" is the rule in force. */
+const EXISTING_PROJECT = "Working title: Nightshade. Deep house, 124 BPM.";
+const EXISTING_GLOBAL =
+  "Prefers dark, hypnotic textures over bright and poppy.";
+
 export const contextWriteLayerProject: EvalScenario = {
   id: "context-write-layer-project",
   description:
@@ -45,12 +58,12 @@ export const contextWriteLayerProject: EvalScenario = {
   // Judge is commentary, not a gate — see the file header.
   judgeAdvisory: true,
 
-  config: { memoryContent: "" },
+  // Non-empty on purpose — see the file header. Also seeds global (via
+  // seedContext) so this Set doesn't look like a brand-new user, which would
+  // trigger the connect onboarding prompt and muddy the turn-1 signal.
+  config: { memoryContent: EXISTING_PROJECT },
 
-  // Seeds nothing, but still needed: these scenarios succeed by making the
-  // MODEL write a real ~/.producer-pal document, so the snapshot/restore has to
-  // be in place even when there's nothing to seed.
-  ...seedContext({}),
+  ...seedContext({ global: EXISTING_GLOBAL }),
 
   messages: [
     MSG_CONNECT,
@@ -92,8 +105,9 @@ export const contextWriteLayerGlobal: EvalScenario = {
   // Judge is commentary, not a gate — see the file header.
   judgeAdvisory: true,
 
-  // The model writes the real global context here — restore is mandatory.
-  ...seedContext({}),
+  // Non-empty on purpose — see the file header. (The model writes the real
+  // global context here, so restore is mandatory either way.)
+  ...seedContext({ global: EXISTING_GLOBAL }),
 
   messages: [
     MSG_CONNECT,
@@ -132,9 +146,15 @@ export const contextWriteLayerMemory: EvalScenario = {
   judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
+  // Global is seeded so this doesn't read as a brand-new user: an empty global
+  // + empty memory triggers the connect onboarding prompt, and a model that has
+  // just asked "tell me about yourself" is primed to file the user's very next
+  // statement as global context — which would fail the memory routing below for
+  // reasons that have nothing to do with layer choice.
+  //
   // The model invents the entry name here, so teardown can only find it by
   // diffing the index against this snapshot — see seedContext.
-  ...seedContext({}),
+  ...seedContext({ global: EXISTING_GLOBAL }),
 
   messages: [
     MSG_CONNECT,
