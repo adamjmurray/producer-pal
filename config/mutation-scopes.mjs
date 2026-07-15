@@ -75,6 +75,7 @@ const TOOL_DOMAINS = [
 // without triaging why.
 const TOOL_DOMAIN_BREAKS = {
   track: 85, // triaged 2026-07-14 at 86.15% (see dev/Mutation-Testing.md)
+  session: 89, // triaged 2026-07-14 at 90.46% (see dev/Mutation-Testing.md)
 };
 
 export const SCOPES = {

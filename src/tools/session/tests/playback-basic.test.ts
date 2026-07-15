@@ -108,6 +108,29 @@ describe("transport", () => {
     );
   });
 
+  it("skips a zero-length loop (loopEnd exactly at loopStart) and warns", () => {
+    // Boundary of the non-positive guard (<= 0, not < 0): loopEnd landing
+    // exactly on loopStart is a length of 0, which is just as invalid in Live
+    // as a negative length — it must warn and skip, not write loop_length: 0.
+    liveSet = setupPlaybackLiveSet({ is_playing: 0, current_song_time: 0 });
+
+    playback({
+      action: "update-arrangement",
+      loop: true,
+      loopStart: "3|1", // beat 8
+      loopEnd: "3|1", // beat 8 → length 8 - 8 = 0
+    });
+
+    expect(liveSet.set).not.toHaveBeenCalledWith(
+      "loop_length",
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("loopEnd must be after loopStart"),
+    );
+  });
+
   it("reports the actual loop bounds, not the rejected loopEnd, when loop length is non-positive", () => {
     // The Live Set's real loop is bars 1–2. A loopEnd at/before loopStart is
     // rejected (loop_length not written), so the response must echo the
