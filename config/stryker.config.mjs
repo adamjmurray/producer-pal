@@ -53,12 +53,15 @@ export default {
   incremental: true,
   incrementalFile: "reports/mutation/stryker-incremental.json",
 
-  // Baseline mode: report the score but do not fail the run. Once a defensible
-  // baseline is triaged, set `break` to ratchet the score like the coverage and
-  // lint-suppression gates.
+  // Ratcheted gate: the run FAILS (exit 1) if the score drops below `break`,
+  // like the coverage and lint-suppression limits. The floor sits ~1 point below
+  // the current src/notation score (86.90% as of 2026-07-14) — enough headroom
+  // for run-to-run timeout-classification variance (a timeout counts as killed,
+  // so it nudges the score), tight enough to catch a real test-quality
+  // regression. Raise it as the score improves; never lower without triaging why.
   thresholds: {
-    high: 80,
+    high: 85,
     low: 60,
-    break: null,
+    break: 86,
   },
 };

@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  CHORD_QUALITY_INTERVALS,
   chordSymbolPitches,
   realizeChordSymbol,
   resolveChordSymbol,
@@ -137,6 +138,16 @@ describe("chordSymbolPitches — root spelling", () => {
   it("null on a malformed accidental in the root", () => {
     expect(chordSymbolPitches("Cx", "", null, C2, 0)).toBeNull();
   });
+
+  it("null on an invalid root letter that carries an accidental (Hb)", () => {
+    // The bad-letter guard must fire before the accidental is applied — else
+    // "Hb" would resolve to a NaN pitch class instead of rejecting the symbol.
+    expect(chordSymbolPitches("Hb", "", null, C2, 0)).toBeNull();
+  });
+
+  it("null on an empty root name", () => {
+    expect(resolveChordSymbol("", "", null)).toBeNull();
+  });
 });
 
 describe("chordSymbolPitches — slash bass", () => {
@@ -157,6 +168,14 @@ describe("chordSymbolPitches — slash bass", () => {
   it("accepts an accidental on the slash bass", () => {
     expect(chordSymbolPitches("C", "m7", "Bb", C2, 0)).toStrictEqual([
       46, 48, 51, 55, 58,
+    ]);
+  });
+
+  it("a slash bass equal to the root drops a full octave below it (not onto it)", () => {
+    // C/C: root C2=48; the bass C must land at 36 — the highest C *strictly*
+    // below the root — rather than collapsing onto the root at 48.
+    expect(chordSymbolPitches("C", "", "C", C2, 0)).toStrictEqual([
+      36, 48, 52, 55,
     ]);
   });
 });
@@ -229,4 +248,80 @@ describe("resolveChordSymbol", () => {
       bassPc: null,
     });
   });
+});
+
+// An independent golden spec of the semitone intervals every chord quality must
+// produce. Deliberately hand-written here rather than imported from source — it
+// is the contract CHORD_QUALITY_INTERVALS must satisfy, so blanking a row or
+// mistyping an interval in the source table is caught by these assertions
+// instead of passing silently on a quality no other test happens to exercise.
+const EXPECTED_INTERVALS: Record<string, readonly number[]> = {
+  // Triads
+  "": [0, 4, 7],
+  maj: [0, 4, 7],
+  M: [0, 4, 7],
+  m: [0, 3, 7],
+  min: [0, 3, 7],
+  dim: [0, 3, 6],
+  aug: [0, 4, 8],
+  "+": [0, 4, 8],
+  sus2: [0, 2, 7],
+  sus4: [0, 5, 7],
+  sus: [0, 5, 7],
+  "5": [0, 7],
+  // Sixths
+  "6": [0, 4, 7, 9],
+  m6: [0, 3, 7, 9],
+  min6: [0, 3, 7, 9],
+  "69": [0, 4, 7, 9, 14],
+  m69: [0, 3, 7, 9, 14],
+  // Sevenths
+  "7": [0, 4, 7, 10],
+  maj7: [0, 4, 7, 11],
+  M7: [0, 4, 7, 11],
+  m7: [0, 3, 7, 10],
+  min7: [0, 3, 7, 10],
+  m7b5: [0, 3, 6, 10],
+  dim7: [0, 3, 6, 9],
+  aug7: [0, 4, 8, 10],
+  "7b5": [0, 4, 6, 10],
+  "7#5": [0, 4, 8, 10],
+  "7b9": [0, 4, 7, 10, 13],
+  "7#9": [0, 4, 7, 10, 15],
+  "7#11": [0, 4, 7, 10, 18],
+  mMaj7: [0, 3, 7, 11],
+  // Ninths
+  "9": [0, 4, 7, 10, 14],
+  maj9: [0, 4, 7, 11, 14],
+  M9: [0, 4, 7, 11, 14],
+  m9: [0, 3, 7, 10, 14],
+  min9: [0, 3, 7, 10, 14],
+  add9: [0, 4, 7, 14],
+  madd9: [0, 3, 7, 14],
+  // Elevenths
+  "11": [0, 4, 7, 10, 14, 17],
+  m11: [0, 3, 7, 10, 14, 17],
+  maj11: [0, 4, 7, 11, 14, 17],
+  add11: [0, 4, 7, 17],
+  // Thirteenths
+  "13": [0, 4, 7, 10, 14, 21],
+  m13: [0, 3, 7, 10, 14, 21],
+  maj13: [0, 4, 7, 11, 14, 21],
+  add13: [0, 4, 7, 21],
+};
+
+describe("CHORD_QUALITY_INTERVALS — every quality matches the golden spec", () => {
+  it("covers exactly the golden set of qualities (no untested rows drift in)", () => {
+    expect(Object.keys(CHORD_QUALITY_INTERVALS).sort()).toStrictEqual(
+      Object.keys(EXPECTED_INTERVALS).sort(),
+    );
+  });
+
+  for (const [quality, intervals] of Object.entries(EXPECTED_INTERVALS)) {
+    it(`resolves "${quality || "(bare root)"}" to [${intervals.join(", ")}]`, () => {
+      expect(resolveChordSymbol("C", quality, null)?.intervals).toStrictEqual(
+        intervals,
+      );
+    });
+  }
 });

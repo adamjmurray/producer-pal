@@ -597,3 +597,19 @@ describe("round-trip (interpret → serialize → interpret)", () => {
     expect(formatNotation(first, { drumMode: true })).toBe("hihat /16: X*16");
   });
 });
+
+describe("stark serializer — input note ordering", () => {
+  it("sorts notes by start time, so a shuffled input serializes identically", () => {
+    // Live API note lists are not guaranteed to arrive in start-time order, so
+    // the serializer sorts them itself. The same four on-grid hits fed out of
+    // order must still collapse to X*4 — not a mis-walk of leading rests.
+    const shuffled = [
+      note(36, 2, 1),
+      note(36, 0, 1),
+      note(36, 3, 1),
+      note(36, 1, 1),
+    ];
+
+    expect(formatNotation(shuffled, DRUM)).toBe("kick: X*4");
+  });
+});
