@@ -152,6 +152,83 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).toMatchObject({ id: "123" });
   });
 
+  it("should warn when only the track index is unknown", () => {
+    const updatedClips: ClipResult[] = [];
+
+    // sceneIndex is a real number: the guard must still fire (|| not &&, and the
+    // whole conditional must not be forced false).
+    handleSessionSlotMove({
+      clip: {
+        id: "123",
+        trackIndex: null,
+        sceneIndex: 0,
+        getProperty: vi.fn(),
+      } as unknown as LiveAPI,
+      toSlot: { trackIndex: 1, sceneIndex: 2 },
+      updatedClips,
+      noteResult: null,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "could not determine slot position for clip 123",
+    );
+  });
+
+  it("should warn when only the scene index is unknown", () => {
+    const updatedClips: ClipResult[] = [];
+
+    // trackIndex is a real number, sceneIndex is null: the second operand of the
+    // guard must stay live (kills the srcSceneIndex == null -> false mutant).
+    handleSessionSlotMove({
+      clip: {
+        id: "123",
+        trackIndex: 0,
+        sceneIndex: null,
+        getProperty: vi.fn(),
+      } as unknown as LiveAPI,
+      toSlot: { trackIndex: 1, sceneIndex: 2 },
+      updatedClips,
+      noteResult: null,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "could not determine slot position for clip 123",
+    );
+  });
+
+  it("should move (not no-op) when only the scene index matches", () => {
+    const { updatedClips, sourceSlot } = runSessionMove({
+      trackIndex: 0,
+      sceneIndex: 1,
+      toTrackIndex: 2,
+      toSceneIndex: 1,
+    });
+
+    // Same-scene but different track is NOT the same slot: the trackIndex ===
+    // comparison must stay live (forced-true would treat it as a no-op).
+    expect(sourceSlot.call).toHaveBeenCalledWith(
+      "duplicate_clip_to",
+      expect.any(String),
+    );
+    expect(updatedClips[0]).toMatchObject({
+      id: "live_set/tracks/2/clip_slots/1/clip",
+      slot: "2/1",
+    });
+  });
+
+  it("should not warn about overwriting when the destination is empty", () => {
+    runSessionMove({ toTrackIndex: 1, toSceneIndex: 5, destHasClip: 0 });
+
+    // has_clip is falsy, so the overwrite warning must not fire (kills the
+    // forced-true mutant on the has_clip guard).
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("overwriting existing clip"),
+    );
+  });
+
   it("should no-op when moving to same slot", () => {
     const { updatedClips } = runSessionMove({
       trackIndex: 2,
@@ -290,6 +367,56 @@ describe("handlePositionOperations", () => {
     expect(outlet).toHaveBeenCalledWith(
       1,
       "toSlot ignored when arrangement parameters are specified",
+    );
+  });
+
+  it("should warn when toSlot used with arrangement LENGTH only", () => {
+    const updatedClips: ClipResult[] = [];
+
+    // Only arrangementLengthBeats is set (no start): the second operand of the
+    // arrangement-params guard must stay live (kills its -> false mutant).
+    handlePositionOperations({
+      clip: { id: "123", getProperty: vi.fn(() => 0) } as unknown as LiveAPI,
+      isAudioClip: false,
+      toSlot: { trackIndex: 1, sceneIndex: 2 },
+      arrangementLengthBeats: 8,
+      tracksWithMovedClips: new Map(),
+      context: {},
+      updatedClips,
+      noteResult: null,
+      isNonSurvivor: false,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "toSlot ignored when arrangement parameters are specified",
+    );
+  });
+
+  it("should not warn about arrangement toSlot when no toSlot is given", () => {
+    const updatedClips: ClipResult[] = [];
+
+    // Arrangement clip but no toSlot: the else-if (toSlot != null && isArrangement)
+    // must stay false (kills forced-true and the && -> || mutant).
+    handlePositionOperations({
+      clip: {
+        id: "789",
+        getProperty: vi.fn((prop: string) =>
+          prop === "is_arrangement_clip" ? 1 : 0,
+        ),
+      } as unknown as LiveAPI,
+      isAudioClip: false,
+      arrangementStartBeats: 8,
+      tracksWithMovedClips: new Map(),
+      context: {},
+      updatedClips,
+      noteResult: null,
+      isNonSurvivor: false,
+    });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("toSlot parameter ignored for arrangement clip"),
     );
   });
 });

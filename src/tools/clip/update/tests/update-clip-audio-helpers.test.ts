@@ -123,6 +123,15 @@ describe("setAudioParameters", () => {
     );
   });
 
+  it("does not call set at all for an invalid warpMode", () => {
+    // Forcing the lookup guard true would call set("warp_mode", undefined) — a
+    // call the expect.anything() assertion above cannot catch (undefined is not
+    // "anything"). Asserting no set call at all pins it.
+    setAudioParameters(mockClip, { warpMode: "invalid" });
+
+    expect(mockClip.set).not.toHaveBeenCalled();
+  });
+
   it("should set warping to 1 when true", () => {
     setAudioParameters(mockClip, { warping: true });
 
@@ -263,6 +272,28 @@ describe("applyAudioTransforms", () => {
     expect(mockClip.set).toHaveBeenCalledWith("pitch_coarse", 5);
     expect(mockClip.set).toHaveBeenCalledWith("pitch_fine", 0);
   });
+
+  it("reads currentPitchShift as coarse + fine/100 (exact arithmetic)", () => {
+    // pitch_coarse 3 + pitch_fine 50/100 = 3.5. Setting pitchShift to exactly
+    // 3.5 is therefore a no-op → returns false. A `-` (→ 2.5) or `* 100`
+    // (→ 5003) mutation of the currentPitchShift formula makes 3.5 look like a
+    // change and would write pitch_coarse.
+    mockClip.getProperty.mockImplementation((prop: string) => {
+      if (prop === "gain") return 0.4;
+      if (prop === "pitch_coarse") return 3;
+      if (prop === "pitch_fine") return 50;
+
+      return null;
+    });
+
+    const result = applyAudioTransforms(mockClip, "pitchShift = 3.5");
+
+    expect(result).toBe(false);
+    expect(mockClip.set).not.toHaveBeenCalledWith(
+      "pitch_coarse",
+      expect.anything(),
+    );
+  });
 });
 
 describe("handleWarpMarkerOperation", () => {
@@ -296,6 +327,46 @@ describe("handleWarpMarkerOperation", () => {
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
+  it("warns with the audio-clip message when the clip has no file", () => {
+    // Pins the actual warning text so a blanked string literal is caught.
+    mockClip.getProperty.mockReturnValue(null);
+
+    handleWarpMarkerOperation(mockClip, "add", 1.0, 44100);
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("warp markers only available on audio clips"),
+    );
+  });
+
+  it("reads file_path specifically to detect an audio clip", () => {
+    // Only "file_path" yields a path; any other key (e.g. the "" a
+    // string-literal mutation would read) returns null → treated as non-audio,
+    // which would warn-and-skip instead of performing the operation.
+    mockClip.getProperty.mockImplementation((prop: string) =>
+      prop === "file_path" ? "/path/to/audio.wav" : null,
+    );
+
+    handleWarpMarkerOperation(mockClip, "remove", 4.0);
+
+    expect(mockClip.call).toHaveBeenCalledWith("remove_warp_marker", 4.0);
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("warp markers only available"),
+    );
+  });
+
+  it("warns with the warpBeatTime message when it is missing", () => {
+    mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
+
+    handleWarpMarkerOperation(mockClip, "add", undefined, 44100);
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("warpBeatTime required for"),
+    );
+  });
+
   describe("add operation", () => {
     beforeEach(() => {
       mockClip.getProperty.mockReturnValue("/path/to/audio.wav");
@@ -317,6 +388,19 @@ describe("handleWarpMarkerOperation", () => {
         beat_time: 4.0,
       });
     });
+
+    it("omits the sample_time key entirely when warpSampleTime is undefined", () => {
+      // toHaveBeenCalledWith treats { beat_time } and { beat_time, sample_time:
+      // undefined } as equal, so it can't catch the ternary being forced true.
+      // Inspect the args object for the key's presence directly.
+      handleWarpMarkerOperation(mockClip, "add", 4.0, undefined);
+
+      const addCall = mockClip.call.mock.calls.find(
+        (c: unknown[]) => c[0] === "add_warp_marker",
+      );
+
+      expect(addCall?.[1]).not.toHaveProperty("sample_time");
+    });
   });
 
   describe("move operation", () => {
@@ -329,6 +413,16 @@ describe("handleWarpMarkerOperation", () => {
       handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, undefined);
 
       expect(mockClip.call).not.toHaveBeenCalled();
+    });
+
+    it("warns with the warpDistance message when it is missing", () => {
+      // Pins the actual warning text so a blanked string literal is caught.
+      handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, undefined);
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("warpDistance required for move"),
+      );
     });
 
     it("should move warp marker by specified distance", () => {

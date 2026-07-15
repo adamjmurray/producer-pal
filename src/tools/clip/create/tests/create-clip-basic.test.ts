@@ -4,7 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { createClip } from "../create-clip.ts";
+import { convertTimingParameters } from "../helpers/create-clip-helpers.ts";
+import {
+  calculateClipLength,
+  handleAutoPlayback,
+} from "../helpers/create-clip-validation-helpers.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
@@ -272,5 +279,109 @@ describe("createClip - basic validation and time signatures", () => {
 
     // 1|2 = 1 beat in 4/4 time
     expect(clip.set).toHaveBeenCalledWith("playing_position", 1);
+  });
+});
+
+describe("convertTimingParameters (unit)", () => {
+  it("warns when firstStart is used with a non-looping clip", () => {
+    convertTimingParameters(null, null, "1|2", null, false, 4, 4, 4, 4);
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("firstStart parameter ignored"),
+    );
+  });
+
+  it("does NOT warn when firstStart is used with a looping clip", () => {
+    // looping === true: the firstStart-ignored warning must not fire. Kills the
+    // `looping === false` → true and whole-condition → true / && → || mutants.
+    convertTimingParameters(null, null, "1|2", null, true, 4, 4, 4, 4);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("firstStart parameter ignored"),
+    );
+  });
+
+  it("does NOT warn when firstStart is set but looping is unset (null)", () => {
+    // looping is null (not false), so `firstStart != null && looping === false`
+    // is false; the && → || mutant would make it warn.
+    convertTimingParameters(null, null, "1|2", null, null, 4, 4, 4, 4);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("firstStart parameter ignored"),
+    );
+  });
+
+  it("adds startBeats to the length when computing endBeats (?? 0 fallback)", () => {
+    // start "2|1" = 4 beats, length "1bar" = 4 beats → endBeats = 4 + 4 = 8.
+    // The `startBeats ?? 0` → `startBeats && 0` mutant would zero the offset (→ 4).
+    const result = convertTimingParameters(
+      null,
+      "2|1",
+      null,
+      "1bar",
+      null,
+      4,
+      4,
+      4,
+      4,
+    );
+
+    expect(result.startBeats).toBe(4);
+    expect(result.endBeats).toBe(8);
+  });
+
+  it("falls back to 0 for the start offset when start is not provided", () => {
+    const result = convertTimingParameters(
+      null,
+      null,
+      null,
+      "1bar",
+      null,
+      4,
+      4,
+      4,
+      4,
+    );
+
+    expect(result.startBeats).toBeNull();
+    expect(result.endBeats).toBe(4);
+  });
+});
+
+describe("calculateClipLength (unit)", () => {
+  it("sizes an empty-marker clip from the LATEST (max) note start, not the earliest", () => {
+    // Notes at beats 0 and 5 in 4/4 (4 Ableton beats/bar). Max start 5 rounds up
+    // to 2 bars = 8 beats; the Math.max → Math.min mutant would use start 0 → 4.
+    const notes = [{ start_time: 0 }, { start_time: 5 }] as MidiNote[];
+
+    expect(calculateClipLength(null, notes, 4, 4)).toBe(8);
+  });
+
+  it("uses the explicit endBeats when provided", () => {
+    expect(calculateClipLength(10, [], 4, 4)).toBe(10);
+  });
+});
+
+describe("handleAutoPlayback (unit)", () => {
+  const slot = (): SlotPosition => ({ trackIndex: 0, sceneIndex: 0 });
+
+  it("no-ops (does not reach the switch) when view is not session", () => {
+    // auto is truthy + view arrangement → the guard returns early. The
+    // `view !== "session"` → false mutant would fall through to the switch and
+    // throw on the unknown auto value.
+    expect(() =>
+      handleAutoPlayback("unknown-mode", "arrangement", [slot()]),
+    ).not.toThrow();
+  });
+
+  it("no-ops (does not reach the switch) when there are no session slots", () => {
+    // Empty slots → guard returns early. The `sessionSlots.length === 0` → false
+    // mutant would fall through to the switch and throw on the unknown auto value.
+    expect(() =>
+      handleAutoPlayback("unknown-mode", "session", []),
+    ).not.toThrow();
   });
 });
