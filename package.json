@@ -44,7 +44,7 @@
     "test:coverage:verbose": "npm run test:setup && vitest run --coverage --reporter=default --silent=true",
     "test:setup": "npm run parser:build",
     "coverage": "npm run test:coverage",
-    "mutation": "npm run parser:build && stryker run config/stryker.config.mjs",
+    "mutation": "node config/run-mutation.mjs",
     "check": "npm run lint --silent && npm run typecheck --silent && npm run format:check --silent && npm run validate:typescript-only --silent && npm run duplication --silent && npm run test:coverage --silent",
     "check:build": "npm run build && npm run docs:build",
     "fix": "npm run lint:fix && npm run format",
