@@ -13,7 +13,13 @@ export {
   setupConsoleCapture,
 } from "../webui/webui-test-helpers";
 
-const BUILT_UI_PATH = fileURLToPath(
+/**
+ * Filesystem path to the built single-file UI bundle. The same bundle serves
+ * both `/chat` and `/context` (main.tsx branches on the pathname), so the
+ * context suite fulfills its document route from this too (see
+ * ./context-test-helpers.ts).
+ */
+export const BUILT_UI_PATH = fileURLToPath(
   new URL("../../max-for-live-device/chat-ui.html", import.meta.url),
 );
 
