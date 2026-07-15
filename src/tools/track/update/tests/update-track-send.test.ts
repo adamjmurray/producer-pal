@@ -108,6 +108,11 @@ describe("updateTrack - send properties", () => {
       sendGainDb: -12,
     });
 
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("must both be specified"),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -118,17 +123,53 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("must both be specified"),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should warn and skip when return track not found", () => {
-    // Should not throw, just warn and skip the send update
+    // Should not throw, just warn and skip the send update. Crucially, no send
+    // is touched — a mis-initialized "not found" sentinel would silently write
+    // the wrong send instead of skipping.
     const result = updateTrack({
       ids: "123",
       sendGainDb: -12,
       sendReturn: "C",
     });
 
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('no return track found matching "C"'),
+    );
+    expect(result).toStrictEqual({ id: "123" });
+  });
+
+  it("should not over-match a return whose name merely starts with the letter", () => {
+    // "A" matches "A-Reverb" (letter-dash prefix) or an exact name — it must NOT
+    // match any name that happens to start with "A" (e.g. "Analog"). Guards the
+    // `+ "-"` in the prefix check.
+    registerMockObject("return_A", {
+      path: livePath.returnTrack(0),
+      properties: { name: "Analog" },
+    });
+
+    const result = updateTrack({
+      ids: "123",
+      sendGainDb: -9,
+      sendReturn: "A",
+    });
+
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('no return track found matching "A"'),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -146,6 +187,10 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("has no sends"),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -196,6 +241,10 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("has no mixer device"),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -219,6 +268,12 @@ describe("updateTrack - send properties", () => {
       sendReturn: "C", // Matches return track at index 2
     });
 
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("doesn't exist on track"),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 });

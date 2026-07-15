@@ -62,6 +62,45 @@ describe("readTrack", () => {
       expect(result.devices).toBeUndefined();
     });
 
+    it("warns when a track has more than one instrument", () => {
+      // Defensive warning: a track is expected to have 0 or 1 instrument. Two
+      // instruments (unusual) must surface a warning. Reached via the drum-map
+      // path, which categorizes devices.
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
+          devices: children("device1", "device2"),
+        },
+      });
+      registerMockObject("device1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: createDeviceMockProperties({
+          name: "Analog",
+          className: "InstrumentVector",
+          classDisplayName: "Analog",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        }),
+      });
+      registerMockObject("device2", {
+        path: livePath.track(0).device(1),
+        type: "Device",
+        properties: createDeviceMockProperties({
+          name: "Operator",
+          className: "Operator",
+          classDisplayName: "Operator",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        }),
+      });
+
+      readTrack({ trackIndex: 0, include: ["drum-map"] });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("instruments, which is unusual"),
+      );
+    });
+
     it("categorizes devices correctly", () => {
       setupTrackMock({
         trackId: "track1",

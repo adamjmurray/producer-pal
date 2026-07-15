@@ -220,12 +220,21 @@ describe("updateTrack", () => {
     });
 
     it("should warn and skip for invalid monitoring state", () => {
-      // Should not throw, just warn and skip the monitoring state update
+      // Should not throw, just warn and skip the monitoring state update — and
+      // crucially NOT write an undefined monitoring value onto the track.
       const result = updateTrack({
         ids: "123",
         monitoringState: "invalid",
       });
 
+      expect(track123.set).not.toHaveBeenCalledWith(
+        "current_monitoring_state",
+        expect.anything(),
+      );
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("invalid monitoring state"),
+      );
       expect(result).toStrictEqual({ id: "123" });
     });
 
