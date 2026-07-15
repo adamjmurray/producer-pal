@@ -16,9 +16,17 @@
 //            ~1 point below its triaged score, matching notation's ratchet.
 
 // Glob set for one tool domain under src/tools/. Excludes tests, test dirs,
-// test helpers, and type-only modules — none carry mutable behavior worth
-// asserting on. (src/tools/ currently has no types.ts, but the exclusion is
-// kept for parity with the notation scope and future-proofing.)
+// test/mock helpers, `.def.ts` tool definitions, and type-only modules — none
+// carry mutable behavior worth asserting on. `.def.ts` files are purely
+// declarative (a `defineTool()` call: Zod schema + LLM-facing description
+// strings, no logic): mutating a `.describe("…")` string just blanks prose that
+// is eval-tested, not unit-tested, so asserting exact wording would over-fit and
+// fight the description-iteration workflow. Schema constraints (`.min`/`.max`)
+// are enforced by the MCP SDK, not our runtime code. `*-mock-helpers.ts` is
+// test-only mock infrastructure (like `*-test-helpers.ts`); it stays
+// source-classified for coverage but must not be mutated. (src/tools/ currently
+// has no types.ts, but that exclusion is kept for parity with the notation
+// scope and future-proofing.)
 function toolDomain(name) {
   const dir = `src/tools/${name}`;
 
@@ -27,6 +35,8 @@ function toolDomain(name) {
     `!${dir}/**/*.test.ts`,
     `!${dir}/**/tests/**`,
     `!${dir}/**/*-test-helpers.ts`,
+    `!${dir}/**/*-mock-helpers.ts`,
+    `!${dir}/**/*.def.ts`,
     `!${dir}/**/types.ts`,
   ];
 }
@@ -43,9 +53,8 @@ const NOTATION_GLOBS = [
   "!src/notation/**/peggy-parser-types.ts",
 ];
 
-// Tool domains: one subdirectory each under src/tools/. break stays null until
-// each domain's survivors are triaged in its own PR (src/tools/constants.ts is
-// a plain root-level constants module, intentionally left unscoped).
+// Tool domains: one subdirectory each under src/tools/ (src/tools/constants.ts
+// is a plain root-level constants module, intentionally left unscoped).
 const TOOL_DOMAINS = [
   "actions",
   "advanced",
@@ -59,12 +68,21 @@ const TOOL_DOMAINS = [
   "track",
 ];
 
+// Per-domain break gate (mutation-score floor). A domain stays in baseline mode
+// (absent here → null, measure-only) until its survivors are triaged in its own
+// PR; it then earns a floor ~1 point below its triaged score, matching
+// notation's ratchet. Raise a floor as the score climbs; never lower one
+// without triaging why.
+const TOOL_DOMAIN_BREAKS = {
+  track: 85, // triaged 2026-07-14 at 86.15% (see dev/Mutation-Testing.md)
+};
+
 export const SCOPES = {
   notation: { mutate: NOTATION_GLOBS, break: 86 },
   ...Object.fromEntries(
     TOOL_DOMAINS.map((name) => [
       name,
-      { mutate: toolDomain(name), break: null },
+      { mutate: toolDomain(name), break: TOOL_DOMAIN_BREAKS[name] ?? null },
     ]),
   ),
 };

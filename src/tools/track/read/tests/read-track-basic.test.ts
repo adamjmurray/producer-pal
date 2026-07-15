@@ -157,6 +157,32 @@ describe("readTrack", () => {
     });
   });
 
+  it("reports slot indices at the boundary value 0", () => {
+    // Boundary: playing/fired slot index 0 (first scene) must be reported, not
+    // dropped as if it were the -1 "none" sentinel (guard is `>= 0`, not `> 0`).
+    setupTrackPathMappedMocks({
+      trackPath: String(livePath.track(1)),
+      trackId: "track2",
+      objects: {
+        Track: {
+          has_midi_input: 1,
+          name: "Boundary Track",
+          playing_slot_index: 0,
+          fired_slot_index: 0,
+          clip_slots: [],
+          devices: [],
+        },
+      },
+    });
+
+    const result = readTrack({ trackIndex: 1 });
+
+    expect(result).toMatchObject({
+      playingSlotIndex: 0,
+      firedSlotIndex: 0,
+    });
+  });
+
   it("returns track group information", () => {
     setupTrackPathMappedMocks({
       trackId: "track1",
