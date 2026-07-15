@@ -13,13 +13,11 @@ import {
   type LibraryFindDuplicatesResult,
   type LibraryFindSimilarResult,
   type LibraryItem,
-  type LibraryItemType,
-  type LibraryKind,
   type LibraryListCategoriesResult,
   type LibraryListTagsResult,
+  type LibrarySearchArgs,
   type LibrarySearchResult,
   type LibrarySort,
-  type LibrarySource,
   type ListPluginsResult,
   type PluginCategory,
   type PluginFormat,
@@ -34,21 +32,13 @@ import { readSamples } from "./read-samples.ts";
 // site so the caller sees why the result wasn't narrowed).
 const PLUGIN_CATEGORIES = new Set<LibraryDeviceKind>(["instrument", "audiofx"]);
 
-interface LibraryArgs {
+// Shares the search-filter fields (query/tags/kind/…/verifyPaths) with
+// LibrarySearchArgs via extends; only the action-specific fields are added here.
+interface LibraryArgs extends LibrarySearchArgs {
   // Typed as plain string (not the enum) so the runtime "Unknown action"
   // guard below — defense against the V8 adapter forwarding unvalidated
   // input — remains reachable.
   action?: string;
-  query?: string;
-  tags?: string;
-  kind?: LibraryKind;
-  type?: LibraryItemType;
-  deviceKind?: LibraryDeviceKind;
-  source?: LibrarySource;
-  inFolder?: string;
-  sort?: LibrarySort;
-  limit?: number;
-  verifyPaths?: boolean;
   /** listCategories only: top-level category to drill into. */
   category?: string;
   /** findSimilar only: absolute path of the seed sample to rank others against. */
