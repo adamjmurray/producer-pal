@@ -245,6 +245,55 @@ describe("readDevice", () => {
     });
   });
 
+  describe("return chains", () => {
+    function setupRackWithReturnChain(): void {
+      registerMockObject("rack-rc", {
+        type: "Device",
+        properties: {
+          class_display_name: "Audio Effect Rack",
+          name: "Audio Effect Rack",
+          type: 2,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          is_active: 1,
+          parameters: [],
+          chains: [],
+          return_chains: ["id", "rchain-a"],
+        },
+      });
+
+      registerMockObject("rchain-a", {
+        type: "Chain",
+        properties: {
+          name: "Return A",
+          mute: 0,
+          solo: 0,
+          devices: [],
+        },
+      });
+    }
+
+    it("includes returnChains when return-chains is requested", () => {
+      setupRackWithReturnChain();
+
+      const result = readDevice({
+        deviceId: "rack-rc",
+        include: ["return-chains"],
+      });
+
+      expect(result.returnChains).toBeDefined();
+    });
+
+    it("omits returnChains when only chains are requested", () => {
+      setupRackWithReturnChain();
+
+      const result = readDevice({ deviceId: "rack-rc", include: ["chains"] });
+
+      // The rack HAS return chains, but they must not appear unless requested.
+      expect(result).not.toHaveProperty("returnChains");
+    });
+  });
+
   describe("drum rack includes", () => {
     // Shared setup for drum rack with chain-based mocking (in_note)
     function setupDrumRackWithChain(): void {

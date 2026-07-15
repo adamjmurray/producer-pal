@@ -95,6 +95,12 @@ describe("updateDevice - wrapInRack", () => {
       0,
     );
 
+    // With no name option, the rack name is left untouched. (Checked via call
+    // args, not expect.anything(), which ignores an undefined value.)
+    expect(
+      newRack.set.mock.calls.filter((c: unknown[]) => c[0] === "name"),
+    ).toHaveLength(0);
+
     expect(result).toStrictEqual({
       id: "new-rack",
       type: "audio-effect-rack",
@@ -284,6 +290,14 @@ describe("updateDevice - wrapInRack", () => {
         3,
       );
 
+      // One chain is inserted per instrument (the reverse loop runs exactly
+      // deviceCount times) — a bound-off mutant makes too few or too many.
+      const insertChainCalls = newRack.call.mock.calls.filter(
+        (c: unknown[]) => c[0] === "insert_chain",
+      );
+
+      expect(insertChainCalls).toHaveLength(2);
+
       expect(result).toStrictEqual({
         id: "new-rack",
         type: "instrument-rack",
@@ -297,6 +311,8 @@ describe("updateDevice - wrapInRack", () => {
         wrapInRack: true,
         name: "My Instrument Rack",
       });
+
+      expect(newRack.set).toHaveBeenCalledWith("name", "My Instrument Rack");
 
       const r = result as Record<string, unknown>;
 
@@ -500,6 +516,10 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "wrapInRack: cannot mix MIDI and Audio effects in one rack",
+    );
     expect(result).toBeNull();
   });
 
@@ -532,6 +552,9 @@ describe("updateDevice - wrapInRack", () => {
       name: "My Effect Rack",
     });
 
+    // The provided name is written to the newly created rack.
+    expect(newRack.set).toHaveBeenCalledWith("name", "My Effect Rack");
+
     const r = result as Record<string, unknown>;
 
     expect(r.id).toBe("new-rack");
@@ -559,6 +582,12 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
+    // The unresolved id is reported, then the empty set aborts the wrap.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'wrapInRack: device not found at "nonexistent"',
+    );
+    expect(outlet).toHaveBeenCalledWith(1, "wrapInRack: no devices found");
     expect(result).toBeNull();
   });
 
@@ -571,6 +600,10 @@ describe("updateDevice - wrapInRack", () => {
       toPath: "t99",
     });
 
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "wrapInRack: target container does not exist",
+    );
     expect(result).toBeNull();
   });
 
@@ -586,6 +619,10 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "wrapInRack: no valid effect devices found",
+    );
     expect(result).toBeNull();
   });
 
@@ -602,6 +639,10 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'wrapInRack: "not-a-device" is not a device (type: Chain)',
+    );
     expect(result).toBeNull();
   });
 
@@ -623,6 +664,12 @@ describe("updateDevice - wrapInRack", () => {
       wrapInRack: true,
     });
 
+    // The failed chain insertion is reported (1/1), but the wrap continues.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "wrapInRack: failed to create chain 1/1",
+    );
+
     // Result contains rack info even if chain creation failed
     expect(result).toMatchObject({
       id: "new-rack",
@@ -640,6 +687,12 @@ describe("updateDevice - wrapInRack", () => {
     );
 
     const result = updateDevice({ path: "t0/d0", wrapInRack: true });
+
+    // A returned array whose head isn't "id" is treated as a failure and warned.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "wrapInRack: failed to create chain 1/1",
+    );
 
     expect(result).toMatchObject({
       id: "new-rack",
