@@ -10,6 +10,7 @@ import { validateBarBeatPosition } from "#src/notation/barbeat/time/barbeat-time
 import {
   buildClipResultObject,
   emitArrangementWarnings,
+  prepareSessionClipSlot,
   validateAndParseArrangementParams,
 } from "./clip-result-helpers.ts";
 
@@ -174,6 +175,14 @@ describe("clip-result-helpers", () => {
       expect(console.error).not.toHaveBeenCalled();
     });
 
+    it("emits no warning when arrangementStartBeats is null even with an overlapping track", () => {
+      // The early return must fire: a track with 3 clips would otherwise warn.
+      // Guards the `if (arrangementStartBeats == null) return` block and branch.
+      emitArrangementWarnings(null, new Map([[0, 3]]));
+
+      expect(console.warn).not.toHaveBeenCalled();
+    });
+
     it("does nothing when no track has more than 1 clip", () => {
       const tracksWithMovedClips = new Map([
         [0, 1],
@@ -211,6 +220,75 @@ describe("clip-result-helpers", () => {
       expect(console.warn).toHaveBeenCalledWith(
         "4 clips on track 2 moved to the same position - later clips will overwrite earlier ones",
       );
+    });
+  });
+
+  describe("prepareSessionClipSlot", () => {
+    function registerLiveSet(sceneCount: number): void {
+      const scenes: (string | number)[] = [];
+
+      for (let i = 0; i < sceneCount; i++) {
+        scenes.push("id", i + 1);
+      }
+
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        type: "Song",
+        properties: { scenes },
+      });
+    }
+
+    it("throws at the boundary sceneIndex === maxAutoCreatedScenes", () => {
+      // 1000 >= 1000 must throw. A `>` mutant (strict) would fall through at the
+      // exact boundary; the message pins both the blanked-string and the
+      // `MAX_AUTO_CREATED_SCENES - 1` (=999) arithmetic mutants.
+      registerLiveSet(3);
+
+      expect(() =>
+        prepareSessionClipSlot(0, 1000, LiveAPI.from(livePath.liveSet), 1000),
+      ).toThrow("sceneIndex 1000 exceeds the maximum allowed value of 999");
+    });
+
+    it("does not auto-create scenes when the slot already exists", () => {
+      // sceneIndex 1 < currentSceneCount 3 → no scenes created; the slot is empty.
+      const liveSet = registerMockObject("live-set", {
+        path: livePath.liveSet,
+        type: "Song",
+        properties: { scenes: ["id", 1, "id", 2, "id", 3] },
+      });
+
+      registerMockObject(livePath.track(0).clipSlot(1), {
+        path: livePath.track(0).clipSlot(1),
+        type: "ClipSlot",
+        properties: { has_clip: 0 },
+      });
+
+      const slot = prepareSessionClipSlot(
+        0,
+        1,
+        LiveAPI.from(livePath.liveSet),
+        1000,
+      );
+
+      expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
+      expect(slot.path).toBe(String(livePath.track(0).clipSlot(1)));
+    });
+
+    it("throws when a clip already exists in the target slot", () => {
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        type: "Song",
+        properties: { scenes: ["id", 1, "id", 2, "id", 3] },
+      });
+      registerMockObject(livePath.track(0).clipSlot(1), {
+        path: livePath.track(0).clipSlot(1),
+        type: "ClipSlot",
+        properties: { has_clip: 1 },
+      });
+
+      expect(() =>
+        prepareSessionClipSlot(0, 1, LiveAPI.from(livePath.liveSet), 1000),
+      ).toThrow("a clip already exists at track 0, clip slot 1");
     });
   });
 });

@@ -359,6 +359,19 @@ describe("createClip - session view", () => {
 
     expect(result).toStrictEqual([]);
   });
+
+  it("returns an empty array (does not select) when focus=true but no clips are created", async () => {
+    // The existing clip makes creation warn-and-skip, so 0 clips are created.
+    // The focus guard `createdClips.length > 0` (→ true / → >= 0 mutants) would
+    // then select createdClips.at(-1) — which is undefined — and throw.
+    setupLiveSet();
+    setupTrack(0);
+    setupSessionClip(0, 0, { hasClip: 1 });
+
+    const result = await createClip({ slot: "0/0", focus: true });
+
+    expect(result).toStrictEqual([]);
+  });
 });
 
 describe("createClip - session view - per-clip transforms", () => {

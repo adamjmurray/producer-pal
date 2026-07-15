@@ -16,17 +16,21 @@
 //            ~1 point below its triaged score, matching notation's ratchet.
 
 // Glob set for one tool domain under src/tools/. Excludes tests, test dirs,
-// test/mock helpers, `.def.ts` tool definitions, and type-only modules — none
-// carry mutable behavior worth asserting on. `.def.ts` files are purely
-// declarative (a `defineTool()` call: Zod schema + LLM-facing description
-// strings, no logic): mutating a `.describe("…")` string just blanks prose that
-// is eval-tested, not unit-tested, so asserting exact wording would over-fit and
-// fight the description-iteration workflow. Schema constraints (`.min`/`.max`)
-// are enforced by the MCP SDK, not our runtime code. `*-mock-helpers.ts` is
-// test-only mock infrastructure (like `*-test-helpers.ts`); it stays
-// source-classified for coverage but must not be mutated. (src/tools/ currently
-// has no types.ts, but that exclusion is kept for parity with the notation
-// scope and future-proofing.)
+// test/mock helpers, `.def.ts` tool definitions, `*-disabled.ts` build-time
+// stubs, and type-only modules — none carry mutable behavior worth asserting on.
+// `.def.ts` files are purely declarative (a `defineTool()` call: Zod schema +
+// LLM-facing description strings, no logic): mutating a `.describe("…")` string
+// just blanks prose that is eval-tested, not unit-tested, so asserting exact
+// wording would over-fit and fight the description-iteration workflow. Schema
+// constraints (`.min`/`.max`) are enforced by the MCP SDK, not our runtime code.
+// `*-mock-helpers.ts` is test-only mock infrastructure (like
+// `*-test-helpers.ts`); it stays source-classified for coverage but must not be
+// mutated. `*-disabled.ts` are build-time substitution stubs swapped in by
+// rollup when a feature flag is off (e.g. ENABLE_CODE_EXEC); tests run with the
+// feature enabled so the stubs are never imported (all-NoCoverage by
+// construction) — they are already coverage-excluded in vitest.config.ts, so
+// exclude them here too. (src/tools/ currently has no types.ts, but that
+// exclusion is kept for parity with the notation scope and future-proofing.)
 function toolDomain(name) {
   const dir = `src/tools/${name}`;
 
@@ -37,6 +41,7 @@ function toolDomain(name) {
     `!${dir}/**/*-test-helpers.ts`,
     `!${dir}/**/*-mock-helpers.ts`,
     `!${dir}/**/*.def.ts`,
+    `!${dir}/**/*-disabled.ts`,
     `!${dir}/**/types.ts`,
   ];
 }
@@ -78,6 +83,7 @@ const TOOL_DOMAIN_BREAKS = {
   session: 89, // triaged 2026-07-14 at 90.46% (see dev/Mutation-Testing.md)
   actions: 90, // triaged 2026-07-15 at 91.79% (see dev/Mutation-Testing.md)
   device: 90, // triaged 2026-07-15 at 91.18% (see dev/Mutation-Testing.md)
+  clip: 96, // triaged 2026-07-15 at 97.48% (see dev/Mutation-Testing.md)
 };
 
 export const SCOPES = {

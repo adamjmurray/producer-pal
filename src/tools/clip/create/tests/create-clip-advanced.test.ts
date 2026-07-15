@@ -14,6 +14,10 @@ import {
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
 import {
+  buildClipProperties,
+  buildClipResult,
+} from "../helpers/create-clip-result-helpers.ts";
+import {
   expectClipCreated,
   expectNotesAdded,
   note,
@@ -434,5 +438,122 @@ describe("createClip - advanced features", () => {
 
       expect(result).toMatchObject({ noteCount: 2 });
     });
+  });
+
+  describe("normalizeTransforms", () => {
+    it("treats a whitespace-only transforms string as no transform", async () => {
+      // A whitespace-only transforms string trims to "", so normalizeTransforms
+      // returns null and no transform runs (result has no `transformed` field).
+      // The `transformString?.trim()` → `transformString` mutant keeps "   ",
+      // routing it through resolveClipTransform which reports `transformed`.
+      const { clip } = setupSessionMocks({
+        liveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          scale_mode: 0,
+        },
+        clip: { length: 4 },
+      });
+
+      const result = await createClip({
+        slot: "0/0",
+        notes: "C3 1|1",
+        transforms: "   ",
+      });
+
+      expect((result as { transformed?: number }).transformed).toBeUndefined();
+      expectNotesAdded(clip, [note(60, 0, 1)]);
+    });
+  });
+});
+
+describe("buildClipProperties (unit)", () => {
+  it("sets playing_position only when the clip is looping AND firstStart is set", () => {
+    // Looping + firstStart → playing_position is set.
+    expect(
+      buildClipProperties(0, 4, 5, true, undefined, null, 4, 4, 4)
+        .playing_position,
+    ).toBe(5);
+
+    // Not looping (with firstStart) → no playing_position. Kills the
+    // whole-condition → true and the && → || mutants (|| would set it).
+    expect(
+      buildClipProperties(0, 4, 5, false, undefined, null, 4, 4, 4)
+        .playing_position,
+    ).toBeUndefined();
+
+    // Looping but firstStart null → no playing_position. Kills the
+    // `firstStartBeats != null` → true mutant.
+    expect(
+      buildClipProperties(0, 4, null, true, undefined, null, 4, 4, 4)
+        .playing_position,
+    ).toBeUndefined();
+  });
+
+  it("includes name only when clipName is truthy", () => {
+    expect(
+      buildClipProperties(0, 4, null, null, "Riff", null, 4, 4, 4).name,
+    ).toBe("Riff");
+    // Property must be ABSENT (not present-with-undefined) so the `if (clipName)`
+    // guard forced to `true` is caught — a plain `.name` access can't tell
+    // "absent" from "= undefined".
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, null, 4, 4, 4),
+    ).not.toHaveProperty("name");
+    expect(
+      buildClipProperties(0, 4, null, null, "", null, 4, 4, 4),
+    ).not.toHaveProperty("name");
+  });
+
+  it("includes color only when color is non-null", () => {
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, "#FF0000", 4, 4, 4)
+        .color,
+    ).toBe("#FF0000");
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, null, 4, 4, 4).color,
+    ).toBeUndefined();
+  });
+
+  it("includes looping only when looping is non-null", () => {
+    expect(
+      buildClipProperties(0, 4, null, true, undefined, null, 4, 4, 4).looping,
+    ).toBe(1);
+    expect(
+      buildClipProperties(0, 4, null, false, undefined, null, 4, 4, 4).looping,
+    ).toBe(0);
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, null, 4, 4, 4).looping,
+    ).toBeUndefined();
+  });
+});
+
+describe("buildClipResult (unit)", () => {
+  it("omits the calculated length when a length parameter was provided", () => {
+    // With notationString set and an explicit length, the `length == null` guard
+    // is false so no calculated length is added. The → true mutant would read
+    // clip length back and populate `length`.
+    const clip = {
+      id: "clip-x",
+      getProperty: vi.fn(() => 8),
+      call: vi.fn(() => JSON.stringify({ notes: [] })),
+    } as unknown as LiveAPI;
+
+    const result = buildClipResult(
+      clip,
+      0,
+      "session",
+      0,
+      null,
+      "C3 1|1",
+      "2bar",
+      4,
+      4,
+      null,
+    );
+
+    expect(result.length).toBeUndefined();
+    expect(result.noteCount).toBe(0);
+    expect(result.slot).toBe("0/0");
   });
 });

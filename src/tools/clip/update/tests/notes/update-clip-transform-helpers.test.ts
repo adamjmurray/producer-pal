@@ -100,6 +100,44 @@ describe("update-clip-transform-helpers", () => {
       expect(ctx.scalePitchClassMask).toBe(2741);
     });
 
+    it("scales clipDuration by timeSigDenominator/4 for a non-4 denominator (session)", () => {
+      // At 4/8, a content length of 6 Ableton (quarter-note) beats is 6 * (8/4)
+      // = 12 musical beats. A `/` mutation would give 6 / 2 = 3.
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "length") return 6;
+          if (prop === "is_arrangement_clip") return 0;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
+
+      expect(ctx.clipDuration).toBe(12);
+      expect(ctx.arrangementStart).toBeUndefined();
+    });
+
+    it("scales clipDuration and arrangementStart by timeSigDenominator/4 (arrangement)", () => {
+      // At 4/8: arrangementStart = start_time 4 * (8/4) = 8 (a `/` gives 2);
+      // clipDuration = (end_time 10 - start_time 4) * 2 = 12 (a `/` gives 3).
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "is_arrangement_clip") return 1;
+          if (prop === "start_time") return 4;
+          if (prop === "end_time") return 10;
+          if (prop === "length") return 8;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
+
+      expect(ctx.clipDuration).toBe(12);
+      expect(ctx.arrangementStart).toBe(8);
+    });
+
     it("uses arrangement length (end_time - start_time) for arrangement clips", () => {
       const mockClip = {
         getProperty: vi.fn((prop: string) => {

@@ -3,12 +3,22 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { CODE_EXEC_TIMEOUT_MS } from "#src/tools/clip/code-exec/code-exec-types.ts";
 import { describe, expect, it, vi } from "vitest";
 import {
   computeLoopDeadline,
   isDeadlineExceeded,
   LOOP_DEADLINE_BUFFER_MS,
 } from "./loop-deadline.ts";
+
+describe("LOOP_DEADLINE_BUFFER_MS", () => {
+  it("is exactly twice the per-clip code execution timeout", () => {
+    // Pin the multiplication: 2000 * 2 = 4000. A division mutant would yield
+    // 1000, so assert both the derived relationship and the exact constant.
+    expect(LOOP_DEADLINE_BUFFER_MS).toBe(CODE_EXEC_TIMEOUT_MS * 2);
+    expect(LOOP_DEADLINE_BUFFER_MS).toBe(4000);
+  });
+});
 
 describe("computeLoopDeadline", () => {
   it("should return null when timeoutMs is undefined", () => {

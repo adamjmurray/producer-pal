@@ -11,7 +11,52 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { createClip } from "../create-clip.ts";
-import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
+import { processClipIteration } from "../helpers/create-clip-helpers.ts";
+import {
+  setupArrangementClipMocks,
+  setupAudioArrangementClipMocks,
+} from "./create-clip-test-helpers.ts";
+
+/**
+ * Call processClipIteration for a single arrangement position with sensible
+ * defaults, overriding only the fields a test cares about.
+ * @param opts - Overrides for the iteration
+ * @param opts.sampleFile - Audio file path (audio clip) or null for MIDI
+ * @param opts.clipName - Clip name to apply
+ * @param opts.color - Clip color to apply
+ * @returns The clip result object from processClipIteration
+ */
+function callArrangementIteration(opts: {
+  sampleFile?: string | null;
+  clipName?: string | undefined;
+  color?: string | null;
+}): object {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  return processClipIteration(
+    "arrangement", // view
+    0, // trackIndex
+    null, // sceneIndex
+    0, // arrangementStartBeats
+    "1|1", // arrangementStart
+    4, // clipLength
+    liveSet,
+    null, // startBeats
+    null, // endBeats
+    null, // firstStartBeats
+    null, // looping
+    opts.clipName, // clipName
+    opts.color ?? null, // color
+    4, // timeSigNumerator
+    4, // timeSigDenominator
+    null, // notationString
+    [], // notes
+    null, // length
+    opts.sampleFile ?? null, // sampleFile
+    undefined, // transformedCount
+    null, // takeLane
+  );
+}
 
 describe("createClip - arrangement view", () => {
   it("should create a single clip in arrangement", async () => {
@@ -161,5 +206,110 @@ describe("createClip - arrangement view", () => {
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 4, 4);
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+  });
+
+  it("distributes comma-separated names and colors across arrangement positions", async () => {
+    // Two positions with two names and two colors. The count is
+    // sessionSlots.length + arrangementStarts.length (0 + 2 = 2). The `+` → `-`,
+    // the `name ?? undefined` / `color ?? undefined` → `&&`, and the returned
+    // `{ parsedNames, parsedColors }` → `{}` mutants all collapse the per-position
+    // distribution so the second name/color never lands.
+    const { clip } = setupArrangementClipMocks();
+
+    await createClip({
+      trackIndex: 0,
+      arrangementStart: "1|1,2|1",
+      name: "Alpha,Beta",
+      color: "#FF0000,#00FF00",
+    });
+
+    expect(clip.set).toHaveBeenCalledWith("name", "Alpha");
+    expect(clip.set).toHaveBeenCalledWith("name", "Beta");
+    expect(clip.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
+    expect(clip.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+  });
+
+  it("warns with the tool name when more names than positions are provided", async () => {
+    // 3 names for 2 positions → warnExtraNames warns. The blanked tool-name
+    // string mutant would drop the "createClip:" prefix from the warning.
+    setupArrangementClipMocks();
+
+    await createClip({
+      trackIndex: 0,
+      arrangementStart: "1|1,2|1",
+      name: "A,B,C",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("createClip: 3 names provided"),
+    );
+  });
+
+  it("creates the arrangement clip on the requested track (not defaulting to 0)", async () => {
+    // The `trackIndex ?? 0` → `trackIndex && 0` mutant would coerce any track
+    // index to 0, creating the clip on the wrong track.
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    const track2 = registerMockObject("track-2", {
+      path: livePath.track(2),
+      methods: { create_midi_clip: () => ["id", "arr_clip_t2"] },
+    });
+
+    registerMockObject("arr_clip_t2", { properties: { length: 4 } });
+
+    await createClip({
+      trackIndex: 2,
+      arrangementStart: "1|1",
+      notes: "C3 1|1",
+    });
+
+    expect(track2.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+  });
+});
+
+describe("processClipIteration (unit)", () => {
+  it("throws when the MIDI arrangement clip fails to be created", () => {
+    // create_midi_clip returns the "no object" ref, so the created clip does not
+    // exist. Kills the `!clip.exists()` guard's condition/block/message mutants.
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      methods: { create_midi_clip: () => ["id", "0"] },
+    });
+
+    expect(() => callArrangementIteration({})).toThrow(
+      "failed to create Arrangement clip",
+    );
+  });
+
+  it("does NOT set an empty name on an audio clip", () => {
+    // clipName "" is falsy, so `if (clipName)` skips it. The → true mutant would
+    // add name:"" and setAll (which keeps "") would write it.
+    const { clip } = setupAudioArrangementClipMocks();
+
+    callArrangementIteration({
+      sampleFile: "/samples/loop.wav",
+      clipName: "",
+      color: "#FF0000",
+    });
+
+    expect(clip.set).not.toHaveBeenCalledWith("name", expect.anything());
+  });
+
+  it("does NOT call setAll on an audio clip with no name or color", () => {
+    // Empty propsToSet → the `length > 0` guard skips setAll. The → true and
+    // > → >= mutants would call setAll({}).
+    setupAudioArrangementClipMocks();
+    const setAllSpy = vi.spyOn(LiveAPI.prototype, "setAll");
+
+    callArrangementIteration({ sampleFile: "/samples/loop.wav" });
+
+    expect(setAllSpy).not.toHaveBeenCalled();
   });
 });

@@ -121,4 +121,89 @@ describe("readClip - warp markers", () => {
     });
     expect(readClipWithWarp().warpMarkers).toBeUndefined();
   });
+
+  it("reports warping=false when the clip is not warped", () => {
+    // Boundary: warping property === 0. `> 0` must yield false, and the value
+    // must not be forced to a constant true.
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
+        is_midi_clip: 0,
+        name: "Unwarped Audio",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        warp_mode: 0,
+        warping: 0,
+      },
+    });
+
+    expect(readClipWithWarp().warping).toBe(false);
+  });
+
+  it("omits warp properties when warp is not requested (sample only)", () => {
+    // includeWarp is false here, so the warp branch must be skipped entirely:
+    // no sampleLength/sampleRate/warping/warpMode even though the props exist.
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
+        is_midi_clip: 0,
+        name: "Audio Sample",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        sample_length: 88200,
+        sample_rate: 44100,
+        warp_mode: 4,
+        warping: 1,
+      },
+    });
+
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["sample"],
+    });
+
+    expect(result.sampleLength).toBeUndefined();
+    expect(result.sampleRate).toBeUndefined();
+    expect(result.warping).toBeUndefined();
+    expect(result.warpMode).toBeUndefined();
+  });
+
+  it("omits warp markers when ENABLE_WARP_MARKERS is not 'true'", () => {
+    // The warp-marker block is gated on the env flag. With the flag off, markers
+    // must not be read even for a warped clip that has warp_markers data.
+    const original = process.env.ENABLE_WARP_MARKERS;
+
+    process.env.ENABLE_WARP_MARKERS = "false";
+
+    try {
+      setupAudioClipMock({
+        trackIndex: 0,
+        sceneIndex: 0,
+        clipProps: {
+          is_midi_clip: 0,
+          name: "Warped Audio",
+          signature_numerator: 4,
+          signature_denominator: 4,
+          length: 4,
+          warp_mode: 4,
+          warping: 1,
+          warp_markers: JSON.stringify([{ sample_time: 0, beat_time: 0 }]),
+        },
+      });
+
+      const result = readClipWithWarp();
+
+      expect(result.warpMarkers).toBeUndefined();
+      // Other warp properties are still read (proves the clip is warped and the
+      // block ran up to the marker gate).
+      expect(result.warping).toBe(true);
+    } finally {
+      process.env.ENABLE_WARP_MARKERS = original;
+    }
+  });
 });

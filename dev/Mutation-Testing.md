@@ -31,11 +31,13 @@ Scopes are defined in `config/mutation-scopes.mjs`:
 - **`notation`** — `src/notation/` (the default). Ratcheted: `break: 86`.
 - **One scope per `src/tools/` domain** — `actions`, `advanced`, `clip`, `core`,
   `device`, `live-set`, `scene`, `session`, `shared`, `track`. Each excludes
-  tests, test helpers, `.def.ts` tool-definition files, and type-only modules
-  (see `toolDomain()`). A domain starts in **baseline mode** (`break: null`,
-  measure-only) until its survivors are triaged in its own PR and it earns a
-  floor in `TOOL_DOMAIN_BREAKS`; triaged so far: `track` (`break: 85`),
-  `session` (`break: 89`), `actions` (`break: 90`).
+  tests, test helpers, `.def.ts` tool-definition files, `*-disabled.ts`
+  build-time substitution stubs, and type-only modules (see `toolDomain()`). A
+  domain starts in **baseline mode** (`break: null`, measure-only) until its
+  survivors are triaged in its own PR and it earns a floor in
+  `TOOL_DOMAIN_BREAKS`; triaged so far: `track` (`break: 85`), `session`
+  (`break: 89`), `actions` (`break: 90`), `device` (`break: 90`), `clip`
+  (`break: 96`).
 - **Groups** — `tools` (all ten tool domains) and `all` (notation + tools),
   expanded by the runner into their member scopes.
 
@@ -438,6 +440,95 @@ One durable test-authoring gotcha surfaced (worth reusing across domains):
 | return-chains include on/off; malformed-path safe-resolve warn      | `read-device.test.ts`, `update-device-path` |
 | Malformed-JSON `params` string rejected (not swallowed)             | `device-params-schema.test.ts`              |
 
+## Baseline (2026-07-15, `src/tools/clip/`)
+
+Fifth and largest write-op domain triaged (`create` / `read` / `update` clip
+tools plus arrangement operations, in-clip code execution, and the shared clip
+helpers) — this completes the write-op tier. Full pass — Stryker 9.6.1, Node 24,
+`coverageAnalysis: "perTest"`:
+
+| Metric                     | Value      |
+| -------------------------- | ---------- |
+| **Mutation score**         | **97.48%** |
+| Mutants killed             | 1741       |
+| Survived                   | 45         |
+| Timeout (counts as killed) | 1          |
+| No coverage                | 0          |
+| Total mutants              | 1787       |
+| Wall-clock                 | 2m 0s      |
+
+Gate: `break: 96` (`TOOL_DOMAIN_BREAKS.clip`), ~1.5 points below the score for
+timeout-classification variance. Triage lifted the score from an **80.23%**
+baseline (338 survivors), killing ~297 mutants with test-only changes — no
+product code touched. This was by far the biggest domain (28 mutated files, 1787
+mutants — more than `track` + `session` + `actions` combined) yet finished with
+the **highest** final score of the five write-op domains, because the clip
+helpers are mostly pure functions with tight, directly-unit-testable contracts.
+
+One scope-config change accompanied the tests: `toolDomain()` in
+`config/mutation-scopes.mjs` now excludes `*-disabled.ts`, the build-time
+substitution stubs rollup swaps in when a feature flag is off (e.g.
+`ENABLE_CODE_EXEC`). Tests run with the feature enabled, so the stubs are never
+imported — 14 all-`NoCoverage` mutants that can never be killed.
+`vitest.config.ts` already coverage-excludes them; this mirrors that exclusion.
+
+Per-file scores after triage (files with remaining survivors; 12 more files hit
+100%):
+
+| File                                 | Score  | Survived | Notes                                   |
+| ------------------------------------ | ------ | -------- | --------------------------------------- |
+| `update-clip-arrangement-optimizer`  | 90.32% | 6        | merge-group length boundary (bkt 2)     |
+| `update-clip-notes-helpers`          | 91.82% | 9        | redundant fast-path guards (bkt 2)      |
+| `create-clip-loop-helpers`           | 93.02% | 6        | loop-region default equivalents         |
+| `update-clip.ts`                     | 93.75% | 6        | toSlot dual-return + split integ.       |
+| `create-clip-audio-helpers`          | 95.45% | 1        | arrangementStart null-guard (bkt 2)     |
+| `update-clip-properties-helpers`     | 96.47% | 3        | setEndFirst redundant operands          |
+| `read-clip-helpers`                  | 97.30% | 2        | dead `=== ""` clause (bkt 2)            |
+| `code-exec-helpers`                  | 97.75% | 2        | view-branch guards (weak, need LiveAPI) |
+| `read-clip.ts`                       | 98.31% | 3        | `?? "barbeat"` fallthrough (bkt 2)      |
+| 7 more (`create-clip.ts`, timing, …) | 98–99% | 1 each   | isolated equivalents (bkt 2)            |
+
+The remaining 45 survivors are overwhelmingly **bucket 2 (equivalent)**. The
+recurring shapes:
+
+- **Redundant fast-path guards** (`update-clip-notes-helpers` L201/L309/L353):
+  an early `existingNotes.length === 0` / `preTransformString == null` short-
+  circuit duplicating a guard `applyTransforms` already performs internally, so
+  forcing it changes nothing observable.
+- **Merge-group length boundaries** (`update-clip-arrangement-optimizer`):
+  `>= 1` / `< 1` on group lengths the merge loop can only ever enter with ≥1
+  element.
+- **Dual null-returns** (`update-clip.ts` `parseToSlotParam`): the
+  `toSlot == null` early return and the `slots.length === 0` return converge on
+  the same `null`.
+- **Never-nullish fallbacks / never-equal bounds** across create/read helpers:
+  `?? "barbeat"` (both branches fall through `resolveNotation`), the
+  `"arrangement" → ""` view string never surfaced in a result, `color` /
+  `arrangementStart` null-guards behind a `setAll` that already skips null.
+
+The only weak-not-equivalent leftovers are the arrangement-splitting branch in
+`update-clip.ts` (L353) and the `buildCodeLocationContext` view guards
+(`code-exec-helpers` L221/L225) — reachable but low-value defensive paths left
+for a future integration pass.
+
+### Gaps closed (clip)
+
+Same `undefined`-valued-property gotcha as the device pass (see above): a
+`buildClipProperties` `if (clipName)` guard forced to `true` writes
+`name: undefined`, which a `.name` → `toBeUndefined()` assertion cannot
+distinguish from an absent property. Fixed with `not.toHaveProperty("name")`.
+
+| Gap (now killed)                                                    | Test strengthened / added                          |
+| ------------------------------------------------------------------- | -------------------------------------------------- |
+| Loop/unlooped arrangement clip property math (43 mutants, 0 → 100%) | `arrangement-unlooped-helpers.test.ts`             |
+| `buildClipPropertiesToSet` boundary/loop-flag matrix                | `update-clip-properties.test.ts`                   |
+| Loop-region defaults + transform normalization (create)             | `create-clip-loop-helpers.test.ts`, `-transform`   |
+| Note transform / timing / audio helper conditionals + warns         | `update-clip-notes-helpers.test.ts`, `-timing`     |
+| read-clip warp-marker + notation-resolution branches                | `read-clip-coverage.test.ts`, `read-clip-helpers`  |
+| In-clip code-exec helper guards + deadline / scale-mask             | `code-exec-helpers-coverage.test.ts`, `scale-mask` |
+| create-clip name/color distribution + take-lane resolution          | `create-clip-*.test.ts` (basic/advanced/…)         |
+| Empty `clipName` must not write a `name` property                   | `create-clip-advanced.test.ts`                     |
+
 ## Interpreting survivors
 
 Each survivor falls into one of three buckets — triage before acting:
@@ -457,24 +548,27 @@ wins, and a cross-check against the line-coverage gate.
 ## Status & next steps
 
 The `notation` scope is **ratcheted** (`thresholds.break = 86`), as are `track`
-(`break: 85`), `session` (`break: 89`), `actions` (`break: 90`), and `device`
-(`break: 90`), the first four triaged tool domains. The per-domain scope
-mechanism (`config/mutation-scopes.mjs` + the runner) is in place, so each
-`src/tools/` domain can be mutated on its own; the untriaged ones remain in
-**baseline mode** (`break: null`, measure-only). Mutation testing stays off the
-per-PR hot path (a full pass is minutes). Remaining work (later releases):
+(`break: 85`), `session` (`break: 89`), `actions` (`break: 90`), `device`
+(`break: 90`), and `clip` (`break: 96`) — the five triaged write-op tool
+domains. The per-domain scope mechanism (`config/mutation-scopes.mjs` + the
+runner) is in place, so each `src/tools/` domain can be mutated on its own; the
+untriaged ones remain in **baseline mode** (`break: null`, measure-only).
+Mutation testing stays off the per-PR hot path (a full pass is minutes).
+Remaining work (later releases):
 
 - Keep triaging the ~588 notation survivors, but expect diminishing returns: the
   dense clusters left are epsilon-boundary / warning-string / equivalent mutants
   (bucket 2/3), so genuine bucket-1 gaps are now sparse.
 - Raise each scope's `break` as its score climbs.
-- Triage the remaining `src/tools/` domains one PR at a time (write operations
-  first — `clip` next; `track`, `session`, `actions`, and `device` done). Per
-  domain: run `npm run mutation -- <domain>`, close real gaps, flip that
-  domain's `break` from `null` to ~1 point below its triaged score (add it to
-  `TOOL_DOMAIN_BREAKS`). The big clean wins tend to be untested lookup/enum
-  tables (as in notation's chord table) and warn-and-skip guards whose tests
-  assert only the result, never the warning or the skipped write.
+- Triage the remaining `src/tools/` domains one PR at a time. The write-op tier
+  is now complete (`track`, `session`, `actions`, `device`, `clip` done); the
+  read-op / shared domains (`advanced`, `core`, `live-set`, `scene`, `shared`)
+  remain in baseline mode. Per domain: run `npm run mutation -- <domain>`, close
+  real gaps, flip that domain's `break` from `null` to ~1 point below its
+  triaged score (add it to `TOOL_DOMAIN_BREAKS`). The big clean wins tend to be
+  untested lookup/enum tables (as in notation's chord table) and warn-and-skip
+  guards whose tests assert only the result, never the warning or the skipped
+  write.
 - Optionally wire a scheduled (nightly/weekly) non-blocking CI job once several
   domains have floors — full-tree runtime is hours, not minutes.
 

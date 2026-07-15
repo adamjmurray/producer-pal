@@ -19,6 +19,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
+import { resolveCreateClipTakeLane } from "#src/tools/clip/create/helpers/create-clip-prep-helpers.ts";
 import * as consoleMock from "#src/shared/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */
@@ -191,6 +192,63 @@ describe("createClip take lanes", () => {
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining("takeLane ignored for session clips"),
+    );
+  });
+});
+
+describe("resolveCreateClipTakeLane (unit)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns null and warns for a session-only request (no arrangement positions)", () => {
+    // A track is registered so that, if the guard were skipped, the mutant path
+    // would resolve a real lane (non-null) instead of returning null. Kills the
+    // `arrangementStarts.length === 0` → false and the || → && mutants.
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    const result = resolveCreateClipTakeLane("new", null, 0, [], 0);
+
+    expect(result).toBeNull();
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane ignored for session clips"),
+    );
+  });
+
+  it("returns null and warns when trackIndex is null despite arrangement positions", () => {
+    // Kills the `trackIndex == null` → false mutant: with it removed the guard
+    // would fall through and try to resolve a lane instead of returning null.
+    const result = resolveCreateClipTakeLane("new", null, 0, ["1|1"], null);
+
+    expect(result).toBeNull();
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane ignored for session clips"),
+    );
+  });
+
+  it("returns null WITHOUT warning when a session-only request did not request a take lane", () => {
+    // takeLane 0 = main lane (not requested). The `isTakeLaneRequested(...)` →
+    // true mutant would emit the ignored-warning even though none was requested.
+    const result = resolveCreateClipTakeLane(0, null, 0, [], 0);
+
+    expect(result).toBeNull();
+    expect(consoleMock.warn).not.toHaveBeenCalled();
+  });
+
+  it("targets a take lane (no session-ignore warning) for an arrangement-only request", () => {
+    // sessionSlotCount is 0, so the ignored-warning must NOT fire (kills the
+    // `sessionSlotCount > 0` → true and > → >= mutants), and the targeting-hint
+    // warning must fire (kills the blanked-string mutant).
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    const result = resolveCreateClipTakeLane("new", null, 0, ["1|1"], 0);
+
+    expect(result).not.toBeNull();
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("ignored for session clips"),
+    );
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("targeting take lane"),
     );
   });
 });
