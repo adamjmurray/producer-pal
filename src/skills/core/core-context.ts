@@ -31,6 +31,8 @@ Three layers, chosen by \`scope\`:
 
 If a fact should ALWAYS apply, it belongs in context — never divert it into memory just because memory is easier to write. But FIRST check the memory index: if an entry already covers the fact, it is an update to THAT entry, not a context write.
 
+Whichever layer you write, write for a stranger: they have none of this conversation. Capture the whole structure a fact sits in, not the isolated detail in front of you — so they can act on it without re-deriving what you worked out here.
+
 Writing project/global (the user's own documents — an action:write REPLACES the whole document):
 - **Already in the memory index?** If an entry covers this fact, UPDATE that entry instead — do not write it to context and leave the memory contradicting it. An existing entry beats the layer rules above; two layers disagreeing is worse than either one being wrong.
 - **Only what the USER told you, here.** Facts you already hold about them — from your own memory, another tool, an earlier project — are NOT yours to install. Offer: list exactly what you'd add, and write only on a yes.
@@ -51,4 +53,4 @@ Managing memory:
  */
 export const coreContextBasic = `## Context
 
-\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is across all projects (style, preferences, goals). Both are single documents — read the same scope before writing (write replaces the whole document).`;
+\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is across all projects (style, preferences, goals). Both are single documents — read the same scope before writing (write replaces the whole document). Write each note so a future assistant with none of this chat can use it: the whole structure, not one isolated detail.`;
