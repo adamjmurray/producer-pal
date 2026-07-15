@@ -15,23 +15,53 @@ steps" below.
 ## Running
 
 ```bash
-npm run mutation
+npm run mutation                 # default scope: notation
+npm run mutation -- clip         # one src/tools/ domain
+npm run mutation -- tools        # every tool domain (group)
+npm run mutation -- notation clip
+npm run mutation -- all          # notation + every tool domain
 ```
 
-This is **scoped to `src/notation/`** and is deliberately **not** part of
-`npm run check` — a full pass takes minutes, too slow for the per-PR hot path.
+Mutation testing is **scoped** and deliberately **not** part of `npm run check`
+— a full pass takes minutes, too slow for the per-PR hot path. Whole-tree runs
+are hours, so we mutate one area ("scope") at a time.
 
-- Config: `config/stryker.config.mjs`
-- HTML report (gitignored): `reports/mutation/notation.html` — open it to browse
-  survivors per file with the exact source diff of each mutant.
-- Reruns are incremental (`reports/mutation/stryker-incremental.json`, also
-  gitignored): after the first full pass, only mutants in changed files re-run.
+Scopes are defined in `config/mutation-scopes.mjs`:
+
+- **`notation`** — `src/notation/` (the default). Ratcheted: `break: 86`.
+- **One scope per `src/tools/` domain** — `actions`, `advanced`, `clip`, `core`,
+  `device`, `live-set`, `scene`, `session`, `shared`, `track`. Each starts in
+  **baseline mode** (`break: null`, measure-only) until its survivors are
+  triaged in its own PR and it earns a floor.
+- **Groups** — `tools` (all ten tool domains) and `all` (notation + tools),
+  expanded by the runner into their member scopes.
+
+Mechanics:
+
+- Runner: `config/run-mutation.mjs` — resolves the requested scopes/groups,
+  rebuilds the peggy parsers, then runs Stryker once per scope with
+  `MUTATION_SCOPE` set, aggregating exit codes (non-zero if any gate fires).
+- Config: `config/stryker.config.mjs` — reads `MUTATION_SCOPE` (default
+  `notation`) and pulls that scope's `mutate` globs and `break` gate from the
+  scope table.
+- HTML report + incremental cache are **per scope** and gitignored:
+  `reports/mutation/<scope>.html` and
+  `reports/mutation/<scope>-incremental.json`. Per-scope incremental files mean
+  running one scope no longer clobbers another's cache. Open the HTML report to
+  browse survivors per file with the exact source diff of each mutant.
 
 The config reuses the project `vitest.config.ts`, so path aliases (`#src` etc.),
 the test environment, and env flags all apply unchanged.
 `coverageAnalysis: "perTest"` means each mutant only re-runs the tests that
 cover it, not the whole ~8k-test suite — this is the main reason a run is
 minutes, not hours.
+
+### Adding a new scope
+
+Add an entry to `SCOPES` in `config/mutation-scopes.mjs` (`mutate` globs +
+`break: null` for baseline mode); tool domains can use the `toolDomain()`
+helper. Optionally add it to a group. That's it — the config and runner pick it
+up by name.
 
 ## Baseline (2026-07-14, `src/notation/`)
 
@@ -113,17 +143,23 @@ wins, and a cross-check against the line-coverage gate.
 
 ## Status & next steps
 
-The gate is **ratcheted** (`thresholds.break = 86`) but still **scoped to
-`src/notation/`** and off the per-PR hot path (a full pass is minutes).
-Remaining work (later releases):
+The `notation` scope is **ratcheted** (`thresholds.break = 86`). The per-domain
+scope mechanism (`config/mutation-scopes.mjs` + the runner) is in place, so each
+`src/tools/` domain can be mutated on its own — all currently in **baseline
+mode** (`break: null`, measure-only). Mutation testing stays off the per-PR hot
+path (a full pass is minutes). Remaining work (later releases):
 
-- Keep triaging the ~588 survivors, but expect diminishing returns: the dense
-  clusters left are epsilon-boundary / warning-string / equivalent mutants
+- Keep triaging the ~588 notation survivors, but expect diminishing returns: the
+  dense clusters left are epsilon-boundary / warning-string / equivalent mutants
   (bucket 2/3), so genuine bucket-1 gaps are now sparse.
-- Raise `thresholds.break` as the score climbs.
-- Widen `mutate` to `src/tools/` (write operations first), likely as a scheduled
-  (nightly/weekly) non-blocking CI job — full-tree runtime is hours, not
-  minutes.
+- Raise each scope's `break` as its score climbs.
+- Triage the `src/tools/` domains one PR at a time (write operations first —
+  `clip`, `device`, `track`). Per domain: run `npm run mutation -- <domain>`,
+  close real gaps, flip that domain's `break` from `null` to ~1 point below its
+  triaged score. The big clean wins tend to be untested lookup/enum tables, as
+  in notation's chord table.
+- Optionally wire a scheduled (nightly/weekly) non-blocking CI job once several
+  domains have floors — full-tree runtime is hours, not minutes.
 
 ### CI-rollout sketch
 
@@ -141,17 +177,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mutate:
-          - "src/notation/**/*.ts"
-          - "src/tools/clip/**/*.ts"
-          - "src/tools/track/**/*.ts"
-          - "src/tools/device/**/*.ts"
-          - "src/tools/actions/**/*.ts"
-          - "src/tools/{scene,control,live-set,workflow}/**/*.ts"
+        scope: [notation, clip, device, track, actions, session, shared]
     steps:
-      - run: npx stryker run --mutate '${{ matrix.mutate }}'
-      # Upload HTML report as artifact
+      - run: npm run mutation -- ${{ matrix.scope }}
+      # Upload reports/mutation/<scope>.html as an artifact
 ```
+
+Each matrix job runs one scope from `config/mutation-scopes.mjs`, so the matrix
+is just a list of scope names — no duplicated glob strings to keep in sync.
 
 After the first full run, `--incremental` mode only re-tests mutants in changed
 files, bringing per-PR runs down to minutes — viable as a non-blocking check.
