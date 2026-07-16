@@ -22,6 +22,20 @@ interface DeviceInfoResult {
 type MockChainOverrides = { devices?: unknown[] };
 
 describe("processDeviceChains", () => {
+  // A chain whose `solo` property is configurable, for hasSoloedChain coverage.
+  const createSoloChain = (name: string, solo: number) => ({
+    id: `chain-${name}`,
+    type: "Chain",
+    getProperty: (prop: string) => {
+      if (prop === "name") return name;
+      if (prop === "solo") return solo;
+
+      return 0;
+    },
+    getColor: () => null,
+    getChildren: () => [],
+  });
+
   const createMockChain = (
     name: string,
     overrides: MockChainOverrides = {},
@@ -181,6 +195,8 @@ describe("processDeviceChains", () => {
     const firstCall = readDeviceCalls[0] as (typeof readDeviceCalls)[0];
 
     expect(firstCall.options.parentPath).toBe("t0/d0/rc0/d0");
+    // Nested devices are read one level deeper than the chain (depth + 1).
+    expect(firstCall.options.depth).toBe(1);
   });
 
   it("returns deviceCount instead of expanding devices when depth >= maxDepth", () => {
@@ -298,6 +314,10 @@ describe("processDeviceChains", () => {
     expect(chains[0]?.path).toBeUndefined();
     // Nested device path is null too (chainPath was null).
     expect(readDeviceCalls[0]?.parentPath).toBeNull();
+    // Regular-chain nested devices carry the full recursion options: one level
+    // deeper (depth + 1) and the propagated include flags.
+    expect(readDeviceCalls[0]?.depth).toBe(1);
+    expect(readDeviceCalls[0]?.includeChains).toBe(true);
   });
 
   it("builds null return-chain paths when devicePath is omitted", () => {
@@ -321,19 +341,6 @@ describe("processDeviceChains", () => {
   });
 
   it("sets hasSoloedChain when a rack chain is soloed", () => {
-    const createSoloChain = (name: string, solo: number) => ({
-      id: `chain-${name}`,
-      type: "Chain",
-      getProperty: (prop: string) => {
-        if (prop === "name") return name;
-        if (prop === "solo") return solo;
-
-        return 0;
-      },
-      getColor: () => null,
-      getChildren: () => [],
-    });
-
     const mockDevice = {
       getChildren: (child: string) => {
         if (child === "chains") {
@@ -364,5 +371,70 @@ describe("processDeviceChains", () => {
     );
 
     expect(deviceInfo.hasSoloedChain).toBe(true);
+  });
+
+  it("omits hasSoloedChain when no rack chain is soloed", () => {
+    const mockDevice = {
+      getChildren: (child: string) => {
+        if (child === "chains") {
+          return [createSoloChain("Chain A", 0), createSoloChain("Chain B", 0)];
+        }
+
+        return [];
+      },
+    };
+
+    const deviceInfo: Record<string, unknown> = {};
+
+    processDeviceChains(
+      mockDevice as unknown as LiveAPI,
+      deviceInfo,
+      DEVICE_TYPE.AUDIO_EFFECT_RACK,
+      {
+        includeChains: true,
+        includeReturnChains: false,
+        includeDrumPads: false,
+        depth: 0,
+        maxDepth: 1,
+        readDeviceFn: () => ({}),
+        devicePath: "t0/d0",
+      },
+    );
+
+    expect(deviceInfo.hasSoloedChain).toBeUndefined();
+  });
+
+  it("does not build chains when includeChains is false (drum-pad-only read of a plain rack)", () => {
+    const mockChain = createMockChain("Chain A", {
+      devices: [{ id: "dev-1" }],
+    });
+    const mockDevice = {
+      getChildren: (child: string) => {
+        if (child === "chains") return [mockChain];
+
+        return [];
+      },
+    };
+
+    const deviceInfo: Record<string, unknown> = {};
+
+    // A non-drum rack asked only for drum pads still runs processRegularChains,
+    // but the `if (includeChains)` guard must keep `chains` out of the output.
+    processDeviceChains(
+      mockDevice as unknown as LiveAPI,
+      deviceInfo,
+      DEVICE_TYPE.AUDIO_EFFECT_RACK,
+      {
+        includeChains: false,
+        includeReturnChains: false,
+        includeDrumPads: true,
+        depth: 0,
+        maxDepth: 2,
+        readDeviceFn: () => ({}),
+        devicePath: "t0/d0",
+      },
+    );
+
+    expect(deviceInfo.chains).toBeUndefined();
   });
 });

@@ -61,6 +61,13 @@ describe("device-path-helpers", () => {
           "t1/d0/c2",
         );
       });
+
+      it("keeps every digit of a multi-digit device index", () => {
+        // Guards the `\d+` (not `\d`) quantifier on the devices/chains matcher.
+        expect(extractDevicePath("live_set tracks 0 devices 12")).toBe(
+          "t0/d12",
+        );
+      });
     });
 
     describe("return track devices", () => {
@@ -76,6 +83,13 @@ describe("device-path-helpers", () => {
             "live_set return_tracks 1 devices 0 chains 0 devices 1",
           ),
         ).toBe("rt1/d0/c0/d1");
+      });
+
+      it("keeps every digit of a multi-digit return track index", () => {
+        // Guards the `(\d+)` (not `(\d)`) capture on the return-track prefix.
+        expect(extractDevicePath("live_set return_tracks 12 devices 0")).toBe(
+          "rt12/d0",
+        );
       });
     });
 
@@ -133,6 +147,18 @@ describe("device-path-helpers", () => {
 
       it("returns null for empty string", () => {
         expect(extractDevicePath("")).toBe(null);
+      });
+
+      it("requires the track prefix to anchor at the start of the path", () => {
+        // The prefix matchers are `^`-anchored: a live_set path buried after
+        // other text is not a valid device path.
+        expect(extractDevicePath("x live_set tracks 1 devices 0")).toBe(null);
+        expect(extractDevicePath("x live_set return_tracks 0 devices 0")).toBe(
+          null,
+        );
+        expect(extractDevicePath("x live_set master_track devices 0")).toBe(
+          null,
+        );
       });
     });
   });
@@ -352,6 +378,15 @@ describe("device-path-helpers", () => {
         );
       });
 
+      it("throws on a non-string path", () => {
+        // A truthy non-string trips the `typeof !== "string"` half of the guard
+        // (not the `!path` half), so removing it would let `.split` throw a
+        // different, less useful error.
+        expect(() => resolvePathToLiveApi(123 as unknown as string)).toThrow(
+          "Path must be a non-empty string",
+        );
+      });
+
       it("throws on track-only path", () => {
         expect(() => resolvePathToLiveApi("t1")).toThrow(
           "Path must include at least a device index",
@@ -473,6 +508,9 @@ describe("device-path-helpers", () => {
         "Path must be a non-empty string",
       );
       expect(() => resolveInsertionPath(null as unknown as string)).toThrow(
+        "Path must be a non-empty string",
+      );
+      expect(() => resolveInsertionPath(123 as unknown as string)).toThrow(
         "Path must be a non-empty string",
       );
       expect(() => resolveInsertionPath("t0/dabc")).toThrow(

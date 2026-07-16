@@ -21,6 +21,7 @@ interface DrumPadInfo {
 import {
   buildChainInfo,
   isRedundantDeviceClassName,
+  readDeviceParameters,
   readMacroVariations,
   readABCompare,
 } from "../device-reader-helpers.ts";
@@ -135,6 +136,16 @@ describe("device-reader-helpers", () => {
       expect(result.mappedPitch).toBeUndefined();
     });
 
+    it("omits mappedPitch for a DrumChain whose out_note is out of MIDI range", () => {
+      // out_note 200 → midiToNoteName returns null, so mappedPitch must be
+      // omitted (not set to null) — guards the `noteName != null` check.
+      const chain = createMockChain({ type: "DrumChain", out_note: 200 });
+      const result = buildChainInfo(chain);
+
+      expect(result.mappedPitch).toBeUndefined();
+      expect("mappedPitch" in result).toBe(false);
+    });
+
     it("includes state when muted", () => {
       const chain = createMockChain({ mute: 1 });
       const result = buildChainInfo(chain);
@@ -236,6 +247,15 @@ describe("device-reader-helpers", () => {
         isRedundantDeviceClassName(DEVICE_TYPE.AUDIO_EFFECT, "Reverb"),
       ).toBe(false);
     });
+
+    it("does not match a rack class name against a mismatched device type", () => {
+      // A non-MIDI-effect-rack device type must not be judged redundant just
+      // because its class name happens to read "MIDI Effect Rack" — each check
+      // is gated on the specific device type, not any rack.
+      expect(
+        isRedundantDeviceClassName(DEVICE_TYPE.INSTRUMENT, "MIDI Effect Rack"),
+      ).toBe(false);
+    });
   });
 
   describe("computeState", () => {
@@ -251,6 +271,12 @@ describe("device-reader-helpers", () => {
     const stateCases: [string, StatePropConfig, string | undefined, string][] =
       [
         ["ACTIVE for master category", {}, "master", STATE.ACTIVE],
+        [
+          "ACTIVE for master category even when mute is set",
+          { mute: 1 },
+          "master",
+          STATE.ACTIVE,
+        ],
         [
           "MUTED_AND_SOLOED when both muted and soloed",
           { mute: 1, solo: 1 },
@@ -528,6 +554,43 @@ describe("device-reader-helpers", () => {
         variations: { count: 3, selected: 1 },
         macros: { count: 4, hasMappings: false },
       });
+    });
+  });
+
+  describe("readDeviceParameters", () => {
+    const mockParam = (id: string, name: string) =>
+      ({
+        id,
+        getProperty: (prop: string) =>
+          prop === "name" || prop === "original_name" ? name : undefined,
+      }) as unknown as LiveAPI;
+
+    const mockDeviceWithParams = (params: LiveAPI[]) =>
+      ({
+        getChildren: (child: string) => (child === "parameters" ? params : []),
+      }) as unknown as LiveAPI;
+
+    it("reads basic (id + name only) parameters by default", () => {
+      // No options → includeValues defaults false → readParameterBasic, so the
+      // result must NOT carry value/min/max fields.
+      const device = mockDeviceWithParams([mockParam("p1", "Cutoff")]);
+
+      expect(readDeviceParameters(device)).toStrictEqual([
+        { id: "p1", name: "Cutoff" },
+      ]);
+    });
+
+    it("trims the search term before matching parameter names", () => {
+      // A padded search ("  rev  ") must still match "Reverb"; without the trim
+      // the padded term would never be a substring of any name.
+      const device = mockDeviceWithParams([
+        mockParam("p1", "Reverb"),
+        mockParam("p2", "Cutoff"),
+      ]);
+
+      const result = readDeviceParameters(device, { search: "  rev  " });
+
+      expect(result).toStrictEqual([{ id: "p1", name: "Reverb" }]);
     });
   });
 
