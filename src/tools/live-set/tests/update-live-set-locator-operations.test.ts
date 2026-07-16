@@ -25,7 +25,7 @@ describe("updateLiveSet - locator operations", () => {
 
   describe("create locator", () => {
     it("should create locator at specified position", async () => {
-      setupLocatorCreationMocks(liveSet, { time: 0 }); // 1|1 = 0 beats
+      const { newCue } = setupLocatorCreationMocks(liveSet, { time: 0 }); // 1|1 = 0 beats
 
       const result = await updateLiveSet({
         locatorOperation: "create",
@@ -34,6 +34,10 @@ describe("updateLiveSet - locator operations", () => {
 
       expect(liveSet.set).toHaveBeenCalledWith("current_song_time", 0);
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
+      // No name provided → the name is not set (guard is `found && name != null`).
+      expect(newCue.set.mock.calls.filter((c) => c[0] === "name")).toHaveLength(
+        0,
+      );
       expect(result.locator).toStrictEqual({
         operation: "created",
         time: "1|1",
@@ -101,6 +105,10 @@ describe("updateLiveSet - locator operations", () => {
         time: "5|1",
         existingId: "locator-0",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Locator already exists at 5|1"),
+      );
     });
 
     it("should skip if locatorTime is missing for create", async () => {
@@ -112,6 +120,10 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_locatorTime",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "locatorTime is required for create operation",
+      );
     });
   });
 
@@ -182,10 +194,45 @@ describe("updateLiveSet - locator operations", () => {
       });
 
       expect(liveSet.call).toHaveBeenCalledWith("set_or_delete_cue");
+      // Deletes run in reverse time order (32 before 0) so earlier indices
+      // don't shift out from under later deletes.
+      const cueTimeSets = liveSet.set.mock.calls
+        .filter((c) => c[0] === "current_song_time")
+        .map((c) => c[1]);
+
+      expect(cueTimeSets).toStrictEqual([32, 0]);
       expect(result.locator).toStrictEqual({
         operation: "deleted",
         count: 2,
         name: "Verse",
+      });
+    });
+
+    it("prefers locatorId over locatorName when both are given", async () => {
+      // The name-delete branch requires BOTH id and time to be null; with an id
+      // present we delete that single locator, never every cue sharing the name.
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorId: "locator-0",
+        locatorName: "Verse", // cue2 is "Verse" — must be ignored
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "deleted",
+        id: "locator-0",
+      });
+    });
+
+    it("prefers locatorTime over locatorName when both are given", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "delete",
+        locatorTime: "5|1", // 16 beats → cue2
+        locatorName: "Intro", // must be ignored
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "deleted",
+        time: "5|1",
       });
     });
 
@@ -198,6 +245,10 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_identifier",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "delete requires locatorId, locatorTime, or locatorName",
+      );
     });
 
     it("should skip if locator ID not found", async () => {
@@ -212,6 +263,10 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         id: "locator-99",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Locator not found: locator-99"),
+      );
     });
 
     it("should skip if no locator at specified time", async () => {
@@ -226,6 +281,10 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         time: "100|1",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("No locator found at position: 100|1"),
+      );
     });
 
     it("should skip if no locators match name", async () => {
@@ -240,6 +299,10 @@ describe("updateLiveSet - locator operations", () => {
         reason: "no_locators_found",
         name: "NonExistent",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("No locators found with name: NonExistent"),
+      );
     });
   });
 
@@ -295,6 +358,10 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_locatorName",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "locatorName is required for rename operation",
+      );
     });
 
     it("should skip if no identifier provided for rename", async () => {
@@ -307,6 +374,10 @@ describe("updateLiveSet - locator operations", () => {
         operation: "skipped",
         reason: "missing_identifier",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "rename requires locatorId or locatorTime",
+      );
     });
 
     it("should skip if locator ID not found for rename", async () => {
@@ -321,6 +392,10 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         id: "locator-99",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("locator not found: locator-99"),
+      );
     });
 
     it("should skip if no locator found at specified time for rename", async () => {
@@ -335,6 +410,10 @@ describe("updateLiveSet - locator operations", () => {
         reason: "locator_not_found",
         time: "100|1",
       });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("no locator found at position: 100|1"),
+      );
     });
   });
 

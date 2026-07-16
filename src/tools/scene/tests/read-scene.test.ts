@@ -169,6 +169,40 @@ describe("readScene", () => {
     });
   });
 
+  it("includes the scene color only when color is requested", () => {
+    setupLiveSetTracks([]);
+    setupScene(
+      "scene_c",
+      0,
+      defaultSceneConfig({ name: "Colored", color: 65280 }),
+    );
+
+    const withColor = readScene({ sceneIndex: 0, include: ["color"] });
+    const withoutColor = readScene({ sceneIndex: 0 });
+
+    expect(withColor.color).toBe("#00FF00");
+    expect(withoutColor).not.toHaveProperty("color");
+  });
+
+  it("filters empty clip slots and suppresses their per-clip warnings", () => {
+    setupLiveSetTracks(["track1", "track2"]);
+    setupScene("scene_f", 0, defaultSceneConfig({ name: "Filtered" }));
+    setupSessionClip("clip_0_0", 0, 0);
+    // track 1's slot is empty (non-existent clip)
+    registerMockObject("0", {
+      path: livePath.track(1).clipSlot(0).clip(),
+      type: "Clip",
+    });
+
+    const result = readScene({ sceneIndex: 0, include: ["clips"] });
+
+    expect(result.clips).toHaveLength(1);
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("no clip at trackIndex"),
+    );
+  });
+
   it("includes clip information when includeClips is true", () => {
     setupLiveSetTracks(["track1", "track2"]);
     setupScene("scene_0", 0, defaultSceneConfig({ name: "Scene with Clips" }));

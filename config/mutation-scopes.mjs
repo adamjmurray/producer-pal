@@ -84,6 +84,10 @@ const TOOL_DOMAIN_BREAKS = {
   actions: 90, // triaged 2026-07-15 at 91.79% (see dev/Mutation-Testing.md)
   device: 90, // triaged 2026-07-15 at 91.18% (see dev/Mutation-Testing.md)
   clip: 96, // triaged 2026-07-15 at 97.48% (see dev/Mutation-Testing.md)
+  advanced: 97, // triaged 2026-07-15 at 98.60% (see dev/Mutation-Testing.md)
+  core: 99, // triaged 2026-07-15 at 100.00% (see dev/Mutation-Testing.md)
+  scene: 96, // triaged 2026-07-15 at 97.66% (see dev/Mutation-Testing.md)
+  "live-set": 98, // triaged 2026-07-15 at 99.07% (see dev/Mutation-Testing.md)
 };
 
 export const SCOPES = {

@@ -102,6 +102,61 @@ describe("captureScene", () => {
     );
   });
 
+  it("does not select a scene when sceneIndex is omitted", () => {
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: [] },
+    });
+    const appView = registerMockObject("live_set/view", {
+      path: livePath.view.song,
+    });
+
+    registerMockObject("live_set/view/selected_scene", {
+      path: livePath.scene(1),
+    });
+    registerMockObject("live_set/scenes/2", { path: livePath.scene(2) });
+
+    captureScene();
+
+    expect(appView.set).not.toHaveBeenCalled();
+  });
+
+  it("does not set a name when none is provided", () => {
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: [] },
+    });
+    registerMockObject("live_set/view/selected_scene", {
+      path: livePath.scene(1),
+    });
+    const newScene = registerMockObject("live_set/scenes/2", {
+      path: livePath.scene(2),
+    });
+
+    captureScene();
+
+    // A guard mutated to `if (true)` would call set("name", undefined); a
+    // plain not.toHaveBeenCalledWith(..., anything()) can't see undefined.
+    expect(newScene.set.mock.calls.filter((c) => c[0] === "name")).toHaveLength(
+      0,
+    );
+  });
+
+  it("parses a two-digit selected scene index", () => {
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: [] },
+    });
+    registerMockObject("live_set/view/selected_scene", {
+      path: livePath.scene(12),
+    });
+    registerMockObject("live_set/scenes/13", { path: livePath.scene(13) });
+
+    const result = captureScene();
+
+    expect(result.sceneIndex).toBe(13);
+  });
+
   it("should return captured clips with their IDs and track indices", () => {
     registerMockObject("live_set", {
       path: livePath.liveSet,

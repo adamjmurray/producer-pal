@@ -53,6 +53,15 @@ describe("updateLiveSet", () => {
       id: "live_set_id",
       tempo: 140,
     });
+    // scale was not provided → applyScale must not run (it would warn on the
+    // undefined scale via its parse-error path).
+    expect(outlet).not.toHaveBeenCalled();
+  });
+
+  it("throws for an unknown locator operation", async () => {
+    await expect(
+      updateLiveSet({ locatorOperation: "bogus" as never }),
+    ).rejects.toThrow("Unknown locator operation: bogus");
   });
 
   it("should warn and skip for invalid tempo", async () => {
