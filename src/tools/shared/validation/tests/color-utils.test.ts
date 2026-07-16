@@ -36,6 +36,8 @@ describe("color-utils", () => {
   describe("getColorForIndex", () => {
     it("returns undefined when color is undefined", () => {
       expect(getColorForIndex(undefined, 0, null)).toBeUndefined();
+      // The color guard must win even when parsedColors could supply a value.
+      expect(getColorForIndex(undefined, 0, ["#FF0000"])).toBeUndefined();
     });
 
     it("returns color as-is when parsedColors is null", () => {
