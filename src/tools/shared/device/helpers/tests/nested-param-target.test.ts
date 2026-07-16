@@ -278,6 +278,46 @@ describe("resolveNestedParamTarget", () => {
       expect(target).toBeNull();
     });
 
+    it("accepts an explicit chain 0 in the prefix", () => {
+      // "c0" is a valid chain index (the boundary is `< 0`, not `<= 0`): the
+      // prefix must still parse as a pad slot rather than falling through to
+      // general resolution.
+      registerRack(["chain-c1"]);
+      registerDrumChain("chain-c1", 36, ["existing-simpler"]);
+      registerDevice("existing-simpler", "Simpler", "SimplerDevice");
+
+      const target = resolveNestedParamTarget(
+        rack(),
+        "pC1/c0",
+        "sample",
+        "createDevice",
+      );
+
+      expect(target?.id).toBe("existing-simpler");
+    });
+
+    it("warns when Simpler creation returns nothing at all", () => {
+      // insert_device returning undefined (not a tuple) must warn-skip, not
+      // throw while indexing the missing result.
+      registerRack(["chain-c1"]);
+      registerDrumChain("chain-c1", 36, [], {
+        insert_device: () => null,
+      });
+
+      const target = resolveNestedParamTarget(
+        rack(),
+        "pC1/d0",
+        "sample",
+        "createDevice",
+      );
+
+      expect(target).toBeNull();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("failed to create a Simpler"),
+      );
+    });
+
     it("defaults the device slot to 0 when only the pad is given", () => {
       registerRack(["chain-c1"]);
       registerDrumChain("chain-c1", 36, ["existing-simpler"]);
@@ -385,6 +425,7 @@ describe("resolveNestedParamTarget", () => {
       ["pC1/cX", "no device at"],
       ["pC1/c-1", "no device at"],
       ["pC1/dX", "no device at"],
+      ["pC1/d-1", "no device at"],
       ["pC1/d0/x", "no device at"],
     ])("does not pad-create for prefix '%s'", (prefix, message) => {
       const target = resolveNestedParamTarget(

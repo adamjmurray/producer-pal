@@ -620,6 +620,29 @@ describe("device-display-helpers", () => {
       });
     });
 
+    it("takes the unit from the value label when min and max have none", () => {
+      // unit resolves value ?? min ?? max — the value label alone must be able
+      // to supply it.
+      setupParamMock({ name: "Amount", value: 0.5 });
+      setupValueLabels({ 0.5: "50 %", 0: "0", 1: "100" });
+
+      const result = readParameter(createMockParamApi("param_unit_value_only"));
+
+      expect(result.unit).toBe("%");
+    });
+
+    it("normalizes pan against a non-default max pan value", () => {
+      // maxPanValue comes from the max label (64), not the 50 default: 32 of 64
+      // is half-left.
+      setupParamMock({ name: "Pan", value: 0.25 });
+      setupValueLabels({ 0.25: "32L", 0: "0L", 1: "64R" });
+
+      const result = readParameter(createMockParamApi("param_pan_64"));
+
+      expect(result.unit).toBe("pan");
+      expect(result.value).toBe(-0.5);
+    });
+
     it("reads parameter with no unit detected", () => {
       setupParamMock({ name: "Amount", value: 0.5 });
       setupValueLabels({ 0.5: "50", 0: "0", 1: "100" });

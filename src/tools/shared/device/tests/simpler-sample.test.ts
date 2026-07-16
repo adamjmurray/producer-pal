@@ -164,6 +164,27 @@ describe("setSimplerSample", () => {
     );
   });
 
+  it("rejects a relative path even when a drive-letter appears mid-string", () => {
+    // The absolute-path test is anchored (`^`): a drive-letter sequence buried
+    // inside a relative path must NOT read as absolute.
+    const device = registerSimpler();
+
+    setSimplerSample(
+      LiveAPI.from("id simpler-1"),
+      "relative/C:/kick.wav",
+      "updateDevice",
+    );
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "replace_sample",
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("absolute file path"),
+    );
+  });
+
   it("trims surrounding whitespace before passing the path to Live", () => {
     const device = registerSimpler();
 
@@ -211,6 +232,36 @@ describe("setSimplerSample", () => {
 });
 
 describe("probeSimplerSample", () => {
+  it("reports not-simpler for a non-Simpler device class", () => {
+    const device = registerMockObject("op-1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { class_display_name: "Operator" },
+    });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id op-1"), "Operator"),
+    ).toStrictEqual({ kind: "not-simpler" });
+    // Short-circuits before touching the device's sample state.
+    expect(device.get).not.toHaveBeenCalledWith("multi_sample_mode");
+  });
+
+  it("reports multisample for a Simpler in multi-sample mode", () => {
+    registerSimpler({ multiSampleMode: 1 });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "multisample" });
+  });
+
+  it("reports empty when no sample child is loaded", () => {
+    registerSimpler();
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "empty" });
+  });
+
   it("reports empty when the loaded sample has no file path", () => {
     registerMockObject("sample-1", {
       type: "Sample",
@@ -230,6 +281,14 @@ describe("probeSimplerSample", () => {
     expect(
       probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
     ).toStrictEqual({ kind: "empty" });
+  });
+
+  it("reports single with the sample path and gain when a sample is loaded", () => {
+    registerSimplerWithSample({ gain: 0.5 });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "single", path: "/tmp/kick.wav", gain: 0.5 });
   });
 });
 
@@ -286,6 +345,12 @@ describe("setSimplerGain", () => {
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("multi-sample mode"),
+    );
+    // The multi-sample guard must RETURN, not fall through into the loaded-sample
+    // probe below it (which would emit a second, misleading warning).
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("requires a loaded sample"),
     );
   });
 
