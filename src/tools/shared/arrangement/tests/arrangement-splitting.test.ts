@@ -46,6 +46,17 @@ function expectDuplicateNotCalled(trackMock: RegisteredMockObject): void {
   );
 }
 
+function expectCreateMidiClipCount(
+  trackMock: RegisteredMockObject,
+  count: number,
+): void {
+  const createMidiCalls = trackMock.call.mock.calls.filter(
+    (c: unknown[]) => c[0] === "create_midi_clip",
+  );
+
+  expect(createMidiCalls).toHaveLength(count);
+}
+
 describe("prepareSplitParams", () => {
   function setupPrepareTest(): {
     mockClip: LiveAPI;
@@ -503,11 +514,7 @@ describe("performSplitting", () => {
 
     // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
     // Right-trim skipped (0.0001 <= EPSILON), only left-trim remains.
-    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
-      (c: unknown[]) => c[0] === "create_midi_clip",
-    );
-
-    expect(createMidiCalls).toHaveLength(1);
+    expectCreateMidiClipCount(callState.trackMock, 1);
   });
 
   it("should skip left-trim when last segment starts within EPSILON of clip start", () => {
@@ -529,11 +536,7 @@ describe("performSplitting", () => {
 
     // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
     // Left-trim skipped (0.0005 <= EPSILON), only right-trim remains.
-    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
-      (c: unknown[]) => c[0] === "create_midi_clip",
-    );
-
-    expect(createMidiCalls).toHaveLength(1);
+    expectCreateMidiClipCount(callState.trackMock, 1);
   });
 
   it("should skip both trims for middle segment at EPSILON boundaries", () => {
@@ -561,10 +564,6 @@ describe("performSplitting", () => {
     // Step 4: last segment left-trim (11.9995 > EPSILON) → happens
     // Normal 3-segment split would have 4 create_midi_clip calls;
     // skipping both middle trims leaves 2.
-    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
-      (c: unknown[]) => c[0] === "create_midi_clip",
-    );
-
-    expect(createMidiCalls).toHaveLength(2);
+    expectCreateMidiClipCount(callState.trackMock, 2);
   });
 });

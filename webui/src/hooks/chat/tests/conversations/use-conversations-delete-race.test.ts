@@ -42,74 +42,92 @@ function gateNextSave(): { release: () => void; restore: () => void } {
   return { release, restore: () => spy.mockRestore() };
 }
 
+type HookHandle = Awaited<ReturnType<typeof setupHook>>;
+
+/**
+ * Drive the shared "a delete cancels a late autosave" race: gate the next save,
+ * fire `deleteOp` concurrently with a late autosave, run `afterDelete` once the
+ * delete settles, release the gated write, then run `afterRelease`.
+ * @param handle - hook state/result from setupHook
+ * @param deleteOp - the delete under test (returns its in-flight promise)
+ * @param afterDelete - assertions to run once the delete settles
+ * @param afterRelease - assertions to run after the gated late save lands
+ */
+async function expectLateAutosaveDropped(
+  handle: HookHandle,
+  deleteOp: () => Promise<void>,
+  afterDelete: () => void | Promise<void>,
+  afterRelease: () => void | Promise<void>,
+): Promise<void> {
+  const { state, result } = handle;
+  const { release, restore } = gateNextSave();
+  let deletePromise!: Promise<void>;
+  let latePromise!: Promise<void>;
+
+  await act(async () => {
+    deletePromise = deleteOp();
+    state.chatHistory = [{ role: "user", content: "late chunk" }];
+    latePromise = result.current.saveCurrentConversation(Date.now());
+    await deletePromise;
+  });
+
+  await afterDelete();
+
+  await act(async () => {
+    release();
+    await latePromise;
+  });
+
+  await afterRelease();
+  restore();
+}
+
 describe("useConversations delete/save races", () => {
   beforeEach(resetConversationsTestState);
 
   it("drops a late autosave enqueued after a single delete begins", async () => {
     // F1: handleDelete stops the stream, whose teardown fires one more autosave
     // for the still-active id *after* deleteConversation drained the save chain.
-    const { state, result } = await setupHook();
+    const handle = await setupHook();
+    const { state, result } = handle;
 
     await saveWithMessage(state, result);
     const savedId = result.current.activeConversationId!;
 
     expect(await loadConversation(savedId)).toBeDefined();
 
-    const { release, restore } = gateNextSave();
-    let deletePromise!: Promise<void>;
-    let latePromise!: Promise<void>;
-
-    await act(async () => {
-      deletePromise = result.current.deleteConversation(savedId);
-      // The stream-teardown autosave, enqueued after the delete captured the
-      // chain, with its write gated so it lands after the row is removed.
-      state.chatHistory = [{ role: "user", content: "late chunk" }];
-      latePromise = result.current.saveCurrentConversation(Date.now());
-      await deletePromise;
-    });
-
-    expect(await loadConversation(savedId)).toBeUndefined();
-    expect(result.current.conversations).toHaveLength(0);
-
+    // The stream-teardown autosave, enqueued after the delete captured the
+    // chain, with its write gated so it lands after the row is removed.
     // Releasing the late save must not resurrect the deleted row.
-    await act(async () => {
-      release();
-      await latePromise;
-    });
-
-    expect(await loadConversation(savedId)).toBeUndefined();
-    restore();
+    await expectLateAutosaveDropped(
+      handle,
+      () => result.current.deleteConversation(savedId),
+      async () => {
+        expect(await loadConversation(savedId)).toBeUndefined();
+        expect(result.current.conversations).toHaveLength(0);
+      },
+      async () => expect(await loadConversation(savedId)).toBeUndefined(),
+    );
   });
 
   it("deleteAll drops a late autosave for the just-cleared conversation", async () => {
     // F2: bulk deletes had no drain and no guard. The active conversation's
     // teardown autosave must not survive the clear.
-    const { state, result } = await setupHook();
+    const handle = await setupHook();
+    const { state, result } = handle;
 
     await saveWithMessage(state, result);
     const savedId = result.current.activeConversationId!;
 
-    const { release, restore } = gateNextSave();
-    let bulkPromise!: Promise<void>;
-    let latePromise!: Promise<void>;
-
-    await act(async () => {
-      bulkPromise = result.current.deleteAllConversations();
-      state.chatHistory = [{ role: "user", content: "late chunk" }];
-      latePromise = result.current.saveCurrentConversation(Date.now());
-      await bulkPromise;
-    });
-
-    expect(result.current.conversations).toHaveLength(0);
-    expect(await loadConversation(savedId)).toBeUndefined();
-
-    await act(async () => {
-      release();
-      await latePromise;
-    });
-
-    expect(await loadConversation(savedId)).toBeUndefined();
-    restore();
+    await expectLateAutosaveDropped(
+      handle,
+      () => result.current.deleteAllConversations(),
+      async () => {
+        expect(result.current.conversations).toHaveLength(0);
+        expect(await loadConversation(savedId)).toBeUndefined();
+      },
+      async () => expect(await loadConversation(savedId)).toBeUndefined(),
+    );
   });
 
   it("deleteAll is safe with no active conversation", async () => {
@@ -134,38 +152,28 @@ describe("useConversations delete/save races", () => {
   });
 
   it("deleteUnbookmarked drops a late autosave for the deleted active conversation", async () => {
-    const { state, result } = await setupHook();
+    const handle = await setupHook();
+    const { state, result } = handle;
 
     await saveWithMessage(state, result);
     const savedId = result.current.activeConversationId!;
 
-    const { release, restore } = gateNextSave();
-    let bulkPromise!: Promise<void>;
-    let latePromise!: Promise<void>;
-
-    await act(async () => {
-      bulkPromise = result.current.deleteUnbookmarkedConversations();
-      state.chatHistory = [{ role: "user", content: "late chunk" }];
-      latePromise = result.current.saveCurrentConversation(Date.now());
-      await bulkPromise;
-    });
-
-    expect(result.current.conversations).toHaveLength(0);
-    expect(await loadConversation(savedId)).toBeUndefined();
-
-    await act(async () => {
-      release();
-      await latePromise;
-    });
-
-    expect(await loadConversation(savedId)).toBeUndefined();
-    restore();
+    await expectLateAutosaveDropped(
+      handle,
+      () => result.current.deleteUnbookmarkedConversations(),
+      async () => {
+        expect(result.current.conversations).toHaveLength(0);
+        expect(await loadConversation(savedId)).toBeUndefined();
+      },
+      async () => expect(await loadConversation(savedId)).toBeUndefined(),
+    );
   });
 
   it("deleteUnbookmarked keeps a bookmarked conversation and does not drop its autosave", async () => {
     // The surviving (bookmarked) active conversation must NOT be canceled — its
     // in-flight save has to land, so its latest content isn't lost.
-    const { state, result } = await setupHook();
+    const handle = await setupHook();
+    const { state, result } = handle;
 
     await saveWithMessage(state, result, "original");
     const savedId = result.current.activeConversationId!;
@@ -174,27 +182,13 @@ describe("useConversations delete/save races", () => {
       await result.current.toggleBookmark(savedId);
     });
 
-    const { release, restore } = gateNextSave();
-    let bulkPromise!: Promise<void>;
-    let latePromise!: Promise<void>;
-
-    await act(async () => {
-      bulkPromise = result.current.deleteUnbookmarkedConversations();
-      state.chatHistory = [{ role: "user", content: "updated" }];
-      latePromise = result.current.saveCurrentConversation(Date.now());
-      await bulkPromise;
-    });
-
-    expect(result.current.conversations).toHaveLength(1);
-
-    await act(async () => {
-      release();
-      await latePromise;
-    });
-
-    // Its autosave wrote through — the bookmarked conversation is still present.
-    expect(await loadConversation(savedId)).toBeDefined();
-    restore();
+    await expectLateAutosaveDropped(
+      handle,
+      () => result.current.deleteUnbookmarkedConversations(),
+      () => expect(result.current.conversations).toHaveLength(1),
+      // Its autosave wrote through — the bookmarked conversation is still present.
+      async () => expect(await loadConversation(savedId)).toBeDefined(),
+    );
   });
 
   it("deleteAll drops a late autosave for a never-saved conversation (activeId null)", async () => {
@@ -202,61 +196,35 @@ describe("useConversations delete/save races", () => {
     // null; its id is minted lazily inside the teardown autosave. Without
     // reserving that id the bulk delete can't cancel it, so the late save writes
     // a surviving zombie row after the store was cleared.
-    const { state, result } = await setupHook();
+    const handle = await setupHook();
+    const { result } = handle;
 
     expect(result.current.activeConversationId).toBeNull();
 
-    const { release, restore } = gateNextSave();
-    let bulkPromise!: Promise<void>;
-    let latePromise!: Promise<void>;
-
-    await act(async () => {
-      bulkPromise = result.current.deleteAllConversations();
-      // The stream-teardown autosave for the never-saved conversation, enqueued
-      // after the bulk delete reserved its pending-new id.
-      state.chatHistory = [{ role: "user", content: "late chunk" }];
-      latePromise = result.current.saveCurrentConversation(Date.now());
-      await bulkPromise;
-    });
-
-    expect(result.current.conversations).toHaveLength(0);
-
-    await act(async () => {
-      release();
-      await latePromise;
-    });
-
-    expect(result.current.conversations).toHaveLength(0);
-    restore();
+    // The stream-teardown autosave for the never-saved conversation, enqueued
+    // after the bulk delete reserved its pending-new id.
+    await expectLateAutosaveDropped(
+      handle,
+      () => result.current.deleteAllConversations(),
+      () => expect(result.current.conversations).toHaveLength(0),
+      () => expect(result.current.conversations).toHaveLength(0),
+    );
   });
 
   it("deleteUnbookmarked drops a late autosave for a never-saved conversation (activeId null)", async () => {
     // G2 sibling: a never-saved conversation is implicitly unbookmarked, so the
     // unbookmarked bulk delete sweeps it too and must cancel its lazily-minted id.
-    const { state, result } = await setupHook();
+    const handle = await setupHook();
+    const { result } = handle;
 
     expect(result.current.activeConversationId).toBeNull();
 
-    const { release, restore } = gateNextSave();
-    let bulkPromise!: Promise<void>;
-    let latePromise!: Promise<void>;
-
-    await act(async () => {
-      bulkPromise = result.current.deleteUnbookmarkedConversations();
-      state.chatHistory = [{ role: "user", content: "late chunk" }];
-      latePromise = result.current.saveCurrentConversation(Date.now());
-      await bulkPromise;
-    });
-
-    expect(result.current.conversations).toHaveLength(0);
-
-    await act(async () => {
-      release();
-      await latePromise;
-    });
-
-    expect(result.current.conversations).toHaveLength(0);
-    restore();
+    await expectLateAutosaveDropped(
+      handle,
+      () => result.current.deleteUnbookmarkedConversations(),
+      () => expect(result.current.conversations).toHaveLength(0),
+      () => expect(result.current.conversations).toHaveLength(0),
+    );
   });
 
   it("re-enables a brand-new save after a bulk delete reserved and canceled an id", async () => {

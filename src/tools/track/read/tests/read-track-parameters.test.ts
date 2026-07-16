@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -15,6 +16,7 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
 import {
+  expectDrumRackWithStrippedChains,
   mockTrackProperties,
   setupDrumRackMocks,
 } from "../helpers/read-track-test-helpers.ts";
@@ -143,25 +145,7 @@ describe("readTrack", () => {
         include: ["devices", "drum-map"],
       });
 
-      // Should have drumMap
-      expect(result.drumMap).toStrictEqual({
-        C3: "Test Kick",
-      });
-
-      // Should have devices but NO chains
-      expect(result.devices).toStrictEqual([
-        {
-          id: "drumrack1",
-          path: "t0/d0",
-          name: "Test Drum Rack",
-          type: "drum-rack",
-        },
-      ]);
-
-      // Critical: chains should be stripped
-      expect(
-        (result.devices as Record<string, unknown>[])[0]!.chains,
-      ).toBeUndefined();
+      expectDrumRackWithStrippedChains(result);
     });
 
     it("drum racks don't have main chains even with chains included", () => {
@@ -172,25 +156,7 @@ describe("readTrack", () => {
         include: ["devices", "drum-map"],
       });
 
-      // Should have drumMap
-      expect(result.drumMap).toStrictEqual({
-        C3: "Test Kick",
-      });
-
-      // Should have devices WITHOUT chains (drum racks don't expose main chains)
-      expect(result.devices).toStrictEqual([
-        {
-          id: "drumrack1",
-          path: "t0/d0",
-          name: "Test Drum Rack",
-          type: "drum-rack",
-        },
-      ]);
-
-      // Critical: chains should NOT be present on drum racks
-      expect(
-        (result.devices as Record<string, unknown>[])[0]!.chains,
-      ).toBeUndefined();
+      expectDrumRackWithStrippedChains(result);
     });
 
     it("strips chains from all device types when using drum-map", () => {
