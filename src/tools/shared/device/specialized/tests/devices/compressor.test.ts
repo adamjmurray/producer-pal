@@ -16,173 +16,24 @@ import {
   applySpecializedParamWrite,
   readSpecializedOptions,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
-
-// ---------------------------------------------------------------------------
-// Mock helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Encode a routing dict value for the mock get() call.
- * The live-api-extensions getProperty() logic calls JSON.parse(rawValue[0])
- * then reads the named key from the resulting object.
- * @param property - Live API property name (used as the JSON wrapper key)
- * @param value - The dict value to return (object or array)
- * @returns Single-element array wrapping the JSON string
- */
-function routingProp(property: string, value: unknown): unknown[] {
-  return [JSON.stringify({ [property]: value })];
-}
-
-interface RoutingEntry {
-  display_name: string;
-  identifier: number;
-}
-
-// Routing-type entries used across tests.
-const NO_INPUT_ENTRY: RoutingEntry = {
-  display_name: "No Input",
-  identifier: 0,
-};
-const DRIFT_ENTRY: RoutingEntry = { display_name: "Drift", identifier: 3 };
-const AUDIO_FX_ENTRY: RoutingEntry = {
-  display_name: "AudioFX",
-  identifier: 16,
-};
-const EXT_IN_ENTRY: RoutingEntry = { display_name: "Ext. In", identifier: 1 };
-const RETURN_ENTRY: RoutingEntry = { display_name: "A-Reverb", identifier: 30 };
-const MASTER_ENTRY: RoutingEntry = { display_name: "Main", identifier: 40 };
-
-// Channel entries used across tests.
-const PRE_FX_ENTRY: RoutingEntry = { display_name: "Pre FX", identifier: 20 };
-const POST_FX_ENTRY: RoutingEntry = {
-  display_name: "Post FX",
-  identifier: 21,
-};
-const POST_MIXER_ENTRY: RoutingEntry = {
-  display_name: "Post Mixer",
-  identifier: 22,
-};
-
-const DEFAULT_AVAILABLE_TYPES: RoutingEntry[] = [
-  NO_INPUT_ENTRY,
-  EXT_IN_ENTRY,
-  DRIFT_ENTRY,
+} from "../../specialized-device-registry.ts";
+import {
   AUDIO_FX_ENTRY,
-];
-
-const DEFAULT_AVAILABLE_CHANNELS: RoutingEntry[] = [
-  PRE_FX_ENTRY,
+  type CompressorOverrides,
+  DEFAULT_AVAILABLE_CHANNELS,
+  DEFAULT_AVAILABLE_TYPES,
+  DRIFT_ENTRY,
+  EXT_IN_ENTRY,
+  MASTER_ENTRY,
+  NO_INPUT_ENTRY,
   POST_FX_ENTRY,
-  POST_MIXER_ENTRY,
-];
-
-interface CompressorOverrides {
-  inputRoutingType?: RoutingEntry | null;
-  availableTypes?: RoutingEntry[];
-  inputRoutingChannel?: RoutingEntry | null;
-  availableChannels?: RoutingEntry[];
-}
-
-/**
- * Register a mock Compressor device and return its LiveAPI.
- * @param overrides - Optional property overrides
- * @returns The Compressor LiveAPI object
- */
-function registerCompressor(overrides: CompressorOverrides = {}): LiveAPI {
-  const availableTypes = overrides.availableTypes ?? DEFAULT_AVAILABLE_TYPES;
-  const availableChannels =
-    overrides.availableChannels ?? DEFAULT_AVAILABLE_CHANNELS;
-  const inputRoutingType =
-    overrides.inputRoutingType !== undefined
-      ? overrides.inputRoutingType
-      : null;
-  const inputRoutingChannel =
-    overrides.inputRoutingChannel !== undefined
-      ? overrides.inputRoutingChannel
-      : null;
-
-  const properties: Record<string, unknown> = {
-    class_display_name: "Compressor",
-    available_input_routing_types: routingProp(
-      "available_input_routing_types",
-      availableTypes,
-    ),
-    available_input_routing_channels: routingProp(
-      "available_input_routing_channels",
-      availableChannels,
-    ),
-  };
-
-  if (inputRoutingType != null) {
-    properties.input_routing_type = routingProp(
-      "input_routing_type",
-      inputRoutingType,
-    );
-  }
-
-  if (inputRoutingChannel != null) {
-    properties.input_routing_channel = routingProp(
-      "input_routing_channel",
-      inputRoutingChannel,
-    );
-  }
-
-  registerMockObject("comp-1", { type: "Device", properties });
-
-  return LiveAPI.from("id comp-1");
-}
-
-/**
- * Register the live_set with two tracks: Drift (t1) and AudioFX (t2).
- */
-function registerLiveSetTracks(): void {
-  registerMockObject("live_set", {
-    path: "live_set",
-    type: "Device",
-    properties: {
-      tracks: ["id", "t1", "id", "t2"],
-    },
-  });
-
-  registerMockObject("t1", {
-    type: "Device",
-    properties: { name: "Drift" },
-  });
-
-  registerMockObject("t2", {
-    type: "Device",
-    properties: { name: "AudioFX" },
-  });
-}
-
-/**
- * Register a live_set that also exposes a return track ("A-Reverb", id "r1") and
- * the master track ("Main", id "master-1"), so sidechain reads can resolve
- * return/master sources to track ids.
- */
-function registerLiveSetWithReturnsAndMaster(): void {
-  registerMockObject("live_set", {
-    path: "live_set",
-    type: "Device",
-    properties: {
-      tracks: ["id", "t1", "id", "t2"],
-      return_tracks: ["id", "r1"],
-    },
-  });
-
-  registerMockObject("t1", { type: "Device", properties: { name: "Drift" } });
-  registerMockObject("t2", { type: "Device", properties: { name: "AudioFX" } });
-  registerMockObject("r1", {
-    type: "Device",
-    properties: { name: "A-Reverb" },
-  });
-  registerMockObject("master-1", {
-    path: "live_set master_track",
-    type: "Device",
-    properties: { name: "Main" },
-  });
-}
+  PRE_FX_ENTRY,
+  registerCompressor,
+  registerLiveSetTracks,
+  registerLiveSetWithReturnsAndMaster,
+  RETURN_ENTRY,
+  routingProp,
+} from "./compressor-test-helpers.ts";
 
 // ---------------------------------------------------------------------------
 // sidechainSourceTrackId — read
@@ -357,6 +208,25 @@ describe("Compressor sidechainSourceTrackId write", () => {
       device,
       "sidechainSourceTrackId",
       "",
+      "updateDevice",
+    );
+
+    expect(device.set).toHaveBeenCalledWith(
+      "input_routing_type",
+      JSON.stringify({ input_routing_type: { identifier: 0 } }),
+    );
+  });
+
+  it("clears to No Input when value is whitespace only", () => {
+    // Trimmed before the clear check, so a blank-looking value clears the
+    // source rather than being looked up as a track id.
+    registerLiveSetTracks();
+    const device = registerCompressor();
+
+    applySpecializedParamWrite(
+      device,
+      "sidechainSourceTrackId",
+      "   ",
       "updateDevice",
     );
 
@@ -548,7 +418,13 @@ describe("Compressor sidechainChannel write", () => {
       "updateDevice",
     );
 
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("Pre FX"));
+    // The full channel catalog, comma-separated.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        `Available: ${DEFAULT_AVAILABLE_CHANNELS.map((c) => c.display_name).join(", ")}`,
+      ),
+    );
   });
 
   it("warns and skips (no throw) when channels are unavailable", () => {

@@ -12,7 +12,7 @@ import { readDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
+} from "../../specialized-device-registry.ts";
 
 /**
  * Register a mock EQ Eight device and return its LiveAPI.
@@ -161,6 +161,20 @@ describe("EQ Eight pseudo-params", () => {
       applySpecializedParamWrite(device, "oversample", "false", "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("oversample", 0);
+    });
+
+    it("warns naming oversample and skips uninterpretable input", () => {
+      const device = registerEqEight();
+
+      applySpecializedParamWrite(device, "oversample", "maybe", "updateDevice");
+
+      expect(device.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          '"maybe" is not a valid oversample (expected true/false)',
+        ),
+      );
     });
   });
 });
