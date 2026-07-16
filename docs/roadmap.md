@@ -2,18 +2,21 @@
 
 ## Upcoming
 
-### 2.0.x - Personalization and Extensibility
+### Under consideration
 
-- Global context: add your own reference material and custom instructions across
-  all Live projects
-- Global memory: Producer Pal can adapt over time to your needs and interaction
-  style
-- Custom skills, system prompts, tool sets, and tool descriptions
-- Workflows: pre-defined tool call sequences for reliable, repeatable operations
-- Alternative MIDI syntaxes
-- Context manager in the built-in chat UI for working with all the above
+The 2.0 personalization and extensibility work has shipped — see
+[Context & Memory](/guide/context) and
+[Customizing Skills](/guide/customizing-skills). What comes next isn't settled:
 
-See [Extending Producer Pal](/extending) for more on the extension model.
+- Custom skills as first-class: registering your own named skill alongside the
+  built-ins, rather than `@include`-ing it into a fragment
+- Tool description overrides and tool presets
+- Per-project memory
+- Some form of repeatable, pre-defined operations — workflows, subagents, or
+  command-oriented skills. Still an open question.
+
+See [Extending Producer Pal](/extending) for the extension model and where these
+ideas stand.
 
 ## Changelog
 
@@ -99,8 +102,8 @@ manipulation and basic Live Set management.
 
 After 2.0, the core stabilizes — future core changes focus on bug fixes and
 supporting new Live API features as they become available. New capabilities will
-come through [extensions](/extending): community skills, workflows, and
-companion MCP servers.
+come through [extensions](/extending): custom skills and context, scripts and
+interfaces built on the [REST API](/guide/rest-api), and companion MCP servers.
 
 **Core features under consideration:**
 
