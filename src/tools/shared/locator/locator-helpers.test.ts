@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
+  findLocator,
   getLocatorId,
   isLocatorId,
   resolveLocatorListToBeats,
@@ -52,6 +53,39 @@ describe("locator-helpers", () => {
       expect(getLocatorId(0)).toBe("locator-0");
       expect(getLocatorId(5)).toBe("locator-5");
       expect(getLocatorId(99)).toBe("locator-99");
+    });
+  });
+
+  describe("findLocator", () => {
+    it("returns the match for a locator ID", () => {
+      const liveSet = setupMockLocators(
+        { id: "loc0", time: 0 },
+        { id: "loc1", time: 16 },
+      );
+
+      expect(findLocator(liveSet, { locatorId: "locator-1" })?.index).toBe(1);
+    });
+
+    it("returns null for a locator ID that does not match", () => {
+      const liveSet = setupMockLocators(
+        { id: "loc0", time: 0 },
+        { id: "loc1", time: 16 },
+      );
+
+      // An id guard mutated to always match would wrongly return index 0.
+      expect(findLocator(liveSet, { locatorId: "locator-9" })).toBeNull();
+    });
+
+    it("finds a non-first locator by exact time", () => {
+      const liveSet = setupMockLocators(
+        { id: "loc0", time: 0 },
+        { id: "loc1", time: 16 },
+        { id: "loc2", time: 32 },
+      );
+
+      // Searching by time (no locatorId): the id branch must be skipped so the
+      // match lands on index 2, not on the first locator.
+      expect(findLocator(liveSet, { timeInBeats: 32 })?.index).toBe(2);
     });
   });
 
@@ -144,6 +178,22 @@ describe("locator-helpers", () => {
         );
       }).toThrow(
         'ppal-playback failed: no locator found with name "NonExistent"',
+      );
+    });
+
+    it("appends the context suffix to the name-not-found message", () => {
+      const liveSet = setupMockLocators({ id: "loc0", name: "Verse", time: 8 });
+
+      // The " ${context}" suffix (leading space) must be preserved verbatim.
+      expect(() => {
+        resolveLocatorToBeats(
+          liveSet,
+          { locatorName: "Missing" },
+          "ppal-playback",
+          "for start",
+        );
+      }).toThrow(
+        'ppal-playback failed: no locator found with name "Missing" for start',
       );
     });
   });
@@ -274,6 +324,9 @@ describe("locator-helpers", () => {
       expect(isLocatorId("locator-")).toBe(false);
       expect(isLocatorId("locator-abc")).toBe(false);
       expect(isLocatorId("LOCATOR-0")).toBe(false);
+      // Anchored on both ends: reject leading/trailing junk around a valid core.
+      expect(isLocatorId("xlocator-0")).toBe(false);
+      expect(isLocatorId("locator-0x")).toBe(false);
     });
   });
 

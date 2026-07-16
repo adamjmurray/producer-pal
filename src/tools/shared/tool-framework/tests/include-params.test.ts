@@ -10,6 +10,7 @@ import {
   READ_TRACK_DEFAULTS,
   READ_SCENE_DEFAULTS,
   READ_CLIP_DEFAULTS,
+  type IncludeFlags,
 } from "../include-params.ts";
 
 const ALL_FLAGS_FALSE = {
@@ -71,19 +72,21 @@ describe("parseIncludeArray", () => {
     expect(result.includeSessionClips).toBe(false);
   });
 
+  it("keeps explicit non-tool-type options alongside the wildcard", () => {
+    // "notes" is not a song option, so it must survive the '*' expansion (the
+    // '*' is filtered out, the rest are kept and merged with the song options).
+    const result = parseIncludeArray(["*", "notes"], READ_SONG_DEFAULTS);
+
+    expect(result.includeClipNotes).toBe(true);
+    expect(result.includeTracks).toBe(true);
+  });
+
   it("handles track defaults correctly", () => {
     const result = parseIncludeArray(undefined, READ_TRACK_DEFAULTS);
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        includeClipNotes: false,
-        includeDrumMap: false,
-        includeDevices: false,
-        includeInstruments: false,
-        includeSessionClips: false,
-        includeArrangementClips: false,
-      }),
-    );
+    // Full-object match so every default flag is asserted false (a default that
+    // silently flipped to true would otherwise slip through).
+    expect(result).toStrictEqual(ALL_FLAGS_FALSE);
   });
 
   it("recognizes devices include for track", () => {
@@ -111,25 +114,13 @@ describe("parseIncludeArray", () => {
   it("handles scene defaults correctly", () => {
     const result = parseIncludeArray(undefined, READ_SCENE_DEFAULTS);
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        includeClips: false,
-        includeClipNotes: false,
-      }),
-    );
+    expect(result).toStrictEqual(ALL_FLAGS_FALSE);
   });
 
   it("handles clip defaults correctly", () => {
     const result = parseIncludeArray(undefined, READ_CLIP_DEFAULTS);
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        includeClipNotes: false,
-        includeSample: false,
-        includeTiming: false,
-        includeWarp: false,
-      }),
-    );
+    expect(result).toStrictEqual(ALL_FLAGS_FALSE);
   });
 
   it("expands wildcard for clip tool type", () => {
@@ -255,5 +246,44 @@ describe("includeArrayFromFlags", () => {
       expect(result.includeTracks).toBe(true);
       expect(result.includeScenes).toBe(true);
     });
+  });
+});
+
+// Exhaustive option ↔ flag mapping: every option string maps to exactly one
+// flag in both directions. Locks each option constant and each FLAG_TO_OPTION
+// entry so a blanked string or dropped tuple can't slip through untested.
+describe("option ↔ flag round-trip (every option)", () => {
+  const PAIRS: [keyof IncludeFlags, string][] = [
+    ["includeDrumMap", "drum-map"],
+    ["includeClipNotes", "notes"],
+    ["includeScenes", "scenes"],
+    ["includeMidiEffects", "midi-effects"],
+    ["includeInstruments", "instruments"],
+    ["includeAudioEffects", "audio-effects"],
+    ["includeDevices", "devices"],
+    ["includeRoutings", "routings"],
+    ["includeAvailableRoutings", "available-routings"],
+    ["includeSessionClips", "session-clips"],
+    ["includeArrangementClips", "arrangement-clips"],
+    ["includeClips", "clips"],
+    ["includeTracks", "tracks"],
+    ["includeSample", "sample"],
+    ["includeColor", "color"],
+    ["includeTiming", "timing"],
+    ["includeWarp", "warp"],
+    ["includeMixer", "mixer"],
+    ["includeLocators", "locators"],
+  ];
+
+  it.each(PAIRS)("parse: flag %s comes from option %s", (flag, option) => {
+    expect(parseIncludeArray([option], {})[flag]).toBe(true);
+  });
+
+  it.each(PAIRS)("fromFlags: flag %s maps to option %s", (flag, option) => {
+    const flags: Partial<IncludeFlags> = {};
+
+    flags[flag] = true;
+
+    expect(includeArrayFromFlags(flags)).toStrictEqual([option]);
   });
 });

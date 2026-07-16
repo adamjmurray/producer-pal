@@ -121,6 +121,18 @@ describe("filterSchemaForSmallModel", () => {
     expect(filtered.param2!.description).toBe("another description");
   });
 
+  it("should apply description overrides when excludeParams is null", () => {
+    // Overrides alone get past the early return, so the exclude check runs with
+    // a null excludeParams — the optional-chaining guard must tolerate it.
+    const schema = { param1: z.string().describe("original") };
+
+    const filtered = filterSchemaForSmallModel(schema, null, {
+      param1: "simplified",
+    });
+
+    expect(filtered.param1!.description).toBe("simplified");
+  });
+
   it("should combine exclusions and description overrides", () => {
     const schema = {
       keep: z.string().describe("original"),
