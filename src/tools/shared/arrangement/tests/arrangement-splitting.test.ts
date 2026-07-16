@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, type Mock } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -98,6 +98,95 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-invalid-format")).toBe(true);
+    // The warning text names the problem so the model can correct it.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('Invalid split format: "invalid"'),
+    );
+  });
+
+  it("treats an all-empty split spec as invalid format", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    // "," has only empty parts, so parseSplitPoints returns [] (empty, not null).
+    // That must be reported as invalid format, not silently accepted as no-op.
+    const result = prepareSplitParams(",", [mockClip], warnings);
+
+    expect(result).toBeNull();
+    expect(warnings.has("split-invalid-format")).toBe(true);
+  });
+
+  it("should reject the whole split when any point is malformed", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    // "2|1" alone is valid, but a single malformed part must invalidate the whole
+    // list (return null) rather than silently dropping it and splitting anyway.
+    const result = prepareSplitParams(
+      "2|1, notaposition",
+      [mockClip],
+      warnings,
+    );
+
+    expect(result).toBeNull();
+    expect(warnings.has("split-invalid-format")).toBe(true);
+  });
+
+  it("should not re-warn about invalid format when already warned", () => {
+    const { mockClip } = setupPrepareTest();
+    const warnings = new Set(["split-invalid-format"]);
+
+    vi.clearAllMocks();
+
+    prepareSplitParams("invalid", [mockClip], warnings);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Invalid split format"),
+    );
+  });
+
+  it("should not re-warn about too many points when already warned", () => {
+    const { mockClip } = setupPrepareTest();
+    const warnings = new Set(["split-max-exceeded"]);
+    const manyPoints = Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(
+      ", ",
+    );
+
+    vi.clearAllMocks();
+
+    prepareSplitParams(manyPoints, [mockClip], warnings);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Too many split points"),
+    );
+  });
+
+  it("should not re-warn about no valid points when already warned", () => {
+    const { mockClip } = setupPrepareTest();
+    const warnings = new Set(["split-no-valid-points"]);
+
+    vi.clearAllMocks();
+
+    prepareSplitParams("1|1", [mockClip], warnings);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("No valid split points"),
+    );
+  });
+
+  it("should allow exactly MAX_SPLIT_POINTS points (boundary is > not >=)", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    // 32 points is at the cap, not over it — it must be accepted, not rejected.
+    const points = Array.from({ length: 32 }, (_, i) => `${i + 2}|1`).join(
+      ", ",
+    );
+    const result = prepareSplitParams(points, [mockClip], warnings);
+
+    expect(result).toHaveLength(32);
+    expect(warnings.has("split-max-exceeded")).toBe(false);
   });
 
   it("should parse valid bar|beat positions", () => {
@@ -135,6 +224,10 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-no-valid-points")).toBe(true);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("No valid split points"),
+    );
   });
 
   it("should warn when too many split points", () => {
@@ -148,6 +241,10 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-max-exceeded")).toBe(true);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Too many split points"),
+    );
   });
 
   it("should handle trailing commas in split string", () => {
@@ -349,6 +446,9 @@ describe("performSplitting", () => {
 
     // Should duplicate for audio content
     expectDuplicateCalled(callState.trackMock);
+    // Audio trims route through create_audio_clip in a session slot, never
+    // create_midi_clip — so a MIDI-vs-audio misdetection would show up here.
+    expectCreateMidiClipCount(callState.trackMock, 0);
   });
 
   it("should split into 3 segments exercising middle segment extraction", () => {
@@ -370,6 +470,72 @@ describe("performSplitting", () => {
     // Step 4: 1 moveClipFromHolding (last segment)
     // Total: 4 duplicates
     expect(callState.duplicateCount).toBe(4);
+  });
+
+  it("places every segment at its exact arrangement position (3-segment split)", () => {
+    const clipId = "clip_1";
+
+    // start_time 100, end_time 112 → clipLength 12, so `end - start` (not
+    // `end + start`) is exercised. Split at 4 and 8 → boundaries [0,4,8,12].
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      startTime: 100,
+      endTime: 112,
+      loopEnd: 4,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+
+    const calls = callState.trackMock.call.mock.calls;
+    const dupPositions = calls
+      .filter((c: unknown[]) => c[0] === "duplicate_clip_to_arrangement")
+      .map((c: unknown[]) => c[2]);
+
+    // Step 1 source→holding at 40000; Step 3 middle works at
+    // holdingAreaStart + 1*(clipLength 12 + 4) = 40016, then moves to
+    // clipArrangementStart 100 + segStart 4 = 104; Step 4 last moves to
+    // clipArrangementStart 100 + lastSegStart 8 = 108.
+    expect(dupPositions).toStrictEqual([40000, 40016, 104, 108]);
+
+    // Step 2 right-trim seg0: temp at start 100 + seg0End 4 = 104, length
+    // clipLength 12 - seg0End 4 = 8.
+    expect(calls).toContainEqual(["create_midi_clip", 104, 8]);
+    // Step 3 middle left-trim at workPos 40016, length segStart 4; right-trim at
+    // workPos 40016 + segEnd 8 = 40024, length clipLength 12 - segEnd 8 = 4.
+    expect(calls).toContainEqual(["create_midi_clip", 40016, 4]);
+    expect(calls).toContainEqual(["create_midi_clip", 40024, 4]);
+    // Step 4 last-segment left-trim at sourcePos 40000, length lastSegStart 8.
+    expect(calls).toContainEqual(["create_midi_clip", 40000, 8]);
+  });
+
+  it("excludes a split point that lands exactly on the clip end", () => {
+    const clipId = "clip_1";
+    let duplicateCount = 0;
+
+    // 8-beat clip. A split at 8 is the clip's very end (p < clipLength, not <=),
+    // so it must be dropped, leaving a single valid point at 4 → 2 duplicates.
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 8.0,
+      loopEnd: 4.0,
+    });
+
+    callState.trackMock.call.mockImplementation((method: string) => {
+      if (method === "duplicate_clip_to_arrangement") {
+        duplicateCount++;
+
+        return ["id", `dup_${duplicateCount}`];
+      }
+
+      if (method === "create_midi_clip") return ["id", "temp_1"];
+    });
+
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+
+    expect(duplicateCount).toBe(2);
   });
 
   it("should warn and skip when middle segment duplication fails", () => {
@@ -492,6 +658,72 @@ describe("performSplitting", () => {
 
     // clips array should remain empty since stale clip was not found
     expect(clips).toHaveLength(0);
+  });
+
+  it("keeps only fresh clips whose start falls inside the original clip's range", () => {
+    const clipId = "clip_1";
+
+    // Original clip_1 occupies [0,16), so only fresh clips starting in that
+    // half-open range survive the rescan filter.
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    const freshDefs: Array<[string, number]> = [
+      ["fresh_in1", 0], // at range start → included
+      ["fresh_in2", 8], // mid-range → included
+      ["fresh_below", -5], // before range start → excluded (lower bound)
+      ["fresh_at_end", 16], // exactly at range end → excluded (upper is `<`)
+      ["fresh_above", 100], // past range end → excluded (upper bound)
+    ];
+
+    for (const [i, [id, start]] of freshDefs.entries()) {
+      registerMockObject(id, {
+        path: `live_set tracks 0 arrangement_clips ${String(i)}`,
+        type: "Clip",
+        properties: { start_time: start },
+      });
+    }
+
+    callState.trackMock.get.mockImplementation((prop: string) => {
+      if (prop === "arrangement_clips") {
+        return freshDefs.flatMap(([id]) => ["id", id]);
+      }
+
+      return [0];
+    });
+
+    const mockClip = LiveAPI.from(`id ${clipId}`);
+    const clips = [mockClip];
+
+    performSplitting([mockClip], [4], clips, { holdingAreaStartBeats: 40000 });
+
+    expect(clips.map((c) => c.id)).toStrictEqual(["fresh_in1", "fresh_in2"]);
+  });
+
+  it("replaces only the stale clip, leaving unrelated clips in place", () => {
+    const clipId = "clip_1";
+
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    registerMockObject("fresh_1", {
+      path: "live_set tracks 0 arrangement_clips 0",
+      type: "Clip",
+      properties: { start_time: 0.0 },
+    });
+
+    callState.trackMock.get.mockImplementation((prop: string) =>
+      prop === "arrangement_clips" ? ["id", "fresh_1"] : [0],
+    );
+
+    const decoy = LiveAPI.from("id decoy");
+    const mockClip = LiveAPI.from(`id ${clipId}`);
+    // The stale clip is at index 1; the decoy at index 0 must be untouched.
+    const clips = [decoy, mockClip];
+
+    performSplitting([mockClip], [4], clips, { holdingAreaStartBeats: 40000 });
+
+    expect(clips[0]!.id).toBe("decoy");
+    expect(clips.some((c) => c.id === "fresh_1")).toBe(true);
+    expect(clips.some((c) => c.id === clipId)).toBe(false);
   });
 
   it("should skip right-trim when split point is within EPSILON of clip end", () => {

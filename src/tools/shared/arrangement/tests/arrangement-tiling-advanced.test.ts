@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +10,10 @@ import {
   mockContext,
   setupArrangementClip,
   setupClip,
+  setupClipSlot,
+  setupLiveSet,
   setupMidiSourceClip,
+  setupScene,
   setupTileClip,
   setupTrackWithQueuedMethods,
 } from "./arrangement-tiling-test-helpers.ts";
@@ -98,6 +102,81 @@ describe("createPartialTile", () => {
     );
 
     expect(track.call).toHaveBeenCalledTimes(5);
+  });
+
+  it("adjusts pre-roll on the created tile when adjustPreRoll defaults to true", () => {
+    // adjustPreRoll is omitted → defaults to true. The moved tile (clip 400) has
+    // pre-roll (start_marker 2 < loop_start 6), so the default path must snap its
+    // start_marker up to loop_start (6). Source loop_start is 1 so the earlier
+    // content-offset set("start_marker", 1) can't be confused with this snap.
+    const { sourceClip, track } = setupPartialTileMocks({
+      loopStart: 1,
+      loopEnd: 11,
+      holdingEndTime: 1010,
+      finalClipProps: { start_marker: 2, loop_start: 6, end_time: 100 },
+    });
+
+    const result = createPartialTile(
+      sourceClip,
+      track,
+      500,
+      6,
+      1000,
+      true,
+      mockContext,
+    );
+
+    expect(result.set).toHaveBeenCalledWith("start_marker", 6);
+  });
+
+  it("does not adjust pre-roll when adjustPreRoll is false even if the tile has pre-roll", () => {
+    // The tile has pre-roll (start_marker 2 < loop_start 6), but adjustPreRoll is
+    // explicitly false, so it must be left untouched (no snap to loop_start).
+    const { sourceClip, track } = setupPartialTileMocks({
+      loopStart: 1,
+      loopEnd: 11,
+      holdingEndTime: 1010,
+      finalClipProps: { start_marker: 2, loop_start: 6, end_time: 100 },
+    });
+
+    const result = createPartialTile(
+      sourceClip,
+      track,
+      500,
+      6,
+      1000,
+      true,
+      mockContext,
+      false,
+    );
+
+    expect(result.set).not.toHaveBeenCalledWith("start_marker", 6);
+  });
+
+  it("sets the tile start_marker from source loop_start plus content offset", () => {
+    // clipLength = loopEnd 10 - loopStart 2 = 8; contentOffset 10 → 10 % 8 = 2 →
+    // start_marker = loopStart 2 + 2 = 4. The tile has no pre-roll (start_marker
+    // 4 >= loop_start 2) and adjustPreRoll is false, isolating the offset math.
+    const { sourceClip, track } = setupPartialTileMocks({
+      loopStart: 2,
+      loopEnd: 10,
+      holdingEndTime: 1008,
+      finalClipProps: { start_marker: 4, loop_start: 2, end_time: 100 },
+    });
+
+    const result = createPartialTile(
+      sourceClip,
+      track,
+      500,
+      6,
+      1000,
+      true,
+      mockContext,
+      false,
+      10,
+    );
+
+    expect(result.set).toHaveBeenCalledWith("start_marker", 4);
   });
 });
 
@@ -376,6 +455,84 @@ describe("tileClipToRange", () => {
     expect(sourceClip.set).toHaveBeenCalledWith("end_marker", 4);
   });
 
+  it("does not touch end_marker when it already equals loop_end", () => {
+    // Default setupMidiSourceClip has end_marker 4 === loop_end 4, so the safety
+    // set must be skipped entirely (no needless set that could shift markers).
+    const sourceClip = setupMidiSourceClip("100", 0);
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [["id", "200"]],
+    });
+
+    setupTileClip("200");
+
+    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
+
+    expect(sourceClip.set).not.toHaveBeenCalledWith(
+      "end_marker",
+      expect.anything(),
+    );
+  });
+
+  it("adjusts pre-roll on a full tile when adjustPreRoll defaults to true", () => {
+    // adjustPreRoll is omitted → defaults to true. The created tile (clip 200)
+    // has pre-roll (start_marker 2 < loop_start 4), so the default path must snap
+    // its start_marker up to loop_start (4). The source loop_start is 0, so the
+    // earlier content set("start_marker", 0) can't be mistaken for this snap.
+    const sourceClip = setupMidiSourceClip("100", 0);
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [["id", "200"]],
+      create_midi_clip: [["id", "300"]],
+      delete_clip: [null],
+    });
+
+    const tile = setupTileClip("200", {
+      start_marker: 2,
+      loop_start: 4,
+      end_time: 100,
+    });
+
+    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
+
+    expect(tile.set).toHaveBeenCalledWith("start_marker", 4);
+  });
+
+  it("routes the partial tile through the MIDI holding path and returns its id", () => {
+    // A MIDI source with a remainder tile must build the shortened holding copy
+    // with create_midi_clip (the audio path would need session scenes). The
+    // returned entry must carry the partial tile's id, not an empty object.
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      loop_end: 8,
+      end_marker: 8,
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [
+        ["id", "300"],
+        ["id", "301"],
+      ],
+      create_midi_clip: [["id", "302"]],
+      delete_clip: [null, null],
+    });
+
+    setupClip("300", { properties: { end_time: 1008 } });
+    setupTileClip("301");
+
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      3,
+      1000,
+      mockContext,
+    );
+
+    expect(track.call).toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.any(Number),
+      expect.any(Number),
+    );
+    expect(result).toStrictEqual([{ id: "301" }]);
+  });
+
   it("advances content offset correctly with custom tileLength", () => {
     const { sourceClip, track, tiles } = setupThreeTileMocks();
 
@@ -418,6 +575,102 @@ describe("tileClipToRange", () => {
     expect(tiles[1]!.set).toHaveBeenCalledWith("start_marker", 0);
     expect(tiles[2]!.set).toHaveBeenCalledWith("start_marker", 0);
     expect(result).toHaveLength(3);
+  });
+
+  it("uses the audio (session) path when tiling an audio source", () => {
+    // An audio source must build its pre-roll trim through the session
+    // (create_audio_clip), never create_midi_clip. The full tile carries pre-roll
+    // (start_marker 2 < loop_start 4) to force adjustClipPreRoll down the audio
+    // branch — a MIDI/audio misdetection would call create_midi_clip instead.
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      is_midi_clip: 0,
+      is_audio_clip: 1,
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [
+        ["id", "200"],
+        ["id", "600"],
+      ],
+      delete_clip: [null, null],
+    });
+
+    setupTileClip("200", { start_marker: 2, loop_start: 4, end_time: 100 });
+    setupLiveSet({ properties: { scenes: ["id", "s1"] } });
+    setupScene("s1", 0, { properties: { is_empty: 1 } });
+    const slot = setupClipSlot(0, 0, {
+      methods: {
+        create_audio_clip: () => null,
+        delete_clip: () => null,
+      },
+    });
+
+    setupClip("700", { path: "live_set tracks 0 clip_slots 0 clip" });
+
+    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
+
+    expect(slot.call).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "/tmp/test-silence.wav",
+    );
+    expect(track.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("advances position and content offset past a self-overlapping full tile", () => {
+    // The source occupies arrangement [100,104]; tiling starts on top of it, so
+    // tile 0 self-overlaps and is skipped. With tileLength 6 (≠ clipLength 4) the
+    // next tile must land at 100 + 6 = 106 and read content at offset 6 (6 % 4 = 2)
+    // — proving both the position and the content-offset advance in the skip path.
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      is_arrangement_clip: 1,
+      start_time: 100,
+      end_time: 104,
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [["id", "200"]],
+    });
+    const tile = setupTileClip("200");
+
+    tileClipToRange(sourceClip, track, 100, 12, 1000, mockContext, {
+      tileLength: 6,
+    });
+
+    expect(track.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id 100",
+      106,
+    );
+    expect(tile.set).toHaveBeenCalledWith("start_marker", 2);
+  });
+
+  it("advances content offset past a silently-failed full tile", () => {
+    // clipLength 5 with tileLength 6 (≠) makes the content offset observable via
+    // start_marker. The middle tile's dup silently fails and is skipped; the tile
+    // after it must still read content at the advanced offset (12 % 5 = 2), not a
+    // rewound one.
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      loop_end: 5,
+      end_marker: 5,
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [
+        ["id", "200"],
+        ["id", 0],
+        ["id", "202"],
+      ],
+    });
+
+    setupTileClip("200");
+    const tile2 = setupTileClip("202");
+
+    tileClipToRange(sourceClip, track, 200, 18, 1000, mockContext, {
+      tileLength: 6,
+    });
+
+    expect(tile2.set).toHaveBeenCalledWith("start_marker", 2);
   });
 
   it("warns and skips a tile when its dup silently fails, advancing position", () => {

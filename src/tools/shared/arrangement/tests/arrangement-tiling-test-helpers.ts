@@ -236,3 +236,27 @@ export function setupArrangementClip(
 
   return LiveAPI.from(`id ${clipId}`);
 }
+
+/**
+ * Standard duplicate/create/delete method stubs for tiling and self-overlap
+ * workaround tests. duplicate_clip_to_arrangement returns clip 400 on the first
+ * call and 500 thereafter; create_midi_clip returns clip 300; delete_clip is a
+ * no-op.
+ * @returns Method stubs for setupTrack
+ */
+export function tilingTrackMethods(): Record<
+  string,
+  (...args: unknown[]) => unknown
+> {
+  let dupCount = 0;
+
+  return {
+    duplicate_clip_to_arrangement: () => {
+      dupCount++;
+
+      return dupCount === 1 ? ["id", "400"] : ["id", "500"];
+    },
+    create_midi_clip: () => ["id", "300"],
+    delete_clip: () => null,
+  };
+}
