@@ -17,9 +17,10 @@ steps" below.
 ```bash
 npm run mutation                 # default scope: notation
 npm run mutation -- clip         # one src/tools/ domain
+npm run mutation -- sharedRuntime # src/shared (cross-cutting utilities)
 npm run mutation -- tools        # every tool domain (group)
 npm run mutation -- notation clip
-npm run mutation -- all          # notation + every tool domain
+npm run mutation -- all          # notation + sharedRuntime + every tool domain
 ```
 
 Mutation testing is **scoped** and deliberately **not** part of `npm run check`
@@ -39,8 +40,14 @@ Scopes are defined in `config/mutation-scopes.mjs`:
   (`break: 89`), `actions` (`break: 90`), `device` (`break: 90`), `clip`
   (`break: 96`), `advanced` (`break: 97`), `core` (`break: 99`), `scene`
   (`break: 96`), `live-set` (`break: 98`). Only `shared` remains untriaged.
-- **Groups** — `tools` (all ten tool domains) and `all` (notation + tools),
-  expanded by the runner into their member scopes.
+- **`sharedRuntime`** — `src/shared/` (cross-cutting utilities shared by the
+  Node MCP server and the V8 Max runtime: pitch, notation identity, compact
+  serializer/parser, path builders, config, error/response utils, v8 console /
+  sleep, silent-wav, version-check). It is **not** under `src/tools/`, so it
+  uses its own glob const (`SHARED_RUNTIME_GLOBS`), and its scope key can't be
+  `shared` — that already means `src/tools/shared`. Triaged: `break: 94`.
+- **Groups** — `tools` (all ten tool domains) and `all` (notation +
+  `sharedRuntime` + tools), expanded by the runner into their member scopes.
 
 Mechanics:
 
@@ -592,6 +599,88 @@ Remaining survivors are bucket 2/3:
 | extendSong boundary + `"tracks"` child name; multi-word scale join; root/scale error lists | `update-live-set-helpers.test.ts`               |
 | readLiveSet mixer-include gate (full param mocks so it's observable)                       | `read-live-set-mixer.test.ts`                   |
 
+## Baseline (2026-07-15, `sharedRuntime` — `src/shared/`)
+
+The cross-cutting utility layer (12 mutated files) shared by both runtimes: the
+last non-`src/tools/` code triaged this pass. Full pass — Stryker 9.6.1, Node
+24, `coverageAnalysis: "perTest"`:
+
+| Metric        | Baseline | Triaged    | Gate (`break`) |
+| ------------- | -------- | ---------- | -------------- |
+| sharedRuntime | 89.48%   | **94.94%** | 94             |
+
+All test-only. Per-file movement (survivors from → to): `silent-wav-generator`
+37.0% → 92.6% (17 → 2), `compact-parser` 90.9% → 98.9% (16 → 2), `config` 83.3%
+→ 100%, `v8-max-console` 97.2% → 100%, `v8-sleep` 92.3% → 100%, `pitch` 89.2% →
+91.8% (25 → 19), `version-check` 75.3% → 79.5% (18 → 15). `compact-serializer`,
+`error-utils`, `live-api-path-builders`, `mcp-response-utils` were already 100%.
+
+Two dominant levers here (different from the write/read tiers' warn-and-skip
+gap):
+
+- **A module-level cache defeating per-test coverage.** `silent-wav-generator`'s
+  `ensureSilenceWav` caches via a module flag + on-disk file, so
+  `createSilentWav` ran at most once across the whole test file — every
+  byte-layout assertion hit the cache and Stryker attributed none of them to the
+  code that produced the bytes. Rewriting the tests to `vi.resetModules()` +
+  re-import per case (cold flag) and deleting the file first made the generator
+  actually run under each WAV-header assertion, killing 15 arithmetic/string
+  mutants.
+- **A too-broad `toThrow` regex.** `compact-parser`'s malformed-input cases
+  asserted `toThrow(/invalid compact literal|.../)`, which matches the shared
+  `Invalid compact literal:` wrapper — so every blanked `fail(...)` message and
+  every guard that fell through to a _different_ error still "threw" and
+  survived. Asserting the **specific** reason per case
+  (`/expected ':' after object key/`, `/unexpected trailing content/`, …) killed
+  all 8 message mutants plus the missing-colon and object-key branch guards.
+
+Remaining survivors are all bucket 2/3 (verified equivalent / defensive /
+Stryker-limited), no real gaps:
+
+- **`pitch` (19)** — `PITCH_CLASS_VALUES_LOWERCASE`'s builder arrow is a
+  **static module-init mutant with 0 coverage** (Stryker can't cover static
+  initializers under `perTest`); guard clauses in `numberToPitchClass` are
+  redundant with the trailing `PITCH_CLASS_NAMES[num] ?? null` (out-of-range
+  indices are `undefined` anyway); `quantizePitchToScale` / `clampToScaleBounds`
+  boundary and modulo mutants are masked by the double normalization
+  (`((x%12)+12)%12`) plus residue periodicity (the outward search always finds a
+  match within ≤6 semitones); the `\d+`→`\d` octave mutant is masked by the MIDI
+  range check (no in-range note has a 2-digit octave). `isValidNoteName` — which
+  has _no_ range check — did kill both of its regex mutants.
+- **`version-check` (15)** — the `checkForUpdate` response-shape guard cluster
+  is fully masked by the outer `try/catch` (a bad `data.tag_name` access throws
+  → caught → `null`) plus the downstream `typeof tagName !== "string"` check, so
+  every relaxation still returns `null`; the `hasPreReleaseSuffix` `v`-strip
+  mutants can't change `includes("-")` (stripping a `v` never adds/removes a
+  dash).
+- **A `perTest` attribution quirk** — Stryker does **not** attribute a test to a
+  guard mutant when that test _early-returns at the guard_ (confirmed via
+  `coveredBy`: the "returns null for non-strings" test is absent from
+  `noteNameToMidi`'s guard mutant, and `numberToPitchClass("0")` from its
+  guard). Those guards (`pitch` L151/L186) are therefore unkillable via
+  coverage, though the behavior _is_ tested.
+- **`silent-wav-generator` (2)** — `÷numChannels` ≡ `×numChannels` because
+  `numChannels === 1`. **`compact-parser` (2)** — `defineProperty` ≡ `obj[key]=`
+  for a normal key; the `parseString` `< length` → `<= length` boundary reads
+  `""` past end then fails identically. **`notation` (1)** — the
+  `typeof value === "string"` guard is redundant with `NOTATIONS.includes`
+  (always `false` for a non-string).
+
+### Gaps closed (`sharedRuntime`)
+
+| Gap (now killed)                                                                    | Test strengthened / added      |
+| ----------------------------------------------------------------------------------- | ------------------------------ |
+| WAV byte layout (sizes, byte/sample rates, chunk labels) + two-level cache behavior | `silent-wav-generator.test.ts` |
+| 8 blanked parser error messages + missing-colon / object-key branch guards          | `compact-parser.test.ts`       |
+| `__proto__` descriptor flags (writable/enumerable/configurable)                     | `compact-parser.test.ts`       |
+| `MIN_LIVE_VERSION` shape (empty-string mutant)                                      | `config.test.ts` (new)         |
+| `checkForUpdate` non-ok guard (payload that would otherwise succeed)                | `version-check.test.ts`        |
+| `isNewerVersion` 4th-part loop bound + leading-space-`v` trim                       | `version-check.test.ts`        |
+| `isValidNoteName` / `noteNameToMidi` regex anchors + multi-digit octave             | `pitch.test.ts`                |
+| `stepInScale` strict `< 0` / `> 127` MIDI-boundary clamps (sparse-scale cases)      | `pitch.test.ts`                |
+| `warn` multi-arg outlet join + Dict-without-`stringify` optional chaining           | `v8-max-console.test.ts`       |
+| `waitUntil` schedules a Task delay between polls (not a busy loop)                  | `v8-sleep.test.ts`             |
+
 ## Interpreting survivors
 
 Each survivor falls into one of three buckets — triage before acting:
@@ -610,16 +699,16 @@ wins, and a cross-check against the line-coverage gate.
 
 ## Status & next steps
 
-The `notation` scope is **ratcheted** (`thresholds.break = 86`), as are all nine
-triaged tool domains: the write-op tier `track` (`break: 85`), `session`
-(`break: 89`), `actions` (`break: 90`), `device` (`break: 90`), `clip`
-(`break: 96`), and the read-op / small tier `advanced` (`break: 97`), `core`
-(`break: 99`), `scene` (`break: 96`), `live-set` (`break: 98`). Only `shared`
-(`src/tools/shared`) remains in **baseline mode** (`break: null`, measure-only).
-The per-domain scope mechanism (`config/mutation-scopes.mjs` + the runner) is in
-place, so each `src/tools/` domain can be mutated on its own. Mutation testing
-stays off the per-PR hot path (a full pass is minutes). Remaining work (later
-releases):
+The `notation` scope is **ratcheted** (`thresholds.break = 86`), as is
+`sharedRuntime` (`src/shared/`, `break: 94`) and all nine triaged tool domains:
+the write-op tier `track` (`break: 85`), `session` (`break: 89`), `actions`
+(`break: 90`), `device` (`break: 90`), `clip` (`break: 96`), and the read-op /
+small tier `advanced` (`break: 97`), `core` (`break: 99`), `scene`
+(`break: 96`), `live-set` (`break: 98`). Only `shared` (`src/tools/shared`)
+remains in **baseline mode** (`break: null`, measure-only). The per-domain scope
+mechanism (`config/mutation-scopes.mjs` + the runner) is in place, so each area
+can be mutated on its own. Mutation testing stays off the per-PR hot path (a
+full pass is minutes). Remaining work (later releases):
 
 - Keep triaging the ~588 notation survivors, but expect diminishing returns: the
   dense clusters left are epsilon-boundary / warning-string / equivalent mutants
@@ -627,13 +716,16 @@ releases):
 - Raise each scope's `break` as its score climbs.
 - Only one `src/tools/` domain is left: `shared` (`src/tools/shared`, the
   biggest single domain — split by subarea rather than triaging in one PR). The
-  write-op tier (`track`, `session`, `actions`, `device`, `clip`) and the
-  read-op / small tier (`advanced`, `core`, `scene`, `live-set`) are done. Per
-  domain: run `npm run mutation -- <domain>`, close real gaps, flip that
-  domain's `break` from `null` to ~1 point below its triaged score (add it to
-  `TOOL_DOMAIN_BREAKS`). The big clean wins tend to be untested lookup/enum
+  write-op tier (`track`, `session`, `actions`, `device`, `clip`), the read-op /
+  small tier (`advanced`, `core`, `scene`, `live-set`), and `sharedRuntime` are
+  done. Per domain: run `npm run mutation -- <domain>`, close real gaps, flip
+  that domain's `break` from `null` to ~1 point below its triaged score (add it
+  to `TOOL_DOMAIN_BREAKS`). The big clean wins tend to be untested lookup/enum
   tables (as in notation's chord table) and warn-and-skip guards whose tests
   assert only the result, never the warning or the skipped write.
+- Two more non-`src/tools/` trees remain unmutated and would each need a fresh
+  glob set (not `toolDomain()`): `src/mcp-server/` and the V8 adapter code.
+  Model them on `SHARED_RUNTIME_GLOBS` and give each a non-colliding scope key.
 - Optionally wire a scheduled (nightly/weekly) non-blocking CI job once several
   domains have floors — full-tree runtime is hours, not minutes.
 

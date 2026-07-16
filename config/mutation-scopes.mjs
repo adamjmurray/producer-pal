@@ -58,6 +58,24 @@ const NOTATION_GLOBS = [
   "!src/notation/**/peggy-parser-types.ts",
 ];
 
+// src/shared holds cross-cutting utility modules (pitch, notation, compact
+// serializer/parser, path builders, mcp-response, config, error-utils, v8
+// console/sleep, silent-wav, version-check) imported by both the Node MCP
+// server and the V8 Max runtime. It is NOT under src/tools/, so toolDomain()
+// can't build its globs; and its scope key can't be `shared` — that already
+// means src/tools/shared — hence `sharedRuntime`. Same exclusions as a tool
+// domain (tests, test/mock helpers, types-only) minus `.def.ts`/`*-disabled.ts`
+// (no tool defs or feature-flag stubs live here); all are future-proofing —
+// src/shared currently has none of them.
+const SHARED_RUNTIME_GLOBS = [
+  "src/shared/**/*.ts",
+  "!src/shared/**/*.test.ts",
+  "!src/shared/**/tests/**",
+  "!src/shared/**/*-test-helpers.ts",
+  "!src/shared/**/*-mock-helpers.ts",
+  "!src/shared/**/types.ts",
+];
+
 // Tool domains: one subdirectory each under src/tools/ (src/tools/constants.ts
 // is a plain root-level constants module, intentionally left unscoped).
 const TOOL_DOMAINS = [
@@ -90,8 +108,16 @@ const TOOL_DOMAIN_BREAKS = {
   "live-set": 98, // triaged 2026-07-15 at 99.07% (see dev/Mutation-Testing.md)
 };
 
+// The sharedRuntime (src/shared) break gate. Triaged 2026-07-15 at 94.94%; the
+// floor sits ~1 point below for run-to-run timeout-classification variance
+// (matching notation's ratchet). Remaining survivors are all equivalent /
+// defensive / static-init mutants (see dev/Mutation-Testing.md).
+const SHARED_RUNTIME_BREAK = 94;
+
 export const SCOPES = {
   notation: { mutate: NOTATION_GLOBS, break: 86 },
+  // src/shared: baseline mode (break: null) until triaged, then earns a floor.
+  sharedRuntime: { mutate: SHARED_RUNTIME_GLOBS, break: SHARED_RUNTIME_BREAK },
   ...Object.fromEntries(
     TOOL_DOMAINS.map((name) => [
       name,
@@ -103,5 +129,5 @@ export const SCOPES = {
 // Named groups the runner expands into multiple scopes.
 export const SCOPE_GROUPS = {
   tools: [...TOOL_DOMAINS],
-  all: ["notation", ...TOOL_DOMAINS],
+  all: ["notation", "sharedRuntime", ...TOOL_DOMAINS],
 };
