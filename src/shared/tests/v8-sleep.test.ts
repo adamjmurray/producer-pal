@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -78,6 +79,26 @@ describe("v8-sleep", () => {
       const result = await waitUntil(predicate);
 
       expect(result).toBe(true);
+    });
+
+    it("sleeps via a scheduled Task between polls (not a busy loop)", async () => {
+      // The private `sleep` must actually schedule a Task with the polling
+      // interval; a no-op sleep would poll synchronously and never schedule.
+      const scheduleSpy = vi.spyOn(MockTask.prototype, "schedule");
+      let callCount = 0;
+      const predicate = vi.fn().mockImplementation(() => {
+        callCount++;
+
+        return callCount >= 2;
+      });
+
+      const resultPromise = waitUntil(predicate, { pollingInterval: 25 });
+
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(scheduleSpy).toHaveBeenCalledWith(25);
+      scheduleSpy.mockRestore();
     });
   });
 });

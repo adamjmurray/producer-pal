@@ -222,9 +222,17 @@ describe("parseCompactJSLiteral - prototype pollution guard", () => {
     // prototype stays Object.prototype (a plain obj[key]= would mutate it).
     expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
     expect(Object.hasOwn(result, "__proto__")).toBe(true);
-    expect(
-      Object.getOwnPropertyDescriptor(result, "__proto__")?.value,
-    ).toStrictEqual({ polluted: 1 });
+
+    // The descriptor must be a plain writable/enumerable/configurable data
+    // property — exactly what JSON.parse produces (and what obj[key]= cannot).
+    const descriptor = Object.getOwnPropertyDescriptor(result, "__proto__");
+
+    expect(descriptor).toMatchObject({
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    expect(descriptor?.value).toStrictEqual({ polluted: 1 });
   });
 
   it("does not pollute Object.prototype", () => {
@@ -235,25 +243,29 @@ describe("parseCompactJSLiteral - prototype pollution guard", () => {
 });
 
 describe("parseCompactJSLiteral - malformed input throws", () => {
-  const cases: Array<[string, string]> = [
-    ["empty string", ""],
-    ["unterminated string", '"abc'],
-    ["trailing backslash", '"abc\\'],
-    ["missing colon", "{a 1}"],
-    ["bad object key", "{:1}"],
-    ["unclosed object", "{a:1"],
-    ["unclosed array", "[1,2"],
-    ["trailing content", "{}x"],
-    ["unexpected token", "{a:xyz}"],
-    ["invalid number", "-"],
-    ["bare keyword typo", "tru"],
+  // Each case asserts the SPECIFIC failure reason, not just the shared
+  // "Invalid compact literal:" wrapper — otherwise a blanked message (or a
+  // guard that falls through to a different error) would slip past unnoticed.
+  const cases: Array<[string, string, RegExp]> = [
+    ["empty string", "", /unexpected token/],
+    ["unterminated string", '"abc', /unterminated string/],
+    ["trailing backslash", '"abc\\', /unterminated string/],
+    ["missing colon", "{a 1}", /expected ':' after object key/],
+    ["bad object key", "{:1}", /expected an object key/],
+    ["unclosed object", "{a:1", /expected ',' or '}' in object/],
+    ["unclosed array", "[1,2", /expected ',' or ']' in array/],
+    ["trailing content", "{}x", /unexpected trailing content/],
+    ["unexpected token", "{a:xyz}", /unexpected token/],
+    ["invalid number", "-", /invalid number/],
+    ["bare keyword typo", "tru", /unexpected token/],
   ];
 
-  for (const [label, input] of cases) {
+  for (const [label, input, reason] of cases) {
     it(`throws on ${label}`, () => {
       expect(() => parseCompactJSLiteral(input)).toThrow(
-        /invalid compact literal|unexpected|json/i,
+        /invalid compact literal/i,
       );
+      expect(() => parseCompactJSLiteral(input)).toThrow(reason);
     });
   }
 });
