@@ -4,18 +4,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Shared helpers for ppal-clip-transforms e2e tests.
- * Provides common MIDI clip creation, reading, and transform application utilities.
+ * Shared helpers for ppal-clip e2e tests.
+ * Provides common MIDI clip creation, reading, transform application, and
+ * notation round-trip utilities.
  */
+import { expect } from "vitest";
+import { type NoteEvent } from "#src/notation/types.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import {
   type CreateClipResult,
   parseToolResult,
   type ReadClipResult,
+  setConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
 
 export const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
+
+const TOOL_CREATE_CLIP = "ppal-create-clip";
 
 /**
  * Creates a MIDI clip with specified notes on the empty MIDI track.
@@ -30,7 +37,7 @@ export async function createMidiClip(
   notes: string,
 ): Promise<string> {
   const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
+    name: TOOL_CREATE_CLIP,
     arguments: {
       slot: `${emptyMidiTrack}/${sceneIndex}`,
       notes,
@@ -59,7 +66,7 @@ export async function createArrangementClip(
   length: string,
 ): Promise<string> {
   const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
+    name: TOOL_CREATE_CLIP,
     arguments: {
       trackIndex: emptyMidiTrack,
       arrangementStart,
@@ -223,4 +230,69 @@ export function setupClipTransformTest(): ReturnType<
   typeof createClipTransformHelpers
 > {
   return createClipTransformHelpers(setupMcpTestContext());
+}
+
+/**
+ * Create a MIDI clip with `notes` in `slot`, read it back under `notation`, and
+ * re-interpret the serialized notation into note events. Flips the server to
+ * `notation` per call (the per-test setup resets it beforehand, so setting it
+ * inside the test body is what actually takes effect for the read-back). Shared
+ * by the triplet round-trip suites (MIDI JSON ratios and Stark triplets).
+ * @param ctx - MCP test context with client
+ * @param slot - Session slot (trackIndex/sceneIndex)
+ * @param notes - Notation string for the clip's notes
+ * @param notation - Read-back notation mode to configure the server with
+ * @param interpret - Re-interprets the read-back notation string into events
+ * @returns The read-back notation and its re-interpreted note events
+ */
+export async function createAndReadback(
+  ctx: { client: { callTool: CallToolFn } | null },
+  slot: string,
+  notes: string,
+  notation: Notation,
+  interpret: (notation: string) => NoteEvent[],
+): Promise<{ notation: string; events: NoteEvent[] }> {
+  await setConfig({ notation });
+
+  const created = parseToolResult<{ id: string }>(
+    await ctx.client!.callTool({
+      name: TOOL_CREATE_CLIP,
+      arguments: { slot, notes },
+    }),
+  );
+
+  await sleep(100);
+
+  const read = parseToolResult<ReadClipResult>(
+    await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: created.id, include: ["notes"] },
+    }),
+  );
+  const readback = read.notes ?? "";
+
+  return { notation: readback, events: interpret(readback) };
+}
+
+/**
+ * Assert time-sorted `events` match `pitches` at a constant `step`-beat spacing,
+ * each sustaining `step` beats, within float tolerance for the device round-trip.
+ * @param events - Re-interpreted read-back note events
+ * @param pitches - Expected MIDI pitches in time order
+ * @param step - Expected onset spacing and duration in beats (the triplet value)
+ */
+export function expectEvenlySpaced(
+  events: NoteEvent[],
+  pitches: number[],
+  step: number,
+): void {
+  const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+
+  expect(sorted).toHaveLength(pitches.length);
+
+  sorted.forEach((event, i) => {
+    expect(event.pitch).toBe(pitches[i]);
+    expect(event.start_time).toBeCloseTo(i * step, 3);
+    expect(event.duration).toBeCloseTo(step, 3);
+  });
 }

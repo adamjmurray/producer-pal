@@ -24,16 +24,12 @@
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { interpretMidiJson } from "#src/notation/midi-json/midi-json-notation.ts";
-import { type NoteEvent } from "#src/notation/types.ts";
+import { resetConfig, setupMcpTestContext } from "../mcp-test-helpers.ts";
 import {
-  parseToolResult,
-  type ReadClipResult,
-  resetConfig,
-  setConfig,
-  setupMcpTestContext,
-  sleep,
-} from "../mcp-test-helpers.ts";
-import { emptyMidiTrack } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+  createAndReadback,
+  emptyMidiTrack,
+  expectEvenlySpaced,
+} from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -47,11 +43,14 @@ afterAll(async () => {
 
 describe("ppal-create-clip MIDI JSON ratio round-trip", () => {
   it("round-trips eighth-note triplets (d:1/3) as thirds-of-a-beat", async () => {
-    const { notation, events } = await createAndReadbackMidiJson(
+    const { notation, events } = await createAndReadback(
+      ctx,
       `${emptyMidiTrack}/0`,
       "[{p:60,t:0,d:1/3,v:100},{p:64,t:1/3,d:1/3,v:100}," +
         "{p:67,t:2/3,d:1/3,v:100},{p:60,t:1,d:1/3,v:100}," +
         "{p:64,t:4/3,d:1/3,v:100},{p:67,t:5/3,d:1/3,v:100}]",
+      "midi-json",
+      interpretMidiJson,
     );
 
     expect(notation).toContain("d:1/3"); // the ratio survived as a ratio
@@ -61,10 +60,13 @@ describe("ppal-create-clip MIDI JSON ratio round-trip", () => {
   });
 
   it("round-trips quarter-note triplets (d:2/3) as two-thirds-of-a-beat", async () => {
-    const { notation, events } = await createAndReadbackMidiJson(
+    const { notation, events } = await createAndReadback(
+      ctx,
       `${emptyMidiTrack}/1`,
       "[{p:60,t:0,d:2/3,v:100},{p:64,t:2/3,d:2/3,v:100}," +
         "{p:67,t:4/3,d:2/3,v:100}]",
+      "midi-json",
+      interpretMidiJson,
     );
 
     expect(notation).toContain("d:2/3");
@@ -73,63 +75,3 @@ describe("ppal-create-clip MIDI JSON ratio round-trip", () => {
     expectEvenlySpaced(events, [60, 64, 67], 2 * THIRD);
   });
 });
-
-/**
- * Create a MIDI clip with MIDI JSON `notes` in `slot`, read it back under MIDI
- * JSON notation, and re-interpret the serialized notation into note events. Flips
- * the server to MIDI JSON per call (the per-test setup resets it beforehand, so
- * setting it inside the test body is what actually takes effect for the read-back).
- * @param slot - Session slot (trackIndex/sceneIndex)
- * @param notes - MIDI JSON notation with ratio durations
- * @returns The read-back MIDI JSON notation and its re-interpreted note events
- */
-async function createAndReadbackMidiJson(
-  slot: string,
-  notes: string,
-): Promise<{ notation: string; events: NoteEvent[] }> {
-  await setConfig({ notation: "midi-json" });
-
-  const created = parseToolResult<{ id: string }>(
-    await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: { slot, notes },
-    }),
-  );
-
-  await sleep(100);
-
-  const read = parseToolResult<ReadClipResult>(
-    await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: created.id, include: ["notes"] },
-    }),
-  );
-  const notation = read.notes ?? "";
-
-  // The slot is 4/4, so musical beats == Ableton beats and the default
-  // denominator re-interprets the read-back notation faithfully.
-  return { notation, events: interpretMidiJson(notation) };
-}
-
-/**
- * Assert time-sorted `events` match `pitches` at a constant `step`-beat spacing,
- * each sustaining `step` beats, within float tolerance for the device round-trip.
- * @param events - Re-interpreted read-back note events
- * @param pitches - Expected MIDI pitches in time order
- * @param step - Expected onset spacing and duration in beats (the triplet value)
- */
-function expectEvenlySpaced(
-  events: NoteEvent[],
-  pitches: number[],
-  step: number,
-): void {
-  const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
-
-  expect(sorted).toHaveLength(pitches.length);
-
-  sorted.forEach((event, i) => {
-    expect(event.pitch).toBe(pitches[i]);
-    expect(event.start_time).toBeCloseTo(i * step, 3);
-    expect(event.duration).toBeCloseTo(step, 3);
-  });
-}

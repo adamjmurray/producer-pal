@@ -24,16 +24,12 @@
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
-import { type NoteEvent } from "#src/notation/types.ts";
+import { resetConfig, setupMcpTestContext } from "../mcp-test-helpers.ts";
 import {
-  parseToolResult,
-  type ReadClipResult,
-  resetConfig,
-  setConfig,
-  setupMcpTestContext,
-  sleep,
-} from "../mcp-test-helpers.ts";
-import { emptyMidiTrack } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+  createAndReadback,
+  emptyMidiTrack,
+  expectEvenlySpaced,
+} from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -47,9 +43,12 @@ afterAll(async () => {
 
 describe("ppal-create-clip Stark triplet round-trip", () => {
   it("round-trips eighth-note triplets (/8t) as thirds-of-a-beat", async () => {
-    const { notation, events } = await createAndReadbackStark(
+    const { notation, events } = await createAndReadback(
+      ctx,
       `${emptyMidiTrack}/0`,
       "melody /8t: C E G C E G",
+      "stark",
+      interpretNotation,
     );
 
     expect(notation).toContain("/8t"); // the triplet survived as a triplet
@@ -58,9 +57,12 @@ describe("ppal-create-clip Stark triplet round-trip", () => {
   });
 
   it("round-trips quarter-note triplets (/4t) as two-thirds-of-a-beat", async () => {
-    const { notation, events } = await createAndReadbackStark(
+    const { notation, events } = await createAndReadback(
+      ctx,
       `${emptyMidiTrack}/1`,
       "melody /4t: C E G",
+      "stark",
+      interpretNotation,
     );
 
     expect(notation).toContain("/4t");
@@ -68,63 +70,3 @@ describe("ppal-create-clip Stark triplet round-trip", () => {
     expectEvenlySpaced(events, [60, 64, 67], 2 * THIRD);
   });
 });
-
-/**
- * Create a MIDI clip with Stark `notes` in `slot`, read it back under Stark
- * notation, and re-interpret the serialized notation into note events. Flips the
- * server to Stark per call (the per-test setup resets it beforehand, so setting
- * it inside the test body is what actually takes effect for the read-back).
- * @param slot - Session slot (trackIndex/sceneIndex)
- * @param notes - Stark notation with triplet durations
- * @returns The read-back Stark notation and its re-interpreted note events
- */
-async function createAndReadbackStark(
-  slot: string,
-  notes: string,
-): Promise<{ notation: string; events: NoteEvent[] }> {
-  await setConfig({ notation: "stark" });
-
-  const created = parseToolResult<{ id: string }>(
-    await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: { slot, notes },
-    }),
-  );
-
-  await sleep(100);
-
-  const read = parseToolResult<ReadClipResult>(
-    await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: created.id, include: ["notes"] },
-    }),
-  );
-  const notation = read.notes ?? "";
-
-  // Stark note values are absolute (meter-invariant), so no time signature is
-  // needed to re-interpret.
-  return { notation, events: interpretNotation(notation) };
-}
-
-/**
- * Assert time-sorted `events` match `pitches` at a constant `step`-beat spacing,
- * each sustaining `step` beats, within float tolerance for the device round-trip.
- * @param events - Re-interpreted read-back note events
- * @param pitches - Expected MIDI pitches in time order
- * @param step - Expected onset spacing and duration in beats (the triplet value)
- */
-function expectEvenlySpaced(
-  events: NoteEvent[],
-  pitches: number[],
-  step: number,
-): void {
-  const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
-
-  expect(sorted).toHaveLength(pitches.length);
-
-  sorted.forEach((event, i) => {
-    expect(event.pitch).toBe(pitches[i]);
-    expect(event.start_time).toBeCloseTo(i * step, 3);
-    expect(event.duration).toBeCloseTo(step, 3);
-  });
-}
