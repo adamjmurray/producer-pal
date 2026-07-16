@@ -115,7 +115,6 @@ export default defineConfig({
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Context & Memory", link: "/guide/context" },
-          { text: "Usage Examples", link: "/guide/examples" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "REST API", link: "/guide/rest-api" },
           { text: "Agent Skills", link: "/guide/skills" },
@@ -125,6 +124,7 @@ export default defineConfig({
         text: "Features",
         link: "/features",
         items: [
+          { text: "Usage Examples", link: "/features/examples" },
           { text: "MIDI Notation", link: "/features/midi-notation" },
           { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },

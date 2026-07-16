@@ -1,104 +1,184 @@
+---
+title: Usage Examples
+description:
+  What to say to Producer Pal — setting up project context, reading and
+  reorganizing your Live Set, building tracks and devices, editing MIDI you
+  already have, arranging, and working with samples.
+---
+
 # Usage Examples
 
-Once you have [installed Producer Pal](/installation), here are some examples of
-how to use it.
+Producer Pal is an assistant for the Live Set you're already working on. It can
+write MIDI from scratch, but that's the smallest part of what it does — it also
+reads your Set, sets up tracks and devices, edits what's already there, arranges
+clips, and finds samples.
 
-## Getting Started
+These are examples of what to say, once you have
+[installed Producer Pal](/installation).
 
-### Connecting to Ableton
+## Start here
+
+### Connect to Ableton
 
 Start a chat like:
 
 > connect to ableton
 
 If Ableton Live or the Producer Pal Max for Live device aren't running, the AI
-will let you know. Once it's running, say "try again" or restart the
-conversation.
+will say so. Once it's running, say "try again" or start a new conversation.
 
-### Creating Drum Patterns
+### See what it can do
 
-Setup a drum rack in a track called "Drums" and ask:
-
-> find the drums track and generate a 4-bar drum loop
-
-then:
-
-> I like that, make some variations
-
-or:
-
-> great! can you expand that to 16 bars?
-
-or:
-
-> it's pretty repetitive, can you add some drum fills on the last few beats?
-
-or:
-
-> that's not quite what I'm looking for, do something more like ...
-
-The better you can describe exactly what you want, the better the results should
-be.
-
-### Generating Chord Progressions
-
-Setup some pads or keys in a track called "Chords" and ask:
-
-> in the chords track, generate a 4-chord progression of whole notes
-
-Enable the global scale for your Live Set and Producer Pal should respect it
-when generating chords, bass, and melodies. Or tell it what scale to use.
-
-### Creating Basslines
-
-With a "Bass" track:
-
-> in the bass track, generate a bassline to go along with that chord progression
-
-### Discovering More Features
-
-Let the AI tell you what else it can do:
+Let the AI tell you itself:
 
 > what are all the things you can do with your Ableton Live tools?
 
-## Shaping the Feel
+### Look around your Set
 
-Once you have a pattern, you can shape its dynamics, timing, and articulation.
+Nothing is generated here — this is just Producer Pal reading:
 
-### Velocity Dynamics
+> what's in my Live Set?
 
-Add expression and movement to your patterns:
+> what devices are on the bass track, and how are they set?
 
-> add a crescendo to the hats in the last two beats of the last bar
+> which clips are in scene 3?
 
-> apply a velocity LFO to the hats
+## Set up project context
 
-> slightly randomize the snare velocities
+This is the highest-leverage thing you can do, and the easiest to skip. Producer
+Pal remembers things in [three layers](/guide/context): **project context**
+(what this Set is), **global context** (what you always want), and **memory**
+(what the AI has learned about you). All three are sent on every conversation,
+so the AI starts out knowing your project instead of asking.
 
-These work on any MIDI clip — drums, melodies, chords — and can target specific
-notes by pitch or time range.
+You can write them by hand in the
+[context editor](/guide/context#the-context-editor), or just tell the AI:
 
-### Swing & Quantize
+> save this to the project context: this track is a 140bpm neurofunk tune in F
+> minor. "Reese" is the main bass track and its patch should never be
+> retriggered mid-phrase. Keep the intro sparse.
 
-Dial in the rhythmic feel:
+> add to the project context: the arrangement is intro (1-16), drop (17-48),
+> breakdown (49-64)
+
+Project context travels with the Live Set — it's stored in the device, so it's
+there when you reopen the project tomorrow.
+
+For things that are true of everything you make, use global context instead:
+
+> remember globally: I work in 4-bar loops, I hate hard-quantized hi-hats, and I
+> never want you to touch my master chain
+
+Then in a new conversation, days later:
+
+> what do you know about this project?
+
+::: tip Project vs. global
+
+"Kick stays four-on-the-floor in this tune" is project context. "I always work
+in A minor" is global. If you'd want it in your next Set too, it's global.
+
+:::
+
+The AI also writes [memory](/guide/context#memory) entries on its own as it
+picks up on your preferences, and you can ask it to:
+
+> remember that I like my snares layered with a clap about 10ms late
+
+## Build tracks and devices
+
+Set up a signal chain conversationally:
+
+> create a MIDI track called "Synth Lead"
+
+> add a Wavetable instrument to it
+
+> set the filter cutoff to 50% and add a ping pong delay after it
+
+> mute that track and set its color to purple
+
+Producer Pal knows Live's native devices, including
+[device-specific controls](/features#ppal-update-device) for Drift, Wavetable,
+Simpler, Meld, Compressor, EQ Eight, Hybrid Reverb, Roar, and Spectral
+Resonator.
+
+## Work with samples
+
+Browse and use audio from your library:
+
+> show me available drum samples
+
+> find me a vinyl-ish rhodes loop
+
+> create an audio clip using that kick sample on the Drums track
+
+> pitch shift it up 5 semitones and loop it
+
+## Edit what you already have
+
+Most work isn't generating a part — it's fixing the one that's there. These all
+operate on existing MIDI, using
+[transforms](/features/midi-notation#transforms):
+
+**Feel and timing:**
 
 > add swing to the closed hats
 
 > that's a little too much, lower the amount of swing
 
-> I changed my mind, quantize the hats to the 16th note grid
+> quantize the hats to the 16th note grid, but leave the kick alone
 
-### Note Duration
+**Dynamics:**
 
-Control note lengths for different articulations:
+> add a crescendo to the hats in the last two beats of the last bar
+
+> slightly randomize the snare velocities
+
+> apply a velocity LFO to the hats
+
+**Articulation:**
 
 > cut all the note durations in half
 
 > apply legato to the melody
 
-## Building Musical Structure
+These work on any MIDI clip — drums, melodies, chords — and can target notes by
+pitch or time range.
 
-### Melodic Development
+## Arrange
+
+Build song structure in the Arrangement view:
+
+> copy the session drum loop to the arrangement at bar 17 and repeat it to bar
+> 48
+
+> duplicate that clip to bar 13
+
+> split the clip at bar 9
+
+> add a locator called "drop" at bar 17
+
+Producer Pal works in both Session and Arrangement views. Use Session for
+jamming and ideas, then move to Arrangement for song structure — or start
+directly in Arrangement if you prefer.
+
+## Generate parts
+
+When you do want the AI to write MIDI, be specific — the better you describe
+what you want, the better the result:
+
+> in the chords track, generate a 4-chord progression of whole notes
+
+> generate a bassline to go along with that chord progression
+
+> I like that, make some variations
+
+> it's pretty repetitive, can you add some drum fills on the last few beats?
+
+Set a scale and key on your Live Set and Producer Pal respects it when
+generating chords, bass, and melodies — or just tell it what scale to use.
+
+### Melodic development
 
 Build variations from a simple idea using scale-aware transposition:
 
@@ -109,92 +189,35 @@ Build variations from a simple idea using scale-aware transposition:
 > 6th, raise by three scale steps, and raise the final repetition by four scale
 > steps
 
-This creates a melody that builds upward through the scale across repetitions —
-a common technique for creating tension and arc in a phrase.
+This builds a melody that climbs through the scale across repetitions — a common
+way to create tension and arc in a phrase.
 
-### Arrangement Workflow
+### Layering multiple patterns on one instrument
 
-Build song structure in the arrangement view:
+You can route multiple MIDI tracks to the same instrument, for complex or
+polyrhythmic patterns:
 
-> create an 8-bar bass line on the Bass track in the arrangement starting at bar
-> 5
-
-> duplicate that clip to bar 13
-
-> split the clip at bar 9
-
-### Layer Multiple Patterns on One Instrument
-
-You can route multiple MIDI tracks to control the same instrument, enabling
-complex rhythms and polyrhythmic patterns.
-
-#### Layered Drum Parts
-
-- Create a basic kick pattern
-- Say "layer another track onto the drums"
-- Add snares to the new track
-- Create another layer for hats
-- Launch different clip combinations for dynamic arrangements
-
-#### Polyrhythmic Patterns
-
-- Make a 3-bar melody pattern
-- Say "layer another track onto [track name]"
-- Ask for a 4-bar clip in the new track
-- The patterns phase every 12 bars, creating evolving variations
-
-## Track & Device Setup
-
-Set up your whole signal chain conversationally:
-
-> create a MIDI track called "Synth Lead"
-
-> add a Wavetable instrument to it
-
-> set the filter cutoff to 50%
-
-> mute that track and set its color to purple
-
-## Working with Audio Samples
-
-Browse and use audio files from your sample library:
-
-> show me available drum samples
-
-> create an audio clip using the kick sample on the Drums track
-
-> pitch shift it up 5 semitones and loop it
-
-## Project Memory
-
-Save notes that persist across conversations — useful for keeping track of
-musical decisions:
-
-> save a note: "this project uses C minor with jazzy 7th chords"
-
-Later, in a new conversation:
-
-> what notes do I have saved about this project?
-
-## Session and Arrangement Views
-
-Producer Pal works in both Session and Arrangement views. Use Session for
-jamming and ideas, then move to Arrangement for song structure — or start
-directly in Arrangement if you prefer.
+- **Layered drums** — create a kick pattern, say "layer another track onto the
+  drums", add snares there, then another layer for hats. Launch different clip
+  combinations for dynamic arrangements.
+- **Polyrhythms** — make a 3-bar pattern, layer another track onto it, and ask
+  for a 4-bar clip in the new track. The two phase against each other every 12
+  bars.
 
 ## Tips
 
-For a full feature reference see the [Features page](/features).
-
-**Always keep backups and save often!** Don't let AI loose on a serious song you
+**Always keep backups and save often.** Don't let AI loose on a serious song you
 care about unless you've saved a backup copy. Producer Pal can overwrite and
 delete things. If you make good progress, save it before you lose it.
 
-Keep your context window small for best results: start fresh conversations when
-needed (just say "connect to ableton" again), or use the memory feature in the
-Max device to persist important context. For particularly complex tasks,
-"extended thinking" or "high reasoning effort" features can help, though it's
-typically overkill and will hit usage limits faster.
+**Keep the context window small.** Start fresh conversations when a chat gets
+long (just say "connect to ableton" again) — and put anything worth keeping into
+[project context or memory](/guide/context) so a new conversation starts
+informed instead of re-explaining.
 
-For known constraints, see [Limitations](/features#limitations) on the Features
-page.
+**Reach for reasoning sparingly.** For particularly complex tasks, "extended
+thinking" or "high reasoning effort" can help, though it's typically overkill
+and burns usage limits faster.
+
+For the full feature reference see the [Features page](/features), and for known
+constraints see [Limitations](/features#limitations).

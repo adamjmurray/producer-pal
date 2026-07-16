@@ -9,6 +9,14 @@
 [context.branch-deploy]
   command = "npm run docs:build"
 
+# Moved pages. These must precede the catch-all below, which would otherwise
+# serve the homepage with a 200 and hide the move from users and crawlers.
+[[redirects]]
+  from = "/guide/examples"
+  to = "/features/examples"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
