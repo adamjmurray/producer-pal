@@ -8,7 +8,13 @@ import {
   type DocMemoryStatus,
   type SaveStatus,
 } from "#webui/hooks/context/use-doc-memory";
+import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
+import { CONTEXT_DOCS_URL } from "#webui/lib/config";
 import { SaveIndicator } from "./SaveIndicator";
+
+// Circular "?" help badge, matching the chat header and settings help links.
+const helpLinkClass =
+  "inline-flex items-center justify-center w-6 h-6 text-sm font-semibold leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-zinc-200 hover:text-white dark:hover:border-zinc-300 dark:hover:text-white no-underline shrink-0 transition-colors";
 
 interface ContextHeaderProps {
   title: string;
@@ -30,21 +36,23 @@ interface ContextHeaderProps {
 /**
  * Header strip showing the Producer Pal Context brand (logo + title, top-left),
  * the tab strip (or a plain title), the save indicator (or a custom
- * `rightSlot`), and (when mounted inside the chat-app overlay) a close button.
+ * `rightSlot`), a documentation help link (when help links are enabled in
+ * preferences), and (when mounted inside the chat-app overlay) a close button.
  * Shared by every context screen (docs, memory, skills) so the brand and the
- * tab strip + close affordance stay identical across tabs.
+ * tab strip + help + close controls stay identical across tabs.
  * @param props - Header props
  * @returns Header element
  */
 export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
   const { title, tabSlot, closeAriaLabel, status, rightSlot, onClose } = props;
+  const { showHelpLinks } = usePreferencesSettings();
 
   return (
     // Background, height (py-2), border, and shadow mirror the chat header bar
     // (see ChatHeader) so the two screens read as one product.
     //
     // Three columns: the left brand cell (logo + title) balances the right cluster
-    // (save indicator + close) so the centered tab strip stays centered — the two
+    // (save indicator + help + close) so the centered tab strip stays centered — the two
     // 1fr side columns are equal regardless of either side's changing width, so it
     // never nudges the tabs. The cluster lives in its own column (not absolutely
     // positioned), so the tabs can't slide under it; the center cell scrolls
@@ -82,6 +90,17 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
               dirty={props.dirty ?? false}
             />
           ))}
+        {showHelpLinks && (
+          <a
+            href={CONTEXT_DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={helpLinkClass}
+            title="Documentation"
+          >
+            ?
+          </a>
+        )}
         {onClose != null && (
           <button
             type="button"

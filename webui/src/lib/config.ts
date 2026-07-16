@@ -18,6 +18,8 @@ export {
 
 export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
 
+export const CONTEXT_DOCS_URL = "https://producer-pal.org/guide/context";
+
 const ALL_MODELS = [
   ...ANTHROPIC_MODELS,
   ...GEMINI_MODELS,

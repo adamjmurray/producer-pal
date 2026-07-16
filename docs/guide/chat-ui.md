@@ -34,13 +34,14 @@ The header is organized into two areas:
 - **Provider & Model** - Click to open connection settings
 - **Tools count** - Click to open tools settings
 - **Model size** - Shows "large model" or "small model" mode
+- **Help (?)** - Link to documentation. Hide it (here and in settings) with
+  **Show help links** in [Preferences](#preferences)
 - **Context** - Open the [context editor](/guide/context) in a larger view,
   where you teach AI about your project (**Project**), your preferences
   (**Global**), and review what it remembers about you (**Memory**) — plus
   customize its system prompt (**Instructions**) and skills (**Skills**). Press
   the close (✕) button to return to the chat
 - **Settings gear** - Open settings dialog
-- **Help (?)** - Link to documentation
 
 ## Conversation History
 
