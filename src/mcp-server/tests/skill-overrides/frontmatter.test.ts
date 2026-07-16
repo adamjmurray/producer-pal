@@ -119,6 +119,18 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter(raw, PROV)).toStrictEqual({ data: {}, body: raw });
   });
 
+  it("strips only the leading blank line, preserving interior newlines in the body", () => {
+    // The body join re-adds `\n` between lines, then a single leading `\n` is
+    // stripped (the blank line after the close fence). The strip must be
+    // anchored (`/^\n/`): a body with no blank line after the fence but interior
+    // newlines must keep every one of them.
+    const raw = "---\ndescription: d\n---\nLine 1\nLine 2\nLine 3";
+
+    expect(parseFrontmatter(raw, ["description"]).body).toBe(
+      "Line 1\nLine 2\nLine 3",
+    );
+  });
+
   it("parses a CRLF file (Windows line endings) the same as LF", () => {
     // Regression: the close fence "---\r" never matched "---", so the whole
     // file (provenance block included) was returned as body and drift detection

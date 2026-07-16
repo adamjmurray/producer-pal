@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   isLocalOrigin,
   isSameOriginRequest,
+  rejectCrossOriginWrite,
   rejectForeignOriginWrite,
 } from "../../helpers/http/request-origin.ts";
 
@@ -124,6 +125,49 @@ describe("isSameOriginRequest", () => {
     expect(isSameOriginRequest("not a url", mockReq({ host: "x" }))).toBe(
       false,
     );
+  });
+});
+
+describe("rejectCrossOriginWrite", () => {
+  it("allows a non-browser (Origin-less) request", () => {
+    const { res, state } = mockRes();
+
+    expect(rejectCrossOriginWrite(mockReq({}), res, "nope")).toBe(false);
+    expect(state.status).toBeNull();
+  });
+
+  it("allows a localhost Origin", () => {
+    const { res, state } = mockRes();
+    const req = mockReq({ origin: "http://localhost:3350" });
+
+    expect(rejectCrossOriginWrite(req, res, "nope")).toBe(false);
+    expect(state.status).toBeNull();
+  });
+
+  it("rejects a non-localhost browser origin with 403, returning true", () => {
+    // Unlike rejectForeignOriginWrite, this gate is localhost-ONLY: even a
+    // same-origin LAN/tunnel write is rejected (it guards /config + token
+    // minting). The `true` return tells the caller to bail after the 403.
+    const { res, state } = mockRes();
+    const req = mockReq({
+      origin: "https://demo.trycloudflare.com",
+      host: "demo.trycloudflare.com",
+    });
+
+    expect(rejectCrossOriginWrite(req, res, "config writes blocked")).toBe(
+      true,
+    );
+    expect(state.status).toBe(403);
+    expect(state.body).toStrictEqual({ error: "config writes blocked" });
+  });
+
+  it("rejects an unparseable Origin (treated as non-local)", () => {
+    const { res, state } = mockRes();
+
+    expect(
+      rejectCrossOriginWrite(mockReq({ origin: "garbage" }), res, "x"),
+    ).toBe(true);
+    expect(state.status).toBe(403);
   });
 });
 

@@ -326,6 +326,15 @@ describe("regenerateSkillsIndex / SKILLS.md", () => {
     expect(regenerateSkillsIndex()).toContain("- `bare`\n");
   });
 
+  it("emits no Disabled section when every skill is enabled", () => {
+    // The `## Disabled` section is only appended when disabled.length > 0 — with
+    // all skills enabled the section must be absent entirely, not a bare header.
+    rememberCustomSkill({ name: "one", description: "d", body: "b" });
+    rememberCustomSkill({ name: "two", description: "d", body: "b" });
+
+    expect(regenerateSkillsIndex()).not.toContain("## Disabled");
+  });
+
   it("deletes the index and returns '' when the last skill is forgotten", () => {
     rememberCustomSkill({ name: "solo", description: "d", body: "b" });
     forgetCustomSkill("solo");

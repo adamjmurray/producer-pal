@@ -149,6 +149,21 @@ describe("resolveAbsolutePaths", () => {
     expect(resolveAbsolutePaths(db, [4]).get(4)?.folder).toBe("Drums");
   });
 
+  it("captures the folder for the minimal 3-segment path (root/folder/file)", () => {
+    // The folder is assigned when there are >= 3 segments (root, folder, leaf) —
+    // exactly 3 is the boundary. With only root + leaf (2 segments) the parent
+    // is the root itself, so folder stays unset (see the next test).
+    insertRow(1, 0, "/");
+    insertRow(2, 1, "Samples");
+    insertRow(3, 2, "kick.wav");
+
+    expect(resolveAbsolutePaths(db, [3]).get(3)).toStrictEqual({
+      path: "/Samples/kick.wav",
+      truncated: false,
+      folder: "Samples",
+    });
+  });
+
   it("omits folder for a file directly at the root", () => {
     insertRow(1, 0, "/");
     insertRow(2, 1, "loop.wav");

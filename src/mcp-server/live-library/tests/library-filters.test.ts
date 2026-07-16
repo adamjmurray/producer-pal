@@ -15,6 +15,10 @@ import {
   resolveKind,
   resolveSource,
 } from "../library-filters.ts";
+// clampLibraryLimit lives in the sibling library-types.ts (the same pure
+// library-DB coercion layer); its tests live here rather than in a separate file
+// to stay under the tests/ folder-item cap.
+import { clampLibraryLimit, MAX_LIBRARY_LIMIT } from "../library-types.ts";
 
 describe("fourCC", () => {
   it("encodes 'fldr' as 1718379634 (matches Live's spike-confirmed value)", () => {
@@ -258,5 +262,42 @@ describe("deriveItemType", () => {
 
   it("prefers loop over oneshot when a file carries both", () => {
     expect(deriveItemType(["One Shot", "Loop"])).toBe("loop");
+  });
+});
+
+describe("clampLibraryLimit", () => {
+  const DEFAULT = 50;
+
+  it("returns a valid in-range integer unchanged", () => {
+    expect(clampLibraryLimit(25, DEFAULT)).toBe(25);
+    expect(clampLibraryLimit(1, DEFAULT)).toBe(1);
+  });
+
+  it("floors a fractional request", () => {
+    expect(clampLibraryLimit(5.9, DEFAULT)).toBe(5);
+  });
+
+  it("caps a request above MAX_LIBRARY_LIMIT", () => {
+    expect(clampLibraryLimit(MAX_LIBRARY_LIMIT + 500, DEFAULT)).toBe(
+      MAX_LIBRARY_LIMIT,
+    );
+  });
+
+  it("falls back to the default when the request is missing", () => {
+    // Guards the `requested == null` branch of the coercion.
+    expect(clampLibraryLimit(undefined, DEFAULT)).toBe(DEFAULT);
+  });
+
+  it("falls back to the default for a non-finite request", () => {
+    // Guards the `!Number.isFinite(requested)` branch (NaN / ±Infinity).
+    expect(clampLibraryLimit(Number.NaN, DEFAULT)).toBe(DEFAULT);
+    expect(clampLibraryLimit(Number.POSITIVE_INFINITY, DEFAULT)).toBe(DEFAULT);
+  });
+
+  it("falls back to the default for a non-positive request", () => {
+    // Guards the `requested <= 0` branch — 0 and negatives are meaningless
+    // limits, so they coerce to the default rather than to 0 rows.
+    expect(clampLibraryLimit(0, DEFAULT)).toBe(DEFAULT);
+    expect(clampLibraryLimit(-5, DEFAULT)).toBe(DEFAULT);
   });
 });

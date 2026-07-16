@@ -18,9 +18,10 @@ steps" below.
 npm run mutation                 # default scope: notation
 npm run mutation -- clip         # one src/tools/ domain
 npm run mutation -- sharedRuntime # src/shared (cross-cutting utilities)
+npm run mutation -- mcpServer    # src/mcp-server (Node-for-Max server)
 npm run mutation -- tools        # every tool domain (group)
 npm run mutation -- notation clip
-npm run mutation -- all          # notation + sharedRuntime + every tool domain
+npm run mutation -- all          # notation + sharedRuntime + mcpServer + every tool domain
 ```
 
 Mutation testing is **scoped** and deliberately **not** part of `npm run check`
@@ -46,8 +47,16 @@ Scopes are defined in `config/mutation-scopes.mjs`:
   sleep, silent-wav, version-check). It is **not** under `src/tools/`, so it
   uses its own glob const (`SHARED_RUNTIME_GLOBS`), and its scope key can't be
   `shared` — that already means `src/tools/shared`. Triaged: `break: 94`.
+- **`mcpServer`** — `src/mcp-server/` (the Node-for-Max side: the Express app,
+  MCP server wiring, REST routes, the live-library SQLite reader, the
+  markdown/memory/skill override stores, and the RPC protocol to the V8
+  runtime). Also **not** under `src/tools/`, so it uses its own glob const
+  (`MCP_SERVER_GLOBS`) and the camelCase key `mcpServer`. The bundle entry point
+  `mcp-server.ts` is excluded (it runs module-load side effects wired to
+  `max-api` and is already coverage-excluded). Triaged: `break: 87`.
 - **Groups** — `tools` (all ten tool domains) and `all` (notation +
-  `sharedRuntime` + tools), expanded by the runner into their member scopes.
+  `sharedRuntime` + `mcpServer` + tools), expanded by the runner into their
+  member scopes.
 
 Mechanics:
 
@@ -681,6 +690,79 @@ Stryker-limited), no real gaps:
 | `warn` multi-arg outlet join + Dict-without-`stringify` optional chaining           | `v8-max-console.test.ts`       |
 | `waitUntil` schedules a Task delay between polls (not a busy loop)                  | `v8-sleep.test.ts`             |
 
+## Baseline (2026-07-15, `mcpServer` — `src/mcp-server/`)
+
+The Node-for-Max server layer (58 mutated files) — the Express app, MCP server
+wiring, REST routes, the live-library SQLite reader, the markdown/memory/skill
+override stores, and the RPC protocol to the V8 runtime. Full pass — Stryker
+9.6.1, Node 24, `coverageAnalysis: "perTest"`:
+
+| Metric    | Baseline | Triaged    | Gate (`break`) |
+| --------- | -------- | ---------- | -------------- |
+| mcpServer | 88.14%   | **88.51%** | 87             |
+
+The raw all-files run scores 86.31%, but the bundle entry point `mcp-server.ts`
+(0% covered, 57 all-NoCoverage mutants) is **excluded** from the scope:
+importing it runs module-load side effects wired to `max-api` (registers Node
+routes, binds `.listen()`), so it's e2e-territory and is already
+coverage-excluded in `vitest.config.ts` — the same rationale `toolDomain()` uses
+for `.def.ts` / `*-disabled.ts`. Excluding it puts the honest baseline at
+88.14%; the triage below lifts it to 88.51%, all test-only.
+
+This is the most infrastructure-heavy domain triaged so far, so the clean-gap
+ceiling is low and the surviving mutants are dominated by bucket 2/3 categories
+rather than real gaps:
+
+- **Device-notification side effects.** `create-express-app.ts` alone holds 60
+  survivors, almost all `Max.outlet("config", <key>, <value>)` emissions and the
+  `outlets.push(() => …)` arrows that batch them. Tests assert the resulting
+  config **state**, not that each notification fires with an exact channel/key
+  string — asserting those would over-fit the device-sync protocol.
+- **Dynamic SQL builders.** The live-library query files (`candidate-query`,
+  `find-similar`, `find-duplicates`, `library-search`) build `WHERE` clauses and
+  `?`-placeholder lists by string concatenation; the
+  `where.length > 0 ? "WHERE " + … : ""` conditionals and placeholder joins
+  survive because the tests assert query **results** against a fixture DB, not
+  the exact SQL text.
+- **The `perTest` guard-attribution quirk** (also seen in `sharedRuntime`).
+  Stryker does not attribute a test to an `if`-guard mutant when that test
+  early-returns at the guard, so several guards whose behavior _is_ directly
+  unit-tested stay unkillable — confirmed via `coveredBy`:
+  `resolveClipSubtype`'s `fileType !== ALC || subtype == null` guard
+  (library-filters L141) lists only the `librarySearch` integration tests, not
+  the direct `resolveClipSubtype(wav, alcM) === null` unit test that would kill
+  it; likewise `resolveAbsolutePaths([])` (reconstruct-path L73) and
+  `clampLibraryLimit`'s null/`≤0` guard.
+- **`readdir`-order-equivalent sorts.** The store `sortByName`
+  (`entries.sort((a,b) => a.name.localeCompare(b.name))`, global-memory L123 +
+  custom-skills L133) is a no-op on the test platform because macOS APFS
+  `readdirSync` already returns lexicographic order, and all slugs are
+  lowercase-ascii (byte order == locale order). The sort is cross-platform
+  defensive; killing it would require forging an unsorted `readdir`, i.e.
+  over-fitting to filesystem order.
+- **Static regex module-init, log/header strings, `finally`/`catch`
+  block-empties.** `WINDOWS_DRIVE_ROOT` / `Live-files-(\d+)` regexes (0-coverage
+  static initializers, a known Stryker limitation),
+  `console.info`/`warn`/`error` message literals,
+  `res.set("Cache-Control", "no-store")` header strings, and `} finally { … }`
+  cleanup blocks whose emptying is behaviorally invisible.
+- **Genuine equivalents.** `writeSkillOverride(name, "")` ≡ deleting the slot
+  (an empty-body override file is dropped on read, so both yield
+  `override: ""`); the `> 0` / `>= 0` length guards on already-non-empty
+  collections.
+
+### Gaps closed (`mcpServer`)
+
+| Gap (now killed)                                                                | Test added / strengthened     |
+| ------------------------------------------------------------------------------- | ----------------------------- |
+| `requireString`/`optionalString` null-args `?.[key]` guard + field-named errors | `route-args.test.ts` (new)    |
+| `clampLibraryLimit` non-positive request → default (the `<= 0` branch)          | `library-filters.test.ts`     |
+| `parseFrontmatter` body: anchored `^\n` strip preserves interior newlines       | `frontmatter.test.ts`         |
+| `cosineSimilarity` bounded by the shorter vector (no read past the end)         | `fe-values-helpers.test.ts`   |
+| `rejectCrossOriginWrite`: foreign origin → 403 + returns `true`                 | `request-origin.test.ts`      |
+| `resolveAbsolutePaths`: 3-segment path sets `folder` (the `>= 3` boundary)      | `reconstruct-path.test.ts`    |
+| Custom-skills index emits no `## Disabled` section when all skills are enabled  | `custom-skills-store.test.ts` |
+
 ## Interpreting survivors
 
 Each survivor falls into one of three buckets — triage before acting:
@@ -700,15 +782,16 @@ wins, and a cross-check against the line-coverage gate.
 ## Status & next steps
 
 The `notation` scope is **ratcheted** (`thresholds.break = 86`), as is
-`sharedRuntime` (`src/shared/`, `break: 94`) and all nine triaged tool domains:
-the write-op tier `track` (`break: 85`), `session` (`break: 89`), `actions`
-(`break: 90`), `device` (`break: 90`), `clip` (`break: 96`), and the read-op /
-small tier `advanced` (`break: 97`), `core` (`break: 99`), `scene`
-(`break: 96`), `live-set` (`break: 98`). Only `shared` (`src/tools/shared`)
-remains in **baseline mode** (`break: null`, measure-only). The per-domain scope
-mechanism (`config/mutation-scopes.mjs` + the runner) is in place, so each area
-can be mutated on its own. Mutation testing stays off the per-PR hot path (a
-full pass is minutes). Remaining work (later releases):
+`sharedRuntime` (`src/shared/`, `break: 94`), `mcpServer` (`src/mcp-server/`,
+`break: 87`), and all nine triaged tool domains: the write-op tier `track`
+(`break: 85`), `session` (`break: 89`), `actions` (`break: 90`), `device`
+(`break: 90`), `clip` (`break: 96`), and the read-op / small tier `advanced`
+(`break: 97`), `core` (`break: 99`), `scene` (`break: 96`), `live-set`
+(`break: 98`). Only `shared` (`src/tools/shared`) remains in **baseline mode**
+(`break: null`, measure-only). The per-domain scope mechanism
+(`config/mutation-scopes.mjs` + the runner) is in place, so each area can be
+mutated on its own. Mutation testing stays off the per-PR hot path (a full pass
+is minutes). Remaining work (later releases):
 
 - Keep triaging the ~588 notation survivors, but expect diminishing returns: the
   dense clusters left are epsilon-boundary / warning-string / equivalent mutants
@@ -723,9 +806,13 @@ full pass is minutes). Remaining work (later releases):
   to `TOOL_DOMAIN_BREAKS`). The big clean wins tend to be untested lookup/enum
   tables (as in notation's chord table) and warn-and-skip guards whose tests
   assert only the result, never the warning or the skipped write.
-- Two more non-`src/tools/` trees remain unmutated and would each need a fresh
-  glob set (not `toolDomain()`): `src/mcp-server/` and the V8 adapter code.
-  Model them on `SHARED_RUNTIME_GLOBS` and give each a non-colliding scope key.
+- One non-`src/tools/` tree remains unmutated and would need a fresh glob set
+  (not `toolDomain()`): the V8 adapter code (`src/live-api-adapter/`). Model it
+  on `SHARED_RUNTIME_GLOBS` / `MCP_SERVER_GLOBS` and give it a non-colliding
+  scope key. Expect a low ceiling and a heavy entry-point exclusion —
+  `live-api-adapter.ts` runs `outlet(0, "started")` + registers handlers at
+  import and is already coverage-excluded (exclude it as `mcpServer` does its
+  entry point).
 - Optionally wire a scheduled (nightly/weekly) non-blocking CI job once several
   domains have floors — full-tree runtime is hours, not minutes.
 

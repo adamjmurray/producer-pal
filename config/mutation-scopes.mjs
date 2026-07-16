@@ -76,6 +76,31 @@ const SHARED_RUNTIME_GLOBS = [
   "!src/shared/**/types.ts",
 ];
 
+// src/mcp-server is the Node-for-Max side: the Express app, MCP server wiring,
+// REST routes, the live-library SQLite reader, markdown/memory/skill override
+// stores, and the RPC protocol to the V8 runtime. It is NOT under src/tools/ so
+// toolDomain() can't build its globs; its scope key is `mcpServer` (camelCase,
+// non-colliding with any tool domain). Same exclusions as sharedRuntime (tests,
+// test/mock helpers, types-only) minus `.def.ts`/`*-disabled.ts` (no tool defs
+// or feature-flag stubs live here). `library-types.ts` is intentionally NOT
+// excluded — it carries real logic (clampLibraryLimit + limit constants), not
+// just type aliases.
+const MCP_SERVER_GLOBS = [
+  "src/mcp-server/**/*.ts",
+  "!src/mcp-server/**/*.test.ts",
+  "!src/mcp-server/**/tests/**",
+  "!src/mcp-server/**/*-test-helpers.ts",
+  "!src/mcp-server/**/*-mock-helpers.ts",
+  "!src/mcp-server/**/types.ts",
+  // mcp-server.ts is the Node-for-Max bundle entry point: importing it runs
+  // module-load side effects (imports `max-api`, registers Node routes, binds
+  // `.listen()`), so it's exercised by the e2e suites, not unit tests, and is
+  // already coverage-excluded in vitest.config.ts. Exclude it here too (same
+  // rationale as `.def.ts`/`*-disabled.ts` in toolDomain) — its ~57 mutants are
+  // all NoCoverage bootstrap wiring, not assertable behavior.
+  "!src/mcp-server/mcp-server.ts",
+];
+
 // Tool domains: one subdirectory each under src/tools/ (src/tools/constants.ts
 // is a plain root-level constants module, intentionally left unscoped).
 const TOOL_DOMAINS = [
@@ -114,10 +139,20 @@ const TOOL_DOMAIN_BREAKS = {
 // defensive / static-init mutants (see dev/Mutation-Testing.md).
 const SHARED_RUNTIME_BREAK = 94;
 
+// The mcpServer (src/mcp-server) break gate. Triaged 2026-07-15 at 88.51% (the
+// bundle entry point mcp-server.ts is excluded); the floor sits ~1.5 points
+// below — this domain is infra-heavy (Express wiring, Max.outlet device
+// notifications, dynamic SQL) with several timeout-prone SQLite/fs tests, so it
+// carries a slightly wider buffer than the pure-logic scopes. Remaining
+// survivors are overwhelmingly bucket 2/3: device-notification side-effects,
+// dynamic SQL builders, log/header strings, readdir-order-equivalent sorts, and
+// the perTest guard-attribution quirk (see dev/Mutation-Testing.md).
+const MCP_SERVER_BREAK = 87;
+
 export const SCOPES = {
   notation: { mutate: NOTATION_GLOBS, break: 86 },
-  // src/shared: baseline mode (break: null) until triaged, then earns a floor.
   sharedRuntime: { mutate: SHARED_RUNTIME_GLOBS, break: SHARED_RUNTIME_BREAK },
+  mcpServer: { mutate: MCP_SERVER_GLOBS, break: MCP_SERVER_BREAK },
   ...Object.fromEntries(
     TOOL_DOMAINS.map((name) => [
       name,
@@ -129,5 +164,5 @@ export const SCOPES = {
 // Named groups the runner expands into multiple scopes.
 export const SCOPE_GROUPS = {
   tools: [...TOOL_DOMAINS],
-  all: ["notation", "sharedRuntime", ...TOOL_DOMAINS],
+  all: ["notation", "sharedRuntime", "mcpServer", ...TOOL_DOMAINS],
 };
