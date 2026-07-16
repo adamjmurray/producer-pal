@@ -246,6 +246,30 @@ async function runAssertions(
   turns: EvalTurnResult[],
   session: EvalSession,
 ): Promise<EvalAssertionResult[]> {
+  return await runAssertionLoop(assertions, turns, session, (result) => {
+    const pass = result.earned === result.maxScore;
+    const icon = pass ? styleText("green", "✓") : styleText("red", "✗");
+
+    console.log(`  ${icon} ${result.message}`);
+  });
+}
+
+/**
+ * Run each assertion in sequence, collecting results and printing each one
+ * (in verbose mode) via the supplied formatter.
+ *
+ * @param assertions - Assertions to run
+ * @param turns - Completed conversation turns
+ * @param session - Active evaluation session
+ * @param printResult - Per-result verbose-mode printer
+ * @returns Array of assertion results
+ */
+async function runAssertionLoop(
+  assertions: EvalAssertion[],
+  turns: EvalTurnResult[],
+  session: EvalSession,
+  printResult: (result: EvalAssertionResult) => void,
+): Promise<EvalAssertionResult[]> {
   const results: EvalAssertionResult[] = [];
 
   for (const assertion of assertions) {
@@ -257,12 +281,8 @@ async function runAssertions(
 
     results.push(result);
 
-    // Show results in verbose mode
     if (!isQuietMode()) {
-      const pass = result.earned === result.maxScore;
-      const icon = pass ? styleText("green", "✓") : styleText("red", "✗");
-
-      console.log(`  ${icon} ${result.message}`);
+      printResult(result);
     }
   }
 
@@ -368,27 +388,13 @@ async function printEfficiencySection(
 
   console.log("\n" + formatSubsectionHeader("Efficiency") + "\n");
 
-  const results: EvalAssertionResult[] = [];
+  return await runAssertionLoop(assertions, turns, session, (result) => {
+    const details = result.details as { percentage: number } | undefined;
+    const pct = details?.percentage ?? 0;
+    const color = efficiencyColor(pct);
 
-  for (const assertion of assertions) {
-    const result = await runCorrectnessAssertion(
-      assertion,
-      turns,
-      session.mcpClient,
-    );
-
-    results.push(result);
-
-    if (!isQuietMode()) {
-      const details = result.details as { percentage: number } | undefined;
-      const pct = details?.percentage ?? 0;
-      const color = efficiencyColor(pct);
-
-      console.log("  " + styleText(color, result.message));
-    }
-  }
-
-  return results;
+    console.log("  " + styleText(color, result.message));
+  });
 }
 
 /**
