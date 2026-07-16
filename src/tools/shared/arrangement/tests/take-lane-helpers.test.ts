@@ -3,15 +3,90 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  isTakeLaneClip,
   isTakeLaneRequested,
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
+  resolveTakeLaneForDuplicate,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "./take-lane-test-helpers.ts";
+
+describe("isTakeLaneClip", () => {
+  it("matches a take-lane clip path (single- and multi-digit lane index)", () => {
+    // Multi-digit index proves the `\d+` quantifier (not a single `\d`) — a
+    // two-digit lane like `take_lanes 12` must still match.
+    expect(
+      isTakeLaneClip(
+        LiveAPI.from("live_set tracks 0 take_lanes 12 arrangement_clips 0"),
+      ),
+    ).toBe(true);
+    expect(
+      isTakeLaneClip(
+        LiveAPI.from("live_set tracks 0 take_lanes 0 arrangement_clips 3"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not match a main-lane arrangement clip path", () => {
+    expect(
+      isTakeLaneClip(LiveAPI.from("live_set tracks 0 arrangement_clips 0")),
+    ).toBe(false);
+  });
+});
+
+describe("resolveTakeLaneForDuplicate", () => {
+  it("ignores (and warns for) takeLane on a non-clip duplicate", () => {
+    const warn = vi.fn();
+
+    expect(
+      resolveTakeLaneForDuplicate("track", "arrangement", 2, warn),
+    ).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("only supported when duplicating clips"),
+    );
+  });
+
+  it("does not warn for a non-clip duplicate when no take lane was requested", () => {
+    const warn = vi.fn();
+
+    expect(
+      resolveTakeLaneForDuplicate("track", "arrangement", 0, warn),
+    ).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("ignores (and warns for) takeLane on a session-destination clip duplicate", () => {
+    const warn = vi.fn();
+
+    expect(resolveTakeLaneForDuplicate("clip", "session", 3, warn)).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("session destination"),
+    );
+  });
+
+  it("does not warn for a session clip duplicate when no take lane was requested", () => {
+    const warn = vi.fn();
+
+    expect(
+      resolveTakeLaneForDuplicate("clip", "session", null, warn),
+    ).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("normalizes the target for an arrangement clip duplicate", () => {
+    const warn = vi.fn();
+
+    expect(resolveTakeLaneForDuplicate("clip", "arrangement", 2, warn)).toBe(2);
+    expect(
+      resolveTakeLaneForDuplicate("clip", "arrangement", "new", warn),
+    ).toBe("new");
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
 
 describe("isTakeLaneRequested", () => {
   it("is false for main-lane values", () => {
@@ -119,5 +194,28 @@ describe("resolveTakeLane", () => {
     expect(() => resolveTakeLane(trackApi, MAX_TAKE_LANES + 1)).toThrow(
       /reached the 8 take lane limit/,
     );
+  });
+
+  it("allows targeting exactly the cap-numbered lane (boundary is > not >=)", () => {
+    // Targeting lane MAX_TAKE_LANES (8) when 8 already exist is at the cap, not
+    // over it — it must resolve, not throw. Guards the `>` vs `>=` boundary.
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
+    const trackApi = LiveAPI.from(livePath.track(0));
+
+    const { laneNumber } = resolveTakeLane(trackApi, MAX_TAKE_LANES);
+
+    expect(laneNumber).toBe(MAX_TAKE_LANES);
+  });
+
+  it("does not name a newly created lane when the name is empty string", () => {
+    // An empty takeLaneName must be treated as "no name" — the created lane is
+    // left unnamed (guards the `!== ""` check, distinct from a non-empty name).
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+    const trackApi = LiveAPI.from(livePath.track(0));
+
+    const { lane } = resolveTakeLane(trackApi, "new", "");
+
+    expect(lane.set).not.toHaveBeenCalledWith("name", expect.anything());
+    expect(track.call).toHaveBeenCalledWith("create_take_lane");
   });
 });
