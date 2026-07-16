@@ -131,6 +131,7 @@ const TOOL_DOMAIN_BREAKS = {
   core: 99, // triaged 2026-07-15 at 100.00% (see dev/Mutation-Testing.md)
   scene: 96, // triaged 2026-07-15 at 97.66% (see dev/Mutation-Testing.md)
   "live-set": 98, // triaged 2026-07-15 at 99.07% (see dev/Mutation-Testing.md)
+  shared: 94, // triaged 2026-07-16 at 95.25% (see dev/Mutation-Testing.md)
 };
 
 // The sharedRuntime (src/shared) break gate. Triaged 2026-07-15 at 94.94%; the

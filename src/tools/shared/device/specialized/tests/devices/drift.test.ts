@@ -12,7 +12,7 @@ import { readDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
+} from "../../specialized-device-registry.ts";
 
 // Default property values for a Drift device at factory defaults.
 const DRIFT_DEFAULTS = {

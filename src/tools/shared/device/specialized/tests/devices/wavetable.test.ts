@@ -15,110 +15,17 @@ import {
   readSpecializedModulations,
   readSpecializedOptions,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
-
-// Shared mock data
-const OSC_CATEGORIES = ["Basic Shapes", "Bass", "Pads"];
-const OSC1_WAVETABLES = ["Saw Dual 1", "Saw Dual 2", "Pulse"];
-const OSC2_WAVETABLES = ["Square", "Triangle", "Sine"];
-
-// Parameter IDs — pairs for getChildIds: ["id", "p1", "id", "p2", ...]
-const PARAM_IDS = ["id", "p1", "id", "p2", "id", "p3"];
-
-/**
- * Register the three standard param mocks referenced by PARAM_IDS.
- */
-function registerStandardParamMocks(): void {
-  registerMockObject("p1", { properties: { name: "Osc 1 Pos" } });
-  registerMockObject("p2", { properties: { name: "Filter Freq" } });
-  registerMockObject("p3", { properties: { name: "Volume" } });
-}
-
-/**
- * Assert that no modulation value was written and a warning was emitted.
- * @param device - The mock device to inspect (the returned LiveAPI from registerWavetable)
- * @param warningSubstring - Substring expected in the warning message
- */
-function expectModulationNotSet(
-  device: LiveAPI,
-  warningSubstring: string,
-): void {
-  expect(device.call).not.toHaveBeenCalledWith(
-    "set_modulation_value",
-    expect.anything(),
-    expect.anything(),
-    expect.anything(),
-  );
-  expect(outlet).toHaveBeenCalledWith(
-    1,
-    expect.stringContaining(warningSubstring),
-  );
-}
-
-/**
- * Build mock methods for modulation matrix operations.
- * get_modulation_target_parameter_name returns the name for i < targets.length,
- * numeric sentinel 1 otherwise. get_modulation_value reads from sparse cells map.
- * @param targets - Target parameter names in index order
- * @param cells - Sparse non-zero cell map "targetIdx,sourceIdx" → amount
- * @param modulatable - Whether is_parameter_modulatable returns 1
- * @returns methods object for registerMockObject
- */
-function buildModMethods(
-  targets: string[],
-  cells: Record<string, number> = {},
-  modulatable = 1,
-): Record<string, (...args: unknown[]) => unknown> {
-  return {
-    get_modulation_target_parameter_name: (i: unknown) =>
-      (i as number) < targets.length ? targets[i as number] : 1,
-    get_modulation_value: (t: unknown, s: unknown) =>
-      cells[`${String(t)},${String(s)}`] ?? 0,
-    set_modulation_value: () => null,
-    add_parameter_to_modulation_matrix: () => null,
-    is_parameter_modulatable: () => modulatable,
-  };
-}
-
-/**
- * Register a mock Wavetable device and return its LiveAPI.
- * List props register flat ([a,b]) so getPropertyList() returns [a,b].
- * @param properties - Property overrides merged onto Wavetable defaults
- * @param methods - Method overrides for device.call()
- * @returns The Wavetable LiveAPI object
- */
-function registerWavetable(
-  properties: Record<string, unknown> = {},
-  methods: Record<string, (...args: unknown[]) => unknown> = {},
-): LiveAPI {
-  registerMockObject("wt-1", {
-    type: "Device",
-    properties: {
-      class_display_name: "Wavetable",
-      filter_routing: 0,
-      mono_poly: 0,
-      poly_voices: 4,
-      unison_mode: 0,
-      unison_voice_count: 2,
-      oscillator_1_effect_mode: 0,
-      oscillator_2_effect_mode: 0,
-      oscillator_1_wavetable_category: 0,
-      oscillator_2_wavetable_category: 0,
-      oscillator_1_wavetable_index: 0,
-      oscillator_2_wavetable_index: 0,
-      oscillator_wavetable_categories: OSC_CATEGORIES,
-      oscillator_1_wavetables: OSC1_WAVETABLES,
-      oscillator_2_wavetables: OSC2_WAVETABLES,
-      parameters: PARAM_IDS,
-      ...properties,
-    },
-    methods: { ...buildModMethods([], {}, 0), ...methods },
-  });
-
-  registerStandardParamMocks();
-
-  return LiveAPI.from("id wt-1");
-}
+} from "../../specialized-device-registry.ts";
+import {
+  buildModMethods,
+  expectModulationNotSet,
+  OSC1_WAVETABLES,
+  OSC2_WAVETABLES,
+  OSC_CATEGORIES,
+  PARAM_IDS,
+  registerStandardParamMocks,
+  registerWavetable,
+} from "./wavetable-test-helpers.ts";
 
 describe("Wavetable pseudo-params — read", () => {
   it("reads all three filterRouting values by index", () => {
@@ -455,6 +362,58 @@ describe("Wavetable pseudo-params — write", () => {
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("osc2Wavetable"),
+    );
+  });
+
+  // The first entry in each list is a real choice, so the not-found guard must
+  // reject only index < 0 — treating index 0 as "not found" would make the
+  // first category / wavetable unselectable.
+  it("writes the first category in the list (index 0)", () => {
+    const device = registerWavetable();
+
+    applySpecializedParamWrite(
+      device,
+      "osc1Category",
+      "Basic Shapes",
+      "updateDevice",
+    );
+
+    expect(device.set).toHaveBeenCalledWith(
+      "oscillator_1_wavetable_category",
+      0,
+    );
+  });
+
+  it("writes the first wavetable in the list (index 0)", () => {
+    const device = registerWavetable();
+
+    applySpecializedParamWrite(
+      device,
+      "osc1Wavetable",
+      "Saw Dual 1",
+      "updateDevice",
+    );
+
+    expect(device.set).toHaveBeenCalledWith("oscillator_1_wavetable_index", 0);
+  });
+
+  it("lists the available categories and wavetables when a name is unknown", () => {
+    const device = registerWavetable();
+
+    applySpecializedParamWrite(device, "osc1Category", "Nope", "updateDevice");
+    applySpecializedParamWrite(device, "osc1Wavetable", "Nope", "updateDevice");
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        `not a valid osc1Category. Available: ${OSC_CATEGORIES.join(", ")}`,
+      ),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        `not a valid osc1Wavetable. Available: ${OSC1_WAVETABLES.join(", ")}`,
+      ),
     );
   });
 });

@@ -12,7 +12,7 @@ import { readDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
+} from "../../specialized-device-registry.ts";
 
 /**
  * Register a mock Meld device and return its LiveAPI.

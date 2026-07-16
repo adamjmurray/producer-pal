@@ -12,15 +12,18 @@ import {
   applySpecializedActions,
   applySpecializedParamWrite,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
+} from "../../specialized-device-registry.ts";
 
 interface SimplerProps {
   multiSampleMode?: number;
   playbackMode?: number;
   slicingPlaybackMode?: number;
   retrigger?: number;
-  voices?: number;
+  // `unknown` so a test can feed a non-number and exercise the read guard.
+  voices?: unknown;
   samplePath?: string;
+  // When true, the sample child exposes no `gain` property at all.
+  omitSampleGain?: boolean;
 }
 
 /**
@@ -33,7 +36,9 @@ function registerSimpler(props: SimplerProps = {}): LiveAPI {
   if (props.samplePath != null) {
     registerMockObject("sample-1", {
       type: "Sample",
-      properties: { file_path: props.samplePath, gain: 1 },
+      properties: props.omitSampleGain
+        ? { file_path: props.samplePath }
+        : { file_path: props.samplePath, gain: 1 },
     });
   }
 
@@ -104,6 +109,35 @@ describe("Simpler pseudo-params", () => {
         value: true,
       });
     });
+
+    it("omits sample and gainDb in multi-sample mode", () => {
+      // The probe reports `multisample` (no path/gain), so neither
+      // single-sample param may be emitted — not even as undefined/NaN.
+      const device = registerSimpler({ multiSampleMode: 1 });
+      const names = readSpecializedParams(device).map((p) => p.name);
+
+      expect(names).not.toContain("sample");
+      expect(names).not.toContain("gainDb");
+    });
+
+    it("omits gainDb when the loaded sample exposes no gain", () => {
+      const device = registerSimpler({
+        samplePath: "/tmp/kick.wav",
+        omitSampleGain: true,
+      });
+      const params = readSpecializedParams(device);
+
+      expect(params).toContainEqual({ name: "sample", value: "/tmp/kick.wav" });
+      expect(params.map((p) => p.name)).not.toContain("gainDb");
+    });
+
+    it("omits voices when the device reports a non-number", () => {
+      const device = registerSimpler({ voices: "eight" });
+
+      expect(readSpecializedParams(device).map((p) => p.name)).not.toContain(
+        "voices",
+      );
+    });
   });
 
   describe("write", () => {
@@ -141,6 +175,20 @@ describe("Simpler pseudo-params", () => {
       applySpecializedParamWrite(device, "retrigger", "true", "t");
 
       expect(device.set).toHaveBeenCalledWith("retrigger", 1);
+    });
+
+    it("warns naming retrigger and skips uninterpretable input", () => {
+      const device = registerSimpler();
+
+      applySpecializedParamWrite(device, "retrigger", "sometimes", "t");
+
+      expect(device.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          '"sometimes" is not a valid retrigger (expected true/false)',
+        ),
+      );
     });
 
     it("sets gainDb on the loaded sample, converting dB to linear", () => {
