@@ -15,8 +15,9 @@ import {
   writeConfigMarkdown,
 } from "../markdown-store/config-markdown-store.ts";
 
-// Re-exported so existing importers (reveal-config-dir, the node routes) keep
-// resolving these from here rather than reaching into the shared store.
+// Re-exported so callers working with the global context can resolve the
+// config dir (and its Vitest-inert guard) from here rather than reaching into
+// the shared markdown store.
 export {
   configDir,
   isConfigDirInert,

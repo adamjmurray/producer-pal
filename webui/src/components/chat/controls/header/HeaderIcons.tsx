@@ -185,19 +185,6 @@ export function TrashIcon({ size = 14 }: { size?: number }) {
 }
 
 /**
- * Folder icon for the "open config folder" action (reveals ~/.producer-pal in
- * the OS file browser).
- * @returns SVG element
- */
-export function FolderIcon() {
-  return (
-    <Icon20 strokeWidth="1.6">
-      <path d="M2.5 6.5a1 1 0 011-1h4l2 2h7a1 1 0 011 1v6a1 1 0 01-1 1h-13a1 1 0 01-1-1z" />
-    </Icon20>
-  );
-}
-
-/**
  * Lined-document icon for the project context view
  * @returns SVG element
  */

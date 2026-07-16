@@ -8,7 +8,6 @@ import {
   type DocMemoryStatus,
   type SaveStatus,
 } from "#webui/hooks/context/use-doc-memory";
-import { RevealFolderButton } from "./RevealFolderButton";
 import { SaveIndicator } from "./SaveIndicator";
 
 interface ContextHeaderProps {
@@ -83,7 +82,6 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
               dirty={props.dirty ?? false}
             />
           ))}
-        <RevealFolderButton />
         {onClose != null && (
           <button
             type="button"

@@ -50,15 +50,6 @@ export function getGlobalContextUrl(): string {
 }
 
 /**
- * Gets the reveal-config-folder endpoint URL. POSTing here asks the server to
- * open the ~/.producer-pal folder in the OS file browser (host machine only).
- * @returns {string} The reveal-config-folder endpoint URL
- */
-export function getRevealConfigFolderUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/reveal-config-folder");
-}
-
-/**
  * Gets the system-prompt endpoint URL (the machine-global ~/.producer-pal
  * custom system prompt that replaces the built-in instruction when non-empty).
  * @returns {string} The system-prompt endpoint URL

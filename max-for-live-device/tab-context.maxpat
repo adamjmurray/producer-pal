@@ -14,50 +14,6 @@
         "boxes": [
             {
                 "box": {
-                    "id": "obj-12",
-                    "maxclass": "newobj",
-                    "numinlets": 2,
-                    "numoutlets": 2,
-                    "outlettype": [ "", "" ],
-                    "patching_rect": [ 233.0, 392.0, 135.0, 22.0 ],
-                    "text": "route openConfigFolder"
-                }
-            },
-            {
-                "box": {
-                    "id": "obj-18",
-                    "maxclass": "newobj",
-                    "numinlets": 1,
-                    "numoutlets": 0,
-                    "patching_rect": [ 298.0, 504.0, 131.0, 22.0 ],
-                    "text": "print openConfigFolder"
-                }
-            },
-            {
-                "box": {
-                    "id": "obj-11",
-                    "maxclass": "newobj",
-                    "numinlets": 0,
-                    "numoutlets": 1,
-                    "outlettype": [ "" ],
-                    "patching_rect": [ 233.0, 352.0, 123.0, 22.0 ],
-                    "text": "r ---openConfigFolder"
-                }
-            },
-            {
-                "box": {
-                    "id": "obj-9",
-                    "linecount": 2,
-                    "maxclass": "message",
-                    "numinlets": 2,
-                    "numoutlets": 1,
-                    "outlettype": [ "" ],
-                    "patching_rect": [ 233.0, 441.0, 136.0, 35.0 ],
-                    "text": ";\rmax launch_browser $1"
-                }
-            },
-            {
-                "box": {
                     "id": "obj-4",
                     "maxclass": "newobj",
                     "numinlets": 0,
@@ -324,26 +280,6 @@
                     "destination": [ "obj-6", 0 ],
                     "order": 1,
                     "source": [ "obj-10", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-12", 0 ],
-                    "source": [ "obj-11", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-18", 0 ],
-                    "order": 0,
-                    "source": [ "obj-12", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-9", 0 ],
-                    "order": 1,
-                    "source": [ "obj-12", 0 ]
                 }
             },
             {

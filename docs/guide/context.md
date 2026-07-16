@@ -17,6 +17,14 @@ included in every conversation, and each answers a different question:
 | **Global context**  | What do you always want?       | On your computer, in `~/.producer-pal/context.md`                |
 | **Memory**          | What has AI learned about you? | On your computer, one file per fact in `~/.producer-pal/memory/` |
 
+`~` is your home folder, so `~/.producer-pal` is:
+
+- **macOS** — `/Users/you/.producer-pal`
+- **Windows** — `C:\Users\you\.producer-pal`
+
+That folder holds the files behind every layer, so you can open it to edit or
+back them up directly.
+
 You write project and global context by hand. Memory is AI's own notebook: it
 records facts as you work, and you can edit them. AI can edit all three with the
 [Context tool](/features#ppal-context).
@@ -39,9 +47,8 @@ prompted. Open it from:
 Every tab shares the same chrome: edits **auto-save** as you type (the header
 shows "Saved"), a size readout gives the character count and approximate token
 cost, and the import (⬆) / export (⬇) buttons read and write markdown files —
-you can also drag a `.md` file onto the editor. The folder button opens
-`~/.producer-pal` in your file manager. AI and the editor stay in sync: if AI
-writes while you have a tab open, a banner offers to reload.
+you can also drag a `.md` file onto the editor. AI and the editor stay in sync:
+if AI writes while you have a tab open, a banner offers to reload.
 
 ## Project
 
