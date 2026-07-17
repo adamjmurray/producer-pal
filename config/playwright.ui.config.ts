@@ -8,6 +8,7 @@
 // the GitHub release check, so it needs neither Ableton nor API keys. The live
 // suite (real device + LLM) is config/playwright.webui.config.ts (e2e/webui).
 
+import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
@@ -16,7 +17,19 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: "list",
+  // The JSON report feeds the CI e2e stats summary (scripts/stats/e2e-stats.ts).
+  reporter: [
+    ["list"],
+    [
+      "json",
+      {
+        outputFile: join(
+          import.meta.dirname,
+          "../test-reports/playwright-ui.json",
+        ),
+      },
+    ],
+  ],
   use: {
     // The document, /mcp, /config, and the update check are all fulfilled by
     // route handlers (see e2e/ui/ui-test-helpers.ts), so the origin is

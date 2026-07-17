@@ -50,6 +50,7 @@ evals/results
 
 # Playwright Test Results
 test-results
+test-reports
 report/
 
 # Live project backups
