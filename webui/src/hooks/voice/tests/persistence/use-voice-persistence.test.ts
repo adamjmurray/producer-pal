@@ -13,6 +13,8 @@ import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
+  bulkDeleteDuringPendingNewSave,
+  continueSavedVoiceSession,
   fireHashChange,
   renderVoicePersistence,
   renderVoicePersistenceWithHistory,
@@ -93,20 +95,12 @@ describe("useVoicePersistence", () => {
       voiceHistory: [userTextItem("first turn")],
     });
 
-    window.location.hash = record.id;
-
-    const { result, rerender } = renderVoicePersistenceWithHistory({
-      model: "gpt-realtime-current",
-    });
-
-    await waitForEffects();
-    rerender([userTextItem("first turn"), userTextItem("second turn")]);
-    await waitForEffects(800);
+    const { result, loaded } = await continueSavedVoiceSession(
+      record,
+      "gpt-realtime-current",
+    );
 
     expect(result.current.activeConversationId).toBe(record.id);
-
-    const loaded = await loadConversation(record.id);
-
     expect(loaded?.model).toBe("gpt-realtime-original");
     expect(loaded?.modelLabel).toBe("gpt-realtime-original");
   });
@@ -135,20 +129,12 @@ describe("useVoicePersistence", () => {
       voiceHistory: [userTextItem("first turn")],
     });
 
-    window.location.hash = record.id;
-
-    const { result, rerender } = renderVoicePersistenceWithHistory({
-      model: GEMINI_REALTIME_MODEL,
-    });
-
-    await waitForEffects();
-    rerender([userTextItem("first turn"), userTextItem("second turn")]);
-    await waitForEffects(800);
+    const { result, loaded } = await continueSavedVoiceSession(
+      record,
+      GEMINI_REALTIME_MODEL,
+    );
 
     expect(result.current.activeConversationId).toBe(record.id);
-
-    const loaded = await loadConversation(record.id);
-
     expect(loaded?.provider).toBe("openai");
   });
 
@@ -448,34 +434,22 @@ describe("useVoicePersistence", () => {
   });
 
   it("does not resurrect a pending new conversation deleted via deleteAllConversations", async () => {
-    const { result, rerender } = renderVoicePersistenceWithHistory();
-
-    await waitForEffects();
-    // A brand-new session produces transcript: the autosave reserves an id but
-    // hasn't resolved yet, so no active id has been adopted.
-    rerender([userTextItem("brand new")]);
-    expect(result.current.activeConversationId).toBeNull();
-
-    // Delete-all lands during that pre-adoption window. It doesn't stop the
-    // session, so the reserved-id autosave is still scheduled.
-    await act(() => result.current.deleteAllConversations());
-    // Let the debounce fire; the reserved-id save must bail, not create a record.
-    await waitForEffects(800);
+    // Delete-all lands during the pre-adoption window. It doesn't stop the
+    // session, so the reserved-id autosave is still scheduled — and must bail
+    // rather than create a record.
+    const result = await bulkDeleteDuringPendingNewSave((hook) =>
+      hook.deleteAllConversations(),
+    );
 
     expect(result.current.conversations).toHaveLength(0);
     expect(result.current.activeConversationId).toBeNull();
   });
 
   it("does not resurrect a pending new conversation deleted via deleteUnbookmarkedConversations", async () => {
-    const { result, rerender } = renderVoicePersistenceWithHistory();
-
-    await waitForEffects();
-    rerender([userTextItem("brand new")]);
-    expect(result.current.activeConversationId).toBeNull();
-
     // A pending-new conversation is unbookmarked, so the bulk delete targets it.
-    await act(() => result.current.deleteUnbookmarkedConversations());
-    await waitForEffects(800);
+    const result = await bulkDeleteDuringPendingNewSave((hook) =>
+      hook.deleteUnbookmarkedConversations(),
+    );
 
     expect(result.current.conversations).toHaveLength(0);
     expect(result.current.activeConversationId).toBeNull();

@@ -14,19 +14,9 @@ describe("readDevice param-values include option", () => {
   });
 
   it("should include full parameters when param-values is requested", () => {
-    setupDeviceParamMocks({
-      strForValue: (value) => {
-        if (value === 0) return "-inf dB";
-        if (value === 1) return "0 dB";
+    setupDeviceParamMocks({ strForValue: dbStrForValue });
 
-        return "-6 dB";
-      },
-    });
-
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
+    const { result } = readDeviceParamValues();
 
     expect(result).toStrictEqual({
       id: "device-123",
@@ -55,14 +45,9 @@ describe("readDevice param-values include option", () => {
       },
     });
 
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
+    const { params } = readDeviceParamValues();
 
     // Quantized params now have value as string and options array
-    const params = result.parameters as Record<string, unknown>[];
-
     expect(params[0]).toStrictEqual({
       id: "param-1",
       name: "Device On",
@@ -77,12 +62,7 @@ describe("readDevice param-values include option", () => {
       strForValue: () => "50",
     });
 
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
-
-    const params = result.parameters as Record<string, unknown>[];
+    const { params } = readDeviceParamValues();
 
     expect(params[0]!.state).toBe("inactive");
   });
@@ -101,14 +81,9 @@ describe("readDevice param-values include option", () => {
       strForValue: (value) => String(value),
     });
 
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
+    const { params } = readDeviceParamValues();
 
     // min and max should always be included for numeric params
-    const params = result.parameters as Record<string, unknown>[];
-
     expect(params[0]).toHaveProperty("min", 0);
     expect(params[0]).toHaveProperty("max", 48);
     expect(params[0]!.value).toBe(12);
@@ -127,14 +102,9 @@ describe("readDevice param-values include option", () => {
       },
     });
 
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
+    const { params } = readDeviceParamValues();
 
     // Quantized params should have options, not min/max
-    const params = result.parameters as Record<string, unknown>[];
-
     expect(params[0]).not.toHaveProperty("min");
     expect(params[0]).not.toHaveProperty("max");
     expect(params[0]).toHaveProperty("options");
@@ -161,12 +131,7 @@ describe("readDevice param-values include option", () => {
       },
     });
 
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
-
-    const params = result.parameters as Record<string, unknown>[];
+    const { params } = readDeviceParamValues();
 
     expect(params[0]).toStrictEqual({
       id: "param-1",
@@ -178,42 +143,18 @@ describe("readDevice param-values include option", () => {
     });
   });
 
-  /**
-   * Setup mocks for automation tests
-   * @param automationState - Automation state value
-   */
-  function setupAutomationMocks(automationState: number) {
-    setupDeviceParamMocks({
-      param: { automation_state: automationState },
-      strForValue: (value) => {
-        if (value === 0) return "-inf dB";
-        if (value === 1) return "0 dB";
-
-        return "-6 dB";
-      },
-    });
-  }
-
   it("should include automation when not 'none'", () => {
     setupAutomationMocks(1);
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
 
-    const params = result.parameters as Record<string, unknown>[];
+    const { params } = readDeviceParamValues();
 
     expect(params[0]!.automation).toBe("active");
   });
 
   it("should omit automation when 'none'", () => {
     setupAutomationMocks(0);
-    const result = readDevice({
-      deviceId: "device-123",
-      include: ["param-values"],
-    });
 
-    const params = result.parameters as Record<string, unknown>[];
+    const { params } = readDeviceParamValues();
 
     expect(params[0]).not.toHaveProperty("automation");
   });
@@ -241,3 +182,45 @@ describe("readDevice params include option (lightweight)", () => {
     ]);
   });
 });
+
+/**
+ * Reads the mocked device with the "param-values" include.
+ * @returns The whole read result plus its parameter list, cast for property assertions
+ */
+function readDeviceParamValues(): {
+  result: ReturnType<typeof readDevice>;
+  params: Record<string, unknown>[];
+} {
+  const result = readDevice({
+    deviceId: "device-123",
+    include: ["param-values"],
+  });
+
+  return {
+    result,
+    params: result.parameters as Record<string, unknown>[],
+  };
+}
+
+/**
+ * Stubs Live's str_for_value for a dB-scaled parameter.
+ * @param value - The normalized parameter value Live is asking about
+ * @returns The dB label Live would display for that value
+ */
+function dbStrForValue(value: unknown): string {
+  if (value === 0) return "-inf dB";
+  if (value === 1) return "0 dB";
+
+  return "-6 dB";
+}
+
+/**
+ * Setup mocks for automation tests
+ * @param automationState - Automation state value
+ */
+function setupAutomationMocks(automationState: number): void {
+  setupDeviceParamMocks({
+    param: { automation_state: automationState },
+    strForValue: dbStrForValue,
+  });
+}

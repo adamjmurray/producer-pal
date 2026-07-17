@@ -108,12 +108,7 @@ describe("updateTrack - send properties", () => {
       sendGainDb: -12,
     });
 
-    expect(send1.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("must both be specified"),
-    );
-    expect(result).toStrictEqual({ id: "123" });
+    expectSendUpdateSkipped(result, [send1, send2], "must both be specified");
   });
 
   it("should warn and skip when only sendReturn is provided", () => {
@@ -123,12 +118,7 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
-    expect(send1.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("must both be specified"),
-    );
-    expect(result).toStrictEqual({ id: "123" });
+    expectSendUpdateSkipped(result, [send1, send2], "must both be specified");
   });
 
   it("should warn and skip when return track not found", () => {
@@ -141,13 +131,11 @@ describe("updateTrack - send properties", () => {
       sendReturn: "C",
     });
 
-    expect(send1.set).not.toHaveBeenCalled();
-    expect(send2.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining('no return track found matching "C"'),
+    expectSendUpdateSkipped(
+      result,
+      [send1, send2],
+      'no return track found matching "C"',
     );
-    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should not over-match a return whose name merely starts with the letter", () => {
@@ -165,12 +153,11 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
-    expect(send1.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining('no return track found matching "A"'),
+    expectSendUpdateSkipped(
+      result,
+      [send1, send2],
+      'no return track found matching "A"',
     );
-    expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should warn and skip when track has no sends", () => {
@@ -187,11 +174,7 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("has no sends"),
-    );
-    expect(result).toStrictEqual({ id: "123" });
+    expectSendUpdateSkipped(result, [send1, send2], "has no sends");
   });
 
   it("should set sends on multiple tracks", () => {
@@ -241,11 +224,7 @@ describe("updateTrack - send properties", () => {
       sendReturn: "A",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("has no mixer device"),
-    );
-    expect(result).toStrictEqual({ id: "123" });
+    expectSendUpdateSkipped(result, [send1, send2], "has no mixer device");
   });
 
   it("should warn and skip when send index exceeds available sends", () => {
@@ -268,12 +247,26 @@ describe("updateTrack - send properties", () => {
       sendReturn: "C", // Matches return track at index 2
     });
 
-    expect(send1.set).not.toHaveBeenCalled();
-    expect(send2.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("doesn't exist on track"),
-    );
-    expect(result).toStrictEqual({ id: "123" });
+    expectSendUpdateSkipped(result, [send1, send2], "doesn't exist on track");
   });
 });
+
+// Asserts that updateTrack declined to apply a send update: none of the given
+// sends were written, the warning was relayed to the LLM on outlet 1, and the
+// track itself still reported a plain success result (warn-and-skip must never
+// throw, so partial successes can continue across tracks).
+function expectSendUpdateSkipped(
+  result: ReturnType<typeof updateTrack>,
+  sends: RegisteredMockObject[],
+  expectedWarning: string,
+): void {
+  for (const send of sends) {
+    expect(send.set).not.toHaveBeenCalled();
+  }
+
+  expect(outlet).toHaveBeenCalledWith(
+    1,
+    expect.stringContaining(expectedWarning),
+  );
+  expect(result).toStrictEqual({ id: "123" });
+}

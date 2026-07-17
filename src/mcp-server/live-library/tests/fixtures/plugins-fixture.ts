@@ -32,7 +32,7 @@ export interface PluginsFixture {
 /** Whether to include the v2-only ARA columns in the plugins table. */
 export type PluginsSchema = "v1" | "v2";
 
-interface PluginSeed {
+export interface PluginSeed {
   name: string;
   vendor: string | null;
   version: string | null;
