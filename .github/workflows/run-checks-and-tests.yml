@@ -116,32 +116,13 @@ jobs:
         id: tests
         run: FORCE_COLOR=3 npm run test:coverage:verbose
 
-      - name: Report Coverage
+      - name: Report test stats and coverage
         id: summary
+        # Runs even when tests fail: the vitest JSON report and the coverage
+        # summary (reportOnFailure) are both still written.
         if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
         run: |
-          # Extract coverage percentages from JSON
-          LINES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
-          STATEMENTS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.statements.pct)")
-          FUNCTIONS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.functions.pct)")
-          BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
-
-          # Extract thresholds from config
-          MIN_STATEMENTS=$(node scripts/build-and-release/get-thresholds.ts coverage statements)
-          MIN_BRANCHES=$(node scripts/build-and-release/get-thresholds.ts coverage branches)
-          MIN_FUNCTIONS=$(node scripts/build-and-release/get-thresholds.ts coverage functions)
-          MIN_LINES=$(node scripts/build-and-release/get-thresholds.ts coverage lines)
-
-          cat > /tmp/summary.md << EOF
-          ## Unit Test Coverage
-
-          | Category | Coverage | Min Required |
-          |----------|----------|--------------|
-          | Statements | ${STATEMENTS}% | ${MIN_STATEMENTS}% |
-          | Branches | ${BRANCHES}% | ${MIN_BRANCHES}% |
-          | Functions | ${FUNCTIONS}% | ${MIN_FUNCTIONS}% |
-          | Lines | ${LINES}% | ${MIN_LINES}% |
-          EOF
+          npm run test:stats --silent -- --markdown > /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY

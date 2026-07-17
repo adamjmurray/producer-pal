@@ -22,7 +22,6 @@ interface DerivedRow {
   linesPerFunc: number;
   linesPerFile: number;
   commentPct: number;
-  testSourceRatio: number | null;
 }
 
 /**
@@ -38,14 +37,10 @@ function computeDerivedStats(groups: GroupStats[]): DerivedRow[] {
     const src = codeGroups.find(
       (g) => g.group === tree && g.category === "source",
     );
-    const test = codeGroups.find(
-      (g) => g.group === tree && g.category === "test",
-    );
     const srcCode = src?.code ?? 0;
     const srcFuncs = src?.functions ?? 0;
     const srcFiles = src?.files ?? 0;
     const srcComment = src?.comment ?? 0;
-    const testCode = test?.code ?? 0;
 
     return {
       tree,
@@ -55,18 +50,15 @@ function computeDerivedStats(groups: GroupStats[]): DerivedRow[] {
         srcCode + srcComment > 0
           ? (srcComment / (srcComment + srcCode)) * 100
           : 0,
-      testSourceRatio: srcCode > 0 ? testCode / srcCode : null,
     };
   });
 
   // Overall row
   const allSrc = codeGroups.filter((g) => g.category === "source");
-  const allTest = codeGroups.filter((g) => g.category === "test");
   const totalSrcCode = allSrc.reduce((s, g) => s + g.code, 0);
   const totalSrcFuncs = allSrc.reduce((s, g) => s + g.functions, 0);
   const totalSrcFiles = allSrc.reduce((s, g) => s + g.files, 0);
   const totalSrcComment = allSrc.reduce((s, g) => s + g.comment, 0);
-  const totalTestCode = allTest.reduce((s, g) => s + g.code, 0);
 
   rows.push({
     tree: "Overall",
@@ -76,7 +68,6 @@ function computeDerivedStats(groups: GroupStats[]): DerivedRow[] {
       totalSrcCode + totalSrcComment > 0
         ? (totalSrcComment / (totalSrcComment + totalSrcCode)) * 100
         : 0,
-    testSourceRatio: totalSrcCode > 0 ? totalTestCode / totalSrcCode : null,
   });
 
   return rows;
@@ -95,13 +86,7 @@ function fmtRow(r: DerivedRow): string[] {
    */
   const d = (n: number): string => n.toFixed(1);
 
-  return [
-    r.tree,
-    d(r.linesPerFunc),
-    d(r.linesPerFile),
-    `${d(r.commentPct)}%`,
-    r.testSourceRatio != null ? `${d(r.testSourceRatio)}x` : "–",
-  ];
+  return [r.tree, d(r.linesPerFunc), d(r.linesPerFile), `${d(r.commentPct)}%`];
 }
 
 /**
@@ -116,22 +101,13 @@ export function printCliDerivedStats(groups: GroupStats[]): void {
     Math.max("Avg Lines/Func".length, 6),
     Math.max("Avg Lines/File".length, 6),
     Math.max("Comment%".length, 6),
-    Math.max("Test:Source Ratio".length, 6),
   ];
 
   const row = makeCliRow(widths);
   const sep = makeCliSep(widths);
 
   printCliTitle("General Stats");
-  console.log(
-    row([
-      "Tree",
-      "Avg Lines/Func",
-      "Avg Lines/File",
-      "Comment%",
-      "Test:Source Ratio",
-    ]),
-  );
+  console.log(row(["Tree", "Avg Lines/Func", "Avg Lines/File", "Comment%"]));
   console.log(sep);
 
   const lastIdx = rows.length - 1;
@@ -157,16 +133,8 @@ export function printMarkdownDerivedStats(groups: GroupStats[]): void {
   const rows = computeDerivedStats(groups);
 
   console.log("\n## General Stats\n");
-  console.log(
-    mdRow(
-      "Tree",
-      "Avg Lines/Func",
-      "Avg Lines/File",
-      "Comment %",
-      "Test:Source Ratio",
-    ),
-  );
-  console.log("| :-- | --: | --: | --: | --: |");
+  console.log(mdRow("Tree", "Avg Lines/Func", "Avg Lines/File", "Comment %"));
+  console.log("| :-- | --: | --: | --: |");
 
   const lastIdx = rows.length - 1;
 
