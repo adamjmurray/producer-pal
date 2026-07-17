@@ -7,10 +7,12 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { type VNode } from "preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SkillsScreen } from "#webui/components/context/skills/SkillsScreen";
 import {
   type SkillOverridesStatus,
+  type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
 import { slot } from "./skill-slot-test-helpers";
@@ -44,6 +46,12 @@ vi.mock(import("#webui/components/context/skills/SkillsPreviewScreen"), () => ({
 
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 
+// Two selectable slots, for the dropdown slot-switch tests.
+const TWO_SLOTS = [
+  slot({ name: "barbeat-standard", title: "Core", builtIn: "CORE" }),
+  slot({ name: "stark", title: "Stark", builtIn: "STARK" }),
+];
+
 /**
  * Build a skills-overrides hook return with the given status.
  * @param status - The collection status
@@ -67,6 +75,60 @@ function overrides(
 }
 
 /**
+ * Render SkillsScreen for the given overrides status.
+ * @param status - The collection status
+ * @param over - Extra hook-return fields (e.g. spies for save/reset)
+ * @returns rerenderStatus(status), which re-renders with a new status
+ */
+function renderScreen(
+  status: SkillOverridesStatus,
+  over: Partial<UseSkillOverridesReturn> = {},
+): { rerenderStatus: (status: SkillOverridesStatus) => void } {
+  const el = (s: SkillOverridesStatus): VNode => (
+    <SkillsScreen overrides={overrides(s, over)} tabSlot={TAB_SLOT} />
+  );
+  const { rerender } = render(el(status));
+
+  return { rerenderStatus: (s) => rerender(el(s)) };
+}
+
+/**
+ * Render SkillsScreen ready with the given slots.
+ * @param slots - The ready slots
+ * @param over - Extra hook-return fields (e.g. spies for save/reset)
+ * @returns rerenderSlots(slots), which re-renders with new slots
+ */
+function renderSlots(
+  slots: SkillSlotView[],
+  over: Partial<UseSkillOverridesReturn> = {},
+): { rerenderSlots: (slots: SkillSlotView[]) => void } {
+  const { rerenderStatus } = renderScreen({ kind: "ready", slots }, over);
+
+  return { rerenderSlots: (s) => rerenderStatus({ kind: "ready", slots: s }) };
+}
+
+/**
+ * Render a customized slot with the reset confirm stubbed, then drive a reset
+ * from the revealed built-in header (where the reset control lives).
+ * @param confirmed - What the stubbed reset confirm returns
+ * @returns The resetSlot spy
+ */
+function clickResetSlot(confirmed: boolean): {
+  resetSlot: ReturnType<typeof vi.fn>;
+} {
+  vi.stubGlobal("confirm", vi.fn().mockReturnValue(confirmed));
+
+  const resetSlot = vi.fn().mockResolvedValue(true);
+
+  renderSlots([slot({ override: "MINE" })], { resetSlot });
+
+  fireEvent.click(screen.getByText("Show default"));
+  fireEvent.click(screen.getByLabelText("Reset to default"));
+
+  return { resetSlot };
+}
+
+/**
  * The seeded values of the currently-rendered editors (the textarea mock), in
  * DOM order. When the built-in is revealed there are two: the override, then the
  * read-only built-in.
@@ -84,24 +146,14 @@ describe("SkillsScreen", () => {
   });
 
   it("shows a loading message while the slots load", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({ kind: "loading" })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderScreen({ kind: "loading" });
 
     expect(screen.getByText("Loading skills…")).toBeTruthy();
     expect(screen.getByTestId("tabs")).toBeTruthy();
   });
 
   it("shows the error message when the load fails", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({ kind: "error", message: "kaboom" })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderScreen({ kind: "error", message: "kaboom" });
 
     // Shown in the body and echoed by the header save indicator (as the doc
     // tabs do), so assert presence rather than a single match.
@@ -109,23 +161,13 @@ describe("SkillsScreen", () => {
   });
 
   it("shows an empty message when there are no slots", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({ kind: "ready", slots: [] })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([]);
 
     expect(screen.getByText("No skills fragments available.")).toBeTruthy();
   });
 
   it("shows the built-in with a Customize button for an untracked slot", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({ kind: "ready", slots: [slot()] })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([slot()]);
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
     // With no override the built-in is the sole (read-only) content, offered
@@ -143,18 +185,7 @@ describe("SkillsScreen", () => {
   it("forks the built-in into an override when Customize is clicked", async () => {
     const saveSlot = vi.fn().mockResolvedValue(true);
 
-    render(
-      <SkillsScreen
-        overrides={overrides(
-          {
-            kind: "ready",
-            slots: [slot({ builtIn: "FORK-ME", override: "" })],
-          },
-          { saveSlot },
-        )}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([slot({ builtIn: "FORK-ME", override: "" })], { saveSlot });
 
     fireEvent.click(screen.getByText("Customize"));
 
@@ -164,35 +195,15 @@ describe("SkillsScreen", () => {
   });
 
   it("shows the selected slot's one-line explainer", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({
-          kind: "ready",
-          slots: [slot({ description: "Explains what this fragment does." })],
-        })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([slot({ description: "Explains what this fragment does." })]);
 
     expect(screen.getByText("Explains what this fragment does.")).toBeTruthy();
   });
 
   it("shows a drift note for a drifted slot", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({
-          kind: "ready",
-          slots: [
-            slot({
-              override: "MINE",
-              drifted: true,
-              forkedFromVersion: "1.4.0",
-            }),
-          ],
-        })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([
+      slot({ override: "MINE", drifted: true, forkedFromVersion: "1.4.0" }),
+    ]);
 
     const note = screen.getByText(/Default changed since you forked/);
 
@@ -200,17 +211,9 @@ describe("SkillsScreen", () => {
   });
 
   it("omits the version from the drift note when provenance is unknown", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({
-          kind: "ready",
-          slots: [
-            slot({ override: "MINE", drifted: true, forkedFromVersion: null }),
-          ],
-        })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([
+      slot({ override: "MINE", drifted: true, forkedFromVersion: null }),
+    ]);
 
     const note = screen.getByText(/Default changed since you forked/);
 
@@ -218,26 +221,10 @@ describe("SkillsScreen", () => {
   });
 
   it("surfaces an external-update banner when the override changes under a clean draft", () => {
-    const { rerender } = render(
-      <SkillsScreen
-        overrides={overrides({
-          kind: "ready",
-          slots: [slot({ override: "" })],
-        })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    const { rerenderSlots } = renderSlots([slot({ override: "" })]);
 
     // An external write (hand edit / device) changes the same slot's override.
-    rerender(
-      <SkillsScreen
-        overrides={overrides({
-          kind: "ready",
-          slots: [slot({ override: "EXTERNAL" })],
-        })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    rerenderSlots([slot({ override: "EXTERNAL" })]);
 
     expect(
       screen.getByText("This skill fragment was updated outside the editor."),
@@ -245,23 +232,7 @@ describe("SkillsScreen", () => {
   });
 
   it("resets a customized slot after confirmation", async () => {
-    const resetSlot = vi.fn().mockResolvedValue(true);
-
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-
-    render(
-      <SkillsScreen
-        overrides={overrides(
-          { kind: "ready", slots: [slot({ override: "MINE" })] },
-          { resetSlot },
-        )}
-        tabSlot={TAB_SLOT}
-      />,
-    );
-
-    // Reset lives in the revealed built-in header, so surface it first.
-    fireEvent.click(screen.getByText("Show default"));
-    fireEvent.click(screen.getByLabelText("Reset to default"));
+    const { resetSlot } = clickResetSlot(true);
 
     await waitFor(() => {
       expect(resetSlot).toHaveBeenCalledWith("barbeat-standard");
@@ -271,22 +242,7 @@ describe("SkillsScreen", () => {
   it("keeps the built-in revealed and the override intact when the reset is cancelled", async () => {
     // Regression: cancelling the reset confirm used to still collapse the
     // built-in reveal, as if the reset had gone through.
-    const resetSlot = vi.fn().mockResolvedValue(true);
-
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-
-    render(
-      <SkillsScreen
-        overrides={overrides(
-          { kind: "ready", slots: [slot({ override: "MINE" })] },
-          { resetSlot },
-        )}
-        tabSlot={TAB_SLOT}
-      />,
-    );
-
-    fireEvent.click(screen.getByText("Show default"));
-    fireEvent.click(screen.getByLabelText("Reset to default"));
+    const { resetSlot } = clickResetSlot(false);
 
     await waitFor(() => {
       expect(resetSlot).not.toHaveBeenCalled();
@@ -298,15 +254,7 @@ describe("SkillsScreen", () => {
   it("autosaves the override on edit + blur", async () => {
     const saveSlot = vi.fn().mockResolvedValue(true);
 
-    render(
-      <SkillsScreen
-        overrides={overrides(
-          { kind: "ready", slots: [slot({ override: "MINE" })] },
-          { saveSlot },
-        )}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([slot({ override: "MINE" })], { saveSlot });
 
     const editor = screen.getByTestId("editor");
 
@@ -319,18 +267,7 @@ describe("SkillsScreen", () => {
   });
 
   it("switches slots via the dropdown", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({
-          kind: "ready",
-          slots: [
-            slot({ name: "barbeat-standard", title: "Core", builtIn: "CORE" }),
-            slot({ name: "stark", title: "Stark", builtIn: "STARK" }),
-          ],
-        })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots(TWO_SLOTS);
 
     // Untracked slots show their built-in directly (built-in-only view).
     expect(editorValues()).toContain("CORE");
@@ -350,25 +287,7 @@ describe("SkillsScreen", () => {
     // reset test.
     const resetSaveStatus = vi.fn();
 
-    render(
-      <SkillsScreen
-        overrides={overrides(
-          {
-            kind: "ready",
-            slots: [
-              slot({
-                name: "barbeat-standard",
-                title: "Core",
-                builtIn: "CORE",
-              }),
-              slot({ name: "stark", title: "Stark", builtIn: "STARK" }),
-            ],
-          },
-          { resetSaveStatus },
-        )}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots(TWO_SLOTS, { resetSaveStatus });
 
     // Clear the mount-time reset so the assertion targets the slot switch.
     resetSaveStatus.mockClear();
@@ -381,12 +300,7 @@ describe("SkillsScreen", () => {
   });
 
   it("toggles between the fragment editor and the preview", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({ kind: "ready", slots: [slot()] })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderSlots([slot()]);
 
     // Fragments view by default: the slot dropdown is present.
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
@@ -413,12 +327,7 @@ describe("SkillsScreen", () => {
   });
 
   it("keeps the preview reachable while the fragments list is loading", () => {
-    render(
-      <SkillsScreen
-        overrides={overrides({ kind: "loading" })}
-        tabSlot={TAB_SLOT}
-      />,
-    );
+    renderScreen({ kind: "loading" });
 
     fireEvent.click(screen.getByText("Preview"));
 
@@ -441,15 +350,7 @@ describe("SkillsScreen", () => {
     });
 
     it("copies the built-in to the clipboard", () => {
-      render(
-        <SkillsScreen
-          overrides={overrides({
-            kind: "ready",
-            slots: [slot({ builtIn: "COPY-ME", override: "MINE" })],
-          })}
-          tabSlot={TAB_SLOT}
-        />,
-      );
+      renderSlots([slot({ builtIn: "COPY-ME", override: "MINE" })]);
 
       fireEvent.click(screen.getByText("Show default"));
       fireEvent.click(screen.getByText("Copy"));

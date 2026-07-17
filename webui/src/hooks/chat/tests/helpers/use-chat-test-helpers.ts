@@ -294,3 +294,63 @@ export function createScriptedAdapter(
     }),
   };
 }
+
+/** The provider error text useChat's retry logic recognizes as a rate limit */
+export const RATE_LIMIT_ERROR = "Resource has been exhausted";
+
+/**
+ * Build an adapter that mimics the real ChatSdkClient's rate-limit shape: every
+ * call echoes the user message before streaming, the first call then throws a
+ * 429, and the retry completes normally.
+ *
+ * `partialContent` controls the one bit the retry logic branches on — whether
+ * the model produced assistant content before the 429 (retry sends "continue")
+ * or only the user echo was yielded (retry re-sends the original message).
+ *
+ * @param baseAdapter - Base adapter to spread (commonly the shared `mockAdapter`)
+ * @param options - Behavior switches
+ * @param options.partialContent - Assistant text to yield before the first call's 429; omit to throw right after the user echo
+ * @returns The adapter and the live list of messages its client received
+ */
+export function createEchoThenRateLimitAdapter(
+  baseAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig>,
+  options: { partialContent?: string } = {},
+): {
+  adapter: ChatAdapter<MockChatClient, TestMessage, TestConfig>;
+  receivedMessages: string[];
+} {
+  const receivedMessages: string[] = [];
+  let callCount = 0;
+
+  const adapter = createScriptedAdapter(
+    baseAdapter,
+    (client) =>
+      async function* (message: string) {
+        receivedMessages.push(message);
+        callCount++;
+
+        client.chatHistory.push({ role: "user", content: message });
+        yield [...client.chatHistory];
+
+        if (callCount === 1) {
+          if (options.partialContent != null) {
+            client.chatHistory.push({
+              role: "assistant",
+              content: options.partialContent,
+            });
+            yield [...client.chatHistory];
+          }
+
+          throw new Error(RATE_LIMIT_ERROR);
+        }
+
+        client.chatHistory.push({
+          role: "assistant",
+          content: `Done: ${message}`,
+        });
+        yield [...client.chatHistory];
+      },
+  );
+
+  return { adapter, receivedMessages };
+}

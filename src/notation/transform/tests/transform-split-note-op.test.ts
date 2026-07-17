@@ -14,6 +14,7 @@ import {
   createTestNote,
   createTestNotes,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
+import { expectNotePieces } from "./transform-test-helpers.ts";
 
 // Build a split op whose args are bar|beat points given in absolute musical
 // beats — mirrors what the grammar produces, for tests that exercise splitNotes
@@ -26,6 +27,22 @@ function splitOp(...musicalBeats: number[]): NoteOp {
   };
 }
 
+// A note long enough to hold far more than the 64-piece cap, for the clamp tests.
+function longNote(): NoteEvent {
+  return {
+    pitch: 60,
+    start_time: 0,
+    duration: 100,
+    velocity: 100,
+    probability: 1,
+  };
+}
+
+// Interior cut points at beats 1..count.
+function cutPointsAt(count: number): number[] {
+  return Array.from({ length: count }, (_, i) => i + 1);
+}
+
 describe("note-count operation: split", () => {
   it("cuts a note at explicit clip bar|beat positions", () => {
     // One note spanning bars 1-2 (8 Ableton beats); cut at 2|1 (beat 4) and
@@ -34,10 +51,10 @@ describe("note-count operation: split", () => {
 
     applyTransforms(notes, "split(2|1, 2|3)", 4, 4);
 
-    expect(notes).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 4 }),
-      expect.objectContaining({ start_time: 4, duration: 2 }),
-      expect.objectContaining({ start_time: 6, duration: 2 }),
+    expectNotePieces(notes, [
+      [0, 4],
+      [4, 2],
+      [6, 2],
     ]);
   });
 
@@ -46,9 +63,9 @@ describe("note-count operation: split", () => {
 
     applyTransforms(notes, "split(1|1.5)", 4, 4);
 
-    expect(notes).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 0.5 }),
-      expect.objectContaining({ start_time: 0.5, duration: 0.5 }),
+    expectNotePieces(notes, [
+      [0, 0.5],
+      [0.5, 0.5],
     ]);
   });
 
@@ -116,10 +133,10 @@ describe("note-count operation: split", () => {
     // Selector limits to bar 2; only the second note is cut at 2|3 (beat 6).
     applyTransforms(notes, "2|*: split(2|3)", 4, 4);
 
-    expect(notes).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 4 }),
-      expect.objectContaining({ start_time: 4, duration: 2 }),
-      expect.objectContaining({ start_time: 6, duration: 2 }),
+    expectNotePieces(notes, [
+      [0, 4],
+      [4, 2],
+      [6, 2],
     ]);
   });
 
@@ -129,9 +146,9 @@ describe("note-count operation: split", () => {
 
     applyTransforms(notes, "split(2|1)", 6, 8);
 
-    expect(notes).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 3 }),
-      expect.objectContaining({ start_time: 3, duration: 3 }),
+    expectNotePieces(notes, [
+      [0, 3],
+      [3, 3],
     ]);
   });
 
@@ -140,9 +157,9 @@ describe("note-count operation: split", () => {
 
     applyTransforms(notes, "split(1|2, 1|2)", 4, 4);
 
-    expect(notes).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 1 }),
-      expect.objectContaining({ start_time: 1, duration: 1 }),
+    expectNotePieces(notes, [
+      [0, 1],
+      [1, 1],
     ]);
   });
 
@@ -156,10 +173,10 @@ describe("note-count operation: split", () => {
       4,
     );
 
-    expect(result).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 4 }),
-      expect.objectContaining({ start_time: 4, duration: 2 }),
-      expect.objectContaining({ start_time: 6, duration: 2 }),
+    expectNotePieces(result, [
+      [0, 4],
+      [4, 2],
+      [6, 2],
     ]);
   });
 
@@ -172,10 +189,10 @@ describe("note-count operation: split", () => {
       4,
     );
 
-    expect(result).toStrictEqual([
-      expect.objectContaining({ start_time: 0, duration: 4 }),
-      expect.objectContaining({ start_time: 4, duration: 2 }),
-      expect.objectContaining({ start_time: 6, duration: 2 }),
+    expectNotePieces(result, [
+      [0, 4],
+      [4, 2],
+      [6, 2],
     ]);
   });
 
@@ -263,9 +280,9 @@ describe("note-count operation: split", () => {
       // cut lands at clip-relative beat 4.
       applyTransforms(notes, "split(6|1, sync)", 4, 4, arrangementCtx);
 
-      expect(notes).toStrictEqual([
-        expect.objectContaining({ start_time: 0, duration: 4 }),
-        expect.objectContaining({ start_time: 4, duration: 4 }),
+      expectNotePieces(notes, [
+        [0, 4],
+        [4, 4],
       ]);
     });
 
@@ -282,9 +299,9 @@ describe("note-count operation: split", () => {
       // No arrangement origin: 1|3 is treated clip-relative (beat 2).
       applyTransforms(notes, "split(1|3, sync)", 4, 4, sessionCtx);
 
-      expect(notes).toStrictEqual([
-        expect.objectContaining({ start_time: 0, duration: 2 }),
-        expect.objectContaining({ start_time: 2, duration: 6 }),
+      expectNotePieces(notes, [
+        [0, 2],
+        [2, 6],
       ]);
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("sync ignored on session clip"),
@@ -295,18 +312,10 @@ describe("note-count operation: split", () => {
 
   it("keeps the maximum pieces without clamping at the boundary", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     // 63 interior cuts produce exactly 64 pieces — the cap, not past it — so
     // there is no clamp and no warning.
-    const note: NoteEvent = {
-      pitch: 60,
-      start_time: 0,
-      duration: 100,
-      velocity: 100,
-      probability: 1,
-    };
-    const points = Array.from({ length: 63 }, (_, i) => i + 1);
-
-    const result = splitNotes([note], splitOp(...points), 4);
+    const result = splitNotes([longNote()], splitOp(...cutPointsAt(63)), 4);
 
     expect(result).toHaveLength(64);
     expect(warn).not.toHaveBeenCalled();
@@ -315,17 +324,9 @@ describe("note-count operation: split", () => {
 
   it("clamps one cut past the cap to the maximum pieces and warns", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    // 64 interior cuts would make 65 pieces (one past the cap); the op keeps 64.
-    const note: NoteEvent = {
-      pitch: 60,
-      start_time: 0,
-      duration: 100,
-      velocity: 100,
-      probability: 1,
-    };
-    const points = Array.from({ length: 64 }, (_, i) => i + 1);
 
-    const result = splitNotes([note], splitOp(...points), 4);
+    // 64 interior cuts would make 65 pieces (one past the cap); the op keeps 64.
+    const result = splitNotes([longNote()], splitOp(...cutPointsAt(64)), 4);
 
     expect(result).toHaveLength(64);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
@@ -334,18 +335,10 @@ describe("note-count operation: split", () => {
 
   it("clamps an excessive number of pieces and warns", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     // A long note and 70 interior cut points (beats 1..70) exceed the 64-piece
     // cap; the op keeps 64 pieces (63 cuts) and warns.
-    const note: NoteEvent = {
-      pitch: 60,
-      start_time: 0,
-      duration: 100,
-      velocity: 100,
-      probability: 1,
-    };
-    const points = Array.from({ length: 70 }, (_, i) => i + 1);
-
-    const result = splitNotes([note], splitOp(...points), 4);
+    const result = splitNotes([longNote()], splitOp(...cutPointsAt(70)), 4);
 
     expect(result).toHaveLength(64);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));

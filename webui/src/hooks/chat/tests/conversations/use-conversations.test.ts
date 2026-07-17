@@ -13,7 +13,7 @@ import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
-import { lockedSettings } from "#webui/hooks/chat/tests/use-chat-test-helpers";
+import { lockedSettings } from "#webui/hooks/chat/tests/helpers/use-chat-test-helpers";
 import {
   createConversationsProps as createProps,
   fireHashChange,

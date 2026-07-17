@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { type VNode } from "preact";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import {
   type LeaveGuard,
@@ -101,6 +101,63 @@ function renderScreen(status: MemoryCollectionStatus): { onClose: () => void } {
 }
 
 /**
+ * Render MemoryScreen over {@link ENTRIES}, ready.
+ * @param over - Fields to override on the collection hook return
+ */
+function renderReady(over: Partial<UseMemoryCollectionReturn> = {}): void {
+  renderWith(fakeCollection({ kind: "ready", entries: ENTRIES }, over));
+}
+
+/**
+ * Stub window.confirm for a delete/discard prompt.
+ * @param result - What confirm returns (omit for a bare spy returning undefined)
+ */
+function stubConfirm(result?: boolean): void {
+  vi.stubGlobal(
+    "confirm",
+    result == null ? vi.fn() : vi.fn().mockReturnValue(result),
+  );
+}
+
+/** Click the list-row Edit button for the first entry. */
+function clickEditFirst(): void {
+  fireEvent.click(screen.getByRole("button", { name: "Edit prefers-c-minor" }));
+}
+
+/** Click the list-row trash button for the first entry. */
+function clickDeleteFirst(): void {
+  fireEvent.click(
+    screen.getByRole("button", { name: "Delete prefers-c-minor" }),
+  );
+}
+
+/**
+ * Type into the currently open editor's body (Memory) field.
+ * @param value - The body text to type
+ */
+function typeBody(value: string): void {
+  fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+    target: { value },
+  });
+}
+
+/**
+ * Render the ready screen wired for a row-trash delete: window.confirm stubbed
+ * and a deleteEntry spy on the collection.
+ * @param confirmed - What the stubbed window.confirm returns
+ * @returns The deleteEntry spy
+ */
+function renderForDelete(confirmed: boolean): { deleteEntry: Mock } {
+  stubConfirm(confirmed);
+
+  const deleteEntry = vi.fn().mockResolvedValue(true);
+
+  renderReady({ deleteEntry });
+
+  return { deleteEntry };
+}
+
+/**
  * A real ref-backed leave guard (matching {@link useLeaveGuard}), so the editor
  * that registers a discard-confirm and the list that calls confirmLeave share
  * one registry — the same wiring ContextTabs provides in the app.
@@ -118,37 +175,50 @@ function makeGuard(): LeaveGuard {
 }
 
 /**
- * Render MemoryScreen wrapped in a leave-guard provider (as ContextTabs does),
- * so the new-draft discard confirm is wired end to end.
- * @param collection - The collection hook return to pass
+ * Render the ready screen wrapped in a leave-guard provider (as ContextTabs
+ * does), so the new-draft discard confirm is wired end to end.
  */
-function renderGuarded(collection: UseMemoryCollectionReturn): void {
+function renderGuardedReady(): void {
   render(
     <LeaveGuardContext.Provider value={makeGuard()}>
-      {screenEl(collection)}
+      {screenEl(fakeCollection({ kind: "ready", entries: ENTRIES }))}
     </LeaveGuardContext.Provider>,
   );
 }
 
 /**
+ * Render MemoryScreen over {@link ENTRIES}, returning a rerender that swaps the
+ * entries under the same wrapper — how a poll dropping the open entry (an
+ * assistant forget / hand delete) is simulated.
+ * @param over - Fields to override on the collection hook return
+ * @param wrap - Wraps the screen element (defaults to rendering it bare)
+ * @returns rerenderEntries(entries) that re-renders with the given entries
+ */
+function renderRerender(
+  over: Partial<UseMemoryCollectionReturn> = {},
+  wrap: (el: VNode) => VNode = (el) => el,
+): { rerenderEntries: (entries: MemoryEntryView[]) => void } {
+  const el = (entries: MemoryEntryView[]): VNode =>
+    wrap(screenEl(fakeCollection({ kind: "ready", entries }, over)));
+  const { rerender } = render(el(ENTRIES));
+
+  return { rerenderEntries: (entries) => rerender(el(entries)) };
+}
+
+/**
  * Render MemoryScreen under ONE shared leave guard, returning a rerender bound
  * to that same guard so a mid-edit external delete can be simulated with the
- * guard wired (a poll dropping the open entry, as ContextTabs provides live).
- * @param entries - The initial entries
- * @returns rerender(entries) that swaps the collection under the same guard
+ * guard wired (as ContextTabs provides live).
+ * @returns rerenderEntries(entries) that swaps the entries under the same guard
  */
-function renderGuardedRerender(entries: MemoryEntryView[]): {
-  rerender: (entries: MemoryEntryView[]) => void;
+function renderGuardedRerender(): {
+  rerenderEntries: (entries: MemoryEntryView[]) => void;
 } {
   const guard = makeGuard();
-  const el = (e: MemoryEntryView[]): VNode => (
-    <LeaveGuardContext.Provider value={guard}>
-      {screenEl(fakeCollection({ kind: "ready", entries: e }))}
-    </LeaveGuardContext.Provider>
-  );
-  const { rerender } = render(el(entries));
 
-  return { rerender: (e) => rerender(el(e)) };
+  return renderRerender({}, (el) => (
+    <LeaveGuardContext.Provider value={guard}>{el}</LeaveGuardContext.Provider>
+  ));
 }
 
 afterEach(() => {
@@ -208,9 +278,7 @@ describe("MemoryScreen — ready", () => {
     // Defaults to the create form.
     expect(screen.getByRole("button", { name: "Create memory" })).toBeTruthy();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    clickEditFirst();
 
     // The editor switches to the existing entry — an editable Rename field,
     // no Save button (it autosaves), and no create button.
@@ -227,19 +295,11 @@ describe("MemoryScreen — ready", () => {
   it("autosaves edits to the selected entry when navigating away", async () => {
     const first = ENTRIES[0] as MemoryEntryView;
     const saveEntry = vi.fn().mockResolvedValue(first);
-    const collection = fakeCollection(
-      { kind: "ready", entries: ENTRIES },
-      { saveEntry },
-    );
 
-    renderWith(collection);
+    renderReady({ saveEntry });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "Composes in C minor and F minor." },
-    });
+    clickEditFirst();
+    typeBody("Composes in C minor and F minor.");
     // Switching away unmounts the editor, flushing the autosave under the slug.
     fireEvent.click(screen.getByRole("button", { name: "New memory" }));
 
@@ -258,19 +318,12 @@ describe("MemoryScreen — ready", () => {
   it("shows the save status in the header while editing, but not on the create form", () => {
     // A "saved" collection status: the header indicator shows it when an entry
     // is open, and must NOT leak onto the create form (the reported bug).
-    const collection = fakeCollection(
-      { kind: "ready", entries: ENTRIES },
-      { saveStatus: "saved" },
-    );
-
-    renderWith(collection);
+    renderReady({ saveStatus: "saved" });
 
     // Create form (default): no "Saved" indicator in the header.
     expect(screen.queryByText("Saved")).toBeNull();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    clickEditFirst();
 
     // Editing an entry: the header surfaces the save status.
     expect(screen.getByText("Saved")).toBeTruthy();
@@ -278,38 +331,21 @@ describe("MemoryScreen — ready", () => {
 
   it("resets the save status when the edited entry changes", () => {
     const resetSaveStatus = vi.fn();
-    const collection = fakeCollection(
-      { kind: "ready", entries: ENTRIES },
-      { resetSaveStatus },
-    );
 
-    renderWith(collection);
+    renderReady({ resetSaveStatus });
     resetSaveStatus.mockClear();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    clickEditFirst();
 
     expect(resetSaveStatus).toHaveBeenCalled();
   });
 
   it("returns to the create form after deleting the selected entry via its row", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-    const deleteEntry = vi.fn().mockResolvedValue(true);
-    const collection = fakeCollection(
-      { kind: "ready", entries: ENTRIES },
-      { deleteEntry },
-    );
+    const { deleteEntry } = renderForDelete(true);
 
-    renderWith(collection);
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    clickEditFirst();
     // Delete lives on the list row trash, not the editor footer.
-    fireEvent.click(
-      screen.getByRole("button", { name: "Delete prefers-c-minor" }),
-    );
+    clickDeleteFirst();
 
     await waitFor(() => {
       expect(deleteEntry).toHaveBeenCalledWith("prefers-c-minor");
@@ -319,36 +355,18 @@ describe("MemoryScreen — ready", () => {
   });
 
   it("does not delete when the row-trash confirm is cancelled", () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-    const deleteEntry = vi.fn().mockResolvedValue(true);
-    const collection = fakeCollection(
-      { kind: "ready", entries: ENTRIES },
-      { deleteEntry },
-    );
+    const { deleteEntry } = renderForDelete(false);
 
-    renderWith(collection);
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Delete prefers-c-minor" }),
-    );
+    clickDeleteFirst();
 
     expect(deleteEntry).not.toHaveBeenCalled();
   });
 
   it("deletes a non-open row without disturbing the create form", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-    const deleteEntry = vi.fn().mockResolvedValue(true);
-    const collection = fakeCollection(
-      { kind: "ready", entries: ENTRIES },
-      { deleteEntry },
-    );
-
-    renderWith(collection);
+    const { deleteEntry } = renderForDelete(true);
 
     // No entry is open (create form). Deleting a row leaves the form as-is.
-    fireEvent.click(
-      screen.getByRole("button", { name: "Delete prefers-c-minor" }),
-    );
+    clickDeleteFirst();
 
     await waitFor(() => {
       expect(deleteEntry).toHaveBeenCalledWith("prefers-c-minor");
@@ -359,22 +377,14 @@ describe("MemoryScreen — ready", () => {
 
 describe("MemoryScreen — deleted externally", () => {
   it("keeps the draft and shows a banner when a poll deletes the edited entry", () => {
-    const { rerender } = render(
-      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES })),
-    );
+    const { rerenderEntries } = renderRerender();
 
     // Select an entry and start editing its body.
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "in-progress edit" },
-    });
+    clickEditFirst();
+    typeBody("in-progress edit");
 
     // A poll (assistant forget / hand delete) drops it from the collection.
-    rerender(
-      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES.slice(1) })),
-    );
+    rerenderEntries(ENTRIES.slice(1));
 
     // The banner explains the state; the draft survives (not reset to blank).
     expect(screen.getByText(/deleted outside the editor/i)).toBeTruthy();
@@ -385,16 +395,10 @@ describe("MemoryScreen — deleted externally", () => {
   });
 
   it("discards the draft and returns to the create form", () => {
-    const { rerender } = render(
-      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES })),
-    );
+    const { rerenderEntries } = renderRerender();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
-    rerender(
-      screenEl(fakeCollection({ kind: "ready", entries: ENTRIES.slice(1) })),
-    );
+    clickEditFirst();
+    rerenderEntries(ENTRIES.slice(1));
 
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
 
@@ -407,28 +411,13 @@ describe("MemoryScreen — deleted externally", () => {
     // autosave flush used to persist the dirty draft — silently re-creating
     // the entry the user just chose to drop.
     const saveEntry = vi.fn().mockResolvedValue(null);
-    const { rerender } = render(
-      screenEl(
-        fakeCollection({ kind: "ready", entries: ENTRIES }, { saveEntry }),
-      ),
-    );
+    const { rerenderEntries } = renderRerender({ saveEntry });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
-    rerender(
-      screenEl(
-        fakeCollection(
-          { kind: "ready", entries: ENTRIES.slice(1) },
-          { saveEntry },
-        ),
-      ),
-    );
+    clickEditFirst();
+    rerenderEntries(ENTRIES.slice(1));
 
     // Edit AFTER the deletion (banner visible), then bail out via Discard.
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "in-progress edit" },
-    });
+    typeBody("in-progress edit");
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
 
     expect(saveEntry).not.toHaveBeenCalled();
@@ -436,15 +425,14 @@ describe("MemoryScreen — deleted externally", () => {
   });
 
   it("confirms a discard before New abandons a deleted-entry draft (cancel keeps it)", () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-    const { rerender } = renderGuardedRerender(ENTRIES);
+    stubConfirm(false);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    const { rerenderEntries } = renderGuardedRerender();
+
+    clickEditFirst();
     // The open entry is deleted out from under the editor; its kept draft is now
     // a new (unsaveable-until-Save) draft, arming the discard guard.
-    rerender(ENTRIES.slice(1));
+    rerenderEntries(ENTRIES.slice(1));
     expect(screen.getByText(/deleted outside the editor/i)).toBeTruthy();
 
     // Clicking New used to bypass the guard (silent draft loss); now it confirms.
@@ -456,13 +444,12 @@ describe("MemoryScreen — deleted externally", () => {
   });
 
   it("New abandons the deleted-entry draft once the discard is confirmed", () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-    const { rerender } = renderGuardedRerender(ENTRIES);
+    stubConfirm(true);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
-    rerender(ENTRIES.slice(1));
+    const { rerenderEntries } = renderGuardedRerender();
+
+    clickEditFirst();
+    rerenderEntries(ENTRIES.slice(1));
 
     fireEvent.click(screen.getByRole("button", { name: "New memory" }));
 
@@ -482,13 +469,11 @@ describe("MemoryScreen — new-draft discard guard", () => {
   };
 
   it("confirms before leaving a filled new draft; cancelling keeps the form", () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
-    renderGuarded(fakeCollection({ kind: "ready", entries: ENTRIES }));
+    stubConfirm(false);
+    renderGuardedReady();
 
     typeNewName("half-typed");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    clickEditFirst();
 
     // Cancelled → the create form (with its draft) stays put.
     expect(window.confirm).toHaveBeenCalledOnce();
@@ -497,13 +482,11 @@ describe("MemoryScreen — new-draft discard guard", () => {
   });
 
   it("leaves the new draft when the discard is confirmed", () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-    renderGuarded(fakeCollection({ kind: "ready", entries: ENTRIES }));
+    stubConfirm(true);
+    renderGuardedReady();
 
     typeNewName("half-typed");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    clickEditFirst();
 
     // Confirmed → navigation proceeds to the existing entry (Rename field).
     expect(window.confirm).toHaveBeenCalledOnce();
@@ -511,13 +494,11 @@ describe("MemoryScreen — new-draft discard guard", () => {
   });
 
   it("does not confirm when the new draft is still blank", () => {
-    vi.stubGlobal("confirm", vi.fn());
-    renderGuarded(fakeCollection({ kind: "ready", entries: ENTRIES }));
+    stubConfirm();
+    renderGuardedReady();
 
     // No fields typed — nothing to discard, so navigation is silent.
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit prefers-c-minor" }),
-    );
+    clickEditFirst();
 
     expect(window.confirm).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox", { name: "Rename" })).toBeTruthy();
