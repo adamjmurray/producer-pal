@@ -191,7 +191,7 @@ export const OPENROUTER_MODELS = [
   { value: "openai/gpt-5.6-terra", label: "[Paid] OpenAI GPT-5.6 Terra" },
   { value: "openai/gpt-5.6-sol", label: "[Paid] OpenAI GPT-5.6 Sol" },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
-  { value: "moonshotai/kimi-k3", label: "[Paid] Kimi K3" },
+  { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
   { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
   { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6 Plus" },
   { value: "qwen/qwen3.7-max", label: "[Paid] Qwen 3.7 Max" },

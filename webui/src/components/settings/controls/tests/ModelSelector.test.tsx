@@ -136,7 +136,7 @@ describe("ModelSelector", () => {
       });
       expect(
         screen.getByRole("option", {
-          name: /\[Paid] Kimi K3/,
+          name: /\[Paid] Moonshot AI Kimi K3/,
         }),
       ).toBeDefined();
       expect(
