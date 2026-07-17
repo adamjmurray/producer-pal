@@ -134,12 +134,36 @@ extension authors a stable foundation to build on.
 
 ## Contributing Back to Core
 
-If you find tweaks to the default skills or tool/argument descriptions that
-improve LLM behavior, those improvements can be adopted into the core via pull
-request. Producer Pal will also continue optimizing for efficiency — reducing
-costs whether you're using small local models, subscription quotas, or
-pay-as-you-go cloud APIs — but through targeted improvements, not major
-overhauls or breaking changes.
+Contributions are genuinely welcome — the stable-core rule is about keeping the
+tool _surface_ small and reliable, not about turning ideas away. A few areas are
+especially open to experimentation:
+
+- **Skills and chat system instructions** — proposed changes to the built-in
+  Producer Pal Skills or the Chat UI system instructions, especially ones backed
+  by experiments showing better LLM behavior.
+- **Coding-agent skills** — more [Agent Skill](/guide/skills) examples for
+  different workflows and agents. Good ones can be featured on this site.
+- **MIDI notation and transforms** — experiments with alternative notation
+  systems, and additions to the [transforms](/features/midi-notation#transforms)
+  syntax (worth asking about first so we can agree on the grammar direction).
+
+Changes to skills, tool descriptions, or argument descriptions are most likely
+to be accepted when backed by
+[evals](https://github.com/adamjmurray/producer-pal/blob/main/evals/README.md)
+demonstrating improved efficacy — ideally across both large and small models
+where applicable, since a prompt tweak that helps a frontier model can regress a
+small local one.
+
+Producer Pal will also continue optimizing for efficiency — reducing costs
+whether you're using small local models, subscription quotas, or pay-as-you-go
+cloud APIs — but through targeted improvements, not major overhauls or breaking
+changes.
+
+The core toolset has stabilized, so changing a tool's shape or adding new tools
+takes some convincing — please ask first. The
+[developer guide](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md)
+explains the strict code-quality checks (they exist to combat AI slop, not to
+gatekeep) and how to work with them.
 
 Want to discuss ideas for extensions? Join the conversation on
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or
