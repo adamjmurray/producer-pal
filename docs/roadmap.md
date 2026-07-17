@@ -2,25 +2,29 @@
 
 ## Upcoming
 
-### 2.0.x - Personalization and Extensibility
+### 2.0.x - Extensibility
 
-- Global context: add your own reference material and custom instructions across
-  all Live projects
-- Global memory: Producer Pal can adapt over time to your needs and interaction
-  style
-- Custom skills, system prompts, tool sets, and tool descriptions
+- Custom skills: write your own instruction packs, plus a curated set of
+  examples to install and adapt
+- Personas: presets that combine a tool set with custom context and skills
 - Workflows: pre-defined tool call sequences for reliable, repeatable operations
-- Alternative MIDI syntaxes
-- Context manager in the built-in chat UI for working with all the above
-
-See [Extending Producer Pal](/extending) for more on the extension model.
 
 ## Changelog
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
 
-### 1.4 - MIDI Transforms, REST API, and Live API Access (February–May 2026)
+### 2.0 - Personalization (July 2026)
+
+- Global context: add your own reference material and custom instructions across
+  all Live projects
+- Global memory: Producer Pal can adapt over time to your needs and interaction
+  style
+- Customize the built-in skills and the built-in chat's system instructions
+- Alternative MIDI syntaxes
+- Context manager in the built-in chat UI for working with all the above
+
+### 1.4 - MIDI Transforms, REST API, and Live API Access (February 2026)
 
 MIDI transforms: math expressions for transforming note properties
 
@@ -97,12 +101,7 @@ manipulation and basic Live Set management.
 
 ## Beyond 2.0
 
-After 2.0, the core stabilizes — future core changes focus on bug fixes and
-supporting new Live API features as they become available. New capabilities will
-come through [extensions](/extending): community skills, workflows, and
-companion MCP servers.
-
-**Core features under consideration:**
-
 - Audio synthesis
 - Audio analysis
+- Microtonal support
+- Add any new Live API features as they arrive
