@@ -5,7 +5,7 @@
 
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { act, renderHook } from "@testing-library/preact";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 import {
   type UseVoicePersistenceReturn,
   useVoicePersistence,
@@ -13,6 +13,7 @@ import {
 import {
   type ConversationRecord,
   getConversationDb,
+  loadConversation,
   resetDbCache,
   saveConversation,
 } from "#webui/lib/conversation-db";
@@ -153,6 +154,58 @@ export async function setupForeignTextRecord(
   await waitForEffects();
 
   return { textRecord, onForeignRecord, result };
+}
+
+/**
+ * Continue a previously saved voice record (hash load → Stop → Talk) while
+ * current settings point at `model`: adds one more transcript turn, lets the
+ * autosave debounce fire, and reads the record back so the caller can check
+ * which fields the merge preserved vs re-stamped.
+ * @param record - The saved voice record to continue
+ * @param model - The realtime model the current settings select
+ * @returns The rendered hook result and the reloaded record
+ */
+export async function continueSavedVoiceSession(
+  record: ConversationRecord,
+  model: string,
+): Promise<{
+  result: VoicePersistenceHistoryView["result"];
+  loaded: ConversationRecord | undefined;
+}> {
+  window.location.hash = record.id;
+
+  const { result, rerender } = renderVoicePersistenceWithHistory({ model });
+
+  await waitForEffects();
+  rerender([userTextItem("first turn"), userTextItem("second turn")]);
+  await waitForEffects(800);
+
+  return { result, loaded: await loadConversation(record.id) };
+}
+
+/**
+ * Run a bulk delete inside the autosave's pre-adoption window: a brand-new
+ * session produces transcript, so the autosave reserves an id but hasn't
+ * resolved yet and no active id has been adopted (asserted here as the
+ * scenario's precondition). The bulk delete lands in that window without
+ * stopping the session, so the reserved-id autosave is still scheduled — then
+ * the debounce is allowed to fire so the caller can check it bailed.
+ * @param bulkDelete - The bulk delete to invoke during the window
+ * @returns The rendered hook result
+ */
+export async function bulkDeleteDuringPendingNewSave(
+  bulkDelete: (hook: UseVoicePersistenceReturn) => Promise<void>,
+): Promise<VoicePersistenceHistoryView["result"]> {
+  const { result, rerender } = renderVoicePersistenceWithHistory();
+
+  await waitForEffects();
+  rerender([userTextItem("brand new")]);
+  expect(result.current.activeConversationId).toBeNull();
+
+  await act(() => bulkDelete(result.current));
+  await waitForEffects(800);
+
+  return result;
 }
 
 /**

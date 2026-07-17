@@ -16,6 +16,16 @@ type MockMax = typeof Max & {
 };
 const mockMax = Max as MockMax;
 
+// Parsed body of a REST tool-call response. Every field is optional because
+// which ones appear depends on the route outcome and the ?format mode.
+type ToolCallBody = {
+  result?: unknown;
+  isError?: boolean;
+  errorCode?: string;
+  warnings?: string[];
+  appended?: string[];
+};
+
 /**
  * Stub Max.outlet to resolve MCP requests with a given response payload.
  * Returns a holder whose `.lastContext` field is populated with the parsed
@@ -124,6 +134,26 @@ describe("REST API Routes", () => {
       headers: { "Content-Type": "application/json" },
       body: "{}",
     });
+  }
+
+  /**
+   * Stub ppal-connect to report a tool error carrying the given text, call it,
+   * and return the HTTP response alongside its parsed body.
+   * @param text - Error text the stubbed tool returns in its isError response
+   * @returns The HTTP response and its parsed JSON body
+   */
+  async function callConnectReportingToolError(text: string): Promise<{
+    response: Response;
+    body: ToolCallBody;
+  }> {
+    stubMaxOutlet({
+      content: [{ type: "text", text }],
+      isError: true,
+    });
+
+    const response = await callTool("ppal-connect");
+
+    return { response, body: (await response.json()) as ToolCallBody };
   }
 
   describe("GET /api/tools", () => {
@@ -293,17 +323,11 @@ describe("REST API Routes", () => {
     });
 
     it("should return isError true when tool reports error", async () => {
-      stubMaxOutlet({
-        content: [{ type: "text", text: "something went wrong" }],
-        isError: true,
-      });
-
-      const response = await callTool("ppal-connect");
+      const { response, body } = await callConnectReportingToolError(
+        "something went wrong",
+      );
 
       expect(response.status).toBe(200);
-
-      const body = await response.json();
-
       expect(body.result).toBe("something went wrong");
       expect(body.isError).toBe(true);
     });
@@ -322,6 +346,29 @@ describe("REST API Routes", () => {
           body: "{}",
         },
       );
+    }
+
+    /**
+     * Stub a `{"ok":true}` JSON result followed by the given extra content
+     * blocks, then call the tool in json mode and return the parsed body. Uses
+     * a non-connect tool so the real skills block isn't also appended by the
+     * wrapper and mistaken for one of the extra blocks under test.
+     * @param extraTexts - Text of each content block appended after the result
+     * @returns The parsed JSON response body
+     */
+    async function readTrackJsonWithExtraBlocks(
+      extraTexts: string[],
+    ): Promise<ToolCallBody> {
+      stubMaxOutlet({
+        content: [
+          { type: "text", text: '{"ok":true}' },
+          ...extraTexts.map((text) => ({ type: "text", text })),
+        ],
+      });
+
+      const response = await callToolWithFormat("ppal-read-track", "json");
+
+      return (await response.json()) as ToolCallBody;
     }
 
     it("should default to compactOutput: false (json) when format is omitted", async () => {
@@ -426,17 +473,11 @@ describe("REST API Routes", () => {
       // extra content blocks with no WARNING: prefix (see connect-append.ts).
       // JSON mode must preserve them, not silently drop them. Use a non-connect
       // tool so the real skills block isn't also appended by the wrapper.
-      stubMaxOutlet({
-        content: [
-          { type: "text", text: '{"ok":true}' },
-          { type: "text", text: "WARNING: real warning" },
-          { type: "text", text: "# Producer Pal Skills\n..." },
-          { type: "text", text: "# Global context\n..." },
-        ],
-      });
-
-      const response = await callToolWithFormat("ppal-read-track", "json");
-      const body = await response.json();
+      const body = await readTrackJsonWithExtraBlocks([
+        "WARNING: real warning",
+        "# Producer Pal Skills\n...",
+        "# Global context\n...",
+      ]);
 
       expect(body.result).toStrictEqual({ ok: true });
       expect(body.warnings).toStrictEqual(["real warning"]);
@@ -463,15 +504,7 @@ describe("REST API Routes", () => {
     });
 
     it("omits `appended` when there are no non-WARNING extra blocks (format=json)", async () => {
-      stubMaxOutlet({
-        content: [
-          { type: "text", text: '{"ok":true}' },
-          { type: "text", text: "WARNING: heads up" },
-        ],
-      });
-
-      const response = await callToolWithFormat("ppal-read-track", "json");
-      const body = await response.json();
+      const body = await readTrackJsonWithExtraBlocks(["WARNING: heads up"]);
 
       expect(body.result).toStrictEqual({ ok: true });
       expect(body.warnings).toStrictEqual(["heads up"]);
@@ -623,17 +656,11 @@ describe("REST API Routes", () => {
     it("should keep returning HTTP 200 for an ordinary (non-timeout) tool error", async () => {
       // An ordinary error carries isError but no timeout discriminator, so the
       // legacy 200 + isError contract is preserved.
-      stubMaxOutlet({
-        content: [{ type: "text", text: "something went wrong" }],
-        isError: true,
-      });
-
-      const response = await callTool("ppal-connect");
+      const { response, body } = await callConnectReportingToolError(
+        "something went wrong",
+      );
 
       expect(response.status).toBe(200);
-
-      const body = await response.json();
-
       expect(body.isError).toBe(true);
       expect(body.result).toBe("something went wrong");
       expect(body.errorCode).toBeUndefined();

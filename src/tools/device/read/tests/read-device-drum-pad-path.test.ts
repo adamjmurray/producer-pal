@@ -52,6 +52,29 @@ function setupKickPadMocks(
   });
 }
 
+/**
+ * Setup the C1/Kick pad holding one chain ("Layer 1") that contains one Simpler
+ * device, reachable at "t1/d0/pC1/c0/d0" (or "t1/d0/pC1/d0" via implicit chain).
+ */
+function setupKickPadWithChainDevice() {
+  setupKickPadMocks({
+    padExtra: { chainIds: ["chain-1"] },
+    chainProperties: {
+      "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
+    },
+    deviceProperties: { "device-1": simplerDevice },
+  });
+}
+
+/**
+ * Assert a read result is the "device-1" Simpler instrument.
+ * @param result - The readDevice result to check
+ */
+function expectSimplerDeviceResult(result: Record<string, unknown>) {
+  expect(result.id).toBe("device-1");
+  expect(result.type).toBe("instrument: Simpler");
+}
+
 describe("readDevice with drum pad path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -231,35 +254,21 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read device inside drum pad chain", () => {
-    setupKickPadMocks({
-      padExtra: { chainIds: ["chain-1"] },
-      chainProperties: {
-        "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
-      },
-      deviceProperties: { "device-1": simplerDevice },
-    });
+    setupKickPadWithChainDevice();
 
     const result = readDevice({ path: "t1/d0/pC1/c0/d0" });
 
-    expect(result.id).toBe("device-1");
-    expect(result.type).toBe("instrument: Simpler");
+    expectSimplerDeviceResult(result);
   });
 
   it("should read device inside drum pad with implicit chain (pC1/d0)", () => {
-    setupKickPadMocks({
-      padExtra: { chainIds: ["chain-1"] },
-      chainProperties: {
-        "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
-      },
-      deviceProperties: { "device-1": simplerDevice },
-    });
+    setupKickPadWithChainDevice();
 
     // "pC1/d0" omits the chain segment; chain 0 is implied (== "pC1/c0/d0"),
     // matching the write-side pad-property shortcut.
     const result = readDevice({ path: "t1/d0/pC1/d0" });
 
-    expect(result.id).toBe("device-1");
-    expect(result.type).toBe("instrument: Simpler");
+    expectSimplerDeviceResult(result);
   });
 
   it("should throw error for invalid device index in drum pad chain", () => {
@@ -275,13 +284,7 @@ describe("readDevice with drum pad path", () => {
 
   it("should throw for a device index equal to the device count (boundary)", () => {
     // One device (index 0); "d1" is one past the end (pins the `>=` bound).
-    setupKickPadMocks({
-      padExtra: { chainIds: ["chain-1"] },
-      chainProperties: {
-        "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
-      },
-      deviceProperties: { "device-1": simplerDevice },
-    });
+    setupKickPadWithChainDevice();
 
     expect(() => readDevice({ path: "t1/d0/pC1/c0/d1" })).toThrow(
       "Invalid device index in path: t1/d0/pC1/c0/d1",
@@ -290,13 +293,7 @@ describe("readDevice with drum pad path", () => {
 
   it("should throw for a non-numeric device segment", () => {
     // "dX" parses to NaN; the NaN guard must reject it with the index error.
-    setupKickPadMocks({
-      padExtra: { chainIds: ["chain-1"] },
-      chainProperties: {
-        "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
-      },
-      deviceProperties: { "device-1": simplerDevice },
-    });
+    setupKickPadWithChainDevice();
 
     expect(() => readDevice({ path: "t1/d0/pC1/c0/dX" })).toThrow(
       "Invalid device index in path: t1/d0/pC1/c0/dX",
