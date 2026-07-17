@@ -7,23 +7,29 @@
  * Print functions for the unit test statistics tables (CLI and markdown).
  */
 
-import { styleText } from "node:util";
+import {
+  type Row,
+  duration,
+  fmt,
+  pct,
+  printCliNote,
+  printCliTable,
+  printCliTitle,
+  printMarkdownTable,
+  ratio,
+} from "./stats-tables.ts";
 import {
   type TestStatsReport,
   type TreeStats,
   COVERAGE_METRICS,
 } from "./test-stats.ts";
 
-/** A row of the per-tree test table, pre-formatted for display. */
-type Row = string[];
-
 const TEST_HEADERS = [
   "Tree",
-  "Test Files",
   "Tests",
+  "Test Files",
   "Skipped",
   "Tests/File",
-  "Tests/100 Src Lines",
   "Duration",
 ];
 
@@ -33,9 +39,16 @@ const COVERAGE_HEADERS = [
   "Branches",
   "Functions",
   "Lines",
+  "Tests/100 Src Lines",
 ];
 
 const SLOWEST_HEADERS = ["Test File", "Tests", "Duration"];
+
+/** Explains the dashes in the coverage table. */
+const COVERAGE_NOTE =
+  "Coverage measures the user-facing product code (`src`, `webui`). " +
+  "A `–` marks a tree whose tests run but whose own source is not measured " +
+  "— dev tooling, not shipped code.";
 
 /**
  * Format the per-tree test rows plus a totals row.
@@ -55,15 +68,13 @@ function testRows(report: TestStatsReport): Row[] {
 
   const tests = sum((t) => t.tests);
   const testFiles = sum((t) => t.testFiles);
-  const sourceLines = sum((t) => t.sourceLines);
 
   rows.push([
     "Total",
-    fmt(testFiles),
     fmt(tests),
+    fmt(testFiles),
     fmt(sum((t) => t.skipped)),
     ratio(tests, testFiles),
-    ratio(tests * 100, sourceLines),
     duration(sum((t) => t.durationMs)),
   ]);
 
@@ -78,11 +89,10 @@ function testRows(report: TestStatsReport): Row[] {
 function testRow(t: TreeStats): Row {
   return [
     t.tree,
-    fmt(t.testFiles),
     fmt(t.tests),
+    fmt(t.testFiles),
     fmt(t.skipped),
     ratio(t.tests, t.testFiles),
-    ratio(t.tests * 100, t.sourceLines),
     duration(t.durationMs),
   ];
 }
@@ -98,20 +108,30 @@ function coverageRows(report: TestStatsReport): Row[] {
     ...COVERAGE_METRICS.map((m) => {
       const counts = t.coverage?.[m];
 
-      // evals is coverage-excluded in vitest.config.ts, so it has no counts.
+      // Unmeasured trees (see coverage.include in vitest.config.ts) have no
+      // counts at all — COVERAGE_NOTE explains the dash.
       if (!counts?.total) return "–";
 
       return pct((counts.covered / counts.total) * 100);
     }),
+    // Density belongs here: its source-line count comes from the coverage data,
+    // so it is dashed for unmeasured trees for the same reason.
+    ratio(t.tests * 100, t.sourceLines),
   ]);
+
+  const measured = report.trees.filter((t) => t.sourceLines > 0);
+  const totalTests = measured.reduce((acc, t) => acc + t.tests, 0);
+  const totalSourceLines = measured.reduce((acc, t) => acc + t.sourceLines, 0);
 
   rows.push([
     "Overall",
     ...COVERAGE_METRICS.map((m) => pct(report.overall[m])),
+    ratio(totalTests * 100, totalSourceLines),
   ]);
   rows.push([
     "Min required",
     ...COVERAGE_METRICS.map((m) => pct(report.thresholds[m])),
+    "",
   ]);
 
   return rows;
@@ -154,6 +174,7 @@ export function printCliCoverageTable(report: TestStatsReport): void {
 
   printCliTitle("Unit Test Coverage by Tree");
   printCliTable(COVERAGE_HEADERS, rows, rows.length - 2);
+  printCliNote(COVERAGE_NOTE);
 }
 
 /**
@@ -163,54 +184,6 @@ export function printCliCoverageTable(report: TestStatsReport): void {
 export function printCliSlowestTable(report: TestStatsReport): void {
   printCliTitle("Slowest Test Files");
   printCliTable(SLOWEST_HEADERS, slowestRows(report));
-}
-
-/**
- * Print an aligned, colored CLI table.
- * @param headers - Column headers
- * @param rows - Display rows
- * @param summaryIdx - Row index to render as a highlighted summary row
- */
-function printCliTable(headers: string[], rows: Row[], summaryIdx = -1): void {
-  const widths = headers.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)),
-  );
-
-  /**
-   * Format one row with padding and color.
-   * @param values - Cell values
-   * @param color - Styler to apply
-   * @returns Aligned row string
-   */
-  const line = (values: Row, color: (s: string) => string): string =>
-    widths
-      .map((w, i) => {
-        const val = values[i] ?? "";
-
-        return color(i === 0 ? val.padEnd(w) : val.padStart(w));
-      })
-      .join("  ");
-
-  console.log(line(headers, (s) => s));
-  console.log(widths.map((w) => "-".repeat(w)).join("  "));
-
-  for (const [i, row] of rows.entries()) {
-    if (i === summaryIdx) {
-      console.log(line(row, (s) => styleText(["yellow", "bold"], s)));
-    } else {
-      console.log(line(row, (s) => styleText("green", s)));
-    }
-  }
-}
-
-/**
- * Print a bold CLI title with an underline.
- * @param title - Title text
- */
-function printCliTitle(title: string): void {
-  console.log(`\n${styleText("bold", title)}`);
-  console.log("=".repeat(title.length));
-  console.log();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,6 +210,8 @@ export function printMarkdownCoverageTable(report: TestStatsReport): void {
 
   console.log("\n## Unit Test Coverage\n");
   printMarkdownTable(COVERAGE_HEADERS, rows, rows.length - 2);
+  console.log(COVERAGE_NOTE);
+  console.log();
 }
 
 /**
@@ -247,75 +222,4 @@ export function printMarkdownSlowestTable(report: TestStatsReport): void {
   console.log("\n<details><summary>Slowest test files</summary>\n");
   printMarkdownTable(SLOWEST_HEADERS, slowestRows(report));
   console.log("</details>");
-}
-
-/**
- * Print a markdown table with a left-aligned first column.
- * @param headers - Column headers
- * @param rows - Display rows
- * @param summaryIdx - Row index to bold
- */
-function printMarkdownTable(
-  headers: string[],
-  rows: Row[],
-  summaryIdx = -1,
-): void {
-  console.log(mdRow(headers));
-  console.log(mdRow(headers.map((_, i) => (i === 0 ? ":--" : "--:"))));
-
-  for (const [i, row] of rows.entries()) {
-    console.log(mdRow(i === summaryIdx ? row.map((c) => `**${c}**`) : row));
-  }
-
-  console.log();
-}
-
-/**
- * Format a markdown table row.
- * @param cells - Cell values
- * @returns Pipe-delimited markdown row
- */
-function mdRow(cells: string[]): string {
-  return `| ${cells.join(" | ")} |`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Value formatting
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Format a number with comma separators.
- * @param n - Number to format
- * @returns Formatted string
- */
-function fmt(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-/**
- * Format a ratio to 1 decimal place, guarding division by zero.
- * @param numerator - Top of the ratio
- * @param denominator - Bottom of the ratio
- * @returns Formatted ratio, or an en dash when undefined
- */
-function ratio(numerator: number, denominator: number): string {
-  return denominator > 0 ? (numerator / denominator).toFixed(1) : "–";
-}
-
-/**
- * Format a coverage percentage to 1 decimal place.
- * @param value - Percentage
- * @returns Formatted percentage
- */
-function pct(value: number): string {
-  return `${value.toFixed(1)}%`;
-}
-
-/**
- * Format a duration in milliseconds as seconds.
- * @param ms - Milliseconds
- * @returns Formatted duration
- */
-function duration(ms: number): string {
-  return `${(ms / 1000).toFixed(1)}s`;
 }

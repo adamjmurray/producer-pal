@@ -10,8 +10,8 @@
  * run the suite itself.
  *
  * Requires (both produced by npm run test:coverage):
- *   test-results/vitest-results.json  — vitest json reporter
- *   coverage/coverage-summary.json    — vitest json-summary coverage reporter
+ *   test-reports/vitest.json        — vitest json reporter
+ *   coverage/coverage-summary.json  — vitest json-summary coverage reporter
  *
  * Usage:
  *   node scripts/stats/test-stats.ts              # CLI tables (default)
@@ -31,10 +31,7 @@ import {
 } from "./test-stats-printers.ts";
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "../..");
-const RESULTS_PATH = path.join(
-  PROJECT_ROOT,
-  "test-results/vitest-results.json",
-);
+const RESULTS_PATH = path.join(PROJECT_ROOT, "test-reports/vitest.json");
 const COVERAGE_PATH = path.join(PROJECT_ROOT, "coverage/coverage-summary.json");
 
 /** Trees the vitest suite covers (see `test.include` in vitest.config.ts). */
