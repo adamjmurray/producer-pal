@@ -9,8 +9,11 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { type UseChatProps } from "#webui/hooks/chat/use-chat-types";
 import {
   type MockChatClient,
+  type TestConfig,
+  type TestMessage,
   RESTORED_HISTORY,
   adapterWithClient,
   createDefaultProps,
@@ -43,17 +46,36 @@ function createToolLimitAdapter() {
   });
 }
 
+/** The props useChat takes with this file's mock adapter/client/config. */
+type ChatProps = UseChatProps<MockChatClient, TestMessage, TestConfig>;
+
 /**
  * Render useChat with default props, send "Hello", and return the result.
  * @param props - Optional props override
  * @returns Hook result ref after sending a message
  */
-async function renderAndSend(props = defaultProps) {
+async function renderAndSend(props: ChatProps = defaultProps) {
   const { result } = renderHook(() => useChat(props));
 
   await act(async () => {
     await result.current.handleSend("Hello");
   });
+
+  return result;
+}
+
+/**
+ * Render useChat with default props and enqueue a single message, asserting it
+ * reached the queue so the follow-up action starts from a known state.
+ * @param text - The message text to enqueue
+ * @returns Hook result ref holding exactly one queued message
+ */
+async function renderWithQueuedMessage(text: string) {
+  const { result } = renderHook(() => useChat(defaultProps));
+
+  await act(() => result.current.enqueueMessage(text));
+
+  expect(result.current.queuedMessages).toHaveLength(1);
 
   return result;
 }
@@ -123,12 +145,8 @@ describe("useChat", () => {
 
   describe("clearConversation", () => {
     it("resets all state to initial values", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
       // Send a message first to populate state
-      await act(async () => {
-        await result.current.handleSend("Hello");
-      });
+      const result = await renderAndSend();
 
       expect(result.current.messages.length).toBeGreaterThan(0);
       expect(result.current.activeModel).toBe("test-model");
@@ -252,11 +270,7 @@ describe("useChat", () => {
     });
 
     it("keeps queued messages when stop is pressed so they flush on the next send", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      await act(() => result.current.enqueueMessage("queued msg"));
-
-      expect(result.current.queuedMessages).toHaveLength(1);
+      const result = await renderWithQueuedMessage("queued msg");
 
       await act(() => {
         result.current.stopResponse();
@@ -269,11 +283,7 @@ describe("useChat", () => {
     });
 
     it("clears queued messages when the conversation is cleared", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      await act(() => result.current.enqueueMessage("queued msg"));
-
-      expect(result.current.queuedMessages).toHaveLength(1);
+      const result = await renderWithQueuedMessage("queued msg");
 
       await act(() => {
         result.current.clearConversation();
@@ -368,11 +378,7 @@ describe("useChat", () => {
     });
 
     it("updates messages during streaming", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
-      });
+      const result = await renderAndSend();
 
       expect(result.current.messages.length).toBeGreaterThan(0);
       expect(mockAdapter.formatMessages).toHaveBeenCalled();
@@ -411,12 +417,9 @@ describe("useChat", () => {
         });
       });
 
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: errorAdapter }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: errorAdapter,
       });
 
       expect(errorAdapter.createErrorMessage).toHaveBeenCalled();
@@ -514,12 +517,9 @@ describe("useChat", () => {
           },
       );
 
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: errorAdapter }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: errorAdapter,
       });
 
       // Error should be displayed via createErrorMessage with chatHistory

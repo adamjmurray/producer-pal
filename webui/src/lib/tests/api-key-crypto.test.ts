@@ -13,25 +13,15 @@ import {
   isEncrypted,
   resetKeyCache,
 } from "#webui/lib/api-key-crypto";
+import { deleteIndexedDb } from "#webui/test-utils/indexeddb-test-helpers";
 
 const DB_NAME = "producer-pal-crypto";
-
-/**
- * Delete the crypto-key database so each test starts with a fresh key.
- */
-async function deleteCryptoDb(): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const req = indexedDB.deleteDatabase(DB_NAME);
-
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
-}
 
 describe("api-key-crypto", () => {
   beforeEach(async () => {
     resetKeyCache();
-    await deleteCryptoDb();
+    // Delete the crypto-key database so each test starts with a fresh key.
+    await deleteIndexedDb(DB_NAME);
   });
 
   describe("encryptApiKey / decryptApiKey round-trip", () => {
@@ -100,7 +90,7 @@ describe("api-key-crypto", () => {
       const encrypted = await encryptApiKey("sk-orphaned-by-key-loss");
 
       resetKeyCache();
-      await deleteCryptoDb();
+      await deleteIndexedDb(DB_NAME);
 
       expect(await decryptApiKey(encrypted)).toBe("");
       expect(warnSpy).toHaveBeenCalled();

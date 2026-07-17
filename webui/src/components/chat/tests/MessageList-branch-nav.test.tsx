@@ -7,6 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
+import { type VNode } from "preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageList } from "#webui/components/chat/MessageList";
 import {
@@ -41,6 +42,15 @@ function model(content: string, idx: number): UIMessage {
   };
 }
 
+function emptyModel(idx: number): UIMessage {
+  return {
+    role: "model",
+    parts: [],
+    rawHistoryIndex: idx,
+    timestamp: 0,
+  };
+}
+
 function compaction(content: string, idx: number): UIMessage {
   return {
     role: "user",
@@ -50,12 +60,14 @@ function compaction(content: string, idx: number): UIMessage {
   };
 }
 
-function renderList(
+// The <MessageList> element under test. Split out from renderList so tests that
+// swap the transcript can hand the same element to `rerender`.
+function messageListElement(
   messages: UIMessage[],
   branchNav?: BranchNavState,
   isAssistantResponding = false,
-) {
-  return render(
+): VNode {
+  return (
     <MessageList
       messages={messages}
       queuedMessages={[]}
@@ -66,14 +78,92 @@ function renderList(
       showTimestamps={false}
       showTokenUsage={false}
       branchNav={branchNav}
-    />,
+    />
   );
+}
+
+function renderList(
+  messages: UIMessage[],
+  branchNav?: BranchNavState,
+  isAssistantResponding = false,
+) {
+  return render(messageListElement(messages, branchNav, isAssistantResponding));
+}
+
+// Renders the stock two-message transcript forked at a single branch point.
+function renderForkedList(
+  point: BranchPoint,
+  onSwitch: () => void,
+  isAssistantResponding = false,
+) {
+  return renderList(
+    [user("hi", 0), model("yo", 1)],
+    { points: [point], onSwitch },
+    isAssistantResponding,
+  );
+}
+
+// Renders `before` forked at `point`, clicks ›, then simulates the sibling
+// conversation loading: the transcript is replaced by `after` and the branch
+// point advances to sibling B. Returns the scrollIntoView spy installed just
+// before the swap.
+function switchToSiblingAndSwapTranscript(
+  before: UIMessage[],
+  after: UIMessage[],
+  point: BranchPoint,
+) {
+  const onSwitch = vi.fn();
+  const { rerender } = renderList(before, { points: [point], onSwitch });
+
+  fireEvent.click(screen.getByRole("button", { name: /next version/i }));
+
+  const scrollSpy = vi.fn();
+
+  Element.prototype.scrollIntoView = scrollSpy;
+  rerender(
+    messageListElement(after, {
+      points: [{ ...point, currentIndex: 1 }],
+      onSwitch,
+    }),
+  );
+
+  return scrollSpy;
+}
+
+// The ‹ and › arrows of the rendered branch-nav control.
+function branchArrows(): { prev: HTMLButtonElement; next: HTMLButtonElement } {
+  return {
+    prev: screen.getByRole("button", {
+      name: /previous version/i,
+    }) as HTMLButtonElement,
+    next: screen.getByRole("button", {
+      name: /next version/i,
+    }) as HTMLButtonElement,
+  };
 }
 
 const FORK_AT_0: BranchPoint = {
   anchorIndex: 0,
   siblingIds: ["A", "B"],
   currentIndex: 0,
+};
+
+const FORK_AT_0_ON_SIBLING_B: BranchPoint = {
+  anchorIndex: 0,
+  siblingIds: ["A", "B"],
+  currentIndex: 1,
+};
+
+const FORK_AT_1: BranchPoint = {
+  anchorIndex: 1,
+  siblingIds: ["A", "B"],
+  currentIndex: 0,
+};
+
+const FORK_AT_1_ON_SIBLING_B: BranchPoint = {
+  anchorIndex: 1,
+  siblingIds: ["A", "B"],
+  currentIndex: 1,
 };
 
 describe("MessageList branch navigation", () => {
@@ -88,19 +178,11 @@ describe("MessageList branch navigation", () => {
   });
 
   it("renders the ‹ n/m › control under the fork-point message", () => {
-    renderList([user("hi", 0), model("yo", 1)], {
-      points: [FORK_AT_0],
-      onSwitch: vi.fn(),
-    });
+    renderForkedList(FORK_AT_0, vi.fn());
 
     expect(screen.getByTestId("branch-nav-position").textContent).toBe("1 / 2");
     // First branch: previous disabled, next switches to the sibling.
-    const prev = screen.getByRole("button", {
-      name: /previous version/i,
-    }) as HTMLButtonElement;
-    const next = screen.getByRole("button", {
-      name: /next version/i,
-    }) as HTMLButtonElement;
+    const { prev, next } = branchArrows();
 
     expect(prev.disabled).toBe(true);
     expect(next.disabled).toBe(false);
@@ -109,10 +191,7 @@ describe("MessageList branch navigation", () => {
   it("switches to the next sibling when the arrow is clicked", () => {
     const onSwitch = vi.fn();
 
-    renderList([user("hi", 0), model("yo", 1)], {
-      points: [FORK_AT_0],
-      onSwitch,
-    });
+    renderForkedList(FORK_AT_0, onSwitch);
     fireEvent.click(screen.getByRole("button", { name: /next version/i }));
 
     expect(onSwitch).toHaveBeenCalledExactlyOnceWith("B");
@@ -121,10 +200,7 @@ describe("MessageList branch navigation", () => {
   it("switches to the previous sibling from the last branch", () => {
     const onSwitch = vi.fn();
 
-    renderList([user("hi", 0), model("yo", 1)], {
-      points: [{ anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 }],
-      onSwitch,
-    });
+    renderForkedList(FORK_AT_0_ON_SIBLING_B, onSwitch);
     fireEvent.click(screen.getByRole("button", { name: /previous version/i }));
 
     expect(onSwitch).toHaveBeenCalledExactlyOnceWith("A");
@@ -136,21 +212,9 @@ describe("MessageList branch navigation", () => {
     // position still renders so the user can see where they are.
     const onSwitch = vi.fn();
 
-    renderList(
-      [user("hi", 0), model("yo", 1)],
-      {
-        points: [{ anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 }],
-        onSwitch,
-      },
-      true,
-    );
+    renderForkedList(FORK_AT_0_ON_SIBLING_B, onSwitch, true);
 
-    const prev = screen.getByRole("button", {
-      name: /previous version/i,
-    }) as HTMLButtonElement;
-    const next = screen.getByRole("button", {
-      name: /next version/i,
-    }) as HTMLButtonElement;
+    const { prev, next } = branchArrows();
 
     expect(prev.disabled).toBe(true);
     expect(next.disabled).toBe(true);
@@ -164,15 +228,8 @@ describe("MessageList branch navigation", () => {
     // A retry fork anchors arrows on the assistant response (index 1). If this
     // sibling's response renders with no parts, the arrows must still show so
     // the user can page back to a sibling that has content.
-    const empty: UIMessage = {
-      role: "model",
-      parts: [],
-      rawHistoryIndex: 1,
-      timestamp: 0,
-    };
-
-    renderList([user("hi", 0), empty], {
-      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 1 }],
+    renderList([user("hi", 0), emptyModel(1)], {
+      points: [FORK_AT_1_ON_SIBLING_B],
       onSwitch: vi.fn(),
     });
 
@@ -180,15 +237,8 @@ describe("MessageList branch navigation", () => {
   });
 
   it("indexes the empty-anchor branch row so scroll-to-fork can locate it", () => {
-    const empty: UIMessage = {
-      role: "model",
-      parts: [],
-      rawHistoryIndex: 1,
-      timestamp: 0,
-    };
-
-    const { container } = renderList([user("hi", 0), empty], {
-      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 1 }],
+    const { container } = renderList([user("hi", 0), emptyModel(1)], {
+      points: [FORK_AT_1_ON_SIBLING_B],
       onSwitch: vi.fn(),
     });
 
@@ -199,7 +249,7 @@ describe("MessageList branch navigation", () => {
     // A branch point whose anchor index lands on a compaction divider must keep
     // its ‹ n/m › arrows: navigability can't depend on what the anchor renders as.
     renderList([user("hi", 0), compaction("sum", 1)], {
-      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 0 }],
+      points: [FORK_AT_1],
       onSwitch: vi.fn(),
     });
 
@@ -208,32 +258,10 @@ describe("MessageList branch navigation", () => {
   });
 
   it("scrolls a compaction-divider anchor into view after the transcript swaps", () => {
-    const onSwitch = vi.fn();
-    const { rerender } = renderList([user("first", 0), compaction("s1", 1)], {
-      points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 0 }],
-      onSwitch,
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /next version/i }));
-
-    const scrollSpy = vi.fn();
-
-    Element.prototype.scrollIntoView = scrollSpy;
-    rerender(
-      <MessageList
-        messages={[user("first", 0), compaction("s2", 1)]}
-        queuedMessages={[]}
-        onRemoveQueued={vi.fn()}
-        isAssistantResponding={false}
-        handleRetry={vi.fn()}
-        handleEdit={vi.fn()}
-        showTimestamps={false}
-        showTokenUsage={false}
-        branchNav={{
-          points: [{ anchorIndex: 1, siblingIds: ["A", "B"], currentIndex: 1 }],
-          onSwitch,
-        }}
-      />,
+    const scrollSpy = switchToSiblingAndSwapTranscript(
+      [user("first", 0), compaction("s1", 1)],
+      [user("first", 0), compaction("s2", 1)],
+      FORK_AT_1,
     );
 
     expect(scrollSpy).toHaveBeenCalledWith({
@@ -243,33 +271,10 @@ describe("MessageList branch navigation", () => {
   });
 
   it("scrolls the fork-point message into view after the transcript swaps", () => {
-    const onSwitch = vi.fn();
-    const { rerender } = renderList([user("first", 0), model("a1", 1)], {
-      points: [FORK_AT_0],
-      onSwitch,
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /next version/i }));
-
-    // Simulate the sibling conversation loading: the transcript is replaced.
-    const scrollSpy = vi.fn();
-
-    Element.prototype.scrollIntoView = scrollSpy;
-    rerender(
-      <MessageList
-        messages={[user("first", 0), model("a2", 1)]}
-        queuedMessages={[]}
-        onRemoveQueued={vi.fn()}
-        isAssistantResponding={false}
-        handleRetry={vi.fn()}
-        handleEdit={vi.fn()}
-        showTimestamps={false}
-        showTokenUsage={false}
-        branchNav={{
-          points: [{ anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 }],
-          onSwitch,
-        }}
-      />,
+    const scrollSpy = switchToSiblingAndSwapTranscript(
+      [user("first", 0), model("a1", 1)],
+      [user("first", 0), model("a2", 1)],
+      FORK_AT_0,
     );
 
     expect(scrollSpy).toHaveBeenCalledWith({
@@ -305,17 +310,10 @@ describe("MessageList branch navigation", () => {
 
     Element.prototype.scrollIntoView = scrollSpy;
     rerender(
-      <MessageList
-        messages={[...messages, user("second", 2)]}
-        queuedMessages={[]}
-        onRemoveQueued={vi.fn()}
-        isAssistantResponding={false}
-        handleRetry={vi.fn()}
-        handleEdit={vi.fn()}
-        showTimestamps={false}
-        showTokenUsage={false}
-        branchNav={{ points: [FORK_AT_0], onSwitch }}
-      />,
+      messageListElement([...messages, user("second", 2)], {
+        points: [FORK_AT_0],
+        onSwitch,
+      }),
     );
 
     // The new user message scrolls to the bottom (endRef), not the fork point.
