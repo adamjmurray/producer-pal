@@ -27,9 +27,20 @@ const ABLETON_APP = "Ableton Live 12 Suite"; // For `open -a`
 const ABLETON_PROCESS = "Live"; // For System Events
 const MCP_URL = "http://localhost:3350/mcp";
 const DIALOG_POLL_INTERVAL_MS = 250;
-const DIALOG_TIMEOUT_MS = 2500;
+// Watch long enough that a slow-to-appear "Save changes?" dialog is still caught.
+// At 2.5s, heavier scenarios (many tracks/clips) sometimes show the modal after the
+// watcher gave up, so the reopen silently didn't reset and the next model ran against
+// stale state. Keep watching across roughly the whole open window (see MCP poll below).
+const DIALOG_TIMEOUT_MS = 12000;
 const MCP_POLL_INTERVAL_MS = 500;
 const MCP_POLL_TIMEOUT_MS = 15000;
+const MAX_REOPEN_ATTEMPTS = 3;
+
+// Clean (on-disk) fingerprint per Live Set path, captured on its first successful
+// open in this process. Later opens must match it — a mismatch means the reopen
+// silently failed (most often: the screen was asleep/locked so the AppleScript
+// couldn't click "Don't Save", leaving the previous run's edits in place).
+const baselineFingerprints = new Map<string, string>();
 
 /**
  * Opens an Ableton Live project, handling the "Don't Save" dialog if it appears.
@@ -42,7 +53,46 @@ export async function openLiveSet(projectPath: string): Promise<void> {
     throw new Error(`Project file not found: ${absolutePath}`);
   }
 
-  // Start dialog watcher before opening (it polls for the dialog)
+  for (let attempt = 1; attempt <= MAX_REOPEN_ATTEMPTS; attempt++) {
+    await attemptOpen(absolutePath);
+
+    // Verify the reopen actually reset the set to its clean on-disk state. Without
+    // this, a failed reopen (e.g. the "Don't Save" dialog couldn't be dismissed
+    // because the screen was asleep/locked) silently leaves the previous run's
+    // edits in place, so the next model runs against polluted state.
+    const fingerprint = await tryReadFingerprint();
+
+    if (fingerprint == null) return; // can't verify — don't block the run
+
+    const baseline = baselineFingerprints.get(absolutePath);
+
+    if (baseline == null) {
+      baselineFingerprints.set(absolutePath, fingerprint);
+
+      return; // first open establishes the clean baseline
+    }
+
+    if (fingerprint === baseline) return; // reset confirmed
+
+    if (attempt === MAX_REOPEN_ATTEMPTS) {
+      throw new Error(
+        `Live Set did not reset to its clean state after ${MAX_REOPEN_ATTEMPTS} ` +
+          `attempts. The reopen likely failed — is the display asleep or the ` +
+          `screen locked? AppleScript can't dismiss the "Save changes?" dialog ` +
+          `when locked. Keep the display awake (caffeinate, no lid close/lock) ` +
+          `for unattended runs.`,
+      );
+    }
+    // else: stale state detected — loop and try opening again
+  }
+}
+
+/**
+ * One open attempt: run the dialog watcher, open the project, dismiss the unsaved
+ * changes dialog, and wait for the MCP server to come back.
+ * @param absolutePath - Absolute path to the .als file
+ */
+async function attemptOpen(absolutePath: string): Promise<void> {
   const dialogWatcher = startUnsavedChangesDialogWatcher();
 
   try {
@@ -50,8 +100,54 @@ export async function openLiveSet(projectPath: string): Promise<void> {
     await dismissUnsavedChangesDialog(dialogWatcher);
     await waitForMcpServer();
   } finally {
-    // Ensure dialog watcher is cleaned up
     dialogWatcher.kill();
+  }
+}
+
+/**
+ * Read a stable fingerprint of the current Live Set (counts + meta + track names)
+ * for verifying a reopen reset state. Returns null if it can't be read, so
+ * verification degrades gracefully rather than blocking the run.
+ * @returns A JSON fingerprint string, or null if unavailable
+ */
+async function tryReadFingerprint(): Promise<string | null> {
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_URL));
+  const client = new Client(
+    { name: "open-live-set-verify", version: "1.0.0" },
+    { capabilities: {} },
+  );
+
+  try {
+    await client.connect(transport);
+
+    const result = await client.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["tracks"] },
+    });
+    const text =
+      (result as { content?: Array<{ text?: string }> }).content?.[0]?.text ??
+      "";
+    const set = JSON.parse(text) as Record<string, unknown>;
+    const tracks = Array.isArray(set.tracks) ? set.tracks : [];
+    const returnTracks = Array.isArray(set.returnTracks)
+      ? set.returnTracks
+      : [];
+
+    // Track names + counts + key meta. Catches added/deleted/renamed tracks and
+    // changed tempo/key — i.e. anything a previous scenario would have mutated.
+    return JSON.stringify({
+      trackCount: tracks.length,
+      returnCount: returnTracks.length,
+      sceneCount: set.sceneCount,
+      tempo: set.tempo,
+      timeSignature: set.timeSignature,
+      scale: set.scale,
+      trackNames: tracks.map((t) => (t as { name?: unknown }).name).sort(),
+    });
+  } catch {
+    return null;
+  } finally {
+    await client.close().catch(() => {});
   }
 }
 

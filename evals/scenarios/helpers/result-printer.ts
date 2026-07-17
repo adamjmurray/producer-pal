@@ -104,7 +104,7 @@ function printJudgeDimensions(
 ): void {
   const details = assertion.details as JudgeResult | undefined;
 
-  if (!details) return;
+  if (!details?.accuracy) return;
 
   for (const dim of DIMENSION_KEYS) {
     const dimScore = details[dim].score.toFixed(2);

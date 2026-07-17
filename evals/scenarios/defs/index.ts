@@ -49,3 +49,47 @@ export { midiBassline } from "./midi/midi-bassline.ts";
 // complex workflow
 export { arrangementWorkflow } from "./workflow/arrangement-workflow.ts";
 export { jambalayaSamplerPlate } from "./workflow/jambalaya-sampler-plate.ts";
+
+// --- Expanded suite (selection/view, deeper device + musical scenarios) ---
+
+// selection / view state
+export { selectTrackAndScene } from "./selection/select-track-and-scene.ts";
+export { switchToArrangementView } from "./selection/switch-to-arrangement-view.ts";
+export { navigateAndPlayScene } from "./selection/navigate-and-play-scene.ts";
+
+// transport
+export { loopPlaybackRegion } from "./transport/loop-playback-region.ts";
+
+// track management
+export { colorTracksByRole } from "./tracks/color-tracks-by-role.ts";
+export { renameTracksConvention } from "./tracks/rename-tracks-convention.ts";
+export { armAndConfigureTrack } from "./tracks/arm-and-configure-track.ts";
+export { reorderViaDuplicate } from "./tracks/reorder-via-duplicate.ts";
+
+// scene management
+export { buildSongSections } from "./scenes/build-song-sections.ts";
+export { colorAndNameScenes } from "./scenes/color-and-name-scenes.ts";
+export { fillAndPlayScene } from "./scenes/fill-and-play-scene.ts";
+
+// device handling
+export { addEqCutLows } from "./devices/add-eq-cut-lows.ts";
+export { buildEffectsChain } from "./devices/build-effects-chain.ts";
+export { groupIntoAudioRack } from "./devices/group-into-audio-rack.ts";
+export { tweakDeviceParameters } from "./devices/tweak-device-parameters.ts";
+export { rackWithMacros } from "./devices/rack-with-macros.ts";
+export { instrumentPlusEffects } from "./devices/instrument-plus-effects.ts";
+
+// MIDI generation / editing
+export { chordProgressionInKey } from "./midi/chord-progression-in-key.ts";
+export { melodyOverChords } from "./midi/melody-over-chords.ts";
+export { basslineFollowsRoots } from "./midi/bassline-follows-roots.ts";
+export { transposeMelodyUpOctave } from "./midi/transpose-melody-up-octave.ts";
+export { swingAndHumanizeDrums } from "./midi/swing-and-humanize-drums.ts";
+export { thinOutClip } from "./midi/thin-out-clip.ts";
+
+// analysis / complex workflow
+export { analyzeAndNameProgression } from "./workflow/analyze-and-name-progression.ts";
+export { analyzeSetSuggestAdditions } from "./workflow/analyze-set-suggest-additions.ts";
+export { arrangeVerseChorus } from "./workflow/arrange-verse-chorus.ts";
+export { extendArrangementSection } from "./workflow/extend-arrangement-section.ts";
+export { fullBeatFromScratch } from "./workflow/full-beat-from-scratch.ts";

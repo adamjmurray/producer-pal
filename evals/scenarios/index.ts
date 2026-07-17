@@ -168,22 +168,26 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
     for (const scenario of scenarios) {
       const modelResults = new Map<string, Map<string, EvalScenarioResult>>();
-      let liveSetOpened = false;
 
       for (const spec of modelSpecs) {
         const modelKey = `${spec.provider}/${spec.model}`;
         const configResults = new Map<string, EvalScenarioResult>();
 
         for (const profile of configProfiles) {
+          // Reopen the Live Set before EVERY model+config run so each starts from
+          // an identical, fresh state. Otherwise a modifying scenario leaves the
+          // set changed, and the next model runs against those changes — correctly
+          // doing nothing ("already done") and getting wrongly penalized on its
+          // tool-call assertions. Pass -s/--skip-setup to opt out (e.g. fast
+          // single-model probes against the already-open set).
           const result = await runScenario(scenario, {
             provider: spec.provider,
             model: spec.model,
-            skipLiveSetOpen: options.skipSetup ?? liveSetOpened,
+            skipLiveSetOpen: options.skipSetup ?? false,
             judgeOverride,
             configProfile: profile,
           });
 
-          liveSetOpened = true;
           configResults.set(profile.id, result);
           printResult(result, modelKey, profile.id);
         }
