@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
@@ -11,7 +12,19 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   workers: 2, // Limit workers to avoid overwhelming the system
-  reporter: "list",
+  // The JSON report feeds the CI e2e stats summary (scripts/stats/e2e-stats.ts).
+  reporter: [
+    ["list"],
+    [
+      "json",
+      {
+        outputFile: join(
+          import.meta.dirname,
+          "../test-reports/playwright-docs.json",
+        ),
+      },
+    ],
+  ],
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",

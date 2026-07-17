@@ -8,184 +8,211 @@
  */
 import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
-import { useMessageQueue } from "#webui/hooks/chat/use-message-queue";
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
+import {
+  useMessageQueue,
+  type DrainedQueue,
+} from "#webui/hooks/chat/use-message-queue";
+
+/** Live handle to the hook under test, as returned by renderHook. */
+type QueueHandle = { current: ReturnType<typeof useMessageQueue> };
+
+/** A message to enqueue: bare text, or text paired with its turn overrides. */
+type QueueEntry = string | [text: string, overrides: MessageOverrides];
+
+/**
+ * Render the useMessageQueue hook under test.
+ * @returns The live hook handle
+ */
+function renderQueue(): QueueHandle {
+  const { result } = renderHook(() => useMessageQueue());
+
+  return result;
+}
+
+/**
+ * Enqueue messages in order, each in its own act() so state settles between
+ * them (the hook captures a turn's overrides from whichever message finds the
+ * queue empty).
+ * @param queue - The live hook handle
+ * @param entries - Message texts, optionally paired with per-call overrides
+ */
+async function enqueueMessages(
+  queue: QueueHandle,
+  ...entries: QueueEntry[]
+): Promise<void> {
+  for (const entry of entries) {
+    const [text, overrides] =
+      typeof entry === "string" ? [entry, undefined] : entry;
+
+    await act(() => queue.current.enqueueMessage(text, overrides));
+  }
+}
+
+/**
+ * Drain the queue inside act() and hand back what it returned.
+ * @param queue - The live hook handle
+ * @returns The drained messages and captured turn overrides
+ */
+async function drainQueue(queue: QueueHandle): Promise<DrainedQueue> {
+  let drained: DrainedQueue | undefined;
+
+  await act(() => {
+    drained = queue.current.drainQueue();
+  });
+
+  return drained!;
+}
 
 describe("useMessageQueue", () => {
   it("starts with an empty queue", () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    expect(result.current.queuedMessages).toStrictEqual([]);
+    expect(queue.current.queuedMessages).toStrictEqual([]);
   });
 
   it("enqueues messages and exposes them in state", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("hello"));
-    await act(() => result.current.enqueueMessage("world"));
+    await enqueueMessages(queue, "hello", "world");
 
-    expect(result.current.queuedMessages).toHaveLength(2);
-    expect(result.current.queuedMessages[0]?.text).toBe("hello");
-    expect(result.current.queuedMessages[1]?.text).toBe("world");
+    expect(queue.current.queuedMessages).toHaveLength(2);
+    expect(queue.current.queuedMessages[0]?.text).toBe("hello");
+    expect(queue.current.queuedMessages[1]?.text).toBe("world");
   });
 
   it("captures the override once from the first queued message of a turn", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
     // The first message defines the turn's override; later messages in the same
     // turn cannot change it, so the second message's override is
     // ignored even when it differs.
-    await act(() => result.current.enqueueMessage("a", { thinking: "high" }));
-    await act(() => result.current.enqueueMessage("b", { thinking: "off" }));
+    await enqueueMessages(
+      queue,
+      ["a", { thinking: "high" }],
+      ["b", { thinking: "off" }],
+    );
 
-    let drained: ReturnType<typeof result.current.drainQueue>;
+    const drained = await drainQueue(queue);
 
-    await act(() => {
-      drained = result.current.drainQueue();
-    });
-
-    expect(drained!.overrides).toStrictEqual({ thinking: "high" });
+    expect(drained.overrides).toStrictEqual({ thinking: "high" });
   });
 
   it("recaptures the override on the next turn after draining", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("a", { thinking: "high" }));
-    await act(() => {
-      result.current.drainQueue();
-    });
+    await enqueueMessages(queue, ["a", { thinking: "high" }]);
+    await drainQueue(queue);
 
-    await act(() => result.current.enqueueMessage("b", { thinking: "off" }));
+    await enqueueMessages(queue, ["b", { thinking: "off" }]);
 
-    let drained: ReturnType<typeof result.current.drainQueue>;
+    const drained = await drainQueue(queue);
 
-    await act(() => {
-      drained = result.current.drainQueue();
-    });
-
-    expect(drained!.overrides).toStrictEqual({ thinking: "off" });
+    expect(drained.overrides).toStrictEqual({ thinking: "off" });
   });
 
   it("drains all messages in FIFO order and clears queue", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("first"));
-    await act(() => result.current.enqueueMessage("second"));
+    await enqueueMessages(queue, "first", "second");
 
-    let drained: ReturnType<typeof result.current.drainQueue>;
+    const drained = await drainQueue(queue);
 
-    await act(() => {
-      drained = result.current.drainQueue();
-    });
-
-    expect(drained!.messages).toHaveLength(2);
-    expect(drained!.messages[0]?.text).toBe("first");
-    expect(drained!.messages[1]?.text).toBe("second");
-    expect(result.current.queuedMessages).toStrictEqual([]);
+    expect(drained.messages).toHaveLength(2);
+    expect(drained.messages[0]?.text).toBe("first");
+    expect(drained.messages[1]?.text).toBe("second");
+    expect(queue.current.queuedMessages).toStrictEqual([]);
   });
 
   it("returns an empty result when draining empty queue", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    let drained: ReturnType<typeof result.current.drainQueue>;
+    const drained = await drainQueue(queue);
 
-    await act(() => {
-      drained = result.current.drainQueue();
-    });
-
-    expect(drained!.messages).toStrictEqual([]);
-    expect(drained!.overrides).toBeUndefined();
+    expect(drained.messages).toStrictEqual([]);
+    expect(drained.overrides).toBeUndefined();
   });
 
   it("clears all queued messages", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("a"));
-    await act(() => result.current.enqueueMessage("b"));
-    await act(() => result.current.clearQueue());
+    await enqueueMessages(queue, "a", "b");
+    await act(() => queue.current.clearQueue());
 
-    expect(result.current.queuedMessages).toStrictEqual([]);
+    expect(queue.current.queuedMessages).toStrictEqual([]);
   });
 
   it("keeps queueRef in sync for synchronous reads", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("sync-test"));
+    await enqueueMessages(queue, "sync-test");
 
-    expect(result.current.queueRef.current).toHaveLength(1);
-    expect(result.current.queueRef.current[0]?.text).toBe("sync-test");
+    expect(queue.current.queueRef.current).toHaveLength(1);
+    expect(queue.current.queueRef.current[0]?.text).toBe("sync-test");
   });
 
   it("assigns unique ids to each enqueued message", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("a"));
-    await act(() => result.current.enqueueMessage("b"));
-    await act(() => result.current.enqueueMessage("c"));
+    await enqueueMessages(queue, "a", "b", "c");
 
-    const ids = result.current.queuedMessages.map((m) => m.id);
+    const ids = queue.current.queuedMessages.map((m) => m.id);
     const uniqueIds = new Set(ids);
 
     expect(uniqueIds.size).toBe(3);
   });
 
   it("removeMessage removes the message with the given id", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("a"));
-    await act(() => result.current.enqueueMessage("b"));
-    await act(() => result.current.enqueueMessage("c"));
+    await enqueueMessages(queue, "a", "b", "c");
 
-    const middleId = result.current.queuedMessages[1]!.id;
+    const middleId = queue.current.queuedMessages[1]!.id;
 
-    await act(() => result.current.removeMessage(middleId));
+    await act(() => queue.current.removeMessage(middleId));
 
-    expect(result.current.queuedMessages).toHaveLength(2);
-    expect(result.current.queuedMessages[0]?.text).toBe("a");
-    expect(result.current.queuedMessages[1]?.text).toBe("c");
+    expect(queue.current.queuedMessages).toHaveLength(2);
+    expect(queue.current.queuedMessages[0]?.text).toBe("a");
+    expect(queue.current.queuedMessages[1]?.text).toBe("c");
   });
 
   it("removeMessage is a no-op for unknown id", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("only"));
-    await act(() => result.current.removeMessage(999));
+    await enqueueMessages(queue, "only");
+    await act(() => queue.current.removeMessage(999));
 
-    expect(result.current.queuedMessages).toHaveLength(1);
-    expect(result.current.queuedMessages[0]?.text).toBe("only");
+    expect(queue.current.queuedMessages).toHaveLength(1);
+    expect(queue.current.queuedMessages[0]?.text).toBe("only");
   });
 
   it("resets the captured override when removeMessage empties the queue", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("a", { thinking: "high" }));
+    await enqueueMessages(queue, ["a", { thinking: "high" }]);
 
-    const onlyId = result.current.queuedMessages[0]!.id;
+    const onlyId = queue.current.queuedMessages[0]!.id;
 
-    await act(() => result.current.removeMessage(onlyId));
+    await act(() => queue.current.removeMessage(onlyId));
 
     // Next message starts a fresh turn and recaptures its own override.
-    await act(() => result.current.enqueueMessage("b", { thinking: "off" }));
+    await enqueueMessages(queue, ["b", { thinking: "off" }]);
 
-    let drained: ReturnType<typeof result.current.drainQueue>;
+    const drained = await drainQueue(queue);
 
-    await act(() => {
-      drained = result.current.drainQueue();
-    });
-
-    expect(drained!.overrides).toStrictEqual({ thinking: "off" });
+    expect(drained.overrides).toStrictEqual({ thinking: "off" });
   });
 
   it("keeps queueRef in sync after removeMessage", async () => {
-    const { result } = renderHook(() => useMessageQueue());
+    const queue = renderQueue();
 
-    await act(() => result.current.enqueueMessage("stay"));
-    await act(() => result.current.enqueueMessage("go"));
+    await enqueueMessages(queue, "stay", "go");
 
-    const removeId = result.current.queuedMessages[1]!.id;
+    const removeId = queue.current.queuedMessages[1]!.id;
 
-    await act(() => result.current.removeMessage(removeId));
+    await act(() => queue.current.removeMessage(removeId));
 
-    expect(result.current.queueRef.current).toHaveLength(1);
-    expect(result.current.queueRef.current[0]?.text).toBe("stay");
+    expect(queue.current.queueRef.current).toHaveLength(1);
+    expect(queue.current.queueRef.current[0]?.text).toBe("stay");
   });
 });

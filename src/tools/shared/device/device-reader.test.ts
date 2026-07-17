@@ -280,6 +280,17 @@ describe("device-reader", () => {
         ],
       });
     });
+
+    it("returns a non-object chain entry unchanged", () => {
+      // The `typeof chain === "object"` test must short-circuit: probing a
+      // primitive with the `in` operator would throw.
+      const obj = { type: "audio-effect-rack", chains: ["raw-entry"] };
+
+      expect(cleanupInternalDrumPads(obj)).toStrictEqual({
+        type: "audio-effect-rack",
+        chains: ["raw-entry"],
+      });
+    });
   });
 
   describe("getDrumMap", () => {
@@ -290,6 +301,33 @@ describe("device-reader", () => {
       ];
 
       expect(getDrumMap(devices)).toBe(null);
+    });
+
+    it("ignores a drum rack that has no processed pads", () => {
+      // Both halves must hold: a drum-rack-typed device without
+      // _processedDrumPads carries no map and must not be collected.
+      expect(getDrumMap([{ type: "drum-rack" }])).toBe(null);
+    });
+
+    it("ignores a nested chain that has no devices", () => {
+      // The `chain.devices` guard protects the recursive descent — without it,
+      // iterating an absent device list would throw.
+      const devices = [{ type: "instrument-rack", chains: [{}] }];
+
+      expect(getDrumMap(devices)).toBe(null);
+    });
+
+    it("keys a note-0 pad by MIDI number for midi-json notation", () => {
+      // MIDI note 0 is a real note, not a catch-all: the catch-all test is
+      // `midi < 0`, so 0 must fall through to the notation-specific key.
+      const devices = [
+        {
+          type: "drum-rack",
+          _processedDrumPads: [{ note: 0, pitch: "C-2", name: "Sub" }],
+        },
+      ];
+
+      expect(getDrumMap(devices, "midi-json")).toStrictEqual({ 0: "Sub" });
     });
 
     it("returns empty object when drum rack has no playable chains", () => {

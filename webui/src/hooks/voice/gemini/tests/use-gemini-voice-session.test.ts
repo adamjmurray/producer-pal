@@ -195,6 +195,75 @@ async function renderConnected(
 }
 
 /**
+ * Render the hook with no API key and run the (failing) connect().
+ * @returns The renderHook result
+ */
+async function renderKeyless() {
+  const view = renderHook(() =>
+    useGeminiVoiceSession({ ...PARAMS, geminiKey: null }),
+  );
+
+  await act(async () => {
+    await view.result.current.connect();
+  });
+
+  return view;
+}
+
+/** A server message shaped for the `onmessage` callback. */
+type ServerMessage = Record<string, unknown>;
+
+/**
+ * Build an incoming user-transcription message.
+ * @param text - The transcribed text
+ * @returns A server message carrying the transcript
+ */
+function transcriptMsg(text: string): ServerMessage {
+  return { serverContent: { inputTranscription: { text } } };
+}
+
+/**
+ * Build an assistant audio-chunk message (drives the half-duplex auto-mute).
+ * @param data - Base64 audio payload
+ * @returns A server message carrying one model-turn audio part
+ */
+function assistantAudioMsg(data: string): ServerMessage {
+  return {
+    serverContent: { modelTurn: { parts: [{ inlineData: { data } }] } },
+  };
+}
+
+/** End-of-assistant-turn message. */
+const TURN_COMPLETE: ServerMessage = { serverContent: { turnComplete: true } };
+
+/**
+ * Deliver server messages through the live-session onmessage callback. All
+ * messages land inside a single act() so effects flush once, as they would for
+ * a burst arriving on the transport.
+ * @param messages - Server messages to deliver in order
+ */
+async function emit(...messages: ServerMessage[]): Promise<void> {
+  await act(async () => {
+    for (const message of messages) {
+      h.state.callbacks.onmessage?.(message);
+    }
+  });
+}
+
+/** The `result` handle returned by renderHook for this hook. */
+type SessionResult = { current: ReturnType<typeof useGeminiVoiceSession> };
+
+/**
+ * Clear the transcript via the hook's resetHistory().
+ * @param result - The renderHook result handle
+ */
+async function resetHistory(result: SessionResult): Promise<void> {
+  await act(async () => {
+    result.current.resetHistory();
+  });
+}
+
+/**
  * A one-shot gate promise plus its release trigger, for parking an async mock.
  * @returns The gate promise and its resolver
  */
@@ -205,6 +274,25 @@ function makeGate(): { gate: Promise<void>; release: () => void } {
   });
 
   return { gate, release };
+}
+
+/**
+ * Render the hook and kick off connect() WITHOUT awaiting it — the caller has
+ * parked a gated mock, so connect stays suspended inside it. Returns once
+ * `parked` observes the gated resource, ready for teardown to be interleaved.
+ * @param parked - Assertion polled until the gated mock is running
+ * @returns The renderHook result and the in-flight connect() promise
+ */
+async function connectParkedAt(parked: () => void) {
+  const view = renderHook((p: typeof PARAMS) => useGeminiVoiceSession(p), {
+    initialProps: PARAMS,
+  });
+  // Wrap in act so React state updates flush as they happen.
+  const connectPromise = act(() => view.result.current.connect());
+
+  await vi.waitFor(parked);
+
+  return { view, connectPromise };
 }
 
 /**
@@ -248,13 +336,7 @@ afterEach(() => {
 
 describe("useGeminiVoiceSession", () => {
   it("errors without a key and never opens a session", async () => {
-    const { result } = renderHook(() =>
-      useGeminiVoiceSession({ ...PARAMS, geminiKey: null }),
-    );
-
-    await act(async () => {
-      await result.current.connect();
-    });
+    const { result } = await renderKeyless();
 
     expect(result.current.status).toBe("error");
     expect(result.current.error).toMatch(/Gemini API key/);
@@ -308,11 +390,7 @@ describe("useGeminiVoiceSession", () => {
   it("renders incoming transcripts into history", async () => {
     const { result } = await renderConnected();
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: { inputTranscription: { text: "hello there" } },
-      });
-    });
+    await emit(transcriptMsg("hello there"));
 
     expect(result.current.history[0]).toMatchObject({
       role: "user",
@@ -389,13 +467,8 @@ describe("useGeminiVoiceSession", () => {
   });
 
   it("retryResponse clears the error banner", async () => {
-    const { result } = renderHook(() =>
-      useGeminiVoiceSession({ ...PARAMS, geminiKey: null }),
-    );
+    const { result } = await renderKeyless();
 
-    await act(async () => {
-      await result.current.connect();
-    });
     expect(result.current.error).not.toBeNull();
 
     await act(async () => {
@@ -407,39 +480,25 @@ describe("useGeminiVoiceSession", () => {
   it("resetHistory clears the transcript", async () => {
     const { result } = await renderConnected();
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: { inputTranscription: { text: "hi" } },
-      });
-    });
+    await emit(transcriptMsg("hi"));
     expect(result.current.history).toHaveLength(1);
 
-    await act(async () => {
-      result.current.resetHistory();
-    });
+    await resetHistory(result);
     expect(result.current.history).toHaveLength(0);
   });
 
   it("closes the orphaned player when teardown races player.resume()", async () => {
     // Park player.resume so we can interleave teardown. cleanup() must capture
     // the player ref BEFORE the await; otherwise the AudioContext leaks.
-    let resolveResume!: () => void;
+    const { gate, release: resolveResume } = makeGate();
 
-    h.state.playerResumeGate = new Promise<void>((r) => {
-      resolveResume = r;
-    });
-
-    const view = renderHook((p: typeof PARAMS) => useGeminiVoiceSession(p), {
-      initialProps: PARAMS,
-    });
-    const connectPromise = act(() => view.result.current.connect());
+    h.state.playerResumeGate = gate;
 
     // Wait until the player has been constructed and resume() is parked.
-    await vi.waitFor(() => {
+    const { view, connectPromise } = await connectParkedAt(() => {
       expect(h.FakePlayer.last).not.toBeNull();
       expect(h.FakePlayer.last!.resume).toHaveBeenCalled();
     });
-
     const player = h.FakePlayer.last!;
 
     // Tear down WHILE player.resume is parked. cleanup() must see this player
@@ -463,23 +522,13 @@ describe("useGeminiVoiceSession", () => {
     // instance live so the UI stays current after a reset.
     const { result } = await renderConnected();
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: { inputTranscription: { text: "hello" } },
-      });
-    });
+    await emit(transcriptMsg("hello"));
     expect(result.current.history).toHaveLength(1);
 
-    await act(async () => {
-      result.current.resetHistory();
-    });
+    await resetHistory(result);
     expect(result.current.history).toHaveLength(0);
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: { inputTranscription: { text: "world" } },
-      });
-    });
+    await emit(transcriptMsg("world"));
     expect(result.current.history).toHaveLength(1);
     expect(result.current.history[0]).toMatchObject({
       content: [{ transcript: "world" }],
@@ -487,26 +536,16 @@ describe("useGeminiVoiceSession", () => {
   });
 
   it("stops the orphaned mic when teardown races mic.start()", async () => {
-    let resolveStart!: () => void;
+    const { gate, release: resolveStart } = makeGate();
 
-    h.state.micStartGate = new Promise<void>((r) => {
-      resolveStart = r;
-    });
-
-    const view = renderHook((p: typeof PARAMS) => useGeminiVoiceSession(p), {
-      initialProps: PARAMS,
-    });
-    // Kick off connect() — DON'T await; it's parked inside mic.start awaiting
-    // the gate. Wrap in act so React state updates flush as they happen.
-    const connectPromise = act(() => view.result.current.connect());
+    h.state.micStartGate = gate;
 
     // Wait until the mic instance has been constructed and start() has been
     // called (so it's actually parked on the gate).
-    await vi.waitFor(() => {
+    const { view, connectPromise } = await connectParkedAt(() => {
       expect(h.FakeMic.last).not.toBeNull();
       expect(h.FakeMic.last!.start).toHaveBeenCalled();
     });
-
     const mic = h.FakeMic.last!;
 
     // Tear down WHILE mic.start is still parked. cleanup() captures and
@@ -626,20 +665,10 @@ describe("useGeminiVoiceSession", () => {
     // Manual setMuted from mic.start(false) at connect, then nothing yet.
     mic.setMuted.mockClear();
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: {
-          modelTurn: { parts: [{ inlineData: { data: "AUDIO1" } }] },
-        },
-      });
-    });
+    await emit(assistantAudioMsg("AUDIO1"));
     expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: { turnComplete: true },
-      });
-    });
+    await emit(TURN_COMPLETE);
     // Restored to the user's manual state (unmuted → false).
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
   });
@@ -657,13 +686,7 @@ describe("useGeminiVoiceSession", () => {
     mic.setMuted.mockClear();
 
     // Assistant audio auto-mutes the mic.
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: {
-          modelTurn: { parts: [{ inlineData: { data: "AUDIO" } }] },
-        },
-      });
-    });
+    await emit(assistantAudioMsg("AUDIO"));
     expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
 
     // Manual interrupt — without any turnComplete — restores the mic.
@@ -681,16 +704,7 @@ describe("useGeminiVoiceSession", () => {
 
     mic.setMuted.mockClear();
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: {
-          modelTurn: { parts: [{ inlineData: { data: "AUDIO" } }] },
-        },
-      });
-      h.state.callbacks.onmessage?.({
-        serverContent: { turnComplete: true },
-      });
-    });
+    await emit(assistantAudioMsg("AUDIO"), TURN_COMPLETE);
 
     expect(mic.setMuted).not.toHaveBeenCalled();
   });
@@ -707,16 +721,7 @@ describe("useGeminiVoiceSession", () => {
     expect(result.current.isMuted).toBe(true);
     mic.setMuted.mockClear();
 
-    await act(async () => {
-      h.state.callbacks.onmessage?.({
-        serverContent: {
-          modelTurn: { parts: [{ inlineData: { data: "A" } }] },
-        },
-      });
-      h.state.callbacks.onmessage?.({
-        serverContent: { turnComplete: true },
-      });
-    });
+    await emit(assistantAudioMsg("A"), TURN_COMPLETE);
 
     // Both calls should be `true`: auto-mute (true), then restore-to-manual (true).
     expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);

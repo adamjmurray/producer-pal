@@ -205,3 +205,84 @@ export function setupClipSplittingMocks(
 
   return { callState };
 }
+
+export const SPLIT_CLIP_ID = "clip_1";
+
+interface SplitTestFixture {
+  clipId: string;
+  callState: SplittingCallState;
+  mockClip: LiveAPI;
+  clips: LiveAPI[];
+}
+
+/**
+ * Setup mocks and the performSplitting arguments for a single-clip split test.
+ * @param clipProps - Clip properties
+ * @returns The clip id, call-tracking state, and the clip/clips arguments
+ */
+export function setupSplitTest(
+  clipProps: SplittingClipProps = {},
+): SplitTestFixture {
+  const { callState } = setupClipSplittingMocks(SPLIT_CLIP_ID, clipProps);
+  const mockClip = LiveAPI.from(`id ${SPLIT_CLIP_ID}`);
+
+  return { clipId: SPLIT_CLIP_ID, callState, mockClip, clips: [mockClip] };
+}
+
+interface DuplicateCounter {
+  count: number;
+}
+
+/**
+ * Replace the track's call mock with a bare duplicate counter that returns
+ * sequential "dup_N" ids without registering the duplicates.
+ * @param trackMock - The track mock to override
+ * @param opts - Options
+ * @param opts.failOnDuplicate - 1-based duplicate call that returns the
+ *   non-existent id "0" (Live's silent-failure signal) instead of a clip
+ * @returns Counter whose `count` tracks duplicate_clip_to_arrangement calls
+ */
+export function overrideWithDuplicateCounter(
+  trackMock: RegisteredMockObject,
+  opts: { failOnDuplicate?: number } = {},
+): DuplicateCounter {
+  const counter: DuplicateCounter = { count: 0 };
+
+  trackMock.call.mockImplementation((method: string) => {
+    if (method === "duplicate_clip_to_arrangement") {
+      counter.count++;
+
+      if (counter.count === opts.failOnDuplicate) return ["id", "0"];
+
+      return ["id", `dup_${counter.count}`];
+    }
+
+    if (method === "create_midi_clip") return ["id", "temp_1"];
+  });
+
+  return counter;
+}
+
+/**
+ * Register fresh arrangement clips and make the track's rescan return them.
+ * @param trackMock - The track mock whose arrangement_clips are rescanned
+ * @param freshClips - [id, start_time] pairs, in arrangement-clip index order
+ */
+export function mockArrangementClipsRescan(
+  trackMock: RegisteredMockObject,
+  freshClips: Array<[string, number]>,
+): void {
+  for (const [index, [id, startTime]] of freshClips.entries()) {
+    registerMockObject(id, {
+      path: livePath.track(0).arrangementClip(index),
+      type: "Clip",
+      properties: { start_time: startTime },
+    });
+  }
+
+  trackMock.get.mockImplementation((prop: string) =>
+    prop === "arrangement_clips"
+      ? freshClips.flatMap(([id]) => ["id", id])
+      : [0],
+  );
+}

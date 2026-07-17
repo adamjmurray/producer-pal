@@ -13,7 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedOptions,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
+} from "../../specialized-device-registry.ts";
 
 // Category list for testing: underscore-separated internal names.
 const MOCK_CATEGORY_LIST = [
@@ -143,9 +143,13 @@ describe("Hybrid Reverb pseudo-params", () => {
         "updateDevice",
       );
 
+      // The whole catalog, comma-separated and de-underscored — this warning is
+      // the model's only listing of the valid category names.
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("Early Reflections"),
+        expect.stringContaining(
+          "Available: Early Reflections, Halls, Real Places",
+        ),
       );
     });
   });
@@ -218,6 +222,31 @@ describe("Hybrid Reverb pseudo-params", () => {
         1,
         expect.stringContaining("no files"),
       );
+    });
+
+    it("sets the only file in a single-file category", () => {
+      // A one-entry list is "empty" only when that entry is the sentinel — a
+      // category holding exactly one real IR must still be settable.
+      const device = registerHybridReverb({
+        ir_file_list: ["Solo Hall"],
+      });
+
+      applySpecializedParamWrite(device, "irFile", "Solo Hall", "updateDevice");
+
+      expect(device.set).toHaveBeenCalledWith("ir_file_index", 0);
+    });
+
+    it("sets the first file in the list (index 0)", () => {
+      const device = registerHybridReverb();
+
+      applySpecializedParamWrite(
+        device,
+        "irFile",
+        "Berliner Hall LR",
+        "updateDevice",
+      );
+
+      expect(device.set).toHaveBeenCalledWith("ir_file_index", 0);
     });
   });
 
@@ -365,6 +394,25 @@ describe("Hybrid Reverb pseudo-params", () => {
       );
 
       expect(device.set).toHaveBeenCalledWith("ir_time_shaping_on", 0);
+    });
+
+    it("warns naming irTimeShapingOn and skips uninterpretable input", () => {
+      const device = registerHybridReverb();
+
+      applySpecializedParamWrite(
+        device,
+        "irTimeShapingOn",
+        "maybe",
+        "updateDevice",
+      );
+
+      expect(device.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          '"maybe" is not a valid irTimeShapingOn (expected true/false)',
+        ),
+      );
     });
   });
 

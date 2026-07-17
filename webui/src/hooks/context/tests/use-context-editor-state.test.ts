@@ -98,6 +98,64 @@ function deferredSave(): {
   return { save, resolveSave: (saved) => resolve(saved) };
 }
 
+type RenderedEditor = ReturnType<typeof renderEditor>;
+
+/**
+ * Drive a memory through an error → ready recovery: the status flips to error
+ * (the editor unmounts in the real UI), then the server's content comes back.
+ * @param setMemory - The rendered editor's memory setter
+ * @param save - The save spy carried across both status transitions
+ * @param recoveredContent - The server content the memory recovers with
+ */
+function recoverThroughError(
+  setMemory: RenderedEditor["setMemory"],
+  save: ReturnType<typeof vi.fn>,
+  recoveredContent: string,
+): void {
+  setMemory(makeMemory({ status: { kind: "error", message: "boom" }, save }));
+  setMemory(
+    makeMemory({ status: { kind: "ready", content: recoveredContent }, save }),
+  );
+}
+
+/**
+ * Type into the editor draft without advancing any timers, leaving the
+ * debounced save armed but unfired.
+ * @param result - The rendered hook's result handle
+ * @param value - The draft text to type
+ */
+async function typeDraft(
+  result: RenderedEditor["result"],
+  value: string,
+): Promise<void> {
+  await act(() => {
+    result.current.handleChange(value);
+  });
+}
+
+/**
+ * Advance past the 800ms debounce window so the pending save dispatches, then
+ * let its promise settle.
+ * @param microtaskTurns - How many microtask turns to drain after the timer
+ */
+async function flushDebounceWindow(microtaskTurns = 1): Promise<void> {
+  await act(async () => {
+    vi.advanceTimersByTime(800);
+    for (let i = 0; i < microtaskTurns; i++) await Promise.resolve();
+  });
+}
+
+/**
+ * Drain microtask turns so any awaited continuations run, without advancing
+ * timers — used to prove a handler is still blocked on an in-flight save.
+ * @param turns - How many microtask turns to drain
+ */
+async function drainMicrotasks(turns = 3): Promise<void> {
+  await act(async () => {
+    for (let i = 0; i < turns; i++) await Promise.resolve();
+  });
+}
+
 /**
  * Stub `window.confirm` to return the given answer.
  * @param answer - What confirm() should return (accept vs cancel)
@@ -130,20 +188,12 @@ describe("useContextEditorState", () => {
       const { result, setMemory } = renderReadyEditor({ save });
 
       // User types — populates draftRef. Don't advance the debounce timer.
-      await act(() => {
-        result.current.handleChange("draft");
-      });
+      await typeDraft(result, "draft");
 
-      // Status flips to error. Editor unmounts in the real UI. Refs should
-      // be nulled by the new effect.
-      setMemory(
-        makeMemory({ status: { kind: "error", message: "boom" }, save }),
-      );
-
-      // Server externally moves to "fresh"; status recovers to ready.
-      setMemory(
-        makeMemory({ status: { kind: "ready", content: "fresh" }, save }),
-      );
+      // Status flips to error (the editor unmounts in the real UI, and refs
+      // should be nulled by the new effect), then the server externally moves
+      // to "fresh" and status recovers to ready.
+      recoverThroughError(setMemory, save, "fresh");
 
       // beforeunload fires. With the fix, the seed effect re-ran on recovery
       // (refs were null) so draftRef=lastSavedRef="fresh" and flushSave bails
@@ -159,20 +209,10 @@ describe("useContextEditorState", () => {
       const save = vi.fn().mockResolvedValue(true);
       const { result, setMemory } = renderReadyEditor({ save });
 
-      setMemory(
-        makeMemory({ status: { kind: "error", message: "boom" }, save }),
-      );
-      setMemory(
-        makeMemory({ status: { kind: "ready", content: "fresh" }, save }),
-      );
+      recoverThroughError(setMemory, save, "fresh");
 
-      await act(() => {
-        result.current.handleChange("post-recovery edit");
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(800);
-        await Promise.resolve();
-      });
+      await typeDraft(result, "post-recovery edit");
+      await flushDebounceWindow();
 
       expect(save).toHaveBeenCalledWith("post-recovery edit");
     });
@@ -279,13 +319,8 @@ describe("useContextEditorState", () => {
       stubConfirm(true);
 
       // Trigger a debounced save that the test will hold in-flight.
-      await act(() => {
-        result.current.handleChange("draft");
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(800);
-        await Promise.resolve();
-      });
+      await typeDraft(result, "draft");
+      await flushDebounceWindow();
       expect(save).toHaveBeenCalledTimes(1);
       expect(clear).not.toHaveBeenCalled();
 
@@ -296,9 +331,7 @@ describe("useContextEditorState", () => {
         clearPromise = result.current.handleClear();
       });
       // Allow microtasks to run; clear must still be blocked on the in-flight save.
-      await act(async () => {
-        for (let i = 0; i < 3; i++) await Promise.resolve();
-      });
+      await drainMicrotasks();
       expect(clear).not.toHaveBeenCalled();
 
       // Release the in-flight save's response; clear should then proceed.
@@ -345,16 +378,10 @@ describe("useContextEditorState", () => {
 
       expect(result.current.dirty).toBe(false);
 
-      await act(() => {
-        result.current.handleChange("typed");
-      });
+      await typeDraft(result, "typed");
       expect(result.current.dirty).toBe(true);
 
-      await act(async () => {
-        vi.advanceTimersByTime(800);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
+      await flushDebounceWindow(2);
 
       expect(result.current.dirty).toBe(false);
     });
@@ -366,19 +393,12 @@ describe("useContextEditorState", () => {
       const { save, resolveSave } = deferredSave();
       const { result } = renderReadyEditor({ save });
 
-      await act(() => {
-        result.current.handleChange("first");
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(800);
-        await Promise.resolve();
-      });
+      await typeDraft(result, "first");
+      await flushDebounceWindow();
       expect(result.current.dirty).toBe(true);
 
       // User types more before the save responds.
-      await act(() => {
-        result.current.handleChange("second");
-      });
+      await typeDraft(result, "second");
 
       // Save of "first" resolves. draftRef="second" != lastSavedRef="first",
       // so dirty must stay true.
@@ -683,14 +703,8 @@ describe("useContextEditorState", () => {
       const save = vi.fn().mockResolvedValue(false);
       const { result, setMemory } = renderReadyEditor({ save });
 
-      await act(() => {
-        result.current.handleChange("typed");
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(800);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
+      await typeDraft(result, "typed");
+      await flushDebounceWindow(2);
 
       // The failed save rolled lastSavedRef back to null. A subsequent status
       // update must re-run the external-update effect and bail on the null
@@ -718,13 +732,8 @@ describe("useContextEditorState", () => {
       stubConfirm(true);
 
       // Arm a debounced save and hold it in-flight.
-      await act(() => {
-        result.current.handleChange("draft");
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(800);
-        await Promise.resolve();
-      });
+      await typeDraft(result, "draft");
+      await flushDebounceWindow();
       expect(save).toHaveBeenCalledTimes(1);
 
       let importPromise: Promise<void> | null = null;
@@ -733,9 +742,7 @@ describe("useContextEditorState", () => {
         importPromise = result.current.handleImport("# imported");
       });
       // Import must be blocked on the in-flight save; its POST hasn't gone yet.
-      await act(async () => {
-        for (let i = 0; i < 3; i++) await Promise.resolve();
-      });
+      await drainMicrotasks();
       expect(save).toHaveBeenCalledTimes(1);
 
       await act(async () => {

@@ -12,11 +12,13 @@ import {
   it,
   vi,
 } from "vitest";
+import { type PluginItem } from "../library-types.ts";
 import { listPlugins } from "../list-plugins.ts";
 import {
   createFilesDbWithoutPluginsFixture,
   createFilesDbWithPluginsFixture,
   createPluginsDbFixture,
+  type PluginSeed,
   type PluginsFixture,
 } from "./fixtures/plugins-fixture.ts";
 
@@ -169,10 +171,7 @@ describe("listPlugins — filtering and derivation", () => {
   });
 
   it("derives format and category from dev_identifier", async () => {
-    usePluginsDb(fixture.dbPath);
-
-    const result = await listPlugins();
-    const byName = new Map(result.plugins.map((p) => [p.name, p]));
+    const byName = await pluginsByName(fixture.dbPath);
 
     expect(byName.get("Massive")?.format).toBe("VST3");
     expect(byName.get("Massive")?.category).toBe("instrument");
@@ -195,10 +194,7 @@ describe("listPlugins — filtering and derivation", () => {
   });
 
   it("carries through vendor and version, with nulls preserved", async () => {
-    usePluginsDb(fixture.dbPath);
-
-    const result = await listPlugins();
-    const byName = new Map(result.plugins.map((p) => [p.name, p]));
+    const byName = await pluginsByName(fixture.dbPath);
 
     expect(byName.get("Serum")?.vendor).toBe("Xfer Records");
     expect(byName.get("Serum")?.version).toBe("1.3.6");
@@ -280,13 +276,31 @@ describe("listPlugins — filtering and derivation", () => {
 describe("listPlugins — subcategories parsing", () => {
   it("splits on |, drops the redundant category prefix, handles empty/null", async () => {
     const fixture = createPluginsDbFixture("v2", [
-      pluginSeed("Multi", "device:vst3:instr:Multi", "Instrument|Synth|Bass"),
-      pluginSeed("Single", "device:vst3:audiofx:Single", "Fx|EQ"),
-      pluginSeed("CategoryOnly", "device:vst3:audiofx:CatOnly", "Fx"),
-      pluginSeed("Empty", "device:vst:instr:Empty", ""),
-      pluginSeed("NullSubs", "device:vst3:instr:NullSubs", null),
+      pluginSeed("Multi", {
+        dev_identifier: "device:vst3:instr:Multi",
+        subcategories: "Instrument|Synth|Bass",
+      }),
+      pluginSeed("Single", {
+        dev_identifier: "device:vst3:audiofx:Single",
+        subcategories: "Fx|EQ",
+      }),
+      pluginSeed("CategoryOnly", {
+        dev_identifier: "device:vst3:audiofx:CatOnly",
+        subcategories: "Fx",
+      }),
+      pluginSeed("Empty", {
+        dev_identifier: "device:vst:instr:Empty",
+        subcategories: "",
+      }),
+      pluginSeed("NullSubs", {
+        dev_identifier: "device:vst3:instr:NullSubs",
+        subcategories: null,
+      }),
       // No recognized category prefix → keep every segment.
-      pluginSeed("NoPrefix", "device:vst3:audiofx:NoPrefix", "Reverb|Delay"),
+      pluginSeed("NoPrefix", {
+        dev_identifier: "device:vst3:audiofx:NoPrefix",
+        subcategories: "Reverb|Delay",
+      }),
     ]);
 
     try {
@@ -336,10 +350,13 @@ describe("listPlugins — dev_identifier / vendor branch coverage", () => {
   // scheme-only identifier ("device"), and a null-vendor row for the vendor
   // filter's `?? ""` fallback.
   const branchSeeds = [
-    row("SchemeNoCat", "Acme", "device:vst3:weird:Thing"),
-    row("NullDevId", null, null),
-    row("EmptyScheme", null, "device:"),
-    row("SchemeOnly", null, "device"),
+    pluginSeed("SchemeNoCat", {
+      vendor: "Acme",
+      dev_identifier: "device:vst3:weird:Thing",
+    }),
+    pluginSeed("NullDevId"),
+    pluginSeed("EmptyScheme", { dev_identifier: "device:" }),
+    pluginSeed("SchemeOnly", { dev_identifier: "device" }),
   ];
   let fixture: PluginsFixture;
 
@@ -362,10 +379,7 @@ describe("listPlugins — dev_identifier / vendor branch coverage", () => {
   });
 
   it("returns null format/category for null or malformed dev_identifiers", async () => {
-    usePluginsDb(fixture.dbPath);
-
-    const result = await listPlugins();
-    const byName = new Map(result.plugins.map((p) => [p.name, p]));
+    const byName = await pluginsByName(fixture.dbPath);
 
     for (const name of ["NullDevId", "EmptyScheme", "SchemeOnly"]) {
       expect(byName.get(name)?.format).toBeNull();
@@ -392,65 +406,39 @@ describe("listPlugins — dev_identifier / vendor branch coverage", () => {
 });
 
 /**
- * Build a minimal enabled plugin row with an arbitrary vendor/dev_identifier.
+ * Run listPlugins against a fixture DB and index the results by plugin name.
  *
- * @param name - Plugin display name
- * @param vendor - Vendor name (or null)
- * @param devIdentifier - dev_identifier URI (or null)
- * @returns A plugin row for createPluginsDbFixture
+ * @param dbPath - Path of the separate plugins DB to read from
+ * @returns The returned plugins keyed by name
  */
-function row(
-  name: string,
-  vendor: string | null,
-  devIdentifier: string | null,
-): {
-  name: string;
-  vendor: string | null;
-  version: string | null;
-  scanstate: number | null;
-  enabled: number;
-  subcategories: string | null;
-  dev_identifier: string | null;
-} {
-  return {
-    name,
-    vendor,
-    version: null,
-    scanstate: 1,
-    enabled: 1,
-    subcategories: null,
-    dev_identifier: devIdentifier,
-  };
+async function pluginsByName(dbPath: string): Promise<Map<string, PluginItem>> {
+  usePluginsDb(dbPath);
+
+  const result = await listPlugins();
+
+  return new Map(result.plugins.map((p) => [p.name, p]));
 }
 
 /**
- * Build a minimal enabled PluginSeed for subcategory-parsing tests.
+ * Build a minimal enabled PluginSeed, overriding only the columns a test cares
+ * about. Defaults: no vendor/version/subcategories/dev_identifier, scanstate 1.
  *
  * @param name - Plugin display name
- * @param devIdentifier - dev_identifier URI
- * @param subcategories - Raw pipe-delimited subcategories column value (or null)
- * @returns A PluginSeed-shaped object for createPluginsDbFixture
+ * @param overrides - Columns to set on top of the minimal enabled row
+ * @returns A PluginSeed for createPluginsDbFixture
  */
 function pluginSeed(
   name: string,
-  devIdentifier: string,
-  subcategories: string | null,
-): {
-  name: string;
-  vendor: string | null;
-  version: string | null;
-  scanstate: number | null;
-  enabled: number;
-  subcategories: string | null;
-  dev_identifier: string | null;
-} {
+  overrides: Partial<PluginSeed> = {},
+): PluginSeed {
   return {
     name,
     vendor: null,
     version: null,
     scanstate: 1,
     enabled: 1,
-    subcategories,
-    dev_identifier: devIdentifier,
+    subcategories: null,
+    dev_identifier: null,
+    ...overrides,
   };
 }

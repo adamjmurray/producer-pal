@@ -101,6 +101,31 @@ const MCP_SERVER_GLOBS = [
   "!src/mcp-server/mcp-server.ts",
 ];
 
+// src/live-api-adapter is the Max V8 runtime side: the LiveAPI wrapper
+// interface, path helpers, and the V8 half of the RPC protocols to Node. It is
+// the counterpart to mcpServer (the Node-for-Max side) and, like it, is NOT
+// under src/tools/ so toolDomain() can't build its globs; its scope key is
+// `v8Adapter` (camelCase, non-colliding with any tool domain). Same exclusions
+// as sharedRuntime minus `.def.ts`/`*-disabled.ts` (no tool defs or
+// feature-flag stubs live here). code-exec-v8-protocol.ts IS included: it is
+// coverage-THRESHOLD-excluded (covering its async Node round-trip isn't worth
+// it) but its pure paths are unit-tested, so it carries real mutable behavior.
+const V8_ADAPTER_GLOBS = [
+  "src/live-api-adapter/**/*.ts",
+  "!src/live-api-adapter/**/*.test.ts",
+  "!src/live-api-adapter/**/tests/**",
+  "!src/live-api-adapter/**/*-test-helpers.ts",
+  "!src/live-api-adapter/**/*-mock-helpers.ts",
+  "!src/live-api-adapter/**/types.ts",
+  // live-api-adapter.ts is the V8 bundle entry point: importing it runs
+  // module-load side effects (emits `outlet(0, "started")`, registers Max
+  // message handlers), so it's exercised by the e2e suites, not unit tests, and
+  // is already coverage-excluded in vitest.config.ts. Exclude it here too (same
+  // rationale as mcp-server.ts in MCP_SERVER_GLOBS) — its mutants are all
+  // NoCoverage bootstrap wiring, not assertable behavior.
+  "!src/live-api-adapter/live-api-adapter.ts",
+];
+
 // Tool domains: one subdirectory each under src/tools/ (src/tools/constants.ts
 // is a plain root-level constants module, intentionally left unscoped).
 const TOOL_DOMAINS = [
@@ -131,6 +156,7 @@ const TOOL_DOMAIN_BREAKS = {
   core: 99, // triaged 2026-07-15 at 100.00% (see dev/Mutation-Testing.md)
   scene: 96, // triaged 2026-07-15 at 97.66% (see dev/Mutation-Testing.md)
   "live-set": 98, // triaged 2026-07-15 at 99.07% (see dev/Mutation-Testing.md)
+  shared: 94, // triaged 2026-07-16 at 95.25% (see dev/Mutation-Testing.md)
 };
 
 // The sharedRuntime (src/shared) break gate. Triaged 2026-07-15 at 94.94%; the
@@ -149,10 +175,24 @@ const SHARED_RUNTIME_BREAK = 94;
 // the perTest guard-attribution quirk (see dev/Mutation-Testing.md).
 const MCP_SERVER_BREAK = 87;
 
+// The v8Adapter (src/live-api-adapter) break gate. Triaged 2026-07-16 at 97.97%
+// (the bundle entry point live-api-adapter.ts is excluded); the floor sits ~1
+// point below, matching notation's ratchet. This scope is unusually
+// timeout-classification-noisy: live-api-extensions.ts patches the global
+// LiveAPI at test-SETUP time, so most of its mutants are static — Stryker runs
+// the whole suite for each, and a mutant that breaks the patch breaks setup for
+// every test file, blowing the time budget and landing as Timeout (counted as
+// killed) rather than Killed. Which mutants tip over varies per run: two
+// observed runs scored 98.22% and 97.97%, so the floor is set from the lower.
+// Remaining survivors are all equivalent / log-string / thin-orchestration
+// mutants (see dev/Mutation-Testing.md).
+const V8_ADAPTER_BREAK = 97;
+
 export const SCOPES = {
   notation: { mutate: NOTATION_GLOBS, break: 86 },
   sharedRuntime: { mutate: SHARED_RUNTIME_GLOBS, break: SHARED_RUNTIME_BREAK },
   mcpServer: { mutate: MCP_SERVER_GLOBS, break: MCP_SERVER_BREAK },
+  v8Adapter: { mutate: V8_ADAPTER_GLOBS, break: V8_ADAPTER_BREAK },
   ...Object.fromEntries(
     TOOL_DOMAINS.map((name) => [
       name,
@@ -164,5 +204,5 @@ export const SCOPES = {
 // Named groups the runner expands into multiple scopes.
 export const SCOPE_GROUPS = {
   tools: [...TOOL_DOMAINS],
-  all: ["notation", "sharedRuntime", "mcpServer", ...TOOL_DOMAINS],
+  all: ["notation", "sharedRuntime", "mcpServer", "v8Adapter", ...TOOL_DOMAINS],
 };

@@ -82,6 +82,56 @@ async function expectLateAutosaveDropped(
   restore();
 }
 
+/**
+ * Drive the bulk-delete race for an already-saved active conversation: save one
+ * conversation, fire `bulkDelete` concurrently with a late autosave, and assert
+ * the row is gone both when the delete settles and after the gated late write
+ * lands (releasing it must not resurrect the cleared conversation).
+ * @param bulkDelete - the bulk delete under test, read off the live hook result
+ */
+async function expectBulkDeleteDropsSavedLateAutosave(
+  bulkDelete: (result: HookHandle["result"]) => Promise<void>,
+): Promise<void> {
+  const handle = await setupHook();
+  const { state, result } = handle;
+
+  await saveWithMessage(state, result);
+  const savedId = result.current.activeConversationId!;
+
+  await expectLateAutosaveDropped(
+    handle,
+    () => bulkDelete(result),
+    async () => {
+      expect(result.current.conversations).toHaveLength(0);
+      expect(await loadConversation(savedId)).toBeUndefined();
+    },
+    async () => expect(await loadConversation(savedId)).toBeUndefined(),
+  );
+}
+
+/**
+ * Drive the bulk-delete race for a never-saved conversation (activeConversationId
+ * === null, its id minted lazily inside the teardown autosave): fire `bulkDelete`
+ * concurrently with that late autosave and assert no zombie row survives, either
+ * when the delete settles or after the gated late write lands.
+ * @param bulkDelete - the bulk delete under test, read off the live hook result
+ */
+async function expectBulkDeleteDropsNeverSavedLateAutosave(
+  bulkDelete: (result: HookHandle["result"]) => Promise<void>,
+): Promise<void> {
+  const handle = await setupHook();
+  const { result } = handle;
+
+  expect(result.current.activeConversationId).toBeNull();
+
+  await expectLateAutosaveDropped(
+    handle,
+    () => bulkDelete(result),
+    () => expect(result.current.conversations).toHaveLength(0),
+    () => expect(result.current.conversations).toHaveLength(0),
+  );
+}
+
 describe("useConversations delete/save races", () => {
   beforeEach(resetConversationsTestState);
 
@@ -113,20 +163,8 @@ describe("useConversations delete/save races", () => {
   it("deleteAll drops a late autosave for the just-cleared conversation", async () => {
     // F2: bulk deletes had no drain and no guard. The active conversation's
     // teardown autosave must not survive the clear.
-    const handle = await setupHook();
-    const { state, result } = handle;
-
-    await saveWithMessage(state, result);
-    const savedId = result.current.activeConversationId!;
-
-    await expectLateAutosaveDropped(
-      handle,
-      () => result.current.deleteAllConversations(),
-      async () => {
-        expect(result.current.conversations).toHaveLength(0);
-        expect(await loadConversation(savedId)).toBeUndefined();
-      },
-      async () => expect(await loadConversation(savedId)).toBeUndefined(),
+    await expectBulkDeleteDropsSavedLateAutosave((result) =>
+      result.current.deleteAllConversations(),
     );
   });
 
@@ -152,20 +190,8 @@ describe("useConversations delete/save races", () => {
   });
 
   it("deleteUnbookmarked drops a late autosave for the deleted active conversation", async () => {
-    const handle = await setupHook();
-    const { state, result } = handle;
-
-    await saveWithMessage(state, result);
-    const savedId = result.current.activeConversationId!;
-
-    await expectLateAutosaveDropped(
-      handle,
-      () => result.current.deleteUnbookmarkedConversations(),
-      async () => {
-        expect(result.current.conversations).toHaveLength(0);
-        expect(await loadConversation(savedId)).toBeUndefined();
-      },
-      async () => expect(await loadConversation(savedId)).toBeUndefined(),
+    await expectBulkDeleteDropsSavedLateAutosave((result) =>
+      result.current.deleteUnbookmarkedConversations(),
     );
   });
 
@@ -196,34 +222,19 @@ describe("useConversations delete/save races", () => {
     // null; its id is minted lazily inside the teardown autosave. Without
     // reserving that id the bulk delete can't cancel it, so the late save writes
     // a surviving zombie row after the store was cleared.
-    const handle = await setupHook();
-    const { result } = handle;
-
-    expect(result.current.activeConversationId).toBeNull();
-
-    // The stream-teardown autosave for the never-saved conversation, enqueued
-    // after the bulk delete reserved its pending-new id.
-    await expectLateAutosaveDropped(
-      handle,
-      () => result.current.deleteAllConversations(),
-      () => expect(result.current.conversations).toHaveLength(0),
-      () => expect(result.current.conversations).toHaveLength(0),
+    //
+    // The gated late save is the stream-teardown autosave for the never-saved
+    // conversation, enqueued after the bulk delete reserved its pending-new id.
+    await expectBulkDeleteDropsNeverSavedLateAutosave((result) =>
+      result.current.deleteAllConversations(),
     );
   });
 
   it("deleteUnbookmarked drops a late autosave for a never-saved conversation (activeId null)", async () => {
     // G2 sibling: a never-saved conversation is implicitly unbookmarked, so the
     // unbookmarked bulk delete sweeps it too and must cancel its lazily-minted id.
-    const handle = await setupHook();
-    const { result } = handle;
-
-    expect(result.current.activeConversationId).toBeNull();
-
-    await expectLateAutosaveDropped(
-      handle,
-      () => result.current.deleteUnbookmarkedConversations(),
-      () => expect(result.current.conversations).toHaveLength(0),
-      () => expect(result.current.conversations).toHaveLength(0),
+    await expectBulkDeleteDropsNeverSavedLateAutosave((result) =>
+      result.current.deleteUnbookmarkedConversations(),
     );
   });
 

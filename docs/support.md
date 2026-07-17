@@ -23,12 +23,20 @@ on GitHub.
 
 ## Contributing
 
-I maintain the core tools and roadmap, but there's room to collaborate. Join the
+I maintain the core tools and roadmap, but there's plenty of room to collaborate
+— and contributions are meant to be low-friction, not gatekept. Join the
 [Discord](https://discord.gg/rmU3DSzgwH) to discuss ideas, or contribute
 directly:
 
 - **Small model optimization** — Help make Ollama/LM Studio work better by
   experimenting and sharing results
+- **Skills and system instructions** — Propose improvements to the built-in
+  skills or Chat UI system instructions; evals showing the gain (across large
+  and small models where applicable) help them land
+- **Coding-agent skills** — Share [Agent Skill](/guide/skills) examples for
+  different workflows and agents; good ones can be featured here
+- **MIDI notation and transforms** — Experiment with alternative notation
+  systems or [transforms](/features/midi-notation#transforms) syntax (ask first)
 - **Documentation** — Improvements and tutorials
 
 To support Producer Pal development, star
@@ -36,7 +44,8 @@ To support Producer Pal development, star
 others discover the project.
 
 Want to contribute code? See the
-[developer guide](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md).
+[developer guide](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md),
+which explains how to work with the strict code-quality checks.
 
 ## Data Privacy
 

@@ -81,53 +81,86 @@ function renderWithLoadedRecord(
   render(<VoiceApp {...makeProps(overrides)} />);
 }
 
+/** Current Settings select Gemini, but both provider keys are saved. */
+const SETTINGS_GEMINI_BOTH_KEYS: PropOverrides = {
+  provider: "gemini",
+  apiKey: "gem-key",
+  model: GEMINI_REALTIME_MODEL,
+  openaiApiKey: "sk-openai",
+  geminiApiKey: "gem-key",
+};
+
+/** Current Settings select OpenAI, but both provider keys are saved. */
+const SETTINGS_OPENAI_BOTH_KEYS: PropOverrides = {
+  provider: "openai",
+  apiKey: "sk-openai",
+  openaiApiKey: "sk-openai",
+  geminiApiKey: "gem-key",
+};
+
+/**
+ * Read the params the OpenAI backend was last mounted with.
+ * @returns The most recent useVoiceSession params
+ */
+function lastOpenAiCall(): { openAiKey: string | null; model: string } {
+  return mocks.useVoiceSession.mock.calls.at(-1)?.[0] as {
+    openAiKey: string | null;
+    model: string;
+  };
+}
+
+/**
+ * Read the params the Gemini backend was last mounted with.
+ * @returns The most recent useGeminiVoiceSession params
+ */
+function lastGeminiCall(): { geminiKey: string | null; model: string } {
+  return mocks.useGeminiVoiceSession.mock.calls.at(-1)?.[0] as {
+    geminiKey: string | null;
+    model: string;
+  };
+}
+
+/**
+ * Assert the Talk button is live and no key-required warning is showing.
+ */
+function expectReadyToTalk(): void {
+  expect(screen.queryByText(/api key required/i)).toBeNull();
+  expect(
+    (screen.getByRole("button", { name: "Talk" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(false);
+}
+
 // Loading an OpenAI voice record while current Settings select Gemini must
 // resume on OpenAI (not silently mount the Gemini backend with the wrong model
 // and a missing-key state). Mirror for the inverse below.
 describe("VoiceApp record-aware routing", () => {
   it("routes a loaded OpenAI record to the OpenAI backend even when current settings are Gemini", () => {
-    renderWithLoadedRecord("openai", "gpt-realtime-2", {
-      provider: "gemini",
-      apiKey: "gem-key",
-      model: GEMINI_REALTIME_MODEL,
-      openaiApiKey: "sk-openai",
-      geminiApiKey: "gem-key",
-    });
+    renderWithLoadedRecord(
+      "openai",
+      "gpt-realtime-2",
+      SETTINGS_GEMINI_BOTH_KEYS,
+    );
 
-    const openAiCall = mocks.useVoiceSession.mock.calls.at(-1)?.[0] as {
-      openAiKey: string | null;
-      model: string;
-    };
+    const openAiCall = lastOpenAiCall();
 
     expect(openAiCall.openAiKey).toBe("sk-openai");
     expect(openAiCall.model).toBe("gpt-realtime-2");
-    expect(screen.queryByText(/api key required/i)).toBeNull();
-    expect(
-      (screen.getByRole("button", { name: "Talk" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(false);
+    expectReadyToTalk();
   });
 
   it("routes a loaded Gemini record to the Gemini backend even when current settings are OpenAI", () => {
-    renderWithLoadedRecord("gemini", GEMINI_REALTIME_MODEL, {
-      provider: "openai",
-      apiKey: "sk-openai",
-      openaiApiKey: "sk-openai",
-      geminiApiKey: "gem-key",
-    });
+    renderWithLoadedRecord(
+      "gemini",
+      GEMINI_REALTIME_MODEL,
+      SETTINGS_OPENAI_BOTH_KEYS,
+    );
 
-    const geminiCall = mocks.useGeminiVoiceSession.mock.calls.at(-1)?.[0] as {
-      geminiKey: string | null;
-      model: string;
-    };
+    const geminiCall = lastGeminiCall();
 
     expect(geminiCall.geminiKey).toBe("gem-key");
     expect(geminiCall.model).toBe(GEMINI_REALTIME_MODEL);
-    expect(screen.queryByText(/api key required/i)).toBeNull();
-    expect(
-      (screen.getByRole("button", { name: "Talk" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(false);
+    expectReadyToTalk();
   });
 
   // Older voice records were previously saved without a `provider` field —
@@ -138,35 +171,16 @@ describe("VoiceApp record-aware routing", () => {
       // empty provider on the record (string-typed so the stub stays JSON-shaped)
       "",
       GEMINI_REALTIME_MODEL,
-      {
-        provider: "openai",
-        apiKey: "sk-openai",
-        openaiApiKey: "sk-openai",
-        geminiApiKey: "gem-key",
-      },
+      SETTINGS_OPENAI_BOTH_KEYS,
     );
 
-    const geminiCall = mocks.useGeminiVoiceSession.mock.calls.at(-1)?.[0] as {
-      geminiKey: string | null;
-    };
-
-    expect(geminiCall.geminiKey).toBe("gem-key");
+    expect(lastGeminiCall().geminiKey).toBe("gem-key");
   });
 
   it("routes a legacy record (no stored provider) on its model id — OpenAI side", () => {
-    renderWithLoadedRecord("", "gpt-realtime-2", {
-      provider: "gemini",
-      apiKey: "gem-key",
-      model: GEMINI_REALTIME_MODEL,
-      openaiApiKey: "sk-openai",
-      geminiApiKey: "gem-key",
-    });
+    renderWithLoadedRecord("", "gpt-realtime-2", SETTINGS_GEMINI_BOTH_KEYS);
 
-    const openAiCall = mocks.useVoiceSession.mock.calls.at(-1)?.[0] as {
-      openAiKey: string | null;
-    };
-
-    expect(openAiCall.openAiKey).toBe("sk-openai");
+    expect(lastOpenAiCall().openAiKey).toBe("sk-openai");
   });
 
   it("a fresh session (no loaded record) routes on current settings", () => {
@@ -182,10 +196,7 @@ describe("VoiceApp record-aware routing", () => {
       />,
     );
 
-    const openAiCall = mocks.useVoiceSession.mock.calls.at(-1)?.[0] as {
-      openAiKey: string | null;
-      model: string;
-    };
+    const openAiCall = lastOpenAiCall();
 
     expect(openAiCall.openAiKey).toBe("sk-openai");
     expect(openAiCall.model).toBe("gpt-realtime-2");

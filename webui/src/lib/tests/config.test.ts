@@ -63,8 +63,8 @@ describe("config", () => {
     });
 
     it("strips [Free] tag from OpenRouter model labels", () => {
-      expect(getModelName("google/gemma-4-26b-a4b-it:free")).toBe(
-        "Google Gemma 4 26B",
+      expect(getModelName("google/gemma-4-31b-it:free")).toBe(
+        "Google Gemma 4 31B",
       );
     });
 

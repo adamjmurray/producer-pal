@@ -3,7 +3,39 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Mock, vi } from "vitest";
 import { type CodeExecutionResult, type CodeNote } from "../code-exec-types.ts";
+
+interface MockClip {
+  getProperty: Mock;
+  call: Mock;
+}
+
+/**
+ * Create a clip mock whose getProperty returns the same value for every
+ * property (both `signature_denominator` and `length` in these tests).
+ * @param propertyValue - Value returned by every getProperty call
+ * @param callReturn - Optional value returned by every call() (e.g. notes JSON)
+ * @returns The clip mock
+ */
+export function createMockClip(
+  propertyValue = 4,
+  callReturn?: string,
+): MockClip {
+  return {
+    getProperty: vi.fn().mockReturnValue(propertyValue),
+    call: callReturn == null ? vi.fn() : vi.fn().mockReturnValue(callReturn),
+  };
+}
+
+/**
+ * Create a getProperty mock backed by a property lookup table.
+ * @param props - Property name to value map
+ * @returns A getProperty mock returning props[name]
+ */
+export function mockGetProperty(props: Record<string, unknown>): Mock {
+  return vi.fn((prop: string) => props[prop]);
+}
 
 /**
  * Create a CodeNote fixture (camelCase format returned by executeNoteCode).

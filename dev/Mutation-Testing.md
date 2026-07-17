@@ -37,10 +37,10 @@ Scopes are defined in `config/mutation-scopes.mjs`:
   build-time substitution stubs, and type-only modules (see `toolDomain()`). A
   domain starts in **baseline mode** (`break: null`, measure-only) until its
   survivors are triaged in its own PR and it earns a floor in
-  `TOOL_DOMAIN_BREAKS`; triaged so far: `track` (`break: 85`), `session`
-  (`break: 89`), `actions` (`break: 90`), `device` (`break: 90`), `clip`
-  (`break: 96`), `advanced` (`break: 97`), `core` (`break: 99`), `scene`
-  (`break: 96`), `live-set` (`break: 98`). Only `shared` remains untriaged.
+  `TOOL_DOMAIN_BREAKS`. All ten are now triaged: `track` (`break: 85`),
+  `session` (`break: 89`), `actions` (`break: 90`), `device` (`break: 90`),
+  `clip` (`break: 96`), `advanced` (`break: 97`), `core` (`break: 99`), `scene`
+  (`break: 96`), `live-set` (`break: 98`), `shared` (`break: 94`).
 - **`sharedRuntime`** — `src/shared/` (cross-cutting utilities shared by the
   Node MCP server and the V8 Max runtime: pitch, notation identity, compact
   serializer/parser, path builders, config, error/response utils, v8 console /
@@ -763,6 +763,237 @@ rather than real gaps:
 | `resolveAbsolutePaths`: 3-segment path sets `folder` (the `>= 3` boundary)      | `reconstruct-path.test.ts`    |
 | Custom-skills index emits no `## Disabled` section when all skills are enabled  | `custom-skills-store.test.ts` |
 
+## Baseline (2026-07-16, `shared` — `src/tools/shared/`)
+
+The largest tool domain and the last one triaged: 50 mutated files / ~9,400
+source LOC of cross-cutting infrastructure — the tool framework, validation,
+arrangement helpers, the device reader, and the specialized-device specs. Too
+big for one PR, so it was triaged in four independent test-only PRs by subarea,
+each iterating against a temporarily-narrowed `mutate` glob (uncommitted — a
+~2-minute inner loop vs ~5 for the whole domain). The gate comes from a final
+whole-domain pass — Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
+
+| Metric   | Triaged (whole domain) | Gate (`break`) |
+| -------- | ---------------------- | -------------- |
+| `shared` | **95.25%**             | 94             |
+
+Per subarea, as measured in its own PR against the narrowed glob (there is no
+single pre-triage whole-domain number — each subarea was baselined separately):
+
+| Subarea (files)              | Baseline | Triaged    | Survivors (from) |
+| ---------------------------- | -------- | ---------- | ---------------- |
+| Utilities & framework (14)   | 87.28%   | **92.78%** | — (~52 killed)   |
+| Arrangement (8)              | 81.30%   | **95.98%** | 20 (from 97)     |
+| Device reader & helpers (12) | 87.10%   | **95.14%** | 80 (from 213)    |
+| Specialized devices (16)     | 90.19%   | **97.08%** | 33 (from 111)    |
+
+All test-only — no product code was touched in any of the four. The
+specialized-device subarea scored highest of the four (97.08%), as predicted:
+every device spec already had a colocated test, so the survivors were
+concentrated in declarative tables rather than untested logic.
+
+Three levers did most of the work in the specialized subarea:
+
+- **The discovery catalogs are data, and data needs a table test.** `actions`
+  (name / signature / description) and `paramOptions` are pure LLM-facing tables
+  the model reads to learn how to drive a device. The device tests asserted
+  behavior and at most `actions.map((a) => a.name)`, so every `signature` and
+  `description` string was unasserted. One `toStrictEqual` per catalog plus an
+  `it.each` over the display-name routing table killed ~25 string/array mutants
+  in one new file (`specialized-device-catalog.test.ts`).
+- **Warn text is the model's only error channel.** The `Options: …` /
+  `Available: …` / `must be one of …` lists are built with `join(", ")`, and
+  several tests asserted only a fragment (`stringContaining("Pre FX")`) — which
+  still matches when `join(", ")` decays to `join("")`. Asserting the whole
+  joined list (and the `paramName` the warning names) killed every one.
+- **Index 0 is a value, not a "not found".** `list.indexOf(...) < 0` guards
+  paired with tests that only ever selected a middle entry left the `< 0` →
+  `<= 0` mutants alive across Wavetable categories/wavetables, Hybrid Reverb IR
+  files, the mod-matrix source `"Amp"` (column 0) and target slot 0. Each needed
+  a test that selects the _first_ entry. The same shape appears in Hybrid
+  Reverb's `list.length === 1 && list[0] === <sentinel>` empty-category guard: a
+  category holding exactly one real IR must still be settable.
+
+Remaining survivors are bucket 2/3. Each of the 111 original specialized
+survivors was verified individually by applying the mutant and running the
+covering suite (see **Verifying a survivor** below); the 20 that survive that
+check are:
+
+- **Guards subsumed by a downstream check.** The action parser's
+  `if (quote) return null` (unterminated quote) is unreachable-by-effect: a
+  token whose quote never closed can never _end_ with its own quote character,
+  so `parseArgToken`'s `token.at(-1) !== first` rejects it anyway. Its
+  `token.length < 2` guard is likewise dead — a token starting with a quote that
+  reached `parseArgToken` at all has ≥2 characters (the split only happens once
+  the quote closes). Similarly `readIrFile`'s `value == null` returns
+  `undefined` either way, and `coerceInt`'s
+  `typeof value === "number" ? value : Number(value)` is `Number(number)`
+  identity.
+- **Discriminated-union shadows.** Simpler's `probe.kind === "single"` operands
+  can't be distinguished because `probe.path` / `probe.gain` only _exist_ on the
+  `single` variant — relaxing the check reads `undefined` and yields the same
+  result. `resolveSourceIndex`'s `n >= 0` is shadowed too: a negative index
+  falls through and returns a negative, which the caller already treats as
+  invalid.
+- **Defensive caps and type guards.** `MAX_TARGETS` (512) bounds a loop that
+  really terminates on the LOM's numeric sentinel; `typeof name === "string"` at
+  a point where the sentinel was already handled; `typeof v === "number"` on a
+  value Live always returns as a number. Killing these would mean forging LOM
+  responses Live cannot produce.
+- **A vestigial parameter.** `readParamEntries`'s `predicate` has exactly one
+  caller, which passes `() => true` — so its `if (!predicate(param)) continue`
+  is dead (and the domain's only `NoCoverage` mutant). Worth deleting, but that
+  is product code, out of scope for a test-only pass.
+- **Ambiguity we deliberately resolve one way.** Compressor's
+  `routingType.display_name === NO_INPUT_LABEL` only differs if a user names a
+  track literally `"No Input"`; the sentinel wins by design, and asserting that
+  would over-fit an ambiguity Live itself doesn't disambiguate.
+
+Note the gap between the harness verdict (20 uncatchable) and Stryker's 33
+survivors: the other ~13 are **`perTest` false survivors** — a killing test
+exists and passes, but Stryker never attributes it because the killing input
+short-circuits the mutated guard during the coverage dry-run. Almost all are
+`ObjectLiteral → {}` mutants on the spec objects themselves. This rate (13/111)
+is far higher than the arrangement and device subareas (0 and 2), which is why
+the whole-domain score lands below what the triage alone would suggest.
+
+### Gaps closed (`shared`, specialized subarea)
+
+| Gap (now killed)                                                                    | Test strengthened / added                    |
+| ----------------------------------------------------------------------------------- | -------------------------------------------- |
+| Simpler + Wavetable action catalogs (every `signature` / `description`)             | `specialized-device-catalog.test.ts` (new)   |
+| `class_display_name` → spec routing for all 12 specialized devices                  | `specialized-device-catalog.test.ts` (new)   |
+| Modulation-rate effects expose no params and no `paramOptions` key                  | `specialized-device-catalog.test.ts` (new)   |
+| Action grammar: `$` anchor, `""` arg, whitespace-only args, double-quoted commas    | `specialized-device-action-parser.test.ts`   |
+| Numeric args: multi-digit floats (`12.5`, `.25`) and digit-led words (`4x`)         | `specialized-device-action-parser.test.ts`   |
+| Mod matrix: source `"Amp"` (index 0), slot-0 target no re-add, ±1 amount boundary   | `wavetable-modulation-helpers.test.ts` (new) |
+| Mod matrix: name trimming, zero-cell exclusion, exactly-13-source scan              | `wavetable-modulation-helpers.test.ts` (new) |
+| Wavetable/Drift `inactiveWhen` rules (LFO sync, Cyc Env time mode)                  | `specialized-device-registry.test.ts`        |
+| First category / wavetable selectable (index 0) + `Available:` lists                | `wavetable.test.ts`                          |
+| Hybrid Reverb single-file category settable; first IR selectable; `Available:` list | `hybrid-reverb.test.ts`                      |
+| Compressor whitespace-only sidechain id clears; channel `Available:` list           | `compressor.test.ts`                         |
+| Simpler multi-sample / gain-less / non-number `voices` reads omit their params      | `simpler.test.ts`                            |
+| `coerceBool` trims; enum + int-set warnings name the param and list valid values    | `specialized-device-param-helpers.test.ts`   |
+| Boolean pseudo-param warnings name their param (`oversample`, `envListen`, …)       | `eq-eight` / `roar` / `hybrid-reverb` tests  |
+| `readSpecializedParams` search term is trimmed                                      | `specialized-device-registry.test.ts`        |
+
+## Baseline (2026-07-16, `v8Adapter` — `src/live-api-adapter/`)
+
+The Max V8 runtime side — the `LiveAPI` wrapper interface, the path helpers, and
+the V8 half of the two RPC protocols to Node. The counterpart to `mcpServer`
+(the Node-for-Max side) and the last tree to be mutated. Small: 4 mutated files
+/ ~750 source LOC. Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
+
+| Metric      | Baseline | Triaged    | Gate (`break`) |
+| ----------- | -------- | ---------- | -------------- |
+| `v8Adapter` | 78.17%   | **97.97%** | 97             |
+
+Per file:
+
+| File (mutants)                     | Baseline | Triaged    | Survivors (from)  |
+| ---------------------------------- | -------- | ---------- | ----------------- |
+| `live-api-extensions.ts` (279)     | 81.72%   | **98.92%** | 3 (from 51)       |
+| `code-exec-v8-protocol.ts` (43)    | 23.26%   | **95.35%** | 2 (from 33)       |
+| `node-request-v8-protocol.ts` (35) | 97.14%   | **100%**   | 0 (from 1)        |
+| `live-api-path-utils.ts` (37)      | 97.30%   | **91.89%** | 3 (all one cause) |
+
+All test-only — no product code was touched. `live-api-adapter.ts` is excluded
+as the V8 bundle entry point (it emits `outlet(0, "started")` and registers Max
+message handlers at import), the same rationale `mcpServer` uses for
+`mcp-server.ts`.
+
+`live-api-path-utils.ts` _drops_ against its baseline without a single test
+being removed: two of its three survivors were classified `Timeout` (which
+counts as killed) in the first run and `Survived` in the second. The second
+reading is the honest one — see the noise note below.
+
+### Why this scope is timeout-noisy
+
+`live-api-extensions.ts` patches the global `LiveAPI` prototype, and
+`src/test/test-setup.ts` imports it at **setup** time, so the module body runs
+once per test file, outside any test. Nearly all of its mutants are therefore
+**static**: Stryker can't attribute them per-test and runs the whole suite for
+each ("Ran all tests for this mutant"). A mutant that breaks the patch breaks
+setup for _every_ test file, so the full run blows the time budget and lands as
+`Timeout` rather than `Killed` — both count as killed, but which mutants tip
+over shifts with machine load. Three runs of identical code:
+
+| Run | Score  | Timeouts | Wall clock |
+| --- | ------ | -------- | ---------- |
+| 1   | 98.22% | 21       | 19m        |
+| 2   | 97.97% | 10       | 14m        |
+| 3   | 97.97% | 1        | 1m35s      |
+
+The gate is set from the low end. Note the runtime swing has the same cause —
+each timeout burns a full budget, so an unloaded machine finishes the smallest
+tree in ~90 seconds while a busy one takes twenty minutes. Don't read a slow run
+as a hang.
+
+A `Timeout` here is not a weak kill. Spot-checking one (the `clipSlotIndex`
+guard) by hand: the adapter suite fails it in **1.5 seconds** — it can't flip to
+`Survived`, only between `Timeout` and `Killed`.
+
+Three levers did most of the work:
+
+- **Test how a module installs itself, not just what it installs.** The eight
+  index getters are defined behind
+  `if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "…"))` guards.
+  On the single load a test run performs, the guard is _always_ false, so
+  `if (true)` is indistinguishable — ~15 guard mutants survived as a block. They
+  die to one new file (`live-api-extensions-install.test.ts`) asserting the two
+  contracts the guards exist for: re-importing after `vi.resetModules()` must
+  not throw (`Object.defineProperty` defaults to `configurable: false`, so an
+  unguarded redefine throws `Cannot redefine property`), and importing with
+  `LiveAPI` absent must be inert (the module is pulled into Node-side bundles
+  where the Max global doesn't exist).
+- **A mock that reimplements the thing under test hides it.** `readTrack` and
+  `readClip` consume `returnTrackIndex` / `takeLaneIndex`, but every caller's
+  test registers a mock object carrying those as _properties_ — which
+  `MockLiveAPI`'s constructor copies onto the instance, shadowing the prototype
+  getter. Both getters had **zero** real coverage despite looking well-covered;
+  the path regexes are only reachable from an unregistered `LiveAPI.from(path)`.
+- **Reach for the round-trip harness that already exists.** `code-exec` sat at
+  23.26% because its Node round-trip was untested — but the sibling
+  `node-request` protocol tests it at 97.14% with ~50 lines of Task stand-ins.
+  Extracting those into `v8-protocol-test-helpers.ts` (shared by both, so no
+  jscpd clone) and mirroring the suite took `code-exec` to 95.35%.
+
+### Documented equivalents (`v8Adapter`)
+
+Six of the eight residuals are equivalent — each verified by applying the mutant
+and running the suite, then confirming the root cause in isolation:
+
+| Mutant                                               | Why it can't be killed                                                                                                                                                                                                |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `live-api-path-utils.ts:33` (×3)                     | Emptying/skipping the `typeof idOrPath === "number"` branch falls through to `/^\d+$/.test(idOrPath)`, which coerces the number and returns the identical `id N`. Only unreachable inputs (negatives, floats) differ. |
+| `live-api-extensions.ts:132` `startsWith`→`endsWith` | The branch only runs when `/^\d+$/.test(val)`, and an all-digit string can contain neither `"id "` prefix nor suffix — both sides are always false.                                                                   |
+| `live-api-extensions.ts:159` `<`→`<=`                | `getChildIds` steps `i += 2` and reads `idArray[i] === "id"`; the extra iteration reads index `length`, which is `undefined` and never `"id"`.                                                                        |
+| `live-api-extensions.ts:330` `matches.length === 0`  | `path.match(/devices (\d+)/g)` returns `null`, never `[]`, so the length arm is unreachable behind `!matches`.                                                                                                        |
+
+The other two are bucket 3, both in the coverage-threshold-excluded
+`code-exec-v8-protocol.ts`: the `console.error` text for a result with no
+pending request (a diagnostic log — `error` is not relayed to the LLM, unlike
+`warn`), and `executeNoteCode`'s body (`NoCoverage`) — a three-line delegation
+to `extractNotesFromClip` + `buildCodeExecutionContext` +
+`executeNoteCodeWithData`, each independently tested, whose only untested part
+is the clip-mock scaffolding the vitest exclusion already calls out as not worth
+reconstructing.
+
+### Gaps closed (`v8Adapter`)
+
+| Gap (now killed)                                                            | Test strengthened / added                   |
+| --------------------------------------------------------------------------- | ------------------------------------------- |
+| The 8 `hasOwnProperty` install guards + the `typeof LiveAPI` module guard   | `live-api-extensions-install.test.ts` (new) |
+| `returnTrackIndex` / `takeLaneIndex` getters (regex, index 0, multi-digit)  | `live-api-extensions-path-indices.test.ts`  |
+| `sceneIndex` clip_slots fallback on a double-digit track index              | `live-api-extensions-path-indices.test.ts`  |
+| `exists()` for the `"id 0"` and numeric `0` id shapes                       | `live-api-extensions-basic.test.ts`         |
+| Routing `getProperty`: warns on parse failure, stays silent when unset      | `live-api-extensions.test.ts`               |
+| `setColor` format vs hex error messages; per-channel NaN rejection          | `live-api-extensions-color.test.ts`         |
+| `setProperty` passes a numeric value through without formatting             | `live-api-extensions-setters.test.ts`       |
+| Request IDs count **up** from their prefix (not merely unique)              | both `*-v8-protocol.test.ts`                |
+| code-exec round trip: resolve, parse error, timeout, cancel, late/dup reply | `code-exec-v8-protocol.test.ts`             |
+| `executeNoteCodeWithData` wraps code, passes globals, validates notes       | `code-exec-v8-protocol.test.ts`             |
+
 ## Interpreting survivors
 
 Each survivor falls into one of three buckets — triage before acting:
@@ -779,40 +1010,51 @@ Each survivor falls into one of three buckets — triage before acting:
 `# no coverage` mutants are lines no test exercises at all — usually the easiest
 wins, and a cross-check against the line-coverage gate.
 
+### Verifying a survivor
+
+Bucket 1 and bucket 2 look identical in the report, and guessing wrong wastes a
+lot of time — either writing tests for an equivalent mutant, or dismissing a
+real gap as "probably equivalent". Decide it empirically instead:
+
+1. Read the mutant's exact node out of
+   `reports/mutation/<scope>-incremental.json` — `location` (1-based
+   line/column, inclusive start, exclusive end) plus `replacement`. Use the
+   embedded `source` to print `line.slice(startCol - 1, endCol - 1)` and confirm
+   what you're replacing. Stryker mutates _sub-expressions_: a
+   `ConditionalExpression` on `if (a && b)` usually targets just `a`, and
+   hand-mutating the whole condition will mislead you.
+2. Apply it to the file, run the covering test suite, restore the file. A
+   non-zero exit means a killing test already exists (a `perTest` attribution
+   artifact — unkillable via more tests, so document it). Exit zero means it is
+   genuinely uncaught: a real gap _or_ an equivalent, which you then reason
+   about normally.
+
+Scripting this over every Survived/NoCoverage mutant in a scope takes a couple
+of minutes and turns triage into a worklist. Re-running it per-file after each
+edit is also a much faster confirm loop than a full Stryker pass. Two cautions:
+the verdict is binary (an uncaught equivalent still reads "uncaught"), and a
+test can kill a mutant for the wrong reason — so read the surviving code, don't
+just chase green.
+
 ## Status & next steps
 
-The `notation` scope is **ratcheted** (`thresholds.break = 86`), as is
-`sharedRuntime` (`src/shared/`, `break: 94`), `mcpServer` (`src/mcp-server/`,
-`break: 87`), and all nine triaged tool domains: the write-op tier `track`
-(`break: 85`), `session` (`break: 89`), `actions` (`break: 90`), `device`
-(`break: 90`), `clip` (`break: 96`), and the read-op / small tier `advanced`
-(`break: 97`), `core` (`break: 99`), `scene` (`break: 96`), `live-set`
-(`break: 98`). Only `shared` (`src/tools/shared`) remains in **baseline mode**
-(`break: null`, measure-only). The per-domain scope mechanism
-(`config/mutation-scopes.mjs` + the runner) is in place, so each area can be
-mutated on its own. Mutation testing stays off the per-PR hot path (a full pass
-is minutes). Remaining work (later releases):
+**The whole source tree is now triaged and ratcheted — no scope is left in
+baseline mode, and none remains unmutated.** The ten tool domains: the write-op
+tier `track` (`break: 85`), `session` (`break: 89`), `actions` (`break: 90`),
+`device` (`break: 90`), `clip` (`break: 96`); the read-op / small tier
+`advanced` (`break: 97`), `core` (`break: 99`), `scene` (`break: 96`),
+`live-set` (`break: 98`); and `shared` (`break: 94`). Plus the four
+non-`src/tools/` scopes: `notation` (`break: 86`), `sharedRuntime`
+(`src/shared/`, `break: 94`), `mcpServer` (`src/mcp-server/`, `break: 87`) and
+`v8Adapter` (`src/live-api-adapter/`, `break: 97`). The per-domain scope
+mechanism (`config/mutation-scopes.mjs` + the runner) is in place, so each area
+can be mutated on its own. Mutation testing stays off the per-PR hot path (a
+full pass is minutes). Remaining work (later releases):
 
 - Keep triaging the ~588 notation survivors, but expect diminishing returns: the
   dense clusters left are epsilon-boundary / warning-string / equivalent mutants
   (bucket 2/3), so genuine bucket-1 gaps are now sparse.
 - Raise each scope's `break` as its score climbs.
-- Only one `src/tools/` domain is left: `shared` (`src/tools/shared`, the
-  biggest single domain — split by subarea rather than triaging in one PR). The
-  write-op tier (`track`, `session`, `actions`, `device`, `clip`), the read-op /
-  small tier (`advanced`, `core`, `scene`, `live-set`), and `sharedRuntime` are
-  done. Per domain: run `npm run mutation -- <domain>`, close real gaps, flip
-  that domain's `break` from `null` to ~1 point below its triaged score (add it
-  to `TOOL_DOMAIN_BREAKS`). The big clean wins tend to be untested lookup/enum
-  tables (as in notation's chord table) and warn-and-skip guards whose tests
-  assert only the result, never the warning or the skipped write.
-- One non-`src/tools/` tree remains unmutated and would need a fresh glob set
-  (not `toolDomain()`): the V8 adapter code (`src/live-api-adapter/`). Model it
-  on `SHARED_RUNTIME_GLOBS` / `MCP_SERVER_GLOBS` and give it a non-colliding
-  scope key. Expect a low ceiling and a heavy entry-point exclusion —
-  `live-api-adapter.ts` runs `outlet(0, "started")` + registers handlers at
-  import and is already coverage-excluded (exclude it as `mcpServer` does its
-  entry point).
 - Optionally wire a scheduled (nightly/weekly) non-blocking CI job once several
   domains have floors — full-tree runtime is hours, not minutes.
 

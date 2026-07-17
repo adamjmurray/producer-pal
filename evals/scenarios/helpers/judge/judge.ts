@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -11,6 +11,7 @@ import { streamText } from "ai";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { getDefaultModel } from "#evals/scenarios/eval-session.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
+import { callCodexCliJudge } from "./codex-cli-judge.ts";
 import {
   finishJudgeOutput,
   printJudgeChunk,
@@ -36,6 +37,11 @@ export async function callJudge(
   criteria: string,
 ): Promise<string> {
   const judgeModel = model ?? getDefaultModel(provider);
+
+  if (provider === "codex-code") {
+    return await callCodexCliJudge(prompt, systemPrompt, judgeModel, criteria);
+  }
+
   const languageModel = createProviderModel(provider, judgeModel);
 
   printJudgeHeader(provider, judgeModel, criteria);

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -19,7 +19,7 @@ export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
 export type { ConfigOptions };
 
 export type EvalProvider =
-  "anthropic" | "google" | "local" | "openai" | "openrouter";
+  "anthropic" | "codex-code" | "google" | "local" | "openai" | "openrouter";
 
 /**
  * A test scenario that runs against Ableton Live

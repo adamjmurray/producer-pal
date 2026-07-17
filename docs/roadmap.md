@@ -10,7 +10,7 @@ The 2.0 personalization and extensibility work has shipped — see
 
 - Custom skills as first-class: registering your own named skill alongside the
   built-ins, rather than `@include`-ing it into a fragment
-- Tool description overrides and tool presets
+- Personas: presets that combine a tool set with custom context and skills
 - Per-project memory
 - Some form of repeatable, pre-defined operations — workflows, subagents, or
   command-oriented skills. Still an open question.
@@ -23,7 +23,17 @@ ideas stand.
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
 
-### 1.4 - MIDI Transforms, REST API, and Live API Access (February–May 2026)
+### 2.0 - Personalization (July 2026)
+
+- Global context: add your own reference material and custom instructions across
+  all Live projects
+- Global memory: Producer Pal can adapt over time to your needs and interaction
+  style
+- Customize the built-in skills and the built-in chat's system instructions
+- Alternative MIDI syntaxes
+- Context manager in the built-in chat UI for working with all the above
+
+### 1.4 - MIDI Transforms, REST API, and Live API Access (February 2026)
 
 MIDI transforms: math expressions for transforming note properties
 
@@ -100,12 +110,7 @@ manipulation and basic Live Set management.
 
 ## Beyond 2.0
 
-After 2.0, the core stabilizes — future core changes focus on bug fixes and
-supporting new Live API features as they become available. New capabilities will
-come through [extensions](/extending): custom skills and context, scripts and
-interfaces built on the [REST API](/guide/rest-api), and companion MCP servers.
-
-**Core features under consideration:**
-
 - Audio synthesis
 - Audio analysis
+- Microtonal support
+- Add any new Live API features as they arrive

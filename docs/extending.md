@@ -131,8 +131,8 @@ Not commitments — the direction being explored after 2.0:
 - **Custom skills as first-class.** Today you extend the skills by overriding a
   fragment and `@include`-ing your own files. Registering a standalone skill —
   named, described, and loaded when it's relevant — is a natural next step.
-- **Tool description overrides and presets.** Tune how the AI reads a specific
-  tool, or curate a smaller tool set for a focused task.
+- **Personas.** Presets that bundle a curated tool set with its own context and
+  skills, so you can switch the AI's whole footing for a focused task.
 - **Workflows, or subagents, or neither.** The original idea was "workflows":
   fixed tool-call sequences the AI triggers but doesn't improvise. The open
   question is whether that's really just a command-oriented skill — and whether
@@ -161,7 +161,28 @@ bottleneck.
 
 If you find tweaks to the default skills or tool and parameter descriptions that
 improve how the AI behaves, those can be adopted into the core via pull request
-— improvements to the built-ins reach everyone.
+— improvements to the built-ins reach everyone. A few areas are especially open
+to experimentation:
+
+- **Skills and chat system instructions** — changes to the built-in Producer Pal
+  Skills or the Chat UI system instructions, especially ones backed by
+  experiments that show better AI behavior.
+- **Coding-agent skills** — more [Agent Skill](/guide/skills) examples for
+  different workflows and agents. Good ones can be featured on this site.
+- **MIDI notation and transforms** — experiments with alternative notation
+  systems, and additions to the [transforms](/features/midi-notation#transforms)
+  syntax (worth asking about first so we can agree on the grammar direction).
+
+Behavior changes land best when backed by
+[evals](https://github.com/adamjmurray/producer-pal/blob/main/evals/README.md)
+showing improved efficacy — ideally across both large and small models, since a
+prompt tweak that helps a frontier model can regress a small local one.
+
+The toolset itself has stabilized, so changing a tool's shape or adding a new
+tool takes some convincing — please ask first. The
+[developer guide](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md)
+covers the strict code-quality checks (they exist to combat AI slop, not to
+gatekeep) and how to work with them.
 
 Want to discuss ideas for extensions? Join the conversation on
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or

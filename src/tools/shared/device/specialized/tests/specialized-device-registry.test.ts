@@ -119,6 +119,17 @@ describe("readSpecializedParams", () => {
       { name: "envListen", value: true },
     ]);
   });
+
+  it("trims surrounding whitespace off the search term", () => {
+    const device = registerDevice("Roar", {
+      routing_mode_index: 1,
+      env_listen: 1,
+    });
+
+    expect(readSpecializedParams(device, "  env  ")).toStrictEqual([
+      { name: "envListen", value: true },
+    ]);
+  });
 });
 
 describe("applySpecializedActions", () => {
@@ -591,6 +602,76 @@ describe("modulation-rate-effects specs (real rule data)", () => {
         expectOnlyActive(rules, params, SECTION_2, active2);
       },
     );
+  });
+
+  describe("wavetableSpec", () => {
+    /**
+     * Build one LFO's sync mode plus its free-running and synced rate params.
+     * @param lfo - LFO number (1 or 2)
+     * @param mode - Sync mode value (Free or Tempo)
+     * @returns Parameter entries
+     */
+    function build(lfo: number, mode: string): Record<string, unknown>[] {
+      return [
+        { name: `LFO ${lfo} Sync`, value: mode },
+        { name: `LFO ${lfo} Rate`, value: 1.49 },
+        { name: `LFO ${lfo} S. Rate`, value: "1/8" },
+      ];
+    }
+
+    // Both LFOs carry an independent rule; each mode leaves exactly one of the
+    // two rate params active.
+    it.each([
+      [1, "Free", "LFO 1 Rate"],
+      [1, "Tempo", "LFO 1 S. Rate"],
+      [2, "Free", "LFO 2 Rate"],
+      [2, "Tempo", "LFO 2 S. Rate"],
+    ])("LFO %s Sync %s → only %s active", (lfo, mode, active) => {
+      expectOnlyActive(
+        wavetableSpec.inactiveWhen as InactiveWhenRule[],
+        build(lfo, mode),
+        [`LFO ${lfo} Rate`, `LFO ${lfo} S. Rate`],
+        active,
+      );
+    });
+  });
+
+  describe("driftSpec", () => {
+    const GROUP = [
+      "Cyc Env Rate",
+      "Cyc Env Time",
+      "Cyc Env Ratio",
+      "Cyc Env Synced",
+    ];
+
+    /**
+     * Build Drift's cycling-envelope mode plus its four rate params.
+     * @param mode - Cyc Env Time Mode value
+     * @returns Parameter entries
+     */
+    function build(mode: string): Record<string, unknown>[] {
+      return [
+        { name: "Cyc Env Time Mode", value: mode },
+        { name: "Cyc Env Rate", value: 1 },
+        { name: "Cyc Env Time", value: 1000 },
+        { name: "Cyc Env Ratio", value: 2 },
+        { name: "Cyc Env Synced", value: "1/4" },
+      ];
+    }
+
+    it.each([
+      ["Freq", "Cyc Env Rate"],
+      ["Time", "Cyc Env Time"],
+      ["Ratio", "Cyc Env Ratio"],
+      ["Sync", "Cyc Env Synced"],
+    ])("Cyc Env Time Mode %s → only %s active", (mode, active) => {
+      expectOnlyActive(
+        driftSpec.inactiveWhen as InactiveWhenRule[],
+        build(mode),
+        GROUP,
+        active,
+      );
+    });
   });
 });
 

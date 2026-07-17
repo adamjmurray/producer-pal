@@ -14,7 +14,7 @@ import {
   createDefaultProps,
   createMockAdapter,
   lockedSettings,
-} from "./use-chat-test-helpers";
+} from "./helpers/use-chat-test-helpers";
 
 const mockAdapter = createMockAdapter();
 const defaultProps = createDefaultProps(mockAdapter);

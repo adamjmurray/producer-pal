@@ -17,8 +17,19 @@ Keys stay client-side and are **encrypted at rest**:
   envelopes, encrypted with a 256-bit **non-extractable** AES-GCM `CryptoKey`
   persisted in IndexedDB (`producer-pal-crypto`). Plaintext never sits in
   `localStorage`. See `webui/src/lib/api-key-crypto.ts`.
-- **No Producer Pal backend / LLM proxy** — the browser calls the chosen
-  provider directly with the user's key.
+- **No Producer Pal backend / LLM proxy** — for text chat, the browser calls the
+  chosen provider directly with the user's key.
+- **Voice mode is the one exception**: the key is sent to the local MCP server,
+  which exchanges it with the provider for a short-lived token
+  (`src/mcp-server/routes/voice-token-route.ts` posts the OpenAI key to
+  `client_secrets` and returns only the `ek_...` token;
+  `gemini-voice-token-route.ts` currently returns the key as-is, since the
+  browser opens the WebSocket to Google directly and the key would reach Google
+  regardless — the route exists for local-origin gating and to keep a seam for
+  ephemeral tokens later). The key is never logged or stored, but it does
+  transit the local process. This is a local key exchange, not the rejected
+  proxy: no Producer Pal-operated server is involved and no LLM traffic flows
+  through it.
 - The filesystem config (`~/.producer-pal`) holds only non-secret, user-facing
   config; keys are not written there.
 

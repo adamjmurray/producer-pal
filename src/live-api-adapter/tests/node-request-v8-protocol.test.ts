@@ -13,6 +13,12 @@ import {
   handleNodeResponse,
   requestNode,
 } from "../node-request-v8-protocol.ts";
+import {
+  installCapturingTask,
+  installTrackingTask,
+  latestOutletPayload,
+  latestOutletRequestId,
+} from "./v8-protocol-test-helpers.ts";
 
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   log: vi.fn(),
@@ -27,13 +33,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
  * @returns The requestId from the latest node_request outlet call
  */
 function latestRequestId(): string {
-  const outletMock = vi.mocked(globalThis.outlet);
-  const call = outletMock.mock.calls.at(-1);
-
-  expect(call?.[0]).toBe(0);
-  expect(call?.[1]).toBe("node_request");
-
-  return call?.[2] as string;
+  return latestOutletRequestId("node_request");
 }
 
 /**
@@ -42,64 +42,7 @@ function latestRequestId(): string {
  * @returns Parsed request payload
  */
 function latestRequestPayload(): { route: string; args: unknown } {
-  const outletMock = vi.mocked(globalThis.outlet);
-  const call = outletMock.mock.calls.at(-1);
-  const json = call?.[3] as string;
-
-  return JSON.parse(json) as { route: string; args: unknown };
-}
-
-/**
- * Install a non-auto-firing Task on globalThis that records each
- * schedule(ms) call into the supplied array. Returns a restore function
- * the caller should invoke in a finally block.
- *
- * @param scheduleCalls - Array that captures every schedule() ms value
- * @returns Restore function that puts the original globalThis.Task back
- */
-function installTrackingTask(scheduleCalls: number[]): () => void {
-  class TrackingTask {
-    schedule = (ms: number): void => {
-      scheduleCalls.push(ms);
-    };
-
-    constructor(_callback: () => void) {}
-  }
-
-  const g = globalThis as Record<string, unknown>;
-  const originalTask = g.Task;
-
-  g.Task = TrackingTask;
-
-  return () => {
-    g.Task = originalTask;
-  };
-}
-
-/**
- * Install a Task on globalThis that captures the callback so the test can
- * invoke it manually to simulate a fired timeout.
- *
- * @param captured - Single-element array that receives the latest callback
- * @returns Restore function that puts the original globalThis.Task back
- */
-function installCapturingTask(captured: Array<() => void>): () => void {
-  class CapturingTask {
-    schedule = (_ms: number): void => {};
-
-    constructor(callback: () => void) {
-      captured.push(callback);
-    }
-  }
-
-  const g = globalThis as Record<string, unknown>;
-  const originalTask = g.Task;
-
-  g.Task = CapturingTask;
-
-  return () => {
-    g.Task = originalTask;
-  };
+  return latestOutletPayload<{ route: string; args: unknown }>("node_request");
 }
 
 describe("node-request-v8-protocol", () => {
@@ -132,6 +75,22 @@ describe("node-request-v8-protocol", () => {
     const id2 = latestRequestId();
 
     expect(id1).not.toBe(id2);
+  });
+
+  // Uniqueness alone is also satisfied by a counter running the wrong way, so
+  // pin the shape and the direction. The counter is module state shared with
+  // every other test here, hence the relative assertion.
+  it("generates request IDs that count up from the node-req- prefix", () => {
+    void requestNode("a");
+    const id1 = latestRequestId();
+
+    void requestNode("b");
+    const id2 = latestRequestId();
+
+    expect(id1).toMatch(/^node-req-\d+$/);
+    expect(Number(id2.slice("node-req-".length))).toBe(
+      Number(id1.slice("node-req-".length)) + 1,
+    );
   });
 
   it("resolves the promise when handleNodeResponse is called", async () => {

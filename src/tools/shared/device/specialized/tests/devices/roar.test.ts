@@ -12,7 +12,7 @@ import { readDevice } from "#src/tools/device/read/read-device.ts";
 import {
   applySpecializedParamWrite,
   readSpecializedParams,
-} from "../specialized-device-registry.ts";
+} from "../../specialized-device-registry.ts";
 
 /**
  * Register a mock Roar device and return its LiveAPI.
@@ -114,6 +114,20 @@ describe("Roar pseudo-params", () => {
       applySpecializedParamWrite(device, "envListen", "off", "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("env_listen", 0);
+    });
+
+    it("warns naming envListen and skips uninterpretable input", () => {
+      const device = registerRoar();
+
+      applySpecializedParamWrite(device, "envListen", "maybe", "updateDevice");
+
+      expect(device.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          '"maybe" is not a valid envListen (expected true/false)',
+        ),
+      );
     });
   });
 });

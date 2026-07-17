@@ -274,18 +274,13 @@ describe("clearClipAtDuplicateTarget", () => {
     // With the workaround off we defer to Live entirely — the early return must
     // report `true`, even for a source that would otherwise self-overlap [0,4].
     setArrangementDuplicateCrashWorkaround(false);
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 4 },
-    });
-    const trackMock = setupTrack(0);
 
-    const safe = clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      0,
-      true,
-      mockContext,
-    );
+    const safe = runClearTargetOnEmptyTrack({
+      isArrangementClip: 1,
+      sourceStart: 0,
+      sourceEnd: 4,
+      targetPosition: 0,
+    });
 
     expect(safe).toBe(true);
   });
@@ -294,18 +289,12 @@ describe("clearClipAtDuplicateTarget", () => {
     // A session-clip source is a no-op that must report `true`. Give it a range
     // that would self-overlap if the early return were skipped, so the guard is
     // observable through the return value, not just the absence of calls.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 0, start_time: 0, end_time: 4 },
+    const safe = runClearTargetOnEmptyTrack({
+      isArrangementClip: 0,
+      sourceStart: 0,
+      sourceEnd: 4,
+      targetPosition: 0,
     });
-    const trackMock = setupTrack(0);
-
-    const safe = clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      0,
-      true,
-      mockContext,
-    );
 
     expect(safe).toBe(true);
   });
@@ -369,36 +358,13 @@ describe("clearClipAtDuplicateTarget", () => {
     // Source: 4 beats long (start_time=20, end_time=24), target position=8
     // Target range: 8 to 12. Existing clip at 4-10 starts before target,
     // ends within — right-trims to keep [4,8].
-    setupClip("100", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 20,
-        end_time: 24,
-      },
+    const trackMock = runClearTargetOnTrimmableTrack({
+      sourceStart: 20,
+      sourceEnd: 24,
+      existingStart: 4,
+      existingEnd: 10,
+      targetPosition: 8,
     });
-
-    const existingClip = setupArrangementClip("200", 0, {
-      start_time: 4,
-      end_time: 10,
-    });
-
-    const trackMock = setupTrack(0, {
-      properties: {
-        arrangement_clips: ["id", existingClip.id],
-      },
-      methods: {
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
-
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      8,
-      true,
-      mockContext,
-    );
 
     // Right-trim: temp at targetPosition (8), length = clipEnd - target = 10 - 8 = 2
     expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 8, 2);
@@ -548,28 +514,13 @@ describe("clearClipAtDuplicateTarget", () => {
     // exactly at targetEnd. hasAfter is strictly `clipEnd > targetEnd` (12 > 12 =
     // false), so this is a before-only right-trim (one create_midi_clip, no
     // holding dup) — not the dup-to-holding after path.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 20, end_time: 24 },
+    const trackMock = runClearTargetOnTrimmableTrack({
+      sourceStart: 20,
+      sourceEnd: 24,
+      existingStart: 4,
+      existingEnd: 12,
+      targetPosition: 8,
     });
-    const existingClip = setupArrangementClip("200", 0, {
-      start_time: 4,
-      end_time: 12,
-    });
-    const trackMock = setupTrack(0, {
-      properties: { arrangement_clips: ["id", existingClip.id] },
-      methods: {
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
-
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      8,
-      true,
-      mockContext,
-    );
 
     expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
     expect(trackMock.call).not.toHaveBeenCalledWith(
@@ -685,27 +636,101 @@ describe("clearClipAtDuplicateTarget", () => {
 });
 
 /**
- * Set up mocks for a clearClipAtDuplicateTarget test that expects no track calls.
- * @param opts - Source clip times, existing clip times, and target position
- * @param opts.sourceStart - Source clip start time
- * @param opts.sourceEnd - Source clip end time
- * @param opts.existingStart - Existing clip start time
- * @param opts.existingEnd - Existing clip end time
- * @param opts.targetPosition - Target position for duplicate
- * @returns The track mock for assertion
+ * A clearClipAtDuplicateTarget scenario: the source clip "100", one overlapping
+ * existing clip "200", and the position the source is duplicated to.
  */
-function runClearTargetExpectingNoOp(opts: {
+interface ClearTargetScenario {
   sourceStart: number;
   sourceEnd: number;
   existingStart: number;
   existingEnd: number;
   targetPosition: number;
-}): ReturnType<typeof setupTrack> {
+}
+
+/**
+ * Set up mocks for a clearClipAtDuplicateTarget test that expects no track calls.
+ * @param opts - Source clip times, existing clip times, and target position
+ * @returns The track mock for assertion
+ */
+function runClearTargetExpectingNoOp(
+  opts: ClearTargetScenario,
+): ReturnType<typeof setupTrack> {
   const { existingClip } = setupSourceAndExistingClips(opts);
 
   const trackMock = setupTrack(0, {
     properties: {
       arrangement_clips: ["id", existingClip.id],
+    },
+  });
+
+  clearClipAtDuplicateTarget(
+    LiveAPI.from(trackMock.path),
+    "100",
+    opts.targetPosition,
+    true,
+    mockContext,
+  );
+
+  return trackMock;
+}
+
+/**
+ * Run clearClipAtDuplicateTarget against a track with no arrangement clips
+ * registered, so only the early-return guards can decide the outcome. Used by
+ * the tests that assert the guards report "safe to duplicate" via the return
+ * value rather than through track calls.
+ * @param opts - Source clip kind, source clip times, and target position
+ * @param opts.isArrangementClip - 1 for an arrangement source, 0 for a session source
+ * @param opts.sourceStart - Source clip start time
+ * @param opts.sourceEnd - Source clip end time
+ * @param opts.targetPosition - Target position for duplicate
+ * @returns Whether clearClipAtDuplicateTarget reported the duplicate as safe
+ */
+function runClearTargetOnEmptyTrack(opts: {
+  isArrangementClip: number;
+  sourceStart: number;
+  sourceEnd: number;
+  targetPosition: number;
+}): boolean {
+  setupClip("100", {
+    properties: {
+      is_arrangement_clip: opts.isArrangementClip,
+      start_time: opts.sourceStart,
+      end_time: opts.sourceEnd,
+    },
+  });
+
+  const trackMock = setupTrack(0);
+
+  return clearClipAtDuplicateTarget(
+    LiveAPI.from(trackMock.path),
+    "100",
+    opts.targetPosition,
+    true,
+    mockContext,
+  );
+}
+
+/**
+ * Run clearClipAtDuplicateTarget against a track that can right-trim (create
+ * and delete clips) but cannot duplicate to a holding area. Used by the
+ * before-only overlap tests, where a successful run must right-trim in place
+ * and never reach for the holding-clip path.
+ * @param opts - Source clip times, existing clip times, and target position
+ * @returns The track mock for assertion
+ */
+function runClearTargetOnTrimmableTrack(
+  opts: ClearTargetScenario,
+): ReturnType<typeof setupTrack> {
+  const { existingClip } = setupSourceAndExistingClips(opts);
+
+  const trackMock = setupTrack(0, {
+    properties: {
+      arrangement_clips: ["id", existingClip.id],
+    },
+    methods: {
+      create_midi_clip: () => ["id", "300"],
+      delete_clip: () => null,
     },
   });
 

@@ -94,9 +94,13 @@ describe("writeEnumByIndex", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
+    // The warning must list the valid labels, comma-separated — it is the only
+    // place the model learns what it should have passed.
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("not a valid mode"),
+      expect.stringContaining(
+        '"delta" is not a valid mode. Options: alpha, beta, gamma',
+      ),
     );
   });
 });
@@ -136,6 +140,11 @@ describe("coerceBool", () => {
 
   it("returns null for uninterpretable strings", () => {
     expect(coerceBool("maybe")).toBeNull();
+  });
+
+  it("trims surrounding whitespace before matching", () => {
+    expect(coerceBool("  true  ")).toBe(true);
+    expect(coerceBool("\toff\n")).toBe(false);
   });
 });
 
@@ -291,9 +300,12 @@ describe("writeIntFromSet", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
+    // The warning must enumerate the allowed values, comma-separated.
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("voices must be one of"),
+      expect.stringContaining(
+        `voices must be one of ${ALLOWED.join(", ")} (got "5")`,
+      ),
     );
   });
 });

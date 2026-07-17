@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -171,6 +171,9 @@ async function fetchModelsForProvider(
           "anthropic-version": "2023-06-01",
         },
       );
+
+    case "codex-code":
+      return ["luna", "sol", "terra"];
 
     case "google":
       return await fetchGoogleModels();

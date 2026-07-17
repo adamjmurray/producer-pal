@@ -4,8 +4,12 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
+    # Both nested manifests are dependency-free today (they ship the bundled
+    # portal). Listed so any future dependency is covered from day one.
     directories:
       - "/"
+      - "/claude-desktop-extension"
+      - "/npm"
     target-branch: "dev"
     open-pull-requests-limit: 10
     schedule:

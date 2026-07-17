@@ -116,32 +116,18 @@ jobs:
         id: tests
         run: FORCE_COLOR=3 npm run test:coverage:verbose
 
-      - name: Report Coverage
+      - name: Report test stats and coverage
         id: summary
-        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
+        # Runs even when tests fail: the vitest JSON report and the coverage
+        # summary (reportOnFailure) are both still written. !cancelled() is
+        # required — an `if:` with no status check function implies success(),
+        # which would skip this step on the very failure it reports on. The
+        # outcome test still skips it when the tests step never ran.
+        if:
+          ${{ !cancelled() && (steps.tests.outcome == 'success' ||
+          steps.tests.outcome == 'failure') }}
         run: |
-          # Extract coverage percentages from JSON
-          LINES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
-          STATEMENTS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.statements.pct)")
-          FUNCTIONS=$(node -e "console.log(require('./coverage/coverage-summary.json').total.functions.pct)")
-          BRANCHES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.branches.pct)")
-
-          # Extract thresholds from config
-          MIN_STATEMENTS=$(node scripts/build-and-release/get-thresholds.ts coverage statements)
-          MIN_BRANCHES=$(node scripts/build-and-release/get-thresholds.ts coverage branches)
-          MIN_FUNCTIONS=$(node scripts/build-and-release/get-thresholds.ts coverage functions)
-          MIN_LINES=$(node scripts/build-and-release/get-thresholds.ts coverage lines)
-
-          cat > /tmp/summary.md << EOF
-          ## Unit Test Coverage
-
-          | Category | Coverage | Min Required |
-          |----------|----------|--------------|
-          | Statements | ${STATEMENTS}% | ${MIN_STATEMENTS}% |
-          | Branches | ${BRANCHES}% | ${MIN_BRANCHES}% |
-          | Functions | ${FUNCTIONS}% | ${MIN_FUNCTIONS}% |
-          | Lines | ${LINES}% | ${MIN_LINES}% |
-          EOF
+          npm run test:stats --silent -- --markdown > /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
@@ -286,27 +272,26 @@ jobs:
         run: npx playwright install-deps chromium
 
       - name: Test built-in chat UI with Playwright
-        run: |
-          set -o pipefail
-          npm run ui:test 2>&1 | tee ui-playwright-output.txt
+        id: ui-tests
+        run: npm run ui:test
 
       - name: Test documentation site with Playwright
+        id: docs-tests
+        run: npm run docs:test
+
+      - name: Report end-to-end test stats
         id: summary
+        # Runs even when a suite fails: each suite's JSON report is still
+        # written, and a suite that never started is reported as "not run".
+        # !cancelled() is required — an `if:` with no status check function
+        # implies success(), which would skip this step on the very failure it
+        # reports on. Gating on the first suite is deliberate: if it never ran,
+        # neither did the rest, so there is nothing to report.
+        if:
+          ${{ !cancelled() && (steps.ui-tests.outcome == 'success' ||
+          steps.ui-tests.outcome == 'failure') }}
         run: |
-          set -o pipefail
-          npm run docs:test 2>&1 | tee playwright-output.txt
-
-          # Extract result summary for job summary
-          UI_RESULT=$(grep -v '^$' ui-playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
-          DOCS_RESULT=$(grep -v '^$' playwright-output.txt | tail -1 | sed 's/^[[:space:]]*//')
-          cat > /tmp/summary.md << EOF
-          ## End-to-End Tests
-
-          | Suite | Result |
-          |-------|--------|
-          | Chat UI | ${UI_RESULT} |
-          | Docs | ${DOCS_RESULT} |
-          EOF
+          npm run e2e:stats --silent -- --markdown > /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
@@ -362,7 +347,11 @@ jobs:
         code-hygiene,
         repo-stats,
       ]
-    if: always()
+    # Cross-repo (fork) PRs get a read-only GITHUB_TOKEN, so commenting 403s.
+    # Skip instead, rather than show a red check on an otherwise-green PR.
+    if: >-
+      always() && (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
 
     permissions:

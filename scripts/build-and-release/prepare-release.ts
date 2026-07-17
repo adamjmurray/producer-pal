@@ -34,7 +34,7 @@ try {
 } catch {
   console.log("⚠️  WARNING: Not on a tagged commit!");
   console.log("   Releases should be built from tagged commits.");
-  console.log("   Run: git tag vX.Y.Z\n");
+  console.log('   Run: git tag -s -m "vX.Y.Z" vX.Y.Z\n');
 }
 
 // Get version from package.json
