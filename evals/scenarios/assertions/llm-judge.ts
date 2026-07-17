@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +9,7 @@
 
 import { callAiSdkJudge } from "../helpers/judge/ai-sdk-judge.ts";
 import { callClaudeCliJudge } from "../helpers/judge/claude-cli-judge.ts";
+import { callCodexCliJudge } from "../helpers/judge/codex-cli-judge.ts";
 import { type JudgeResult } from "../helpers/judge-response-parser.ts";
 import {
   type LlmJudgeAssertion,
@@ -192,6 +193,15 @@ async function callJudgeLlm(
   // claude-code judges via the Claude CLI on the Max subscription (no API key).
   if (provider === "claude-code") {
     return await callClaudeCliJudge(
+      prompt,
+      JUDGE_SYSTEM_PROMPT,
+      model,
+      criteria,
+    );
+  }
+
+  if (provider === "codex-code") {
+    return await callCodexCliJudge(
       prompt,
       JUDGE_SYSTEM_PROMPT,
       model,

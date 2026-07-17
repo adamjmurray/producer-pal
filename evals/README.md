@@ -1,3 +1,10 @@
+<!--
+Producer Pal
+Copyright (C) 2026 Taylor Haun
+AI assistance: Claude (Anthropic), Codex (OpenAI)
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # Evals
 
 Two CLI tools for testing LLM behavior with Producer Pal's MCP tools:
@@ -34,15 +41,19 @@ scripts/eval [options]
 Models use `provider/model` format, or just the model name if the provider can
 be inferred from the prefix:
 
-| Format                          | Provider   |
-| ------------------------------- | ---------- |
-| `gemini-3-flash-preview`        | google     |
-| `claude-sonnet-4-5`             | anthropic  |
-| `gpt-5-nano`                    | openai     |
-| `google/gemini-3-flash-preview` | google     |
-| `anthropic/claude-sonnet-4-5`   | anthropic  |
-| `openrouter/some-model`         | openrouter |
-| `local/model-name`              | local      |
+| Format                          | Provider    |
+| ------------------------------- | ----------- |
+| `gemini-3-flash-preview`        | google      |
+| `claude-sonnet-4-5`             | anthropic   |
+| `gpt-5-nano`                    | openai      |
+| `google/gemini-3-flash-preview` | google      |
+| `anthropic/claude-sonnet-4-5`   | anthropic   |
+| `claude-code/sonnet`            | claude-code |
+| `codex-code/sol`                | codex-code  |
+| `codex-code/terra`              | codex-code  |
+| `codex-code/luna`               | codex-code  |
+| `openrouter/some-model`         | openrouter  |
+| `local/model-name`              | local       |
 
 ### Examples
 
@@ -52,6 +63,10 @@ scripts/eval -a -m gemini-3-flash-preview
 
 # Compare two models on one scenario
 scripts/eval -t connect-to-ableton -m gemini-3-flash-preview -m claude-sonnet-4-5
+
+# Compare Codex subscription models (requires the Codex CLI login)
+scripts/eval -t connect-to-ableton \
+  -m codex-code/sol -m codex-code/terra -m codex-code/luna
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s
@@ -101,7 +116,7 @@ List available scenarios:
 scripts/eval -l
 ```
 
-Current scenarios:
+Core scenarios (the original 21):
 
 | ID                             | Description                                   | Turns |
 | ------------------------------ | --------------------------------------------- | ----- |
@@ -126,6 +141,10 @@ Current scenarios:
 | `midi-chord-progression`       | Generate a chord progression in A minor       | 2     |
 | `midi-bassline`                | Generate a 2-bar bassline in A minor          | 2     |
 | `arrangement-workflow`         | Create, duplicate, and play arrangement clips | 4     |
+
+The expanded suite contains 50 registered scenarios: meta (2), transport (3),
+reading (3), tracks (9), scenes (5), devices (8), MIDI (10), selection (3), and
+workflows (7). Treat `scripts/eval -l` as the authoritative inventory.
 
 ### Scoring
 

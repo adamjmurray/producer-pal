@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -68,13 +68,10 @@ export function createProviderModel(
       return createOpenAI({ apiKey, baseURL }).chat(model);
     }
 
-    case "claude-code": {
-      // claude-code is driven by the CLI transport (claude-cli-session.ts), not an
-      // AI SDK LanguageModel — createEvalSession branches before reaching here.
-      throw new Error(
-        "claude-code uses the CLI transport, not the AI SDK provider.",
-      );
-    }
+    case "claude-code":
+      throw cliProviderError(provider);
+    case "codex-code":
+      throw cliProviderError(provider);
 
     default: {
       const _exhaustiveCheck: never = provider;
@@ -82,4 +79,15 @@ export function createProviderModel(
       throw new Error(`Unknown provider: ${String(_exhaustiveCheck)}`);
     }
   }
+}
+
+/**
+ * Build the error used when a CLI-only provider reaches the AI SDK path.
+ * @param provider - CLI-only provider name
+ * @returns Configuration error
+ */
+function cliProviderError(provider: "claude-code" | "codex-code"): Error {
+  return new Error(
+    `${provider} uses a CLI transport, not the AI SDK provider.`,
+  );
 }

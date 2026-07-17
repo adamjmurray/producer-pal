@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -16,6 +16,10 @@ import {
   CLAUDE_CODE_DEFAULT_MODEL,
   createClaudeCliSession,
 } from "#evals/chat/claude-cli-session.ts";
+import {
+  CODEX_CODE_DEFAULT_MODEL,
+  createCodexCliSession,
+} from "#evals/chat/codex/codex-cli-session.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
@@ -40,6 +44,8 @@ export function getDefaultModel(provider: EvalProvider): string {
       return ANTHROPIC_CONFIG.defaultModel;
     case "claude-code":
       return CLAUDE_CODE_DEFAULT_MODEL;
+    case "codex-code":
+      return CODEX_CODE_DEFAULT_MODEL;
     case "google":
       return GEMINI_CONFIG.defaultModel;
     case "openai":
@@ -90,6 +96,15 @@ export async function createEvalSession(
   // Max subscription (no API key), with Producer Pal wired in as an MCP server.
   if (options.provider === "claude-code") {
     return await createClaudeCliSession({
+      ...(options.model != null ? { model: options.model } : {}),
+      ...(options.instructions != null
+        ? { instructions: options.instructions }
+        : {}),
+    });
+  }
+
+  if (options.provider === "codex-code") {
+    return await createCodexCliSession({
       ...(options.model != null ? { model: options.model } : {}),
       ...(options.instructions != null
         ? { instructions: options.instructions }

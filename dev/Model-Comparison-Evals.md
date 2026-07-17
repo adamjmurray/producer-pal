@@ -1,7 +1,7 @@
 <!--
 Producer Pal
 Copyright (C) 2026 Taylor Haun
-AI assistance: Claude (Anthropic)
+AI assistance: Claude (Anthropic), Codex (OpenAI)
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
@@ -18,7 +18,7 @@ powerful paid AI models ... and fall apart with small, local models."
 
 ## Goal
 
-1. A solid suite of **22 basic-to-moderate scenarios** covering Producer Pal's
+1. A solid suite of **50 basic-to-complex scenarios** covering Producer Pal's
    core surface area.
 2. Run them across a **matrix of models × config profiles** and produce a
    comparison we can analyze.
@@ -58,11 +58,12 @@ scripts/eval -a -m <modelA> -m <modelB> -c default -c small-model
 machine running the evals. That's why execution happens on Taylor's computer,
 not in the cloud dev environment.
 
-## The 22-scenario suite
+## The 50-scenario suite
 
-Six scenarios pre-existed; sixteen were added for broad coverage of Adam's
-priority areas. All run against the `basic-midi-4-track` Live Set (tracks:
-Drums, Bass, Chords + 2 more; A minor; 120 BPM; 4/4; 8 scenes).
+The original 22 scenarios were expanded with selection, deeper device and MIDI
+editing, scene construction, and complex workflow coverage. Most use the
+`basic-midi-4-track` Live Set; the Jambalaya workflow uses its dedicated sample
+bag and Live Set.
 
 | Area               | Scenarios                                                                                                    |
 | ------------------ | ------------------------------------------------------------------------------------------------------------ |
@@ -80,9 +81,10 @@ List them anytime with `scripts/eval -l`.
 
 ## The provider landscape (what to test, and why)
 
-Only **five providers** are wired into the eval code path
+Seven providers are wired into the eval code path
 (`evals/shared/provider-configs.ts`, `evals/chat/ai-sdk-provider.ts`):
-`anthropic`, `google`, `openai`, `openrouter`, `local`.
+`anthropic`, `claude-code`, `codex-code`, `google`, `openai`, `openrouter`, and
+`local`.
 
 Think in tiers:
 
@@ -108,6 +110,9 @@ Think in tiers:
    `small-model` config.
    - e.g. `local/qwen3:8b`, `local/llama3.1:8b`, `local/glm-4-...`
    - Pull models first (Ollama): `ollama pull qwen3:8b`
+5. **Subscription-backed agent CLIs.** `claude-code/*` uses Claude Code OAuth;
+   `codex-code/*` uses Codex OAuth. These avoid metered API keys but include
+   each product's agent harness, so label them separately from raw API results.
 
 > Note: Groq, Mistral, Fireworks, HuggingFace keys appear in `.env.example` but
 > are **not** connected to the eval runner today. If we ever want Groq directly
@@ -133,6 +138,8 @@ Which keys map to which provider:
 | `openai` / `gpt-*`       | `OPENAI_KEY`              | platform.openai.com    |
 | `openrouter/*`           | `OPENROUTER_KEY`          | openrouter.ai/keys     |
 | `local/*`                | none (or `LOCAL_API_KEY`) | run Ollama / LM Studio |
+| `claude-code/*`          | none                      | Claude Code login      |
+| `codex-code/*`           | none                      | Codex CLI login        |
 
 Optional: `LOCAL_BASE_URL` (default `http://localhost:11434/v1`), `MCP_URL`
 (default `http://localhost:3350/mcp`).
@@ -157,7 +164,7 @@ scripts/eval -t midi-chord-progression \
   -m gemini-3-flash-preview \
   -m local/qwen3:8b -c small-model
 
-# The full matrix: all 22 scenarios × several models × both configs
+# The full matrix: all 50 scenarios × several models × both configs
 scripts/eval -a \
   -m claude-sonnet-4-5 \
   -m gemini-3-flash-preview \
@@ -273,6 +280,42 @@ Caveats (be aware when comparing to the API path):
 - **Tools are scoped to Producer Pal.** The run allows only `mcp__producer-pal`
   tools; Claude Code's built-ins (Bash, file edits) are denied in `--print`
   mode, keeping runs safe and comparable.
+
+### Running Sol, Terra, and Luna through Codex (`codex-code` provider)
+
+The `codex-code` provider runs each turn through `codex exec --json` using the
+local Codex login. It configures only Producer Pal's HTTP MCP server, replaces
+the coding instructions with neutral Producer Pal instructions, and disables
+shell, web search, and multi-agent tools. The transport parses MCP calls,
+assistant text, thread IDs, and token usage into the same result format as the
+other providers.
+
+Prerequisites:
+
+- Codex CLI installed and logged in (`codex login`). No OpenAI API key is
+  needed. `CODEX_API_KEY`, `OPENAI_API_KEY`, and the harness's `OPENAI_KEY` are
+  removed from the subprocess environment to ensure subscription auth.
+- Ableton Live + Producer Pal running, as with every eval run.
+
+Friendly aliases resolve to current Codex model IDs: `sol` → `gpt-5.6-sol`,
+`terra` → `gpt-5.6-terra`, and `luna` → `gpt-5.6-luna`.
+
+```bash
+# Smoke test only after Ableton is ready
+scripts/eval -t connect-to-ableton \
+  -m codex-code/terra -j codex-code/luna
+
+# Compare all three models across the complete registered suite
+scripts/eval -a \
+  -m codex-code/sol \
+  -m codex-code/terra \
+  -m codex-code/luna \
+  -j codex-code/luna
+```
+
+As with `claude-code`, these results measure the model through its agent CLI,
+not a raw API swap. Codex subscription runs have no direct API cost estimate in
+the analyzer unless an `eval-pricing.json` override is supplied.
 
 ## Results workflow
 

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -22,6 +23,7 @@ export type { ConfigOptions };
 export type EvalProvider =
   | "anthropic"
   | "claude-code"
+  | "codex-code"
   | "google"
   | "local"
   | "openai"

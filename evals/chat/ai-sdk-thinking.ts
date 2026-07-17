@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -74,6 +74,9 @@ export function buildProviderOptions(
       return undefined;
     case "claude-code":
       // Thinking is controlled by the Claude CLI itself, not AI SDK options.
+      return undefined;
+    case "codex-code":
+      // Thinking is controlled by the Codex CLI itself, not AI SDK options.
       return undefined;
 
     default: {
