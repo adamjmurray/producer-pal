@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -78,6 +78,11 @@ export function createProviderModel(
         includeUsage: true,
       }).chatModel(model);
     }
+
+    case "codex-code":
+      throw new Error(
+        "codex-code uses the Codex CLI transport, not the AI SDK provider.",
+      );
 
     default: {
       const _exhaustiveCheck: never = provider;
