@@ -16,11 +16,12 @@ import {
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
-} from "./use-chat-test-helpers";
+} from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
-  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
+  const { streamingHelpersMockBody } =
+    await import("./helpers/use-chat-test-helpers");
 
   return await streamingHelpersMockBody();
 });

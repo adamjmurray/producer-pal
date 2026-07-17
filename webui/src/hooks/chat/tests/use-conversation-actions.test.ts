@@ -13,7 +13,7 @@ import {
   createMockAdapter,
   MockChatClient,
   type TestMessage,
-} from "#webui/hooks/chat/tests/use-chat-test-helpers";
+} from "#webui/hooks/chat/tests/helpers/use-chat-test-helpers";
 import { type UIMessage } from "#webui/types/messages";
 
 /**
