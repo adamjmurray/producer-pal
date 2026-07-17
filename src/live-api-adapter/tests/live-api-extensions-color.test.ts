@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,19 +82,43 @@ describe("LiveAPI extensions - color methods", () => {
       expect(api.set).toHaveBeenCalledWith("color", 255);
     });
 
+    // Assert the specific message: a bare toThrow() can't tell the format guard
+    // from the NaN guard, and a "#"-less 7-char string reaches the NaN guard
+    // when the format check is broken.
+    const FORMAT_ERROR = 'Invalid color format: must be "#RRGGBB"';
+
     it("throws error for invalid format without #", () => {
-      expect(() => api.setColor("red")).toThrow();
-      expect(() => api.setColor("rgb(255, 0, 0)")).toThrow();
+      expect(() => api.setColor("red")).toThrow(FORMAT_ERROR);
+      expect(() => api.setColor("rgb(255, 0, 0)")).toThrow(FORMAT_ERROR);
+    });
+
+    it("throws the format error for a 7-character string with no leading #", () => {
+      expect(() => api.setColor("1234567")).toThrow(FORMAT_ERROR);
     });
 
     it("throws error for wrong length", () => {
-      expect(() => api.setColor("#F00")).toThrow();
-      expect(() => api.setColor("#12345")).toThrow();
-      expect(() => api.setColor("#1234567")).toThrow();
+      expect(() => api.setColor("#F00")).toThrow(FORMAT_ERROR);
+      expect(() => api.setColor("#12345")).toThrow(FORMAT_ERROR);
+      expect(() => api.setColor("#1234567")).toThrow(FORMAT_ERROR);
     });
 
     it("throws error for invalid hex characters", () => {
-      expect(() => api.setColor("#GGGGGG")).toThrow();
+      expect(() => api.setColor("#GGGGGG")).toThrow(
+        "Invalid hex values in color: #GGGGGG",
+      );
+    });
+
+    // Each channel is parsed and NaN-checked independently, so a color that is
+    // bad in only one channel must still be rejected.
+    it.each([
+      ["#GG0000", "red"],
+      ["#00GG00", "green"],
+      ["#0000GG", "blue"],
+    ])("throws when only the %s channel is invalid (%s)", (cssColor) => {
+      expect(() => api.setColor(cssColor)).toThrow(
+        `Invalid hex values in color: ${cssColor}`,
+      );
+      expect(api.set).not.toHaveBeenCalled();
     });
 
     it("forms a bidirectional conversion with getColor", () => {
