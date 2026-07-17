@@ -347,7 +347,11 @@ jobs:
         code-hygiene,
         repo-stats,
       ]
-    if: always()
+    # Cross-repo (fork) PRs get a read-only GITHUB_TOKEN, so commenting 403s.
+    # Skip instead, rather than show a red check on an otherwise-green PR.
+    if: >-
+      always() && (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
 
     permissions:
