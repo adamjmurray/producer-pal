@@ -8,6 +8,7 @@
  */
 
 import { callAiSdkJudge } from "../helpers/judge/ai-sdk-judge.ts";
+import { callClaudeCliJudge } from "../helpers/judge/claude-cli-judge.ts";
 import { type JudgeResult } from "../helpers/judge-response-parser.ts";
 import {
   type LlmJudgeAssertion,
@@ -185,6 +186,16 @@ async function callJudgeLlm(
   if (provider === "local") {
     throw new Error(
       "Local provider cannot be used as LLM judge. Set judgeProvider to a cloud provider.",
+    );
+  }
+
+  // claude-code judges via the Claude CLI on the Max subscription (no API key).
+  if (provider === "claude-code") {
+    return await callClaudeCliJudge(
+      prompt,
+      JUDGE_SYSTEM_PROMPT,
+      model,
+      criteria,
     );
   }
 

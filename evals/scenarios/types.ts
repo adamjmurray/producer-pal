@@ -21,6 +21,7 @@ export type { ConfigOptions };
 
 export type EvalProvider =
   | "anthropic"
+  | "claude-code"
   | "google"
   | "local"
   | "openai"

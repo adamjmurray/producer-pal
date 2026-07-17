@@ -179,13 +179,17 @@ Tips:
 
 ### Claude-only runs (and a note on Pro/Max plans)
 
-The harness calls the Anthropic **API** (via the AI SDK), which needs an
-`ANTHROPIC_KEY` from console.anthropic.com and is billed per token. A **Claude
-Pro/Max subscription does not work here** — those are OAuth subscriptions scoped
-to Claude.ai and Claude Code, and Anthropic disallows using subscription auth
-with the SDK. So Claude-model evals are pay-as-you-go API usage (a Sonnet +
-Haiku full matrix is typically low single-digit dollars; Opus output is much
-pricier).
+The `anthropic` provider calls the Anthropic **API** (via the AI SDK), which
+needs an `ANTHROPIC_KEY` from console.anthropic.com and is billed per token. A
+Claude Pro/Max subscription **cannot drive the AI SDK** — those are OAuth
+subscriptions scoped to Claude.ai and Claude Code, and Anthropic disallows
+subscription auth with the SDK. So `anthropic`-provider evals are pay-as-you-go
+API usage (a Sonnet + Haiku full matrix is typically low single-digit dollars;
+Opus output is much pricier).
+
+If you'd rather spend your Max plan than API credits, use the **`claude-code`
+provider** instead (next section) — it runs Claude through the `claude` CLI on
+your subscription.
 
 To run across Claude models only — judged by Claude, so `ANTHROPIC_KEY` is the
 only key you need:
@@ -206,6 +210,69 @@ scripts/eval-analyze
 `-j claude-haiku-4-5` overrides the default Gemini judge (no `GEMINI_KEY`
 needed). Confirm exact model IDs at docs.anthropic.com — they version over time;
 the harness just needs the `claude-` prefix to route to Anthropic.
+
+### Running Claude on your Max plan instead of the API (`claude-code` provider)
+
+The `anthropic` provider above bills the metered API. There is now a second way
+to run Claude models that bills your **Claude Max subscription** instead, so a
+Claude eval run costs nothing beyond your existing plan: the **`claude-code`
+provider**.
+
+How it works (see `evals/chat/claude-cli-session.ts` and
+`claude-cli-protocol.ts`): instead of driving an AI SDK model, it hands each
+scenario turn to the local `claude` CLI (`claude --print`) with
+`ANTHROPIC_API_KEY` stripped from the subprocess, which forces Claude Code to
+bill against your Max OAuth login rather than the API. Producer Pal is wired in
+as an MCP server (`--mcp-config`), so Claude Code executes the `ppal-*` tools
+itself; we parse its `stream-json` output back into the same
+`{ text, toolCalls, usage }` the AI SDK path produces, so every assertion
+(`tool_called`, `state`, `response_contains`, `llm_judge`) works unchanged.
+(This mechanism is borrowed from the Signal Studio CLI transport; the difference
+is we _enable_ MCP for agentic tool-calling rather than disabling it.)
+
+Prerequisites:
+
+- Claude Code (`claude`) installed and logged in to your Max plan (`claude` once
+  interactively, or `/login`). No `ANTHROPIC_KEY` needed.
+- Ableton Live + Producer Pal running (same as any eval run).
+
+Usage — address models as `claude-code/<model>` (aliases `sonnet`, `haiku`,
+`opus`, or a pinned `claude-…` id). The judge can run on Max too, so a
+fully-free run needs **zero API keys**:
+
+```bash
+# Smoke test: one scenario on Max, judged on Max (no API keys)
+scripts/eval -t connect-to-ableton \
+  -m claude-code/haiku -j claude-code/haiku
+
+# Full Claude matrix on your Max plan, judged on Max
+scripts/eval -a \
+  -m claude-code/sonnet \
+  -m claude-code/haiku \
+  -c default -c small-model \
+  -j claude-code/haiku
+scripts/eval-analyze
+```
+
+Caveats (be aware when comparing to the API path):
+
+- **Not identical conditions.** Claude Code runs each turn inside its own agent
+  harness. The transport **replaces** Claude Code's built-in coding-agent system
+  prompt (via `--system-prompt`) with a neutral Producer Pal role prompt
+  (`DEFAULT_SYSTEM_PROMPT` in `claude-cli-protocol.ts`), or a scenario's own
+  `instructions` when set. This matters a lot for small models: without it, the
+  coding-agent framing makes e.g. `claude-code/haiku` hedge ("could you
+  clarify?") instead of calling the tools — connect-to-ableton swung from 10% to
+  100% once the prompt was replaced. Even so, `claude-code/sonnet` measures
+  "Claude driving Producer Pal _via Claude Code_," not a like-for-like swap for
+  the raw-API `anthropic` provider. Note which provider produced a result set.
+- **Cost column is the API-equivalent estimate.** `scripts/eval-analyze` prices
+  `claude-code` runs from token counts as if they were API calls. Your real
+  spend is whatever your Max plan's included Agent SDK usage covers (~$0 at eval
+  scale); treat the dollar figure as "what this _would_ cost on the API."
+- **Tools are scoped to Producer Pal.** The run allows only `mcp__producer-pal`
+  tools; Claude Code's built-ins (Bash, file edits) are denied in `--print`
+  mode, keeping runs safe and comparable.
 
 ## Results workflow
 
@@ -294,3 +361,57 @@ decide what to tune.
 - Drop in an `eval-pricing.json` with current prices for accurate cost numbers.
 - Stretch: investigate whether description tuning in small-model mode measurably
   helps; consider per-scenario cost breakdowns and judge-token accounting.
+
+## Findings & next steps (2026-06-21)
+
+After running the suite across Claude models on the `claude-code` (Max)
+transport — see also `dev/...` and the session notes — two things shape the next
+moves:
+
+### Close the local/cheap-model gap (Adam's #1 strategic priority)
+
+Adam's stated focus is "use evals to make local models work much better" (he's
+excited about Gemma 4 for free/offline use). We have a 50-scenario suite and a
+clean harness now, so the concrete plan:
+
+1. **Pull local models** (Ollama): start with `gemma-4` (or `qwen3:8b`,
+   `llama3.1:8b`, `deepseek-r1:8b`). `ollama pull <model>`.
+2. **Baseline run** — the suite on each local model, default config:
+   ```bash
+   scripts/eval -a -m local/gemma-4 -m local/qwen3:8b -c default \
+     -j claude-code/haiku   # free judge on Max; or a paid judge for fairness
+   ```
+   (Local models route through the AI SDK OpenAI-compatible path to Ollama at
+   `LOCAL_BASE_URL`; they do NOT use the claude-code transport.)
+3. **Identify break points** — the discriminating scenarios (musical reasoning,
+   racks/macros, multi-step builds) are where small models should fall apart.
+   `scripts/eval-analyze` ranks them by spread.
+4. **Tune `smallModelModeConfig`** (the `excludeParams` / `descriptionOverrides`
+   / `toolDescription` in each `.def.ts`) and re-run with `-c small-model` to
+   see if simplified descriptions close the gap. NOTE: on Claude models,
+   small-model mode _hurt_ (−7%); the open question is whether it _helps_
+   genuinely small local models (its intended audience). This is the core
+   experiment.
+5. Repeat per Adam's TDD loop: adjust skills/descriptions → re-run → measure.
+
+### Efficiency (Adam's #2 — "longer chats, get more done, pay/use less")
+
+Token analysis of a clean run shows **input/context is ~98% of tokens** (output
+~2%), heavily cached. So the efficiency lever is **shrinking re-sent context**,
+not output:
+
+- **Tool/param descriptions** (`.def.ts`) and the injected **Producer Pal
+  skills** (`connect.ts`) are re-sent every turn — the CLAUDE.md "context
+  optimization" rule already targets these.
+- **Tool result verbosity** matters most: a verbose `ppal-read-*` result becomes
+  input tokens on every subsequent turn. Trimming read-tool output is
+  high-value.
+- Heaviest scenarios are multi-turn reading/workflows (`jambalaya-sampler-plate`
+  ~1.08M tokens, `analyze-clip-content`, `arrangement-workflow`).
+- The harness already captures per-run tokens + cost, so any trim can be
+  measured as cost-per-point before/after — eval-driven efficiency, exactly
+  Adam's goal.
+
+> Caveat: the numbers above are from the `claude-code` transport, which adds its
+> own agent context; a raw-API run would isolate Producer Pal's own footprint
+> more cleanly.

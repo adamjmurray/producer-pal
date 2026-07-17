@@ -68,6 +68,14 @@ export function createProviderModel(
       return createOpenAI({ apiKey, baseURL }).chat(model);
     }
 
+    case "claude-code": {
+      // claude-code is driven by the CLI transport (claude-cli-session.ts), not an
+      // AI SDK LanguageModel — createEvalSession branches before reaching here.
+      throw new Error(
+        "claude-code uses the CLI transport, not the AI SDK provider.",
+      );
+    }
+
     default: {
       const _exhaustiveCheck: never = provider;
 

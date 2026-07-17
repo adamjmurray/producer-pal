@@ -72,6 +72,9 @@ export function buildProviderOptions(
       return buildOpenRouterThinking(level);
     case "local":
       return undefined;
+    case "claude-code":
+      // Thinking is controlled by the Claude CLI itself, not AI SDK options.
+      return undefined;
 
     default: {
       const _exhaustiveCheck: never = provider;

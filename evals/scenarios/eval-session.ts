@@ -13,6 +13,10 @@ import { createAiSdkMcpTools } from "#evals/chat/ai-sdk-mcp.ts";
 import { createProviderModel } from "#evals/chat/ai-sdk-provider.ts";
 import { processCliStream } from "#evals/chat/ai-sdk-stream.ts";
 import {
+  CLAUDE_CODE_DEFAULT_MODEL,
+  createClaudeCliSession,
+} from "#evals/chat/claude-cli-session.ts";
+import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
   OPENAI_CONFIG,
@@ -34,6 +38,8 @@ export function getDefaultModel(provider: EvalProvider): string {
   switch (provider) {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
+    case "claude-code":
+      return CLAUDE_CODE_DEFAULT_MODEL;
     case "google":
       return GEMINI_CONFIG.defaultModel;
     case "openai":
@@ -80,6 +86,17 @@ interface EvalSessionOptions {
 export async function createEvalSession(
   options: EvalSessionOptions,
 ): Promise<EvalSession> {
+  // claude-code runs the whole agentic turn through `claude --print` on the Claude
+  // Max subscription (no API key), with Producer Pal wired in as an MCP server.
+  if (options.provider === "claude-code") {
+    return await createClaudeCliSession({
+      ...(options.model != null ? { model: options.model } : {}),
+      ...(options.instructions != null
+        ? { instructions: options.instructions }
+        : {}),
+    });
+  }
+
   const model = createProviderModel(
     options.provider,
     options.model ?? getDefaultModel(options.provider),

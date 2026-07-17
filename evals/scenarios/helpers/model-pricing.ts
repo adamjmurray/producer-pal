@@ -37,6 +37,11 @@ export const DEFAULT_PRICING: PricingTable = {
   "claude-opus": { inputPer1M: 15, outputPer1M: 75 },
   "claude-sonnet": { inputPer1M: 3, outputPer1M: 15 },
   "claude-haiku": { inputPer1M: 1, outputPer1M: 5 },
+  // claude-code provider with bare aliases (Max plan; cost shown is API-equivalent).
+  // Pinned claude-* ids already match the keys above.
+  "claude-code/opus": { inputPer1M: 15, outputPer1M: 75 },
+  "claude-code/sonnet": { inputPer1M: 3, outputPer1M: 15 },
+  "claude-code/haiku": { inputPer1M: 1, outputPer1M: 5 },
   // OpenAI
   "gpt-5-nano": { inputPer1M: 0.05, outputPer1M: 0.4 },
   "gpt-5-mini": { inputPer1M: 0.25, outputPer1M: 2 },
