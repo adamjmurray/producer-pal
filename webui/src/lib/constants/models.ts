@@ -191,25 +191,26 @@ export const OPENROUTER_MODELS = [
   { value: "openai/gpt-5.6-terra", label: "[Paid] OpenAI GPT-5.6 Terra" },
   { value: "openai/gpt-5.6-sol", label: "[Paid] OpenAI GPT-5.6 Sol" },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
+  { value: "moonshotai/kimi-k3", label: "[Paid] Kimi K3" },
   { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
   { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6 Plus" },
   { value: "qwen/qwen3.7-max", label: "[Paid] Qwen 3.7 Max" },
-  {
-    value: "moonshotai/kimi-k2.7-code",
-    label: "[Paid] Moonshot AI Kimi K2.7 Code",
-  },
   // Free models
   {
-    value: "google/gemma-4-26b-a4b-it:free",
-    label: "[Free] Google Gemma 4 26B",
-  },
-  {
-    value: "qwen/qwen3-next-80b-a3b-instruct:free",
-    label: "[Free] Qwen3 Next 80B",
+    value: "google/gemma-4-31b-it:free",
+    label: "[Free] Google Gemma 4 31B",
   },
   {
     value: "nvidia/nemotron-3-super-120b-a12b:free",
     label: "[Free] Nvidia Nemotron 3 Super 120B",
+  },
+  {
+    value: "poolside/laguna-xs-2.1:free",
+    label: "[Free] Poolside Laguna XS 2.1",
+  },
+  {
+    value: "cohere/north-mini-code:free",
+    label: "[Free] Cohere North Mini Code",
   },
   OTHER_MODEL_OPTION,
 ];

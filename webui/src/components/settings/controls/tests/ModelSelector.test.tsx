@@ -132,25 +132,25 @@ describe("ModelSelector", () => {
     it("renders OpenRouter models", () => {
       renderModelSelector({
         provider: "openrouter",
-        model: "google/gemma-4-26b-a4b-it:free",
+        model: "google/gemma-4-31b-it:free",
       });
       expect(
         screen.getByRole("option", {
-          name: /\[Paid] Moonshot AI Kimi K2\.7 Code/,
+          name: /\[Paid] Kimi K3/,
         }),
       ).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /\[Free] Google Gemma 4 26B/ }),
+        screen.getByRole("option", { name: /\[Free] Google Gemma 4 31B/ }),
       ).toBeDefined();
     });
 
     it("calls setModel when OpenRouter model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openrouter",
-        model: "google/gemma-4-26b-a4b-it:free",
+        model: "google/gemma-4-31b-it:free",
       });
 
-      expectModelSelected("moonshotai/kimi-k2.7-code", setModel);
+      expectModelSelected("moonshotai/kimi-k3", setModel);
     });
   });
 
