@@ -86,12 +86,16 @@ release build.
 
 ## Step 2: Create GitHub Pre-Release
 
-1. Create and push the version tag:
+1. Create and push the version tag. `-s` signs it and `-m` gives it a message,
+   which a signed (annotated) tag requires:
 
    ```sh
-   git tag vX.Y.Z
+   git tag -s -m "vX.Y.Z" vX.Y.Z
    git push origin dev vX.Y.Z
    ```
+
+   Create the tag here rather than letting GitHub create it in Step 2 — a tag
+   GitHub makes is lightweight and unsigned.
 
 2. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
 3. Click "Draft a new release"
@@ -216,7 +220,7 @@ If problems are found during pre-release testing:
    ```sh
    git push origin --delete vX.Y.Z
    git tag -d vX.Y.Z
-   git tag vX.Y.Z
+   git tag -s -m "vX.Y.Z" vX.Y.Z
    git push origin dev vX.Y.Z
    ```
 
