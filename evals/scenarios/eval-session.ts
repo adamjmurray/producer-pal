@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +9,10 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ModelMessage, stepCountIs, streamText } from "ai";
+import {
+  CODEX_CODE_DEFAULT_MODEL,
+  createCodexCliSession,
+} from "#evals/chat/codex/codex-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { printStepUsage } from "#evals/chat/shared/formatting.ts";
@@ -36,6 +40,8 @@ export function getDefaultModel(provider: EvalProvider): string {
   switch (provider) {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
+    case "codex-code":
+      return CODEX_CODE_DEFAULT_MODEL;
     case "google":
       return GEMINI_CONFIG.defaultModel;
     case "openai":
@@ -83,6 +89,15 @@ interface EvalSessionOptions {
 export async function createEvalSession(
   options: EvalSessionOptions,
 ): Promise<EvalSession> {
+  if (options.provider === "codex-code") {
+    return await createCodexCliSession({
+      ...(options.model != null ? { model: options.model } : {}),
+      ...(options.instructions != null
+        ? { instructions: options.instructions }
+        : {}),
+    });
+  }
+
   const model = createProviderModel(
     options.provider,
     options.model ?? getDefaultModel(options.provider),
