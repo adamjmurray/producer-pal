@@ -93,7 +93,7 @@ Set up a signal chain conversationally:
 
 > add a Wavetable instrument to it
 
-> set the filter cutoff to 50% and add a ping pong delay after it
+> set the filter cutoff to 800 Hz and add an Echo after it
 
 > mute that track and set its color to purple
 
@@ -108,7 +108,7 @@ Browse and use audio from your library:
 
 > show me available drum samples
 
-> find me a vinyl-ish rhodes loop
+> find me a rhodes loop
 
 > create an audio clip using that kick sample on the Drums track
 
