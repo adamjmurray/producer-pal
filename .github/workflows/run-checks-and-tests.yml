@@ -119,8 +119,13 @@ jobs:
       - name: Report test stats and coverage
         id: summary
         # Runs even when tests fail: the vitest JSON report and the coverage
-        # summary (reportOnFailure) are both still written.
-        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
+        # summary (reportOnFailure) are both still written. !cancelled() is
+        # required — an `if:` with no status check function implies success(),
+        # which would skip this step on the very failure it reports on. The
+        # outcome test still skips it when the tests step never ran.
+        if:
+          ${{ !cancelled() && (steps.tests.outcome == 'success' ||
+          steps.tests.outcome == 'failure') }}
         run: |
           npm run test:stats --silent -- --markdown > /tmp/summary.md
 
@@ -278,9 +283,13 @@ jobs:
         id: summary
         # Runs even when a suite fails: each suite's JSON report is still
         # written, and a suite that never started is reported as "not run".
+        # !cancelled() is required — an `if:` with no status check function
+        # implies success(), which would skip this step on the very failure it
+        # reports on. Gating on the first suite is deliberate: if it never ran,
+        # neither did the rest, so there is nothing to report.
         if:
-          steps.ui-tests.outcome == 'success' || steps.ui-tests.outcome ==
-          'failure'
+          ${{ !cancelled() && (steps.ui-tests.outcome == 'success' ||
+          steps.ui-tests.outcome == 'failure') }}
         run: |
           npm run e2e:stats --silent -- --markdown > /tmp/summary.md
 
