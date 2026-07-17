@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -177,6 +178,41 @@ describe("LiveAPI extensions", () => {
       const channel = track.getProperty("input_routing_channel");
 
       expect(channel).toBeNull();
+    });
+
+    // A malformed and an absent routing value both yield null, so the relayed
+    // warning is the only thing separating "Live sent us garbage" from "Live
+    // sent us nothing" — assert it on both sides.
+    it("should warn when a routing property fails to parse", () => {
+      const mockTrack = registerMockObject("track4", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      mockTrack.get.mockReturnValue(["invalid json {"]);
+
+      LiveAPI.from("track4").getProperty("input_routing_type");
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          `LiveAPI getProperty: failed to parse "input_routing_type" response:`,
+        ),
+      );
+    });
+
+    it("should not warn when a routing property has no value to parse", () => {
+      const mockTrack = registerMockObject("track5", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      mockTrack.get.mockReturnValue([]);
+
+      expect(
+        LiveAPI.from("track5").getProperty("input_routing_type"),
+      ).toBeNull();
+      expect(outlet).not.toHaveBeenCalled();
     });
   });
 });

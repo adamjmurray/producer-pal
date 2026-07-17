@@ -55,6 +55,69 @@ describe("LiveAPI extensions - path index extensions", () => {
     });
   });
 
+  // Every consumer of this getter (readTrack) registers a mock object carrying
+  // a returnTrackIndex property, which the mock copies onto the instance and
+  // shadows the prototype getter — so the path parsing itself is only reachable
+  // from tests that build an unregistered LiveAPI, like these.
+  describe("returnTrackIndex", () => {
+    it("should return returnTrackIndex from a return track path", () => {
+      const returnTrack = LiveAPI.from(livePath.returnTrack(1));
+
+      expect(returnTrack.returnTrackIndex).toBe(1);
+    });
+
+    it("should handle return track index 0", () => {
+      const returnTrack = LiveAPI.from(livePath.returnTrack(0));
+
+      expect(returnTrack.returnTrackIndex).toBe(0);
+    });
+
+    it("should handle double-digit return track indices", () => {
+      const returnTrack = LiveAPI.from(livePath.returnTrack(11));
+
+      expect(returnTrack.returnTrackIndex).toBe(11);
+    });
+
+    it("should return null for a regular track path", () => {
+      // "live_set tracks 3" must not satisfy the return_tracks pattern.
+      const track = LiveAPI.from(livePath.track(3));
+
+      expect(track.returnTrackIndex).toBe(null);
+    });
+
+    it("should return null for a non-track path", () => {
+      const scene = LiveAPI.from(livePath.scene(2));
+
+      expect(scene.returnTrackIndex).toBe(null);
+    });
+  });
+
+  describe("takeLaneIndex", () => {
+    it("should return takeLaneIndex from a take lane path", () => {
+      const takeLane = LiveAPI.from(livePath.track(0).takeLane(2));
+
+      expect(takeLane.takeLaneIndex).toBe(2);
+    });
+
+    it("should handle take lane index 0", () => {
+      const takeLane = LiveAPI.from(livePath.track(0).takeLane(0));
+
+      expect(takeLane.takeLaneIndex).toBe(0);
+    });
+
+    it("should handle double-digit take lane indices", () => {
+      const takeLane = LiveAPI.from(livePath.track(0).takeLane(10));
+
+      expect(takeLane.takeLaneIndex).toBe(10);
+    });
+
+    it("should return null for a path without take lanes", () => {
+      const track = LiveAPI.from(livePath.track(0));
+
+      expect(track.takeLaneIndex).toBe(null);
+    });
+  });
+
   describe("category", () => {
     it("should return 'regular' for a track path", () => {
       const track = LiveAPI.from(livePath.track(3));
@@ -99,6 +162,14 @@ describe("LiveAPI extensions - path index extensions", () => {
       const scene = LiveAPI.from(livePath.scene(10));
 
       expect(scene.sceneIndex).toBe(10);
+    });
+
+    it("should return sceneIndex from a clip_slots path on a double-digit track", () => {
+      // The track index in the clip_slots fallback is skipped over, not
+      // captured — it must still match when it is more than one digit wide.
+      const clipSlot = LiveAPI.from(livePath.track(12).clipSlot(6));
+
+      expect(clipSlot.sceneIndex).toBe(6);
     });
 
     it("should return null for non-scene/clip_slots paths", () => {
