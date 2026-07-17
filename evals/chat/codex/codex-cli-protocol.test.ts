@@ -27,6 +27,7 @@ describe("codexCliProtocol", () => {
     expect(args).toStrictEqual(
       expect.arrayContaining(["--model", "gpt-5.6-terra"]),
     );
+    expect(args).toContain('sandbox_mode="read-only"');
     expect(args).toContain("mcp_servers.producer-pal.required=true");
     expect(args).toContain(
       'mcp_servers.producer-pal.default_tools_approval_mode="approve"',
@@ -34,11 +35,12 @@ describe("codexCliProtocol", () => {
     expect(args.at(-1)).toBe("-");
   });
 
-  it("builds a resume turn without the unsupported sandbox flag", () => {
+  it("pins resumed turns to the read-only sandbox through config", () => {
     const args = codexCliProtocol({ ...input, resumeThreadId: "thread-123" });
 
     expect(args.slice(0, 2)).toStrictEqual(["exec", "resume"]);
     expect(args).not.toContain("--sandbox");
+    expect(args).toContain('sandbox_mode="read-only"');
     expect(args.slice(-2)).toStrictEqual(["thread-123", "-"]);
   });
 });

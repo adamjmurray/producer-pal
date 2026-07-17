@@ -175,6 +175,8 @@ function buildRestrictedArgs(
     "-c",
     'web_search="disabled"',
     "-c",
+    'sandbox_mode="read-only"',
+    "-c",
     `model_instructions_file=${JSON.stringify(instructionsFile)}`,
   ];
 }

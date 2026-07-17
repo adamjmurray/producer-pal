@@ -43,11 +43,13 @@ export function spawnCodex(
       setTimeout(() => child.kill("SIGKILL"), 2000);
     }, timeoutMs);
 
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
     child.stdout.on("data", (data) => {
-      stdout += data.toString();
+      stdout += data;
     });
     child.stderr.on("data", (data) => {
-      stderr += data.toString();
+      stderr += data;
     });
     child.on("error", (error) => {
       clearTimeout(timer);
