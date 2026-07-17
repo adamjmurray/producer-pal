@@ -87,6 +87,42 @@ const SAMPLE_INPUT = {
   content: "Composes in C minor.",
 };
 
+/**
+ * Save a throwaway entry against whatever response is queued on fetchMock — the
+ * setup shared by the save-failure paths.
+ * @param result - The rendered hook's `result` handle
+ */
+async function saveSample(result: HookResult): Promise<void> {
+  await act(async () => {
+    await result.current.saveEntry("x", { ...SAMPLE_INPUT, content: "y" });
+  });
+}
+
+/**
+ * Save an entry whose PUT resolves only AFTER resetSaveStatus — i.e. the user
+ * switched entries while the save was in flight, and the late echo must not
+ * repaint the now-unrelated indicator.
+ * @param result - The rendered hook's `result` handle
+ * @param late - The response the in-flight PUT eventually resolves with
+ */
+async function saveResolvingAfterReset(
+  result: HookResult,
+  late: Response,
+): Promise<void> {
+  const put = deferred<Response>();
+
+  fetchMock.mockReturnValueOnce(put.promise);
+
+  await act(async () => {
+    const saving = result.current.saveEntry("prefers-c-minor", SAMPLE_INPUT);
+
+    // The user switches to another entry while the PUT is in flight.
+    result.current.resetSaveStatus();
+    put.resolve(late);
+    await saving;
+  });
+}
+
 describe("useMemoryCollection", () => {
   it("loads and maps all entries on mount via a no-store GET", async () => {
     const result = await mountReady([
@@ -217,9 +253,7 @@ describe("useMemoryCollection", () => {
       new Response("not json", { status: 500, statusText: "Server Error" }),
     );
 
-    await act(async () => {
-      await result.current.saveEntry("x", { ...SAMPLE_INPUT, content: "y" });
-    });
+    await saveSample(result);
 
     expect(result.current.saveError).toContain("Memory update failed");
   });
@@ -230,9 +264,7 @@ describe("useMemoryCollection", () => {
     // 400 with parseable JSON that has no `error` field → generic fallback.
     fetchMock.mockResolvedValueOnce(badRequest({ nope: true }));
 
-    await act(async () => {
-      await result.current.saveEntry("x", { ...SAMPLE_INPUT, content: "y" });
-    });
+    await saveSample(result);
 
     expect(result.current.saveError).toContain("Memory update failed");
   });
@@ -324,9 +356,7 @@ describe("useMemoryCollection", () => {
     // Drive it into an error state, then reset.
     fetchMock.mockResolvedValueOnce(badRequest({ error: "nope" }));
 
-    await act(async () => {
-      await result.current.saveEntry("x", { ...SAMPLE_INPUT, content: "y" });
-    });
+    await saveSample(result);
 
     expect(result.current.saveStatus).toBe("error");
 
@@ -345,18 +375,7 @@ describe("useMemoryCollection", () => {
     // generation the resolution checks, so the outcome is entry-scoped.
     const result = await mountReady([rawEntry()]);
 
-    const put = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(put.promise);
-
-    await act(async () => {
-      const saving = result.current.saveEntry("prefers-c-minor", SAMPLE_INPUT);
-
-      // The user switches to another entry while the PUT is in flight.
-      result.current.resetSaveStatus();
-      put.resolve(jsonResponse({ entry: rawEntry() }));
-      await saving;
-    });
+    await saveResolvingAfterReset(result, jsonResponse({ entry: rawEntry() }));
 
     // The save still merged into the list, but its "saved" must not surface.
     expect(result.current.saveStatus).toBe("idle");
@@ -366,17 +385,7 @@ describe("useMemoryCollection", () => {
   it("does not paint 'error' for a failed save that resolved after the edited entry changed", async () => {
     const result = await mountReady([rawEntry()]);
 
-    const put = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(put.promise);
-
-    await act(async () => {
-      const saving = result.current.saveEntry("prefers-c-minor", SAMPLE_INPUT);
-
-      result.current.resetSaveStatus();
-      put.resolve(badRequest({ error: "boom" }));
-      await saving;
-    });
+    await saveResolvingAfterReset(result, badRequest({ error: "boom" }));
 
     expect(result.current.saveStatus).toBe("idle");
     expect(result.current.saveError).toBeNull();

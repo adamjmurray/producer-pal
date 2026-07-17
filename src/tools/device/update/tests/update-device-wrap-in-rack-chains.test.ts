@@ -6,10 +6,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
-  livePath,
   registerMockObject,
   updateDevice,
 } from "./update-device-test-helpers.ts";
+import {
+  registerAudioEffectDevice,
+  registerGrowingChainRack,
+  registerRackChains,
+  registerTrack0,
+} from "./update-device-wrap-in-rack-test-helpers.ts";
 
 // Chain-creation is only exercised when the rack starts with FEWER chains than
 // devices being wrapped. The default wrap tests pre-populate the rack with
@@ -22,54 +27,16 @@ describe("updateDevice - wrapInRack chain creation", () => {
 
   beforeEach(() => {
     // Two audio effects to wrap.
-    registerMockObject("device-0", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: { type: 2 },
-    });
-    registerMockObject("device-1", {
-      path: livePath.track(0).device(1),
-      type: "RackDevice",
-      properties: { type: 2 },
-    });
+    registerAudioEffectDevice("device-0", 0);
+    registerAudioEffectDevice("device-1", 1);
 
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      methods: { insert_device: () => ["id", "new-rack"] },
-    });
+    registerTrack0();
 
     // Rack starts with ONE chain and grows by one per insert_chain.
-    let chainCount = 1;
-
-    newRack = registerMockObject("new-rack", {
-      path: "new-rack",
-      type: "RackDevice",
-      properties: { chains: [] },
-    });
-    newRack.get.mockImplementation((prop: string) => {
-      if (prop === "chains") {
-        const chains: string[] = [];
-
-        for (let i = 0; i < chainCount; i++) chains.push("id", `chain-${i}`);
-
-        return chains;
-      }
-
-      return [0];
-    });
-    newRack.call.mockImplementation((method: string) => {
-      if (method === "insert_chain") {
-        chainCount++;
-
-        return ["id", `chain-${chainCount - 1}`];
-      }
-
-      return null;
-    });
+    newRack = registerGrowingChainRack(1);
 
     // Chains resolvable by "${rack.path} chains ${i}".
-    registerMockObject("chain-0", { type: "Chain", path: "new-rack chains 0" });
-    registerMockObject("chain-1", { type: "Chain", path: "new-rack chains 1" });
+    registerRackChains(2);
 
     liveSet = registerMockObject("live-set", { path: "live_set" });
   });
