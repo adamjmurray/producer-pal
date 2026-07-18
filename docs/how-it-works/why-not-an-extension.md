@@ -163,15 +163,6 @@ a paid add-on, so today's Producer Pal can in theory reach a few people an
 extension couldn't. So an extension wouldn't widen who can use Producer Pal,
 which removes the one upside that might have offset everything above.
 
-## How Producer Pal _does_ grow new capabilities
-
-When Producer Pal does need something Live itself can't do (audio analysis,
-generative algorithms, custom sample tools), the natural home isn't an Ableton
-extension. It's a **companion MCP server**: a separate helper the AI uses right
-alongside Producer Pal, written in any language, with none of the sandbox's
-limits. That's the path that fits an AI-driven tool, and it's already part of
-how Producer Pal is designed to grow.
-
 ## What would change my mind
 
 The SDK is improving quickly, and I'm genuinely glad it exists. I'd happily
