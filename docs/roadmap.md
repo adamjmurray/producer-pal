@@ -2,21 +2,12 @@
 
 ## Upcoming
 
-### Under consideration
+### 2.0.x - Extensibility
 
-The 2.0 personalization and extensibility work has shipped — see
-[Context & Memory](/guide/context) and
-[Customizing Skills](/guide/customizing-skills). What comes next isn't settled:
-
-- Custom skills as first-class: registering your own named skill alongside the
-  built-ins, rather than `@include`-ing it into a fragment
+- Custom skills: write your own instruction packs, plus a curated set of
+  examples to install and adapt
 - Personas: presets that combine a tool set with custom context and skills
-- Per-project memory
-- Some form of repeatable, pre-defined operations — workflows, subagents, or
-  command-oriented skills. Still an open question.
-
-See [Extending Producer Pal](/extending) for the extension model and where these
-ideas stand.
+- Workflows: pre-defined tool call sequences for reliable, repeatable operations
 
 ## Changelog
 
