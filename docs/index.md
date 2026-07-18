@@ -3,15 +3,16 @@ layout: home
 title: Producer Pal — Ableton MCP for AI music production
 titleTemplate: false
 description:
-  The Ableton MCP server that brings AI to Ableton Live. Free, open-source, and
-  works with Claude, Gemini, ChatGPT, Ollama, and more.
+  The open Ableton MCP server and REST API. Bring any AI to Ableton Live —
+  Claude, Gemini, ChatGPT, Ollama — or script Live with no AI at all. Free and
+  open-source.
 
 hero:
   name: Producer Pal™
   text: Control Ableton Live with words
   tagline:
-    The Ableton MCP server that brings AI to Ableton Live. Free and open-source.
-    Works with Claude, Gemini, ChatGPT, Ollama, and more.
+    The open Ableton MCP server and REST API. Bring any AI — Claude, Gemini,
+    ChatGPT, Ollama — or script Live with no AI at all. Free and open-source.
   image:
     src: /producer-pal-logo-animated.svg
     alt: Producer Pal
@@ -35,11 +36,11 @@ features:
     link: /features
     linkText: See all features
 
-  - title: Bring Your Own AI
+  - title: Bring Your Own AI — or None
     details: >
-      Use cloud AI services (Claude, Gemini, ChatGPT) for the best experience,
-      or run completely free and private with local models (Ollama, LM Studio).
-      No lock-in.
+      Use cloud AI (Claude, Gemini, ChatGPT), run free and private with local
+      models (Ollama, LM Studio), or skip AI entirely and script Live through
+      the open REST API. No lock-in.
     link: /installation
     linkText: Setup guide
 
@@ -216,11 +217,12 @@ tracks, writing MIDI and audio clips, tweaking instruments and effects, and
 building arrangements.
 
 It works with any MCP-compatible AI, including Claude, Gemini, ChatGPT, Mistral,
-and local models via Ollama or LM Studio. For developers and coding agents,
-Producer Pal also exposes a [REST API](/guide/rest-api) and a portable
-[Agent Skill](/guide/skills) that drops into Claude Code, Codex CLI, Gemini CLI,
-and any runtime that follows the SKILL.md convention — three integration paths
-from the same Max for Live device.
+and local models via Ollama or LM Studio. And the AI is optional: the same
+device exposes an open [REST API](/guide/rest-api), so anything that can make an
+HTTP request — scripts, coding agents, your own tools — can read and edit a Live
+Set with no AI in the loop. A portable [Agent Skill](/guide/skills) that drops
+into Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime
+rounds out three integration paths from one Max for Live device.
 
 Producer Pal is free, open-source (GPL-3.0), and actively developed in the open
 with regular updates for the latest Ableton Live features.
