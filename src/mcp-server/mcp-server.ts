@@ -49,7 +49,7 @@ console.log(`Producer Pal ${VERSION} starting MCP server on port ${port}...`);
 const devFlags = [
   ["ENABLE_LIVE_API", process.env.ENABLE_LIVE_API],
   ["ENABLE_CODE_EXEC", process.env.ENABLE_CODE_EXEC],
-  ["ENABLE_DEV_CORS", process.env.ENABLE_DEV_CORS],
+  ["ENABLE_REMOTE_CORS", process.env.ENABLE_REMOTE_CORS],
 ].filter(([, value]) => value === "true");
 
 if (devFlags.length > 0) {

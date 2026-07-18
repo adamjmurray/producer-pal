@@ -49,7 +49,7 @@ interface ExpressAppTestState {
  *
  * @param options - Setup options
  * @param options.beforeStart - Optional callback to run before starting the server
- * @param options.enableDevFeatures - Set ENABLE_CODE_EXEC and ENABLE_DEV_CORS env vars before server start
+ * @param options.enableDevFeatures - Set ENABLE_CODE_EXEC env var before server start
  * @param options.enableLiveApi - POST /config { liveApiEnabled: true } after server start
  * @returns Test state with server and URL references
  */
@@ -75,9 +75,7 @@ export function setupExpressAppServer(
   beforeAll(async () => {
     if (options.enableDevFeatures) {
       prevEnv.ENABLE_CODE_EXEC = process.env.ENABLE_CODE_EXEC;
-      prevEnv.ENABLE_DEV_CORS = process.env.ENABLE_DEV_CORS;
       process.env.ENABLE_CODE_EXEC = "true";
-      process.env.ENABLE_DEV_CORS = "true";
     }
 
     options.beforeStart?.();
@@ -111,14 +109,13 @@ export function setupExpressAppServer(
     // Restore env so a thread-pool run can't leak these into another test file.
     if (options.enableDevFeatures) {
       restoreEnv("ENABLE_CODE_EXEC", prevEnv.ENABLE_CODE_EXEC);
-      restoreEnv("ENABLE_DEV_CORS", prevEnv.ENABLE_DEV_CORS);
     }
   });
 
   return state;
 }
 
-type DevFeatureEnvVar = "ENABLE_CODE_EXEC" | "ENABLE_DEV_CORS";
+type DevFeatureEnvVar = "ENABLE_CODE_EXEC";
 
 /**
  * Restore an env var to its prior value, deleting it if it was unset before.
