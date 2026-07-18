@@ -99,8 +99,3 @@ up with it: server, Live API access, and all. No separate processes to launch,
 no second component to install and connect, no juggling an extension and a
 helper device. That simplicity is a direct result of solving the bridge once,
 properly.
-
-If you'd like to add capabilities Live itself can't provide (custom audio
-analysis, generative algorithms, your own sample tooling), the right path is a
-[companion MCP server](/extending), which the AI uses right alongside Producer
-Pal. The stable core stays simple; the new ideas live at the edges.

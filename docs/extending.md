@@ -1,170 +1,154 @@
+---
+title: Extending Producer Pal
+description:
+  Build on Producer Pal — script Ableton Live over the REST API with or without
+  AI, drive it from coding agents with an Agent Skill, customize the skills and
+  context the AI receives.
+---
+
 # Extending Producer Pal
 
-Producer Pal is designed as a stable core with multiple extension points. The
-core handles Ableton Live control via MCP, optimized for efficiency (doing the
-most with the fewest tools and tokens). Everything else is an extension.
+Producer Pal is a stable core with open edges. The core does one thing: control
+Ableton Live, with the fewest tools and tokens it can manage.
 
-This means you don't need to modify the core to customize Producer Pal for your
-workflow or add new capabilities. There are several ways to extend it depending
-on your needs.
+Everything else is up to you: how the AI is instructed, what you drive it from,
+and whether there's an AI involved at all. You don't need to fork the repo or
+change the core to do any of it.
 
-::: warning WORK IN PROGRESS
+## Script Live over the REST API
 
-Most of the extension points described on this page are planned for version 2.0
-and are not yet available. This page describes the direction Producer Pal is
-heading. See the [roadmap](/roadmap).
+The [REST API](/guide/rest-api) exposes every tool over plain HTTP on your own
+machine. There's no AI in this path unless you add one.
 
-:::
+```bash
+# Read the Live Set overview
+curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
+  -H 'Content-Type: application/json' -d '{}'
 
-## Context Customization
+# Set the tempo to 128
+curl -X POST http://localhost:3350/api/tools/ppal-update-live-set \
+  -H 'Content-Type: application/json' -d '{"tempo": 128}'
+```
 
-Shape how the LLM uses Producer Pal's existing tools — no code required.
+You can:
 
-- **Skills** — Teach the LLM new workflow patterns, or override the built-in
-  skills with your own. Skills are text that describe how to accomplish tasks
-  using Producer Pal's tools — like recipes the LLM follows. Overriding and
-  trimming the built-in skills is available today — see
-  [Customizing Skills](/guide/customizing-skills). (Adding new custom skills
-  alongside the built-ins is still planned.)
-- **Tool description overrides** — Tune how the LLM interprets specific tools
-  and parameters for your workflow.
-- **Tool presets** — Curate which tools are available for focused tasks.
-- **Custom system instructions** — Add your own guidance for the LLM in the
-  built-in Chat UI, like preferred genres, mixing conventions, or workflow
-  rules. (External clients like Claude Desktop have their own system prompt
-  settings.)
+- **Build your own interface.** A local web page can drive Live — the whole REST
+  API, straight from browser JavaScript.
+- **Use it without AI at all.** Generative scripts, batch edits across many
+  clips, project scaffolding, reproducible test Sets.
+- **Put your own AI in front of it.** The API doesn't care which model. Use an
+  agent framework, a local model, a notebook, whatever fits.
 
-**Who it's for:** Anyone who can write clear instructions. If you can describe a
-music production workflow in plain language, you can create a skill.
+The [`ppal-live-api`](/features#ppal-live-api) tool goes lower, with direct
+access to the [Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+reads and writes the specialized tools don't cover. It's off by default — see
+[Live API](/guide/rest-api#live-api).
 
-::: info PARTIALLY AVAILABLE
+Zero-dependency [Node and Python sample scripts](/guide/rest-api#sample-scripts)
+are included to get you started.
 
-Built-in skill overrides ([Customizing Skills](/guide/customizing-skills)) and
-custom system instructions (the Chat UI's
-[context editor](/guide/chat-ui#header-bar)) shipped in Producer Pal 2.0. The
-rest of context customization is planned — see the [roadmap](/roadmap) for
-details.
+## Drive it from a coding agent
 
-:::
+Producer Pal ships a portable [Agent Skill](/guide/skills) — the `SKILL.md`
+convention shared by Claude Code, Codex CLI, and Gemini CLI. Drop the folder
+into your agent's skills directory and it can control Live through the REST API,
+no MCP client needed.
 
-## Workflows
+A coding agent can write and run code against the API, iterate on a generative
+script while you listen, and change device settings mid-session:
+[notation](/features/midi-notation),
+[small model mode](/features#small-model-mode),
+[Direct Live API](/features#ppal-live-api). MCP clients can only change those by
+editing the device and starting a new conversation.
 
-Pre-defined sequences of tool calls that execute without the LLM reasoning
-through each step. The LLM picks the right workflow and fills in parameters —
-execution is mechanical.
+[Set up the Agent Skill →](/guide/skills)
 
-Some operations are well-understood sequences where LLM creativity adds nothing
-and unreliability adds risk. "Set up a standard drum rack track with a 4-bar
-loop" is always the same steps: create track, add Drum Rack, create clip. A
-workflow handles this reliably every time.
+## Customize what the AI is told
 
-**How workflows differ from skills:** Skills teach the LLM _how_ to do something
-and it still makes each tool call. Workflows _are_ the tool calls — the LLM
-triggers them but doesn't improvise the steps.
+Shape how the AI uses the tools with text, not code. It all lives in
+`~/.producer-pal/` as plain Markdown you can edit, back up, and share, and you
+can edit it in the [context editor](/guide/context#the-context-editor).
 
-::: info COMING SOON
+- **[Skills](/guide/customizing-skills)** — the instructions the AI gets when it
+  connects. Override any fragment with your own text, or delete the parts you
+  don't use so you stop paying for them every conversation. A fragment can also
+  `@include` your own Markdown files, to add guidance the built-ins don't cover.
+- **[Global context](/guide/context#global)** — what you want in every Live Set:
+  your genres, your habits, your rules.
+- **[Memory](/guide/context#memory)** — facts the AI records about you as you
+  work, loaded on demand so a growing memory stays cheap.
+- **[Custom instructions](/guide/context#instructions)** — the system prompt for
+  the built-in [Chat UI](/guide/chat-ui). (External clients bring their own.)
 
-Workflows are planned for a later 2.0.x release, after context customization is
-stable.
+**Who it's for:** anyone who can write clear instructions. If you can describe a
+workflow in plain language, you can change how the AI works.
 
-:::
+## Choosing the right extension point
 
-## Companion MCP Servers
+| I want to…                                      | Use                                          |
+| ----------------------------------------------- | -------------------------------------------- |
+| Script Ableton Live without AI                  | [REST API](/guide/rest-api)                  |
+| Build my own interface for Live                 | [REST API](/guide/rest-api)                  |
+| Work from Claude Code, Codex CLI, or Gemini CLI | [Agent Skill](/guide/skills)                 |
+| Teach the AI a production technique             | [Skills](/guide/customizing-skills)          |
+| Tell the AI my preferences once, for good       | [Global context](/guide/context#global)      |
+| Cut what the AI costs per conversation          | [Trim the skills](/guide/customizing-skills) |
 
-Add entirely new capabilities by building a separate MCP server. The LLM sees
-all connected MCP servers and combines their tools naturally — your server's
-tools work alongside Producer Pal's without any special integration.
+## Ideas under consideration
 
-**Example use cases:**
+These aren't commitments, just what I'm thinking about after 2.0:
 
-- Audio analysis and feature extraction
-- Generative algorithms (Euclidean rhythms, Markov chains, etc.)
-- Advanced sample management and tagging
-- Hardware controller integration
-- External DAW bridges
+- **Custom skills as first-class.** Today you extend the skills by overriding a
+  fragment and `@include`-ing your own files. Registering a standalone skill —
+  named, described, and loaded when it's relevant — is a natural next step.
+- **Personas.** Presets that bundle a tool set with its own context and skills,
+  so you can switch the AI's whole setup for a focused task.
+- **Workflows, or subagents, or neither.** The original idea was "workflows":
+  fixed tool-call sequences the AI runs but doesn't improvise. But maybe that's
+  just a command-oriented skill, or maybe subagents are the better version.
+  Still undecided.
 
-A companion server can be any MCP server in any language — it just needs to
-provide tools the LLM can use. For servers that need direct Live API access,
-`max-mcp-template` will provide a starter project with Node for Max / V8
-architecture and shared libraries for bar|beat notation parsing, the chunking
-protocol, and Live API convenience wrappers.
+Have an opinion on any of these?
+[GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or
+[Discord](https://discord.gg/rmU3DSzgwH).
 
-**Who it's for:** Developers comfortable with MCP server development.
+## Stable core
 
-::: info COMING SOON
+The core repo won't change much after 2.0, and that's on purpose. Extensions
+don't break when the core doesn't move.
 
-The `max-mcp-template` and shared libraries are in development. Check the
-[roadmap](/roadmap) for progress.
+Starting with 2.0, breaking changes need at least a minor version bump (2.1,
+3.0); patch releases stay backward-compatible. Core work continues on bug fixes,
+new Live API features as they land, and efficiency — cost matters whether you're
+on a local model, a subscription, or pay-as-you-go — but through small
+improvements, not rewrites.
 
-:::
+## Contributing back
 
-## REST API
+If you find tweaks to the default skills or tool and parameter descriptions that
+make the AI behave better, send a pull request — improvements to the built-ins
+reach everyone. A few areas I'm especially interested in:
 
-Producer Pal includes a [REST API](/guide/rest-api) that exposes the same tools
-available to the LLM over HTTP. This lets you script Ableton Live for your own
-needs — build automation, custom integrations, or tools that don't use AI at
-all.
+- **Skills and chat system instructions** — changes to the built-in Producer Pal
+  Skills or the Chat UI system instructions, especially ones backed by
+  experiments that show better behavior.
+- **Coding-agent skills** — more [Agent Skill](/guide/skills) examples for other
+  workflows and agents. I'm happy to feature good ones on this site.
+- **MIDI notation and transforms** — experiments with other notation systems,
+  and additions to the [transforms](/features/midi-notation#transforms) syntax.
+  Ask first so we can agree on the grammar direction.
 
-The REST API is available today and doesn't require any extension
-infrastructure.
-
-## Choosing the Right Extension Point
-
-| I want to...                          | Use                   |
-| ------------------------------------- | --------------------- |
-| Script Ableton Live without AI        | REST API              |
-| Teach the LLM a production technique  | Skill                 |
-| Customize how the LLM uses tools      | Description overrides |
-| Automate a repetitive multi-step task | Workflow              |
-| Add a capability Live API can't do    | Companion MCP server  |
-
-## The Ecosystem Vision
-
-The goal is a vibrant ecosystem where people create and share extensions. The
-core repo is deliberately stable — it won't change often after 2.0 — and that
-stability is a feature. Extensions don't break when the core doesn't change.
-
-Innovation happens at the edges: writers sharing skills, developers building
-companion servers, and the community finding creative new ways to use AI in
-music production. The core repo is not the bottleneck.
-
-Starting with 2.0, breaking changes will require at least a minor version bump
-(e.g., 2.1 or 3.0) — patch releases are always backward-compatible. This gives
-extension authors a stable foundation to build on.
-
-## Contributing Back to Core
-
-Contributions are genuinely welcome — the stable-core rule is about keeping the
-tool _surface_ small and reliable, not about turning ideas away. A few areas are
-especially open to experimentation:
-
-- **Skills and chat system instructions** — proposed changes to the built-in
-  Producer Pal Skills or the Chat UI system instructions, especially ones backed
-  by experiments showing better LLM behavior.
-- **Coding-agent skills** — more [Agent Skill](/guide/skills) examples for
-  different workflows and agents. Good ones can be featured on this site.
-- **MIDI notation and transforms** — experiments with alternative notation
-  systems, and additions to the [transforms](/features/midi-notation#transforms)
-  syntax (worth asking about first so we can agree on the grammar direction).
-
-Changes to skills, tool descriptions, or argument descriptions are most likely
-to be accepted when backed by
+Changes like these land best with
 [evals](https://github.com/adamjmurray/producer-pal/blob/main/evals/README.md)
-demonstrating improved efficacy — ideally across both large and small models
-where applicable, since a prompt tweak that helps a frontier model can regress a
-small local one.
+that show they help — ideally on both large and small models, since a prompt
+tweak that helps a big model can hurt a small local one.
 
-Producer Pal will also continue optimizing for efficiency — reducing costs
-whether you're using small local models, subscription quotas, or pay-as-you-go
-cloud APIs — but through targeted improvements, not major overhauls or breaking
-changes.
-
-The core toolset has stabilized, so changing a tool's shape or adding new tools
-takes some convincing — please ask first. The
+The toolset itself has stabilized, so changing a tool or adding one takes some
+convincing. Ask first. The
 [developer guide](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md)
-explains the strict code-quality checks (they exist to combat AI slop, not to
-gatekeep) and how to work with them.
+covers the strict code-quality checks — they're there to fight AI slop, not to
+gatekeep — and how to work with them.
 
-Want to discuss ideas for extensions? Join the conversation on
+Questions, or an extension to show off?
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or
 [Discord](https://discord.gg/rmU3DSzgwH).
