@@ -50,8 +50,11 @@ architecture.
 
 - **License headers**: All source files need an SPDX header at the top (after
   any shebang). List all authors; new files use the current year and
-  contributor's name. When an AI tool modifies a file, add/append its AI
-  assistance line (comma-separated if one already exists).
+  contributor's name. When you modify an existing file, **append** the new
+  contributor to the end of the existing `Copyright` list (don't reorder or
+  prepend), and likewise **append** the AI tool to the end of the
+  `AI assistance` line (comma-separated if one already exists) — both lists read
+  oldest-first.
 
   ```typescript
   // Producer Pal
