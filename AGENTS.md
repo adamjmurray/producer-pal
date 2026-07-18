@@ -376,4 +376,5 @@ find the right one. Key entries: `dev/Architecture.md` (system design),
 `dev/specs/` (bar|beat
 
 - transform grammar specs), `dev/Development-Tools.md` (CLI/e2e testing tools).
-  `DEVELOPERS.md` = dev setup and testing.
+  `DEVELOPERS.md` = dev setup and testing; `CONTRIBUTING.md` = contribution
+  guide (ways to contribute, stable-core policy, branching).

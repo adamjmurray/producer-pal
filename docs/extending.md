@@ -145,7 +145,7 @@ tweak that helps a big model can hurt a small local one.
 
 The toolset itself has stabilized, so changing a tool or adding one takes some
 convincing. Ask first. The
-[developer guide](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md)
+[contributing guide](https://github.com/adamjmurray/producer-pal/blob/main/CONTRIBUTING.md)
 covers the strict code-quality checks — they're there to fight AI slop, not to
 gatekeep — and how to work with them.
 

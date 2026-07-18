@@ -39,7 +39,8 @@ Ollama, and more.
 
 Star ⭐️ the repo to help others discover Producer Pal!
 
-Want to contribute or build from source? See [DEVELOPERS.md](./DEVELOPERS.md).
+Want to contribute? See [CONTRIBUTING.md](./CONTRIBUTING.md). Building from
+source and other technical details are in [DEVELOPERS.md](./DEVELOPERS.md).
 
 ## Open Source
 

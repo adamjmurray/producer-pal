@@ -31,6 +31,7 @@ function createItemsArray(): KbItem[] {
   return [
     // Project overview
     { src: "AGENTS.md" },
+    { src: "CONTRIBUTING.md" },
     { src: "DEVELOPERS.md" },
     { src: "README.md" },
     { src: "LICENSE" },

@@ -44,7 +44,7 @@ To support Producer Pal development, star
 others discover the project.
 
 Want to contribute code? See the
-[developer guide](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md),
+[contributing guide](https://github.com/adamjmurray/producer-pal/blob/main/CONTRIBUTING.md),
 which explains how to work with the strict code-quality checks.
 
 ## Data Privacy
