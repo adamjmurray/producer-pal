@@ -102,5 +102,5 @@ properly.
 
 If you'd like to add capabilities Live itself can't provide (custom audio
 analysis, generative algorithms, your own sample tooling), the right path is a
-[companion MCP server](/extending), which the AI uses right alongside Producer
-Pal. The stable core stays simple; the new ideas live at the edges.
+companion MCP server, which the AI uses right alongside Producer Pal. The stable
+core stays simple; the new ideas live at the edges.

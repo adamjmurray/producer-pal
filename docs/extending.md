@@ -3,7 +3,7 @@ title: Extending Producer Pal
 description:
   Build on Producer Pal — script Ableton Live over the REST API with or without
   AI, drive it from coding agents with an Agent Skill, customize the skills and
-  context the AI receives, or add capabilities with a companion MCP server.
+  context the AI receives.
 ---
 
 # Extending Producer Pal
@@ -32,9 +32,8 @@ curl -X POST http://localhost:3350/api/tools/ppal-update-live-set \
 
 You can:
 
-- **Build your own interface.** A web page, a phone remote, a hardware
-  controller, a Max patch, a Stream Deck button — anything that can make an HTTP
-  request can drive Live.
+- **Build your own interface.** A local web page can drive Live — the whole REST
+  API, straight from browser JavaScript.
 - **Use it without AI at all.** Generative scripts, batch edits across many
   clips, project scaffolding, reproducible test Sets.
 - **Put your own AI in front of it.** The API doesn't care which model. Use an
@@ -84,28 +83,6 @@ can edit it in the [context editor](/guide/context#the-context-editor).
 **Who it's for:** anyone who can write clear instructions. If you can describe a
 workflow in plain language, you can change how the AI works.
 
-## Add capabilities with a companion MCP server
-
-Producer Pal controls Ableton Live. It doesn't analyze audio, generate Markov
-chains, or talk to your hardware, and it doesn't need to. An MCP client can
-connect to several servers at once, and the AI uses their tools together. Your
-server's tools work alongside Producer Pal's with no integration work on either
-side.
-
-Good candidates:
-
-- Audio analysis and feature extraction
-- Generative algorithms (Euclidean rhythms, Markov chains, L-systems)
-- Sample management and tagging
-- Hardware controller integration
-- Bridges to other DAWs and tools
-
-Write it in any language with any MCP SDK — it just has to provide tools. If it
-needs to reach into Live, it can call Producer Pal's [REST API](/guide/rest-api)
-instead of rebuilding the bridge.
-
-**Who it's for:** developers comfortable building an MCP server.
-
 ## Choosing the right extension point
 
 | I want to…                                      | Use                                          |
@@ -116,7 +93,6 @@ instead of rebuilding the bridge.
 | Teach the AI a production technique             | [Skills](/guide/customizing-skills)          |
 | Tell the AI my preferences once, for good       | [Global context](/guide/context#global)      |
 | Cut what the AI costs per conversation          | [Trim the skills](/guide/customizing-skills) |
-| Add something the Live API can't do             | Companion MCP server                         |
 
 ## Ideas under consideration
 
