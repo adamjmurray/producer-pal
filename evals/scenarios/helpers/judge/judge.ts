@@ -11,7 +11,10 @@ import { streamText } from "ai";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { getDefaultModel } from "#evals/scenarios/eval-session.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
-import { callCodexCliJudge } from "./codex-cli-judge.ts";
+import {
+  callCodexCliJudge,
+  CODEX_CODE_JUDGE_MODEL,
+} from "./codex-cli-judge.ts";
 import {
   finishJudgeOutput,
   printJudgeChunk,
@@ -36,12 +39,16 @@ export async function callJudge(
   model: string | undefined,
   criteria: string,
 ): Promise<string> {
-  const judgeModel = model ?? getDefaultModel(provider);
-
   if (provider === "codex-code") {
+    // Isolated judge model, distinct from the model under test, to avoid
+    // self-grading. Must resolve before the generic default below, which would
+    // otherwise pick the codex session default (the model being evaluated).
+    const judgeModel = model ?? CODEX_CODE_JUDGE_MODEL;
+
     return await callCodexCliJudge(prompt, systemPrompt, judgeModel, criteria);
   }
 
+  const judgeModel = model ?? getDefaultModel(provider);
   const languageModel = createProviderModel(provider, judgeModel);
 
   printJudgeHeader(provider, judgeModel, criteria);

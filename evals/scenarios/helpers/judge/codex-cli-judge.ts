@@ -1,6 +1,6 @@
 // Producer Pal
-// Copyright (C) 2026 Taylor Haun
-// AI assistance: Codex (OpenAI)
+// Copyright (C) 2026 Taylor Haun, Adam Murray
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -23,17 +23,16 @@ export const CODEX_CODE_JUDGE_MODEL = "luna";
  * Run an isolated Codex subscription model as the LLM judge.
  * @param prompt - Evaluation prompt
  * @param systemPrompt - Judge instructions
- * @param model - Optional model alias or ID
+ * @param judgeModel - Resolved model alias or ID (see CODEX_CODE_JUDGE_MODEL)
  * @param criteria - Criteria shown in console output
  * @returns Raw judge response
  */
 export async function callCodexCliJudge(
   prompt: string,
   systemPrompt: string,
-  model: string | undefined,
+  judgeModel: string,
   criteria: string,
 ): Promise<string> {
-  const judgeModel = model ?? CODEX_CODE_JUDGE_MODEL;
   const workingDir = await mkdtemp(join(tmpdir(), "producer-pal-judge-"));
   const instructionsFile = join(workingDir, "instructions.md");
 
