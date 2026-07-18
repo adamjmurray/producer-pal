@@ -11,7 +11,13 @@ export default defineConfig({
   // GitHub Pages base URL
   base: "/",
 
-  sitemap: { hostname: "https://producer-pal.org" },
+  sitemap: {
+    hostname: "https://producer-pal.org",
+    // Keep the /guide/examples redirect stub (moved to /features/examples) out
+    // of the sitemap so crawlers index the destination, not the redirect.
+    transformItems: (items) =>
+      items.filter((item) => !item.url.startsWith("guide/examples")),
+  },
 
   cleanUrls: true,
 
@@ -22,12 +28,18 @@ export default defineConfig({
       .replace(/\.md$/, "")
       .replace(/\/index$/, "")
       .replace(/^index$/, "");
-    const canonicalUrl = `https://producer-pal.org/${path}`;
     pageData.frontmatter.head ??= [];
-    pageData.frontmatter.head.push([
-      "link",
-      { rel: "canonical", href: canonicalUrl },
-    ]);
+    // Respect a page's own canonical (e.g. the /guide/examples redirect stub
+    // points at /features/examples); otherwise default to a self-canonical.
+    const hasCanonical = pageData.frontmatter.head.some(
+      ([tag, attrs]) => tag === "link" && attrs?.rel === "canonical",
+    );
+    if (!hasCanonical) {
+      pageData.frontmatter.head.push([
+        "link",
+        { rel: "canonical", href: `https://producer-pal.org/${path}` },
+      ]);
+    }
     pageData.frontmatter.version = VERSION;
   },
 
