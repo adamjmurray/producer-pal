@@ -36,8 +36,11 @@ released builds rather than merely switched off:
   present in the codebase behind a build flag. It is stripped out of shipped
   builds — the code and the tool parameters that expose it are not in the
   released bundle at all.
-- **Permissive CORS.** Development builds relax cross-origin rules so the chat
-  UI can be served from a dev server. Shipped builds send no such headers.
+- **Wildcard CORS.** By default the server accepts browser requests only from
+  localhost origins — enough for a local page you build to reach it, while pages
+  from the internet are blocked. A build flag widens this to any origin, for dev
+  tooling served from a non-localhost origin; that wildcard is never set in a
+  released build.
 
 Continuous integration fails the build if any of these development flags are set
 when producing a release, so they can't be enabled by accident.
