@@ -1,7 +1,8 @@
 # Running Producer Pal Locally / Offline
 
 Run AI models entirely on your machine with no cloud dependency or subscription.
-Requires a capable GPU (8GB+ VRAM recommended).
+Requires a relatively capable machine: Apple Silicon with lots of RAM, or a PC
+with an Nvidia 4080+ (8GB+ VRAM minimum) graphics card.
 
 ## Options
 
@@ -25,6 +26,8 @@ Requires a capable GPU (8GB+ VRAM recommended).
 
 ## Hardware Requirements
 
-- **Minimum:** 8GB VRAM, runs 7B-13B models
-- **Recommended:** 16GB+ VRAM for 30B+ models
-- **Optimal:** 24GB+ VRAM for 70B models
+- **Apple Silicon:** Lots of unified memory helps run larger models
+- **Nvidia:** 4080+ recommended
+  - Minimum: 8GB VRAM, runs 7B-13B models
+  - Recommended: 16GB+ VRAM for 30B+ models
+  - Optimal: 24GB+ VRAM for 70B models

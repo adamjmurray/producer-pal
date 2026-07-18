@@ -60,7 +60,7 @@ provider:
 - **[Chat UI overview](./installation/chat-ui)** — supported providers and setup
 - **[Gemini](./installation/gemini)**, **[OpenAI](./installation/openai)**,
   **[Ollama](./installation/ollama)** (offline), or
-  **[OpenRouter, Mistral & more](./installation/chat-ui-other-providers)**
+  **[Anthropic, OpenRouter, Mistral & more](./installation/chat-ui-other-providers)**
 
 ### Command Line
 

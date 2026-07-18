@@ -17,13 +17,13 @@ For detailed installation instructions for your preferred AI platform, see the
 
 Quick options:
 
-- **[Built-in Chat UI](/installation/gemini)** - Works with Gemini, Ollama, and
+- **[Built-in Chat UI](/installation/chat-ui)** - Works with Gemini, Ollama, and
   more
 - **[Claude Desktop](/installation/claude-desktop)** - Recommended for Anthropic
   users
 - **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,
   Claude Code, and other MCP-compatible coding agents
-- **[Local Models](/installation/lm-studio)** - Run completely offline with
+- **[Local Models](/installation/choose-local)** - Run completely offline with
   Ollama, LM Studio, and other MCP-compatible platforms
 
 Already have an MCP-compatible client? Connect with `npx producer-pal`

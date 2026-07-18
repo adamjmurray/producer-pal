@@ -38,9 +38,9 @@ The header is organized into two areas:
   **Show help links** in [Preferences](#preferences)
 - **Context** - Open the [context editor](/guide/context) in a larger view,
   where you teach AI about your project (**Project**), your preferences
-  (**Global**), and review what it remembers about you (**Memory**) — plus
-  customize its system prompt (**Instructions**) and skills (**Skills**). Press
-  the close (✕) button to return to the chat
+  (**Global**), customize its system prompt (**Instructions**) and skills
+  (**Skills**), and review what it remembers about you (**Memory**). Press the
+  close (✕) button to return to the chat
 - **Settings gear** - Open settings dialog
 
 ## Conversation History
@@ -258,7 +258,7 @@ The Connection tab is where you choose and configure your AI provider and model:
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
-  LM Studio (local), OpenRouter, or Custom
+  LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
 - **API Key** - Your API key (for cloud providers)
 - **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
@@ -294,14 +294,15 @@ You may need to change the URL if:
   focuses on running Ableton Live. Replace `localhost` with the other computer's
   network address (e.g., `http://192.168.1.100:11434`)
 
-### Voice
+#### Voice
 
-Producer Pal includes an experimental voice mode for spoken conversations with
-the AI, available on **OpenAI** and **Google (Gemini)**. To use it, set the
-**Provider** and select that provider's voice model on the
-[Connection](#connection) tab — **GPT Realtime 2 (Voice)** for OpenAI or
-**Gemini 3.1 Flash Live (Voice)** for Google. The **Voice** dropdown and a
-collapsible **Voice Settings** section then appear.
+There's no separate Voice tab — the **Voice** dropdown and **Voice Settings**
+below live on this **Connection** tab, and only appear once a voice model is
+selected. Producer Pal includes an experimental voice mode for spoken
+conversations with the AI, available on **OpenAI** and **Google (Gemini)**. To
+use it, set the **Provider** and select that provider's voice model — **GPT
+Realtime 2 (Voice)** for OpenAI or **Gemini 3.1 Flash Live (Voice)** for Google.
+The **Voice** dropdown and a collapsible **Voice Settings** section then appear.
 
 <img src="/img/producer-pal-chat-settings-voice.png" alt="Voice settings" width="500"/>
 
@@ -311,7 +312,7 @@ collapsible **Voice Settings** section then appear.
   more. The voice locks once a session starts talking, so changing it applies on
   the next session (Stop, then Talk).
 
-#### Voice Settings
+##### Voice Settings
 
 The **Voice Settings** disclosure groups playback and turn-detection options.
 Each slider has a **Reset** link to restore its default. Changes apply on the
@@ -370,7 +371,7 @@ connects either way, so to stop it reading a layer, empty that layer. **Edit
 Context** below the checkbox opens the context editor.
 
 The **Live API** checkbox under **Advanced** behaves differently from the other
-toggles. The rest only filter which tools the chat UI's AI can see, but this one
+toggles. The rest only filter which tools the Chat UI's AI can see, but this one
 mirrors the device's Setup-tab **Direct Live API** toggle, so enabling it here
 also turns the tool on at the device level (MCP clients and the
 [REST API](/guide/rest-api) will see it too). It is off by default; see

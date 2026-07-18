@@ -27,16 +27,7 @@ page).
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Configure Gemini CLI
 
@@ -80,15 +71,7 @@ tooling — add `--format json` and `--notation midi-json` to the args:
 }
 ```
 
-`--format json` returns standard JSON instead of the token-optimized compact
-form, and `midi-json` represents notes as a JSON array the agent can generate
-and read directly.
-
-For a **normal music-making conversation**, keep the defaults (compact output,
-bar|beat notation) — they use fewer tokens and the agent reads them fine.
-
-Both are global device settings, so they also change what the chat UI and any
-other connected clients see.
+<!--@include: ../_partials/scripting-tip.md-->
 
 :::
 

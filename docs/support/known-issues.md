@@ -10,7 +10,8 @@ Pal without clicking in Live between them, Cmd+Z / Ctrl+Z may undo everything at
 once. On the other hand, heavier operations can get split across multiple undo
 steps, so you might need to press undo several times.
 
-This is a Max for Live limitation, not specific to Producer Pal.
+This comes from Live's own undo model as exposed through the Live API, not a Max
+for Live limitation specific to Producer Pal.
 
 **Workaround:** Save your Live Set before big changes. Click somewhere in Live's
 UI between requests if you want separate undo steps.

@@ -14,10 +14,11 @@ someone discovers it, restart your tunnel to get a new URL.
 ## Local Networks
 
 For studios, classrooms, or performances on a local network, you don't need a
-tunnel. Customize the port number in the Producer Pal device settings
-(default: 3350) to prevent unauthorized access from other devices on the same
-network. Update the `:3350` in your AI connection settings if you change it in
-the Producer Pal Max for Live device.
+tunnel. Producer Pal has no authentication, so anyone on the same network can
+reach it at the default port. You can customize the port number in the Producer
+Pal device settings (default: 3350), which reduces the chance of accidental
+discovery but is not real access control. Update the `:3350` in your AI
+connection settings if you change it in the Producer Pal Max for Live device.
 
 ## Tunnel Options
 

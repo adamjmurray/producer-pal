@@ -116,7 +116,7 @@ human-readable text), [`midi-json`](/features/midi-notation#midi-json) (notes as
 a JSON array), and [`stark`](/features/midi-notation#stark) (a literal
 `type: content` format with event-based drum hits). The setting changes the note
 syntax in every tool/argument description and in the `ppal-connect` Skills, and
-it also applies to the chat UI and any connected MCP clients. The skill sets
+it also applies to the Chat UI and any connected MCP clients. The skill sets
 `midi-json` because coding agents generate and parse JSON directly, rather than
 composing text notation by hand.
 

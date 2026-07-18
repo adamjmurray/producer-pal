@@ -9,14 +9,11 @@ description:
 # How Producer Pal Runs Inside Ableton Live
 
 It's easy to assume Ableton's new **Extensions SDK** is the only modern way to
-run JavaScript inside Live, and to wonder whether Producer Pal is built on
-something older. It's actually the other way around: Producer Pal already runs a
-full, modern JavaScript server inside Live, with **complete** control of your
-Live Set, through a path most people don't realize is there.
-
-This page opens the hood and explains that path in plain terms. It's also why
-Producer Pal can do things an
-[extension can't do yet](/how-it-works/why-not-an-extension).
+run JavaScript inside Live. Producer Pal already runs a full, modern JavaScript
+server inside Live, with deep, real-time control of your Live Set, through a
+path most people don't realize is there — this page opens the hood and explains
+it, and it's also why Producer Pal can do
+[things an extension can't do yet](/how-it-works/why-not-an-extension).
 
 ## Two superpowers that usually live apart
 
@@ -25,11 +22,13 @@ custom devices and code right inside Live. Within Max for Live there are two
 very different engines, and each has a superpower the other lacks:
 
 - **The Live API engine.** This is the part that can actually _touch_ your Live
-  Set: start and stop playback, launch clips and scenes, read and write **any**
-  property of any track, clip, or device, and refer to each object by a **stable
-  ID** that follows it even as you move things around. It is complete and
-  real-time. What it _can't_ do is run a modern server, install libraries, or
-  talk to an AI on the internet.
+  Set: start and stop playback, launch clips and scenes, read and write nearly
+  any property of any track, clip, or device, and refer to each object by a
+  **stable ID** that follows it even as you move things around. It's real-time
+  and far deeper than the Extensions SDK, though not every operation is possible
+  (see [More Than a Wrapper](/how-it-works/more-than-a-wrapper) for the edge
+  cases). What it _can't_ do is run a modern server, install libraries, or talk
+  to an AI on the internet.
 
 - **A modern Node.js runtime.** This is full-fat **Node.js** running inside
   Live: real web servers, the entire **npm** library ecosystem, network access,

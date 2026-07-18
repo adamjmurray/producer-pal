@@ -45,7 +45,7 @@ In the chat UI settings:
 
 - Provider: **OpenAI**
 - API Key: Paste your key
-- Model: `gpt-5.2` (or `gpt-5.3-codex` for complex tasks)
+- Model: `gpt-5.6-terra` (or `gpt-5.6-sol` for complex tasks)
 
 Click "Save".
 

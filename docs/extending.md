@@ -59,7 +59,7 @@ script while you listen, and change device settings mid-session:
 [notation](/features/midi-notation),
 [small model mode](/features#small-model-mode),
 [Direct Live API](/features#ppal-live-api). MCP clients can only change those by
-editing the device and starting a new conversation.
+changing settings on the device and starting a new conversation.
 
 [Set up the Agent Skill →](/guide/skills)
 

@@ -116,7 +116,7 @@ features:
           <li><a href="/installation/ollama">Ollama</a> <span class="tag">offline</span></li>
           <li><a href="/installation/chat-ui-other-providers#openrouter">OpenRouter</a></li>
           <li><a href="/installation/gemini">Gemini</a></li>
-           <li><a href="/installation/chat-ui-other-providers">Mistral, etc.</a></li>
+          <li><a href="/installation/chat-ui-other-providers">Mistral, etc.</a></li>
         </ul>
       </div>
       <div class="get-started-card card-tertiary">

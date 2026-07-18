@@ -33,7 +33,8 @@ support tools.
 
 - Ensure Producer Pal device is loaded and running in Ableton Live
 - Check that port 3350 is not blocked by firewall
-- For remote connections, verify your tunnel is active
+- For remote connections, verify your [tunnel](/installation/web-tunnels) is
+  active
 
 ## MCP Server Not Found
 
@@ -81,7 +82,8 @@ Update it there, or run from a folder without one.
 
 - Toggle the Producer Pal device off and on in Live
 - Restart your AI interface
-- Check the Max console for error messages
+- Check the Max console for error messages (right-click the device's title bar
+  and choose "Open Max Window")
 
 ## Library Features Require Live 12.4+
 

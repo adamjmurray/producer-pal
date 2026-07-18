@@ -95,8 +95,8 @@ else (and Ableton has said today's permission model will harden into a stricter
 sandbox). There isn't even a native file picker — selecting a file would mean
 building one yourself in a webview. So the AI couldn't browse your library and
 pick the right loop; at best you'd point it at specific files by hand. Producer
-Pal instead scans and reads your sample folders directly, wherever they live,
-and references files in place rather than copying them in.
+Pal instead scans and reads the sample folders you point it at, plus your Live
+library, and references files in place rather than copying them in.
 
 ## What the SDK _can_ do that Max for Live can't, and how I weigh it
 
@@ -173,7 +173,7 @@ build on it the day it can:
 2. **Keep stable references to objects** that survive moving and rearranging a
    set, which is what an AI needs to reason across a whole project.
 
-Until at least the first of those arrives, an extension would give you less than
+Until at least one of those arrives, an extension would give you less than
 Producer Pal already does, so it's not a step I'd want to take yet. I'm watching
 closely, and I'll update this page when things change.
 

@@ -1,13 +1,18 @@
 # Roadmap
 
-## Upcoming
+## Exploring
 
-### 2.0.x - Extensibility
+### Extensibility (post-2.0)
+
+These aren't commitments — see
+[Extending Producer Pal](/extending#ideas-under-consideration) for the full
+framing:
 
 - Custom skills: write your own instruction packs, plus a curated set of
   examples to install and adapt
 - Personas: presets that combine a tool set with custom context and skills
 - Workflows: pre-defined tool call sequences for reliable, repeatable operations
+  (still undecided vs. subagents)
 
 ## Changelog
 
@@ -82,6 +87,7 @@ Also added support for:
 ### 1.2 - Audio clip, mixer, and improved Arrangement support (November 2025)
 
 - Audio clip support with a `read-samples` tool to scan folders for samples
+  (since absorbed into `ppal-library`)
 - Track mixer control: gain, panning, and sends
 - Arrangement clip positioning and length control
 

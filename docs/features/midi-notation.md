@@ -239,8 +239,9 @@ pitch += clipseq(0, 5, 7)             // per-copy transposition
 - **Operators** are `+=`, `-=`, `*=`, `/=`, and `=`.
 - **Expressions** are arithmetic over the current values, with LFO waveforms
   (`sin`, `cos`, `tri`, `saw`, `square`), `ramp` and `curve` for interpolation,
-  `rand` and `choose` for randomness, `seq` to cycle through values, and math
-  functions including `snap` (to the Live Set's scale) and `legato`.
+  `rand` and `choose` for randomness, `seq` to cycle through values, scale
+  functions like `snap` (to the Live Set's scale), timing functions like
+  `legato`, and general math functions.
 - **Note-count operations** change how many notes exist: `ratchet(4)` rolls a
   note into four, `repeat(n/8, 3)` echoes it, `split` cuts at explicit
   positions, and `merge()` fuses same-pitch notes into one sustained note.
@@ -274,7 +275,8 @@ regardless. Even on MIDI JSON or Stark, you still write `1|1-2|1: delete` and
 Producer Pal teaches the AI its notation at the start of every conversation, by
 returning a skill set from the [Connect tool](/features#ppal-connect). The full
 text of those skills — including the notation guide for whichever notation is
-active — is published on the [features page](/features#skills), and the Chat
-UI's Skills tab previews them for any notation and model size. You can
+active — isn't reproduced here; see the [features page](/features#skills) for
+where to read it: the Chat UI's Skills tab previews the assembled document for
+any notation and model size, and the source is browsable on GitHub. You can
 [customize or replace them](/guide/customizing-skills), including swapping in
 your own notation guide.

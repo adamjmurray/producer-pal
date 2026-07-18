@@ -20,16 +20,7 @@ compelling.
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Enable Small Model Mode (Optional but Recommended)
 
@@ -195,7 +186,7 @@ further, you can customize Producer Pal's behavior for your specific model:
 3. Experiment with instruction wording, remove features your model struggles
    with, or adjust the guidance
 4. Rebuild with `npm run build`
-5. Use the development version of `Producer_pal.amxd` in Ableton Live
+5. Use the development version of `Producer_Pal.amxd` in Ableton Live
 6. Reload your Producer Pal MCP server in LM Studio and start a new conversation
 
 **Share your findings:** If you discover configurations that work well for

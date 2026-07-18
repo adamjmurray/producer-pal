@@ -10,8 +10,8 @@ description:
 
 Producer Pal is an AI-powered music production assistant for Ableton Live — an
 Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses 22 specialized tools to read, create, and
-modify tracks, clips, devices, and more in your Live Set.
+the AI what you want and it uses 22 specialized tools to work with tracks,
+clips, devices, and more in your Live Set.
 
 It works with virtually any AI, including its
 [built-in Chat UI](/guide/chat-ui), desktop apps like
@@ -50,8 +50,8 @@ It works with virtually any AI, including its
 - Set loop points and playback position
 - Jump to arrangement locators by ID or name
 - Set loop start/end using locators
-- Control which tracks follow the Arrangement
-- Stop all clips or specific track clips
+- Playback always follows the Arrangement (no per-track override)
+- Stop all clips or specific clips
 
 <!--@include: ./_generated/ppal-playback-schema.md-->
 
@@ -91,7 +91,7 @@ Live, or make sure your standalone Max is up to date. See
 - Read current selection and view state (when no arguments)
   - Returns only non-null fields: selected track, scene, clip, device
   - Rich object shapes with IDs, types, and context (slot, path, etc.)
-- Update selection and returns only relevant fields
+- Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
   - Select clips by slot position (e.g., `0/3`)
@@ -107,7 +107,7 @@ Live, or make sure your standalone Max is up to date. See
 
 ### 🔧 Delete (`ppal-delete`) {#ppal-delete}
 
-- Remove tracks, return tracks, scenes, clips, or devices
+- Remove tracks, return tracks, scenes, clips, devices, or drum pads
 - Bulk delete multiple objects
 
 <!--@include: ./_generated/ppal-delete-schema.md-->
@@ -228,6 +228,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Place arrangement clips on [take lanes](#take-lanes) with `takeLane`
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](#transforms) to shape notes with math expressions
+- Create audio clips from a sample file with `sampleFile`
 - Auto-create scenes as needed
 
 <!--@include: ./_generated/ppal-create-clip-schema.md-->
@@ -245,7 +246,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Change clip name, color, and loop settings
 - Add/remove MIDI notes using [custom notation](#custom-music-notation)
 - Apply [transforms](#transforms) to modify existing notes and audio properties
-  (a different transform per clip when updating multiple)
+  (use `clip.index`/`clipseq()` for per-clip variation when updating multiple)
 - Change audio clip gain, pitch shift, and warp settings
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
@@ -283,13 +284,12 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Update multiple devices at once
 - Move devices anywhere else in the Live Set, including into racks / wrapping in
   a new rack
-- Create, load, delete, and randomize rack macros variations
+- Create, load, delete, revert, and randomize rack macro variations
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
 - Change the choke group and output MIDI note of drum chains
-- Load a sample into a Simpler instrument via
-  `params: [{name: "sample", value: "<path>"}]`, and set its level with
-  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
+- Load a sample into a Simpler instrument (see
+  [Create Device](#ppal-create-device) above)
 
 <!--@include: ./_generated/ppal-update-device-schema.md-->
 
@@ -302,17 +302,14 @@ Direct access to the
 scripting and debugging.
 
 **Off by default.** Producer Pal's specialized tools are tuned for reliable
-results across most models. The raw Live API is low-level and can give weaker
-results out of the box, so it's hidden rather than competing with the focused
-tools. It's a powerful escape hatch for scripting and advanced workflows,
-especially with capable coding agents. Enable it on the **Setup** tab of the
-Producer Pal Max for Live device, or programmatically via
-[`POST /config`](/guide/rest-api#live-api) (coding agents driving the
-[Agent Skill](/guide/skills) can flip it themselves, and the `npx producer-pal`
-MCP server accepts a `--live-api` flag). When disabled, MCP clients and the
-[REST API](/guide/rest-api) both stop seeing the tool. See the
-[REST API Live API section](/guide/rest-api#live-api) for the full operation
-reference and examples.
+results across most models; the raw Live API is low-level and can give weaker
+results out of the box, so it's hidden rather than competing with them. It's a
+powerful escape hatch for scripting and advanced workflows, especially with
+capable coding agents. Enable it on the **Setup** tab of the Producer Pal Max
+for Live device, or programmatically via `POST /config` (the `npx producer-pal`
+MCP server also accepts a `--live-api` flag). See the REST API's
+[Live API section](/guide/rest-api#live-api) for the full operation reference
+and examples.
 
 <!--@include: ./_generated/ppal-live-api-schema.md-->
 
@@ -350,8 +347,9 @@ inside the string for per-clip variation:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
-- **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
-  arbitrary ranges, choose from sets of values (e.g. chord notes)
+- **Shapes**: LFO waveforms (`sin`, `cos`, `tri`, `saw`, `square`), ramps,
+  curves, randomization with arbitrary ranges, choose from sets of values (e.g.
+  chord notes)
 - **Context variables**: Access note order (`note.index`), clip metadata
   (`clip.duration`, `clip.index`, `clip.position`) in expressions
 - **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
@@ -420,9 +418,9 @@ Adapts Producer Pal for less capable AI models by returning simplified
 ongoing R&D effort aimed at making [local models](/installation/choose-local)
 viable for completely offline, free, and private usage. Enable it on the
 [device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
-settings, or with `--small-model-mode` on the command line — like
-[notation](/features/midi-notation), it's a global device setting that applies
-to MCP clients too.
+settings, or via the `npx producer-pal` MCP server's `--small-model-mode` flag —
+like [notation](/features/midi-notation), it's a global device setting that
+applies to MCP clients too.
 
 ## Skills {#skills}
 

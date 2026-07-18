@@ -9,20 +9,12 @@ Use `npx producer-pal` to connect to Producer Pal's MCP server.
 <!--@include: ../_partials/live-requirement.md-->
 
 - AI that supports [MCP](https://modelcontextprotocol.io)
-- Potentially: [Node.js 20+](https://nodejs.org/en/download)
+- [Node.js 20+](https://nodejs.org/en/download) — only needed if connecting via
+  `npx producer-pal` (Option A below); not required for Option B or C
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Configure Your AI
 

@@ -107,8 +107,8 @@ continues with the rest.
 The REST API defaults to **`json`**: `result` is the parsed value (object,
 array, number, string) and warnings are a separate `string[]`. This is the right
 default for HTTP integrations — no `JSON.parse` or `jq | fromjson` gymnastics.
-The device-level compact-output setting (**Setup** tab) does not affect the REST
-API.
+The device-level **JSON Output** setting (**Setup** tab) does not affect the
+REST API.
 
 The compact JS-literal format (unquoted keys, no whitespace) is optimized for
 LLM token efficiency and is the same format MCP clients receive. It is opt-in
@@ -222,7 +222,9 @@ The `ppal-live-api` tool provides direct access to the
 scripting and debugging.
 
 It is opt-in: enable **Direct Live API** on the **Setup** tab of the Producer
-Pal Max for Live device, or programmatically with a `POST /config` request:
+Pal Max for Live device, or programmatically with a `POST /config` request (from
+curl or a same-origin script — cross-origin browser writes to `/config` are
+rejected):
 
 ```bash
 curl -X POST http://localhost:3350/config \
@@ -230,7 +232,7 @@ curl -X POST http://localhost:3350/config \
   -d '{"liveApiEnabled": true}'
 ```
 
-The setting is global to the device (it also affects the chat UI and any
+The setting is global to the device (it also affects the Chat UI and any
 connected MCP clients). This is an advanced escape hatch — the higher-level
 tools are tuned for reliable results, so reach for the raw Live API only for
 custom integrations, scripting, or debugging when the standard tools aren't
@@ -246,18 +248,18 @@ object mid-sequence.
 
 Available operation types:
 
-| Type                   | Properties used             | Description                    |
-| ---------------------- | --------------------------- | ------------------------------ |
-| `get_property` / `get` | `property`                  | Read a property value          |
-| `set_property` / `set` | `property`, `value`         | Write a property value         |
-| `call_method` / `call` | `method`, `args` (optional) | Call a method                  |
-| `goto`                 | `value` (path)              | Navigate to a different object |
-| `info`                 | —                           | Get object info                |
-| `getProperty`          | `property`                  | Alias for `get_property`       |
-| `getChildIds`          | `property` (child type)     | Get child object IDs           |
-| `exists`               | —                           | Check if the object exists     |
-| `getColor`             | —                           | Read object color              |
-| `setColor`             | `value` (hex string)        | Write object color             |
+| Type                   | Properties used             | Description                                                                                                                             |
+| ---------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_property` / `get` | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                                 |
+| `set_property` / `set` | `property`, `value`         | Write a property value                                                                                                                  |
+| `call_method` / `call` | `method`, `args` (optional) | Call a method                                                                                                                           |
+| `goto`                 | `value` (path)              | Navigate to a different object                                                                                                          |
+| `info`                 | —                           | Get object info                                                                                                                         |
+| `getProperty`          | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get`/`get_property` for the full array |
+| `getChildIds`          | `property` (child type)     | Get child object IDs                                                                                                                    |
+| `exists`               | —                           | Check if the object exists                                                                                                              |
+| `getColor`             | —                           | Read object color                                                                                                                       |
+| `setColor`             | `value` (hex string)        | Write object color                                                                                                                      |
 
 ### Examples
 
@@ -315,3 +317,6 @@ When the **Direct Live API** toggle is off on the device Setup tab, requests to
   disabled on the device apply to both interfaces.
 - The REST API has no authentication (same as the MCP endpoint). It is designed
   for use on localhost or trusted networks only.
+- Browser pages can only call the REST API from localhost origins by default
+  (`ENABLE_REMOTE_CORS` widens this to any origin). curl and other non-browser
+  clients ignore CORS entirely and are unaffected either way.
