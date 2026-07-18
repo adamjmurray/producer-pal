@@ -92,10 +92,9 @@ architecture.
 
 - **Testing builds**: Always use `npm run build:debug` for development. It sets
   `ENABLE_LIVE_API=true` (forces `liveApiEnabled` on so the Direct Live API tool
-  is always available — the Setup-tab toggle can't disable it in this build),
-  `ENABLE_CODE_EXEC=true`, and `ENABLE_DEV_CORS=true`.
-  `POST /config { liveApiEnabled }` still works either direction (used by e2e to
-  test the disabled state).
+  is always available — the Setup-tab toggle can't disable it in this build) and
+  `ENABLE_CODE_EXEC=true`. `POST /config { liveApiEnabled }` still works either
+  direction (used by e2e to test the disabled state).
 
 - **Exact dependency versions**: All package.json versions must be exact (no
   `^`/`~`/ranges). `.npmrc` enforces it for `npm install`;

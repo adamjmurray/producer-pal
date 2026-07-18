@@ -23,7 +23,10 @@ import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
-import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
+import {
+  isLocalOrigin,
+  rejectCrossOriginWrite,
+} from "./helpers/http/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
@@ -191,28 +194,50 @@ function setNoStore(res: Response): void {
 export function createExpressApp(): Express {
   const app = express();
 
-  // CORS middleware for MCP Inspector and Vite dev server support.
-  // Only enabled in dev builds (ENABLE_DEV_CORS=true). Production builds
-  // serve the chat UI from the same origin, so no CORS headers are needed.
-  if (process.env.ENABLE_DEV_CORS === "true") {
-    app.use((req: Request, res: Response, next: NextFunction): void => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
+  // CORS: by default reflect only localhost origins, so a browser page you
+  // serve locally (a dev server, the MCP Inspector, your own tool on another
+  // port) can call the API, while pages from the internet stay blocked. The
+  // Origin header is browser-set and can't be forged by page JS, so an internet
+  // page always carries its real domain and gets no header. Non-browser clients
+  // (curl, scripts, Max) ignore CORS entirely and are unaffected either way.
+  // Set ENABLE_REMOTE_CORS to widen this to any origin ("*") — needed only for
+  // browser dev tooling served from a non-localhost origin (a remote Inspector,
+  // LAN). Specify it manually on the CLI before a build; it is never baked into
+  // an npm script.
+  app.use((req: Request, res: Response, next: NextFunction): void => {
+    const origin = req.get("Origin");
+    let allowOrigin: string | null = null;
+
+    if (process.env.ENABLE_REMOTE_CORS === "true") {
+      allowOrigin = "*";
+    } else if (origin != null && isLocalOrigin(origin)) {
+      allowOrigin = origin;
+    }
+
+    if (allowOrigin != null) {
+      res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+
+      // Reflected origins vary per request, so caches must key on Origin.
+      if (allowOrigin !== "*") {
+        res.setHeader("Vary", "Origin");
+      }
+
       res.setHeader(
         "Access-Control-Allow-Methods",
         "GET, POST, OPTIONS, DELETE",
       );
       res.setHeader("Access-Control-Allow-Headers", "*");
 
-      // Handle preflight requests
+      // Answer the preflight for an allowed origin.
       if (req.method === "OPTIONS") {
         res.status(200).end();
 
         return;
       }
+    }
 
-      next();
-    });
-  }
+    next();
+  });
 
   // Tool arguments with large MIDI note arrays or bar|beat transforms can
   // exceed Express's 100 KB default.

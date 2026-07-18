@@ -158,14 +158,15 @@ Provides:
 ### CORS and the streamable-http transport
 
 The streamable-http URL above is a browser-origin fetch from the inspector UI to
-the device's MCP server, so it requires CORS headers on `localhost:3350`. Dev
-builds (`npm run build:dev`, `npm run build:debug`, and `npm run dev`) already
-set `ENABLE_DEV_CORS=true`, so this just works during normal development.
+the device's MCP server, so it needs CORS headers on `localhost:3350`. The
+server reflects CORS for any localhost origin by default, in every build, so the
+inspector (served from a localhost origin) just works — dev or release. Pages
+from a non-localhost origin get no CORS headers and are blocked; set
+`ENABLE_REMOTE_CORS=true` before a build only if you need to reach the server
+from one (a remote inspector, or over the LAN).
 
-Release builds (`npm run build`) intentionally omit CORS headers — production
-users run the chat UI same-origin and shouldn't expose `localhost:3350` to
-arbitrary browser tabs. To debug a release build with the inspector, point it at
-the stdio portal instead:
+The stdio portal is another way in (and it pushes config-override flags to the
+device on connect, below):
 
 ```bash
 npx @modelcontextprotocol/inspector node /absolute/path/to/producer-pal/npm/producer-pal-portal.js

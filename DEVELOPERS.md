@@ -166,12 +166,15 @@ which require v24+.
    → Settings → Extension
 
 **Note**: For development and testing, use `npm run build:debug` to enable
-debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`, `ENABLE_DEV_CORS`).
-`ENABLE_LIVE_API=true` forces the runtime `liveApiEnabled` flag on so the Direct
-Live API tool (`ppal-live-api`) is always available — the Setup-tab toggle
-cannot disable it in this build. `POST /config { liveApiEnabled }` still works
-in either direction so e2e tests can exercise both states. Use
-`npm run build:dev` for a normal build with CORS enabled (for `npm run ui:dev`).
+debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`). `ENABLE_LIVE_API=true`
+forces the runtime `liveApiEnabled` flag on so the Direct Live API tool
+(`ppal-live-api`) is always available — the Setup-tab toggle cannot disable it
+in this build. `POST /config { liveApiEnabled }` still works in either direction
+so e2e tests can exercise both states. Chat UI development (`npm run ui:dev`)
+works against any build: the MCP server reflects CORS for localhost origins by
+default, so a browser page on another local port can reach it. Set
+`ENABLE_REMOTE_CORS=true` before a build only if you need to reach the server
+from a non-localhost browser origin (a remote inspector, or over the LAN).
 
 ## Core Development Scripts
 

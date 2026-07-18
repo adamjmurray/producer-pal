@@ -32,10 +32,9 @@
   ],
   "scripts": {
     "build": "npm run parser:build && npm run ui:build && rollup -c config/rollup.config.mjs && npm run dxt:build",
-    "build:dev": "ENABLE_DEV_CORS=true npm run build",
-    "build:debug": "ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true ENABLE_DEV_CORS=true npm run build",
+    "build:debug": "ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true npm run build",
     "build:watch": "npm run build && rollup -c config/rollup.config.mjs -w",
-    "dev": "npm run parser:build && ENABLE_DEV_CORS=true rollup -c config/rollup.config.mjs -w",
+    "dev": "npm run parser:build && rollup -c config/rollup.config.mjs -w",
     "dev:debug": "ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true npm run dev",
     "test": "npm run test:setup && vitest run --reporter=./config/vitest-minimal-reporter.mjs --silent=true",
     "test:watch": "npm run test:setup && vitest --reporter=dot --silent=true",

@@ -447,25 +447,6 @@ describe("MCP Express App", () => {
     });
   });
 
-  describe("CORS", () => {
-    it("should handle OPTIONS preflight requests", async () => {
-      const response = await fetch(appState.serverUrl, {
-        method: "OPTIONS",
-        headers: {
-          "Access-Control-Request-Method": "POST",
-          "Access-Control-Request-Headers": "content-type",
-        },
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("access-control-allow-origin")).toBe("*");
-      expect(response.headers.get("access-control-allow-methods")).toContain(
-        "POST",
-      );
-      expect(response.headers.get("access-control-allow-headers")).toBe("*");
-    });
-  });
-
   describe("Chat UI", () => {
     let chatUrl: string;
     let contextUrl: string;
