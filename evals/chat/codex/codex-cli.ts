@@ -1,10 +1,10 @@
 // Producer Pal
-// Copyright (C) 2026 Taylor Haun
-// AI assistance: Codex (OpenAI)
+// Copyright (C) 2026 Taylor Haun, Adam Murray
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { scrubOpenAiKeys } from "./codex-cli-protocol.ts";
+import { parseCodexStream, scrubOpenAiKeys } from "./codex-cli-protocol.ts";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -61,12 +61,7 @@ export function spawnCodex(
       if (timedOut) {
         reject(new Error(`codex CLI timed out after ${timeoutMs / 1000}s`));
       } else if (code !== 0) {
-        reject(
-          new Error(
-            `codex CLI exited ${code}. stderr: ${stderr.slice(0, 500)}\n` +
-              `stdout: ${stdout.slice(0, 500)}`,
-          ),
-        );
+        reject(new Error(codexExitError(code, stdout, stderr)));
       } else {
         resolve(stdout);
       }
@@ -78,4 +73,42 @@ export function spawnCodex(
     });
     child.stdin.end(prompt);
   });
+}
+
+/**
+ * Build a descriptive error for a non-zero Codex exit. The `turn.failed`/`error`
+ * event lands at the END of the JSONL stream, so surface it via parseCodexStream
+ * (whose throw carries getErrorMessage's text) and fall back to the stdout tail
+ * — a head-truncated slice would drop the actual cause.
+ * @param code - Process exit code
+ * @param stdout - Full JSONL stdout
+ * @param stderr - Captured stderr
+ * @returns Error message describing the failure
+ */
+function codexExitError(
+  code: number | null,
+  stdout: string,
+  stderr: string,
+): string {
+  const parts = [`codex CLI exited ${code}.`];
+
+  let streamError = "";
+
+  try {
+    parseCodexStream(stdout);
+  } catch (error) {
+    streamError = error instanceof Error ? error.message : String(error);
+  }
+
+  if (streamError !== "") {
+    parts.push(streamError);
+  } else if (stdout.trim() !== "") {
+    parts.push(`stdout: ${stdout.slice(-500)}`);
+  }
+
+  if (stderr.trim() !== "") {
+    parts.push(`stderr: ${stderr.slice(-500)}`);
+  }
+
+  return parts.join(" ");
 }
