@@ -6,6 +6,7 @@ import "./demo.css";
 import "./footer.css";
 import "./get-started.css";
 import "./screenshots.css";
+import "./sidebar.css";
 import "./tool-schemas.css";
 
 export default {

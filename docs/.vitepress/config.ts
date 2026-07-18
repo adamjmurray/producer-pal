@@ -147,19 +147,19 @@ export default defineConfig({
         link: "/how-it-works",
         items: [
           {
-            text: "Running Inside Ableton Live",
+            text: "Running Inside Live",
             link: "/how-it-works/running-inside-live",
           },
           {
-            text: "The Bridge: JSON Over Patch Cables",
+            text: "JSON Over Patch Cables",
             link: "/how-it-works/the-bridge",
           },
           {
-            text: "More Than a Live API Wrapper",
+            text: "More Than a Wrapper",
             link: "/how-it-works/more-than-a-wrapper",
           },
           {
-            text: "Why Not an Ableton Extension?",
+            text: "Why Not an Extension",
             link: "/how-it-works/why-not-an-extension",
           },
         ],
