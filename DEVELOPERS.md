@@ -8,34 +8,39 @@ getting in your way, there's almost always a pragmatic path through it (see
 doubt, open a
 [discussion](https://github.com/adamjmurray/producer-pal/discussions) and ask.
 
-I maintain the core MCP tools and feature roadmap myself to keep development
-moving quickly. But there's plenty of room to collaborate:
+## Ways to contribute
 
-**High-value contributions:**
+There's room to get involved at every level of experience and commitment:
 
-- End-to-end testing automation and LLM evaluations
-- Small language model optimization (making Ollama/LM Studio work better)
-- Documentation improvements
+- **Use it and talk about it.** Beta testing, feature requests, and sharing your
+  experiences in
+  [the discussions](https://github.com/adamjmurray/producer-pal/discussions) all
+  shape where the project goes.
+- **File bug reports** in
+  [the issues](https://github.com/adamjmurray/producer-pal/issues) — help me
+  reproduce it and I will do my best to fix it. Reproducible cases where LLMs
+  misuse the tools are especially valuable.
+- **Improve the documentation.** Typo fixes to full guides, all welcome.
+- **Make the LLMs behave better.** Skills, tool descriptions, system
+  instructions, and [evals](evals/README.md) that demonstrate improvements —
+  including small language model optimization (making Ollama/LM Studio work
+  better).
+- **Strengthen the testing.** End-to-end testing automation and LLM evaluations
+  are high-value areas with lots of open ground.
+- **Build extensions.** Custom skills, the REST API, and Agent Skills for coding
+  agents are where a lot of the interesting innovation happens — see
+  [Extending Producer Pal](#extending-producer-pal).
+- **Learn from the implementation**, or fork and modify for your own needs
+  (please attribute me).
 
-**Always welcome:**
+One thing worth knowing before you start a large PR: the core toolset is
+deliberately kept stable, so adding new tools or changing tool shapes needs
+discussion first. See [Extending Producer Pal](#extending-producer-pal) below —
+it explains why, and points to the many areas that are wide open.
 
-- Beta testing and detailed bug reports
-- Reproducible cases where LLMs misuse the tools
-- Feature requests and wishlist ideas
-
-Interested? Open a
+Interested in any of this? Open a
 [GitHub discussion](https://github.com/adamjmurray/producer-pal/discussions) or
 reach out directly.
-
-Also feel free to:
-
-- File bug reports in
-  [the issues](https://github.com/adamjmurray/producer-pal/issues) (help me
-  reproduce it and I will do my best to fix it)
-- Ask questions, give feedback, request features, and share your experiences in
-  [the discussions](https://github.com/adamjmurray/producer-pal/discussions)
-- Learn from the implementation
-- Fork and modify for your own needs. Please attribute me.
 
 ## Working with the strict checks
 
@@ -82,22 +87,12 @@ accepted without prior agreement.
 This is by design. A stable core means extensions don't break, and the
 interesting innovation happens through extensions rather than a PR queue.
 
-**There are better ways to add capabilities:**
-
-- **Context customization** — Custom skills, system instructions, tool
-  description overrides, and tool presets let you shape LLM behavior without any
-  code. If you can describe a workflow in plain language, you can create a
-  skill.
-
-- **Workflows** — Pre-defined sequences of tool calls for reliable, repeatable
-  operations. The LLM picks the right workflow and fills in parameters, but
-  doesn't improvise the steps.
-
-- **Companion MCP servers** — For entirely new capabilities (audio analysis,
-  generative algorithms, hardware integration), build a separate MCP server. The
-  LLM combines tools from all connected servers naturally. The upcoming
-  `max-mcp-template` starter project and shared libraries should make this
-  straightforward.
+**There are better ways to add capabilities.** The
+[Extending Producer Pal](https://producer-pal.org/extending) page covers the
+current extension points — the REST API for scripting Live directly, Agent
+Skills for working from coding agents, and custom skills / global context for
+shaping LLM behavior without code — plus the ideas under consideration for
+what's next.
 
 **What IS welcome as a core PR:** Bug fixes, improvements to default skill text
 and tool/argument descriptions, evaluations, documentation, and targeted
@@ -130,9 +125,6 @@ large and small models where applicable, since a prompt tweak that helps a
 frontier model can regress a small local one (and vice versa). "It behaves
 better for me" is a good start; a scenario that _shows_ it is what lands the
 change.
-
-See the [Extending Producer Pal](https://producer-pal.org/extending)
-documentation for details on extension types and how to choose between them.
 
 ## Branching Strategy
 
