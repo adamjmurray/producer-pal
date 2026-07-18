@@ -42,6 +42,41 @@ support tools.
 - Try running `npx -y producer-pal` manually to test if it works (it won't
   output anything, but it shouldn't error or exit until you ctrl+c)
 
+## `npx` Is Running an Old Version
+
+If you connect with `npx producer-pal` — used by Codex, Claude Code, and most
+other CLI/MCP setups — your coding agent may fail with a **misleading error**,
+often something like "cannot connect to MCP server", even though Ableton Live
+and the Producer Pal device are running fine.
+
+A common cause is a **stale `npx` version**. Despite its reputation for always
+running the latest, `npx`:
+
+- can reuse a **cached** copy of the package instead of re-downloading it, and
+- skips the download entirely if you ever ran `npm install -g producer-pal` — it
+  runs your global copy instead.
+
+When the Producer Pal device has been upgraded but the `npx` bridge is still an
+older version, the two may be incompatible, and the agent reports a generic
+connection failure that doesn't point at the real problem.
+
+**Fix — install the latest version explicitly:**
+
+```bash
+npm install -g producer-pal@latest
+```
+
+Then restart your AI app. This updates (or creates) a global install that
+`npx producer-pal` will use, so you're running a known-current version.
+
+::: tip Running from a project folder?
+
+If you launch your agent from a folder that has its own local `producer-pal`
+install (in `node_modules`), `npx` uses that copy instead of the global one.
+Update it there, or run from a folder without one.
+
+:::
+
 ## Tools Not Appearing
 
 - Toggle the Producer Pal device off and on in Live
