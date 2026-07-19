@@ -1,7 +1,7 @@
 # Using Mistral with Producer Pal
 
-Mistral AI models work with Producer Pal through Le Chat (web) or Mistral Vibe
-(CLI).
+Mistral AI models work with Producer Pal through Le Chat (web), Mistral Vibe
+(CLI), or the built-in Chat UI.
 
 ## Options
 

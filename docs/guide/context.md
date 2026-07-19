@@ -175,10 +175,10 @@ tend to skip.
 ## What AI sees when it connects
 
 On connect, the three layers are attached to the result in order: your project
-context, then your global context, then the memory index. Skills, custom
-instructions, and the context layers are all sent up front, so if a conversation
-starts before you make an edit, start a **new conversation** for the change to
-take effect.
+context, then your global context, then the memory index. Skills and the context
+layers are all sent up front (as is your custom system instruction, in the
+built-in Chat UI), so if a conversation starts before you make an edit, start a
+**new conversation** for the change to take effect.
 
 To stop AI from reading a layer, empty it. To stop AI from _writing_ to any of
 them, turn off the Context tool (the **Context** checkbox under the Chat UI's

@@ -113,10 +113,10 @@ defaults are recommended.
 ::: info Device stays authoritative by default
 
 The four settings below **Allow configuration overrides** take effect only when
-that toggle is on. When they do, MIDI notation, Small model mode, and Direct
-Live API are pushed to the device as global settings — they also change in the
-[chat UI](/guide/chat-ui) and for any other connected MCP client. While the
-toggle is off, the extension leaves every device setting untouched.
+that toggle is on. When they do, MIDI notation, Small model mode, Direct Live
+API, and JSON output are pushed to the device as global settings — they also
+change in the [chat UI](/guide/chat-ui) and for any other connected MCP client.
+While the toggle is off, the extension leaves every device setting untouched.
 
 :::
 

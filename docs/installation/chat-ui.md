@@ -20,8 +20,7 @@ The chat UI supports multiple AI providers. Choose based on your needs:
 
 Claude models, direct via API key.
 
-- **Cost:** Free tier has low usage limits; pay-as-you-go recommended for
-  regular use
+- **Cost:** Trial credit to start, then pay-as-you-go
 - **Setup:** Create an Anthropic account and API key
 - **[Setup instructions →](./chat-ui-other-providers#anthropic)**
 
@@ -86,7 +85,7 @@ Desktop app for running local models with a visual interface.
 | Provider   | Cost               | Internet Required | Best For               |
 | ---------- | ------------------ | ----------------- | ---------------------- |
 | Ollama     | Free               | No                | Privacy, offline use   |
-| Anthropic  | Free tier (limits) | Yes               | Claude models directly |
+| Anthropic  | Trial, then paid   | Yes               | Claude models directly |
 | Gemini     | Free tier (limits) | Yes               | Quick testing          |
 | OpenRouter | Pay-as-you-go      | Yes               | Access to many models  |
 | Mistral    | Free tier          | Yes               | Alternative to Gemini  |

@@ -10,8 +10,8 @@ description:
 
 Producer Pal is an AI-powered music production assistant for Ableton Live — an
 Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses 22 specialized tools to work with tracks,
-clips, devices, and more in your Live Set.
+the AI what you want and it uses more than 20 specialized tools to work with
+tracks, clips, devices, and more in your Live Set.
 
 It works with virtually any AI, including its
 [built-in Chat UI](/guide/chat-ui), desktop apps like

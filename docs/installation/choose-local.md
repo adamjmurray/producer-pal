@@ -2,7 +2,7 @@
 
 Run AI models entirely on your machine with no cloud dependency or subscription.
 Requires a relatively capable machine: Apple Silicon with lots of RAM, or a PC
-with an Nvidia 4080+ (8GB+ VRAM minimum) graphics card.
+with a capable Nvidia GPU (8GB VRAM minimum, 4080+ recommended).
 
 ## Options
 

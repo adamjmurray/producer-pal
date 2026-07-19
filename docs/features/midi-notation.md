@@ -177,11 +177,11 @@ on every eighth. `X` is a normal hit, `x` soft, `^` an accent, and `z` a rest.
 
 Every section is **event-based** — whitespace between tokens is just a
 separator, with no rhythmic meaning. Each token advances time by its own
-duration, which defaults to `/4` (a quarter note) and can be set per line
-(`hihat /8:`) or glued to a single token (`X/8`). So a pattern counts by the
-subdivision you're already thinking in: a 4/4 bar of quarters is four tokens, of
-eighths is eight. `*N` repeats a token — `hihat /16: X*16` is a one-bar 16th
-roll.
+duration, which defaults to `/4` (a quarter note) — except `chords:` lines,
+which default to `/1` (a whole note) — and can be set per line (`hihat /8:`) or
+glued to a single token (`X/8`). So a pattern counts by the subdivision you're
+already thinking in: a 4/4 bar of quarters is four tokens, of eighths is eight.
+`*N` repeats a token — `hihat /16: X*16` is a one-bar 16th roll.
 
 Pitched lines work the same way, and chords can be written as symbols:
 
