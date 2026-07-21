@@ -164,7 +164,7 @@ describe("buildSkippedResult", () => {
     const result = buildSkippedResult(
       makeScenario({ transforms: true }),
       "run-123",
-      "google/gemini-3.5-flash",
+      "google/gemini-3.6-flash",
       "small-model",
       "requires the transforms DSL",
     );
@@ -172,7 +172,7 @@ describe("buildSkippedResult", () => {
     expect(result.result).toBe("skipped");
     expect(result.skipReason).toBe("requires the transforms DSL");
     expect(result.scenarioId).toBe("test-scenario");
-    expect(result.model).toBe("google/gemini-3.5-flash");
+    expect(result.model).toBe("google/gemini-3.6-flash");
     expect(result.configProfileId).toBe("small-model");
     expect(result.kind).toBe("capability");
     expect(result.turns).toStrictEqual([]);

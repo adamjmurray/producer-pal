@@ -96,7 +96,7 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini-3.5-flash, local/qwen3-8b)",
+    "Model(s) to test (e.g., gemini-3.6-flash, local/qwen3-8b)",
     collectValues,
     [],
   )
@@ -348,7 +348,7 @@ async function runAllScenarios(
  * --no-save), print it, and return it as a single-element result list.
  *
  * @param scenario - The skipped scenario
- * @param modelKey - Model key (e.g. "google/gemini-3.5-flash")
+ * @param modelKey - Model key (e.g. "google/gemini-3.6-flash")
  * @param label - Run-environment label (see `envLabel`)
  * @param reason - Why the scenario was skipped
  * @param ctx - Shared run context

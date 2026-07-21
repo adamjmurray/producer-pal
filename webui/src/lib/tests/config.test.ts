@@ -39,13 +39,13 @@ describe("config", () => {
   });
 
   describe("getModelName", () => {
-    it("returns display name for gemini-3.5-flash", () => {
-      expect(getModelName("gemini-3.5-flash")).toBe("Gemini 3.5 Flash");
+    it("returns display name for gemini-3.6-flash", () => {
+      expect(getModelName("gemini-3.6-flash")).toBe("Gemini 3.6 Flash");
     });
 
-    it("returns display name for gemini-3.1-flash-lite", () => {
-      expect(getModelName("gemini-3.1-flash-lite")).toBe(
-        "Gemini 3.1 Flash-Lite",
+    it("returns display name for gemini-3.5-flash-lite", () => {
+      expect(getModelName("gemini-3.5-flash-lite")).toBe(
+        "Gemini 3.5 Flash-Lite",
       );
     });
 
@@ -57,8 +57,8 @@ describe("config", () => {
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {
-      expect(getModelName("google/gemini-3.5-flash")).toBe(
-        "Google Gemini 3.5 Flash",
+      expect(getModelName("google/gemini-3.6-flash")).toBe(
+        "Google Gemini 3.6 Flash",
       );
     });
 

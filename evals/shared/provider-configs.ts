@@ -40,7 +40,7 @@ export const CODEX_CODE_CONFIG: ProviderConfig = {
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-3.5-flash",
+  defaultModel: "gemini-3.6-flash",
 };
 
 /** OpenAI provider configuration */

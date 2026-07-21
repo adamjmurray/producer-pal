@@ -52,7 +52,7 @@ one place. Includes free and pay-as-you-go options.
 2. In the chat UI settings:
    - Provider: **OpenRouter**
    - API Key: Your key
-   - Model: e.g., `anthropic/claude-sonnet-5`, `google/gemini-3.5-flash`
+   - Model: e.g., `anthropic/claude-sonnet-5`, `google/gemini-3.6-flash`
 
 ### Mistral
 

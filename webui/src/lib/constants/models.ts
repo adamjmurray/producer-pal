@@ -132,9 +132,9 @@ export const ANTHROPIC_MODELS = [
 ];
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
-  { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
+  { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
-  { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite" },
+  { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
   {
     value: GEMINI_REALTIME_MODEL,
     label: "Gemini 3.1 Flash Live (Voice)",
@@ -169,8 +169,8 @@ export const MISTRAL_MODELS = [
 export const OPENROUTER_MODELS = [
   // Paid models
   {
-    value: "google/gemini-3.5-flash",
-    label: "[Paid] Google Gemini 3.5 Flash",
+    value: "google/gemini-3.6-flash",
+    label: "[Paid] Google Gemini 3.6 Flash",
   },
   {
     value: "google/gemini-3.1-pro-preview",

@@ -34,7 +34,7 @@ export interface TrialInfo {
  *
  * @param result - Internal scenario result
  * @param runId - Unique run identifier
- * @param model - Model key (e.g. "google/gemini-3.5-flash")
+ * @param model - Model key (e.g. "google/gemini-3.6-flash")
  * @param configProfileId - Config profile ID
  * @param trialInfo - Optional trial metadata for repeat runs
  * @returns JSON-serializable result
