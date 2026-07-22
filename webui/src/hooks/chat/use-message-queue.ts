@@ -35,8 +35,8 @@ export function useMessageQueue() {
   // from the first message that starts the queue — rather than per message.
   // Queued follow-ups coalesce into a single turn that can carry only one
   // thinking setting, and the toggle is hidden mid-response anyway, so a
-  // per-message override would only ever be silently dropped on coalesce
-  // (AJM-552). Capturing once makes the data model match what is actually sent.
+  // per-message override would only ever be silently dropped on coalesce.
+  // Capturing once makes the data model match what is actually sent.
   const queueOverridesRef = useRef<MessageOverrides | undefined>(undefined);
 
   const enqueueMessage = useCallback(

@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.ts";
+import {
+  DEFAULT_BEATS_PER_BAR,
+  formatModifiedNoteValue,
+} from "#src/notation/barbeat/barbeat-config.ts";
 import {
   formatBeatPosition,
   formatOffGridBeats,
@@ -138,7 +141,7 @@ export function barBeatToMusicalBeats(
   // a decimal beat can also take an offset (`1|1.5+n/4`); the offset suffix is
   // its own optional group. Kept in parity with parseBeatValue below.
   const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*))?)$/,
+    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
   );
 
   if (!match) {
@@ -265,7 +268,7 @@ export function validateBarBeatPosition(barBeat: string): void {
   // parity with that regex — only the OUTER structure matters here; the offset
   // suffix is allowed but not inspected (a pickup keeps a valid base).
   const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*))?)$/,
+    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
   );
 
   // Not a recognizable bar|beat shape: leave it to barBeatToAbletonBeats's own
@@ -356,6 +359,15 @@ export function abletonBeatsToDuration(
     return `${bars}bar`;
   }
 
+  // Prefer dotted/triplet sugar (`n/4d`, `n/8t`) for the sub-bar remainder, same as
+  // the note-duration serializer. remaining/4 = whole-note fraction (1 whole note =
+  // 4 quarters); this runs before the plain reduction below.
+  const modified = formatModifiedNoteValue(remaining / 4);
+
+  if (modified != null) {
+    return bars > 0 ? `${bars}bar+n${modified}` : `n${modified}`;
+  }
+
   const frac = abletonBeatsToWholeNoteFraction(remaining);
 
   if (frac == null) {
@@ -419,7 +431,7 @@ export function durationToAbletonBeats(
   // `1bar-n/16` is "almost a full bar". A leading sign group shifts the capture
   // indices read below.
   const match = duration.match(
-    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
+    /^(?:(0|[1-9]\d*)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?))$/,
   );
 
   if (!match) {
@@ -447,25 +459,29 @@ export function durationToAbletonBeats(
 
   if (match[4] != null) {
     // Nbar±n<fraction> mixed form (sign in match[2], numerator in match[3],
-    // denominator in match[4]). A minus tail subtracts the note value from the
-    // bar component, so `1bar-n/16` resolves to "almost a full bar".
+    // denominator in match[4], optional d/t suffix in match[5]). A minus tail
+    // subtracts the note value from the bar component, so `1bar-n/16` resolves to
+    // "almost a full bar"; a `d`/`t` suffix scales the note value (`1bar+n/4d`).
     fractionBeats = noteValueFractionToBeats(
       match[3] as string,
       match[4],
       4,
       divisionByZero,
+      match[5],
     );
 
     if (match[2] === "-") {
       fractionBeats = -fractionBeats;
     }
-  } else if (match[6] != null) {
-    // n<fraction> only (numerator in match[5], denominator in match[6])
+  } else if (match[7] != null) {
+    // n<fraction> only (numerator in match[6], denominator in match[7], optional
+    // d/t suffix in match[8]).
     fractionBeats = noteValueFractionToBeats(
-      match[5] as string,
-      match[6],
+      match[6] as string,
+      match[7],
       4,
       divisionByZero,
+      match[8],
     );
   }
 
@@ -500,18 +516,20 @@ function parseBeatValue(
   // zero guard. Kept consistent with the outer barBeatToMusicalBeats regex so a denom
   // the outer accepts never silently mis-parses here.
   const offsetMatch = beatsStr.match(
-    /^(-?\d+(?:\.\d+)?)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)$/,
+    /^(-?\d+(?:\.\d+)?)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)([dt]?)$/,
   );
 
   if (offsetMatch) {
     const base = Number.parseFloat(offsetMatch[1] as string);
     const sign = offsetMatch[2];
-    // Whole-note fraction → musical beats, so scale = timeSigDenominator.
+    // Whole-note fraction → musical beats, so scale = timeSigDenominator. A `d`/`t`
+    // suffix (offsetMatch[5]) scales the offset note value (`1|1+n/8t`).
     const offsetBeats = noteValueFractionToBeats(
       offsetMatch[3] as string,
       offsetMatch[4] as string,
       timeSigDenominator ?? 4,
       `Invalid bar|beat format: division by zero in "${context}"`,
+      offsetMatch[5],
     );
 
     return sign === "+" ? base + offsetBeats : base - offsetBeats;
@@ -532,12 +550,16 @@ function parseBeatValue(
  *
  * An empty numerator means 1 (`n/4` == `n1/4`). `parseFloat` also accepts the
  * decimal numerator of the off-grid duration escape (`n1.9638/4`); the regexes
- * gate which surfaces admit a decimal (duration only).
+ * gate which surfaces admit a decimal (duration only). An optional `d`/`t`
+ * modifier scales the note value: `d` = dotted (×3/2), `t` = triplet (×2/3); any
+ * other value (including "" / undefined) is a no-op.
  * @param numeratorStr - Numerator capture ("" → 1)
  * @param denominatorStr - Denominator capture
  * @param scale - Whole-note→beat factor: 4 for Ableton beats, or the time-sig
  *   denominator for musical beats
  * @param divisionByZeroError - Message to throw when the denominator is 0
+ * @param modifier - Optional note-value modifier: "d" dotted (×3/2), "t" triplet
+ *   (×2/3); "" / undefined = plain
  * @returns The fraction scaled into the caller's beat unit
  */
 function noteValueFractionToBeats(
@@ -545,6 +567,7 @@ function noteValueFractionToBeats(
   denominatorStr: string,
   scale: number,
   divisionByZeroError: string,
+  modifier?: string,
 ): number {
   const numerator = numeratorStr === "" ? 1 : Number.parseFloat(numeratorStr);
   const denominator = Number.parseInt(denominatorStr);
@@ -553,7 +576,9 @@ function noteValueFractionToBeats(
     throw new Error(divisionByZeroError);
   }
 
-  return (numerator / denominator) * scale;
+  const modFactor = modifier === "d" ? 3 / 2 : modifier === "t" ? 2 / 3 : 1;
+
+  return (numerator / denominator) * modFactor * scale;
 }
 
 /**

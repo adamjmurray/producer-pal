@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefDelete = defineTool("ppal-delete", {
   title: "Delete",
@@ -15,26 +17,18 @@ export const toolDefDelete = defineTool("ppal-delete", {
     destructiveHint: true,
   },
   inputSchema: {
-    ids: z.coerce
-      .string()
-      .optional()
-      .describe("comma-separated ID(s) to delete (must be same type)"),
-    path: z
-      .string()
-      .optional()
-      .describe(
+    ids: param(z.coerce.string().optional(), {
+      default: "comma-separated ID(s) to delete (must be same type)",
+      smallModel: "object ID to delete",
+    }),
+    path: param(z.string().optional(), {
+      default:
         "comma-separated device/drum-pad paths to delete (e.g., 't0/d1', 't1/d0/pC1/d0', 't1/d0/pC1')",
-      ),
+      smallModel: "device/drum-pad path to delete (e.g., 't0/d1')",
+    }),
     // Required even though IDs encode type — intentional safety net for destructive operation
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
       .describe("type of objects to delete"),
-  },
-
-  smallModelModeConfig: {
-    descriptionOverrides: {
-      ids: "object ID to delete",
-      path: "device/drum-pad path to delete (e.g., 't0/d1')",
-    },
   },
 });

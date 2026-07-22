@@ -65,7 +65,7 @@ export async function librarySearch(
   // signal sits at the top alongside dbAvailable; omitted when there's no risk.
   const stalenessRisk = await detectStalenessRisk(dbPath);
 
-  // Guard the open + query: the f.subtype column (clip subtype, AJM-335) is the
+  // Guard the open + query: the f.subtype column (clip subtype) is the
   // most recently added column we SELECT, and Live's DB schema varies across
   // releases. An older DB lacking a selected column makes the SELECT throw, so
   // degrade to dbAvailable:false rather than surfacing a raw SQLite error to the

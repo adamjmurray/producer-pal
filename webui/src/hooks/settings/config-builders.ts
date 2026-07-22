@@ -11,11 +11,7 @@ import {
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export type RealtimeReasoningEffort =
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh";
+  "minimal" | "low" | "medium" | "high" | "xhigh";
 
 export type AnthropicEffort = "low" | "medium" | "high" | "max";
 
@@ -85,6 +81,37 @@ export function mapTurnDetectionToConfig(
  */
 export function isLegacyThinkingModel(model: string): boolean {
   return model.includes("haiku");
+}
+
+/**
+ * Checks if an Anthropic model has always-on thinking that cannot be disabled.
+ * Fable 5 / Mythos 5 run thinking unconditionally and reject
+ * `thinking: {type: "disabled"}` with a 400 — thinking must be omitted for
+ * these, so "Off" cannot fully turn thinking off.
+ * @param {string} model - Model identifier
+ * @returns {boolean} - True if the model's thinking cannot be disabled
+ */
+export function isAlwaysOnThinkingModel(model: string): boolean {
+  return model.includes("fable") || model.includes("mythos");
+}
+
+// Claude 3.0/3.5 tiers (extended thinking arrived with 3.7), plus Claude 2.x /
+// instant. The tier alternation excludes 3.7+ — "claude-3-7-sonnet" has no
+// "-opus|sonnet|haiku" directly after "claude-3(-5)?".
+const LEGACY_NON_THINKING_MODEL =
+  /^claude-3([.-]5)?[.-](opus|sonnet|haiku)|^claude-(2|instant)/;
+
+/**
+ * Checks if an Anthropic model predates the `thinking` parameter entirely
+ * (Claude 3.5 and earlier). These ids reject ANY `thinking` field — including
+ * `{type: "disabled"}` — with a 400, so the forced-disabled injection must be
+ * skipped for them. Only reachable via the free-text "Other..." model input, as
+ * no preset lists a pre-3.7 id.
+ * @param {string} model - Model identifier
+ * @returns {boolean} - True if the model has no `thinking` parameter support
+ */
+export function isLegacyNonThinkingModel(model: string): boolean {
+  return LEGACY_NON_THINKING_MODEL.test(model);
 }
 
 /**

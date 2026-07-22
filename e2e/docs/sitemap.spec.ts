@@ -2,12 +2,14 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const DIST_DIR = join(__dirname, "..", "..", "docs", ".vitepress", "dist");
 
 // Known external domains that are allowed
 const ALLOWED_EXTERNAL_DOMAINS = [
@@ -87,6 +89,105 @@ function toRelativePath(absoluteUrl: string): string {
 }
 
 /**
+ * Normalize a site path to the route key used by the anchor index
+ */
+function normalizeRoute(path: string): string {
+  const trimmed = path.replace(/\/$/, "");
+
+  return trimmed === "" ? "/" : trimmed;
+}
+
+/**
+ * Index every element id in the built HTML, keyed by route. The sitemap only
+ * tracks pages, so this is what lets us validate `#anchor` fragments — without
+ * it a link to a renamed or deleted heading lands silently at the top of the
+ * page and no test notices.
+ */
+function buildAnchorIndex(): Map<string, Set<string>> {
+  const index = new Map<string, Set<string>>();
+
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+
+      if (!entry.name.endsWith(".html")) continue;
+
+      const html = readFileSync(fullPath, "utf-8");
+      const ids = new Set(
+        Array.from(html.matchAll(/id="([^"]+)"/g), (match) => match[1]).filter(
+          (id): id is string => id != null,
+        ),
+      );
+      const route = `/${relative(DIST_DIR, fullPath)
+        .replace(/\.html$/, "")
+        .replace(/(^|\/)index$/, "")}`;
+
+      index.set(normalizeRoute(route), ids);
+    }
+  };
+
+  walk(DIST_DIR);
+
+  if (index.size === 0) {
+    throw new Error(
+      `No HTML pages found in ${DIST_DIR}. ` +
+        `Ensure docs are built with 'npm run docs:build' before running tests.`,
+    );
+  }
+
+  return index;
+}
+
+/**
+ * Validate an internal link's `#anchor` fragment against the target page's ids.
+ * Returns an error message, or null when the link has no fragment or is valid.
+ */
+function checkAnchor(
+  href: string,
+  currentPath: string,
+  anchorIndex: Map<string, Set<string>>,
+): string | null {
+  const hashIndex = href.indexOf("#");
+
+  if (hashIndex === -1) return null;
+
+  const rawFragment = href.slice(hashIndex + 1);
+
+  if (rawFragment === "") return null;
+
+  let fragment = rawFragment;
+
+  try {
+    fragment = decodeURIComponent(rawFragment);
+  } catch {
+    // Leave the fragment as-is when it isn't valid percent-encoding
+  }
+
+  // An empty path means a same-page link, e.g. href="#transforms". Otherwise
+  // resolve against the current page so relative hrefs ("./lm-studio#tips")
+  // land on the same route the browser would navigate to.
+  const pathPart = href.slice(0, hashIndex);
+  const targetPath =
+    pathPart === ""
+      ? currentPath
+      : new URL(pathPart, `http://localhost${currentPath}`).pathname;
+  const ids = anchorIndex.get(normalizeRoute(targetPath));
+
+  if (ids == null) return `Anchor link to unknown page: ${href}`;
+
+  if (!ids.has(fragment)) {
+    return `Dead anchor: ${href} (no element with id="${fragment}" on ${normalizeRoute(targetPath)})`;
+  }
+
+  return null;
+}
+
+/**
  * Check if a URL is external
  */
 function isExternalUrl(href: string): boolean {
@@ -149,12 +250,14 @@ function normalizeUrlForSitemap(
 }
 
 let sitemapUrls: string[] = [];
+let anchorIndex: Map<string, Set<string>> = new Map();
 let consoleErrors: string[] = [];
 let consoleWarnings: string[] = [];
 
 test.describe("Docs Site Sitemap Tests", () => {
   test.beforeAll(() => {
     sitemapUrls = parseSitemap();
+    anchorIndex = buildAnchorIndex();
   });
 
   test.beforeEach(({ page }) => {
@@ -233,9 +336,20 @@ test.describe("Docs Site Sitemap Tests", () => {
 
         if (!href) continue;
 
-        // Skip hash-only links, mailto links, and download links (static files)
-        if (href.startsWith("#") || href.startsWith("mailto:")) continue;
+        if (href.startsWith("mailto:")) continue;
         if ((await link.getAttribute("download")) != null) continue;
+
+        // Validate the #anchor fragment of same-page and internal links. The
+        // sitemap check below only sees the path, so without this a link to a
+        // renamed heading passes while silently scrolling nowhere.
+        if (!isExternalUrl(href)) {
+          const anchorError = checkAnchor(href, relativePath, anchorIndex);
+
+          if (anchorError) linkValidationErrors.push(anchorError);
+        }
+
+        // Hash-only links are same-page: fully validated by checkAnchor above
+        if (href.startsWith("#")) continue;
 
         // Check if it's an external link
         if (isExternalUrl(href)) {

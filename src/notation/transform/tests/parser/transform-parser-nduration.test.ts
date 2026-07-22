@@ -43,6 +43,41 @@ describe("Transform Parser - nDuration", () => {
     });
   });
 
+  it("parses dotted (`d`, ×3/2) and triplet (`t`, ×2/3) suffixes", () => {
+    // n/4d = dotted quarter = 3/8; n/8t = eighth triplet = 1/12. The suffix scales
+    // any numerator (n3/8d = 9/16), matching the bar|beat grammar.
+    for (const [token, frac] of [
+      ["n/4d", 3 / 8],
+      ["n/4t", 1 / 6],
+      ["n/8t", 1 / 12],
+      ["n3/8d", 9 / 16],
+    ] as const) {
+      expect(
+        parseAssignments(`duration = ${token}`)[0]!.expression,
+      ).toStrictEqual({ type: "nDuration", wholeNoteFraction: frac });
+    }
+  });
+
+  it("parses a triplet suffix inside a waveform period (n/8t)", () => {
+    // The suffix flows everywhere the note-value fraction does, including a
+    // `sin(period)` cycle length. `n/4t` is a valid note value, not the removed
+    // `Nt` period syntax (which is a bare number + t).
+    const result = parseAssignments("velocity += cos(n/8t)");
+
+    expect(
+      (result[0]!.expression as { args: unknown[] }).args[0],
+    ).toStrictEqual({
+      type: "nDuration",
+      wholeNoteFraction: 1 / 12,
+    });
+  });
+
+  it("rejects stacked/doubled note-value suffixes", () => {
+    for (const bad of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
+      expect(() => parseAssignments(`duration = ${bad}`)).toThrow();
+    }
+  });
+
   it("parses nDuration in additive expression", () => {
     const result = parseAssignments("duration = n/4 + n/8");
 

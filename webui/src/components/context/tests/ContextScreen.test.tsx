@@ -15,8 +15,11 @@ import {
 } from "@testing-library/preact";
 import { useEffect, useRef } from "preact/hooks";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ContextScreen } from "#webui/components/context/ContextScreen";
-import { type ContextMemoryStatus } from "#webui/hooks/context/use-context-memory";
+import {
+  type ContextEditorLabels,
+  ContextScreen,
+} from "#webui/components/context/ContextScreen";
+import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
 
 const editorChange = vi.fn();
 const editorFocus = vi.fn();
@@ -78,12 +81,36 @@ const saveMock = vi.fn();
 const refreshMock = vi.fn();
 const clearMock = vi.fn();
 
-vi.mock(import("#webui/hooks/context/use-context-memory"), () => ({
-  useContextMemory: () => buildHookValue(),
-}));
+const TEST_LABELS: ContextEditorLabels = {
+  title: "Project Context",
+  loadingLabel: "Loading project context…",
+  closeAriaLabel: "Close context editor",
+  clearConfirmMessage: "Clear all project memory? This cannot be undone.",
+  externalUpdateMessage: "Memory was updated outside the editor.",
+  exportBasename: "producer-pal-project-context",
+};
+
+/**
+ * ContextScreen receives its document memory as a prop (ContextTabs supplies
+ * the real hook). This harness rebuilds the mock hook value from the mutable
+ * mock* state on every render, so a `rerender(<Harness />)` reflects flipped
+ * status the way re-calling the hook used to.
+ * @param props - Optional onClose passthrough
+ * @param props.onClose - Close handler forwarded to the screen
+ * @returns A ContextScreen bound to the mock memory + project labels
+ */
+function Harness(props: { onClose?: () => void } = {}): preact.JSX.Element {
+  return (
+    <ContextScreen
+      memory={buildHookValue()}
+      labels={TEST_LABELS}
+      onClose={props.onClose}
+    />
+  );
+}
 
 function buildHookValue() {
-  let status: ContextMemoryStatus;
+  let status: DocMemoryStatus;
 
   if (mockStatus.kind === "ready") {
     status = {
@@ -115,7 +142,7 @@ function buildHookValue() {
 async function mountAndDebounceSave() {
   mockStatus.kind = "ready";
   mockStatus.content = "old";
-  const result = render(<ContextScreen />);
+  const result = render(<Harness />);
 
   await act(() => {
     editorChange("draft");
@@ -155,7 +182,7 @@ describe("ContextScreen", () => {
   });
 
   it("shows loading state initially", () => {
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(screen.getByText("Loading project context…")).toBeTruthy();
   });
@@ -163,7 +190,7 @@ describe("ContextScreen", () => {
   it("shows error state when status is error", () => {
     mockStatus.kind = "error";
     mockStatus.message = "boom";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     // The header indicator and the body both display the message.
     const matches = screen.getAllByText("boom");
@@ -174,7 +201,7 @@ describe("ContextScreen", () => {
   it("shows editor with content when memory is ready", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "# hello";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(lastEditorProps?.initialValue).toBe("# hello");
     expect(lastEditorProps?.readOnly).toBe(false);
@@ -183,13 +210,57 @@ describe("ContextScreen", () => {
   it("renders the controls strip when memory is ready", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "x";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy();
   });
 
+  it("renders Import and Export buttons when ready", () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    render(<Harness />);
+
+    expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
+  });
+
+  it("Export button downloads the current content as a .md file", () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "# exported";
+    render(<Harness />);
+
+    const click = vi.fn();
+    const anchor = { href: "", download: "", click } as unknown as HTMLElement;
+
+    vi.spyOn(document, "createElement").mockReturnValue(anchor);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:x");
+    vi.spyOn(URL, "revokeObjectURL").mockReturnValue();
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+
+    expect((anchor as unknown as HTMLAnchorElement).download).toMatch(
+      /^producer-pal-project-context-\d{4}-\d{2}-\d{2}\.md$/,
+    );
+    expect(click).toHaveBeenCalledOnce();
+    vi.restoreAllMocks();
+  });
+
+  it("shows a live char/token count that updates as the user types", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "hello"; // 5 chars → ceil(5/4) = 2 tokens
+    render(<Harness />);
+
+    expect(screen.getByText(/5 chars · ≈2 tokens/)).toBeTruthy();
+
+    await act(() => {
+      editorChange("hi there!"); // 9 chars → ceil(9/4) = 3 tokens
+    });
+
+    expect(screen.getByText(/9 chars · ≈3 tokens/)).toBeTruthy();
+  });
+
   it("hides the controls strip while loading", () => {
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
   });
@@ -201,7 +272,7 @@ describe("ContextScreen", () => {
 
     vi.stubGlobal("confirm", confirmMock);
 
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       fireEvent.click(screen.getByRole("button", { name: "Clear" }));
@@ -228,7 +299,8 @@ describe("ContextScreen", () => {
     );
     vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
 
-    render(<ContextScreen />);
+    const { rerender } = render(<Harness />);
+
     expect(editorMountedValues).toStrictEqual(["old content"]);
 
     await act(() => {
@@ -240,9 +312,13 @@ describe("ContextScreen", () => {
     expect(editorMountedValues).toStrictEqual(["old content"]);
 
     // Server completes the clear: status.content flips, then clear() resolves
-    // and the fixed handler bumps `editorKey` → remount with "".
+    // and the fixed handler bumps `editorKey` → remount with "". The rerender
+    // stands in for the owner (ContextTabs) re-rendering with fresh memory when
+    // the underlying hook's status flips; it precedes the editorKey bump so the
+    // remount reads the cleared content, not the stale doc.
     mockStatus.content = "";
     await act(async () => {
+      rerender(<Harness />);
       resolveClear(true);
       for (let i = 0; i < 5; i++) await Promise.resolve();
     });
@@ -258,7 +334,7 @@ describe("ContextScreen", () => {
 
     vi.stubGlobal("confirm", confirmMock);
 
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       fireEvent.click(screen.getByRole("button", { name: "Clear" }));
@@ -271,7 +347,7 @@ describe("ContextScreen", () => {
   it("debounces save after edit", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       editorChange("new");
@@ -290,7 +366,7 @@ describe("ContextScreen", () => {
   it("flushes save on blur", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       editorFocus();
@@ -310,7 +386,7 @@ describe("ContextScreen", () => {
   it("flushSave is a no-op when there are no edits", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     fireEvent(window, new Event("beforeunload"));
 
@@ -320,7 +396,7 @@ describe("ContextScreen", () => {
   it("blur without pending timer does not save", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     // Focus then blur without typing — no pending debounce timer.
     await act(() => {
@@ -336,7 +412,7 @@ describe("ContextScreen", () => {
   it("flushes save on beforeunload", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       editorChange("draft");
@@ -374,7 +450,7 @@ describe("ContextScreen", () => {
     // cleanup flushes first so the in-progress edit is dispatched.
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    const { unmount } = render(<ContextScreen />);
+    const { unmount } = render(<Harness />);
 
     await act(() => {
       editorChange("typed");
@@ -440,7 +516,7 @@ describe("ContextScreen", () => {
   it("resets the debounce timer on consecutive edits", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       editorChange("first");
@@ -476,7 +552,7 @@ describe("ContextScreen", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
     mockSaveStatus = "saving";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(screen.getByText("Saving…")).toBeTruthy();
   });
@@ -485,7 +561,7 @@ describe("ContextScreen", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
     mockSaveStatus = "saved";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(screen.getByText("Saved")).toBeTruthy();
   });
@@ -498,7 +574,7 @@ describe("ContextScreen", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
     mockSaveStatus = "saved";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(screen.getByText("Saved")).toBeTruthy();
 
@@ -513,7 +589,7 @@ describe("ContextScreen", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
     mockSaveStatus = "saved";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       editorChange("typed");
@@ -534,7 +610,7 @@ describe("ContextScreen", () => {
     mockStatus.content = "old";
     saveMock.mockResolvedValue(false);
     mockSaveStatus = "error";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     await act(() => {
       editorChange("typed");
@@ -548,9 +624,9 @@ describe("ContextScreen", () => {
     mockStatus.content = "x";
     const onClose = vi.fn();
 
-    render(<ContextScreen onClose={onClose} />);
+    render(<Harness onClose={onClose} />);
 
-    const btn = screen.getByLabelText("Close project context");
+    const btn = screen.getByLabelText("Close context editor");
 
     fireEvent.click(btn);
     expect(onClose).toHaveBeenCalledOnce();
@@ -561,7 +637,7 @@ describe("ContextScreen", () => {
     mockStatus.content = "old";
     mockSaveStatus = "error";
     mockSaveError = "Config update failed";
-    render(<ContextScreen />);
+    render(<Harness />);
 
     expect(screen.getByText("Save failed")).toBeTruthy();
   });
@@ -569,7 +645,7 @@ describe("ContextScreen", () => {
   it("surfaces the external-update banner when the server content changes while the draft is clean", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
-    const { rerender } = render(<ContextScreen />);
+    const { rerender } = render(<Harness />);
 
     // Pre-fix this banner did not exist — the user would never know an
     // AI/device write happened, and their next keystroke would clobber it.
@@ -580,7 +656,7 @@ describe("ContextScreen", () => {
     // Status flips because focus refresh fetched the server's new content.
     await act(async () => {
       mockStatus.content = "from-ai";
-      rerender(<ContextScreen />);
+      rerender(<Harness />);
     });
 
     expect(
@@ -591,5 +667,161 @@ describe("ContextScreen", () => {
       fireEvent.click(screen.getByRole("button", { name: "Reload" }));
     });
     expect(editorMountedValues).toStrictEqual(["old", "from-ai"]);
+  });
+
+  describe("built-in reference", () => {
+    const BUILTIN_LABELS: ContextEditorLabels = {
+      ...TEST_LABELS,
+      builtIn: "SHIPPED DEFAULT",
+      overridePaneLabel: "Your instructions",
+    };
+
+    /**
+     * Render a ready ContextScreen bound to labels that carry a built-in
+     * reference. The built-in is hidden by default and revealed on request.
+     */
+    function renderWithBuiltIn(): void {
+      mockStatus.kind = "ready";
+      mockStatus.content = "MY DRAFT";
+      render(
+        <ContextScreen memory={buildHookValue()} labels={BUILTIN_LABELS} />,
+      );
+    }
+
+    it("hides the built-in by default, showing the override editor", () => {
+      renderWithBuiltIn();
+
+      expect(screen.getByText("Your instructions")).toBeTruthy();
+      expect(screen.getByText("Show default")).toBeTruthy();
+      // The default is not on screen until requested.
+      expect(screen.queryByText("Default")).toBeNull();
+      // The editable pane seeds from the stored draft.
+      expect(lastEditorProps?.initialValue).toBe("MY DRAFT");
+    });
+
+    it("reveals the read-only built-in on request", async () => {
+      renderWithBuiltIn();
+
+      await act(() => {
+        fireEvent.click(screen.getByText("Show default"));
+      });
+
+      expect(screen.getByText("Default")).toBeTruthy();
+      // The revealed built-in mounts a second, read-only editor.
+      expect(lastEditorProps?.readOnly).toBe(true);
+      expect(editorMountedValues).toContain("SHIPPED DEFAULT");
+    });
+
+    it("copies the built-in to the clipboard", async () => {
+      const writeText = vi.fn();
+
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText },
+      });
+      renderWithBuiltIn();
+      await act(() => {
+        fireEvent.click(screen.getByText("Show default"));
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+      expect(writeText).toHaveBeenCalledWith("SHIPPED DEFAULT");
+    });
+
+    it("autosaves edits made in the override pane", async () => {
+      renderWithBuiltIn();
+
+      await act(() => {
+        editorChange("edited");
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+        await Promise.resolve();
+      });
+
+      expect(saveMock).toHaveBeenCalledWith("edited");
+    });
+
+    it("shows only the built-in with a Customize fork when there is no override", async () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "";
+      render(
+        <ContextScreen memory={buildHookValue()} labels={BUILTIN_LABELS} />,
+      );
+
+      // Built-in-only view: the default is shown read-only with a Customize
+      // button; the editable pane and its reveal affordance are absent.
+      expect(screen.getByText("Customize")).toBeTruthy();
+      expect(screen.queryByText("Your instructions")).toBeNull();
+      expect(screen.queryByText("Show default")).toBeNull();
+      expect(lastEditorProps?.readOnly).toBe(true);
+      expect(editorMountedValues).toContain("SHIPPED DEFAULT");
+      // The size readout reflects the 15-char default that's on screen,
+      // labelled so it isn't mistaken for the (empty) override.
+      expect(screen.getByText(/Default: 15 chars · ≈4 tokens/)).toBeTruthy();
+
+      // Customize forks the built-in into the override (persists it via the
+      // import path so the view flips to editing).
+      await act(async () => {
+        fireEvent.click(screen.getByText("Customize"));
+        await Promise.resolve();
+      });
+
+      expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT");
+    });
+
+    it("shows the drift note when the built-in changed since the user forked", () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "MY DRAFT";
+      render(
+        <ContextScreen
+          memory={{
+            ...buildHookValue(),
+            drift: { drifted: true, forkedFromVersion: "1.4.0" },
+          }}
+          labels={BUILTIN_LABELS}
+        />,
+      );
+
+      expect(
+        screen.getByText(/Default changed since you forked \(v1\.4\.0\)\./),
+      ).toBeTruthy();
+    });
+
+    it("shows no drift note when the fork matches the current built-in", () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "MY DRAFT";
+      render(
+        <ContextScreen
+          memory={{
+            ...buildHookValue(),
+            drift: { drifted: false, forkedFromVersion: "1.5.0" },
+          }}
+          labels={BUILTIN_LABELS}
+        />,
+      );
+
+      expect(screen.queryByText(/Default changed since you forked/)).toBeNull();
+    });
+
+    it("puts reset beside the editable content (no strip Clear when a default exists)", async () => {
+      const confirmMock = vi.fn().mockReturnValue(true);
+
+      vi.stubGlobal("confirm", confirmMock);
+      renderWithBuiltIn();
+
+      // The always-on strip Clear is gone; the reset trash lives beside the
+      // editable content and is reachable without first revealing the default.
+      expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
+
+      await act(() => {
+        fireEvent.click(screen.getByLabelText("Reset to default"));
+      });
+
+      expect(confirmMock).toHaveBeenCalled();
+      expect(clearMock).toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
   });
 });

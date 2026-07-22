@@ -3,12 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { formatNotation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import {
@@ -36,6 +37,9 @@ interface ReadClipArgs {
   trackIndex?: number | null;
   /** @internal Used by batch readers that already have parsed indices */
   sceneIndex?: number | null;
+  /** @internal Precomputed drum mode from a batch reader, so N clips of one
+   * track don't each re-walk the track's device tree */
+  drumMode?: boolean;
 }
 
 interface WarpMarker {
@@ -94,12 +98,12 @@ export interface ReadClipResult {
  * @param args.slot - Session clip slot (e.g., "0/3")
  * @param args.clipId - Clip ID to directly access any clip
  * @param args.include - Array of data to include in response
- * @param _context - Context object (unused)
+ * @param context - Context object (supplies the global notation setting)
  * @returns Result object with clip information
  */
 export function readClip(
   args: ReadClipArgs = {},
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): ReadClipResult {
   const { clipId, trackIndex, sceneIndex } = resolveClipLocation(args);
 
@@ -156,7 +160,13 @@ export function readClip(
 
   // Process MIDI clip properties
   if (result.type === "midi") {
-    processMidiClip(result, clip, includeClipNotes);
+    processMidiClip(
+      result,
+      clip,
+      includeClipNotes,
+      context.notation ?? "barbeat",
+      args.drumMode,
+    );
   }
 
   // Process audio clip properties
@@ -250,11 +260,16 @@ function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param includeClipNotes - Whether to include formatted notes
+ * @param notation - Notation for the returned notes (default barbeat)
+ * @param precomputedDrumMode - Drum mode supplied by a batch reader; falls back
+ *   to a per-clip device-tree walk when omitted (standalone reads)
  */
 function processMidiClip(
   result: ReadClipResult,
   clip: LiveAPI,
   includeClipNotes: boolean,
+  notation: Notation,
+  precomputedDrumMode?: boolean,
 ): void {
   if (!includeClipNotes) return;
 
@@ -283,9 +298,12 @@ function processMidiClip(
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
-  const drumMode = clip.trackIndex != null && isDrumRackTrack(clip.trackIndex);
+  const drumMode =
+    precomputedDrumMode ??
+    (clip.trackIndex != null && isDrumRackTrack(clip.trackIndex));
 
   const formatted = formatNotation(notes, {
+    notation,
     timeSigNumerator,
     timeSigDenominator,
     drumMode,

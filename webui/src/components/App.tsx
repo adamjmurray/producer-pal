@@ -19,7 +19,7 @@ import { VoiceApp } from "#webui/components/voice/VoiceApp";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
-import { useSyncLiveApiEnabled } from "#webui/hooks/connection/use-sync-live-api-enabled";
+import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-setting";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 import { useSettings } from "#webui/hooks/settings/use-settings";
@@ -30,7 +30,7 @@ import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { ContextScreen } from "./context/ContextScreen";
+import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
 
@@ -74,10 +74,15 @@ export function App() {
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
 
-  useSyncLiveApiEnabled(
+  useSyncServerSetting(
     remoteConfig.serverLiveApiEnabled,
     settings.liveApiEnabledDirty,
     settings.seedLiveApiEnabled,
+  );
+  useSyncServerSetting(
+    remoteConfig.serverNotation,
+    settings.notationDirty,
+    settings.seedNotation,
   );
 
   // Track original appearance settings when settings opened (for cancel)
@@ -139,7 +144,7 @@ export function App() {
     });
   }, [closeSettings, settings, setTheme, display]);
 
-  // Project context overlay (sibling to Settings). Animation timing mirrors
+  // Context overlay (project + global tabs; sibling to Settings). Animation timing mirrors
   // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
   // Transient session state, intentionally not persisted: a refresh or a fresh
   // tab opened from the Max device lands on chat, not the context editor.
@@ -168,18 +173,40 @@ export function App() {
     }, CONTEXT_ANIMATION_MS);
   }, []);
 
-  // Escape closes the context overlay (consistent with native modal idioms).
+  // The context editor's leave guard lives inside ContextTabs (which also mounts
+  // standalone on /context, so the guard can't move up here). ContextTabs
+  // publishes its confirmLeave into this ref so the overlay's Escape and
+  // backdrop-click paths — which close from OUTSIDE that subtree — honor an
+  // unsaved new-entry draft instead of silently discarding it. The header close
+  // button is already guarded inside ContextTabs.
+  const contextConfirmLeaveRef = useRef<(() => boolean) | null>(null);
+  const attemptCloseContext = useCallback(() => {
+    const confirmLeave = contextConfirmLeaveRef.current;
+
+    if (confirmLeave == null || confirmLeave()) closeContext();
+  }, [closeContext]);
+
+  // Jump from the Settings "Edit Context" shortcut straight into the context
+  // editor. Settings and Context are sibling overlays with Settings stacked on
+  // top, so leaving Settings open would hide the editor behind it — close
+  // Settings first (its exit animation runs), then open Context.
+  const handleEditContext = useCallback(() => {
+    closeSettings(() => openContext());
+  }, [closeSettings, openContext]);
+
+  // Escape closes the context overlay (consistent with native modal idioms),
+  // honoring the editor's leave guard for an unsaved draft.
   useEffect(() => {
     if (!contextOpen) return;
 
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") closeContext();
+      if (e.key === "Escape") attemptCloseContext();
     };
 
     window.addEventListener("keydown", onKey);
 
     return () => window.removeEventListener("keydown", onKey);
-  }, [contextOpen, closeContext]);
+  }, [contextOpen, attemptCloseContext]);
 
   // The active mode reports its conversation lock + delete handlers here via
   // setModeContext so the shared SettingsScreen renders them.
@@ -245,12 +272,25 @@ export function App() {
         <div
           className={`settings-overlay ${contextClosing ? "settings-closing" : ""}`}
           onClick={(e) => {
-            // Auto-save makes click-outside-to-close safe; only close on
-            // backdrop hits, not clicks inside the editor.
-            if (e.target === e.currentTarget) closeContext();
+            // Existing entries autosave, so a backdrop click is safe for them;
+            // an unsaved new-entry draft is guarded (confirm before discard).
+            // Only close on backdrop hits, not clicks inside the editor.
+            if (e.target === e.currentTarget) attemptCloseContext();
           }}
         >
-          <ContextScreen onClose={closeContext} />
+          {/* Stable panel wrapper. The overlay's fade-in/out animation targets
+              `.settings-overlay > *` (see main.css), and ContextTabs remounts
+              its screen root on every tab switch — doc tabs are keyed, Skills and
+              Memory are different components. Without this wrapper each switch
+              re-ran the opacity 0→1 fade and flashed the blurred chat UI through
+              the panel. The wrapper stays mounted across tab switches, so the
+              panel fades once on open (matching the Settings overlay). */}
+          <div>
+            <ContextTabs
+              onClose={closeContext}
+              confirmLeaveRef={contextConfirmLeaveRef}
+            />
+          </div>
         </div>
       )}
       {showSettings && (
@@ -279,6 +319,7 @@ export function App() {
             conversationLock={modeContext.conversationLock}
             liveApiForcedOn={remoteConfig.serverLiveApiForcedOn}
             activeVoice={modeContext.activeVoice}
+            onEditContext={handleEditContext}
           />
         </div>
       )}

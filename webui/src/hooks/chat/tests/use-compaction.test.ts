@@ -7,13 +7,13 @@
  * @vitest-environment happy-dom
  */
 import { act, renderHook } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import { useCompaction } from "#webui/hooks/chat/use-compaction";
 import {
   createMockAdapter,
   MockChatClient,
   type TestMessage,
-} from "#webui/hooks/chat/tests/use-chat-test-helpers";
+} from "#webui/hooks/chat/tests/helpers/use-chat-test-helpers";
 import { type UIMessage } from "#webui/types/messages";
 
 function ui(role: "user" | "model", rawHistoryIndex: number): UIMessage {
@@ -25,30 +25,59 @@ function ui(role: "user" | "model", rawHistoryIndex: number): UIMessage {
   };
 }
 
+/**
+ * Builds `turnCount` user/assistant exchanges of client history, numbered from
+ * 1 (u1/a1, u2/a2, …). Used both to seed MockChatClient.chatHistory and to
+ * assert what was handed to summarize(), so the two always line up.
+ * @param turnCount - Number of user/assistant exchanges to build
+ * @returns The flat history, two messages per turn
+ */
+function turns(turnCount: number): TestMessage[] {
+  const history: TestMessage[] = [];
+
+  for (let turn = 1; turn <= turnCount; turn++) {
+    history.push({ role: "user", content: `u${turn}` });
+    history.push({ role: "assistant", content: `a${turn}` });
+  }
+
+  return history;
+}
+
+/**
+ * The UI-message view of `turns(turnCount)`: one user/model pair per turn, with
+ * rawHistoryIndex tracking the flat history positions.
+ * @param turnCount - Number of user/assistant exchanges to build
+ * @returns The UI messages, two per turn
+ */
+function uiTurns(turnCount: number): UIMessage[] {
+  return turns(turnCount).map((message, index) =>
+    ui(message.role === "user" ? "user" : "model", index),
+  );
+}
+
 interface SetupOptions {
   chatHistory?: TestMessage[];
   messages?: UIMessage[];
   isAssistantResponding?: boolean;
   noClient?: boolean;
+  bootstrapClientRef?: { current: (() => Promise<void>) | null };
 }
 
 function setup(opts: SetupOptions = {}) {
   const client = new MockChatClient();
 
-  client.chatHistory = opts.chatHistory ?? [
-    { role: "user", content: "u1" },
-    { role: "assistant", content: "a1" },
-  ];
+  client.chatHistory = opts.chatHistory ?? turns(1);
 
   const clientRef = { current: opts.noClient ? null : client };
   const adapter = createMockAdapter();
   const setMessages = vi.fn();
   const autoSave = vi.fn();
-  const messages = opts.messages ?? [ui("user", 0), ui("model", 1)];
+  const messages = opts.messages ?? uiTurns(1);
 
   const { result } = renderHook(() =>
     useCompaction({
       clientRef,
+      bootstrapClientRef: opts.bootstrapClientRef,
       adapter,
       autoSaveRef: { current: autoSave },
       messages,
@@ -60,22 +89,44 @@ function setup(opts: SetupOptions = {}) {
   return { result, client, clientRef, adapter, setMessages, autoSave };
 }
 
+type CompactionHook = ReturnType<typeof setup>["result"];
+
+/**
+ * Runs the hook's compact() for a targeted message index inside act(), so the
+ * resulting state updates are flushed before the test asserts.
+ * @param result - The rendered useCompaction result from setup()
+ * @param mergedMessageIndex - Index of the UI message the compact button targets
+ */
+async function compactAt(
+  result: CompactionHook,
+  mergedMessageIndex: number,
+): Promise<void> {
+  await act(async () => {
+    await result.current.compact(mergedMessageIndex);
+  });
+}
+
+/**
+ * Asserts compact() bailed out entirely: it never summarized and never touched
+ * the UI messages.
+ * @param client - The mock chat client from setup()
+ * @param setMessages - The setMessages spy from setup()
+ */
+function expectNoCompaction(client: MockChatClient, setMessages: Mock): void {
+  expect(client.summarize).not.toHaveBeenCalled();
+  expect(setMessages).not.toHaveBeenCalled();
+}
+
 describe("useCompaction", () => {
   it("compacts the whole conversation when the last message is targeted", async () => {
     const { result, client, setMessages, autoSave } = setup();
 
-    await act(async () => {
-      await result.current.compact(1);
-    });
+    await compactAt(result, 1);
 
-    expect(client.summarize).toHaveBeenCalledWith([
-      { role: "user", content: "u1" },
-      { role: "assistant", content: "a1" },
-    ]);
+    expect(client.summarize).toHaveBeenCalledWith(turns(1));
     // Non-destructive: prior turns are kept and the summary marker is appended.
     expect(client.chatHistory).toStrictEqual([
-      { role: "user", content: "u1" },
-      { role: "assistant", content: "a1" },
+      ...turns(1),
       { role: "user", content: "Summary of 2 messages" },
     ]);
     expect(setMessages).toHaveBeenCalled();
@@ -87,30 +138,15 @@ describe("useCompaction", () => {
     // The compact button is gated to the last assistant message, so there is no
     // tail to drop — compaction always summarizes the entire visible history.
     const { result, client } = setup({
-      chatHistory: [
-        { role: "user", content: "u1" },
-        { role: "assistant", content: "a1" },
-        { role: "user", content: "u2" },
-        { role: "assistant", content: "a2" },
-      ],
-      messages: [ui("user", 0), ui("model", 1), ui("user", 2), ui("model", 3)],
+      chatHistory: turns(2),
+      messages: uiTurns(2),
     });
 
-    await act(async () => {
-      await result.current.compact(1);
-    });
+    await compactAt(result, 1);
 
-    expect(client.summarize).toHaveBeenCalledWith([
-      { role: "user", content: "u1" },
-      { role: "assistant", content: "a1" },
-      { role: "user", content: "u2" },
-      { role: "assistant", content: "a2" },
-    ]);
+    expect(client.summarize).toHaveBeenCalledWith(turns(2));
     expect(client.chatHistory).toStrictEqual([
-      { role: "user", content: "u1" },
-      { role: "assistant", content: "a1" },
-      { role: "user", content: "u2" },
-      { role: "assistant", content: "a2" },
+      ...turns(2),
       { role: "user", content: "Summary of 4 messages" },
     ]);
   });
@@ -120,20 +156,15 @@ describe("useCompaction", () => {
       isAssistantResponding: true,
     });
 
-    await act(async () => {
-      await result.current.compact(1);
-    });
+    await compactAt(result, 1);
 
-    expect(client.summarize).not.toHaveBeenCalled();
-    expect(setMessages).not.toHaveBeenCalled();
+    expectNoCompaction(client, setMessages);
   });
 
   it("does nothing when there is no active client", async () => {
     const { result, setMessages } = setup({ noClient: true });
 
-    await act(async () => {
-      await result.current.compact(0);
-    });
+    await compactAt(result, 0);
 
     expect(setMessages).not.toHaveBeenCalled();
     expect(result.current.canUndoCompaction).toBe(false);
@@ -144,9 +175,7 @@ describe("useCompaction", () => {
 
     client.summarize.mockRejectedValueOnce(new Error("boom"));
 
-    await act(async () => {
-      await result.current.compact(1);
-    });
+    await compactAt(result, 1);
 
     expect(adapter.createErrorMessage).toHaveBeenCalled();
     expect(setMessages).toHaveBeenCalled();
@@ -188,9 +217,7 @@ describe("useCompaction", () => {
     const { result, client } = setup();
     const original = [...client.chatHistory];
 
-    await act(async () => {
-      await result.current.compact(1);
-    });
+    await compactAt(result, 1);
     await act(async () => {
       result.current.undoCompaction();
     });
@@ -211,12 +238,72 @@ describe("useCompaction", () => {
     expect(setMessages).not.toHaveBeenCalled();
   });
 
+  it("does nothing when the targeted message index has no message", async () => {
+    const { result, client, setMessages } = setup({ messages: [] });
+
+    await compactAt(result, 0);
+
+    expectNoCompaction(client, setMessages);
+  });
+
+  it("does nothing when the client history is empty", async () => {
+    const { result, client, setMessages } = setup({ chatHistory: [] });
+
+    await compactAt(result, 1);
+
+    expectNoCompaction(client, setMessages);
+  });
+
+  it("ignores a rejected summary after the conversation was switched away", async () => {
+    // Like the resolved-after-switch case, but the summary REJECTS post-switch:
+    // the catch must detect the stale client and bail without rendering an error.
+    const { result, client, clientRef, setMessages } = setup();
+
+    let rejectSummary: (err: unknown) => void = () => {};
+
+    client.summarize.mockReturnValueOnce(
+      new Promise<string>((_, reject) => {
+        rejectSummary = reject;
+      }),
+    );
+
+    await act(async () => {
+      const pending = result.current.compact(1);
+
+      clientRef.current = null;
+      rejectSummary(new Error("boom"));
+      await pending;
+    });
+
+    expect(setMessages).not.toHaveBeenCalled();
+  });
+
+  it("falls back to empty history in the error message when bootstrap fails before a client exists", async () => {
+    // A restored-but-not-sent conversation has no client; the bootstrap rejects
+    // before one is captured, so the catch renders the error with empty history.
+    const bootstrap = vi.fn().mockRejectedValue(new Error("bootstrap boom"));
+    const { result, adapter, setMessages } = setup({
+      noClient: true,
+      bootstrapClientRef: { current: bootstrap },
+    });
+
+    await compactAt(result, 1);
+
+    expect(bootstrap).toHaveBeenCalled();
+    // The mock createErrorMessage mutates the array it receives, so assert the
+    // shape rather than an exact empty array. What matters for coverage is that
+    // the `?? []` fallback supplied a history when clientRef.current was null.
+    expect(adapter.createErrorMessage).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.any(Array),
+    );
+    expect(setMessages).toHaveBeenCalled();
+  });
+
   it("invalidateCompactionUndo clears the undo availability", async () => {
     const { result } = setup();
 
-    await act(async () => {
-      await result.current.compact(1);
-    });
+    await compactAt(result, 1);
     expect(result.current.canUndoCompaction).toBe(true);
 
     await act(async () => {

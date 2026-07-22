@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Select",
@@ -50,18 +51,12 @@ export const toolDefSelect = defineTool("ppal-select", {
       .optional()
       .describe("select device by path (e.g. t0/d1)"),
 
-    openPluginWindow: z
-      .boolean()
-      .optional()
-      .describe(
+    openPluginWindow: param(z.boolean().optional(), {
+      default:
         "open (true) or close (false) a plug-in's (VST/AU) floating editor window; targets the device given by id or devicePath",
-      ),
+      smallModel: null,
+    }),
 
     view: z.enum(["session", "arrangement"]).optional().describe("main view"),
-  },
-
-  smallModelModeConfig: {
-    // Marginal feature — hide from SLMs to keep the schema focused
-    excludeParams: ["openPluginWindow"],
   },
 });

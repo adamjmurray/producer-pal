@@ -8,7 +8,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
-// Compressor (CompressorDevice). AJM-375. See
+// Compressor (CompressorDevice). See
 // dev/Specialized-Devices.md.
 // Sidechain input routing via Live's standard routing-dict shape. Routing
 // identifiers are NOT Live object IDs — they're a separate Live-internal
@@ -16,7 +16,7 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 //
 // READ CAVEATS (write fidelity is exact; read is best-effort by name):
 // - Regular tracks, return tracks, and the master track all resolve to their
-//   track id (AJM-391). "Ext. In" and other non-track hardware sources have no
+//   track id. "Ext. In" and other non-track hardware sources have no
 //   track id and still read back as null even though a source is set.
 // - Duplicate track names are ambiguous — the read returns the FIRST matching
 //   track (regular tracks are searched before returns/master).
@@ -55,7 +55,7 @@ function readAvailableChannels(device: LiveAPI): RoutingEntry[] {
 /**
  * Read every track that can serve as a sidechain source — regular tracks,
  * return tracks, and the master track — as {id, name} objects. Including
- * returns/master (AJM-391) lets reads resolve those sources to a track id
+ * returns/master lets reads resolve those sources to a track id
  * instead of null; hardware sources ("Ext. In") still have no track id and read
  * back as null. Regular tracks come first, so a name shared with a return/master
  * resolves to the regular track (best-effort; duplicate names remain ambiguous).

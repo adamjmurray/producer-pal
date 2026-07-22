@@ -70,6 +70,7 @@ function registerSimplerCreationFixture(): {
 describe("createDevice", () => {
   let track0: RegisteredMockObject;
   let chain0: RegisteredMockObject;
+  let createdDevice: RegisteredMockObject;
 
   beforeEach(() => {
     track0 = registerMockObject("track-0", {
@@ -77,7 +78,7 @@ describe("createDevice", () => {
       methods: { insert_device: () => ["id", "device123"] },
     });
 
-    registerMockObject("device123", {
+    createdDevice = registerMockObject("device123", {
       path: livePath.track(0).device(2),
     });
 
@@ -208,6 +209,14 @@ describe("createDevice", () => {
         });
 
         expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
+        // With no name given, the created device's name is left untouched.
+        // (Checked via call args, not expect.anything(), which ignores an
+        // undefined value the guard would otherwise write.)
+        const nameSets = createdDevice.set.mock.calls.filter(
+          (c: unknown[]) => c[0] === "name",
+        );
+
+        expect(nameSets).toHaveLength(0);
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 2,

@@ -11,7 +11,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { type ToolSet, jsonSchema } from "ai";
-import { parseCompactJSLiteral } from "#src/shared/compact-parser.ts";
+import { parseCompactJSLiteral } from "#src/shared/compact/compact-parser.ts";
 
 const DEFAULT_MCP_URL = "http://localhost:3350/mcp";
 const MCP_CLIENT_NAME = "producer-pal-chat";

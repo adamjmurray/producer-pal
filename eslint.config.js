@@ -105,9 +105,14 @@ const baseRules = {
   "no-extra-bind": "error", // Remove unnecessary .bind() calls
   "no-useless-concat": "error", // "a" + "b" should be "ab"
 
-  // Security - eval family
-  "no-eval": "error", // Never use eval()
+  // Security - eval family (completely ban eval/exec).
+  // node:vm is deliberately NOT banned here: the gated, dev-only code-exec
+  // feature (src/mcp-server/code-executor.ts, behind ENABLE_CODE_EXEC) uses
+  // vm.runInContext by design. Shelling out (child_process) is banned in
+  // shipped src/ code via a separate no-restricted-imports block below.
+  "no-eval": "error", // Never use eval() (incl. indirect (0, eval)(...))
   "no-new-func": "error", // Never use new Function()
+  "no-implied-eval": "error", // No setTimeout("code"), setInterval("code"), etc.
 
   // Path resolution - use import.meta.url for reliable paths
   "no-restricted-properties": [
@@ -223,7 +228,6 @@ const sonarCoreRules = {
 
 const unicornRules = {
   "unicorn/prefer-node-protocol": "error", // Use node: prefix for Node.js builtins
-  "unicorn/better-regex": "error", // Optimize regex patterns
   "unicorn/prefer-string-replace-all": "error", // Use replaceAll() instead of replace(/g)
   "unicorn/prefer-array-find": "error", // Use find() instead of filter()[0]
   "unicorn/no-array-push-push": "error", // Combine multiple push() calls
@@ -777,6 +781,8 @@ export default [
     ignores: [
       "src/notation/barbeat/parser/barbeat-parser.ts",
       "src/notation/transform/parser/transform-parser.ts",
+      "src/notation/stark/parser/stark-parser.ts",
+      "src/notation/midi-json/parser/midi-json-parser.ts",
     ],
     rules: {
       "import-x/extensions": [
@@ -847,6 +853,68 @@ export default [
           selector: "NewExpression[callee.name='LiveAPI']",
           message:
             "Use LiveAPI.from() instead of new LiveAPI() for safer ID handling",
+        },
+      ],
+    },
+  },
+
+  // Enforce the Max-aware console wrapper over the built-in global
+  // console in production src/ code. The global console.log/error is NOT
+  // relayed to the LLM (only the wrappers' output reaches the MCP response),
+  // so a bare global console is almost always a silent logging bug. Importing
+  // a wrapper as `import * as console from ...` shadows the global binding, so
+  // no-restricted-globals fires only on files that forgot the import.
+  // Two legitimate wrappers exist by runtime: src/shared/v8-max-console.ts
+  // (V8/Max: live-api-adapter, tools, notation) and
+  // src/mcp-server/node-for-max-logger.ts (Node-side mcp-server). Exemptions:
+  // the wrapper definitions themselves, the standalone portal CLI and type
+  // declarations (plain Node globals are fine), and tests (vitest/Node).
+  {
+    files: ["src/**/*.ts"],
+    ignores: [
+      "src/shared/v8-max-console.ts", // Defines the V8 console wrapper
+      "src/mcp-server/node-for-max-logger.ts", // Defines the Node console wrapper
+      "src/portal/**", // Standalone stdio<->http CLI: plain Node console is fine
+      "src/types/**", // Type declarations
+      "**/*.d.ts",
+      "**/*.test.ts",
+      "**/*-test-helpers.ts",
+      "src/**/tests/**",
+      "src/test/**",
+    ],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "console",
+          message:
+            'Import a Max-aware console wrapper (e.g. `import * as console from "#src/shared/v8-max-console.ts"`) — the built-in global console is not relayed to the LLM.',
+        },
+      ],
+    },
+  },
+
+  // Shipped src/ code must never shell out. child_process (exec /
+  // execSync / spawn) is a form of exec; dev tooling in scripts/ may use it,
+  // but production src/ has no business launching processes.
+  {
+    files: ["src/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "child_process",
+              message:
+                "Shipped src/ code must not shell out (child_process is exec). Dev-only process launching belongs in scripts/.",
+            },
+            {
+              name: "node:child_process",
+              message:
+                "Shipped src/ code must not shell out (child_process is exec). Dev-only process launching belongs in scripts/.",
+            },
+          ],
         },
       ],
     },

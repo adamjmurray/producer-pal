@@ -8,7 +8,8 @@
  *
  * Create / read / update a MIDI clip's `length` (and `arrangementLength`) with
  * representative durations and verify the read-back string matches: `n/4`,
- * `n/8`, `n3/8`, `1bar+n/4`, and whole-bar `Nbar`. (Audio-clip lengths are
+ * `n/8`, dotted `n/4d` (the plain-fraction input `n3/8` canonicalizes to it on
+ * read-back), `1bar+n/4`, and whole-bar `Nbar`. (Audio-clip lengths are
  * covered separately once the audio path is exercised; off-grid lengths
  * are a serializer concern unit-tested in barbeat-time-durations.test.ts.)
  *
@@ -49,25 +50,31 @@ describe("clip duration round-trips (absolute note values)", () => {
   it.each([
     { length: "n/4" }, // a quarter (1 beat)
     { length: "n/8" }, // an eighth (0.5 beat)
-    { length: "n3/8" }, // three eighths / dotted quarter (1.5 beats)
+    // The plain fraction n3/8 is still an accepted input, but the serializer
+    // canonicalizes a dotted quarter (1.5 beats) to the dotted-sugar n/4d on
+    // read-back, so create and read-back strings differ here.
+    { length: "n3/8", expected: "n/4d" },
     { length: "1bar+n/4" }, // a bar plus a quarter (5 beats)
     { length: "2bar" }, // two whole bars (8 beats)
-  ])("round-trips a session clip length of $length", async ({ length }) => {
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/0`,
-        notes: "C3 1|1",
-        looping: true,
-        length,
-      },
-    });
-    const clip = parseToolResult<{ id: string }>(createResult);
+  ])(
+    "round-trips a session clip length of $length",
+    async ({ length, expected }) => {
+      const createResult = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          slot: `${emptyMidiTrack}/0`,
+          notes: "C3 1|1",
+          looping: true,
+          length,
+        },
+      });
+      const clip = parseToolResult<{ id: string }>(createResult);
 
-    await sleep(100);
+      await sleep(100);
 
-    expect(await readClipTiming(clip.id, "length")).toBe(length);
-  });
+      expect(await readClipTiming(clip.id, "length")).toBe(expected ?? length);
+    },
+  );
 
   it("round-trips a session clip length through an update", async () => {
     const createResult = await ctx.client!.callTool({

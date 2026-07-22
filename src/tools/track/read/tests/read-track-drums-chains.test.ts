@@ -48,6 +48,55 @@ function createChainToNestedDrumRack(options: {
   };
 }
 
+function setupTwoChainDrumRack(
+  c1: { inNote: number; name: string },
+  c2: { inNote: number; name: string },
+): void {
+  setupTrackPathMappedMocks({
+    pathIdMap: {
+      [String(livePath.track(0))]: "track1",
+      [String(livePath.track(0).device(0))]: "drumrack",
+      [String(livePath.track(0).device(0).chain(0))]: "chain1",
+      [String(livePath.track(0).device(0).chain(1))]: "chain2",
+    },
+    objects: {
+      Track: mockTrackProperties({
+        name: "Track Drum Rack With Chains",
+        devices: children("drumrack"),
+      }),
+      drumrack: {
+        name: "Drum Rack With Chains",
+        class_name: "DrumGroupDevice",
+        class_display_name: "Drum Rack",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        chains: children("chain1", "chain2"),
+        return_chains: [],
+      },
+      chain1: {
+        in_note: c1.inNote,
+        name: c1.name,
+        color: 16711680,
+        mute: 0,
+        solo: 0,
+        devices: children("chain1_device"),
+      },
+      chain2: {
+        in_note: c2.inNote,
+        name: c2.name,
+        color: 65280,
+        mute: 0,
+        solo: 0,
+        devices: children("chain2_device"),
+      },
+      chain1_device: createSimpleInstrumentMock(),
+      chain2_device: createSimpleInstrumentMock(),
+    },
+  });
+}
+
 describe("readTrack", () => {
   describe("drumPads", () => {
     it("returns null when the track has no devices", () => {
@@ -130,54 +179,33 @@ describe("readTrack", () => {
     });
 
     it("includes all drum chains that have instruments", () => {
-      setupTrackPathMappedMocks({
-        pathIdMap: {
-          [String(livePath.track(0))]: "track1",
-          [String(livePath.track(0).device(0))]: "drumrack",
-          [String(livePath.track(0).device(0).chain(0))]: "chain1",
-          [String(livePath.track(0).device(0).chain(1))]: "chain2",
-        },
-        objects: {
-          Track: mockTrackProperties({
-            name: "Track Drum Rack With Chains",
-            devices: children("drumrack"),
-          }),
-          drumrack: {
-            name: "Drum Rack With Chains",
-            class_name: "DrumGroupDevice",
-            class_display_name: "Drum Rack",
-            type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-            is_active: 1,
-            can_have_chains: 1,
-            can_have_drum_pads: 1,
-            chains: children("chain1", "chain2"), // Chains directly on drum rack
-            return_chains: [],
-          },
-          chain1: {
-            in_note: 60, // C3 - chains use in_note instead of note
-            name: "Kick",
-            color: 16711680,
-            mute: 0,
-            solo: 0,
-            devices: children("kick_device"),
-          },
-          chain2: {
-            in_note: 64, // E3
-            name: "Hi-hat",
-            color: 65280,
-            mute: 0,
-            solo: 0,
-            devices: children("hihat_device"),
-          },
-          kick_device: createSimpleInstrumentMock(),
-          hihat_device: createSimpleInstrumentMock(),
-        },
-      });
+      // in_note 60/64 => C3/E3; chains use in_note instead of note
+      setupTwoChainDrumRack(
+        { inNote: 60, name: "Kick" },
+        { inNote: 64, name: "Hi-hat" },
+      );
       const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toStrictEqual({
         C3: "Kick",
         E3: "Hi-hat",
+      });
+    });
+
+    it("keys the drum map by drum name when notation is stark", () => {
+      // in_note 36/38 => C1/D1 (kick/snare)
+      setupTwoChainDrumRack(
+        { inNote: 36, name: "Kick" },
+        { inNote: 38, name: "Snare" },
+      );
+      const result = readTrack(
+        { trackIndex: 0, include: ["drum-map"] },
+        { notation: "stark" },
+      );
+
+      expect(result.drumMap).toStrictEqual({
+        kick: "Kick",
+        snare: "Snare",
       });
     });
 

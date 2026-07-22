@@ -79,6 +79,23 @@ function mockTakeLaneClip(
   return LiveAPI.from(`id ${clipId}`);
 }
 
+/**
+ * Register a mock clip with arbitrary options and return its LiveAPI handle.
+ * Used for clips that vary the standard shape (no track path, or non-arrangement
+ * clips on a track path).
+ * @param clipId - Clip ID
+ * @param options - registerMockObject options (path, properties, ...)
+ * @returns LiveAPI mock clip
+ */
+function mockClipRaw(
+  clipId: string,
+  options: Parameters<typeof registerMockObject>[1],
+): LiveAPI {
+  registerMockObject(clipId, options);
+
+  return LiveAPI.from(`id ${clipId}`);
+}
+
 describe("computeNonSurvivorClipIds", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -158,6 +175,20 @@ describe("computeNonSurvivorClipIds", () => {
     expect(computeNonSurvivorClipIds(clips, 32, null)).toBeNull();
   });
 
+  it("skips single-clip tracks while optimizing multi-clip tracks", () => {
+    const clips = [
+      mockArrangementClip("1", 0, 0, 4), // track 0: 4 beats
+      mockArrangementClip("2", 0, 8, 16), // track 0: 8 beats
+      mockArrangementClip("3", 1, 0, 4), // track 1: lone clip → skipped
+    ];
+
+    const result = computeNonSurvivorClipIds(clips, 32, null);
+
+    // Track 0 has multiple clips (A(4) covered by B(8) → "1" non-survivor), so
+    // hasMultiClipTrack is true; track 1's single-clip group is skipped.
+    expect(result).toStrictEqual(new Set(["1"]));
+  });
+
   it("handles mixed tracks independently", () => {
     const clips = [
       mockArrangementClip("1", 0, 0, 4), // track 0: 4 beats
@@ -199,6 +230,70 @@ describe("computeNonSurvivorClipIds", () => {
     // so optimization doesn't apply and the result is null. Without filtering,
     // the take-lane clip's length (16) would have marked clip "1" non-survivor
     // and the harness would delete it — a real bug for users.
+    expect(computeNonSurvivorClipIds(clips, 32, null)).toBeNull();
+  });
+
+  it("short-circuits to null for a null arrangementStart even with multi-clip non-survivors", () => {
+    const clips = [
+      mockArrangementClip("1", 0, 0, 4), // 4 beats
+      mockArrangementClip("2", 0, 8, 16), // 8 beats
+    ];
+
+    // Track 0 would yield non-survivor "1", but a null arrangementStart must
+    // return null before any survivor analysis runs.
+    expect(computeNonSurvivorClipIds(clips, null, null)).toBeNull();
+  });
+
+  it("skips null-trackIndex clips so they never form a survivor group", () => {
+    const clips = [
+      mockClipRaw("501", {
+        properties: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 0,
+          end_time: 4,
+        },
+      }),
+      mockClipRaw("502", {
+        properties: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 8,
+          end_time: 16,
+        },
+      }),
+    ];
+
+    // Both clips lack a track path (trackIndex null). If they were grouped, the
+    // 4-beat clip would be a non-survivor; the null-trackIndex guard drops them.
+    expect(computeNonSurvivorClipIds(clips, 32, null)).toBeNull();
+  });
+
+  it("excludes session clips (is_arrangement_clip <= 0) from survivor grouping", () => {
+    const clips = [
+      mockClipRaw("601", {
+        path: livePath.track(0).arrangementClip(0),
+        properties: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          start_time: 0,
+          end_time: 4,
+        },
+      }),
+      mockClipRaw("602", {
+        path: livePath.track(0).arrangementClip(1),
+        properties: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          start_time: 8,
+          end_time: 16,
+        },
+      }),
+    ];
+
+    // Both are session clips (is_arrangement_clip 0) on track 0. Treated as
+    // eligible they would group and mark "601" a non-survivor; the eligibility
+    // gate drops them, so no optimization applies.
     expect(computeNonSurvivorClipIds(clips, 32, null)).toBeNull();
   });
 

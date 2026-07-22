@@ -65,6 +65,29 @@ describe("updateDevice - macroVariation", () => {
       "selected_variation_index",
       expect.anything(),
     );
+    // Out of range must also abort the action, not just skip the index-set.
+    expect(rackDevice.call).not.toHaveBeenCalled();
+    expect(result).toStrictEqual({ id: "123" });
+  });
+
+  it("should reject an index equal to variation_count (boundary)", () => {
+    // variation_count is 3, so valid indices are 0-2; index 3 is out of range.
+    // This pins the `>=` bound: a `>` mutant would accept index 3.
+    const result = updateDevice({
+      ids: "123",
+      macroVariation: "load",
+      macroVariationIndex: 3,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "updateDevice: variation index 3 out of range (3 available)",
+    );
+    expect(rackDevice.set).not.toHaveBeenCalledWith(
+      "selected_variation_index",
+      expect.anything(),
+    );
+    expect(rackDevice.call).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -75,6 +98,16 @@ describe("updateDevice - macroVariation", () => {
     });
 
     expect(rackDevice.call).toHaveBeenCalledWith("store_variation");
+    // 'create' never selects an index, and with no index there is nothing to
+    // warn about being ignored.
+    expect(rackDevice.set).not.toHaveBeenCalledWith(
+      "selected_variation_index",
+      expect.anything(),
+    );
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("ignored"),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -85,7 +118,14 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 1,
     });
 
+    // 'load' selects the index first, then recalls it; a valid index is used,
+    // not ignored.
+    expect(rackDevice.set).toHaveBeenCalledWith("selected_variation_index", 1);
     expect(rackDevice.call).toHaveBeenCalledWith("recall_selected_variation");
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("ignored"),
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -106,6 +146,8 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 1,
     });
 
+    // 'delete' also selects the index before deleting it.
+    expect(rackDevice.set).toHaveBeenCalledWith("selected_variation_index", 1);
     expect(rackDevice.call).toHaveBeenCalledWith("delete_selected_variation");
     expect(result).toStrictEqual({ id: "123" });
   });
@@ -196,6 +238,11 @@ describe("updateDevice - macroVariation", () => {
     expect(outlet).toHaveBeenCalledWith(
       1,
       "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
+    );
+    // The index is ignored for 'create': it must NOT be written as a selection.
+    expect(rackDevice.set).not.toHaveBeenCalledWith(
+      "selected_variation_index",
+      expect.anything(),
     );
     expect(rackDevice.call).toHaveBeenCalledWith("store_variation");
     expect(result).toStrictEqual({ id: "123" });

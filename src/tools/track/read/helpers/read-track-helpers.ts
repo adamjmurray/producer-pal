@@ -1,9 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { isDrumRackForTrack } from "#src/tools/clip/read/helpers/read-clip-helpers.ts";
 import {
   readClip,
   type ReadClipResult,
@@ -11,6 +14,10 @@ import {
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
+import {
+  parseIncludeArray,
+  READ_CLIP_DEFAULTS,
+} from "#src/tools/shared/tool-framework/include-params.ts";
 import { stripFields } from "#src/tools/shared/utils.ts";
 import {
   processAvailableRouting,
@@ -46,22 +53,30 @@ interface MixerResult {
  * @param track - Track object
  * @param trackIndex - Track index
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Array of clip objects (only clips that exist)
  */
 export function readSessionClips(
   track: LiveAPI,
   trackIndex: number | null,
   include?: string[],
+  notation?: Notation,
 ): ReadClipResult[] {
+  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
+
   return track
     .getChildIds("clip_slots")
     .map((_clipSlotId, sceneIndex) =>
-      readClip({
-        trackIndex,
-        sceneIndex,
-        suppressEmptyWarning: true,
-        ...(include && { include }),
-      }),
+      readClip(
+        {
+          trackIndex,
+          sceneIndex,
+          suppressEmptyWarning: true,
+          drumMode,
+          ...(include && { include }),
+        },
+        { notation },
+      ),
     )
     .filter((clip) => clip.id != null);
 }
@@ -95,19 +110,27 @@ export function countSessionClips(
  * Read all arrangement clips from a track
  * @param track - Track object
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Array of clip objects (only clips that exist)
  */
 export function readArrangementClips(
   track: LiveAPI,
   include?: string[],
+  notation?: Notation,
 ): ReadClipResult[] {
+  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
+
   return track
     .getChildIds("arrangement_clips")
     .map((clipId) =>
-      readClip({
-        clipId,
-        ...(include && { include }),
-      }),
+      readClip(
+        {
+          clipId,
+          drumMode,
+          ...(include && { include }),
+        },
+        { notation },
+      ),
     )
     .filter((clip) => clip.id != null);
 }
@@ -126,18 +149,27 @@ export function countArrangementClips(track: LiveAPI): number {
  * and the main lane is not included in the track's take_lanes collection.
  * @param track - Track object
  * @param include - Include array for nested clip reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Array of take lanes, each with its name and arrangement clips
  */
 export function readTakeLanes(
   track: LiveAPI,
   include?: string[],
+  notation?: Notation,
 ): ReadTakeLaneResult[] {
   // 1-based to match the write-side `takeLane` param (0 = main lane, which the
   // take_lanes collection excludes — so the first non-main lane is takeLane:1).
+  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
+
   return track.getChildren("take_lanes").map((lane, i) => {
     const clips = lane
       .getChildIds("arrangement_clips")
-      .map((clipId) => readClip({ clipId, ...(include && { include }) }))
+      .map((clipId) =>
+        readClip(
+          { clipId, drumMode, ...(include && { include }) },
+          { notation },
+        ),
+      )
       .filter((clip) => clip.id != null);
 
     // Strip fields redundant with the parent track context (take lane clips are
@@ -414,4 +446,16 @@ export function readMixerProperties(
   }
 
   return result;
+}
+
+/**
+ * Whether nested clip reads for this track will serialize notes — the only case
+ * drum-rack detection feeds. Mirrors readClip's own include gating
+ * (READ_CLIP_DEFAULTS), so the drum-rack device walk is skipped when notes
+ * aren't requested (e.g. a clips-without-notes track read).
+ * @param include - The include array threaded to the nested clip reads
+ * @returns True when the nested reads will format notes
+ */
+function clipReadsWantNotes(include?: string[]): boolean {
+  return parseIncludeArray(include, READ_CLIP_DEFAULTS).includeClipNotes;
 }

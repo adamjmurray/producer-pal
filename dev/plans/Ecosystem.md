@@ -2,7 +2,7 @@
 
 ## Vision
 
-Producer Pal 1.5 is the platform release. After 1.5.x stabilizes, the core
+Producer Pal 2.0 is the platform release. After 2.0.x stabilizes, the core
 enters maintenance mode — bug fixes and Live API evolution only. Innovation
 happens through extensions, not PRs to the main repo.
 
@@ -90,7 +90,7 @@ first.
 **Distribution:** Files in a folder. The device UI or config points at a
 community directory. No registry needed initially.
 
-**Planned for:** 1.5.0
+**Planned for:** 2.0.0
 
 ### 2. Workflows
 
@@ -105,7 +105,7 @@ clip. The LLM shouldn't re-derive this every time.
 
 **How it relates to skills:** Skills teach the LLM _how_ to do something and it
 still makes each tool call. Workflows _are_ the tool calls — the LLM triggers
-them but doesn't improvise the steps. Real-world experience with skills in 1.5.0
+them but doesn't improvise the steps. Real-world experience with skills in 2.0.0
 will reveal where the gap is and inform the workflow design.
 
 **Open design questions (to be resolved before implementation):**
@@ -115,7 +115,7 @@ will reveal where the gap is and inform the workflow design.
 - Composition: can workflows reference other workflows?
 - Discovery: same menu pattern as skills?
 
-**Planned for:** 1.5.x (after context customization is stable)
+**Planned for:** 2.0.x (after context customization is stable)
 
 ### 3. Companion MCP Servers
 
@@ -149,26 +149,26 @@ producer-pal.org.
 
 ## Timeline
 
-- **1.5.0** — Context customization: custom instructions, skills (override +
+- **2.0.0** — Context customization: custom instructions, skills (override +
   add), tool description overrides, tool presets
-- **1.5.x** — Workflows, once the customization foundation is stable and
+- **2.0.x** — Workflows, once the customization foundation is stable and
   real-world usage has informed the design
-- **Post-1.5** — Core enters maintenance mode. Bug fixes and Live API evolution
+- **Post-2.0** — Core enters maintenance mode. Bug fixes and Live API evolution
   only. The ecosystem carries the innovation.
 
 Core stability benefits everyone: extensions don't break when core doesn't
 change. The core repo is not the bottleneck — writers share skills, developers
 build companion servers, and innovation happens at the edges.
 
-**Backward compatibility commitment:** Starting with 1.5, breaking changes
-require at least a minor version bump (e.g., 1.6 or 2.0). Patch releases are
+**Backward compatibility commitment:** Starting with 2.0, breaking changes
+require at least a minor version bump (e.g., 2.1 or 3.0). Patch releases are
 always backward-compatible. This gives extension authors a stable foundation to
 build on.
 
 ## Next Steps
 
-1. Implement context customization in `ppal-context` (1.5.0)
+1. Implement context customization in `ppal-context` (2.0.0)
 2. Ship `max-mcp-template` — the ecosystem enabler
 3. Investigate device-specific features for backward-compatible core additions
-4. Design workflow format and execution model (informed by 1.5.0 experience)
+4. Design workflow format and execution model (informed by 2.0.0 experience)
 5. Publish ecosystem guide on producer-pal.org

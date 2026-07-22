@@ -1,85 +1,11 @@
-# Producer Pal Development Info
+# Producer Pal Development Guide
 
-Contributing to Producer Pal
+This is the technical guide: building from source, development scripts, the
+code-quality checks, and testing and debugging workflows.
 
-I maintain the core MCP tools and feature roadmap myself to keep development
-moving quickly. But there's plenty of room to collaborate:
-
-**High-value contributions:**
-
-- End-to-end testing automation and LLM evaluations
-- Small language model optimization (making Ollama/LM Studio work better)
-- Documentation improvements
-
-**Always welcome:**
-
-- Beta testing and detailed bug reports
-- Reproducible cases where LLMs misuse the tools
-- Feature requests and wishlist ideas
-
-Interested? Open a
-[GitHub discussion](https://github.com/adamjmurray/producer-pal/discussions) or
-reach out directly.
-
-Also feel free to:
-
-- File bug reports in
-  [the issues](https://github.com/adamjmurray/producer-pal/issues) (help me
-  reproduce it and I will do my best to fix it)
-- Ask questions, give feedback, request features, and share your experiences in
-  [the discussions](https://github.com/adamjmurray/producer-pal/discussions)
-- Learn from the implementation
-- Fork and modify for your own needs. Please attribute me.
-
-## Extending Producer Pal
-
-The core is focused on Ableton Live control via MCP — each tool directly wraps
-Live API calls, optimized for doing the most with the fewest tools and tokens.
-The core is stabilizing, and large PRs that add new tool domains or require
-external dependencies will not be accepted.
-
-This is by design. A stable core means extensions don't break, and the
-interesting innovation happens through extensions rather than a PR queue.
-
-**There are better ways to add capabilities:**
-
-- **Context customization** — Custom skills, system instructions, tool
-  description overrides, and tool presets let you shape LLM behavior without any
-  code. If you can describe a workflow in plain language, you can create a
-  skill.
-
-- **Workflows** — Pre-defined sequences of tool calls for reliable, repeatable
-  operations. The LLM picks the right workflow and fills in parameters, but
-  doesn't improvise the steps.
-
-- **Companion MCP servers** — For entirely new capabilities (audio analysis,
-  generative algorithms, hardware integration), build a separate MCP server. The
-  LLM combines tools from all connected servers naturally. The upcoming
-  `max-mcp-template` starter project and shared libraries should make this
-  straightforward.
-
-**What IS welcome as a core PR:** Bug fixes, improvements to default skill text
-and tool/argument descriptions, evaluations, documentation, and targeted
-optimizations to reduce cost and improve efficiency across all model types. If
-you find a tweak that makes the LLM behave better, that can go straight into
-core.
-
-See the [Extending Producer Pal](https://producer-pal.org/extending)
-documentation for details on extension types and how to choose between them.
-
-## Branching Strategy
-
-- **`main`** — latest stable release
-- **`dev`** — where the next release is prepared; PRs merge here
-
-**Which branch to work from?** You can base your work off either branch:
-
-- **From `main`** (recommended for most contributors) — more stable starting
-  point. When you're ready to merge, AI tooling can help resolve any conflicts
-  with `dev`.
-- **From `dev`** — gives you the latest in-progress changes, but `dev` is
-  heavily iterated on and can be volatile. New conflicts may appear as it
-  evolves, and it may be temporarily unstable.
+For how contributions work — ways to get involved, the stable-core policy, how
+to approach the strict checks pragmatically, and which branch to base your work
+on — see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Building from source
 
@@ -99,12 +25,15 @@ which require v24+.
    → Settings → Extension
 
 **Note**: For development and testing, use `npm run build:debug` to enable
-debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`, `ENABLE_DEV_CORS`).
-`ENABLE_LIVE_API=true` forces the runtime `liveApiEnabled` flag on so the Direct
-Live API tool (`ppal-live-api`) is always available — the Setup-tab toggle
-cannot disable it in this build. `POST /config { liveApiEnabled }` still works
-in either direction so e2e tests can exercise both states. Use
-`npm run build:dev` for a normal build with CORS enabled (for `npm run ui:dev`).
+debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`). `ENABLE_LIVE_API=true`
+forces the runtime `liveApiEnabled` flag on so the Direct Live API tool
+(`ppal-live-api`) is always available — the Setup-tab toggle cannot disable it
+in this build. `POST /config { liveApiEnabled }` still works in either direction
+so e2e tests can exercise both states. Chat UI development (`npm run ui:dev`)
+works against any build: the MCP server reflects CORS for localhost origins by
+default, so a browser page on another local port can reach it. Set
+`ENABLE_REMOTE_CORS=true` before a build only if you need to reach the server
+from a non-localhost browser origin (a remote inspector, or over the LAN).
 
 ## Core Development Scripts
 
@@ -151,7 +80,10 @@ were imposed.
 
 It's expected that on some tasks, agents spend ~80% of their time making checks
 pass. That's intentional — that time is spent writing better-structured, better-
-tested code, not just shipping faster.
+tested code, not just shipping faster. If a check is blocking a contribution,
+see
+[Working with the strict checks](./CONTRIBUTING.md#working-with-the-strict-checks)
+— these gates are for the AI agents, not to gatekeep humans.
 
 All checks run via `npm run check` and must pass before merging:
 

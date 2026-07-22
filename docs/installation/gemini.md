@@ -16,6 +16,7 @@ is not recommended for personal use.
 ## What You Need
 
 - A Google account
+
 <!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Get a Gemini API Key
@@ -43,9 +44,9 @@ In the Producer Pal device, click "Open Chat UI".
 
 In the chat UI settings:
 
-- Provider: **Google Gemini**
+- Provider: **Google**
 - API Key: Paste your key
-- Model: `gemini-2.5-flash` (or `gemini-2.5-pro` for more complex tasks)
+- Model: `gemini-3.6-flash` (or `gemini-3.1-pro-preview` for more complex tasks)
 
 Click "Save".
 

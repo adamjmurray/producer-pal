@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Test helper functions for read-track tests
  */
+import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -185,4 +187,27 @@ export function setupDrumRackMocks(
       type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
     },
   });
+}
+
+/**
+ * Assert the readTrack result exposes the standard drum-rack drumMap and a
+ * single drum-rack device whose chains have been stripped (drum-map strips
+ * chains).
+ * @param result - readTrack result to assert on
+ */
+export function expectDrumRackWithStrippedChains(
+  result: Record<string, unknown>,
+): void {
+  expect(result.drumMap).toStrictEqual({ C3: "Test Kick" });
+  expect(result.devices).toStrictEqual([
+    {
+      id: "drumrack1",
+      path: "t0/d0",
+      name: "Test Drum Rack",
+      type: "drum-rack",
+    },
+  ]);
+  expect(
+    (result.devices as Record<string, unknown>[])[0]?.chains,
+  ).toBeUndefined();
 }

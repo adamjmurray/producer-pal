@@ -16,15 +16,23 @@ The chat UI supports multiple AI providers. Choose based on your needs:
 
 ## Cloud Providers
 
+### Anthropic
+
+Claude models, direct via API key.
+
+- **Cost:** Trial credit to start, then pay-as-you-go
+- **Setup:** Create an Anthropic account and API key
+- **[Setup instructions →](./chat-ui-other-providers#anthropic)**
+
 ### Gemini
 
 Google's AI.
 
 - **Cost:** Free tier has strict rate limits; paid tier recommended for regular
   use
-- **Setup:** Just need a Google account. But, to use it without quickly hitting
-  limits, you need to setup a pay-as-you-go API key, which is not recommended.
-  Consider using Gemini via [OpenRouter](#openrouter) instead.
+- **Setup:** Just need a Google account — the free API key works but is heavily
+  rate-limited. For sustained use, add pay-as-you-go billing to your Google
+  Cloud account, or use Gemini via [OpenRouter](#openrouter) instead.
 - **[Get started with Gemini →](./gemini)**
 
 ### OpenRouter
@@ -70,18 +78,19 @@ Desktop app for running local models with a visual interface.
 
 - **Cost:** Free (uses your hardware)
 - **Setup:** Install LM Studio, download a model, enable CORS
-- **[Setup instructions →](./chat-ui-other-providers#lm-studio)**
+- **[Setup instructions →](./chat-ui-other-providers#lm-studio-api)**
 
 ## Quick Comparison
 
-| Provider   | Cost               | Internet Required | Best For              |
-| ---------- | ------------------ | ----------------- | --------------------- |
-| Ollama     | Free               | No                | Privacy, offline use  |
-| Gemini     | Free tier (limits) | Yes               | Quick testing         |
-| OpenRouter | Pay-as-you-go      | Yes               | Access to many models |
-| Mistral    | Free tier          | Yes               | Alternative to Gemini |
-| OpenAI     | Pay-as-you-go      | Yes               | GPT models            |
-| LM Studio  | Free               | No                | Visual local model UI |
+| Provider   | Cost               | Internet Required | Best For               |
+| ---------- | ------------------ | ----------------- | ---------------------- |
+| Ollama     | Free               | No                | Privacy, offline use   |
+| Anthropic  | Trial, then paid   | Yes               | Claude models directly |
+| Gemini     | Free tier (limits) | Yes               | Quick testing          |
+| OpenRouter | Pay-as-you-go      | Yes               | Access to many models  |
+| Mistral    | Free tier          | Yes               | Alternative to Gemini  |
+| OpenAI     | Pay-as-you-go      | Yes               | GPT models             |
+| LM Studio  | Free               | No                | Visual local model UI  |
 
 ## Troubleshooting
 

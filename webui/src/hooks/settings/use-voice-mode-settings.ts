@@ -19,28 +19,9 @@ import {
   saveTurnDetection,
   type TurnDetectionSettings,
 } from "#webui/hooks/settings/turn-detection-helpers";
+import { type VoiceModeSettingsFields } from "#webui/types/settings";
 
-export interface UseVoiceModeSettingsReturn {
-  realtimeVoice: string;
-  setRealtimeVoice: (voice: string) => void;
-  savedRealtimeVoice: string;
-  voiceSpeed: number;
-  setVoiceSpeed: (speed: number) => void;
-  savedVoiceSpeed: number;
-  /** Output playback volume (0.0–1.25). Live: changes drive the active session's
-   * loudness immediately (no Stop → Talk), unlike voice/speed/turn detection.
-   * commit/revert still persist it like the others. */
-  voiceVolume: number;
-  setVoiceVolume: (volume: number) => void;
-  turnDetection: TurnDetectionSettings;
-  setTurnDetection: (settings: TurnDetectionSettings) => void;
-  savedTurnDetection: TurnDetectionSettings;
-  /** In-modal voice-chat language (ISO-639-1 code). Provider-agnostic: applies
-   * to both the OpenAI and Gemini backends. Locked at connect — applied on the
-   * next Stop → Talk. */
-  voiceLanguage: string;
-  setVoiceLanguage: (language: string) => void;
-  savedVoiceLanguage: string;
+export interface UseVoiceModeSettingsReturn extends VoiceModeSettingsFields {
   /** Persist current voice-mode values and update the "saved" snapshots so
    * the live session reads the new values on the next connect. */
   commit: () => void;

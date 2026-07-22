@@ -7,7 +7,7 @@
 import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
 
-import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
+import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
   formatErrorResponse,
@@ -16,6 +16,11 @@ import {
   planChunks,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
+import {
+  DEFAULT_NOTATION,
+  isNotation,
+  type Notation,
+} from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
@@ -56,6 +61,7 @@ setoutletassist(1, "tool call warnings");
 interface SessionState {
   memory: { content: string };
   smallModelMode: boolean;
+  notation: Notation;
   sampleFolder: string | null;
 }
 
@@ -64,6 +70,7 @@ const sessionState: SessionState = {
     content: "",
   },
   smallModelMode: false,
+  notation: DEFAULT_NOTATION,
   sampleFolder: null,
 };
 
@@ -83,6 +90,7 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
   return {
     memory: sessionState.memory,
     smallModelMode: sessionState.smallModelMode,
+    notation: sessionState.notation,
     sampleFolder: sessionState.sampleFolder,
     ...incoming,
   };
@@ -106,10 +114,12 @@ function initHoldingArea(ctx: ToolContext): void {
 **IMPORTANT**: Always pass args AND ctx to tool functions
 Use the `(args, ctx) => toolFunction(args, ctx)` pattern
 This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
+Exception: ppal-connect takes args only — its signature intentionally dropped ctx
+(see the `connect(args)` line below), so it does not follow this pattern.
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
-  "ppal-connect": (args, ctx) => connect(args as any, ctx),
+  "ppal-connect": (args) => connect(args as any),
   "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
   "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
   "ppal-create-track": (args, ctx) => createTrack(args as any, ctx),
@@ -186,6 +196,18 @@ export function compactOutput(enabled: unknown): void {
  */
 export function smallModelMode(enabled: unknown): void {
   sessionState.smallModelMode = Boolean(enabled);
+}
+
+/**
+ * Set the global notation used by the clip tools' note read/write seams.
+ * Invalid values are ignored (the current setting is kept).
+ *
+ * @param value - Notation name ("barbeat", "midi-json", or "stark")
+ */
+export function notation(value: unknown): void {
+  if (isNotation(value)) {
+    sessionState.notation = value;
+  }
 }
 
 /**

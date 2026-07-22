@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,6 +82,17 @@ describe("createAudioClipInSession", () => {
     expect(result.clip).toBeDefined();
     expect(result.slot).toBeDefined();
   });
+
+  it("throws a descriptive error when the set has no scenes", () => {
+    // With no scenes, sceneIds.at(-1) is undefined and the assertion must throw
+    // with the "last scene ID" label (not a blank message).
+    setupLiveSet({ properties: { scenes: [] } });
+    const track = setupTrackWithQueuedMethods(0, {});
+
+    expect(() =>
+      createAudioClipInSession(track, 8, "/tmp/test-silence.wav"),
+    ).toThrow(/last scene ID/);
+  });
 });
 
 describe("createShortenedClipInHolding", () => {
@@ -158,6 +170,23 @@ describe("createShortenedClipInHolding", () => {
     );
 
     expect(track.call).toHaveBeenNthCalledWith(2, "create_midi_clip", 2012, 20);
+  });
+
+  it("does not create a temp clip when the holding copy is already the target length", () => {
+    // holdingAreaStart 1000 + targetLength 8 = 1008 exactly equals the holding
+    // copy's end_time, so tempLength is 0 and the truncation step must be skipped.
+    const { sourceClip, track } = setupShorteningMocks({
+      loopEnd: 16,
+      holdingEndTime: 1008,
+    });
+
+    createShortenedClipInHolding(sourceClip, track, 8, 1000, true, mockContext);
+
+    expect(track.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("creates audio clip in session for audio clip shortening", () => {
@@ -327,7 +356,7 @@ describe("moveClipFromHolding", () => {
 
     expect(() =>
       moveClipFromHolding("200", track, 500, true, mockContext),
-    ).toThrow(/duplicate_clip_to_arrangement returned no clip/);
+    ).toThrow(/move from holding \(id 200\) to 500/);
 
     expect(track.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
   });

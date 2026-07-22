@@ -21,8 +21,9 @@
 // This test feeds one corpus through every site and asserts they accept/reject
 // the same language and compute matching values where they overlap. It is the
 // single source of truth that keeps the sites from silently diverging again
-// (the intent stated in skills/standard.ts: "same `n` fraction grammar
-// everywhere"), and it pins the deliberate, documented rules:
+// (the intent stated in the skills' Time & Note Values section,
+// skills/core/core-standard.ts: "same `n` fraction grammar everywhere"), and it
+// pins the deliberate, documented rules:
 //   - `Nbar` is a note value on every surface (closed by allowing it in the
 //     transform grammar);
 //   - a bare number / bare fraction is never a note-value duration;
@@ -195,6 +196,16 @@ describe("note-value grammar parity across all parse sites", () => {
       "3bar+n3/8",
       "1bar-n/16",
       "2bar-n3/8",
+      // Dotted (`d`, ×3/2) and triplet (`t`, ×2/3) suffixes. Both implicit-1 and
+      // explicit numerators (`n3/8d` = 9/16, `n3/8t` = 1/4) lock that the scaling
+      // is uniform on any fraction, and the mixed forms lock the suffix on the tail.
+      "n/4d",
+      "n/8t",
+      "n/16d",
+      "n3/8d",
+      "n3/8t",
+      "1bar+n/4d",
+      "1bar-n/4t",
     ];
 
     for (const [num, den] of METERS) {
@@ -371,6 +382,11 @@ describe("note-value grammar parity across all parse sites", () => {
       "1.5+n/12",
       "2.25-n/24",
       "1.5+n/8",
+      // Dotted/triplet suffixes on a `±n` beat offset (integer and decimal base).
+      "1+n/8t",
+      "1+n/4d",
+      "2-n/8t",
+      "1.5+n/4d",
     ];
 
     for (const [num, den] of METERS) {
@@ -389,6 +405,28 @@ describe("note-value grammar parity across all parse sites", () => {
   describe("bare fractions and mixed numbers are rejected by all offset sites", () => {
     for (const beat of ["4/3", "1+1/3", "1+2/3"]) {
       it(`"1|${beat}" is rejected everywhere`, () => {
+        for (const site of OFFSET_SITES) {
+          expect(() => site.fn(beat, 4, 4)).toThrow();
+        }
+      });
+    }
+  });
+
+  describe("stacked / doubled note-value suffixes are rejected on every site", () => {
+    // `d` and `t` are mutually exclusive and non-stacking — the atom's
+    // `("d"/"t")?` matches at most one. A doubled or mixed suffix leaves a stray
+    // letter that no site can consume, so it is a parse error everywhere (the
+    // "no stacking / mutually exclusive" contract from AGENTS.md note-value rules).
+    for (const token of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
+      it(`duration "${token}" is rejected by every duration site`, () => {
+        for (const site of DURATION_SITES) {
+          expect(() => site.fn(token, 4, 4)).toThrow();
+        }
+      });
+    }
+
+    for (const beat of ["1+n/4dt", "1+n/8tt", "1-n/8td"]) {
+      it(`offset "1|${beat}" is rejected by every offset site`, () => {
         for (const site of OFFSET_SITES) {
           expect(() => site.fn(beat, 4, 4)).toThrow();
         }

@@ -10,7 +10,7 @@ import {
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
-// Hybrid Reverb (HybridReverbDevice). AJM-372. See
+// Hybrid Reverb (HybridReverbDevice). See
 // dev/Specialized-Devices.md.
 // Convolution IR library: category + file selectors plus IR shaping controls.
 // Category names use underscores as word separators in the Live API (e.g.,

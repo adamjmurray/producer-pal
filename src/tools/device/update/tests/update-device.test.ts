@@ -680,6 +680,14 @@ describe("updateDevice", () => {
         toPath: "t1",
       });
 
+      // A plain Chain is neither a device nor a DrumChain: it cannot be moved.
+      expect(outlet).toHaveBeenCalledWith(1, "cannot move Chain");
+      expect(liveSet.call).not.toHaveBeenCalledWith(
+        "move_device",
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -692,6 +700,7 @@ describe("updateDevice", () => {
         toPath: "t1",
       });
 
+      expect(outlet).toHaveBeenCalledWith(1, "cannot move DrumPad");
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -704,6 +713,17 @@ describe("updateDevice", () => {
         toPath: "t99",
       });
 
+      // The missing container is reported and no move is attempted.
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'move target at path "t99" does not exist',
+      );
+      expect(liveSet.call).not.toHaveBeenCalledWith(
+        "move_device",
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -726,6 +746,21 @@ describe("updateDevice", () => {
       expect(device123.set).toHaveBeenCalledWith("name", "Moved Device");
 
       expect(result).toStrictEqual({ id: "123" });
+    });
+  });
+
+  describe("type validation", () => {
+    it("should warn and skip an object that is not a device, chain, or pad", () => {
+      registerMockObject("999", {
+        path: livePath.track(3),
+        type: "Track",
+      });
+
+      const result = updateDevice({ ids: "999", name: "Nope" });
+
+      expect(outlet).toHaveBeenCalledWith(1, "cannot update Track objects");
+      // Nothing is written to an unsupported object, and it drops from results.
+      expect(result).toStrictEqual([]);
     });
   });
 

@@ -7,6 +7,7 @@ import { getProviderName } from "#webui/components/chat/controls/header/header-h
 import {
   EditIcon,
   ExportIconSmall,
+  TrashIcon,
 } from "#webui/components/chat/controls/header/HeaderIcons";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
@@ -142,18 +143,7 @@ export function ConversationItem({
           aria-label="Delete conversation"
           title="Delete conversation"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 3.5h10M5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M11 3.5l-.5 8a1 1 0 01-1 1h-5a1 1 0 01-1-1L3 3.5" />
-          </svg>
+          <TrashIcon size={12} />
         </button>
       </div>
 

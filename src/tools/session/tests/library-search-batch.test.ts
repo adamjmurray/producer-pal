@@ -36,6 +36,26 @@ function mockSampleFolder(...names: string[]): void {
   });
 }
 
+type SearchBatchResult = Extract<
+  Awaited<ReturnType<typeof library>>,
+  { results: unknown }
+>;
+
+/**
+ * Run a searchBatch library call and narrow the union to the results branch.
+ * @param queries - The batch queries (omit for the missing-arg case)
+ * @returns The library result, asserted to contain `results`
+ */
+async function runSearchBatch(
+  queries?: NonNullable<Parameters<typeof library>[0]>["queries"],
+): Promise<SearchBatchResult> {
+  const result = await library({ action: "searchBatch", queries });
+
+  if (!("results" in result)) throw new Error("expected results");
+
+  return result;
+}
+
 describe("library tool — searchBatch action", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -109,28 +129,20 @@ describe("library tool — searchBatch action", () => {
       "808": [dbItem("a.wav")],
     });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }, { query: "808" }],
-    });
+    const result = await runSearchBatch([{ tags: "Kick" }, { query: "808" }]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.results.map((r) => r.label)).toStrictEqual(["0", "1"]);
   });
 
   it("suffixes duplicate labels with #N so every entry stays addressable", async () => {
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [
-        { label: "Kicks", tags: "Kick" },
-        { label: "Kicks", tags: "Kick" },
-        { label: "Kicks", tags: "Kick" },
-      ],
-    });
+    const result = await runSearchBatch([
+      { label: "Kicks", tags: "Kick" },
+      { label: "Kicks", tags: "Kick" },
+      { label: "Kicks", tags: "Kick" },
+    ]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.results.map((r) => r.label)).toStrictEqual([
       "Kicks",
       "Kicks#2",
@@ -141,24 +153,22 @@ describe("library tool — searchBatch action", () => {
   it("dedupes a provided label that collides with an index fallback", async () => {
     mockSearchByFilter({});
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }, { label: "0", tags: "Snare" }],
-    });
+    const result = await runSearchBatch([
+      { tags: "Kick" },
+      { label: "0", tags: "Snare" },
+    ]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.results.map((r) => r.label)).toStrictEqual(["0", "0#2"]);
   });
 
   it("yields an empty items entry (not a dropped entry) for a no-match query", async () => {
     mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }, { tags: "Cowbell" }],
-    });
+    const result = await runSearchBatch([
+      { tags: "Kick" },
+      { tags: "Cowbell" },
+    ]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.results).toHaveLength(2);
     expect(result.results[1]?.items).toStrictEqual([]);
   });
@@ -225,22 +235,44 @@ describe("library tool — searchBatch action", () => {
     const queries = Array.from({ length: 25 }, (_, i) => ({
       query: String(i),
     }));
-    const result = await library({ action: "searchBatch", queries });
+    const result = await runSearchBatch(queries);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.results).toHaveLength(20);
     expect(protocolMock.requestNode).toHaveBeenCalledTimes(20);
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("exceeds cap of 20"),
     );
+    // The dropped count must be queries - cap (25 - 20 = 5), not a sum.
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("ignoring the extra 5"),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("does not warn when the batch is exactly at the cap of 20", async () => {
+    // Boundary of the > cap guard: 20 queries is allowed in full, so no warn.
+    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
+
+    mockSearchByFilter({});
+
+    const queries = Array.from({ length: 20 }, (_, i) => ({
+      query: String(i),
+    }));
+    const result = await runSearchBatch(queries);
+
+    expect(result.results).toHaveLength(20);
+    expect(warnSpy).not.toHaveBeenCalled();
 
     warnSpy.mockRestore();
   });
 
   it("treats a missing queries arg as an empty batch", async () => {
-    const result = await library({ action: "searchBatch" });
+    const result = await runSearchBatch();
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.results).toStrictEqual([]);
     expect("dbAvailable" in result).toBe(false);
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
@@ -256,12 +288,8 @@ describe("library tool — searchBatch action", () => {
       },
     });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }],
-    });
+    const result = await runSearchBatch([{ tags: "Kick" }]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.dbAvailable).toBe(false);
     expect(result.results[0]?.reason).toBe("Live database not found");
   });
@@ -281,12 +309,8 @@ describe("library tool — searchBatch action", () => {
         },
       });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }, { tags: "Snare" }],
-    });
+    const result = await runSearchBatch([{ tags: "Kick" }, { tags: "Snare" }]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.dbAvailable).toBe(false);
     expect(result.results[0]?.items).toHaveLength(1);
   });
@@ -333,12 +357,8 @@ describe("library tool — searchBatch action", () => {
         },
       });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }, { tags: "Snare" }],
-    });
+    const result = await runSearchBatch([{ tags: "Kick" }, { tags: "Snare" }]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.stalenessRisk).toStrictEqual(stalenessRisk);
     expect(result.dbAvailable).toBe(true);
   });
@@ -349,13 +369,54 @@ describe("library tool — searchBatch action", () => {
       result: { dbAvailable: true, items: [] },
     });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }],
-    });
+    const result = await runSearchBatch([{ tags: "Kick" }]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect("stalenessRisk" in result).toBe(false);
+  });
+
+  it("keeps the first stalenessRisk reading when two queries report different ones", async () => {
+    // Staleness is a single global DB property; the batch captures the first
+    // non-null reading and must not overwrite it with a later query's copy.
+    const first = {
+      kind: "wal-pending" as const,
+      dbMtime: 1_000_000,
+      walMtime: 4_600_000,
+      walSizeMb: 12,
+      ageSeconds: 3_600,
+    };
+    const second = {
+      kind: "wal-pending" as const,
+      dbMtime: 9_000_000,
+      walMtime: 9_600_000,
+      walSizeMb: 99,
+      ageSeconds: 9_999,
+    };
+
+    vi.mocked(protocolMock.requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: { dbAvailable: true, stalenessRisk: first, items: [] },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        result: { dbAvailable: true, stalenessRisk: second, items: [] },
+      });
+
+    const result = await runSearchBatch([{ tags: "Kick" }, { tags: "Snare" }]);
+
+    expect(result.stalenessRisk).toStrictEqual(first);
+  });
+
+  it("omits the reason key on an entry whose query returned no reason", async () => {
+    // A matched query with no diagnostic must yield { label, items } exactly —
+    // no reason: undefined leaking into the entry.
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    const result = await runSearchBatch([{ label: "Kicks", tags: "Kick" }]);
+    const entry = result.results[0];
+
+    expect(entry).toBeDefined();
+    expect(entry && "reason" in entry).toBe(false);
   });
 
   it("preserves entries from other queries when a single query throws (per-query graceful degrade)", async () => {
@@ -370,16 +431,12 @@ describe("library tool — searchBatch action", () => {
         result: { dbAvailable: true, items: [dbItem("hat.wav")] },
       });
 
-    const result = await library({
-      action: "searchBatch",
-      queries: [
-        { label: "Kicks", tags: "Kick" },
-        { label: "Snares", tags: "Snare" },
-        { label: "Hats", tags: "Hat" },
-      ],
-    });
+    const result = await runSearchBatch([
+      { label: "Kicks", tags: "Kick" },
+      { label: "Snares", tags: "Snare" },
+      { label: "Hats", tags: "Hat" },
+    ]);
 
-    if (!("results" in result)) throw new Error("expected results");
     expect(result.results.map((r) => r.label)).toStrictEqual([
       "Kicks",
       "Snares",

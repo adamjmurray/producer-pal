@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { type ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { getDrumMap } from "#src/tools/shared/device/device-reader.ts";
@@ -50,6 +51,7 @@ interface ReadTrackGenericArgs {
   category?: string;
   include?: string[];
   returnTrackNames?: string[];
+  notation?: Notation;
 }
 
 interface SessionClipsResult {
@@ -70,12 +72,12 @@ interface TakeLanesResult {
 /**
  * Read comprehensive information about a track
  * @param args - The parameters
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object (supplies the active notation)
  * @returns Track information
  */
 export function readTrack(
   args: ReadTrackArgs = {},
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
   const { trackIndex, trackId, trackType, returnTrackNames } = args;
   const category = trackType ?? "regular";
@@ -114,6 +116,7 @@ export function readTrack(
     category: resolvedCategory,
     include: args.include,
     returnTrackNames,
+    notation: context.notation,
   });
 }
 
@@ -137,6 +140,7 @@ function computeTrackType(isMidiTrack: boolean, category: string): string {
  * @param trackIndex - Track index
  * @param includeSessionClips - Whether to include full session clip details
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Object with session clips data
  */
 function processSessionClips(
@@ -145,13 +149,14 @@ function processSessionClips(
   trackIndex: number | null,
   includeSessionClips: boolean,
   include: string[] | undefined,
+  notation: Notation | undefined,
 ): SessionClipsResult {
   if (category !== "regular") {
     return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
   }
 
   return includeSessionClips
-    ? { sessionClips: readSessionClips(track, trackIndex, include) }
+    ? { sessionClips: readSessionClips(track, trackIndex, include, notation) }
     : { sessionClipCount: countSessionClips(track, trackIndex) };
 }
 
@@ -162,6 +167,7 @@ function processSessionClips(
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full arrangement clip details
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Object with arrangementClips array or arrangementClipCount
  */
 function processArrangementClips(
@@ -170,6 +176,7 @@ function processArrangementClips(
   category: string,
   includeArrangementClips: boolean,
   include: string[] | undefined,
+  notation: Notation | undefined,
 ): ArrangementClipsResult {
   if (isGroup || category === "return" || category === "master") {
     return includeArrangementClips
@@ -178,7 +185,7 @@ function processArrangementClips(
   }
 
   return includeArrangementClips
-    ? { arrangementClips: readArrangementClips(track, include) }
+    ? { arrangementClips: readArrangementClips(track, include, notation) }
     : { arrangementClipCount: countArrangementClips(track) };
 }
 
@@ -191,6 +198,7 @@ function processArrangementClips(
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full take lane clip details
  * @param include - Include array for nested reads
+ * @param notation - Active notation for nested clip note formatting
  * @returns Object with takeLanes array, takeLaneCount, or empty
  */
 function processTakeLanes(
@@ -199,6 +207,7 @@ function processTakeLanes(
   category: string,
   includeArrangementClips: boolean,
   include: string[] | undefined,
+  notation: Notation | undefined,
 ): TakeLanesResult {
   // Take lanes are arrangement-only and only exist on non-group regular tracks
   if (isGroup || category !== "regular") {
@@ -212,7 +221,7 @@ function processTakeLanes(
   }
 
   return includeArrangementClips
-    ? { takeLanes: readTakeLanes(track, include) }
+    ? { takeLanes: readTakeLanes(track, include, notation) }
     : { takeLaneCount: count };
 }
 
@@ -220,17 +229,19 @@ function processTakeLanes(
  * Add drum map to result from categorized device structure
  * @param result - Result object to add drum map to
  * @param categorizedDevices - Categorized device structure with chains for drum detection
+ * @param notation - Active notation; controls whether drum-map keys are drum names
  */
 function addDrumMapFromDevices(
   result: Record<string, unknown>,
   categorizedDevices: CategorizedDevices,
+  notation?: Notation,
 ): void {
   const allDevices = [
     ...categorizedDevices.midiEffects,
     ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
     ...categorizedDevices.audioEffects,
   ];
-  const drumMap = getDrumMap(allDevices);
+  const drumMap = getDrumMap(allDevices, notation);
 
   if (drumMap != null) {
     result.drumMap = drumMap;
@@ -246,6 +257,7 @@ function addDrumMapFromDevices(
  * @param args.category - Track category: "regular", "return", or "master"
  * @param args.include - Array of data to include in the response
  * @param args.returnTrackNames - Array of return track names for sends
+ * @param args.notation - Active notation; controls whether drum-map keys are drum names
  * @returns Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
@@ -254,6 +266,7 @@ export function readTrackGeneric({
   category = "regular",
   include,
   returnTrackNames,
+  notation,
 }: ReadTrackGenericArgs): Record<string, unknown> {
   const {
     includeDrumMap,
@@ -317,6 +330,7 @@ export function readTrackGeneric({
       trackIndex,
       includeSessionClips,
       include,
+      notation,
     ),
   );
 
@@ -329,6 +343,7 @@ export function readTrackGeneric({
       category,
       includeArrangementClips,
       include,
+      notation,
     ),
   );
 
@@ -341,6 +356,7 @@ export function readTrackGeneric({
       category,
       includeArrangementClips,
       include,
+      notation,
     ),
   );
 
@@ -359,7 +375,7 @@ export function readTrackGeneric({
   if (includeDrumMap) {
     const categorized = categorizeDevices(trackDevices, false, true, false);
 
-    addDrumMapFromDevices(result, categorized);
+    addDrumMapFromDevices(result, categorized, notation);
   }
 
   addSlotIndices(result, track, category);

@@ -20,24 +20,16 @@ compelling.
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Enable Small Model Mode (Optional but Recommended)
 
 Small model mode provides a smaller, simpler interface optimized for small/local
 language models.
 
-If you're using Option A below, the `-s` flag in the configuration automatically
-enables small model mode on the device when connected.
+If you're using Option A below, the `--small-model-mode` flag in the
+configuration automatically enables small model mode on the device when
+connected.
 
 Alternatively, you can enable it manually in Producer Pal's "Setup" tab:
 
@@ -64,16 +56,45 @@ mcp.json:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal", "-s"]
+      "args": ["-y", "producer-pal", "--small-model-mode"]
     }
   }
 }
 ```
 
-The `-s` flag enables small model mode. It automatically configures the device
-when connected, so you don't need to enable it in both places. The producer-pal
-package is a proxy that responds to requests even when Ableton Live or the
-Producer Pal device are not running, to let you know there's a problem.
+The `--small-model-mode` flag enables small model mode. It automatically
+configures the device when connected, so you don't need to enable it in both
+places. The producer-pal package is a proxy that responds to requests even when
+Ableton Live or the Producer Pal device are not running, to let you know there's
+a problem.
+
+::: tip Recommended for small models: Stark notation
+
+Small/local models tend to handle `stark` notation — a simple literal
+`type: content` format with event-based drum hits — better than the default
+bar|beat text. Add `--notation stark` alongside `--small-model-mode`:
+
+```json
+{
+  "mcpServers": {
+    "producer-pal": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "producer-pal",
+        "--small-model-mode",
+        "--notation",
+        "stark"
+      ]
+    }
+  }
+}
+```
+
+Notation is a global device setting, so it also changes the notation shown in
+the chat UI and any other connected clients.
+
+:::
 
 **Option B: Direct HTTP**:
 
@@ -157,12 +178,15 @@ further, you can customize Producer Pal's behavior for your specific model:
 
 1. Download this repository and follow the dev setup and build instructions in
    [DEVELOPERS.md](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md)
-2. Edit `src/skills/basic.js` - the skills file used by Small Model Mode (or
-   edit `src/skills/standard.js` to adjust regular mode)
+2. Edit the skills files in `src/skills/` - Small Model Mode uses the basic
+   skills for the active notation (e.g. `src/skills/notation/barbeat-basic.ts`),
+   while regular mode assembles `src/skills/core/core-standard.ts` with a
+   notation head (e.g. `src/skills/notation/barbeat-standard.ts`). See
+   `src/skills/build-skills.ts` for how they are selected
 3. Experiment with instruction wording, remove features your model struggles
    with, or adjust the guidance
 4. Rebuild with `npm run build`
-5. Use the development version of `Producer_pal.amxd` in Ableton Live
+5. Use the development version of `Producer_Pal.amxd` in Ableton Live
 6. Reload your Producer Pal MCP server in LM Studio and start a new conversation
 
 **Share your findings:** If you discover configurations that work well for
@@ -173,8 +197,8 @@ The community benefits from learning what works with different local models.
 ## Alternative: Built-in Chat UI
 
 You can also use LM Studio as a backend for
-[Producer Pal's built-in chat UI](./chat-ui-other-providers#lm-studio) instead
-of LM Studio's native interface.
+[Producer Pal's built-in chat UI](./chat-ui-other-providers#lm-studio-api)
+instead of LM Studio's native interface.
 
 ## Troubleshooting
 

@@ -16,22 +16,14 @@ this is a good option.
 
 <!--@include: ../_partials/live-requirement.md-->
 
-- [Node.js 22+](https://nodejs.org/en/download)
+- [Node.js 22+](https://nodejs.org/en/download) (required by Codex; Producer Pal
+  itself only needs 20+)
 - [OpenAI Codex](https://github.com/openai/codex#quickstart) (requires OpenAI
   account, and a paid subscription at time of writing)
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Configure Codex
 
@@ -45,6 +37,22 @@ auto-reconnection:
 command = "npx"
 args = ["-y", "producer-pal"]
 ```
+
+::: tip Scripting or building against Producer Pal?
+
+If you'll have the agent **write code that generates or parses** Producer Pal
+data — building MIDI programmatically, or piping tool output through JSON
+tooling — add `--format json` and `--notation midi-json` to the args:
+
+```toml
+[mcp_servers.producer-pal]
+command = "npx"
+args = ["-y", "producer-pal", "--format", "json", "--notation", "midi-json"]
+```
+
+<!--@include: ../_partials/scripting-tip.md-->
+
+:::
 
 **Option B: Direct HTTP** - Requires Ableton running first, no
 auto-reconnection:

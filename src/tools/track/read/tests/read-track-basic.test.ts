@@ -8,6 +8,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
+  createTestNote,
+  setupMidiClipMock,
+} from "#src/tools/clip/read/tests/read-clip-test-helpers.ts";
+import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
@@ -153,6 +157,32 @@ describe("readTrack", () => {
     });
   });
 
+  it("reports slot indices at the boundary value 0", () => {
+    // Boundary: playing/fired slot index 0 (first scene) must be reported, not
+    // dropped as if it were the -1 "none" sentinel (guard is `>= 0`, not `> 0`).
+    setupTrackPathMappedMocks({
+      trackPath: String(livePath.track(1)),
+      trackId: "track2",
+      objects: {
+        Track: {
+          has_midi_input: 1,
+          name: "Boundary Track",
+          playing_slot_index: 0,
+          fired_slot_index: 0,
+          clip_slots: [],
+          devices: [],
+        },
+      },
+    });
+
+    const result = readTrack({ trackIndex: 1 });
+
+    expect(result).toMatchObject({
+      playingSlotIndex: 0,
+      firedSlotIndex: 0,
+    });
+  });
+
   it("returns track group information", () => {
     setupTrackPathMappedMocks({
       trackId: "track1",
@@ -257,6 +287,47 @@ describe("readTrack", () => {
       deviceCount: 0,
       playingSlotIndex: 0,
     });
+  });
+
+  it("returns nested session clip notes in the active notation", () => {
+    // Regression: read-track must thread the active notation into nested clip
+    // reads. Previously readClip was called with no context, so clip notes were
+    // always bar|beat even when the request notation was stark/midi-json (while
+    // the drum map WAS notation-aware) — a mixed-notation response.
+    registerMockObject("track3", {
+      path: livePath.track(2),
+      type: "Track",
+      properties: {
+        has_midi_input: 1,
+        name: "Notation Track",
+        clip_slots: children("slot1"),
+        devices: [],
+      },
+    });
+    setupMidiClipMock({
+      clipId: "clip1",
+      path: livePath.track(2).clipSlot(0).clip(),
+      clipProps: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+      },
+      notes: [
+        createTestNote({ pitch: 60, startTime: 0 }),
+        createTestNote({ pitch: 62, startTime: 1 }),
+      ],
+    });
+
+    const result = readTrack(
+      { trackIndex: 2, include: ["session-clips", "notes"] },
+      { notation: "stark" },
+    );
+
+    const sessionClips = result.sessionClips as Array<{ notes: string }>;
+
+    expect(sessionClips).toHaveLength(1);
+    // Stark melody line, not the bar|beat "v100 n/4 C3 1|1\nD3 1|2".
+    expect(sessionClips[0]!.notes).toBe("melody: C D");
   });
 
   it("returns arrangementClips when the track has clips in Arrangement view", () => {

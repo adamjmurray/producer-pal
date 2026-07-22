@@ -46,6 +46,8 @@ interface SettingsScreenProps {
    * mode). Used by the VoiceSelector to render a pending-change notice when
    * the user edits voice mid-session. */
   activeVoice: string | null;
+  /** Opens the context editor from the Tools tab's "Edit Context" shortcut. */
+  onEditContext: () => void;
 }
 
 const helpLinkClass =
@@ -166,6 +168,10 @@ function SettingsTabContent(props: SettingsScreenProps) {
           liveApiEnabled={settings.liveApiEnabled}
           setLiveApiEnabled={settings.setLiveApiEnabled}
           liveApiForcedOn={props.liveApiForcedOn}
+          notation={settings.notation}
+          setNotation={settings.setNotation}
+          onEditContext={props.onEditContext}
+          settingsConfigured={settings.settingsConfigured}
         />
       )}
 

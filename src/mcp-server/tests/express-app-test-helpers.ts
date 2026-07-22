@@ -8,6 +8,7 @@ import { type AddressInfo } from "node:net";
 import express from "express";
 import Max from "max-api";
 import { afterAll, beforeAll, type Mock, vi } from "vitest";
+import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import { registerRestApiRoutes } from "../routes/rest-api-routes.ts";
 
@@ -48,7 +49,7 @@ interface ExpressAppTestState {
  *
  * @param options - Setup options
  * @param options.beforeStart - Optional callback to run before starting the server
- * @param options.enableDevFeatures - Set ENABLE_CODE_EXEC and ENABLE_DEV_CORS env vars before server start
+ * @param options.enableDevFeatures - Set ENABLE_CODE_EXEC env var before server start
  * @param options.enableLiveApi - POST /config { liveApiEnabled: true } after server start
  * @returns Test state with server and URL references
  */
@@ -74,9 +75,7 @@ export function setupExpressAppServer(
   beforeAll(async () => {
     if (options.enableDevFeatures) {
       prevEnv.ENABLE_CODE_EXEC = process.env.ENABLE_CODE_EXEC;
-      prevEnv.ENABLE_DEV_CORS = process.env.ENABLE_DEV_CORS;
       process.env.ENABLE_CODE_EXEC = "true";
-      process.env.ENABLE_DEV_CORS = "true";
     }
 
     options.beforeStart?.();
@@ -110,14 +109,13 @@ export function setupExpressAppServer(
     // Restore env so a thread-pool run can't leak these into another test file.
     if (options.enableDevFeatures) {
       restoreEnv("ENABLE_CODE_EXEC", prevEnv.ENABLE_CODE_EXEC);
-      restoreEnv("ENABLE_DEV_CORS", prevEnv.ENABLE_DEV_CORS);
     }
   });
 
   return state;
 }
 
-type DevFeatureEnvVar = "ENABLE_CODE_EXEC" | "ENABLE_DEV_CORS";
+type DevFeatureEnvVar = "ENABLE_CODE_EXEC";
 
 /**
  * Restore an env var to its prior value, deleting it if it was unset before.
@@ -144,13 +142,29 @@ interface RestRoutesTestState {
  * Registers beforeAll/afterAll hooks to start and stop the server.
  *
  * @param options - Setup options
- * @param options.getConfig - Function returning the runtime config (tools + liveApiEnabled)
+ * @param options.getConfig - Function returning the runtime config (tools +
+ *   liveApiEnabled; notation defaults to bar|beat when omitted)
  * @returns Test state with base URL and the shared callLiveApi mock
  */
 export function setupRestRoutesServer(options: {
-  getConfig: () => { tools: string[]; liveApiEnabled: boolean };
+  getConfig: () => {
+    tools: string[];
+    liveApiEnabled: boolean;
+    notation?: Notation;
+  };
 }): RestRoutesTestState {
   const callLiveApi = vi.fn<CallLiveApiFunction>();
+
+  const getConfig = (): {
+    tools: string[];
+    liveApiEnabled: boolean;
+    notation: Notation;
+  } => {
+    const config = options.getConfig();
+
+    return { notation: DEFAULT_NOTATION, ...config };
+  };
+
   const state: RestRoutesTestState = {
     baseUrl: "",
     callLiveApi,
@@ -161,7 +175,7 @@ export function setupRestRoutesServer(options: {
     const app = express();
 
     app.use(express.json());
-    registerRestApiRoutes(app, options.getConfig, callLiveApi);
+    registerRestApiRoutes(app, getConfig, callLiveApi);
 
     server = app.listen(0);
     await new Promise<void>((resolve) => server?.once("listening", resolve));

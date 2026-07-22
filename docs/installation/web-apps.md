@@ -12,11 +12,11 @@ Pal server.
 
 ## Available Options
 
-| Web App                      | Provider  | Cost         |
-| ---------------------------- | --------- | ------------ |
-| [claude.ai](./claude-web)    | Anthropic | Subscription |
-| [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription |
-| [Le Chat](./mistral-le-chat) | Mistral   | Subscription |
+| Web App                      | Provider  | Cost                                 |
+| ---------------------------- | --------- | ------------------------------------ |
+| [claude.ai](./claude-web)    | Anthropic | Free with a Claude account           |
+| [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription (for advanced settings) |
+| [Le Chat](./mistral-le-chat) | Mistral   | Free with a Mistral account (admin)  |
 
 ## Why Use Web Apps?
 

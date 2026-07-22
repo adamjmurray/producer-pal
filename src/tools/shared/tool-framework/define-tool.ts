@@ -1,21 +1,21 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
+import { type Notation } from "#src/shared/notation.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  type ModalDescription,
+  resolveModalDescription,
+  resolveParamModes,
+} from "#src/tools/shared/tool-framework/modal-config.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
-
-export interface SmallModelModeConfig {
-  excludeParams?: string[];
-  excludeEnumValues?: Record<string, string[]>;
-  descriptionOverrides?: Record<string, string>;
-  toolDescription?: string;
-}
 
 export interface ToolAnnotations {
   readOnlyHint?: boolean;
@@ -24,14 +24,18 @@ export interface ToolAnnotations {
 
 export interface ToolOptions {
   title?: string;
-  description: string;
+  // A plain string, or a modal description with per-mode (notation / small-model)
+  // overrides. See modal-config.ts.
+  description: ModalDescription;
   annotations?: ToolAnnotations;
+  // Param descriptions/exclusions/enum-trims are co-located on each param via
+  // param() (see modal-config.ts) — there is no separate override config.
   inputSchema: Record<string, ZodType>;
-  smallModelModeConfig?: SmallModelModeConfig;
 }
 
 export interface McpOptions {
   smallModelMode?: boolean;
+  notation?: Notation;
 }
 
 type CallLiveApiFunction = (
@@ -50,7 +54,7 @@ export interface ToolDefFunction {
 }
 
 /**
- * Defines an MCP tool with validation and small model mode support
+ * Defines an MCP tool with validation and modal (notation / small-model) support
  * @param name - Tool name
  * @param options - Tool configuration options
  * @returns Function that registers the tool with the MCP server
@@ -64,25 +68,31 @@ export function defineTool(
     callLiveApi: CallLiveApiFunction,
     mcpOptions: McpOptions = {},
   ): void => {
-    const { smallModelMode = false } = mcpOptions;
-    const { inputSchema, smallModelModeConfig, ...toolConfig } = options;
+    const { smallModelMode = false, notation } = mcpOptions;
+    const { inputSchema, description, ...toolConfig } = options;
 
-    // Apply schema filtering for small model mode if configured
-    const finalInputSchema =
-      smallModelMode && smallModelModeConfig
-        ? filterSchemaForSmallModel(
-            inputSchema,
-            smallModelModeConfig.excludeParams ?? [],
-            smallModelModeConfig.descriptionOverrides,
-            smallModelModeConfig.excludeEnumValues,
-          )
-        : inputSchema;
+    // Resolve every param's co-located modes into the flat exclude/override maps
+    // filterSchemaForSmallModel consumes. Notation wins over small-model per
+    // param; a mode's `null` hides the param.
+    const resolved = resolveParamModes(inputSchema, {
+      notation,
+      smallModelMode,
+    });
 
-    // Apply tool description override for small model mode if configured
-    const finalDescription =
-      smallModelMode && smallModelModeConfig?.toolDescription
-        ? smallModelModeConfig.toolDescription
-        : toolConfig.description;
+    // filterSchemaForSmallModel returns the schema unchanged when there is
+    // nothing to exclude or override, so calling it unconditionally is a no-op
+    // for tools/contexts without any active modes.
+    const finalInputSchema = filterSchemaForSmallModel(
+      inputSchema,
+      resolved.excludeParams,
+      resolved.descriptionOverrides,
+      resolved.excludeEnumValues,
+    );
+
+    const finalDescription = resolveModalDescription(description, {
+      notation,
+      smallModelMode,
+    });
 
     // Use loose() so extra args reach our handler (SDK would strip them otherwise)
     const passthroughSchema = z.object(finalInputSchema).loose();
@@ -104,14 +114,12 @@ export function defineTool(
         // Parse with strict schema (strips extra keys for callLiveApi)
         const validated = z.object(finalInputSchema).parse(args);
 
-        // In small model mode, filter out excluded enum values as defense-in-depth
-        // (schema validation is primary gate, this catches hallucinated values)
+        // Filter out excluded enum values as defense-in-depth (schema validation
+        // is the primary gate; this catches hallucinated values). Populated only
+        // when a mode trims a param's enum values.
         const finalArgs =
-          smallModelMode && smallModelModeConfig?.excludeEnumValues
-            ? filterExcludedEnumValues(
-                validated,
-                smallModelModeConfig.excludeEnumValues,
-              )
+          Object.keys(resolved.excludeEnumValues).length > 0
+            ? filterExcludedEnumValues(validated, resolved.excludeEnumValues)
             : validated;
 
         const rawResult = (await callLiveApi(

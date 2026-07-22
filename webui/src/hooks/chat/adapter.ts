@@ -9,6 +9,7 @@ import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
 import {
+  isLegacyNonThinkingModel,
   isLegacyThinkingModel,
   isOpenAIReasoningModel,
   mapThinkingToAnthropicEffort,
@@ -16,7 +17,7 @@ import {
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
-import { SYSTEM_INSTRUCTION, getThinkingBudget } from "#webui/lib/config";
+import { getThinkingBudget, resolveSystemInstruction } from "#webui/lib/config";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
 import { type ChatAdapter } from "./use-chat-types";
@@ -94,7 +95,8 @@ function buildProviderOptions(
 /**
  * Build Anthropic-specific provider options for extended thinking.
  * Uses adaptive thinking with effort for most models, falls back to legacy
- * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet.
+ * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet, and
+ * omits the `thinking` field entirely for pre-3.7 models that don't support it.
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
  * @returns Anthropic provider options or undefined
@@ -103,6 +105,11 @@ function buildAnthropicOptions(
   thinking: string,
   model: string,
 ): ProviderOptions | undefined {
+  // Pre-3.7 Anthropic models (reachable only via the free-text "Other..." input)
+  // reject ANY `thinking` field with a 400, so never send one regardless of the
+  // UI thinking level — otherwise the default adaptive payload 400s on first send.
+  if (isLegacyNonThinkingModel(model)) return undefined;
+
   // Legacy path for models that don't support adaptive thinking (Haiku 4.5)
   if (isLegacyThinkingModel(model)) {
     const budgetTokens = getThinkingBudget(thinking);
@@ -184,6 +191,19 @@ export const chatAdapter: ChatAdapter<
     const provider = extraParams?.provider as Provider;
     const baseUrl = extraParams?.baseUrl as string | undefined;
     const apiKey = extraParams?.apiKey as string;
+    // Full-replace custom system prompt (~/.producer-pal/system-prompt.md): any
+    // non-blank content wholly replaces the built-in instruction; blank/absent
+    // falls back to the default. A restored conversation passes its locked
+    // snapshot (lockedSystemInstruction) so continuing it keeps sending what it
+    // started with, even after the global override changes; a brand-new
+    // conversation has none and resolves the current override instead.
+    const systemInstructionOverride = extraParams?.systemInstructionOverride as
+      string | undefined;
+    const lockedSystemInstruction = extraParams?.lockedSystemInstruction as
+      string | null | undefined;
+    const systemInstruction =
+      lockedSystemInstruction ??
+      resolveSystemInstruction(systemInstructionOverride);
     // When thinking is Off, always exclude reasoning tokens even if the model generates them.
     // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
     const showThoughts =
@@ -197,14 +217,23 @@ export const chatAdapter: ChatAdapter<
       showThoughts,
     );
 
+    // Adaptive-family Anthropic models (Sonnet 5, Opus 4.6+, Fable) reject any
+    // non-default sampling parameter with a 400 — suppress temperature for them
+    // regardless of thinking level, including "Off". Haiku uses legacy enabled
+    // thinking, which requires temperature=1 only when thinking is active, so
+    // suppress there only when thinking is on; "Off" on Haiku keeps temperature.
+    // Pre-3.7 models (via the "Other..." input) support temperature normally and
+    // aren't adaptive, so always keep it — dropping it there was a regression.
     const suppressTemperature =
       (provider === "openai" && isOpenAIReasoningModel(model)) ||
-      (provider === "anthropic" && thinking !== "Off");
+      (provider === "anthropic" &&
+        !isLegacyNonThinkingModel(model) &&
+        (!isLegacyThinkingModel(model) || thinking !== "Off"));
 
     return {
       model: languageModel,
       temperature: suppressTemperature ? undefined : temperature,
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction,
       enabledTools,
       showThoughts,
       providerOptions,

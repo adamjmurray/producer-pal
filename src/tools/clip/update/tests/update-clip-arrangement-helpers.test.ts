@@ -6,7 +6,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { handleArrangementStartOperation } from "../helpers/update-clip-arrangement-helpers.ts";
+import * as arrangementWorkaround from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import {
+  handleArrangementOperations,
+  handleArrangementStartOperation,
+} from "../helpers/update-clip-arrangement-helpers.ts";
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
 
@@ -69,6 +73,10 @@ describe("update-clip-arrangement-helpers", () => {
         context: mockContext,
       });
 
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "could not determine trackIndex for clip 456",
+      );
       expect(result).toBe("456");
     });
 
@@ -350,6 +358,139 @@ describe("update-clip-arrangement-helpers", () => {
       expect(trackMock.call).not.toHaveBeenCalled();
       // Also: do not increment the move count for a skipped take-lane clip.
       expect(tracksWithMovedClips.get(trackIndex)).toBeUndefined();
+    });
+
+    it("does not re-delete the original when the move was unsafe and the clip is already gone", () => {
+      const trackIndex = 0;
+      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+      });
+
+      // Unsafe move (self-overlap): the holding round-trip already trimmed/replaced
+      // the original, so clip.exists() is false and delete must be skipped.
+      const clearSpy = vi
+        .spyOn(arrangementWorkaround, "clearClipAtDuplicateTarget")
+        .mockReturnValue(false);
+      const dupSpy = vi
+        .spyOn(arrangementWorkaround, "duplicateSelfOverlappingClip")
+        .mockReturnValue({
+          id: "new999",
+          exists: () => true,
+        } as unknown as LiveAPI);
+
+      const mockClip = {
+        id: "888",
+        getProperty: vi.fn((prop) =>
+          prop === "is_arrangement_clip" ? 1 : null,
+        ),
+        trackIndex,
+        exists: () => false,
+      };
+
+      const result = handleArrangementStartOperation({
+        clip: mockClip as unknown as LiveAPI,
+        arrangementStartBeats: 16,
+        tracksWithMovedClips: new Map(),
+        isMidiClip: true,
+        context: mockContext,
+      });
+
+      // safeToMove(false) || clip.exists()(false) === false → no delete.
+      expect(trackMock.call).not.toHaveBeenCalledWith(
+        "delete_clip",
+        expect.anything(),
+      );
+      expect(result).toBe("new999");
+
+      clearSpy.mockRestore();
+      dupSpy.mockRestore();
+    });
+  });
+
+  describe("handleArrangementOperations", () => {
+    it("passes isMidiClip as the negation of isAudioClip into the move operation", () => {
+      const trackIndex = 0;
+
+      registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+        methods: {
+          duplicate_clip_to_arrangement: () => ["id", 999],
+        },
+      });
+      registerMockObject("999", {
+        path: livePath.track(trackIndex).arrangementClip(0),
+      });
+
+      const clearSpy = vi
+        .spyOn(arrangementWorkaround, "clearClipAtDuplicateTarget")
+        .mockReturnValue(true);
+
+      const mockClip = {
+        id: "789",
+        getProperty: vi.fn((prop) =>
+          prop === "is_arrangement_clip" ? 1 : null,
+        ),
+        trackIndex,
+      };
+
+      const updatedClips: { id: string }[] = [];
+
+      handleArrangementOperations({
+        clip: mockClip as unknown as LiveAPI,
+        isAudioClip: true,
+        arrangementStartBeats: 16,
+        arrangementLengthBeats: null,
+        tracksWithMovedClips: new Map(),
+        context: mockContext,
+        updatedClips,
+        noteResult: null,
+      });
+
+      // isAudioClip:true → isMidiClip must be false (4th arg).
+      expect(clearSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        "789",
+        16,
+        false,
+        expect.anything(),
+      );
+
+      clearSpy.mockRestore();
+    });
+
+    it("returns early without recording a result for a deleted non-survivor", () => {
+      const trackIndex = 0;
+      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+      });
+
+      const mockClip = {
+        id: "200",
+        getProperty: vi.fn((prop) =>
+          prop === "is_arrangement_clip" ? 1 : null,
+        ),
+        trackIndex,
+        exists: () => true,
+      };
+
+      const updatedClips: { id: string }[] = [];
+
+      handleArrangementOperations({
+        clip: mockClip as unknown as LiveAPI,
+        isAudioClip: false,
+        arrangementStartBeats: 16,
+        arrangementLengthBeats: null,
+        tracksWithMovedClips: new Map(),
+        context: mockContext,
+        updatedClips,
+        noteResult: null,
+        isNonSurvivor: true,
+      });
+
+      // Non-survivor is deleted and start-op returns null → early return, so
+      // nothing is pushed to updatedClips.
+      expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 200");
+      expect(updatedClips).toStrictEqual([]);
     });
   });
 });

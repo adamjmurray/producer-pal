@@ -10,6 +10,10 @@ import {
   type BufferState,
   type BarCopyResult,
 } from "./barbeat-interpreter-buffer-helpers.ts";
+import {
+  copyBarToBar,
+  copyNoteToDestination,
+} from "./barbeat-interpreter-copy-bar-helpers.ts";
 
 export interface BarCopyElement {
   destination: { bar?: number; range?: [number, number] };
@@ -17,94 +21,36 @@ export interface BarCopyElement {
 }
 
 /**
- * Copy a note to a destination bar
- * @param sourceNote - Source note to copy
- * @param destBar - Destination bar number
- * @param destinationBarStart - Start time of destination bar
- * @param events - Output events array
+ * Warn once when a bar copy found nothing to copy because its ENTIRE source is
+ * empty. Sparse sources (some empty bars, some with notes) copy silently — a
+ * partial gap is normal (e.g. held multi-bar chords tiled across a range).
+ * Self-copy skips are reported separately, so a source that had content but was
+ * fully self-skipped does not warn here (its bars still count as content).
+ * @param sourceBars - Every source bar the copy referenced (contiguous, non-empty)
  * @param notesByBar - Notes by bar cache
  */
-export function copyNoteToDestination(
-  sourceNote: BarCopyNote,
-  destBar: number,
-  destinationBarStart: number,
-  events: NoteEvent[],
+function warnIfSourceEntirelyEmpty(
+  sourceBars: number[],
   notesByBar: Map<number, BarCopyNote[]>,
 ): void {
-  const copiedNote: NoteEvent = {
-    pitch: sourceNote.pitch,
-    start_time: destinationBarStart + sourceNote.relativeTime,
-    duration: sourceNote.duration,
-    velocity: sourceNote.velocity,
-    probability: sourceNote.probability,
-    velocity_deviation: sourceNote.velocity_deviation,
-  };
+  const hasContent = sourceBars.some((bar) => {
+    const notes = notesByBar.get(bar);
 
-  events.push(copiedNote);
+    return notes != null && notes.length > 0;
+  });
 
-  // Track in notesByBar cache
-  if (!notesByBar.has(destBar)) {
-    notesByBar.set(destBar, []);
+  if (hasContent) {
+    return;
   }
 
-  const destBarNotes = notesByBar.get(destBar);
+  const lo = Math.min(...sourceBars);
+  const hi = Math.max(...sourceBars);
 
-  if (destBarNotes) {
-    destBarNotes.push({
-      ...copiedNote,
-      relativeTime: sourceNote.relativeTime,
-      originalBar: destBar,
-    });
-  }
-}
-
-/**
- * Copy notes from one source bar to one destination bar
- * @param sourceBar - Source bar number
- * @param destinationBar - Destination bar number
- * @param notesByBar - Notes by bar cache
- * @param events - Output events array
- * @param barDuration - Duration of a bar
- * @returns True if copy succeeded
- */
-function copyBarToBar(
-  sourceBar: number,
-  destinationBar: number,
-  notesByBar: Map<number, BarCopyNote[]>,
-  events: NoteEvent[],
-  barDuration: number,
-): boolean {
-  // Reject self-copy to prevent infinite loop
-  if (sourceBar === destinationBar) {
-    console.warn(
-      `Cannot copy bar ${sourceBar} to itself (would cause infinite loop)`,
-    );
-
-    return false;
-  }
-
-  const sourceNotes = notesByBar.get(sourceBar);
-
-  if (sourceNotes == null || sourceNotes.length === 0) {
-    console.warn(`Bar ${sourceBar} is empty, nothing to copy`);
-
-    return false;
-  }
-
-  // Copy and shift notes
-  const destinationBarStart = (destinationBar - 1) * barDuration;
-
-  for (const sourceNote of sourceNotes) {
-    copyNoteToDestination(
-      sourceNote,
-      destinationBar,
-      destinationBarStart,
-      events,
-      notesByBar,
-    );
-  }
-
-  return true;
+  console.warn(
+    lo === hi
+      ? `Bar ${lo} is empty, nothing to copy`
+      : `Bars ${lo}-${hi} are empty, nothing to copy`,
+  );
 }
 
 /**
@@ -243,7 +189,8 @@ function handleMultiBarSourceRangeCopy(
     const sourceNotes = notesByBar.get(sourceBar);
 
     if (sourceNotes == null || sourceNotes.length === 0) {
-      console.warn(`Bar ${sourceBar} is empty, nothing to copy`);
+      // Skip silently; a sparse source is normal. If NOTHING copies, the
+      // post-loop warnIfSourceEntirelyEmpty reports the fully-empty source.
       destBar++;
       sourceOffset++;
       continue;
@@ -272,6 +219,14 @@ function handleMultiBarSourceRangeCopy(
       currentTime: { bar: destStart, beat: 1 },
     };
   }
+
+  const rangeBars: number[] = [];
+
+  for (let bar = sourceStart; bar <= sourceEnd; bar++) {
+    rangeBars.push(bar);
+  }
+
+  warnIfSourceEntirelyEmpty(rangeBars, notesByBar);
 
   return { currentTime: null };
 }
@@ -464,6 +419,8 @@ export function handleBarCopySingleDestination(
       currentTime: { bar: destBar, beat: 1 },
     };
   }
+
+  warnIfSourceEntirelyEmpty(sourceBars, notesByBar);
 
   return { currentTime: null };
 }

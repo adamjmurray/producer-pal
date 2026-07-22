@@ -5,11 +5,19 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import {
+  lookupMockObject,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   createNote,
   expectedDrumPatternNotes,
 } from "#src/test/test-data-builders.ts";
+import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/arrangement-splitting-test-helpers.ts";
+import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
+import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/update-clip-helpers.ts";
+import * as sessionHelpers from "#src/tools/clip/update/helpers/update-clip-session-helpers.ts";
 import {
   mockMergeNoteTracking,
   setupAudioClipMock,
@@ -18,6 +26,13 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import * as selectModule from "#src/tools/session/select.ts";
+
+// applyCodeToSingleClip is mocked so the code-exec loop in update-clip.ts can be
+// driven in isolation (return value / call count) without real note execution.
+vi.mock(import("#src/tools/clip/code-exec/apply-code-to-clip.ts"), () => ({
+  applyCodeToSingleClip: vi.fn(),
+}));
 
 describe("updateClip - Basic operations", () => {
   let mocks: UpdateClipMocks;
@@ -263,10 +278,7 @@ describe("updateClip - Basic operations", () => {
   /**
    * Register mock objects for toSlot tests (source clip slot + target slot + target clip).
    */
-  async function setupToSlotMocks(): Promise<void> {
-    const { registerMockObject } =
-      await import("#src/test/mocks/mock-registry.ts");
-
+  function setupToSlotMocks(): void {
     registerMockObject("live_set/tracks/0/clip_slots/0", {
       path: livePath.track(0).clipSlot(0),
     });
@@ -283,7 +295,7 @@ describe("updateClip - Basic operations", () => {
 
   it("should move session clip with toSlot", async () => {
     setupMidiClipMock(mocks.clip123);
-    await setupToSlotMocks();
+    setupToSlotMocks();
 
     const result = await updateClip({ ids: "123", toSlot: "1/2" });
 
@@ -295,7 +307,7 @@ describe("updateClip - Basic operations", () => {
 
   it("should warn and use first slot when toSlot has multiple values", async () => {
     setupMidiClipMock(mocks.clip123);
-    await setupToSlotMocks();
+    setupToSlotMocks();
 
     const consoleModule = await import("#src/shared/v8-max-console.ts");
     const warnSpy = vi.spyOn(consoleModule, "warn");
@@ -310,5 +322,252 @@ describe("updateClip - Basic operations", () => {
       id: "live_set/tracks/1/clip_slots/2/clip",
       slot: "1/2",
     });
+  });
+
+  it("should NOT warn about multiple destinations for a single toSlot", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    await updateClip({ ids: "123", toSlot: "1/2" });
+
+    // slots.length is exactly 1 here: the > 1 guard must stay false so no
+    // "using first" warning fires (kills > 1 -> >= 1 and the forced-true mutant).
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      "toSlot only supports a single destination - using first",
+    );
+  });
+
+  it("should include the tool name when more names than clips are provided", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ ids: "123, 456", name: "A, B, C" });
+
+    // The "updateClip" tool-name literal must be preserved in the warning.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "updateClip: 3 names provided but only 2 items — ignoring extra",
+    );
+  });
+
+  describe("focus", () => {
+    it("should select the last updated clip when focus is set", async () => {
+      setupMidiClipMock(mocks.clip123);
+      const selectSpy = vi
+        .spyOn(selectModule, "select")
+        .mockReturnValue({} as never);
+
+      await updateClip({ ids: "123", focus: true });
+
+      expect(selectSpy).toHaveBeenCalledWith({
+        clipId: "123",
+        detailView: "clip",
+      });
+    });
+
+    it("should NOT select when focus is omitted", async () => {
+      setupMidiClipMock(mocks.clip123);
+      const selectSpy = vi
+        .spyOn(selectModule, "select")
+        .mockReturnValue({} as never);
+
+      await updateClip({ ids: "123" });
+
+      // focus is falsy so the whole guard must be false (kills forced-true).
+      expect(selectSpy).not.toHaveBeenCalled();
+    });
+
+    it("should NOT select or throw when focus is set but nothing was updated", async () => {
+      mockNonExistentObjects();
+      const selectSpy = vi
+        .spyOn(selectModule, "select")
+        .mockReturnValue({} as never);
+
+      // updatedClips.length is 0; the > 0 guard must stay false (kills >= 0,
+      // which would read updatedClips.at(-1).id on an empty array and throw).
+      const result = await updateClip({ ids: "nonexistent", focus: true });
+
+      expect(result).toStrictEqual([]);
+      expect(selectSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  it("should quantize a MIDI clip via the call-site options object", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ ids: "123", quantize: 1 });
+
+    // The options object passed to handleQuantization must carry quantize;
+    // blanking it to {} would skip quantization entirely. 5 == QUANTIZE_GRID 1/16.
+    expect(mocks.clip123.call).toHaveBeenCalledWith("quantize", 5, 1);
+  });
+
+  it("should run warp marker operations when warpOp is provided", async () => {
+    setupAudioClipMock(mocks.clip456, { file_path: "/audio/test.wav" });
+
+    await updateClip({ ids: "456", warpOp: "add" });
+
+    // handleWarpMarkerOperation runs only inside the warpOp != null guard; with
+    // no warpBeatTime it warns, proving the guarded block executed.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "warpBeatTime required for add operation",
+    );
+  });
+
+  it("should write notes and not treat a MIDI clip as audio", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    const result = await updateClip({ ids: "123", notes: "C3 1|1" });
+
+    // isAudioClip must be false: notes are written and the audio-only warning
+    // must not fire (forced-true would suppress notes and warn instead).
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      "notes parameter ignored for audio clip",
+    );
+    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+  });
+
+  it("should apply code exactly once per clip without a failure warning", async () => {
+    setupMidiClipMock(mocks.clip123);
+    vi.mocked(applyCodeToSingleClip).mockResolvedValue(3);
+
+    const result = await updateClip({ ids: "123", code: "return notes" });
+
+    // Loop bound is j < length: exactly one call, no extra iteration that would
+    // dereference undefined and emit a "Failed to update clip" warning.
+    expect(applyCodeToSingleClip).toHaveBeenCalledTimes(1);
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Failed to update clip"),
+    );
+    expect(result).toStrictEqual({ id: "123", noteCount: 3 });
+  });
+
+  it("should omit noteCount when code exec returns null", async () => {
+    setupMidiClipMock(mocks.clip123);
+    vi.mocked(applyCodeToSingleClip).mockResolvedValue(null);
+
+    const result = await updateClip({ ids: "123", code: "return notes" });
+
+    // noteCount != null guard: a null result must not set the field.
+    expect(result).toStrictEqual({ id: "123" });
+    expect(result).not.toHaveProperty("noteCount");
+  });
+
+  it("should thread isNonSurvivor from nonSurvivorClipIds into position ops", async () => {
+    setupMidiClipMock(mocks.clip123);
+    const clip = LiveAPI.from("id 123");
+    const posSpy = vi
+      .spyOn(sessionHelpers, "handlePositionOperations")
+      .mockImplementation(() => {
+        /* intercept only */
+      });
+
+    processSingleClipUpdate({
+      clip,
+      clipIndex: 0,
+      clipCount: 1,
+      context: {},
+      updatedClips: [],
+      tracksWithMovedClips: new Map(),
+      nonSurvivorClipIds: new Set(["123"]),
+    });
+
+    // clip.id "123" is in the set, so isNonSurvivor must be true (?? false, not
+    // && false which would force it false).
+    expect(posSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ isNonSurvivor: true }),
+    );
+  });
+});
+
+describe("updateClip - splitting mutation coverage", () => {
+  it("should warn when split targets a non-arrangement clip", async () => {
+    const mocks = setupUpdateClipMocks();
+
+    setupMidiClipMock(mocks.clip123); // session clip: is_arrangement_clip = 0
+
+    const result = await updateClip({ ids: "123", split: "2|1" });
+
+    // Session clips are excluded from arrangementClips, so prepareSplitParams
+    // sees an empty list and warns. The <= 0 guard must return false for them
+    // (forced-true / never-false mutants would include the clip and split it).
+    expect(outlet).toHaveBeenCalledWith(1, "split requires arrangement clips");
+    expect(result).toStrictEqual({ id: "123" });
+  });
+
+  it("should split an arrangement clip and return the fresh clips only", async () => {
+    const clipId = "clip_1";
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    // rescanSplitClips reads arrangement_clips: return one real fresh clip plus
+    // a non-existent one (id "0") that clip.exists() must filter out.
+    const freshClipId = "fresh_clip";
+
+    registerMockObject(freshClipId, {
+      path: livePath.track(0).arrangementClip(2),
+      type: "Clip",
+      properties: {
+        start_time: 0.0,
+        is_midi_clip: 1,
+        is_arrangement_clip: 1,
+      },
+    });
+
+    const trackMock = lookupMockObject("track_0", livePath.track(0));
+    const origGet = trackMock?.get.getMockImplementation();
+
+    trackMock?.get.mockImplementation((prop: string) => {
+      if (prop === "arrangement_clips") return ["id", freshClipId, "id", "0"];
+
+      return origGet ? origGet(prop) : [0];
+    });
+
+    const result = await updateClip(
+      { ids: clipId, split: "2|1" },
+      { holdingAreaStartBeats: 40000 },
+    );
+
+    // Splitting ran (arrangement clip kept by the <= 0 / >= 0 boundary)...
+    expect(callState.trackMock.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.any(String),
+      expect.any(Number),
+    );
+
+    const resultIds = (Array.isArray(result) ? result : [result]).map(
+      (r) => r.id,
+    );
+
+    // ...and the exists() filter keeps the fresh clip, drops the missing "0".
+    expect(resultIds).toContain(freshClipId);
+    expect(resultIds).not.toContain("0");
+  });
+
+  it("should not split (or throw) when the split format is invalid", async () => {
+    const clipId = "clip_1";
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    // split is provided but unparseable, so splitPoints is null. The guard's
+    // splitPoints != null term must stay honored (forced-true / || mutants
+    // would call performSplitting with null and throw).
+    const result = await updateClip(
+      { ids: clipId, split: "not-a-position" },
+      { holdingAreaStartBeats: 40000 },
+    );
+
+    expect(result).toBeDefined();
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 });

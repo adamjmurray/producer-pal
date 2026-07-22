@@ -143,8 +143,9 @@ arrive, and when the result comes in, `t l b zlclear` triggers `list.join` to
 the buffer for the next request). The merged message is what finally crosses
 back to Node.
 
-The key to keeping the two halves apart is a **demarking symbol** that V8 places
-between the JSON chunks and the warnings:
+The key to keeping the two halves apart is a **demarking symbol**: V8 appends it
+to outlet 0 right after the JSON chunks, and the Max patch appends the warnings
+after that:
 
 ```
 $$___MAX_ERRORS___$$

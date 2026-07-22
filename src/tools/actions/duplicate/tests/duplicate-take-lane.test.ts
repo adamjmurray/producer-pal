@@ -41,14 +41,23 @@ function registerLiveSet(): void {
   });
 }
 
+interface SourceClipOptions {
+  /** Extra clip properties merged over the defaults (e.g. `color`). */
+  extraProps?: Record<string, number>;
+  /** Custom get_notes_extended implementation (e.g. windowed pickup reads). */
+  getNotesExtended?: (...args: unknown[]) => string;
+}
+
 /**
  * Register a source arrangement clip (track 0, main lane) for duplication.
  * @param midi - Whether the source is a MIDI clip
  * @param notes - Notes returned by the source's get_notes_extended
+ * @param options - Extra clip properties / custom get_notes_extended
  */
 function registerArrangementSource(
   midi: boolean,
   notes: Array<Record<string, number>> = [SOURCE_NOTE],
+  options: SourceClipOptions = {},
 ): void {
   registerMockObject("src_clip", {
     path: livePath.track(0).arrangementClip(0),
@@ -65,9 +74,11 @@ function registerArrangementSource(
       looping: 1,
       signature_numerator: 4,
       signature_denominator: 4,
+      ...options.extraProps,
     },
     methods: {
-      get_notes_extended: () => JSON.stringify({ notes }),
+      get_notes_extended:
+        options.getNotesExtended ?? (() => JSON.stringify({ notes })),
     },
   });
 }
@@ -77,14 +88,16 @@ function registerArrangementSource(
  * and return the newly created lane clip mock for assertions.
  * @param overrides - Extra duplicate args merged over the take-lane defaults
  * @param notes - Notes returned by the source's get_notes_extended
+ * @param sourceOptions - Extra source-clip properties / custom get_notes_extended
  * @returns The new lane clip mock, or undefined if none was created
  */
 async function duplicateToFreshLane(
   overrides: Partial<Parameters<typeof duplicate>[0]> = {},
   notes: Array<Record<string, number>> = [SOURCE_NOTE],
+  sourceOptions: SourceClipOptions = {},
 ): Promise<ReturnType<typeof lookupMockObject>> {
   registerLiveSet();
-  registerArrangementSource(true, notes);
+  registerArrangementSource(true, notes, sourceOptions);
   registerTakeLaneTrack({ initialLanes: 0 });
 
   await duplicate({
@@ -132,13 +145,34 @@ describe("duplicate take lane", () => {
     expect(newClip?.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [SOURCE_NOTE],
     });
+    // Every loop/marker/signature property is copied from the source (each read
+    // is a distinct getProperty; blanking any one would set undefined instead).
+    expect(newClip?.set).toHaveBeenCalledWith("start_marker", 0);
+    expect(newClip?.set).toHaveBeenCalledWith("loop_start", 0);
     expect(newClip?.set).toHaveBeenCalledWith("loop_end", 4);
+    expect(newClip?.set).toHaveBeenCalledWith("end_marker", 4);
     expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
+    expect(newClip?.set).toHaveBeenCalledWith("signature_numerator", 4);
+    expect(newClip?.set).toHaveBeenCalledWith("signature_denominator", 4);
+    // The lane number (1-based) is reported so the user can find the new clip.
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("created on take lane 1"),
+    );
     expect(result).toMatchObject({
       trackIndex: 0,
       arrangementStart: "5|1",
       takeLane: 1,
     });
+  });
+
+  it("copies the source clip's color when no color override is given", async () => {
+    const newClip = await duplicateToFreshLane({}, [], {
+      extraProps: { color: 0x123456 },
+    });
+
+    // No override → the raw source color int is copied straight through (the
+    // else branch, bypassing setColor's #RRGGBB path).
+    expect(newClip?.set).toHaveBeenCalledWith("color", 0x123456);
   });
 
   it("captures a pickup note (negative start_time) when copying to a take lane", async () => {
@@ -151,45 +185,16 @@ describe("duplicate take lane", () => {
     const pickup = { ...SOURCE_NOTE, start_time: -0.5 };
     const allNotes = [pickup, SOURCE_NOTE];
 
-    registerMockObject("src_clip", {
-      path: livePath.track(0).arrangementClip(0),
-      type: "Clip",
-      properties: {
-        is_midi_clip: 1,
-        is_arrangement_clip: 1,
-        length: 4,
-        loop_start: 0,
-        loop_end: 4,
-        start_marker: 0,
-        end_marker: 4,
-        looping: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-      methods: {
-        get_notes_extended: (_pitch, _pitchSpan, fromTime, span) =>
-          JSON.stringify({
-            notes: allNotes.filter(
-              (n) =>
-                n.start_time >= (fromTime as number) &&
-                n.start_time < (fromTime as number) + (span as number),
-            ),
-          }),
-      },
+    const newClip = await duplicateToFreshLane({}, [], {
+      getNotesExtended: (_pitch, _pitchSpan, fromTime, span) =>
+        JSON.stringify({
+          notes: allNotes.filter(
+            (n) =>
+              n.start_time >= (fromTime as number) &&
+              n.start_time < (fromTime as number) + (span as number),
+          ),
+        }),
     });
-    registerTakeLaneTrack({ initialLanes: 0 });
-
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      arrangementStart: "1|1",
-      takeLane: "new",
-    });
-
-    const newClip = lookupMockObject(
-      undefined,
-      livePath.track(0).takeLane(0).arrangementClip(0),
-    );
 
     expect(newClip?.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [pickup, SOURCE_NOTE],
@@ -339,8 +344,12 @@ describe("duplicate take lane", () => {
     );
 
     expect(created).toStrictEqual([]);
+    // The wrapped warning carries the inner "failed to create Arrangement clip"
+    // throw (from the not-exists guard), not some other downstream error.
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("failed to create take-lane clip at beat 0"),
+      expect.stringContaining(
+        "failed to create take-lane clip at beat 0: failed to create Arrangement clip",
+      ),
     );
   });
 

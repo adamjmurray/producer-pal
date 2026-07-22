@@ -8,11 +8,14 @@
  * Handles note extraction, context building, and note application.
  */
 
-import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
-import { sortNotes } from "#src/notation/note-sort.ts";
-import { type NoteEvent } from "#src/notation/types.ts";
+import {
+  codeNoteToNoteEvent,
+  noteEventToCodeNote,
+} from "#src/notation/midi-json/midi-json-note.ts";
+import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   readAllClipNotes,
   rawNotesToNoteEvents,
@@ -22,7 +25,6 @@ import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type CodeClipContext,
   type CodeExecutionContext,
-  type CodeExecutionResult,
   type CodeLiveSetContext,
   type CodeLocationContext,
   type CodeNote,
@@ -62,17 +64,24 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
     return;
   }
 
-  // Convert musical beats back to Ableton beats, then sort ascending by
-  // start_time before adding. User code returns notes in arbitrary order, but
-  // add_new_notes deletes an earlier same-pitch note when a later-written note
-  // overlaps its onset — so an unsorted write silently drops notes. Every other
-  // write path sorts first (see note-sort.ts for the invariant); this one didn't.
+  // Convert musical beats back to Ableton beats, then dedupe same-pitch+start
+  // collisions (keep-last) and sort ascending by start_time before adding. User
+  // code returns notes in arbitrary order and may emit two notes at the same
+  // pitch+onset; add_new_notes deletes an earlier same-pitch note when a
+  // later-written note overlaps its onset, so an unsorted or duplicated write
+  // silently drops notes. Every other write path does this (see note-sort.ts).
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
-  const noteEvents = sortNotes(
+  const { notes: noteEvents, collisions } = dedupeAndSortNotes(
     notes.map((note) => codeNoteToNoteEvent(note, timeSigDenominator)),
   );
+
+  if (collisions > 0) {
+    console.warn(
+      `Dropped ${collisions} duplicate note${collisions === 1 ? "" : "s"} at the same pitch and start`,
+    );
+  }
 
   clip.call("add_new_notes", { notes: noteEvents });
 }
@@ -110,138 +119,18 @@ export function buildCodeExecutionContext(
   return { track, clip: clipContext, location, liveSet, beatsPerBar };
 }
 
-/**
- * Convert internal NoteEvent to code-facing CodeNote format. Live's note times
- * are Ableton (quarter-note) beats; user code works in the clip's musical beats
- * (an eighth in 6/8) to match `context.beatsPerBar` and the rest of Producer Pal
- * — so scale by `denominator / 4`.
- *
- * @param event - Internal NoteEvent with snake_case properties
- * @param timeSigDenominator - Clip time-signature denominator
- * @returns CodeNote with camelCase properties
- */
-export function noteEventToCodeNote(
-  event: NoteEvent,
-  timeSigDenominator: number,
-): CodeNote {
-  const toMusical = timeSigDenominator / 4;
-
-  return {
-    pitch: event.pitch,
-    start: event.start_time * toMusical,
-    duration: event.duration * toMusical,
-    velocity: event.velocity,
-    velocityDeviation: event.velocity_deviation ?? 0,
-    probability: event.probability ?? 1,
-  };
-}
-
-/**
- * Convert code-facing CodeNote to internal NoteEvent format. Inverse of
- * {@link noteEventToCodeNote}: musical beats back to Ableton (quarter-note)
- * beats via `4 / denominator`.
- *
- * @param note - CodeNote with camelCase properties
- * @param timeSigDenominator - Clip time-signature denominator
- * @returns Internal NoteEvent with snake_case properties
- */
-export function codeNoteToNoteEvent(
-  note: CodeNote,
-  timeSigDenominator: number,
-): NoteEvent {
-  const toAbleton = 4 / timeSigDenominator;
-
-  return {
-    pitch: note.pitch,
-    start_time: note.start * toAbleton,
-    duration: note.duration * toAbleton,
-    velocity: note.velocity,
-    velocity_deviation: note.velocityDeviation,
-    probability: note.probability,
-  };
-}
-
 /** @see getClipNoteCount - re-exported for code-exec API compatibility */
 export { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 
-/**
- * Validate a raw sandbox result as a notes array.
- * Filters out invalid notes and clamps values to valid ranges.
- *
- * @param result - Raw result from sandbox execution
- * @returns Validated CodeExecutionResult
- */
-export function validateCodeNotes(result: unknown): CodeExecutionResult {
-  if (!Array.isArray(result)) {
-    return {
-      success: false,
-      error: `Code must return an array of notes, got ${typeof result}`,
-    };
-  }
-
-  const validatedNotes: CodeNote[] = [];
-
-  for (const note of result) {
-    const validated = validateAndSanitizeNote(note);
-
-    if (validated.valid) {
-      validatedNotes.push(validated.note);
-    }
-    // Invalid notes are silently filtered out
-  }
-
-  return { success: true, notes: validatedNotes };
-}
-
-/**
- * Validate and sanitize a note from user code.
- * Returns a valid note with clamped values, or invalid if note is malformed.
- *
- * @param note - The note object to validate
- * @returns Valid note with sanitized values, or invalid marker
- */
-export function validateAndSanitizeNote(
-  note: unknown,
-): { valid: true; note: CodeNote } | { valid: false } {
-  if (typeof note !== "object" || note == null) {
-    return { valid: false };
-  }
-
-  const n = note as Record<string, unknown>;
-
-  // Check required properties exist and are numbers
-  if (typeof n.pitch !== "number" || typeof n.start !== "number") {
-    return { valid: false };
-  }
-
-  // Default duration and velocity if not provided
-  const duration = typeof n.duration === "number" ? n.duration : 1;
-  const velocity =
-    typeof n.velocity === "number" ? n.velocity : DEFAULT_VELOCITY;
-
-  // Validate ranges (start can be negative for notes before clip start)
-  if (duration <= 0) {
-    return { valid: false };
-  }
-
-  // Sanitize by clamping values
-  const sanitized: CodeNote = {
-    pitch: Math.max(0, Math.min(127, Math.round(n.pitch))),
-    start: n.start,
-    duration: Math.max(0.001, duration),
-    velocity: Math.max(1, Math.min(127, Math.round(velocity))),
-    velocityDeviation: Math.max(
-      0,
-      Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),
-    ),
-    probability: Math.max(
-      0,
-      Math.min(1, n.probability == null ? 1 : Number(n.probability)),
-    ),
-  };
-
-  return { valid: true, note: sanitized };
-}
+// The note model, converters, and validators now live in the notation layer
+// (shared with the MIDI JSON notation). Re-exported here so code-exec callers
+// and tests keep importing them from this module.
+export {
+  codeNoteToNoteEvent,
+  noteEventToCodeNote,
+  validateAndSanitizeNote,
+  validateCodeNotes,
+} from "#src/notation/midi-json/midi-json-note.ts";
 
 /**
  * Determine the view and location info for a clip.

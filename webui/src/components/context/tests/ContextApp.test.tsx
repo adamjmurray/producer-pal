@@ -10,9 +10,9 @@ import { render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContextApp } from "#webui/components/context/ContextApp";
 
-vi.mock(import("#webui/components/context/ContextScreen"), () => ({
-  ContextScreen: (props: { onClose?: () => void } = {}) => (
-    <div data-testid="context-screen">
+vi.mock(import("#webui/components/context/ContextTabs"), () => ({
+  ContextTabs: (props: { onClose?: () => void } = {}) => (
+    <div data-testid="context-tabs">
       {props.onClose && (
         <button data-testid="close-button" onClick={props.onClose}>
           Close
@@ -31,10 +31,10 @@ describe("ContextApp", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders the ContextScreen", () => {
+  it("renders the ContextTabs", () => {
     render(<ContextApp />);
 
-    expect(screen.getByTestId("context-screen")).toBeTruthy();
+    expect(screen.getByTestId("context-tabs")).toBeTruthy();
   });
 
   it("close navigates to /", () => {

@@ -7,8 +7,7 @@ directly from within Producer Pal.
 
 ## Getting Started
 
-1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab (make
-   sure the Chat UI is enabled)
+1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab
 2. Configure your AI provider in [Settings](#settings) (opens automatically on
    first use)
 3. Click "Quick Connect" to connect to Ableton Live
@@ -35,10 +34,14 @@ The header is organized into two areas:
 - **Provider & Model** - Click to open connection settings
 - **Tools count** - Click to open tools settings
 - **Model size** - Shows "large model" or "small model" mode
-- **Project context** - Open the project memory editor in a larger view. Press
-  the close (✕) button to return to the chat
+- **Help (?)** - Link to documentation. Hide it (here and in settings) with
+  **Show help links** in [Preferences](#preferences)
+- **Context** - Open the [context editor](/guide/context) in a larger view,
+  where you teach AI about your project (**Project**), your preferences
+  (**Global**), customize its system prompt (**Instructions**) and skills
+  (**Skills**), and review what it remembers about you (**Memory**). Press the
+  close (✕) button to return to the chat
 - **Settings gear** - Open settings dialog
-- **Help (?)** - Link to documentation
 
 ## Conversation History
 
@@ -66,7 +69,7 @@ Each conversation in the list has action buttons that appear on hover:
 Conversations are stored in your browser's built-in database (IndexedDB), and
 settings (including API keys) are stored in local storage. This means all your
 data lives in that specific browser and user profile — it won't be available if
-you switch browsers or profiles. Use [Export & Import](#export--import) to move
+you switch browsers or profiles. Use [Export & Import](#export-import) to move
 conversations between browsers.
 
 Up to 200 conversations are kept; when the limit is reached, the oldest
@@ -255,7 +258,7 @@ The Connection tab is where you choose and configure your AI provider and model:
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
-  LM Studio (local), OpenRouter, or Custom
+  LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
 - **API Key** - Your API key (for cloud providers)
 - **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
@@ -291,14 +294,15 @@ You may need to change the URL if:
   focuses on running Ableton Live. Replace `localhost` with the other computer's
   network address (e.g., `http://192.168.1.100:11434`)
 
-### Voice
+#### Voice
 
-Producer Pal includes an experimental voice mode for spoken conversations with
-the AI, available on **OpenAI** and **Google (Gemini)**. To use it, set the
-**Provider** and select that provider's voice model on the
-[Connection](#connection) tab — **GPT Realtime 2 (Voice)** for OpenAI or
-**Gemini 3.1 Flash Live (Voice)** for Google. The **Voice** dropdown and a
-collapsible **Voice Settings** section then appear.
+There's no separate Voice tab — the **Voice** dropdown and **Voice Settings**
+below live on this **Connection** tab, and only appear once a voice model is
+selected. Producer Pal includes an experimental voice mode for spoken
+conversations with the AI, available on **OpenAI** and **Google (Gemini)**. To
+use it, set the **Provider** and select that provider's voice model — **GPT
+Realtime 2 (Voice)** for OpenAI or **Gemini 3.1 Flash Live (Voice)** for Google.
+The **Voice** dropdown and a collapsible **Voice Settings** section then appear.
 
 <img src="/img/producer-pal-chat-settings-voice.png" alt="Voice settings" width="500"/>
 
@@ -308,7 +312,7 @@ collapsible **Voice Settings** section then appear.
   more. The voice locks once a session starts talking, so changing it applies on
   the next session (Stop, then Talk).
 
-#### Voice Settings
+##### Voice Settings
 
 The **Voice Settings** disclosure groups playback and turn-detection options.
 Each slider has a **Reset** link to restore its default. Changes apply on the
@@ -320,7 +324,8 @@ controls differ because each provider exposes its own voice-activity-detection
 (VAD) knobs. **Speed** is OpenAI only (the Gemini Live API has no playback-speed
 setting).
 
-- **Volume** - Output loudness of the assistant's voice (0–100%, default 100%).
+- **Volume** - Output loudness of the assistant's voice (0–125%, default 100%).
+  It boosts above 100% so you can lift the assistant over loud playback.
   Adjustable live during a session, so you can balance the assistant against the
   music coming from Ableton without touching Live's mixer.
 - **Speed** _(OpenAI only)_ - Playback speed of the assistant's voice
@@ -358,12 +363,32 @@ Consult [the Features page](/features) for more info on what each tool does.
 
 <img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
 
+The **Context** checkbox under **Core** controls the Context tool, which AI uses
+to _edit_ your [context and memory](/guide/context) and to load a memory entry
+it wants to read in full. Turn it off to keep AI from changing them. Your
+project context, global context, and the memory index are attached when AI
+connects either way, so to stop it reading a layer, empty that layer. **Edit
+Context** below the checkbox opens the context editor.
+
 The **Live API** checkbox under **Advanced** behaves differently from the other
-toggles. The rest only filter which tools the chat UI's AI can see, but this one
+toggles. The rest only filter which tools the Chat UI's AI can see, but this one
 mirrors the device's Setup-tab **Direct Live API** toggle, so enabling it here
 also turns the tool on at the device level (MCP clients and the
 [REST API](/guide/rest-api) will see it too). It is off by default; see
 [Direct Live API](/features#ppal-live-api) for why.
+
+The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
+clip notes — **[bar|beat](/features/midi-notation#bar-beat)** (the default),
+**[MIDI JSON](/features/midi-notation#midi-json)**, or
+**[Stark](/features/midi-notation#stark)** (a literal, round-trippable notation
+with chord symbols, friendly to small/local models). See
+[MIDI Notation](/features/midi-notation) for the tradeoffs. Like the Live API
+toggle, this is a global device setting rather than a per-conversation one: it
+mirrors the device's Setup pane and applies to MCP clients and the REST API too.
+Because the AI's notation instructions are fixed at the start of a conversation,
+the switch takes full effect in a **new conversation** — changing it mid-chat
+re-parses your notes under the new notation but the AI keeps writing the old one
+until then.
 
 ### Preferences
 

@@ -125,6 +125,35 @@ describe("updateScene", () => {
     });
   });
 
+  it("accepts boundary tempos of exactly 20 and 999", () => {
+    // Boundaries: 20 and 999 are valid (< 20 / > 999 are the reject bounds).
+    updateScene({ ids: "123", tempo: 20 });
+    expect(scene1.set).toHaveBeenCalledWith("tempo", 20);
+
+    updateScene({ ids: "456", tempo: 999 });
+    expect(scene2.set).toHaveBeenCalledWith("tempo", 999);
+  });
+
+  it("warns and skips a tempo above the maximum", async () => {
+    await withConsoleSpy((consoleSpy) => {
+      updateScene({ ids: "123", tempo: 1000 });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
+      );
+      expect(scene1.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
+    });
+  });
+
+  it("warns with the tool label when more names than scenes are given", () => {
+    updateScene({ ids: "123,456", name: "A,B,C,D" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("updateScene: 4 names provided"),
+    );
+  });
+
   it("should disable time signature when 'disabled' is passed", () => {
     const result = updateScene({
       ids: "123",
@@ -320,6 +349,17 @@ describe("updateScene", () => {
     it("should not call select when focus=false", () => {
       updateScene({ ids: "123", name: "Test", focus: false });
 
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+
+    it("does not focus when every id was skipped", () => {
+      mockNonExistentObjects();
+
+      // updatedScenes is empty, so `length > 0` guards the focus block; a
+      // mutated `>= 0`/`true` would enter it and crash on `.at(-1).id`.
+      const result = updateScene({ ids: "nonexistent", focus: true });
+
+      expect(result).toStrictEqual([]);
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
   });

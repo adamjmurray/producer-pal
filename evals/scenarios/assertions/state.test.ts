@@ -5,10 +5,25 @@
 /**
  * Tests for state.ts - State assertion with mocked MCP client
  */
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { type StateAssertion } from "../types.ts";
+import { getNotation, setConfig } from "#evals/shared/config.ts";
+import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
+import { type StateAssertion, type EvalTurnResult } from "../types.ts";
 import { assertState } from "./state.ts";
+
+// The factory is hoisted above the imports, so it must NOT reference imported
+// bindings like DEFAULT_NOTATION (ReferenceError once another file isn't loading
+// the module first to mask it). Set the default resolved value in beforeEach.
+vi.mock(import("#evals/shared/config.ts"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  setConfig: vi.fn().mockResolvedValue(undefined),
+  getNotation: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.mocked(getNotation).mockResolvedValue(DEFAULT_NOTATION);
+});
 
 /** Type for state assertion details */
 interface StateDetails {
@@ -52,7 +67,7 @@ describe("assertState", () => {
         expect: { name: "Track 1" },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
       expect(result.message).toContain("passed");
@@ -78,7 +93,7 @@ describe("assertState", () => {
         expect: { track: { name: "Bass" } },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
     });
@@ -94,7 +109,7 @@ describe("assertState", () => {
         expect: { name: "Track 2" },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
       expect(result.message).toContain("failed");
@@ -118,7 +133,7 @@ describe("assertState", () => {
         expect: { volume: 0.5 },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
     });
@@ -140,7 +155,7 @@ describe("assertState", () => {
         },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
@@ -163,7 +178,7 @@ describe("assertState", () => {
         },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
     });
@@ -179,7 +194,7 @@ describe("assertState", () => {
         expect: (result) => typeof result === "string",
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
@@ -196,7 +211,7 @@ describe("assertState", () => {
         expect: (result) => result === "Not valid JSON {",
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
     });
@@ -214,7 +229,7 @@ describe("assertState", () => {
         expect: { name: "Track 1" },
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
       expect(result.message).toContain("error");
@@ -235,12 +250,37 @@ describe("assertState", () => {
         expect: {},
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
       const details = result.details as StateDetails;
 
       expect(details.error).toContain("string error");
+    });
+  });
+
+  describe("dynamic args from turns", () => {
+    it("resolves args from a function of the completed turns", async () => {
+      const mockClient = createMockClient(
+        mcpResult(JSON.stringify({ ok: true })),
+      );
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        args: (turns) => ({ clipId: `clip-${turns.length}` }),
+        expect: {},
+      };
+
+      await assertState(
+        assertion,
+        [{}, {}] as unknown as EvalTurnResult[],
+        mockClient,
+      );
+
+      expect(mockClient.callTool).toHaveBeenCalledWith({
+        name: "ppal-read-clip",
+        arguments: { clipId: "clip-2" },
+      });
     });
   });
 
@@ -254,7 +294,7 @@ describe("assertState", () => {
         expect: {},
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.assertion).toBe(assertion);
     });
@@ -268,9 +308,91 @@ describe("assertState", () => {
         expect: {},
       };
 
-      const result = await assertState(assertion, mockClient);
+      const result = await assertState(assertion, [], mockClient);
 
       expect(result.message).toContain("custom-tool-name");
+    });
+  });
+
+  describe("notation override", () => {
+    beforeEach(() => {
+      vi.mocked(setConfig).mockClear();
+      vi.mocked(getNotation).mockReset().mockResolvedValue(DEFAULT_NOTATION);
+    });
+
+    it("leaves config untouched when no notation override is set", async () => {
+      const mockClient = createMockClient(mcpResult(JSON.stringify({})));
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "read-track",
+        args: {},
+        expect: {},
+      };
+
+      await assertState(assertion, [], mockClient);
+
+      expect(setConfig).not.toHaveBeenCalled();
+    });
+
+    it("restores the prior notation after a per-assertion override", async () => {
+      const mockClient = createMockClient(
+        mcpResult(JSON.stringify({ ok: true })),
+      );
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        notation: "midi-json",
+        args: { clipId: "1" },
+        expect: () => true,
+      };
+
+      await assertState(assertion, [], mockClient);
+
+      // Override applied for the read, then reset so it can't leak downstream.
+      expect(setConfig).toHaveBeenNthCalledWith(1, { notation: "midi-json" });
+      expect(setConfig).toHaveBeenNthCalledWith(2, {
+        notation: DEFAULT_NOTATION,
+      });
+    });
+
+    it("restores the scenario's notation, not the hardcoded default", async () => {
+      // Scenario configured a non-default notation; a mid-scenario assertion
+      // that overrides notation must restore that configured value, not barbeat.
+      vi.mocked(getNotation).mockResolvedValue("stark");
+      const mockClient = createMockClient(
+        mcpResult(JSON.stringify({ ok: true })),
+      );
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        notation: "midi-json",
+        args: { clipId: "1" },
+        expect: () => true,
+      };
+
+      await assertState(assertion, [], mockClient);
+
+      expect(setConfig).toHaveBeenNthCalledWith(1, { notation: "midi-json" });
+      expect(setConfig).toHaveBeenNthCalledWith(2, { notation: "stark" });
+    });
+
+    it("still restores the notation when the read throws", async () => {
+      vi.mocked(getNotation).mockResolvedValue("stark");
+      const mockClient = {
+        callTool: vi.fn().mockRejectedValue(new Error("boom")),
+      } as unknown as Client;
+      const assertion: StateAssertion = {
+        type: "state",
+        tool: "ppal-read-clip",
+        notation: "midi-json",
+        args: {},
+        expect: () => true,
+      };
+
+      const result = await assertState(assertion, [], mockClient);
+
+      expect(result.earned).toBe(0);
+      expect(setConfig).toHaveBeenNthCalledWith(2, { notation: "stark" });
     });
   });
 });

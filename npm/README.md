@@ -102,13 +102,13 @@ Edit Settings → Program → Integrations → `mcp.json`:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal", "-s"]
+      "args": ["-y", "producer-pal", "--small-model-mode"]
     }
   }
 }
 ```
 
-The `-s` flag enables [small model mode](#cli-flags). See the
+The `--small-model-mode` flag enables [small model mode](#cli-flags). See the
 [LM Studio guide](https://producer-pal.org/installation/lm-studio) for details.
 
 </details>
@@ -145,6 +145,20 @@ Consult your client's documentation for MCP server configuration syntax.
   [small model mode](https://producer-pal.org/installation/lm-studio)
   (simplifies tool interface for smaller LLMs and automatically enables it on
   the device)
+- `-n` / `--notation <barbeat|midi-json|stark>` - Set the MIDI note notation the
+  tools use (default: `barbeat`). When using a coding agent to **script or
+  build** against Producer Pal (generating/parsing MIDI programmatically), pair
+  `--notation midi-json` (notes as a JSON array) with `--format json`. For a
+  normal music-making conversation, keep the default. This is a global device
+  setting, so it also affects the chat UI and any other connected clients.
+- `-f` / `--format <json|compact>` - Set the tool response format (default:
+  `compact`, a token-optimized literal). `--format json` returns standard JSON
+  that coding agents can parse with JSON tooling; keep the default `compact` for
+  normal conversations to save tokens. Also a global device setting.
+- `-l` / `--live-api` - Enable the opt-in Direct Live API tool (`ppal-live-api`)
+  on the device, a low-level escape hatch for scripting and debugging directly
+  against the Live Object Model. Not recommended as a default — the specialized
+  tools are tuned for reliable results. The flag only ever _enables_ the tool.
 
 ### Environment Variables
 
@@ -152,8 +166,22 @@ Optional environment variables can be configured through your MCP client:
 
 - `MCP_SERVER_ORIGIN` - URL for the Max for Live device (default:
   `http://localhost:3350`)
-- `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Equivalent to
-  the `-s` flag above.
+- `ALLOW_CONFIGURATION_OVERRIDES` - Gate for the setting env vars below
+  (default: `false`). `SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`, `JSON_OUTPUT`,
+  and `LIVE_API` are honored only when this is `true`; otherwise the device's
+  own settings stay authoritative. The equivalent CLI flags above are always
+  applied — this gate covers env vars only, which are ambient and easily
+  inherited.
+- `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Env form of
+  the `--small-model-mode` flag; requires the gate above.
+- `NOTATION` - MIDI note notation (`barbeat`, `midi-json`, or `stark`; default:
+  `barbeat`). Env form of the `--notation` flag; requires the gate above.
+- `FORMAT` - Tool response format (`json` or `compact`; default: `compact`). Env
+  form of the `--format` flag; requires the gate above.
+- `JSON_OUTPUT` - Boolean alias for `FORMAT` (`true` = json; default: `false`);
+  requires the gate above.
+- `LIVE_API` - Enable the Direct Live API tool (default: `false`). Env form of
+  the `--live-api` flag; requires the gate above.
 - `ENABLE_LOGGING` - Enable file logging (default: `false`)
 - `VERBOSE_LOGGING` - Detailed debug logs (default: `false`)
 

@@ -20,7 +20,7 @@ For anything beyond typo fixes and minor doc improvements, please
 before writing code. I maintain the core tools and feature roadmap myself, and
 unsolicited feature PRs will likely be closed.
 
-See [DEVELOPERS.md](./DEVELOPERS.md) for contribution guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
 
 ### Does CI pass?
 

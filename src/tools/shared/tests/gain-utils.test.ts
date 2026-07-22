@@ -110,6 +110,18 @@ describe("gain-utils", () => {
       expect(dbToLiveGain(-100)).toBe(0);
     });
 
+    it("should return a positive gain at the lowest table dB (-69.7)", () => {
+      // -69.7 is the lowest non-null dB in the table (duplicated across the two
+      // lowest entries). The linear search must include it as a lower bound
+      // (entry.dB <= dB) rather than skip the null entry into it — either bug
+      // makes lowerIndex stay -1 and returns 0.
+      expect(dbToLiveGain(-69.7)).toBeGreaterThan(0);
+    });
+
+    it("should clamp +Infinity dB to 1.0 (not treat it as -Infinity)", () => {
+      expect(dbToLiveGain(Infinity)).toBe(1.0);
+    });
+
     it("should handle extreme high dB values", () => {
       expect(dbToLiveGain(50)).toBe(1.0);
       expect(dbToLiveGain(1000)).toBe(1.0);

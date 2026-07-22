@@ -370,6 +370,12 @@ describe("handleGeminiMessage", () => {
   });
 });
 
+/** The connect calls recorded by a makeFakeAi() client, in call order. */
+type FakeAiCalls = {
+  config: LiveConnectConfig;
+  callbacks: Record<string, (arg?: unknown) => void>;
+}[];
+
 /**
  * Build a fake GenAI client whose live.connect records each call's config and
  * callbacks and returns a shared fake session.
@@ -380,10 +386,7 @@ function makeFakeAi(closeImpl?: () => void) {
   const session = {
     close: closeImpl ? vi.fn(closeImpl) : vi.fn(),
   } as unknown as Session;
-  const calls: {
-    config: LiveConnectConfig;
-    callbacks: Record<string, (arg?: unknown) => void>;
-  }[] = [];
+  const calls: FakeAiCalls = [];
   const connect = vi.fn(
     async (params: {
       config: LiveConnectConfig;
@@ -455,6 +458,71 @@ async function flushBackoff(attempt: number): Promise<void> {
   await vi.advanceTimersByTimeAsync(attempt * RESUME_BACKOFF_MS);
 }
 
+/**
+ * Open a session and drop it via its onclose, letting only the immediate
+ * (pre-backoff) handling run — so no resume attempt has fired yet.
+ * @param ctx - The context to open with
+ * @param calls - The fake client's recorded connect calls
+ */
+async function openThenClose(
+  ctx: ResumableSessionContext,
+  calls: FakeAiCalls,
+): Promise<void> {
+  await openResumableGeminiSession(ctx);
+  calls[0]!.callbacks.onclose?.();
+  await vi.advanceTimersByTimeAsync(0);
+}
+
+/**
+ * Open a session, drop it via its onclose, and drive past the backoff so the
+ * resume attempt completes.
+ * @param ctx - The context to open with
+ * @param calls - The fake client's recorded connect calls
+ * @param attempt - 1-based attempt number whose backoff to flush
+ */
+async function openThenResume(
+  ctx: ResumableSessionContext,
+  calls: FakeAiCalls,
+  attempt = 1,
+): Promise<void> {
+  await openResumableGeminiSession(ctx);
+  calls[0]!.callbacks.onclose?.();
+  await flushBackoff(attempt);
+}
+
+/**
+ * Build a fake client whose first connect succeeds and whose resume rejects.
+ * @param onResumeAttempt - Hook run just before the resume rejects
+ * @returns The fake client and an accessor for the first session's callbacks
+ */
+function makeFailingResumeAi(onResumeAttempt: () => void = () => {}): {
+  ai: GoogleGenAI;
+  firstCallbacks: () => Record<string, (arg?: unknown) => void>;
+} {
+  const session = { close: vi.fn() } as unknown as Session;
+  let captured!: Record<string, (arg?: unknown) => void>;
+  let n = 0;
+  const connect = vi.fn(
+    async (p: { callbacks: Record<string, (arg?: unknown) => void> }) => {
+      n++;
+
+      if (n === 1) {
+        captured = p.callbacks;
+
+        return session;
+      }
+
+      onResumeAttempt();
+      throw new Error("resume failed");
+    },
+  );
+
+  return {
+    ai: { live: { connect } } as unknown as GoogleGenAI,
+    firstCallbacks: () => captured,
+  };
+}
+
 describe("openResumableGeminiSession", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -477,9 +545,7 @@ describe("openResumableGeminiSession", () => {
     const { ai, calls } = makeFakeAi();
     const ctx = ctxWithHandle(ai, {}, "h-7");
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await flushBackoff(1);
+    await openThenResume(ctx, calls);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(2);
     expect(calls[1]!.config.sessionResumption).toStrictEqual({ handle: "h-7" });
@@ -491,9 +557,7 @@ describe("openResumableGeminiSession", () => {
     const { ai, calls } = makeFakeAi();
     const ctx = makeCtx(ai);
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await vi.advanceTimersByTimeAsync(0);
+    await openThenClose(ctx, calls);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(1);
     expect(ctx.onDrop).toHaveBeenCalledWith(
@@ -510,6 +574,18 @@ describe("openResumableGeminiSession", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(ctx.onDrop).toHaveBeenCalledWith("ws down");
+  });
+
+  it("uses a fallback message when the transport error has no text", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = makeCtx(ai);
+
+    await openResumableGeminiSession(ctx);
+    // An empty error string extracts to "", so the `||` fallback supplies text.
+    calls[0]!.callbacks.onerror?.("");
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(ctx.onDrop).toHaveBeenCalledWith("Voice connection error.");
   });
 
   it("handles a drop once when onerror and onclose both fire", async () => {
@@ -529,9 +605,7 @@ describe("openResumableGeminiSession", () => {
     const { ai, calls } = makeFakeAi();
     const ctx = ctxWithHandle(ai, { isIntentionalClose: () => true });
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await vi.advanceTimersByTimeAsync(0);
+    await openThenClose(ctx, calls);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(1);
     expect(ctx.onDrop).not.toHaveBeenCalled();
@@ -548,36 +622,18 @@ describe("openResumableGeminiSession", () => {
       isStale: () => staleChecks++ >= 1,
     });
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await flushBackoff(1);
+    await openThenResume(ctx, calls);
 
     expect(ctx.onSession).not.toHaveBeenCalled();
     expect(session.close).toHaveBeenCalled();
   });
 
   it("reports a failed resume via onDrop", async () => {
-    const session = { close: vi.fn() } as unknown as Session;
-    let firstCallbacks!: Record<string, (arg?: unknown) => void>;
-    let n = 0;
-    const connect = vi.fn(
-      async (p: { callbacks: Record<string, (arg?: unknown) => void> }) => {
-        n++;
-
-        if (n === 1) {
-          firstCallbacks = p.callbacks;
-
-          return session;
-        }
-
-        throw new Error("resume failed");
-      },
-    );
-    const ai = { live: { connect } } as unknown as GoogleGenAI;
+    const { ai, firstCallbacks } = makeFailingResumeAi();
     const ctx = ctxWithHandle(ai);
 
     await openResumableGeminiSession(ctx);
-    firstCallbacks.onclose?.();
+    firstCallbacks().onclose?.();
     await flushBackoff(1);
 
     expect(ctx.onDrop).toHaveBeenCalledWith("resume failed");
@@ -603,9 +659,7 @@ describe("openResumableGeminiSession", () => {
     const { ai, calls } = makeFakeAi();
     const ctx = ctxWithHandle(ai);
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await flushBackoff(1);
+    await openThenResume(ctx, calls);
 
     // After the resume, counter is at 1 until the new session emits its first
     // server message — then it resets to 0.
@@ -623,9 +677,7 @@ describe("openResumableGeminiSession", () => {
       resumeRef: { current: { handle: "h", attempts: MAX_RESUME_ATTEMPTS } },
     });
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await vi.advanceTimersByTimeAsync(0);
+    await openThenClose(ctx, calls);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(1);
     expect(ctx.onDrop).toHaveBeenCalledWith(
@@ -640,9 +692,7 @@ describe("openResumableGeminiSession", () => {
     const { ai, calls } = makeFakeAi();
     const ctx = ctxWithHandle(ai);
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await flushBackoff(1);
+    await openThenResume(ctx, calls);
 
     calls[1]!.callbacks.onmessage?.(msg({}));
     expect(ctx.resumeRef.current.attempts).toBe(0);
@@ -659,9 +709,7 @@ describe("openResumableGeminiSession", () => {
     const { ai, calls } = makeFakeAi();
     const ctx = ctxWithHandle(ai);
 
-    await openResumableGeminiSession(ctx);
-    calls[0]!.callbacks.onclose?.();
-    await flushBackoff(1);
+    await openThenResume(ctx, calls);
     calls[0]!.callbacks.onclose?.();
     await flushBackoff(2);
 
@@ -694,30 +742,15 @@ describe("openResumableGeminiSession", () => {
     // The user clicks Stop during a failing resume. Without the catch-side
     // stale/intentional check, onDrop fires with "Connection lost" → status
     // ends at error instead of the expected idle.
-    const session = { close: vi.fn() } as unknown as Session;
-    let firstCallbacks!: Record<string, (arg?: unknown) => void>;
     let intentional = false;
-    let n = 0;
-    const connect = vi.fn(
-      async (p: { callbacks: Record<string, (arg?: unknown) => void> }) => {
-        n++;
-
-        if (n === 1) {
-          firstCallbacks = p.callbacks;
-
-          return session;
-        }
-
-        // Simulate the user clicking Stop while live.connect was rejecting.
-        intentional = true;
-        throw new Error("resume failed");
-      },
-    );
-    const ai = { live: { connect } } as unknown as GoogleGenAI;
+    const { ai, firstCallbacks } = makeFailingResumeAi(() => {
+      // Simulate the user clicking Stop while live.connect was rejecting.
+      intentional = true;
+    });
     const ctx = ctxWithHandle(ai, { isIntentionalClose: () => intentional });
 
     await openResumableGeminiSession(ctx);
-    firstCallbacks.onclose?.();
+    firstCallbacks().onclose?.();
     await flushBackoff(1);
 
     expect(ctx.onDrop).not.toHaveBeenCalled();
@@ -790,6 +823,38 @@ describe("seedGeminiContext", () => {
     expect(text).toContain("User: set tempo to 128");
     expect(text).toContain("You: Done.");
     expect(text).not.toContain("ppal-x");
+  });
+
+  it("skips system items and reads both text and (null) transcript content", () => {
+    const sendClientContent = vi.fn();
+    const session = { sendClientContent } as unknown as Session;
+    // A system message (skipped), then a user message mixing a text part, a
+    // null-transcript audio part, and a bare part (no usable text).
+    const history = [
+      { role: "system", content: [{ type: "input_text", text: "SYSTEM" }] },
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: "hello there" },
+          { type: "input_audio", transcript: null },
+          { type: "input_image" },
+        ],
+      },
+    ].map((m, i) => ({
+      itemId: String(i),
+      type: "message",
+      status: "completed",
+      ...m,
+    })) as unknown as RealtimeItem[];
+
+    seedGeminiContext(session, history);
+
+    const arg = sendClientContent.mock.calls[0]![0] as {
+      turns: { parts: { text: string }[] }[];
+    };
+
+    expect(arg.turns[0]!.parts[0]!.text).toContain("User: hello there");
+    expect(arg.turns[0]!.parts[0]!.text).not.toContain("SYSTEM");
   });
 
   it("is a no-op when history has no usable transcript text", () => {

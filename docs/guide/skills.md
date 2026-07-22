@@ -43,21 +43,32 @@ agent decides the skill is relevant. The same folder works across all three:
 
 ::: info When to use this vs MCP
 
-Producer Pal's [MCP server](/installation) is the recommended path when your
-agent supports MCP — the tools come with rich descriptions and the LLM picks
-them up automatically.
+Both paths give the AI the same thing. The skill's bootstrap discovers the tools
+and their schemas (`--list-tools`) and calls `ppal-connect`, which returns the
+same Producer Pal Skills and [context](/guide/context) that MCP clients receive
+at session start — so neither route is "more automatic" than the other.
 
-The skill is for **REST-API-driven workflows**: agents not configured with the
-Producer Pal MCP server, scripts and pipelines that don't run an MCP client, or
-environments where you want a single drop-in folder rather than per-tool MCP
-setup.
+Use **MCP** when your client speaks it and isn't a coding agent: chat apps like
+[Claude Desktop](/installation/claude-desktop), the [Chat UI](/guide/chat-ui),
+and web clients. Tools appear natively in the client and nothing has to shell
+out.
+
+Use the **skill** with coding agents that can run commands. Because it drives
+the [REST API](/guide/rest-api) directly, it can change device settings
+mid-session — flip the [notation](/features/midi-notation), turn on
+[Direct Live API](/features#ppal-live-api), toggle small-model mode — and then
+re-read the schemas, all with `--set-config`. MCP clients bake the tool
+descriptions at the start of a conversation and have no tool for changing these
+settings, so the same switch means editing the device and starting a new
+conversation. It's also the answer for scripts and pipelines that don't run an
+MCP client at all.
 
 :::
 
 ## Install
 
 Copy the
-[`producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
+[`examples/skills/producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
 folder from the Producer Pal repo into your agent's skills directory.
 
 ```bash
@@ -76,20 +87,78 @@ When the user asks the agent something Producer-Pal-shaped ("set tempo to 120",
 "what's in track 2", "make a 4-bar drum loop"), the agent loads `SKILL.md` and
 follows its bootstrap:
 
-1. **List tools** — `node ppal.mjs --list-tools` returns the full tool catalog
+1. **Set the notation** —
+   `node ppal.mjs --set-config '{"notation":"midi-json"}'`. The active notation
+   is baked into every tool and argument description, so the skill sets it
+   _before_ listing tools. Coding agents get `midi-json` (MIDI notes as a JSON
+   array) because they can generate and parse it programmatically.
+2. **List tools** — `node ppal.mjs --list-tools` returns the full tool catalog
    with input schemas, so the agent knows what's available without baking it
    into the skill.
-2. **Call `ppal-connect`** — the agent's first call. Its response includes the
-   up-to-date Producer Pal Skills (bar|beat notation, MIDI syntax, code
-   transforms, conventions) — the same instructions Producer Pal's MCP clients
-   receive at session start. The skill stays small; the heavy guidance comes
-   from Producer Pal itself.
-3. **Use the other tools** per those instructions, via
+3. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
+   Skills (the note syntax for the active notation,
+   [transforms](/features/midi-notation#transforms), conventions) — the same
+   instructions Producer Pal's MCP clients receive at session start. The skill
+   stays small; the heavy guidance comes from Producer Pal itself.
+4. **Use the other tools** per those instructions, via
    `node ppal.mjs <tool> [json-args]`.
 
 Because the skill is just a thin pointer + bootstrap, it stays correct as
 Producer Pal evolves: new tools, schema changes, and skill updates land in
 `ppal-connect`'s response automatically.
+
+### Notation and small-model mode
+
+Producer Pal encodes MIDI notes in one of three
+[notations](/features/midi-notation), chosen by a **global device setting**:
+[`bar|beat`](/features/midi-notation#bar-beat) (the default — compact
+human-readable text), [`midi-json`](/features/midi-notation#midi-json) (notes as
+a JSON array), and [`stark`](/features/midi-notation#stark) (a literal
+`type: content` format with event-based drum hits). The setting changes the note
+syntax in every tool/argument description and in the `ppal-connect` Skills, and
+it also applies to the Chat UI and any connected MCP clients. The skill sets
+`midi-json` because coding agents generate and parse JSON directly, rather than
+composing text notation by hand.
+
+The skill also assumes **small-model mode is off** — coding agents generally run
+capable models that handle the full tool descriptions, so it's left at the
+default. If you drive Producer Pal from a _local_ coding agent on a smaller
+model, edit the notation step in `SKILL.md` to enable small-model mode (which
+trims the tool descriptions) and consider `stark` instead of `midi-json`:
+
+```bash
+node ppal.mjs --set-config '{"notation":"stark","smallModelMode":true}'
+```
+
+### Direct Live API (advanced)
+
+The `ppal-live-api` tool gives direct, low-level access to the
+[Live Object Model](https://docs.cycling74.com/apiref/lom/) for reads and writes
+the higher-level tools don't cover. It's off by default (absent from
+`--list-tools`). An agent can turn it on itself — the setting is global to the
+device:
+
+```bash
+node ppal.mjs --set-config '{"liveApiEnabled":true}'
+```
+
+It's not the default for a reason: the specialized tools are tuned for reliable
+results, while the raw Live API is easy to misuse. Reach for it for custom
+integrations, scripting, or debugging directly against the Live API when the
+standard tools aren't enough.
+
+::: tip Saving tokens: compact responses
+
+The REST API returns JSON by default — a parsed `result` plus a separate
+`warnings` list — which is what you want when the agent generates or parses MIDI
+data in scripts. If you're mostly reading state or having a conversational
+back-and-forth (not processing the data programmatically), you can save tokens
+by requesting the compact format instead: pass `?format=compact` on tool calls
+(a one-line change in `ppal.mjs`'s `callTool`:
+`params.set("format", "compact")`). The trade-off is that `result` then comes
+back as a raw string rather than parsed JSON, and warnings fold into it.
+
+:::
 
 ## The bundled script
 

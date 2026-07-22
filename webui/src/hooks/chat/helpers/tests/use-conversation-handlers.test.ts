@@ -22,8 +22,8 @@ function createMockManager(
   return {
     conversations: [],
     activeConversationId: null,
-    limitNotification: null,
-    dismissLimitNotification: vi.fn(),
+    notification: null,
+    dismissNotification: vi.fn(),
     saveCurrentConversation: vi.fn().mockResolvedValue(undefined),
     switchConversation: vi.fn().mockResolvedValue(undefined),
     startNewConversation: vi.fn().mockResolvedValue(undefined),
@@ -58,6 +58,41 @@ describe("useConversationHandlers", () => {
 
     expect(spy).toHaveBeenCalledWith(error);
     spy.mockRestore();
+  });
+
+  it("stops response before delegating to deleteConversation for the active id", async () => {
+    // Deleting the actively-streaming conversation must stop the stream first
+    // (like new/select/delete-all) so no further autosave writes the record
+    // back to the DB after it is removed.
+    const manager = createMockManager({ activeConversationId: "conv-1" });
+    const stop = vi.fn();
+
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stop, vi.fn()),
+    );
+
+    await act(() => result.current.handleDelete("conv-1"));
+
+    expect(stop).toHaveBeenCalled();
+    expect(manager.deleteConversation).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("does not stop response when deleting a non-active conversation", async () => {
+    // A non-active row has no pending autosave (saves only ever target the
+    // active id), so stopping would only abort the user's in-flight response on
+    // the active conversation and — mid-fork — risk overwriting the source
+    // record. The delete must still proceed.
+    const manager = createMockManager({ activeConversationId: "active-conv" });
+    const stop = vi.fn();
+
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stop, vi.fn()),
+    );
+
+    await act(() => result.current.handleDelete("other-conv"));
+
+    expect(stop).not.toHaveBeenCalled();
+    expect(manager.deleteConversation).toHaveBeenCalledWith("other-conv");
   });
 
   it("stops response when selecting a conversation", async () => {

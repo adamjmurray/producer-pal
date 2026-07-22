@@ -1,26 +1,35 @@
 # Roadmap
 
-## Upcoming
+## Exploring
 
-### 1.5 - Personalization and Extensibility
+### Extensibility (post-2.0)
 
-- Global context: add your own reference material and custom instructions across
-  all Live projects
-- Global memory: Producer Pal can adapt over time to your needs and interaction
-  style
-- Custom skills, system prompts, tool sets, and tool descriptions
+These aren't commitments — see
+[Extending Producer Pal](/extending#ideas-under-consideration) for the full
+framing:
+
+- Custom skills: write your own instruction packs, plus a curated set of
+  examples to install and adapt
+- Personas: presets that combine a tool set with custom context and skills
 - Workflows: pre-defined tool call sequences for reliable, repeatable operations
-- Alternative MIDI syntaxes
-- Context manager in the built-in chat UI for working with all the above
-
-See [Extending Producer Pal](/extending) for more on the extension model.
+  (still undecided vs. subagents)
 
 ## Changelog
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
 
-### 1.4 - MIDI Transforms, REST API, and Live API Access (February–May 2026)
+### 2.0 - Personalization (July 2026)
+
+- Global context: add your own reference material and custom instructions across
+  all Live projects
+- Global memory: Producer Pal can adapt over time to your needs and interaction
+  style
+- Customize the built-in skills and the built-in chat's system instructions
+- Alternative MIDI syntaxes
+- Context manager in the built-in chat UI for working with all the above
+
+### 1.4 - MIDI Transforms, REST API, and Live API Access (February 2026)
 
 MIDI transforms: math expressions for transforming note properties
 
@@ -50,8 +59,8 @@ New tools and broader Live API coverage:
 Other improvements:
 
 - Split arrangement clips at specified positions
-- Multi-object create / update / duplicate operations. `transforms`/`code` on
-  update-clip and duplicate are single strings broadcast across every clip/copy
+- Multi-object create / update / duplicate operations. `transforms` on
+  update-clip and duplicate is a single string broadcast across every clip/copy
   — use `clip.index` arithmetic or `clipseq()` inside the string for per-clip
   variation, or make separate calls for structurally-distinct edits.
 - Per-project notes: improved UI, now always enabled by default (disable the
@@ -78,6 +87,7 @@ Also added support for:
 ### 1.2 - Audio clip, mixer, and improved Arrangement support (November 2025)
 
 - Audio clip support with a `read-samples` tool to scan folders for samples
+  (since absorbed into `ppal-library`)
 - Track mixer control: gain, panning, and sends
 - Arrangement clip positioning and length control
 
@@ -95,17 +105,9 @@ Expanded features and support for multiple AI platforms.
 Initial public release with Claude Desktop support and a focus on MIDI clip
 manipulation and basic Live Set management.
 
-## Beyond 1.5
+## Beyond 2.0
 
-After 1.5, the core stabilizes — future core changes focus on bug fixes and
-supporting new Live API features as they become available. New capabilities will
-come through [extensions](/extending): community skills, workflows, and
-companion MCP servers.
-
-**Core features under consideration:**
-
-- Chord notation and pitches as scale/chord degrees
-- Bar|beat and MIDI transform notation refinements (including alternate
-  notations that may work better with smaller models)
-- Audio analysis
 - Audio synthesis
+- Audio analysis
+- Microtonal support
+- Add any new Live API features as they arrive

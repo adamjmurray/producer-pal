@@ -38,6 +38,39 @@ function mockSearchRoute(items: unknown[]): void {
 }
 
 /**
+ * Build a minimal DB library item with the given name and useCount.
+ *
+ * @param name - Item name (also its leaf path)
+ * @param useCount - Usage count driving the default (use_count desc) sort
+ * @returns A LibraryItem-shaped object sourced from the DB ("user")
+ */
+function dbItem(name: string, useCount: number): Record<string, unknown> {
+  return {
+    name,
+    path: `/L/${name}`,
+    kind: "audio",
+    tags: [],
+    useCount,
+    source: "user",
+  };
+}
+
+/**
+ * Stub the search route with three DB items whose name order, useCount order,
+ * and upstream (array) order all differ, so each sort mode yields a distinct
+ * sequence. This is what pins sortPartition: with coincidentally-aligned data
+ * a wrong sort branch produces the same output and survives mutation.
+ *
+ *   upstream: b(1), a(3), c(2)
+ *   name:     a, b, c
+ *   use_count desc (default): a(3), c(2), b(1)
+ *   mod_date (DB upstream order preserved): b, a, c
+ */
+function mockDiscriminatingSortRoute(): void {
+  mockSearchRoute([dbItem("b.wav", 1), dbItem("a.wav", 3), dbItem("c.wav", 2)]);
+}
+
+/**
  * Stub the "/samples/" folder with the given top-level .wav file names.
  *
  * @param names - File names to place directly under "/samples/"
@@ -178,6 +211,16 @@ describe("library tool — action dispatch", () => {
       "Unknown action: bogus",
     );
   });
+
+  it("throws when a route reports success but omits the result payload", async () => {
+    // callRoute guards on `!success || !result`: a truthy success with a
+    // missing result must still throw, not resolve to an undefined payload.
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({ success: true });
+
+    await expect(library({ action: "listTags" })).rejects.toThrow(
+      "library.listTags failed",
+    );
+  });
 });
 
 describe("library tool — folder scan integration", () => {
@@ -208,10 +251,13 @@ describe("library tool — folder scan integration", () => {
     expect(names).toContain("kick.wav");
     expect(names).toContain("snare.wav");
     expect(names).toContain("clap.wav");
-    // Folder items get source: "sampleFolder"
-    expect(result.items.find((i) => i.name === "kick.wav")?.source).toBe(
-      "sampleFolder",
-    );
+    // Folder items get source: "sampleFolder", kind: "audio", and empty tags
+    // (the folder scan only surfaces audio and carries no tag metadata).
+    const kick = result.items.find((i) => i.name === "kick.wav");
+
+    expect(kick?.source).toBe("sampleFolder");
+    expect(kick?.kind).toBe("audio");
+    expect(kick?.tags).toStrictEqual([]);
   });
 
   it("marks sampleFolder items pathExists: true when verifyPaths is set", async () => {
@@ -284,6 +330,9 @@ describe("library tool — folder scan integration", () => {
     // Folder-only requests bypass the DB; dbAvailable should be absent
     // rather than fabricated.
     expect("dbAvailable" in result).toBe(false);
+    // No diagnostic cause here, so the reason key must be omitted entirely
+    // (not present-but-undefined).
+    expect("reason" in result).toBe(false);
   });
 
   it("merged requests propagate dbAvailable from the DB call", async () => {
@@ -294,6 +343,9 @@ describe("library tool — folder scan integration", () => {
 
     if (!("items" in result)) throw new Error("expected items");
     expect(result.dbAvailable).toBe(true);
+    // Neither the folder scan nor the DB supplied a reason, so the merged
+    // result must omit the key rather than carry reason: undefined.
+    expect("reason" in result).toBe(false);
   });
 
   it("skips folder scan when tags filter is set (folder has no tag info)", async () => {
@@ -593,5 +645,52 @@ describe("library tool — folder scan integration", () => {
     expect(result.items.find((i) => i.name === "kick.wav")?.folder).toBe(
       "samples",
     );
+  });
+});
+
+describe("library tool — sort ordering (DB partition)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("default sort orders the DB partition by use_count desc (name tiebreak)", async () => {
+    mockDiscriminatingSortRoute();
+
+    const result = await library({}, {});
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.items.map((i) => i.name)).toStrictEqual([
+      "a.wav", // useCount 3
+      "c.wav", // useCount 2
+      "b.wav", // useCount 1
+    ]);
+  });
+
+  it("sort=name orders the DB partition alphabetically, ignoring use_count", async () => {
+    mockDiscriminatingSortRoute();
+
+    const result = await library({ sort: "name" }, {});
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.items.map((i) => i.name)).toStrictEqual([
+      "a.wav",
+      "b.wav",
+      "c.wav",
+    ]);
+  });
+
+  it("sort=mod_date preserves the DB's upstream order for mixed-source items", async () => {
+    mockDiscriminatingSortRoute();
+
+    const result = await library({ sort: "mod_date" }, {});
+
+    if (!("items" in result)) throw new Error("expected items");
+    // The DB partition is not all-sampleFolder, so mod_date keeps the upstream
+    // (SQL-provided) order rather than re-sorting by name or use_count.
+    expect(result.items.map((i) => i.name)).toStrictEqual([
+      "b.wav",
+      "a.wav",
+      "c.wav",
+    ]);
   });
 });

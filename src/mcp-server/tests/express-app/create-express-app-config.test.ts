@@ -31,9 +31,43 @@ describe("MCP Express App - Config", () => {
       expect(config).toMatchObject({
         memoryContent: expect.any(String),
         smallModelMode: expect.any(Boolean),
+        notation: expect.any(String),
         jsonOutput: expect.any(Boolean),
         sampleFolder: expect.any(String),
         tools: expect.any(Array),
+      });
+    });
+
+    it("should update notation on POST /config and ignore invalid values", async () => {
+      const initialResponse = await fetch(configUrl);
+      const initialConfig = await initialResponse.json();
+
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notation: "midi-json" }),
+      });
+
+      expect(response.status).toBe(200);
+      const updatedConfig = await response.json();
+
+      expect(updatedConfig.notation).toBe("midi-json");
+
+      // Invalid values are ignored, leaving the current setting intact
+      const invalidResponse = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notation: "not-a-notation" }),
+      });
+      const invalidConfig = await invalidResponse.json();
+
+      expect(invalidConfig.notation).toBe("midi-json");
+
+      // Restore
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notation: initialConfig.notation }),
       });
     });
 
@@ -206,6 +240,18 @@ describe("MCP Express App - Config", () => {
         ...TOOL_NAMES,
         "ppal-live-api",
       ]);
+    });
+
+    it("POST /config with no JSON body is a benign no-op, not a 500", async () => {
+      // No Content-Type: application/json → express leaves req.body undefined;
+      // the handler must treat the missing body as an empty update (200 echoing
+      // the current config) rather than TypeError into a 500.
+      const response = await fetch(configUrl, { method: "POST" });
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      expect(config).toMatchObject({ tools: expect.any(Array) });
     });
 
     it("should reject POST /config from a cross-origin browser request", async () => {

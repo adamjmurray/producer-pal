@@ -38,7 +38,7 @@ export interface HeaderActionsProps {
 }
 
 /**
- * Right-side header actions: model display, tool/small-model indicators, project context, settings, help
+ * Right-side header actions: model display, tool/small-model indicators, help, project context, settings
  * @param props - HeaderActionsProps
  * @param props.headerInfo - Header display state
  * @param props.onOpenSettings - Callback to open settings
@@ -116,11 +116,23 @@ export function HeaderActions({
         />
       </button>
 
+      {showHelpLinks && (
+        <a
+          href={CHAT_UI_DOCS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={helpBtn}
+          title="Documentation"
+        >
+          ?
+        </a>
+      )}
+
       <button
         onClick={onOpenContext}
         className={iconBtn}
-        aria-label="Project context"
-        title="Project context"
+        aria-label="Context"
+        title="Customize context"
       >
         <ContextIcon />
       </button>
@@ -133,17 +145,6 @@ export function HeaderActions({
       >
         <SettingsIcon />
       </button>
-      {showHelpLinks && (
-        <a
-          href={CHAT_UI_DOCS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={helpBtn}
-          title="Documentation"
-        >
-          ?
-        </a>
-      )}
     </div>
   );
 }

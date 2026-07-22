@@ -99,4 +99,25 @@ describe("Handler Registration", () => {
     handler(undefined);
     expect(await getConfigField("sampleFolder")).toBe("");
   });
+
+  it("should set notation for valid values and ignore invalid ones", async () => {
+    const handler = mockMax.handlers.get("notation") as (
+      input: unknown,
+    ) => void;
+
+    expect(handler).toBeDefined();
+
+    handler("midi-json");
+    expect(await getConfigField("notation")).toBe("midi-json");
+
+    handler("stark");
+    expect(await getConfigField("notation")).toBe("stark");
+
+    // Unrecognized values are ignored, keeping the current setting
+    handler("nonsense");
+    expect(await getConfigField("notation")).toBe("stark");
+
+    handler("barbeat");
+    expect(await getConfigField("notation")).toBe("barbeat");
+  });
 });

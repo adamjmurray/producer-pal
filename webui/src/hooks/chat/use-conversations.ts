@@ -5,6 +5,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
+import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   type ActiveMeta,
   type ActiveRefs,
@@ -12,11 +14,16 @@ import {
   buildConversationSaveRecord,
   buildLockedSettings,
   chainSave,
+  deleteConversationWithSnapshot,
   getHashConversationId,
+  resolvePanelNotification,
   setLocationHash,
+  useHashNavigation,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
-import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
-import { useSyncActiveMeta } from "#webui/hooks/chat/helpers/use-sync-active-meta";
+import {
+  type SyncActiveMetaParams,
+  useSyncActiveMeta,
+} from "#webui/hooks/chat/helpers/use-sync-active-meta";
 import {
   type ConversationLockedSettings,
   type PendingForkRef,
@@ -26,7 +33,6 @@ import {
   type ConversationRecord,
   type ConversationSummary,
   deleteAllConversations as dbDeleteAllConversations,
-  deleteConversation as dbDeleteConversation,
   deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listAllConversationSummaries,
   listConversations,
@@ -44,12 +50,12 @@ interface UseConversationsProps {
     lockedSettings?: ConversationLockedSettings,
   ) => void;
   clearConversation: () => void;
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  activeThinking: string | null;
-  activeTemperature: number | null;
-  activeShowThoughts: boolean | null;
-  activeSmallModelMode: boolean | null;
+  /**
+   * The active conversation's locked metadata (model/provider/thinking/etc. plus
+   * the resolved system instruction), mirrored into a ref and snapshotted onto
+   * saved records.
+   */
+  activeMeta: SyncActiveMetaParams;
   /** Invoked when a voice record is encountered. The parent should switch
    * modes so the voice hook can pick the conversation up from the URL hash.
    * When omitted, the hook falls back to clearing the active id. */
@@ -62,8 +68,10 @@ interface UseConversationsProps {
 export interface UseConversationsReturn {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
-  limitNotification: TransferNotificationData | null;
-  dismissLimitNotification: () => void;
+  /** Active panel notification: an undo-delete banner when one is pending,
+   * otherwise the conversation-limit/save-error banner. */
+  notification: TransferNotificationData | null;
+  dismissNotification: () => void;
   saveCurrentConversation: (updatedAt?: number) => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
@@ -82,12 +90,7 @@ export interface UseConversationsReturn {
  * @param props.getChatHistory - Returns current chat history for saving
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
- * @param props.activeModel - Active model for the current conversation
- * @param props.activeProvider - Active provider for the current conversation
- * @param props.activeThinking - Active thinking level for the current conversation
- * @param props.activeTemperature - Active temperature for the current conversation
- * @param props.activeShowThoughts - Active showThoughts setting for the current conversation
- * @param props.activeSmallModelMode - Active smallModelMode setting for the current conversation
+ * @param props.activeMeta - Locked conversation metadata (model/provider/etc. + system instruction)
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
  * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
  * @returns Conversation management state and handlers
@@ -96,12 +99,7 @@ export function useConversations({
   getChatHistory,
   restoreChatHistory,
   clearConversation,
-  activeModel: activeModelProp,
-  activeProvider: activeProviderProp,
-  activeThinking: activeThinkingProp,
-  activeTemperature: activeTemperatureProp,
-  activeShowThoughts: activeShowThoughtsProp,
-  activeSmallModelMode: activeSmallModelModeProp,
+  activeMeta,
   onForeignRecord,
   pendingForkRef,
 }: UseConversationsProps): UseConversationsReturn {
@@ -118,15 +116,27 @@ export function useConversations({
   // Serializes conversation saves so a later save's read-back can't race ahead
   // of an earlier save's write (see saveCurrentConversation).
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  // Ids whose pending/in-flight save must be abandoned because the row was
+  // deleted. The delete paths drain saveChainRef, but that only covers saves
+  // already queued — a save enqueued *after* the drain (chiefly the
+  // stream-teardown autosave effect that stopResponse() triggers) would still
+  // resurrect the just-deleted row. Every save checks this set right before its
+  // DB write and bails. Mirrors the voice layer's canceledIdsRef guard.
+  const canceledIdsRef = useRef<Set<string>>(new Set());
+  // Id reserved by a bulk delete for a brand-new conversation streaming its
+  // first turn but not yet saved (activeIdRef still null). Such a conversation's
+  // id is minted — fresh and uncancelable — inside the teardown autosave the
+  // delete triggers, so canceling activeIdRef (null) misses it and the save
+  // resurrects the just-cleared row. The bulk-delete paths reserve the id here
+  // and cancel it; saveCurrentConversation adopts it when minting a brand-new
+  // id, so the canceledIds guard catches that teardown save. Unlike the voice
+  // layer's same-named ref (held for the whole live session), this is non-null
+  // only transiently during a bulk delete — every setActiveId/clearActiveId
+  // clears it, so a canceled reservation never leaks into the next brand-new
+  // conversation's save. Mirrors the voice layer's pendingNewIdRef.
+  const pendingNewIdRef = useRef<string | null>(null);
 
-  useSyncActiveMeta(activeMetaRef, {
-    activeModel: activeModelProp,
-    activeProvider: activeProviderProp,
-    activeThinking: activeThinkingProp,
-    activeTemperature: activeTemperatureProp,
-    activeShowThoughts: activeShowThoughtsProp,
-    activeSmallModelMode: activeSmallModelModeProp,
-  });
+  useSyncActiveMeta(activeMetaRef, activeMeta);
 
   const refreshList = useCallback(async () => {
     // Pass the active id so its branch family is represented by the conversation
@@ -137,9 +147,24 @@ export function useConversations({
     setConversations(list);
   }, []);
 
+  // Un-cancel a restored conversation's id. canceledIdsRef is otherwise
+  // add-only; undo restores under the same id via a raw saveConversation that
+  // bypasses the guard, but the stale canceled flag would then bail every later
+  // autosave for that id at the check below (line ~254), silently losing all
+  // post-undo messages. Clearing it on a successful restore re-enables saving.
+  const uncancelRestoredId = useCallback((id: string) => {
+    canceledIdsRef.current.delete(id);
+  }, []);
+
+  const undoDelete = useUndoDelete(refreshList, uncancelRestoredId);
+
   const setActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
     activeIdRef.current = id;
+    // The active id now owns this conversation, so any bulk-delete reservation
+    // is spent — clear it (see pendingNewIdRef) before it can leak into a later
+    // brand-new save.
+    pendingNewIdRef.current = null;
     // Only guard if the hash will actually change — setting the same hash
     // doesn't fire hashchange, leaving the flag stuck
     const currentHash = getHashConversationId();
@@ -155,6 +180,9 @@ export function useConversations({
     setActiveConversationId(null);
     activeIdRef.current = null;
     activeMetaRef.current = null;
+    // Drop any bulk-delete reservation (see pendingNewIdRef) so a canceled id
+    // can't be adopted by the next brand-new conversation.
+    pendingNewIdRef.current = null;
     // No programmaticHashRef here — setLocationHash(null) uses replaceState
     // which doesn't fire hashchange, so no guard is needed
     setLocationHash(null);
@@ -215,10 +243,14 @@ export function useConversations({
 
       const reuseId = activeIdRef.current;
       // A fork mints a new id and switches to it (leaving the source intact); a
-      // normal save reuses the active id, minting one only for a brand-new chat.
-      // Set synchronously before any async work so concurrent saves hit this id.
+      // normal save reuses the active id. A brand-new chat adopts an id a bulk
+      // delete may have reserved (pendingNewIdRef) so the delete's guard can
+      // cancel this save, otherwise mints a fresh one. Set synchronously before
+      // any async work so concurrent saves hit this id.
       const id =
-        fork != null || reuseId == null ? crypto.randomUUID() : reuseId;
+        fork != null
+          ? crypto.randomUUID()
+          : (reuseId ?? pendingNewIdRef.current ?? crypto.randomUUID());
 
       setActiveId(id);
 
@@ -248,6 +280,12 @@ export function useConversations({
           // — or any sibling, which would orphan the family's ‹ n/m › navigation.
           const protectedIds =
             fork != null ? await forkProtectedIds(record, reuseId) : undefined;
+
+          // A delete for this id can land while this save was queued or while
+          // the awaits above resolved. Check as late as possible — right before
+          // the write — so a just-deleted conversation isn't resurrected.
+          if (canceledIdsRef.current.has(id)) return;
+
           const result = await saveConversation(record, protectedIds);
 
           limit.showLimitNotification(result);
@@ -311,7 +349,19 @@ export function useConversations({
 
   const deleteConversation = useCallback(
     async (id: string) => {
-      await dbDeleteConversation(id);
+      // Mark this id canceled before any async work. handleDelete calls
+      // stopResponse() first, which flips isAssistantResponding and — from a
+      // passive effect — fires one more autosave for this id *after* the drain
+      // below has already captured the save chain. That late save would
+      // otherwise resurrect the row; instead it checks canceledIdsRef right
+      // before its write and bails.
+      canceledIdsRef.current.add(id);
+      // Drain any autosave already in flight before removing the row, so its
+      // write can't land afterward and resurrect the record. The save chain
+      // never rejects (saveCurrentConversation's chained body swallows its own
+      // errors), so awaiting it directly is safe.
+      await saveChainRef.current;
+      await deleteConversationWithSnapshot(id, undoDelete.pushDeleted);
 
       if (activeIdRef.current === id) {
         clearConversation();
@@ -320,10 +370,25 @@ export function useConversations({
 
       await refreshList();
     },
-    [clearConversation, clearActiveId, refreshList],
+    [clearConversation, clearActiveId, refreshList, undoDelete],
   );
 
   const deleteAllConversations = useCallback(async () => {
+    // Cancel the active (streaming) conversation's pending/in-flight autosave,
+    // then drain the chain, mirroring deleteConversation. handleDeleteAll stops
+    // the stream first, so the two producers are the in-flight save (the drain
+    // covers it) and the stream-teardown autosave effect (the id guard covers
+    // it). A brand-new chat streaming its first turn has no active id yet — its
+    // id is minted lazily inside that teardown save — so reserve it here
+    // (pendingNewIdRef) and cancel that; the save adopts the reserved id instead
+    // of a fresh uncancelable one. Either way the just-cleared row can't be
+    // resurrected.
+    const activeId = activeIdRef.current;
+    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
+
+    canceledIdsRef.current.add(liveId);
+
+    await saveChainRef.current;
     await dbDeleteAllConversations();
     clearConversation();
     clearActiveId();
@@ -331,10 +396,23 @@ export function useConversations({
   }, [clearConversation, clearActiveId, refreshList]);
 
   const deleteUnbookmarkedConversations = useCallback(async () => {
+    // The active conversation is removed only when it's unbookmarked. A
+    // brand-new chat streaming its first turn (no active id yet) is implicitly
+    // unbookmarked, so it's swept too — reserve its lazily-minted id
+    // (pendingNewIdRef) so the teardown autosave adopts it and the guard cancels
+    // it. When it clears, cancel that live id (same resurrection guard as the
+    // other delete paths); a bookmarked active conversation survives, so its
+    // save must still land — hence the conditional add but unconditional drain.
+    const activeId = activeIdRef.current;
+    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
+    const clearsActive = activeId == null || !activeMetaRef.current?.bookmarked;
+
+    if (clearsActive) canceledIdsRef.current.add(liveId);
+
+    await saveChainRef.current;
     await dbDeleteUnbookmarkedConversations();
 
-    // Clear active conversation only if it was unbookmarked
-    if (activeIdRef.current && !activeMetaRef.current?.bookmarked) {
+    if (clearsActive) {
       clearConversation();
       clearActiveId();
     }
@@ -374,36 +452,18 @@ export function useConversations({
     [conversations, refreshList],
   );
 
-  // Handle browser back/forward navigation
-  useEffect(() => {
-    const handler = () => {
-      if (programmaticHashRef.current) {
-        programmaticHashRef.current = false;
-
-        return;
-      }
-
-      const hashId = getHashConversationId();
-
-      if (hashId === activeIdRef.current) return;
-
-      if (hashId) {
-        void switchConversation(hashId);
-      } else {
-        void startNewConversation();
-      }
-    };
-
-    window.addEventListener("hashchange", handler);
-
-    return () => window.removeEventListener("hashchange", handler);
-  }, [switchConversation, startNewConversation]);
+  // Route browser back/forward navigation to the matching conversation.
+  useHashNavigation({
+    programmaticHashRef,
+    activeIdRef,
+    switchConversation,
+    startNewConversation,
+  });
 
   return {
     conversations,
     activeConversationId,
-    limitNotification: limit.limitNotification,
-    dismissLimitNotification: limit.dismissLimitNotification,
+    ...resolvePanelNotification(undoDelete, limit),
     saveCurrentConversation,
     switchConversation,
     startNewConversation,
@@ -473,5 +533,6 @@ function syncMetaRef(
     temperature: record.temperature,
     showThoughts: record.showThoughts,
     smallModelMode: record.smallModelMode ?? null,
+    systemInstruction: record.systemInstruction ?? null,
   };
 }

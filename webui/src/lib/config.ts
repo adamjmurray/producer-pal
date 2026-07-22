@@ -11,9 +11,14 @@ import {
   OPENROUTER_MODELS,
 } from "#webui/lib/constants/models";
 
-export { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction";
+export {
+  SYSTEM_INSTRUCTION,
+  resolveSystemInstruction,
+} from "#src/shared/config";
 
 export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
+
+export const CONTEXT_DOCS_URL = "https://producer-pal.org/guide/context";
 
 const ALL_MODELS = [
   ...ANTHROPIC_MODELS,

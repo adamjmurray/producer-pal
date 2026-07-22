@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { errorMessage } from "#src/shared/error-utils";
+import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import {
   type AllProviderSettings,
@@ -109,6 +111,13 @@ export function useSettings(): UseSettingsReturn {
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
     useState<boolean>(false);
+  // Modal-local mirror of server config.notation. Synced from useRemoteConfig
+  // in App.tsx; not persisted to localStorage because the device Setup pane
+  // can change it out from under us. Same dirty-flag convention as
+  // liveApiEnabled: user edits use setNotation; sync-from-server uses
+  // seedNotation and leaves dirty false.
+  const [notation, setNotationState] = useState<Notation>(DEFAULT_NOTATION);
+  const [notationDirty, setNotationDirty] = useState<boolean>(false);
   // Surfaced after a failed persist so the modal can stay open with a visible
   // error instead of closing with silent data loss (previously persistAllSettings
   // swallowed errors and the saved* snapshots were committed before the
@@ -128,6 +137,16 @@ export function useSettings(): UseSettingsReturn {
   const seedLiveApiEnabled = useCallback((enabled: boolean) => {
     setLiveApiEnabledState(enabled);
     setLiveApiEnabledDirty(false);
+  }, []);
+
+  const setNotation = useCallback((value: Notation) => {
+    setNotationState(value);
+    setNotationDirty(true);
+  }, []);
+
+  const seedNotation = useCallback((value: Notation) => {
+    setNotationState(value);
+    setNotationDirty(false);
   }, []);
   const [anthropicSettings, setAnthropicSettings] = useState<ProviderSettings>(
     () => loadProviderSettings("anthropic"),
@@ -236,6 +255,7 @@ export function useSettings(): UseSettingsReturn {
     setSavedThinking(providerSettings[provider].thinking);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
+    setNotationDirty(false);
 
     return true;
   }, [
@@ -261,6 +281,7 @@ export function useSettings(): UseSettingsReturn {
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
+    setNotationDirty(false);
     setSaveError(null);
   }, [applyLoadedSettings, voiceModeSettings]);
 
@@ -272,9 +293,6 @@ export function useSettings(): UseSettingsReturn {
     setTemperature,
     setShowThoughts,
   } = useProviderSetters(provider, providerStateSetters);
-  const setProvider = useCallback((newProvider: Provider) => {
-    setProviderState(newProvider);
-  }, []);
   // Reconcile presence with the *decrypted* in-memory key. decryptApiKey fails
   // safe to "" for an orphaned/undecryptable envelope (e.g. the IndexedDB crypto
   // key was reset while the localStorage envelope persisted), so reading the raw
@@ -299,7 +317,9 @@ export function useSettings(): UseSettingsReturn {
 
   return {
     provider,
-    setProvider,
+    // setProviderState (the useState setter) is already stable and accepts a
+    // bare Provider, so it serves as setProvider directly — no wrapper needed.
+    setProvider: setProviderState,
     apiKey: currentSettings.apiKey,
     setApiKey,
     // Voice routing needs both voice-provider keys regardless of which provider
@@ -338,6 +358,10 @@ export function useSettings(): UseSettingsReturn {
     liveApiEnabledDirty,
     setLiveApiEnabled,
     seedLiveApiEnabled,
+    notation,
+    notationDirty,
+    setNotation,
+    seedNotation,
     realtimeVoice: voiceModeSettings.realtimeVoice,
     setRealtimeVoice: voiceModeSettings.setRealtimeVoice,
     savedRealtimeVoice: voiceModeSettings.savedRealtimeVoice,
@@ -389,15 +413,6 @@ async function persistAllSettings(
 ): Promise<void> {
   saveSmallModelMode(smallModelMode);
   await saveCurrentSettings(provider, enabledTools, allSettings);
-}
-
-/**
- * Extract a string error message from an unknown thrown value.
- * @param {unknown} error - Caught value
- * @returns {string} Message string
- */
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**

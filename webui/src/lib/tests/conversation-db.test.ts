@@ -24,6 +24,22 @@ import {
   setBookmark,
 } from "#webui/lib/conversation-db";
 import { createTestRecord as createRecord } from "#webui/test-utils/conversation-test-helpers";
+import { deleteIndexedDb } from "#webui/test-utils/indexeddb-test-helpers";
+
+const DB_NAME = "producer-pal-conversations";
+
+/**
+ * Restore mocked globals and delete the DB so each test starts from scratch,
+ * with no version mismatch or cached connection left over from a prior test.
+ */
+async function resetMocksAndDeleteDb(): Promise<void> {
+  vi.restoreAllMocks();
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- restoreAllMocks removes the spy, leaving confirm undefined at runtime
+  window.confirm ??= () => false;
+  // resetDbCache may throw if a prior test left a rejected dbPromise
+  await resetDbCache().catch(() => {});
+  await deleteIndexedDb(DB_NAME);
+}
 
 describe("conversation-db", () => {
   beforeEach(async () => {
@@ -198,24 +214,44 @@ describe("conversation-db", () => {
   });
 
   /**
-   * Save a record then strip optional fields to simulate a legacy DB entry.
-   * @returns The saved record
+   * Save a record, then strip the named fields from the stored entry to
+   * simulate a legacy DB entry written by an older build.
+   * @param fields - Names of the fields to remove from the stored entry
+   * @param overrides - Fields to override on the record before saving
+   * @returns The saved record, as it was before the fields were stripped
    */
-  async function saveRecordWithMissingFields(): Promise<ConversationRecord> {
-    const record = createRecord();
+  async function saveRecordWithoutFields(
+    fields: string[],
+    overrides: Partial<ConversationRecord> = {},
+  ): Promise<ConversationRecord> {
+    const record = createRecord(overrides);
 
     await saveConversation(record);
 
     const db = await getConversationDb();
     const raw = await db.get("conversations", record.id);
 
-    delete (raw as Record<string, unknown>).thinking;
-    delete (raw as Record<string, unknown>).temperature;
-    delete (raw as Record<string, unknown>).showThoughts;
-    delete (raw as Record<string, unknown>).smallModelMode;
+    for (const field of fields) {
+      delete (raw as Record<string, unknown>)[field];
+    }
+
     await db.put("conversations", raw);
 
     return record;
+  }
+
+  /**
+   * Save a record missing every optional settings field older builds never
+   * wrote, to simulate a legacy DB entry.
+   * @returns The saved record
+   */
+  async function saveRecordWithMissingFields(): Promise<ConversationRecord> {
+    return await saveRecordWithoutFields([
+      "thinking",
+      "temperature",
+      "showThoughts",
+      "smallModelMode",
+    ]);
   }
 
   it("defaults missing thinking/temperature/showThoughts to null on load", async () => {
@@ -229,16 +265,10 @@ describe("conversation-db", () => {
   });
 
   it("defaults missing sessionType to 'text' and voiceHistory to null on load", async () => {
-    const record = createRecord();
-
-    await saveConversation(record);
-    const db = await getConversationDb();
-    const raw = await db.get("conversations", record.id);
-
-    delete (raw as Record<string, unknown>).sessionType;
-    delete (raw as Record<string, unknown>).voiceHistory;
-    await db.put("conversations", raw);
-
+    const record = await saveRecordWithoutFields([
+      "sessionType",
+      "voiceHistory",
+    ]);
     const loaded = await loadConversation(record.id);
 
     expect(loaded?.sessionType).toBe("text");
@@ -246,14 +276,7 @@ describe("conversation-db", () => {
   });
 
   it("defaults missing sessionType to 'text' in list summaries", async () => {
-    const record = createRecord();
-
-    await saveConversation(record);
-    const db = await getConversationDb();
-    const raw = await db.get("conversations", record.id);
-
-    delete (raw as Record<string, unknown>).sessionType;
-    await db.put("conversations", raw);
+    await saveRecordWithoutFields(["sessionType"]);
 
     const list = await listConversations();
 
@@ -422,14 +445,9 @@ describe("conversation-db", () => {
   });
 
   it("searchConversations handles records missing the messages field", async () => {
-    const record = createRecord({ title: "Legacy convo" });
-
-    await saveConversation(record);
-    const db = await getConversationDb();
-    const raw = await db.get("conversations", record.id);
-
-    delete (raw as Record<string, unknown>).messages;
-    await db.put("conversations", raw);
+    const record = await saveRecordWithoutFields(["messages"], {
+      title: "Legacy convo",
+    });
 
     // Must not throw on the absent messages array; title search still matches.
     const matches = await searchConversations("legacy");
@@ -486,21 +504,8 @@ describe("conversation-db", () => {
 });
 
 describe("version mismatch recovery", () => {
-  const DB_NAME = "producer-pal-conversations";
-
   beforeEach(async () => {
-    vi.restoreAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- restoreAllMocks removes the spy, leaving confirm undefined at runtime
-    window.confirm ??= () => false;
-    await resetDbCache();
-
-    // Delete the DB directly (no open connections to block it)
-    await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.deleteDatabase(DB_NAME);
-
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
+    await resetMocksAndDeleteDb();
   });
 
   /** Create a DB at a higher version to simulate a downgrade scenario. */
@@ -597,27 +602,33 @@ describe("version mismatch recovery", () => {
 });
 
 describe("conversation limit enforcement", () => {
-  const DB_NAME = "producer-pal-conversations";
-
   beforeEach(async () => {
-    vi.restoreAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- restoreAllMocks removes the spy, leaving confirm undefined at runtime
-    window.confirm ??= () => false;
-    // resetDbCache may throw if prior test left a rejected dbPromise
-    await resetDbCache().catch(() => {});
-
-    // Delete DB to clear any version mismatch from prior tests
-    await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.deleteDatabase(DB_NAME);
-
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
+    await resetMocksAndDeleteDb();
 
     const db = await getConversationDb();
 
     await db.clear("conversations");
   });
+
+  /**
+   * Save records with increasing updatedAt until the DB holds
+   * MAX_CONVERSATIONS of them, so the next save must trim.
+   * @param startIndex - Index to start filling from, when the caller has
+   * already saved the earlier records itself
+   * @returns The records saved here, oldest first
+   */
+  async function fillToLimit(startIndex = 0): Promise<ConversationRecord[]> {
+    const records: ConversationRecord[] = [];
+
+    for (let i = startIndex; i < MAX_CONVERSATIONS; i++) {
+      const record = createRecord({ updatedAt: 1000 + i });
+
+      records.push(record);
+      await saveConversation(record);
+    }
+
+    return records;
+  }
 
   it("does nothing when under the limit", async () => {
     const record = createRecord();
@@ -631,15 +642,7 @@ describe("conversation limit enforcement", () => {
   });
 
   it("deletes oldest non-bookmarked conversations when over limit", async () => {
-    // Fill up to the limit
-    const records: ConversationRecord[] = [];
-
-    for (let i = 0; i < MAX_CONVERSATIONS; i++) {
-      const r = createRecord({ updatedAt: 1000 + i });
-
-      records.push(r);
-      await saveConversation(r);
-    }
+    const records = await fillToLimit();
 
     // Save one more — should delete the oldest
     const newest = createRecord({ updatedAt: 99999 });
@@ -662,15 +665,7 @@ describe("conversation limit enforcement", () => {
     // saving one imported record can't delete another. Fill to the limit, then
     // save one more while protecting the OLDEST record: it survives and the
     // next-oldest is trimmed instead.
-    const records: ConversationRecord[] = [];
-
-    for (let i = 0; i < MAX_CONVERSATIONS; i++) {
-      const r = createRecord({ updatedAt: 1000 + i });
-
-      records.push(r);
-      await saveConversation(r);
-    }
-
+    const records = await fillToLimit();
     const oldest = records[0]!;
     const nextOldest = records[1]!;
     const newest = createRecord({ updatedAt: 99999 });
@@ -696,14 +691,7 @@ describe("conversation limit enforcement", () => {
     await saveConversation(trunk);
     await saveConversation(oldSibling);
 
-    const filler: ConversationRecord[] = [];
-
-    for (let i = 2; i < MAX_CONVERSATIONS; i++) {
-      const r = createRecord({ updatedAt: 1000 + i });
-
-      filler.push(r);
-      await saveConversation(r);
-    }
+    const filler = await fillToLimit(2);
 
     // New sibling forked off the same trunk — protect the family it joins.
     const newSibling = createRecord({

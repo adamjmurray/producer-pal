@@ -10,8 +10,8 @@ description:
 
 Producer Pal is an AI-powered music production assistant for Ableton Live — an
 Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses 22 specialized tools to read, create, and
-modify tracks, clips, devices, and more in your Live Set.
+the AI what you want and it uses more than 20 specialized tools to work with
+tracks, clips, devices, and more in your Live Set.
 
 It works with virtually any AI, including its
 [built-in Chat UI](/guide/chat-ui), desktop apps like
@@ -35,8 +35,9 @@ It works with virtually any AI, including its
 
 ### 🔧 Context (`ppal-context`) {#ppal-context}
 
-- Read and write project memory — persistent notes that help the AI understand
-  your goals across conversations
+- Read and write the three [context layers](/guide/context): project context
+  (notes about this Live Set), global context (preferences that apply to every
+  project), and memory (facts AI records about you as you work)
 
 <!--@include: ./_generated/ppal-context-schema.md-->
 
@@ -49,8 +50,8 @@ It works with virtually any AI, including its
 - Set loop points and playback position
 - Jump to arrangement locators by ID or name
 - Set loop start/end using locators
-- Control which tracks follow the Arrangement
-- Stop all clips or specific track clips
+- Playback always follows the Arrangement (no per-track override)
+- Stop all clips or specific clips
 
 <!--@include: ./_generated/ppal-playback-schema.md-->
 
@@ -66,13 +67,22 @@ Live, or make sure your standalone Max is up to date. See
 :::
 
 - Search Live's browser library by name, tags, content kind, device kind, or
-  source category (User Library, Pack, Built-in, Cloud, Plugin)
+  source category (User Library, Pack, Built-in, Cloud, Plugin, or your sample
+  folder)
 - Also includes the user-configured sample folder when set, with results merged
   and de-duplicated against Live's library
 - Sort by `use_count` (Live's persistent usage counter — surfaces what you
   actually use most), `mod_date`, or `name`
 - Enumerate available tags with `action: "listTags"` so the AI can discover the
-  tag vocabulary on your machine
+  tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
+  Drums, Genres, …) with `action: "listCategories"`
+- Run many filtered searches in one call with `action: "searchBatch"` — results
+  grouped per query, so the AI can assemble a whole drum kit in one round trip
+- List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
+  (filter by query, vendor, format, device kind, or subcategory)
+- Find samples that _sound_ like a seed sample with `action: "findSimilar"`, or
+  group library samples with identical audio (re-shipped duplicates) with
+  `action: "findDuplicates"` — both can be narrowed with the search filters
 
 <!--@include: ./_generated/ppal-library-schema.md-->
 
@@ -81,7 +91,7 @@ Live, or make sure your standalone Max is up to date. See
 - Read current selection and view state (when no arguments)
   - Returns only non-null fields: selected track, scene, clip, device
   - Rich object shapes with IDs, types, and context (slot, path, etc.)
-- Update selection and returns only relevant fields
+- Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
   - Select clips by slot position (e.g., `0/3`)
@@ -97,7 +107,7 @@ Live, or make sure your standalone Max is up to date. See
 
 ### 🔧 Delete (`ppal-delete`) {#ppal-delete}
 
-- Remove tracks, return tracks, scenes, clips, or devices
+- Remove tracks, return tracks, scenes, clips, devices, or drum pads
 - Bulk delete multiple objects
 
 <!--@include: ./_generated/ppal-delete-schema.md-->
@@ -200,6 +210,16 @@ limitation).
 
 ## Clip Tools
 
+::: info Parameters shown use the default notation
+
+The `notes` parameter on Create Clip and Update Clip is rewritten to match the
+active [notation](/features/midi-notation). The tables below show it in
+`bar|beat`, the default — see [MIDI Notation](/features/midi-notation#bar-beat)
+for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
+[Stark](/features/midi-notation#stark).
+
+:::
+
 ### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
 
 - Generate MIDI clips with notes, velocities, and timing using
@@ -208,6 +228,7 @@ limitation).
 - Place arrangement clips on [take lanes](#take-lanes) with `takeLane`
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](#transforms) to shape notes with math expressions
+- Create audio clips from a sample file with `sampleFile`
 - Auto-create scenes as needed
 
 <!--@include: ./_generated/ppal-create-clip-schema.md-->
@@ -225,7 +246,7 @@ limitation).
 - Change clip name, color, and loop settings
 - Add/remove MIDI notes using [custom notation](#custom-music-notation)
 - Apply [transforms](#transforms) to modify existing notes and audio properties
-  (a different transform per clip when updating multiple)
+  (use `clip.index`/`clipseq()` for per-clip variation when updating multiple)
 - Change audio clip gain, pitch shift, and warp settings
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
@@ -263,13 +284,12 @@ limitation).
 - Update multiple devices at once
 - Move devices anywhere else in the Live Set, including into racks / wrapping in
   a new rack
-- Create, load, delete, and randomize rack macros variations
+- Create, load, delete, revert, and randomize rack macro variations
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
 - Change the choke group and output MIDI note of drum chains
-- Load a sample into a Simpler instrument via
-  `params: [{name: "sample", value: "<path>"}]`, and set its level with
-  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
+- Load a sample into a Simpler instrument (see
+  [Create Device](#ppal-create-device) above)
 
 <!--@include: ./_generated/ppal-update-device-schema.md-->
 
@@ -282,58 +302,61 @@ Direct access to the
 scripting and debugging.
 
 **Off by default.** Producer Pal's specialized tools are tuned for reliable
-results across most models. The raw Live API is low-level and can give weaker
-results out of the box, so it's hidden rather than competing with the focused
-tools. It's a powerful escape hatch for scripting and advanced workflows,
-especially with capable coding agents. Enable it on the **Setup** tab of the
-Producer Pal Max for Live device. When disabled, MCP clients and the
-[REST API](/guide/rest-api) both stop seeing the tool. See the
-[REST API Live API section](/guide/rest-api#live-api) for the full operation
-reference and examples.
+results across most models; the raw Live API is low-level and can give weaker
+results out of the box, so it's hidden rather than competing with them. It's a
+powerful escape hatch for scripting and advanced workflows, especially with
+capable coding agents. Enable it on the **Setup** tab of the Producer Pal Max
+for Live device, or programmatically via `POST /config` (the `npx producer-pal`
+MCP server also accepts a `--live-api` flag). See the REST API's
+[Live API section](/guide/rest-api#live-api) for the full operation reference
+and examples.
 
 <!--@include: ./_generated/ppal-live-api-schema.md-->
 
-## Custom Music Notation {#custom-music-notation}
+## MIDI Notation {#custom-music-notation}
 
-Producer Pal uses a text-based music notation syntax called `bar|beat` to work
-with MIDI clips. Used by [Create Clip](#ppal-create-clip),
+Producer Pal gives the AI a text-based music notation to compose in, rather than
+raw MIDI note data. Used by [Create Clip](#ppal-create-clip),
 [Update Clip](#ppal-update-clip), and [Read Clip](#ppal-read-clip). It helps
 LLMs translate natural language expressions of time to the correct time
 positions in Ableton Live clips and the arrangement timeline.
 
-- **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
-- **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
-- **Durations**: absolute note values (n/4 = quarter note, n/8 = eighth, n/12 =
-  eighth triplet); clip length can also use bars (4bar = 4 bars, 1bar+n/4)
-- **Time units**: a plain "beat" is your meter's beat (a quarter in 4/4, an
-  eighth in 6/8), while note values (`n/4`, `±n` offsets, durations) are
-  absolute — a quarter is a quarter in any meter. `arrangementStart` and
-  `arrangementLength` are read in the song's time signature; a clip's own
-  `start`/`length` use the clip's time signature, so when they differ the same
-  bar|beat literal means different absolute times.
-- **Velocity**: Values from 1-127 (or ranges like 80-100)
-- **Probability**: 0.0 to 1.0 (1.0 = always plays)
-- **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
-  1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
-  bars 3-10)
+Three notations are available, chosen by a global device setting:
+
+- **[`bar|beat`](/features/midi-notation#bar-beat)** — the default. Compact and
+  expressive: pitches are names (`C3`, `F#4`), time is `bar|beat` (`1|1`,
+  `2|3`), durations are note values (`n/4`, `n/8`), plus velocity ranges,
+  probability, and bar copying.
+- **[MIDI JSON](/features/midi-notation#midi-json)** — notes as a compact JSON
+  array. The most exact, and the easiest for coding agents to generate and
+  parse.
+- **[Stark](/features/midi-notation#stark)** — a literal, round-trippable
+  notation with chord symbols and event-based drum lines, friendly to small and
+  local models.
+
+[Read the full notation guide →](/features/midi-notation)
 
 ## Transforms {#transforms}
 
 Apply complex changes to clips using math expressions via
 [Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
-[Duplicate](#ppal-duplicate). When updating or duplicating multiple clips at
-once, one transform string broadcasts across every clip/copy — use `clip.index`
-arithmetic or `clipseq()` inside the string for per-clip variation:
+[Duplicate](#ppal-duplicate). Transforms work the same way in every notation.
+When updating or duplicating multiple clips at once, one transform string
+broadcasts across every clip/copy — use `clip.index` arithmetic or `clipseq()`
+inside the string for per-clip variation:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
-- **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
-  arbitrary ranges, choose from sets of values (e.g. chord notes)
+- **Shapes**: LFO waveforms (`sin`, `cos`, `tri`, `saw`, `square`), ramps,
+  curves, randomization with arbitrary ranges, choose from sets of values (e.g.
+  chord notes)
 - **Context variables**: Access note order (`note.index`), clip metadata
   (`clip.duration`, `clip.index`, `clip.position`) in expressions
 - **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
+
+[Read the full transforms guide →](/features/midi-notation#transforms)
 
 ## Take Lanes {#take-lanes}
 
@@ -393,17 +416,47 @@ required. For fully remote control, use
 Adapts Producer Pal for less capable AI models by returning simplified
 [skills](#skills) and removing advanced parameters from tool schemas. This is an
 ongoing R&D effort aimed at making [local models](/installation/choose-local)
-viable for completely offline, free, and private usage. Enable it in the
-[Chat UI](/guide/chat-ui) settings or with `--small-model-mode` on the command
-line.
+viable for completely offline, free, and private usage. Enable it on the
+[device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
+settings, or via the `npx producer-pal` MCP server's `--small-model-mode` flag —
+like [notation](/features/midi-notation), it's a global device setting that
+applies to MCP clients too.
 
 ## Skills {#skills}
 
 The [Connect tool](#ppal-connect) returns a skill set that teaches the AI how to
-use Producer Pal's [custom notation](#custom-music-notation),
-[transforms](#transforms), device paths, and other conventions. Two variants are
-available depending on [small model mode](#small-model-mode):
+use Producer Pal's [notation](/features/midi-notation),
+[transforms](/features/midi-notation#transforms), device paths, and other
+conventions. It's sent to external MCP clients in the `ppal-connect` result and
+used by the built-in [Chat UI](/guide/chat-ui) on every conversation.
 
-<!--@include: ./_generated/skills-standard.md-->
+The exact text depends on the active [notation](/features/midi-notation) and on
+[small model mode](#small-model-mode) — six combinations in all — so rather than
+reproduce them here:
 
-<!--@include: ./_generated/skills-basic.md-->
+- **Read them** in the Chat UI's [Skills tab](/guide/context#skills) →
+  **Preview**, which assembles the whole document for any notation and model
+  size, with your own overrides applied. A ★ marks the combination your current
+  settings use, and a size readout shows what it costs you per conversation.
+- **Change them** — every fragment can be overridden or dropped. See
+  [Customizing Skills](/guide/customizing-skills).
+- **Browse the source** in
+  [`src/skills/`](https://github.com/adamjmurray/producer-pal/tree/main/src/skills)
+  on GitHub.
+
+### Agent Skill (for coding agents) {#agent-skill}
+
+Not to be confused with the skills above: an **[Agent Skill](/guide/skills)** is
+the portable `SKILL.md` convention that Claude Code, Codex CLI, and Gemini CLI
+share. Producer Pal ships one — a drop-in folder that drives the
+[REST API](/guide/rest-api), so a coding agent can control Ableton Live with no
+MCP client at all.
+
+It stays a thin bootstrap rather than a copy of the guidance: it tells the agent
+to call [`ppal-connect`](#ppal-connect) first, which returns the same skill set
+described above. So the two fit together — the Agent Skill is _how_ a coding
+agent reaches Producer Pal, and the skills it loads on connect are _what_ it
+learns. New tools and skill updates land in that response automatically, and the
+`SKILL.md` never needs to change.
+
+[Set up the Agent Skill →](/guide/skills)

@@ -11,7 +11,13 @@ export default defineConfig({
   // GitHub Pages base URL
   base: "/",
 
-  sitemap: { hostname: "https://producer-pal.org" },
+  sitemap: {
+    hostname: "https://producer-pal.org",
+    // Keep the /guide/examples redirect stub (moved to /features/examples) out
+    // of the sitemap so crawlers index the destination, not the redirect.
+    transformItems: (items) =>
+      items.filter((item) => !item.url.startsWith("guide/examples")),
+  },
 
   cleanUrls: true,
 
@@ -22,12 +28,18 @@ export default defineConfig({
       .replace(/\.md$/, "")
       .replace(/\/index$/, "")
       .replace(/^index$/, "");
-    const canonicalUrl = `https://producer-pal.org/${path}`;
     pageData.frontmatter.head ??= [];
-    pageData.frontmatter.head.push([
-      "link",
-      { rel: "canonical", href: canonicalUrl },
-    ]);
+    // Respect a page's own canonical (e.g. the /guide/examples redirect stub
+    // points at /features/examples); otherwise default to a self-canonical.
+    const hasCanonical = pageData.frontmatter.head.some(
+      ([tag, attrs]) => tag === "link" && attrs?.rel === "canonical",
+    );
+    if (!hasCanonical) {
+      pageData.frontmatter.head.push([
+        "link",
+        { rel: "canonical", href: `https://producer-pal.org/${path}` },
+      ]);
+    }
     pageData.frontmatter.version = VERSION;
   },
 
@@ -114,7 +126,8 @@ export default defineConfig({
         items: [
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
-          { text: "Usage Examples", link: "/guide/examples" },
+          { text: "Context & Memory", link: "/guide/context" },
+          { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "REST API", link: "/guide/rest-api" },
           { text: "Agent Skills", link: "/guide/skills" },
         ],
@@ -123,6 +136,8 @@ export default defineConfig({
         text: "Features",
         link: "/features",
         items: [
+          { text: "Usage Examples", link: "/features/examples" },
+          { text: "MIDI Notation", link: "/features/midi-notation" },
           { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },
         ],
@@ -132,19 +147,19 @@ export default defineConfig({
         link: "/how-it-works",
         items: [
           {
-            text: "Running Inside Ableton Live",
+            text: "Running Inside Live",
             link: "/how-it-works/running-inside-live",
           },
           {
-            text: "The Bridge: JSON Over Patch Cables",
+            text: "JSON Over Patch Cables",
             link: "/how-it-works/the-bridge",
           },
           {
-            text: "More Than a Live API Wrapper",
+            text: "More Than a Wrapper",
             link: "/how-it-works/more-than-a-wrapper",
           },
           {
-            text: "Why Not an Ableton Extension?",
+            text: "Why Not an Extension",
             link: "/how-it-works/why-not-an-extension",
           },
         ],

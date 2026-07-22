@@ -23,7 +23,7 @@
  * param fails the assertion.
  *
  * Requires Ableton (real device + LLM): `npm run build:debug` then
- * `./scripts/eval -m google/gemini-3.5-flash -t note-ops-ratchet-roll -t note-ops-merge -t note-ops-split -t note-ops-split-sync -t note-ops-repeat`.
+ * `./scripts/eval -m google/gemini-3.6-flash -t note-ops-ratchet-roll -t note-ops-merge -t note-ops-split -t note-ops-split-sync -t note-ops-repeat`.
  * Validated vs Live 2026-06-06: ratchet/merge PASS 4/4 — the model reached for
  * the exact idioms (`ratchet(4)` grew 12→48 notes; `merge()` collapsed to one
  * note per drum pitch), judges pass.

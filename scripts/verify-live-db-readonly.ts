@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Verification harness for AJM-330 — exercise the production read-only
+ * Verification harness for the read-only Live DB — exercise the production read-only
  * open path against the real Live DB and report file state, query timings,
  * staleness signals, and any errors.
  *
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  console.log(`=== AJM-330 verification harness ===`);
+  console.log(`=== Live DB read-only verification harness ===`);
   console.log(`Files DB:   ${filesDbPath}`);
   console.log(`Plugins DB: ${pluginsDbPath ?? "(none)"}`);
   console.log(`Duration:   ${durationSeconds}s`);

@@ -6,6 +6,8 @@
 import { describe, it, expect } from "vitest";
 import {
   extractGptVersion,
+  isAlwaysOnThinkingModel,
+  isLegacyNonThinkingModel,
   mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
@@ -18,6 +20,36 @@ import {
 } from "#webui/hooks/settings/turn-detection-helpers";
 
 describe("config-builders", () => {
+  describe("isAlwaysOnThinkingModel", () => {
+    it("is true for Fable and Mythos models", () => {
+      expect(isAlwaysOnThinkingModel("claude-fable-5")).toBe(true);
+      expect(isAlwaysOnThinkingModel("claude-mythos-5")).toBe(true);
+    });
+
+    it("is false for other models", () => {
+      expect(isAlwaysOnThinkingModel("claude-sonnet-5")).toBe(false);
+      expect(isAlwaysOnThinkingModel("claude-haiku-4-5")).toBe(false);
+    });
+  });
+
+  describe("isLegacyNonThinkingModel", () => {
+    it("is true for Claude 3.0 / 3.5 and Claude 2 / instant ids", () => {
+      expect(isLegacyNonThinkingModel("claude-3-opus-20240229")).toBe(true);
+      expect(isLegacyNonThinkingModel("claude-3-sonnet-20240229")).toBe(true);
+      expect(isLegacyNonThinkingModel("claude-3-5-sonnet-20241022")).toBe(true);
+      expect(isLegacyNonThinkingModel("claude-3.5-sonnet")).toBe(true);
+      expect(isLegacyNonThinkingModel("claude-2.1")).toBe(true);
+      expect(isLegacyNonThinkingModel("claude-instant-1.2")).toBe(true);
+    });
+
+    it("is false for 3.7+ and modern named-tier ids (they support thinking)", () => {
+      expect(isLegacyNonThinkingModel("claude-3-7-sonnet")).toBe(false);
+      expect(isLegacyNonThinkingModel("claude-sonnet-5")).toBe(false);
+      expect(isLegacyNonThinkingModel("claude-opus-4-8")).toBe(false);
+      expect(isLegacyNonThinkingModel("claude-haiku-4-5")).toBe(false);
+    });
+  });
+
   describe("mapTurnDetectionToConfig", () => {
     const base: TurnDetectionSettings = {
       ...DEFAULT_TURN_DETECTION,

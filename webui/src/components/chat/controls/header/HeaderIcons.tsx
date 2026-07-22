@@ -161,6 +161,30 @@ export function ImportIcon() {
 }
 
 /**
+ * Trash-can icon for destructive actions (delete a conversation, reset an
+ * override to its built-in default).
+ * @param props - Component props
+ * @param props.size - Width/height in px (default 14)
+ * @returns SVG element
+ */
+export function TrashIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 3.5h10M5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M11 3.5l-.5 8a1 1 0 01-1 1h-5a1 1 0 01-1-1L3 3.5" />
+    </svg>
+  );
+}
+
+/**
  * Lined-document icon for the project context view
  * @returns SVG element
  */

@@ -94,6 +94,17 @@ describe("liveApi", () => {
       );
     });
 
+    it("should not throw when operations array has exactly 50 operations", () => {
+      // Boundary: MAX_OPERATIONS is 50, so exactly 50 is allowed (> not >=).
+      const operations = Array(50).fill({
+        type: "exists",
+      }) as LiveApiOperation[];
+
+      const result = liveApi({ operations });
+
+      expect(result.results).toHaveLength(50);
+    });
+
     it("should throw error for unknown operation type", () => {
       expect(() =>
         liveApi({
@@ -159,6 +170,18 @@ describe("liveApi", () => {
       expect(result.results[0]!.operation.type).toBe("call_method");
       expect(result.results[0]!.result).toStrictEqual([120]);
       expect(defaultMock.get).toHaveBeenCalledWith("tempo");
+    });
+
+    it("should handle call_method operation without args", () => {
+      // No args → executeOperation applies the default [] (empty argument list).
+      defaultMock.get.mockReturnValueOnce([120]);
+
+      const result = liveApi({
+        operations: [{ type: "call_method", method: "get" }],
+      });
+
+      expect(result.results[0]!.result).toStrictEqual([120]);
+      expect(defaultMock.get).toHaveBeenCalledWith();
     });
 
     it("should throw error for call_method without method", () => {
@@ -471,6 +494,23 @@ describe("liveApi", () => {
           operations: [{ type: "unknown_operation" }],
         } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: unknown_operation");
+    });
+
+    it("should wrap operation errors and preserve the original as cause", () => {
+      let caught: unknown;
+
+      try {
+        liveApi({ operations: [{ type: "get_property" }] });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toContain("Operation failed");
+      expect((caught as Error).cause).toBeInstanceOf(Error);
+      expect(((caught as Error).cause as Error).message).toContain(
+        "get_property operation requires property",
+      );
     });
   });
 });

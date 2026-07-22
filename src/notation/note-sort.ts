@@ -56,3 +56,24 @@ export function dedupeNotesKeepingLast<
     return withoutCollision;
   }, []);
 }
+
+/**
+ * Prepare notes for an `add_new_notes` write: collapse same-pitch+start
+ * collisions (keep-last) then sort ascending by start_time — the two steps every
+ * write path must do so Live doesn't silently drop notes. Returns the collision
+ * count so the caller can emit its own context-specific warning (the count is
+ * relayed to the LLM). Combines {@link dedupeNotesKeepingLast} and
+ * {@link sortNotes} in the required order (dedupe first, then sort).
+ * @param notes - Notes in insertion order (e.g. interpreted, or existing→new)
+ * @returns The write-ready notes and how many collisions were collapsed
+ */
+export function dedupeAndSortNotes<
+  T extends { start_time: number; pitch: number },
+>(notes: T[]): { notes: T[]; collisions: number } {
+  const deduped = dedupeNotesKeepingLast(notes);
+
+  return {
+    notes: sortNotes(deduped),
+    collisions: notes.length - deduped.length,
+  };
+}

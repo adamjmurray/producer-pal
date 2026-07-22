@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
@@ -14,27 +16,17 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   },
   inputSchema: {
     ids: z.coerce.string().describe("comma-separated scene ID(s) to update"),
-    name: z
-      .string()
-      .optional()
-      .describe(
+    name: param(z.string().optional(), {
+      default:
         "name for all, or comma-separated for each (extras keep existing name)",
-      ),
-    color: z
-      .string()
-      .optional()
-      .describe(
+      smallModel: "scene name",
+    }),
+    color: param(z.string().optional(), {
+      default:
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
-      ),
+      smallModel: "#RRGGBB",
+    }),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
-  },
-
-  smallModelModeConfig: {
-    excludeParams: [],
-    descriptionOverrides: {
-      name: "scene name",
-      color: "#RRGGBB",
-    },
   },
 });

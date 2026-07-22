@@ -8,10 +8,16 @@ import Max from "max-api";
 import { VERSION } from "#src/shared/config.ts";
 import { checkForUpdate } from "#src/shared/version-check.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
+import { registerGlobalMemoryNodeRoutes } from "./helpers/memory/global-memory-node-routes.ts";
+import { registerCustomSkillsNodeRoutes } from "./helpers/skills-custom/custom-skills-node-routes.ts";
 import { registerLibraryRoutes } from "./live-library/library-routes.ts";
 import * as console from "./node-for-max-logger.ts";
 
 registerLibraryRoutes();
+registerGlobalContextNodeRoutes();
+registerGlobalMemoryNodeRoutes();
+registerCustomSkillsNodeRoutes();
 
 interface ServerError extends Error {
   code?: string;
@@ -43,7 +49,7 @@ console.log(`Producer Pal ${VERSION} starting MCP server on port ${port}...`);
 const devFlags = [
   ["ENABLE_LIVE_API", process.env.ENABLE_LIVE_API],
   ["ENABLE_CODE_EXEC", process.env.ENABLE_CODE_EXEC],
-  ["ENABLE_DEV_CORS", process.env.ENABLE_DEV_CORS],
+  ["ENABLE_REMOTE_CORS", process.env.ENABLE_REMOTE_CORS],
 ].filter(([, value]) => value === "true");
 
 if (devFlags.length > 0) {

@@ -33,6 +33,12 @@ export interface ConversationRecord {
   // RealtimeItem[] for voice records, null for text. Typed as unknown[] so the
   // storage layer stays decoupled from @openai/agents/realtime.
   voiceHistory: unknown[] | null;
+  // The system instruction this conversation ran with (resolved override or the
+  // built-in), snapshotted at the first save and preserved on later saves so the
+  // transcript shows what it actually ran with even after the global override is
+  // edited. Optional/schemaless: legacy records read fine without it (no
+  // DB_VERSION bump), and it rides the conversation export/import.
+  systemInstruction?: string;
   // --- Conversation branching (edit/retry forks) ---
   // Set on records created by forking an earlier turn. The fork stores a pointer
   // back to the record it diverged from (its "trunk") plus the UI message index
@@ -99,8 +105,7 @@ export async function loadConversation(
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
   const raw = (await db.get(STORE_NAME, id)) as
-    | Partial<ConversationRecord>
-    | undefined;
+    Partial<ConversationRecord> | undefined;
 
   if (!raw) return undefined;
 
@@ -152,8 +157,7 @@ export async function renameConversation(
 ): Promise<void> {
   const db = await getConversationDb();
   const record = (await db.get(STORE_NAME, id)) as
-    | ConversationRecord
-    | undefined;
+    ConversationRecord | undefined;
 
   if (!record) return;
 
@@ -172,8 +176,7 @@ export async function setBookmark(
 ): Promise<void> {
   const db = await getConversationDb();
   const record = (await db.get(STORE_NAME, id)) as
-    | ConversationRecord
-    | undefined;
+    ConversationRecord | undefined;
 
   if (!record) return;
 

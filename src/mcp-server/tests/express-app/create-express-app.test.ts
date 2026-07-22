@@ -16,8 +16,7 @@ type MockMax = typeof Max & {
   handlers: Map<string, (input: unknown) => void>;
   mcpResponseHandler: ((requestId: string, ...chunks: string[]) => void) | null;
   defaultMcpResponseHandler:
-    | ((requestId: string, ...chunks: string[]) => void)
-    | null;
+    ((requestId: string, ...chunks: string[]) => void) | null;
 };
 const mockMax = Max as MockMax;
 
@@ -445,25 +444,6 @@ describe("MCP Express App", () => {
 
       expect(app).toBeDefined();
       // The app should be created successfully without any configuration
-    });
-  });
-
-  describe("CORS", () => {
-    it("should handle OPTIONS preflight requests", async () => {
-      const response = await fetch(appState.serverUrl, {
-        method: "OPTIONS",
-        headers: {
-          "Access-Control-Request-Method": "POST",
-          "Access-Control-Request-Headers": "content-type",
-        },
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("access-control-allow-origin")).toBe("*");
-      expect(response.headers.get("access-control-allow-methods")).toContain(
-        "POST",
-      );
-      expect(response.headers.get("access-control-allow-headers")).toBe("*");
     });
   });
 

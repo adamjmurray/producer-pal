@@ -9,7 +9,7 @@ import {
   ensureLiveApiTool,
   LIVE_API_TOOL_ID,
   groupTools,
-} from "#webui/components/settings/controls/tool-toggles-helpers";
+} from "#webui/components/settings/controls/helpers/tool-toggles-helpers";
 
 const tool = (id: string, name: string): McpTool => ({ id, name });
 

@@ -7,7 +7,7 @@ import {
   AppShell,
   type ConversationPanelState,
 } from "#webui/components/AppShell";
-import { type ModeContext } from "#webui/components/mode-context";
+import { type ModeAppProps } from "#webui/components/mode-context";
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";
 import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
@@ -16,31 +16,11 @@ import {
   useConversationSearch,
 } from "#webui/hooks/chat/helpers/use-conversation-search";
 import { type useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
-import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
-import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { useVoiceModeState } from "#webui/hooks/voice/use-voice-mode-state";
 import { type useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
-import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { type UseSettingsReturn } from "#webui/types/settings";
 import { isMobile } from "#webui/utils/is-mobile";
 
-export interface VoiceAppProps {
-  settings: UseSettingsReturn;
-  display: PreferencesSettings;
-  viewState: ViewState;
-  setViewState: (partial: Partial<ViewState>) => void;
-  mcpStatus: McpStatus;
-  totalToolsCount: number;
-  enabledToolsCount: number;
-  onOpenSettings: () => void;
-  onOpenToolsSettings: () => void;
-  onOpenConnectionSettings: () => void;
-  onOpenContext: () => void;
-  onForeignRecord: (record: ConversationRecord) => void;
-  clearViewingMode: () => void;
-  setModeContext: (ctx: ModeContext) => void;
-}
+export type VoiceAppProps = ModeAppProps;
 
 /**
  * Voice mode UI. Backed by OpenAI Realtime or Gemini Live depending on the

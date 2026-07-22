@@ -1,0 +1,60 @@
+name: "Mutation Testing"
+
+# Manually triggered mutation testing. Deliberately off the per-PR hot path — a
+# pass is minutes to hours, far too slow for every commit. Pick a scope or group
+# to mutate; the list lives in config/mutation-scopes.mjs (scopes: notation +
+# each src/tools/ domain; groups: tools, all). The runner validates the input
+# and fast-fails on an unknown name.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description:
+          "Scope(s)/group(s), space-separated: notation | clip | tools | all |
+          ..."
+        required: true
+        default: "notation"
+
+concurrency:
+  group: mutation-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24.x"
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # GitHub's hard ceiling; a single scope is minutes, groups can be hours
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation testing
+        # Pass the input via env (not inline ${{ }}) to avoid script injection.
+        # $SCOPE is intentionally unquoted so a multi-scope input word-splits
+        # into separate args (e.g. "notation clip" -> two scopes).
+        env:
+          SCOPE: ${{ inputs.scope }}
+        run: npm run mutation -- $SCOPE
+
+      - name: Upload mutation reports
+        # always() so the HTML report survives even when a break gate fires
+        # (notation is ratcheted and exits non-zero on a regression).
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: mutation-reports
+          path: reports/mutation/
+          retention-days: 30

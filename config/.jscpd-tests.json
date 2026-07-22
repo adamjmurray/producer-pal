@@ -1,5 +1,5 @@
 {
-  "threshold": 1.25,
+  "threshold": 1.2,
   "reporters": ["console"],
   "ignorePattern": [
     "// Producer Pal",
@@ -8,6 +8,6 @@
     "// SPDX-License-Identifier:.*"
   ],
   "ignore": ["**/node_modules/**", "**/parser/*.js"],
-  "pattern": "**/{*.test.{js,ts,tsx},*-test-helpers.{js,ts},*-test-case.ts,test-utils/**/*.{js,ts},test-cases/**/*.{js,ts},tests/**/*.{js,ts},e2e/**/*.{js,ts}}",
+  "pattern": "**/{*.test.{js,ts,tsx},*-test-helpers.{js,ts,tsx},*-test-case.ts,test-utils/**/*.{js,ts,tsx},test-cases/**/*.{js,ts,tsx},tests/**/*.{js,ts,tsx},e2e/**/*.{js,ts,tsx}}",
   "path": ["../src", "../webui/src"]
 }

@@ -197,16 +197,22 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         );
       });
 
-      it("warns when source bar is empty during tiling", () => {
+      it("does not warn on partial empty bars during tiling (sparse source)", () => {
         interpretNotation("C3 1|1 D3 3|1 @5-8=1-4");
-        // Bar 2 and 4 are empty, should warn when trying to copy them
-        expect(outlet).toHaveBeenCalledWith(
+        // Bars 2 and 4 are empty but bars 1 and 3 have content — a sparse source
+        // (e.g. held multi-bar chords) is normal, so no empty warning fires.
+        expect(outlet).not.toHaveBeenCalledWith(
           1,
-          expect.stringContaining("Bar 2 is empty, nothing to copy"),
+          expect.stringContaining("is empty, nothing to copy"),
         );
+      });
+
+      it("warns once when the entire tiled source range is empty", () => {
+        interpretNotation("C3 9|1 @5-8=1-4");
+        // Source bars 1-4 are all empty (only bar 9 has a note).
         expect(outlet).toHaveBeenCalledWith(
           1,
-          expect.stringContaining("Bar 4 is empty, nothing to copy"),
+          expect.stringContaining("Bars 1-4 are empty, nothing to copy"),
         );
       });
 
@@ -337,15 +343,21 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         expect(result).toStrictEqual([createNote()]);
       });
 
-      it("handles empty source in range copy", () => {
+      it("does not warn on partial empty bars in a range copy (sparse source)", () => {
         interpretNotation("C3 1|1 @5=1-3");
-        expect(outlet).toHaveBeenCalledWith(
+        // Bar 1 has content; bars 2-3 are empty. Partial gaps copy silently.
+        expect(outlet).not.toHaveBeenCalledWith(
           1,
-          expect.stringContaining("Bar 2 is empty, nothing to copy"),
+          expect.stringContaining("is empty, nothing to copy"),
         );
+      });
+
+      it("warns once when a range copy's entire source is empty", () => {
+        interpretNotation("C3 9|1 @5=1-3");
+        // Source bars 1-3 are all empty (only bar 9 has a note).
         expect(outlet).toHaveBeenCalledWith(
           1,
-          expect.stringContaining("Bar 3 is empty, nothing to copy"),
+          expect.stringContaining("Bars 1-3 are empty, nothing to copy"),
         );
       });
 

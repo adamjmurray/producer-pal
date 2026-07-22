@@ -307,8 +307,9 @@ describe("ppal-clip-transforms (legato)", () => {
     // C3 at 1|1 → extends to 1|3 = 2 beats = n/2
     expect(notes).toMatch(/n\/2\b.*C3.*1\|1/);
 
-    // E3 at 1|3 → extends to end of 2-bar clip = 6 beats (8 - 2) = n3/2
-    expect(notes).toMatch(/n3\/2\b.*E3.*1\|3/);
+    // E3 at 1|3 → extends to end of 2-bar clip = 6 beats (8 - 2) = n3/2,
+    // serialized as the dotted-whole sugar n/1d (dotted whole = 6 quarters).
+    expect(notes).toMatch(/n\/1d\b.*E3.*1\|3/);
   });
 
   it("legato(0) behaves same as legato()", async () => {

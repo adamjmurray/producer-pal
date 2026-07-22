@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -11,6 +11,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { type LanguageModel } from "ai";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
@@ -65,8 +66,23 @@ export function createProviderModel(
       const apiKey = validateApiKey(LOCAL_CONFIG);
       const baseURL = process.env.LOCAL_BASE_URL ?? LOCAL_DEFAULT_BASE_URL;
 
-      return createOpenAI({ apiKey, baseURL }).chat(model);
+      // Use @ai-sdk/openai-compatible (not @ai-sdk/openai): its chatModel
+      // surfaces the `reasoning_content` field that LM Studio / Ollama reasoning
+      // models emit as thinking deltas, whereas @ai-sdk/openai's chat model
+      // silently drops it (matching the webui's lmstudio provider). includeUsage
+      // makes the OpenAI-compatible server emit a usage chunk for token counts.
+      return createOpenAICompatible({
+        name: "local",
+        apiKey,
+        baseURL,
+        includeUsage: true,
+      }).chatModel(model);
     }
+
+    case "codex-code":
+      throw new Error(
+        "codex-code uses the Codex CLI transport, not the AI SDK provider.",
+      );
 
     default: {
       const _exhaustiveCheck: never = provider;

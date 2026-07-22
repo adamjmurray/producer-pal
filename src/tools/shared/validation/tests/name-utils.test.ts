@@ -57,6 +57,8 @@ describe("name-utils", () => {
   describe("getNameForIndex", () => {
     it("returns undefined when baseName is undefined", () => {
       expect(getNameForIndex(undefined, 0, null)).toBeUndefined();
+      // The baseName guard must win even when parsedNames could supply a value.
+      expect(getNameForIndex(undefined, 0, ["A"])).toBeUndefined();
     });
 
     it("returns baseName when parsedNames is null", () => {

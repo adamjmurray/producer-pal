@@ -738,7 +738,11 @@ badAbsoluteValue
   / unsignedDecimal { return text(); }
 
 // Matches the removed synced-period syntax (Nt, N:Nt) to throw a targeted error.
-// Synced periods are now note-value expressions gated by the `sync` keyword.
+// Synced periods are now note-value expressions gated by the `sync` keyword. The
+// period number (`unsignedFloat`) is matched WITHOUT the note-value `d`/`t` suffix
+// (see below), so a bare-fraction period like `1/2t` still leaves its trailing `t`
+// for this rule. A note-value triplet always wears the `n` sigil (`n/4t`) and is
+// consumed by `nDuration` before this rule, so there is no conflict.
 badPeriod
   = unsignedInt ":" unsignedFloat "t" { throw new Error(oldPeriodError(text())); }
   / unsignedFloat "t" { throw new Error(oldPeriodError(text())); }
@@ -867,8 +871,18 @@ oneOrMoreDecimal
     return Number.parseFloat(text());
   }
 
+// The number in the removed synced-period syntax (`Nt`, `N:Nt`) — used ONLY by
+// `badPeriod`. BOTH the mixed-number and bare-fraction alternatives spell the
+// fraction inline WITHOUT the `d`/`t` note-value suffix that `unsignedFraction`
+// now carries, so a bare-fraction (`1/2t`) OR mixed-number (`1+1/2t`, incl. the
+// colon form `2:1+1/2t`) period leaves its trailing `t` for badPeriod to detect.
+// (Routing the mixed number through `unsignedMixedNumber`/`unsignedFraction` would
+// let it swallow the `t` and mask the removed syntax — the friendly steer is lost
+// and a raw parser error surfaces instead.)
 unsignedFloat
-  = unsignedMixedNumber / unsignedFraction / unsignedDecimal
+  = unsignedInt "+" ([0-9]+ "." [0-9]+ / [0-9]*) "/" [1-9] [0-9]*
+  / ([0-9]+ "." [0-9]+ / [0-9]*) "/" [1-9] [0-9]*
+  / unsignedDecimal
 
 unsignedMixedNumber
   = wholeNumber:unsignedInt "+" fraction:unsignedFraction {
@@ -876,16 +890,20 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* {
+  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
     // Numerator may be empty (→ 1), an integer, or a DECIMAL: the off-grid escape
     // `n<beats>/4` (e.g. `n1.9638/4`) the length/duration serializer emits for a
     // sample-derived value with no clean note-value fraction. The denominator
-    // stays a no-leading-zero integer. Kept in parity with the TS regexes in
-    // barbeat-time.ts by note-value-grammar-parity.test.ts.
+    // stays a no-leading-zero integer. An optional single `d`/`t` suffix scales the
+    // value: `d` = dotted (×3/2, `n/4d` = dotted quarter = 3/8), `t` = triplet
+    // (×2/3, `n/4t` = quarter triplet = 1/6, `n/8t` = eighth triplet = 1/12).
+    // Mutually exclusive, no stacking; applies to ANY numerator. Kept in parity
+    // with the TS regexes in barbeat-time.ts by note-value-grammar-parity.test.ts.
     const parts = text().split('/');
     const numerator = parts[0] === '' ? 1 : Number.parseFloat(parts[0]);
-    const denominator = Number.parseInt(parts[1]);
-    return numerator / denominator;
+    const denominator = Number.parseInt(parts[1]);  // parseInt stops at a d/t suffix
+    const value = numerator / denominator;
+    return mod === "d" ? (value * 3) / 2 : mod === "t" ? (value * 2) / 3 : value;
   }
 
 signedDecimal

@@ -38,6 +38,9 @@ describe("ToolToggles", () => {
     liveApiEnabled: false,
     setLiveApiEnabled: vi.fn(),
     liveApiForcedOn: false,
+    notation: "barbeat" as const,
+    setNotation: vi.fn(),
+    settingsConfigured: true,
   };
 
   describe("basic rendering", () => {
@@ -135,6 +138,35 @@ describe("ToolToggles", () => {
       },
     );
 
+    it.each([{ button: "Enable default toolset" }, { button: "Disable all" }])(
+      "$button omits the Live API tool from the map",
+      ({ button }) => {
+        const setEnabledTools = vi.fn();
+        const tools: McpTool[] = [
+          ...TEST_TOOLS,
+          { id: "ppal-live-api", name: "Live API From Server" },
+        ];
+
+        render(
+          <ToolToggles
+            {...defaultProps}
+            tools={tools}
+            setEnabledTools={setEnabledTools}
+          />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: button }));
+
+        const map = setEnabledTools.mock.calls[0]?.[0] as Record<
+          string,
+          boolean
+        >;
+
+        expect(map).not.toHaveProperty("ppal-live-api");
+        expect(map).toHaveProperty("ppal-read-live-set");
+      },
+    );
+
     it("Enable default toolset preserves Live API when forced on", () => {
       const setLiveApiEnabled = vi.fn();
 
@@ -162,8 +194,8 @@ describe("ToolToggles", () => {
       });
 
       // connect description + read-live-set description + injected Live API
-      // fallback description + header tooltip = 4
-      expect(infoButtons).toHaveLength(4);
+      // fallback description + header tooltip + notation selector tooltip = 5
+      expect(infoButtons).toHaveLength(5);
     });
 
     it("does not render info icon for tools without descriptions", () => {
@@ -176,8 +208,9 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      // header tooltip + injected Live API fallback description = 2
-      expect(infoButtons).toHaveLength(2);
+      // header tooltip + injected Live API fallback description + notation
+      // selector tooltip = 3
+      expect(infoButtons).toHaveLength(3);
     });
   });
 
@@ -261,6 +294,21 @@ describe("ToolToggles", () => {
       const checkbox = screen.getByLabelText("Connect to Ableton");
 
       fireEvent.click(checkbox);
+
+      expect(setEnabledTools).not.toHaveBeenCalled();
+    });
+
+    it("handleToggle early-returns for an always-disabled tool", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+      );
+
+      // Dispatch the change event directly: disabled inputs suppress a synthetic
+      // click's change, so fire it explicitly to run handleToggle and hit its
+      // isToolDisabled guard for the always-enabled connect tool.
+      fireEvent.change(screen.getByLabelText("Connect to Ableton"));
 
       expect(setEnabledTools).not.toHaveBeenCalled();
     });
@@ -416,6 +464,74 @@ describe("ToolToggles", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Disable all" }));
       expect(setLiveApiEnabled).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("notation selector", () => {
+    it("renders the Notation dropdown (in the Advanced group)", () => {
+      render(<ToolToggles {...defaultProps} notation="midi-json" />);
+
+      const select = screen.getByTestId("notation-select") as HTMLSelectElement;
+
+      expect(select.value).toBe("midi-json");
+    });
+
+    it("calls setNotation when a new notation is picked", () => {
+      const setNotation = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          notation="barbeat"
+          setNotation={setNotation}
+        />,
+      );
+
+      fireEvent.change(screen.getByTestId("notation-select"), {
+        target: { value: "stark" },
+      });
+      expect(setNotation).toHaveBeenCalledWith("stark");
+    });
+  });
+
+  describe("Edit Context shortcut", () => {
+    it("omits the Edit Context button when onEditContext is not provided", () => {
+      render(<ToolToggles {...defaultProps} />);
+
+      expect(screen.queryByRole("button", { name: "Edit Context" })).toBeNull();
+    });
+
+    it("renders an Edit Context button (Core group) and fires the handler", () => {
+      const onEditContext = vi.fn();
+
+      render(<ToolToggles {...defaultProps} onEditContext={onEditContext} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit Context" }));
+
+      expect(onEditContext).toHaveBeenCalledOnce();
+    });
+
+    it("disables the Edit Context button until settings are configured", () => {
+      const onEditContext = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          onEditContext={onEditContext}
+          settingsConfigured={false}
+        />,
+      );
+
+      const button = screen.getByRole("button", {
+        name: "Edit Context",
+      }) as HTMLButtonElement;
+
+      expect(button.disabled).toBe(true);
+      expect(button.title).toBe("Configure settings first");
+
+      fireEvent.click(button);
+
+      expect(onEditContext).not.toHaveBeenCalled();
     });
   });
 });

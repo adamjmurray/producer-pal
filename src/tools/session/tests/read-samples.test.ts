@@ -191,6 +191,20 @@ describe("readSamples", () => {
       );
     });
 
+    it("does not warn when the file count stays under the limit", () => {
+      // Negative control for the limit warn: a small folder never trips the
+      // MAX_SAMPLE_FILES cap, so the "Stopped scanning" warning must not fire.
+      context.sampleFolder = "/samples/";
+      mockKickSnareFolder();
+
+      readSamples({}, context);
+
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Stopped scanning for samples"),
+      );
+    });
+
     it("should stop scanning nested folders when limit is reached", () => {
       context.sampleFolder = "/samples/";
 
@@ -319,6 +333,23 @@ describe("readSamples", () => {
       const result = readSamples({ search: "kick.wav" }, context);
 
       expect(result.samples).toStrictEqual(["kick.wav"]);
+    });
+
+    it("escapes regex specials in a wildcard pattern so parens match literally", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "kick(1).wav", type: "file", extension: ".wav" },
+          { name: "kick1.wav", type: "file", extension: ".wav" },
+        ],
+      });
+
+      // With "*" present the query becomes a regex; the "(" must be escaped to
+      // a literal, not treated as a group opener. Only "kick(..." should match;
+      // if escaping is dropped, "kick.*" would also match "kick1.wav".
+      const result = readSamples({ search: "kick(*" }, context);
+
+      expect(result.samples).toStrictEqual(["kick(1).wav"]);
     });
 
     it("should only count matching files toward MAX_SAMPLE_FILES limit", () => {

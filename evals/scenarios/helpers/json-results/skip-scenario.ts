@@ -88,7 +88,7 @@ export function shouldSkipScenario(
  *
  * @param scenario - The skipped scenario
  * @param runId - Unique run identifier
- * @param model - Model key (e.g. "google/gemini-3.5-flash")
+ * @param model - Model key (e.g. "google/gemini-3.6-flash")
  * @param configProfileId - Run-environment label (see `envLabel`)
  * @param reason - Why the scenario was skipped
  * @returns A JsonEvalResult with `result: "skipped"`

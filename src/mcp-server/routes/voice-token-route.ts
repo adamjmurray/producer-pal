@@ -5,7 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import { isLocalOrigin } from "../helpers/request-origin.ts";
+import { rejectCrossOriginWrite } from "../helpers/http/request-origin.ts";
 import * as console from "../node-for-max-logger.ts";
 
 const OPENAI_CLIENT_SECRETS_URL =
@@ -33,13 +33,13 @@ export function registerVoiceTokenRoute(app: Express): void {
   app.post(
     "/voice-token",
     async (req: Request, res: Response): Promise<void> => {
-      const origin = req.get("Origin");
-
-      if (origin && !isLocalOrigin(origin)) {
-        res
-          .status(403)
-          .json({ error: "cross-origin /voice-token is not allowed" });
-
+      if (
+        rejectCrossOriginWrite(
+          req,
+          res,
+          "cross-origin /voice-token is not allowed",
+        )
+      ) {
         return;
       }
 

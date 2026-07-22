@@ -5,6 +5,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/config.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
@@ -25,6 +26,7 @@ import { toolDefLibrary } from "#src/tools/session/library.def.ts";
 import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
@@ -67,16 +69,21 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
 
 /**
  * Union of params dropped from tool input schemas under small-model mode,
- * across all standard tools. Sourced directly from each tool's
- * `smallModelModeConfig.excludeParams` so it stays a single source of truth.
- * The eval framework consults this to SKIP (not fail) scenarios that depend on
- * a param small models never receive — keeping small-model scores
- * apples-to-apples. Param names are descriptive and, where shared across tools,
- * are excluded by every tool that has them, so a flat union is unambiguous.
+ * across all standard tools. Derived from each tool's co-located param modes
+ * (params whose `smallModel` mode is `null`) so it stays a single source of
+ * truth. The eval framework consults this to SKIP (not fail) scenarios that
+ * depend on a param small models never receive — keeping small-model scores
+ * apples-to-apples. NOTE: a flat union skips CONSERVATIVELY — a shared param
+ * name hidden by only SOME tools (e.g. `name`: hidden on ppal-context along
+ * with its memory scope, still live on the create/update tools) skips every
+ * scenario requiring that name. If a scenario ever legitimately requires such
+ * a param on a tool that keeps it, the skip check must become tool-scoped.
  */
 export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
   STANDARD_TOOL_DEFS.flatMap(
-    (td) => td.toolOptions.smallModelModeConfig?.excludeParams ?? [],
+    (td) =>
+      resolveParamModes(td.toolOptions.inputSchema, { smallModelMode: true })
+        .excludeParams,
   ),
 );
 
@@ -84,6 +91,12 @@ interface CreateMcpServerOptions {
   smallModelMode?: boolean;
   liveApiEnabled?: boolean;
   tools?: string[];
+  /**
+   * Active notation (`config.notation`). Threaded to each tool so notation-keyed
+   * description overrides (e.g. the `notes` param's format text) reflect the
+   * notation in effect. Omitted ⇒ bar|beat default (no overrides applied).
+   */
+  notation?: Notation;
 }
 
 /**
@@ -97,7 +110,12 @@ export function createMcpServer(
   callLiveApi: CallLiveApiFunction,
   options: CreateMcpServerOptions = {},
 ): McpServer {
-  const { smallModelMode = false, liveApiEnabled = false, tools } = options;
+  const {
+    smallModelMode = false,
+    liveApiEnabled = false,
+    tools,
+    notation,
+  } = options;
   const includedSet = tools ? new Set(tools) : null;
 
   const server = new McpServer({
@@ -107,7 +125,7 @@ export function createMcpServer(
 
   for (const toolDef of STANDARD_TOOL_DEFS) {
     if (includedSet && !includedSet.has(toolDef.toolName)) continue;
-    toolDef(server, callLiveApi, { smallModelMode });
+    toolDef(server, callLiveApi, { smallModelMode, notation });
   }
 
   // Live API: opt-in via device Setup tab. Goes through the same
@@ -118,7 +136,7 @@ export function createMcpServer(
     !smallModelMode &&
     (!includedSet || includedSet.has(toolDefLiveApi.toolName))
   ) {
-    toolDefLiveApi(server, callLiveApi, { smallModelMode });
+    toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
   }
 
   return server;

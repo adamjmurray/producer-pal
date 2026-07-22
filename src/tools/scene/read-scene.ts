@@ -40,12 +40,12 @@ interface ClipResult {
  * @param args.sceneIndex - Scene index (0-based)
  * @param args.sceneId - Scene ID to directly access any scene
  * @param args.include - Array of data to include
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object (supplies the active notation)
  * @returns Result object with scene information
  */
 export function readScene(
   args: ReadSceneArgs = {},
-  _context: Partial<ToolContext> = {},
+  context: Partial<ToolContext> = {},
 ): ReadSceneResult {
   const { sceneIndex, sceneId } = args;
 
@@ -111,12 +111,15 @@ export function readScene(
     const clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex: resolvedSceneIndex,
-          suppressEmptyWarning: true,
-          include: args.include,
-        }),
+        readClip(
+          {
+            trackIndex,
+            sceneIndex: resolvedSceneIndex,
+            suppressEmptyWarning: true,
+            include: args.include,
+          },
+          { notation: context.notation },
+        ),
       )
       .filter((clip: ClipResult) => clip.id != null);
 

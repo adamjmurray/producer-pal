@@ -20,9 +20,12 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
+import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
+import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
+import { resolveSystemInstruction } from "#webui/lib/config";
 import {
   type BranchNavState,
   type BranchPoint,
@@ -84,6 +87,21 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // next save to branch the record instead of overwriting it.
   const pendingForkRef = useRef<PendingFork | null>(null);
 
+  // The user's custom system prompt (~/.producer-pal/system-prompt.md). When
+  // non-empty it fully replaces the built-in instruction for each new
+  // conversation (locked at client init; see the adapter). Editing it in the
+  // Instructions tab converges here via useDocMemory's focus/poll refresh.
+  const systemPromptMemory = useSystemPromptMemory();
+  const systemInstructionOverride =
+    systemPromptMemory.status.kind === "ready"
+      ? systemPromptMemory.status.content
+      : "";
+  // The instruction actually in effect (override or built-in): sent by the
+  // adapter, snapshotted onto saved records, and shown in the transcript notice.
+  const effectiveSystemInstruction = resolveSystemInstruction(
+    systemInstructionOverride,
+  );
+
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
   const resolvedApiKey = resolveProviderApiKey(
     settings.provider,
@@ -126,6 +144,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
       showThoughts: settings.showThoughts,
       provider: settings.provider,
       apiKey: resolvedApiKey,
+      systemInstructionOverride,
     },
     autoSaveRef,
     pendingForkRef,
@@ -133,6 +152,14 @@ export function useChatModeState(params: UseChatModeStateParams) {
 
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({ chat: aiSdkChat });
+
+  // Hold the first send until the custom system prompt has finished loading, so a
+  // turn fired during the mount-time fetch doesn't lock the built-in instruction
+  // when the user actually has an override. Transparent once the status resolves.
+  const gatedHandleSend = useSystemPromptSendGate(
+    systemPromptMemory.status,
+    wrappedHandleSend,
+  );
 
   useSyncSmallModelMode(
     remoteConfig.serverSmallModelMode,
@@ -145,12 +172,18 @@ export function useChatModeState(params: UseChatModeStateParams) {
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
     clearConversation: wrappedClearConversation,
-    activeModel: chat.activeModel,
-    activeProvider: chat.activeProvider,
-    activeThinking: chat.activeThinking,
-    activeTemperature: chat.activeTemperature,
-    activeShowThoughts: chat.activeShowThoughts,
-    activeSmallModelMode: chat.activeSmallModelMode,
+    activeMeta: {
+      activeModel: chat.activeModel,
+      activeProvider: chat.activeProvider,
+      activeThinking: chat.activeThinking,
+      activeTemperature: chat.activeTemperature,
+      activeShowThoughts: chat.activeShowThoughts,
+      activeSmallModelMode: chat.activeSmallModelMode,
+      // Snapshot the LOCKED instruction (what this conversation actually ran
+      // with), not the current global override — so editing the global later
+      // doesn't rewrite an existing conversation's record.
+      activeSystemInstruction: chat.activeSystemInstruction,
+    },
     onForeignRecord,
     pendingForkRef,
   });
@@ -216,10 +249,19 @@ export function useChatModeState(params: UseChatModeStateParams) {
 
   return {
     chat,
-    wrappedHandleSend,
+    wrappedHandleSend: gatedHandleSend,
     conversationPanelState,
     headerInfo,
     branchNav,
+    // Show the LOCKED instruction for the active conversation (accurate once a
+    // chat has sent its first turn). Fall back to the current resolved
+    // instruction when none is locked — a brand-new not-yet-locked chat, or a
+    // pre-1.5 conversation restored from before instruction-locking existed.
+    // Legacy records never stored their instruction, so it can't be recovered:
+    // the current one is the only sane default to display and to continue with,
+    // even though it may not match what that old chat originally used.
+    systemInstruction:
+      chat.activeSystemInstruction ?? effectiveSystemInstruction,
   };
 }
 

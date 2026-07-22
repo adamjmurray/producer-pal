@@ -229,6 +229,45 @@ describe("createTrack", () => {
     ).toThrow(/exceeds the maximum allowed/);
   });
 
+  it("should allow creating exactly the maximum number of tracks", () => {
+    // Boundary: count === MAX is allowed (the cap is strictly greater-than).
+    registerMockObject("midi_track_-1", {});
+
+    const result = createTrack({ count: MAX_AUTO_CREATED_TRACKS });
+
+    expect(result).toHaveLength(MAX_AUTO_CREATED_TRACKS);
+  });
+
+  it("should allow an insert whose reach lands exactly on the maximum", () => {
+    // Boundary: effectiveTrackIndex + count === MAX is allowed, not rejected.
+    registerMockObject("midi_track_97", {});
+    registerMockObject("midi_track_98", {});
+    registerMockObject("midi_track_99", {});
+
+    const result = createTrack({
+      trackIndex: MAX_AUTO_CREATED_TRACKS - 3,
+      count: 3,
+    });
+
+    expect(result).toHaveLength(3);
+  });
+
+  it("should keep appending at -1 for a multi-track append", () => {
+    registerMockObject("midi_track_-1", {});
+
+    const result = createTrack({ count: 2 });
+
+    // Append keeps calling with -1; currentIndex is NOT incremented (only
+    // explicit-index inserts shift right as earlier tracks are added).
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_midi_track", -1);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_midi_track", -1);
+    // Result indices reflect final positions after the 2 existing tracks.
+    expect(result).toStrictEqual([
+      { id: "midi_track_-1", trackIndex: 2 },
+      { id: "midi_track_-1", trackIndex: 3 },
+    ]);
+  });
+
   it("should handle single track name without incrementing", () => {
     const track = registerMockObject("midi_track_0", {});
 
@@ -333,13 +372,49 @@ describe("createTrack", () => {
     it("should warn when trackIndex provided for return track", () => {
       registerMockObject("return_track_0", {});
 
-      createTrack({ type: "return", trackIndex: 5, name: "Ignored Index" });
+      const result = createTrack({
+        type: "return",
+        trackIndex: 5,
+        name: "Ignored Index",
+      });
 
       expect(console.warn).toHaveBeenCalledWith(
         "createTrack: trackIndex is ignored for return tracks (always added at end)",
       );
       // Should still create the track
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
+      // The ignored trackIndex must NOT leak into the result index: a return
+      // track is always appended, so returnTrackIndex is the existing return
+      // count (2), never the passed-in 5.
+      expect(result).toStrictEqual({
+        id: "return_track_0",
+        returnTrackIndex: 2,
+      });
+    });
+
+    it("should index a return track by the return-track count, not the total track count", () => {
+      // Regression guard: the default mock happens to have equal regular and
+      // return track counts, which masks whether returnTrackIndex is derived
+      // from return_tracks (correct) or tracks (wrong). Use asymmetric counts.
+      registerMockObject("liveSet", {
+        path: livePath.liveSet,
+        properties: {
+          tracks: children("r1", "r2", "r3"), // 3 regular tracks
+          return_tracks: children("returnA", "returnB"), // 2 return tracks
+        },
+        methods: {
+          create_return_track: () => ["id", "return_track_0"],
+        },
+      });
+      registerMockObject("return_track_0", {});
+
+      const result = createTrack({ type: "return", name: "New Return" });
+
+      // 2 existing return tracks → index 2 (NOT 3, the regular-track count).
+      expect(result).toStrictEqual({
+        id: "return_track_0",
+        returnTrackIndex: 2,
+      });
     });
   });
 
@@ -353,9 +428,7 @@ describe("createTrack", () => {
         name: "kick,snare,hat",
       });
 
-      expect(tracks[0]!.set).toHaveBeenCalledWith("name", "kick");
-      expect(tracks[1]!.set).toHaveBeenCalledWith("name", "snare");
-      expect(tracks[2]!.set).toHaveBeenCalledWith("name", "hat");
+      expectTrackNames(tracks, ["kick", "snare", "hat"]);
       expect(result).toHaveLength(3);
     });
 
@@ -368,13 +441,8 @@ describe("createTrack", () => {
         name: "kick,snare,hat",
       });
 
-      expect(tracks[0]!.set).toHaveBeenCalledWith("name", "kick");
-      expect(tracks[1]!.set).toHaveBeenCalledWith("name", "snare");
-      expect(tracks[2]!.set).toHaveBeenCalledWith("name", "hat");
-      expect(tracks[3]!.set).not.toHaveBeenCalledWith(
-        "name",
-        expect.anything(),
-      );
+      expectTrackNames(tracks, ["kick", "snare", "hat"]);
+      expectNoTrackNames(tracks.slice(3));
       expect(result).toHaveLength(4);
     });
 
@@ -387,8 +455,7 @@ describe("createTrack", () => {
         name: "kick,snare,hat",
       });
 
-      expect(tracks[0]!.set).toHaveBeenCalledWith("name", "kick");
-      expect(tracks[1]!.set).toHaveBeenCalledWith("name", "snare");
+      expectTrackNames(tracks, ["kick", "snare"]);
       expect(result).toHaveLength(2);
     });
 
@@ -417,9 +484,7 @@ describe("createTrack", () => {
         name: " kick , snare , hat ",
       });
 
-      expect(tracks[0]!.set).toHaveBeenCalledWith("name", "kick");
-      expect(tracks[1]!.set).toHaveBeenCalledWith("name", "snare");
-      expect(tracks[2]!.set).toHaveBeenCalledWith("name", "hat");
+      expectTrackNames(tracks, ["kick", "snare", "hat"]);
     });
 
     it("should skip name for extras beyond comma-separated list", () => {
@@ -432,18 +497,9 @@ describe("createTrack", () => {
       });
 
       // First 3 tracks use the provided names
-      expect(tracks[0]!.set).toHaveBeenCalledWith("name", "kick");
-      expect(tracks[1]!.set).toHaveBeenCalledWith("name", "snare");
-      expect(tracks[2]!.set).toHaveBeenCalledWith("name", "hat");
+      expectTrackNames(tracks, ["kick", "snare", "hat"]);
       // Subsequent tracks keep default name
-      expect(tracks[3]!.set).not.toHaveBeenCalledWith(
-        "name",
-        expect.anything(),
-      );
-      expect(tracks[4]!.set).not.toHaveBeenCalledWith(
-        "name",
-        expect.anything(),
-      );
+      expectNoTrackNames(tracks.slice(3));
     });
   });
 
@@ -459,10 +515,12 @@ describe("createTrack", () => {
       });
 
       // Colors cycle: red, green, red, green
-      expect(tracks[0]!.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(tracks[1]!.set).toHaveBeenCalledWith("color", 65280); // #00FF00
-      expect(tracks[2]!.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(tracks[3]!.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+      expectTrackColors(tracks, [
+        16711680, // #FF0000
+        65280, // #00FF00
+        16711680, // #FF0000
+        65280, // #00FF00
+      ]);
     });
 
     it("should use colors in order when count matches", () => {
@@ -475,9 +533,11 @@ describe("createTrack", () => {
         color: "#FF0000,#00FF00,#0000FF",
       });
 
-      expect(tracks[0]!.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(tracks[1]!.set).toHaveBeenCalledWith("color", 65280); // #00FF00
-      expect(tracks[2]!.set).toHaveBeenCalledWith("color", 255); // #0000FF
+      expectTrackColors(tracks, [
+        16711680, // #FF0000
+        65280, // #00FF00
+        255, // #0000FF
+      ]);
     });
 
     it("should ignore extra colors when count is less than colors", () => {
@@ -518,8 +578,10 @@ describe("createTrack", () => {
         color: " #FF0000 , #00FF00 ",
       });
 
-      expect(tracks[0]!.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(tracks[1]!.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+      expectTrackColors(tracks, [
+        16711680, // #FF0000
+        65280, // #00FF00
+      ]);
     });
   });
 });
@@ -533,4 +595,42 @@ function registerTrackMocks(count: number): RegisteredMockObject[] {
   return Array.from({ length: count }, (_, i) =>
     registerMockObject(`midi_track_${i}`, {}),
   );
+}
+
+/**
+ * Assert each track had its name set to the expected value, in creation order.
+ * @param tracks - Registered track mocks, in creation order
+ * @param expectedNames - Expected name per track, positionally matched
+ */
+function expectTrackNames(
+  tracks: RegisteredMockObject[],
+  expectedNames: string[],
+): void {
+  for (const [i, expectedName] of expectedNames.entries()) {
+    expect(tracks[i]!.set).toHaveBeenCalledWith("name", expectedName);
+  }
+}
+
+/**
+ * Assert the given tracks never had a name set, so they keep Live's default.
+ * @param tracks - Registered track mocks expected to have no name assignment
+ */
+function expectNoTrackNames(tracks: RegisteredMockObject[]): void {
+  for (const track of tracks) {
+    expect(track.set).not.toHaveBeenCalledWith("name", expect.anything());
+  }
+}
+
+/**
+ * Assert each track had its color set to the expected value, in creation order.
+ * @param tracks - Registered track mocks, in creation order
+ * @param expectedColors - Expected numeric color per track, positionally matched
+ */
+function expectTrackColors(
+  tracks: RegisteredMockObject[],
+  expectedColors: number[],
+): void {
+  for (const [i, expectedColor] of expectedColors.entries()) {
+    expect(tracks[i]!.set).toHaveBeenCalledWith("color", expectedColor);
+  }
 }

@@ -26,15 +26,17 @@ export function createConversationsProps() {
       getChatHistory: vi.fn(() => state.chatHistory),
       restoreChatHistory: vi.fn(),
       clearConversation: vi.fn(),
-      activeModel: null as string | null,
-      activeProvider: null as Provider | null,
-      activeThinking: null as string | null,
-      activeTemperature: null as number | null,
-      activeShowThoughts: null as boolean | null,
-      activeSmallModelMode: null as boolean | null,
+      activeMeta: {
+        activeModel: null as string | null,
+        activeProvider: null as Provider | null,
+        activeThinking: null as string | null,
+        activeTemperature: null as number | null,
+        activeShowThoughts: null as boolean | null,
+        activeSmallModelMode: null as boolean | null,
+        activeSystemInstruction: null as string | null,
+      },
       onForeignRecord: undefined as
-        | ((record: ConversationRecord) => void)
-        | undefined,
+        ((record: ConversationRecord) => void) | undefined,
     },
   };
 }

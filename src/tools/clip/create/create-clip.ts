@@ -92,7 +92,7 @@ export interface CreateClipArgs {
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
  * @param args.takeLane - Arrangement take lane target (0/omitted = main, 1+ = lane, "new")
  * @param args.takeLaneName - Name for a take lane newly created by this call
- * @param _context - Internal context object (unused)
+ * @param _context - Tool execution context (timeout, notation, smallModelMode)
  * @returns Single clip object when one position, array when multiple positions
  */
 export async function createClip(
@@ -119,6 +119,9 @@ export async function createClip(
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
   const deadline = computeLoopDeadline(_context.timeoutMs);
+
+  // Treat a blank/whitespace-only transforms string as "no transform".
+  transformString = normalizeTransforms(transformString);
 
   // Parse position lists
   const sessionSlots = parseSlotList(slot);
@@ -160,6 +163,8 @@ export async function createClip(
     endBeats,
     timeSigNumerator,
     timeSigDenominator,
+    _context.notation,
+    transformString,
   );
 
   // Parse comma-separated names/colors for multi-clip creation
@@ -222,6 +227,19 @@ export async function createClip(
   const createdClips = [...sessionClips, ...arrangementClips];
 
   return finalizeCreatedClips(createdClips, auto, sessionSlots, focus);
+}
+
+/**
+ * Normalize a blank/whitespace-only transforms string to null so both the
+ * dedupe-warning path (prepareClipData) and per-clip resolveClipTransform treat
+ * it as "no transform". An LLM-supplied `transforms: ""` otherwise skips the
+ * "Dropped N duplicate note(s)" warning while applyTransforms no-ops on "", and
+ * a whitespace-only string would reach applyTransforms and throw a parse error.
+ * @param transformString - Raw transforms param, or null
+ * @returns The original string when it has non-whitespace content, else null
+ */
+function normalizeTransforms(transformString: string | null): string | null {
+  return transformString?.trim() ? transformString : null;
 }
 
 /**

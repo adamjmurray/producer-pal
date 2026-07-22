@@ -6,12 +6,18 @@
 import { z } from "zod";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
-  description:
-    "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
-    "Use count for multiple track/scene copies; arrangementStart, locator, or toSlot for clip placement.",
+  description: {
+    default:
+      "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
+      "Use count for multiple track/scene copies; arrangementStart, locator, or toSlot for clip placement.",
+    smallModel:
+      "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
+      "Use arrangementStart or toSlot for clip placement; toPath for devices.",
+  },
 
   annotations: {
     readOnlyHint: false,
@@ -24,118 +30,88 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .enum(["track", "scene", "clip", "device"])
       .describe("type of object to duplicate"),
 
-    name: z
-      .string()
-      .optional()
-      .describe("name (comma-separated when duplicating multiple)"),
-    color: z
-      .string()
-      .optional()
-      .describe("#RRGGBB (comma-separated when duplicating multiple, cycles)"),
+    name: param(z.string().optional(), {
+      default: "name (comma-separated when duplicating multiple)",
+      smallModel: "name",
+    }),
+    color: param(z.string().optional(), {
+      default: "#RRGGBB (comma-separated when duplicating multiple, cycles)",
+      smallModel: "#RRGGBB",
+    }),
 
-    count: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(1)
-      .describe(
+    count: param(z.coerce.number().int().min(1).default(1), {
+      default:
         "number of copies (tracks/scenes only, ignored for clips/devices)",
-      ),
+      smallModel: null,
+    }),
 
-    withoutClips: z.boolean().default(false).describe("exclude clips?"),
-    withoutDevices: z.boolean().default(false).describe("exclude devices?"),
+    withoutClips: param(z.boolean().default(false), {
+      default: "exclude clips?",
+      smallModel: null,
+    }),
+    withoutDevices: param(z.boolean().default(false), {
+      default: "exclude devices?",
+      smallModel: null,
+    }),
 
-    arrangementStart: z.coerce
-      .string()
-      .optional()
-      .describe(
+    arrangementStart: param(z.coerce.string().optional(), {
+      default:
         "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1'). Song meter",
-      ),
-    locator: z.coerce
-      .string()
-      .optional()
-      .describe(
+      smallModel: "arrangement bar|beat position (e.g., '1|1'). Song meter",
+    }),
+    locator: param(z.coerce.string().optional(), {
+      default:
         "arrangement locator ID(s) or name(s), comma-separated for multiple (e.g., 'locator-0' or 'Verse' or 'locator-0,Chorus')",
-      ),
+      smallModel: null,
+    }),
     arrangementLength: z
       .string()
       .optional()
       .describe(
         "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Auto-fills with loops; song meter",
       ),
-    toSlot: z.coerce
-      .string()
-      .optional()
-      .describe(
+    toSlot: param(z.coerce.string().optional(), {
+      default:
         "session destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
-      ),
-    toPath: z
-      .string()
-      .optional()
-      .describe(
+      smallModel:
+        "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
+    }),
+    toPath: param(z.string().optional(), {
+      default:
         "device destination path(s), comma-separated for multiple (e.g., 't1/d0' or 't1/d0,t2/d0')",
-      ),
+      smallModel: "device destination path (e.g., 't1/d0')",
+    }),
 
-    routeToSource: z
-      .boolean()
-      .optional()
-      .describe(
+    routeToSource: param(z.boolean().optional(), {
+      default:
         "route new track to source's instrument? (for MIDI layering/polyrhythms)",
-      ),
+      smallModel: null,
+    }),
 
-    transforms: z
-      .string()
-      .optional()
-      .describe(
+    transforms: param(z.string().optional(), {
+      default:
         "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation",
-      ),
+      smallModel: null,
+    }),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
-          code: z
-            .string()
-            .max(MAX_CODE_LENGTH)
-            .optional()
-            .describe(
+          code: param(z.string().max(MAX_CODE_LENGTH).optional(), {
+            default:
               "JS function body (broadcast across copies; clips only): receives (notes, context), returns notes array. context.clip.{index,count} for per-copy variation",
-            ),
+            smallModel: null,
+          }),
         }
       : {}),
 
-    takeLane: z.coerce
-      .string()
-      .optional()
-      .describe(
+    takeLane: param(z.coerce.string().optional(), {
+      default:
         'arrangement take lane (MIDI clips only): omit/0 = main lane, 1+ = that lane (auto-created), "new" = append a fresh lane for a variation',
-      ),
+      smallModel: null,
+    }),
 
-    takeLaneName: z
-      .string()
-      .optional()
-      .describe("name for a take lane newly created by this call"),
-  },
-  smallModelModeConfig: {
-    toolDescription:
-      "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
-      "Use arrangementStart or toSlot for clip placement; toPath for devices.",
-    excludeParams: [
-      "count",
-      "withoutClips",
-      "withoutDevices",
-      "locator",
-      "routeToSource",
-      "transforms",
-      "code",
-      "takeLane",
-      "takeLaneName",
-    ],
-    descriptionOverrides: {
-      name: "name",
-      color: "#RRGGBB",
-      arrangementStart:
-        "arrangement bar|beat position (e.g., '1|1'). Song meter",
-      toSlot:
-        "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
-      toPath: "device destination path (e.g., 't1/d0')",
-    },
+    takeLaneName: param(z.string().optional(), {
+      default: "name for a take lane newly created by this call",
+      smallModel: null,
+    }),
   },
 });

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +9,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ConfigOptions } from "#evals/shared/config.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 
 // Re-export types from chat for convenience
@@ -18,11 +19,7 @@ export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
 export type { ConfigOptions };
 
 export type EvalProvider =
-  | "anthropic"
-  | "google"
-  | "local"
-  | "openai"
-  | "openrouter";
+  "anthropic" | "codex-code" | "google" | "local" | "openai" | "openrouter";
 
 /**
  * A test scenario that runs against Ableton Live
@@ -55,8 +52,8 @@ export interface EvalScenario {
    * unreliable gate (LLM judges miscount bar|beat notation). Default: false. */
   judgeAdvisory?: boolean;
 
-  /** System instructions override. Default: SYSTEM_INSTRUCTION from webui.
-   *  Set to null for no instructions. */
+  /** System instructions override. Default: SYSTEM_INSTRUCTION from
+   *  #src/shared. Set to null for no instructions. */
   instructions?: string | null;
 
   /** Optional config to apply before running scenario */
@@ -74,6 +71,29 @@ export interface EvalScenario {
    *  slots) so repeat trials (`-r N`, which reuse the already-open Live Set)
    *  each start from a clean slate. */
   setup?: (mcpClient: Client) => Promise<void>;
+
+  /** Optional async cleanup run after the turns and assertions complete —
+   *  success OR failure — while the MCP session is still open. Use to restore
+   *  state a `setup` seeded OUTSIDE the Live Set and outside `config`, which
+   *  the runner's `resetConfig()` cannot revert: chiefly the machine-global
+   *  context document (~/.producer-pal/context.md) and memory entries
+   *  (~/.producer-pal/memory/), which are real files on the machine running
+   *  Live. Without this, an eval that seeds them would leave them behind in the
+   *  developer's own config. A throw here is logged and swallowed so it can't
+   *  mask the scenario's real result. */
+  teardown?: (mcpClient: Client) => Promise<void>;
+
+  /** When true, the runner may skip reopening the Live Set and run against an
+   *  already-open one — an open costs seconds of app launch + save-dialog
+   *  handling, so a run of N such scenarios pays it once. Only honored when the
+   *  PREVIOUS scenario used the same `liveSet`.
+   *
+   *  Opt in only when the scenario starts from a clean slate on its own: either
+   *  it touches no Live Set state, or its `setup` resets everything it writes
+   *  (e.g. `clearSessionSlots` on the slots it fills) — the same self-reset that
+   *  repeat trials (`-r N`) already require. Leaving it unset keeps the default
+   *  fresh-Set isolation, which most clip/track/device scenarios depend on. */
+  reuseLiveSet?: boolean;
 }
 
 /**
@@ -91,10 +111,10 @@ export interface ScenarioRequirements {
 
   /** Param names the scenario depends on. Skipped under `smallModelMode` when
    *  any is in the small-model excluded-param surface
-   *  (`SMALL_MODEL_EXCLUDED_PARAMS`, derived from each tool's
-   *  `smallModelModeConfig.excludeParams`). Use for scenarios whose deterministic
-   *  checks require a param small models never receive — e.g. update-device
-   *  `actions`, update-clip `split`. */
+   *  (`SMALL_MODEL_EXCLUDED_PARAMS`, derived from each tool's co-located param
+   *  modes — params whose `smallModel` mode is `null`). Use for scenarios whose
+   *  deterministic checks require a param small models never receive — e.g.
+   *  update-device `actions`, update-clip `split`. */
   params?: string[];
 
   /** Needs the transforms DSL (functions like `step()`/`swing()`/`legato()`/
@@ -143,10 +163,24 @@ export interface StateAssertion {
   type: "state";
   /** Tool to call to verify state */
   tool: string;
-  /** Arguments for the tool */
-  args: Record<string, unknown>;
+  /** Arguments for the tool, or a function that derives them from the completed
+   *  turns (e.g. to read the just-created clip by the id it returned, wherever
+   *  the model placed it). */
+  args:
+    | Record<string, unknown>
+    | ((turns: EvalTurnResult[]) => Record<string, unknown>);
   /** Expected partial result or matcher function */
   expect: Record<string, unknown> | ((result: unknown) => boolean);
+  /** Optional human-readable diagnostic for a FAILED `expect`, given the same
+   *  parsed result. Its string is attached to the failure `details.diff` and
+   *  appended to the console message so custom matchers (e.g. midi-json note
+   *  comparison) can explain WHAT diverged instead of reporting a bare boolean. */
+  explain?: (result: unknown) => string;
+  /** When set, flip the server notation to this (via POST /config) BEFORE the
+   *  read, so the tool serializes notes in a known format regardless of the
+   *  notation the model wrote in. Lets a grading read pull clean midi-json
+   *  instead of re-interpreting the model's notation. */
+  notation?: Notation;
 }
 
 /**

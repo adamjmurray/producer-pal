@@ -4,8 +4,12 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
+    # Both nested manifests are dependency-free today (they ship the bundled
+    # portal). Listed so any future dependency is covered from day one.
     directories:
       - "/"
+      - "/claude-desktop-extension"
+      - "/npm"
     target-branch: "dev"
     open-pull-requests-limit: 10
     schedule:
@@ -20,10 +24,16 @@ updates:
           - "ai"
           - "@ai-sdk/*"
           - "@openrouter/ai-sdk-provider"
+          - "@openai/agents"
+          - "@google/genai"
       anthropic:
         patterns:
           - "@anthropic-ai/*"
           - "@modelcontextprotocol/*"
+      codemirror:
+        patterns:
+          - "@codemirror/*"
+          - "@lezer/*"
       rollup:
         patterns:
           - "rollup"
@@ -54,6 +64,9 @@ updates:
       tailwind:
         patterns:
           - "@tailwindcss/*"
+      stryker:
+        patterns:
+          - "@stryker-mutator/*"
       types:
         patterns:
           - "@types/*"

@@ -183,6 +183,19 @@ describe("isValidNoteName", () => {
   it("returns false for empty string", () => {
     expect(isValidNoteName("")).toBe(false);
   });
+
+  it("anchors the match to the whole string (rejects surrounding garbage)", () => {
+    // The trailing `$` anchor must reject extra characters after the octave.
+    expect(isValidNoteName("C3x")).toBe(false);
+    expect(isValidNoteName("C3 ")).toBe(false);
+  });
+
+  it("accepts a multi-digit octave (format check, not range check)", () => {
+    // `\d+` (not `\d`) must accept more than one octave digit; isValidNoteName
+    // validates shape only, so out-of-MIDI-range octaves are still well-formed.
+    expect(isValidNoteName("C10")).toBe(true);
+    expect(isValidNoteName("C-10")).toBe(true);
+  });
 });
 
 describe("isValidPitchClassName", () => {
@@ -419,6 +432,13 @@ describe("noteNameToMidi", () => {
     expect(noteNameToMidi("C##3")).toBe(null);
   });
 
+  it("anchors the match to the whole string (rejects surrounding garbage)", () => {
+    // The `^`/`$` anchors must reject leading or trailing characters; without
+    // them the regex would find "C3" inside the input and mis-parse it.
+    expect(noteNameToMidi("xC3")).toBe(null);
+    expect(noteNameToMidi("C3x")).toBe(null);
+  });
+
   it("returns null for non-strings", () => {
     expect(noteNameToMidi(null as unknown as string)).toBe(null);
     expect(noteNameToMidi(undefined as unknown as string)).toBe(null);
@@ -542,6 +562,24 @@ describe("quantizePitchToScale", () => {
     expect(quantizePitchToScale(-5, cMajorMask)).toBe(0);
   });
 
+  it("snaps down across an out-of-scale gap at the MIDI ceiling", () => {
+    // Sparse scale: only pitch class 8 (Ab). Quantizing 127 rounds up to Ab at
+    // 128 (out of range), so clamping must scan DOWN past out-of-scale pitch
+    // classes 127..117 before landing on the highest in-scale pitch, 116.
+    const abOnlyMask = scaleIntervalsToPitchClassMask([0], 8);
+
+    expect(quantizePitchToScale(127, abOnlyMask)).toBe(116);
+  });
+
+  it("snaps up across an out-of-scale gap at the MIDI floor", () => {
+    // Sparse scale: only pitch class 11 (B). Quantizing 0 finds B at -1 (below
+    // range), so clamping must scan UP past out-of-scale pitch classes 0..10
+    // before landing on the lowest in-scale pitch, 11.
+    const bOnlyMask = scaleIntervalsToPitchClassMask([0], 11);
+
+    expect(quantizePitchToScale(0, bOnlyMask)).toBe(11);
+  });
+
   it("works with pentatonic scale", () => {
     // C Minor Pentatonic: C Eb F G Bb → pitch classes 0,3,5,7,10
     const cMinorPentMask = scaleIntervalsToPitchClassMask([0, 3, 5, 7, 10], 0);
@@ -639,6 +677,25 @@ describe("stepInScale", () => {
     it("clamps when stepping far beyond range", () => {
       expect(stepInScale(120, 100, cMajorMask)).toBe(127);
       expect(stepInScale(5, -100, cMajorMask)).toBe(0);
+    });
+
+    it("clamps to the lowest in-scale pitch when stepping below MIDI 0", () => {
+      // Sparse scale: only pitch class 11 (B). The lowest B is 11, so stepping
+      // down from it hits `current < 0` (strict) and clamps back to 11. If that
+      // boundary were `<= 0`, current === 0 would clamp early to 0 (out of scale).
+      const bOnlyMask = scaleIntervalsToPitchClassMask([0], 11);
+
+      expect(stepInScale(11, -1, bOnlyMask)).toBe(11);
+    });
+
+    it("clamps to the highest in-scale pitch when stepping above MIDI 127", () => {
+      // Sparse scale: only pitch class 11 (B). The highest B is 119, so stepping
+      // up from it hits `current > 127` (strict) and clamps back to 119. If that
+      // boundary were `>= 127`, current === 127 would clamp early to 127 (out of
+      // scale).
+      const bOnlyMask = scaleIntervalsToPitchClassMask([0], 11);
+
+      expect(stepInScale(119, 1, bOnlyMask)).toBe(119);
     });
   });
 

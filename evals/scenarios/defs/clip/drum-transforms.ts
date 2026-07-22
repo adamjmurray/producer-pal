@@ -13,6 +13,34 @@ import { assertNotesRead, getTransforms } from "./clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
+/**
+ * Extract the selector portion (before the first ":") of a transforms string
+ * and assert it targets the expected pitch.
+ * @param transforms - Raw transforms string from the update-clip call
+ * @param pitch - Pitch the selector must reference (e.g. /Ab1/)
+ * @param label - Human-readable pitch label for error messages
+ * @returns The selector substring
+ */
+function selectorTargeting(
+  transforms: string,
+  pitch: RegExp,
+  label: string,
+): string {
+  const colonIdx = transforms.indexOf(":");
+
+  if (colonIdx === -1) {
+    throw new Error(`missing selector (no ":"): ${transforms}`);
+  }
+
+  const selector = transforms.slice(0, colonIdx);
+
+  if (!pitch.test(selector)) {
+    throw new Error(`${label} not in selector: ${selector}`);
+  }
+
+  return selector;
+}
+
 export const drumTransforms: EvalScenario = {
   id: "drum-transforms",
   description: "Apply velocity transforms to drum clip notes",
@@ -44,18 +72,8 @@ export const drumTransforms: EvalScenario = {
         "crescendo uses velocity ramp scoped to hats in last 2 beats",
       assert: (turns) => {
         const transforms = getTransforms(turns, 2, TOOL_UPDATE_CLIP);
-        const colonIdx = transforms.indexOf(":");
-
-        if (colonIdx === -1) {
-          throw new Error(`missing selector (no ":"): ${transforms}`);
-        }
-
-        const selector = transforms.slice(0, colonIdx);
-
         // Selector must include Ab1 pitch and 2|3-2|4.75 time range
-        if (!/Ab1/.test(selector)) {
-          throw new Error(`Ab1 not in selector: ${selector}`);
-        }
+        const selector = selectorTargeting(transforms, /Ab1/, "Ab1");
 
         if (!/2\|3-2\|4\.75/.test(selector)) {
           throw new Error(`time range 2|3-2|4.75 not in selector: ${selector}`);
@@ -95,18 +113,8 @@ export const drumTransforms: EvalScenario = {
       description: "LFO targets hats before the crescendo, no ramp re-applied",
       assert: (turns) => {
         const transforms = getTransforms(turns, 3, TOOL_UPDATE_CLIP);
-        const colonIdx = transforms.indexOf(":");
-
-        if (colonIdx === -1) {
-          throw new Error(`missing selector (no ":"): ${transforms}`);
-        }
-
-        const selector = transforms.slice(0, colonIdx);
-
         // Selector must target Ab1 (hats)
-        if (!/Ab1/.test(selector)) {
-          throw new Error(`Ab1 not in selector: ${selector}`);
-        }
+        const selector = selectorTargeting(transforms, /Ab1/, "Ab1");
 
         // Must use a waveform function on velocity (= or += both valid)
         if (!/velocity\s*\+?=\s*.*\b(sin|cos|tri|saw)\b/.test(transforms)) {
@@ -170,18 +178,9 @@ export const drumTransforms: EvalScenario = {
       description: "snare randomization targets snare pitch with rand()",
       assert: (turns) => {
         const transforms = getTransforms(turns, 4, TOOL_UPDATE_CLIP);
-        const colonIdx = transforms.indexOf(":");
-
-        if (colonIdx === -1) {
-          throw new Error(`missing selector (no ":"): ${transforms}`);
-        }
-
-        const selector = transforms.slice(0, colonIdx);
 
         // Must target snare pitch (E1 in this drum rack)
-        if (!/E1/.test(selector)) {
-          throw new Error(`E1 (snare) not in selector: ${selector}`);
-        }
+        selectorTargeting(transforms, /E1/, "E1 (snare)");
 
         // Must randomize velocity relative to its current value with rand().
         // Accept `velocity += rand(...)` and the equivalent (and MIDI-safe)

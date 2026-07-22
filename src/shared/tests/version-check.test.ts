@@ -56,6 +56,20 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("12.0.1", "12")).toBe(false);
   });
 
+  it("ignores a 4th version part (comparison stops at major.minor.patch)", () => {
+    // The loop compares exactly 3 parts. A 4th component must not tip the
+    // result — otherwise `for (i < 3)` widening to `i <= 3` would leak in.
+    expect(isNewerVersion("1.2.3", "1.2.3.4")).toBe(false);
+    expect(isNewerVersion("1.2.3.9", "1.2.3")).toBe(false);
+  });
+
+  it("trims before stripping a 'v' prefix (leading whitespace + v)", () => {
+    // parseVersionParts must .trim() first so the "v" strip still fires; a
+    // leading space would otherwise leave "v2" → parseInt → 0 and flip the sign.
+    expect(isNewerVersion("1.0.0", " v2.0.0")).toBe(true);
+    expect(isNewerVersion(" v2.0.0", "1.0.0")).toBe(false);
+  });
+
   it("treats a malformed (non-numeric) part as 0, not as equal-to-anything", () => {
     // A part with no leading digits parses to NaN. NaN must normalize to 0 so the
     // comparison still resolves at that position — otherwise NaN makes both `l > c`
@@ -141,7 +155,10 @@ describe("checkForUpdate", () => {
   });
 
   it("returns null on non-200 response", async () => {
-    mockFetchResponse({}, false);
+    // Body carries a genuinely-newer tag: only the `!response.ok` guard keeps
+    // this null. A mutant that drops that guard would fall through and return
+    // the version, so the payload must be one that would otherwise "succeed".
+    mockFetchResponse({ tag_name: "v2.0.0" }, false);
     expect(await checkForUpdate("1.0.0")).toBeNull();
   });
 

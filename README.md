@@ -2,9 +2,10 @@
 
 **Control Ableton Live with words**
 
-Producer Pal is an **Ableton MCP** server that brings **AI to Ableton Live**. An
-AI-powered assistant for music production — works with Claude, Gemini, ChatGPT,
-Ollama, and more.
+Producer Pal is an **Ableton MCP** server that brings **AI to Ableton Live** —
+works with Claude, Gemini, ChatGPT, Ollama, and more. It's also an open **REST
+API for Ableton Live**: the AI is optional, so scripts, coding agents, and your
+own tools can read and edit a Live Set with plain HTTP.
 
 <p align="center"><b>📖 <a href="https://producer-pal.org">producer-pal.org</a></b></p>
 
@@ -28,6 +29,8 @@ Ollama, and more.
 ## Resources
 
 - [Documentation](https://producer-pal.org)
+- [REST API](https://producer-pal.org/guide/rest-api) &
+  [Extending Producer Pal](https://producer-pal.org/extending)
 - [Video Tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - [Latest Releases](https://github.com/adamjmurray/producer-pal/releases)
 - [Discord Community](https://discord.gg/rmU3DSzgwH)
@@ -39,7 +42,8 @@ Ollama, and more.
 
 Star ⭐️ the repo to help others discover Producer Pal!
 
-Want to contribute or build from source? See [DEVELOPERS.md](./DEVELOPERS.md).
+Want to contribute? See [CONTRIBUTING.md](./CONTRIBUTING.md). Building from
+source and other technical details are in [DEVELOPERS.md](./DEVELOPERS.md).
 
 ## Open Source
 

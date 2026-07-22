@@ -28,16 +28,7 @@ use Producer Pal.
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Download the Claude Desktop Extension
 
@@ -88,6 +79,46 @@ enabled when starting a conversation):
 ![Producer Pal allow tools](/img/producer-pal-permission.png)
 
 ![Producer Pal start a conversation](/img/screenshot.png)
+
+## Advanced settings
+
+The extension exposes a few optional settings under **Claude Desktop → Settings
+→ Extensions → Producer Pal**. Most people never need to touch these — the
+defaults are recommended.
+
+- **Ableton device URL** — where to reach the Max for Live device (default
+  `http://localhost:3350`). Change only if you moved the device's port or are
+  connecting over the network.
+- **Allow configuration overrides** — off by default. While off, the settings
+  below are ignored and Producer Pal uses whatever is set on the device and in
+  the [chat UI](/guide/chat-ui). Turn it on to let these settings override the
+  device — including forcing a setting _off_.
+- **MIDI notation** — overrides how Producer Pal reads and writes clip notes.
+  Three valid values: `barbeat` (recommended for Claude Sonnet, Opus, and
+  Fable), `stark` (pairs well with **Small model mode**), or `midi-json` (pairs
+  well with **JSON output**). Leave blank, or enter anything else, to keep the
+  device's current setting (`barbeat` by default).
+- **Small model mode** — simplifies the tools and instructions for smaller
+  models. May improve results with **Claude Haiku**; not recommended otherwise,
+  since Claude Sonnet, Opus, and Fable handle the full toolset.
+- **Direct Live API** — enables the advanced
+  [`ppal-live-api`](/features#ppal-live-api) tool for direct access to the
+  [Live Object Model](https://docs.cycling74.com/apiref/lom/). An escape hatch
+  for custom control and debugging when the standard tools aren't enough — not
+  recommended as a default.
+- **JSON output** — returns tool results as JSON instead of the compact default.
+  Not recommended for normal use (it increases token usage), but useful when you
+  want Claude to run code on the results.
+
+::: info Device stays authoritative by default
+
+The four settings below **Allow configuration overrides** take effect only when
+that toggle is on. When they do, MIDI notation, Small model mode, Direct Live
+API, and JSON output are pushed to the device as global settings — they also
+change in the [chat UI](/guide/chat-ui) and for any other connected MCP client.
+While the toggle is off, the extension leaves every device setting untouched.
+
+:::
 
 ## Troubleshooting
 

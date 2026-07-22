@@ -175,6 +175,32 @@ describe("createClip - session view", () => {
     });
   });
 
+  it("should create a clip from midi-json notation", async () => {
+    setupLiveSet();
+    setupTrack(0);
+    const { clip } = setupSessionClip(0, 0, {
+      clipId: "clip_0_0",
+      clipProperties: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+      },
+    });
+
+    await createClip(
+      {
+        slot: "0/0",
+        notes:
+          '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":64,"start":1,"duration":1,"velocity":100}]',
+      },
+      { notation: "midi-json" },
+    );
+
+    expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [createNote(), createNote({ pitch: 64, start_time: 1 })],
+    });
+  });
+
   it("should fire the scene when auto=play-scene", async () => {
     setupLiveSet();
     setupTrack(0);
@@ -330,6 +356,19 @@ describe("createClip - session view", () => {
       slot: `0/${MAX_AUTO_CREATED_SCENES}`,
       name: "This Should Fail",
     });
+
+    expect(result).toStrictEqual([]);
+  });
+
+  it("returns an empty array (does not select) when focus=true but no clips are created", async () => {
+    // The existing clip makes creation warn-and-skip, so 0 clips are created.
+    // The focus guard `createdClips.length > 0` (→ true / → >= 0 mutants) would
+    // then select createdClips.at(-1) — which is undefined — and throw.
+    setupLiveSet();
+    setupTrack(0);
+    setupSessionClip(0, 0, { hasClip: 1 });
+
+    const result = await createClip({ slot: "0/0", focus: true });
 
     expect(result).toStrictEqual([]);
   });

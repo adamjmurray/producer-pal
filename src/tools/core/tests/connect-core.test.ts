@@ -278,8 +278,6 @@ describe("connect", () => {
         returnTrackCount: 0,
         isPlaying: true,
       },
-      skills: expect.stringContaining("Producer Pal Skills"),
-      nextStep: expect.stringMatching(/wait for.* instructions/),
     });
   });
 
@@ -392,5 +390,34 @@ describe("connect", () => {
 
     expect(result.liveSet.name).toBeUndefined();
     expect(result.liveSet).not.toHaveProperty("name");
+  });
+
+  it("omits isPlaying when the Live Set is stopped", () => {
+    // Boundary: is_playing 0 → not playing (> not >=), so the flag is absent.
+    const result = connectWithNullHostTrack(
+      createLiveSetConfig({ name: "Stopped Project", is_playing: 0 }),
+    );
+
+    expect(result.liveSet).not.toHaveProperty("isPlaying");
+  });
+
+  it("reports the Ableton Live version from the live_app object", () => {
+    // Distinct from the mock's unregistered "12.3" fallback so the live_app
+    // path string is load-bearing.
+    setupConnectScenario(createLiveSetConfig({ name: "Version Test" }), "12.5");
+    vi.mocked(getHostTrackIndex).mockReturnValue(0);
+
+    expect(connect().abletonLiveVersion).toBe("12.5");
+  });
+
+  it("counts return tracks from the return_tracks children", () => {
+    const result = connectWithNullHostTrack(
+      createLiveSetConfig({
+        name: "Return Tracks Project",
+        liveSetExtra: { return_tracks: children("return0", "return1") },
+      }),
+    );
+
+    expect(result.liveSet.returnTrackCount).toBe(2);
   });
 });

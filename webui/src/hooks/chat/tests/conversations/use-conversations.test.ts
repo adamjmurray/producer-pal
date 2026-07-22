@@ -12,6 +12,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
+import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
+import { lockedSettings } from "#webui/hooks/chat/tests/helpers/use-chat-test-helpers";
 import {
   createConversationsProps as createProps,
   fireHashChange,
@@ -41,25 +43,11 @@ async function saveTestConversation(
   const messages = overrides.messages ?? [
     { role: "user" as const, content: "test" },
   ];
+  const createdAt = overrides.createdAt ?? 1000;
 
-  await saveConversation({
-    id,
-    title: null,
-    createdAt: overrides.createdAt ?? 1000,
-    updatedAt: overrides.createdAt ?? 1000,
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-    totalUsage: null,
-    sessionType: "text",
-    messages,
-    voiceHistory: null,
-  });
+  await saveConversation(
+    createTestRecord({ id, createdAt, updatedAt: createdAt, messages }),
+  );
 
   return id;
 }
@@ -107,24 +95,15 @@ describe("useConversations", () => {
   it("preserves existing updatedAt when no timestamp provided", async () => {
     const existingId = crypto.randomUUID();
 
-    await saveConversation({
-      id: existingId,
-      title: null,
-      createdAt: 1000,
-      updatedAt: 2000,
-      bookmarked: false,
-      provider: "gemini",
-      model: null,
-      modelLabel: null,
-      thinking: null,
-      temperature: null,
-      showThoughts: null,
-      smallModelMode: null,
-      totalUsage: null,
-      sessionType: "text",
-      messages: [{ role: "user", content: "original" }],
-      voiceHistory: null,
-    });
+    await saveConversation(
+      createTestRecord({
+        id: existingId,
+        createdAt: 1000,
+        updatedAt: 2000,
+        provider: "gemini",
+        messages: [{ role: "user", content: "original" }],
+      }),
+    );
 
     const { props, state } = createProps();
 
@@ -146,8 +125,8 @@ describe("useConversations", () => {
   it("persists active model and provider in saved conversation", async () => {
     const { props, state } = createProps();
 
-    props.activeModel = "gemini-2.5-pro";
-    props.activeProvider = "gemini";
+    props.activeMeta.activeModel = "gemini-2.5-pro";
+    props.activeMeta.activeProvider = "gemini";
 
     const { result } = renderHook(() => useConversations(props));
 
@@ -188,8 +167,8 @@ describe("useConversations", () => {
       await saveWithMessage(state, result);
 
       expect(saveSpy).toHaveBeenCalled();
-      expect(result.current.limitNotification?.type).toBe("error");
-      expect(result.current.limitNotification?.message).toContain(
+      expect(result.current.notification?.type).toBe("error");
+      expect(result.current.notification?.message).toContain(
         "browser storage is full",
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -208,24 +187,17 @@ describe("useConversations", () => {
     // Pre-populate DB with a conversation
     const existingId = crypto.randomUUID();
 
-    await saveConversation({
-      id: existingId,
-      title: null,
-      createdAt: 1000,
-      updatedAt: 1000,
-      bookmarked: false,
-      provider: "gemini",
-      model: "gemini-2.5-pro",
-      modelLabel: "Gemini 2.5 Pro",
-      thinking: null,
-      temperature: null,
-      showThoughts: null,
-      smallModelMode: null,
-      totalUsage: null,
-      sessionType: "text",
-      messages: [{ role: "user", content: "existing conversation" }],
-      voiceHistory: null,
-    });
+    await saveConversation(
+      createTestRecord({
+        id: existingId,
+        createdAt: 1000,
+        updatedAt: 1000,
+        provider: "gemini",
+        model: "gemini-2.5-pro",
+        modelLabel: "Gemini 2.5 Pro",
+        messages: [{ role: "user", content: "existing conversation" }],
+      }),
+    );
 
     const { result } = renderHook(() => useConversations(props));
 
@@ -247,14 +219,7 @@ describe("useConversations", () => {
     expect(props.clearConversation).toHaveBeenCalled();
     expect(props.restoreChatHistory).toHaveBeenCalledWith(
       [{ role: "user", content: "existing conversation" }],
-      {
-        model: "gemini-2.5-pro",
-        provider: "gemini",
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-      },
+      lockedSettings({ model: "gemini-2.5-pro", provider: "gemini" }),
     );
   });
 
@@ -276,7 +241,7 @@ describe("useConversations", () => {
   it("syncs activeSmallModelMode prop to conversation meta", async () => {
     const { props, state } = createProps();
 
-    props.activeSmallModelMode = true;
+    props.activeMeta.activeSmallModelMode = true;
 
     const { result } = renderHook(() => useConversations(props));
 
@@ -312,24 +277,17 @@ describe("useConversations", () => {
   it("restores conversation from URL hash on mount", async () => {
     const existingId = crypto.randomUUID();
 
-    await saveConversation({
-      id: existingId,
-      title: null,
-      createdAt: 1000,
-      updatedAt: 1000,
-      bookmarked: false,
-      provider: "anthropic",
-      model: "claude-sonnet-4-6-20250514",
-      modelLabel: "Claude Sonnet 4.6",
-      thinking: null,
-      temperature: null,
-      showThoughts: null,
-      smallModelMode: null,
-      totalUsage: null,
-      sessionType: "text",
-      messages: [{ role: "user", content: "restored" }],
-      voiceHistory: null,
-    });
+    await saveConversation(
+      createTestRecord({
+        id: existingId,
+        createdAt: 1000,
+        updatedAt: 1000,
+        provider: "anthropic",
+        model: "claude-sonnet-4-6-20250514",
+        modelLabel: "Claude Sonnet 4.6",
+        messages: [{ role: "user", content: "restored" }],
+      }),
+    );
     window.location.hash = existingId;
 
     const { props } = createProps();
@@ -340,14 +298,10 @@ describe("useConversations", () => {
     expect(result.current.activeConversationId).toBe(existingId);
     expect(props.restoreChatHistory).toHaveBeenCalledWith(
       [{ role: "user", content: "restored" }],
-      {
+      lockedSettings({
         model: "claude-sonnet-4-6-20250514",
         provider: "anthropic",
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-      },
+      }),
     );
   });
 
@@ -418,6 +372,60 @@ describe("useConversations", () => {
     expect(props.clearConversation).toHaveBeenCalled();
   });
 
+  it("defers deletion until an in-flight save settles", async () => {
+    // Regression: deleting the actively-streaming conversation must not race
+    // its autosave. The delete drains the save chain first, so an in-flight
+    // save's write can't land after the row is removed and resurrect it.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result);
+    const savedId = result.current.activeConversationId!;
+
+    // Hold the NEXT save pending, and watch the DB-level delete.
+    let releaseSave!: (r: {
+      deletedCount: number;
+      limitReached: boolean;
+    }) => void;
+    const savePending = new Promise<{
+      deletedCount: number;
+      limitReached: boolean;
+    }>((resolve) => {
+      releaseSave = resolve;
+    });
+    const saveSpy = vi
+      .spyOn(conversationDb, "saveConversation")
+      .mockReturnValueOnce(savePending as never);
+    const deleteSpy = vi.spyOn(conversationDb, "deleteConversation");
+
+    // Start an autosave (now pending in the chain), then start the delete —
+    // which must block on the chain rather than deleting immediately.
+    let savePromise!: Promise<void>;
+    let deletePromise!: Promise<void>;
+
+    await act(async () => {
+      state.chatHistory = [{ role: "user", content: "streaming…" }];
+      savePromise = result.current.saveCurrentConversation();
+      deletePromise = result.current.deleteConversation(savedId);
+      await Promise.resolve();
+    });
+
+    // Nothing deleted yet — the delete is waiting on the pending save.
+    expect(deleteSpy).not.toHaveBeenCalled();
+
+    // Release the save; the delete now proceeds and removes the row for good.
+    await act(async () => {
+      releaseSave({ deletedCount: 0, limitReached: false });
+      await savePromise;
+      await deletePromise;
+    });
+
+    expect(deleteSpy).toHaveBeenCalledWith(savedId);
+    expect(await loadConversation(savedId)).toBeUndefined();
+
+    saveSpy.mockRestore();
+    deleteSpy.mockRestore();
+  });
+
   it("deletes a non-active conversation without clearing chat", async () => {
     const otherId = await saveTestConversation({
       messages: [{ role: "user", content: "other" }],
@@ -447,6 +455,28 @@ describe("useConversations", () => {
     expect(props.clearConversation).not.toHaveBeenCalled();
   });
 
+  it("offers an undo banner after deleting, and restores on undo", async () => {
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result);
+    const savedId = result.current.activeConversationId!;
+
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+    expect(result.current.notification?.message).toContain("Deleted");
+    expect(result.current.notification?.action?.label).toBe("Undo");
+
+    await act(() => result.current.notification!.action!.onClick());
+    await waitForEffects();
+
+    expect(result.current.conversations).toHaveLength(1);
+    expect(result.current.conversations[0]?.id).toBe(savedId);
+    expect(result.current.notification).toBeNull();
+  });
+
   it("renames a conversation and refreshes list", async () => {
     const { state, result } = await setupHook();
     const id = await saveAndRename(state, result, "My Title");
@@ -461,24 +491,18 @@ describe("useConversations", () => {
      * @param id - Conversation id to use
      */
     async function saveVoiceConversation(id: string): Promise<void> {
-      await saveConversation({
-        id,
-        title: null,
-        createdAt: 1000,
-        updatedAt: 1000,
-        bookmarked: false,
-        provider: "openai",
-        model: "gpt-realtime-2",
-        modelLabel: null,
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        totalUsage: null,
-        sessionType: "voice",
-        messages: [],
-        voiceHistory: [],
-      });
+      await saveConversation(
+        createTestRecord({
+          id,
+          createdAt: 1000,
+          updatedAt: 1000,
+          provider: "openai",
+          model: "gpt-realtime-2",
+          sessionType: "voice",
+          messages: [],
+          voiceHistory: [],
+        }),
+      );
     }
 
     it("switchConversation updates the hash to the foreign id before invoking onForeignRecord", async () => {
@@ -507,6 +531,42 @@ describe("useConversations", () => {
       expect(onForeignRecord).toHaveBeenCalledWith(
         expect.objectContaining({ id: voiceId }),
       );
+    });
+
+    it("hands a voice record found in the URL hash off to onForeignRecord on mount", async () => {
+      const voiceId = "voice-mount-1";
+
+      await saveVoiceConversation(voiceId);
+      window.location.hash = voiceId;
+
+      const onForeignRecord = vi.fn();
+      const { props } = createProps();
+
+      props.onForeignRecord = onForeignRecord;
+      renderHook(() => useConversations(props));
+
+      await waitForEffects();
+
+      expect(onForeignRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: voiceId }),
+      );
+    });
+
+    it("clears the active id for a hash voice record on mount when onForeignRecord is not provided", async () => {
+      const voiceId = "voice-mount-2";
+
+      await saveVoiceConversation(voiceId);
+      window.location.hash = voiceId;
+
+      const { props } = createProps();
+
+      expect(props.onForeignRecord).toBeUndefined();
+      const { result } = renderHook(() => useConversations(props));
+
+      await waitForEffects();
+
+      expect(result.current.activeConversationId).toBeNull();
+      expect(props.restoreChatHistory).not.toHaveBeenCalled();
     });
 
     it("switchConversation clears the active id for voice records when onForeignRecord is not provided", async () => {
@@ -542,14 +602,7 @@ describe("useConversations", () => {
       expect(result.current.activeConversationId).toBe(existingId);
       expect(props.restoreChatHistory).toHaveBeenCalledWith(
         [{ role: "user", content: "from hash" }],
-        {
-          model: null,
-          provider: null,
-          thinking: null,
-          temperature: null,
-          showThoughts: null,
-          smallModelMode: null,
-        },
+        lockedSettings(),
       );
     });
 

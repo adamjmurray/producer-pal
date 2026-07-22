@@ -11,7 +11,7 @@ import {
 import { type Provider } from "#webui/types/settings";
 
 const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
-  anthropic: "e.g., claude-sonnet-4-6-20250514",
+  anthropic: "e.g., claude-sonnet-5",
   gemini: "e.g., gemini-2.5-flash",
   openai: "e.g., gpt-5.4-nano",
   mistral: "e.g., ministral-14b-latest",

@@ -342,7 +342,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  // AJM-485: the merge path concatenates existing + new notes, so the combined
+  // The merge path concatenates existing + new notes, so the combined
   // array is unsorted (existing sorted, new appended in authored order). Before
   // add_new_notes we dedupe same-pitch+start collisions (new wins) then sort
   // ascending, so Live can't silently drop notes via onset-overlap deletion.

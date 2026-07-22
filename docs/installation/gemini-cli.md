@@ -27,16 +27,7 @@ page).
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Configure Gemini CLI
 
@@ -55,6 +46,34 @@ auto-reconnection:
   }
 }
 ```
+
+::: tip Scripting or building against Producer Pal?
+
+If you'll have the agent **write code that generates or parses** Producer Pal
+data — building MIDI programmatically, or piping tool output through JSON
+tooling — add `--format json` and `--notation midi-json` to the args:
+
+```json
+{
+  "mcpServers": {
+    "producer-pal": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "producer-pal",
+        "--format",
+        "json",
+        "--notation",
+        "midi-json"
+      ]
+    }
+  }
+}
+```
+
+<!--@include: ../_partials/scripting-tip.md-->
+
+:::
 
 **Option B: Direct HTTP** - Requires Ableton running first, no
 auto-reconnection:

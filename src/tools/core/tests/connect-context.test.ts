@@ -17,84 +17,28 @@ vi.mock(
 );
 
 describe("connect", () => {
-  it("includes memory content when non-empty", () => {
+  it("does not embed the per-project context blob in the result", () => {
+    // Project context used to ride along as result.memoryContent. It now ships
+    // as its own labeled connect block, injected Node-side (withProjectContext),
+    // so the V8 result must stay context-free — the same shape as global context
+    // and the memory index.
     setupConnectMocks({ liveSetName: "Project with Notes" });
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const context: Partial<ToolContext> = {
-      memory: { content: "Working on a house track with heavy bass" },
-    };
-
-    const result = connect({}, context);
-
-    expect(result.memoryContent).toStrictEqual(
-      "Working on a house track with heavy bass",
-    );
-  });
-
-  it("excludes memory when content is empty", () => {
-    setupConnectMocks({ liveSetName: "Empty Memory Project" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const context: Partial<ToolContext> = {
-      memory: { content: "" },
-    };
-
-    const result = connect({}, context);
+    const result = connect({}) as unknown as Record<string, unknown>;
 
     expect(result.memoryContent).toBeUndefined();
   });
 
-  it("handles missing context gracefully", () => {
-    setupConnectMocks({ liveSetName: "No Context Project" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const result = connect();
-
-    expect(result.memoryContent).toBeUndefined();
-  });
-
-  it("returns standard skills by default", () => {
+  it("does not build the skills blob (assembled Node-side, not in V8)", () => {
+    // Skills moved out of the V8 connect() body: the override files live only on
+    // the Node-for-Max side, so buildSkills runs there and is injected into the
+    // ppal-connect result (see skills-inject.ts). connect() must stay skills-free.
     setupConnectMocks();
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
-    const result = connect();
+    const result = connect({}) as { skills?: unknown };
 
-    expect(result.skills).toContain("Producer Pal Skills");
-    expect(result.skills).toContain("## Transforms");
-  });
-
-  it("returns basic skills when smallModelMode is enabled", () => {
-    setupConnectMocks({ liveSetName: "Small Model Project" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const result = connect({}, { smallModelMode: true });
-
-    expect(result.skills).toContain("Producer Pal Skills");
-    expect(result.skills).not.toContain("## Transforms");
-  });
-
-  it("standard skills include advanced features that basic skills omit", () => {
-    setupConnectMocks();
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const standardResult = connect({}, {});
-    const basicResult = connect({}, { smallModelMode: true });
-
-    // Standard includes advanced features
-    expect(standardResult.skills).toContain("@N="); // bar copying
-    expect(standardResult.skills).toContain("v0 C3 1|1"); // v0 deletion
-    expect(standardResult.skills).toContain("## Transforms");
-    expect(standardResult.skills).toContain("**Creating Music:**");
-    expect(standardResult.skills).toContain("velocity dynamics");
-    expect(standardResult.skills).toContain("routeToSource");
-
-    // Basic omits advanced features
-    expect(basicResult.skills).not.toContain("@N=");
-    expect(basicResult.skills).not.toContain("v0 C3 1|1");
-    expect(basicResult.skills).not.toContain("## Transforms");
-    expect(basicResult.skills).not.toContain("**Creating Music:**");
-    expect(basicResult.skills).not.toContain("velocity dynamics");
-    expect(basicResult.skills).not.toContain("routeToSource");
+    expect(result.skills).toBeUndefined();
   });
 });

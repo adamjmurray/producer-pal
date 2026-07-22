@@ -16,14 +16,39 @@ import {
   createDefaultProps,
   MockChatClient,
   RESTORED_HISTORY,
-} from "./use-chat-test-helpers";
+} from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
-  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
+  const { streamingHelpersMockBody } =
+    await import("./helpers/use-chat-test-helpers");
 
   return await streamingHelpersMockBody();
 });
+
+/**
+ * Send "Original message", then edit the resulting user message in place.
+ * @param result - The rendered useChat hook result
+ * @param result.current - The current useChat return value
+ * @param editedText - Replacement text for the edited user message
+ * @returns The index of the user message that was edited
+ */
+async function sendThenEditUser(
+  result: { current: ReturnType<typeof useChat> },
+  editedText = "Edited message",
+): Promise<number> {
+  await act(async () => {
+    await result.current.handleSend("Original message");
+  });
+
+  const userIdx = result.current.messages.findIndex((m) => m.role === "user");
+
+  await act(async () => {
+    await result.current.handleEdit(userIdx, editedText);
+  });
+
+  return userIdx;
+}
 
 describe("useChat handleEdit", () => {
   const mockAdapter = createMockAdapter();
@@ -52,15 +77,7 @@ describe("useChat handleEdit", () => {
   it("forks conversation with new message text", async () => {
     const { result } = renderHook(() => useChat(defaultProps));
 
-    await act(async () => {
-      await result.current.handleSend("Original message");
-    });
-
-    const userIdx = result.current.messages.findIndex((m) => m.role === "user");
-
-    await act(async () => {
-      await result.current.handleEdit(userIdx, "Edited message");
-    });
+    await sendThenEditUser(result);
 
     const userMessage = result.current.messages.find((m) => m.role === "user");
     const userPart = userMessage?.parts[0];
@@ -89,15 +106,7 @@ describe("useChat handleEdit", () => {
       useChat({ ...defaultProps, pendingForkRef }),
     );
 
-    await act(async () => {
-      await result.current.handleSend("Original message");
-    });
-
-    const userIdx = result.current.messages.findIndex((m) => m.role === "user");
-
-    await act(async () => {
-      await result.current.handleEdit(userIdx, "Edited message");
-    });
+    const userIdx = await sendThenEditUser(result);
 
     // The consumer (useConversations) clears this; useChat alone leaves it set.
     expect(pendingForkRef.current).toStrictEqual({ anchorIndex: userIdx });
@@ -138,15 +147,7 @@ describe("useChat handleEdit", () => {
       useChat({ ...defaultProps, adapter: failingInitAdapter, pendingForkRef }),
     );
 
-    await act(async () => {
-      await result.current.handleSend("Original message");
-    });
-
-    const userIdx = result.current.messages.findIndex((m) => m.role === "user");
-
-    await act(async () => {
-      await result.current.handleEdit(userIdx, "Edited message");
-    });
+    const userIdx = await sendThenEditUser(result);
 
     expect(signalWhenForkInitFailed).toStrictEqual({ anchorIndex: userIdx });
   });

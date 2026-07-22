@@ -6,6 +6,8 @@
 export interface TransferNotificationData {
   message: string;
   type: "success" | "error" | "warning";
+  /** Optional action button (e.g. Undo) shown before the dismiss button. */
+  action?: { label: string; onClick: () => void };
 }
 
 /**
@@ -30,6 +32,14 @@ export function TransferNotification({
       role="status"
     >
       <span className="flex-1">{notification.message}</span>
+      {notification.action && (
+        <button
+          onClick={notification.action.onClick}
+          className="font-medium underline underline-offset-2 hover:opacity-80 transition-opacity"
+        >
+          {notification.action.label}
+        </button>
+      )}
       <button
         onClick={onDismiss}
         className="text-current opacity-60 hover:opacity-100 transition-opacity"

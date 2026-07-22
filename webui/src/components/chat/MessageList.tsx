@@ -13,6 +13,7 @@ import {
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
 import { MessageRow, type MessageRowProps } from "./assistant/MessageRow";
+import { SystemPromptNotice } from "./assistant/SystemPromptNotice";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { BranchNav } from "./controls/BranchNav";
 import { QueuedMessages } from "./controls/QueuedMessages";
@@ -37,6 +38,8 @@ interface MessageListProps {
   requestedModel?: string | null;
   /** Sibling-branch navigation for the active conversation (edit/retry forks). */
   branchNav?: BranchNavState;
+  /** System instruction shown as a collapsible notice atop the transcript. */
+  systemInstruction?: string;
 }
 
 /**
@@ -72,6 +75,7 @@ export function MessageList({
   showTokenUsage,
   requestedModel,
   branchNav,
+  systemInstruction,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -126,6 +130,10 @@ export function MessageList({
       className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-4 items-start p-4"
       data-testid="message-list"
     >
+      {systemInstruction != null && (
+        <SystemPromptNotice systemInstruction={systemInstruction} />
+      )}
+
       {messages.map((message, originalIdx) => (
         <MessageListRow
           key={originalIdx}

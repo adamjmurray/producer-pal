@@ -6,6 +6,18 @@
 import { describe, expect, it } from "vitest";
 import { parseAssignments } from "./parse-test-helpers.ts";
 
+// "v-10" desugars to an add of the negation (matching "velocity -= 10"),
+// asserted from two angles: additive shorthand and the no-shadow guard.
+const V_MINUS_10_ADD_OF_NEGATION = [
+  {
+    pitchRange: null,
+    timeRange: null,
+    parameter: "velocity",
+    operator: "add",
+    expression: { type: "subtract", left: 0, right: 10 },
+  },
+];
+
 describe("Transform Parser - shorthand", () => {
   describe("desugars identically to full forms", () => {
     it.each([
@@ -44,15 +56,9 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("desugars v-10 to add-of-negation (matches -=)", () => {
-      expect(parseAssignments("v-10")).toStrictEqual([
-        {
-          pitchRange: null,
-          timeRange: null,
-          parameter: "velocity",
-          operator: "add",
-          expression: { type: "subtract", left: 0, right: 10 },
-        },
-      ]);
+      expect(parseAssignments("v-10")).toStrictEqual(
+        V_MINUS_10_ADD_OF_NEGATION,
+      );
     });
 
     it("desugars p+0.1 to probability add", () => {
@@ -239,15 +245,9 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("does not shadow additive shorthand (v-10 stays a subtract)", () => {
-      expect(parseAssignments("v-10")).toStrictEqual([
-        {
-          pitchRange: null,
-          timeRange: null,
-          parameter: "velocity",
-          operator: "add",
-          expression: { type: "subtract", left: 0, right: 10 },
-        },
-      ]);
+      expect(parseAssignments("v-10")).toStrictEqual(
+        V_MINUS_10_ADD_OF_NEGATION,
+      );
     });
 
     it("applies a pitch selector to both emitted assignments (C1: v80-120)", () => {

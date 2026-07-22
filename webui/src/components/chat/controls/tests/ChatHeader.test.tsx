@@ -129,27 +129,27 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-flash-lite",
+            activeModel: "gemini-3.5-flash-lite",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Flash-Lite")).toBeDefined();
+      expect(screen.getByText("Gemini 3.5 Flash-Lite")).toBeDefined();
     });
 
-    it("shows Gemini 3.5 Flash model with provider", () => {
+    it("shows Gemini 3.6 Flash model with provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.5-flash",
+            activeModel: "gemini-3.6-flash",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.5 Flash")).toBeDefined();
+      expect(screen.getByText("Gemini 3.6 Flash")).toBeDefined();
     });
 
     it("shows unknown model ID as-is with provider", () => {

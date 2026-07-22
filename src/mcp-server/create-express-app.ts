@@ -14,13 +14,29 @@ import express, {
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import {
+  DEFAULT_NOTATION,
+  isNotation,
+  type Notation,
+} from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
-import { isLocalOrigin } from "./helpers/request-origin.ts";
+import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
+import { requestBody } from "./helpers/http/request-body.ts";
+import {
+  isLocalOrigin,
+  rejectCrossOriginWrite,
+} from "./helpers/http/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
+import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
+import { registerGlobalContextRoutes } from "./routes/global-context-route.ts";
+import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
+import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
+import { registerSkillsPreviewRoute } from "./routes/skills-preview-route.ts";
+import { registerSystemPromptRoutes } from "./routes/system-prompt-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
@@ -28,6 +44,7 @@ const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 interface ProducerPalConfig {
   memoryContent: string;
   smallModelMode: boolean;
+  notation: Notation;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
   liveApiEnabled: boolean;
@@ -49,6 +66,7 @@ const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 const config: ProducerPalConfig = {
   memoryContent: "",
   smallModelMode: false,
+  notation: DEFAULT_NOTATION,
   jsonOutput: false,
   sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
@@ -60,6 +78,14 @@ const config: ProducerPalConfig = {
 
 Max.addHandler("smallModelMode", (enabled: unknown) => {
   config.smallModelMode = Boolean(enabled);
+});
+
+Max.addHandler("notation", (value: unknown) => {
+  // Ignore unrecognized values so a stray device message can't wedge the
+  // setting into an invalid state — keep the current notation instead.
+  if (isNotation(value)) {
+    config.notation = value;
+  }
 });
 
 Max.addHandler("memoryContent", (content: unknown) => {
@@ -114,6 +140,16 @@ function applyLiveApiEnabled(next: boolean): void {
   }
 }
 
+// Enrich ppal-connect Node-side with the skills, context, memory, and next-step
+// blocks (see enrich-connect.ts for the block order and why it matters).
+// config.memoryContent is the per-Live Set context blob — a legacy field name
+// that predates the context/memory split, hence the rename at this boundary.
+const callLiveApiEnriched = enrichConnect(callLiveApi, () => ({
+  notation: config.notation,
+  smallModelMode: config.smallModelMode,
+  projectContext: config.memoryContent,
+}));
+
 interface JsonRpcError {
   jsonrpc: string;
   error: {
@@ -158,28 +194,50 @@ function setNoStore(res: Response): void {
 export function createExpressApp(): Express {
   const app = express();
 
-  // CORS middleware for MCP Inspector and Vite dev server support.
-  // Only enabled in dev builds (ENABLE_DEV_CORS=true). Production builds
-  // serve the chat UI from the same origin, so no CORS headers are needed.
-  if (process.env.ENABLE_DEV_CORS === "true") {
-    app.use((req: Request, res: Response, next: NextFunction): void => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
+  // CORS: by default reflect only localhost origins, so a browser page you
+  // serve locally (a dev server, the MCP Inspector, your own tool on another
+  // port) can call the API, while pages from the internet stay blocked. The
+  // Origin header is browser-set and can't be forged by page JS, so an internet
+  // page always carries its real domain and gets no header. Non-browser clients
+  // (curl, scripts, Max) ignore CORS entirely and are unaffected either way.
+  // Set ENABLE_REMOTE_CORS to widen this to any origin ("*") — needed only for
+  // browser dev tooling served from a non-localhost origin (a remote Inspector,
+  // LAN). Specify it manually on the CLI before a build; it is never baked into
+  // an npm script.
+  app.use((req: Request, res: Response, next: NextFunction): void => {
+    const origin = req.get("Origin");
+    let allowOrigin: string | null = null;
+
+    if (process.env.ENABLE_REMOTE_CORS === "true") {
+      allowOrigin = "*";
+    } else if (origin != null && isLocalOrigin(origin)) {
+      allowOrigin = origin;
+    }
+
+    if (allowOrigin != null) {
+      res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+
+      // Reflected origins vary per request, so caches must key on Origin.
+      if (allowOrigin !== "*") {
+        res.setHeader("Vary", "Origin");
+      }
+
       res.setHeader(
         "Access-Control-Allow-Methods",
         "GET, POST, OPTIONS, DELETE",
       );
       res.setHeader("Access-Control-Allow-Headers", "*");
 
-      // Handle preflight requests
+      // Answer the preflight for an allowed origin.
       if (req.method === "OPTIONS") {
         res.status(200).end();
 
         return;
       }
+    }
 
-      next();
-    });
-  }
+    next();
+  });
 
   // Tool arguments with large MIDI note arrays or bar|beat transforms can
   // exceed Express's 100 KB default.
@@ -202,8 +260,9 @@ export function createExpressApp(): Express {
 
       console.info(`MCP request: ${method}`);
 
-      const server = createMcpServer(callLiveApi, {
+      const server = createMcpServer(callLiveApiEnriched, {
         smallModelMode: config.smallModelMode,
+        notation: config.notation,
         liveApiEnabled: config.liveApiEnabled,
         tools: config.tools,
       });
@@ -273,7 +332,14 @@ export function createExpressApp(): Express {
 
   app.post("/config", handleConfigUpdate);
 
-  registerRestApiRoutes(app, () => config, callLiveApi);
+  registerRestApiRoutes(app, () => config, callLiveApiEnriched);
+
+  registerGlobalContextRoutes(app);
+  registerMemoryCollectionRoutes(app);
+  registerCustomSkillsCollectionRoutes(app);
+  registerSystemPromptRoutes(app);
+  registerSkillOverridesRoutes(app);
+  registerSkillsPreviewRoute(app);
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);
@@ -320,17 +386,20 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   // endpoints must stay reachable from the LAN/tunnel chat's non-localhost
   // origin. Side effect: config writes from a LAN/tunnel browser are blocked —
   // an accepted limitation, not part of the remote-access feature's contract.
-  const origin = req.get("Origin");
-
-  if (origin && !isLocalOrigin(origin)) {
-    res
-      .status(403)
-      .json({ error: "cross-origin /config writes are not allowed" });
-
+  if (
+    rejectCrossOriginWrite(
+      req,
+      res,
+      "cross-origin /config writes are not allowed",
+    )
+  ) {
     return;
   }
 
-  const incoming = req.body as Partial<ProducerPalConfig>;
+  // requestBody normalizes a missing/non-object body to {} so a bodyless POST
+  // /config (no Content-Type: application/json) is a benign no-op update
+  // instead of a TypeError → 500.
+  const incoming = requestBody(req) as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
   if (incoming.memoryContent !== undefined) {
@@ -345,6 +414,11 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     outlets.push(() =>
       Max.outlet("config", "smallModelMode", config.smallModelMode),
     );
+  }
+
+  if (incoming.notation !== undefined && isNotation(incoming.notation)) {
+    config.notation = incoming.notation;
+    outlets.push(() => Max.outlet("config", "notation", config.notation));
   }
 
   if (incoming.jsonOutput !== undefined) {

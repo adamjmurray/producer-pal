@@ -12,22 +12,12 @@ import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import { useSettings } from "#webui/hooks/settings/use-settings";
+import { flushLoad } from "./use-settings-test-helpers";
 
 describe("useSettings", () => {
   beforeEach(() => {
     localStorage.clear();
   });
-
-  /**
-   * Flush the post-mount async decrypt-load so it can't clobber later edits.
-   * The load chain is several microtask hops (loadAllProviderSettingsAsync →
-   * Promise.all → applyLoadedSettings), so yield several rounds inside act.
-   */
-  async function flushLoad(): Promise<void> {
-    await act(async () => {
-      for (let i = 0; i < 5; i++) await Promise.resolve();
-    });
-  }
 
   /**
    * Assert a provider's stored JSON has an encrypted apiKey (not the cleartext)
@@ -55,7 +45,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,
@@ -90,7 +80,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         thinking: "Max",
         temperature: 1.5,
         showThoughts: false,
@@ -100,7 +90,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     expect(result.current).toMatchObject({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       thinking: "Max",
       temperature: 1.5,
       showThoughts: false,
@@ -117,7 +107,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         thinking: "Adaptive",
         temperature: 1.0,
         showThoughts: true,
@@ -127,7 +117,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Should use new format
-    expect(result.current.model).toBe("gemini-3.5-flash");
+    expect(result.current.model).toBe("gemini-3.6-flash");
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
   });
 
@@ -166,10 +156,10 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setModel("gemini-3.5-flash");
+      result.current.setModel("gemini-3.6-flash");
     });
 
-    expect(result.current.model).toBe("gemini-3.5-flash");
+    expect(result.current.model).toBe("gemini-3.6-flash");
   });
 
   it("savedModel only updates on saveSettings, not setModel", async () => {
@@ -177,16 +167,16 @@ describe("useSettings", () => {
     const initialSavedModel = result.current.savedModel;
 
     await act(() => {
-      result.current.setModel("gemini-3.5-flash");
+      result.current.setModel("gemini-3.6-flash");
     });
     // In-modal change should NOT flip the App-level routing model.
-    expect(result.current.model).toBe("gemini-3.5-flash");
+    expect(result.current.model).toBe("gemini-3.6-flash");
     expect(result.current.savedModel).toBe(initialSavedModel);
 
     await act(async () => {
       await result.current.saveSettings();
     });
-    expect(result.current.savedModel).toBe("gemini-3.5-flash");
+    expect(result.current.savedModel).toBe("gemini-3.6-flash");
   });
 
   it("savedProvider only updates on saveSettings, not setProvider", async () => {
@@ -308,7 +298,7 @@ describe("useSettings", () => {
     await flushLoad();
     await act(() => {
       result.current.setApiKey("new-key");
-      result.current.setModel("gemini-3.5-flash");
+      result.current.setModel("gemini-3.6-flash");
       result.current.setThinking("Max");
       result.current.setTemperature(0.8);
       result.current.setShowThoughts(false);
@@ -334,7 +324,7 @@ describe("useSettings", () => {
     });
 
     await expectStored("gemini", "new-key", {
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       thinking: "Max",
       temperature: 0.8,
       showThoughts: false,
@@ -536,7 +526,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gpt-5.5",
+      model: "gpt-5.6-terra",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,

@@ -70,10 +70,11 @@ Content-Type: application/json
 { "trackIndex": 0, "include": ["session-clips"] }
 ```
 
-Returns:
+Returns (the default `json` format — see
+[Response format](#response-format-format-json-default)):
 
 ```json
-{ "result": "...", "isError": false }
+{ "result": { "...": "..." }, "isError": false }
 ```
 
 - **200** with `isError: false` — tool ran successfully
@@ -81,60 +82,75 @@ Returns:
   path, execution error)
 - **404** — unknown or disabled tool
 - **400** — invalid input (includes validation details)
+- **504** — the tool didn't finish before the timeout (see
+  [Per-request timeout](#per-request-timeout-timeoutms-n))
+- **500** — internal server error
 
-Warnings from the Live API appear inline in the `result` text, prefixed with
-`WARNING:`. The `ppal-update-*` tools use this when updating multiple objects —
-if any individual operation fails or is inapplicable (e.g. setting quantize on
-an audio clip), it emits a warning and continues with the rest.
+::: warning 504 and 500 use a different body shape
 
-### Response format: `?format=json`
-
-::: warning Default will change in v1.5.0
-
-The default response format will change from compact to **`json`** in v1.5.0. We
-recommend explicitly using `?format=json` for now, and removing the override
-once v1.5.0 ships. The compact JS-literal format is optimized for LLM context
-efficiency and is generally not the right fit for HTTP integrations — if you do
-specifically want it, keep `?format=compact` explicit to stay
-forward-compatible.
+The error responses do **not** carry `result` / `isError`. A 504 returns
+`{ "error": "...", "errorCode": "timeout" }` — check `errorCode` to distinguish
+a timeout from other failures — and a 500 returns `{ "error": "..." }`. Client
+code that reads `body.result` unconditionally will break on exactly the case the
+`timeoutMs` parameter below invites you to hit.
 
 :::
 
-When `?format` is omitted, the server uses the global compact-output setting
-configured on the **Setup** tab of the Producer Pal Max for Live device. By
-default that setting is on, so `result` is a string in a compact
-JavaScript-literal syntax (unquoted keys, no whitespace) optimized for LLM token
-efficiency — the same format MCP clients receive.
+Warnings from the Live API surface as a separate `warnings` string array (or
+inline in the `result` text under `?format=compact`). The `ppal-update-*` tools
+use this when updating multiple objects — if any individual operation fails or
+is inapplicable (e.g. setting quantize on an audio clip), it emits a warning and
+continues with the rest.
 
-For scripts that want structured data (no `JSON.parse` or `jq | fromjson`
-gymnastics), append `?format=json` to the request — the server parses on your
-behalf and the wrapper shape changes:
+### Response format: `?format=json` (default)
+
+The REST API defaults to **`json`**: `result` is the parsed value (object,
+array, number, string) and warnings are a separate `string[]`. This is the right
+default for HTTP integrations — no `JSON.parse` or `jq | fromjson` gymnastics.
+The device-level **JSON Output** setting (**Setup** tab) does not affect the
+REST API.
+
+The compact JS-literal format (unquoted keys, no whitespace) is optimized for
+LLM token efficiency and is the same format MCP clients receive. It is opt-in
+for REST via `?format=compact`, where `result` is a string with warnings inline:
 
 ```bash
-# Compact JS-literal (default) — result is a string, warnings are inline
+# JSON (default) — result is the parsed value; warnings are a separate string array
 curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
   -H 'Content-Type: application/json' -d '{}'
-# → {"result":"{tempo:120,timeSignature:\"4/4\",...}","isError":false}
-
-# JSON — result is the parsed value; warnings are a separate string array
-curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=json' \
-  -H 'Content-Type: application/json' -d '{}'
 # → {"result":{"tempo":120,"timeSignature":"4/4",...},"isError":false}
+
+# Compact JS-literal — result is a string, warnings are inline
+curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=compact' \
+  -H 'Content-Type: application/json' -d '{}'
+# → {"result":"{tempo:120,timeSignature:\"4/4\",...}","isError":false}
 ```
 
-When `?format=json` is set:
+With the default `json` format (or explicit `?format=json`):
 
 - **`result`** is the parsed value (object, array, number, string, etc.) — not a
   JSON-encoded string. Access fields directly: `body.result.tempo`.
 - **`warnings`** is a `string[]` (with the `WARNING: ` prefix stripped), present
   only when the tool emitted any. In compact mode, warnings remain inline in
   `result` for backwards compatibility.
+- **`appended`** is a `string[]` of extra Markdown text blocks the server
+  attaches after the result. Currently only `ppal-connect` uses it, to deliver —
+  in order — the Producer Pal skills (notation instructions), this Live Set's
+  project context, your `~/.producer-pal/context.md` global context, your memory
+  index, and a final next-step block. The context blocks are self-labeling
+  (`Project context (this Live Set):`, `Global context (all projects):`,
+  `Memory index — …`) and only appear when you've configured them; the skills
+  and the next-step block are always present, so `appended` is never empty on
+  `ppal-connect`. The next-step block names any empty context layers and tells
+  the AI what to do next, so don't assume the last element is context. In
+  compact mode these blocks are joined into the `result` string instead.
 - On **error** (`isError: true`), `result` is still a plain error string
   regardless of format — error messages are not JSON.
 
-Pass `?format=compact` or `?format=json` to force a specific format regardless
-of the device-level setting. Other values return **400**. Per-request format
-overrides apply to REST only and never affect MCP clients.
+Pass `?format=compact` to opt into the compact JS-literal format, or
+`?format=json` to be explicit about the default. Other values return **400**.
+The REST format is independent of the device-level setting and never affects MCP
+clients.
 
 ### Per-request timeout: `?timeoutMs=N`
 
@@ -206,7 +222,21 @@ The `ppal-live-api` tool provides direct access to the
 scripting and debugging.
 
 It is opt-in: enable **Direct Live API** on the **Setup** tab of the Producer
-Pal Max for Live device.
+Pal Max for Live device, or programmatically with a `POST /config` request (from
+curl or a same-origin script — cross-origin browser writes to `/config` are
+rejected):
+
+```bash
+curl -X POST http://localhost:3350/config \
+  -H 'Content-Type: application/json' \
+  -d '{"liveApiEnabled": true}'
+```
+
+The setting is global to the device (it also affects the Chat UI and any
+connected MCP clients). This is an advanced escape hatch — the higher-level
+tools are tuned for reliable results, so reach for the raw Live API only for
+custom integrations, scripting, or debugging when the standard tools aren't
+enough.
 
 ### Request structure
 
@@ -218,18 +248,18 @@ object mid-sequence.
 
 Available operation types:
 
-| Type                   | Properties used             | Description                    |
-| ---------------------- | --------------------------- | ------------------------------ |
-| `get_property` / `get` | `property`                  | Read a property value          |
-| `set_property` / `set` | `property`, `value`         | Write a property value         |
-| `call_method` / `call` | `method`, `args` (optional) | Call a method                  |
-| `goto`                 | `value` (path)              | Navigate to a different object |
-| `info`                 | —                           | Get object info                |
-| `getProperty`          | `property`                  | Alias for `get_property`       |
-| `getChildIds`          | `property` (child type)     | Get child object IDs           |
-| `exists`               | —                           | Check if the object exists     |
-| `getColor`             | —                           | Read object color              |
-| `setColor`             | `value` (hex string)        | Write object color             |
+| Type                   | Properties used             | Description                                                                                                                             |
+| ---------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_property` / `get` | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                                 |
+| `set_property` / `set` | `property`, `value`         | Write a property value                                                                                                                  |
+| `call_method` / `call` | `method`, `args` (optional) | Call a method                                                                                                                           |
+| `goto`                 | `value` (path)              | Navigate to a different object                                                                                                          |
+| `info`                 | —                           | Get object info                                                                                                                         |
+| `getProperty`          | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get`/`get_property` for the full array |
+| `getChildIds`          | `property` (child type)     | Get child object IDs                                                                                                                    |
+| `exists`               | —                           | Check if the object exists                                                                                                              |
+| `getColor`             | —                           | Read object color                                                                                                                       |
+| `setColor`             | `value` (hex string)        | Write object color                                                                                                                      |
 
 ### Examples
 
@@ -287,3 +317,6 @@ When the **Direct Live API** toggle is off on the device Setup tab, requests to
   disabled on the device apply to both interfaces.
 - The REST API has no authentication (same as the MCP endpoint). It is designed
   for use on localhost or trusted networks only.
+- Browser pages can only call the REST API from localhost origins by default
+  (`ENABLE_REMOTE_CORS` widens this to any origin). curl and other non-browser
+  clients ignore CORS entirely and are unaffected either way.

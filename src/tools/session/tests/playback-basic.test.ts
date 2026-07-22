@@ -13,7 +13,11 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import {
+  expectAllClipSlotsFired,
   expectLiveSetProperty,
+  expectLoopLengthNotWritten,
+  expectLoopOrderWarning,
+  expectQuantizationFixApplied,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
@@ -98,14 +102,25 @@ describe("transport", () => {
       loopEnd: "3|1", // beat 8 → length 8 - 24 = -16
     });
 
-    expect(liveSet.set).not.toHaveBeenCalledWith(
-      "loop_length",
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("loopEnd must be after loopStart"),
-    );
+    expectLoopLengthNotWritten(liveSet);
+    expectLoopOrderWarning();
+  });
+
+  it("skips a zero-length loop (loopEnd exactly at loopStart) and warns", () => {
+    // Boundary of the non-positive guard (<= 0, not < 0): loopEnd landing
+    // exactly on loopStart is a length of 0, which is just as invalid in Live
+    // as a negative length — it must warn and skip, not write loop_length: 0.
+    liveSet = setupPlaybackLiveSet({ is_playing: 0, current_song_time: 0 });
+
+    playback({
+      action: "update-arrangement",
+      loop: true,
+      loopStart: "3|1", // beat 8
+      loopEnd: "3|1", // beat 8 → length 8 - 8 = 0
+    });
+
+    expectLoopLengthNotWritten(liveSet);
+    expectLoopOrderWarning();
   });
 
   it("reports the actual loop bounds, not the rejected loopEnd, when loop length is non-positive", () => {
@@ -127,10 +142,7 @@ describe("transport", () => {
       loopEnd: "1|1", // beat 0 → length 0 - 4 = -4, rejected
     });
 
-    expect(liveSet.set).not.toHaveBeenCalledWith(
-      "loop_length",
-      expect.anything(),
-    );
+    expectLoopLengthNotWritten(liveSet);
     expect(result.arrangementLoop).toStrictEqual({
       start: "1|1",
       end: "2|1",
@@ -192,13 +204,10 @@ describe("transport", () => {
       ids: "clip1,clip2,clip3",
     });
 
-    for (const clipSlot of clipSlots) {
-      expect(clipSlot.call).toHaveBeenCalledWith("fire");
-    }
+    expectAllClipSlotsFired(clipSlots);
 
     // Verify quantization fix: stop_playing and start_playing should be called for multiple clips
-    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
-    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expectQuantizationFixApplied(liveSet);
   });
 
   it("should handle whitespace in ids", () => {
@@ -212,13 +221,10 @@ describe("transport", () => {
     });
 
     // Should fire all 3 clips despite whitespace
-    for (const clipSlot of clipSlots) {
-      expect(clipSlot.call).toHaveBeenCalledWith("fire");
-    }
+    expectAllClipSlotsFired(clipSlots);
 
     // Verify quantization fix is applied for multiple clips
-    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
-    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expectQuantizationFixApplied(liveSet);
   });
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
@@ -537,8 +543,7 @@ describe("transport", () => {
     expect(clipSlot0.call).toHaveBeenCalledWith("fire");
     expect(clipSlot1.call).toHaveBeenCalledWith("fire");
     // Quantization fix applied for multiple clips
-    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
-    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expectQuantizationFixApplied(liveSet);
   });
 
   it("should handle stop-session-clips via slots", () => {

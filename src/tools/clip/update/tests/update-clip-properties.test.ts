@@ -12,6 +12,11 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import {
+  buildClipPropertiesToSet,
+  type BuildClipPropertiesArgs,
+  type ClipPropsToSet,
+} from "#src/tools/clip/update/helpers/update-clip-properties-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -251,5 +256,299 @@ describe("updateClip - focus functionality", () => {
     await updateClip({ ids: "123", name: "Test" });
 
     expect(selectMock.get()).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildClipPropertiesToSet", () => {
+  const BASE: BuildClipPropertiesArgs = {
+    name: "clip",
+    color: "#000000",
+    timeSignature: undefined,
+    timeSigNumerator: 4,
+    timeSigDenominator: 4,
+    startMarkerBeats: null,
+    looping: undefined,
+    isLooping: false,
+    startBeats: null,
+    endBeats: null,
+    currentLoopEnd: null,
+  };
+
+  const build = (overrides: Partial<BuildClipPropertiesArgs>): ClipPropsToSet =>
+    buildClipPropertiesToSet({ ...BASE, ...overrides });
+
+  it("sets signature numerator/denominator from the time sig when timeSignature is present", () => {
+    const result = build({
+      timeSignature: "3/8",
+      timeSigNumerator: 3,
+      timeSigDenominator: 8,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: 3,
+      signature_denominator: 8,
+      looping: undefined,
+    });
+  });
+
+  it("sets signature numerator/denominator to null when timeSignature is absent", () => {
+    const result = build({ timeSigNumerator: 3, timeSigDenominator: 8 });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: undefined,
+    });
+  });
+
+  it("sets loop_end before loop_start when expanding (startBeats > currentLoopEnd)", () => {
+    const result = build({
+      isLooping: true,
+      looping: true,
+      startBeats: 8,
+      endBeats: 16,
+      currentLoopEnd: 4,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: true,
+      loop_end: 16,
+      loop_start: 8,
+    });
+    // Order matters: loop_end is set first when expanding.
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      "looping",
+      "loop_end",
+      "loop_start",
+    ]);
+  });
+
+  it("sets loop_start before loop_end when not expanding (startBeats < currentLoopEnd)", () => {
+    const result = build({
+      isLooping: true,
+      looping: true,
+      startBeats: 2,
+      endBeats: 16,
+      currentLoopEnd: 4,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: true,
+      loop_start: 2,
+      loop_end: 16,
+    });
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      "looping",
+      "loop_start",
+      "loop_end",
+    ]);
+  });
+
+  it("expands (loop_end first) when startBeats exactly equals currentLoopEnd", () => {
+    const result = build({
+      isLooping: true,
+      looping: true,
+      startBeats: 4,
+      endBeats: 16,
+      currentLoopEnd: 4,
+    });
+
+    // Boundary: >= means equal still counts as expanding.
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      "looping",
+      "loop_end",
+      "loop_start",
+    ]);
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: true,
+      loop_end: 16,
+      loop_start: 4,
+    });
+  });
+
+  it("does not expand (loop_start first) when currentLoopEnd is null", () => {
+    const result = build({
+      isLooping: true,
+      looping: true,
+      startBeats: 4,
+      endBeats: 16,
+      currentLoopEnd: null,
+    });
+
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      "looping",
+      "loop_start",
+      "loop_end",
+    ]);
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: true,
+      loop_start: 4,
+      loop_end: 16,
+    });
+  });
+
+  it("uses the current isLooping state (not requested looping) to decide expansion order", () => {
+    // isLooping is false so setEndFirst is false -> loop_start before loop_end,
+    // and end_marker is set because the clip is currently non-looping.
+    const result = build({
+      isLooping: false,
+      looping: undefined,
+      startBeats: 8,
+      endBeats: 16,
+      currentLoopEnd: 4,
+    });
+
+    expect(Object.keys(result)).toStrictEqual([
+      "name",
+      "color",
+      "signature_numerator",
+      "signature_denominator",
+      "looping",
+      "loop_start",
+      "loop_end",
+      "end_marker",
+    ]);
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: undefined,
+      loop_start: 8,
+      loop_end: 16,
+      end_marker: 16,
+    });
+  });
+
+  it("sets only end_marker (no loop props) when turning looping off, expanding case", () => {
+    const result = build({
+      isLooping: true,
+      looping: false,
+      startBeats: 8,
+      endBeats: 16,
+      currentLoopEnd: 4,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: false,
+      end_marker: 16,
+    });
+  });
+
+  it("sets only end_marker (no loop props) when turning looping off, non-expanding case", () => {
+    const result = build({
+      isLooping: true,
+      looping: false,
+      startBeats: 2,
+      endBeats: 16,
+      currentLoopEnd: 4,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: false,
+      end_marker: 16,
+    });
+  });
+
+  it("does not set loop props for a currently non-looping clip when looping is explicitly true", () => {
+    const result = build({
+      isLooping: false,
+      looping: true,
+      startBeats: 8,
+      endBeats: 16,
+      currentLoopEnd: 4,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: true,
+      end_marker: 16,
+    });
+  });
+
+  it("sets start_marker (not end_marker) for a non-looping clip with a start marker and no endBeats", () => {
+    const result = build({
+      isLooping: false,
+      looping: false,
+      startMarkerBeats: 8,
+      startBeats: null,
+      endBeats: null,
+      currentLoopEnd: null,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: false,
+      start_marker: 8,
+    });
+  });
+
+  it("does not set loop_end when endBeats is null for a looping clip", () => {
+    const result = build({
+      isLooping: true,
+      looping: true,
+      startBeats: 4,
+      endBeats: null,
+      currentLoopEnd: null,
+    });
+
+    expect(result).toStrictEqual({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      looping: true,
+      loop_start: 4,
+    });
   });
 });

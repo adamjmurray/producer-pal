@@ -5,7 +5,9 @@
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { createTestNotes } from "./transform-evaluator-test-helpers.ts";
 
 describe("next.* variables", () => {
@@ -18,10 +20,10 @@ describe("next.* variables", () => {
 
     applyTransforms(notes, "duration = next.start - note.start", 4, 4);
 
-    expect(notes[0]!.duration).toBe(1);
-    expect(notes[1]!.duration).toBe(1);
-    // Last note unchanged (assignment skipped)
-    expect(notes[2]!.duration).toBe(1); // original default
+    // The first two notes each measure a gap of 1 to their next note. The last
+    // note has no next note, so its assignment is skipped and it keeps the
+    // original default duration.
+    expectDurations(notes, [1, 1, 1]);
   });
 
   it("accesses all next note properties", () => {
@@ -117,9 +119,10 @@ describe("next.* variables", () => {
       4,
     );
 
-    expect(notes[0]!.duration).toBe(1); // 5 - 4
-    expect(notes[1]!.duration).toBe(1); // last selected — skipped, default kept
-    expect(notes[2]!.duration).toBe(1); // outside window — untouched
+    // The note at 4 measures 5 - 4 = 1. The note at 5 is the last selected one
+    // — skipped, so its default is kept. The note at 8 is outside the window
+    // and untouched.
+    expectDurations(notes, [1, 1, 1]);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("next.start"));
   });
 
@@ -185,21 +188,10 @@ describe("legato()", () => {
   });
 
   it("extends last note to clip end with clip context", () => {
-    const notes = createTestNotes([
-      { start_time: 0, duration: 0.25 },
-      { start_time: 2, duration: 0.25 },
-    ]);
-    const clipContext = {
-      clipDuration: 4,
-      clipIndex: 0,
-      clipCount: 1,
-      barDuration: 4,
-    };
+    const durations = legatoDurationsInFourBeatClip();
 
-    applyTransforms(notes, "duration = legato()", 4, 4, clipContext);
-
-    expect(notes[0]!.duration).toBe(2);
-    expect(notes[1]!.duration).toBe(2); // extended to clip end (4 - 2 = 2)
+    expect(durations[0]).toBe(2);
+    expect(durations[1]).toBe(2); // extended to clip end (4 - 2 = 2)
   });
 
   it("extends last note to clip end using clip-local length on arrangement clips", () => {
@@ -207,22 +199,10 @@ describe("legato()", () => {
     // length (clipDuration), NOT arrangementStart + clipDuration. With a
     // non-null arrangementStart, the buggy absolute clipEnd would inflate the
     // last note's duration by arrangementStart (here: 16 + 4 - 2 = 18).
-    const notes = createTestNotes([
-      { start_time: 0, duration: 0.25 },
-      { start_time: 2, duration: 0.25 },
-    ]);
-    const clipContext = {
-      clipDuration: 4,
-      clipIndex: 0,
-      clipCount: 1,
-      barDuration: 4,
-      arrangementStart: 16,
-    };
+    const durations = legatoDurationsInFourBeatClip({ arrangementStart: 16 });
 
-    applyTransforms(notes, "duration = legato()", 4, 4, clipContext);
-
-    expect(notes[0]!.duration).toBe(2);
-    expect(notes[1]!.duration).toBe(2); // clip-local: 4 - 2 = 2 (not 18)
+    expect(durations[0]).toBe(2);
+    expect(durations[1]).toBe(2); // clip-local: 4 - 2 = 2 (not 18)
   });
 
   it("skips chord tones at same start time", () => {
@@ -316,3 +296,45 @@ describe("legato()", () => {
     expect(notes[1]!.duration).toBe(2);
   });
 });
+
+/**
+ * Asserts every note's duration, in order. Compares the whole sequence at once
+ * so a mismatch reports the full shape (and the note count) rather than only
+ * the first failing index.
+ *
+ * @param notes - The notes to check
+ * @param expected - The expected duration of each note, in order
+ */
+function expectDurations(notes: NoteEvent[], expected: number[]): void {
+  expect(notes.map((note) => note.duration)).toStrictEqual(expected);
+}
+
+/**
+ * Runs `duration = legato()` in 4/4 over two notes two beats apart (starts 0
+ * and 2) inside a one-bar, 4-beat clip, and returns the resulting durations.
+ * The first note legatos to the second (duration 2); the last note has no next
+ * note, so it stretches to the clip end (4 - 2 = 2).
+ *
+ * @param clipContextOverrides - Fields layered onto the standard single-clip
+ *   4-beat context, e.g. `{ arrangementStart: 16 }` for an arrangement clip
+ * @returns Each note's duration after the transform, in order
+ */
+function legatoDurationsInFourBeatClip(
+  clipContextOverrides: Partial<ClipContext> = {},
+): (number | undefined)[] {
+  const notes = createTestNotes([
+    { start_time: 0, duration: 0.25 },
+    { start_time: 2, duration: 0.25 },
+  ]);
+  const clipContext: ClipContext = {
+    clipDuration: 4,
+    clipIndex: 0,
+    clipCount: 1,
+    barDuration: 4,
+    ...clipContextOverrides,
+  };
+
+  applyTransforms(notes, "duration = legato()", 4, 4, clipContext);
+
+  return notes.map((note) => note.duration);
+}

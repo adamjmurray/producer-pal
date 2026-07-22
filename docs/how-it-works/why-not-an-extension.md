@@ -95,8 +95,8 @@ else (and Ableton has said today's permission model will harden into a stricter
 sandbox). There isn't even a native file picker — selecting a file would mean
 building one yourself in a webview. So the AI couldn't browse your library and
 pick the right loop; at best you'd point it at specific files by hand. Producer
-Pal instead scans and reads your sample folders directly, wherever they live,
-and references files in place rather than copying them in.
+Pal instead scans and reads the sample folders you point it at, plus your Live
+library, and references files in place rather than copying them in.
 
 ## What the SDK _can_ do that Max for Live can't, and how I weigh it
 
@@ -163,15 +163,6 @@ a paid add-on, so today's Producer Pal can in theory reach a few people an
 extension couldn't. So an extension wouldn't widen who can use Producer Pal,
 which removes the one upside that might have offset everything above.
 
-## How Producer Pal _does_ grow new capabilities
-
-When Producer Pal does need something Live itself can't do (audio analysis,
-generative algorithms, custom sample tools), the natural home isn't an Ableton
-extension. It's a **[companion MCP server](/extending)**: a separate helper the
-AI uses right alongside Producer Pal, written in any language, with none of the
-sandbox's limits. That's the path that fits an AI-driven tool, and it's already
-part of how Producer Pal is designed to grow.
-
 ## What would change my mind
 
 The SDK is improving quickly, and I'm genuinely glad it exists. I'd happily
@@ -182,7 +173,7 @@ build on it the day it can:
 2. **Keep stable references to objects** that survive moving and rearranging a
    set, which is what an AI needs to reason across a whole project.
 
-Until at least the first of those arrives, an extension would give you less than
+Until at least one of those arrives, an extension would give you less than
 Producer Pal already does, so it's not a step I'd want to take yet. I'm watching
 closely, and I'll update this page when things change.
 

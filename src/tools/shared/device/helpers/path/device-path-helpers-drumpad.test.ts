@@ -371,6 +371,55 @@ describe("device-path-helpers", () => {
       expect(result.targetType).toBe("device");
     });
 
+    it("returns null for a NaN chain index inside navigateRemainingSegments", () => {
+      setupInstrumentRackInDrumPad();
+      const path = "live_set tracks 1 devices 0";
+
+      // Nested navigation reaches the instrument rack, then a non-numeric chain
+      // index ("cABC") makes getChildAtIndex short-circuit on Number.isNaN.
+      const result = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "cABC"]);
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("returns null for a negative chain index inside navigateRemainingSegments", () => {
+      setupInstrumentRackInDrumPad();
+      const path = "live_set tracks 1 devices 0";
+
+      // Negative index exercises the `index >= 0` guard in getChildAtIndex.
+      const result = resolveDrumPadFromPath(path, "C1", ["c0", "d0", "c-1"]);
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("navigates a return-chain (rc) segment in a nested rack", () => {
+      registerMockObject("drum-rack", {
+        path: "live_set tracks 1 devices 0",
+        type: "RackDevice",
+        properties: { chains: ["id", "dchain"] },
+      });
+      registerMockObject("dchain", {
+        type: "DrumChain",
+        properties: { in_note: 36, devices: ["id", "nrack"] },
+      });
+      registerMockObject("nrack", {
+        type: "RackDevice",
+        properties: { return_chains: ["id", "rchain"] },
+      });
+      registerMockObject("rchain", { type: "Chain", properties: {} });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["c0", "d0", "rc0"],
+      );
+
+      expect(result.target!.id).toBe("rchain");
+      expect(result.targetType).toBe("chain");
+    });
+
     it("returns null for invalid segment in navigateRemainingSegments", () => {
       // Reuse the instrument rack setup from above
       setupInstrumentRackInDrumPad();
@@ -528,6 +577,34 @@ describe("device-path-helpers", () => {
 
       expect(result.container).toBeNull();
       expect(deviceMock.call).not.toHaveBeenCalled();
+    });
+
+    it("auto-creates the catch-all pad chain (p*) with in_note -1", () => {
+      const { deviceMock, createdChainMocks } = setupAutoCreationMocks();
+
+      const result = resolveInsertionPath("t0/d0/p*");
+
+      expect(deviceMock.call).toHaveBeenCalledWith("insert_chain");
+      expect(createdChainMocks[0]!.set).toHaveBeenCalledWith("in_note", -1);
+      expect(result.container).not.toBeNull();
+    });
+
+    it("returns null when the segment after the pad note is not a chain index", () => {
+      const { deviceMock } = setupAutoCreationMocks({
+        includeCreationMocks: false,
+      });
+
+      // "rc0" (not "c<n>") exercises the non-"c" branch of chain-index parsing.
+      const result = resolveInsertionPath("t0/d0/pC1/rc0");
+
+      expect(result.container).toBeNull();
+      expect(deviceMock.call).not.toHaveBeenCalled();
+    });
+
+    it("throws for an invalid track segment in a multi-segment container path", () => {
+      expect(() => resolveInsertionPath("x0/c0")).toThrow(
+        "Invalid track segment: x0",
+      );
     });
   });
 });

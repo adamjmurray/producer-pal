@@ -25,7 +25,12 @@
         "${__dirname}/producer-pal-portal.js"
       ],
       "env": {
-        "MCP_SERVER_ORIGIN": "${user_config.mcp_server_origin}"
+        "MCP_SERVER_ORIGIN": "${user_config.mcp_server_origin}",
+        "ALLOW_CONFIGURATION_OVERRIDES": "${user_config.allow_configuration_overrides}",
+        "NOTATION": "${user_config.notation}",
+        "SMALL_MODEL_MODE": "${user_config.small_model_mode}",
+        "LIVE_API": "${user_config.live_api}",
+        "JSON_OUTPUT": "${user_config.json_output}"
       }
     }
   },
@@ -43,10 +48,50 @@
     "mcp_server_origin": {
       "type": "string",
       "title": "Ableton device URL",
-      "description": "URL for connecting to the Producer Pal Max for Live device (protocol://host:port). Use http://localhost:[port] for local connections or http://[IP]:[port] for network connections. The port number must match the port in the Max for Live device's advanced settings (default port is 3350). Restart this extension after changing the URL. Default: http://localhost:3350",
+      "description": "URL for connecting to the Producer Pal Max for Live device (protocol://host:port). Use http://localhost:[port] for local connections or http://[IP]:[port] for network connections. The port number must match the port in the Max for Live device's advanced settings (default port is 3350). Default: http://localhost:3350",
       "required": false,
       "sensitive": false,
       "default": "http://localhost:3350"
+    },
+    "allow_configuration_overrides": {
+      "type": "boolean",
+      "title": "Allow configuration overrides",
+      "description": "Off by default. While off, the settings below are ignored and Producer Pal uses whatever is configured on the Max for Live device and in the chat UI. Turn this on to let the settings below override the device — including forcing a setting off.",
+      "required": false,
+      "sensitive": false,
+      "default": false
+    },
+    "notation": {
+      "type": "string",
+      "title": "MIDI notation",
+      "description": "Valid values are 'barbeat', 'stark', or 'midi-json'. Overrides the MIDI notation for reading and writing clips. 'barbeat' is recommended for Claude Sonnet, Opus, and Fable; use 'stark' with Small model mode, or 'midi-json' with JSON output. Leave blank, or enter anything else, to keep the device's current setting (barbeat by default). Requires Allow configuration overrides. Global device setting: also affects the chat UI and other MCP clients.",
+      "required": false,
+      "sensitive": false,
+      "default": ""
+    },
+    "small_model_mode": {
+      "type": "boolean",
+      "title": "Small model mode",
+      "description": "Requires Allow configuration overrides. Simplifies the tools and instructions for smaller models. May improve results with Claude Haiku; not recommended otherwise, since Claude Sonnet, Opus, and Fable handle the full toolset. Pairs well with MIDI notation set to 'stark'. Global device setting (also affects the chat UI and other MCP clients).",
+      "required": false,
+      "sensitive": false,
+      "default": false
+    },
+    "live_api": {
+      "type": "boolean",
+      "title": "Direct Live API",
+      "description": "Requires Allow configuration overrides. Enables the advanced ppal-live-api tool for direct access to the Ableton Live Object Model. An escape hatch for custom control, integrations, and debugging when Producer Pal's standard tools aren't enough — not recommended as a default. Global device setting (also affects the chat UI and other MCP clients).",
+      "required": false,
+      "sensitive": false,
+      "default": false
+    },
+    "json_output": {
+      "type": "boolean",
+      "title": "JSON output",
+      "description": "Requires Allow configuration overrides. Returns tool results as JSON instead of the compact default. Not recommended for normal use because it increases token usage, but useful when you want Claude to run code on the results. Pairs well with MIDI notation set to 'midi-json'.",
+      "required": false,
+      "sensitive": false,
+      "default": false
     }
   },
   "keywords": [

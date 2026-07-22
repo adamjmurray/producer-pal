@@ -9,7 +9,7 @@
             "modernui": 1
         },
         "classnamespace": "box",
-        "rect": [ 722.0, 222.0, 692.0, 506.0 ],
+        "rect": [ 714.0, 231.0, 621.0, 585.0 ],
         "openinpresentation": 1,
         "boxes": [
             {
@@ -37,7 +37,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 233.0, 220.5, 83.0, 24.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 183.0, 131.0, 66.0, 19.0 ],
+                    "presentation_rect": [ 92.0, 132.0, 66.0, 18.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "val1", "val2" ],
@@ -94,7 +94,7 @@
                     "maxclass": "newobj",
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 81.0, 361.0, 89.0, 22.0 ],
+                    "patching_rect": [ 81.0, 387.0, 89.0, 22.0 ],
                     "text": "s ---node-script"
                 }
             },
@@ -151,8 +151,8 @@
                     "numoutlets": 0,
                     "patching_rect": [ 180.5, 33.5, 96.0, 41.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 1.0, 132.0, 181.0, 18.0 ],
-                    "text": "Info for AI understand your project goals",
+                    "presentation_rect": [ 0.0, 2.0, 250.0, 18.0 ],
+                    "text": "Info for AI to understand your project goals",
                     "textjustification": 1
                 }
             },
@@ -217,7 +217,7 @@
                     "maxclass": "newobj",
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 24.0, 361.0, 42.0, 22.0 ],
+                    "patching_rect": [ 24.0, 387.0, 42.0, 22.0 ],
                     "text": "s ---v8"
                 }
             },
@@ -236,7 +236,7 @@
                     "parameter_mappable": 0,
                     "patching_rect": [ 24.0, 29.0, 146.0, 50.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 0.0, 0.0, 250.0, 132.0 ],
+                    "presentation_rect": [ 0.0, 19.0, 250.0, 113.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_invisible": 1,

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
+import { type NoteContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 
@@ -56,32 +57,28 @@ export const DEFAULT_CONTEXT = {
 } as const;
 
 /**
- * Creates a context object for evaluateTransform.
+ * Creates a context object for evaluateTransform / evaluateTransformAST.
+ * `numerator`/`denominator` build the time signature; every other property
+ * (position, pitch, bar, beat, clipTimeRange) passes through to the context.
  *
  * @param overrides - Context properties to override
- * @param overrides.position - Note position in beats
  * @param overrides.numerator - Time signature numerator
  * @param overrides.denominator - Time signature denominator
- * @param overrides.clipTimeRange - Optional clip time range
- * @param overrides.clipTimeRange.start - Start of clip
- * @param overrides.clipTimeRange.end - End of clip
- * @returns Context object for evaluateTransform
+ * @returns Context object for the transform evaluators
  */
-export function createContext(
-  overrides: {
-    position?: number;
-    numerator?: number;
-    denominator?: number;
-    clipTimeRange?: { start: number; end: number };
-  } = {},
-) {
+export function createContext({
+  numerator = 4,
+  denominator = 4,
+  ...rest
+}: Omit<NoteContext, "timeSig" | "position"> & {
+  position?: number;
+  numerator?: number;
+  denominator?: number;
+} = {}): NoteContext {
   return {
-    position: overrides.position ?? 0,
-    timeSig: {
-      numerator: overrides.numerator ?? 4,
-      denominator: overrides.denominator ?? 4,
-    },
-    ...(overrides.clipTimeRange && { clipTimeRange: overrides.clipTimeRange }),
+    position: 0,
+    timeSig: { numerator, denominator },
+    ...rest,
   };
 }
 

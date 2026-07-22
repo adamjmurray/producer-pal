@@ -132,4 +132,19 @@ describe("cosineSimilarity", () => {
     expect(cosineSimilarity(a, a, 0, vectorNorm(a))).toBe(0);
     expect(cosineSimilarity(a, a, vectorNorm(a), 0)).toBe(0);
   });
+
+  it("bounds the dot product by the shorter vector (no read past the end)", () => {
+    // The loop runs to `Math.min(a.length, b.length)`, never the max — a read
+    // past the shorter array would be `undefined`, poisoning the dot product to
+    // NaN. Feed mismatched lengths (the extra `b` component is ignored, not
+    // multiplied by a missing `a` component).
+    const a = new Float32Array([1, 0]);
+    const b = new Float32Array([1, 0, 999]);
+
+    const sim = cosineSimilarity(a, b, vectorNorm(a), vectorNorm(b));
+
+    expect(Number.isNaN(sim)).toBe(false);
+    // dot = 1*1 + 0*0 = 1; norms = 1 and sqrt(1+0+999^2).
+    expect(sim).toBeCloseTo(1 / Math.sqrt(1 + 999 * 999), 6);
+  });
 });

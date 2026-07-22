@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
@@ -38,23 +40,22 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("bar|beat position in arrangement (song meter)"),
-    startLocator: z
-      .string()
-      .optional()
-      .describe(
+    startLocator: param(z.string().optional(), {
+      default:
         "locator ID or name for start position (e.g., locator-0 or Verse)",
-      ),
+      smallModel: null,
+    }),
     loop: z.boolean().optional().describe("arrangement loop?"),
     loopStart: z.string().optional().describe("bar|beat position (song meter)"),
-    loopStartLocator: z
-      .string()
-      .optional()
-      .describe("locator ID or name for loop start"),
+    loopStartLocator: param(z.string().optional(), {
+      default: "locator ID or name for loop start",
+      smallModel: null,
+    }),
     loopEnd: z.string().optional().describe("bar|beat position (song meter)"),
-    loopEndLocator: z
-      .string()
-      .optional()
-      .describe("locator ID or name for loop end"),
+    loopEndLocator: param(z.string().optional(), {
+      default: "locator ID or name for loop end",
+      smallModel: null,
+    }),
     ids: z.coerce
       .string()
       .optional()
@@ -71,9 +72,5 @@ stop: session and arrangement`,
       .min(0)
       .optional()
       .describe("0-based scene index for play-scene"),
-  },
-
-  smallModelModeConfig: {
-    excludeParams: ["startLocator", "loopStartLocator", "loopEndLocator"],
   },
 });

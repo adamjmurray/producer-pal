@@ -12,7 +12,12 @@
 //      reformatting is idempotent: format(interpret(format(notes))) ==
 //      format(notes). We assert the STRING fixpoint rather than note equality so
 //      the within-epsilon time merging the serializer documents (the 0.001-beat
-//      grouping floor) is respected: it happens identically in both passes.
+//      grouping floor) is respected: it happens identically in both passes. This
+//      runs through the notation ROUTER (#src/notation/notation.ts) for every
+//      notation — bar|beat, midi-json, and stark — so each serializer's own
+//      normalization (stark drops probability/velocity-deviation and buckets
+//      velocity; midi-json snaps to a 4-decimal/ratio grid; all snap off-grid
+//      durations) settles on the FIRST format and the second reproduces it.
 //
 //   2. Crash resistance. interpretNotation and the transform parser are fed
 //      arbitrary strings drawn from the notation-significant alphabet. They may
@@ -24,11 +29,11 @@
 // is deterministic (no Math.random, which is unavailable in this project anyway).
 
 import { describe, expect, it } from "vitest";
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { parse as parseBarbeat } from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import { formatNotation } from "#src/notation/barbeat/serializer/barbeat-serializer.ts";
-import { type NoteEvent } from "#src/notation/types.ts";
+import { formatNotation, interpretNotation } from "#src/notation/notation.ts";
 import { parse as parseTransform } from "#src/notation/transform/parser/transform-parser.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
+import { type Notation } from "#src/shared/notation.ts";
 
 // Small, fast, seedable PRNG (mulberry32). Returns floats in [0, 1).
 function mulberry32(seed: number): () => number {
@@ -54,6 +59,15 @@ const METERS: ReadonlyArray<readonly [number, number]> = [
   [3, 4],
   [6, 8],
   [2, 2],
+];
+
+// The router-backed notations exercised by the fixpoint + interpret-crash loops.
+// stark ignores meter (timing is explicit /N), so its meter sweep is redundant
+// but harmless; bar|beat and midi-json genuinely use it.
+const ROUTER_NOTATIONS: ReadonlyArray<{ notation: Notation; label: string }> = [
+  { notation: "barbeat", label: "bar|beat" },
+  { notation: "midi-json", label: "midi-json" },
+  { notation: "stark", label: "stark" },
 ];
 
 // Build a canonical note set deduped by (pitch, start) so the source is already
@@ -122,44 +136,80 @@ function isCrash(error: unknown): boolean {
 }
 
 describe("notation grammar round-trip + crash properties", () => {
-  it("formatNotation→interpretNotation→formatNotation is idempotent over random clips", () => {
+  for (const { notation, label } of ROUTER_NOTATIONS) {
+    it(`${label}: format→interpret→format is idempotent over random clips`, () => {
+      const rng = mulberry32(0x1234_5678);
+      let checked = 0;
+
+      for (let seed = 0; seed < 600; seed++) {
+        const [num, den] = METERS[seed % METERS.length] as readonly [
+          number,
+          number,
+        ];
+        // bar|beat requires numerator+denominator paired (passing one alone
+        // throws); the numerator doubles as beatsPerBar. stark ignores both.
+        const options = {
+          notation,
+          timeSigNumerator: num,
+          timeSigDenominator: den,
+        };
+        const notes = randomNotes(rng);
+
+        const once = formatNotation(notes, options);
+        const twice = formatNotation(interpretNotation(once, options), options);
+
+        expect(
+          twice,
+          `${label} fixpoint broke in ${num}/${den} for: ${once}`,
+        ).toBe(once);
+        checked++;
+      }
+
+      expect(checked).toBe(600);
+    });
+  }
+
+  // Stark's drum serializer is a separate path (one line per pitch, not [..]
+  // stacks), so cover it explicitly. Meter is irrelevant to stark, and interpret
+  // reads drum vs pitched from the section headers the serializer emits — so only
+  // format needs `drumMode`.
+  it("stark (drum mode): format→interpret→format is idempotent over random clips", () => {
     const rng = mulberry32(0x1234_5678);
     let checked = 0;
 
     for (let seed = 0; seed < 600; seed++) {
-      const [num, den] = METERS[seed % METERS.length] as readonly [
-        number,
-        number,
-      ];
-      // interpretNotation/formatNotation require numerator+denominator paired
-      // (passing one alone throws); the numerator doubles as beatsPerBar.
-      const options = { timeSigNumerator: num, timeSigDenominator: den };
       const notes = randomNotes(rng);
+      const fmtOpts = { notation: "stark" as const, drumMode: true };
 
-      const once = formatNotation(notes, options);
-      const twice = formatNotation(interpretNotation(once, options), options);
+      const once = formatNotation(notes, fmtOpts);
+      const twice = formatNotation(
+        interpretNotation(once, { notation: "stark" }),
+        fmtOpts,
+      );
 
-      expect(twice, `fixpoint broke in ${num}/${den} for: ${once}`).toBe(once);
+      expect(twice, `stark drum fixpoint broke for: ${once}`).toBe(once);
       checked++;
     }
 
     expect(checked).toBe(600);
   });
 
-  it("interpretNotation never crashes on arbitrary input (rejects or parses)", () => {
-    const rng = mulberry32(0x0bad_f00d);
-    const crashed: string[] = [];
+  for (const { notation, label } of ROUTER_NOTATIONS) {
+    it(`${label}: interpretNotation never crashes on arbitrary input`, () => {
+      const rng = mulberry32(0x0bad_f00d);
+      const crashed: string[] = [];
 
-    for (let i = 0; i < 1500; i++) {
-      const source = randomFuzzString(rng);
+      for (let i = 0; i < 1500; i++) {
+        const source = randomFuzzString(rng);
 
-      // Collect the inputs that crash rather than asserting inside the catch, so
-      // a failure reports every offender at once.
-      crashed.push(...collectCrash(source, runInterpret));
-    }
+        // Collect the inputs that crash rather than asserting inside the catch,
+        // so a failure reports every offender at once.
+        crashed.push(...collectCrash(source, (s) => runInterpret(notation, s)));
+      }
 
-    expect(crashed).toStrictEqual([]);
-  });
+      expect(crashed).toStrictEqual([]);
+    });
+  }
 
   it("the bar|beat parser never crashes on arbitrary input", () => {
     const rng = mulberry32(0x00c0_ffee);
@@ -195,8 +245,12 @@ describe("notation grammar round-trip + crash properties", () => {
 
 const FUZZ_OPTS = { beatsPerBar: 4, timeSigDenominator: 4 };
 
-function runInterpret(source: string): void {
-  interpretNotation(source, { timeSigNumerator: 4, timeSigDenominator: 4 });
+function runInterpret(notation: Notation, source: string): void {
+  interpretNotation(source, {
+    notation,
+    timeSigNumerator: 4,
+    timeSigDenominator: 4,
+  });
 }
 
 function runBarbeatParse(source: string): void {

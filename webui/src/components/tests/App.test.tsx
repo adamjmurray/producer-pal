@@ -43,20 +43,15 @@ vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
-// ContextScreen wires CodeMirror + a server fetch; stub it so App tests stay
-// focused on the overlay open/close plumbing.
-vi.mock(import("#webui/components/context/ContextScreen"), () => ({
-  ContextScreen: (props: { onClose?: () => void } = {}) => (
-    <div data-testid="context-stub">
-      <button
-        type="button"
-        aria-label="Close project context"
-        onClick={props.onClose}
-      >
-        close
-      </button>
-    </div>
-  ),
+// App renders the real ContextTabs + system-prompt hook, both of which fetch a
+// same-origin endpoint; stub them so App tests stay focused on the overlay
+// open/close plumbing and don't leak real localhost fetches. See
+// App-context-mocks for details.
+vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
+  useSystemPromptMemory: systemPromptMemoryMock,
+}));
+vi.mock(import("#webui/components/context/ContextTabs"), () => ({
+  ContextTabs: ContextTabsStub,
 }));
 
 import { useChat } from "#webui/hooks/chat/use-chat";
@@ -65,6 +60,11 @@ import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
+import {
+  ContextTabsStub,
+  setStubLeaveGuard,
+  systemPromptMemoryMock,
+} from "./App-context-mocks";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
@@ -72,6 +72,7 @@ describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultMocks();
+    setStubLeaveGuard(null);
   });
 
   describe("screen routing", () => {
@@ -468,9 +469,7 @@ describe("App", () => {
       document.querySelector('[data-testid="context-stub"]');
 
     const openContext = (container: ParentNode) => {
-      const btn = container.querySelector(
-        'button[aria-label="Project context"]',
-      );
+      const btn = container.querySelector('button[aria-label="Context"]');
 
       if (btn) fireEvent.click(btn);
     };
@@ -483,13 +482,58 @@ describe("App", () => {
       expect(contextStub()).not.toBe(null);
     });
 
+    it("wraps the editor in a stable element so tab switches don't re-flash the panel", () => {
+      // The overlay fade-in animation targets `.settings-overlay > *`, and
+      // ContextTabs remounts its screen root on every tab switch. The editor must
+      // sit inside a stable wrapper — remounting the overlay's direct child would
+      // re-run the opacity 0→1 fade and flash the blurred chat UI through the panel.
+      const { container } = render(<App />);
+
+      openContext(container);
+      const overlay = container.querySelector(".settings-overlay");
+      const stub = contextStub();
+
+      // The animated direct child is the stable wrapper, not the editor itself.
+      expect(stub?.parentElement).not.toBe(overlay);
+      expect(overlay?.firstElementChild).toBe(stub?.parentElement);
+    });
+
+    it("opens the context overlay from the Settings tools-tab Edit Context link", async () => {
+      vi.useFakeTimers();
+      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+        viewState: {
+          historyPanelOpen: false,
+          settingsOpen: true,
+          settingsTab: "tools",
+        },
+        setViewState: vi.fn(),
+      });
+
+      const { container } = render(<App />);
+
+      expect(contextStub()).toBe(null);
+      const editBtn = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent.includes("Edit Context"),
+      );
+
+      expect(editBtn).toBeDefined();
+      if (editBtn) fireEvent.click(editBtn);
+      // Settings runs its close animation first, then Context opens.
+      await act(() => {
+        vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
+      });
+
+      expect(contextStub()).not.toBe(null);
+      vi.useRealTimers();
+    });
+
     it("closes the context overlay when the close button is clicked", async () => {
       vi.useFakeTimers();
       const { container } = render(<App />);
 
       openContext(container);
       const close = container.querySelector(
-        'button[aria-label="Close project context"]',
+        'button[aria-label="Close context editor"]',
       );
 
       if (close) fireEvent.click(close);
@@ -536,6 +580,56 @@ describe("App", () => {
       });
 
       // Backdrop-only dismissal: a click on content shouldn't fire close.
+      expect(contextStub()).not.toBe(null);
+      vi.useRealTimers();
+    });
+
+    it("keeps the overlay open on Escape when the leave guard vetoes a dirty draft", async () => {
+      vi.useFakeTimers();
+      // ContextTabs publishes a guard that refuses to leave (unsaved new draft).
+      setStubLeaveGuard(() => false);
+      const { container } = render(<App />);
+
+      openContext(container);
+      fireEvent.keyDown(window, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Escape consulted the guard and was vetoed — overlay stays up.
+      expect(contextStub()).not.toBe(null);
+      vi.useRealTimers();
+    });
+
+    it("closes the overlay on Escape when the leave guard approves", async () => {
+      vi.useFakeTimers();
+      setStubLeaveGuard(() => true);
+      const { container } = render(<App />);
+
+      openContext(container);
+      fireEvent.keyDown(window, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      expect(contextStub()).toBe(null);
+      vi.useRealTimers();
+    });
+
+    it("keeps the overlay open on a backdrop click when the leave guard vetoes", async () => {
+      vi.useFakeTimers();
+      setStubLeaveGuard(() => false);
+      const { container } = render(<App />);
+
+      openContext(container);
+      const overlay = container.querySelector(".settings-overlay");
+
+      // A backdrop hit (target === currentTarget) routes through the guard.
+      if (overlay) fireEvent.click(overlay);
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
       expect(contextStub()).not.toBe(null);
       vi.useRealTimers();
     });

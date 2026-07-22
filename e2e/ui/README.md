@@ -39,13 +39,47 @@ current source.
 
 ## Test Files
 
+Chat UI (`ui-test-helpers.ts`, IndexedDB-backed):
+
 - `conversation-crud.spec.ts` — conversation history: list/order, load messages,
   rename, star/unstar, delete (all backed by assertions against IndexedDB).
+- `conversation-branching.spec.ts`, `assistant-markdown.spec.ts` — edit/retry
+  forks and assistant markdown rendering.
+
+Context editor (`context-test-helpers.ts`, REST-backed) — the `/context` app
+(Project | Global | Instructions | Skills | Memory tabs):
+
+- `context-global-context.spec.ts` — global context: edit → save → reload
+  persists; clear to empty persists.
+- `context-memory.spec.ts` — memory: create → appears in the index → edit →
+  delete.
+- `context-instructions.spec.ts` — custom system prompt: customize → save →
+  reload persists → reset restores the built-in.
+- `context-skills.spec.ts` — skills fragment override: customize → edit → save →
+  reload persists.
+
+### Context editor harness
+
+`context-test-helpers.ts` fulfils the five REST endpoints the `/context` app
+uses (`/config`, `/global-context`, `/system-prompt`, `/skill-overrides`,
+`/memory`) with a small **stateful** in-memory backend, so a GET reflects the
+latest write and "edit → save → reload persists" is a real assertion (unlike the
+chat UI, whose state lives client-side in IndexedDB).
+
+- **`setupContextTest(page, overrides?)`** — install the stubs, load `/context`,
+  and return the mutable `ContextBackend`. Read it back (e.g.
+  `expect.poll(() => state.globalContext)`) to assert the REST round-trip
+  landed.
+- **`openContextTab(page, label)`** — switch tabs (`Project` … `Memory`).
+- **`primaryEditor` / `typeInPrimaryEditor` / `customizeOverride`** — drive the
+  CodeMirror editors (which need real keystrokes, not `fill()`) and the
+  Instructions / Skills "Customize" override flow.
 
 ## Adding tests
 
-Use `setupUiTest` for the standard "configured app + seeded history" starting
-point, then drive the UI with role/test-id locators. Conversation rows expose
+Use `setupUiTest` for the chat "configured app + seeded history" starting point,
+or `setupContextTest` for the `/context` editor, then drive the UI with
+role/test-id locators. Conversation rows expose
 `data-testid="conversation-item"`; row actions use their accessible labels
 (`Rename conversation`, `Delete conversation`, `Bookmark conversation` /
 `Remove bookmark`, `Export conversation`).

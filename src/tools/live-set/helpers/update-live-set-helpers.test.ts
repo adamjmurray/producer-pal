@@ -57,12 +57,47 @@ describe("update-live-set-helpers", () => {
       expect(mockLiveSet.getProperty).toHaveBeenCalledWith("song_length");
     });
 
+    it("should return null when targetBeats equals song_length (boundary)", () => {
+      // Boundary: targetBeats === song_length needs no extension (<= not <).
+      const mockLiveSet = {
+        getProperty: vi.fn().mockReturnValue(1000),
+        getChildIds: vi.fn().mockReturnValue([]),
+      } as unknown as LiveAPI;
+
+      expect(extendSongIfNeeded(mockLiveSet, 1000, {})).toBeNull();
+    });
+
     it("should throw error if no tracks available", () => {
       const mockLiveSet = mockLiveSetWithTracks([]);
 
       expect(() => extendSongIfNeeded(mockLiveSet, 200, {})).toThrow(
         "Cannot create locator past song end: no tracks available to extend song",
       );
+    });
+
+    it("reads the track list by the 'tracks' child name", () => {
+      const mockMidiTrack = {
+        getProperty: vi.fn().mockReturnValue(1), // has_midi_input = 1
+        call: vi.fn().mockReturnValue("id 999"),
+      };
+
+      g.LiveAPI = {
+        from: vi
+          .fn()
+          .mockImplementation((id) =>
+            id === "track-1" ? mockMidiTrack : { id: "999" },
+          ),
+      };
+
+      const mockLiveSet = {
+        getProperty: vi.fn().mockReturnValue(100), // song_length 100 < 200
+        getChildIds: vi.fn((name: string) =>
+          name === "tracks" ? ["track-1"] : [],
+        ),
+      } as unknown as LiveAPI;
+
+      // A wrong child name yields no tracks → the "no tracks available" throw.
+      expect(extendSongIfNeeded(mockLiveSet, 200, {})?.isMidiTrack).toBe(true);
     });
 
     it("should create MIDI clip when MIDI track is available", () => {
@@ -277,13 +312,23 @@ describe("update-live-set-helpers", () => {
       );
     });
 
-    it("should throw for invalid root note", () => {
-      expect(() => parseScale("X Major")).toThrow("Invalid scale root 'X'");
+    it("should join a multi-word scale name with a space", () => {
+      const result = parseScale("C Whole Tone");
+
+      expect(result).toStrictEqual({ scaleRoot: "C", scaleName: "Whole Tone" });
     });
 
-    it("should throw for invalid scale name", () => {
+    it("should throw for invalid root note, listing the valid roots", () => {
+      expect(() => parseScale("X Major")).toThrow("Invalid scale root 'X'");
+      expect(() => parseScale("X Major")).toThrow(/Valid roots: C, /);
+    });
+
+    it("should throw for invalid scale name, listing the valid scales", () => {
       expect(() => parseScale("C InvalidScale")).toThrow(
         "Invalid scale name 'InvalidScale'",
+      );
+      expect(() => parseScale("C InvalidScale")).toThrow(
+        /Valid scales: Major, /,
       );
     });
   });

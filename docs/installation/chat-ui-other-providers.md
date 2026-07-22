@@ -1,7 +1,7 @@
 # Other Providers
 
-The built-in chat UI supports OpenAI API, Mistral, OpenRouter, and custom
-OpenAI-compatible providers.
+The built-in chat UI supports the Anthropic API, OpenAI API, Mistral,
+OpenRouter, and custom OpenAI-compatible providers.
 
 <div class="download-band download-band-compact">
   <div class="download-actions">
@@ -31,6 +31,18 @@ key usage.
 
 ## Available Providers
 
+### Anthropic
+
+[Anthropic](https://console.anthropic.com/) offers Claude models directly via
+API key. See [Using Claude with Producer Pal](./choose-claude) for the other
+ways to run Claude.
+
+1. [Get an Anthropic API key](https://console.anthropic.com/settings/keys)
+2. In the chat UI settings:
+   - Provider: **Anthropic**
+   - API Key: Your key
+   - Model: e.g., `claude-sonnet-5`
+
 ### OpenRouter
 
 [OpenRouter](https://openrouter.ai) is an "AI gateway" with hundreds of LLMs in
@@ -40,7 +52,7 @@ one place. Includes free and pay-as-you-go options.
 2. In the chat UI settings:
    - Provider: **OpenRouter**
    - API Key: Your key
-   - Model: e.g., `anthropic/claude-sonnet-4`, `google/gemini-2.5-pro`
+   - Model: e.g., `anthropic/claude-sonnet-5`, `google/gemini-3.6-flash`
 
 ### Mistral
 
@@ -62,7 +74,7 @@ For detailed setup, see the [dedicated OpenAI guide](./openai).
 2. In the chat UI settings:
    - Provider: **OpenAI**
    - API Key: Your key
-   - Model: e.g., `gpt-5.2`
+   - Model: e.g., `gpt-5.6-terra`
 
 ::: tip Subscription Alternative
 

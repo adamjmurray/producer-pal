@@ -7,6 +7,7 @@ import {
   SYSTEM_INSTRUCTION,
   getModelName,
   getThinkingBudget,
+  resolveSystemInstruction,
 } from "#webui/lib/config";
 
 describe("config", () => {
@@ -22,14 +23,29 @@ describe("config", () => {
     });
   });
 
-  describe("getModelName", () => {
-    it("returns display name for gemini-3.5-flash", () => {
-      expect(getModelName("gemini-3.5-flash")).toBe("Gemini 3.5 Flash");
+  describe("resolveSystemInstruction", () => {
+    it("falls back to the built-in for blank/absent overrides", () => {
+      expect(resolveSystemInstruction()).toBe(SYSTEM_INSTRUCTION);
+      expect(resolveSystemInstruction("")).toBe(SYSTEM_INSTRUCTION);
+      expect(resolveSystemInstruction("   \n ")).toBe(SYSTEM_INSTRUCTION);
+      expect(resolveSystemInstruction(null)).toBe(SYSTEM_INSTRUCTION);
     });
 
-    it("returns display name for gemini-3.1-flash-lite", () => {
-      expect(getModelName("gemini-3.1-flash-lite")).toBe(
-        "Gemini 3.1 Flash-Lite",
+    it("uses a non-blank override verbatim", () => {
+      expect(resolveSystemInstruction("My custom prompt")).toBe(
+        "My custom prompt",
+      );
+    });
+  });
+
+  describe("getModelName", () => {
+    it("returns display name for gemini-3.6-flash", () => {
+      expect(getModelName("gemini-3.6-flash")).toBe("Gemini 3.6 Flash");
+    });
+
+    it("returns display name for gemini-3.5-flash-lite", () => {
+      expect(getModelName("gemini-3.5-flash-lite")).toBe(
+        "Gemini 3.5 Flash-Lite",
       );
     });
 
@@ -37,18 +53,18 @@ describe("config", () => {
       // ANTHROPIC_MODELS was missing from ALL_MODELS, so Anthropic ids rendered
       // as the raw id (e.g. in the chat header and LockedSettingsNotice).
       expect(getModelName("claude-opus-4-8")).toBe("Claude Opus 4.8");
-      expect(getModelName("claude-sonnet-4-6")).toBe("Claude Sonnet 4.6");
+      expect(getModelName("claude-sonnet-5")).toBe("Claude Sonnet 5");
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {
-      expect(getModelName("google/gemini-3.5-flash")).toBe(
-        "Google Gemini 3.5 Flash",
+      expect(getModelName("google/gemini-3.6-flash")).toBe(
+        "Google Gemini 3.6 Flash",
       );
     });
 
     it("strips [Free] tag from OpenRouter model labels", () => {
-      expect(getModelName("moonshotai/kimi-k2.6:free")).toBe(
-        "Moonshot AI Kimi K2.6",
+      expect(getModelName("google/gemma-4-31b-it:free")).toBe(
+        "Google Gemma 4 31B",
       );
     });
 

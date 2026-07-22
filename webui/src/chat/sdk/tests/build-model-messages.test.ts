@@ -64,6 +64,32 @@ describe("buildModelMessages", () => {
     expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
 
+  it("JSON-stringifies a non-string tool result", () => {
+    // Tool results are usually structured objects, not strings; they must be
+    // serialized into the text output part the provider expects.
+    const result = buildModelMessages([
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "1", name: "read-song", args: {} }],
+        toolResults: [
+          { id: "1", name: "read-song", args: {}, result: { bpm: 120 } },
+        ],
+      },
+    ]);
+
+    const toolMessage = result.find((m) => m.role === "tool");
+
+    expect(toolMessage?.content).toStrictEqual([
+      {
+        type: "tool-result",
+        toolCallId: "1",
+        toolName: "read-song",
+        output: { type: "text", value: JSON.stringify({ bpm: 120 }) },
+      },
+    ]);
+  });
+
   it("starts the model payload at the compaction summary, dropping prior turns", () => {
     // Compaction keeps the prior turns in history for display, but the model
     // should only see the summary and everything after it.

@@ -23,7 +23,7 @@ import {
   setModulationAction,
 } from "./wavetable-modulation-helpers.ts";
 
-// Wavetable (WavetableDevice, class_name "InstrumentVector"). AJM-373. See
+// Wavetable (WavetableDevice, class_name "InstrumentVector"). See
 // dev/Specialized-Devices.md.
 //
 // Imperative mod-matrix API (contrast with Drift's declarative _index/_list
@@ -88,7 +88,7 @@ function readUnisonVoiceCount(device: LiveAPI): number | undefined {
  * `update-device` params batch will use whichever wavetable name happens to
  * exist in the new category — which may not be the wavetable the caller meant.
  * Apply category and wavetable in separate calls when the category is changing.
- * (AJM-422 — docs-only mitigation; snapshot-validate left out of scope.)
+ * (docs-only mitigation; snapshot-validate left out of scope.)
  *
  * @param paramPrefix - Pseudo-param name prefix ("osc1" or "osc2")
  * @param categoryProp - Live API property for the category index

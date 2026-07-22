@@ -10,7 +10,7 @@ import {
   LIST_MODELS_HINT,
   parseModelArg,
 } from "#evals/shared/parse-model-arg.ts";
-import { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction.ts";
+import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
 import { runChat } from "./chat.ts";
 import { collapseStdoutNewlines } from "./shared/collapse-stdout-newlines.ts";
 import { type ChatOptions } from "./shared/types.ts";

@@ -9,21 +9,7 @@ import {
   applyTransformsToExistingNotes,
   buildClipContext,
 } from "../../helpers/update-clip-transform-helpers.ts";
-
-// Helper to create raw notes as returned by Live API (with extra properties)
-function rawNote(pitch: number, startTime: number, noteId: number) {
-  return {
-    note_id: noteId,
-    pitch,
-    start_time: startTime,
-    duration: 1,
-    velocity: 100,
-    mute: 0,
-    probability: 1,
-    velocity_deviation: 0,
-    release_velocity: 64,
-  };
-}
+import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
 
 function createSessionClipMock(length = 8) {
   return {
@@ -34,37 +20,6 @@ function createSessionClipMock(length = 8) {
       return 0;
     }),
   };
-}
-
-// Mock clip that returns `existingNotes` from get_notes_extended and captures
-// every note passed to add_new_notes into the returned `addedNotes` array.
-function makeNotesMockClip<T extends object = Record<string, number>>(
-  existingNotes: object[],
-  length = 4,
-): {
-  mockClip: {
-    getProperty: ReturnType<typeof vi.fn>;
-    call: ReturnType<typeof vi.fn>;
-  };
-  addedNotes: T[];
-} {
-  const addedNotes: T[] = [];
-  const mockClip = {
-    getProperty: vi.fn((prop: string) => (prop === "length" ? length : 0)),
-    call: vi.fn((method: string, ...args: unknown[]) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: existingNotes });
-      }
-
-      if (method === "add_new_notes") {
-        addedNotes.push(...(args[0] as { notes: T[] }).notes);
-      }
-
-      return "[]";
-    }),
-  };
-
-  return { mockClip, addedNotes };
 }
 
 describe("update-clip-transform-helpers", () => {
@@ -98,6 +53,44 @@ describe("update-clip-transform-helpers", () => {
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
 
       expect(ctx.scalePitchClassMask).toBe(2741);
+    });
+
+    it("scales clipDuration by timeSigDenominator/4 for a non-4 denominator (session)", () => {
+      // At 4/8, a content length of 6 Ableton (quarter-note) beats is 6 * (8/4)
+      // = 12 musical beats. A `/` mutation would give 6 / 2 = 3.
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "length") return 6;
+          if (prop === "is_arrangement_clip") return 0;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
+
+      expect(ctx.clipDuration).toBe(12);
+      expect(ctx.arrangementStart).toBeUndefined();
+    });
+
+    it("scales clipDuration and arrangementStart by timeSigDenominator/4 (arrangement)", () => {
+      // At 4/8: arrangementStart = start_time 4 * (8/4) = 8 (a `/` gives 2);
+      // clipDuration = (end_time 10 - start_time 4) * 2 = 12 (a `/` gives 3).
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "is_arrangement_clip") return 1;
+          if (prop === "start_time") return 4;
+          if (prop === "end_time") return 10;
+          if (prop === "length") return 8;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 8);
+
+      expect(ctx.clipDuration).toBe(12);
+      expect(ctx.arrangementStart).toBe(8);
     });
 
     it("uses arrangement length (end_time - start_time) for arrangement clips", () => {

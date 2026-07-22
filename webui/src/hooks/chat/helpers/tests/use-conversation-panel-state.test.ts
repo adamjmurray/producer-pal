@@ -15,8 +15,8 @@ function createMockDeps() {
     conversationManager: {
       conversations: [],
       activeConversationId: "conv-1",
-      limitNotification: null,
-      dismissLimitNotification: vi.fn(),
+      notification: null,
+      dismissNotification: vi.fn(),
     },
     transfer: {
       notification: null,
@@ -121,19 +121,19 @@ describe("useConversationPanelState", () => {
     );
   });
 
-  it("falls back to limit notification when no transfer notification", () => {
+  it("falls back to the conversation-manager notification when no transfer notification", () => {
     const deps = createMockDeps();
-    const limitNotification = { type: "info" as const, message: "limit" };
+    const managerNotification = { type: "info" as const, message: "limit" };
 
-    deps.conversationManager.limitNotification = limitNotification as never;
+    deps.conversationManager.notification = managerNotification as never;
 
     const { result } = renderHook(() =>
       useConversationPanelState(deps as never),
     );
 
-    expect(result.current.notification).toBe(limitNotification);
+    expect(result.current.notification).toBe(managerNotification);
     expect(result.current.onDismissNotification).toBe(
-      deps.conversationManager.dismissLimitNotification,
+      deps.conversationManager.dismissNotification,
     );
   });
 });

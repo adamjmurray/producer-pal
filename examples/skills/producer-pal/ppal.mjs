@@ -3,21 +3,24 @@
 // Producer Pal REST API client (Node 18+, no dependencies).
 //
 // CLI:
+//   node ppal.mjs --set-config '<json>'
 //   node ppal.mjs --list-tools
 //   node ppal.mjs <tool> [json-args] [options]
 //
 // Options:
 //   --url <baseUrl>      override Producer Pal URL (default http://localhost:3350)
 //   --timeout-ms <ms>    per-request timeout (1–60000)
+//   --set-config <json>  update device settings, e.g. '{"notation":"midi-json"}'
 //
 // Examples:
+//   node ppal.mjs --set-config '{"notation":"midi-json"}'
 //   node ppal.mjs --list-tools
 //   node ppal.mjs ppal-read-live-set
 //   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
 //   node ppal.mjs ppal-create-clip '{...}' --timeout-ms 10000
 //
 // Library:
-//   import { listTools, callTool } from "./ppal.mjs";
+//   import { listTools, callTool, setConfig } from "./ppal.mjs";
 //   const { result, warnings } = await callTool("ppal-read-live-set");
 
 const DEFAULT_BASE_URL = "http://localhost:3350";
@@ -34,20 +37,48 @@ export async function listTools(baseUrl = DEFAULT_BASE_URL) {
 }
 
 /**
- * Call a Producer Pal tool by name. Always uses `?format=json` so `result` is
- * a parsed value (object/array/etc.) and warnings are surfaced as a separate
- * `warnings: string[]` field.
+ * Call a Producer Pal tool by name. The REST API defaults to `format=json`, so
+ * `result` is a parsed value (object/array/etc.) and warnings are surfaced as a
+ * separate `warnings: string[]` field.
  */
 export async function callTool(name, args = {}, options = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-  const params = new URLSearchParams({ format: "json" });
+  const params = new URLSearchParams();
   if (options.timeoutMs != null)
     params.set("timeoutMs", String(options.timeoutMs));
 
-  const res = await fetch(`${baseUrl}/api/tools/${name}?${params}`, {
+  const query = params.toString();
+  const url = query
+    ? `${baseUrl}/api/tools/${name}?${query}`
+    : `${baseUrl}/api/tools/${name}`;
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+/**
+ * POST /config — update device settings remotely and return the full updated
+ * config. `patch` is a partial object; the server ignores unrecognized keys and
+ * also silently ignores an invalid value for a known field (an unknown
+ * `notation` is dropped, keeping the current setting; booleans are coerced). The
+ * only field that rejects with a 400 is an invalid `tools` list. Because bad
+ * values are dropped rather than reported, read the returned config to confirm a
+ * setting actually took effect. The main use for coding agents is the active
+ * MIDI notation, e.g. `setConfig({ notation: "midi-json" })`; pass
+ * `{ liveApiEnabled: true }` to turn on the advanced `ppal-live-api` tool. The
+ * setting is global to the device (it also affects the chat UI and any
+ * connected MCP clients).
+ */
+export async function setConfig(patch, options = {}) {
+  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const res = await fetch(`${baseUrl}/config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   return res.json();
@@ -63,6 +94,7 @@ function parseArgs(argv) {
     if (arg === "--url") opts.baseUrl = argv[++i];
     else if (arg === "--timeout-ms") opts.timeoutMs = Number(argv[++i]);
     else if (arg === "--list-tools") opts.listTools = true;
+    else if (arg === "--set-config") opts.setConfig = argv[++i];
     else if (arg === "--help" || arg === "-h") opts.help = true;
     else positional.push(arg);
   }
@@ -72,15 +104,18 @@ function parseArgs(argv) {
 const HELP = `Producer Pal REST API client
 
 Usage:
+  node ppal.mjs --set-config '<json>'
   node ppal.mjs --list-tools
   node ppal.mjs <tool> [json-args] [options]
 
 Options:
   --url <baseUrl>      override Producer Pal URL (default ${DEFAULT_BASE_URL})
   --timeout-ms <ms>    per-request timeout (1–60000)
+  --set-config <json>  update device settings, e.g. '{"notation":"midi-json"}'
   --help, -h           show this help
 
 Examples:
+  node ppal.mjs --set-config '{"notation":"midi-json"}'
   node ppal.mjs --list-tools
   node ppal.mjs ppal-read-live-set
   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
@@ -96,6 +131,19 @@ async function main(argv) {
   if (opts.listTools) {
     const result = await listTools(opts.baseUrl);
     console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (opts.setConfig != null) {
+    let patch;
+    try {
+      patch = JSON.parse(opts.setConfig);
+    } catch (err) {
+      console.error(`Invalid JSON for --set-config: ${err.message}`);
+      process.exit(1);
+    }
+    const updated = await setConfig(patch, opts);
+    console.log(JSON.stringify(updated, null, 2));
     return;
   }
 

@@ -1,3 +1,10 @@
+<!--
+Producer Pal
+Copyright (C) 2026 Adam Murray, Taylor Haun
+AI assistance: Claude (Anthropic), Codex (OpenAI)
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 # Evals
 
 Two CLI tools for testing LLM behavior with Producer Pal's MCP tools:
@@ -30,6 +37,7 @@ scripts/eval [options]
 | `-j, --judge <model>` | Judge model (default: `gemini-3-flash-preview`)   |
 | `-s, --skip-setup`    | Skip Live Set setup (reuse existing connection)   |
 | `--skip-judge`        | Skip the LLM-as-judge step (checks only)          |
+| `--skip-reflection`   | Skip the self-reflection turn after a failure     |
 | `-q, --quiet`         | Suppress detailed AI and judge responses          |
 | `-r, --repeat <N>`    | Run each scenario N times (for flakiness)         |
 | `-u, --usage`         | Show token usage per turn                         |
@@ -48,6 +56,9 @@ be inferred from the prefix:
 | `gpt-5-nano`                    | openai     |
 | `google/gemini-3-flash-preview` | google     |
 | `anthropic/claude-sonnet-4-5`   | anthropic  |
+| `codex-code/sol`                | codex-code |
+| `codex-code/terra`              | codex-code |
+| `codex-code/luna`               | codex-code |
 | `openrouter/some-model`         | openrouter |
 | `local/model-name`              | local      |
 
@@ -59,6 +70,10 @@ scripts/eval -a -m gemini-3-flash-preview
 
 # Compare two models on one scenario
 scripts/eval -t connect-to-ableton -m gemini-3-flash-preview -m claude-sonnet-4-5
+
+# Compare Codex subscription models (requires `codex login`)
+scripts/eval -t connect-to-ableton \
+  -m codex-code/sol -m codex-code/terra -m codex-code/luna
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s

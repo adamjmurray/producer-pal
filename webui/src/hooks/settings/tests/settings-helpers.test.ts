@@ -233,7 +233,7 @@ describe("settings-helpers", () => {
       const settings = loadProviderSettings("anthropic");
 
       expect(settings.apiKey).toBe("");
-      expect(settings.model).toBe("claude-sonnet-4-6");
+      expect(settings.model).toBe("claude-sonnet-5");
     });
   });
 

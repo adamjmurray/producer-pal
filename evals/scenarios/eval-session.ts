@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +9,10 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ModelMessage, stepCountIs, streamText } from "ai";
+import {
+  CODEX_CODE_DEFAULT_MODEL,
+  createCodexCliSession,
+} from "#evals/chat/codex/codex-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { printStepUsage } from "#evals/chat/shared/formatting.ts";
@@ -36,6 +40,8 @@ export function getDefaultModel(provider: EvalProvider): string {
   switch (provider) {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
+    case "codex-code":
+      return CODEX_CODE_DEFAULT_MODEL;
     case "google":
       return GEMINI_CONFIG.defaultModel;
     case "openai":
@@ -83,6 +89,15 @@ interface EvalSessionOptions {
 export async function createEvalSession(
   options: EvalSessionOptions,
 ): Promise<EvalSession> {
+  if (options.provider === "codex-code") {
+    return await createCodexCliSession({
+      ...(options.model != null ? { model: options.model } : {}),
+      ...(options.instructions != null
+        ? { instructions: options.instructions }
+        : {}),
+    });
+  }
+
   const model = createProviderModel(
     options.provider,
     options.model ?? getDefaultModel(options.provider),
@@ -111,6 +126,9 @@ export async function createEvalSession(
         stopWhen: stepCountIs(MAX_TOOL_STEPS),
         maxOutputTokens: DEFAULT_MAX_TOKENS,
         system: options.instructions,
+        // Errors are rendered (in red) by processCliStream via the fullStream
+        // "error" part; suppress the SDK's default raw dump.
+        onError: () => {},
         onStepFinish: (event) => {
           const usage = toTokenUsage(event.usage);
 
@@ -127,6 +145,12 @@ export async function createEvalSession(
       const turnResult = await processCliStream(result, {
         showUsage: options.usage,
       });
+
+      // On a stream error, result.response rejects; the error was already shown
+      // by processCliStream. Skip history so the scenario can grade the miss.
+      if (turnResult.error != null) {
+        return { ...turnResult, stepUsages };
+      }
 
       // Append generated messages to history for multi-turn
       const response = await result.response;

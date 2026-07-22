@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -150,6 +151,13 @@ describe("LiveAPI extensions - setter methods", () => {
     it("should auto-format numeric ID for highlighted_clip_slot", () => {
       api.setProperty("highlighted_clip_slot", "101");
       expect(api.set).toHaveBeenCalledWith("highlighted_clip_slot", "id 101");
+    });
+
+    // The string check guards the startsWith call that follows it: a raw number
+    // is a legitimate value here and must reach set() untouched.
+    it("should pass a numeric value through without formatting", () => {
+      api.setProperty("selected_track", 123);
+      expect(api.set).toHaveBeenCalledWith("selected_track", 123);
     });
 
     it("should not double-format already prefixed IDs", () => {

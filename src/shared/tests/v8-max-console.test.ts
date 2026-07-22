@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
@@ -159,6 +160,21 @@ describe("v8-max-console", () => {
 
       delete g.Dict;
     });
+
+    it("tolerates a Dict without a stringify method (optional chaining)", () => {
+      // `stringify?.()` must short-circuit to undefined instead of throwing when
+      // a Dict-shaped object has no stringify method.
+      class Dict {
+        name = "emptyDict";
+      }
+
+      g.Dict = Dict;
+
+      log(new Dict());
+      expect(consoleLogSpy).toHaveBeenCalledWith('Dict("emptyDict") undefined');
+
+      delete g.Dict;
+    });
   });
 
   describe("error", () => {
@@ -234,6 +250,16 @@ describe("v8-max-console", () => {
       warn("test warning");
       expect(mockOutlet).toHaveBeenCalledWith(1, "test warning");
       expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it("joins multiple outlet arguments with spaces", () => {
+      const mockOutlet = vi.fn();
+
+      g.outlet = mockOutlet;
+
+      warn("first", 42, "third");
+      // Multiple args are join(" ")-ed into one outlet string, not concatenated.
+      expect(mockOutlet).toHaveBeenCalledWith(1, "first 42 third");
     });
   });
 });

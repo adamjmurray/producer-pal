@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -19,12 +20,16 @@ import {
 import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";
 
-interface BridgeOptions {
+export interface BridgeOptions {
   smallModelMode?: boolean;
+  notation?: Notation;
+  jsonOutput?: boolean;
+  liveApiEnabled?: boolean;
 }
 
 interface FallbackTool {
@@ -59,22 +64,38 @@ export class StdioHttpBridge {
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
-  private smallModelMode: boolean;
+  private smallModelMode?: boolean;
+  private notation?: Notation;
+  private jsonOutput?: boolean;
+  private liveApiEnabled?: boolean;
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
-    this.smallModelMode = options.smallModelMode ?? false;
+    this.smallModelMode = options.smallModelMode;
+    this.notation = options.notation;
+    this.jsonOutput = options.jsonOutput;
+    this.liveApiEnabled = options.liveApiEnabled;
     this.fallbackTools = this._generateFallbackTools();
   }
 
   private _generateFallbackTools(): { tools: FallbackTool[] } {
-    // Create MCP server to extract tool definitions (callLiveApi not used)
+    // Build the offline fallback from the same createMcpServer logic the live
+    // server uses, threading small-model mode, notation, AND liveApiEnabled so
+    // the offline list matches what the live server would return for this config
+    // — including whether the opt-in ppal-live-api tool is present. Clients cache
+    // the tool list and the stateless server has no tools/list_changed signal to
+    // force a re-fetch, so an inaccurate offline list (e.g. missing a forced-on
+    // ppal-live-api) can persist even after the device comes online.
     const server = createMcpServer(null as unknown as CallLiveApiFunction, {
       smallModelMode: this.smallModelMode,
+      notation: this.notation,
+      liveApiEnabled: this.liveApiEnabled,
     });
     const tools: FallbackTool[] = [];
 
-    // Access private _registeredTools for fallback tool list
+    // Access private _registeredTools for fallback tool list. No filtering here:
+    // createMcpServer already applied the opt-in gating (ppal-live-api is
+    // registered only when liveApiEnabled), so the list mirrors the live server.
     const registeredTools = (
       server as unknown as {
         _registeredTools: Record<string, RegisteredToolInfo>;
@@ -82,10 +103,6 @@ export class StdioHttpBridge {
     )._registeredTools;
 
     for (const [name, toolInfo] of Object.entries(registeredTools)) {
-      if (name === "ppal-live-api") {
-        continue;
-      } // Skip opt-in low-level tool from offline fallback list
-
       tools.push({
         name: name,
         title: toolInfo.title,
@@ -121,8 +138,15 @@ Tell the user to check ${SETUP_URL} for configuration help.
   }
 
   private async _ensureHttpConnection(): Promise<void> {
-    // If we have a client and think we're connected, reuse it
+    // If we have a client and think we're connected, reuse it — but still
+    // re-assert the config overrides first. The transport is stateless HTTP, so
+    // we never observe the device's server restarting (e.g. a fresh device
+    // dragged in with default settings, or a connector toggle). Re-pushing on
+    // every request keeps the server's config in sync; it no-ops when no
+    // overrides are set, so non-override users pay nothing.
     if (this.httpClient && this.isConnected) {
+      await this._pushConfigOverrides();
+
       return;
     }
 
@@ -169,9 +193,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
 
-      if (this.smallModelMode) {
-        await this._pushSmallModelModeConfig();
-      }
+      await this._pushConfigOverrides();
     } catch (error) {
       logger.error(`HTTP connection failed: ${errorMessage(error)}`);
       this.isConnected = false;
@@ -195,20 +217,51 @@ Tell the user to check ${SETUP_URL} for configuration help.
     }
   }
 
-  private async _pushSmallModelModeConfig(): Promise<void> {
+  /**
+   * Push the CLI/env config overrides (small-model mode, notation, response
+   * format, Direct Live API) to the device via POST /config. Only the
+   * explicitly-requested settings are sent, so an unset option leaves the
+   * device's own setting alone, and it no-ops (no request) when nothing was
+   * requested. Runs before every tools/list and tools/call (via
+   * `_ensureHttpConnection`), not just on connect: the server is stateless and
+   * global config can reset out from under us (a fresh device with default
+   * settings), so we re-assert the overrides each request. This also guarantees
+   * the tool list/descriptions reflect the override (e.g. enabling Direct Live
+   * API makes `ppal-live-api` appear). The settings are global to the device.
+   */
+  private async _pushConfigOverrides(): Promise<void> {
+    const overrides: {
+      smallModelMode?: boolean;
+      notation?: Notation;
+      jsonOutput?: boolean;
+      liveApiEnabled?: boolean;
+    } = {};
+
+    // Each override is tri-state: push the value only when set (true OR false),
+    // so an unset option leaves the device's own setting alone but an explicit
+    // false can turn a setting off.
+    if (this.smallModelMode != null)
+      overrides.smallModelMode = this.smallModelMode;
+    if (this.notation) overrides.notation = this.notation;
+    if (this.jsonOutput != null) overrides.jsonOutput = this.jsonOutput;
+    if (this.liveApiEnabled != null)
+      overrides.liveApiEnabled = this.liveApiEnabled;
+
+    if (Object.keys(overrides).length === 0) return;
+
     const configUrl = this.httpUrl.replace(/\/mcp$/, "/config");
 
     try {
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ smallModelMode: true }),
+        body: JSON.stringify(overrides),
       });
-      logger.info("Enabled small model mode on server");
-    } catch (error) {
-      logger.error(
-        `Failed to push small model mode config: ${errorMessage(error)}`,
+      logger.info(
+        `Pushed config overrides to server: ${JSON.stringify(overrides)}`,
       );
+    } catch (error) {
+      logger.error(`Failed to push config overrides: ${errorMessage(error)}`);
     }
   }
 

@@ -86,6 +86,12 @@ export interface ConversationLockedSettings {
   temperature: number | null;
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
+  /**
+   * The resolved system instruction the conversation runs with. Locked like the
+   * other settings so continuing a restored chat keeps sending what it started
+   * with, even after the global override changes. Null for legacy records.
+   */
+  systemInstruction: string | null;
 }
 
 /**
@@ -120,6 +126,8 @@ export interface UseChatReturn {
   activeTemperature: number | null;
   activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
+  /** The resolved system instruction locked for the active conversation. */
+  activeSystemInstruction: string | null;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
   enqueueMessage: (text: string, overrides?: MessageOverrides) => void;

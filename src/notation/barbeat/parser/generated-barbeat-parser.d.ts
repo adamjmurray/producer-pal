@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -34,8 +35,7 @@ export interface BarCopyDestination {
 
 /** Bar copy source */
 export type BarCopySource =
-  | { bar?: number; range?: [number, number] }
-  | "previous";
+  { bar?: number; range?: [number, number] } | "previous";
 
 /** A single pitch within a chord or stream */
 export interface StreamPitch {
@@ -44,8 +44,7 @@ export interface StreamPitch {
 
 /** A velocity stream value: a single velocity or an auto-ordered range */
 export type StreamVelocity =
-  | { velocity: number }
-  | { velocityMin: number; velocityMax: number };
+  { velocity: number } | { velocityMin: number; velocityMax: number };
 
 /**
  * A duration stream value: a whole-note fraction (`duration`) plus an optional
@@ -62,7 +61,7 @@ export interface StreamProbability {
 }
 
 /**
- * Pattern bracket (AJM-482 pitch, AJM-483 v/n/p): a stream of one parameter's
+ * Pattern bracket (pitch, v/n/p): a stream of one parameter's
  * values cycled across emitted note-events. The `param` tag discriminates the
  * `values` element shape — pitch values are chords (a length-1 array for a bare
  * pitch); v/n/p values carry the bare per-kind object.

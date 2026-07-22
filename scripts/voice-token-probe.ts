@@ -36,9 +36,13 @@ import {
 } from "@openai/agents/realtime";
 import { z, type ZodType } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
-import { skills as basicSkills } from "#src/skills/basic.ts";
-import { skills as standardSkills } from "#src/skills/standard.ts";
+import { type Notation, DEFAULT_NOTATION } from "#src/shared/notation.ts";
+import { buildSkills } from "#src/skills/build-skills.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  resolveModalDescription,
+  resolveParamModes,
+} from "#src/tools/shared/tool-framework/modal-config.ts";
 import {
   buildOpenAIVoiceInstructions,
   getVoiceLanguage,
@@ -47,6 +51,11 @@ import {
 // Inlined from #webui/lib/constants/models.ts: importing that module raw pulls
 // in extensionless webui imports Node can't resolve unbundled. Keep in sync.
 const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
+
+// Sourced through buildSkills (HEADER + notation head + shared core per level).
+// Standard = default (bar|beat); basic = Stark, matching the historical baseline.
+const standardSkills = buildSkills();
+const basicSkills = buildSkills({ notation: "stark", smallModelMode: true });
 
 /** A measured response's token usage (the realtime `usage` block, normalized). */
 interface TurnUsage {
@@ -131,10 +140,19 @@ async function measureScenario(
   turns: number,
 ): Promise<TurnUsage[]> {
   const lang = getVoiceLanguage("en");
+  // Match the tools' notation to the scenario's skills blob (basic = Stark,
+  // standard/none = the bar|beat default) so the modal tool AND param
+  // descriptions resolve to the same cell production ships, not always the
+  // bar|beat one.
+  const notation: Notation =
+    scenario.skills === "basic" ? "stark" : DEFAULT_NOTATION;
   const agent = new RealtimeAgent({
     name: "Producer Pal Voice",
     instructions: buildOpenAIVoiceInstructions(lang),
-    tools: scenario.tools === "none" ? [] : buildAgentTools(scenario.tools),
+    tools:
+      scenario.tools === "none"
+        ? []
+        : buildAgentTools(scenario.tools, notation),
   });
 
   const transport = new OpenAIRealtimeWebSocket();
@@ -188,12 +206,15 @@ async function measureScenario(
  * Build the OpenAI Realtime SDK tool list from the standard MCP tool defs,
  * converting each Zod input schema to JSON Schema exactly as the MCP server's
  * listTools does (the realtime agent uploads these per session).
- * @param mode - "full" = schemas as-is; "small" = small-model-mode filtered
- *   (excludeParams + descriptionOverrides + toolDescription override applied)
+ * @param mode - "full" = large-model schemas (notation param overrides only);
+ *   "small" = additionally small-model-filtered (excludeParams + small-model
+ *   descriptionOverrides + toolDescription override). Both filter like define-tool.
+ * @param notation - Active notation, matching the scenario's skills blob, so the
+ *   modal tool/param descriptions resolve to the SAME cell production uploads
  * @returns SDK tool descriptors (execute is a no-op; we only measure schema cost)
  */
-function buildAgentTools(mode: "full" | "small"): Tool[] {
-  return STANDARD_TOOL_DEFS.map((td) => toRealtimeTool(td, mode));
+function buildAgentTools(mode: "full" | "small", notation: Notation): Tool[] {
+  return STANDARD_TOOL_DEFS.map((td) => toRealtimeTool(td, mode, notation));
 }
 
 /**
@@ -201,27 +222,38 @@ function buildAgentTools(mode: "full" | "small"): Tool[] {
  * (JSON Schema from Zod, strict disabled, no-op executor — we only measure the
  * uploaded schema's token cost, never execute).
  * @param td - A standard tool definition
- * @param mode - "full" or "small" (small applies smallModelModeConfig)
+ * @param mode - "full" or "small"; both resolve param modes via resolveParamModes
+ *   (full = notation only, small = notation + small-model) and filter the schema
+ *   unconditionally, exactly as define-tool.ts does
+ * @param notation - Active notation; feeds the modal-config key ladder alongside
+ *   smallModelMode so descriptions/enums resolve to the production cell
  * @returns A Realtime SDK tool
  */
 function toRealtimeTool(
   td: (typeof STANDARD_TOOL_DEFS)[number],
   mode: "full" | "small",
+  notation: Notation,
 ): Tool {
-  const cfg = td.toolOptions.smallModelModeConfig;
-  const inputSchema =
-    mode === "small" && cfg
-      ? filterSchemaForSmallModel(
-          td.toolOptions.inputSchema,
-          cfg.excludeParams,
-          cfg.descriptionOverrides,
-          cfg.excludeEnumValues,
-        )
-      : td.toolOptions.inputSchema;
-  const description =
-    mode === "small" && cfg?.toolDescription
-      ? cfg.toolDescription
-      : td.toolOptions.description;
+  const smallModelMode = mode === "small";
+  const resolved = resolveParamModes(td.toolOptions.inputSchema, {
+    smallModelMode,
+    notation,
+  });
+  // Filter unconditionally, exactly as production's define-tool.ts does:
+  // resolveParamModes already folded in the notation cell, so even large-model
+  // ("full") mode ships the active notation's param overrides (e.g. the stark
+  // `notes` descriptions on create-clip/update-clip). Gating this on
+  // smallModelMode undercounted a large-model stark session's schema tokens.
+  const inputSchema = filterSchemaForSmallModel(
+    td.toolOptions.inputSchema,
+    resolved.excludeParams,
+    resolved.descriptionOverrides,
+    resolved.excludeEnumValues,
+  );
+  const description = resolveModalDescription(td.toolOptions.description, {
+    smallModelMode,
+    notation,
+  });
 
   return tool({
     name: td.toolName,

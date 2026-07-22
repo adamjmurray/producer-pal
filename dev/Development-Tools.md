@@ -158,14 +158,15 @@ Provides:
 ### CORS and the streamable-http transport
 
 The streamable-http URL above is a browser-origin fetch from the inspector UI to
-the device's MCP server, so it requires CORS headers on `localhost:3350`. Dev
-builds (`npm run build:dev`, `npm run build:debug`, and `npm run dev`) already
-set `ENABLE_DEV_CORS=true`, so this just works during normal development.
+the device's MCP server, so it needs CORS headers on `localhost:3350`. The
+server reflects CORS for any localhost origin by default, in every build, so the
+inspector (served from a localhost origin) just works — dev or release. Pages
+from a non-localhost origin get no CORS headers and are blocked; set
+`ENABLE_REMOTE_CORS=true` before a build only if you need to reach the server
+from one (a remote inspector, or over the LAN).
 
-Release builds (`npm run build`) intentionally omit CORS headers — production
-users run the chat UI same-origin and shouldn't expose `localhost:3350` to
-arbitrary browser tabs. To debug a release build with the inspector, point it at
-the stdio portal instead:
+The stdio portal is another way in (and it pushes config-override flags to the
+device on connect, below):
 
 ```bash
 npx @modelcontextprotocol/inspector node /absolute/path/to/producer-pal/npm/producer-pal-portal.js
@@ -174,6 +175,16 @@ npx @modelcontextprotocol/inspector node /absolute/path/to/producer-pal/npm/prod
 The portal is a Node-side stdio→HTTP bridge to `localhost:3350/mcp`, so it
 sidesteps CORS entirely (server-to-server fetch, no browser involved). Use an
 absolute path — `npx` resolves relative paths against its own cwd.
+
+The portal also accepts config-override flags it pushes to the device via
+`POST /config` on connect: `-s`/`--small-model-mode`, `-n`/`--notation <value>`,
+`-f`/`--format <json|compact>`, and `-l`/`--live-api` (enables the opt-in
+`ppal-live-api` tool). Explicit flags always apply. The same settings also have
+env vars (`SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`/`JSON_OUTPUT`, `LIVE_API`),
+but those are gated behind `ALLOW_CONFIGURATION_OVERRIDES=true` — and, unlike
+the enable-only flags, a boolean env can send `false` to force a setting off.
+This env path is what the Claude Desktop extension's toggles use. Handy for
+exercising a specific config against a release build through the inspector.
 
 ## Build Warnings
 
@@ -228,6 +239,15 @@ npm run format:check
 # Manual testing
 node scripts/build-and-release/test-claude-desktop-extension.ts
 ```
+
+### Reproducible Test Live Sets
+
+The Live Sets in `e2e/live-sets/` and `evals/live-sets/` are reproducible
+scenarios for debugging tool behavior with `scripts/ppal-client.ts`. Open one
+with `scripts/open-live-set path/to/set.als`. Trace execution with
+`console.warn()` (relayed as `WARNING:` in the CLI output — see Max Console
+below). After any writes modify the set's state, reopen it with
+`scripts/open-live-set` to reset back to the original.
 
 ## Debugging Tips
 

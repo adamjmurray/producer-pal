@@ -9,20 +9,12 @@ Use `npx producer-pal` to connect to Producer Pal's MCP server.
 <!--@include: ../_partials/live-requirement.md-->
 
 - AI that supports [MCP](https://modelcontextprotocol.io)
-- Potentially: [Node.js 20+](https://nodejs.org/en/download)
+- [Node.js 20+](https://nodejs.org/en/download) — only needed if connecting via
+  `npx producer-pal` (Option A below); not required for Option B or C
 
 ## Installation Steps
 
-### 1. Install the Max for Live Device
-
-Download
-[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
-Live:
-
-<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
-
-_It should display "Producer Pal Running" or something isn't working._
+<!--@include: ../_partials/install-device.md-->
 
 ### 2. Configure Your AI
 
@@ -43,7 +35,7 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 ::: details Using a small/local model?
 
-Add the `-s` flag to enable
+Add the `--small-model-mode` flag to enable
 [Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended),
 which simplifies the tool interface for smaller LLMs and automatically enables
 it on the device when connected:
@@ -51,9 +43,32 @@ it on the device when connected:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "producer-pal", "-s"]
+  "args": ["-y", "producer-pal", "--small-model-mode"]
 }
 ```
+
+:::
+
+::: details Advanced: enabling the Direct Live API
+
+Add the `--live-api` flag to turn on the opt-in
+[Direct Live API](/features#ppal-live-api) tool (`ppal-live-api`) when the
+server connects — the same setting as the device's **Setup** tab, so it's global
+to the device:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "producer-pal", "--live-api"]
+}
+```
+
+Not recommended as a default — the specialized tools are tuned for reliable
+results, while the raw Live API is low-level and easy to misuse. Use it for
+custom control, integrations, or debugging directly against the
+[Live Object Model](https://docs.cycling74.com/apiref/lom/) when the standard
+tools aren't enough. The flag only ever _enables_ the tool; it never turns off a
+setting you toggled on the device.
 
 :::
 

@@ -620,6 +620,29 @@ describe("device-display-helpers", () => {
       });
     });
 
+    it("takes the unit from the value label when min and max have none", () => {
+      // unit resolves value ?? min ?? max — the value label alone must be able
+      // to supply it.
+      setupParamMock({ name: "Amount", value: 0.5 });
+      setupValueLabels({ 0.5: "50 %", 0: "0", 1: "100" });
+
+      const result = readParameter(createMockParamApi("param_unit_value_only"));
+
+      expect(result.unit).toBe("%");
+    });
+
+    it("normalizes pan against a non-default max pan value", () => {
+      // maxPanValue comes from the max label (64), not the 50 default: 32 of 64
+      // is half-left.
+      setupParamMock({ name: "Pan", value: 0.25 });
+      setupValueLabels({ 0.25: "32L", 0: "0L", 1: "64R" });
+
+      const result = readParameter(createMockParamApi("param_pan_64"));
+
+      expect(result.unit).toBe("pan");
+      expect(result.value).toBe(-0.5);
+    });
+
     it("reads parameter with no unit detected", () => {
       setupParamMock({ name: "Amount", value: 0.5 });
       setupValueLabels({ 0.5: "50", 0: "0", 1: "100" });
@@ -660,6 +683,39 @@ describe("device-display-helpers", () => {
       // Value falls back to display_value when label can't be parsed to a number
       expect(result.name).toBe("Mode");
       expect(result.value).toBe("Repitch");
+    });
+
+    it.each([
+      { min: "50L", label: "min label" },
+      { min: "0L", label: "default 50" },
+    ])(
+      "resolves pan maxPanValue via $label when the max label yields 0",
+      ({ min }) => {
+        // max label "0R" → extractMaxPanValue 0, forcing the || fallback chain.
+        setupParamMock({ name: "Pan", value: 0.25 });
+        setupValueLabels({ 0.25: "25L", 0: min, 1: "0R" });
+
+        const result = readParameter(createMockParamApi("param_pan_fallback"));
+
+        expect(result.unit).toBe("pan");
+      },
+    );
+
+    it("falls back to rawValue when label unparseable and display_value is absent", () => {
+      setupParamMock({ name: "Mode", value: 0.5 });
+
+      // Override only display_value to a nullish read so the `?? rawValue`
+      // tail of the value chain is exercised.
+      const base = mockGet.getMockImplementation() as (p: string) => unknown[];
+
+      mockGet.mockImplementation((prop: string) =>
+        prop === "display_value" ? [] : base(prop),
+      );
+      mockCall.mockImplementation(() => "Repitch"); // unparseable label
+
+      const result = readParameter(createMockParamApi("param_raw_fallback"));
+
+      expect(result.value).toBe(0.5); // rawValue
     });
 
     it("handles division param detected via minLabel", () => {

@@ -18,6 +18,7 @@ import {
   setupArrangementMocks,
 } from "./arrangement-operations-test-helpers.ts";
 import {
+  type ClipIdResult,
   handleArrangementLengthening,
   handleArrangementShortening,
 } from "./arrangement-operations-helpers.ts";
@@ -45,32 +46,24 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should tile clip when currentArrangementLength > totalContentLength for looped clips", () => {
-      const clipProps = { start_marker: 4 }; // totalContentLength = 8-4 = 4
-
-      setupArrangementMocks({ clipProps });
-
-      const mockTileClipToRange = vi
-        .spyOn(arrangementTiling, "tileClipToRange")
-        .mockReturnValue([{ id: "tile1" }]);
-
-      const mockClip = createMockClip({ props: clipProps });
-
-      // currentArrangementLength (8) > totalContentLength (4) triggers the shortening-then-tiling branch
-      const result = handleArrangementLengthening({
-        clip: mockClip as unknown as LiveAPI,
-        isAudioClip: false,
-        arrangementLengthBeats: 16, // > clipLength (8)
-        currentArrangementLength: 8, // > totalContentLength (4)
-        currentStartTime: 0,
-        currentEndTime: 8,
-        context: { holdingAreaStartBeats: 40000, silenceWavPath: "/test.wav" },
-      });
+      // clipProps start_marker 4 → totalContentLength = 8 - 4 = 4.
+      // currentArrangementLength (8) > totalContentLength (4) triggers the
+      // shortening-then-tiling branch. arrangementLengthBeats (16) > clipLength (8).
+      const { tile, result } = runLengthening(
+        { start_marker: 4 },
+        {
+          arrangementLengthBeats: 16,
+          currentArrangementLength: 8,
+          currentStartTime: 0,
+          currentEndTime: 8,
+        },
+      );
 
       // Should call createLoopedClipTiles which handles the shortening-then-tiling branch
-      expect(mockTileClipToRange).toHaveBeenCalled();
+      expect(tile).toHaveBeenCalled();
       expect(result).toContainEqual({ id: "789" });
 
-      mockTileClipToRange.mockRestore();
+      tile.mockRestore();
     });
 
     it("should handle audio clip shortening with createAudioClipInSession in createLoopedClipTiles", () => {
@@ -122,30 +115,21 @@ describe("arrangement-operations-helpers", () => {
     });
 
     it("should expose hidden content when arrangementLengthBeats < clipLength for looped clips", () => {
-      const clipProps = { loop_end: 16, end_marker: 16 }; // clipLength = 16
-
-      setupArrangementMocks({ clipProps });
-
-      const mockTileClipToRange = vi
-        .spyOn(arrangementTiling, "tileClipToRange")
-        .mockReturnValue([{ id: "tile1" }]);
-
-      const mockClip = createMockClip({ props: clipProps });
-
+      // clipProps loop_end 16 → clipLength = 16.
       // arrangementLengthBeats (12) < clipLength (16) triggers hidden content exposure
-      const result = handleArrangementLengthening({
-        clip: mockClip as unknown as LiveAPI,
-        isAudioClip: false,
-        arrangementLengthBeats: 12, // Less than clipLength (16)
-        currentArrangementLength: 4,
-        currentStartTime: 0,
-        currentEndTime: 4,
-        context: { holdingAreaStartBeats: 40000 },
-      });
+      const { tile, clip, result } = runLengthening(
+        { loop_end: 16, end_marker: 16 },
+        {
+          arrangementLengthBeats: 12,
+          currentArrangementLength: 4,
+          currentStartTime: 0,
+          currentEndTime: 4,
+        },
+      );
 
       // Should tile to expose hidden content with adjustPreRoll: false
-      expect(mockTileClipToRange).toHaveBeenCalledWith(
-        mockClip,
+      expect(tile).toHaveBeenCalledWith(
+        clip,
         expect.anything(),
         4, // currentEndTime
         8, // remainingLength = 12 - 4
@@ -160,35 +144,26 @@ describe("arrangement-operations-helpers", () => {
       expect(result).toContainEqual({ id: "789" });
       expect(result).toContainEqual({ id: "tile1" });
 
-      mockTileClipToRange.mockRestore();
+      tile.mockRestore();
     });
 
     it("should tile looped clip when currentArrangementLength < totalContentLength", () => {
-      const clipProps = { start_marker: 2 }; // totalContentLength = 8 - 2 = 6
-
-      setupArrangementMocks({ clipProps });
-
-      const mockTileClipToRange = vi
-        .spyOn(arrangementTiling, "tileClipToRange")
-        .mockReturnValue([{ id: "tile1" }]);
-
-      const mockClip = createMockClip({ props: clipProps });
-
+      // clipProps start_marker 2 → totalContentLength = 8 - 2 = 6.
       // arrangementLengthBeats (16) > clipLength (8)
       // currentArrangementLength (4) < totalContentLength (6)
-      const result = handleArrangementLengthening({
-        clip: mockClip as unknown as LiveAPI,
-        isAudioClip: false,
-        arrangementLengthBeats: 16,
-        currentArrangementLength: 4, // < totalContentLength (6)
-        currentStartTime: 0,
-        currentEndTime: 4,
-        context: { holdingAreaStartBeats: 40000 },
-      });
+      const { tile, clip, result } = runLengthening(
+        { start_marker: 2 },
+        {
+          arrangementLengthBeats: 16,
+          currentArrangementLength: 4,
+          currentStartTime: 0,
+          currentEndTime: 4,
+        },
+      );
 
       // Should call tileClipToRange with adjustPreRoll: true
-      expect(mockTileClipToRange).toHaveBeenCalledWith(
-        mockClip,
+      expect(tile).toHaveBeenCalledWith(
+        clip,
         expect.anything(),
         4, // currentEndTime
         12, // remainingLength = 16 - 4
@@ -202,7 +177,187 @@ describe("arrangement-operations-helpers", () => {
       );
       expect(result).toContainEqual({ id: "789" });
 
-      mockTileClipToRange.mockRestore();
+      tile.mockRestore();
+    });
+
+    it("computes clipLength as loop_end - loop_start for looped clips", () => {
+      // loop_start=2, loop_end=8 → clipLength = 6 (subtraction, not addition=10).
+      // arrangementLengthBeats=7 sits between 6 and 10, so with the correct
+      // subtraction 7 < 6 is false → tiling branch (adjustPreRoll:true). If the
+      // operator were `+`, clipLength=10 → 7 < 10 → expose branch
+      // (adjustPreRoll:false).
+      const { tile, clip } = runLengthening(
+        { loop_start: 2, loop_end: 8, start_marker: 2, end_marker: 8 },
+        {
+          arrangementLengthBeats: 7,
+          currentArrangementLength: 4,
+          currentStartTime: 0,
+          currentEndTime: 4,
+        },
+      );
+
+      expect(tile).toHaveBeenCalledWith(
+        clip,
+        expect.anything(),
+        4,
+        3,
+        40000,
+        expect.anything(),
+        expect.objectContaining({ adjustPreRoll: true }),
+      );
+
+      tile.mockRestore();
+    });
+
+    it("uses the tiling branch at the exact arrangementLengthBeats == clipLength boundary", () => {
+      // clipLength = loop_end(8) - loop_start(0) = 8. At arrangementLengthBeats=8
+      // the correct `<` yields 8 < 8 = false → tiling (adjustPreRoll:true).
+      // A `<=` mutant would take the expose branch (adjustPreRoll:false).
+      const { tile, clip } = runLengthening(
+        {},
+        {
+          arrangementLengthBeats: 8,
+          currentArrangementLength: 4,
+          currentStartTime: 0,
+          currentEndTime: 4,
+        },
+      );
+
+      expect(tile).toHaveBeenCalledWith(
+        clip,
+        expect.anything(),
+        4,
+        4,
+        40000,
+        expect.anything(),
+        expect.objectContaining({ adjustPreRoll: true }),
+      );
+
+      tile.mockRestore();
+    });
+
+    it("derives the expose-branch startOffset from start_marker - loop_start", () => {
+      // Expose branch (arrangementLengthBeats 12 < clipLength 14).
+      // currentOffset = start_marker(5) - loop_start(2) = 3, so
+      // startOffset = currentOffset(3) + currentArrangementLength(4) = 7.
+      // An addition mutant would make currentOffset 7 → startOffset 11.
+      const { tile, clip } = runLengthening(
+        { loop_start: 2, loop_end: 16, start_marker: 5, end_marker: 16 },
+        {
+          arrangementLengthBeats: 12,
+          currentArrangementLength: 4,
+          currentStartTime: 0,
+          currentEndTime: 4,
+        },
+      );
+
+      expect(tile).toHaveBeenCalledWith(
+        clip,
+        expect.anything(),
+        4,
+        8,
+        40000,
+        expect.anything(),
+        expect.objectContaining({
+          adjustPreRoll: false,
+          startOffset: 7,
+          tileLength: 4,
+        }),
+      );
+
+      tile.mockRestore();
+    });
+
+    it("tiles the properly-sized clip when currentArrangementLength == totalContentLength", () => {
+      // totalContentLength = loop_end(8) - start_marker(0) = 8, equal to
+      // currentArrangementLength(8) → the equal branch. firstTileLength =
+      // currentEndTime(10) - currentStartTime(2) = 8, remainingSpace = 20 - 8 =
+      // 12, position = currentEndTime(10). The exact options object (no
+      // startOffset) also pins the `<` boundary, adjustPreRoll, and the object
+      // literal.
+      const { tile, clip } = runLengthening(
+        {},
+        {
+          arrangementLengthBeats: 20,
+          currentArrangementLength: 8,
+          currentStartTime: 2,
+          currentEndTime: 10,
+        },
+      );
+
+      expect(tile).toHaveBeenCalledWith(
+        clip,
+        expect.anything(),
+        10,
+        12,
+        40000,
+        expect.anything(),
+        { adjustPreRoll: true, tileLength: 8 },
+      );
+
+      tile.mockRestore();
+    });
+
+    it("uses the equal branch (not shorten-then-tile) when currentArrangementLength == totalContentLength", () => {
+      // At the boundary currentArrangementLength(8) == totalContentLength(8) the
+      // correct `>` is false → equal branch: firstTileLength = currentEndTime(20)
+      // - currentStartTime(0) = 20, remainingSpace = 30 - 20 = 10, position =
+      // currentEndTime(20). A `>=` mutant (or forced-true) would shorten first,
+      // producing position=8 instead.
+      const { tile, clip } = runLengthening(
+        {},
+        {
+          arrangementLengthBeats: 30,
+          currentArrangementLength: 8,
+          currentStartTime: 0,
+          currentEndTime: 20,
+        },
+      );
+
+      expect(tile).toHaveBeenCalledWith(
+        clip,
+        expect.anything(),
+        20,
+        10,
+        40000,
+        expect.anything(),
+        { adjustPreRoll: true, tileLength: 20 },
+      );
+
+      tile.mockRestore();
+    });
+
+    it("pins the shorten-then-tile arithmetic when currentArrangementLength > totalContentLength", () => {
+      // totalContentLength = loop_end(8) - start_marker(2) = 6 <
+      // currentArrangementLength(10) → shorten-then-tile branch.
+      //   newEndTime = currentStartTime(1) + totalContentLength(6) = 7
+      //   tempClipLength = currentEndTime(11) - newEndTime(7) = 4  → temp clip
+      //   firstTileLength = newEndTime(7) - currentStartTime(1) = 6
+      //   remainingSpace = arrangementLengthBeats(20) - firstTileLength(6) = 14
+      const { tile, clip } = runLengthening(
+        { loop_start: 0, loop_end: 8, start_marker: 2, end_marker: 8 },
+        {
+          arrangementLengthBeats: 20,
+          currentArrangementLength: 10,
+          currentStartTime: 1,
+          currentEndTime: 11,
+        },
+      );
+
+      const track = requireMockObject(livePath.track(0));
+
+      expect(track.call).toHaveBeenCalledWith("create_midi_clip", 7, 4);
+      expect(tile).toHaveBeenCalledWith(
+        clip,
+        expect.anything(),
+        7,
+        14,
+        40000,
+        expect.anything(),
+        { adjustPreRoll: true, tileLength: 6 },
+      );
+
+      tile.mockRestore();
     });
   });
 
@@ -268,6 +423,8 @@ describe("arrangement-operations-helpers", () => {
       expect(arrangementClip.set).toHaveBeenCalledWith("looping", 1);
       expect(arrangementClip.set).toHaveBeenCalledWith("loop_end", 4.0);
       expect(mockSlotCall).toHaveBeenCalledWith("delete_clip");
+      // The temp arrangement clip is removed via Track.delete_clip by id.
+      expect(track.call).toHaveBeenCalledWith("delete_clip", "id arr-456");
 
       mockCreateAudioClip.mockRestore();
     });
@@ -300,3 +457,51 @@ describe("arrangement-operations-helpers", () => {
     });
   });
 });
+
+interface RunLengtheningArgs {
+  arrangementLengthBeats: number;
+  currentArrangementLength: number;
+  currentStartTime: number;
+  currentEndTime: number;
+  isAudioClip?: boolean;
+}
+
+/**
+ * Set up mocks for a looped clip, run handleArrangementLengthening, and return
+ * the tileClipToRange spy plus the mock clip for call-argument assertions.
+ * @param clipProps - Clip property overrides (loop_start, loop_end, markers)
+ * @param args - Lengthening arguments
+ * @param args.arrangementLengthBeats - Target length in beats
+ * @param args.currentArrangementLength - Current length in beats
+ * @param args.currentStartTime - Current start time in beats
+ * @param args.currentEndTime - Current end time in beats
+ * @param args.isAudioClip - Whether the clip is audio (default false)
+ * @returns The tileClipToRange spy, the mock clip, and the returned clip ids
+ */
+function runLengthening(
+  clipProps: Record<string, number>,
+  args: RunLengtheningArgs,
+): {
+  tile: ReturnType<typeof vi.spyOn>;
+  clip: LiveAPI;
+  result: ClipIdResult[];
+} {
+  setupArrangementMocks({ clipProps });
+
+  const tile = vi
+    .spyOn(arrangementTiling, "tileClipToRange")
+    .mockReturnValue([{ id: "tile1" }]);
+  const clip = createMockClip({ props: clipProps }) as unknown as LiveAPI;
+
+  const result = handleArrangementLengthening({
+    clip,
+    isAudioClip: args.isAudioClip ?? false,
+    arrangementLengthBeats: args.arrangementLengthBeats,
+    currentArrangementLength: args.currentArrangementLength,
+    currentStartTime: args.currentStartTime,
+    currentEndTime: args.currentEndTime,
+    context: { holdingAreaStartBeats: 40000, silenceWavPath: "/test.wav" },
+  });
+
+  return { tile, clip, result };
+}

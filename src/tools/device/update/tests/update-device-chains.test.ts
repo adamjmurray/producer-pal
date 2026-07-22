@@ -255,6 +255,102 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
   });
 
+  describe("cross-type not-applicable warnings", () => {
+    beforeEach(() => {
+      // A non-rack device (rack-only props don't apply) and a rack device.
+      registerMockObject("800", { type: "PluginDevice" });
+      registerMockObject("801", {
+        type: "RackDevice",
+        properties: { can_have_chains: 1, visible_macro_count: 4 },
+      });
+    });
+
+    it.each([
+      ["macroVariation", { macroVariation: "create" }, "PluginDevice", "800"],
+      [
+        "macroVariationIndex",
+        { macroVariationIndex: 1 },
+        "PluginDevice",
+        "800",
+      ],
+      ["solo", { solo: true }, "RackDevice", "123"],
+      ["mappedPitch", { mappedPitch: "C3" }, "RackDevice", "123"],
+    ] as const)(
+      "warns that %s is not applicable to a device",
+      (label, args, type, id) => {
+        updateDevice({ ids: id, ...args });
+
+        expect(outlet).toHaveBeenCalledWith(
+          1,
+          `updateDevice: '${label}' not applicable to ${type}`,
+        );
+      },
+    );
+
+    it.each([
+      ["macroVariation", { macroVariation: "create" }],
+      ["macroVariationIndex", { macroVariationIndex: 1 }],
+      ["macroCount", { macroCount: 4 }],
+      ["abCompare", { abCompare: "a" }],
+    ] as const)("warns that %s is not applicable to a Chain", (label, args) => {
+      updateDevice({ ids: "456", ...args });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        `updateDevice: '${label}' not applicable to Chain`,
+      );
+    });
+
+    it("does not spuriously warn about A/B Compare when abCompare is unset", () => {
+      updateDevice({ ids: "123", mute: true });
+
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        "updateDevice: A/B Compare not available on this device",
+      );
+    });
+
+    it("does not spuriously adjust macro count on a rack when macroCount is unset", () => {
+      updateDevice({ ids: "801", abCompare: "a" });
+
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("macro count rounded"),
+      );
+    });
+  });
+
+  describe("unset property guards", () => {
+    it("does not touch mute/solo on a Chain when only color is set", () => {
+      updateDevice({ ids: "456", color: "#FF0000" });
+
+      expect(chain.set).not.toHaveBeenCalledWith("mute", expect.anything());
+      expect(chain.set).not.toHaveBeenCalledWith("solo", expect.anything());
+      // Unset (null) params must be treated as absent, not warned about.
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("not applicable"),
+      );
+    });
+
+    it("does not touch chokeGroup/mappedPitch on a DrumChain when only mute is set", () => {
+      updateDevice({ ids: "789", mute: true });
+
+      expect(drumChain.set).not.toHaveBeenCalledWith(
+        "choke_group",
+        expect.anything(),
+      );
+      expect(drumChain.set).not.toHaveBeenCalledWith(
+        "out_note",
+        expect.anything(),
+      );
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("invalid note name"),
+      );
+    });
+  });
+
   describe("invalid types", () => {
     it("should warn and skip for Track type", () => {
       // Should not throw, just warn and return empty array (no valid targets)

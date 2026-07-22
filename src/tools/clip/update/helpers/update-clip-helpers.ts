@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
@@ -206,6 +207,7 @@ export function processSingleClipUpdate(
     clipContext,
     timeSigNumerator,
     timeSigDenominator,
+    notation: context.notation,
   });
 
   // Handle quantization (after notes so newly merged notes get quantized)
@@ -254,6 +256,7 @@ export function processSingleClipUpdate(
  * @param resolved.clipContext - Clip-level context for transform variables
  * @param resolved.timeSigNumerator - Resolved time signature numerator
  * @param resolved.timeSigDenominator - Resolved time signature denominator
+ * @param resolved.notation - Global notation setting the notes string is written in (or undefined)
  * @returns Note update result, or null if notes were not modified
  */
 function resolveNoteResult(
@@ -263,11 +266,13 @@ function resolveNoteResult(
     clipContext,
     timeSigNumerator,
     timeSigDenominator,
+    notation,
   }: {
     isAudioClip: boolean;
     clipContext: ClipContext;
     timeSigNumerator: number;
     timeSigDenominator: number;
+    notation: Notation | undefined;
   },
 ): NoteUpdateResult | null {
   const {
@@ -290,6 +295,7 @@ function resolveNoteResult(
       timeSigDenominator,
       clipIndex,
       clipCount,
+      notation,
     });
   }
 
@@ -302,6 +308,7 @@ function resolveNoteResult(
     timeSigNumerator,
     timeSigDenominator,
     clipContext,
+    notation,
   );
 
   return duplicateLoop ? handleDuplicateLoop(clip) : noteUpdateResult;

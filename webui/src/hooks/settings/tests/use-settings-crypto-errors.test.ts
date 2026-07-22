@@ -28,7 +28,7 @@ describe("useSettings crypto error handling", () => {
   it("logs (does not throw) when the post-mount decrypt-load fails", async () => {
     localStorage.setItem(
       "producer_pal_provider_gemini",
-      JSON.stringify({ apiKey: "enc:v1:bogus", model: "gemini-3.5-flash" }),
+      JSON.stringify({ apiKey: "enc:v1:bogus", model: "gemini-3.6-flash" }),
     );
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -61,7 +61,7 @@ describe("useSettings crypto error handling", () => {
 
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");
-      result.current.setModel("gemini-3.5-flash");
+      result.current.setModel("gemini-3.6-flash");
     });
 
     let saved: boolean | undefined;

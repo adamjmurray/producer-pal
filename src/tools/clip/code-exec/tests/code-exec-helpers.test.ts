@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as v8Console from "#src/shared/v8-max-console.ts";
 import { type CodeNote } from "../code-exec-types.ts";
 import {
   buildCodeExecutionContext,
@@ -18,6 +19,12 @@ import {
   validateAndSanitizeNote,
   validateCodeNotes,
 } from "../code-exec-helpers.ts";
+import {
+  codeNote,
+  createMockClip,
+  mockGetProperty,
+  toLiveApiNote,
+} from "./code-exec-test-helpers.ts";
 
 describe("code-exec-helpers", () => {
   beforeEach(() => {
@@ -80,7 +87,7 @@ describe("code-exec-helpers", () => {
 
   describe("codeNoteToNoteEvent", () => {
     it("should convert CodeNote to NoteEvent format", () => {
-      const codeNote: CodeNote = {
+      const input: CodeNote = {
         pitch: 67,
         start: 4.0,
         duration: 2.0,
@@ -89,7 +96,7 @@ describe("code-exec-helpers", () => {
         velocityDeviation: 20,
       };
 
-      const result = codeNoteToNoteEvent(codeNote, 4);
+      const result = codeNoteToNoteEvent(input, 4);
 
       expect(result).toStrictEqual({
         pitch: 67,
@@ -103,7 +110,7 @@ describe("code-exec-helpers", () => {
 
     it("scales clip musical beats back to Ableton beats in compound meters", () => {
       // Inverse of noteEventToCodeNote: in 6/8, musical beat 6 → Ableton beat 3.
-      const codeNote: CodeNote = {
+      const input: CodeNote = {
         pitch: 60,
         start: 6,
         duration: 3,
@@ -112,7 +119,7 @@ describe("code-exec-helpers", () => {
         velocityDeviation: 0,
       };
 
-      const result = codeNoteToNoteEvent(codeNote, 8);
+      const result = codeNoteToNoteEvent(input, 8);
 
       expect(result.start_time).toBe(3);
       expect(result.duration).toBe(1.5);
@@ -157,10 +164,7 @@ describe("code-exec-helpers", () => {
     });
 
     it("should return empty array for empty clip", () => {
-      const mockClip = {
-        getProperty: vi.fn().mockReturnValue(4),
-        call: vi.fn().mockReturnValue(JSON.stringify({ notes: [] })),
-      };
+      const mockClip = createMockClip(4, JSON.stringify({ notes: [] }));
 
       const result = extractNotesFromClip(mockClip as unknown as LiveAPI);
 
@@ -170,20 +174,8 @@ describe("code-exec-helpers", () => {
 
   describe("applyNotesToClip", () => {
     it("should remove existing notes and add new ones", () => {
-      const mockClip = {
-        getProperty: vi.fn().mockReturnValue(4), // signature_denominator
-        call: vi.fn(),
-      };
-      const notes: CodeNote[] = [
-        {
-          pitch: 60,
-          start: 0,
-          duration: 1,
-          velocity: 100,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-      ];
+      const mockClip = createMockClip(4); // signature_denominator
+      const notes: CodeNote[] = [codeNote(60, 0)];
 
       applyNotesToClip(mockClip as unknown as LiveAPI, notes);
 
@@ -195,16 +187,7 @@ describe("code-exec-helpers", () => {
         12,
       );
       expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            velocity_deviation: 0,
-            probability: 1,
-          },
-        ],
+        notes: [toLiveApiNote(codeNote(60, 0))],
       });
     });
 
@@ -213,67 +196,43 @@ describe("code-exec-helpers", () => {
       // deletes an earlier same-pitch note when a later-written note overlaps its
       // onset, so an unsorted write would drop the beat-0 note. The write must be
       // ascending by start_time so both survive.
-      const mockClip = {
-        getProperty: vi.fn().mockReturnValue(4), // signature_denominator
-        call: vi.fn(),
-      };
-      const notes: CodeNote[] = [
-        {
-          pitch: 60,
-          start: 2,
-          duration: 1,
-          velocity: 100,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-        {
-          pitch: 60,
-          start: 0,
-          duration: 1,
-          velocity: 90,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-      ];
+      const mockClip = createMockClip(4); // signature_denominator
+      const late = codeNote(60, 2, { velocity: 100 });
+      const early = codeNote(60, 0, { velocity: 90 });
 
-      applyNotesToClip(mockClip as unknown as LiveAPI, notes);
+      applyNotesToClip(mockClip as unknown as LiveAPI, [late, early]);
 
+      // Written ascending by start_time: the beat-0 note first.
       expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 90,
-            velocity_deviation: 0,
-            probability: 1,
-          },
-          {
-            pitch: 60,
-            start_time: 2,
-            duration: 1,
-            velocity: 100,
-            velocity_deviation: 0,
-            probability: 1,
-          },
-        ],
+        notes: [toLiveApiNote(early), toLiveApiNote(late)],
       });
     });
 
+    it("dedupes same-pitch+start duplicates (keep-last) and warns", () => {
+      // User code returned two notes at the same pitch and onset. add_new_notes
+      // deletes the earlier one when the later overlaps its onset, so without the
+      // dedupe one note is silently dropped. Collapse keep-last and warn.
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const mockClip = createMockClip(4); // signature_denominator
+      const first = codeNote(60, 0, { duration: 1, velocity: 100 });
+      const last = codeNote(60, 0, { duration: 2, velocity: 80 });
+
+      applyNotesToClip(mockClip as unknown as LiveAPI, [first, last]);
+
+      // The duplicate collapses to the last write.
+      expect(mockClip.call).toHaveBeenCalledWith("add_new_notes", {
+        notes: [toLiveApiNote(last)],
+      });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Dropped 1 duplicate note"),
+      );
+    });
+
     it("converts musical beats back to Ableton beats using the clip meter", () => {
-      const mockClip = {
-        getProperty: vi.fn().mockReturnValue(8), // 6/8 denominator
-        call: vi.fn(),
-      };
+      const mockClip = createMockClip(8); // 6/8 denominator
       const notes: CodeNote[] = [
-        {
-          pitch: 60,
-          start: 6, // musical beat 6 in 6/8 → Ableton beat 3
-          duration: 3, // 3 musical eighths → 1.5 Ableton beats
-          velocity: 100,
-          velocityDeviation: 0,
-          probability: 1,
-        },
+        codeNote(60, 6, { duration: 3 }), // musical beat 6 → Ableton beat 3,
+        // 3 musical eighths → 1.5 Ableton beats
       ];
 
       applyNotesToClip(mockClip as unknown as LiveAPI, notes);
@@ -293,10 +252,7 @@ describe("code-exec-helpers", () => {
     });
 
     it("should only remove notes when notes array is empty", () => {
-      const mockClip = {
-        getProperty: vi.fn().mockReturnValue(4), // length=4 → window [-4, 8)
-        call: vi.fn(),
-      };
+      const mockClip = createMockClip(4); // length=4 → window [-4, 8)
 
       applyNotesToClip(mockClip as unknown as LiveAPI, []);
 
@@ -313,10 +269,10 @@ describe("code-exec-helpers", () => {
 
   describe("getClipNoteCount", () => {
     it("should count notes across read-clip's [-length, 2*length] window", () => {
-      const mockClip = {
-        getProperty: vi.fn().mockReturnValue(8),
-        call: vi.fn().mockReturnValue(JSON.stringify({ notes: [{}, {}, {}] })),
-      };
+      const mockClip = createMockClip(
+        8,
+        JSON.stringify({ notes: [{}, {}, {}] }),
+      );
 
       const result = getClipNoteCount(mockClip as unknown as LiveAPI);
 
@@ -340,16 +296,12 @@ describe("code-exec-helpers", () => {
         id: "clip-123",
         path: livePath.track(1).clipSlot(2).clip(),
         trackIndex: 1,
-        getProperty: vi.fn((prop: string) => {
-          const props: Record<string, unknown> = {
-            name: "Test Clip",
-            length: 16,
-            signature_numerator: 4,
-            signature_denominator: 4,
-            looping: 1,
-          };
-
-          return props[prop];
+        getProperty: mockGetProperty({
+          name: "Test Clip",
+          length: 16,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 1,
         }),
       };
 
@@ -373,17 +325,13 @@ describe("code-exec-helpers", () => {
 
         if (path === "live_set") {
           return {
-            getProperty: vi.fn((prop: string) => {
-              const props: Record<string, unknown> = {
-                tempo: 120,
-                signature_numerator: 4,
-                signature_denominator: 4,
-                scale_mode: 1,
-                scale_name: "Minor",
-                root_note: 0,
-              };
-
-              return props[prop];
+            getProperty: mockGetProperty({
+              tempo: 120,
+              signature_numerator: 4,
+              signature_denominator: 4,
+              scale_mode: 1,
+              scale_name: "Minor",
+              root_note: 0,
             }),
           } as unknown as LiveAPI;
         }
@@ -434,16 +382,12 @@ describe("code-exec-helpers", () => {
       const mockClip = {
         id: "clip-456",
         path: livePath.track(0).arrangementClip(3),
-        getProperty: vi.fn((prop: string) => {
-          const props: Record<string, unknown> = {
-            name: "Arr Clip",
-            length: 8,
-            signature_numerator: 3,
-            signature_denominator: 4,
-            looping: 0,
-          };
-
-          return props[prop];
+        getProperty: mockGetProperty({
+          name: "Arr Clip",
+          length: 8,
+          signature_numerator: 3,
+          signature_denominator: 4,
+          looping: 0,
         }),
       };
 
@@ -466,15 +410,11 @@ describe("code-exec-helpers", () => {
 
         if (path === "live_set") {
           return {
-            getProperty: vi.fn((prop: string) => {
-              const props: Record<string, unknown> = {
-                tempo: 90,
-                signature_numerator: 3,
-                signature_denominator: 4,
-                scale_mode: 0, // No scale
-              };
-
-              return props[prop];
+            getProperty: mockGetProperty({
+              tempo: 90,
+              signature_numerator: 3,
+              signature_denominator: 4,
+              scale_mode: 0, // No scale
             }),
           } as unknown as LiveAPI;
         }

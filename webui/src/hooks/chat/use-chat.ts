@@ -209,6 +209,7 @@ export function useChat<
         temperature,
         null,
         smallModelMode,
+        init.systemInstruction,
       );
     },
     [
@@ -376,7 +377,7 @@ export function useChat<
 
         // Queued follow-ups coalesce into a single user turn (joined by blank
         // lines); the overrides (currently just `thinking`) were captured once
-        // from the first queued message and apply to the merged turn (AJM-552).
+        // from the first queued message and apply to the merged turn.
         currentMessage = queued.map((m) => m.text).join("\n\n");
         currentOptions = overrides;
       }
@@ -402,9 +403,7 @@ export function useChat<
 
     if (queued.length === 0) return;
 
-    const merged = queued.map((m) => m.text).join("\n\n");
-
-    await handleSend(merged, overrides);
+    await handleSend(queued.map((m) => m.text).join("\n\n"), overrides);
   }, [drainQueue, handleSend]);
 
   const { handleRetry, handleEdit } = useConversationActions({

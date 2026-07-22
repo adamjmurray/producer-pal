@@ -12,17 +12,7 @@ For users comfortable with the terminal. All CLI options require
 
 ## Quick Start
 
-All CLI tools use similar MCP configuration:
-
-```json
-{
-  "mcpServers": {
-    "producer-pal": {
-      "command": "npx",
-      "args": ["-y", "producer-pal"]
-    }
-  }
-}
-```
-
-See individual guides for specific setup steps.
+Every CLI runs the same `npx producer-pal` command under the hood, but each tool
+has its own MCP configuration format — a `claude mcp add` command, a TOML file,
+or a JSON file, depending on the tool. See the individual guides linked above
+for the exact steps and config for your CLI.

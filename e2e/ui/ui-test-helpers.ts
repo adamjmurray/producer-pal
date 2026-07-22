@@ -13,7 +13,13 @@ export {
   setupConsoleCapture,
 } from "../webui/webui-test-helpers";
 
-const BUILT_UI_PATH = fileURLToPath(
+/**
+ * Filesystem path to the built single-file UI bundle. The same bundle serves
+ * both `/chat` and `/context` (main.tsx branches on the pathname), so the
+ * context suite fulfills its document route from this too (see
+ * ./context-test-helpers.ts).
+ */
+export const BUILT_UI_PATH = fileURLToPath(
   new URL("../../max-for-live-device/chat-ui.html", import.meta.url),
 );
 
@@ -52,8 +58,8 @@ export function makeConversation(
     updatedAt: 1,
     bookmarked: false,
     provider: "gemini",
-    model: "gemini-3.5-flash",
-    modelLabel: "Gemini 3.5 Flash",
+    model: "gemini-3.6-flash",
+    modelLabel: "Gemini 3.6 Flash",
     sessionType: "text",
     messages: [],
     ...overrides,
@@ -109,6 +115,16 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
+  // Custom system prompt read (the chat mounts useSystemPromptMemory) — empty
+  // means "use the built-in instruction", the default state under test.
+  await page.route("**/system-prompt", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ content: "" }),
+    }),
+  );
+
   // GitHub release check (useUpdateCheck) — empty body => no update banner, and
   // keeps the test offline/deterministic.
   await page.route("https://api.github.com/**", (route) =>
@@ -129,7 +145,7 @@ export async function installStubs(page: Page): Promise<void> {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "",
-        model: "gemini-3.5-flash",
+        model: "gemini-3.6-flash",
         thinking: "Default",
         temperature: 1.0,
         showThoughts: true,

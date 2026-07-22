@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
@@ -17,12 +19,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   },
 
   inputSchema: {
-    slot: z.coerce
-      .string()
-      .optional()
-      .describe(
+    slot: param(z.coerce.string().optional(), {
+      default:
         "session clip slot(s): trackIndex/sceneIndex, both 0-based (scene 1 = index 0), comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
-      ),
+      smallModel:
+        "session clip slot(s): trackIndex/sceneIndex, 0-based — scene 1 = slot 0 (e.g., '0/0')",
+    }),
 
     trackIndex: z.coerce
       .number()
@@ -31,26 +33,24 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .optional()
       .describe("0-based track index (arrangement clips)"),
 
-    arrangementStart: z.coerce
-      .string()
-      .optional()
-      .describe(
+    arrangementStart: param(z.coerce.string().optional(), {
+      default:
         "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3'). Song meter",
-      ),
+      smallModel:
+        "arrangement clip bar|beat position (e.g., '1|1'). Song meter",
+    }),
 
-    name: z
-      .string()
-      .optional()
-      .describe(
+    name: param(z.string().optional(), {
+      default:
         "name for all, or comma-separated for each (indexed: session positions first, then arrangement)",
-      ),
+      smallModel: "clip name",
+    }),
 
-    color: z
-      .string()
-      .optional()
-      .describe(
+    color: param(z.string().optional(), {
+      default:
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than positions)",
-      ),
+      smallModel: "#RRGGBB",
+    }),
 
     timeSignature: z
       .string()
@@ -71,34 +71,37 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
 
-    firstStart: z
-      .string()
-      .optional()
-      .describe(
+    firstStart: param(z.string().optional(), {
+      default:
         "bar|beat playback start (looping clips, when different from start; clip meter)",
-      ),
+      smallModel: null,
+    }),
 
-    notes: z
-      .string()
-      .optional()
-      .describe(
+    // Notation-keyed `notes` text so the schema reflects the active note format
+    // instead of the default bar|beat.
+    notes: param(z.string().optional(), {
+      default:
         "MIDI in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only",
-      ),
+      smallModel:
+        "MIDI notes (bar|beat): v0-127 n<dur> note(s) bar|beat(s) - MIDI clips only",
+      "midi-json":
+        "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (see Skills) - MIDI clips only",
+      stark:
+        "MIDI notes in stark notation (literal, round-trippable `type: content`; event-based drum hits, see Skills) - MIDI clips only",
+    }),
 
-    transforms: z
-      .string()
-      .optional()
-      .describe("transform expressions (parameter: expression per line)"),
+    transforms: param(z.string().optional(), {
+      default: "transform expressions (parameter: expression per line)",
+      smallModel: null,
+    }),
 
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
-          code: z
-            .string()
-            .max(MAX_CODE_LENGTH)
-            .optional()
-            .describe(
+          code: param(z.string().max(MAX_CODE_LENGTH).optional(), {
+            default:
               "JS function body: receives (notes, context), returns notes array (see Skills for properties) - MIDI only",
-            ),
+            smallModel: null,
+          }),
         }
       : {}),
 
@@ -107,39 +110,20 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .optional()
       .describe("absolute path to audio file - audio clips only"),
 
-    auto: z
-      .enum(["play-scene", "play-clip"])
-      .optional()
-      .describe("auto-play session clips (play-scene keeps scene in sync)"),
+    auto: param(z.enum(["play-scene", "play-clip"]).optional(), {
+      default: "auto-play session clips (play-scene keeps scene in sync)",
+      smallModel: null,
+    }),
 
-    takeLane: z.coerce
-      .string()
-      .optional()
-      .describe(
+    takeLane: param(z.coerce.string().optional(), {
+      default:
         'arrangement take lane: omit/0 = main lane, 1+ = that lane (auto-created), "new" = append a fresh lane (for variations)',
-      ),
+      smallModel: null,
+    }),
 
-    takeLaneName: z
-      .string()
-      .optional()
-      .describe("name for a take lane newly created by this call"),
-  },
-
-  smallModelModeConfig: {
-    excludeParams: [
-      "transforms",
-      "code",
-      "firstStart",
-      "auto",
-      "takeLane",
-      "takeLaneName",
-    ],
-    descriptionOverrides: {
-      slot: "session clip slot(s): trackIndex/sceneIndex (e.g., '0/0')",
-      arrangementStart:
-        "arrangement clip bar|beat position (e.g., '1|1'). Song meter",
-      name: "clip name",
-      color: "#RRGGBB",
-    },
+    takeLaneName: param(z.string().optional(), {
+      default: "name for a take lane newly created by this call",
+      smallModel: null,
+    }),
   },
 });

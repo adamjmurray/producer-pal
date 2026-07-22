@@ -15,6 +15,7 @@ export interface ActiveSettings {
   activeTemperature: number | null;
   activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
+  activeSystemInstruction: string | null;
 }
 
 interface ActiveSettingsActions {
@@ -26,6 +27,7 @@ interface ActiveSettingsActions {
     temperature: number,
     showThoughts: boolean | null,
     smallModelMode: boolean,
+    systemInstruction: string,
   ) => void;
   /** Restore settings from a saved conversation */
   restoreSettings: (lockedSettings?: ConversationLockedSettings) => void;
@@ -54,6 +56,9 @@ export function useActiveSettings(): UseActiveSettingsReturn {
   const [activeSmallModelMode, setActiveSmallModelMode] = useState<
     boolean | null
   >(null);
+  const [activeSystemInstruction, setActiveSystemInstruction] = useState<
+    string | null
+  >(null);
 
   const lockSettings = useCallback(
     (
@@ -63,6 +68,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       temperature: number,
       showThoughts: boolean | null,
       smallModelMode: boolean,
+      systemInstruction: string,
     ) => {
       setActiveModel(model);
       setActiveProvider(provider);
@@ -70,6 +76,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       setActiveTemperature(temperature);
       setActiveShowThoughts(showThoughts);
       setActiveSmallModelMode(smallModelMode);
+      setActiveSystemInstruction(systemInstruction);
     },
     [],
   );
@@ -82,6 +89,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       setActiveTemperature(lockedSettings?.temperature ?? null);
       setActiveShowThoughts(lockedSettings?.showThoughts ?? null);
       setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
+      setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
     },
     [],
   );
@@ -93,6 +101,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveTemperature(null);
     setActiveShowThoughts(null);
     setActiveSmallModelMode(null);
+    setActiveSystemInstruction(null);
   }, []);
 
   return {
@@ -102,6 +111,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     activeTemperature,
     activeShowThoughts,
     activeSmallModelMode,
+    activeSystemInstruction,
     lockSettings,
     restoreSettings,
     clearSettings,

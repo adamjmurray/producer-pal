@@ -9,17 +9,22 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { type UseChatProps } from "#webui/hooks/chat/use-chat-types";
 import {
-  MockChatClient,
+  type MockChatClient,
+  type TestConfig,
+  type TestMessage,
   RESTORED_HISTORY,
+  adapterWithClient,
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
-} from "./use-chat-test-helpers";
+} from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
-  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
+  const { streamingHelpersMockBody } =
+    await import("./helpers/use-chat-test-helpers");
 
   return await streamingHelpersMockBody();
 });
@@ -41,16 +46,79 @@ function createToolLimitAdapter() {
   });
 }
 
+/** The props useChat takes with this file's mock adapter/client/config. */
+type ChatProps = UseChatProps<MockChatClient, TestMessage, TestConfig>;
+
 /**
  * Render useChat with default props, send "Hello", and return the result.
  * @param props - Optional props override
  * @returns Hook result ref after sending a message
  */
-async function renderAndSend(props = defaultProps) {
+async function renderAndSend(props: ChatProps = defaultProps) {
   const { result } = renderHook(() => useChat(props));
 
   await act(async () => {
     await result.current.handleSend("Hello");
+  });
+
+  return result;
+}
+
+/**
+ * Render useChat with default props and enqueue a single message, asserting it
+ * reached the queue so the follow-up action starts from a known state.
+ * @param text - The message text to enqueue
+ * @returns Hook result ref holding exactly one queued message
+ */
+async function renderWithQueuedMessage(text: string) {
+  const { result } = renderHook(() => useChat(defaultProps));
+
+  await act(() => result.current.enqueueMessage(text));
+
+  expect(result.current.queuedMessages).toHaveLength(1);
+
+  return result;
+}
+
+/**
+ * Enqueue a message, then send while the given adapter's client fails, and
+ * assert the queued message survives (queue not drained on error).
+ * @param errorAdapter - Adapter whose client throws during init or streaming
+ */
+async function expectQueueSurvivesError(
+  errorAdapter: ReturnType<typeof adapterWithClient>,
+): Promise<void> {
+  const { result } = renderHook(() =>
+    useChat({ ...defaultProps, adapter: errorAdapter }),
+  );
+
+  await act(() => result.current.enqueueMessage("should not send"));
+
+  await act(async () => {
+    await result.current.handleSend("Hello");
+  });
+
+  expect(result.current.queuedMessages).toHaveLength(1);
+  expect(result.current.queuedMessages[0]?.text).toBe("should not send");
+}
+
+/**
+ * Render useChat with the given adapter, restore the standard history, then
+ * compact the first turn. Returns the hook result for assertions.
+ * @param adapter - The adapter whose client bootstraps from restored history
+ * @returns The renderHook result
+ */
+async function renderRestoreCompact(
+  adapter: ReturnType<typeof adapterWithClient>,
+) {
+  const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+  await act(() => {
+    result.current.restoreChatHistory([...RESTORED_HISTORY]);
+  });
+
+  await act(async () => {
+    await result.current.compact(1);
   });
 
   return result;
@@ -77,12 +145,8 @@ describe("useChat", () => {
 
   describe("clearConversation", () => {
     it("resets all state to initial values", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
       // Send a message first to populate state
-      await act(async () => {
-        await result.current.handleSend("Hello");
-      });
+      const result = await renderAndSend();
 
       expect(result.current.messages.length).toBeGreaterThan(0);
       expect(result.current.activeModel).toBe("test-model");
@@ -100,16 +164,7 @@ describe("useChat", () => {
 
     it("disposes the client so its MCP connection is released", async () => {
       const created: MockChatClient[] = [];
-      const adapter = {
-        ...createMockAdapter(),
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          created.push(client);
-
-          return client;
-        }),
-      };
+      const adapter = adapterWithClient((client) => created.push(client));
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter }),
@@ -132,16 +187,7 @@ describe("useChat", () => {
       // The unmount cleanup must dispose the live client so its MCP connection
       // isn't leaked — clearConversation/initializeChat only cover replacement.
       const created: MockChatClient[] = [];
-      const adapter = {
-        ...createMockAdapter(),
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          created.push(client);
-
-          return client;
-        }),
-      };
+      const adapter = adapterWithClient((client) => created.push(client));
 
       const { result, unmount } = renderHook(() =>
         useChat({ ...defaultProps, adapter }),
@@ -224,11 +270,7 @@ describe("useChat", () => {
     });
 
     it("keeps queued messages when stop is pressed so they flush on the next send", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      await act(() => result.current.enqueueMessage("queued msg"));
-
-      expect(result.current.queuedMessages).toHaveLength(1);
+      const result = await renderWithQueuedMessage("queued msg");
 
       await act(() => {
         result.current.stopResponse();
@@ -241,11 +283,7 @@ describe("useChat", () => {
     });
 
     it("clears queued messages when the conversation is cleared", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      await act(() => result.current.enqueueMessage("queued msg"));
-
-      expect(result.current.queuedMessages).toHaveLength(1);
+      const result = await renderWithQueuedMessage("queued msg");
 
       await act(() => {
         result.current.clearConversation();
@@ -340,11 +378,7 @@ describe("useChat", () => {
     });
 
     it("updates messages during streaming", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
-      });
+      const result = await renderAndSend();
 
       expect(result.current.messages.length).toBeGreaterThan(0);
       expect(mockAdapter.formatMessages).toHaveBeenCalled();
@@ -377,25 +411,15 @@ describe("useChat", () => {
     });
 
     it("handles errors and creates error message", async () => {
-      const errorAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
+      const errorAdapter = adapterWithClient((client) => {
+        client.initialize = vi.fn(async () => {
+          throw new Error("Initialization failed");
+        });
+      });
 
-          client.initialize = vi.fn(async () => {
-            throw new Error("Initialization failed");
-          });
-
-          return client;
-        }),
-      };
-
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: errorAdapter }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: errorAdapter,
       });
 
       expect(errorAdapter.createErrorMessage).toHaveBeenCalled();
@@ -410,18 +434,11 @@ describe("useChat", () => {
       // sendMessage, leaving chatHistory empty. The stashed user message must
       // still reach the persisted history alongside the error — otherwise a
       // reload shows a dangling error with no question.
-      const errorAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          client.initialize = vi.fn(async () => {
-            throw new Error("Initialization failed");
-          });
-
-          return client;
-        }),
-      };
+      const errorAdapter = adapterWithClient((client) => {
+        client.initialize = vi.fn(async () => {
+          throw new Error("Initialization failed");
+        });
+      });
       const autoSaveRef = { current: vi.fn() };
 
       const { result } = renderHook(() =>
@@ -500,12 +517,9 @@ describe("useChat", () => {
           },
       );
 
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: errorAdapter }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: errorAdapter,
       });
 
       // Error should be displayed via createErrorMessage with chatHistory
@@ -543,88 +557,36 @@ describe("useChat", () => {
     });
 
     it("does not drain queue after stream error", async () => {
-      const errorAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          // eslint-disable-next-line require-yield -- Throws before yielding
-          client.sendMessage = async function* () {
-            throw new Error("Network failure");
-          };
-
-          return client;
-        }),
-      };
-
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: errorAdapter }),
-      );
-
-      await act(() => result.current.enqueueMessage("should not send"));
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const errorAdapter = adapterWithClient((client) => {
+        // eslint-disable-next-line require-yield -- Throws before yielding
+        client.sendMessage = async function* () {
+          throw new Error("Network failure");
+        };
       });
 
-      // Queue should still have the message (not drained)
-      expect(result.current.queuedMessages).toHaveLength(1);
-      expect(result.current.queuedMessages[0]?.text).toBe("should not send");
+      await expectQueueSurvivesError(errorAdapter);
     });
 
     it("does not drain queue after initialization error", async () => {
-      const errorAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          client.initialize = vi.fn(async () => {
-            throw new Error("Init failed");
-          });
-
-          return client;
-        }),
-      };
-
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: errorAdapter }),
-      );
-
-      await act(() => result.current.enqueueMessage("should not send"));
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const errorAdapter = adapterWithClient((client) => {
+        client.initialize = vi.fn(async () => {
+          throw new Error("Init failed");
+        });
       });
 
-      expect(result.current.queuedMessages).toHaveLength(1);
-      expect(result.current.queuedMessages[0]?.text).toBe("should not send");
+      await expectQueueSurvivesError(errorAdapter);
     });
   });
 
   describe("compact (bootstrap + race guard)", () => {
     it("bootstraps a client from restored history, then compacts", async () => {
       let created: MockChatClient | undefined;
-      const adapter = {
-        ...createMockAdapter(),
-        createClient: vi.fn(() => {
-          created = new MockChatClient();
-          created.chatHistory = [...RESTORED_HISTORY];
-
-          return created;
-        }),
-      };
-
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter }),
-      );
-
-      await act(() => {
-        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      const adapter = adapterWithClient((client) => {
+        created = client;
+        client.chatHistory = [...RESTORED_HISTORY];
       });
 
-      await act(async () => {
-        await result.current.compact(1);
-      });
+      const result = await renderRestoreCompact(adapter);
 
       expect(adapter.createClient).toHaveBeenCalledTimes(1);
       expect(created?.summarize).toHaveBeenCalledWith(RESTORED_HISTORY);
@@ -637,30 +599,13 @@ describe("useChat", () => {
     });
 
     it("surfaces an error when bootstrap initialization fails", async () => {
-      const adapter = {
-        ...createMockAdapter(),
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          client.initialize = vi.fn(async () => {
-            throw new Error("init fail");
-          });
-
-          return client;
-        }),
-      };
-
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter }),
-      );
-
-      await act(() => {
-        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      const adapter = adapterWithClient((client) => {
+        client.initialize = vi.fn(async () => {
+          throw new Error("init fail");
+        });
       });
 
-      await act(async () => {
-        await result.current.compact(1);
-      });
+      const result = await renderRestoreCompact(adapter);
 
       expect(adapter.createErrorMessage).toHaveBeenCalled();
       expect(result.current.messages.at(-1)?.parts[0]?.type).toBe("error");
@@ -668,14 +613,9 @@ describe("useChat", () => {
 
     it("compacts the existing client without re-initializing", async () => {
       let created: MockChatClient | undefined;
-      const adapter = {
-        ...createMockAdapter(),
-        createClient: vi.fn(() => {
-          created = new MockChatClient();
-
-          return created;
-        }),
-      };
+      const adapter = adapterWithClient((client) => {
+        created = client;
+      });
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter }),
@@ -697,21 +637,14 @@ describe("useChat", () => {
 
     it("ignores a send while a compaction is in flight", async () => {
       let resolveSummary: (value: string) => void = () => {};
-      const adapter = {
-        ...createMockAdapter(),
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          client.summarize = vi.fn(
-            () =>
-              new Promise<string>((resolve) => {
-                resolveSummary = resolve;
-              }),
-          );
-
-          return client;
-        }),
-      };
+      const adapter = adapterWithClient((client) => {
+        client.summarize = vi.fn(
+          () =>
+            new Promise<string>((resolve) => {
+              resolveSummary = resolve;
+            }),
+        );
+      });
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter }),

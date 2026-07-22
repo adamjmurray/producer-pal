@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import fs from "node:fs";
@@ -260,6 +261,50 @@ const TEST_FILE_PATTERNS: string[] = [
  */
 export function isTestFile(filename: string): boolean {
   return TEST_FILE_PATTERNS.some((pattern) => filename.endsWith(pattern));
+}
+
+/** Text file extensions scanned by whole-repo content checks */
+const TEXT_EXTENSIONS: Set<string> = new Set([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".jsx",
+  ".md",
+  ".mdx",
+  ".json",
+  ".peggy",
+  ".yml",
+  ".yaml",
+  ".html",
+  ".css",
+]);
+
+/**
+ * Recursively find every tracked text file in the repo, skipping node_modules,
+ * .git, and gitignored entries. Used by whole-repo content guards.
+ * @param rootDir - Directory to start from (defaults to the project root)
+ * @returns Array of absolute file paths with text-like extensions
+ */
+export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
+  const results: string[] = [];
+  const items = fs.readdirSync(rootDir);
+
+  for (const item of items) {
+    if (item === "node_modules" || item === ".git") continue;
+    if (isGitIgnored(rootDir, item)) continue;
+
+    const fullPath = path.join(rootDir, item);
+
+    if (fs.statSync(fullPath).isDirectory()) {
+      results.push(...findRepoTextFiles(fullPath));
+    } else if (TEXT_EXTENSIONS.has(path.extname(item))) {
+      results.push(fullPath);
+    }
+  }
+
+  return results;
 }
 
 /**

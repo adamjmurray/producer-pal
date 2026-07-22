@@ -84,6 +84,22 @@ npmPkg.version = newVersion;
 writeFileSync(npmPkgPath, JSON.stringify(npmPkg, null, 2) + "\n");
 console.log("✓ Updated npm/package.json");
 
+// Update npm/package-lock.json (npm package has no deps — this just syncs the
+// version and metadata to the package.json we just wrote)
+console.log("Updating npm/package-lock.json...");
+
+try {
+  execSync("npm install --package-lock-only --no-audit", {
+    cwd: join(rootDir, "npm"),
+    stdio: "inherit",
+  });
+} catch (error) {
+  console.error(`\n❌ npm install failed in npm: ${String(error)}`);
+  process.exit(1);
+}
+
+console.log("✓ Updated npm/package-lock.json");
+
 console.log(`\n✅ Version bumped to ${newVersion}\n`);
 console.log("Next, run:");
 console.log("  npm run check");

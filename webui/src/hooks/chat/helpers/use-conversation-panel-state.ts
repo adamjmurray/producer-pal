@@ -13,7 +13,7 @@ import { isMobile } from "#webui/utils/is-mobile";
 interface ConversationPanelDeps {
   conversationManager: UseConversationsReturn;
   transfer: {
-    notification: UseConversationsReturn["limitNotification"];
+    notification: UseConversationsReturn["notification"];
     dismissNotification: () => void;
     handleExportOne: (id: string) => Promise<void>;
     handleExport: () => Promise<void>;
@@ -68,11 +68,10 @@ export function useConversationPanelState(
       onToggleBookmark: handlers.handleToggleBookmark,
       onExport: () => void transfer.handleExport(),
       onImport: () => void transfer.handleImport(),
-      notification:
-        transfer.notification ?? conversationManager.limitNotification,
+      notification: transfer.notification ?? conversationManager.notification,
       onDismissNotification: transfer.notification
         ? transfer.dismissNotification
-        : conversationManager.dismissLimitNotification,
+        : conversationManager.dismissNotification,
     }),
     [
       conversationManager,

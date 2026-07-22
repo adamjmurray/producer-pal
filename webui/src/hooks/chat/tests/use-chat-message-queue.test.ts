@@ -16,11 +16,12 @@ import {
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
-} from "./use-chat-test-helpers";
+} from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers (mirrors use-chat.test.ts so handleSend can stream).
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
-  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
+  const { streamingHelpersMockBody } =
+    await import("./helpers/use-chat-test-helpers");
 
   return await streamingHelpersMockBody();
 });
@@ -94,6 +95,31 @@ async function renderAndSendHello(
 
   await act(async () => {
     await result.current.handleSend("Hello");
+  });
+
+  return result;
+}
+
+/**
+ * Render with the adapter, send "Hello", queue a "B" follow-up, then retry the
+ * user turn — the shared setup for the retry-fork queue-flush tests.
+ * @param adapter - Recording adapter under test
+ * @returns The renderHook result for assertions
+ */
+async function sendQueueThenRetry(
+  adapter: ReturnType<typeof createRecordingAdapter>,
+) {
+  const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+  await act(async () => {
+    await result.current.handleSend("Hello");
+  });
+
+  const userIndex = result.current.messages.findIndex((m) => m.role === "user");
+
+  await act(() => result.current.enqueueMessage("B"));
+  await act(async () => {
+    await result.current.handleRetry(userIndex);
   });
 
   return result;
@@ -273,23 +299,10 @@ describe("useChat message queuing", () => {
     const sent: string[] = [];
     const adapter = createRecordingAdapter(sent);
 
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
-
-    await act(async () => {
-      await result.current.handleSend("Hello");
-    });
-
-    const userIndex = result.current.messages.findIndex(
-      (m) => m.role === "user",
-    );
-
     // A follow-up is queued, then the user retries the prior message. The fork
     // must neither drop the queued words nor strand them: once it streams a
     // response, the follow-up flushes through the normal send path.
-    await act(() => result.current.enqueueMessage("B"));
-    await act(async () => {
-      await result.current.handleRetry(userIndex);
-    });
+    const result = await sendQueueThenRetry(adapter);
 
     expect(result.current.queuedMessages).toStrictEqual([]);
     expect(sent).toContain("B");
@@ -297,7 +310,7 @@ describe("useChat message queuing", () => {
   });
 
   it("force-saves a content-less fork as its own sibling so the queued follow-up doesn't inherit the fork signal", async () => {
-    // The narrow AJM-539 case: a fork that completes SUCCESSFULLY but streams
+    // The narrow case: a fork that completes SUCCESSFULLY but streams
     // zero assistant content (no text/thought/tool) and records no usage never
     // fires the streaming autosave, so the fork signal would otherwise linger and
     // get consumed by the queued follow-up's save — mis-branching the follow-up
@@ -390,20 +403,7 @@ describe("useChat message queuing", () => {
       if (calls > 1) throw new Error("fork stream failed");
     });
 
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
-
-    await act(async () => {
-      await result.current.handleSend("Hello");
-    });
-
-    const userIndex = result.current.messages.findIndex(
-      (m) => m.role === "user",
-    );
-
-    await act(() => result.current.enqueueMessage("B"));
-    await act(async () => {
-      await result.current.handleRetry(userIndex);
-    });
+    const result = await sendQueueThenRetry(adapter);
 
     // The fork errored mid-stream, so the follow-up must stay queued to flush on
     // a later send rather than being drained into the failed fork.

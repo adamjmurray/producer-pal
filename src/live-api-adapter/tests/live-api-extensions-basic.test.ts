@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -52,6 +53,24 @@ describe("LiveAPI extensions - basic methods", () => {
       const nonExistentApi = LiveAPI.from("0");
 
       expect(nonExistentApi.exists()).toBe(false);
+    });
+
+    // Live reports a missing object's id in three shapes and exists() checks
+    // each separately. The mock always surfaces a string id, so the "id 0" and
+    // numeric forms are only reachable by invoking the extension directly.
+    it.each([["id 0"], ["0"], [0]])(
+      "returns false for the non-existent id %o",
+      (id) => {
+        expect(
+          LiveAPI.prototype.exists.call({ id } as unknown as LiveAPI),
+        ).toBe(false);
+      },
+    );
+
+    it("returns true for a numeric id other than 0", () => {
+      expect(
+        LiveAPI.prototype.exists.call({ id: 7 } as unknown as LiveAPI),
+      ).toBe(true);
     });
   });
 

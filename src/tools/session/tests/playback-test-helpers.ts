@@ -146,6 +146,49 @@ export function expectLiveSetProperty(
 }
 
 /**
+ * Assert the arrangement loop length was left untouched — the guard against a
+ * non-positive loop length skips the write rather than sending it to Live.
+ * @param handle - RegisteredMockObject for the live_set object
+ */
+export function expectLoopLengthNotWritten(handle: RegisteredMockObject): void {
+  expect(handle.set).not.toHaveBeenCalledWith("loop_length", expect.anything());
+}
+
+/**
+ * Assert the loop-ordering warning was relayed to the LLM on outlet 1.
+ */
+export function expectLoopOrderWarning(): void {
+  expect(outlet).toHaveBeenCalledWith(
+    1,
+    expect.stringContaining("loopEnd must be after loopStart"),
+  );
+}
+
+/**
+ * Assert every given clip slot was fired.
+ * @param clipSlots - RegisteredMockObjects for the clip slots
+ */
+export function expectAllClipSlotsFired(
+  clipSlots: RegisteredMockObject[],
+): void {
+  for (const clipSlot of clipSlots) {
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  }
+}
+
+/**
+ * Assert the multi-clip quantization fix ran: the transport is stopped and
+ * restarted around the fire calls so the clips launch together.
+ * @param handle - RegisteredMockObject for the live_set object
+ */
+export function expectQuantizationFixApplied(
+  handle: RegisteredMockObject,
+): void {
+  expect(handle.call).toHaveBeenCalledWith("stop_playing");
+  expect(handle.call).toHaveBeenCalledWith("start_playing");
+}
+
+/**
  * Setup mocks for multiple clip path resolutions in playback tests.
  * Registers live_set, clips, and clip slots via mock registry.
  * @param clipMappings - Array of clip ID to path mappings (defaults to 3 clips)

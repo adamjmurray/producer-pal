@@ -5,7 +5,13 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
+import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  resolveModalDescription,
+  resolveParamModes,
+} from "#src/tools/shared/tool-framework/modal-config.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -20,6 +26,7 @@ import * as console from "../node-for-max-logger.ts";
 interface RestApiConfig {
   tools: string[];
   liveApiEnabled: boolean;
+  notation: Notation;
 }
 
 /**
@@ -49,17 +56,37 @@ export function registerRestApiRoutes(
   // localhost gate would 403 the documented unauthenticated remote-access
   // feature's own requests.
   app.get("/api/tools", (_req: Request, res: Response): void => {
-    const enabledSet = new Set(getConfig().tools);
+    const config = getConfig();
+    const enabledSet = new Set(config.tools);
+    // Resolve descriptions and schemas against the active notation, matching how
+    // REST tool execution registers them (define-tool.ts). REST is the
+    // large-model surface, so small-model mode is off. Without this the catalog
+    // served bar|beat `notes` guidance while execution honored config.notation,
+    // making a stark/midi-json client send input that fails to parse.
+    const context = { notation: config.notation };
 
     const tools = getActiveToolDefs()
       .filter((td) => enabledSet.has(td.toolName))
-      .map((td) => ({
-        name: td.toolName,
-        title: td.toolOptions.title,
-        description: td.toolOptions.description,
-        annotations: td.toolOptions.annotations,
-        inputSchema: z.toJSONSchema(z.object(td.toolOptions.inputSchema)),
-      }));
+      .map((td) => {
+        const resolved = resolveParamModes(td.toolOptions.inputSchema, context);
+        const finalInputSchema = filterSchemaForSmallModel(
+          td.toolOptions.inputSchema,
+          resolved.excludeParams,
+          resolved.descriptionOverrides,
+          resolved.excludeEnumValues,
+        );
+
+        return {
+          name: td.toolName,
+          title: td.toolOptions.title,
+          description: resolveModalDescription(
+            td.toolOptions.description,
+            context,
+          ),
+          annotations: td.toolOptions.annotations,
+          inputSchema: z.toJSONSchema(z.object(finalInputSchema)),
+        };
+      });
 
     res.json({ tools });
   });
@@ -152,14 +179,17 @@ export function registerRestApiRoutes(
 /**
  * Parse the ?format query param into a normalized value.
  *
+ * The REST API defaults to `json` when the param is omitted: this endpoint is
+ * an HTTP integration surface, so structured JSON is the right default. The
+ * compact JS-literal format (optimized for LLM context) is opt-in via
+ * `?format=compact`.
+ *
  * @param raw - Raw query value from Express
- * @returns "json" | "compact" when valid, undefined when absent,
+ * @returns "json" (the default when absent) | "compact" when valid,
  *   "invalid" when present but not recognized
  */
-function parseFormatQuery(
-  raw: unknown,
-): "json" | "compact" | "invalid" | undefined {
-  if (raw === undefined) return undefined;
+function parseFormatQuery(raw: unknown): "json" | "compact" | "invalid" {
+  if (raw === undefined) return "json";
   if (raw === "json") return "json";
   if (raw === "compact") return "compact";
 
@@ -190,31 +220,32 @@ function parseTimeoutQuery(raw: unknown): number | "invalid" | undefined {
  * Build the RequestOverrides object from parsed query params, or undefined
  * when no overrides were supplied.
  *
- * @param format - Result of parseFormatQuery
+ * @param format - Result of parseFormatQuery (always resolved to a concrete
+ *   format; the REST default is `json`)
  * @param timeoutMs - Result of parseTimeoutQuery
- * @returns RequestOverrides or undefined when no overrides apply
+ * @returns RequestOverrides with compactOutput always set, plus timeoutMs when
+ *   provided
  */
 function buildOverrides(
-  format: "json" | "compact" | undefined,
+  format: "json" | "compact",
   timeoutMs: number | undefined,
-): RequestOverrides | undefined {
-  const overrides: RequestOverrides = {};
-
-  if (format !== undefined) {
-    overrides.compactOutput = format === "compact";
-  }
+): RequestOverrides {
+  const overrides: RequestOverrides = {
+    compactOutput: format === "compact",
+  };
 
   if (timeoutMs !== undefined) {
     overrides.timeoutMs = timeoutMs;
   }
 
-  return Object.keys(overrides).length > 0 ? overrides : undefined;
+  return overrides;
 }
 
 interface UnwrappedResponse {
   result: unknown;
   isError: boolean;
   warnings?: string[];
+  appended?: string[];
 }
 
 const WARNING_PREFIX = "WARNING: ";
@@ -228,14 +259,18 @@ const WARNING_PREFIX = "WARNING: ";
  *
  * JSON mode (parseJson=true, set by `?format=json`): parses the first
  * content item as JSON and exposes warnings as a separate string array.
- * Items past the first are filtered by the `WARNING: ` prefix so non-warning
- * content the V8 layer might emit in the future is not silently treated as a
- * warning. If the first item is not valid JSON (a V8 contract regression), it
- * falls back to returning the raw text.
+ * Items past the first prefixed with `WARNING: ` become warnings; any other
+ * extra items are Node-appended text blocks (the ppal-connect skills blob plus
+ * the self-labeling project-context, global-context, and memory-index blocks
+ * pushed by `withConnectAppend`) and are surfaced as an `appended` string array
+ * rather than dropped. If the
+ * first item is not valid JSON (a V8 contract regression), it falls back to
+ * returning the raw text.
  *
  * @param mcpResponse - Response from callLiveApi
  * @param parseJson - True when the caller asked for `?format=json`
- * @returns Plain object with `result`, `isError`, and optional `warnings`
+ * @returns Plain object with `result`, `isError`, and optional `warnings` /
+ *   `appended`
  */
 function unwrapMcpResponse(
   mcpResponse: McpResponse,
@@ -249,12 +284,21 @@ function unwrapMcpResponse(
   }
 
   // First content item is the tool result. Subsequent items prefixed with
-  // `WARNING: ` are warnings emitted by the V8 layer; anything else past the
-  // first item is unexpected under the current contract and ignored.
+  // `WARNING: ` are warnings emitted by the V8 layer; the remaining extra
+  // items are Node-appended blocks (ppal-connect skills, project context,
+  // global context, and memory index) and are surfaced under `appended` rather
+  // than dropped.
   const [resultText = "", ...rest] = items;
-  const warnings = rest
-    .filter((line) => line.startsWith(WARNING_PREFIX))
-    .map((line) => line.slice(WARNING_PREFIX.length));
+  const warnings: string[] = [];
+  const appended: string[] = [];
+
+  for (const line of rest) {
+    if (line.startsWith(WARNING_PREFIX)) {
+      warnings.push(line.slice(WARNING_PREFIX.length));
+    } else {
+      appended.push(line);
+    }
+  }
 
   let result: unknown;
 
@@ -270,6 +314,7 @@ function unwrapMcpResponse(
   const response: UnwrappedResponse = { result, isError: false };
 
   if (warnings.length > 0) response.warnings = warnings;
+  if (appended.length > 0) response.appended = appended;
 
   return response;
 }

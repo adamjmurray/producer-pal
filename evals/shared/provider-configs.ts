@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -28,11 +28,19 @@ export const ANTHROPIC_CONFIG: ProviderConfig = {
   defaultModel: "claude-sonnet-4-5-20250929",
 };
 
+/** Codex CLI subscription provider configuration */
+export const CODEX_CODE_CONFIG: ProviderConfig = {
+  apiKeyEnvVar: "",
+  providerName: "Codex CLI",
+  defaultModel: "terra",
+  apiKeyOptional: true,
+};
+
 /** Google Gemini provider configuration */
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-3.5-flash",
+  defaultModel: "gemini-3.6-flash",
 };
 
 /** OpenAI provider configuration */
@@ -78,6 +86,7 @@ export function validateApiKey(config: ProviderConfig): string {
 /** All provider configs keyed by provider id (registry order) */
 export const PROVIDER_CONFIGS: Record<EvalProvider, ProviderConfig> = {
   anthropic: ANTHROPIC_CONFIG,
+  "codex-code": CODEX_CODE_CONFIG,
   google: GEMINI_CONFIG,
   local: LOCAL_CONFIG,
   openai: OPENAI_CONFIG,

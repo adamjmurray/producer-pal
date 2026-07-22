@@ -1,0 +1,24 @@
+/* The VitePress default theme only draws a divider *between* sidebar groups
+   (`.group + .group`), so the first section ("Guide") sits flush under the nav
+   bar with no separator — making it read as a page title rather than a peer
+   nav section like the others. Apply the same top border to every group so the
+   first one matches the rest (groups 2+ already have it, so this only adds the
+   missing line above the first). The sidebar's 32px top padding keeps this line
+   clear of the nav bar's bottom border, so there's no double-line. */
+.VPSidebar .group {
+  border-top: 1px solid var(--vp-c-divider);
+  padding-top: 10px;
+}
+
+/* The default theme renders top-level section titles bold (font-weight: 700),
+   which out-weighs the brand-colored active item and makes the titles compete
+   for attention. Drop the bold so the selected item stays the most prominent
+   thing; the divider above each group already marks where a section starts, so
+   the heavy weight isn't needed.
+
+   Scope to the header row only: the title's `.text` sits inside the group's
+   `> .item` div, while nested item texts live in a sibling `.items` container —
+   so this can't leak onto child items the way a bare descendant `.text` would. */
+.VPSidebar .VPSidebarItem.level-0 > .item .text {
+  font-weight: 500;
+}

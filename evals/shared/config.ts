@@ -7,6 +7,7 @@
  */
 
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
 const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 
@@ -22,6 +23,7 @@ export interface ConfigOptions {
   sampleFolder?: string;
   liveApiEnabled?: boolean;
   tools?: string[];
+  notation?: Notation;
 }
 
 /**
@@ -42,6 +44,27 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 }
 
 /**
+ * Read the server's current notation via the /config endpoint.
+ *
+ * Used to snapshot the active notation before an assertion temporarily flips it,
+ * so the prior value (e.g. a scenario's configured notation) can be restored
+ * rather than hardcoding the default.
+ *
+ * @returns The current notation, falling back to the default if unset
+ */
+export async function getNotation(): Promise<Notation> {
+  const response = await fetch(CONFIG_URL);
+
+  if (!response.ok) {
+    throw new Error(`Failed to get config: ${response.status}`);
+  }
+
+  const config = (await response.json()) as { notation?: Notation };
+
+  return config.notation ?? DEFAULT_NOTATION;
+}
+
+/**
  * Reset server config to defaults
  */
 export async function resetConfig(): Promise<void> {
@@ -51,5 +74,6 @@ export async function resetConfig(): Promise<void> {
     jsonOutput: true,
     sampleFolder: "",
     tools: [...TOOL_NAMES],
+    notation: DEFAULT_NOTATION,
   });
 }

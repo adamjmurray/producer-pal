@@ -16,7 +16,7 @@ import {
   type SpecializedDeviceSpec,
 } from "../specialized-device-types.ts";
 
-// Drift (DriftDevice, class_name "Drift"). AJM-374. See
+// Drift (DriftDevice, class_name "Drift"). See
 // dev/Specialized-Devices.md.
 // Declarative mod matrix: each slot is an int `_index` property; the value
 // lists are stable, hardcoded. Modulation amounts are regular DeviceParameters
@@ -56,8 +56,8 @@ const VOICE_COUNTS = [4, 8, 16, 24, 32] as const;
  * Build a source pseudo-param for one of the 3 free mod-matrix slots. Reads are
  * omitted when the paired target is "None" (the slot is disabled) or when the
  * target index is out of range (returns undefined from the labels lookup) —
- * otherwise a source value implies an active route that isn't there (AJM-391,
- * AJM-422). Writes still set the source independently, so a source can be
+ * otherwise a source value implies an active route that isn't there. Writes
+ * still set the source independently, so a source can be
  * staged before its target.
  * @param name - Camel-case param name
  * @param sourceProperty - The source `_index` property for this slot

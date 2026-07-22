@@ -12,14 +12,7 @@ export type ReasoningSummary = "auto" | "concise" | "detailed";
 
 /** Thinking level — named levels or numeric token budget strings */
 export type ThinkingLevel =
-  | "off"
-  | "low"
-  | "medium"
-  | "high"
-  | "ultra"
-  | "auto"
-  | "none"
-  | (string & {});
+  "off" | "low" | "medium" | "high" | "ultra" | "auto" | "none" | (string & {});
 
 export interface ChatOptions {
   provider: EvalProvider;
@@ -46,6 +39,8 @@ export interface TurnResult {
   text: string;
   toolCalls: Array<ToolCall & { result?: string }>;
   stepUsages?: TokenUsage[];
+  /** Error message if the stream emitted an "error" part during the turn */
+  error?: string;
 }
 
 export interface ChatContext {
@@ -59,4 +54,10 @@ export interface ToolCall {
   name: string;
   args: Record<string, unknown>;
   result?: string;
+  /**
+   * AI SDK tool-call id. Used to attach each tool-result to its originating
+   * call so parallel same-name calls in one step don't get their results
+   * swapped (the SDK emits both tool-call parts before either result).
+   */
+  toolCallId?: string;
 }

@@ -176,6 +176,13 @@ describe("createScene", () => {
     ).toThrow(/would exceed the maximum allowed scenes/);
   });
 
+  it("allows creating scenes up to exactly the maximum", () => {
+    // Boundary: sceneIndex + count === MAX is allowed (> not >=).
+    expect(() =>
+      createScene({ sceneIndex: MAX_AUTO_CREATED_SCENES - 1, count: 1 }),
+    ).not.toThrow();
+  });
+
   it("should return single object for count=1 and array for count>1", () => {
     const singleResult = createScene({
       sceneIndex: 0,
@@ -273,6 +280,11 @@ describe("createScene", () => {
       expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
       expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
       expect(result).toHaveLength(2);
+      // The tool label prefixes the "extra names ignored" warning.
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("createScene: 3 names provided"),
+      );
     });
 
     it("should preserve commas in name when count is 1", () => {
@@ -431,6 +443,24 @@ describe("createScene", () => {
       });
     });
 
+    it.each([
+      ["color only", { color: "#FF0000" }, "color", 16711680],
+      ["tempo only", { tempo: 140 }, "tempo", 140],
+      [
+        "timeSignature only",
+        { timeSignature: "3/4" },
+        "time_signature_numerator",
+        3,
+      ],
+    ])(
+      "applies %s after capture (each guard operand is load-bearing)",
+      (_label, props, setKey, setValue) => {
+        createScene({ capture: true, ...props });
+
+        expect(capturedScene.set).toHaveBeenCalledWith(setKey, setValue);
+      },
+    );
+
     it("should handle disabled tempo and timeSignature in capture mode", () => {
       const result = createScene({
         capture: true,
@@ -526,6 +556,20 @@ describe("createScene", () => {
         sceneIndex: 0,
         focus: false,
       });
+
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+
+    it("should not call select when capturing with focus omitted", () => {
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: [] },
+      });
+      registerMockObject("live_set/view/selected_scene", {
+        path: livePath.scene(1),
+      });
+
+      createScene({ capture: true });
 
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });

@@ -116,6 +116,28 @@ describe("validateIdType", () => {
 
     expect(() => validateIdType(id, "drum-pad", "testTool")).not.toThrow();
   });
+
+  it("should reject a Track against every non-track expected type", () => {
+    // A single Track exercises the negative branch of each isTypeMatch case:
+    // "scene"/"clip" strict equality, "device" endsWith, "drum-pad" OR, and the
+    // default (unknown type) — each must NOT match a Track.
+    registerMockObject("track_1", {
+      path: "live_set tracks 0",
+      type: "Track",
+    });
+
+    for (const expectedType of [
+      "scene",
+      "clip",
+      "device",
+      "drum-pad",
+      "mystery-type",
+    ]) {
+      expect(() => validateIdType("track_1", expectedType, "testTool")).toThrow(
+        `testTool failed: id "track_1" is not a ${expectedType} (found Track)`,
+      );
+    }
+  });
 });
 
 describe("validateIdTypes", () => {

@@ -39,14 +39,15 @@ def list_tools(base_url):
 def call_tool(base_url, name, args, *, timeout_ms=None):
     """Call a Producer Pal tool by name with the given args.
 
-    Always uses `?format=json` so `result` is a parsed value (dict/list/etc.)
-    and warnings are surfaced as a separate `warnings` list.
+    The REST API defaults to `format=json`, so `result` is a parsed value
+    (dict/list/etc.) and warnings are surfaced as a separate `warnings` list.
     """
-    params = {"format": "json"}
+    params = {}
     if timeout_ms is not None:
         params["timeoutMs"] = str(timeout_ms)
 
-    url = f"{base_url}/api/tools/{name}?{urllib.parse.urlencode(params)}"
+    query = f"?{urllib.parse.urlencode(params)}" if params else ""
+    url = f"{base_url}/api/tools/{name}{query}"
     data = json.dumps(args).encode()
     req = urllib.request.Request(
         url,

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +9,26 @@ import { evaluateTransformAST } from "#src/notation/transform/helpers/transform-
 import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
+import { createContext } from "./evaluator/transform-evaluator-test-helpers.ts";
+
+// The note the scalar evaluator is asked about in these branch tests.
+const NOTE_PROPERTIES = { pitch: 60, velocity: 100 };
+
+// A single `velocity = 127` assignment, optionally gated by a pitch or time
+// range — the AST shape the parser produces for a range-selected line.
+function velocitySetAST(
+  gate: Pick<TransformAssignment, "pitchRange" | "timeRange"> = {},
+): TransformAssignment[] {
+  return [
+    {
+      parameter: "velocity" as const,
+      operator: "set" as const,
+      pitchRange: gate.pitchRange ?? null,
+      timeRange: gate.timeRange ?? null,
+      expression: { type: "number" as const, value: 127 },
+    },
+  ] as unknown as TransformAssignment[];
+}
 
 describe("Transform Branch Coverage", () => {
   beforeEach(() => {
@@ -27,11 +48,8 @@ describe("Transform Branch Coverage", () => {
 
       const result = evaluateTransform(
         "velocity += 50",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
-        { pitch: 60, velocity: 100 },
+        createContext(),
+        NOTE_PROPERTIES,
       );
 
       // Should still work, just bar and beat will be null
@@ -44,11 +62,8 @@ describe("Transform Branch Coverage", () => {
 
       const result = evaluateTransform(
         "velocity += 30",
-        {
-          position: 2,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
-        { pitch: 60, velocity: 100 },
+        createContext({ position: 2 }),
+        NOTE_PROPERTIES,
       );
 
       // Should still work despite malformed bar|beat
@@ -62,12 +77,8 @@ describe("Transform Branch Coverage", () => {
       // When timeRange.end === timeRange.start, duration is 0, phase should default to 0
       const result = evaluateTransform(
         "velocity += ramp(0, 100)",
-        {
-          position: 5,
-          timeSig: { numerator: 4, denominator: 4 },
-          clipTimeRange: { start: 5, end: 5 }, // Zero duration
-        },
-        { pitch: 60, velocity: 100 },
+        createContext({ position: 5, clipTimeRange: { start: 5, end: 5 } }),
+        NOTE_PROPERTIES,
       );
 
       // Should work despite zero duration
@@ -79,12 +90,8 @@ describe("Transform Branch Coverage", () => {
       // When timeRange.end < timeRange.start, duration is negative, phase should default to 0
       const result = evaluateTransform(
         "velocity += ramp(20, 80)",
-        {
-          position: 3,
-          timeSig: { numerator: 4, denominator: 4 },
-          clipTimeRange: { start: 10, end: 2 }, // Negative duration
-        },
-        { pitch: 60, velocity: 100 },
+        createContext({ position: 3, clipTimeRange: { start: 10, end: 2 } }),
+        NOTE_PROPERTIES,
       );
 
       // Should work despite negative duration
@@ -97,23 +104,9 @@ describe("Transform Branch Coverage", () => {
     it("handles assignment with pitch range that filters out the note", () => {
       // When a note is outside the pitch range, assignment is skipped
       // and assignmentResult.value will be null/undefined
-      const ast = [
-        {
-          parameter: "velocity" as const,
-          operator: "set" as const,
-          pitchRange: { startPitch: 70, endPitch: 80 }, // Range: C5 to G#5
-          timeRange: null,
-          expression: { type: "number" as const, value: 127 },
-        },
-      ];
-
       const result = evaluateTransformAST(
-        ast as unknown as TransformAssignment[],
-        {
-          position: 0,
-          pitch: 60, // C4 - outside the range
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        velocitySetAST({ pitchRange: { startPitch: 70, endPitch: 80 } }),
+        createContext({ pitch: 60 }), // C4 - outside the C5..G#5 range
         { pitch: 60 },
       );
 
@@ -123,29 +116,11 @@ describe("Transform Branch Coverage", () => {
 
     it("handles assignment with time range that filters out the note", () => {
       // When a note is outside the time range, assignment is skipped
-      const ast = [
-        {
-          parameter: "velocity" as const,
-          operator: "set" as const,
-          pitchRange: null,
-          timeRange: {
-            startBar: 2,
-            startBeat: 1,
-            endBar: 3,
-            endBeat: 1,
-          },
-          expression: { type: "number" as const, value: 127 },
-        },
-      ];
-
       const result = evaluateTransformAST(
-        ast as unknown as TransformAssignment[],
-        {
-          position: 0,
-          bar: 1, // Before the time range starts
-          beat: 1,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        velocitySetAST({
+          timeRange: { startBar: 2, startBeat: 1, endBar: 3, endBeat: 1 },
+        }),
+        createContext({ bar: 1, beat: 1 }), // before the time range starts
         { pitch: 60 },
       );
 
@@ -156,28 +131,31 @@ describe("Transform Branch Coverage", () => {
     it("handles assignment that skips due to pitch filtering", () => {
       // This tests the branch where assignmentResult.value is null
       // because the assignment was skipped and continues to next iteration
-      const ast = [
-        {
-          parameter: "velocity" as const,
-          operator: "set" as const,
-          pitchRange: { startPitch: 70, endPitch: 80 },
-          timeRange: null,
-          expression: { type: "number" as const, value: 127 },
-        },
-      ];
-
       const result = evaluateTransformAST(
-        ast as unknown as TransformAssignment[],
-        {
-          position: 0,
-          pitch: 60, // Outside the pitch range
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        velocitySetAST({ pitchRange: { startPitch: 70, endPitch: 80 } }),
+        createContext({ pitch: 60 }), // outside the pitch range
         { pitch: 60 },
       );
 
       // Assignment was skipped, so velocity should not be in result
       expect(result.velocity).toBeUndefined();
+      expect(Object.keys(result)).toHaveLength(0);
+    });
+
+    it("skips note-count ops in per-note evaluation", () => {
+      // Note-count ops (ratchet/merge/split/repeat) act on the whole note list,
+      // so the per-note evaluator must skip them (they carry no scalar result).
+      // applyTransforms routes note ops separately, so this per-note path is
+      // only reached by calling the evaluator directly with a note op present.
+      const ast = [{ kind: "noteOp", name: "ratchet", args: [] }];
+
+      const result = evaluateTransformAST(
+        ast as unknown as TransformAssignment[],
+        createContext({ pitch: 60 }),
+        { pitch: 60 },
+      );
+
+      // The note op is skipped, contributing no parameter results.
       expect(Object.keys(result)).toHaveLength(0);
     });
   });

@@ -83,7 +83,7 @@ export function buildCandidateWhere(
     : allKnownKindFourCCs();
 
   if (args.kind === "midi") {
-    // AJM-335: enrich kind:midi to also surface MIDI Live clips (.alc with the
+    // Enrich kind:midi to also surface MIDI Live clips (.alc with the
     // alcM subtype), not just .mid files — the natural "find MIDI ideas" query
     // otherwise misses the bulk of a user's MIDI content. kind:audio is left
     // untouched: it's the loadable-sample bucket, and audio Live clips aren't
@@ -249,8 +249,7 @@ export function resolveFileIdForPath(
 }
 
 export type InFolderResolution =
-  | { ok: true; parentId: number | undefined }
-  | { ok: false; reason: string };
+  { ok: true; parentId: number | undefined } | { ok: false; reason: string };
 
 /**
  * Normalize an optional `inFolder` filter (treating "" as absent) and resolve

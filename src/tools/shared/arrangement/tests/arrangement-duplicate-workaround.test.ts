@@ -9,12 +9,11 @@ import {
   setupArrangementClip,
   setupClip,
   setupTrack,
+  tilingTrackMethods,
 } from "./arrangement-tiling-test-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
-  duplicateSelfOverlappingClip,
   setArrangementDuplicateCrashWorkaround,
-  sourceOverlapsTarget,
 } from "../arrangement-tiling-workaround.ts";
 
 beforeEach(() => {
@@ -68,21 +67,11 @@ function setupHoldingClipScenario(
     },
   });
 
-  let dupCount = 0;
-
   return setupTrack(0, {
     properties: {
       arrangement_clips: ["id", existingClip.id],
     },
-    methods: {
-      duplicate_clip_to_arrangement: () => {
-        dupCount++;
-
-        return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-      },
-      create_midi_clip: () => ["id", "300"],
-      delete_clip: () => null,
-    },
+    methods: tilingTrackMethods(),
   });
 }
 
@@ -281,28 +270,74 @@ describe("clearClipAtDuplicateTarget", () => {
     expect(trackMock.call).not.toHaveBeenCalled();
   });
 
-  it("right-trims clip for before-only overlap", () => {
-    // Source: 4 beats long (start_time=20, end_time=24), target position=8
-    // Target range: 8 to 12. Existing clip at 4-10 starts before target,
-    // ends within — right-trims to keep [4,8].
+  it("returns true (safe to duplicate) when the workaround is disabled", () => {
+    // With the workaround off we defer to Live entirely — the early return must
+    // report `true`, even for a source that would otherwise self-overlap [0,4].
+    setArrangementDuplicateCrashWorkaround(false);
+
+    const safe = runClearTargetOnEmptyTrack({
+      isArrangementClip: 1,
+      sourceStart: 0,
+      sourceEnd: 4,
+      targetPosition: 0,
+    });
+
+    expect(safe).toBe(true);
+  });
+
+  it("returns true (safe to duplicate) for a session-clip source", () => {
+    // A session-clip source is a no-op that must report `true`. Give it a range
+    // that would self-overlap if the early return were skipped, so the guard is
+    // observable through the return value, not just the absence of calls.
+    const safe = runClearTargetOnEmptyTrack({
+      isArrangementClip: 0,
+      sourceStart: 0,
+      sourceEnd: 4,
+      targetPosition: 0,
+    });
+
+    expect(safe).toBe(true);
+  });
+
+  it("does not treat an adjacent-before placement as a self-overlap", () => {
+    // Source [10,12] duplicated to target 8 places the copy at [8,10] — its right
+    // edge (targetEnd 10) touches the source's start (10) but does not cross it.
+    // The self-overlap test is strictly `sourceStart < targetEnd`, so this must be
+    // reported safe (true), not a self-overlap.
     setupClip("100", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 20,
-        end_time: 24,
-      },
+      properties: { is_arrangement_clip: 1, start_time: 10, end_time: 12 },
     });
-
-    const existingClip = setupArrangementClip("200", 0, {
-      start_time: 4,
-      end_time: 10,
-    });
-
     const trackMock = setupTrack(0, {
-      properties: {
-        arrangement_clips: ["id", existingClip.id],
-      },
+      properties: { arrangement_clips: ["id", "100"] },
+      methods: { delete_clip: () => null },
+    });
+
+    const safe = clearClipAtDuplicateTarget(
+      LiveAPI.from(trackMock.path),
+      "100",
+      8,
+      true,
+      mockContext,
+    );
+
+    expect(safe).toBe(true);
+  });
+
+  it("does not clear an existing clip that only abuts the target range", () => {
+    // Source [20,24] (len 4) to target 6 clears [6,10]. An existing clip [10,14]
+    // starts exactly at targetEnd (10) — adjacent, not overlapping — so the loop's
+    // strict `clipStart < targetEnd` must leave it untouched (no track calls).
+    setupClip("100", {
+      properties: { is_arrangement_clip: 1, start_time: 20, end_time: 24 },
+    });
+    const existingClip = setupArrangementClip("200", 0, {
+      start_time: 10,
+      end_time: 14,
+    });
+    const trackMock = setupTrack(0, {
+      properties: { arrangement_clips: ["id", existingClip.id] },
       methods: {
+        duplicate_clip_to_arrangement: () => ["id", "400"],
         create_midi_clip: () => ["id", "300"],
         delete_clip: () => null,
       },
@@ -311,10 +346,25 @@ describe("clearClipAtDuplicateTarget", () => {
     clearClipAtDuplicateTarget(
       LiveAPI.from(trackMock.path),
       "100",
-      8,
+      6,
       true,
       mockContext,
     );
+
+    expect(trackMock.call).not.toHaveBeenCalled();
+  });
+
+  it("right-trims clip for before-only overlap", () => {
+    // Source: 4 beats long (start_time=20, end_time=24), target position=8
+    // Target range: 8 to 12. Existing clip at 4-10 starts before target,
+    // ends within — right-trims to keep [4,8].
+    const trackMock = runClearTargetOnTrimmableTrack({
+      sourceStart: 20,
+      sourceEnd: 24,
+      existingStart: 4,
+      existingEnd: 10,
+      targetPosition: 8,
+    });
 
     // Right-trim: temp at targetPosition (8), length = clipEnd - target = 10 - 8 = 2
     expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 8, 2);
@@ -459,6 +509,72 @@ describe("clearClipAtDuplicateTarget", () => {
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 200");
   });
 
+  it("does not treat a clip ending exactly at the target end as having an after portion", () => {
+    // Existing clip [4,12], target [8,12]: it starts before the target and ends
+    // exactly at targetEnd. hasAfter is strictly `clipEnd > targetEnd` (12 > 12 =
+    // false), so this is a before-only right-trim (one create_midi_clip, no
+    // holding dup) — not the dup-to-holding after path.
+    const trackMock = runClearTargetOnTrimmableTrack({
+      sourceStart: 20,
+      sourceEnd: 24,
+      existingStart: 4,
+      existingEnd: 12,
+      targetPosition: 8,
+    });
+
+    expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+    expect(trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("computes the holding area from the furthest clip end (not the last one listed)", () => {
+    // clearOverlappingClip's dup-to-holding must land past the furthest-right
+    // clip. With clips listed end-descending [far 300, overlapping 20], the max
+    // end is 300 → holding at 400. If it took the last clip's end instead it
+    // would land at 120 and could collide with the far clip.
+    setupClip("100", {
+      properties: { is_arrangement_clip: 1, start_time: 50, end_time: 54 },
+    });
+    const far = setupArrangementClip("900", 0, {
+      start_time: 100,
+      end_time: 300,
+    });
+    const overlapping = setupArrangementClip(
+      "200",
+      0,
+      { start_time: 10, end_time: 20 },
+      1,
+    );
+
+    setupClip("400", {
+      properties: { is_arrangement_clip: 1, start_time: 400, end_time: 410 },
+    });
+    const trackMock = setupTrack(0, {
+      properties: {
+        arrangement_clips: ["id", far.id, "id", overlapping.id],
+      },
+      methods: tilingTrackMethods(),
+    });
+
+    clearClipAtDuplicateTarget(
+      LiveAPI.from(trackMock.path),
+      "100",
+      8,
+      true,
+      mockContext,
+    );
+
+    // After-only overlap on [10,20] → dup to holding at max(300,20) + 100 = 400.
+    expect(trackMock.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id 200",
+      400,
+    );
+  });
+
   it("throws and leaves original intact when dup-to-holding silently fails (after-only)", () => {
     // After-only overlap: existing [10,14], target [8,12].
     // Without protection, the original would be deleted with no replacement
@@ -479,7 +595,7 @@ describe("clearClipAtDuplicateTarget", () => {
         true,
         mockContext,
       ),
-    ).toThrow(/duplicate_clip_to_arrangement returned no clip/);
+    ).toThrow(/dup-to-holding for clip 200/);
 
     expect(trackMock.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
     expect(trackMock.call).not.toHaveBeenCalledWith(
@@ -519,204 +635,102 @@ describe("clearClipAtDuplicateTarget", () => {
   });
 });
 
-describe("sourceOverlapsTarget", () => {
-  it("returns false when the crash workaround is disabled", () => {
-    setArrangementDuplicateCrashWorkaround(false);
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 4 },
-    });
-
-    // Source [0,4] would overlap a placement at [2,6], but with the workaround
-    // off we defer to Live entirely (matches clearClipAtDuplicateTarget's no-op).
-    expect(sourceOverlapsTarget("100", 2, 4)).toBe(false);
-  });
-
-  it("returns false when the source is a session clip", () => {
-    setupClip("100", { properties: { is_arrangement_clip: 0 } });
-
-    expect(sourceOverlapsTarget("100", 0, 4)).toBe(false);
-  });
-
-  it("returns true when the source overlaps the target placement range", () => {
-    // Source [0,16] (4-bar clip); a partial tile of length 4 at position 4
-    // covers [4,8], which is inside the source — placing it would trim the source.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
-    });
-
-    expect(sourceOverlapsTarget("100", 4, 4)).toBe(true);
-  });
-
-  it("returns false when the placement abuts the source's end (the tiling case)", () => {
-    // Source [0,4]; tiling always starts at the source's end, so a tile at
-    // position 4 (range [4,8]) is adjacent, not overlapping — the common path.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 4 },
-    });
-
-    expect(sourceOverlapsTarget("100", 4, 4)).toBe(false);
-  });
-});
-
-describe("duplicateSelfOverlappingClip", () => {
-  it("copies the source to holding, then overwrites the original with a full copy", () => {
-    // Source [0,16] (a 4-bar clip in 4/4) duplicated to target 4 — one bar
-    // forward, so it overlaps its own target range [4,20]. Direct duplication is
-    // impossible (Ableton crashes; trimming the source first would truncate the
-    // content). Routing through the holding area trims the original to its first
-    // bar [0,4] and places a full 4-bar copy at [4,20].
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
-    });
-
-    // The holding copy the first duplicate creates. The holding area clears the
-    // target placement (target 4 + length 16 = 20) as well as the existing clips
-    // (maxEnd 16), so it starts at max(16, 20) + 100 = 120.
-    setupClip("400", {
-      properties: { is_arrangement_clip: 1, start_time: 120, end_time: 136 },
-    });
-
-    // The full copy the second duplicate places at the target.
-    setupClip("500", { properties: { is_arrangement_clip: 1 } });
-
-    let dupCount = 0;
-
-    const trackMock = setupTrack(0, {
-      properties: { arrangement_clips: ["id", "100"] },
-      methods: {
-        duplicate_clip_to_arrangement: () => {
-          dupCount++;
-
-          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-        },
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
-
-    const result = duplicateSelfOverlappingClip(
-      LiveAPI.from(trackMock.path),
-      "100",
-      4,
-      true,
-      mockContext,
-    );
-
-    // Step 1: copy the source to the holding area, past both the existing clips
-    // (maxEnd 16) and the target placement (4 + 16 = 20): max(16, 20) + 100 = 120.
-    expect(trackMock.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id 100",
-      120,
-    );
-
-    // Step 2: trim the ORIGINAL to its "before" portion (right-trim at target 4,
-    // length clipEnd 16 - target 4 = 12) so the full copy can overwrite [4,20].
-    expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 4, 12);
-
-    // Step 3: place the full copy at the target from the untouched holding clip.
-    expect(trackMock.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id 400",
-      4,
-    );
-
-    // Step 4: clean up the holding clip.
-    expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 400");
-
-    // The placed full-length copy is returned (never the trimmed original).
-    expect(result.id).toBe("500");
-  });
-
-  it("pushes the holding area past the target placement for a clip longer than the gap", () => {
-    // Regression: a clip longer than HOLDING_AREA_GAP_BEATS (100) moved far
-    // enough forward that its full-length target copy would reach a holding area
-    // pinned only to maxEnd. Source [0,200] (50 bars) duplicated to target 199
-    // self-overlaps [199,399]. With the old `maxEnd + 100` holding position
-    // (300), the placed copy [199,399] overlaps the holding clip [300,500];
-    // moveClipFromHolding's clearClipAtDuplicateTarget would then read the
-    // holding clip as self-overlapping, skip clearing the original [0,200], and
-    // duplicate onto a still-overlapping clip — exactly Ableton's crash. The
-    // holding area must clear the target extent: max(200, 199 + 200) + 100 = 499.
-    setupClip("100", {
-      properties: { is_arrangement_clip: 1, start_time: 0, end_time: 200 },
-    });
-
-    // The holding copy at the corrected position (past the target extent 399).
-    setupClip("400", {
-      properties: { is_arrangement_clip: 1, start_time: 499, end_time: 699 },
-    });
-    setupClip("500", { properties: { is_arrangement_clip: 1 } });
-
-    let dupCount = 0;
-
-    const trackMock = setupTrack(0, {
-      properties: { arrangement_clips: ["id", "100"] },
-      methods: {
-        duplicate_clip_to_arrangement: () => {
-          dupCount++;
-
-          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-        },
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
-
-    const result = duplicateSelfOverlappingClip(
-      LiveAPI.from(trackMock.path),
-      "100",
-      199,
-      true,
-      mockContext,
-    );
-
-    // The holding copy lands past the target placement (399), not at maxEnd + 100
-    // (300) — so the holding clip cannot overlap the target copy.
-    expect(trackMock.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id 100",
-      499,
-    );
-
-    // Because the holding area cleared the target, the ORIGINAL is recognized as
-    // an "other" overlapping clip and right-trimmed at 199 (length 200 - 199 = 1)
-    // — it is no longer left in place to overlap the target and crash Ableton.
-    expect(trackMock.call).toHaveBeenCalledWith("create_midi_clip", 199, 1);
-
-    // The full copy is then placed at the target and the holding clip removed.
-    expect(trackMock.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id 400",
-      199,
-    );
-    expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 400");
-    expect(result.id).toBe("500");
-  });
-});
-
 /**
- * Set up mocks for a clearClipAtDuplicateTarget test that expects no track calls.
- * @param opts - Source clip times, existing clip times, and target position
- * @param opts.sourceStart - Source clip start time
- * @param opts.sourceEnd - Source clip end time
- * @param opts.existingStart - Existing clip start time
- * @param opts.existingEnd - Existing clip end time
- * @param opts.targetPosition - Target position for duplicate
- * @returns The track mock for assertion
+ * A clearClipAtDuplicateTarget scenario: the source clip "100", one overlapping
+ * existing clip "200", and the position the source is duplicated to.
  */
-function runClearTargetExpectingNoOp(opts: {
+interface ClearTargetScenario {
   sourceStart: number;
   sourceEnd: number;
   existingStart: number;
   existingEnd: number;
   targetPosition: number;
-}): ReturnType<typeof setupTrack> {
+}
+
+/**
+ * Set up mocks for a clearClipAtDuplicateTarget test that expects no track calls.
+ * @param opts - Source clip times, existing clip times, and target position
+ * @returns The track mock for assertion
+ */
+function runClearTargetExpectingNoOp(
+  opts: ClearTargetScenario,
+): ReturnType<typeof setupTrack> {
   const { existingClip } = setupSourceAndExistingClips(opts);
 
   const trackMock = setupTrack(0, {
     properties: {
       arrangement_clips: ["id", existingClip.id],
+    },
+  });
+
+  clearClipAtDuplicateTarget(
+    LiveAPI.from(trackMock.path),
+    "100",
+    opts.targetPosition,
+    true,
+    mockContext,
+  );
+
+  return trackMock;
+}
+
+/**
+ * Run clearClipAtDuplicateTarget against a track with no arrangement clips
+ * registered, so only the early-return guards can decide the outcome. Used by
+ * the tests that assert the guards report "safe to duplicate" via the return
+ * value rather than through track calls.
+ * @param opts - Source clip kind, source clip times, and target position
+ * @param opts.isArrangementClip - 1 for an arrangement source, 0 for a session source
+ * @param opts.sourceStart - Source clip start time
+ * @param opts.sourceEnd - Source clip end time
+ * @param opts.targetPosition - Target position for duplicate
+ * @returns Whether clearClipAtDuplicateTarget reported the duplicate as safe
+ */
+function runClearTargetOnEmptyTrack(opts: {
+  isArrangementClip: number;
+  sourceStart: number;
+  sourceEnd: number;
+  targetPosition: number;
+}): boolean {
+  setupClip("100", {
+    properties: {
+      is_arrangement_clip: opts.isArrangementClip,
+      start_time: opts.sourceStart,
+      end_time: opts.sourceEnd,
+    },
+  });
+
+  const trackMock = setupTrack(0);
+
+  return clearClipAtDuplicateTarget(
+    LiveAPI.from(trackMock.path),
+    "100",
+    opts.targetPosition,
+    true,
+    mockContext,
+  );
+}
+
+/**
+ * Run clearClipAtDuplicateTarget against a track that can right-trim (create
+ * and delete clips) but cannot duplicate to a holding area. Used by the
+ * before-only overlap tests, where a successful run must right-trim in place
+ * and never reach for the holding-clip path.
+ * @param opts - Source clip times, existing clip times, and target position
+ * @returns The track mock for assertion
+ */
+function runClearTargetOnTrimmableTrack(
+  opts: ClearTargetScenario,
+): ReturnType<typeof setupTrack> {
+  const { existingClip } = setupSourceAndExistingClips(opts);
+
+  const trackMock = setupTrack(0, {
+    properties: {
+      arrangement_clips: ["id", existingClip.id],
+    },
+    methods: {
+      create_midi_clip: () => ["id", "300"],
+      delete_clip: () => null,
     },
   });
 

@@ -41,6 +41,102 @@ export function getConfigUrl(): string {
 }
 
 /**
+ * Gets the global-context endpoint URL (the machine-global ~/.producer-pal
+ * context, distinct from the per-project /config memory).
+ * @returns {string} The global-context endpoint URL
+ */
+export function getGlobalContextUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/global-context");
+}
+
+/**
+ * Gets the system-prompt endpoint URL (the machine-global ~/.producer-pal
+ * custom system prompt that replaces the built-in instruction when non-empty).
+ * @returns {string} The system-prompt endpoint URL
+ */
+export function getSystemPromptUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/system-prompt");
+}
+
+/**
+ * Gets the skill-overrides collection endpoint URL (lists every built-in
+ * skills fragment with the user's override and drift state).
+ * @returns {string} The skill-overrides endpoint URL
+ */
+export function getSkillOverridesUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/skill-overrides");
+}
+
+/**
+ * Gets the endpoint URL for a single skills-fragment override slot (PUT to
+ * save an override, DELETE to reset it to the built-in).
+ * @param slot - The slot name
+ * @returns {string} The per-slot skill-overrides endpoint URL
+ */
+export function getSkillOverrideUrl(slot: string): string {
+  return `${getSkillOverridesUrl()}/${encodeURIComponent(slot)}`;
+}
+
+/**
+ * Gets the memory collection endpoint URL (lists every stored memory entry;
+ * the LLM-managed ~/.producer-pal/memory/ collection).
+ * @returns {string} The memory collection endpoint URL
+ */
+export function getMemoryCollectionUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/memory");
+}
+
+/**
+ * Gets the endpoint URL for a single memory entry (PUT to create/overwrite,
+ * DELETE to remove). The name is slugified server-side.
+ * @param name - The memory name
+ * @returns {string} The per-entry memory endpoint URL
+ */
+export function getMemoryEntryUrl(name: string): string {
+  return `${getMemoryCollectionUrl()}/${encodeURIComponent(name)}`;
+}
+
+/**
+ * Gets the custom-skills collection endpoint URL (lists every user-authored
+ * skill; the ~/.producer-pal/skills-custom/ collection).
+ * @returns {string} The custom-skills collection endpoint URL
+ */
+export function getCustomSkillsCollectionUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/custom-skills");
+}
+
+/**
+ * Gets the endpoint URL for a single custom skill (PUT to create/overwrite,
+ * DELETE to remove). The name is slugified server-side.
+ * @param name - The custom skill name
+ * @returns {string} The per-entry custom-skills endpoint URL
+ */
+export function getCustomSkillEntryUrl(name: string): string {
+  return `${getCustomSkillsCollectionUrl()}/${encodeURIComponent(name)}`;
+}
+
+/**
+ * Gets the skills-preview endpoint URL for a notation + small-model combination
+ * (the assembled "# Producer Pal Skills" blob ppal-connect would return for that
+ * combination, with the user's fragment overrides applied).
+ * @param notation - The notation to preview
+ * @param smallModel - Whether to preview the small-model (basic) skills
+ * @returns {string} The skills-preview endpoint URL with query params
+ */
+export function getSkillsPreviewUrl(
+  notation: string,
+  smallModel: boolean,
+): string {
+  const base = getMcpUrl().replace(/\/mcp$/, "/skills-preview");
+  const params = new URLSearchParams({
+    notation,
+    smallModel: String(smallModel),
+  });
+
+  return `${base}?${params.toString()}`;
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL

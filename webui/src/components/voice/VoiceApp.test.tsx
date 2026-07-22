@@ -98,12 +98,40 @@ function renderWithPanelOpen(overrides: PropOverrides = {}) {
   return { ...result, props };
 }
 
+// Render the panel with a single voice conversation (active id "active-conv"),
+// a connected session, then click its delete button. Returns the session and
+// persistence mocks for assertions.
+function renderAndDeleteConversation(
+  convId: string,
+  convTitle: string,
+): {
+  session: ReturnType<typeof baseSession>;
+  persistence: ReturnType<typeof basePersistence>;
+} {
+  const summary = createTestSummary({
+    id: convId,
+    title: convTitle,
+    sessionType: "voice",
+  });
+  const persistence = basePersistence({
+    conversations: [summary],
+    activeConversationId: "active-conv",
+  });
+  const session = baseSession({ status: "connected" });
+
+  mocks.useVoiceSession.mockReturnValue(session);
+  mocks.useVoicePersistence.mockReturnValue(persistence);
+  renderWithPanelOpen();
+  fireEvent.click(screen.getByLabelText(/^delete conversation$/i));
+
+  return { session, persistence };
+}
+
 // Pull the onLiveRecordDeleted callback handed to the mocked useVoicePersistence
 // so a test can fire it the way a Settings bulk delete would.
 function grabOnLiveRecordDeleted(): (() => void) | undefined {
   const params = mocks.useVoicePersistence.mock.calls.at(-1)?.[0] as
-    | { onLiveRecordDeleted?: () => void }
-    | undefined;
+    { onLiveRecordDeleted?: () => void } | undefined;
 
   return params?.onLiveRecordDeleted;
 }
@@ -690,21 +718,10 @@ describe("VoiceApp", () => {
     it("stops the live session when deleting the active conversation", () => {
       // Without disconnecting first, the session keeps streaming and autosave
       // re-forks the transcript under a new id, resurrecting the deleted record.
-      const summary = createTestSummary({
-        id: "active-conv",
-        title: "Active",
-        sessionType: "voice",
-      });
-      const persistence = basePersistence({
-        conversations: [summary],
-        activeConversationId: "active-conv",
-      });
-      const session = baseSession({ status: "connected" });
-
-      mocks.useVoiceSession.mockReturnValue(session);
-      mocks.useVoicePersistence.mockReturnValue(persistence);
-      renderWithPanelOpen();
-      fireEvent.click(screen.getByLabelText(/^delete conversation$/i));
+      const { session, persistence } = renderAndDeleteConversation(
+        "active-conv",
+        "Active",
+      );
 
       expect(session.disconnect).toHaveBeenCalled();
       expect(session.resetHistory).toHaveBeenCalled();
@@ -714,21 +731,10 @@ describe("VoiceApp", () => {
     });
 
     it("leaves the live session alone when deleting a non-active conversation", () => {
-      const summary = createTestSummary({
-        id: "other-conv",
-        title: "Other",
-        sessionType: "voice",
-      });
-      const persistence = basePersistence({
-        conversations: [summary],
-        activeConversationId: "active-conv",
-      });
-      const session = baseSession({ status: "connected" });
-
-      mocks.useVoiceSession.mockReturnValue(session);
-      mocks.useVoicePersistence.mockReturnValue(persistence);
-      renderWithPanelOpen();
-      fireEvent.click(screen.getByLabelText(/^delete conversation$/i));
+      const { session, persistence } = renderAndDeleteConversation(
+        "other-conv",
+        "Other",
+      );
 
       expect(session.disconnect).not.toHaveBeenCalled();
       expect(persistence.deleteConversation).toHaveBeenCalledWith("other-conv");
@@ -779,8 +785,7 @@ describe("VoiceApp", () => {
 
       expect(setModeContextMock).toHaveBeenCalled();
       const ctx = setModeContextMock.mock.calls.at(-1)?.[0] as
-        | ModeContext
-        | undefined;
+        ModeContext | undefined;
 
       expect(ctx?.conversationLock.activeModel).toBe("gpt-realtime-2");
       expect(ctx?.conversationLock.activeProvider).toBe("openai");

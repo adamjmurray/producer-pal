@@ -57,7 +57,10 @@ export default defineConfig({
         "json",
         "html",
       ],
-      include: ["src/**", "webui/**", "evals/**"],
+      // Coverage measures the user-facing product code. scripts/, e2e/, and
+      // evals/ have tests that run (see test.include above) but are not
+      // measured — they are dev tooling, not code the product ships.
+      include: ["src/**", "webui/**"],
       exclude: [
         // ignore files that are not feasible to test
 
@@ -115,17 +118,15 @@ export default defineConfig({
         // ignore test infrastructure:
         "src/test/mocks/**",
         "src/test/helpers/**",
-
-        "evals/**",
       ],
       reportOnFailure: true,
 
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
-        statements: 99.3,
-        branches: 96.25,
+        statements: 99.6,
+        branches: 97.7,
         functions: 100,
-        lines: 99.55,
+        lines: 99.7,
       },
     },
   },

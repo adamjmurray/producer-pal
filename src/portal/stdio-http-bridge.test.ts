@@ -64,29 +64,38 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
   ErrorCode: { ConnectionClosed: -32000 },
 }));
 
-const mockMcpServer = {
-  _registeredTools: {
-    "ppal-read-live-set": {
-      title: "Read Live Set",
-      description: "Read comprehensive information about the Live Set",
-      inputSchema: { type: "object", properties: {} },
-    },
-    "ppal-create-clip": {
-      title: "Create Clip",
-      description: "Creates MIDI clips in Session or Arrangement",
-      inputSchema: { type: "object", properties: {} },
-    },
-    "ppal-live-api": {
-      title: "Live API",
-      description: "Direct access to the Ableton Live Object Model.",
-      inputSchema: { type: "object", properties: {} },
-    },
+const mockStandardTools = {
+  "ppal-read-live-set": {
+    title: "Read Live Set",
+    description: "Read comprehensive information about the Live Set",
+    inputSchema: { type: "object", properties: {} },
+  },
+  "ppal-create-clip": {
+    title: "Create Clip",
+    description: "Creates MIDI clips in Session or Arrangement",
+    inputSchema: { type: "object", properties: {} },
+  },
+};
+
+const mockLiveApiTool = {
+  "ppal-live-api": {
+    title: "Live API",
+    description: "Direct access to the Ableton Live Object Model.",
+    inputSchema: { type: "object", properties: {} },
   },
 };
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () => ({
-  createMcpServer: vi.fn(() => mockMcpServer),
+  // Mirror the real server's opt-in gating: ppal-live-api is registered only
+  // when liveApiEnabled is set, so the portal's offline fallback reflects it.
+  createMcpServer: vi.fn(
+    (_callLiveApi: unknown, opts?: { liveApiEnabled?: boolean }) => ({
+      _registeredTools: opts?.liveApiEnabled
+        ? { ...mockStandardTools, ...mockLiveApiTool }
+        : mockStandardTools,
+    }),
+  ),
 }));
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
@@ -108,7 +117,7 @@ vi.mock(import("./file-logger.ts"), () => ({
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { VERSION } from "#src/shared/config.ts";
 import { logger } from "./file-logger.ts";
-import { StdioHttpBridge } from "./stdio-http-bridge.ts";
+import { type BridgeOptions, StdioHttpBridge } from "./stdio-http-bridge.ts";
 
 /**
  * Get a registered handler from mockServer.setRequestHandler calls
@@ -157,6 +166,42 @@ interface BridgeInternals {
 
 // Cast to BridgeInternals to access private properties in tests
 type TestBridge = BridgeInternals;
+
+/**
+ * Connect a fresh bridge built with `options` and assert the JSON body it POSTed
+ * to /config — or, when `expectedBody` is null, that it pushed nothing. Restores
+ * the fetch spy before returning.
+ * @param options - Bridge constructor options
+ * @param expectedBody - Expected POST /config body, or null to assert no push
+ */
+async function expectPushedConfig(
+  options: BridgeOptions,
+  expectedBody: Record<string, unknown> | null,
+): Promise<void> {
+  const fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(new Response("{}"));
+  const testBridge = new StdioHttpBridge(
+    "http://localhost:3350/mcp",
+    options,
+  ) as unknown as TestBridge;
+
+  mockClient.connect.mockResolvedValue(undefined);
+
+  await testBridge._ensureHttpConnection();
+
+  if (expectedBody == null) {
+    expect(fetchSpy).not.toHaveBeenCalled();
+  } else {
+    expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(expectedBody),
+    });
+  }
+
+  fetchSpy.mockRestore();
+}
 
 /**
  * Create a tool call request object for handler tests.
@@ -281,10 +326,10 @@ describe("StdioHttpBridge", () => {
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
     });
 
-    it("generates fallback tools excluding ppal-live-api", () => {
+    it("excludes ppal-live-api from the fallback when not enabled", () => {
       const tools = bridge.fallbackTools.tools;
 
-      expect(tools).toHaveLength(2); // Based on our mock that has 3 tools minus ppal-live-api
+      expect(tools).toHaveLength(2); // createMcpServer omits ppal-live-api when liveApiEnabled is unset
       expect(tools.map((t) => t.name)).not.toContain("ppal-live-api");
 
       // Check expected tools are present
@@ -300,6 +345,17 @@ describe("StdioHttpBridge", () => {
         description: "Read comprehensive information about the Live Set",
         inputSchema: { type: "object", properties: {} },
       });
+    });
+
+    it("includes ppal-live-api in the fallback when liveApiEnabled is forced on", () => {
+      const liveApiBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+        liveApiEnabled: true,
+      }) as unknown as TestBridge;
+
+      const toolNames = liveApiBridge.fallbackTools.tools.map((t) => t.name);
+
+      expect(toolNames).toContain("ppal-live-api");
+      expect(toolNames).toContain("ppal-read-live-set");
     });
   });
 
@@ -424,40 +480,80 @@ describe("StdioHttpBridge", () => {
     });
 
     it("pushes small model mode config after connection when enabled", async () => {
+      await expectPushedConfig(
+        { smallModelMode: true },
+        { smallModelMode: true },
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        'Pushed config overrides to server: {"smallModelMode":true}',
+      );
+    });
+
+    it("pushes smallModelMode: false to force the setting off", async () => {
+      await expectPushedConfig(
+        { smallModelMode: false },
+        { smallModelMode: false },
+      );
+    });
+
+    it("pushes notation config after connection when set", async () => {
+      await expectPushedConfig(
+        { notation: "midi-json" },
+        { notation: "midi-json" },
+      );
+    });
+
+    it("pushes both small model mode and notation in one request", async () => {
+      await expectPushedConfig(
+        { smallModelMode: true, notation: "stark" },
+        { smallModelMode: true, notation: "stark" },
+      );
+    });
+
+    it("pushes liveApiEnabled config after connection when enabled", async () => {
+      await expectPushedConfig(
+        { liveApiEnabled: true },
+        { liveApiEnabled: true },
+      );
+    });
+
+    it("pushes liveApiEnabled: false to force the tool off", async () => {
+      await expectPushedConfig(
+        { liveApiEnabled: false },
+        { liveApiEnabled: false },
+      );
+    });
+
+    it("pushes JSON output config after connection when requested", async () => {
+      await expectPushedConfig({ jsonOutput: true }, { jsonOutput: true });
+    });
+
+    it("pushes compact output config when explicitly requested", async () => {
+      await expectPushedConfig({ jsonOutput: false }, { jsonOutput: false });
+    });
+
+    it("does not push config when no overrides are set", async () => {
+      await expectPushedConfig({}, null);
+    });
+
+    it("re-pushes config on a later request when already connected", async () => {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
-        .mockResolvedValue(
-          new Response(JSON.stringify({ smallModelMode: true })),
-        );
+        .mockResolvedValue(new Response("{}"));
       const smBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
         smallModelMode: true,
       }) as unknown as TestBridge;
 
       mockClient.connect.mockResolvedValue(undefined);
 
-      await smBridge._ensureHttpConnection();
+      await smBridge._ensureHttpConnection(); // connects + pushes
+      await smBridge._ensureHttpConnection(); // already connected → re-pushes
 
-      expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ smallModelMode: true }),
-      });
-      expect(logger.info).toHaveBeenCalledWith(
-        "Enabled small model mode on server",
+      const configPosts = fetchSpy.mock.calls.filter(
+        (call) => call[0] === "http://localhost:3350/config",
       );
-      fetchSpy.mockRestore();
-    });
 
-    it("does not push config when small model mode is disabled", async () => {
-      const fetchSpy = vi
-        .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response("{}"));
-
-      mockClient.connect.mockResolvedValue(undefined);
-
-      await bridge._ensureHttpConnection();
-
-      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(configPosts).toHaveLength(2);
       fetchSpy.mockRestore();
     });
 
@@ -475,7 +571,7 @@ describe("StdioHttpBridge", () => {
 
       expect(smBridge.isConnected).toBe(true);
       expect(logger.error).toHaveBeenCalledWith(
-        "Failed to push small model mode config: Network error",
+        "Failed to push config overrides: Network error",
       );
       fetchSpy.mockRestore();
     });

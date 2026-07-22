@@ -436,8 +436,8 @@ Source slots (each takes one of the 8 source names):
 - `mod1Source`, `mod2Source`, `mod3Source` — sources for the 3 free slots.
   **Omitted from reads when the paired target is `"None"`** (the slot is
   disabled): Live always reports a source index even for an off slot, so
-  surfacing it would imply an active route that isn't there (AJM-391). Writes
-  are unaffected — a source can be staged before its target.
+  surfacing it would imply an active route that isn't there. Writes are
+  unaffected — a source can be staged before its target.
 
 Target slots (each takes one of the 12 target names, including `"None"`):
 
@@ -764,7 +764,7 @@ Oscillator engines + wavetables:
   the per-osc wavetable list, and a same-call wavetable write resolves against
   the new list. If the same wavetable name happens to exist in the new category,
   the write succeeds — but it's a different waveform. When changing category,
-  apply category and wavetable in separate calls (AJM-422).
+  apply category and wavetable in separate calls.
 
 **Modulation matrix writes via the `actions: string[]` arg:**
 
@@ -930,11 +930,11 @@ documented in the tool description rather than surfaced.
    routing identifier is `3`; AudioFX's trackId is `"149"` but its routing
    identifier is `16`. Translate by matching the track's `name` against the
    `display_name` of entries in `available_input_routing_types`. The name search
-   spans regular tracks, return tracks, and the master track (AJM-391), so
-   return/master sources resolve to a track id on read; regular tracks are
-   searched first, so a shared name resolves to the regular track. Hardware
-   sources (`"Ext. In"`) and duplicate track names remain inherently ambiguous —
-   the former has no track id; the latter resolves to the first match.
+   spans regular tracks, return tracks, and the master track, so return/master
+   sources resolve to a track id on read; regular tracks are searched first, so
+   a shared name resolves to the regular track. Hardware sources (`"Ext. In"`)
+   and duplicate track names remain inherently ambiguous — the former has no
+   track id; the latter resolves to the first match.
 
 3. **Excluded source tracks:** any track whose device chain has no audio-bearing
    device (no instrument, no audio effect) is omitted from

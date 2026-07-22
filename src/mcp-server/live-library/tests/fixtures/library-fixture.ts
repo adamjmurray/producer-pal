@@ -239,7 +239,7 @@ function insertFiles(db: DatabaseSync): void {
 
   // Pack Live clips (.alc): one MIDI (alcM), one audio (alcA). The audio clip
   // has place_id=null so it only surfaces in kind:live-clip (keeps source-filter
-  // tests stable). Subtypes set below via UPDATE. See AJM-335.
+  // tests stable). Subtypes set below via UPDATE.
   insert.run(2004, 200, ALC, 2, "pack_loop.alc", 12, 1_700_000_450, 0, 200);
   insert.run(2007, 200, ALC, 2, "pack_audio.alc", 6, 1_700_000_455, 0, null);
 

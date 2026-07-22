@@ -25,6 +25,8 @@ vi.mock(import("#webui/hooks/use-preferences-settings"), () => ({
  * @param overrides.savedProvider - Persisted provider (defaults to openai)
  * @param overrides.liveApiEnabled - In-modal Live API toggle value
  * @param overrides.liveApiEnabledDirty - Whether the toggle was changed in-modal
+ * @param overrides.notation - In-modal notation value
+ * @param overrides.notationDirty - Whether the notation dropdown was changed in-modal
  * @param overrides.viewingMode - Foreign-record view override (defaults to null)
  * @param overrides.saveSettings - Override the saveSettings spy (useful for staging an unresolved Promise)
  * @returns Args plus the inner spies used to assert
@@ -37,6 +39,8 @@ function makeArgs(
     savedProvider?: string;
     liveApiEnabled?: boolean;
     liveApiEnabledDirty?: boolean;
+    notation?: string;
+    notationDirty?: boolean;
     viewingMode?: "chat" | "voice" | null;
     saveSettings?: ReturnType<typeof vi.fn>;
   } = {},
@@ -45,12 +49,14 @@ function makeArgs(
   saveSettings: ReturnType<typeof vi.fn>;
   postSmallModelMode: ReturnType<typeof vi.fn>;
   postLiveApiEnabled: ReturnType<typeof vi.fn>;
+  postNotation: ReturnType<typeof vi.fn>;
   checkMcpConnection: ReturnType<typeof vi.fn>;
 } {
   const saveSettings =
     overrides.saveSettings ?? vi.fn().mockResolvedValue(true);
   const postSmallModelMode = vi.fn();
   const postLiveApiEnabled = vi.fn().mockResolvedValue(undefined);
+  const postNotation = vi.fn();
   const checkMcpConnection = vi.fn().mockResolvedValue(undefined);
   const args = {
     settings: {
@@ -60,6 +66,8 @@ function makeArgs(
       savedModel: overrides.savedModel ?? "gemini-1.5-flash",
       liveApiEnabled: overrides.liveApiEnabled ?? false,
       liveApiEnabledDirty: overrides.liveApiEnabledDirty ?? false,
+      notation: overrides.notation ?? "barbeat",
+      notationDirty: overrides.notationDirty ?? false,
       smallModelMode: false,
       saveSettings,
       // unused by the handler but required by the type
@@ -68,6 +76,7 @@ function makeArgs(
     remoteConfig: {
       postSmallModelMode,
       postLiveApiEnabled,
+      postNotation,
     } as unknown as Parameters<
       typeof useSaveSettingsHandler
     >[0]["remoteConfig"],
@@ -83,6 +92,7 @@ function makeArgs(
     saveSettings,
     postSmallModelMode,
     postLiveApiEnabled,
+    postNotation,
     checkMcpConnection,
   };
 }
@@ -164,7 +174,7 @@ describe("useSaveSettingsHandler", () => {
 
     // The handler chains postLiveApiEnabled inside saveSettings().then(...), so
     // it lands a microtask later than the synchronous-fire pattern this test
-    // used pre-AJM-418.
+    // used previously.
     await waitFor(() => expect(postLiveApiEnabled).toHaveBeenCalledWith(true));
     // checkMcpConnection runs only after the POST resolves (the server exposes
     // ppal-live-api based on the flag, so listTools must follow the POST).
@@ -181,6 +191,32 @@ describe("useSaveSettingsHandler", () => {
 
     expect(postLiveApiEnabled).not.toHaveBeenCalled();
     expect(checkMcpConnection).not.toHaveBeenCalled();
+  });
+
+  it("posts notation when the dropdown changed (no MCP re-list)", async () => {
+    const { args, postNotation, checkMcpConnection } = makeArgs({
+      notation: "midi-json",
+      notationDirty: true,
+    });
+    const { result } = renderHook(() => useSaveSettingsHandler(args));
+
+    result.current();
+
+    await waitFor(() => expect(postNotation).toHaveBeenCalledWith("midi-json"));
+    // Notation doesn't change the tool list, so no reconnect is triggered.
+    expect(checkMcpConnection).not.toHaveBeenCalled();
+  });
+
+  it("does not post notation when the dropdown was untouched", async () => {
+    const { args, postNotation, saveSettings } = makeArgs({
+      notationDirty: false,
+    });
+    const { result } = renderHook(() => useSaveSettingsHandler(args));
+
+    result.current();
+
+    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    expect(postNotation).not.toHaveBeenCalled();
   });
 
   it("awaits saveSettings before firing the post-save RPCs", async () => {

@@ -271,6 +271,11 @@ function normalizeRecord(
     voiceHistory:
       (record.voiceHistory as ConversationRecord["voiceHistory"] | undefined) ??
       null,
+    // Round-trip the system-prompt snapshot so an imported conversation still
+    // shows what it ran with. Optional: only carried when present and a string.
+    ...(typeof record.systemInstruction === "string" && {
+      systemInstruction: record.systemInstruction,
+    }),
     // Round-trip the branching pointers so exported fork families re-import as a
     // linked set. Both are optional; only carry them when present and well-typed
     // so a plain (non-forked) record keeps its shape. Dropped entirely when the

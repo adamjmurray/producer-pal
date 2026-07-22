@@ -280,6 +280,17 @@ describe("device-reader", () => {
         ],
       });
     });
+
+    it("returns a non-object chain entry unchanged", () => {
+      // The `typeof chain === "object"` test must short-circuit: probing a
+      // primitive with the `in` operator would throw.
+      const obj = { type: "audio-effect-rack", chains: ["raw-entry"] };
+
+      expect(cleanupInternalDrumPads(obj)).toStrictEqual({
+        type: "audio-effect-rack",
+        chains: ["raw-entry"],
+      });
+    });
   });
 
   describe("getDrumMap", () => {
@@ -290,6 +301,33 @@ describe("device-reader", () => {
       ];
 
       expect(getDrumMap(devices)).toBe(null);
+    });
+
+    it("ignores a drum rack that has no processed pads", () => {
+      // Both halves must hold: a drum-rack-typed device without
+      // _processedDrumPads carries no map and must not be collected.
+      expect(getDrumMap([{ type: "drum-rack" }])).toBe(null);
+    });
+
+    it("ignores a nested chain that has no devices", () => {
+      // The `chain.devices` guard protects the recursive descent — without it,
+      // iterating an absent device list would throw.
+      const devices = [{ type: "instrument-rack", chains: [{}] }];
+
+      expect(getDrumMap(devices)).toBe(null);
+    });
+
+    it("keys a note-0 pad by MIDI number for midi-json notation", () => {
+      // MIDI note 0 is a real note, not a catch-all: the catch-all test is
+      // `midi < 0`, so 0 must fall through to the notation-specific key.
+      const devices = [
+        {
+          type: "drum-rack",
+          _processedDrumPads: [{ note: 0, pitch: "C-2", name: "Sub" }],
+        },
+      ];
+
+      expect(getDrumMap(devices, "midi-json")).toStrictEqual({ 0: "Sub" });
     });
 
     it("returns empty object when drum rack has no playable chains", () => {
@@ -384,6 +422,83 @@ describe("device-reader", () => {
 
       expect(getDrumMap(devices)).toStrictEqual({
         C3: "First Kick",
+      });
+    });
+
+    it("keys the drum map by drum name for stark notation", () => {
+      const devices = [
+        {
+          type: "drum-rack",
+          _processedDrumPads: [
+            { note: 36, pitch: "C1", name: "Kick" },
+            { note: 38, pitch: "D1", name: "Snare" },
+            { note: 42, pitch: "F#1", name: "Hi-Hat" },
+          ],
+        },
+      ];
+
+      expect(getDrumMap(devices, "stark")).toStrictEqual({
+        kick: "Kick",
+        snare: "Snare",
+        hihat: "Hi-Hat",
+      });
+    });
+
+    it("falls back to the pitch name for pads outside the drum-name range", () => {
+      const devices = [
+        {
+          type: "drum-rack",
+          _processedDrumPads: [
+            { note: 36, pitch: "C1", name: "Kick" },
+            { note: 60, pitch: "C3", name: "Bell" },
+            { note: -1, pitch: "*", name: "Catch-all" },
+          ],
+        },
+      ];
+
+      expect(getDrumMap(devices, "stark")).toStrictEqual({
+        kick: "Kick",
+        C3: "Bell",
+        "*": "Catch-all",
+      });
+    });
+
+    it.each(["barbeat", undefined] as const)(
+      "keys the drum map by pitch name for %s notation",
+      (notation) => {
+        const devices = [
+          {
+            type: "drum-rack",
+            _processedDrumPads: [
+              { note: 36, pitch: "C1", name: "Kick" },
+              { note: 38, pitch: "D1", name: "Snare" },
+            ],
+          },
+        ];
+
+        expect(getDrumMap(devices, notation)).toStrictEqual({
+          C1: "Kick",
+          D1: "Snare",
+        });
+      },
+    );
+
+    it("keys the drum map by MIDI number for midi-json notation", () => {
+      const devices = [
+        {
+          type: "drum-rack",
+          _processedDrumPads: [
+            { note: 36, pitch: "C1", name: "Kick" },
+            { note: 38, pitch: "D1", name: "Snare" },
+            { note: -1, pitch: "*", name: "Catch-all" },
+          ],
+        },
+      ];
+
+      expect(getDrumMap(devices, "midi-json")).toStrictEqual({
+        36: "Kick",
+        38: "Snare",
+        "*": "Catch-all",
       });
     });
   });

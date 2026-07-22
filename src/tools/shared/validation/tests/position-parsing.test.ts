@@ -84,6 +84,16 @@ describe("parseSlotList", () => {
     );
   });
 
+  it("should not warn for a clean two-part slot", () => {
+    parseSlotList("0/1");
+
+    // Exactly two parts must not trigger the extra-parts warning.
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("has extra parts"),
+    );
+  });
+
   it("should throw for non-integer values", () => {
     expect(() => parseSlotList("a/b")).toThrow(
       'invalid toSlot "a/b" - trackIndex and sceneIndex must be integers',
@@ -133,6 +143,17 @@ describe("parseSlot", () => {
   it("should throw for non-integer values", () => {
     expect(() => parseSlot("a/b")).toThrow(
       'invalid slot "a/b" - trackIndex and sceneIndex must be integers',
+    );
+  });
+
+  it("should throw when only one part is non-integer", () => {
+    // Each NaN check is independent (OR), so a single bad part must still throw
+    // — "a/b" alone can't prove that (both parts are NaN).
+    expect(() => parseSlot("5/x")).toThrow(
+      'invalid slot "5/x" - trackIndex and sceneIndex must be integers',
+    );
+    expect(() => parseSlot("x/5")).toThrow(
+      'invalid slot "x/5" - trackIndex and sceneIndex must be integers',
     );
   });
 

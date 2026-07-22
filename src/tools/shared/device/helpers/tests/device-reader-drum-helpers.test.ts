@@ -9,6 +9,7 @@ import {
   processDrumPads,
   updateDrumPadSoloStates,
 } from "../device-reader-drum-helpers.ts";
+import { hasInstrumentInDevices } from "../device-state-helpers.ts";
 
 // Mock device-path-helpers
 vi.mock(import("../path/device-path-helpers.ts"), () => ({
@@ -115,6 +116,7 @@ describe("device-reader-drum-helpers", () => {
       pitch: string | null;
       name?: string;
       state?: string;
+      hasInstrument?: boolean;
       chains?: unknown[];
     }
 
@@ -283,6 +285,81 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads![0]!.note).toBe(36);
     });
 
+    // Chain whose getChildren("devices") is non-empty, so processDrumRackChain
+    // expands nested devices (exercising the include-flag && expressions).
+    const createChainWithDevice = (inNote: number) =>
+      ({
+        _id: `chain-${inNote}`,
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "in_note") return inNote;
+          if (prop === "name") return "Layer";
+
+          return null;
+        }),
+        getChildren: vi.fn((child: string) =>
+          child === "devices" ? [{ id: "nested" }] : [],
+        ),
+      }) as Record<string, unknown>;
+
+    it.each([
+      { includeChains: true, includeDrumPads: true, expected: true },
+      { includeChains: true, includeDrumPads: false, expected: false },
+    ])(
+      "passes includeDrumPads && includeChains ($expected) to nested chain devices",
+      ({ includeChains, includeDrumPads, expected }) => {
+        const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
+        const device = {
+          path: "live_set tracks 0 devices 0",
+          getChildren: vi.fn(() => [createChainWithDevice(36)]),
+        };
+
+        processDrumPads(
+          device as unknown as LiveAPI,
+          {},
+          includeChains,
+          includeDrumPads,
+          0,
+          2,
+          readDeviceFn,
+        );
+
+        expect(readDeviceFn).toHaveBeenCalledWith(
+          { id: "nested" },
+          expect.objectContaining({
+            includeChains: expected,
+            includeDrumPads: expected,
+          }),
+        );
+      },
+    );
+
+    it.each([
+      { order: "already-ascending", notes: [36, 48] },
+      { order: "reversed", notes: [48, 36] },
+    ])(
+      "sorts note pads by note from $order input",
+      ({ notes }: { notes: number[] }) => {
+        // Both insertion orders matter: the comparator must fall through to the
+        // note-difference tail rather than answering from a catch-all check.
+        const deviceInfo = setupAndProcess(
+          notes.map((inNote) => ({ inNote, name: `Pad ${String(inNote)}` })),
+        );
+
+        expect(deviceInfo.drumPads!.map((p) => p.note)).toStrictEqual([36, 48]);
+      },
+    );
+
+    it("sorts a catch-all pad after a note pad when it is not first (aNote===-1 branch)", () => {
+      // Insertion order note-first, catch-all-second forces the sort comparator
+      // to be called with the catch-all as its first argument.
+      const deviceInfo = setupAndProcess([
+        { inNote: 36, name: "Low Note" },
+        { inNote: -1, name: "Catch All" },
+      ]);
+
+      expect(deviceInfo.drumPads!.map((p) => p.note)).toStrictEqual([36, -1]);
+    });
+
     it("should handle invalid in_note values outside MIDI range", () => {
       // Test with an invalid MIDI note (> 127) that's not the catch-all -1
       // This exercises the fallback path when midiToNoteName returns null
@@ -294,6 +371,134 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads![0]!.note).toBe(200);
       // midiToNoteName returns null for invalid MIDI notes
       expect(deviceInfo.drumPads![0]!.pitch).toBeNull();
+    });
+
+    // The mocked extractDevicePath is the identity, so parentPath is the mock
+    // device's raw Live API path and chain paths are built onto it.
+    const PARENT = "live_set tracks 0 devices 0";
+
+    /**
+     * Read the `path` of a pad's chain at the given index.
+     * @param deviceInfo - processDrumPads output
+     * @param chainIndex - Index within the pad's chains
+     * @returns The chain's path
+     */
+    const chainPathAt = (deviceInfo: DeviceInfoResult, chainIndex: number) =>
+      (deviceInfo.drumPads![0]!.chains![chainIndex] as { path: string }).path;
+
+    it("builds a note-named chain path for a note-specific pad", () => {
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }], true);
+
+      expect(chainPathAt(deviceInfo, 0)).toBe(`${PARENT}/pC1/c0`);
+    });
+
+    it("builds a catch-all chain path for the catch-all pad", () => {
+      const deviceInfo = setupAndProcess([{ inNote: -1, name: "All" }], true);
+
+      expect(chainPathAt(deviceInfo, 0)).toBe(`${PARENT}/p*/c0`);
+    });
+
+    it("falls back to a catch-all chain path when the note is out of MIDI range", () => {
+      // midiToNoteName(200) is null — the path must degrade to the catch-all
+      // form rather than interpolating a null note name.
+      const deviceInfo = setupAndProcess([{ inNote: 200, name: "Bad" }], true);
+
+      expect(chainPathAt(deviceInfo, 0)).toBe(`${PARENT}/p*/c0`);
+    });
+
+    it("indexes layered chains of one pad by their position within the note group", () => {
+      const deviceInfo = setupAndProcess(
+        [
+          { inNote: 36, name: "Kick Layer 1" },
+          { inNote: 36, name: "Kick Layer 2" },
+        ],
+        true,
+      );
+
+      expect(deviceInfo.drumPads).toHaveLength(1);
+      expect(deviceInfo.drumPads![0]!.chains).toHaveLength(2);
+      expect(chainPathAt(deviceInfo, 0)).toBe(`${PARENT}/pC1/c0`);
+      expect(chainPathAt(deviceInfo, 1)).toBe(`${PARENT}/pC1/c1`);
+    });
+
+    it("strips internal tracking properties from exposed pad chains", () => {
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }], true);
+
+      const chain = deviceInfo.drumPads![0]!.chains![0] as Record<
+        string,
+        unknown
+      >;
+
+      expect(chain).not.toHaveProperty("_inNote");
+      expect(chain).not.toHaveProperty("_hasInstrument");
+      expect(chain.name).toBe("Kick");
+    });
+
+    it("omits pad chains when includeChains is false", () => {
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }], false);
+
+      expect(deviceInfo.drumPads![0]!.chains).toBeUndefined();
+    });
+
+    it("reports deviceCount and no-instrument for pad chains at the depth limit", () => {
+      const device = createMockDevice([{ inNote: 36, name: "Kick" }]);
+      const deviceInfo: DeviceInfoResult = {};
+
+      // depth === maxDepth → chains report deviceCount instead of expanding,
+      // and cannot know whether an instrument is present.
+      processDrumPads(
+        device as unknown as LiveAPI,
+        deviceInfo,
+        true,
+        true,
+        2,
+        2,
+        vi.fn(() => ({ type: "instrument: Simpler" })),
+      );
+
+      expect(chainPathAt(deviceInfo, 0)).toBe(`${PARENT}/pC1/c0`);
+      expect(deviceInfo.drumPads![0]!.hasInstrument).toBe(false);
+    });
+
+    it("passes the nested device path and incremented depth to readDevice", () => {
+      const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
+      const device = {
+        path: PARENT,
+        getChildren: vi.fn(() => [createChainWithDevice(36)]),
+      };
+
+      processDrumPads(
+        device as unknown as LiveAPI,
+        {},
+        true,
+        true,
+        0,
+        2,
+        readDeviceFn,
+      );
+
+      expect(readDeviceFn).toHaveBeenCalledWith(
+        { id: "nested" },
+        expect.objectContaining({
+          parentPath: `${PARENT}/pC1/c0/d0`,
+          depth: 1,
+        }),
+      );
+    });
+
+    it("keeps hasInstrument unset when only some layered chains have an instrument", () => {
+      // some() semantics: one instrument anywhere on the pad is enough, so the
+      // pad must NOT be flagged hasInstrument: false.
+      vi.mocked(hasInstrumentInDevices)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false);
+
+      const deviceInfo = setupAndProcess([
+        { inNote: 36, name: "Kick Layer 1" },
+        { inNote: 36, name: "Kick Layer 2" },
+      ]);
+
+      expect(deviceInfo.drumPads![0]!.hasInstrument).toBeUndefined();
     });
   });
 });

@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useEffect } from "preact/hooks";
 import { type TokenUsage } from "#webui/chat/sdk/types";
+import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
   type ConversationLockedSettings,
   type PendingFork,
@@ -12,6 +14,7 @@ import { getModelName } from "#webui/lib/config";
 import { deriveForkParentId } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
+  deleteConversation,
   loadConversation,
 } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
@@ -27,6 +30,8 @@ export interface ActiveMeta {
   temperature: number | null;
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
+  /** Resolved system instruction in effect (snapshotted onto the record). */
+  systemInstruction: string | null;
 }
 
 export const DEFAULT_META: ActiveMeta = {
@@ -39,6 +44,7 @@ export const DEFAULT_META: ActiveMeta = {
   temperature: null,
   showThoughts: null,
   smallModelMode: null,
+  systemInstruction: null,
 };
 
 /** Ref snapshot for building a save record */
@@ -74,6 +80,61 @@ export function setLocationHash(id: string | null): void {
 }
 
 /**
+ * Route browser back/forward (hashchange) to the matching conversation: switch
+ * to the hashed id, or start a new conversation when the hash clears. Ignores
+ * the programmatic hash writes the manager makes itself (guarded by a ref flag).
+ * @param params - Navigation dependencies
+ * @param params.programmaticHashRef - Flag set when the manager wrote the hash itself
+ * @param params.programmaticHashRef.current - The mutable flag value
+ * @param params.activeIdRef - Ref holding the current active conversation id
+ * @param params.activeIdRef.current - The mutable active-id value
+ * @param params.switchConversation - Loads and activates a conversation by id
+ * @param params.startNewConversation - Clears state for a brand-new conversation
+ */
+export function useHashNavigation(params: {
+  programmaticHashRef: { current: boolean };
+  activeIdRef: { current: string | null };
+  switchConversation: (id: string) => Promise<void>;
+  startNewConversation: () => void;
+}): void {
+  const {
+    programmaticHashRef,
+    activeIdRef,
+    switchConversation,
+    startNewConversation,
+  } = params;
+
+  useEffect(() => {
+    const handler = () => {
+      if (programmaticHashRef.current) {
+        programmaticHashRef.current = false;
+
+        return;
+      }
+
+      const hashId = getHashConversationId();
+
+      if (hashId === activeIdRef.current) return;
+
+      if (hashId) {
+        void switchConversation(hashId);
+      } else {
+        void startNewConversation();
+      }
+    };
+
+    window.addEventListener("hashchange", handler);
+
+    return () => window.removeEventListener("hashchange", handler);
+  }, [
+    programmaticHashRef,
+    activeIdRef,
+    switchConversation,
+    startNewConversation,
+  ]);
+}
+
+/**
  * Build locked settings from a conversation record for restoring.
  * @param record - Conversation record to extract settings from
  * @returns Locked settings for restoreChatHistory
@@ -88,6 +149,7 @@ export function buildLockedSettings(
     temperature: record.temperature,
     showThoughts: record.showThoughts,
     smallModelMode: record.smallModelMode,
+    systemInstruction: record.systemInstruction ?? null,
   };
 }
 
@@ -108,6 +170,9 @@ export function buildSaveRecord(
   const now = Date.now();
   const existingTitle = existing?.title ?? refs.title ?? null;
   const title = deriveTitle(existingTitle, chatHistory);
+  // Lock the snapshot at the first save: prefer an already-stored value.
+  const systemInstruction =
+    existing?.systemInstruction ?? refs.systemInstruction;
 
   return {
     id: refs.id,
@@ -126,6 +191,9 @@ export function buildSaveRecord(
     sessionType: "text",
     messages: chatHistory as ConversationRecord["messages"],
     voiceHistory: null,
+    // Snapshot the system instruction (locked above). Omitted when unknown so a
+    // record with no resolved instruction keeps its prior shape.
+    ...(systemInstruction != null && { systemInstruction }),
     // Carry branch linkage across updates. A fork's later saves (e.g. the
     // post-response autosave) route through here too; without this they would
     // strip the fields that make it a sibling, so its ‹ n/m › arrows vanish and
@@ -205,11 +273,17 @@ export async function buildConversationSaveRecord(args: {
       ? deriveForkParentId(source, fork.anchorIndex)
       : reuseId;
 
-    return buildForkedRecord(refs, chatHistory, {
+    const forked = buildForkedRecord(refs, chatHistory, {
       newId: id,
       parentId,
       anchorIndex: fork.anchorIndex,
     });
+
+    // A fork shares the trunk's transcript, so it inherits the trunk's
+    // system-prompt snapshot rather than re-capturing the current global.
+    return source?.systemInstruction != null
+      ? { ...forked, systemInstruction: source.systemInstruction }
+      : forked;
   }
 
   const existing = reuseId == null ? undefined : await loadConversation(id);
@@ -294,6 +368,76 @@ export function deriveTitle(
   }
 
   return firstUserLine || null;
+}
+
+/**
+ * Delete a conversation, first snapshotting the full record so it can be
+ * restored via undo — the DB row is gone the moment deletion resolves.
+ * @param id - Conversation id to delete
+ * @param onSnapshot - Receives the deleted record for undo (skipped if the id
+ *   had no record)
+ */
+export async function deleteConversationWithSnapshot(
+  id: string,
+  onSnapshot: (record: ConversationRecord) => void,
+): Promise<void> {
+  const record = await loadConversation(id);
+
+  await deleteConversation(id);
+
+  if (record) onSnapshot(record);
+}
+
+/**
+ * Pick which banner the conversation panel shows and the matching dismiss
+ * handler. Rank by severity first — an error (a save failure / data-loss
+ * signal) outranks a warning — then let the fresher undo-delete banner win
+ * within the same severity. Severity-first matters because the undo banner
+ * never auto-expires, so without it a stale "Deleted …" banner would
+ * indefinitely mask a later save-error banner.
+ * @param undo - Undo-delete notification state and dismiss handler
+ * @param undo.undoNotification - The pending undo banner, or null when none
+ * @param undo.dismissUndoNotification - Clears all pending undos
+ * @param limit - Limit/save-error notification state and dismiss handler
+ * @param limit.limitNotification - The limit/save-error banner, or null
+ * @param limit.dismissLimitNotification - Clears the limit/save-error banner
+ * @returns The active notification and the handler that dismisses it
+ */
+export function resolvePanelNotification(
+  undo: {
+    undoNotification: TransferNotificationData | null;
+    dismissUndoNotification: () => void;
+  },
+  limit: {
+    limitNotification: TransferNotificationData | null;
+    dismissLimitNotification: () => void;
+  },
+): {
+  notification: TransferNotificationData | null;
+  dismissNotification: () => void;
+} {
+  const undoNote = undo.undoNotification;
+  const limitNote = limit.limitNotification;
+  // The limit/save-error banner wins when there is no undo to defer to, or when
+  // it is an error and the undo banner is merely a warning.
+  const limitWins =
+    limitNote != null &&
+    (undoNote == null ||
+      (limitNote.type === "error" && undoNote.type !== "error"));
+
+  if (limitWins) {
+    return {
+      notification: limitNote,
+      dismissNotification: limit.dismissLimitNotification,
+    };
+  }
+
+  return {
+    notification: undoNote ?? limitNote,
+    dismissNotification: undoNote
+      ? undo.dismissUndoNotification
+      : limit.dismissLimitNotification,
+  };
 }
 
 /**

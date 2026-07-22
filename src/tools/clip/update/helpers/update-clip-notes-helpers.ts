@@ -3,12 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import {
+  formatNotation,
+  interpretNotation,
+  resolveNotation,
+} from "#src/notation/notation.ts";
 import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
@@ -69,6 +73,7 @@ interface QuantizationOptions {
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
+ * @param notation - Global notation setting the notes string is written in (default barbeat)
  * @returns Note update result, or null if notes not modified
  */
 export function handleNoteUpdates(
@@ -79,6 +84,7 @@ export function handleNoteUpdates(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext: ClipContext,
+  notation: Notation | undefined,
 ): NoteUpdateResult | null {
   // Skip if nothing meaningful to do
   if (
@@ -103,10 +109,6 @@ export function handleNoteUpdates(
     );
   }
 
-  // Overlay new notes onto existing ones: prepend existing notes (with any
-  // preTransforms applied) as bar|beat notation, so v0 in the new notation can
-  // delete overlapping existing notes during interpretation.
-  let combinedNotationString = notationString;
   // Read the full [-length, 2*length] window (matches read-clip) so a pickup
   // before the clip start is carried into the merge — not dropped because it
   // sits outside the playable region [0, length].
@@ -120,19 +122,13 @@ export function handleNoteUpdates(
       clipContext,
     );
 
-  if (existingNotes.length > 0) {
-    const existingNotationString = formatNotation(existingNotes, {
-      timeSigNumerator,
-      timeSigDenominator,
-    });
-
-    combinedNotationString = `${existingNotationString} ${notationString}`;
-  }
-
-  const notes = interpretNotation(combinedNotationString, {
+  const notes = mergeNewNotes(
+    notation,
+    notationString,
+    existingNotes,
     timeSigNumerator,
     timeSigDenominator,
-  });
+  );
 
   // Apply transforms to notes if provided
   const transformed = applyTransforms(
@@ -161,6 +157,60 @@ export function handleNoteUpdates(
     noteCount: getClipNoteCount(clip),
     transformed: transformed ?? preTransformCount,
   };
+}
+
+/**
+ * Build the merged note array (existing + new) ready for the dedupe/sort/write
+ * tail. The merge strategy differs by notation:
+ * - barbeat: prepend the existing notes (preTransforms already applied) as
+ *   bar|beat notation and re-interpret the combined string, so `v0` in the new
+ *   notation can delete overlapping existing notes during interpretation.
+ * - midi-json / stark: these have no lossless text serializer for the existing
+ *   notes, so combine the NoteEvent arrays directly (new notes last, so they win
+ *   same-pitch+start collisions in dedupeNotesKeepingLast). There is no
+ *   `v0`-delete convention — use preTransforms to delete or edit existing notes.
+ * @param notation - Global notation setting the new notes string is written in (or undefined)
+ * @param notationString - The new notes
+ * @param existingNotes - Existing notes (preTransforms already applied)
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns Combined note array (unsorted, not yet deduped)
+ */
+function mergeNewNotes(
+  notation: Notation | undefined,
+  notationString: string,
+  existingNotes: NoteEvent[],
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): NoteEvent[] {
+  // Only bar|beat round-trips through text (so `v0` in the new notes can delete
+  // overlapping existing notes). midi-json and stark lack a serializer for the
+  // existing notes, so they merge NoteEvent arrays directly.
+  if (resolveNotation(notation) !== "barbeat") {
+    const newNotes = interpretNotation(notationString, {
+      notation,
+      timeSigNumerator,
+      timeSigDenominator,
+    });
+
+    return [...existingNotes, ...newNotes];
+  }
+
+  let combinedNotationString = notationString;
+
+  if (existingNotes.length > 0) {
+    const existingNotationString = formatNotation(existingNotes, {
+      timeSigNumerator,
+      timeSigDenominator,
+    });
+
+    combinedNotationString = `${existingNotationString} ${notationString}`;
+  }
+
+  return interpretNotation(combinedNotationString, {
+    timeSigNumerator,
+    timeSigDenominator,
+  });
 }
 
 /**
@@ -207,6 +257,7 @@ export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
  * @param params.timeSigDenominator - Time signature denominator
  * @param params.clipIndex - 0-based index in the multi-clip batch
  * @param params.clipCount - Total clips in the batch
+ * @param params.notation - Global notation setting the notes string is written in (or undefined)
  * @returns Note update result with the final post-edit note count
  */
 export function handleDuplicateLoopWithEdits({
@@ -218,6 +269,7 @@ export function handleDuplicateLoopWithEdits({
   timeSigDenominator,
   clipIndex,
   clipCount,
+  notation,
 }: {
   clip: LiveAPI;
   notationString: string | undefined;
@@ -227,6 +279,7 @@ export function handleDuplicateLoopWithEdits({
   timeSigDenominator: number;
   clipIndex: number;
   clipCount: number;
+  notation: Notation | undefined;
 }): NoteUpdateResult | null {
   // Stage 1: flush preTransforms onto the existing notes before doubling.
   if (preTransformString != null) {
@@ -273,6 +326,7 @@ export function handleDuplicateLoopWithEdits({
     timeSigNumerator,
     timeSigDenominator,
     postContext,
+    notation,
   );
 
   return mergeResult ?? dupResult;

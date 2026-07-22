@@ -13,6 +13,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  probeSimplerSample,
   setSimplerGain,
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
@@ -34,14 +35,19 @@ function registerSimpler(opts: { multiSampleMode?: number } = {}) {
  * Register a Simpler with a loaded sample child and return the sample mock.
  * @param opts - Options
  * @param opts.gain - Current linear gain on the sample (default 1)
+ * @param opts.filePath - Sample file path (default "/tmp/kick.wav"; "" models a
+ *   sample child with nothing loaded)
  * @returns The Sample mock object
  */
 function registerSimplerWithSample(
-  opts: { gain?: number } = {},
+  opts: { gain?: number; filePath?: string } = {},
 ): RegisteredMockObject {
   const sample = registerMockObject("sample-1", {
     type: "Sample",
-    properties: { file_path: "/tmp/kick.wav", gain: opts.gain ?? 1 },
+    properties: {
+      file_path: opts.filePath ?? "/tmp/kick.wav",
+      gain: opts.gain ?? 1,
+    },
   });
 
   registerMockObject("simpler-1", {
@@ -56,6 +62,21 @@ function registerSimplerWithSample(
   });
 
   return sample;
+}
+
+/**
+ * Register a non-Simpler device (an Operator) at the first track's first slot.
+ * @returns The device mock object
+ */
+function registerOperator(): RegisteredMockObject {
+  return registerMockObject("op-1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: {
+      class_display_name: "Operator",
+      parameters: children(),
+    },
+  });
 }
 
 describe("setSimplerSample", () => {
@@ -87,14 +108,7 @@ describe("setSimplerSample", () => {
   });
 
   it("warns and skips on non-Simpler devices, naming the device class", () => {
-    const device = registerMockObject("op-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        class_display_name: "Operator",
-        parameters: children(),
-      },
-    });
+    const device = registerOperator();
 
     setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav", "updateDevice");
 
@@ -163,6 +177,27 @@ describe("setSimplerSample", () => {
     );
   });
 
+  it("rejects a relative path even when a drive-letter appears mid-string", () => {
+    // The absolute-path test is anchored (`^`): a drive-letter sequence buried
+    // inside a relative path must NOT read as absolute.
+    const device = registerSimpler();
+
+    setSimplerSample(
+      LiveAPI.from("id simpler-1"),
+      "relative/C:/kick.wav",
+      "updateDevice",
+    );
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "replace_sample",
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("absolute file path"),
+    );
+  });
+
   it("trims surrounding whitespace before passing the path to Live", () => {
     const device = registerSimpler();
 
@@ -191,14 +226,7 @@ describe("setSimplerSample", () => {
   });
 
   it("uses the toolName parameter as warning prefix", () => {
-    registerMockObject("op-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        class_display_name: "Operator",
-        parameters: children(),
-      },
-    });
+    registerOperator();
 
     setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav", "createDevice");
 
@@ -206,6 +234,54 @@ describe("setSimplerSample", () => {
       1,
       expect.stringContaining("createDevice:"),
     );
+  });
+});
+
+describe("probeSimplerSample", () => {
+  it("reports not-simpler for a non-Simpler device class", () => {
+    const device = registerMockObject("op-1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { class_display_name: "Operator" },
+    });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id op-1"), "Operator"),
+    ).toStrictEqual({ kind: "not-simpler" });
+    // Short-circuits before touching the device's sample state.
+    expect(device.get).not.toHaveBeenCalledWith("multi_sample_mode");
+  });
+
+  it("reports multisample for a Simpler in multi-sample mode", () => {
+    registerSimpler({ multiSampleMode: 1 });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "multisample" });
+  });
+
+  it("reports empty when no sample child is loaded", () => {
+    registerSimpler();
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "empty" });
+  });
+
+  it("reports empty when the loaded sample has no file path", () => {
+    registerSimplerWithSample({ filePath: "" });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "empty" });
+  });
+
+  it("reports single with the sample path and gain when a sample is loaded", () => {
+    registerSimplerWithSample({ gain: 0.5 });
+
+    expect(
+      probeSimplerSample(LiveAPI.from("id simpler-1"), "Simpler"),
+    ).toStrictEqual({ kind: "single", path: "/tmp/kick.wav", gain: 0.5 });
   });
 });
 
@@ -235,14 +311,7 @@ describe("setSimplerGain", () => {
   });
 
   it("warns and skips on non-Simpler devices", () => {
-    const device = registerMockObject("op-1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        class_display_name: "Operator",
-        parameters: children(),
-      },
-    });
+    const device = registerOperator();
 
     setSimplerGain(LiveAPI.from("id op-1"), 0, "updateDevice");
 
@@ -262,6 +331,12 @@ describe("setSimplerGain", () => {
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("multi-sample mode"),
+    );
+    // The multi-sample guard must RETURN, not fall through into the loaded-sample
+    // probe below it (which would emit a second, misleading warning).
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("requires a loaded sample"),
     );
   });
 

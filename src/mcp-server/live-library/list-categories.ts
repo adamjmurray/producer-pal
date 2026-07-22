@@ -18,7 +18,7 @@
  *
  * We surface the metadata tag hierarchy rather than Live's `vfolders` because
  * vfolder patterns are fuzzy name tokens evaluated by a proprietary FTS
- * tokenizer that sqlite can't load outside Live — see dev notes / AJM-329.
+ * tokenizer that sqlite can't load outside Live — see dev notes.
  *
  * Read-only: SELECT statements only.
  */

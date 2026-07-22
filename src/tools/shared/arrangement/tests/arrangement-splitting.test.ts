@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, type Mock } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -13,12 +13,37 @@ import {
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
+  mockArrangementClipsRescan,
+  overrideWithDuplicateCounter,
   setupClipSplittingMocks,
+  setupSplitTest,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
 } from "./arrangement-splitting-test-helpers.ts";
 
 const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
+
+/** An 8-beat arrangement clip looping a 4-beat region. */
+const EIGHT_BEAT_LOOPED = {
+  looping: true,
+  endTime: 8.0,
+  loopEnd: 4.0,
+} as const;
+
+/** A 12-beat arrangement clip looping a 4-beat region. */
+const TWELVE_BEAT_LOOPED = {
+  looping: true,
+  endTime: 12.0,
+  loopEnd: 4.0,
+} as const;
+
+/** An 8-beat unlooped arrangement clip. */
+const EIGHT_BEAT_UNLOOPED = {
+  looping: false,
+  endTime: 8.0,
+  loopEnd: 8.0,
+  endMarker: 8.0,
+} as const;
 
 function createPerformContext(clipId: string): {
   mockClip: LiveAPI;
@@ -44,6 +69,28 @@ function expectDuplicateNotCalled(trackMock: RegisteredMockObject): void {
     expect.any(String),
     expect.any(Number),
   );
+}
+
+function expectCreateMidiClipCount(
+  trackMock: RegisteredMockObject,
+  count: number,
+): void {
+  const createMidiCalls = trackMock.call.mock.calls.filter(
+    (c: unknown[]) => c[0] === "create_midi_clip",
+  );
+
+  expect(createMidiCalls).toHaveLength(count);
+}
+
+// Assert a split ran (segments were duplicated) and produced exactly `count`
+// create_midi_clip trims — the signature of which EPSILON-boundary trim steps
+// were skipped.
+function expectSplitTrimCount(
+  trackMock: RegisteredMockObject,
+  count: number,
+): void {
+  expectDuplicateCalled(trackMock);
+  expectCreateMidiClipCount(trackMock, count);
 }
 
 describe("prepareSplitParams", () => {
@@ -87,6 +134,95 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-invalid-format")).toBe(true);
+    // The warning text names the problem so the model can correct it.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('Invalid split format: "invalid"'),
+    );
+  });
+
+  it("treats an all-empty split spec as invalid format", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    // "," has only empty parts, so parseSplitPoints returns [] (empty, not null).
+    // That must be reported as invalid format, not silently accepted as no-op.
+    const result = prepareSplitParams(",", [mockClip], warnings);
+
+    expect(result).toBeNull();
+    expect(warnings.has("split-invalid-format")).toBe(true);
+  });
+
+  it("should reject the whole split when any point is malformed", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    // "2|1" alone is valid, but a single malformed part must invalidate the whole
+    // list (return null) rather than silently dropping it and splitting anyway.
+    const result = prepareSplitParams(
+      "2|1, notaposition",
+      [mockClip],
+      warnings,
+    );
+
+    expect(result).toBeNull();
+    expect(warnings.has("split-invalid-format")).toBe(true);
+  });
+
+  it("should not re-warn about invalid format when already warned", () => {
+    const { mockClip } = setupPrepareTest();
+    const warnings = new Set(["split-invalid-format"]);
+
+    vi.clearAllMocks();
+
+    prepareSplitParams("invalid", [mockClip], warnings);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Invalid split format"),
+    );
+  });
+
+  it("should not re-warn about too many points when already warned", () => {
+    const { mockClip } = setupPrepareTest();
+    const warnings = new Set(["split-max-exceeded"]);
+    const manyPoints = Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(
+      ", ",
+    );
+
+    vi.clearAllMocks();
+
+    prepareSplitParams(manyPoints, [mockClip], warnings);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Too many split points"),
+    );
+  });
+
+  it("should not re-warn about no valid points when already warned", () => {
+    const { mockClip } = setupPrepareTest();
+    const warnings = new Set(["split-no-valid-points"]);
+
+    vi.clearAllMocks();
+
+    prepareSplitParams("1|1", [mockClip], warnings);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("No valid split points"),
+    );
+  });
+
+  it("should allow exactly MAX_SPLIT_POINTS points (boundary is > not >=)", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    // 32 points is at the cap, not over it — it must be accepted, not rejected.
+    const points = Array.from({ length: 32 }, (_, i) => `${i + 2}|1`).join(
+      ", ",
+    );
+    const result = prepareSplitParams(points, [mockClip], warnings);
+
+    expect(result).toHaveLength(32);
+    expect(warnings.has("split-max-exceeded")).toBe(false);
   });
 
   it("should parse valid bar|beat positions", () => {
@@ -124,6 +260,10 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-no-valid-points")).toBe(true);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("No valid split points"),
+    );
   });
 
   it("should warn when too many split points", () => {
@@ -137,6 +277,10 @@ describe("prepareSplitParams", () => {
 
     expect(result).toBeNull();
     expect(warnings.has("split-max-exceeded")).toBe(true);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Too many split points"),
+    );
   });
 
   it("should handle trailing commas in split string", () => {
@@ -168,10 +312,7 @@ describe("prepareSplitParams", () => {
 
 describe("performSplitting", () => {
   it("should split looped clips at specified positions", () => {
-    const clipId = "clip_1";
-
-    const { callState } = setupClipSplittingMocks(clipId);
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest();
 
     // Split a 16-beat clip at 4 and 8 beats (2|1 and 3|1 in 4/4)
     performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
@@ -181,14 +322,12 @@ describe("performSplitting", () => {
   });
 
   it("should skip clips where all split points are beyond clip length", () => {
-    const clipId = "clip_1";
-
-    const { callState } = setupClipSplittingMocks(clipId, {
+    // 4-beat clip
+    const { callState, mockClip, clips } = setupSplitTest({
       looping: true,
-      endTime: 4.0, // 4-beat clip
+      endTime: 4.0,
       loopEnd: 4.0,
     });
-    const { mockClip, clips } = createPerformContext(clipId);
 
     // Split points at 8 and 12 beats are beyond 4-beat clip
     performSplitting([mockClip], [8, 12], clips, HOLDING_AREA);
@@ -209,10 +348,7 @@ describe("performSplitting", () => {
   });
 
   it("should warn and abort when duplication fails", () => {
-    const clipId = "clip_1";
-
-    const { callState } = setupClipSplittingMocks(clipId);
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest();
 
     // Make duplicate_clip_to_arrangement return "0" (non-existent)
     callState.trackMock.call.mockImplementation((method: string) => {
@@ -230,15 +366,7 @@ describe("performSplitting", () => {
   });
 
   it("should split unlooped MIDI clips using unified algorithm", () => {
-    const clipId = "clip_1";
-
-    const { callState } = setupClipSplittingMocks(clipId, {
-      looping: false,
-      endTime: 8.0,
-      loopEnd: 8.0,
-      endMarker: 8.0,
-    });
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_UNLOOPED);
 
     // Split an 8-beat unlooped clip at 4 beats
     performSplitting([mockClip], [4], clips, HOLDING_AREA);
@@ -267,29 +395,8 @@ describe("performSplitting", () => {
   });
 
   it("should filter split points to those within clip bounds", () => {
-    const clipId = "clip_1";
-    let duplicateCount = 0;
-
-    const { callState } = setupClipSplittingMocks(clipId, {
-      looping: true,
-      endTime: 8.0, // 8-beat clip
-      loopEnd: 4.0,
-    });
-
-    // Override to track duplicate count
-    callState.trackMock.call.mockImplementation((method: string) => {
-      if (method === "duplicate_clip_to_arrangement") {
-        duplicateCount++;
-
-        return ["id", `dup_${duplicateCount}`];
-      }
-
-      if (method === "create_midi_clip") {
-        return ["id", "temp_1"];
-      }
-    });
-
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
+    const dups = overrideWithDuplicateCounter(callState.trackMock);
 
     // Split points: 4 (valid), 12 (beyond clip end)
     performSplitting([mockClip], [4, 12], clips, HOLDING_AREA);
@@ -299,7 +406,7 @@ describe("performSplitting", () => {
     // Step 4: 1 moveClipFromHolding for last segment (= 1 duplicate)
     // Total: 2 duplicates (segment 0 stays in place via right-trim)
     // The point at 12 should be filtered out (would add 1 more if not)
-    expect(duplicateCount).toBe(2);
+    expect(dups.count).toBe(2);
   });
 
   it("should split unlooped audio clips using unified algorithm", () => {
@@ -338,17 +445,13 @@ describe("performSplitting", () => {
 
     // Should duplicate for audio content
     expectDuplicateCalled(callState.trackMock);
+    // Audio trims route through create_audio_clip in a session slot, never
+    // create_midi_clip — so a MIDI-vs-audio misdetection would show up here.
+    expectCreateMidiClipCount(callState.trackMock, 0);
   });
 
   it("should split into 3 segments exercising middle segment extraction", () => {
-    const clipId = "clip_1";
-
-    const { callState } = setupClipSplittingMocks(clipId, {
-      looping: true,
-      endTime: 12.0, // 12-beat clip
-      loopEnd: 4.0,
-    });
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest(TWELVE_BEAT_LOOPED);
 
     // Split a 12-beat clip at 4 and 8 beats → 3 segments
     performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
@@ -361,33 +464,61 @@ describe("performSplitting", () => {
     expect(callState.duplicateCount).toBe(4);
   });
 
-  it("should warn and skip when middle segment duplication fails", () => {
+  it("places every segment at its exact arrangement position (3-segment split)", () => {
     const clipId = "clip_1";
-    let duplicateCount = 0;
 
+    // start_time 100, end_time 112 → clipLength 12, so `end - start` (not
+    // `end + start`) is exercised. Split at 4 and 8 → boundaries [0,4,8,12].
     const { callState } = setupClipSplittingMocks(clipId, {
       looping: true,
-      endTime: 12.0,
-      loopEnd: 4.0,
+      startTime: 100,
+      endTime: 112,
+      loopEnd: 4,
     });
-
-    // Override the call mock to fail on second duplicate
-    callState.trackMock.call.mockImplementation((method: string) => {
-      if (method === "duplicate_clip_to_arrangement") {
-        duplicateCount++;
-
-        // First dup succeeds (source to holding), second fails (middle segment)
-        if (duplicateCount === 2) return ["id", "0"];
-
-        return ["id", `dup_${duplicateCount}`];
-      }
-
-      if (method === "create_midi_clip") {
-        return ["id", "temp_1"];
-      }
-    });
-
     const { mockClip, clips } = createPerformContext(clipId);
+
+    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+
+    const calls = callState.trackMock.call.mock.calls;
+    const dupPositions = calls
+      .filter((c: unknown[]) => c[0] === "duplicate_clip_to_arrangement")
+      .map((c: unknown[]) => c[2]);
+
+    // Step 1 source→holding at 40000; Step 3 middle works at
+    // holdingAreaStart + 1*(clipLength 12 + 4) = 40016, then moves to
+    // clipArrangementStart 100 + segStart 4 = 104; Step 4 last moves to
+    // clipArrangementStart 100 + lastSegStart 8 = 108.
+    expect(dupPositions).toStrictEqual([40000, 40016, 104, 108]);
+
+    // Step 2 right-trim seg0: temp at start 100 + seg0End 4 = 104, length
+    // clipLength 12 - seg0End 4 = 8.
+    expect(calls).toContainEqual(["create_midi_clip", 104, 8]);
+    // Step 3 middle left-trim at workPos 40016, length segStart 4; right-trim at
+    // workPos 40016 + segEnd 8 = 40024, length clipLength 12 - segEnd 8 = 4.
+    expect(calls).toContainEqual(["create_midi_clip", 40016, 4]);
+    expect(calls).toContainEqual(["create_midi_clip", 40024, 4]);
+    // Step 4 last-segment left-trim at sourcePos 40000, length lastSegStart 8.
+    expect(calls).toContainEqual(["create_midi_clip", 40000, 8]);
+  });
+
+  it("excludes a split point that lands exactly on the clip end", () => {
+    // 8-beat clip. A split at 8 is the clip's very end (p < clipLength, not <=),
+    // so it must be dropped, leaving a single valid point at 4 → 2 duplicates.
+    const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
+    const dups = overrideWithDuplicateCounter(callState.trackMock);
+
+    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+
+    expect(dups.count).toBe(2);
+  });
+
+  it("should warn and skip when middle segment duplication fails", () => {
+    const { callState, mockClip, clips } = setupSplitTest(TWELVE_BEAT_LOOPED);
+
+    // First dup succeeds (source to holding), second fails (middle segment)
+    const dups = overrideWithDuplicateCounter(callState.trackMock, {
+      failOnDuplicate: 2,
+    });
 
     // Split at 4 and 8 → 3 segments, but middle dup fails
     performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
@@ -399,7 +530,7 @@ describe("performSplitting", () => {
     );
 
     // Should still complete: source dup (1) + failed middle (1) + last move (1) = 3
-    expect(duplicateCount).toBe(3);
+    expect(dups.count).toBe(3);
   });
 
   it("should rescan split clips replacing stale references with fresh ones", () => {
@@ -407,30 +538,10 @@ describe("performSplitting", () => {
 
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // Register fresh clips that will be returned by the track rescan
-    registerMockObject("fresh_1", {
-      path: "live_set tracks 0 arrangement_clips 0",
-      type: "Clip",
-      properties: {
-        start_time: 0.0,
-      },
-    });
-    registerMockObject("fresh_2", {
-      path: "live_set tracks 0 arrangement_clips 1",
-      type: "Clip",
-      properties: {
-        start_time: 4.0,
-      },
-    });
-
-    // Override track's get mock to return fresh clips for arrangement_clips
-    callState.trackMock.get.mockImplementation((prop: string) => {
-      if (prop === "arrangement_clips") {
-        return ["id", "fresh_1", "id", "fresh_2"];
-      }
-
-      return [0];
-    });
+    mockArrangementClipsRescan(callState.trackMock, [
+      ["fresh_1", 0],
+      ["fresh_2", 4],
+    ]);
 
     const mockClip = LiveAPI.from(`id ${clipId}`);
     const clips = [mockClip];
@@ -452,23 +563,7 @@ describe("performSplitting", () => {
 
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // Register fresh clip that will be returned by the track rescan
-    registerMockObject("fresh_1", {
-      path: "live_set tracks 0 arrangement_clips 0",
-      type: "Clip",
-      properties: {
-        start_time: 0.0,
-      },
-    });
-
-    // Override track's get mock to return fresh clip for arrangement_clips
-    callState.trackMock.get.mockImplementation((prop: string) => {
-      if (prop === "arrangement_clips") {
-        return ["id", "fresh_1"];
-      }
-
-      return [0];
-    });
+    mockArrangementClipsRescan(callState.trackMock, [["fresh_1", 0]]);
 
     const mockClip = LiveAPI.from(`id ${clipId}`);
 
@@ -483,68 +578,79 @@ describe("performSplitting", () => {
     expect(clips).toHaveLength(0);
   });
 
-  it("should skip right-trim when split point is within EPSILON of clip end", () => {
+  it("keeps only fresh clips whose start falls inside the original clip's range", () => {
     const clipId = "clip_1";
 
+    // Original clip_1 occupies [0,16), so only fresh clips starting in that
+    // half-open range survive the rescan filter.
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    const freshDefs: Array<[string, number]> = [
+      ["fresh_in1", 0], // at range start → included
+      ["fresh_in2", 8], // mid-range → included
+      ["fresh_below", -5], // before range start → excluded (lower bound)
+      ["fresh_at_end", 16], // exactly at range end → excluded (upper is `<`)
+      ["fresh_above", 100], // past range end → excluded (upper bound)
+    ];
+
+    mockArrangementClipsRescan(callState.trackMock, freshDefs);
+
+    const mockClip = LiveAPI.from(`id ${clipId}`);
+    const clips = [mockClip];
+
+    performSplitting([mockClip], [4], clips, { holdingAreaStartBeats: 40000 });
+
+    expect(clips.map((c) => c.id)).toStrictEqual(["fresh_in1", "fresh_in2"]);
+  });
+
+  it("replaces only the stale clip, leaving unrelated clips in place", () => {
+    const clipId = "clip_1";
+
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    mockArrangementClipsRescan(callState.trackMock, [["fresh_1", 0]]);
+
+    const decoy = LiveAPI.from("id decoy");
+    const mockClip = LiveAPI.from(`id ${clipId}`);
+    // The stale clip is at index 1; the decoy at index 0 must be untouched.
+    const clips = [decoy, mockClip];
+
+    performSplitting([mockClip], [4], clips, { holdingAreaStartBeats: 40000 });
+
+    expect(clips[0]!.id).toBe("decoy");
+    expect(clips.some((c) => c.id === "fresh_1")).toBe(true);
+    expect(clips.some((c) => c.id === clipId)).toBe(false);
+  });
+
+  it("should skip right-trim when split point is within EPSILON of clip end", () => {
     // Clip of 8 beats, split at ~8 beats (within EPSILON of clip end)
     // This means rightTrimLen <= EPSILON, skipping the right-trim step
-    const { callState } = setupClipSplittingMocks(clipId, {
-      looping: true,
-      endTime: 8.0,
-      loopEnd: 4.0,
-    });
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
 
     // Split at 7.9999 (almost the full clip length of 8)
     // rightTrimLen = 8 - 7.9999 = 0.0001 which is <= EPSILON (0.001)
     performSplitting([mockClip], [7.9999], clips, HOLDING_AREA);
 
-    expectDuplicateCalled(callState.trackMock);
-
     // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
     // Right-trim skipped (0.0001 <= EPSILON), only left-trim remains.
-    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
-      (c: unknown[]) => c[0] === "create_midi_clip",
-    );
-
-    expect(createMidiCalls).toHaveLength(1);
+    expectSplitTrimCount(callState.trackMock, 1);
   });
 
   it("should skip left-trim when last segment starts within EPSILON of clip start", () => {
-    const clipId = "clip_1";
-
     // Clip of 8 beats, split very close to the start
-    const { callState } = setupClipSplittingMocks(clipId, {
-      looping: true,
-      endTime: 8.0,
-      loopEnd: 4.0,
-    });
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
 
     // Split at 0.0005 beats (within EPSILON of 0)
     // lastSegStart = 0.0005 which is <= EPSILON, skipping left-trim for last segment
     performSplitting([mockClip], [0.0005], clips, HOLDING_AREA);
 
-    expectDuplicateCalled(callState.trackMock);
-
     // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
     // Left-trim skipped (0.0005 <= EPSILON), only right-trim remains.
-    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
-      (c: unknown[]) => c[0] === "create_midi_clip",
-    );
-
-    expect(createMidiCalls).toHaveLength(1);
+    expectSplitTrimCount(callState.trackMock, 1);
   });
 
   it("should skip both trims for middle segment at EPSILON boundaries", () => {
-    const clipId = "clip_1";
-
-    const { callState } = setupClipSplittingMocks(clipId, {
-      looping: true,
-      endTime: 12.0,
-      loopEnd: 4.0,
-    });
-    const { mockClip, clips } = createPerformContext(clipId);
+    const { callState, mockClip, clips } = setupSplitTest(TWELVE_BEAT_LOOPED);
 
     // 3-segment split at boundaries very close to 0 and clip end.
     // Middle segment: segStart=0.0005 (<=EPSILON), segEnd=11.9995
@@ -553,18 +659,12 @@ describe("performSplitting", () => {
     // for the middle segment extraction.
     performSplitting([mockClip], [0.0005, 11.9995], clips, HOLDING_AREA);
 
-    expectDuplicateCalled(callState.trackMock);
-
     // Step 2: seg0 right-trim (11.9995 > EPSILON) → happens
     // Step 3: middle segment left-trim (0.0005 <= EPSILON) → skipped
     //         middle segment right-trim (0.0005 <= EPSILON) → skipped
     // Step 4: last segment left-trim (11.9995 > EPSILON) → happens
     // Normal 3-segment split would have 4 create_midi_clip calls;
     // skipping both middle trims leaves 2.
-    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
-      (c: unknown[]) => c[0] === "create_midi_clip",
-    );
-
-    expect(createMidiCalls).toHaveLength(2);
+    expectSplitTrimCount(callState.trackMock, 2);
   });
 });

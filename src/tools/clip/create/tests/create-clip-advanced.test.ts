@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import * as v8Console from "#src/shared/v8-max-console.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -12,6 +13,10 @@ import {
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
+import {
+  buildClipProperties,
+  buildClipResult,
+} from "../helpers/create-clip-result-helpers.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
@@ -334,6 +339,85 @@ describe("createClip - advanced features", () => {
       ]);
     });
 
+    it("dedupes same-pitch+start duplicates on the no-transform path and warns", async () => {
+      // Two identical p:60,t:0 notes, no transform. The create path only sorted
+      // before, so both reached add_new_notes and Live silently dropped one. The
+      // dedupe collapses them keep-last and warns so the LLM sees the drop.
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip(
+        {
+          slot: "0/0",
+          notes:
+            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
+        },
+        { notation: "midi-json" },
+      );
+
+      expectNotesAdded(clip, [note(60, 0, 1)]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Dropped 1 duplicate note"),
+      );
+    });
+
+    it("treats a blank transforms string as no transform: dedupes and warns", async () => {
+      // transforms:"" is not undefined, so before the entry-point normalization
+      // it took the sortNotes (has-transform) branch — skipping the no-transform
+      // dedupe warning — while applyTransforms no-oped on "". Written notes stayed
+      // correct (the post-transform dedupe still collapsed them) but the
+      // LLM-visible "Dropped N duplicate note(s)" warning was silently lost.
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip(
+        {
+          slot: "0/0",
+          notes:
+            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
+          transforms: "",
+        },
+        { notation: "midi-json" },
+      );
+
+      expectNotesAdded(clip, [note(60, 0, 1)]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Dropped 1 duplicate note"),
+      );
+    });
+
+    it("keeps notes a separating transform pulls apart (transforms then dedupes, like update-clip)", async () => {
+      // Two identical p60/start0 notes + `timing += note.index`, which shifts the
+      // second note (index 1) to beat 1 — separating the pair. create-clip must
+      // NOT dedupe before transforming: it has to feed both notes into the
+      // transform and dedupe AFTER, so both survive. This matches update-clip's
+      // transform-then-dedupe order (update-clip-notes-helpers.ts). Before the
+      // fix, prepareClipData dropped one note pre-transform and only 1 reached
+      // add_new_notes — a silent create/update parity divergence.
+      const { clip } = setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await createClip(
+        {
+          slot: "0/0",
+          notes:
+            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
+          transforms: "timing += note.index",
+        },
+        { notation: "midi-json" },
+      );
+
+      expectNotesAdded(clip, [
+        note(60, 0, 1), // note.index 0 stays at beat 0
+        note(60, 1, 1), // note.index 1 pushed to beat 1 — survives (not pre-deduped)
+      ]);
+    });
+
     it("reports the actual stored note count, not the interpreted input count", async () => {
       const { clip } = setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
@@ -354,5 +438,122 @@ describe("createClip - advanced features", () => {
 
       expect(result).toMatchObject({ noteCount: 2 });
     });
+  });
+
+  describe("normalizeTransforms", () => {
+    it("treats a whitespace-only transforms string as no transform", async () => {
+      // A whitespace-only transforms string trims to "", so normalizeTransforms
+      // returns null and no transform runs (result has no `transformed` field).
+      // The `transformString?.trim()` → `transformString` mutant keeps "   ",
+      // routing it through resolveClipTransform which reports `transformed`.
+      const { clip } = setupSessionMocks({
+        liveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          scale_mode: 0,
+        },
+        clip: { length: 4 },
+      });
+
+      const result = await createClip({
+        slot: "0/0",
+        notes: "C3 1|1",
+        transforms: "   ",
+      });
+
+      expect((result as { transformed?: number }).transformed).toBeUndefined();
+      expectNotesAdded(clip, [note(60, 0, 1)]);
+    });
+  });
+});
+
+describe("buildClipProperties (unit)", () => {
+  it("sets playing_position only when the clip is looping AND firstStart is set", () => {
+    // Looping + firstStart → playing_position is set.
+    expect(
+      buildClipProperties(0, 4, 5, true, undefined, null, 4, 4, 4)
+        .playing_position,
+    ).toBe(5);
+
+    // Not looping (with firstStart) → no playing_position. Kills the
+    // whole-condition → true and the && → || mutants (|| would set it).
+    expect(
+      buildClipProperties(0, 4, 5, false, undefined, null, 4, 4, 4)
+        .playing_position,
+    ).toBeUndefined();
+
+    // Looping but firstStart null → no playing_position. Kills the
+    // `firstStartBeats != null` → true mutant.
+    expect(
+      buildClipProperties(0, 4, null, true, undefined, null, 4, 4, 4)
+        .playing_position,
+    ).toBeUndefined();
+  });
+
+  it("includes name only when clipName is truthy", () => {
+    expect(
+      buildClipProperties(0, 4, null, null, "Riff", null, 4, 4, 4).name,
+    ).toBe("Riff");
+    // Property must be ABSENT (not present-with-undefined) so the `if (clipName)`
+    // guard forced to `true` is caught — a plain `.name` access can't tell
+    // "absent" from "= undefined".
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, null, 4, 4, 4),
+    ).not.toHaveProperty("name");
+    expect(
+      buildClipProperties(0, 4, null, null, "", null, 4, 4, 4),
+    ).not.toHaveProperty("name");
+  });
+
+  it("includes color only when color is non-null", () => {
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, "#FF0000", 4, 4, 4)
+        .color,
+    ).toBe("#FF0000");
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, null, 4, 4, 4).color,
+    ).toBeUndefined();
+  });
+
+  it("includes looping only when looping is non-null", () => {
+    expect(
+      buildClipProperties(0, 4, null, true, undefined, null, 4, 4, 4).looping,
+    ).toBe(1);
+    expect(
+      buildClipProperties(0, 4, null, false, undefined, null, 4, 4, 4).looping,
+    ).toBe(0);
+    expect(
+      buildClipProperties(0, 4, null, null, undefined, null, 4, 4, 4).looping,
+    ).toBeUndefined();
+  });
+});
+
+describe("buildClipResult (unit)", () => {
+  it("omits the calculated length when a length parameter was provided", () => {
+    // With notationString set and an explicit length, the `length == null` guard
+    // is false so no calculated length is added. The → true mutant would read
+    // clip length back and populate `length`.
+    const clip = {
+      id: "clip-x",
+      getProperty: vi.fn(() => 8),
+      call: vi.fn(() => JSON.stringify({ notes: [] })),
+    } as unknown as LiveAPI;
+
+    const result = buildClipResult(
+      clip,
+      0,
+      "session",
+      0,
+      null,
+      "C3 1|1",
+      "2bar",
+      4,
+      4,
+      null,
+    );
+
+    expect(result.length).toBeUndefined();
+    expect(result.noteCount).toBe(0);
+    expect(result.slot).toBe("0/0");
   });
 });

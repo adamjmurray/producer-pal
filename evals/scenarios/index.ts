@@ -63,6 +63,7 @@ interface CliOptions {
   all?: boolean;
   skipSetup?: boolean;
   skipJudge?: boolean;
+  skipReflection?: boolean;
   quiet?: boolean;
   usage?: boolean;
   /** Whether to write JSON result files to disk (--no-save sets false). */
@@ -95,7 +96,7 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini-3.5-flash, local/qwen3-8b)",
+    "Model(s) to test (e.g., gemini-3.6-flash, local/qwen3-8b)",
     collectValues,
     [],
   )
@@ -135,6 +136,10 @@ program
   .option(
     "--skip-judge",
     "Skip the LLM-as-judge step (rely on deterministic checks only)",
+  )
+  .option(
+    "--skip-reflection",
+    "Skip the self-reflection turn injected after a deterministic failure",
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-u, --usage", "Show per-step token usage")
@@ -296,13 +301,17 @@ async function runAllScenarios(
   ctx: RunContext,
 ): Promise<ResultsByScenario> {
   const resultsByScenario: ResultsByScenario = new Map();
+  // The Live Set left open by the previous scenario. A `reuseLiveSet` scenario
+  // that wants the same one runs against it instead of paying another open.
+  let lastOpenedLiveSet: string | null = null;
 
   for (const scenario of scenarios) {
     const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
     // The skip decision depends only on the scenario + run env, so it is the
     // same for every model.
     const skipReason = shouldSkipScenario(scenario, runEnv);
-    let liveSetOpened = false;
+    let liveSetOpened =
+      scenario.reuseLiveSet === true && lastOpenedLiveSet === scenario.liveSet;
 
     for (const spec of modelSpecs) {
       const modelKey = `${spec.provider}/${spec.model}`;
@@ -322,6 +331,7 @@ async function runAllScenarios(
           liveSetOpened,
         );
         liveSetOpened = true;
+        lastOpenedLiveSet = scenario.liveSet;
       }
 
       modelResults.set(modelKey, new Map([[label, results]]));
@@ -338,7 +348,7 @@ async function runAllScenarios(
  * --no-save), print it, and return it as a single-element result list.
  *
  * @param scenario - The skipped scenario
- * @param modelKey - Model key (e.g. "google/gemini-3.5-flash")
+ * @param modelKey - Model key (e.g. "google/gemini-3.6-flash")
  * @param label - Run-environment label (see `envLabel`)
  * @param reason - Why the scenario was skipped
  * @param ctx - Shared run context
@@ -400,6 +410,7 @@ async function runTrials(
       envLabel: label,
       usage: options.usage,
       skipJudge: options.skipJudge,
+      skipReflection: options.skipReflection,
     });
 
     const trialInfo: TrialInfo | undefined =

@@ -17,13 +17,13 @@ For detailed installation instructions for your preferred AI platform, see the
 
 Quick options:
 
-- **[Built-in Chat UI](/installation/gemini)** - Works with Gemini, Ollama, and
+- **[Built-in Chat UI](/installation/chat-ui)** - Works with Gemini, Ollama, and
   more
 - **[Claude Desktop](/installation/claude-desktop)** - Recommended for Anthropic
   users
 - **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,
   Claude Code, and other MCP-compatible coding agents
-- **[Local Models](/installation/lm-studio)** - Run completely offline with
+- **[Local Models](/installation/choose-local)** - Run completely offline with
   Ollama, LM Studio, and other MCP-compatible platforms
 
 Already have an MCP-compatible client? Connect with `npx producer-pal`
@@ -47,10 +47,13 @@ After installation:
 
 - [Device Interface](/guide/device) - The Max for Live device tabs and settings
 - [Chat UI](/guide/chat-ui) - The built-in browser-based chat interface
+- [Context & Memory](/guide/context) - Teach AI about your project and your
+  preferences, and see what it remembers about you
 
 ## Next Steps
 
-- Check out the [usage examples](/guide/examples) for detailed examples and tips
+- Check out the [usage examples](/features/examples) for detailed examples and
+  tips
 - Explore the [feature list](/features) to see everything Producer Pal can do
 - Watch the [demo videos](/#demos) and
   [video tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)

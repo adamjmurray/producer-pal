@@ -36,8 +36,20 @@ version.
 
 ### For Other Setups
 
-- **Using `npx producer-pal`:** Updates are fetched automatically (no action
-  needed)
+- **Using `npx producer-pal`:** `npx` usually fetches the latest version
+  automatically, so no action is needed. But it can also serve a **stale cached
+  copy** — or skip fetching entirely if you once ran
+  `npm install -g producer-pal` (it runs your global copy instead). If Producer
+  Pal stops working after an upgrade — often with a misleading error like
+  "cannot connect to MCP server" — force the latest version:
+
+  ```bash
+  npm install -g producer-pal@latest
+  ```
+
+  Then restart your AI app. See
+  [`npx` is running an old version](/support/troubleshooting#npx-is-running-an-old-version)
+  for details.
 
 ## 4. Restart Your AI App
 
