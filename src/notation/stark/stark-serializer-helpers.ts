@@ -151,7 +151,7 @@ export function pitchParts(
   const pitchClass = ((midi % 12) + 12) % 12;
   // PITCH_CLASS_NAMES uses flats: C, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B
   const name = PITCH_CLASS_NAMES[pitchClass] ?? "C";
-  const letter = name[0] ?? "C";
+  const letter = name.at(0) ?? "C";
   const accidental = name.length > 1 ? "b" : "";
   // The "natural" MIDI position for this pitch class in the register
   const naturalMidi = registerDefault + pitchClass;
