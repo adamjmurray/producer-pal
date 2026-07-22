@@ -250,6 +250,16 @@ const unicornRules = {
   "unicorn/prefer-string-starts-ends-with": "error", // Use .startsWith()/.endsWith()
   "unicorn/no-object-as-default-parameter": "error", // Prevent mutable default params
   "unicorn/explicit-length-check": "error", // Require explicit .length > 0
+  "unicorn/no-boolean-sort-comparator": "error", // Comparator must return a number, not a boolean
+  "unicorn/no-array-sort-for-min-max": "error", // Don't sort()[0] to get a min/max
+  "unicorn/no-mismatched-map-key": "error", // Catch map.set(a)/map.get(b) key typos
+  "unicorn/no-invalid-argument-count": "error", // Catch calls with the wrong number of args
+  "unicorn/no-duplicate-if-branches": "error", // Identical if/else-if bodies are a bug smell
+  "unicorn/no-duplicate-logical-operands": "error", // Catch `a && a`, `x || x`
+  "unicorn/no-duplicate-set-values": "error", // Duplicate values in a Set literal
+  "unicorn/no-impossible-length-comparison": "error", // Catch `arr.length < 0` and friends
+  "unicorn/no-accidental-bitwise-operator": "error", // Catch `&`/`|` where `&&`/`||` was meant
+  "unicorn/no-misrefactored-assignment": "error", // Catch `a = a + b - a` botched refactors
 };
 
 const tsOnlyRules = {
