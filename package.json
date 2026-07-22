@@ -103,7 +103,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.97",
-    "@ai-sdk/google": "3.0.93",
+    "@ai-sdk/google": "3.0.94",
     "@ai-sdk/mistral": "3.0.50",
     "@ai-sdk/openai": "3.0.85",
     "@ai-sdk/openai-compatible": "2.0.61",
@@ -118,7 +118,7 @@
     "@openai/agents": "0.13.4",
     "@openrouter/ai-sdk-provider": "2.10.0",
     "@tailwindcss/typography": "0.5.20",
-    "ai": "6.0.227",
+    "ai": "6.0.228",
     "dompurify": "3.4.12",
     "express": "5.2.1",
     "idb": "8.0.3",
