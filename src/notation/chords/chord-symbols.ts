@@ -138,7 +138,7 @@ export function realizeChordSymbol(
  *   is malformed
  */
 function pitchClassFromName(name: string): number | null {
-  const base = PITCH_CLASS_VALUES[name[0]?.toUpperCase() ?? ""];
+  const base = PITCH_CLASS_VALUES[name.at(0)?.toUpperCase() ?? ""];
 
   if (base == null) return null;
 

@@ -37,7 +37,8 @@ export function getNameForIndex(
   if (baseName == null) return;
 
   if (parsedNames != null) {
-    return index < parsedNames.length ? parsedNames[index] : undefined;
+    // Out-of-bounds index returns undefined (noUncheckedIndexedAccess)
+    return parsedNames[index];
   }
 
   return baseName;

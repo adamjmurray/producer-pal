@@ -58,11 +58,7 @@ function hasValidLicenseHeader(filePath: string): {
   const lines = content.split("\n");
 
   // Handle shebang - header should come after it
-  let startLine = 0;
-
-  if (lines[0]?.startsWith("#!")) {
-    startLine = 1;
-  }
+  const startLine = lines[0]?.startsWith("#!") ? 1 : 0;
 
   // Check for "// Producer Pal" at the expected position
   if (!lines[startLine]?.startsWith(EXPECTED_HEADER_START)) {

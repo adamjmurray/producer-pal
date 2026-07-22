@@ -121,7 +121,7 @@ function parseArgToken(token: string): string | number | typeof INVALID {
   }
 
   // Quoted string: strip matching outer quotes.
-  const first = token[0];
+  const first = token.at(0);
 
   if (first === '"' || first === "'") {
     if (token.length < 2 || token.at(-1) !== first) {
