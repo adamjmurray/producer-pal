@@ -168,7 +168,7 @@
     "rollup-plugin-copy": "3.5.0",
     "rollup-plugin-esbuild": "6.2.1",
     "typescript": "6.0.3",
-    "vite": "8.1.1",
+    "vite": "8.1.4",
     "vite-plugin-singlefile": "2.3.3",
     "vitepress": "1.6.4",
     "vitest": "4.1.10"
