@@ -3,10 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { beforeAll, describe, expect, it } from "vitest";
+import Max from "max-api";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { projectContextSidecarPath } from "../../helpers/project-context-backup/project-context-backup-store.ts";
 import { TOOL_NAMES } from "../../create-mcp-server.ts";
+import { dispatchNodeRoute } from "../config-dir-test-helpers.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 describe("MCP Express App - Config", () => {
@@ -151,6 +157,54 @@ describe("MCP Express App - Config", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectContext: "" }),
       });
+    });
+
+    it("restores the on-disk backup into config on projectContext.sync (device upgrade)", async () => {
+      const projectDir = mkdtempSync(join(tmpdir(), "ppal-proj-"));
+      const liveSetPath = join(projectDir, "MySong.als");
+
+      try {
+        // Upgraded device: the param is empty but a sidecar holds the backup.
+        writeFileSync(
+          projectContextSidecarPath(liveSetPath),
+          "Restored from disk",
+          "utf8",
+        );
+        await fetch(configUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectContext: "" }),
+        });
+
+        // The V8 side calls this route on its first tool call after the upgrade.
+        // dispatchNodeRoute reads Max.outlet's first recorded call, so clear the
+        // server-startup calls first.
+        vi.mocked(Max.outlet).mockClear();
+        const res = await dispatchNodeRoute("projectContext.sync", {
+          filePath: liveSetPath,
+          content: "",
+          allowRestore: true,
+        });
+
+        expect(res.result).toStrictEqual({
+          action: "restore",
+          content: "Restored from disk",
+        });
+
+        // The route updated config directly so a restore during ppal-connect is
+        // reflected in that response's injected project-context block.
+        const configResponse = await fetch(configUrl);
+        const config = await configResponse.json();
+
+        expect(config.projectContext).toBe("Restored from disk");
+      } finally {
+        rmSync(projectDir, { recursive: true, force: true });
+        await fetch(configUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectContext: "" }),
+        });
+      }
     });
 
     it("should update sampleFolder", async () => {

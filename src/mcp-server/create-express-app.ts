@@ -20,13 +20,18 @@ import {
   type Notation,
 } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
+import {
+  TOOL_NAMES,
+  createMcpServer,
+  validateTools,
+} from "./create-mcp-server.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import {
   isLocalOrigin,
   rejectCrossOriginWrite,
 } from "./helpers/http/request-origin.ts";
+import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
@@ -93,6 +98,17 @@ Max.addHandler("projectContext", (content: unknown) => {
   const value = content === "bang" ? "" : String(content ?? "");
 
   config.projectContext = value;
+});
+
+// The V8 side calls projectContext.sync on tool calls to back the project
+// context up to a sidecar beside the Live Set (surviving device upgrades). A
+// restore updates our mirror directly so a restore during ppal-connect shows up
+// in that response's injected project-context block — the Max round-trip that
+// re-persists the param can't be relied on to land in time.
+registerProjectContextBackupNodeRoutes({
+  setProjectContext: (value: string) => {
+    config.projectContext = value;
+  },
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -346,30 +362,6 @@ export function createExpressApp(): Express {
   return app;
 }
 
-const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
-
-/**
- * Build the set of valid tool names, including ppal-live-api when enabled.
- * @param liveApiEnabled - Current value of config.liveApiEnabled
- * @returns Set of valid tool names
- */
-function getValidToolSet(liveApiEnabled: boolean): Set<string> {
-  if (!liveApiEnabled) return VALID_TOOL_SET;
-
-  return new Set<string>([...VALID_TOOL_SET, LIVE_API_TOOL_NAME]);
-}
-
-/**
- * Build the list of valid tool names for error responses.
- * @param liveApiEnabled - Current value of config.liveApiEnabled
- * @returns Sorted list of valid tool names
- */
-function getValidToolNames(liveApiEnabled: boolean): string[] {
-  if (!liveApiEnabled) return [...TOOL_NAMES];
-
-  return [...TOOL_NAMES, LIVE_API_TOOL_NAME];
-}
-
 /**
  * Handle POST /config requests to update device UI settings
  *
@@ -475,47 +467,4 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   res.json(config);
-}
-
-/**
- * Validate the tools array from a config update request.
- * Returns an error object if invalid, or null if valid.
- *
- * @param tools - The tools value from the request body
- * @param liveApiEnabled - Whether ppal-live-api is an accepted tool name
- * @returns Error response body or null
- */
-function validateTools(
-  tools: unknown,
-  liveApiEnabled: boolean,
-): { error: string; validToolNames: string[] } | null {
-  const validToolNames = getValidToolNames(liveApiEnabled);
-  const validToolSet = getValidToolSet(liveApiEnabled);
-
-  if (!Array.isArray(tools)) {
-    return {
-      error: "tools must be an array of tool names",
-      validToolNames,
-    };
-  }
-
-  const list = tools.map(String);
-  const invalid = list.filter((name) => !validToolSet.has(name));
-
-  if (invalid.length > 0) {
-    return {
-      error: `Invalid tool name(s): ${invalid.join(", ")}`,
-      validToolNames,
-    };
-  }
-
-  if (!list.includes("ppal-connect")) {
-    return {
-      error:
-        "ppal-connect must be included in tools (it is the required entry point)",
-      validToolNames,
-    };
-  }
-
-  return null;
 }

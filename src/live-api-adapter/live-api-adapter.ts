@@ -47,6 +47,7 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
+import { syncProjectContextBackup } from "./project-context-sync.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -223,6 +224,20 @@ export function projectContext(content: unknown): void {
 }
 
 /**
+ * Apply a project-context blob restored from the on-disk backup: update the
+ * session state and re-persist it into the Max device param via the same outlet
+ * ppal-context uses. A null (no restore happened) is a no-op.
+ *
+ * @param restored - The restored blob, or null when nothing was restored
+ */
+function applyRestoredProjectContext(restored: string | null): void {
+  if (restored == null) return;
+
+  sessionState.projectContext.content = restored;
+  outlet(0, "update_project_context", restored);
+}
+
+/**
  * Set the sample folder path
  *
  * @param path - Sample folder path
@@ -338,6 +353,16 @@ export async function mcp_request(
     }
 
     const requestContext = buildRequestContext(incomingContext);
+
+    // Best-effort: keep the on-disk project-context backup in sync with the
+    // current Live Set, and restore it into an empty param after a device
+    // upgrade. Runs before the tool so a restored blob is visible to it — and,
+    // for ppal-connect, to the Node-side injected project-context block. The
+    // post-await write to sessionState lives in a helper so concurrent requests
+    // don't trip require-atomic-updates.
+    applyRestoredProjectContext(
+      await syncProjectContextBackup(sessionState.projectContext.content),
+    );
 
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
