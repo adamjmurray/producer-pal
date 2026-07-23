@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useRef } from "preact/hooks";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
-import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
+import { type DocStatus } from "#webui/hooks/context/use-doc";
 
 type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
 
@@ -32,7 +32,7 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
  * @returns A send handler that waits out the initial load before sending
  */
 export function useSystemPromptSendGate(
-  status: DocMemoryStatus,
+  status: DocStatus,
   send: SendFn,
 ): SendFn {
   // Latest-value refs (updated in effects, not during render): the gated

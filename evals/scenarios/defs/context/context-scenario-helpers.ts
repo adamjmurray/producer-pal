@@ -9,9 +9,9 @@
  * These scenarios grade BEHAVIOR — does the model follow what's in context, and
  * does it reach for the right layer when writing? The mechanics of each scope
  * (read/write/delete over the MCP protocol) are already pinned by
- * e2e/mcp/workflow/ppal-context-memory.test.ts; nothing here re-tests those.
+ * e2e/mcp/workflow/ppal-context.test.ts; nothing here re-tests those.
  *
- * Seeding note: the project layer is a config value (`config.memoryContent`),
+ * Seeding note: the project layer is a config value (`config.projectContext`),
  * which the runner reverts via resetConfig(). The global and memory layers are
  * REAL FILES under ~/.producer-pal/ on the machine running Live, and the eval
  * process (which talks to that server over HTTP) cannot redirect them with

@@ -47,8 +47,8 @@ vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
 // same-origin endpoint; stub them so App tests stay focused on the overlay
 // open/close plumbing and don't leak real localhost fetches. See
 // App-context-mocks for details.
-vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
-  useSystemPromptMemory: systemPromptMemoryMock,
+vi.mock(import("#webui/hooks/context/use-system-prompt"), () => ({
+  useSystemPrompt: systemPromptDocMock,
 }));
 vi.mock(import("#webui/components/context/ContextTabs"), () => ({
   ContextTabs: ContextTabsStub,
@@ -63,7 +63,7 @@ import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import {
   ContextTabsStub,
   setStubLeaveGuard,
-  systemPromptMemoryMock,
+  systemPromptDocMock,
 } from "./App-context-mocks";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";

@@ -42,7 +42,7 @@ export function getConfigUrl(): string {
 
 /**
  * Gets the global-context endpoint URL (the machine-global ~/.producer-pal
- * context, distinct from the per-project /config memory).
+ * context, distinct from the per-project /config project context).
  * @returns {string} The global-context endpoint URL
  */
 export function getGlobalContextUrl(): string {

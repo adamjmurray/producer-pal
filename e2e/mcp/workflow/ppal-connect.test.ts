@@ -114,7 +114,7 @@ describe("ppal-connect", () => {
   });
 
   describe("project context", () => {
-    // config.memoryContent is the per-Live-Set project context blob — the field
+    // config.projectContext is the per-Live-Set project context blob — the field
     // name predates the memory system. It is no longer embedded in the connect
     // JSON; it's injected Node-side as its own "Project context (this Live Set):"
     // block (the same shape as the skills/global/memory blocks).
@@ -122,7 +122,7 @@ describe("ppal-connect", () => {
     const PROJECT_CONTEXT_PREFIX = "Project context (this Live Set):";
 
     it("injects a project context block when content is non-empty", async () => {
-      await setConfig({ memoryContent: TEST_CONTEXT });
+      await setConfig({ projectContext: TEST_CONTEXT });
       const result = await callConnectRaw();
 
       expect(extractBlock(result, PROJECT_CONTEXT_PREFIX)).toBe(
@@ -131,7 +131,7 @@ describe("ppal-connect", () => {
     });
 
     it("omits the project context block when content is empty", async () => {
-      await setConfig({ memoryContent: "" });
+      await setConfig({ projectContext: "" });
       const result = await callConnectRaw();
 
       expect(extractBlock(result, PROJECT_CONTEXT_PREFIX)).toBe("");
@@ -234,7 +234,7 @@ describe("ppal-connect", () => {
         // beforeEach, but set both together for a self-contained arrange step.)
         await setConfig({
           smallModelMode: false,
-          memoryContent: "e2e order-probe project context",
+          projectContext: "e2e order-probe project context",
         });
 
         const result = await callConnectRaw();
@@ -251,7 +251,7 @@ describe("ppal-connect", () => {
       } finally {
         // Restore the dev machine's global context and remove the probe memory so
         // ~/.producer-pal is left untouched. Project context needs no restore —
-        // the next test's beforeEach resetConfig clears memoryContent.
+        // the next test's beforeEach resetConfig clears projectContext.
         await fetch(GLOBAL_CONTEXT_URL, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

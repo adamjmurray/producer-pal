@@ -11,8 +11,8 @@ import {
 } from "#webui/components/context/collection/collection-editor-parts";
 import { useDraftLeaveGuard } from "#webui/components/context/collection/leave-guard";
 import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
+import { type SaveStatus } from "#webui/hooks/context/use-doc";
 import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
-import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
 import {
   type MemoryEntryView,
   type UseMemoryCollectionReturn,

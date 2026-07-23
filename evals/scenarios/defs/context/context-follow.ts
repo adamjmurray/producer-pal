@@ -57,7 +57,7 @@ export const contextFollowProject: EvalScenario = {
 
   // The project layer is the one scope seeded by plain config — resetConfig()
   // reverts it, so no teardown is needed for it.
-  config: { memoryContent: PROJECT_CONTEXT },
+  config: { projectContext: PROJECT_CONTEXT },
 
   ...seedContext({ clearSlots: [LEAD_SLOT] }),
 

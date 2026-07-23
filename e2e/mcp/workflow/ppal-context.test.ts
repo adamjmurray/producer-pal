@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for ppal-context tool (memory actions)
- * Tests memory read/write functionality via MCP protocol.
+ * E2E tests for the ppal-context tool across its three scopes: project context
+ * (the per-Live-Set blob), global context, and the memory collection.
+ * Exercises read/write/delete via the MCP protocol.
  *
  * Run with: npm run e2e:mcp
  */
@@ -19,8 +20,8 @@ import {
 
 const ctx = setupMcpTestContext({ once: true });
 
-/** Helper to call ppal-context with memory actions and return raw result */
-async function callMemoryTool(
+/** Helper to call ppal-context project scope (the default) and return raw result */
+async function callProjectContextTool(
   action: "read" | "write",
   content?: string,
 ): Promise<unknown> {
@@ -33,24 +34,24 @@ async function callMemoryTool(
   return ctx.client!.callTool({ name: "ppal-context", arguments: args });
 }
 
-describe("ppal-context (memory actions)", () => {
+describe("ppal-context (project scope)", () => {
   it("reads current content", async () => {
-    const TEST_CONTENT = "Read-only memory content for e2e testing";
+    const TEST_CONTENT = "Read-only project context for e2e testing";
 
-    await setConfig({ memoryContent: TEST_CONTENT });
+    await setConfig({ projectContext: TEST_CONTENT });
 
-    const readResult = parseToolResult<MemoryResult>(
-      await callMemoryTool("read"),
+    const readResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
     );
 
     expect(readResult.content).toBe(TEST_CONTENT);
   });
 
-  it("reads empty content when memory has been cleared", async () => {
-    await setConfig({ memoryContent: "" });
+  it("reads empty content when project context has been cleared", async () => {
+    await setConfig({ projectContext: "" });
 
-    const readResult = parseToolResult<MemoryResult>(
-      await callMemoryTool("read"),
+    const readResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
     );
 
     expect(readResult.content).toBe("");
@@ -60,25 +61,27 @@ describe("ppal-context (memory actions)", () => {
     const INITIAL_CONTENT = "Initial content for write test";
     const UPDATED_CONTENT = "Updated content from e2e test";
 
-    await setConfig({ memoryContent: INITIAL_CONTENT });
+    await setConfig({ projectContext: INITIAL_CONTENT });
 
-    const writeResult = parseToolResult<MemoryResult>(
-      await callMemoryTool("write", UPDATED_CONTENT),
+    const writeResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("write", UPDATED_CONTENT),
     );
 
     expect(writeResult.content).toBe(UPDATED_CONTENT);
 
-    const verifyResult = parseToolResult<MemoryResult>(
-      await callMemoryTool("read"),
+    const verifyResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
     );
 
     expect(verifyResult.content).toBe(UPDATED_CONTENT);
   });
 
   it("requires content for write action", async () => {
-    await setConfig({ memoryContent: "Some content" });
+    await setConfig({ projectContext: "Some content" });
 
-    const response = extractToolResultText(await callMemoryTool("write"));
+    const response = extractToolResultText(
+      await callProjectContextTool("write"),
+    );
 
     expect(response).toContain("Content required for write action");
   });
@@ -101,14 +104,14 @@ describe("ppal-context (global scope)", () => {
     // the developer's actual content and restore it afterward. An empty
     // original is restorable now that global writes accept "" — the behavior
     // this test guards against regressing.
-    const original = parseToolResult<MemoryResult>(
+    const original = parseToolResult<ContentResult>(
       await callContextTool({ action: "read", scope: "global" }),
     ).content;
 
     try {
       const testContent = `e2e global context ${randomUUID()}`;
 
-      const written = parseToolResult<MemoryResult>(
+      const written = parseToolResult<ContentResult>(
         await callContextTool({
           action: "write",
           scope: "global",
@@ -118,7 +121,7 @@ describe("ppal-context (global scope)", () => {
 
       expect(written.content).toBe(testContent);
 
-      const readBack = parseToolResult<MemoryResult>(
+      const readBack = parseToolResult<ContentResult>(
         await callContextTool({ action: "read", scope: "global" }),
       );
 
@@ -131,7 +134,7 @@ describe("ppal-context (global scope)", () => {
       });
     }
 
-    const restored = parseToolResult<MemoryResult>(
+    const restored = parseToolResult<ContentResult>(
       await callContextTool({ action: "read", scope: "global" }),
     );
 
@@ -148,7 +151,7 @@ describe("ppal-context (memory scope)", () => {
     const content = `e2e memory body ${randomUUID()}`;
 
     try {
-      const written = parseToolResult<MemoryResult>(
+      const written = parseToolResult<ContentResult>(
         await callContextTool({
           action: "write",
           scope: "memory",
@@ -160,27 +163,27 @@ describe("ppal-context (memory scope)", () => {
 
       expect(written.content).toContain(`Saved memory "${name}"`);
 
-      const readBack = parseToolResult<MemoryResult>(
+      const readBack = parseToolResult<ContentResult>(
         await callContextTool({ action: "read", scope: "memory", name }),
       );
 
       expect(readBack.content).toBe(content);
 
       // read with no name returns the whole index (folds in the old list action)
-      const listed = parseToolResult<MemoryResult>(
+      const listed = parseToolResult<ContentResult>(
         await callContextTool({ action: "read", scope: "memory" }),
       );
 
       expect(listed.content).toContain(name);
       expect(listed.content).toContain(description);
 
-      const deleted = parseToolResult<MemoryResult>(
+      const deleted = parseToolResult<ContentResult>(
         await callContextTool({ action: "delete", scope: "memory", name }),
       );
 
       expect(deleted.content).toContain(`Deleted memory "${name}"`);
 
-      const listedAfter = parseToolResult<MemoryResult>(
+      const listedAfter = parseToolResult<ContentResult>(
         await callContextTool({ action: "read", scope: "memory" }),
       );
 
@@ -197,7 +200,7 @@ describe("ppal-context (memory scope)", () => {
   });
 });
 
-/** Matches MemoryResult from context-helpers.ts */
-interface MemoryResult {
+/** Matches ContentResult from context-helpers.ts */
+interface ContentResult {
   content: string;
 }

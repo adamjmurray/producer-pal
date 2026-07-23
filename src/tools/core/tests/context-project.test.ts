@@ -11,13 +11,13 @@ describe("context - project scope (default)", () => {
 
   beforeEach(() => {
     toolContext = {
-      memory: { content: "" },
+      projectContext: { content: "" },
     };
   });
 
   describe("read action", () => {
     it("returns current content", async () => {
-      toolContext.memory!.content = "test content";
+      toolContext.projectContext!.content = "test content";
 
       const result = await context({ action: "read" }, toolContext);
 
@@ -25,7 +25,7 @@ describe("context - project scope (default)", () => {
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("returns empty string when memory is missing", async () => {
+    it("returns empty string when project context is missing", async () => {
       const result = await context({ action: "read" }, {});
 
       expect(result).toStrictEqual({ content: "" });
@@ -42,39 +42,43 @@ describe("context - project scope (default)", () => {
     });
 
     it("clears content when content is an empty string", async () => {
-      toolContext.memory!.content = "existing content";
+      toolContext.projectContext!.content = "existing content";
 
       const result = await context(
         { action: "write", content: "" },
         toolContext,
       );
 
-      expect(toolContext.memory!.content).toBe("");
+      expect(toolContext.projectContext!.content).toBe("");
       expect(result).toStrictEqual({ content: "" });
-      expect(outlet).toHaveBeenCalledWith(0, "update_memory", "");
+      expect(outlet).toHaveBeenCalledWith(0, "update_project_context", "");
     });
 
     it.each([
-      ["updates content when memory is present", ""],
+      ["updates content when project context is present", ""],
       ["overwrites existing content", "old content"],
     ])("%s", async (_, initialContent) => {
-      if (initialContent) toolContext.memory!.content = initialContent;
+      if (initialContent) toolContext.projectContext!.content = initialContent;
 
       const result = await context(
         { action: "write", content: "new content" },
         toolContext,
       );
 
-      expect(toolContext.memory!.content).toBe("new content");
+      expect(toolContext.projectContext!.content).toBe("new content");
       expect(result).toStrictEqual({ content: "new content" });
-      expect(outlet).toHaveBeenCalledWith(0, "update_memory", "new content");
+      expect(outlet).toHaveBeenCalledWith(
+        0,
+        "update_project_context",
+        "new content",
+      );
     });
 
-    it("writes content via outlet even when memory context is missing", async () => {
+    it("writes content via outlet even when project context is missing", async () => {
       const result = await context({ action: "write", content: "fresh" }, {});
 
       expect(result).toStrictEqual({ content: "fresh" });
-      expect(outlet).toHaveBeenCalledWith(0, "update_memory", "fresh");
+      expect(outlet).toHaveBeenCalledWith(0, "update_project_context", "fresh");
     });
   });
 

@@ -41,8 +41,8 @@ export interface FakeSkillSlot {
 
 /** The in-memory backend state behind the five `/context` REST endpoints. */
 export interface ContextBackend {
-  /** Project context memory blob (via `/config` `memoryContent`). */
-  memoryContent: string;
+  /** Project context blob (via `/config` `projectContext`). */
+  projectContext: string;
   /** Machine-global context (`/global-context`). */
   globalContext: string;
   /** Custom system prompt (`/system-prompt`); "" means use the built-in. */
@@ -63,7 +63,7 @@ export function makeContextBackend(
   overrides: Partial<ContextBackend> = {},
 ): ContextBackend {
   return {
-    memoryContent: "",
+    projectContext: "",
     globalContext: "",
     systemPrompt: "",
     slots: [
@@ -206,7 +206,7 @@ export async function customizeOverride(page: Page): Promise<void> {
 
 // --- Endpoint handlers below main exports ---
 
-/** Standard config fields the webui reads (only `memoryContent` is exercised). */
+/** Standard config fields the webui reads (only `projectContext` is exercised). */
 const BASE_CONFIG = {
   smallModelMode: false,
   liveApiEnabled: false,
@@ -214,8 +214,8 @@ const BASE_CONFIG = {
 };
 
 /**
- * `/config`: GET echoes the config (incl. project `memoryContent`); a partial
- * POST merges `memoryContent` and echoes the full config.
+ * `/config`: GET echoes the config (incl. project `projectContext`); a partial
+ * POST merges `projectContext` and echoes the full config.
  * @param route - The intercepted route
  * @param state - The mutable backend
  */
@@ -226,14 +226,14 @@ async function handleConfig(
   if (route.request().method() === "POST") {
     const body = readJsonBody(route);
 
-    if (typeof body.memoryContent === "string") {
-      state.memoryContent = body.memoryContent;
+    if (typeof body.projectContext === "string") {
+      state.projectContext = body.projectContext;
     }
   }
 
   await fulfillJson(route, {
     ...BASE_CONFIG,
-    memoryContent: state.memoryContent,
+    projectContext: state.projectContext,
   });
 }
 
@@ -379,7 +379,7 @@ function makeSlot(name: string, builtIn: string): FakeSkillSlot {
 /** The parsed shape of the JSON bodies these endpoints receive. */
 interface RequestBody {
   content?: string;
-  memoryContent?: string;
+  projectContext?: string;
   description?: string;
   newName?: string;
   createOnly?: boolean;

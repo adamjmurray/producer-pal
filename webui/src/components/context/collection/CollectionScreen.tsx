@@ -7,18 +7,18 @@ import { cloneElement } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { useLeaveGuardContext } from "#webui/components/context/collection/leave-guard";
 import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
+import { type DocStatus } from "#webui/hooks/context/use-doc";
 import {
   type DocCollectionEntry,
   type UseDocCollectionReturn,
 } from "#webui/hooks/context/use-doc-collection";
-import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
 // A synthetic "ready" status for the header's save indicator while an existing
 // entry is open — the per-entry editor is always ready (its content is in hand);
 // only the collection-level save status varies.
-const EDITING_STATUS: DocMemoryStatus = { kind: "ready", content: "" };
+const EDITING_STATUS: DocStatus = { kind: "ready", content: "" };
 
 /** Which entry the right pane is editing: an existing one, or a fresh one. */
 type Selection = { mode: "edit"; name: string } | { mode: "new" };

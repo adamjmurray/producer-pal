@@ -20,7 +20,7 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
-import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
+import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
@@ -90,11 +90,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // The user's custom system prompt (~/.producer-pal/system-prompt.md). When
   // non-empty it fully replaces the built-in instruction for each new
   // conversation (locked at client init; see the adapter). Editing it in the
-  // Instructions tab converges here via useDocMemory's focus/poll refresh.
-  const systemPromptMemory = useSystemPromptMemory();
+  // Instructions tab converges here via useDoc's focus/poll refresh.
+  const systemPromptDoc = useSystemPrompt();
   const systemInstructionOverride =
-    systemPromptMemory.status.kind === "ready"
-      ? systemPromptMemory.status.content
+    systemPromptDoc.status.kind === "ready"
+      ? systemPromptDoc.status.content
       : "";
   // The instruction actually in effect (override or built-in): sent by the
   // adapter, snapshotted onto saved records, and shown in the transcript notice.
@@ -157,7 +157,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // turn fired during the mount-time fetch doesn't lock the built-in instruction
   // when the user actually has an override. Transparent once the status resolves.
   const gatedHandleSend = useSystemPromptSendGate(
-    systemPromptMemory.status,
+    systemPromptDoc.status,
     wrappedHandleSend,
   );
 

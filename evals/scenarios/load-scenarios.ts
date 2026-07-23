@@ -72,7 +72,7 @@ import {
   swingAndQuantize,
   syncedLfoMeterInvariance,
   whereTransforms,
-  memoryWorkflow,
+  projectContextWorkflow,
   negativeCases,
   sceneAndPlayback,
   trackAndDeviceWorkflow,
@@ -94,7 +94,7 @@ const allScenarios: EvalScenario[] = [
   trackAndDeviceWorkflow,
   deviceSoundDesign,
   deviceDrumKit,
-  memoryWorkflow,
+  projectContextWorkflow,
   // ppal-context behavior. Kept CONTIGUOUS and on one Live Set: each sets
   // `reuseLiveSet`, which only skips the (slow) reopen when the PRECEDING
   // scenario used the same Set — so the whole block pays for one open, not nine.

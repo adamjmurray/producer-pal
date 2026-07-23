@@ -10,25 +10,25 @@ import { act, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
-  type DocMemoryStatus,
+  type DocStatus,
   type SaveStatus,
-  type UseDocMemoryReturn,
-} from "#webui/hooks/context/use-doc-memory";
+  type UseDocReturn,
+} from "#webui/hooks/context/use-doc";
 
 interface MemoryOverrides {
-  status?: DocMemoryStatus;
+  status?: DocStatus;
   saveStatus?: SaveStatus;
   save?: ReturnType<typeof vi.fn>;
   clear?: ReturnType<typeof vi.fn>;
 }
 
 /**
- * Build a `UseDocMemoryReturn` for testing. Defaults to a ready memory
+ * Build a `UseDocReturn` for testing. Defaults to a ready memory
  * with empty content and resolved save/clear stubs; pass overrides to vary.
  * @param overrides - Field overrides
  * @returns A memory-hook return value plus the spies used to assert
  */
-function makeMemory(overrides: MemoryOverrides = {}): UseDocMemoryReturn {
+function makeMemory(overrides: MemoryOverrides = {}): UseDocReturn {
   // vi.fn() is typed broadly enough that .mockResolvedValue() returns a
   // generic Mock that doesn't satisfy the precise signatures on the hook
   // return type; cast each one to the field's expected shape.
@@ -37,16 +37,16 @@ function makeMemory(overrides: MemoryOverrides = {}): UseDocMemoryReturn {
     saveStatus: overrides.saveStatus ?? "idle",
     saveError: null,
     save: (overrides.save ??
-      vi.fn().mockResolvedValue(true)) as UseDocMemoryReturn["save"],
+      vi.fn().mockResolvedValue(true)) as UseDocReturn["save"],
     clear: (overrides.clear ??
-      vi.fn().mockResolvedValue(true)) as UseDocMemoryReturn["clear"],
+      vi.fn().mockResolvedValue(true)) as UseDocReturn["clear"],
     refresh: vi
       .fn()
-      .mockResolvedValue(undefined) as unknown as UseDocMemoryReturn["refresh"],
+      .mockResolvedValue(undefined) as unknown as UseDocReturn["refresh"],
   };
 }
 
-function renderEditor(memory: UseDocMemoryReturn) {
+function renderEditor(memory: UseDocReturn) {
   const { result, rerender, unmount } = renderHook(
     ({ memory: m }) =>
       useContextEditorState(
@@ -59,11 +59,11 @@ function renderEditor(memory: UseDocMemoryReturn) {
   return {
     result,
     unmount,
-    setMemory: (next: UseDocMemoryReturn) => rerender({ memory: next }),
+    setMemory: (next: UseDocReturn) => rerender({ memory: next }),
   };
 }
 
-const makeReady = (content: string): UseDocMemoryReturn =>
+const makeReady = (content: string): UseDocReturn =>
   makeMemory({ status: { kind: "ready", content } });
 
 /**
@@ -634,7 +634,7 @@ describe("useContextEditorState", () => {
   });
 
   describe("not-ready guards and pre-seed edge cases", () => {
-    const loading = (): UseDocMemoryReturn =>
+    const loading = (): UseDocReturn =>
       makeMemory({ status: { kind: "loading" } });
 
     it("handleClear is a no-op while memory is still loading", async () => {

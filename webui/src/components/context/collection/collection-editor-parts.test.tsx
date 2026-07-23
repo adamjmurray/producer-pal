@@ -9,7 +9,7 @@
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { EditorFooter } from "#webui/components/context/collection/collection-editor-parts";
-import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
+import { type SaveStatus } from "#webui/hooks/context/use-doc";
 
 /**
  * Render an EditorFooter with the given save status/error.

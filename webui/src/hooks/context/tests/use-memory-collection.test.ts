@@ -18,7 +18,7 @@ import {
   installFetchMock,
   jsonResponse,
   renderAndWait,
-} from "./doc-memory-transport-test-helpers";
+} from "./doc-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/memory";

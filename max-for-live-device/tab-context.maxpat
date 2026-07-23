@@ -9,7 +9,7 @@
             "modernui": 1
         },
         "classnamespace": "box",
-        "rect": [ 714.0, 231.0, 621.0, 585.0 ],
+        "rect": [ 563.0, 220.0, 645.0, 457.0 ],
         "openinpresentation": 1,
         "boxes": [
             {
@@ -105,7 +105,7 @@
                     "numinlets": 1,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 372.5, 62.0, 72.0, 22.0 ],
+                    "patching_rect": [ 328.0, 59.0, 72.0, 22.0 ],
                     "text": "prepend set"
                 }
             },
@@ -116,8 +116,8 @@
                     "numinlets": 2,
                     "numoutlets": 2,
                     "outlettype": [ "", "" ],
-                    "patching_rect": [ 502.0, 59.0, 125.0, 22.0 ],
-                    "text": "route memoryContent"
+                    "patching_rect": [ 502.0, 59.0, 117.0, 22.0 ],
+                    "text": "route projectContext"
                 }
             },
             {
@@ -138,8 +138,8 @@
                     "numinlets": 0,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 372.5, 22.0, 105.0, 22.0 ],
-                    "text": "r ---memory-editor"
+                    "patching_rect": [ 328.0, 19.0, 141.0, 22.0 ],
+                    "text": "r ---project-context-editor"
                 }
             },
             {
@@ -196,8 +196,8 @@
                     "numinlets": 1,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 24.0, 261.0, 141.0, 22.0 ],
-                    "text": "prepend memoryContent"
+                    "patching_rect": [ 24.0, 261.0, 133.0, 22.0 ],
+                    "text": "prepend projectContext"
                 }
             },
             {
@@ -224,7 +224,7 @@
             {
                 "box": {
                     "annotation": "Information that describes your project context such as song structure, creative direction, or todos. This text will be provided to the AI when it connects to Ableton Live. The AI can edit this text when the ppal-context tool is enabled.",
-                    "annotation_name": "Memory",
+                    "annotation_name": "Project Context",
                     "id": "obj-2",
                     "maxclass": "textedit",
                     "nosymquotes": 1,
@@ -240,13 +240,13 @@
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_invisible": 1,
-                            "parameter_longname": "memoryContent",
+                            "parameter_longname": "projectContext",
                             "parameter_modmode": 0,
-                            "parameter_shortname": "memoryContent",
+                            "parameter_shortname": "projectContext",
                             "parameter_type": 3
                         }
                     },
-                    "varname": "memoryContent"
+                    "varname": "projectContext"
                 }
             },
             {
@@ -259,7 +259,7 @@
                     "mode": 0,
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 304.5, 36.5, 45.0, 35.0 ],
+                    "patching_rect": [ 115.0, 89.5, 45.0, 35.0 ],
                     "presentation": 1,
                     "presentation_rect": [ 0.0, 2.0, 250.0, 150.0 ],
                     "proportion": 0.39,
@@ -356,7 +356,7 @@
             }
         ],
         "parameters": {
-            "obj-2": [ "memoryContent", "memoryContent", 0 ],
+            "obj-2": [ "projectContext", "projectContext", 0 ],
             "obj-32": [ "live.text[3]", "live.text[3]", 0 ],
             "parameterbanks": {
                 "0": {

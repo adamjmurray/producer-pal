@@ -4,10 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
-import {
-  type DocMemoryStatus,
-  type SaveStatus,
-} from "#webui/hooks/context/use-doc-memory";
+import { type DocStatus, type SaveStatus } from "#webui/hooks/context/use-doc";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { CONTEXT_DOCS_URL } from "#webui/lib/config";
 import { SaveIndicator } from "./SaveIndicator";
@@ -20,7 +17,7 @@ interface ContextHeaderProps {
   title: string;
   tabSlot?: preact.JSX.Element;
   closeAriaLabel: string;
-  status?: DocMemoryStatus;
+  status?: DocStatus;
   saveStatus?: SaveStatus;
   dirty?: boolean;
 

@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { registerGlobalMemoryNodeRoutes } from "#src/mcp-server/helpers/memory/global-memory-node-routes.ts";
-import { rememberMemory } from "#src/mcp-server/helpers/memory/global-memory-store.ts";
+import { registerMemoryNodeRoutes } from "#src/mcp-server/helpers/memory/memory-node-routes.ts";
+import { rememberMemory } from "#src/mcp-server/helpers/memory/memory-store.ts";
 import { clearNodeRoutes } from "#src/mcp-server/rpc/node-request-protocol.ts";
 import {
   dispatchNodeRoute,
@@ -23,7 +23,7 @@ useTempConfigDir();
 
 beforeEach(() => {
   vi.clearAllMocks();
-  registerGlobalMemoryNodeRoutes();
+  registerMemoryNodeRoutes();
 });
 
 afterEach(() => {

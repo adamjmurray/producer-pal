@@ -17,7 +17,7 @@ import {
   rememberMemory,
   renameMemory,
   slugifyMemoryName,
-} from "../helpers/memory/global-memory-store.ts";
+} from "../helpers/memory/memory-store.ts";
 import { registerCollectionRoutes } from "./collection-route.ts";
 
 /**

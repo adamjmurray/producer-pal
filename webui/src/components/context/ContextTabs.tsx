@@ -8,18 +8,18 @@ import {
   LeaveGuardContext,
   useLeaveGuard,
 } from "#webui/components/context/collection/leave-guard";
-import { useContextMemory } from "#webui/hooks/context/use-context-memory";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
-import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
+import { useGlobalContext } from "#webui/hooks/context/use-global-context";
 import { useMemoryCollection } from "#webui/hooks/context/use-memory-collection";
+import { useProjectContext } from "#webui/hooks/context/use-project-context";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
-import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
+import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
 import { MemoryScreen } from "./memory/MemoryScreen";
 import { SkillsScreen } from "./skills/SkillsScreen";
 
-/** Tabs backed by a single markdown document via useDocMemory. */
+/** Tabs backed by a single markdown document via useDoc. */
 type DocTab = "project" | "global" | "instructions";
 /**
  * All context editor tabs: the doc tabs plus the multi-fragment Skills override
@@ -33,8 +33,8 @@ const PROJECT_LABELS: ContextEditorLabels = {
   title: "Project Context",
   loadingLabel: "Loading project context…",
   closeAriaLabel: CLOSE_ARIA_LABEL,
-  clearConfirmMessage: "Clear all project memory? This cannot be undone.",
-  externalUpdateMessage: "Memory was updated outside the editor.",
+  clearConfirmMessage: "Clear all project context? This cannot be undone.",
+  externalUpdateMessage: "Project context was updated outside the editor.",
   exportBasename: "producer-pal-project-context",
   description:
     "Notes about this Ableton project, like its genre and song structure, included in every conversation. Saved in this project's Max for Live device (delete the device and it's gone). The AI can edit them too.",
@@ -96,16 +96,16 @@ interface ContextTabsProps {
  */
 export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const [tab, setTab] = useState<ContextTab>("project");
-  const projectMemory = useContextMemory();
-  const globalMemory = useGlobalContextMemory();
-  const instructionsMemory = useSystemPromptMemory();
+  const projectContext = useProjectContext();
+  const globalContext = useGlobalContext();
+  const instructions = useSystemPrompt();
   const skillOverrides = useSkillOverrides();
   const memoryCollection = useMemoryCollection();
 
-  const memoryByTab: Record<DocTab, UseDocMemoryReturn> = {
-    project: projectMemory,
-    global: globalMemory,
-    instructions: instructionsMemory,
+  const docByTab: Record<DocTab, UseDocReturn> = {
+    project: projectContext,
+    global: globalContext,
+    instructions,
   };
   const labelsByTab: Record<DocTab, ContextEditorLabels> = {
     project: PROJECT_LABELS,
@@ -169,7 +169,7 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
     screen = (
       <ContextScreen
         key={tab}
-        memory={memoryByTab[tab]}
+        doc={docByTab[tab]}
         labels={labelsByTab[tab]}
         tabSlot={tabStrip}
         onClose={guardedClose}

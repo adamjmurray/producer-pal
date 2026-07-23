@@ -734,7 +734,7 @@ rather than real gaps:
   it; likewise `resolveAbsolutePaths([])` (reconstruct-path L73) and
   `clampLibraryLimit`'s null/`≤0` guard.
 - **`readdir`-order-equivalent sorts.** The store `sortByName`
-  (`entries.sort((a,b) => a.name.localeCompare(b.name))`, global-memory L123 +
+  (`entries.sort((a,b) => a.name.localeCompare(b.name))`, memory-store L123 +
   custom-skills L133) is a no-op on the test platform because macOS APFS
   `readdirSync` already returns lexicographic order, and all slugs are
   lowercase-ascii (byte order == locale order). The sort is cross-platform

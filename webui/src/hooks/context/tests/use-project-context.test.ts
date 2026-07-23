@@ -8,19 +8,19 @@
  */
 import { renderHook, waitFor, act } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useContextMemory } from "#webui/hooks/context/use-context-memory";
+import { useProjectContext } from "#webui/hooks/context/use-project-context";
 import {
   deferred,
   type Deferred,
   installFetchMock,
   jsonResponse,
-} from "./doc-memory-transport-test-helpers";
+} from "./doc-transport-test-helpers";
 
 // happy-dom defaults to http://localhost:3000/, so the same-origin /config
 // endpoint resolves to localhost:3000.
 const CONFIG_URL = "http://localhost:3000/config";
 
-describe("useContextMemory", () => {
+describe("useProjectContext", () => {
   const fetchMock = installFetchMock();
 
   function mockResponses(...responses: Array<object | Response>): void {
@@ -43,14 +43,14 @@ describe("useContextMemory", () => {
     return ok;
   }
 
-  // Renders the hook with `{ memoryContent: "old" }` as the initial GET (plus any
+  // Renders the hook with `{ projectContext: "old" }` as the initial GET (plus any
   // extra queued responses) and waits for that content to load.
   async function renderWithLoadedContent(
     ...extraResponses: Array<object | Response>
-  ): Promise<{ current: ReturnType<typeof useContextMemory> }> {
-    mockResponses({ memoryContent: "old" }, ...extraResponses);
+  ): Promise<{ current: ReturnType<typeof useProjectContext> }> {
+    mockResponses({ projectContext: "old" }, ...extraResponses);
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status).toMatchObject({ content: "old" });
@@ -62,13 +62,13 @@ describe("useContextMemory", () => {
   // Settles a raced refresh GET with pre-save content — the stale read that must
   // lose to the save's echo.
   const resolveStale = (get: Deferred<Response>): void => {
-    get.resolve(jsonResponse({ memoryContent: "old" }));
+    get.resolve(jsonResponse({ projectContext: "old" }));
   };
 
   // Asserts the save's content won the race (the shared expectation of every
   // save-vs-refresh ordering).
   function expectSavedContentWon(result: {
-    current: ReturnType<typeof useContextMemory>;
+    current: ReturnType<typeof useProjectContext>;
   }): void {
     expect(result.current.status).toStrictEqual({
       kind: "ready",
@@ -82,7 +82,7 @@ describe("useContextMemory", () => {
   // `saveFirst` picks which request is issued first (fetchMock is queued to
   // match); `settleGet` settles the refresh GET (stale content, or a rejection).
   async function raceSaveAgainstRefresh(
-    result: { current: ReturnType<typeof useContextMemory> },
+    result: { current: ReturnType<typeof useProjectContext> },
     {
       saveFirst,
       settleGet,
@@ -106,7 +106,7 @@ describe("useContextMemory", () => {
         savePromise = result.current.save("new");
       }
 
-      post.resolve(jsonResponse({ memoryContent: "new" }));
+      post.resolve(jsonResponse({ projectContext: "new" }));
       await savePromise;
 
       settleGet(get);
@@ -115,9 +115,9 @@ describe("useContextMemory", () => {
   }
 
   it("loads memory content on mount", async () => {
-    mockResponses({ memoryContent: "# hi" });
+    mockResponses({ projectContext: "# hi" });
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status).toStrictEqual({
@@ -135,7 +135,7 @@ describe("useContextMemory", () => {
   it("reports error when fetch fails", async () => {
     fetchMock.mockRejectedValueOnce(new Error("network down"));
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status).toStrictEqual({
@@ -153,7 +153,7 @@ describe("useContextMemory", () => {
       }),
     );
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status.kind).toBe("error");
@@ -161,7 +161,7 @@ describe("useContextMemory", () => {
   });
 
   it("save() posts content and updates status", async () => {
-    const result = await renderWithLoadedContent({ memoryContent: "new" });
+    const result = await renderWithLoadedContent({ projectContext: "new" });
 
     const saved = await callAndCapture(() => result.current.save("new"));
 
@@ -175,18 +175,18 @@ describe("useContextMemory", () => {
       CONFIG_URL,
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ memoryContent: "new" }),
+        body: JSON.stringify({ projectContext: "new" }),
       }),
     );
   });
 
   it("save() surfaces error from server", async () => {
     mockResponses(
-      { memoryContent: "" },
+      { projectContext: "" },
       new Response("forbidden", { status: 403, statusText: "Forbidden" }),
     );
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status.kind).toBe("ready");
@@ -200,7 +200,7 @@ describe("useContextMemory", () => {
   });
 
   it("clear() saves empty content", async () => {
-    const result = await renderWithLoadedContent({ memoryContent: "" });
+    const result = await renderWithLoadedContent({ projectContext: "" });
 
     await act(async () => {
       await result.current.clear();
@@ -210,13 +210,13 @@ describe("useContextMemory", () => {
     expect(fetchMock).toHaveBeenLastCalledWith(
       CONFIG_URL,
       expect.objectContaining({
-        body: JSON.stringify({ memoryContent: "" }),
+        body: JSON.stringify({ projectContext: "" }),
       }),
     );
   });
 
   it("re-fetches on window focus so external writes surface", async () => {
-    const result = await renderWithLoadedContent({ memoryContent: "new" });
+    const result = await renderWithLoadedContent({ projectContext: "new" });
 
     await act(async () => {
       window.dispatchEvent(new Event("focus"));
@@ -230,9 +230,9 @@ describe("useContextMemory", () => {
   });
 
   it("refresh() re-reads memory", async () => {
-    mockResponses({ memoryContent: "v1" }, { memoryContent: "v2" });
+    mockResponses({ projectContext: "v1" }, { projectContext: "v2" });
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status).toMatchObject({ content: "v1" });
@@ -245,10 +245,10 @@ describe("useContextMemory", () => {
     expect(result.current.status).toMatchObject({ content: "v2" });
   });
 
-  it("falls back to empty string when memoryContent is missing", async () => {
+  it("falls back to empty string when projectContext is missing", async () => {
     mockResponses({});
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status).toStrictEqual({
@@ -261,7 +261,7 @@ describe("useContextMemory", () => {
   it("stringifies non-Error rejections", async () => {
     fetchMock.mockRejectedValueOnce("plain string error");
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status).toStrictEqual({
@@ -315,9 +315,9 @@ describe("useContextMemory", () => {
   });
 
   it("discards a refresh GET that resolves after the editor unmounts", async () => {
-    mockResponses({ memoryContent: "old" });
+    mockResponses({ projectContext: "old" });
 
-    const { result, unmount } = renderHook(() => useContextMemory());
+    const { result, unmount } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
       expect(result.current.status).toMatchObject({ content: "old" });
@@ -333,7 +333,7 @@ describe("useContextMemory", () => {
       // Tear the hook down while the GET is in flight, then let it land: the
       // guard must drop it rather than setState on the torn-down hook.
       unmount();
-      lateGet.resolve(jsonResponse({ memoryContent: "external" }));
+      lateGet.resolve(jsonResponse({ projectContext: "external" }));
       await refreshPromise;
     });
 
@@ -365,9 +365,9 @@ describe("useContextMemory", () => {
 
     it("re-reads memory each interval while focused", async () => {
       vi.spyOn(document, "hasFocus").mockReturnValue(true);
-      mockResponses({ memoryContent: "old" }, { memoryContent: "external" });
+      mockResponses({ projectContext: "old" }, { projectContext: "external" });
 
-      const { result } = renderHook(() => useContextMemory());
+      const { result } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
       expect(result.current.status).toMatchObject({ content: "old" });
@@ -381,9 +381,9 @@ describe("useContextMemory", () => {
 
     it("does not poll while the window is unfocused", async () => {
       vi.spyOn(document, "hasFocus").mockReturnValue(false);
-      mockResponses({ memoryContent: "old" });
+      mockResponses({ projectContext: "old" });
 
-      const { result } = renderHook(() => useContextMemory());
+      const { result } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
       expect(result.current.status).toMatchObject({ content: "old" });
@@ -400,9 +400,9 @@ describe("useContextMemory", () => {
 
     it("stops polling after the editor unmounts", async () => {
       vi.spyOn(document, "hasFocus").mockReturnValue(true);
-      mockResponses({ memoryContent: "old" });
+      mockResponses({ projectContext: "old" });
 
-      const { result, unmount } = renderHook(() => useContextMemory());
+      const { result, unmount } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
       expect(result.current.status).toMatchObject({ content: "old" });

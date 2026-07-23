@@ -6,7 +6,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { rememberMemory } from "#src/mcp-server/helpers/memory/global-memory-store.ts";
+import { rememberMemory } from "#src/mcp-server/helpers/memory/memory-store.ts";
 import {
   connectResponse,
   fakeInnerCall,

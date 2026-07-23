@@ -19,7 +19,7 @@ import {
   useImportNotice,
 } from "#webui/components/context/MarkdownDropZone";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
@@ -55,7 +55,7 @@ interface SkillSlotScreenProps {
  * override shows and the built-in is revealed on demand (see
  * {@link OverridePanes}). Keyed by the selected slot so the uncontrolled editor
  * re-seeds on slot switch. Reuses the context-editor autosave lifecycle by
- * adapting the selected slot to a single-document {@link UseDocMemoryReturn}:
+ * adapting the selected slot to a single-document {@link UseDocReturn}:
  * save writes the override, clear resets it to the built-in (deleting the file),
  * and Customize forks the built-in into the override via the import handler.
  * @param props - Screen props
@@ -66,8 +66,8 @@ export function SkillSlotScreen(
 ): preact.JSX.Element {
   const { overrides, slots, slot, onSelectSlot, tabSlot, viewSlot, onClose } =
     props;
-  const memory = useSlotDocMemory(overrides, slot);
-  const editor = useContextEditorState(memory, RESET_CONFIRM);
+  const doc = useSlotDoc(overrides, slot);
+  const editor = useContextEditorState(doc, RESET_CONFIRM);
   const importNotice = useImportNotice();
   const io = makeContextIoHandlers(
     editor,
@@ -87,7 +87,7 @@ export function SkillSlotScreen(
         title="Skills"
         tabSlot={tabSlot}
         closeAriaLabel={CLOSE_ARIA_LABEL}
-        status={memory.status}
+        status={doc.status}
         saveStatus={overrides.saveStatus}
         dirty={editor.dirty}
         onClose={onClose}
@@ -139,7 +139,7 @@ export function SkillSlotScreen(
 // --- Helpers below main export ---
 
 /**
- * Adapt one slot of the collection hook to the single-document memory shape
+ * Adapt one slot of the collection hook to the single-document doc shape
  * `useContextEditorState` expects. The screen is keyed by slot, so this is
  * rebuilt (and re-seeded) on every slot switch.
  *
@@ -150,18 +150,18 @@ export function SkillSlotScreen(
  * autosave, and risking a Reload that adopts the stale pre-echo value.
  * @param overrides - The collection hook
  * @param slot - The slot being edited
- * @returns A document-memory view of that slot
+ * @returns A doc view of that slot
  */
-function useSlotDocMemory(
+function useSlotDoc(
   overrides: UseSkillOverridesReturn,
   slot: SkillSlotView,
-): UseDocMemoryReturn {
-  const status = useMemo<UseDocMemoryReturn["status"]>(
+): UseDocReturn {
+  const status = useMemo<UseDocReturn["status"]>(
     () => ({ kind: "ready", content: slot.override }),
     [slot.override],
   );
 
-  return useMemo<UseDocMemoryReturn>(
+  return useMemo<UseDocReturn>(
     () => ({
       status,
       saveStatus: overrides.saveStatus,
