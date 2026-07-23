@@ -15,7 +15,7 @@ import {
   rememberMemory,
   renameMemory,
   slugifyMemoryName,
-} from "#src/mcp-server/helpers/memory/global-memory-store.ts";
+} from "#src/mcp-server/helpers/memory/memory-store.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
 const getDir = useTempConfigDir();

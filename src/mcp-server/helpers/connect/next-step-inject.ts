@@ -5,7 +5,7 @@
 
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import { readGlobalContext } from "../global-context/global-context-store.ts";
-import { listMemoryEntries } from "../memory/global-memory-store.ts";
+import { listMemoryEntries } from "../memory/memory-store.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,

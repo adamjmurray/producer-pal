@@ -5,8 +5,8 @@
 
 /**
  * Register the Node-side memory routes with the V8↔Node RPC dispatcher. The
- * `ppal-context` tool runs in V8, which has no filesystem, so its global-scope
- * memory ops (read/remember/forget/list) round-trip through here to reach
+ * `ppal-context` tool runs in V8, which has no filesystem, so its memory ops
+ * (read/remember/forget/list) round-trip through here to reach
  * ~/.producer-pal/memory/. Imported for side effects from mcp-server.ts so the
  * routes exist before V8 issues its first node_request.
  *
@@ -23,7 +23,7 @@ import {
   readMemoryEntry,
   regenerateIndex,
   rememberMemory,
-} from "./global-memory-store.ts";
+} from "./memory-store.ts";
 
 /** Result shape shared by every memory route: a text payload for the LLM. */
 interface MemoryRouteResult {
@@ -35,7 +35,7 @@ interface MemoryRouteResult {
  * `memory.list` routes. The underlying registry throws on duplicate
  * registration, so call once.
  */
-export function registerGlobalMemoryNodeRoutes(): void {
+export function registerMemoryNodeRoutes(): void {
   registerNodeRoute("memory.read", readRoute);
   registerNodeRoute("memory.remember", rememberRoute);
   registerNodeRoute("memory.forget", forgetRoute);
