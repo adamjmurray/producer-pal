@@ -59,7 +59,7 @@ export const contextWritePreservesProject: EvalScenario = {
   // Judge is commentary, not a gate — see the file header.
   judgeAdvisory: true,
 
-  config: { memoryContent: EXISTING_PROJECT },
+  config: { projectContext: EXISTING_PROJECT },
 
   ...seedContext({}),
 

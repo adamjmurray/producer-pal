@@ -61,7 +61,7 @@ export const contextWriteLayerProject: EvalScenario = {
   // Non-empty on purpose — see the file header. Also seeds global (via
   // seedContext) so this Set doesn't look like a brand-new user, which would
   // trigger the connect onboarding prompt and muddy the turn-1 signal.
-  config: { memoryContent: EXISTING_PROJECT },
+  config: { projectContext: EXISTING_PROJECT },
 
   ...seedContext({ global: EXISTING_GLOBAL }),
 

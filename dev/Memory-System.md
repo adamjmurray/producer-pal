@@ -70,9 +70,9 @@ to reach `context.md`.
 
 `memory` also round-trips to Node, via sibling RPC ops (`memory.read` /
 `memory.remember` / `memory.forget` / `memory.list` in
-`helpers/memory/global-memory-node-routes.ts`), which call directly into the
-store in `helpers/memory/global-memory-store.ts`. The wire route names still
-read `remember`/`forget`/`list` — internal identifiers that predate the verb
+`helpers/memory/memory-node-routes.ts`), which call directly into the store in
+`helpers/memory/memory-store.ts`. The wire route names still read
+`remember`/`forget`/`list` — internal identifiers that predate the verb
 unification and never reach the AI; the tool's `write`/`delete`/`read`(no-name)
 actions map onto them. Every mutating route echoes back the freshly regenerated
 index, so the tool result always reflects the current memory list even for a
@@ -139,10 +139,9 @@ A flat, name-sorted list of one line per entry, description as the recall hook:
 ```
 
 There is no category/type grouping — the index is one flat list, alphabetical by
-name. `renderMemoryIndex` in `helpers/memory/global-memory-store.ts` is the
-single renderer for this line format, shared by both the on-disk `MEMORY.md`
-file and the injected connect block below, so the two can never drift from each
-other.
+name. `renderMemoryIndex` in `helpers/memory/memory-store.ts` is the single
+renderer for this line format, shared by both the on-disk `MEMORY.md` file and
+the injected connect block below, so the two can never drift from each other.
 
 The backend regenerates `MEMORY.md` from the entry files' frontmatter on every
 `write` / `delete` (and self-heals it on a no-name `read`). There is no

@@ -83,10 +83,10 @@ export function toCheckSummaries(
 /**
  * Build the config POSTed to the server for a scenario run. The run environment
  * (CLI flags) is authoritative for its four keys; the scenario still contributes
- * its bound config (memoryContent, sampleFolder). This mirrors the product: the
+ * its bound config (projectContext, sampleFolder). This mirrors the product: the
  * operator's settings panel wins, the conversation supplies its own context.
  *
- * @param scenarioConfig - Scenario-bound config (memoryContent, sampleFolder)
+ * @param scenarioConfig - Scenario-bound config (projectContext, sampleFolder)
  * @param runEnv - The active run environment (CLI-driven)
  * @returns The merged config to send to the server
  */
