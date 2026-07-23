@@ -55,18 +55,18 @@ setoutletassist(1, "tool call warnings");
 
 /**
  * Persistent session-scoped state set by the Max patch via setter messages.
- * This object is the single source of truth for memory/smallModelMode/
+ * This object is the single source of truth for projectContext/smallModelMode/
  * sampleFolder; per-request contexts snapshot from it.
  */
 interface SessionState {
-  memory: { content: string };
+  projectContext: { content: string };
   smallModelMode: boolean;
   notation: Notation;
   sampleFolder: string | null;
 }
 
 const sessionState: SessionState = {
-  memory: {
+  projectContext: {
     content: "",
   },
   smallModelMode: false,
@@ -78,17 +78,17 @@ const sessionState: SessionState = {
  * Build a fresh per-request ToolContext that snapshots the persistent
  * session state and merges in request-scoped fields from the caller.
  * Concurrent in-flight requests get distinct contexts so a tool that
- * mutates its context can't leak state into another request. The memory
- * object is shared by reference so writes via ppal-context immediately
- * persist to sessionState (the Max textedit also receives the update via
- * the `update_memory` outlet round-trip).
+ * mutates its context can't leak state into another request. The
+ * projectContext object is shared by reference so writes via ppal-context
+ * immediately persist to sessionState (the Max textedit also receives the
+ * update via the `update_project_context` outlet round-trip).
  *
  * @param incoming - Per-request fields parsed from the contextJSON arg
  * @returns Fresh ToolContext owned by the calling request
  */
 function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
   return {
-    memory: sessionState.memory,
+    projectContext: sessionState.projectContext,
     smallModelMode: sessionState.smallModelMode,
     notation: sessionState.notation,
     sampleFolder: sessionState.sampleFolder,
@@ -211,15 +211,15 @@ export function notation(value: unknown): void {
 }
 
 /**
- * Set the memory content
+ * Set the project context content
  *
- * @param content - Memory content
+ * @param content - Project context content
  */
-export function memoryContent(content: unknown): void {
+export function projectContext(content: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  sessionState.memory.content = value;
+  sessionState.projectContext.content = value;
 }
 
 /**

@@ -42,28 +42,28 @@ describe("Handler Registration", () => {
     smallModelHandler(false);
   });
 
-  it("should set memoryContent and coerce bang/null/undefined to empty", async () => {
-    const handler = mockMax.handlers.get("memoryContent") as (
+  it("should set projectContext and coerce bang/null/undefined to empty", async () => {
+    const handler = mockMax.handlers.get("projectContext") as (
       input: unknown,
     ) => void;
 
     expect(handler).toBeDefined();
 
     handler("test notes");
-    expect(await getConfigField("memoryContent")).toBe("test notes");
+    expect(await getConfigField("projectContext")).toBe("test notes");
 
     handler("");
-    expect(await getConfigField("memoryContent")).toBe("");
+    expect(await getConfigField("projectContext")).toBe("");
 
     // Max textedit idiosyncrasy: bang means empty string
     handler("bang");
-    expect(await getConfigField("memoryContent")).toBe("");
+    expect(await getConfigField("projectContext")).toBe("");
 
     handler(null);
-    expect(await getConfigField("memoryContent")).toBe("");
+    expect(await getConfigField("projectContext")).toBe("");
 
     handler(undefined);
-    expect(await getConfigField("memoryContent")).toBe("");
+    expect(await getConfigField("projectContext")).toBe("");
   });
 
   it("should set compactOutput with various inputs", () => {

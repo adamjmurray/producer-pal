@@ -42,7 +42,7 @@ import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
 interface ProducerPalConfig {
-  memoryContent: string;
+  projectContext: string;
   smallModelMode: boolean;
   notation: Notation;
   jsonOutput: boolean; // true = JSON, false = compact (default)
@@ -64,7 +64,7 @@ interface ProducerPalConfig {
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
 const config: ProducerPalConfig = {
-  memoryContent: "",
+  projectContext: "",
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
   jsonOutput: false,
@@ -88,11 +88,11 @@ Max.addHandler("notation", (value: unknown) => {
   }
 });
 
-Max.addHandler("memoryContent", (content: unknown) => {
+Max.addHandler("projectContext", (content: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  config.memoryContent = value;
+  config.projectContext = value;
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -142,12 +142,11 @@ function applyLiveApiEnabled(next: boolean): void {
 
 // Enrich ppal-connect Node-side with the skills, context, memory, and next-step
 // blocks (see enrich-connect.ts for the block order and why it matters).
-// config.memoryContent is the per-Live Set context blob — a legacy field name
-// that predates the context/memory split, hence the rename at this boundary.
+// config.projectContext is the per-Live Set context blob.
 const callLiveApiEnriched = enrichConnect(callLiveApi, () => ({
   notation: config.notation,
   smallModelMode: config.smallModelMode,
-  projectContext: config.memoryContent,
+  projectContext: config.projectContext,
 }));
 
 interface JsonRpcError {
@@ -402,10 +401,10 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   const incoming = requestBody(req) as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
-  if (incoming.memoryContent !== undefined) {
-    config.memoryContent = incoming.memoryContent ?? "";
+  if (incoming.projectContext !== undefined) {
+    config.projectContext = incoming.projectContext ?? "";
     outlets.push(() =>
-      Max.outlet("config", "memoryContent", config.memoryContent),
+      Max.outlet("config", "projectContext", config.projectContext),
     );
   }
 

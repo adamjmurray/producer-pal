@@ -67,7 +67,7 @@ describe("context - global scope", () => {
         { content: "new global facts" },
       );
       expect(result).toStrictEqual({ content: "new global facts" });
-      // Global writes go over the RPC bridge, not the project update_memory outlet.
+      // Global writes go over the RPC bridge, not the project update_project_context outlet.
       expect(outlet).not.toHaveBeenCalled();
     });
 
