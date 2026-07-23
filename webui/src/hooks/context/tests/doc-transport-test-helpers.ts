@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Shared test suite for the thin useDoc transport wrappers
-// (useGlobalContextMemory, useSystemPromptMemory). Each wraps the same
+// (useGlobalContext, useSystemPrompt). Each wraps the same
 // useDoc core over a GET(no-store)/PUT(JSON) endpoint, differing only by
 // URL and error copy — so their behavioral tests are one parametrized suite
 // rather than per-hook clones. Callers keep the `@vitest-environment happy-dom`
@@ -117,9 +117,7 @@ export function describeDocTransport(spec: DocTransportSpec): void {
     const fetchMock = installFetchMock();
 
     // Load the wrapper past its mount GET so a save test can exercise the write.
-    const renderReady = (
-      content = "",
-    ): Promise<{ current: UseDocReturn }> => {
+    const renderReady = (content = ""): Promise<{ current: UseDocReturn }> => {
       fetchMock.mockResolvedValueOnce(jsonResponse({ content }));
 
       return renderAndWait(spec.useHook, "ready");

@@ -67,7 +67,11 @@ describe("context - project scope (default)", () => {
 
       expect(toolContext.projectContext!.content).toBe("new content");
       expect(result).toStrictEqual({ content: "new content" });
-      expect(outlet).toHaveBeenCalledWith(0, "update_project_context", "new content");
+      expect(outlet).toHaveBeenCalledWith(
+        0,
+        "update_project_context",
+        "new content",
+      );
     });
 
     it("writes content via outlet even when project context is missing", async () => {

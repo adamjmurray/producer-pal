@@ -7,11 +7,11 @@ import { cloneElement } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { useLeaveGuardContext } from "#webui/components/context/collection/leave-guard";
 import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
+import { type DocStatus } from "#webui/hooks/context/use-doc";
 import {
   type DocCollectionEntry,
   type UseDocCollectionReturn,
 } from "#webui/hooks/context/use-doc-collection";
-import { type DocStatus } from "#webui/hooks/context/use-doc";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 

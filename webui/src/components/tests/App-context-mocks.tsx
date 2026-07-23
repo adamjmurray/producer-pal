@@ -19,10 +19,10 @@ import { vi } from "vitest";
 import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 /**
- * Ready useSystemPromptMemory value so App tests don't fetch /system-prompt.
+ * Ready useSystemPrompt value so App tests don't fetch /system-prompt.
  * @returns A stable, no-op doc-memory hook return in the "ready" state
  */
-export function systemPromptMemoryMock(): UseDocReturn {
+export function systemPromptDocMock(): UseDocReturn {
   return {
     status: { kind: "ready", content: "" },
     saveStatus: "idle",

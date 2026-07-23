@@ -66,8 +66,8 @@ export function SkillSlotScreen(
 ): preact.JSX.Element {
   const { overrides, slots, slot, onSelectSlot, tabSlot, viewSlot, onClose } =
     props;
-  const memory = useSlotDocMemory(overrides, slot);
-  const editor = useContextEditorState(memory, RESET_CONFIRM);
+  const doc = useSlotDoc(overrides, slot);
+  const editor = useContextEditorState(doc, RESET_CONFIRM);
   const importNotice = useImportNotice();
   const io = makeContextIoHandlers(
     editor,
@@ -87,7 +87,7 @@ export function SkillSlotScreen(
         title="Skills"
         tabSlot={tabSlot}
         closeAriaLabel={CLOSE_ARIA_LABEL}
-        status={memory.status}
+        status={doc.status}
         saveStatus={overrides.saveStatus}
         dirty={editor.dirty}
         onClose={onClose}
@@ -139,7 +139,7 @@ export function SkillSlotScreen(
 // --- Helpers below main export ---
 
 /**
- * Adapt one slot of the collection hook to the single-document memory shape
+ * Adapt one slot of the collection hook to the single-document doc shape
  * `useContextEditorState` expects. The screen is keyed by slot, so this is
  * rebuilt (and re-seeded) on every slot switch.
  *
@@ -150,9 +150,9 @@ export function SkillSlotScreen(
  * autosave, and risking a Reload that adopts the stale pre-echo value.
  * @param overrides - The collection hook
  * @param slot - The slot being edited
- * @returns A document-memory view of that slot
+ * @returns A doc view of that slot
  */
-function useSlotDocMemory(
+function useSlotDoc(
   overrides: UseSkillOverridesReturn,
   slot: SkillSlotView,
 ): UseDocReturn {

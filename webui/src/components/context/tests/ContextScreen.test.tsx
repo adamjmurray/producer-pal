@@ -85,24 +85,24 @@ const TEST_LABELS: ContextEditorLabels = {
   title: "Project Context",
   loadingLabel: "Loading project context…",
   closeAriaLabel: "Close context editor",
-  clearConfirmMessage: "Clear all project memory? This cannot be undone.",
-  externalUpdateMessage: "Memory was updated outside the editor.",
+  clearConfirmMessage: "Clear all project context? This cannot be undone.",
+  externalUpdateMessage: "Project context was updated outside the editor.",
   exportBasename: "producer-pal-project-context",
 };
 
 /**
- * ContextScreen receives its document memory as a prop (ContextTabs supplies
+ * ContextScreen receives its doc as a prop (ContextTabs supplies
  * the real hook). This harness rebuilds the mock hook value from the mutable
  * mock* state on every render, so a `rerender(<Harness />)` reflects flipped
  * status the way re-calling the hook used to.
  * @param props - Optional onClose passthrough
  * @param props.onClose - Close handler forwarded to the screen
- * @returns A ContextScreen bound to the mock memory + project labels
+ * @returns A ContextScreen bound to the mock doc + project labels
  */
 function Harness(props: { onClose?: () => void } = {}): preact.JSX.Element {
   return (
     <ContextScreen
-      memory={buildHookValue()}
+      doc={buildHookValue()}
       labels={TEST_LABELS}
       onClose={props.onClose}
     />
@@ -198,7 +198,7 @@ describe("ContextScreen", () => {
     expect(matches).toHaveLength(2);
   });
 
-  it("shows editor with content when memory is ready", () => {
+  it("shows editor with content when the doc is ready", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "# hello";
     render(<Harness />);
@@ -207,7 +207,7 @@ describe("ContextScreen", () => {
     expect(lastEditorProps?.readOnly).toBe(false);
   });
 
-  it("renders the controls strip when memory is ready", () => {
+  it("renders the controls strip when the doc is ready", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "x";
     render(<Harness />);
@@ -286,7 +286,7 @@ describe("ContextScreen", () => {
   it("Clear remounts the editor with cleared content (not the pre-clear stale doc)", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old content";
-    // Real useContextMemory only flips status.content to "" AFTER the POST
+    // Real useProjectContext only flips status.content to "" AFTER the POST
     // round-trips. Use a controllable promise so we can interleave the editor
     // remount and the status update the way the bug does in production.
     let resolveClear: (ok: boolean) => void = () => {};
@@ -313,7 +313,7 @@ describe("ContextScreen", () => {
 
     // Server completes the clear: status.content flips, then clear() resolves
     // and the fixed handler bumps `editorKey` → remount with "". The rerender
-    // stands in for the owner (ContextTabs) re-rendering with fresh memory when
+    // stands in for the owner (ContextTabs) re-rendering with fresh doc when
     // the underlying hook's status flips; it precedes the editorKey bump so the
     // remount reads the cleared content, not the stale doc.
     mockStatus.content = "";
@@ -649,9 +649,9 @@ describe("ContextScreen", () => {
 
     // Pre-fix this banner did not exist — the user would never know an
     // AI/device write happened, and their next keystroke would clobber it.
-    expect(screen.queryByText("Memory was updated outside the editor.")).toBe(
-      null,
-    );
+    expect(
+      screen.queryByText("Project context was updated outside the editor."),
+    ).toBe(null);
 
     // Status flips because focus refresh fetched the server's new content.
     await act(async () => {
@@ -660,7 +660,7 @@ describe("ContextScreen", () => {
     });
 
     expect(
-      screen.getByText("Memory was updated outside the editor."),
+      screen.getByText("Project context was updated outside the editor."),
     ).toBeTruthy();
     // Clicking Reload remounts the editor with the new content as initialValue.
     await act(() => {
@@ -683,9 +683,7 @@ describe("ContextScreen", () => {
     function renderWithBuiltIn(): void {
       mockStatus.kind = "ready";
       mockStatus.content = "MY DRAFT";
-      render(
-        <ContextScreen memory={buildHookValue()} labels={BUILTIN_LABELS} />,
-      );
+      render(<ContextScreen doc={buildHookValue()} labels={BUILTIN_LABELS} />);
     }
 
     it("hides the built-in by default, showing the override editor", () => {
@@ -746,9 +744,7 @@ describe("ContextScreen", () => {
     it("shows only the built-in with a Customize fork when there is no override", async () => {
       mockStatus.kind = "ready";
       mockStatus.content = "";
-      render(
-        <ContextScreen memory={buildHookValue()} labels={BUILTIN_LABELS} />,
-      );
+      render(<ContextScreen doc={buildHookValue()} labels={BUILTIN_LABELS} />);
 
       // Built-in-only view: the default is shown read-only with a Customize
       // button; the editable pane and its reveal affordance are absent.
@@ -776,7 +772,7 @@ describe("ContextScreen", () => {
       mockStatus.content = "MY DRAFT";
       render(
         <ContextScreen
-          memory={{
+          doc={{
             ...buildHookValue(),
             drift: { drifted: true, forkedFromVersion: "1.4.0" },
           }}
@@ -794,7 +790,7 @@ describe("ContextScreen", () => {
       mockStatus.content = "MY DRAFT";
       render(
         <ContextScreen
-          memory={{
+          doc={{
             ...buildHookValue(),
             drift: { drifted: false, forkedFromVersion: "1.5.0" },
           }}

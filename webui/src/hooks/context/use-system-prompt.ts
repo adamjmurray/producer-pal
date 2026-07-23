@@ -4,11 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { getSystemPromptUrl } from "#webui/utils/mcp-url";
-import {
-  makeContentTransport,
-  type UseDocReturn,
-  useDoc,
-} from "./use-doc";
+import { makeContentTransport, type UseDocReturn, useDoc } from "./use-doc";
 
 // Module-scope so the transport is a stable reference across renders (the
 // origin is fixed for the page's lifetime — see useDoc's read/write note).
@@ -26,6 +22,6 @@ const { read, write } = makeContentTransport(
  * `status.content` to compose each request's system instruction).
  * @returns System prompt state plus save/refresh actions
  */
-export function useSystemPromptMemory(): UseDocReturn {
+export function useSystemPrompt(): UseDocReturn {
   return useDoc(read, write);
 }

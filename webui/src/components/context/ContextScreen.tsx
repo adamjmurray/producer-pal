@@ -62,8 +62,8 @@ export interface ContextEditorLabels {
 }
 
 interface ContextScreenProps {
-  /** Document memory hook return for this editor (project or global). */
-  memory: UseDocReturn;
+  /** Doc hook return for this editor (project, global, or instructions). */
+  doc: UseDocReturn;
   /** Copy for this document type. */
   labels: ContextEditorLabels;
   /**
@@ -91,8 +91,8 @@ interface ContextScreenProps {
  * @returns Screen element
  */
 export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
-  const { memory, labels, tabSlot, onClose } = props;
-  const editor = useContextEditorState(memory, labels.clearConfirmMessage);
+  const { doc, labels, tabSlot, onClose } = props;
+  const editor = useContextEditorState(doc, labels.clearConfirmMessage);
   const importNotice = useImportNotice();
   const io = makeContextIoHandlers(
     editor,
@@ -116,26 +116,26 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         title={labels.title}
         tabSlot={tabSlot}
         closeAriaLabel={labels.closeAriaLabel}
-        status={memory.status}
-        saveStatus={memory.saveStatus}
+        status={doc.status}
+        saveStatus={doc.saveStatus}
         dirty={editor.dirty}
         onClose={onClose}
       />
       <ContextControls
-        status={memory.status}
+        status={doc.status}
         description={labels.description}
         widthClass={widthClass}
         charCount={editor.charCount}
         builtIn={labels.builtIn}
         hasOverride={editor.hasOverride}
-        drift={memory.drift}
+        drift={doc.drift}
         onClear={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
         <ContextBody
-          status={memory.status}
+          status={doc.status}
           loadingLabel={labels.loadingLabel}
           externalUpdateMessage={labels.externalUpdateMessage}
           builtIn={labels.builtIn}
@@ -208,7 +208,7 @@ interface ContextControlsProps {
  * Controls strip below the header with an optional explainer, a live char/token
  * size readout (labelled "Default" while an un-customized default is shown, so
  * the count matches what's on screen), and (for documents without a built-in
- * default) a destructive clear action. Hidden until memory has loaded so we
+ * default) a destructive clear action. Hidden until the doc has loaded so we
  * don't flash a control whose state we haven't fetched yet. The border spans
  * full width while the content is centered to `widthClass` so it lines up with
  * the editor below. The explainer shrinks and wraps (`min-w-0 flex-1`) while the

@@ -4,56 +4,52 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { getConfigUrl } from "#webui/utils/mcp-url";
-import {
-  type DocRead,
-  type UseDocReturn,
-  useDoc,
-} from "./use-doc";
+import { type DocRead, type UseDocReturn, useDoc } from "./use-doc";
 
 interface ConfigResponse {
-  memoryContent?: string;
+  projectContext?: string;
   // Other config fields exist but are not relevant to the editor.
   [key: string]: unknown;
 }
 
 /**
- * Read and write the project context memory blob via the device's `/config`
- * REST endpoint — the same channel the Max device uses for the inline memory
+ * Read and write the project context blob via the device's `/config` REST
+ * endpoint — the same channel the Max device uses for the inline project-context
  * textedit. A thin transport over the shared {@link useDoc} core.
- * @returns Memory state plus save/refresh actions
+ * @returns Project context state plus save/refresh actions
  */
-export function useContextMemory(): UseDocReturn {
-  return useDoc(readConfigMemory, writeConfigMemory);
+export function useProjectContext(): UseDocReturn {
+  return useDoc(readConfigProjectContext, writeConfigProjectContext);
 }
 
 // --- Helpers below main export ---
 
 /**
- * Read the project memory from the config endpoint.
- * @returns The current memoryContent ("" when absent). Project memory has no
+ * Read the project context from the config endpoint.
+ * @returns The current projectContext ("" when absent). Project context has no
  *   built-in default, so it never carries drift.
  */
-async function readConfigMemory(): Promise<DocRead> {
+async function readConfigProjectContext(): Promise<DocRead> {
   const config = await fetchConfig();
 
-  return { content: config.memoryContent ?? "" };
+  return { content: config.projectContext ?? "" };
 }
 
 /**
- * Write the project memory via a partial config POST.
- * @param content - New memory content
- * @returns The stored memoryContent echoed by the server
+ * Write the project context via a partial config POST.
+ * @param content - New project context content
+ * @returns The stored projectContext echoed by the server
  */
-async function writeConfigMemory(content: string): Promise<DocRead> {
-  const config = await postConfig({ memoryContent: content });
+async function writeConfigProjectContext(content: string): Promise<DocRead> {
+  const config = await postConfig({ projectContext: content });
 
-  return { content: config.memoryContent ?? "" };
+  return { content: config.projectContext ?? "" };
 }
 
 /**
  * GET the device config object. Bypasses the browser cache so the editor
- * always reflects the device's current memory on page load and after AI
- * writes that occurred while the tab was elsewhere.
+ * always reflects the device's current project context on page load and after
+ * AI writes that occurred while the tab was elsewhere.
  * @returns Parsed config response
  */
 async function fetchConfig(): Promise<ConfigResponse> {

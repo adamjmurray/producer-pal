@@ -53,8 +53,8 @@ export interface UseDocReturn {
  * Read/write a single markdown document over an injected transport, with the
  * save/refresh coordination the editor needs: optimistic save status, focus +
  * interval polling for external writes, and a guard so a slow refresh GET can't
- * clobber a concurrent save's echo. `useContextMemory` (project context via
- * /config), `useGlobalContextMemory`, and `useSystemPromptMemory` are thin
+ * clobber a concurrent save's echo. `useProjectContext` (project context via
+ * /config), `useGlobalContext`, and `useSystemPrompt` are thin
  * wrappers that supply their own transport (see {@link makeContentTransport}).
  *
  * `read` and `write` MUST be stable references (module-level functions) — they

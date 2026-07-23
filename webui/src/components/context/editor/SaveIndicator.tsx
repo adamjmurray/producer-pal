@@ -3,10 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  type DocStatus,
-  type SaveStatus,
-} from "#webui/hooks/context/use-doc";
+import { type DocStatus, type SaveStatus } from "#webui/hooks/context/use-doc";
 
 interface SaveIndicatorProps {
   status: DocStatus;
