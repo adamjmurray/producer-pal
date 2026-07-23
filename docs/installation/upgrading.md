@@ -25,6 +25,15 @@ drag the new `.amxd` into Live to replace the old version.
 Check the version number in the device UI to confirm you're running the latest
 version.
 
+::: tip Your project context carries over
+
+Project context is backed up next to each Set's `.als` and restored
+automatically on the new device — see
+[the rare exception](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-rare)
+if you changed it right before a first save.
+
+:::
+
 ## 3. Update Platform-Specific Files
 
 ### For Claude Desktop Users

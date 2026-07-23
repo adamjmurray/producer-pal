@@ -62,6 +62,14 @@ with the Live Set and is gone if you delete the device. This is the same text as
 the device's [Context tab](/guide/device#context-tab) — the device shows it in a
 small box, the editor gives it room.
 
+Because a device upgrade starts you on a fresh, empty device, Producer Pal also
+mirrors this context to a `Producer Pal Project Context.md` file saved next to
+your Set's `.als`, and restores it the first time you use Producer Pal after
+upgrading. It's a backup, not the source of truth — you normally never touch it,
+and it's safe to delete. (Unlike the two layers below, this is the one context
+file that lives with your project rather than under `~/.producer-pal`.) See
+[a rare case where the newest context isn't captured](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-rare).
+
 Keep it about the project, not about you. "Kick stays four-on-the-floor" belongs
 here; "I always work in A minor" belongs in Global.
 
