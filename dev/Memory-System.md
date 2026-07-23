@@ -62,11 +62,81 @@ with no `name` returns the whole index (there is no separate `list` action).
 throws before touching any state, because `context.ts` switches on scope first,
 then validates the action within it.
 
-`project` and `global` are unchanged from the pre-memory tool: `project` is a
-device-held blob (V8 has no filesystem, so nothing here round-trips to Node);
+`project` and `global` are unchanged from the pre-memory tool: `project`
+read/write hit a device-held blob (V8 has no filesystem, so those two actions
+don't round-trip to Node — the on-disk backup below is a separate mechanism);
 `global` round-trips to Node over the RPC bridge (`globalContext.read` /
 `globalContext.write` in `helpers/global-context/global-context-node-routes.ts`)
 to reach `context.md`.
+
+### Project context on-disk backup
+
+The `project` blob lives in a Max device parameter, so it's serialized into the
+`.als` and survives save/reload — but **not a device upgrade**: dropping in a
+newer `.amxd` gives a fresh device whose param is empty, losing the context. The
+backup mirrors the blob to a `Producer Pal Project Context.md` file sibling to
+the Live Set's `.als`, so an upgraded device can recover it. Two alternatives
+were rejected: copying from a sibling device already in the set (fragile
+load-time coordination), and a central `~/.producer-pal` store keyed by set path
+(doesn't travel with the project; keying breaks on rename/move).
+
+`Song.file_path` is **not observable** (no notification on save), so instead of
+reacting to a save we pull it on every MCP tool call and only act on change. The
+flow, split across the runtime boundary (V8 has the Live API; Node has the
+filesystem):
+
+- **V8** (`live-api-adapter/project-context-sync.ts`, called from `mcp_request`
+  before the tool runs): reads `live_set file_path` (a cheap `getProperty`) and,
+  when a first sync / changed path / changed blob warrants it, calls the
+  `projectContext.sync` RPC with `{ filePath, content }`. A cross-request memo
+  skips the Node hop on the vast majority of calls. On a `restore` response it
+  writes the blob back into the device param via the existing
+  `update_project_context` outlet (so it re-persists into the `.als`).
+- **Node** (`helpers/project-context-backup/`): the `projectContext.sync` route
+  owns the `fs`. Sidecar path = `<dir of .als>/Producer Pal Project Context.md`
+  — one per project _folder_, shared by every `.als` in it, so saving a new
+  `.als` into the same folder is a no-op and only Save-As to a new folder writes
+  a fresh backup. A non-empty param with a missing or stale sidecar ⇒
+  **backup**. An empty param is ambiguous, disambiguated by an `allowRestore`
+  flag V8 sends (see below): with a non-empty sidecar ⇒ **restore** (also
+  updates Node's `config.projectContext` mirror directly, so a restore during
+  `ppal-connect` shows in that response's injected block — the Max round-trip
+  that re-persists the param can't be relied on to land in time); otherwise ⇒
+  **clear** (delete the sidecar). Otherwise a no-op.
+
+**Restore vs. clear.** An empty param means either "device was upgraded, param
+wiped" (restore) or "the user cleared the context"
+(`ppal-context write content:""`, an explicit supported clear). Only a device
+(re)load wipes the param, and that resets V8's module-level memo, so restore is
+gated on `allowRestore = !memo.syncedOnce` — allowed only on the session's first
+sync. After that first sync, an empty param is a deliberate clear, and the route
+_deletes_ the sidecar so the clear sticks and isn't resurrected by a restore on
+the next load. Residual gap: clearing as the literal first action on a
+freshly-upgraded set before any other tool call — negligible, since
+`ppal-connect` (which triggers the first sync) is the entry point.
+
+The tool-call sync is the primary trigger, but a **manual edit** (device-UI
+textedit or webui `POST /config`) changes the context without invoking a tool,
+so a second trigger covers it: V8's `projectContext()` param setter. Both manual
+paths propagate to the device param and thus through this setter, which
+fire-and-forgets `backupProjectContextOnEdit` (sharing the sync memo). That
+function only **backs up** a non-empty blob or **clears** the sidecar for an
+emptied one — it **never restores** (restore stays the first tool-call sync's
+job). An empty param seen _before_ the first sync is left untouched: it may be
+an upgrade-wiped device, and deleting the sidecar would destroy the very backup
+a restore needs; a non-empty edit is always safe (it can only write). The shared
+memo dedupes the tool-call sync's own outlet round-trip, so the restore echo
+can't loop.
+
+Residual gap (accepted, not closed — a background poller was rejected): setting
+context while the Set is _unsaved_ (no `file_path` to write beside), then saving
+and upgrading with no further tool call or context edit. The `null → path`
+transition on first save fires neither the setter nor a tool call, so no backup
+is written. Any later tool call or context edit closes it.
+
+The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
+through the config-markdown store — it writes into the user's Live project
+folder using a path the Live API supplied.
 
 `memory` also round-trips to Node, via sibling RPC ops (`memory.read` /
 `memory.remember` / `memory.forget` / `memory.list` in
