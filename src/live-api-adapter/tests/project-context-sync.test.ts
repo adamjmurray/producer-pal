@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
+  backupProjectContextOnEdit,
   resetProjectContextSyncMemo,
   syncProjectContextBackup,
 } from "../project-context-sync.ts";
@@ -210,5 +211,85 @@ describe("syncProjectContextBackup — failure", () => {
     await syncProjectContextBackup("Genre: jungle");
 
     expect(mockRequestNode).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("backupProjectContextOnEdit — manual edits", () => {
+  it("backs up a non-empty edit made before any tool-call sync (never restores)", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("backup");
+
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    // A manual edit must never restore, even as the session's first sync.
+    expect(mockRequestNode).toHaveBeenCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "Genre: jungle",
+      allowRestore: false,
+    });
+  });
+
+  it("leaves an emptied param alone before any sync (may be an upgrade wipe)", async () => {
+    setFilePath(SAVED_PATH);
+
+    await backupProjectContextOnEdit("   ");
+
+    // Deleting the sidecar here would destroy a backup the first sync restores.
+    expect(mockRequestNode).not.toHaveBeenCalled();
+  });
+
+  it("clears the sidecar for an empty edit once a sync has established state", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("backup");
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    mockSyncResult("clear");
+    await backupProjectContextOnEdit("");
+
+    expect(mockRequestNode).toHaveBeenLastCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "",
+      allowRestore: false,
+    });
+  });
+
+  it("does not round-trip when the edited blob matches the last sync", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("backup");
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the round-trip and forgets the memo path when the set is unsaved", async () => {
+    setFilePath(null);
+
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    expect(mockRequestNode).not.toHaveBeenCalled();
+  });
+
+  it("does not memoize a failed edit backup (so the next edit retries)", async () => {
+    setFilePath(SAVED_PATH);
+    mockRequestNode.mockResolvedValueOnce({ success: false, error: "boom" });
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    mockSyncResult("backup");
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares the memo with the tool-call sync so a restore echo can't loop", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("restore", "Restored from disk");
+    await syncProjectContextBackup("");
+
+    // The restore re-persists into the param, echoing back through the setter.
+    await backupProjectContextOnEdit("Restored from disk");
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
   });
 });

@@ -47,7 +47,10 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
-import { syncProjectContextBackup } from "./project-context-sync.ts";
+import {
+  backupProjectContextOnEdit,
+  syncProjectContextBackup,
+} from "./project-context-sync.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -221,6 +224,13 @@ export function projectContext(content: unknown): void {
   const value = content === "bang" ? "" : String(content ?? "");
 
   sessionState.projectContext.content = value;
+
+  // Device-UI and webui edits reach us only through this setter (never an MCP
+  // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
+  // forget: the write is Node-side and must not block the param update. The
+  // shared memo dedupes the tool-call sync's own outlet round-trip, so the
+  // restore echo can't loop, and requestNode never rejects so this can't throw.
+  void backupProjectContextOnEdit(value);
 }
 
 /**

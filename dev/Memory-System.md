@@ -115,19 +115,24 @@ the next load. Residual gap: clearing as the literal first action on a
 freshly-upgraded set before any other tool call — negligible, since
 `ppal-connect` (which triggers the first sync) is the entry point.
 
-Because the trigger is per-tool-call, anything that changes the context
-_without_ a tool call is only backed up on the next tool call:
+The tool-call sync is the primary trigger, but a **manual edit** (device-UI
+textedit or webui `POST /config`) changes the context without invoking a tool,
+so a second trigger covers it: V8's `projectContext()` param setter. Both manual
+paths propagate to the device param and thus through this setter, which
+fire-and-forgets `backupProjectContextOnEdit` (sharing the sync memo). That
+function only **backs up** a non-empty blob or **clears** the sidecar for an
+emptied one — it **never restores** (restore stays the first tool-call sync's
+job). An empty param seen _before_ the first sync is left untouched: it may be
+an upgrade-wiped device, and deleting the sidecar would destroy the very backup
+a restore needs; a non-empty edit is always safe (it can only write). The shared
+memo dedupes the tool-call sync's own outlet round-trip, so the restore echo
+can't loop.
 
-- A **save-then-close-then-upgrade** with zero Producer Pal activity in between
-  — accepted rather than run a background poller.
-- A **manual edit** (device-UI textedit or webui `POST /config`, neither of
-  which invokes a tool) — **KNOWN GAP, not yet closed.** A user who sets context
-  manually and upgrades without ever chatting loses it, which is the exact flow
-  the backup exists to protect. Planned fix: hook a fire-and-forget backup into
-  V8's `projectContext()` setter — the choke point both manual paths route
-  through — gated on `memo.syncedOnce` so load-time param population and the
-  restore echo don't trip it (and it only ever backs up / clears, never
-  restores).
+Residual gap (accepted, not closed — a background poller was rejected): setting
+context while the Set is _unsaved_ (no `file_path` to write beside), then saving
+and upgrading with no further tool call or context edit. The `null → path`
+transition on first save fires neither the setter nor a tool call, so no backup
+is written. Any later tool call or context edit closes it.
 
 The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
 through the config-markdown store — it writes into the user's Live project

@@ -78,6 +78,46 @@ export async function syncProjectContextBackup(
   return restored;
 }
 
+/**
+ * Back up a manual project-context edit (device UI or webui) that never passed
+ * through an MCP tool call. Both manual paths funnel through the V8 param setter,
+ * which fire-and-forgets this. It only backs up a non-empty blob or clears the
+ * sidecar for an emptied one — it NEVER restores; treating an empty param as an
+ * upgrade wipe is the first tool-call sync's job alone. The filesystem write
+ * still happens Node-side (this only supplies the Live Set path and the blob),
+ * and the shared memo dedupes the tool-call sync's own outlet round-trip so a
+ * restore echo through the setter can't loop.
+ *
+ * @param content - The project-context blob the setter just received
+ */
+export async function backupProjectContextOnEdit(
+  content: string,
+): Promise<void> {
+  // Leave an empty param alone until a tool-call sync has run: before that the
+  // emptiness may be an upgrade-wiped device, and clearing would delete the very
+  // sidecar the first sync would restore from. A non-empty edit is always safe
+  // to back up (it can only write, never delete).
+  if (content.trim() === "" && !hasSyncedThisSession()) return;
+
+  const filePath = readLiveSetFilePath();
+
+  // An unsaved set has no sidecar location. Forget the memo'd path so the next
+  // save reads as a change and triggers a sync (mirrors syncProjectContextBackup).
+  if (filePath == null) {
+    forgetMemoPath();
+
+    return;
+  }
+
+  if (!needsSync(filePath, content)) return;
+
+  // Manual edits never restore, so allowRestore is always false. Only memoize a
+  // completed sync so a transient failure retries next edit.
+  const { ok } = await requestSync(filePath, content, false);
+
+  if (ok) rememberSync(filePath, content);
+}
+
 /** Reset the cross-request memo. Test-only. */
 export function resetProjectContextSyncMemo(): void {
   memo.syncedOnce = false;
