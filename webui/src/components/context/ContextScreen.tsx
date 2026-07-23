@@ -8,9 +8,9 @@ import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
   type DocDrift,
-  type DocMemoryStatus,
-  type UseDocMemoryReturn,
-} from "#webui/hooks/context/use-doc-memory";
+  type DocStatus,
+  type UseDocReturn,
+} from "#webui/hooks/context/use-doc";
 import { CharTokenCount } from "./collection/CharTokenCount";
 import { makeContextIoHandlers } from "./context-io";
 import { ContextIoButtons } from "./ContextIoButtons";
@@ -63,7 +63,7 @@ export interface ContextEditorLabels {
 
 interface ContextScreenProps {
   /** Document memory hook return for this editor (project or global). */
-  memory: UseDocMemoryReturn;
+  memory: UseDocReturn;
   /** Copy for this document type. */
   labels: ContextEditorLabels;
   /**
@@ -175,7 +175,7 @@ export const SINGLE_WIDTH = "max-w-5xl";
 export const DOUBLE_PANE_WIDTH = "max-w-7xl";
 
 interface ContextControlsProps {
-  status: DocMemoryStatus;
+  status: DocStatus;
   description?: string;
   widthClass: string;
   charCount: number;
@@ -268,7 +268,7 @@ function ContextControls(
 }
 
 interface ContextBodyProps {
-  status: DocMemoryStatus;
+  status: DocStatus;
   loadingLabel: string;
   externalUpdateMessage: string;
   builtIn?: string;

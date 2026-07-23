@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { type UseDocMemoryReturn } from "./use-doc-memory";
+import { type UseDocReturn } from "./use-doc";
 
 const SAVE_DEBOUNCE_MS = 800;
 const SAVE_RETRY_MS = 5000;
@@ -95,7 +95,7 @@ export interface UseContextEditorStateReturn {
  * @returns Editor state + handlers wired for the screen
  */
 export function useContextEditorState(
-  memory: UseDocMemoryReturn,
+  memory: UseDocReturn,
   clearConfirmMessage: string,
 ): UseContextEditorStateReturn {
   const draftRef = useRef<string | null>(null);

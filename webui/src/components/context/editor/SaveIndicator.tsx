@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  type DocMemoryStatus,
+  type DocStatus,
   type SaveStatus,
-} from "#webui/hooks/context/use-doc-memory";
+} from "#webui/hooks/context/use-doc";
 
 interface SaveIndicatorProps {
-  status: DocMemoryStatus;
+  status: DocStatus;
   saveStatus: SaveStatus;
   dirty: boolean;
 }

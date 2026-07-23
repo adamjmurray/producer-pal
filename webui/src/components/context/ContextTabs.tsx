@@ -9,7 +9,7 @@ import {
   useLeaveGuard,
 } from "#webui/components/context/collection/leave-guard";
 import { useContextMemory } from "#webui/hooks/context/use-context-memory";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
 import { useMemoryCollection } from "#webui/hooks/context/use-memory-collection";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
@@ -19,7 +19,7 @@ import { type ContextEditorLabels, ContextScreen } from "./ContextScreen";
 import { MemoryScreen } from "./memory/MemoryScreen";
 import { SkillsScreen } from "./skills/SkillsScreen";
 
-/** Tabs backed by a single markdown document via useDocMemory. */
+/** Tabs backed by a single markdown document via useDoc. */
 type DocTab = "project" | "global" | "instructions";
 /**
  * All context editor tabs: the doc tabs plus the multi-fragment Skills override
@@ -102,7 +102,7 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const skillOverrides = useSkillOverrides();
   const memoryCollection = useMemoryCollection();
 
-  const memoryByTab: Record<DocTab, UseDocMemoryReturn> = {
+  const memoryByTab: Record<DocTab, UseDocReturn> = {
     project: projectMemory,
     global: globalMemory,
     instructions: instructionsMemory,

@@ -3,23 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Shared test suite for the thin useDocMemory transport wrappers
+// Shared test suite for the thin useDoc transport wrappers
 // (useGlobalContextMemory, useSystemPromptMemory). Each wraps the same
-// useDocMemory core over a GET(no-store)/PUT(JSON) endpoint, differing only by
+// useDoc core over a GET(no-store)/PUT(JSON) endpoint, differing only by
 // URL and error copy — so their behavioral tests are one parametrized suite
 // rather than per-hook clones. Callers keep the `@vitest-environment happy-dom`
 // directive in their own file (it must be file-level).
 
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 /** Per-hook inputs for the shared transport suite. */
-export interface DocMemoryTransportSpec {
+export interface DocTransportSpec {
   /** Hook display name for the describe block. */
   hookName: string;
   /** The hook under test. */
-  useHook: () => UseDocMemoryReturn;
+  useHook: () => UseDocReturn;
   /** The endpoint URL the hook is expected to hit (happy-dom origin). */
   url: string;
   /** Substring expected in the GET-failure error message. */
@@ -108,18 +108,18 @@ export function deferred<T>(): Deferred<T> {
 }
 
 /**
- * Register the standard read/write behavioral tests for a useDocMemory
+ * Register the standard read/write behavioral tests for a useDoc
  * transport wrapper.
  * @param spec - Per-hook URL and error-copy inputs
  */
-export function describeDocMemoryTransport(spec: DocMemoryTransportSpec): void {
+export function describeDocTransport(spec: DocTransportSpec): void {
   describe(spec.hookName, () => {
     const fetchMock = installFetchMock();
 
     // Load the wrapper past its mount GET so a save test can exercise the write.
     const renderReady = (
       content = "",
-    ): Promise<{ current: UseDocMemoryReturn }> => {
+    ): Promise<{ current: UseDocReturn }> => {
       fetchMock.mockResolvedValueOnce(jsonResponse({ content }));
 
       return renderAndWait(spec.useHook, "ready");

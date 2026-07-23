@@ -14,7 +14,7 @@ import {
   type Deferred,
   installFetchMock,
   jsonResponse,
-} from "./doc-memory-transport-test-helpers";
+} from "./doc-transport-test-helpers";
 
 // happy-dom defaults to http://localhost:3000/, so the same-origin /config
 // endpoint resolves to localhost:3000.

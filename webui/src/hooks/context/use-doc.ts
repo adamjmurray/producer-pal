@@ -10,7 +10,7 @@ import { errorMessage } from "#src/shared/error-utils";
 const POLL_INTERVAL_MS = 5000;
 
 /** Status of a single markdown document's body. */
-export type DocMemoryStatus =
+export type DocStatus =
   | { kind: "loading" }
   | { kind: "ready"; content: string }
   | { kind: "error"; message: string };
@@ -35,8 +35,8 @@ export interface DocRead {
   drift?: DocDrift;
 }
 
-export interface UseDocMemoryReturn {
-  status: DocMemoryStatus;
+export interface UseDocReturn {
+  status: DocStatus;
   saveStatus: SaveStatus;
   saveError: string | null;
   /** Write content to the document. Resolves true on success, false on failure. */
@@ -65,11 +65,11 @@ export interface UseDocMemoryReturn {
  * @param write - Persist content; resolves to the stored content (echo)
  * @returns Document state plus save/clear/refresh actions
  */
-export function useDocMemory(
+export function useDoc(
   read: () => Promise<DocRead>,
   write: (content: string) => Promise<DocRead>,
-): UseDocMemoryReturn {
-  const [status, setStatus] = useState<DocMemoryStatus>({ kind: "loading" });
+): UseDocReturn {
+  const [status, setStatus] = useState<DocStatus>({ kind: "loading" });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [drift, setDrift] = useState<DocDrift | undefined>(undefined);
@@ -152,8 +152,8 @@ export interface SaveRefreshGuard {
 
 /**
  * Coordinate refresh() reads against in-flight save() writes, shared by the
- * single-document ({@link useDocMemory}) and slot-collection (useSkillOverrides)
- * memory hooks. A focus/poll read can resolve older data than a concurrent
+ * single-document ({@link useDoc}) and slot-collection (useSkillOverrides)
+ * doc hooks. A focus/poll read can resolve older data than a concurrent
  * save's echo and, landing last, clobber it. `beginSave`/`endSave` bracket each
  * write (an in-flight counter plus a monotonic generation counter); a refresh
  * calls `guardRefresh()` at its start and trusts its result only if no save
@@ -271,7 +271,7 @@ interface ContentResponse {
   forkedFromVersion?: string | null;
 }
 
-/** A stable read/write transport pair for {@link useDocMemory}. */
+/** A stable read/write transport pair for {@link useDoc}. */
 export interface ContentTransport {
   read: () => Promise<DocRead>;
   write: (content: string) => Promise<DocRead>;
@@ -283,7 +283,7 @@ export interface ContentTransport {
  * prompt and global context endpoints are identical but for their URL and error
  * label, so they share this factory; the system prompt's response also carries
  * drift fields, surfaced when present. Call it once at module scope so the pair
- * is a stable reference (see {@link useDocMemory}).
+ * is a stable reference (see {@link useDoc}).
  * @param url - The endpoint URL
  * @param label - Human label for error copy (e.g. "System prompt")
  * @returns The stable { read, write } transport pair

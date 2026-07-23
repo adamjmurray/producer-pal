@@ -22,7 +22,7 @@ import {
   type SaveStatus,
   useRefreshOnFocusAndPoll,
   useSaveRefreshGuard,
-} from "./use-doc-memory";
+} from "./use-doc";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 

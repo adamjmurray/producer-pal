@@ -10,14 +10,14 @@ import { act, renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
 import {
-  describeDocMemoryTransport,
+  describeDocTransport,
   installFetchMock,
   jsonResponse,
-} from "./doc-memory-transport-test-helpers";
+} from "./doc-transport-test-helpers";
 
 // happy-dom defaults to http://localhost:3000/, so the same-origin endpoint
 // resolves to localhost:3000/system-prompt.
-describeDocMemoryTransport({
+describeDocTransport({
   hookName: "useSystemPromptMemory",
   useHook: useSystemPromptMemory,
   url: "http://localhost:3000/system-prompt",

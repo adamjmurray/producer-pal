@@ -6,9 +6,9 @@
 import { getConfigUrl } from "#webui/utils/mcp-url";
 import {
   type DocRead,
-  type UseDocMemoryReturn,
-  useDocMemory,
-} from "./use-doc-memory";
+  type UseDocReturn,
+  useDoc,
+} from "./use-doc";
 
 interface ConfigResponse {
   memoryContent?: string;
@@ -19,11 +19,11 @@ interface ConfigResponse {
 /**
  * Read and write the project context memory blob via the device's `/config`
  * REST endpoint — the same channel the Max device uses for the inline memory
- * textedit. A thin transport over the shared {@link useDocMemory} core.
+ * textedit. A thin transport over the shared {@link useDoc} core.
  * @returns Memory state plus save/refresh actions
  */
-export function useContextMemory(): UseDocMemoryReturn {
-  return useDocMemory(readConfigMemory, writeConfigMemory);
+export function useContextMemory(): UseDocReturn {
+  return useDoc(readConfigMemory, writeConfigMemory);
 }
 
 // --- Helpers below main export ---

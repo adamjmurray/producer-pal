@@ -8,12 +8,12 @@
  */
 import { act, renderHook } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
+import { type DocStatus } from "#webui/hooks/context/use-doc";
 import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
 
-const READY: DocMemoryStatus = { kind: "ready", content: "custom prompt" };
-const LOADING: DocMemoryStatus = { kind: "loading" };
-const ERRORED: DocMemoryStatus = { kind: "error", message: "boom" };
+const READY: DocStatus = { kind: "ready", content: "custom prompt" };
+const LOADING: DocStatus = { kind: "loading" };
+const ERRORED: DocStatus = { kind: "error", message: "boom" };
 
 describe("useSystemPromptSendGate", () => {
   it("sends immediately once the status is ready", async () => {
@@ -39,7 +39,7 @@ describe("useSystemPromptSendGate", () => {
     const freshSend = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(
       ({ status, send }) => useSystemPromptSendGate(status, send),
-      { initialProps: { status: LOADING as DocMemoryStatus, send: staleSend } },
+      { initialProps: { status: LOADING as DocStatus, send: staleSend } },
     );
 
     // Invoking the gated send while loading only registers a waiter (no React

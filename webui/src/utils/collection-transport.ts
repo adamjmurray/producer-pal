@@ -39,7 +39,7 @@ export async function fetchEntries<TView>(
 // drops the last autosave. Collection entries (memory facts, skill fragments)
 // are small, so the browser's ~64KB keepalive body quota is never a concern
 // here — unlike the single-doc context/system-prompt writes (see
-// #webui/hooks/context/use-doc-memory `makeContentTransport`), whose imported
+// #webui/hooks/context/use-doc `makeContentTransport`), whose imported
 // bodies can far exceed it, so those deliberately stay a plain fetch.
 
 /**

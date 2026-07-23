@@ -14,7 +14,7 @@ import {
   type SaveStatus,
   useRefreshOnFocusAndPoll,
   useSaveRefreshGuard,
-} from "./use-doc-memory";
+} from "./use-doc";
 
 /** One overridable skills fragment, as the editor needs it. */
 export interface SkillSlotView {
@@ -61,7 +61,7 @@ export interface UseSkillOverridesReturn {
  * (PUT/DELETE) echo back the single updated slot, which is merged into the
  * cached list. Focus + interval polling surfaces external writes, and a
  * save-overlap guard keeps a slow poll from clobbering a concurrent save's echo
- * — the same coordination the single-document {@link useDocMemory} uses.
+ * — the same coordination the single-document {@link useDoc} uses.
  *
  * @returns Slot collection state plus per-slot save/reset and refresh actions
  */
@@ -77,7 +77,7 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   // shared "saved"/"error" indicator onto the now-active slot (the list merge
   // still applies — only the status indicator is slot-scoped).
   const saveGenerationRef = useRef(0);
-  // Same refresh-vs-save coordination as useDocMemory (a focus/poll read can
+  // Same refresh-vs-save coordination as useDoc (a focus/poll read can
   // resolve older slot data than a concurrent save's echo and, landing last,
   // clobber it), just over the slot collection instead of one document.
   const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();

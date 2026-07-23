@@ -7,11 +7,11 @@
  * @vitest-environment happy-dom
  */
 import { useGlobalContextMemory } from "#webui/hooks/context/use-global-context-memory";
-import { describeDocMemoryTransport } from "./doc-memory-transport-test-helpers";
+import { describeDocTransport } from "./doc-transport-test-helpers";
 
 // happy-dom defaults to http://localhost:3000/, so the same-origin endpoint
 // resolves to localhost:3000/global-context.
-describeDocMemoryTransport({
+describeDocTransport({
   hookName: "useGlobalContextMemory",
   useHook: useGlobalContextMemory,
   url: "http://localhost:3000/global-context",

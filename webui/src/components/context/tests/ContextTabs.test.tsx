@@ -9,7 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContextTabs } from "#webui/components/context/ContextTabs";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 // The MarkdownEditor wires CodeMirror; stub it to a plain node that echoes the
 // seeded initialValue so we can assert which document the active tab shows.
@@ -22,9 +22,9 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
 /**
  * Build a ready document-memory value with the given content.
  * @param content - The document body the editor should seed from
- * @returns A UseDocMemoryReturn stub
+ * @returns A UseDocReturn stub
  */
-function readyMemory(content: string): UseDocMemoryReturn {
+function readyMemory(content: string): UseDocReturn {
   return {
     status: { kind: "ready", content },
     saveStatus: "idle",

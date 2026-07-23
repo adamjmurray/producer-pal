@@ -19,7 +19,7 @@ import {
   type ContextEditorLabels,
   ContextScreen,
 } from "#webui/components/context/ContextScreen";
-import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
+import { type DocStatus } from "#webui/hooks/context/use-doc";
 
 const editorChange = vi.fn();
 const editorFocus = vi.fn();
@@ -110,7 +110,7 @@ function Harness(props: { onClose?: () => void } = {}): preact.JSX.Element {
 }
 
 function buildHookValue() {
-  let status: DocMemoryStatus;
+  let status: DocStatus;
 
   if (mockStatus.kind === "ready") {
     status = {

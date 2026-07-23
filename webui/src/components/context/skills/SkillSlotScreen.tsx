@@ -19,7 +19,7 @@ import {
   useImportNotice,
 } from "#webui/components/context/MarkdownDropZone";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
@@ -55,7 +55,7 @@ interface SkillSlotScreenProps {
  * override shows and the built-in is revealed on demand (see
  * {@link OverridePanes}). Keyed by the selected slot so the uncontrolled editor
  * re-seeds on slot switch. Reuses the context-editor autosave lifecycle by
- * adapting the selected slot to a single-document {@link UseDocMemoryReturn}:
+ * adapting the selected slot to a single-document {@link UseDocReturn}:
  * save writes the override, clear resets it to the built-in (deleting the file),
  * and Customize forks the built-in into the override via the import handler.
  * @param props - Screen props
@@ -155,13 +155,13 @@ export function SkillSlotScreen(
 function useSlotDocMemory(
   overrides: UseSkillOverridesReturn,
   slot: SkillSlotView,
-): UseDocMemoryReturn {
-  const status = useMemo<UseDocMemoryReturn["status"]>(
+): UseDocReturn {
+  const status = useMemo<UseDocReturn["status"]>(
     () => ({ kind: "ready", content: slot.override }),
     [slot.override],
   );
 
-  return useMemo<UseDocMemoryReturn>(
+  return useMemo<UseDocReturn>(
     () => ({
       status,
       saveStatus: overrides.saveStatus,

@@ -90,7 +90,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // The user's custom system prompt (~/.producer-pal/system-prompt.md). When
   // non-empty it fully replaces the built-in instruction for each new
   // conversation (locked at client init; see the adapter). Editing it in the
-  // Instructions tab converges here via useDocMemory's focus/poll refresh.
+  // Instructions tab converges here via useDoc's focus/poll refresh.
   const systemPromptMemory = useSystemPromptMemory();
   const systemInstructionOverride =
     systemPromptMemory.status.kind === "ready"
