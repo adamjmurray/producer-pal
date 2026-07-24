@@ -32,6 +32,34 @@ export type Provider =
   | "custom";
 
 /**
+ * A named, reusable bundle of the model/inference settings a chat conversation
+ * runs with — the saved twin of what {@link UseSettingsReturn} exposes for the
+ * active provider. Excludes the per-provider apiKey/baseUrl (resolved live from
+ * the encrypted provider store via getProviderConnection, so a preset only
+ * *names* which provider to use) and excludes system prompt / skills / toolset
+ * (those layer on top as personas and toolset scoping).
+ *
+ * The stable `id` is the handle a subagent worker persists to say "run with
+ * preset X" by reference, so renaming a preset never breaks that link.
+ */
+export interface ChatPreset extends PresetFields {
+  /** Stable id (survives renames); the handle a subagent config references. */
+  id: string;
+  /** Unique, user-facing label shown in the preset picker. */
+  name: string;
+}
+
+/** The settings a preset captures (everything but its identity). */
+export interface PresetFields {
+  provider: Provider;
+  model: string;
+  thinking: string;
+  temperature: number;
+  showThoughts: boolean;
+  smallModelMode: boolean;
+}
+
+/**
  * Voice-mode settings fields shared between the full settings hook
  * (UseSettingsReturn) and the voice-only hook (UseVoiceModeSettingsReturn).
  * The voice session reads these at connect time; the in-modal / saved split
@@ -131,6 +159,13 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
+  /** Load a saved preset into the live editable buffer: writes the preset's
+   * model/thinking/temperature/showThoughts into that preset's *own* provider
+   * slice (a functional update, so it's correct even when the preset switches
+   * provider — the per-field setters otherwise target only the active slice),
+   * switches the active provider, and sets the global small-model mode. The
+   * provider's apiKey/baseUrl are left untouched. The user then Saves normally. */
+  applyPreset: (preset: ChatPreset) => void;
   /** Persists in-modal settings and resolves only after the at-rest envelope
    * has landed. Returns true on durable success, false on failure (saveError
    * is set in that case). Callers (e.g. use-save-settings-handler) gate the

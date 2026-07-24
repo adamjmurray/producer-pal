@@ -144,6 +144,17 @@ export interface ProviderSettings {
   showThoughts: boolean;
 }
 
+/**
+ * Per-provider state setters, keyed by provider. Each accepts a functional
+ * update over that provider's slice — so a caller can write into a provider's
+ * slice regardless of which provider is currently active (used by applyPreset,
+ * which targets the preset's own provider before switching to it).
+ */
+export type ProviderStateSetters = Record<
+  Provider,
+  (update: (prev: ProviderSettings) => ProviderSettings) => void
+>;
+
 export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   anthropic: {
     apiKey: "",
@@ -437,7 +448,7 @@ export function loadCurrentProvider(): Provider {
  * @param {unknown} value - Candidate provider value
  * @returns {boolean} - True if value is a recognized Provider
  */
-function isValidProvider(value: unknown): value is Provider {
+export function isValidProvider(value: unknown): value is Provider {
   return typeof value === "string" && PROVIDERS.includes(value as Provider);
 }
 

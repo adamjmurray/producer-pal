@@ -131,6 +131,7 @@ describe("SettingsScreen", () => {
     setTemperature: vi.fn(),
     showThoughts: false,
     setShowThoughts: vi.fn(),
+    applyPreset: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     hasApiKey: false,
