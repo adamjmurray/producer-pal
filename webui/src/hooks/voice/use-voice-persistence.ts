@@ -466,7 +466,6 @@ async function saveVoiceRecord(
     modelLabel: existing?.modelLabel ?? ctx.model,
     thinking: null,
     temperature: null,
-    showThoughts: null,
     smallModelMode: null,
     totalUsage: null,
     sessionType: "voice",

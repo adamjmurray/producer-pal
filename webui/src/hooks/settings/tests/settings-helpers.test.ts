@@ -43,7 +43,6 @@ describe("settings-helpers", () => {
         model: "claude-sonnet-4-6",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       const raw = JSON.parse(
@@ -60,7 +59,6 @@ describe("settings-helpers", () => {
         model: "claude-sonnet-4-6",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       const loaded = await loadProviderSettingsAsync("anthropic");
@@ -74,7 +72,6 @@ describe("settings-helpers", () => {
         model: "claude-sonnet-4-6",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       // The synchronous loader must not surface ciphertext; it returns "".
@@ -100,7 +97,6 @@ describe("settings-helpers", () => {
         model: "gemini-2.5-flash",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       expect(localStorage.getItem("gemini_api_key")).toBeNull();
@@ -119,7 +115,6 @@ describe("settings-helpers", () => {
         model: "claude-sonnet-4-6",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       expect(localStorage.getItem("gemini_api_key")).toBe("AIza-old-cleartext");
@@ -131,7 +126,6 @@ describe("settings-helpers", () => {
         model: "gpt-5.5",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       const raw = JSON.parse(
@@ -151,7 +145,6 @@ describe("settings-helpers", () => {
         model: "claude-sonnet-4-6",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       // Forge an undecryptable envelope for openai: a real IV paired with a
@@ -181,7 +174,6 @@ describe("settings-helpers", () => {
         model: "claude-sonnet-4-6",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       });
 
       expect(checkHasApiKey("anthropic")).toBe(true);

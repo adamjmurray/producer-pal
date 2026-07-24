@@ -22,7 +22,6 @@ export function createConfig(
       provider: "openai",
       specificationVersion: "v3",
     } as never,
-    showThoughts: false,
     ...overrides,
   };
 }

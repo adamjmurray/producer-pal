@@ -28,14 +28,12 @@ import { type ChatAdapter } from "./use-chat-types";
  * @param provider - Provider identifier
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
- * @param showThoughts - Whether to include reasoning in response
  * @returns Provider options object for streamText
  */
 function buildProviderOptions(
   provider: Provider,
   thinking: string,
   model: string,
-  showThoughts: boolean,
 ): ProviderOptions | undefined {
   if (provider === "anthropic") {
     return buildAnthropicOptions(thinking, model);
@@ -59,7 +57,6 @@ function buildProviderOptions(
         openrouter: {
           reasoning: {
             effort,
-            ...(!showThoughts ? { exclude: true } : {}),
           },
         },
       };
@@ -69,7 +66,7 @@ function buildProviderOptions(
   }
 
   if (provider === "openai") {
-    return buildOpenAIOptions(thinking, model, showThoughts);
+    return buildOpenAIOptions(thinking, model);
   }
 
   if (provider === "gemini") {
@@ -80,7 +77,7 @@ function buildProviderOptions(
         google: {
           thinkingConfig: {
             thinkingBudget,
-            includeThoughts: showThoughts,
+            includeThoughts: true,
           },
         },
       };
@@ -143,17 +140,18 @@ function buildAnthropicOptions(
  * Build OpenAI-specific provider options for reasoning.
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
- * @param showThoughts - Whether to include reasoning summaries
  * @returns OpenAI provider options or undefined
  */
 function buildOpenAIOptions(
   thinking: string,
   model: string,
-  showThoughts: boolean,
 ): ProviderOptions | undefined {
   const effort = mapThinkingToReasoningEffort(thinking, model);
+  // Off thinking suppresses reasoning summaries even for reasoning models that
+  // generate reasoning internally — matching the openrouter/gemini paths, which
+  // return no reasoning options when thinking is Off.
   const reasoningSummary =
-    showThoughts && isOpenAIReasoningModel(model) ? "auto" : undefined;
+    thinking !== "Off" && isOpenAIReasoningModel(model) ? "auto" : undefined;
 
   if (effort || reasoningSummary) {
     return {
@@ -204,18 +202,9 @@ export const chatAdapter: ChatAdapter<
     const systemInstruction =
       lockedSystemInstruction ??
       resolveSystemInstruction(systemInstructionOverride);
-    // When thinking is Off, always exclude reasoning tokens even if the model generates them.
-    // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
-    const showThoughts =
-      thinking !== "Off" && Boolean(extraParams?.showThoughts);
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
-    const providerOptions = buildProviderOptions(
-      provider,
-      thinking,
-      model,
-      showThoughts,
-    );
+    const providerOptions = buildProviderOptions(provider, thinking, model);
 
     // Adaptive-family Anthropic models (Sonnet 5, Opus 4.6+, Fable) reject any
     // non-default sampling parameter with a 400 — suppress temperature for them
@@ -235,10 +224,9 @@ export const chatAdapter: ChatAdapter<
       temperature: suppressTemperature ? undefined : temperature,
       systemInstruction,
       enabledTools,
-      showThoughts,
       providerOptions,
       buildProviderOptions: (overrideThinking: string) =>
-        buildProviderOptions(provider, overrideThinking, model, showThoughts),
+        buildProviderOptions(provider, overrideThinking, model),
       chatHistory,
     };
   },

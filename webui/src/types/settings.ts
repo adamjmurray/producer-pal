@@ -155,8 +155,6 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   savedThinking: string;
   temperature: number;
   setTemperature: (temp: number) => void;
-  showThoughts: boolean;
-  setShowThoughts: (show: boolean) => void;
   /** Load a saved preset into the live editable buffer: writes the preset's
    * model/thinking into that preset's *own* provider
    * slice (a functional update, so it's correct even when the preset switches

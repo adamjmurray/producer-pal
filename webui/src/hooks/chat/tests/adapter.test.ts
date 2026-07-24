@@ -26,7 +26,6 @@ describe("chatAdapter", () => {
           provider: "openai",
           specificationVersion: "v3",
         } as never,
-        showThoughts: false,
       };
       const client = chatAdapter.createClient("test-key", config);
 
@@ -42,7 +41,6 @@ describe("chatAdapter", () => {
           provider: "openai",
           specificationVersion: "v3",
         } as never,
-        showThoughts: false,
         chatHistory,
       };
       const client = chatAdapter.createClient("test-key", config);
@@ -56,7 +54,6 @@ describe("chatAdapter", () => {
       provider: "openai",
       apiKey: "test-key",
       baseUrl: undefined,
-      showThoughts: false,
     };
 
     it("returns config with model and temperature", () => {
@@ -70,7 +67,6 @@ describe("chatAdapter", () => {
       );
 
       expect(config.temperature).toBe(0.7);
-      expect(config.showThoughts).toBe(false);
       expect(config.enabledTools).toStrictEqual({});
     });
 
@@ -166,7 +162,7 @@ describe("chatAdapter", () => {
       );
     });
 
-    it("sets reasoning effort for openai provider with Max thinking", () => {
+    it("sets reasoning effort and summary for openai reasoning model with Max thinking", () => {
       const config = chatAdapter.buildConfig(
         "o3-mini",
         1.0,
@@ -177,18 +173,18 @@ describe("chatAdapter", () => {
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "high" },
+        openai: { reasoningEffort: "high", reasoningSummary: "auto" },
       });
     });
 
-    it("includes reasoningSummary for openai reasoning model with showThoughts", () => {
+    it("includes reasoningSummary for an openai reasoning model", () => {
       const config = chatAdapter.buildConfig(
         "gpt-5.2",
         1.0,
         "Max",
         {},
         undefined,
-        { ...extraParams, provider: "openai", showThoughts: true },
+        { ...extraParams, provider: "openai" },
       );
 
       expect(config.providerOptions).toStrictEqual({
@@ -203,12 +199,25 @@ describe("chatAdapter", () => {
         "Default",
         {},
         undefined,
-        { ...extraParams, provider: "openai", showThoughts: true },
+        { ...extraParams, provider: "openai" },
       );
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
       });
+    });
+
+    it("returns undefined providerOptions for an openai reasoning model with Off thinking", () => {
+      const config = chatAdapter.buildConfig(
+        "o3-mini",
+        1.0,
+        "Off",
+        {},
+        undefined,
+        { ...extraParams, provider: "openai" },
+      );
+
+      expect(config.providerOptions).toBeUndefined();
     });
 
     it("sets reasoning for openrouter provider with Max thinking", () => {
@@ -218,33 +227,13 @@ describe("chatAdapter", () => {
         "Max",
         {},
         undefined,
-        { ...extraParams, provider: "openrouter", showThoughts: true },
+        { ...extraParams, provider: "openrouter" },
       );
 
       expect(config.providerOptions).toStrictEqual({
         openrouter: {
           reasoning: {
             effort: "xhigh",
-          },
-        },
-      });
-    });
-
-    it("excludes reasoning for openrouter with showThoughts=false", () => {
-      const config = chatAdapter.buildConfig(
-        "some-model",
-        1.0,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "openrouter", showThoughts: false },
-      );
-
-      expect(config.providerOptions).toStrictEqual({
-        openrouter: {
-          reasoning: {
-            effort: "xhigh",
-            exclude: true,
           },
         },
       });
@@ -258,26 +247,6 @@ describe("chatAdapter", () => {
         {},
         undefined,
         { ...extraParams, provider: "gemini" },
-      );
-
-      expect(config.providerOptions).toStrictEqual({
-        google: {
-          thinkingConfig: {
-            thinkingBudget: 16384,
-            includeThoughts: false,
-          },
-        },
-      });
-    });
-
-    it("sets Gemini thinkingConfig with includeThoughts when showThoughts is true", () => {
-      const config = chatAdapter.buildConfig(
-        "gemini-2.5-flash",
-        1.0,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "gemini", showThoughts: true },
       );
 
       expect(config.providerOptions).toStrictEqual({
@@ -304,7 +273,7 @@ describe("chatAdapter", () => {
         google: {
           thinkingConfig: {
             thinkingBudget: -1,
-            includeThoughts: false,
+            includeThoughts: true,
           },
         },
       });
@@ -385,7 +354,6 @@ describe("chatAdapter", () => {
         openrouter: {
           reasoning: {
             effort: "medium",
-            exclude: true,
           },
         },
       });
@@ -398,7 +366,7 @@ describe("chatAdapter", () => {
         "Off",
         {},
         undefined,
-        { ...extraParams, provider: "openrouter", showThoughts: true },
+        { ...extraParams, provider: "openrouter" },
       );
 
       expect(config.providerOptions).toBeUndefined();

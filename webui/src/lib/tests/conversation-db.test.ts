@@ -121,7 +121,6 @@ describe("conversation-db", () => {
       modelLabel: null,
       thinking: null,
       temperature: null,
-      showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
       sessionType: "text",
@@ -249,18 +248,16 @@ describe("conversation-db", () => {
     return await saveRecordWithoutFields([
       "thinking",
       "temperature",
-      "showThoughts",
       "smallModelMode",
     ]);
   }
 
-  it("defaults missing thinking/temperature/showThoughts to null on load", async () => {
+  it("defaults missing thinking/temperature to null on load", async () => {
     const record = await saveRecordWithMissingFields();
     const loaded = await loadConversation(record.id);
 
     expect(loaded?.thinking).toBeNull();
     expect(loaded?.temperature).toBeNull();
-    expect(loaded?.showThoughts).toBeNull();
     expect(loaded?.smallModelMode).toBeNull();
   });
 
@@ -309,7 +306,6 @@ describe("conversation-db", () => {
 
     expect(list[0]?.thinking).toBeNull();
     expect(list[0]?.temperature).toBeNull();
-    expect(list[0]?.showThoughts).toBeNull();
     expect(list[0]?.smallModelMode).toBeNull();
   });
 

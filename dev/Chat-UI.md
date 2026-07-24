@@ -230,7 +230,6 @@ interface ConversationRecord {
   modelLabel: string | null; // display name
   thinking: string | null; // thinking level (e.g., "High", "Off")
   temperature: number | null; // temperature setting
-  showThoughts: boolean | null; // whether thinking was displayed
   messages: ChatMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
 }
 ```
@@ -294,17 +293,16 @@ through this single code path via provider-specific model factories in
 
 **Locked Settings:**
 
-Provider, model, thinking level, temperature, and showThoughts are locked per
-conversation. When a conversation is saved, these settings are stored on the
+Provider, model, thinking level, and temperature are locked per conversation.
+When a conversation is saved, these settings are stored on the
 `ConversationRecord`. When restored, they're passed as
 `ConversationLockedSettings` to prevent settings changes from affecting the
 active conversation.
 
 Per-message overrides (`MessageOverrides`) can still override
-thinking/temperature/ showThoughts for individual messages. When used, the
-overridden values are stamped on the assistant `ChatMessage` as
-`thinkingOverride`, `temperatureOverride`, and `showThoughtsOverride` — only
-when they differ from the conversation defaults.
+thinking/temperature for individual messages. When used, the overridden values
+are stamped on the assistant `ChatMessage` as `thinkingOverride` and
+`temperatureOverride` — only when they differ from the conversation defaults.
 
 **Response Model Tracking:**
 

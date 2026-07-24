@@ -90,7 +90,6 @@ for (const config of TEST_CONFIGS) {
               model: settings.model,
               thinking: "Default",
               temperature: 1.0,
-              showThoughts: true,
             }),
           );
         },

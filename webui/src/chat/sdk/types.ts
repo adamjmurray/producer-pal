@@ -99,7 +99,6 @@ export interface ChatClientConfig {
   systemInstruction?: string;
   mcpUrl?: string;
   enabledTools?: Record<string, boolean>;
-  showThoughts: boolean;
   providerOptions?: ProviderOptions;
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;

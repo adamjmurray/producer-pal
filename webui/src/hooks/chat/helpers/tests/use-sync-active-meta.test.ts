@@ -22,7 +22,6 @@ const ALL_NULL: SyncActiveMetaParams = {
   activeProvider: null,
   activeThinking: null,
   activeTemperature: null,
-  activeShowThoughts: null,
   activeSmallModelMode: null,
   activeSystemInstruction: null,
 };
@@ -45,7 +44,6 @@ describe("useSyncActiveMeta", () => {
         activeProvider: "anthropic",
         activeThinking: "high",
         activeTemperature: 0.7,
-        activeShowThoughts: true,
         activeSmallModelMode: false,
         activeSystemInstruction: "Be brief.",
       }),
@@ -57,7 +55,6 @@ describe("useSyncActiveMeta", () => {
       provider: "anthropic",
       thinking: "high",
       temperature: 0.7,
-      showThoughts: true,
       smallModelMode: false,
       systemInstruction: "Be brief.",
     });

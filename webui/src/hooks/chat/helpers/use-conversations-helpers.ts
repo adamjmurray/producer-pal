@@ -28,7 +28,6 @@ export interface ActiveMeta {
   provider: Provider | null;
   thinking: string | null;
   temperature: number | null;
-  showThoughts: boolean | null;
   smallModelMode: boolean | null;
   /** Resolved system instruction in effect (snapshotted onto the record). */
   systemInstruction: string | null;
@@ -42,7 +41,6 @@ export const DEFAULT_META: ActiveMeta = {
   provider: null,
   thinking: null,
   temperature: null,
-  showThoughts: null,
   smallModelMode: null,
   systemInstruction: null,
 };
@@ -147,7 +145,6 @@ export function buildLockedSettings(
     provider: record.provider as Provider | null,
     thinking: record.thinking,
     temperature: record.temperature,
-    showThoughts: record.showThoughts,
     smallModelMode: record.smallModelMode,
     systemInstruction: record.systemInstruction ?? null,
   };
@@ -185,7 +182,6 @@ export function buildSaveRecord(
     modelLabel: refs.model ? getModelName(refs.model) : null,
     thinking: refs.thinking,
     temperature: refs.temperature,
-    showThoughts: refs.showThoughts,
     smallModelMode: refs.smallModelMode,
     totalUsage: sumMessageUsage(chatHistory),
     sessionType: "text",

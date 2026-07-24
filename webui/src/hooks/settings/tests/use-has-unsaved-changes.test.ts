@@ -32,7 +32,6 @@ function makeSettings(
     smallModelMode: false,
     thinking: "Default",
     temperature: 1,
-    showThoughts: true,
     enabledTools: {},
     realtimeVoice: "marin",
     voiceSpeed: 1,
