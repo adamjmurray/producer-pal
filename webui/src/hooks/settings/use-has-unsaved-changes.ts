@@ -30,7 +30,6 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     baseUrl: s.baseUrl,
     model: s.model,
     thinking: s.thinking,
-    temperature: s.temperature,
     enabledTools: s.enabledTools,
     smallModelMode: s.smallModelMode,
     realtimeVoice: s.realtimeVoice,

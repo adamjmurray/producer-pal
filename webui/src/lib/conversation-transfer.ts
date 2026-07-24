@@ -252,7 +252,6 @@ function normalizeRecord(
     model: (record.model as string | null | undefined) ?? null,
     modelLabel: (record.modelLabel as string | null | undefined) ?? null,
     thinking: (record.thinking as string | null | undefined) ?? null,
-    temperature: (record.temperature as number | null | undefined) ?? null,
     smallModelMode:
       (record.smallModelMode as boolean | null | undefined) ?? null,
     totalUsage:

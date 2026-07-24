@@ -173,7 +173,9 @@ export function isO1O3Model(model: string): boolean {
 }
 
 /**
- * Checks if an OpenAI model is a reasoning model that doesn't support temperature.
+ * Checks if an OpenAI model is a reasoning model (emits reasoning tokens and
+ * rejects a non-default sampling temperature). Gates the reasoning-summary
+ * request in the adapter.
  * Covers GPT-5 family (gpt-5, gpt-5.4-mini, gpt-5.2, gpt-5.3-codex, etc.) and o-series.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if reasoning model

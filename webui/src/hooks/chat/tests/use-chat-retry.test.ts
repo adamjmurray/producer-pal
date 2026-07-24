@@ -392,7 +392,6 @@ describe("useChat", () => {
       expect(resolveConnection).toHaveBeenCalledWith("anthropic");
       expect(mockAdapter.buildConfig).toHaveBeenCalledWith(
         "claude-x",
-        1.0,
         "Default",
         {},
         expect.anything(),
@@ -435,7 +434,6 @@ describe("useChat", () => {
       // the resolved connection for the (unlocked → current) provider.
       expect(mockAdapter.buildConfig).toHaveBeenCalledWith(
         "test-model",
-        1.0,
         "Default",
         {},
         history,

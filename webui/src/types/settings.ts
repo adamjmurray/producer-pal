@@ -153,8 +153,6 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
    * mid-session edit doesn't leak into the active session — applied on the next
    * Stop → Talk, matching savedRealtimeVoice/savedVoiceSpeed/savedTurnDetection. */
   savedThinking: string;
-  temperature: number;
-  setTemperature: (temp: number) => void;
   /** Load a saved preset into the live editable buffer: writes the preset's
    * model/thinking into that preset's *own* provider
    * slice (a functional update, so it's correct even when the preset switches

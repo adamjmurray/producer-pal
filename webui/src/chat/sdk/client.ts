@@ -266,7 +266,6 @@ export class ChatSdkClient {
       ),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
       stopWhen: stepCountIs(this.maxSteps),
-      temperature: this.config.temperature,
       providerOptions,
       abortSignal,
       onError: errorSignal.onError,

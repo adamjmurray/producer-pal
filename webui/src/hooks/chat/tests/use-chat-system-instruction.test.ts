@@ -44,7 +44,6 @@ describe("useChat system instruction locking", () => {
       expect.anything(),
       expect.anything(),
       expect.anything(),
-      expect.anything(),
       expect.objectContaining({
         lockedSystemInstruction: "Locked prompt from when the chat started.",
       }),

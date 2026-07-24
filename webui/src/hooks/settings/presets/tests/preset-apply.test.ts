@@ -64,13 +64,12 @@ describe("useApplyPreset", () => {
     expect(setters.anthropic).not.toHaveBeenCalled();
 
     // The functional update swaps model+thinking but preserves everything else
-    // in the slice (apiKey/baseUrl and the phased-out temperature).
+    // in the slice (apiKey/baseUrl).
     const prev: ProviderSettings = {
       apiKey: "KEEP",
       baseUrl: "http://keep",
       model: "old",
       thinking: "Default",
-      temperature: 1,
     };
 
     expect(captured.openai?.(prev)).toStrictEqual({
@@ -78,7 +77,6 @@ describe("useApplyPreset", () => {
       baseUrl: "http://keep",
       model: "gpt-x",
       thinking: "Max",
-      temperature: 1,
     });
 
     expect(setProvider).toHaveBeenCalledWith("openai");

@@ -162,7 +162,7 @@ the underlying provider implementation is swappable):
 
 - `messages` - UI-formatted message history (`UIMessage[]`)
 - `isAssistantResponding` - Loading state
-- `activeModel/Thinking/Temperature` - Locked settings during chat
+- `activeModel/Thinking` - Locked settings during chat
 
 **Operations:**
 
@@ -229,7 +229,6 @@ interface ConversationRecord {
   model: string | null; // model ID
   modelLabel: string | null; // display name
   thinking: string | null; // thinking level (e.g., "High", "Off")
-  temperature: number | null; // temperature setting
   messages: ChatMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
 }
 ```
@@ -293,16 +292,15 @@ through this single code path via provider-specific model factories in
 
 **Locked Settings:**
 
-Provider, model, thinking level, and temperature are locked per conversation.
-When a conversation is saved, these settings are stored on the
-`ConversationRecord`. When restored, they're passed as
-`ConversationLockedSettings` to prevent settings changes from affecting the
-active conversation.
+Provider, model, and thinking level are locked per conversation. When a
+conversation is saved, these settings are stored on the `ConversationRecord`.
+When restored, they're passed as `ConversationLockedSettings` to prevent
+settings changes from affecting the active conversation.
 
-Per-message overrides (`MessageOverrides`) can still override
-thinking/temperature for individual messages. When used, the overridden values
-are stamped on the assistant `ChatMessage` as `thinkingOverride` and
-`temperatureOverride` — only when they differ from the conversation defaults.
+Per-message overrides (`MessageOverrides`) can still override thinking for
+individual messages. When used, the overridden value is stamped on the assistant
+`ChatMessage` as `thinkingOverride` — only when it differs from the conversation
+default.
 
 **Response Model Tracking:**
 

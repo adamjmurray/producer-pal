@@ -33,7 +33,6 @@ function refs(over: Partial<ActiveRefs> = {}): ActiveRefs {
     model: null,
     provider: null,
     thinking: null,
-    temperature: null,
     smallModelMode: null,
     systemInstruction: null,
     ...over,

@@ -95,7 +95,6 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
 /** Configuration for the AI SDK client */
 export interface ChatClientConfig {
   model: LanguageModel;
-  temperature?: number;
   systemInstruction?: string;
   mcpUrl?: string;
   enabledTools?: Record<string, boolean>;

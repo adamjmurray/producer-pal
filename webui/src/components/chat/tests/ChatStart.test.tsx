@@ -19,7 +19,6 @@ import {
 
 const defaultOverrides = {
   thinking: "Default",
-  temperature: 1.0,
 };
 
 type RenderProps = Partial<ChatStartProps> & {
@@ -64,7 +63,6 @@ describe("ChatStart", () => {
     it("calls handleSend with Connect to Ableton and overrides when Quick Connect is clicked", () => {
       const overrides = {
         thinking: "Max",
-        temperature: 0.5,
       };
       const { handleSend } = renderChatStart({ overrides });
 

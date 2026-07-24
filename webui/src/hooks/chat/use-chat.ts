@@ -42,7 +42,6 @@ export function useChat<
   apiKey,
   model,
   thinking,
-  temperature,
   enabledTools,
   smallModelMode,
   mcpStatus,
@@ -189,7 +188,6 @@ export function useChat<
 
       const config = adapter.buildConfig(
         init.model,
-        temperature,
         effectiveThinking,
         enabledTools,
         chatHistory,
@@ -206,7 +204,6 @@ export function useChat<
         init.model,
         init.provider,
         effectiveThinking,
-        temperature,
         smallModelMode,
         init.systemInstruction,
       );
@@ -218,7 +215,6 @@ export function useChat<
       checkMcpConnection,
       model,
       provider,
-      temperature,
       thinking,
       enabledTools,
       resolveConnection,

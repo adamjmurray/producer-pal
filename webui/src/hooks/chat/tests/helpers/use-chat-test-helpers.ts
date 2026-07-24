@@ -23,7 +23,6 @@ export interface TestMessage {
 /** Test configuration for mock adapter */
 export interface TestConfig {
   model: string;
-  temperature: number;
   thinking: string;
 }
 
@@ -87,13 +86,10 @@ export function createMockAdapter(): ChatAdapter<
   const adapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
     createClient: vi.fn(() => new MockChatClient()),
 
-    buildConfig: vi.fn(
-      (model: string, temperature: number, thinking: string): TestConfig => ({
-        model,
-        temperature,
-        thinking,
-      }),
-    ),
+    buildConfig: vi.fn((model: string, thinking: string): TestConfig => ({
+      model,
+      thinking,
+    })),
 
     formatMessages: vi.fn((messages: TestMessage[]): UIMessage[] => {
       return messages.map((msg, idx) => ({
@@ -180,7 +176,6 @@ export function createDefaultProps(
     apiKey: "test-key",
     model: "test-model",
     thinking: "Default",
-    temperature: 1.0,
     enabledTools: {},
     smallModelMode: false,
     mcpStatus: "connected" as const,
@@ -215,7 +210,6 @@ export function lockedSettings(
     model: null,
     provider: null,
     thinking: null,
-    temperature: null,
     smallModelMode: null,
     systemInstruction: null,
     ...over,

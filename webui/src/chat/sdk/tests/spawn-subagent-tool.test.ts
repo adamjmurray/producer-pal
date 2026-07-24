@@ -54,16 +54,14 @@ describe("buildWorkerConfig", () => {
     expect(worker.chatHistory).toStrictEqual([]);
   });
 
-  it("inherits model, temperature, and system instruction", () => {
+  it("inherits model and system instruction", () => {
     const config = createConfig({
-      temperature: 0.7,
       systemInstruction: "custom prompt",
     });
 
     const worker = buildWorkerConfig(config);
 
     expect(worker.model).toBe(config.model);
-    expect(worker.temperature).toBe(0.7);
     expect(worker.systemInstruction).toBe("custom prompt");
   });
 

@@ -180,7 +180,6 @@ export const chatAdapter: ChatAdapter<
 
   buildConfig(
     model: string,
-    temperature: number,
     thinking: string,
     enabledTools: Record<string, boolean>,
     chatHistory: ChatMessage[] | undefined,
@@ -209,22 +208,13 @@ export const chatAdapter: ChatAdapter<
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(provider, thinking, model);
 
-    // Adaptive-family Anthropic models (Sonnet 5, Opus 4.6+, Fable) reject any
-    // non-default sampling parameter with a 400 — suppress temperature for them
-    // regardless of thinking level, including "Off". Haiku uses legacy enabled
-    // thinking, which requires temperature=1 only when thinking is active, so
-    // suppress there only when thinking is on; "Off" on Haiku keeps temperature.
-    // Pre-3.7 models (via the "Other..." input) support temperature normally and
-    // aren't adaptive, so always keep it — dropping it there was a regression.
-    const suppressTemperature =
-      (provider === "openai" && isOpenAIReasoningModel(model)) ||
-      (provider === "anthropic" &&
-        !isLegacyNonThinkingModel(model) &&
-        (!isLegacyThinkingModel(model) || thinking !== "Off"));
+    // Temperature is no longer sent: it was phased-out dead config (no UI, pinned
+    // at 1.0) so the request now carries no `temperature` and each provider
+    // applies its own default. Adaptive Anthropic / OpenAI reasoning models — the
+    // ones that 400 on a non-default temperature — are satisfied by sending none.
 
     return {
       model: languageModel,
-      temperature: suppressTemperature ? undefined : temperature,
       systemInstruction,
       enabledTools,
       smallModelMode,

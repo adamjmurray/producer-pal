@@ -24,7 +24,6 @@ export interface ConversationRecord {
   model: string | null;
   modelLabel: string | null;
   thinking: string | null;
-  temperature: number | null;
   smallModelMode: boolean | null;
   totalUsage: TokenUsage | null;
   sessionType: SessionType;
@@ -225,7 +224,6 @@ export async function listAllConversationSummaries(): Promise<
         model,
         modelLabel,
         thinking,
-        temperature,
         smallModelMode,
         totalUsage,
         sessionType,
@@ -241,7 +239,6 @@ export async function listAllConversationSummaries(): Promise<
         model,
         modelLabel,
         thinking,
-        temperature,
         smallModelMode,
         totalUsage,
         sessionType,
@@ -327,7 +324,6 @@ function normalizeLegacyRecord(
   raw: Partial<ConversationRecord>,
 ): ConversationRecord {
   raw.thinking ??= null;
-  raw.temperature ??= null;
   raw.smallModelMode ??= null;
   raw.totalUsage ??= null;
   raw.sessionType ??= "text";

@@ -139,7 +139,6 @@ describe("useChat", () => {
       expect(result.current.isAssistantResponding).toBe(false);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
-      expect(result.current.activeTemperature).toBeNull();
     });
   });
 
@@ -159,7 +158,6 @@ describe("useChat", () => {
       expect(result.current.messages).toStrictEqual([]);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
-      expect(result.current.activeTemperature).toBeNull();
     });
 
     it("disposes the client so its MCP connection is released", async () => {
@@ -348,17 +346,15 @@ describe("useChat", () => {
 
       expect(mockAdapter.createClient).toHaveBeenCalledWith("test-key", {
         model: "test-model",
-        temperature: 1.0,
         thinking: "Default",
       });
     });
 
-    it("sets active model, thinking, and temperature after initialization", async () => {
+    it("sets active model and thinking after initialization", async () => {
       const result = await renderAndSend();
 
       expect(result.current.activeModel).toBe("test-model");
       expect(result.current.activeThinking).toBe("Default");
-      expect(result.current.activeTemperature).toBe(1.0);
     });
 
     it("reuses existing client on subsequent messages", async () => {
