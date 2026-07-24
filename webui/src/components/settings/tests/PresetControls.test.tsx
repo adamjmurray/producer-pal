@@ -31,6 +31,8 @@ function makeSettings(over?: Partial<UseSettingsReturn>): UseSettingsReturn {
     applyPreset: vi.fn(),
     defaultSubagentPresetId: null,
     setDefaultSubagentPresetId: vi.fn(),
+    settingsLoaded: true,
+    getProviderConnection: vi.fn(() => ({ apiKey: "sk-test" })),
     ...over,
   } as unknown as UseSettingsReturn;
 }
@@ -223,6 +225,56 @@ describe("PresetControls", () => {
       target: { value: "" },
     });
     expect(setDefaultSubagentPresetId).toHaveBeenCalledWith(null);
+  });
+
+  it("flags Default subagent presets whose provider has no API key", () => {
+    savePresets([
+      { ...seeded, id: "keyed", name: "Keyed", provider: "anthropic" },
+      { ...seeded, id: "keyless", name: "Keyless", provider: "openai" },
+      { ...seeded, id: "local", name: "Local", provider: "ollama" },
+    ]);
+    render(
+      <PresetControls
+        settings={makeSettings({
+          getProviderConnection: vi.fn((p: string) => ({
+            apiKey: p === "anthropic" ? "sk-ok" : "",
+          })),
+        })}
+      />,
+    );
+
+    const labels = [
+      ...(screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+        .options,
+    ].map((o) => o.textContent);
+
+    expect(labels).toStrictEqual([
+      "Inherit current settings",
+      "Keyed",
+      "Keyless (no API key)",
+      "Local", // ollama needs no key → never flagged
+    ]);
+  });
+
+  it("doesn't flag missing keys until settings finish loading", () => {
+    savePresets([
+      { ...seeded, id: "keyless", name: "Keyless", provider: "openai" },
+    ]);
+    render(
+      <PresetControls
+        settings={makeSettings({
+          settingsLoaded: false,
+          getProviderConnection: vi.fn(() => ({ apiKey: "" })),
+        })}
+      />,
+    );
+
+    const labels = [
+      ...(screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+        .options,
+    ].map((o) => o.textContent);
+
+    expect(labels).toStrictEqual(["Inherit current settings", "Keyless"]);
   });
 
   it("shows Inherit when the saved default id no longer matches a preset", () => {

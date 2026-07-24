@@ -85,20 +85,23 @@ interface SubagentDefaultRowProps {
   /** Saved default-subagent preset id, or null to inherit. */
   value: string | null;
   onChange: (id: string | null) => void;
+  /** Preset ids whose provider has no usable API key, annotated in the options
+   * (a worker on such a preset would fail at request time). */
+  missingKeyIds: Set<string>;
 }
 
 /**
  * The "Default subagent" selector: which preset a spawned subagent runs under.
  * "Inherit current settings" (the empty value) clones the orchestrator's config;
  * a preset runs each worker on that preset's model/inference and toolset. Shown
- * below the preset controls on the Presets tab. Falls back to "Inherit" when the
- * saved id no longer matches a preset (deleted), matching the runtime's graceful
- * inherit.
+ * below the preset controls on the Presets tab. Options whose provider has no
+ * API key are annotated. Falls back to "Inherit" when the saved id no longer
+ * matches a preset (deleted), matching the runtime's graceful inherit.
  * @param {SubagentDefaultRowProps} props - Selector props
  * @returns {JSX.Element} The default-subagent selector
  */
 export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
-  const { presets, value } = props;
+  const { presets, value, missingKeyIds } = props;
   const selectValue =
     value != null && presets.some((p) => p.id === value) ? value : "";
 
@@ -120,6 +123,7 @@ export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
         {presets.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
+            {missingKeyIds.has(p.id) ? " (no API key)" : ""}
           </option>
         ))}
       </select>

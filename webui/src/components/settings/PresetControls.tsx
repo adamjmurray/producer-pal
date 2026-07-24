@@ -7,6 +7,7 @@ import { useState } from "preact/hooks";
 import { presetMatchesFields } from "#webui/hooks/settings/presets/preset-storage";
 import { usePresets } from "#webui/hooks/settings/presets/use-presets";
 import {
+  type ChatPreset,
   type PresetFields,
   type UseSettingsReturn,
 } from "#webui/types/settings";
@@ -154,7 +155,45 @@ export function PresetControls({ settings }: PresetControlsProps) {
         presets={presets}
         value={settings.defaultSubagentPresetId}
         onChange={settings.setDefaultSubagentPresetId}
+        missingKeyIds={presetsMissingApiKey(settings, presets)}
       />
     </div>
+  );
+}
+
+/**
+ * Preset ids whose provider has no usable API key, so the Default-subagent
+ * picker can flag them (such a preset builds a worker that fails at request time
+ * — after burning a spawn against the cap).
+ *
+ * Reads the DECRYPTED, buffer-live key via getProviderConnection — the exact
+ * value the worker will send (use-chat-mode-state's resolveConnection wraps the
+ * same call). Deliberately NOT checkHasApiKey, which reads the raw stored
+ * envelope: that both misses a just-typed unsaved key AND falsely reports a key
+ * for an orphaned/undecryptable envelope (the IndexedDB crypto key was reset
+ * while the localStorage envelope persisted) — the very case a warning should
+ * catch. See the same reasoning on `hasApiKey` in use-settings.
+ *
+ * Empty until settingsLoaded, since every provider's key is blank until the
+ * post-mount decrypt lands (else it would flash "no key" on all of them).
+ * lmstudio / ollama need no key, so they're never flagged.
+ * @param settings - The live settings buffer
+ * @param presets - The preset list
+ * @returns The set of preset ids missing a usable provider key
+ */
+function presetsMissingApiKey(
+  settings: UseSettingsReturn,
+  presets: ChatPreset[],
+): Set<string> {
+  if (!settings.settingsLoaded) return new Set();
+
+  return new Set(
+    presets
+      .filter((p) => {
+        if (p.provider === "lmstudio" || p.provider === "ollama") return false;
+
+        return !settings.getProviderConnection(p.provider).apiKey;
+      })
+      .map((p) => p.id),
   );
 }
