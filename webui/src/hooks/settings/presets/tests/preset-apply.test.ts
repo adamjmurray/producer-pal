@@ -43,9 +43,10 @@ describe("useApplyPreset", () => {
 
     const setProvider = vi.fn();
     const setSmallModelMode = vi.fn();
+    const setEnabledTools = vi.fn();
 
     const { result } = renderHook(() =>
-      useApplyPreset(setters, setProvider, setSmallModelMode),
+      useApplyPreset(setters, setProvider, setSmallModelMode, setEnabledTools),
     );
 
     const preset: ChatPreset = {
@@ -55,6 +56,7 @@ describe("useApplyPreset", () => {
       model: "gpt-x",
       thinking: "Max",
       smallModelMode: true,
+      enabledTools: { "ppal-delete": false },
     };
 
     await act(() => result.current(preset));
@@ -81,5 +83,33 @@ describe("useApplyPreset", () => {
 
     expect(setProvider).toHaveBeenCalledWith("openai");
     expect(setSmallModelMode).toHaveBeenCalledWith(true);
+    // The captured toolset is applied verbatim (as a fresh copy).
+    expect(setEnabledTools).toHaveBeenCalledWith({ "ppal-delete": false });
+  });
+
+  it("leaves the toolset untouched for a preset with no captured tools", async () => {
+    const setters = {} as ProviderStateSetters;
+
+    for (const p of ALL_PROVIDERS) setters[p] = vi.fn();
+
+    const setEnabledTools = vi.fn();
+
+    const { result } = renderHook(() =>
+      useApplyPreset(setters, vi.fn(), vi.fn(), setEnabledTools),
+    );
+
+    const legacy: ChatPreset = {
+      id: "1",
+      name: "Legacy",
+      provider: "anthropic",
+      model: "claude",
+      thinking: "Default",
+      smallModelMode: false,
+    };
+
+    await act(() => result.current(legacy));
+
+    // No enabledTools captured => "inherit": the current tools stay as-is.
+    expect(setEnabledTools).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,13 @@
 
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { ThinkingStateIcon } from "#webui/components/chat/controls/ThinkingToggle";
+import { GeminiTurnDetectionControls } from "#webui/components/settings/controls/GeminiTurnDetectionControls";
+import { THINKING_LEVELS } from "#webui/components/settings/controls/helpers/thinking-levels";
+import { Tooltip } from "#webui/components/settings/controls/Tooltip";
+import { TurnDetectionControls } from "#webui/components/settings/controls/TurnDetectionControls";
+import { VoiceSelector } from "#webui/components/settings/controls/VoiceSelector";
+import { VoiceSpeedSlider } from "#webui/components/settings/controls/VoiceSpeedSlider";
+import { VoiceVolumeSlider } from "#webui/components/settings/controls/VoiceVolumeSlider";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import {
   GEMINI_REALTIME_VOICES,
@@ -13,13 +20,6 @@ import {
 } from "#webui/lib/constants/models";
 import { VOICE_LANGUAGES } from "#webui/lib/constants/voice-language";
 import { type Provider } from "#webui/types/settings";
-import { GeminiTurnDetectionControls } from "./controls/GeminiTurnDetectionControls";
-import { THINKING_LEVELS } from "./controls/helpers/thinking-levels";
-import { Tooltip } from "./controls/Tooltip";
-import { TurnDetectionControls } from "./controls/TurnDetectionControls";
-import { VoiceSelector } from "./controls/VoiceSelector";
-import { VoiceSpeedSlider } from "./controls/VoiceSpeedSlider";
-import { VoiceVolumeSlider } from "./controls/VoiceVolumeSlider";
 
 export const API_KEY_URLS: Record<string, string | undefined> = {
   anthropic: "https://console.anthropic.com/settings/keys",

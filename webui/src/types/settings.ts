@@ -32,12 +32,13 @@ export type Provider =
   | "custom";
 
 /**
- * A named, reusable bundle of the model/inference settings a chat conversation
- * runs with — the saved twin of what {@link UseSettingsReturn} exposes for the
- * active provider. Excludes the per-provider apiKey/baseUrl (resolved live from
- * the encrypted provider store via getProviderConnection, so a preset only
- * *names* which provider to use) and excludes system prompt / skills / toolset
- * (those layer on top as personas and toolset scoping).
+ * A named, reusable bundle of everything a chat conversation runs with — the
+ * saved twin of what {@link UseSettingsReturn} exposes — EXCEPT the per-provider
+ * apiKey/baseUrl (resolved live from the encrypted provider store via
+ * getProviderConnection, so a preset only *names* which provider to use) and UI
+ * preferences (theme/timestamps). A preset bundles the client-side localStorage
+ * layer: provider + model + inference + toolset. The server-side content layer
+ * (skills / system-instruction) is a future "persona" that wraps a preset.
  *
  * The stable `id` is the handle a subagent worker persists to say "run with
  * preset X" by reference, so renaming a preset never breaks that link.
@@ -47,14 +48,24 @@ export interface ChatPreset extends PresetFields {
   id: string;
   /** Unique, user-facing label shown in the preset picker. */
   name: string;
+  /** Optional freeform note. Currently informational only — reserved for the
+   * future "orchestrator picks a preset per spawn" feature, where a spawned
+   * worker matches its task against this text. Absent/blank until then. */
+  description?: string;
 }
 
-/** The settings a preset captures (everything but its identity). */
+/** The settings a preset captures (everything but its identity/metadata). */
 export interface PresetFields {
   provider: Provider;
   model: string;
   thinking: string;
   smallModelMode: boolean;
+  /** Captured tool-enablement map (the client-side toolset). Additive/optional:
+   * localStorage is schemaless, so a preset saved before toolsets existed omits
+   * it, meaning "inherit the current toolset" (applying such a preset leaves the
+   * tools untouched). A present map is applied verbatim; a missing key within it
+   * falls back to that tool's own default (all on except the opt-in Subagent). */
+  enabledTools?: Record<string, boolean>;
 }
 
 /**
@@ -157,8 +168,10 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
    * model/thinking into that preset's *own* provider
    * slice (a functional update, so it's correct even when the preset switches
    * provider — the per-field setters otherwise target only the active slice),
-   * switches the active provider, and sets the global small-model mode. The
-   * provider's apiKey/baseUrl are left untouched. The user then Saves normally. */
+   * switches the active provider, sets the global small-model mode, and applies
+   * the captured toolset (skipped when the preset carries none, so a legacy
+   * preset inherits the current tools). The provider's apiKey/baseUrl are left
+   * untouched. The user then Saves normally. */
   applyPreset: (preset: ChatPreset) => void;
   /** Persists in-modal settings and resolves only after the at-rest envelope
    * has landed. Returns true on durable success, false on failure (saveError

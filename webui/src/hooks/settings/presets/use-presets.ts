@@ -14,8 +14,16 @@ export type CreatePresetResult =
 /** Browser-local preset collection: list + create/update/delete. */
 export interface UsePresetsReturn {
   presets: ChatPreset[];
-  createPreset: (name: string, fields: PresetFields) => CreatePresetResult;
-  updatePreset: (id: string, fields: PresetFields) => void;
+  createPreset: (
+    name: string,
+    fields: PresetFields,
+    description?: string,
+  ) => CreatePresetResult;
+  updatePreset: (
+    id: string,
+    fields: PresetFields,
+    description?: string,
+  ) => void;
   deletePreset: (id: string) => void;
 }
 
@@ -35,7 +43,11 @@ export function usePresets(): UsePresetsReturn {
   }, []);
 
   const createPreset = useCallback(
-    (name: string, fields: PresetFields): CreatePresetResult => {
+    (
+      name: string,
+      fields: PresetFields,
+      description?: string,
+    ): CreatePresetResult => {
       const trimmed = name.trim();
 
       if (trimmed.length === 0) {
@@ -46,11 +58,10 @@ export function usePresets(): UsePresetsReturn {
         return { ok: false, error: "A preset with that name already exists." };
       }
 
-      const preset: ChatPreset = {
-        id: createPresetId(),
-        name: trimmed,
-        ...fields,
-      };
+      const preset: ChatPreset = withDescription(
+        { id: createPresetId(), name: trimmed, ...fields },
+        description,
+      );
 
       persist([...presets, preset]);
 
@@ -60,8 +71,12 @@ export function usePresets(): UsePresetsReturn {
   );
 
   const updatePreset = useCallback(
-    (id: string, fields: PresetFields) => {
-      persist(presets.map((p) => (p.id === id ? { ...p, ...fields } : p)));
+    (id: string, fields: PresetFields, description?: string) => {
+      persist(
+        presets.map((p) =>
+          p.id === id ? withDescription({ ...p, ...fields }, description) : p,
+        ),
+      );
     },
     [presets, persist],
   );
@@ -74,4 +89,25 @@ export function usePresets(): UsePresetsReturn {
   );
 
   return { presets, createPreset, updatePreset, deletePreset };
+}
+
+/**
+ * Return a copy of the preset with its description set from the given value:
+ * trimmed and stored when non-empty, dropped when blank. A `undefined` value
+ * leaves any existing description untouched (so an update that doesn't touch the
+ * description — e.g. a bare "Update" re-capturing fields — preserves it).
+ * @param preset - The preset to adjust
+ * @param description - New description, "" to clear, or undefined to keep
+ * @returns The preset with its description normalized
+ */
+function withDescription(preset: ChatPreset, description?: string): ChatPreset {
+  if (description === undefined) return preset;
+
+  const trimmed = description.trim();
+  const next = { ...preset };
+
+  if (trimmed) next.description = trimmed;
+  else delete next.description;
+
+  return next;
 }

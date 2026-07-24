@@ -7,26 +7,26 @@ import { useState } from "preact/hooks";
 import { presetMatchesFields } from "#webui/hooks/settings/presets/preset-storage";
 import { usePresets } from "#webui/hooks/settings/presets/use-presets";
 import {
-  type ChatPreset,
   type PresetFields,
   type UseSettingsReturn,
 } from "#webui/types/settings";
+import {
+  PresetCreateForm,
+  PresetDescriptionField,
+  PresetPickerRow,
+} from "./helpers/preset-controls-parts";
 
 interface PresetControlsProps {
   settings: UseSettingsReturn;
 }
 
-const buttonClass =
-  "px-3 py-2 text-sm rounded border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 whitespace-nowrap";
-const inputClass =
-  "px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded";
-
 /**
- * Preset picker + Save-as/Update/Delete controls at the top of the Connection
- * tab. Selecting a preset loads it into the live editable settings buffer
- * (settings.applyPreset); the user then Saves through the normal footer flow.
- * Presets capture provider/model/thinking + small-model mode — never the API
- * key (that stays in the per-provider store).
+ * Preset picker + Save-as/Update/Delete controls plus the description editor,
+ * shown on the dedicated Presets tab. Selecting a preset loads its full bundle
+ * — provider/model/thinking + small-model mode + toolset — into the live
+ * editable settings buffer (settings.applyPreset); the user then Saves through
+ * the normal footer flow. Presets never capture the API key (that stays in the
+ * per-provider store).
  * @param {PresetControlsProps} props - Component props
  * @param {UseSettingsReturn} props.settings - The live settings buffer + actions
  * @returns {JSX.Element} The preset controls
@@ -36,6 +36,8 @@ export function PresetControls({ settings }: PresetControlsProps) {
   const [selectedId, setSelectedId] = useState<string>("");
   const [naming, setNaming] = useState<boolean>(false);
   const [draftName, setDraftName] = useState<string>("");
+  const [draftDescription, setDraftDescription] = useState<string>("");
+  const [editDescription, setEditDescription] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const fields: PresetFields = {
@@ -43,9 +45,13 @@ export function PresetControls({ settings }: PresetControlsProps) {
     model: settings.model,
     thinking: settings.thinking,
     smallModelMode: settings.smallModelMode,
+    enabledTools: settings.enabledTools,
   };
   const selected = presets.find((p) => p.id === selectedId) ?? null;
-  const isModified = selected != null && !presetMatchesFields(selected, fields);
+  const fieldsModified =
+    selected != null && !presetMatchesFields(selected, fields);
+  const descriptionModified =
+    selected != null && editDescription.trim() !== (selected.description ?? "");
 
   const handleSelect = (id: string): void => {
     setSelectedId(id);
@@ -53,10 +59,11 @@ export function PresetControls({ settings }: PresetControlsProps) {
     const preset = presets.find((p) => p.id === id);
 
     if (preset) settings.applyPreset(preset);
+    setEditDescription(preset?.description ?? "");
   };
 
   const confirmCreate = (): void => {
-    const result = createPreset(draftName, fields);
+    const result = createPreset(draftName, fields, draftDescription);
 
     if (!result.ok) {
       setError(result.error);
@@ -65,14 +72,17 @@ export function PresetControls({ settings }: PresetControlsProps) {
     }
 
     setSelectedId(result.preset.id);
+    setEditDescription(result.preset.description ?? "");
     setNaming(false);
     setDraftName("");
+    setDraftDescription("");
     setError(null);
   };
 
   const cancelNaming = (): void => {
     setNaming(false);
     setDraftName("");
+    setDraftDescription("");
     setError(null);
   };
 
@@ -90,16 +100,20 @@ export function PresetControls({ settings }: PresetControlsProps) {
         onStartNaming={() => {
           setNaming(true);
           setDraftName("");
+          setDraftDescription("");
           setError(null);
         }}
-        onUpdate={() => selected && updatePreset(selected.id, fields)}
+        onUpdate={() =>
+          selected && updatePreset(selected.id, fields, editDescription)
+        }
         onDelete={() => {
           if (selected) deletePreset(selected.id);
           setSelectedId("");
+          setEditDescription("");
         }}
       />
 
-      {selected && isModified && (
+      {selected && (fieldsModified || descriptionModified) && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
           Unsaved edits — “Update” overwrites “{selected.name}”, or “Save as…”
           keeps a new one.
@@ -107,11 +121,20 @@ export function PresetControls({ settings }: PresetControlsProps) {
       )}
 
       {naming && (
-        <PresetNameForm
+        <PresetCreateForm
           draftName={draftName}
-          onDraftChange={setDraftName}
+          draftDescription={draftDescription}
+          onNameChange={setDraftName}
+          onDescriptionChange={setDraftDescription}
           onConfirm={confirmCreate}
           onCancel={cancelNaming}
+        />
+      )}
+
+      {selected && !naming && (
+        <PresetDescriptionField
+          value={editDescription}
+          onChange={setEditDescription}
         />
       )}
 
@@ -123,123 +146,6 @@ export function PresetControls({ settings }: PresetControlsProps) {
           {error}
         </p>
       )}
-
-      <div className="border-b border-zinc-300 dark:border-zinc-600" />
-    </div>
-  );
-}
-
-interface PresetPickerRowProps {
-  presets: ChatPreset[];
-  selectedId: string;
-  selected: ChatPreset | null;
-  naming: boolean;
-  onSelect: (id: string) => void;
-  onStartNaming: () => void;
-  onUpdate: () => void;
-  onDelete: () => void;
-}
-
-/**
- * The preset dropdown plus the Save-as / Update / Delete action buttons.
- * Update/Delete appear only when a preset is selected.
- * @param {PresetPickerRowProps} props - Picker row props
- * @returns {JSX.Element} The picker + action row
- */
-function PresetPickerRow(props: PresetPickerRowProps) {
-  const { presets, selectedId, selected, naming } = props;
-
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <select
-        id="preset-select"
-        value={selectedId}
-        onChange={(e) => props.onSelect((e.target as HTMLSelectElement).value)}
-        className={`flex-1 min-w-40 ${inputClass}`}
-        data-testid="preset-select"
-      >
-        <option value="">— Select a preset —</option>
-        {presets.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
-      {!naming && (
-        <button
-          type="button"
-          onClick={props.onStartNaming}
-          className={buttonClass}
-          data-testid="preset-save-as"
-        >
-          Save as…
-        </button>
-      )}
-      {selected && (
-        <>
-          <button
-            type="button"
-            onClick={props.onUpdate}
-            className={buttonClass}
-            data-testid="preset-update"
-          >
-            Update
-          </button>
-          <button
-            type="button"
-            onClick={props.onDelete}
-            className={`${buttonClass} text-red-600 dark:text-red-400`}
-            data-testid="preset-delete"
-          >
-            Delete
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-interface PresetNameFormProps {
-  draftName: string;
-  onDraftChange: (value: string) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-/**
- * The inline "name this preset" row shown after Save-as: a text field plus
- * Save/Cancel. Enter confirms, Escape cancels.
- * @param {PresetNameFormProps} props - Name form props
- * @returns {JSX.Element} The name-entry row
- */
-function PresetNameForm(props: PresetNameFormProps) {
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        type="text"
-        value={props.draftName}
-        onInput={(e) =>
-          props.onDraftChange((e.target as HTMLInputElement).value)
-        }
-        onKeyDown={(e) => {
-          if (e.key === "Enter") props.onConfirm();
-          if (e.key === "Escape") props.onCancel();
-        }}
-        placeholder="Preset name"
-        className={`flex-1 ${inputClass}`}
-        data-testid="preset-name-input"
-      />
-      <button
-        type="button"
-        onClick={props.onConfirm}
-        className={buttonClass}
-        data-testid="preset-name-save"
-      >
-        Save
-      </button>
-      <button type="button" onClick={props.onCancel} className={buttonClass}>
-        Cancel
-      </button>
     </div>
   );
 }

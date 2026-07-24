@@ -4,6 +4,8 @@
 
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { type Provider } from "#webui/types/settings";
+import { ModelSelector } from "./controls/ModelSelector";
+import { ProviderSelector } from "./controls/ProviderSelector";
 import {
   API_KEY_URLS,
   DEFAULT_LOCAL_URLS,
@@ -11,9 +13,7 @@ import {
   SmallModelToggle,
   ThinkingSelector,
   VoiceSettings,
-} from "./connection-tab-helpers";
-import { ModelSelector } from "./controls/ModelSelector";
-import { ProviderSelector } from "./controls/ProviderSelector";
+} from "./helpers/connection-tab-helpers";
 import { TestConnectionButton } from "./TestConnectionButton";
 
 interface ConnectionTabProps {

@@ -18,15 +18,21 @@ import { type ChatPreset, type Provider } from "#webui/types/settings";
  * a preset only names which provider to run, and the key resolves live from the
  * encrypted per-provider store.
  *
+ * The captured toolset is applied verbatim, but only when the preset carries
+ * one: a legacy preset (saved before toolsets) has no `enabledTools`, and
+ * applying it must leave the current tools untouched ("inherit").
+ *
  * @param providerStateSetters - Per-provider slice setters
  * @param setProvider - Switches the active provider
  * @param setSmallModelMode - Sets the global small-model-mode flag
+ * @param setEnabledTools - Replaces the global tool-enablement map
  * @returns Callback that loads a preset into the live editable settings buffer
  */
 export function useApplyPreset(
   providerStateSetters: ProviderStateSetters,
   setProvider: (provider: Provider) => void,
   setSmallModelMode: (enabled: boolean) => void,
+  setEnabledTools: (tools: Record<string, boolean>) => void,
 ): (preset: ChatPreset) => void {
   return useCallback(
     (preset: ChatPreset) => {
@@ -37,7 +43,8 @@ export function useApplyPreset(
       }));
       setProvider(preset.provider);
       setSmallModelMode(preset.smallModelMode);
+      if (preset.enabledTools) setEnabledTools({ ...preset.enabledTools });
     },
-    [providerStateSetters, setProvider, setSmallModelMode],
+    [providerStateSetters, setProvider, setSmallModelMode, setEnabledTools],
   );
 }

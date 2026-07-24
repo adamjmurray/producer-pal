@@ -26,6 +26,8 @@ function makeSettings(over?: Partial<UseSettingsReturn>): UseSettingsReturn {
     model: "claude",
     thinking: "Default",
     smallModelMode: false,
+    enabledTools: {},
+    setEnabledTools: vi.fn(),
     applyPreset: vi.fn(),
     ...over,
   } as unknown as UseSettingsReturn;
@@ -109,6 +111,49 @@ describe("PresetControls", () => {
 
     expect(screen.getByTestId("preset-error")).toBeTruthy();
     expect(loadPresets()).toHaveLength(0);
+  });
+
+  it("captures the description and enabled toolset in a new preset", () => {
+    render(
+      <PresetControls
+        settings={makeSettings({ enabledTools: { "ppal-delete": false } })}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("preset-save-as"));
+    fireEvent.input(screen.getByTestId("preset-name-input"), {
+      target: { value: "Worker" },
+    });
+    fireEvent.input(screen.getByTestId("preset-description-input"), {
+      target: { value: "cheap bulk editor" },
+    });
+    fireEvent.click(screen.getByTestId("preset-name-save"));
+
+    expect(loadPresets()[0]).toMatchObject({
+      name: "Worker",
+      description: "cheap bulk editor",
+      enabledTools: { "ppal-delete": false },
+    });
+  });
+
+  it("shows and persists the description of the selected preset", () => {
+    savePresets([{ ...seeded, description: "existing note" }]);
+    render(<PresetControls settings={makeSettings()} />);
+
+    fireEvent.change(screen.getByTestId("preset-select"), {
+      target: { value: "seed" },
+    });
+
+    const editor = screen.getByTestId(
+      "preset-description-input",
+    ) as HTMLTextAreaElement;
+
+    expect(editor.value).toBe("existing note");
+
+    fireEvent.input(editor, { target: { value: "updated note" } });
+    fireEvent.click(screen.getByTestId("preset-update"));
+
+    expect(loadPresets()[0]?.description).toBe("updated note");
   });
 
   it("applies a preset into the settings buffer on select", () => {
