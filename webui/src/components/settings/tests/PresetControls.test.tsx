@@ -39,8 +39,6 @@ const seeded: ChatPreset = {
   provider: "ollama",
   model: "llama3",
   thinking: "Off",
-  temperature: 1,
-  showThoughts: true,
   smallModelMode: true,
 };
 

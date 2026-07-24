@@ -16,10 +16,10 @@ type GetProviderConnection = (provider: Provider) => {
  * bag that `chatAdapter.buildConfig` consumes, resolving the
  * provider's key/baseUrl live from the encrypted per-provider store (a preset
  * only *names* the provider). A worker's cloned config is then built exactly
- * like the main chat's — `buildConfig(preset.model, preset.temperature,
- * preset.thinking, enabledTools, chatHistory, presetToExtraParams(preset, …))`.
- * model/temperature/thinking are positional args to buildConfig, so they stay
- * out of this bag by design.
+ * like the main chat's — `buildConfig(preset.model, temperature, preset.thinking,
+ * enabledTools, chatHistory, presetToExtraParams(preset, …))`. model/thinking
+ * are positional args to buildConfig, so they stay out of this bag by design
+ * (temperature is a phased-out param the caller passes as the default).
  * @param preset - The preset a worker runs under
  * @param getProviderConnection - Reads the provider's stored key/baseUrl
  * @returns The extraParams object for buildConfig
@@ -34,6 +34,5 @@ export function presetToExtraParams(
     provider: preset.provider,
     apiKey,
     baseUrl,
-    showThoughts: preset.showThoughts,
   };
 }

@@ -71,8 +71,6 @@ export function presetMatchesFields(
     preset.provider === fields.provider &&
     preset.model === fields.model &&
     preset.thinking === fields.thinking &&
-    preset.temperature === fields.temperature &&
-    preset.showThoughts === fields.showThoughts &&
     preset.smallModelMode === fields.smallModelMode
   );
 }
@@ -96,9 +94,6 @@ function isValidPreset(value: unknown): value is ChatPreset {
     isValidProvider(p.provider) &&
     typeof p.model === "string" &&
     typeof p.thinking === "string" &&
-    typeof p.temperature === "number" &&
-    Number.isFinite(p.temperature) &&
-    typeof p.showThoughts === "boolean" &&
     typeof p.smallModelMode === "boolean"
   );
 }

@@ -19,8 +19,6 @@ const fields: PresetFields = {
   provider: "anthropic",
   model: "claude",
   thinking: "Default",
-  temperature: 1,
-  showThoughts: true,
   smallModelMode: false,
 };
 

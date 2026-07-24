@@ -23,8 +23,6 @@ function makePreset(over?: Partial<ChatPreset>): ChatPreset {
     provider: "anthropic",
     model: "claude",
     thinking: "Default",
-    temperature: 1,
-    showThoughts: true,
     smallModelMode: false,
     ...over,
   };
@@ -68,7 +66,7 @@ describe("preset-storage", () => {
       good,
       { id: "x" }, // missing fields
       makePreset({ id: "y", provider: "bogus" as ChatPreset["provider"] }),
-      { ...makePreset({ id: "z" }), temperature: "1" }, // wrong type
+      { ...makePreset({ id: "z" }), smallModelMode: "true" }, // wrong type
       null,
       "string",
     ];
@@ -91,8 +89,6 @@ describe("preset-storage", () => {
       provider: "anthropic",
       model: "claude",
       thinking: "Default",
-      temperature: 1,
-      showThoughts: true,
       smallModelMode: false,
     };
 

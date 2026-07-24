@@ -25,8 +25,8 @@ const inputClass =
  * Preset picker + Save-as/Update/Delete controls at the top of the Connection
  * tab. Selecting a preset loads it into the live editable settings buffer
  * (settings.applyPreset); the user then Saves through the normal footer flow.
- * Presets capture provider/model/thinking/temperature/showThoughts +
- * small-model mode — never the API key (that stays in the per-provider store).
+ * Presets capture provider/model/thinking + small-model mode — never the API
+ * key (that stays in the per-provider store).
  * @param {PresetControlsProps} props - Component props
  * @param {UseSettingsReturn} props.settings - The live settings buffer + actions
  * @returns {JSX.Element} The preset controls
@@ -42,8 +42,6 @@ export function PresetControls({ settings }: PresetControlsProps) {
     provider: settings.provider,
     model: settings.model,
     thinking: settings.thinking,
-    temperature: settings.temperature,
-    showThoughts: settings.showThoughts,
     smallModelMode: settings.smallModelMode,
   };
   const selected = presets.find((p) => p.id === selectedId) ?? null;

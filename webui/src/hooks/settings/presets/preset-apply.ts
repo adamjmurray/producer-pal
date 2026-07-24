@@ -9,7 +9,7 @@ import { type ChatPreset, type Provider } from "#webui/types/settings";
 
 /**
  * Build the `applyPreset` action for the settings hub. Loading a preset must
- * write its model/thinking/temperature/showThoughts into the preset's *own*
+ * write its model/thinking into the preset's *own*
  * provider slice — the plain per-field setters (useProviderSetters) close over
  * the currently-active provider, so calling them after switching provider would
  * write to the wrong slice. A functional update keyed by the preset's provider
@@ -34,8 +34,6 @@ export function useApplyPreset(
         ...prev,
         model: preset.model,
         thinking: preset.thinking,
-        temperature: preset.temperature,
-        showThoughts: preset.showThoughts,
       }));
       setProvider(preset.provider);
       setSmallModelMode(preset.smallModelMode);

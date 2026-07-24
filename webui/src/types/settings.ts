@@ -54,8 +54,6 @@ export interface PresetFields {
   provider: Provider;
   model: string;
   thinking: string;
-  temperature: number;
-  showThoughts: boolean;
   smallModelMode: boolean;
 }
 
@@ -160,7 +158,7 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
   /** Load a saved preset into the live editable buffer: writes the preset's
-   * model/thinking/temperature/showThoughts into that preset's *own* provider
+   * model/thinking into that preset's *own* provider
    * slice (a functional update, so it's correct even when the preset switches
    * provider — the per-field setters otherwise target only the active slice),
    * switches the active provider, and sets the global small-model mode. The
