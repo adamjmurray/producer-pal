@@ -33,6 +33,12 @@ export interface UIToolPart {
   args: Record<string, unknown>;
   result: string | null;
   isError?: boolean;
+  /**
+   * For a spawn_subagent call: the worker's full transcript, formatted for the
+   * deep-dive tier of the subagent card. UI-only — the orchestrator model never
+   * sees it (only the compact `result`). Absent for ordinary tool calls.
+   */
+  subagentMessages?: UIMessage[];
 }
 
 export interface UIStepUsagePart {

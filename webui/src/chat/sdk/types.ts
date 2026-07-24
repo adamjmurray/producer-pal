@@ -29,6 +29,13 @@ export interface ChatMessage {
     args: Record<string, unknown>;
     result: unknown;
     isError?: boolean;
+    /**
+     * For a spawn_subagent result: the worker's full chat history, kept for the
+     * UI deep-dive. Persisted with the conversation but NEVER sent to the model
+     * (buildModelMessages reads only `result`), so the orchestrator context can't
+     * blow up. Absent for ordinary tool results.
+     */
+    subagentTranscript?: ChatMessage[];
   }>;
   reasoning?: string;
   /**
@@ -97,4 +104,10 @@ export interface ChatClientConfig {
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
   chatHistory?: ChatMessage[];
+  /**
+   * Tool-step budget for streamText's stopWhen. Defaults to the shared
+   * MAX_TOOL_STEPS in client.ts. A subagent worker sets MAX_WORKER_STEPS; an
+   * orchestrator with subagents enabled widens to MAX_ORCHESTRATOR_STEPS.
+   */
+  maxSteps?: number;
 }

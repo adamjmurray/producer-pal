@@ -194,8 +194,9 @@ describe("ToolToggles", () => {
       });
 
       // connect description + read-live-set description + injected Live API
-      // fallback description + header tooltip + notation selector tooltip = 5
-      expect(infoButtons).toHaveLength(5);
+      // fallback description + injected Subagent description + header tooltip +
+      // notation selector tooltip = 6
+      expect(infoButtons).toHaveLength(6);
     });
 
     it("does not render info icon for tools without descriptions", () => {
@@ -208,9 +209,9 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      // header tooltip + injected Live API fallback description + notation
-      // selector tooltip = 3
-      expect(infoButtons).toHaveLength(3);
+      // header tooltip + injected Live API fallback description + injected
+      // Subagent description + notation selector tooltip = 4
+      expect(infoButtons).toHaveLength(4);
     });
   });
 
@@ -532,6 +533,52 @@ describe("ToolToggles", () => {
       fireEvent.click(button);
 
       expect(onEditContext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Subagent checkbox", () => {
+    it("renders a Subagent checkbox even when not in mcpTools", () => {
+      render(<ToolToggles {...defaultProps} />);
+
+      expect(screen.getByLabelText("Subagent")).toBeDefined();
+    });
+
+    it("is unchecked by default (opt-in) when not in enabledTools", () => {
+      render(<ToolToggles {...defaultProps} enabledTools={{}} />);
+
+      const checkbox = screen.getByLabelText("Subagent") as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(false);
+    });
+
+    it("is checked only when explicitly enabled", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{ spawn_subagent: true }}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Subagent") as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it("enables the Subagent tool when its checkbox is clicked", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{}}
+          setEnabledTools={setEnabledTools}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Subagent"));
+
+      expect(setEnabledTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools.mock.calls[0]?.[0]?.spawn_subagent).toBe(true);
     });
   });
 });

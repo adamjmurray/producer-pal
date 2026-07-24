@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/spawn-subagent-tool";
 import {
   type UIPart,
   type UIStepUsagePart,
@@ -26,6 +27,20 @@ export type RenderItem = SingleRenderItem | ToolGroupRenderItem;
 const MIN_GROUP_SIZE = 3;
 
 /**
+ * Whether a part participates in tool-call grouping. Ordinary tool calls and the
+ * step-usage markers between them do; a spawn_subagent call does NOT — it always
+ * renders as its own specialized card (never collapsed into a generic group),
+ * which keeps parallel spawns individually visible.
+ * @param part - The UI part to classify
+ * @returns True when the part can join a tool-call group
+ */
+function isGroupablePart(part: UIPart): part is UIToolPart | UIStepUsagePart {
+  if (part.type === "step-usage") return true;
+
+  return part.type === "tool" && part.name !== SPAWN_SUBAGENT_TOOL_NAME;
+}
+
+/**
  * Groups consecutive tool parts (with interleaved step-usage) into collapsible groups.
  * Runs of 3+ tool parts become a single tool-group item; shorter runs stay individual.
  * @param parts - Flat array of UI parts
@@ -42,12 +57,15 @@ export function groupToolParts(parts: UIPart[]): RenderItem[] {
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i] as UIPart;
 
-    if (part.type === "tool" || part.type === "step-usage") {
+    if (isGroupablePart(part)) {
       run.parts.push(part);
       run.indices.push(i);
 
       if (part.type === "tool") toolCount++;
     } else {
+      // Subagent calls (and non-tool parts) break the run and render on their
+      // own — a subagent renders as its specialized card, never folded into a
+      // generic tool group, so parallel spawns each keep their card + transcript.
       flushRun(result, run, toolCount);
       run = { parts: [], indices: [] };
       toolCount = 0;

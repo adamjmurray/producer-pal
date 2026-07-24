@@ -78,6 +78,59 @@ describe("formatChatMessages", () => {
     ]);
   });
 
+  it("attaches a formatted worker transcript for a subagent tool call", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          { id: "tc1", name: "spawn_subagent", args: { task: "bassline" } },
+        ],
+        toolResults: [
+          {
+            id: "tc1",
+            name: "spawn_subagent",
+            args: { task: "bassline" },
+            result: "Added a bassline.",
+            subagentTranscript: [
+              { role: "user", content: "bassline" },
+              { role: "assistant", content: "Added a bassline." },
+            ],
+          },
+        ],
+      },
+    ];
+    const result = formatChatMessages(history);
+    const toolPart = result[0]!.parts[0]!;
+
+    expect(toolPart.type).toBe("tool");
+    // The transcript is formatted into UIMessages for the deep-dive tier.
+    const messages =
+      toolPart.type === "tool" ? toolPart.subagentMessages : undefined;
+
+    expect(messages).toHaveLength(2);
+    expect(messages?.[0]?.role).toBe("user");
+    expect(messages?.[1]?.role).toBe("model");
+  });
+
+  it("omits subagentMessages for an ordinary tool call", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
+        toolResults: [
+          { id: "tc1", name: "ppal-connect", args: {}, result: "Connected" },
+        ],
+      },
+    ];
+    const toolPart = formatChatMessages(history)[0]!.parts[0]!;
+
+    expect(toolPart.type === "tool" && "subagentMessages" in toolPart).toBe(
+      false,
+    );
+  });
+
   it("formats tool calls without results", () => {
     const history: ChatMessage[] = [
       {

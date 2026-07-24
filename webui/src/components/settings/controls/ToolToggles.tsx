@@ -12,7 +12,9 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import {
   ensureLiveApiTool,
+  ensureSpawnSubagentTool,
   LIVE_API_TOOL_ID,
+  SPAWN_SUBAGENT_TOOL_ID,
   type GroupedTools,
   groupTools,
 } from "./helpers/tool-toggles-helpers";
@@ -121,6 +123,8 @@ export function ToolToggles({
   const isToolChecked = (toolId: string) => {
     if (isAlwaysEnabled(toolId)) return true;
     if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
+    // Subagent is opt-in: off unless explicitly enabled (default true elsewhere).
+    if (toolId === SPAWN_SUBAGENT_TOOL_ID) return enabledTools[toolId] === true;
 
     return enabledTools[toolId] ?? true;
   };
@@ -152,7 +156,7 @@ export function ToolToggles({
     if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
-  const groups = groupTools(ensureLiveApiTool(tools));
+  const groups = groupTools(ensureSpawnSubagentTool(ensureLiveApiTool(tools)));
   // Rendered as the Advanced group's footer (bottom-aligned under the Live API
   // toggle); see ToolGroupSection.
   const notationFooter = (
