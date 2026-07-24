@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
+import { useApplyPreset } from "./presets/preset-apply";
 import {
   type AllProviderSettings,
   checkHasApiKey,
@@ -18,16 +19,12 @@ import {
   loadSmallModelMode,
   type ProviderSettings,
   type ProviderSettingsApplier,
+  type ProviderStateSetters,
   saveCurrentSettings,
   saveSmallModelMode,
 } from "./settings-helpers";
-import { useProviderConnections } from "./use-provider-connections";
+import { useProviderSlices } from "./use-provider-connections";
 import { useVoiceModeSettings } from "./use-voice-mode-settings";
-
-type ProviderStateSetters = Record<
-  Provider,
-  (update: (prev: ProviderSettings) => ProviderSettings) => void
->;
 
 /**
  * Build the per-key setter bag (apiKey/model/baseUrl/...) that mutates the
@@ -148,60 +145,21 @@ export function useSettings(): UseSettingsReturn {
     setNotationState(value);
     setNotationDirty(false);
   }, []);
-  const [anthropicSettings, setAnthropicSettings] = useState<ProviderSettings>(
-    () => loadProviderSettings("anthropic"),
-  );
-  const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("gemini"),
-  );
-  const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("openai"),
-  );
-  const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("mistral"),
-  );
-  const [openrouterSettings, setOpenrouterSettings] =
-    useState<ProviderSettings>(() => loadProviderSettings("openrouter"));
-  const [lmstudioSettings, setLmstudioSettings] = useState<ProviderSettings>(
-    () => loadProviderSettings("lmstudio"),
-  );
-  const [ollamaSettings, setOllamaSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("ollama"),
-  );
-  const [customSettings, setCustomSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("custom"),
-  );
-
-  // Mapping of providers to their state setters
-  const providerStateSetters: ProviderStateSetters = useMemo(
-    () => ({
-      anthropic: setAnthropicSettings,
-      gemini: setGeminiSettings,
-      openai: setOpenaiSettings,
-      mistral: setMistralSettings,
-      openrouter: setOpenrouterSettings,
-      lmstudio: setLmstudioSettings,
-      ollama: setOllamaSettings,
-      custom: setCustomSettings,
-    }),
-    [],
-  );
-
-  // Memoized providerSettings + a stable getProviderConnection (see the hook):
-  // keeps identities stable so consumers like resolveConnection in
-  // useChatModeState don't churn the chat hook's callbacks/effects every render.
-  const { providerSettings, getProviderConnection } = useProviderConnections(
-    anthropicSettings,
-    geminiSettings,
+  const {
+    providerSettings,
+    getProviderConnection,
+    providerStateSetters,
     openaiSettings,
-    mistralSettings,
-    openrouterSettings,
-    lmstudioSettings,
-    ollamaSettings,
-    customSettings,
-  );
+    geminiSettings,
+  } = useProviderSlices();
 
   const currentSettings = providerSettings[provider];
+
+  const applyPreset = useApplyPreset(
+    providerStateSetters,
+    setProviderState,
+    setSmallModelModeState,
+  );
 
   const applyLoadedSettings = useCallback(
     (allSettings: typeof DEFAULT_SETTINGS) => {
@@ -342,6 +300,7 @@ export function useSettings(): UseSettingsReturn {
     setTemperature,
     showThoughts: currentSettings.showThoughts,
     setShowThoughts,
+    applyPreset,
     saveSettings,
     cancelSettings,
     hasApiKey,

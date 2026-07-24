@@ -18,6 +18,7 @@ import {
   LockedSettingsNotice,
 } from "./LockedSettingsNotice";
 import { PreferencesTab } from "./PreferencesTab";
+import { PresetControls } from "./PresetControls";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
@@ -131,32 +132,35 @@ function SettingsTabContent(props: SettingsScreenProps) {
   return (
     <div className="space-y-4">
       {activeTab === "connection" && (
-        <ConnectionTab
-          provider={settings.provider}
-          setProvider={settings.setProvider}
-          apiKey={settings.apiKey}
-          setApiKey={settings.setApiKey}
-          baseUrl={settings.baseUrl}
-          setBaseUrl={settings.setBaseUrl}
-          model={settings.model}
-          setModel={settings.setModel}
-          providerLabel={providerLabel}
-          thinking={settings.thinking}
-          setThinking={settings.setThinking}
-          smallModelMode={settings.smallModelMode}
-          setSmallModelMode={settings.setSmallModelMode}
-          realtimeVoice={settings.realtimeVoice}
-          setRealtimeVoice={settings.setRealtimeVoice}
-          voiceLanguage={settings.voiceLanguage}
-          setVoiceLanguage={settings.setVoiceLanguage}
-          voiceVolume={settings.voiceVolume}
-          setVoiceVolume={settings.setVoiceVolume}
-          voiceSpeed={settings.voiceSpeed}
-          setVoiceSpeed={settings.setVoiceSpeed}
-          turnDetection={settings.turnDetection}
-          setTurnDetection={settings.setTurnDetection}
-          activeVoice={props.activeVoice}
-        />
+        <>
+          <PresetControls settings={settings} />
+          <ConnectionTab
+            provider={settings.provider}
+            setProvider={settings.setProvider}
+            apiKey={settings.apiKey}
+            setApiKey={settings.setApiKey}
+            baseUrl={settings.baseUrl}
+            setBaseUrl={settings.setBaseUrl}
+            model={settings.model}
+            setModel={settings.setModel}
+            providerLabel={providerLabel}
+            thinking={settings.thinking}
+            setThinking={settings.setThinking}
+            smallModelMode={settings.smallModelMode}
+            setSmallModelMode={settings.setSmallModelMode}
+            realtimeVoice={settings.realtimeVoice}
+            setRealtimeVoice={settings.setRealtimeVoice}
+            voiceLanguage={settings.voiceLanguage}
+            setVoiceLanguage={settings.setVoiceLanguage}
+            voiceVolume={settings.voiceVolume}
+            setVoiceVolume={settings.setVoiceVolume}
+            voiceSpeed={settings.voiceSpeed}
+            setVoiceSpeed={settings.setVoiceSpeed}
+            turnDetection={settings.turnDetection}
+            setTurnDetection={settings.setTurnDetection}
+            activeVoice={props.activeVoice}
+          />
+        </>
       )}
 
       {activeTab === "tools" && (
