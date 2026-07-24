@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { SMALL_MODEL_MODE_HEADER } from "#src/shared/config";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
@@ -22,6 +24,8 @@ vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
 vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
+
+const mockTransport = vi.mocked(StreamableHTTPClientTransport);
 
 const tools: McpToolDefinition[] = [
   { name: "tool-a", inputSchema: {} },
@@ -70,5 +74,29 @@ describe("createConnectedMcpClient", () => {
 
     expect(client).toBeDefined();
     expect(mockConnect).toHaveBeenCalledOnce();
+  });
+
+  it("sends no per-request header when smallModelMode is omitted", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp");
+
+    // Voice paths omit the flag and must fall back to the global config value.
+    expect(mockTransport.mock.calls[0]?.[1]).toBeUndefined();
+  });
+
+  it("sends the small-model-mode header true when enabled", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp", true);
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [SMALL_MODEL_MODE_HEADER]: "true" });
+  });
+
+  it("sends the small-model-mode header false when explicitly disabled", async () => {
+    // Explicit false is authoritative for this caller, overriding the global.
+    await createConnectedMcpClient("http://localhost:3000/mcp", false);
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [SMALL_MODEL_MODE_HEADER]: "false" });
   });
 });

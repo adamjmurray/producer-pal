@@ -141,6 +141,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     adapter: chatAdapter,
     extraParams: {
       baseUrl,
+      smallModelMode: settings.smallModelMode,
       provider: settings.provider,
       apiKey: resolvedApiKey,
       systemInstructionOverride,

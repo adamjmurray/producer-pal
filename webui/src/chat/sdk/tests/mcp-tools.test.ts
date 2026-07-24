@@ -60,6 +60,16 @@ describe("createMcpTools", () => {
 
     expect(createConnectedMcpClient).toHaveBeenCalledWith(
       "http://custom:9000/mcp",
+      undefined,
+    );
+  });
+
+  it("forwards smallModelMode to the MCP client (per-request header)", async () => {
+    await createMcpTools("http://localhost:3000/mcp", undefined, true);
+
+    expect(createConnectedMcpClient).toHaveBeenCalledWith(
+      "http://localhost:3000/mcp",
+      true,
     );
   });
 

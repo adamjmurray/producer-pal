@@ -250,6 +250,7 @@ describe("ChatSdkClient", () => {
       expect(createMcpTools).toHaveBeenCalledWith(
         "http://localhost:3000/mcp",
         undefined,
+        undefined,
       );
     });
 
@@ -265,6 +266,23 @@ describe("ChatSdkClient", () => {
       expect(createMcpTools).toHaveBeenCalledWith(
         "http://custom:9000/mcp",
         undefined,
+        undefined,
+      );
+    });
+
+    it("forwards config.smallModelMode so the MCP transport sends the header", async () => {
+      const { createMcpTools } = await import("#webui/chat/sdk/mcp-tools");
+      const client = new ChatSdkClient(
+        "key",
+        createConfig({ smallModelMode: true }),
+      );
+
+      await client.initialize();
+
+      expect(createMcpTools).toHaveBeenCalledWith(
+        "http://localhost:3000/mcp",
+        undefined,
+        true,
       );
     });
   });
