@@ -24,9 +24,9 @@ const MAX_TOOL_STEPS = 10;
 
 /**
  * Orchestrator step budget when subagents are enabled. Widened off the default
- * because, in phase-1 sequential delegation, context-gathering steps and each
- * sequential spawn share this budget (a spawn costs one step). MAX_SPAWNS, not
- * this, is the real ceiling on worker count.
+ * because context-gathering steps and each SEQUENTIAL spawn share this budget (a
+ * spawn costs one step; N parallel spawns in one turn cost just one). MAX_SPAWNS,
+ * not this, is the real ceiling on total worker count.
  */
 const MAX_ORCHESTRATOR_STEPS = 25;
 

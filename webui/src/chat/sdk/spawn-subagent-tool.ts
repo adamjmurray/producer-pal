@@ -31,13 +31,15 @@ export const MAX_SPAWNS = 10;
 
 const TOOL_DESCRIPTION =
   "Delegate a self-contained subtask to a subagent: a nested assistant with the " +
-  "full Producer Pal toolset that works in the same Ableton Live Set and returns " +
-  "its final result to you. Use it to break a large job into focused pieces (plan " +
-  "the arrangement yourself, then delegate each track). The subagent cannot see " +
-  "this conversation, so give a complete, standalone instruction. Scope it " +
-  "explicitly to avoid conflicts (e.g. only edit one named track/clip). Subagents " +
-  "run one at a time and cannot spawn their own subagents. You receive only the " +
-  "subagent's final message, not its full work log.";
+  "full Producer Pal toolset that works in the same Ableton Live Set and reports " +
+  "its final result back to you. Break a large job into focused pieces (plan the " +
+  "arrangement yourself, then delegate each track). When subtasks are " +
+  "independent, call this tool several times in ONE response so the subagents run " +
+  "in parallel — the results all come back together. The subagent cannot see this " +
+  "conversation, so give a complete, standalone instruction, and scope it to " +
+  "specific tracks/clips so parallel subagents don't overwrite each other. " +
+  "Subagents cannot spawn their own subagents. You receive only each subagent's " +
+  "final message, not its full work log.";
 
 const TASK_DESCRIPTION =
   "Complete, standalone instruction for the subagent to carry out. Include all " +

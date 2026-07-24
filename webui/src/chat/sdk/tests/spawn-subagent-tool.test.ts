@@ -180,6 +180,34 @@ describe("createSpawnSubagentTool", () => {
     expect(runWorker).not.toHaveBeenCalled();
   });
 
+  it("runs concurrent spawns without corrupting the counter or transcripts", async () => {
+    // The AI SDK invokes N execute() closures concurrently for parallel tool
+    // calls; each must record its own transcript and advance the shared counter.
+    const recordTranscript = vi.fn();
+    const spawnState = { count: 0 };
+    const tool = createSpawnSubagentTool({
+      config: createConfig(),
+      runWorker: vi.fn<RunWorker>().mockResolvedValue(workerHistory),
+      spawnState,
+      recordTranscript,
+    });
+
+    await Promise.all([
+      tool.execute!({ task: "one" }, options()),
+      tool.execute!(
+        { task: "two" },
+        { toolCallId: "tc2", messages: [], abortSignal: undefined },
+      ),
+    ]);
+
+    expect(spawnState.count).toBe(2);
+    expect(recordTranscript).toHaveBeenCalledTimes(2);
+    expect(recordTranscript.mock.calls.map((c) => c[0]).sort()).toStrictEqual([
+      "tc1",
+      "tc2",
+    ]);
+  });
+
   it("throws once the per-conversation spawn cap is reached", async () => {
     const { tool, runWorker } = setup({ count: MAX_SPAWNS });
 

@@ -138,4 +138,36 @@ describe("groupToolParts", () => {
 
     expect(group.indices).toStrictEqual([0, 1, 2, 3]);
   });
+
+  it("never groups spawn_subagent parts (parallel spawns stay individual cards)", () => {
+    const parts: UIPart[] = [
+      tool("spawn_subagent"),
+      tool("spawn_subagent"),
+      tool("spawn_subagent"),
+      tool("spawn_subagent"),
+    ];
+    const items = groupToolParts(parts);
+
+    expect(items).toHaveLength(4);
+    expect(items.every((item) => item.kind === "single")).toBe(true);
+  });
+
+  it("keeps grouping ordinary tools around subagent parts", () => {
+    const parts: UIPart[] = [
+      tool("a"),
+      tool("b"),
+      tool("c"),
+      tool("spawn_subagent"),
+      tool("d"),
+      tool("e"),
+      tool("f"),
+    ];
+    const items = groupToolParts(parts);
+
+    // group(a,b,c), single(spawn), group(d,e,f)
+    expect(items).toHaveLength(3);
+    expect(items[0]!.kind).toBe("tool-group");
+    expect(items[1]!.kind).toBe("single");
+    expect(items[2]!.kind).toBe("tool-group");
+  });
 });
