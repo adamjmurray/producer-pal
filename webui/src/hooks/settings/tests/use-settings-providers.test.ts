@@ -34,26 +34,6 @@ describe("useSettings - provider-specific settings", () => {
       expect(result.current.thinking).toBe(thinking);
     });
   });
-  describe("setTemperature for all providers", () => {
-    it.each([
-      ["anthropic", 0.8],
-      ["mistral", 0.8],
-      ["openrouter", 0.5],
-      ["lmstudio", 0.9],
-      ["ollama", 0.7],
-      ["custom", 0.6],
-    ] as const)("sets temperature for %s provider", async (provider, temp) => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => {
-        result.current.setProvider(provider);
-      });
-      await act(() => {
-        result.current.setTemperature(temp);
-      });
-      expect(result.current.temperature).toBe(temp);
-    });
-  });
   describe("setBaseUrl", () => {
     it("setBaseUrl is undefined for non-baseUrl providers", async () => {
       const { result } = renderHook(() => useSettings());

@@ -42,7 +42,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       const raw = JSON.parse(
@@ -58,7 +57,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       const loaded = await loadProviderSettingsAsync("anthropic");
@@ -71,7 +69,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       // The synchronous loader must not surface ciphertext; it returns "".
@@ -96,7 +93,6 @@ describe("settings-helpers", () => {
         apiKey: "AIza-new",
         model: "gemini-2.5-flash",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       expect(localStorage.getItem("gemini_api_key")).toBeNull();
@@ -114,7 +110,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       expect(localStorage.getItem("gemini_api_key")).toBe("AIza-old-cleartext");
@@ -125,7 +120,6 @@ describe("settings-helpers", () => {
         apiKey: "",
         model: "gpt-5.5",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       const raw = JSON.parse(
@@ -144,7 +138,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-anthropic-good",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       // Forge an undecryptable envelope for openai: a real IV paired with a
@@ -173,7 +166,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
       });
 
       expect(checkHasApiKey("anthropic")).toBe(true);

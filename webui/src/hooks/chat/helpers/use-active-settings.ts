@@ -12,7 +12,6 @@ export interface ActiveSettings {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeThinking: string | null;
-  activeTemperature: number | null;
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
 }
@@ -23,7 +22,6 @@ interface ActiveSettingsActions {
     model: string,
     provider: Provider,
     thinking: string,
-    temperature: number,
     smallModelMode: boolean,
     systemInstruction: string,
   ) => void;
@@ -45,9 +43,6 @@ export function useActiveSettings(): UseActiveSettingsReturn {
   const [activeModel, setActiveModel] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
   const [activeThinking, setActiveThinking] = useState<string | null>(null);
-  const [activeTemperature, setActiveTemperature] = useState<number | null>(
-    null,
-  );
   const [activeSmallModelMode, setActiveSmallModelMode] = useState<
     boolean | null
   >(null);
@@ -60,14 +55,12 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       model: string,
       provider: Provider,
       thinking: string,
-      temperature: number,
       smallModelMode: boolean,
       systemInstruction: string,
     ) => {
       setActiveModel(model);
       setActiveProvider(provider);
       setActiveThinking(thinking);
-      setActiveTemperature(temperature);
       setActiveSmallModelMode(smallModelMode);
       setActiveSystemInstruction(systemInstruction);
     },
@@ -79,7 +72,6 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       setActiveModel(lockedSettings?.model ?? null);
       setActiveProvider(lockedSettings?.provider ?? null);
       setActiveThinking(lockedSettings?.thinking ?? null);
-      setActiveTemperature(lockedSettings?.temperature ?? null);
       setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
       setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
     },
@@ -90,7 +82,6 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveModel(null);
     setActiveProvider(null);
     setActiveThinking(null);
-    setActiveTemperature(null);
     setActiveSmallModelMode(null);
     setActiveSystemInstruction(null);
   }, []);
@@ -99,7 +90,6 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     activeModel,
     activeProvider,
     activeThinking,
-    activeTemperature,
     activeSmallModelMode,
     activeSystemInstruction,
     lockSettings,

@@ -54,7 +54,6 @@ function useProviderSetters(
       setModel: createSetter("model"),
       setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : undefined,
       setThinking: createSetter("thinking"),
-      setTemperature: createSetter("temperature"),
     };
   }, [provider, providerStateSetters]);
 }
@@ -242,8 +241,10 @@ export function useSettings(): UseSettingsReturn {
     setSaveError(null);
   }, [applyLoadedSettings, voiceModeSettings]);
 
-  const { setApiKey, setModel, setBaseUrl, setThinking, setTemperature } =
-    useProviderSetters(provider, providerStateSetters);
+  const { setApiKey, setModel, setBaseUrl, setThinking } = useProviderSetters(
+    provider,
+    providerStateSetters,
+  );
   // Reconcile presence with the *decrypted* in-memory key. decryptApiKey fails
   // safe to "" for an orphaned/undecryptable envelope (e.g. the IndexedDB crypto
   // key was reset while the localStorage envelope persisted), so reading the raw
@@ -260,9 +261,8 @@ export function useSettings(): UseSettingsReturn {
     [enabledTools],
   );
   const resetBehaviorToDefaults = useCallback(() => {
-    setTemperature(1.0);
     setThinking(DEFAULT_SETTINGS[provider].thinking);
-  }, [provider, setTemperature, setThinking]);
+  }, [provider, setThinking]);
   const hasBaseUrl = ["custom", "lmstudio", "ollama"].includes(provider);
 
   return {
@@ -288,8 +288,6 @@ export function useSettings(): UseSettingsReturn {
     thinking: currentSettings.thinking,
     setThinking,
     savedThinking,
-    temperature: currentSettings.temperature,
-    setTemperature,
     applyPreset,
     saveSettings,
     cancelSettings,

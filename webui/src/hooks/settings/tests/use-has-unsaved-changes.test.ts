@@ -31,7 +31,6 @@ function makeSettings(
     apiKey: "k",
     smallModelMode: false,
     thinking: "Default",
-    temperature: 1,
     enabledTools: {},
     realtimeVoice: "marin",
     voiceSpeed: 1,

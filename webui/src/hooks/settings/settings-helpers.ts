@@ -140,7 +140,6 @@ export interface ProviderSettings {
   baseUrl?: string;
   port?: number;
   thinking: string;
-  temperature: number;
 }
 
 /**
@@ -159,52 +158,44 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     apiKey: "",
     model: DEFAULT_MODELS.anthropic,
     thinking: "Default",
-    temperature: 1.0,
   },
   gemini: {
     apiKey: "",
     model: DEFAULT_MODELS.gemini,
     thinking: "Default",
-    temperature: 1.0,
   },
   openai: {
     apiKey: "",
     model: DEFAULT_MODELS.openai,
     thinking: "Default",
-    temperature: 1.0,
   },
   mistral: {
     apiKey: "",
     model: DEFAULT_MODELS.mistral,
     thinking: "Default",
-    temperature: 1.0,
   },
   openrouter: {
     apiKey: "",
     model: DEFAULT_MODELS.openrouter,
     thinking: "Default",
-    temperature: 1.0,
   },
   lmstudio: {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
     baseUrl: "http://localhost:1234",
     thinking: "Default",
-    temperature: 1.0,
   },
   ollama: {
     apiKey: "",
     model: DEFAULT_MODELS.ollama,
     baseUrl: "http://localhost:11434",
     thinking: "Default",
-    temperature: 1.0,
   },
   custom: {
     apiKey: "",
     model: DEFAULT_MODELS.custom,
     baseUrl: "",
     thinking: "Default",
-    temperature: 1.0,
   },
 };
 
@@ -332,14 +323,6 @@ function readLegacyGeminiSettings(): ProviderSettings {
     localStorage.getItem("thinking") ?? localStorage.getItem("gemini_thinking");
 
   if (thinking) legacySettings.thinking = thinking;
-
-  const temperature =
-    localStorage.getItem("temperature") ??
-    localStorage.getItem("gemini_temperature");
-
-  if (temperature != null) {
-    legacySettings.temperature = Number.parseFloat(temperature);
-  }
 
   return { ...DEFAULT_SETTINGS.gemini, ...legacySettings };
 }

@@ -55,7 +55,6 @@ export interface ChatAdapter<
   /** Build provider-specific configuration */
   buildConfig: (
     model: string,
-    temperature: number,
     thinking: string,
     enabledTools: Record<string, boolean>,
     chatHistory: TMessage[] | undefined,
@@ -83,7 +82,6 @@ export interface ConversationLockedSettings {
   model: string | null;
   provider: Provider | null;
   thinking: string | null;
-  temperature: number | null;
   smallModelMode: boolean | null;
   /**
    * The resolved system instruction the conversation runs with. Locked like the
@@ -122,7 +120,6 @@ export interface UseChatReturn {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeThinking: string | null;
-  activeTemperature: number | null;
   activeSmallModelMode: boolean | null;
   /** The resolved system instruction locked for the active conversation. */
   activeSystemInstruction: string | null;
@@ -166,7 +163,6 @@ export interface UseChatProps<
   apiKey: string;
   model: string;
   thinking: string;
-  temperature: number;
   enabledTools: Record<string, boolean>;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;

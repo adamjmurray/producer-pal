@@ -47,7 +47,6 @@ describe("useSettings", () => {
       apiKey: "",
       model: "gemini-3.6-flash",
       thinking: "Default",
-      temperature: 1.0,
       hasApiKey: false,
     });
   });
@@ -56,7 +55,6 @@ describe("useSettings", () => {
     localStorage.setItem("gemini_api_key", "test-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
     localStorage.setItem("thinking", "High");
-    localStorage.setItem("temperature", "0.7");
 
     const { result } = renderHook(() => useSettings());
 
@@ -66,7 +64,6 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       model: "gemini-2.5-pro",
       thinking: "High",
-      temperature: 0.7,
     });
     await waitFor(() => expect(result.current.apiKey).toBe("test-key"));
     expect(result.current.hasApiKey).toBe(true);
@@ -79,7 +76,6 @@ describe("useSettings", () => {
         apiKey: "new-key",
         model: "gemini-3.6-flash",
         thinking: "Max",
-        temperature: 1.5,
       }),
     );
 
@@ -88,7 +84,6 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       model: "gemini-3.6-flash",
       thinking: "Max",
-      temperature: 1.5,
     });
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
     expect(result.current.hasApiKey).toBe(true);
@@ -104,7 +99,6 @@ describe("useSettings", () => {
         apiKey: "new-key",
         model: "gemini-3.6-flash",
         thinking: "Adaptive",
-        temperature: 1.0,
       }),
     );
 
@@ -124,7 +118,6 @@ describe("useSettings", () => {
         model: "qwen3.6",
         baseUrl: "http://localhost:11434",
         thinking: "Max",
-        temperature: 1.0,
       }),
     );
 
@@ -224,16 +217,6 @@ describe("useSettings", () => {
     expect(result.current.thinking).toBe("Off");
   });
 
-  it("updates temperature when setTemperature is called", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setTemperature(0.5);
-    });
-
-    expect(result.current.temperature).toBe(0.5);
-  });
-
   it("saveSettings before post-mount decrypt does not wipe stored apiKeys", async () => {
     // Seed two providers with encrypted apiKeys so we can detect a wipe.
     for (const provider of ["gemini", "openai"] as const) {
@@ -243,7 +226,6 @@ describe("useSettings", () => {
           apiKey: await encryptApiKey(`${provider}-stored`),
           model: "stored-model",
           thinking: "Default",
-          temperature: 1.0,
         }),
       );
     }
@@ -282,7 +264,6 @@ describe("useSettings", () => {
       result.current.setApiKey("new-key");
       result.current.setModel("gemini-3.6-flash");
       result.current.setThinking("Max");
-      result.current.setTemperature(0.8);
     });
 
     await act(async () => {
@@ -307,7 +288,6 @@ describe("useSettings", () => {
     await expectStored("gemini", "new-key", {
       model: "gemini-3.6-flash",
       thinking: "Max",
-      temperature: 0.8,
     });
   });
 
@@ -488,13 +468,11 @@ describe("useSettings", () => {
       result.current.setApiKey("gemini-key");
       result.current.setModel("gemini-2.5-pro");
       result.current.setThinking("Max");
-      result.current.setTemperature(0.5);
     });
 
     expect(result.current).toMatchObject({
       model: "gemini-2.5-pro",
       thinking: "Max",
-      temperature: 0.5,
     });
 
     // Switch to OpenAI - should use defaults
@@ -506,7 +484,6 @@ describe("useSettings", () => {
       apiKey: "",
       model: "gpt-5.6-terra",
       thinking: "Default",
-      temperature: 1.0,
     });
 
     // Configure OpenAI with different settings
@@ -514,7 +491,6 @@ describe("useSettings", () => {
       result.current.setApiKey("openai-key");
       result.current.setModel("gpt-5.4-mini");
       result.current.setThinking("Off");
-      result.current.setTemperature(1.5);
     });
 
     // Switch back to Gemini - should restore Gemini settings
@@ -526,7 +502,6 @@ describe("useSettings", () => {
       apiKey: "gemini-key",
       model: "gemini-2.5-pro",
       thinking: "Max",
-      temperature: 0.5,
     });
 
     // Switch back to OpenAI - should restore OpenAI settings
@@ -538,7 +513,6 @@ describe("useSettings", () => {
       apiKey: "openai-key",
       model: "gpt-5.4-mini",
       thinking: "Off",
-      temperature: 1.5,
     });
   });
 
@@ -548,7 +522,6 @@ describe("useSettings", () => {
       apiKey: string;
       model: string;
       thinking?: string;
-      temperature: number;
     }
     const setups: ProviderSetup[] = [
       {
@@ -556,26 +529,22 @@ describe("useSettings", () => {
         apiKey: "gemini-key",
         model: "gemini-2.5-pro",
         thinking: "Max",
-        temperature: 0.5,
       },
       {
         provider: "openai",
         apiKey: "openai-key",
         model: "gpt-5.4-mini",
         thinking: "Off",
-        temperature: 1.5,
       },
       {
         provider: "openrouter",
         apiKey: "openrouter-key",
         model: "minimax/minimax-m2:free",
-        temperature: 0.8,
       },
       {
         provider: "mistral",
         apiKey: "mistral-key",
         model: "mistral-small-latest",
-        temperature: 1.2,
       },
     ];
     const last = setups.at(-1)!;
@@ -591,7 +560,6 @@ describe("useSettings", () => {
         result.current.setApiKey(s.apiKey);
         result.current.setModel(s.model);
         if (s.thinking != null) result.current.setThinking(s.thinking);
-        result.current.setTemperature(s.temperature);
       });
     }
 
@@ -623,7 +591,6 @@ describe("useSettings", () => {
     expect(result2.current).toMatchObject({
       provider: last.provider,
       model: last.model,
-      temperature: last.temperature,
     });
     await waitFor(() => expect(result2.current.apiKey).toBe(last.apiKey));
 
@@ -632,7 +599,6 @@ describe("useSettings", () => {
       await act(() => result2.current.setProvider(s.provider));
       expect(result2.current).toMatchObject({
         model: s.model,
-        temperature: s.temperature,
         ...(s.thinking != null ? { thinking: s.thinking } : {}),
       });
       await waitFor(() => expect(result2.current.apiKey).toBe(s.apiKey));
@@ -699,17 +665,15 @@ describe("useSettings", () => {
     expect(result.current.saveError).toBeNull();
   });
 
-  it("resetBehaviorToDefaults resets temperature and thinking", async () => {
+  it("resetBehaviorToDefaults resets thinking", async () => {
     const { result } = renderHook(() => useSettings());
 
-    // Set some non-default values
+    // Set a non-default value
     await act(() => {
-      result.current.setTemperature(0.5);
       result.current.setThinking("Off");
     });
 
     expect(result.current).toMatchObject({
-      temperature: 0.5,
       thinking: "Off",
     });
 
@@ -719,7 +683,6 @@ describe("useSettings", () => {
     });
 
     expect(result.current).toMatchObject({
-      temperature: 1.0,
       thinking: "Default", // Default for gemini
     });
   });
@@ -751,17 +714,6 @@ describe("useSettings", () => {
     // Unknown tools default to enabled
     expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
   });
-
-  it.each(["mistral", "openrouter", "lmstudio", "ollama", "custom"] as const)(
-    "setTemperature works for %s provider",
-    async (provider) => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => result.current.setProvider(provider));
-      await act(() => result.current.setTemperature(0.5));
-      expect(result.current.temperature).toBe(0.5);
-    },
-  );
 
   it("setProvider preserves thinking value when switching providers", async () => {
     const { result } = renderHook(() => useSettings());

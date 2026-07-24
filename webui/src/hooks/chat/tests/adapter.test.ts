@@ -56,39 +56,17 @@ describe("chatAdapter", () => {
       baseUrl: undefined,
     };
 
-    it("returns config with model and temperature", () => {
-      const config = chatAdapter.buildConfig(
-        "gpt-4o",
-        0.7,
-        "default",
-        {},
-        undefined,
-        extraParams,
-      );
-
-      expect(config.temperature).toBe(0.7);
-      expect(config.enabledTools).toStrictEqual({});
-    });
-
     it("carries smallModelMode from extraParams onto the config", () => {
-      const on = chatAdapter.buildConfig(
-        "gpt-4o",
-        1.0,
-        "default",
-        {},
-        undefined,
-        {
-          ...extraParams,
-          smallModelMode: true,
-        },
-      );
+      const on = chatAdapter.buildConfig("gpt-4o", "default", {}, undefined, {
+        ...extraParams,
+        smallModelMode: true,
+      });
 
       expect(on.smallModelMode).toBe(true);
 
       // Absent in extraParams coerces to false so the header is always explicit.
       const off = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         {},
         undefined,
@@ -102,7 +80,6 @@ describe("chatAdapter", () => {
       const enabledTools = { "ppal-connect": true, "ppal-read": false };
       const config = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         enabledTools,
         undefined,
@@ -116,7 +93,6 @@ describe("chatAdapter", () => {
       const history: ChatMessage[] = [{ role: "user", content: "Hello" }];
       const config = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         {},
         history,
@@ -129,7 +105,6 @@ describe("chatAdapter", () => {
     it("uses the built-in system instruction when no override is provided", () => {
       const config = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         {},
         undefined,
@@ -142,7 +117,6 @@ describe("chatAdapter", () => {
     it("fully replaces the system instruction with a non-blank override", () => {
       const config = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         {},
         undefined,
@@ -158,7 +132,6 @@ describe("chatAdapter", () => {
     it("falls back to the built-in instruction when the override is blank", () => {
       const config = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         {},
         undefined,
@@ -174,7 +147,6 @@ describe("chatAdapter", () => {
       // with.
       const config = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         {},
         undefined,
@@ -191,14 +163,10 @@ describe("chatAdapter", () => {
     });
 
     it("sets reasoning effort and summary for openai reasoning model with Max thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "o3-mini",
-        1.0,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "openai" },
-      );
+      const config = chatAdapter.buildConfig("o3-mini", "Max", {}, undefined, {
+        ...extraParams,
+        provider: "openai",
+      });
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "high", reasoningSummary: "auto" },
@@ -206,14 +174,10 @@ describe("chatAdapter", () => {
     });
 
     it("includes reasoningSummary for an openai reasoning model", () => {
-      const config = chatAdapter.buildConfig(
-        "gpt-5.2",
-        1.0,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "openai" },
-      );
+      const config = chatAdapter.buildConfig("gpt-5.2", "Max", {}, undefined, {
+        ...extraParams,
+        provider: "openai",
+      });
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "xhigh", reasoningSummary: "auto" },
@@ -223,7 +187,6 @@ describe("chatAdapter", () => {
     it("sets reasoningEffort and reasoningSummary for openai reasoning model with Default thinking", () => {
       const config = chatAdapter.buildConfig(
         "gpt-5.2",
-        1.0,
         "Default",
         {},
         undefined,
@@ -236,14 +199,10 @@ describe("chatAdapter", () => {
     });
 
     it("returns undefined providerOptions for an openai reasoning model with Off thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "o3-mini",
-        1.0,
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "openai" },
-      );
+      const config = chatAdapter.buildConfig("o3-mini", "Off", {}, undefined, {
+        ...extraParams,
+        provider: "openai",
+      });
 
       expect(config.providerOptions).toBeUndefined();
     });
@@ -251,7 +210,6 @@ describe("chatAdapter", () => {
     it("sets reasoning for openrouter provider with Max thinking", () => {
       const config = chatAdapter.buildConfig(
         "some-model",
-        1.0,
         "Max",
         {},
         undefined,
@@ -270,7 +228,6 @@ describe("chatAdapter", () => {
     it("sets Gemini thinkingConfig for Max thinking", () => {
       const config = chatAdapter.buildConfig(
         "gemini-2.5-flash",
-        1.0,
         "Max",
         {},
         undefined,
@@ -290,7 +247,6 @@ describe("chatAdapter", () => {
     it("sets Gemini thinkingConfig with -1 budget for Default thinking", () => {
       const config = chatAdapter.buildConfig(
         "gemini-2.0-flash",
-        1.0,
         "Default",
         {},
         undefined,
@@ -310,7 +266,6 @@ describe("chatAdapter", () => {
     it("returns undefined providerOptions for Gemini with Off thinking", () => {
       const config = chatAdapter.buildConfig(
         "gemini-2.0-flash",
-        1.0,
         "Off",
         {},
         undefined,
@@ -323,7 +278,6 @@ describe("chatAdapter", () => {
     it("returns undefined providerOptions for default thinking", () => {
       const config = chatAdapter.buildConfig(
         "gpt-4o",
-        1.0,
         "default",
         {},
         undefined,
@@ -334,7 +288,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets ollama think option for supported model", () => {
-      const config = chatAdapter.buildConfig("qwq", 1.0, "Max", {}, undefined, {
+      const config = chatAdapter.buildConfig("qwq", "Max", {}, undefined, {
         ...extraParams,
         provider: "ollama",
       });
@@ -345,7 +299,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets ollama think:false for Off thinking", () => {
-      const config = chatAdapter.buildConfig("qwq", 1.0, "Off", {}, undefined, {
+      const config = chatAdapter.buildConfig("qwq", "Off", {}, undefined, {
         ...extraParams,
         provider: "ollama",
       });
@@ -358,7 +312,6 @@ describe("chatAdapter", () => {
     it("returns undefined providerOptions for ollama with Default thinking", () => {
       const config = chatAdapter.buildConfig(
         "llama3",
-        1.0,
         "Default",
         {},
         undefined,
@@ -371,7 +324,6 @@ describe("chatAdapter", () => {
     it("sets medium reasoning effort for openrouter with Default thinking", () => {
       const config = chatAdapter.buildConfig(
         "some-model",
-        1.0,
         "Default",
         {},
         undefined,
@@ -390,7 +342,6 @@ describe("chatAdapter", () => {
     it("returns undefined providerOptions for openrouter with Off thinking", () => {
       const config = chatAdapter.buildConfig(
         "some-model",
-        1.0,
         "Off",
         {},
         undefined,
@@ -403,7 +354,6 @@ describe("chatAdapter", () => {
     it("sets anthropic adaptive thinking with max effort for Max thinking", () => {
       const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
-        1.0,
         "Max",
         {},
         undefined,
@@ -421,7 +371,6 @@ describe("chatAdapter", () => {
     it("sets anthropic adaptive thinking with high effort for Default thinking", () => {
       const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
-        1.0,
         "Default",
         {},
         undefined,
@@ -436,36 +385,9 @@ describe("chatAdapter", () => {
       });
     });
 
-    it("suppresses temperature for anthropic when thinking is active", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        0.7,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.temperature).toBeUndefined();
-    });
-
-    it("suppresses temperature for anthropic with Default thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        0.7,
-        "Default",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.temperature).toBeUndefined();
-    });
-
     it("returns undefined provider options for anthropic with Off thinking", () => {
       const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
-        1.0,
         "Off",
         {},
         undefined,
@@ -475,52 +397,9 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("suppresses temperature for adaptive-family anthropic with Off thinking", () => {
-      // Sonnet 5 / Opus 4.6+ / Fable reject non-default sampling params (400),
-      // so temperature must be dropped even when thinking is Off.
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-5",
-        0.7,
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.temperature).toBeUndefined();
-    });
-
-    it("preserves temperature for haiku with Off thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-haiku-4-5",
-        0.7,
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.temperature).toBe(0.7);
-    });
-
-    it("suppresses temperature for haiku when thinking is active", () => {
-      // Legacy enabled thinking requires temperature=1, so suppress it there.
-      const config = chatAdapter.buildConfig(
-        "claude-haiku-4-5",
-        0.7,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.temperature).toBeUndefined();
-    });
-
     it("uses legacy enabled thinking for haiku model", () => {
       const config = chatAdapter.buildConfig(
         "claude-haiku-4-5",
-        1.0,
         "Max",
         {},
         undefined,
@@ -539,7 +418,6 @@ describe("chatAdapter", () => {
       // `thinking` field with a 400, so no adaptive payload must be sent.
       const config = chatAdapter.buildConfig(
         "claude-3-5-sonnet-20241022",
-        1.0,
         "Max",
         {},
         undefined,
@@ -549,38 +427,9 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("preserves temperature for a pre-3.7 anthropic model with active thinking", () => {
-      // Pre-3.7 models support temperature normally and aren't adaptive, so it
-      // must be kept regardless of the UI thinking level (regression guard).
-      const config = chatAdapter.buildConfig(
-        "claude-3-opus-20240229",
-        0.7,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.temperature).toBe(0.7);
-    });
-
-    it("preserves temperature for a pre-3.7 anthropic model with Off thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-3-5-sonnet-20241022",
-        0.7,
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.temperature).toBe(0.7);
-    });
-
     it("returns undefined provider options for mistral provider", () => {
       const config = chatAdapter.buildConfig(
         "mistral-large",
-        1.0,
         "Max",
         {},
         undefined,
@@ -593,7 +442,6 @@ describe("chatAdapter", () => {
     it("buildProviderOptions callback rebuilds options with overridden thinking", () => {
       const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
-        1.0,
         "Max",
         {},
         undefined,

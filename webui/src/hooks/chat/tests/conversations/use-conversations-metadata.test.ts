@@ -130,11 +130,10 @@ describe("useConversations", () => {
   });
 
   describe("active ref sync", () => {
-    it("persists thinking/temperature from active refs", async () => {
+    it("persists thinking from active refs", async () => {
       const { props, state } = createProps();
 
       props.activeMeta.activeThinking = "enabled";
-      props.activeMeta.activeTemperature = 0.7;
 
       const { result } = renderHook(() => useConversations(props));
 
@@ -146,12 +145,10 @@ describe("useConversations", () => {
 
       expect(record).toMatchObject({
         thinking: "enabled",
-        temperature: 0.7,
       });
 
       // Change props, wait for effect to sync refs, then save and verify
       props.activeMeta.activeThinking = "disabled";
-      props.activeMeta.activeTemperature = 1.0;
       // saveWithMessage triggers rerender which runs the ref-sync useEffect
       await saveWithMessage(state, result, "ref sync 2");
       await waitForEffects();
@@ -163,7 +160,6 @@ describe("useConversations", () => {
 
       expect(updated).toMatchObject({
         thinking: "disabled",
-        temperature: 1.0,
       });
     });
   });

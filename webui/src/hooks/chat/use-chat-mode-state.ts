@@ -131,7 +131,6 @@ export function useChatModeState(params: UseChatModeStateParams) {
     apiKey: resolvedApiKey,
     model: settings.model,
     thinking: settings.thinking,
-    temperature: settings.temperature,
     enabledTools: settings.enabledTools,
     smallModelMode: settings.smallModelMode,
     mcpStatus,
@@ -176,7 +175,6 @@ export function useChatModeState(params: UseChatModeStateParams) {
       activeModel: chat.activeModel,
       activeProvider: chat.activeProvider,
       activeThinking: chat.activeThinking,
-      activeTemperature: chat.activeTemperature,
       activeSmallModelMode: chat.activeSmallModelMode,
       // Snapshot the LOCKED instruction (what this conversation actually ran
       // with), not the current global override — so editing the global later

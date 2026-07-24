@@ -25,7 +25,6 @@ function makeSettings(over?: Partial<UseSettingsReturn>): UseSettingsReturn {
     provider: "anthropic",
     model: "claude",
     thinking: "Default",
-    temperature: 1,
     smallModelMode: false,
     applyPreset: vi.fn(),
     ...over,
