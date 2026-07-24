@@ -96,6 +96,44 @@ describe("usePresets", () => {
     expect(loadPresets()[0]?.model).toBe("new-model");
   });
 
+  it("stores a trimmed description and the captured toolset", async () => {
+    const { result } = renderHook(() => usePresets());
+
+    await act(() => {
+      result.current.createPreset(
+        "Worker",
+        { ...fields, enabledTools: { "ppal-delete": false } },
+        "  cheap bulk editor  ",
+      );
+    });
+
+    expect(result.current.presets[0]).toMatchObject({
+      description: "cheap bulk editor",
+      enabledTools: { "ppal-delete": false },
+    });
+  });
+
+  it("preserves the description on a bare update, clears it on blank", async () => {
+    const { result } = renderHook(() => usePresets());
+    let id = "";
+
+    await act(() => {
+      id = expectCreatedId(result.current.createPreset("P", fields, "keep me"));
+    });
+
+    // No description arg => existing description is preserved.
+    await act(() => {
+      result.current.updatePreset(id, { ...fields, model: "m2" });
+    });
+    expect(result.current.presets[0]?.description).toBe("keep me");
+
+    // Blank description => the field is dropped.
+    await act(() => {
+      result.current.updatePreset(id, fields, "   ");
+    });
+    expect(result.current.presets[0]).not.toHaveProperty("description");
+  });
+
   it("deletes a preset", async () => {
     const { result } = renderHook(() => usePresets());
     let id = "";

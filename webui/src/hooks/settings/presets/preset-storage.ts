@@ -58,7 +58,8 @@ export function createPresetId(): string {
 /**
  * Whether a preset's captured settings equal the given live buffer fields —
  * used to flag "unsaved edits" when the buffer has drifted from the selected
- * preset.
+ * preset. A preset with no captured toolset (legacy / "inherit") never counts
+ * the toolset toward the comparison, so it isn't perpetually "modified".
  * @param preset - A saved preset
  * @param fields - The live editable settings buffer
  * @returns True when every captured field matches
@@ -71,8 +72,33 @@ export function presetMatchesFields(
     preset.provider === fields.provider &&
     preset.model === fields.model &&
     preset.thinking === fields.thinking &&
-    preset.smallModelMode === fields.smallModelMode
+    preset.smallModelMode === fields.smallModelMode &&
+    (preset.enabledTools == null ||
+      enabledToolsEqual(preset.enabledTools, fields.enabledTools))
   );
+}
+
+/**
+ * Order-independent equality for two tool-enablement maps. Absent maps are
+ * treated as empty. This is exact key/value equality (a missing key differs
+ * from an explicit true/false) — sufficient because applyPreset copies the
+ * preset's map into the buffer verbatim, so a matched preset and its buffer
+ * carry identical keys.
+ * @param a - First tool map (or undefined)
+ * @param b - Second tool map (or undefined)
+ * @returns True when both maps enable exactly the same tools
+ */
+export function enabledToolsEqual(
+  a: Record<string, boolean> = {},
+  b: Record<string, boolean> = {},
+): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+
+  for (const key of keys) {
+    if (a[key] !== b[key]) return false;
+  }
+
+  return true;
 }
 
 /**
@@ -94,6 +120,24 @@ function isValidPreset(value: unknown): value is ChatPreset {
     isValidProvider(p.provider) &&
     typeof p.model === "string" &&
     typeof p.thinking === "string" &&
-    typeof p.smallModelMode === "boolean"
+    typeof p.smallModelMode === "boolean" &&
+    // Both additive fields are optional; reject only a present-but-wrong-typed
+    // value so a hand-edited entry can't crash the picker.
+    (p.description === undefined || typeof p.description === "string") &&
+    (p.enabledTools === undefined || isBooleanMap(p.enabledTools))
   );
+}
+
+/**
+ * Type guard for a plain object whose every value is a boolean — the shape of a
+ * captured toolset map.
+ * @param value - A parsed value
+ * @returns True when value is a Record<string, boolean>
+ */
+function isBooleanMap(value: unknown): value is Record<string, boolean> {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every((v) => typeof v === "boolean");
 }

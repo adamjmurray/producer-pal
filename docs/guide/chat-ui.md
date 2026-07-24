@@ -350,6 +350,28 @@ setting).
   headphones — without them, the assistant's own voice can trigger
   interruptions.
 
+### Presets
+
+A preset is a named, one-click bundle of a full chat setup: **provider**,
+**model**, **thinking** level, **small model mode**, and the **enabled
+toolset**. Because a preset spans both the Connection and Tools tabs, it gets
+its own home here.
+
+- **Preset** dropdown - Select a saved preset to load its whole bundle into the
+  form. It doesn't take effect until you **Save** the settings, so you can
+  review or tweak it first.
+- **Save as…** - Capture the current settings as a new named preset. You can add
+  an optional **Description** to note what it's for (e.g. "cheap bulk-edit
+  worker").
+- **Update** / **Delete** - Overwrite or remove the selected preset. An "unsaved
+  edits" note appears when the form has drifted from the selected preset.
+
+Configure the model and inference on the **Connection** tab and the toolset on
+the **Tools** tab, then come here to save them together. API keys (kept
+per-provider) and appearance preferences are never part of a preset — a preset
+only _names_ which provider to use and resolves its key from your stored
+settings.
+
 ### Tools
 
 The Tools tab controls which tools are available to the AI when using the chat

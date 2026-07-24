@@ -9,6 +9,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   createPresetId,
+  enabledToolsEqual,
   loadPresets,
   PRESETS_STORAGE_KEY,
   presetMatchesFields,
@@ -67,6 +68,9 @@ describe("preset-storage", () => {
       { id: "x" }, // missing fields
       makePreset({ id: "y", provider: "bogus" as ChatPreset["provider"] }),
       { ...makePreset({ id: "z" }), smallModelMode: "true" }, // wrong type
+      { ...makePreset({ id: "d" }), description: 42 }, // wrong description type
+      { ...makePreset({ id: "t" }), enabledTools: { "ppal-delete": "no" } }, // non-boolean
+      { ...makePreset({ id: "a" }), enabledTools: ["ppal-delete"] }, // not a map
       null,
       "string",
     ];
@@ -74,6 +78,17 @@ describe("preset-storage", () => {
     localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(stored));
 
     expect(loadPresets()).toStrictEqual([good]);
+  });
+
+  it("keeps the optional description and enabledTools fields", () => {
+    const withExtras = makePreset({
+      description: "cheap worker",
+      enabledTools: { "ppal-delete": false, "ppal-read-clip": true },
+    });
+
+    savePresets([withExtras]);
+
+    expect(loadPresets()).toStrictEqual([withExtras]);
   });
 
   it("generates unique ids", () => {
@@ -103,6 +118,43 @@ describe("preset-storage", () => {
       expect(
         presetMatchesFields(makePreset({ smallModelMode: true }), fields),
       ).toBe(false);
+    });
+
+    it("compares the toolset only when the preset captured one", () => {
+      const tools = { "ppal-delete": false };
+
+      // Legacy preset (no enabledTools) ignores the toolset entirely.
+      expect(
+        presetMatchesFields(makePreset(), { ...fields, enabledTools: tools }),
+      ).toBe(true);
+
+      // A captured toolset must match the buffer's toolset.
+      expect(
+        presetMatchesFields(makePreset({ enabledTools: tools }), {
+          ...fields,
+          enabledTools: tools,
+        }),
+      ).toBe(true);
+      expect(
+        presetMatchesFields(makePreset({ enabledTools: tools }), {
+          ...fields,
+          enabledTools: { "ppal-delete": true },
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe("enabledToolsEqual", () => {
+    it("treats absent maps as empty and ignores key order", () => {
+      expect(enabledToolsEqual(undefined, {})).toBe(true);
+      expect(
+        enabledToolsEqual({ a: true, b: false }, { b: false, a: true }),
+      ).toBe(true);
+    });
+
+    it("is false when a key is missing or a value differs", () => {
+      expect(enabledToolsEqual({ a: true }, { a: true, b: false })).toBe(false);
+      expect(enabledToolsEqual({ a: true }, { a: false })).toBe(false);
     });
   });
 });

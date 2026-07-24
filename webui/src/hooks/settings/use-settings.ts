@@ -157,6 +157,7 @@ export function useSettings(): UseSettingsReturn {
     providerStateSetters,
     setProviderState,
     setSmallModelModeState,
+    setEnabledToolsState,
   );
 
   const applyLoadedSettings = useCallback(
