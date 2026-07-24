@@ -549,6 +549,15 @@ describe("ChatSdkClient", () => {
       expect(callArgs.messages[1].content).toBe("Hello!");
     });
 
+    it("omits temperature from the request so each provider uses its default", async () => {
+      // Temperature was removed as dead config: the request must carry no
+      // temperature field at all, so adaptive/reasoning models that 400 on a
+      // non-default sampling temperature are never sent one.
+      const callArgs = await sendWithHistory([], "Hello");
+
+      expect(callArgs).not.toHaveProperty("temperature");
+    });
+
     it("skips isError messages when building model messages", async () => {
       const chatHistory: ChatMessage[] = [
         { role: "user", content: "Hi" },
