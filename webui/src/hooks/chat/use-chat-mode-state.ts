@@ -3,7 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-reporting";
@@ -22,8 +28,14 @@ import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-c
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
-import { resolveSubagentPreset } from "#webui/hooks/settings/presets/preset-extra-params";
-import { loadPresets } from "#webui/hooks/settings/presets/preset-storage";
+import {
+  resolveSubagentPreset,
+  SUBAGENT_PRESET_PARAM,
+} from "#webui/hooks/settings/presets/preset-extra-params";
+import {
+  loadPresets,
+  PRESETS_STORAGE_KEY,
+} from "#webui/hooks/settings/presets/preset-storage";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
@@ -128,13 +140,22 @@ export function useChatModeState(params: UseChatModeStateParams) {
     [getProviderConnection],
   );
 
-  // Resolve the chosen "Default subagent" preset fresh from storage each render
-  // (presets are edited in a separate hook instance, so a snapshot would go
-  // stale). Undefined = inherit; the adapter turns it into the worker override.
-  const subagentPreset = resolveSubagentPreset(
-    settings.defaultSubagentPresetId,
-    loadPresets(),
-    resolveConnection,
+  // Resolve the chosen "Default subagent" preset. Read the presets blob fresh
+  // each render (a usePresets snapshot would go stale — presets are edited in a
+  // separate hook instance), but key the actual parse/validate/resolve off that
+  // blob so it only recomputes when the presets or the selection change:
+  // useChatModeState re-renders per streamed token, so this avoids a JSON.parse +
+  // validation + allocation on every chunk. Undefined = inherit; the adapter
+  // turns it into the worker override.
+  const presetsBlob = localStorage.getItem(PRESETS_STORAGE_KEY);
+  const subagentPreset = useMemo(
+    () =>
+      resolveSubagentPreset(
+        settings.defaultSubagentPresetId,
+        presetsBlob ? loadPresets() : [],
+        resolveConnection,
+      ),
+    [presetsBlob, settings.defaultSubagentPresetId, resolveConnection],
   );
 
   const aiSdkChat = useChat({
@@ -155,7 +176,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
       provider: settings.provider,
       apiKey: resolvedApiKey,
       systemInstructionOverride,
-      subagentPreset,
+      [SUBAGENT_PRESET_PARAM]: subagentPreset,
     },
     autoSaveRef,
     pendingForkRef,

@@ -11,6 +11,15 @@ type GetProviderConnection = (provider: Provider) => {
   baseUrl?: string;
 };
 
+/**
+ * The `extraParams` key carrying the resolved "Default subagent" preset from
+ * use-chat-mode-state (writer) to chatAdapter.buildConfig (reader). A shared
+ * const so a rename breaks the compile instead of silently degrading every
+ * worker to "inherit" — the two sides never talk through a typed contract
+ * (extraParams is Record<string, unknown>).
+ */
+export const SUBAGENT_PRESET_PARAM = "subagentPreset";
+
 /** The provider + live connection a preset resolves to (the extraParams bag). */
 export interface PresetConnection {
   provider: Provider;

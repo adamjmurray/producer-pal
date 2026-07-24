@@ -365,13 +365,6 @@ its own home here.
   worker").
 - **Update** / **Delete** - Overwrite or remove the selected preset. An "unsaved
   edits" note appears when the form has drifted from the selected preset.
-
-Configure the model and inference on the **Connection** tab and the toolset on
-the **Tools** tab, then come here to save them together. API keys (kept
-per-provider) and appearance preferences are never part of a preset — a preset
-only _names_ which provider to use and resolves its key from your stored
-settings.
-
 - **Default subagent** - Choose what a spawned subagent runs under when the
   experimental **Subagent** tool is enabled (on the Tools tab). Leave it on
   **Inherit current settings** and each subagent clones your current chat
@@ -380,6 +373,12 @@ settings.
   pair a strong planner with uniform, cheaper workers. (A preset that never
   saved a toolset keeps the current conversation's tools.) Subagents can never
   spawn their own subagents, whatever a preset's toolset enables.
+
+Configure the model and inference on the **Connection** tab and the toolset on
+the **Tools** tab, then come here to save them together. API keys (kept
+per-provider) and appearance preferences are never part of a preset — a preset
+only _names_ which provider to use and resolves its key from your stored
+settings.
 
 ### Tools
 

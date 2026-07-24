@@ -119,9 +119,9 @@ describe("buildWorkerConfig", () => {
       expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
     });
 
-    it("replaces the toolset with the preset's, still stripping spawn_subagent", () => {
+    it("uses the preset's captured toolset as-is, still stripping spawn_subagent", () => {
       const config = createConfig({
-        enabledTools: { "ppal-read-live-set": true, "ppal-delete": true },
+        enabledTools: { "ppal-read-live-set": true, "ppal-delete": false },
         subagentConfig: {
           ...override,
           // A preset toolset that omits a tool the orchestrator had AND tries to
@@ -136,9 +136,13 @@ describe("buildWorkerConfig", () => {
 
       const worker = buildWorkerConfig(config);
 
-      // Worker tools come from the preset, replacing the orchestrator's.
+      // Worker tools are the preset's captured map, not a merge with the
+      // orchestrator's. The orchestrator's explicit `ppal-delete: false` is NOT
+      // carried over — it's absent here, which downstream (filterEnabledTools)
+      // means enabled. So the preset map is used verbatim, sparse semantics and
+      // all; it does not restrict the worker to only its listed tools.
       expect(worker.enabledTools?.["ppal-create-clip"]).toBe(true);
-      expect(worker.enabledTools?.["ppal-delete"]).toBeUndefined();
+      expect(worker.enabledTools).not.toHaveProperty("ppal-delete");
       // The recursion guard overrides the preset's attempt to enable spawning.
       expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
     });

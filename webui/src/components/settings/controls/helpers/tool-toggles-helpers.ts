@@ -29,7 +29,8 @@ const SPAWN_SUBAGENT_TOOL: McpTool = {
   name: "Subagent",
   description:
     "Experimental: let the assistant delegate subtasks to nested subagents " +
-    "that work in the same Live Set and report back. Off by default.",
+    "that work in the same Live Set and report back. Off by default. Choose what " +
+    "they run as (inherit, or a preset) with Default subagent on the Presets tab.",
 };
 
 /**

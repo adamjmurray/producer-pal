@@ -21,7 +21,10 @@ import {
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
-import { type ResolvedSubagentPreset } from "#webui/hooks/settings/presets/preset-extra-params";
+import {
+  type ResolvedSubagentPreset,
+  SUBAGENT_PRESET_PARAM,
+} from "#webui/hooks/settings/presets/preset-extra-params";
 import { getThinkingBudget, resolveSystemInstruction } from "#webui/lib/config";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
@@ -259,7 +262,8 @@ export const chatAdapter: ChatAdapter<
     // Resolve the "Default subagent" preset (if any) to the model/inference a
     // spawned worker runs under; buildWorkerConfig layers it over the clone.
     const subagentConfig = buildSubagentConfig(
-      extraParams?.subagentPreset as ResolvedSubagentPreset | undefined,
+      extraParams?.[SUBAGENT_PRESET_PARAM] as
+        ResolvedSubagentPreset | undefined,
     );
 
     // Temperature is no longer sent: it was phased-out dead config (no UI, pinned
