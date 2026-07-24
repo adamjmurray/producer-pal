@@ -130,17 +130,23 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * enabled), so workers cannot spawn their own subagents.
  *
  * When the user picked a "Default subagent" preset, the orchestrator config
- * carries a resolved `subagentConfig` whose model/inference fields are layered
- * over the clone — so a strong planner can drive uniform cheaper workers. Tools
- * and the system instruction still come from the orchestrator (subagentConfig
- * omits them), so those always inherit. Absent = the worker inherits the
- * orchestrator's model/inference too.
+ * carries a resolved `subagentConfig` whose model/inference AND toolset (when
+ * the preset saved one) are layered over the clone — so a strong planner can
+ * drive uniform cheaper workers. A preset that carries a toolset replaces the
+ * worker's tools; a preset without one (and the no-preset case) inherits the
+ * orchestrator's. The system instruction always inherits (subagentConfig never
+ * carries it).
+ *
+ * The spawn_subagent recursion guard is applied LAST — over whatever toolset
+ * wins — so a worker can never spawn its own subagents, regardless of what a
+ * chosen preset's toolset enables. (The worker's ToolSet then omits the spawn
+ * tool anyway, since client.initialize only injects it when enabled.)
  * @param config - The orchestrator config to clone
  * @returns A worker config that inherits everything but can't delegate further
  */
 export function buildWorkerConfig(config: ChatClientConfig): ChatClientConfig {
   // Drop subagentConfig from the worker (workers never spawn) and pull
-  // enabledTools out so it's rebuilt from the orchestrator's, not the preset's.
+  // enabledTools out so the worker's toolset is rebuilt explicitly below.
   const { subagentConfig, enabledTools, ...rest } = config;
 
   return {
@@ -149,7 +155,9 @@ export function buildWorkerConfig(config: ChatClientConfig): ChatClientConfig {
     chatHistory: [],
     maxSteps: MAX_WORKER_STEPS,
     enabledTools: {
-      ...enabledTools,
+      // Preset toolset (if the preset saved one) replaces the inherited tools;
+      // otherwise inherit the orchestrator's. Guard applied last, unconditionally.
+      ...(subagentConfig?.enabledTools ?? enabledTools),
       [SPAWN_SUBAGENT_TOOL_NAME]: false,
     },
   };

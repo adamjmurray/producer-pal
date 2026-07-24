@@ -200,6 +200,9 @@ function buildSubagentConfig(
       ),
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(preset.provider, overrideThinking, preset.model),
+      // Carry the preset's toolset through; buildWorkerConfig replaces the
+      // worker's tools with it (and always re-strips spawn_subagent).
+      enabledTools: preset.enabledTools,
     };
   } catch (error) {
     console.warn(

@@ -90,9 +90,9 @@ interface SubagentDefaultRowProps {
 /**
  * The "Default subagent" selector: which preset a spawned subagent runs under.
  * "Inherit current settings" (the empty value) clones the orchestrator's config;
- * a preset swaps in its model/inference while tools still inherit. Shown below
- * the preset controls on the Presets tab. Falls back to "Inherit" when the saved
- * id no longer matches a preset (deleted), matching the runtime's graceful
+ * a preset runs each worker on that preset's model/inference and toolset. Shown
+ * below the preset controls on the Presets tab. Falls back to "Inherit" when the
+ * saved id no longer matches a preset (deleted), matching the runtime's graceful
  * inherit.
  * @param {SubagentDefaultRowProps} props - Selector props
  * @returns {JSX.Element} The default-subagent selector
@@ -125,8 +125,9 @@ export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
       </select>
       <p className="text-xs text-zinc-500 mt-1">
         What spawned subagents run as when the Subagent tool is enabled. A
-        preset swaps the worker’s model, thinking, and small-model mode; tools
-        still inherit from this conversation.
+        preset runs each subagent on its own model, thinking, small-model mode,
+        and toolset (a preset with no saved toolset keeps this conversation’s
+        tools). Subagents can never spawn their own subagents.
       </p>
     </div>
   );

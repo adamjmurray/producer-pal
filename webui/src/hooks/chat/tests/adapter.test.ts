@@ -491,6 +491,29 @@ describe("chatAdapter", () => {
         ).toBeUndefined();
       });
 
+      it("carries the preset's toolset onto the override", () => {
+        const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined, {
+          ...extraParams,
+          subagentPreset: {
+            ...subagentPreset,
+            enabledTools: { "ppal-create-clip": true },
+          },
+        });
+
+        expect(config.subagentConfig?.enabledTools).toStrictEqual({
+          "ppal-create-clip": true,
+        });
+      });
+
+      it("leaves the override toolset undefined when the preset saved none", () => {
+        const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined, {
+          ...extraParams,
+          subagentPreset, // no enabledTools
+        });
+
+        expect(config.subagentConfig?.enabledTools).toBeUndefined();
+      });
+
       it("leaves subagentConfig undefined when no preset is chosen", () => {
         const config = chatAdapter.buildConfig(
           "gpt-4o",

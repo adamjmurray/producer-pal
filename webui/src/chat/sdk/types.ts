@@ -93,19 +93,23 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
 }
 
 /**
- * Model/inference overrides a subagent worker runs under, resolved from the
- * user's chosen "Default subagent" preset. Only the fields a v2.0.1 preset can
- * swap live here — provider/model are baked into `model`, thinking into
- * `providerOptions`/`buildProviderOptions`, plus `smallModelMode`. Tools and the
- * system instruction are deliberately absent so a worker still inherits them
- * from the orchestrator (buildWorkerConfig). Absent on the orchestrator config =
- * "inherit current settings", the shipped phase-1 behavior.
+ * Config a subagent worker runs under, resolved from the user's chosen "Default
+ * subagent" preset. Carries the fields a preset can swap: provider/model baked
+ * into `model`, thinking into `providerOptions`/`buildProviderOptions`,
+ * `smallModelMode`, and `enabledTools` (the preset's toolset, when it saved one;
+ * absent means the worker inherits the orchestrator's tools). The system
+ * instruction is deliberately NOT here, so a worker always inherits it
+ * (buildWorkerConfig). Absent on the orchestrator config = "inherit current
+ * settings", the shipped phase-1 behavior.
  */
 export interface SubagentConfigOverride {
   model: LanguageModel;
   smallModelMode: boolean;
   providerOptions?: ProviderOptions;
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
+  /** The preset's captured toolset. Absent = inherit the orchestrator's tools.
+   * buildWorkerConfig always re-strips spawn_subagent over this map. */
+  enabledTools?: Record<string, boolean>;
 }
 
 /** Configuration for the AI SDK client */

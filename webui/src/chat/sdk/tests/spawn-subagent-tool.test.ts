@@ -100,22 +100,46 @@ describe("buildWorkerConfig", () => {
       expect(worker.buildProviderOptions).toBe(override.buildProviderOptions);
     });
 
-    it("still inherits tools and system instruction from the orchestrator", () => {
+    it("inherits tools when the preset saved no toolset, always the system instruction", () => {
       const config = createConfig({
         systemInstruction: "orchestrator prompt",
         enabledTools: {
           "ppal-read-live-set": true,
           [SPAWN_SUBAGENT_TOOL_NAME]: true,
         },
-        subagentConfig: override,
+        subagentConfig: override, // no enabledTools on this override
       });
 
       const worker = buildWorkerConfig(config);
 
-      // System instruction is not part of the override, so it inherits.
+      // System instruction is never part of the override, so it always inherits.
       expect(worker.systemInstruction).toBe("orchestrator prompt");
-      // Tools inherit (minus the recursion guard) regardless of the preset.
+      // No preset toolset → inherit the orchestrator's tools (minus the guard).
       expect(worker.enabledTools?.["ppal-read-live-set"]).toBe(true);
+      expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
+    });
+
+    it("replaces the toolset with the preset's, still stripping spawn_subagent", () => {
+      const config = createConfig({
+        enabledTools: { "ppal-read-live-set": true, "ppal-delete": true },
+        subagentConfig: {
+          ...override,
+          // A preset toolset that omits a tool the orchestrator had AND tries to
+          // enable spawn_subagent — the guard must win regardless (no-nested-
+          // spawn invariant preserved under presets).
+          enabledTools: {
+            "ppal-create-clip": true,
+            [SPAWN_SUBAGENT_TOOL_NAME]: true,
+          },
+        },
+      });
+
+      const worker = buildWorkerConfig(config);
+
+      // Worker tools come from the preset, replacing the orchestrator's.
+      expect(worker.enabledTools?.["ppal-create-clip"]).toBe(true);
+      expect(worker.enabledTools?.["ppal-delete"]).toBeUndefined();
+      // The recursion guard overrides the preset's attempt to enable spawning.
       expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
     });
 

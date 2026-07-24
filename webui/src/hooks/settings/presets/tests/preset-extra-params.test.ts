@@ -61,6 +61,34 @@ describe("resolveSubagentPreset", () => {
     });
   });
 
+  it("carries the preset's toolset when it saved one", () => {
+    const withTools: ChatPreset = {
+      ...cheapWorker,
+      enabledTools: { "ppal-create-clip": true, "ppal-delete": false },
+    };
+
+    const resolved = resolveSubagentPreset(
+      "1",
+      [withTools],
+      getProviderConnection,
+    );
+
+    expect(resolved?.enabledTools).toStrictEqual({
+      "ppal-create-clip": true,
+      "ppal-delete": false,
+    });
+  });
+
+  it("omits the toolset for a legacy preset that saved none", () => {
+    const resolved = resolveSubagentPreset(
+      "1",
+      [cheapWorker],
+      getProviderConnection,
+    );
+
+    expect(resolved).not.toHaveProperty("enabledTools");
+  });
+
   it("returns undefined for the inherit sentinel (null / empty)", () => {
     expect(
       resolveSubagentPreset(null, [cheapWorker], getProviderConnection),

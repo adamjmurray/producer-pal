@@ -376,9 +376,10 @@ settings.
   experimental **Subagent** tool is enabled (on the Tools tab). Leave it on
   **Inherit current settings** and each subagent clones your current chat
   config. Pick a preset instead and every subagent runs on that preset's
-  **model**, **thinking**, and **small model mode** — so you can pair a strong
-  planner with uniform, cheaper workers. The subagent's tools still come from
-  the current conversation; a preset only swaps the model and inference here.
+  **model**, **thinking**, **small model mode**, and **toolset** — so you can
+  pair a strong planner with uniform, cheaper workers. (A preset that never
+  saved a toolset keeps the current conversation's tools.) Subagents can never
+  spawn their own subagents, whatever a preset's toolset enables.
 
 ### Tools
 

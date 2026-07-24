@@ -20,14 +20,16 @@ export interface PresetConnection {
 
 /**
  * A "Default subagent" preset resolved to everything buildWorkerConfig needs:
- * the connection (provider + live key/baseUrl) plus the model/inference a
- * v2.0.1 preset swaps. Tools and system instruction are absent by design — a
- * worker inherits those from the orchestrator.
+ * the connection (provider + live key/baseUrl), the model/inference a preset
+ * swaps, and the preset's toolset when it saved one (absent = inherit the
+ * orchestrator's tools). The system instruction is absent by design — a worker
+ * always inherits it from the orchestrator.
  */
 export interface ResolvedSubagentPreset extends PresetConnection {
   model: string;
   thinking: string;
   smallModelMode: boolean;
+  enabledTools?: Record<string, boolean>;
 }
 
 /**
@@ -79,5 +81,8 @@ export function resolveSubagentPreset(
     model: preset.model,
     thinking: preset.thinking,
     smallModelMode: preset.smallModelMode,
+    // Only carry a toolset when the preset actually saved one; a legacy preset
+    // omits it, meaning the worker inherits the orchestrator's tools.
+    ...(preset.enabledTools ? { enabledTools: preset.enabledTools } : {}),
   };
 }
