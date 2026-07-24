@@ -141,7 +141,6 @@ export interface ProviderSettings {
   port?: number;
   thinking: string;
   temperature: number;
-  showThoughts: boolean;
 }
 
 /**
@@ -161,35 +160,30 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     model: DEFAULT_MODELS.anthropic,
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
   gemini: {
     apiKey: "",
     model: DEFAULT_MODELS.gemini,
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
   openai: {
     apiKey: "",
     model: DEFAULT_MODELS.openai,
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
   mistral: {
     apiKey: "",
     model: DEFAULT_MODELS.mistral,
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
   openrouter: {
     apiKey: "",
     model: DEFAULT_MODELS.openrouter,
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
   lmstudio: {
     apiKey: "",
@@ -197,7 +191,6 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     baseUrl: "http://localhost:1234",
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
   ollama: {
     apiKey: "",
@@ -205,7 +198,6 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     baseUrl: "http://localhost:11434",
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
   custom: {
     apiKey: "",
@@ -213,7 +205,6 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     baseUrl: "",
     thinking: "Default",
     temperature: 1.0,
-    showThoughts: true,
   },
 };
 
@@ -348,14 +339,6 @@ function readLegacyGeminiSettings(): ProviderSettings {
 
   if (temperature != null) {
     legacySettings.temperature = Number.parseFloat(temperature);
-  }
-
-  const showThoughts =
-    localStorage.getItem("showThoughts") ??
-    localStorage.getItem("gemini_showThoughts");
-
-  if (showThoughts != null) {
-    legacySettings.showThoughts = showThoughts === "true";
   }
 
   return { ...DEFAULT_SETTINGS.gemini, ...legacySettings };

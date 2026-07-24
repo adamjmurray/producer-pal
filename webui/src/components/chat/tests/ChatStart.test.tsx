@@ -20,7 +20,6 @@ import {
 const defaultOverrides = {
   thinking: "Default",
   temperature: 1.0,
-  showThoughts: true,
 };
 
 type RenderProps = Partial<ChatStartProps> & {
@@ -66,7 +65,6 @@ describe("ChatStart", () => {
       const overrides = {
         thinking: "Max",
         temperature: 0.5,
-        showThoughts: false,
       };
       const { handleSend } = renderChatStart({ overrides });
 

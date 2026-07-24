@@ -31,7 +31,6 @@ export function createConversationsProps() {
         activeProvider: null as Provider | null,
         activeThinking: null as string | null,
         activeTemperature: null as number | null,
-        activeShowThoughts: null as boolean | null,
         activeSmallModelMode: null as boolean | null,
         activeSystemInstruction: null as string | null,
       },

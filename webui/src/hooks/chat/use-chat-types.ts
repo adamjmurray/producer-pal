@@ -84,7 +84,6 @@ export interface ConversationLockedSettings {
   provider: Provider | null;
   thinking: string | null;
   temperature: number | null;
-  showThoughts: boolean | null;
   smallModelMode: boolean | null;
   /**
    * The resolved system instruction the conversation runs with. Locked like the
@@ -124,7 +123,6 @@ export interface UseChatReturn {
   activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
-  activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   /** The resolved system instruction locked for the active conversation. */
   activeSystemInstruction: string | null;

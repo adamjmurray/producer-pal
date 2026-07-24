@@ -531,7 +531,6 @@ function syncMetaRef(
     provider: record.provider as Provider | null,
     thinking: record.thinking,
     temperature: record.temperature,
-    showThoughts: record.showThoughts,
     smallModelMode: record.smallModelMode ?? null,
     systemInstruction: record.systemInstruction ?? null,
   };

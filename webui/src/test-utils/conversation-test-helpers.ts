@@ -54,7 +54,6 @@ function sharedDefaults(): ConversationSummary {
     modelLabel: null,
     thinking: null,
     temperature: null,
-    showThoughts: null,
     smallModelMode: null,
     totalUsage: null,
     sessionType: "text",

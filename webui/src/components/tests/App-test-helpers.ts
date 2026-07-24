@@ -52,8 +52,6 @@ export const mockSettingsHook = {
   setThinking: vi.fn(),
   temperature: 1.0,
   setTemperature: vi.fn(),
-  showThoughts: false,
-  setShowThoughts: vi.fn(),
 
   enabledTools: {},
   setEnabledTools: vi.fn(),

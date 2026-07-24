@@ -141,7 +141,6 @@ export function useChatModeState(params: UseChatModeStateParams) {
     adapter: chatAdapter,
     extraParams: {
       baseUrl,
-      showThoughts: settings.showThoughts,
       smallModelMode: settings.smallModelMode,
       provider: settings.provider,
       apiKey: resolvedApiKey,
@@ -178,7 +177,6 @@ export function useChatModeState(params: UseChatModeStateParams) {
       activeProvider: chat.activeProvider,
       activeThinking: chat.activeThinking,
       activeTemperature: chat.activeTemperature,
-      activeShowThoughts: chat.activeShowThoughts,
       activeSmallModelMode: chat.activeSmallModelMode,
       // Snapshot the LOCKED instruction (what this conversation actually ran
       // with), not the current global override — so editing the global later

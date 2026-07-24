@@ -148,7 +148,6 @@ export async function installStubs(page: Page): Promise<void> {
         model: "gemini-3.6-flash",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       }),
     );
   });

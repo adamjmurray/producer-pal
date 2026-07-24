@@ -107,7 +107,6 @@ export interface ChatClientConfig {
    * reduced context even while the orchestrator runs full-strength.
    */
   smallModelMode?: boolean;
-  showThoughts: boolean;
   providerOptions?: ProviderOptions;
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;

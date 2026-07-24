@@ -207,7 +207,6 @@ export function useChat<
         init.provider,
         effectiveThinking,
         temperature,
-        null,
         smallModelMode,
         init.systemInstruction,
       );

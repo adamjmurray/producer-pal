@@ -216,7 +216,6 @@ export function lockedSettings(
     provider: null,
     thinking: null,
     temperature: null,
-    showThoughts: null,
     smallModelMode: null,
     systemInstruction: null,
     ...over,

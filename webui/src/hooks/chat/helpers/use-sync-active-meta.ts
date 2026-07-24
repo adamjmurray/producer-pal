@@ -15,7 +15,6 @@ export interface SyncActiveMetaParams {
   activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
-  activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
 }
@@ -38,7 +37,6 @@ export function useSyncActiveMeta(
     activeProvider,
     activeThinking,
     activeTemperature,
-    activeShowThoughts,
     activeSmallModelMode,
     activeSystemInstruction,
   } = props;
@@ -51,7 +49,6 @@ export function useSyncActiveMeta(
     if (activeProvider != null) meta.provider = activeProvider;
     if (activeThinking != null) meta.thinking = activeThinking;
     if (activeTemperature != null) meta.temperature = activeTemperature;
-    if (activeShowThoughts != null) meta.showThoughts = activeShowThoughts;
     if (activeSmallModelMode != null)
       meta.smallModelMode = activeSmallModelMode;
     if (activeSystemInstruction != null)
@@ -62,7 +59,6 @@ export function useSyncActiveMeta(
     activeProvider,
     activeThinking,
     activeTemperature,
-    activeShowThoughts,
     activeSmallModelMode,
     activeSystemInstruction,
   ]);
