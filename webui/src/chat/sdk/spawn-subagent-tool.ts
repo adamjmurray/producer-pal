@@ -128,16 +128,28 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * budget, and spawn_subagent disabled. Disabling it is the recursion guard — the
  * worker's ToolSet omits the spawn tool (client.initialize only injects it when
  * enabled), so workers cannot spawn their own subagents.
+ *
+ * When the user picked a "Default subagent" preset, the orchestrator config
+ * carries a resolved `subagentConfig` whose model/inference fields are layered
+ * over the clone — so a strong planner can drive uniform cheaper workers. Tools
+ * and the system instruction still come from the orchestrator (subagentConfig
+ * omits them), so those always inherit. Absent = the worker inherits the
+ * orchestrator's model/inference too.
  * @param config - The orchestrator config to clone
  * @returns A worker config that inherits everything but can't delegate further
  */
 export function buildWorkerConfig(config: ChatClientConfig): ChatClientConfig {
+  // Drop subagentConfig from the worker (workers never spawn) and pull
+  // enabledTools out so it's rebuilt from the orchestrator's, not the preset's.
+  const { subagentConfig, enabledTools, ...rest } = config;
+
   return {
-    ...config,
+    ...rest,
+    ...subagentConfig,
     chatHistory: [],
     maxSteps: MAX_WORKER_STEPS,
     enabledTools: {
-      ...config.enabledTools,
+      ...enabledTools,
       [SPAWN_SUBAGENT_TOOL_NAME]: false,
     },
   };

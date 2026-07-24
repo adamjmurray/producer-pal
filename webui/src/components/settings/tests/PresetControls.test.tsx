@@ -29,6 +29,8 @@ function makeSettings(over?: Partial<UseSettingsReturn>): UseSettingsReturn {
     enabledTools: {},
     setEnabledTools: vi.fn(),
     applyPreset: vi.fn(),
+    defaultSubagentPresetId: null,
+    setDefaultSubagentPresetId: vi.fn(),
     ...over,
   } as unknown as UseSettingsReturn;
 }
@@ -182,6 +184,59 @@ describe("PresetControls", () => {
     fireEvent.click(screen.getByTestId("preset-delete"));
     expect(loadPresets()).toHaveLength(0);
     expect(screen.queryByTestId("preset-update")).toBeNull();
+  });
+
+  it("offers Inherit plus every preset in the Default subagent selector", () => {
+    savePresets([seeded]);
+    render(
+      <PresetControls
+        settings={makeSettings({ defaultSubagentPresetId: "seed" })}
+      />,
+    );
+
+    const select = screen.getByTestId(
+      "subagent-default-select",
+    ) as HTMLSelectElement;
+
+    expect(select.value).toBe("seed");
+    const optionLabels = [...select.options].map((o) => o.textContent);
+
+    expect(optionLabels).toStrictEqual(["Inherit current settings", "Seeded"]);
+  });
+
+  it("sets the default subagent preset (and null for Inherit)", () => {
+    savePresets([seeded]);
+    const setDefaultSubagentPresetId = vi.fn();
+
+    render(
+      <PresetControls
+        settings={makeSettings({ setDefaultSubagentPresetId })}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId("subagent-default-select"), {
+      target: { value: "seed" },
+    });
+    expect(setDefaultSubagentPresetId).toHaveBeenCalledWith("seed");
+
+    fireEvent.change(screen.getByTestId("subagent-default-select"), {
+      target: { value: "" },
+    });
+    expect(setDefaultSubagentPresetId).toHaveBeenCalledWith(null);
+  });
+
+  it("shows Inherit when the saved default id no longer matches a preset", () => {
+    savePresets([seeded]);
+    render(
+      <PresetControls
+        settings={makeSettings({ defaultSubagentPresetId: "deleted" })}
+      />,
+    );
+
+    expect(
+      (screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+        .value,
+    ).toBe("");
   });
 
   it("flags unsaved edits when the buffer drifts from the selected preset", () => {

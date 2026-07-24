@@ -92,6 +92,22 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
   };
 }
 
+/**
+ * Model/inference overrides a subagent worker runs under, resolved from the
+ * user's chosen "Default subagent" preset. Only the fields a v2.0.1 preset can
+ * swap live here — provider/model are baked into `model`, thinking into
+ * `providerOptions`/`buildProviderOptions`, plus `smallModelMode`. Tools and the
+ * system instruction are deliberately absent so a worker still inherits them
+ * from the orchestrator (buildWorkerConfig). Absent on the orchestrator config =
+ * "inherit current settings", the shipped phase-1 behavior.
+ */
+export interface SubagentConfigOverride {
+  model: LanguageModel;
+  smallModelMode: boolean;
+  providerOptions?: ProviderOptions;
+  buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
+}
+
 /** Configuration for the AI SDK client */
 export interface ChatClientConfig {
   model: LanguageModel;
@@ -116,4 +132,11 @@ export interface ChatClientConfig {
    * orchestrator with subagents enabled widens to MAX_ORCHESTRATOR_STEPS.
    */
   maxSteps?: number;
+  /**
+   * Preset-derived model/inference a spawned worker runs under. Set on the
+   * orchestrator config when the user picked a "Default subagent" preset; read
+   * only by buildWorkerConfig, which layers it over the cloned orchestrator
+   * config. Absent = the worker inherits the orchestrator's model/inference.
+   */
+  subagentConfig?: SubagentConfigOverride;
 }

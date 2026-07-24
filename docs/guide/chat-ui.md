@@ -372,6 +372,14 @@ per-provider) and appearance preferences are never part of a preset — a preset
 only _names_ which provider to use and resolves its key from your stored
 settings.
 
+- **Default subagent** - Choose what a spawned subagent runs under when the
+  experimental **Subagent** tool is enabled (on the Tools tab). Leave it on
+  **Inherit current settings** and each subagent clones your current chat
+  config. Pick a preset instead and every subagent runs on that preset's
+  **model**, **thinking**, and **small model mode** — so you can pair a strong
+  planner with uniform, cheaper workers. The subagent's tools still come from
+  the current conversation; a preset only swaps the model and inference here.
+
 ### Tools
 
 The Tools tab controls which tools are available to the AI when using the chat

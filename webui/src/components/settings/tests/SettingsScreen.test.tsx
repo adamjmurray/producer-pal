@@ -140,6 +140,8 @@ describe("SettingsScreen", () => {
     isToolEnabled: () => true,
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
+    defaultSubagentPresetId: null,
+    setDefaultSubagentPresetId: vi.fn(),
     liveApiEnabled: false,
     liveApiEnabledDirty: false,
     setLiveApiEnabled: vi.fn(),

@@ -14,6 +14,7 @@ import {
   PresetCreateForm,
   PresetDescriptionField,
   PresetPickerRow,
+  SubagentDefaultRow,
 } from "./helpers/preset-controls-parts";
 
 interface PresetControlsProps {
@@ -21,11 +22,13 @@ interface PresetControlsProps {
 }
 
 /**
- * Preset picker + Save-as/Update/Delete controls plus the description editor,
- * shown on the dedicated Presets tab. Selecting a preset loads its full bundle
- * — provider/model/thinking + small-model mode + toolset — into the live
- * editable settings buffer (settings.applyPreset); the user then Saves through
- * the normal footer flow. Presets never capture the API key (that stays in the
+ * Preset picker + Save-as/Update/Delete controls, the description editor, and
+ * the "Default subagent" selector, shown on the dedicated Presets tab. Selecting
+ * a preset loads its full bundle — provider/model/thinking + small-model mode +
+ * toolset — into the live editable settings buffer (settings.applyPreset); the
+ * user then Saves through the normal footer flow. The Default subagent selector
+ * (SubagentDefaultRow) reuses this live preset list to pick which preset spawned
+ * subagents run under. Presets never capture the API key (that stays in the
  * per-provider store).
  * @param {PresetControlsProps} props - Component props
  * @param {UseSettingsReturn} props.settings - The live settings buffer + actions
@@ -146,6 +149,12 @@ export function PresetControls({ settings }: PresetControlsProps) {
           {error}
         </p>
       )}
+
+      <SubagentDefaultRow
+        presets={presets}
+        value={settings.defaultSubagentPresetId}
+        onChange={settings.setDefaultSubagentPresetId}
+      />
     </div>
   );
 }

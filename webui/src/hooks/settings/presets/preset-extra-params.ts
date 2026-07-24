@@ -11,27 +11,73 @@ type GetProviderConnection = (provider: Provider) => {
   baseUrl?: string;
 };
 
+/** The provider + live connection a preset resolves to (the extraParams bag). */
+export interface PresetConnection {
+  provider: Provider;
+  apiKey: string;
+  baseUrl?: string;
+}
+
+/**
+ * A "Default subagent" preset resolved to everything buildWorkerConfig needs:
+ * the connection (provider + live key/baseUrl) plus the model/inference a
+ * v2.0.1 preset swaps. Tools and system instruction are absent by design — a
+ * worker inherits those from the orchestrator.
+ */
+export interface ResolvedSubagentPreset extends PresetConnection {
+  model: string;
+  thinking: string;
+  smallModelMode: boolean;
+}
+
 /**
  * The subagents integration seam: translate a preset into the `extraParams`
  * bag that `chatAdapter.buildConfig` consumes, resolving the
  * provider's key/baseUrl live from the encrypted per-provider store (a preset
- * only *names* the provider). A worker's cloned config is then built exactly
- * like the main chat's — `buildConfig(preset.model, preset.thinking,
- * enabledTools, chatHistory, presetToExtraParams(preset, …))`. model/thinking
- * are positional args to buildConfig, so they stay out of this bag by design.
+ * only *names* the provider). model/thinking are positional args to buildConfig,
+ * so they stay out of this bag by design.
  * @param preset - The preset a worker runs under
  * @param getProviderConnection - Reads the provider's stored key/baseUrl
- * @returns The extraParams object for buildConfig
+ * @returns The connection object for buildConfig's extraParams
  */
 export function presetToExtraParams(
   preset: ChatPreset,
   getProviderConnection: GetProviderConnection,
-): Record<string, unknown> {
+): PresetConnection {
   const { apiKey, baseUrl } = getProviderConnection(preset.provider);
 
   return {
     provider: preset.provider,
     apiKey,
     baseUrl,
+  };
+}
+
+/**
+ * Resolve the user's chosen "Default subagent" preset id into the full bundle a
+ * spawned worker runs under, or `undefined` to inherit the orchestrator config.
+ * Returns undefined for the inherit sentinel (null/empty) AND for a dangling id
+ * (a preset since deleted) so a stale setting degrades gracefully to inherit.
+ * @param presetId - The saved default-subagent preset id (null/empty = inherit)
+ * @param presets - The current preset list
+ * @param getProviderConnection - Reads the preset provider's key/baseUrl live
+ * @returns The resolved worker preset, or undefined to inherit
+ */
+export function resolveSubagentPreset(
+  presetId: string | null,
+  presets: ChatPreset[],
+  getProviderConnection: GetProviderConnection,
+): ResolvedSubagentPreset | undefined {
+  if (presetId == null || presetId === "") return undefined;
+
+  const preset = presets.find((p) => p.id === presetId);
+
+  if (preset == null) return undefined;
+
+  return {
+    ...presetToExtraParams(preset, getProviderConnection),
+    model: preset.model,
+    thinking: preset.thinking,
+    smallModelMode: preset.smallModelMode,
   };
 }

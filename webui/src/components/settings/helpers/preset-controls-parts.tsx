@@ -80,6 +80,58 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
   );
 }
 
+interface SubagentDefaultRowProps {
+  presets: ChatPreset[];
+  /** Saved default-subagent preset id, or null to inherit. */
+  value: string | null;
+  onChange: (id: string | null) => void;
+}
+
+/**
+ * The "Default subagent" selector: which preset a spawned subagent runs under.
+ * "Inherit current settings" (the empty value) clones the orchestrator's config;
+ * a preset swaps in its model/inference while tools still inherit. Shown below
+ * the preset controls on the Presets tab. Falls back to "Inherit" when the saved
+ * id no longer matches a preset (deleted), matching the runtime's graceful
+ * inherit.
+ * @param {SubagentDefaultRowProps} props - Selector props
+ * @returns {JSX.Element} The default-subagent selector
+ */
+export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
+  const { presets, value } = props;
+  const selectValue =
+    value != null && presets.some((p) => p.id === value) ? value : "";
+
+  return (
+    <div className="pt-3 border-t border-zinc-300 dark:border-zinc-600">
+      <label className="block text-sm mb-1" htmlFor="subagent-default-select">
+        Default subagent
+      </label>
+      <select
+        id="subagent-default-select"
+        value={selectValue}
+        onChange={(e) =>
+          props.onChange((e.target as HTMLSelectElement).value || null)
+        }
+        className={`w-full ${INPUT_CLASS}`}
+        data-testid="subagent-default-select"
+      >
+        <option value="">Inherit current settings</option>
+        {presets.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <p className="text-xs text-zinc-500 mt-1">
+        What spawned subagents run as when the Subagent tool is enabled. A
+        preset swaps the worker’s model, thinking, and small-model mode; tools
+        still inherit from this conversation.
+      </p>
+    </div>
+  );
+}
+
 interface PresetCreateFormProps {
   draftName: string;
   draftDescription: string;

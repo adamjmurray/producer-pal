@@ -7,7 +7,11 @@ import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
-import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import {
+  type ChatClientConfig,
+  type ChatMessage,
+  type SubagentConfigOverride,
+} from "#webui/chat/sdk/types";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
@@ -17,6 +21,7 @@ import {
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
+import { type ResolvedSubagentPreset } from "#webui/hooks/settings/presets/preset-extra-params";
 import { getThinkingBudget, resolveSystemInstruction } from "#webui/lib/config";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
@@ -166,6 +171,47 @@ function buildOpenAIOptions(
 }
 
 /**
+ * Build the model/inference override a spawned worker runs under from the
+ * user's resolved "Default subagent" preset. Returns undefined to inherit the
+ * orchestrator config (no preset chosen). A preset that can't build a model
+ * (e.g. a `custom` provider missing its base URL) must NOT break the
+ * orchestrator's own chat init, so failures warn and fall back to inherit.
+ * @param preset - The resolved subagent preset, or undefined to inherit
+ * @returns The worker override, or undefined to inherit
+ */
+function buildSubagentConfig(
+  preset: ResolvedSubagentPreset | undefined,
+): SubagentConfigOverride | undefined {
+  if (preset == null) return undefined;
+
+  try {
+    return {
+      model: createProviderModel(
+        preset.provider,
+        preset.model,
+        preset.apiKey,
+        preset.baseUrl,
+      ),
+      smallModelMode: preset.smallModelMode,
+      providerOptions: buildProviderOptions(
+        preset.provider,
+        preset.thinking,
+        preset.model,
+      ),
+      buildProviderOptions: (overrideThinking: string) =>
+        buildProviderOptions(preset.provider, overrideThinking, preset.model),
+    };
+  } catch (error) {
+    console.warn(
+      "Default subagent preset could not be built; subagents will inherit " +
+        `the current settings. ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    return undefined;
+  }
+}
+
+/**
  * AI SDK adapter for the generic useChat hook.
  * Routes all providers through the Vercel AI SDK's streamText function.
  */
@@ -207,6 +253,11 @@ export const chatAdapter: ChatAdapter<
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(provider, thinking, model);
+    // Resolve the "Default subagent" preset (if any) to the model/inference a
+    // spawned worker runs under; buildWorkerConfig layers it over the clone.
+    const subagentConfig = buildSubagentConfig(
+      extraParams?.subagentPreset as ResolvedSubagentPreset | undefined,
+    );
 
     // Temperature is no longer sent: it was phased-out dead config (no UI, pinned
     // at 1.0) so the request now carries no `temperature` and each provider
@@ -222,6 +273,7 @@ export const chatAdapter: ChatAdapter<
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(provider, overrideThinking, model),
       chatHistory,
+      subagentConfig,
     };
   },
 

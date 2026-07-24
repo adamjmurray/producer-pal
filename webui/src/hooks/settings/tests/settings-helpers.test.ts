@@ -13,12 +13,14 @@ import {
   checkHasApiKey,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
+  loadDefaultSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
   loadProviderSettingsAsync,
   loadVoiceLanguage,
   loadVoiceSpeed,
   loadVoiceVolume,
+  saveDefaultSubagentPresetId,
   saveProviderSettings,
   saveVoiceLanguage,
   saveVoiceSpeed,
@@ -264,6 +266,27 @@ describe("settings-helpers", () => {
       localStorage.setItem("producer_pal_enabled_tools", "not-json");
 
       expect(loadEnabledTools()).toStrictEqual({});
+    });
+  });
+
+  describe("default subagent preset persistence", () => {
+    it("returns null when nothing is stored (inherit)", () => {
+      expect(loadDefaultSubagentPresetId()).toBeNull();
+    });
+
+    it("round-trips a preset id through localStorage", () => {
+      saveDefaultSubagentPresetId("preset-abc");
+      expect(loadDefaultSubagentPresetId()).toBe("preset-abc");
+    });
+
+    it("clears the stored id when saving null (back to inherit)", () => {
+      saveDefaultSubagentPresetId("preset-abc");
+      saveDefaultSubagentPresetId(null);
+
+      expect(loadDefaultSubagentPresetId()).toBeNull();
+      expect(
+        localStorage.getItem("producer_pal_default_subagent_preset"),
+      ).toBeNull();
     });
   });
 

@@ -12,7 +12,11 @@ import {
   createSpawnSubagentTool,
   extractWorkerResult,
 } from "#webui/chat/sdk/spawn-subagent-tool";
-import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import {
+  type ChatClientConfig,
+  type ChatMessage,
+  type SubagentConfigOverride,
+} from "#webui/chat/sdk/types";
 import { createConfig } from "./client-test-helpers";
 
 type RunWorker = (
@@ -69,6 +73,59 @@ describe("buildWorkerConfig", () => {
     const worker = buildWorkerConfig(createConfig({ smallModelMode: true }));
 
     expect(worker.smallModelMode).toBe(true);
+  });
+
+  describe("with a default-subagent preset override", () => {
+    const override: SubagentConfigOverride = {
+      model: { modelId: "cheap-worker", provider: "openai" } as never,
+      smallModelMode: true,
+      providerOptions: { openai: { reasoningEffort: "low" } },
+      buildProviderOptions: () => {},
+    };
+
+    it("swaps in the override's model and inference", () => {
+      const config = createConfig({
+        model: { modelId: "orchestrator", provider: "anthropic" } as never,
+        smallModelMode: false,
+        subagentConfig: override,
+      });
+
+      const worker = buildWorkerConfig(config);
+
+      expect(worker.model).toBe(override.model);
+      expect(worker.smallModelMode).toBe(true);
+      expect(worker.providerOptions).toStrictEqual({
+        openai: { reasoningEffort: "low" },
+      });
+      expect(worker.buildProviderOptions).toBe(override.buildProviderOptions);
+    });
+
+    it("still inherits tools and system instruction from the orchestrator", () => {
+      const config = createConfig({
+        systemInstruction: "orchestrator prompt",
+        enabledTools: {
+          "ppal-read-live-set": true,
+          [SPAWN_SUBAGENT_TOOL_NAME]: true,
+        },
+        subagentConfig: override,
+      });
+
+      const worker = buildWorkerConfig(config);
+
+      // System instruction is not part of the override, so it inherits.
+      expect(worker.systemInstruction).toBe("orchestrator prompt");
+      // Tools inherit (minus the recursion guard) regardless of the preset.
+      expect(worker.enabledTools?.["ppal-read-live-set"]).toBe(true);
+      expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
+    });
+
+    it("drops the override from the worker config (workers never spawn)", () => {
+      const worker = buildWorkerConfig(
+        createConfig({ subagentConfig: override }),
+      );
+
+      expect(worker.subagentConfig).toBeUndefined();
+    });
   });
 });
 

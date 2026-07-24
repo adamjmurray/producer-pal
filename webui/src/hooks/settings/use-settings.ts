@@ -14,6 +14,7 @@ import {
   DEFAULT_SETTINGS,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
+  loadDefaultSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
   loadSmallModelMode,
@@ -21,6 +22,7 @@ import {
   type ProviderSettingsApplier,
   type ProviderStateSetters,
   saveCurrentSettings,
+  saveDefaultSubagentPresetId,
   saveSmallModelMode,
 } from "./settings-helpers";
 import { useProviderSlices } from "./use-provider-connections";
@@ -94,6 +96,12 @@ export function useSettings(): UseSettingsReturn {
     useState<Record<string, boolean>>(loadEnabledTools);
   const [smallModelMode, setSmallModelModeState] =
     useState<boolean>(loadSmallModelMode);
+  // Which preset a spawned subagent runs under (null = inherit the orchestrator
+  // config). A modal-local buffer like smallModelMode: persisted on Save,
+  // reverted on Cancel.
+  const [defaultSubagentPresetId, setDefaultSubagentPresetId] = useState<
+    string | null
+  >(loadDefaultSubagentPresetId);
   // False until the post-mount async decrypt has applied the real apiKeys.
   // saveSettings gates on this — saving the placeholder blanks would wipe
   // every stored encrypted key.
@@ -198,6 +206,7 @@ export function useSettings(): UseSettingsReturn {
         enabledTools,
         providerSettings,
         smallModelMode,
+        defaultSubagentPresetId,
       );
     } catch (err) {
       console.error("Failed to save provider settings", err);
@@ -220,6 +229,7 @@ export function useSettings(): UseSettingsReturn {
     provider,
     enabledTools,
     smallModelMode,
+    defaultSubagentPresetId,
     voiceModeSettings,
     providerSettings,
   ]);
@@ -228,6 +238,7 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
+    setDefaultSubagentPresetId(loadDefaultSubagentPresetId());
     voiceModeSettings.revert();
     // Re-decrypt and restore saved provider settings (async; the apiKey lands a
     // tick later, mirroring the post-mount load). Pass the same onLoaded as the
@@ -301,6 +312,8 @@ export function useSettings(): UseSettingsReturn {
     isToolEnabled,
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
+    defaultSubagentPresetId,
+    setDefaultSubagentPresetId,
     saveError,
     liveApiEnabled,
     liveApiEnabledDirty,
@@ -352,14 +365,17 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - Settings for every provider
  * @param {boolean} smallModelMode - Small-model-mode flag
+ * @param {string | null} defaultSubagentPresetId - Default subagent preset id (null = inherit)
  */
 async function persistAllSettings(
   provider: Provider,
   enabledTools: Record<string, boolean>,
   allSettings: AllProviderSettings,
   smallModelMode: boolean,
+  defaultSubagentPresetId: string | null,
 ): Promise<void> {
   saveSmallModelMode(smallModelMode);
+  saveDefaultSubagentPresetId(defaultSubagentPresetId);
   await saveCurrentSettings(provider, enabledTools, allSettings);
 }
 

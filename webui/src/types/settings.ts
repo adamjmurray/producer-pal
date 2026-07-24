@@ -197,6 +197,11 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   isToolEnabled: (toolId: string) => boolean;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
+  /** The preset a spawned subagent runs under (its model/inference; tools still
+   * inherit from the orchestrator). Null = "inherit current settings", the
+   * shipped phase-1 behavior. A modal-local buffer persisted on Save. */
+  defaultSubagentPresetId: string | null;
+  setDefaultSubagentPresetId: (id: string | null) => void;
   // Mirrors server-side ProducerPalConfig.liveApiEnabled, kept in modal-local
   // state. Source of truth is the server (which mirrors the device Setup-tab
   // toggle) — not localStorage. The dirty flag distinguishes "user toggled

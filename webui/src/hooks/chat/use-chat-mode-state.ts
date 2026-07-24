@@ -22,6 +22,8 @@ import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-c
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
+import { resolveSubagentPreset } from "#webui/hooks/settings/presets/preset-extra-params";
+import { loadPresets } from "#webui/hooks/settings/presets/preset-storage";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
@@ -126,6 +128,15 @@ export function useChatModeState(params: UseChatModeStateParams) {
     [getProviderConnection],
   );
 
+  // Resolve the chosen "Default subagent" preset fresh from storage each render
+  // (presets are edited in a separate hook instance, so a snapshot would go
+  // stale). Undefined = inherit; the adapter turns it into the worker override.
+  const subagentPreset = resolveSubagentPreset(
+    settings.defaultSubagentPresetId,
+    loadPresets(),
+    resolveConnection,
+  );
+
   const aiSdkChat = useChat({
     provider: settings.provider,
     apiKey: resolvedApiKey,
@@ -144,6 +155,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
       provider: settings.provider,
       apiKey: resolvedApiKey,
       systemInstructionOverride,
+      subagentPreset,
     },
     autoSaveRef,
     pendingForkRef,
