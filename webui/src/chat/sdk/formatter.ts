@@ -60,6 +60,13 @@ function addToolParts(msg: ChatMessage, parts: UIPart[]): void {
       args: tc.args,
       result: resultStr,
       isError: result?.isError ?? undefined,
+      // A subagent call carries its worker transcript for the deep-dive tier.
+      // Format it here (recursively) so the card renders it with the same
+      // message components as the main chat. Workers can't spawn, so this never
+      // recurses more than one level.
+      ...(result?.subagentTranscript && {
+        subagentMessages: formatChatMessages(result.subagentTranscript),
+      }),
     });
   }
 }

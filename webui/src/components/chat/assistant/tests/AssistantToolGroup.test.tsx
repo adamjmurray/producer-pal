@@ -10,7 +10,7 @@ import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { type UIStepUsagePart, type UIToolPart } from "#webui/types/messages";
-import { AssistantToolGroup } from "#webui/components/chat/assistant/AssistantToolGroup";
+import { AssistantToolGroup } from "#webui/components/chat/assistant/tool-calls/AssistantToolGroup";
 
 const TEST_TOOL_NAMES: Record<string, string> = {
   "ppal-create-track": "Create Track",

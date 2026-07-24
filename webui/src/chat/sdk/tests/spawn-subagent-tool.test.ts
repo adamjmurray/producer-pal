@@ -156,6 +156,20 @@ describe("createSpawnSubagentTool", () => {
     expect(spawnState.count).toBe(1);
   });
 
+  it("records the worker transcript keyed by tool-call id (UI side channel)", async () => {
+    const recordTranscript = vi.fn();
+    const tool = createSpawnSubagentTool({
+      config: createConfig(),
+      runWorker: vi.fn<RunWorker>().mockResolvedValue(workerHistory),
+      spawnState: { count: 0 },
+      recordTranscript,
+    });
+
+    await tool.execute!({ task: "x" }, options());
+
+    expect(recordTranscript).toHaveBeenCalledWith("tc1", workerHistory);
+  });
+
   it("throws for a missing or empty task", async () => {
     const { tool, runWorker } = setup();
 

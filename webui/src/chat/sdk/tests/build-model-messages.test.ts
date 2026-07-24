@@ -90,6 +90,43 @@ describe("buildModelMessages", () => {
     ]);
   });
 
+  it("never sends a subagent transcript to the model, only the compact result", () => {
+    // The worker transcript rides on the tool-result for the UI, but the model
+    // must see only the compact result — else the orchestrator context blows up.
+    const result = buildModelMessages([
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "1", name: "spawn_subagent", args: { task: "x" } }],
+        toolResults: [
+          {
+            id: "1",
+            name: "spawn_subagent",
+            args: { task: "x" },
+            result: "Added a bassline.",
+            subagentTranscript: [
+              { role: "user", content: "x" },
+              { role: "assistant", content: "lots of internal reasoning" },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const toolMessage = result.find((m) => m.role === "tool");
+
+    expect(toolMessage?.content).toStrictEqual([
+      {
+        type: "tool-result",
+        toolCallId: "1",
+        toolName: "spawn_subagent",
+        output: { type: "text", value: "Added a bassline." },
+      },
+    ]);
+    // No transcript text leaked into the model payload anywhere.
+    expect(JSON.stringify(result)).not.toContain("internal reasoning");
+  });
+
   it("starts the model payload at the compaction summary, dropping prior turns", () => {
     // Compaction keeps the prior turns in history for display, but the model
     // should only see the summary and everything after it.

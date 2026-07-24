@@ -55,6 +55,13 @@ export class ChatSdkClient {
    */
   private spawnState = { count: 0 };
   /**
+   * Worker transcripts recorded by the spawn tool, keyed by tool-call id.
+   * Drained in processStream to attach each transcript to its tool-result
+   * (UI-only; the model never sees it). A restored conversation reads the
+   * transcript straight off the persisted tool-result, so this stays empty then.
+   */
+  private spawnTranscripts = new Map<string, ChatMessage[]>();
+  /**
    * The MCP client backing `tools`. Each tool's execute() closure calls
    * mcpClient.callTool(), so it must stay connected for this client's whole
    * lifetime and only close when the client is discarded — see dispose().
@@ -95,6 +102,8 @@ export class ChatSdkClient {
           runWorker: (workerConfig, task, signal) =>
             this.runSubagent(workerConfig, task, signal),
           spawnState: this.spawnState,
+          recordTranscript: (toolCallId, transcript) =>
+            this.spawnTranscripts.set(toolCallId, transcript),
         }),
       };
     } else {
@@ -136,6 +145,35 @@ export class ChatSdkClient {
     } finally {
       worker.dispose();
     }
+  }
+
+  /**
+   * If `part` is a spawn_subagent tool-result, attach the worker transcript the
+   * spawn tool stashed (keyed by tool-call id) to the just-recorded tool-result
+   * entry. This is the out-of-band path that gets the transcript to the UI card
+   * without putting it in the value the orchestrator model receives.
+   * @param part - The stream part just handled
+   * @param msg - The assistant message currently being built
+   */
+  private attachSubagentTranscript(
+    part: Record<string, unknown>,
+    msg: ChatMessage,
+  ): void {
+    if (
+      part.type !== "tool-result" ||
+      part.toolName !== SPAWN_SUBAGENT_TOOL_NAME
+    ) {
+      return;
+    }
+
+    const toolCallId = part.toolCallId as string;
+    const transcript = this.spawnTranscripts.get(toolCallId);
+
+    if (!transcript) return;
+
+    const entry = msg.toolResults?.find((tr) => tr.id === toolCallId);
+
+    if (entry) entry.subagentTranscript = transcript;
   }
 
   /**
@@ -262,6 +300,8 @@ export class ChatSdkClient {
         const handled = handleStreamPart(part.type, part, currentMsg);
 
         if (handled) {
+          this.attachSubagentTranscript(part, currentMsg);
+
           if (!addedCurrentMsg) {
             this.chatHistory.push(currentMsg);
             addedCurrentMsg = true;

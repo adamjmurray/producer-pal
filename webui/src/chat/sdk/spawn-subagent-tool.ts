@@ -61,6 +61,13 @@ export interface SpawnSubagentDeps {
   ) => Promise<ChatMessage[]>;
   /** Mutable per-conversation spawn counter; enforces MAX_SPAWNS. */
   spawnState: { count: number };
+  /**
+   * Stash the worker's full transcript for the UI, keyed by tool-call id. The
+   * client attaches it to the tool result out-of-band so it reaches the card but
+   * NOT the orchestrator model (execute's return value is the only thing the
+   * model sees). Optional so the tool works without a UI sink.
+   */
+  recordTranscript?: (toolCallId: string, transcript: ChatMessage[]) => void;
 }
 
 /**
@@ -84,7 +91,10 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
     }),
     execute: async (
       args: Record<string, unknown>,
-      { abortSignal }: { abortSignal?: AbortSignal },
+      {
+        abortSignal,
+        toolCallId,
+      }: { abortSignal?: AbortSignal; toolCallId: string },
     ): Promise<string> => {
       const task = args.task;
 
@@ -103,6 +113,8 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
 
       const workerConfig = buildWorkerConfig(deps.config);
       const transcript = await deps.runWorker(workerConfig, task, abortSignal);
+
+      deps.recordTranscript?.(toolCallId, transcript);
 
       return extractWorkerResult(transcript);
     },

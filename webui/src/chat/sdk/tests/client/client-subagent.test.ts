@@ -187,4 +187,61 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
 
     expect(result).toBe("Worker done.");
   });
+
+  it("attaches the worker transcript to the tool result (UI-only)", async () => {
+    const client = new ChatSdkClient(
+      "key",
+      createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
+    );
+
+    await client.initialize();
+    await runTurn(client);
+
+    const spawnTool = lastStreamTools()[SPAWN_SUBAGENT_TOOL_NAME] as {
+      execute: (
+        args: Record<string, unknown>,
+        opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
+      ) => Promise<string>;
+    };
+
+    // Run the worker; it records its transcript keyed by tool-call id "tc-x".
+    mockStreamParts([
+      { type: "text-delta", text: "Worker done." },
+      { type: "finish", finishReason: "stop" },
+    ]);
+    await spawnTool.execute(
+      { task: "x" },
+      { toolCallId: "tc-x", messages: [], abortSignal: undefined },
+    );
+
+    // A later orchestrator turn emits the matching tool-result part; the client
+    // attaches the stashed transcript to that tool-result entry.
+    mockStreamParts([
+      {
+        type: "tool-call",
+        toolCallId: "tc-x",
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+        input: { task: "x" },
+      },
+      {
+        type: "tool-result",
+        toolCallId: "tc-x",
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+        input: { task: "x" },
+        output: "Worker done.",
+      },
+      { type: "finish", finishReason: "stop" },
+    ]);
+
+    for await (const _ of client.sendMessage("carry on")) {
+      /* consume */
+    }
+
+    const entry = client.chatHistory
+      .flatMap((m) => m.toolResults ?? [])
+      .find((tr) => tr.id === "tc-x");
+
+    expect(entry?.subagentTranscript).toBeDefined();
+    expect(entry?.subagentTranscript?.at(-1)?.content).toBe("Worker done.");
+  });
 });

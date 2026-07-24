@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
+import { extractWarnings } from "#webui/components/chat/assistant/helpers/tool-call-warning-helpers";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { type UIStepUsagePart, type UIToolPart } from "#webui/types/messages";
 import { AssistantToolCall } from "./AssistantToolCall";
-import { extractWarnings } from "./helpers/tool-call-warning-helpers";
 
 interface AssistantToolGroupProps {
   parts: (UIToolPart | UIStepUsagePart)[];

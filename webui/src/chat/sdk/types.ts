@@ -29,6 +29,13 @@ export interface ChatMessage {
     args: Record<string, unknown>;
     result: unknown;
     isError?: boolean;
+    /**
+     * For a spawn_subagent result: the worker's full chat history, kept for the
+     * UI deep-dive. Persisted with the conversation but NEVER sent to the model
+     * (buildModelMessages reads only `result`), so the orchestrator context can't
+     * blow up. Absent for ordinary tool results.
+     */
+    subagentTranscript?: ChatMessage[];
   }>;
   reasoning?: string;
   /**
