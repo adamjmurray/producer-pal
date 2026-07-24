@@ -13,6 +13,10 @@ import express, {
 } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
+import {
+  SMALL_MODEL_MODE_HEADER,
+  resolveSmallModelMode,
+} from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   DEFAULT_NOTATION,
@@ -25,6 +29,7 @@ import {
   createMcpServer,
   validateTools,
 } from "./create-mcp-server.ts";
+import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import {
@@ -156,14 +161,29 @@ function applyLiveApiEnabled(next: boolean): void {
   }
 }
 
-// Enrich ppal-connect Node-side with the skills, context, memory, and next-step
-// blocks (see enrich-connect.ts for the block order and why it matters).
-// config.projectContext is the per-Live Set context blob.
-const callLiveApiEnriched = enrichConnect(callLiveApi, () => ({
-  notation: config.notation,
-  smallModelMode: config.smallModelMode,
-  projectContext: config.projectContext,
-}));
+/**
+ * Enrich ppal-connect Node-side with the skills, context, memory, and next-step
+ * blocks (see enrich-connect.ts for the block order and why it matters).
+ * config.projectContext is the per-Live Set context blob. smallModelMode arrives
+ * through a getter (not config directly) so a POST /mcp request can supply its
+ * own per-request value for the skills variant — the same value that shrinks its
+ * tool schemas — while REST routes keep reading the live global.
+ *
+ * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
+ * @returns A callLiveApi whose ppal-connect results carry every block
+ */
+function buildEnrichedCall(
+  getSmallModelMode: () => boolean,
+): WrappedCallLiveApi {
+  return enrichConnect(callLiveApi, () => ({
+    notation: config.notation,
+    smallModelMode: getSmallModelMode(),
+    projectContext: config.projectContext,
+  }));
+}
+
+// REST routes read the live global; POST /mcp builds its own per-request wrapper.
+const callLiveApiEnriched = buildEnrichedCall(() => config.smallModelMode);
 
 interface JsonRpcError {
   jsonrpc: string;
@@ -275,12 +295,25 @@ export function createExpressApp(): Express {
 
       console.info(`MCP request: ${method}`);
 
-      const server = createMcpServer(callLiveApiEnriched, {
-        smallModelMode: config.smallModelMode,
-        notation: config.notation,
-        liveApiEnabled: config.liveApiEnabled,
-        tools: config.tools,
-      });
+      // Per-request small-model mode: the built-in chat and each subagent worker
+      // send their own value via this header, so one caller's mode never leaks
+      // to the concurrently-running main session (a POST /config would). Absent
+      // ⇒ the global default, so external MCP clients are unaffected. Drives both
+      // the tool-schema shrink (below) and the skills variant (enriched wrapper).
+      const requestSmallModelMode = resolveSmallModelMode(
+        req.get(SMALL_MODEL_MODE_HEADER),
+        config.smallModelMode,
+      );
+
+      const server = createMcpServer(
+        buildEnrichedCall(() => requestSmallModelMode),
+        {
+          smallModelMode: requestSmallModelMode,
+          notation: config.notation,
+          liveApiEnabled: config.liveApiEnabled,
+          tools: config.tools,
+        },
+      );
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
       });

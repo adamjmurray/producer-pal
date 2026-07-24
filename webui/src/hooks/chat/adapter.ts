@@ -208,6 +208,9 @@ export const chatAdapter: ChatAdapter<
     // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
     const showThoughts =
       thinking !== "Off" && Boolean(extraParams?.showThoughts);
+    // Carried onto the config so client.initialize sends it as the per-request
+    // MCP header (schema shrink + basic skills variant for this caller).
+    const smallModelMode = Boolean(extraParams?.smallModelMode);
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(
@@ -235,6 +238,7 @@ export const chatAdapter: ChatAdapter<
       temperature: suppressTemperature ? undefined : temperature,
       systemInstruction,
       enabledTools,
+      smallModelMode,
       showThoughts,
       providerOptions,
       buildProviderOptions: (overrideThinking: string) =>

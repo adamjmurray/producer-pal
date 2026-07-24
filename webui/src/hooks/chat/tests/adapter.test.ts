@@ -74,6 +74,34 @@ describe("chatAdapter", () => {
       expect(config.enabledTools).toStrictEqual({});
     });
 
+    it("carries smallModelMode from extraParams onto the config", () => {
+      const on = chatAdapter.buildConfig(
+        "gpt-4o",
+        1.0,
+        "default",
+        {},
+        undefined,
+        {
+          ...extraParams,
+          smallModelMode: true,
+        },
+      );
+
+      expect(on.smallModelMode).toBe(true);
+
+      // Absent in extraParams coerces to false so the header is always explicit.
+      const off = chatAdapter.buildConfig(
+        "gpt-4o",
+        1.0,
+        "default",
+        {},
+        undefined,
+        extraParams,
+      );
+
+      expect(off.smallModelMode).toBe(false);
+    });
+
     it("passes enabled tools to config", () => {
       const enabledTools = { "ppal-connect": true, "ppal-read": false };
       const config = chatAdapter.buildConfig(

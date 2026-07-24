@@ -68,3 +68,43 @@ Be creative and focus on the user's musical goals.`;
 export function resolveSystemInstruction(override?: string | null): string {
   return override?.trim() ? override : SYSTEM_INSTRUCTION;
 }
+
+// --- Per-request small-model mode (MCP transport) ---
+
+/**
+ * HTTP header that carries a per-request small-model-mode override on POST /mcp.
+ *
+ * Small-model mode drives BOTH tool-schema shrinking (create-mcp-server.ts) and
+ * the skills variant (basic vs standard, enrich-connect.ts). It is otherwise a
+ * single server-side global (`config.smallModelMode`), which means every caller
+ * shares one value. This header lets an individual caller — the built-in chat,
+ * or a spawned subagent worker — drive its own value for its own requests, so a
+ * full-strength orchestrator can delegate to cheap small-model workers without
+ * clobbering the global (which a POST /config would).
+ *
+ * Absent ⇒ the server falls back to `config.smallModelMode`. External MCP
+ * clients (Claude Desktop, MCP Inspector) and the device toggle never send it
+ * and keep using the global default. Sent lowercase; HTTP header names are
+ * case-insensitive and Express's `req.get` matches accordingly.
+ */
+export const SMALL_MODEL_MODE_HEADER = "x-producer-pal-small-model-mode";
+
+/**
+ * Resolve the effective small-model mode for one request from its header value,
+ * falling back to the global default when the header is absent or unrecognized.
+ * The client sends the string "true" or "false"; anything else is treated as
+ * absent so a stray value can't force a mode.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @param fallback - The global `config.smallModelMode` to use when no header
+ * @returns The small-model mode to apply for this request
+ */
+export function resolveSmallModelMode(
+  headerValue: string | undefined,
+  fallback: boolean,
+): boolean {
+  if (headerValue === "true") return true;
+  if (headerValue === "false") return false;
+
+  return fallback;
+}

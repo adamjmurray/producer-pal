@@ -85,6 +85,7 @@ export class ChatSdkClient {
     const { tools, mcpClient } = await createMcpTools(
       mcpUrl,
       this.config.enabledTools,
+      this.config.smallModelMode,
     );
 
     this.mcpClient = mcpClient;
