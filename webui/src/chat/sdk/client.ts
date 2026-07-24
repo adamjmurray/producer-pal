@@ -13,10 +13,22 @@ import {
 } from "./build-model-messages";
 import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
+import {
+  SPAWN_SUBAGENT_TOOL_NAME,
+  createSpawnSubagentTool,
+} from "./spawn-subagent-tool";
 import { createStreamErrorSignal } from "./stream-with-error-signal";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
+
+/**
+ * Orchestrator step budget when subagents are enabled. Widened off the default
+ * because, in phase-1 sequential delegation, context-gathering steps and each
+ * sequential spawn share this budget (a spawn costs one step). MAX_SPAWNS, not
+ * this, is the real ceiling on worker count.
+ */
+const MAX_ORCHESTRATOR_STEPS = 25;
 
 /**
  * AI SDK client that wraps streamText for chat with MCP tool support.
@@ -31,6 +43,17 @@ export class ChatSdkClient {
   toolLimitReached = false;
   private tools: ToolSet = {};
   private config: ChatClientConfig;
+  /**
+   * This client's tool-step budget for streamText's stopWhen. Set in
+   * initialize(): MAX_ORCHESTRATOR_STEPS when subagents are enabled, the config's
+   * budget for a worker (MAX_WORKER_STEPS), else the shared MAX_TOOL_STEPS.
+   */
+  private maxSteps = MAX_TOOL_STEPS;
+  /**
+   * Per-conversation subagent counter, shared with the spawn tool so MAX_SPAWNS
+   * caps total workers across every sendMessage in this client's lifetime.
+   */
+  private spawnState = { count: 0 };
   /**
    * The MCP client backing `tools`. Each tool's execute() closure calls
    * mcpClient.callTool(), so it must stay connected for this client's whole
@@ -57,8 +80,62 @@ export class ChatSdkClient {
       this.config.enabledTools,
     );
 
-    this.tools = tools;
     this.mcpClient = mcpClient;
+
+    if (this.config.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME] === true) {
+      // Orchestrator with subagents enabled: add the client-side spawn tool and
+      // widen the step budget so sequential spawns and context-gathering steps
+      // share enough headroom. A worker never reaches here — its cloned config
+      // sets spawn_subagent false (the recursion guard).
+      this.maxSteps = MAX_ORCHESTRATOR_STEPS;
+      this.tools = {
+        ...tools,
+        [SPAWN_SUBAGENT_TOOL_NAME]: createSpawnSubagentTool({
+          config: this.config,
+          runWorker: (workerConfig, task, signal) =>
+            this.runSubagent(workerConfig, task, signal),
+          spawnState: this.spawnState,
+        }),
+      };
+    } else {
+      // Worker (config.maxSteps = MAX_WORKER_STEPS) or a subagents-off
+      // orchestrator (undefined → shared default; behavior unchanged).
+      this.maxSteps = this.config.maxSteps ?? MAX_TOOL_STEPS;
+      this.tools = tools;
+    }
+  }
+
+  /**
+   * Run a nested subagent session to completion and return its final chat
+   * history. The worker gets its OWN ChatSdkClient — own MCP client, own tools,
+   * own abort — so aborting or disposing it never touches the orchestrator's
+   * long-lived client. Injected into the spawn tool as runWorker.
+   * @param workerConfig - Cloned config for the worker (spawn disabled)
+   * @param task - The delegated instruction, sent as the worker's user message
+   * @param abortSignal - The orchestrator turn's signal, forwarded so Stop also
+   *   aborts the worker's in-flight stream
+   * @returns The worker's complete chat history (kept UI-side, not sent to the model)
+   */
+  private async runSubagent(
+    workerConfig: ChatClientConfig,
+    task: string,
+    abortSignal?: AbortSignal,
+  ): Promise<ChatMessage[]> {
+    const worker = new ChatSdkClient("", workerConfig);
+
+    await worker.initialize();
+
+    try {
+      // Drain the generator; we only need the accumulated final history.
+      const stream = worker.sendMessage(task, abortSignal);
+      let step = await stream.next();
+
+      while (!step.done) step = await stream.next();
+
+      return worker.chatHistory;
+    } finally {
+      worker.dispose();
+    }
   }
 
   /**
@@ -149,7 +226,7 @@ export class ChatSdkClient {
         isAnthropicThinkingEnabled(providerOptions),
       ),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
-      stopWhen: stepCountIs(MAX_TOOL_STEPS),
+      stopWhen: stepCountIs(this.maxSteps),
       temperature: this.config.temperature,
       providerOptions,
       abortSignal,
@@ -215,6 +292,7 @@ export class ChatSdkClient {
     this.toolLimitReached = detectToolLimitReached(
       completedSteps,
       finalFinishReason,
+      this.maxSteps,
     );
   }
 }
@@ -222,21 +300,23 @@ export class ChatSdkClient {
 /**
  * Decide whether a finished stream hit the multi-step tool-call limit.
  *
- * The AI SDK's `stopWhen: stepCountIs(MAX_TOOL_STEPS)` halts the agentic loop
- * once MAX_TOOL_STEPS steps complete. If the model still wanted to call tools
- * at that point, the final finishReason is `"tool-calls"` — that combination is
- * the genuine limit hit. A clean `"stop"`, a user abort (no `finish` part, so
+ * The AI SDK's `stopWhen: stepCountIs(maxSteps)` halts the agentic loop once
+ * `maxSteps` steps complete. If the model still wanted to call tools at that
+ * point, the final finishReason is `"tool-calls"` — that combination is the
+ * genuine limit hit. A clean `"stop"`, a user abort (no `finish` part, so
  * finishReason is undefined), and errors all fail this check and must NOT show
  * the notice.
  * @param completedSteps - Number of completed steps (finish-step parts seen)
  * @param finishReason - Overall finishReason from the finish part, if any
+ * @param maxSteps - The step budget this stream ran with (client's maxSteps)
  * @returns True only when the tool-step limit was reached mid-task
  */
 export function detectToolLimitReached(
   completedSteps: number,
   finishReason: FinishReason | undefined,
+  maxSteps: number = MAX_TOOL_STEPS,
 ): boolean {
-  return completedSteps >= MAX_TOOL_STEPS && finishReason === "tool-calls";
+  return completedSteps >= maxSteps && finishReason === "tool-calls";
 }
 
 /**

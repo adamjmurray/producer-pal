@@ -97,4 +97,10 @@ export interface ChatClientConfig {
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
   chatHistory?: ChatMessage[];
+  /**
+   * Tool-step budget for streamText's stopWhen. Defaults to the shared
+   * MAX_TOOL_STEPS in client.ts. A subagent worker sets MAX_WORKER_STEPS; an
+   * orchestrator with subagents enabled widens to MAX_ORCHESTRATOR_STEPS.
+   */
+  maxSteps?: number;
 }

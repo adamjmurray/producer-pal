@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import {
   ensureLiveApiTool,
+  ensureSpawnSubagentTool,
   LIVE_API_TOOL_ID,
+  SPAWN_SUBAGENT_TOOL_ID,
   groupTools,
 } from "#webui/components/settings/controls/helpers/tool-toggles-helpers";
 
@@ -35,7 +37,40 @@ describe("ensureLiveApiTool", () => {
   });
 });
 
+describe("ensureSpawnSubagentTool", () => {
+  it("appends a Subagent placeholder when missing", () => {
+    const tools = [tool("ppal-connect", "Connect")];
+    const result = ensureSpawnSubagentTool(tools);
+
+    expect(result).toHaveLength(2);
+    expect(result[1]?.id).toBe(SPAWN_SUBAGENT_TOOL_ID);
+    expect(result[1]?.name).toBe("Subagent");
+    expect(result[1]?.description).toBeDefined();
+  });
+
+  it("returns the original list when Subagent is already present", () => {
+    const tools = [
+      tool("ppal-connect", "Connect"),
+      tool(SPAWN_SUBAGENT_TOOL_ID, "Subagent"),
+    ];
+    const result = ensureSpawnSubagentTool(tools);
+
+    expect(result).toBe(tools);
+  });
+});
+
 describe("groupTools", () => {
+  it("places Subagent in its own Experimental group at the end", () => {
+    const tools = ensureSpawnSubagentTool([tool("ppal-connect", "Connect")]);
+
+    const groups = groupTools(tools);
+
+    expect(groups.at(-1)?.label).toBe("Experimental");
+    expect(groups.at(-1)?.tools.map((t) => t.id)).toStrictEqual([
+      SPAWN_SUBAGENT_TOOL_ID,
+    ]);
+  });
+
   it("places Live API in its own Advanced group at the end", () => {
     const tools = [
       tool("ppal-connect", "Connect"),
