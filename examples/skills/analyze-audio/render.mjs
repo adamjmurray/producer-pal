@@ -65,14 +65,24 @@ async function main() {
  * Render the Main mix or a single track to a .wav via File ▸ Export Audio/Video.
  * @param {object} o - Options.
  * @param {string} [o.track] - Rendered Track value (e.g. "Main" or a track name).
- * @param {string} [o.start] - Render Start as bar.beat.sixteenth.
- * @param {string} [o.length] - Render Length as bar.beat.sixteenth.
+ * @param {string} [o.start] - Render Start (advisory — see note in body).
+ * @param {string} [o.length] - Render Length (advisory — see note in body).
  * @param {string} o.outDir - Directory to write the .wav into.
  * @param {string} [o.filename] - Explicit output filename; defaults to a unique name.
  * @returns {Promise<string>} Absolute path of the rendered .wav.
  */
 async function exportAudio({ track, start, length, outDir, filename }) {
   mkdirSync(outDir, { recursive: true });
+  if (start || length) {
+    // Verified via AX inspection: the Render Start/Length number boxes are NOT
+    // exposed as accessible controls, so they can't be set from here. The render
+    // range is whatever is currently selected/looped in the Arrangement.
+    process.stderr.write(
+      "Note: --start/--length can't be set through the Export dialog (its number " +
+        "boxes aren't accessible). Select the range in Live's Arrangement first; " +
+        "rendering uses the current selection/loop.\n",
+    );
+  }
   const name = filename ?? `ppal-export-${slug(track ?? "mix")}-${stamp()}.wav`;
   const outFile = resolve(outDir, name);
   if (existsSync(outFile)) {
@@ -82,7 +92,7 @@ async function exportAudio({ track, start, length, outDir, filename }) {
   }
 
   process.stderr.write(`Opening Export dialog…\n`);
-  await runAppleScript(buildExportScript({ track, start, length, outFile }));
+  await runAppleScript(buildExportScript({ track, outFile }));
 
   process.stderr.write(`Rendering (polling for ${name})…\n`);
   await pollForStableFile(outFile);
@@ -92,41 +102,31 @@ async function exportAudio({ track, start, length, outDir, filename }) {
 /**
  * Build the AppleScript that drives the Export dialog and the macOS save panel.
  *
- * VERIFY-FIRST (needs a live spike to confirm element identities): setting the
- * Rendered Track popup and the Render Start/Length fields targets Ableton's
- * CUSTOM dialog by index — the fragile part. Everything from the Export button
- * onward drives the STANDARD macOS save panel (⌘⇧G + filename + Save), which is
- * well-understood and localization-tolerant. Omit --track/--start/--length to
- * skip the custom-field block entirely and render with the dialog's current
- * settings (the reliable core path).
+ * Grounded in an AX inspection of Live 12's dialog: its controls have NO
+ * accessible names, so we address the Rendered Track pop-up by index (it's the
+ * first pop-up button) and commit with Return (the default button) rather than
+ * clicking "Export" by name. The Render Start/Length boxes aren't accessible at
+ * all — range comes from the Arrangement selection (see exportAudio). From the
+ * save panel on it's the STANDARD macOS panel (⌘⇧G + filename + Save).
  * @param {object} o - Options.
- * @param {string} [o.track] - Rendered Track value.
- * @param {string} [o.start] - Render Start (bar.beat.sixteenth).
- * @param {string} [o.length] - Render Length (bar.beat.sixteenth).
+ * @param {string} [o.track] - Rendered Track value (e.g. "Main" or a track name).
  * @param {string} o.outFile - Absolute output path.
  * @returns {string} The AppleScript source.
  */
-function buildExportScript({ track, start, length, outFile }) {
+function buildExportScript({ track, outFile }) {
   const dir = dirname(outFile);
   const base = basename(outFile);
 
-  // Optional: set the custom dialog fields (index-based → SPIKE-VERIFY).
+  // Rendered Track is the first pop-up button (controls are unnamed → by index).
   const setTrack = track
     ? `
       try
         click pop up button 1 of exportWin
         delay 0.2
         click menu item ${as(track)} of menu 1 of pop up button 1 of exportWin
+        delay 0.2
       end try`
     : "";
-  const setRange =
-    start || length
-      ? `
-      try
-        ${start ? `set value of text field 1 of exportWin to ${as(start)}` : ""}
-        ${length ? `set value of text field 2 of exportWin to ${as(length)}` : ""}
-      end try`
-      : "";
 
   return `
     tell application "System Events"
@@ -135,12 +135,12 @@ function buildExportScript({ track, start, length, outFile }) {
         delay 0.3
         keystroke "r" using {command down, shift down}
 
-        -- Wait for the Export dialog (title contains "Export").
+        -- Wait for the Export dialog (window titled "Export…", subrole AXDialog).
         set exportWin to missing value
         repeat 40 times
           repeat with w in windows
             if name of w contains "Export" then
-              set exportWin to w
+              set exportWin to contents of w
               exit repeat
             end if
           end repeat
@@ -148,17 +148,18 @@ function buildExportScript({ track, start, length, outFile }) {
           delay 0.25
         end repeat
         if exportWin is missing value then error "Export dialog did not appear"
-        ${setTrack}${setRange}
+        ${setTrack}
 
-        -- Commit → opens the standard macOS save panel.
-        click button "Export" of exportWin
+        -- Commit via the default button (Export). The dialog's buttons have no
+        -- accessible names, so we press Return instead of clicking by name.
+        keystroke return
 
-        -- Wait for the save panel (a window/sheet exposing a "Save" button).
+        -- Wait for the standard macOS save panel (exposes a named "Save" button).
         set savePanel to missing value
         repeat 40 times
           repeat with w in windows
             if exists (button "Save" of w) then
-              set savePanel to w
+              set savePanel to contents of w
               exit repeat
             end if
           end repeat
@@ -172,13 +173,17 @@ function buildExportScript({ track, start, length, outFile }) {
         delay 0.2
         -- Go to folder: ⌘⇧G, type the absolute directory, confirm.
         keystroke "g" using {command down, shift down}
-        delay 0.4
+        delay 0.5
         keystroke ${as(dir)}
-        delay 0.2
+        delay 0.3
         keystroke return
-        delay 0.4
-        -- Save.
-        click button "Save" of savePanel
+        delay 0.5
+        -- Save (named button on the standard panel; Return as a fallback).
+        try
+          click button "Save" of savePanel
+        on error
+          keystroke return
+        end try
       end tell
     end tell
     return "ok"
@@ -232,52 +237,75 @@ async function bounceClip({ cleanup }) {
     throw new Error("No new track appeared after ⌘B (timed out)");
 
   const newIndex = after - 1; // Bounce to New Track appends the audio track.
-  const filePath = await newTrackAudioFile(callTool, newIndex);
-  process.stderr.write(`New audio track at index ${newIndex}.\n`);
+  const track = await readTrack(callTool, newIndex);
+  const filePath = await clipFilePath(callTool, track);
+  process.stderr.write(
+    `New audio track "${track?.name}" at index ${newIndex} (id ${track?.id}).\n`,
+  );
 
-  if (cleanup) {
-    process.stderr.write(`Cleaning up track ${newIndex}…\n`);
-    // TODO(spike): confirm the delete-track tool name/args against a live device.
-    await callTool("ppal-delete-track", { trackIndex: newIndex }).catch((e) =>
-      process.stderr.write(`Cleanup skipped: ${e.message}\n`),
-    );
+  if (cleanup && track?.id != null) {
+    process.stderr.write(`Cleaning up track id ${track.id}…\n`);
+    await callTool("ppal-delete", {
+      ids: String(track.id),
+      type: "track",
+    }).catch((e) => process.stderr.write(`Cleanup skipped: ${e.message}\n`));
   }
 
   return (
     filePath ??
-    `<unresolved: read file_path of the audio clip on track index ${newIndex}>`
+    `<unresolved: read the sample file path of a clip on track index ${newIndex}>`
   );
 }
 
 /**
- * Count tracks in the current Live Set via ppal-read-live-set.
+ * Count regular (audio/MIDI) tracks in the current Live Set.
  * @param {Function} callTool - The ppal callTool function.
- * @returns {Promise<number>} Number of tracks.
+ * @returns {Promise<number>} The regular track count.
  */
 async function trackCount(callTool) {
   const { result } = await callTool("ppal-read-live-set");
-  const tracks = result?.tracks ?? [];
-  return Array.isArray(tracks) ? tracks.length : 0;
+  return result?.regularTrackCount ?? 0;
 }
 
 /**
- * Read the audio file backing the first clip on a freshly bounced track.
+ * Read a track (with its arrangement clips) by index.
  * @param {Function} callTool - The ppal callTool function.
- * @param {number} trackIndex - Index of the new audio track.
- * @returns {Promise<string|null>} The clip's file_path, or null if not resolvable.
+ * @param {number} trackIndex - 0-based track index.
+ * @returns {Promise<object|null>} The track object, or null.
  */
-async function newTrackAudioFile(callTool, trackIndex) {
+async function readTrack(callTool, trackIndex) {
+  const { result } = await callTool("ppal-read-track", {
+    trackIndex,
+    include: ["arrangement-clips"],
+  });
+  return result ?? null;
+}
+
+/**
+ * Resolve the audio file backing a track's first arrangement clip.
+ * @param {Function} callTool - The ppal callTool function.
+ * @param {object|null} track - A track object from readTrack().
+ * @returns {Promise<string|null>} The clip's sample file path, or null.
+ */
+async function clipFilePath(callTool, track) {
+  const clip = track?.arrangementClips?.[0];
+  if (clip?.id == null) return null;
   try {
-    const { result } = await callTool("ppal-read-track", { trackIndex });
-    const clips = result?.clips ?? result?.arrangementClips ?? [];
-    for (const clip of clips) {
-      if (clip?.filePath) return clip.filePath;
-      if (clip?.file_path) return clip.file_path;
-    }
+    const { result } = await callTool("ppal-read-clip", {
+      clipId: String(clip.id),
+      include: ["sample"],
+    });
+    // The audio path may surface under a few keys depending on ppal version.
+    return (
+      result?.filePath ??
+      result?.file_path ??
+      result?.sample?.filePath ??
+      result?.sample?.path ??
+      null
+    );
   } catch {
-    // fall through — caller reports an unresolved-path note
+    return null;
   }
-  return null;
 }
 
 // --- shared helpers ----------------------------------------------------------

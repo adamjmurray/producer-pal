@@ -88,21 +88,28 @@ node analyze-audio.mjs "$WAV" --prompt "How's the arrangement and mix over these
 
 ## Prototype status
 
-This is a **first pass**. What's solid vs. what needs a live spike:
+This is a **first pass**, partly verified against a live Ableton Live 12 (macOS)
+via AX inspection and read-only ppal calls.
 
-- **Solid:** the reliability model (artifact polling), the macOS save panel
-  automation (`⌘⇧G` + filename + Save — a standard `NSSavePanel`), unique
-  filenames to dodge the overwrite sheet, and the Gemini upload/analyze paths.
-- **Needs a live spike (marked `VERIFY-FIRST` / `SPIKE` in the code):**
-  - Ableton's **custom Export dialog** internals — setting the Rendered Track
-    popup and the Render Start/Length fields is index-based and unverified.
-    Whether those fields inherit the Arrangement time selection (so they could
-    be pre-set via `ppal-live-api` instead of typed) is the key open question.
-    Until then, prefer the no-`--track`/`--start`/`--length` form and configure
-    the dialog once by hand.
-  - **Bounce mode:** whether `⌘B` renders offline or realtime for your device
-    chains, its exact clip-vs-track scope, and the `ppal-read-track` /
-    delete-track tool shapes used to find and clean up the new track.
+- **Verified:**
+  - Accessibility automation works; the Export dialog is reachable and its
+    controls were inspected.
+  - **Rendered Track** is the first pop-up button (the dialog's controls have no
+    accessible names, so it's addressed by index; a track is chosen by name from
+    its menu).
+  - Export is committed with **Return** (the default button — you can't click
+    "Export" by name).
+  - ppal shapes used by bounce mode: `regularTrackCount`, `ppal-read-track` →
+    `id` + `arrangementClips[]`, cleanup via `ppal-delete` (`ids` + `type`).
+- **Known limitation:** the **Render Start/Length** number boxes are NOT
+  accessible, so the range can't be set from the dialog. It comes from the
+  current **Arrangement selection/loop** — select the range in Live first.
+  (`--start`/`--length` only print a reminder.)
+- **Not yet run end-to-end (needs the machine free of other input):**
+  - The full export → save-panel → file poll, and the Gemini analyze path
+    against a real key.
+  - Bounce mode live (`⌘B` offline-vs-realtime, clip-vs-track scope, and the
+    exact `ppal-read-clip` key that carries the audio sample path).
 
 ## Gotchas
 
