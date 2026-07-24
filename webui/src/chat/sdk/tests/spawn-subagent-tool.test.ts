@@ -66,6 +66,12 @@ describe("buildWorkerConfig", () => {
     expect(worker.temperature).toBe(0.7);
     expect(worker.systemInstruction).toBe("custom prompt");
   });
+
+  it("inherits smallModelMode so the worker sends its own per-request header", () => {
+    const worker = buildWorkerConfig(createConfig({ smallModelMode: true }));
+
+    expect(worker.smallModelMode).toBe(true);
+  });
 });
 
 describe("extractWorkerResult", () => {

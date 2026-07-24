@@ -99,6 +99,14 @@ export interface ChatClientConfig {
   systemInstruction?: string;
   mcpUrl?: string;
   enabledTools?: Record<string, boolean>;
+  /**
+   * Small-model mode for THIS client's MCP requests, sent as a per-request
+   * header so the server shrinks tool schemas and serves the basic skills
+   * variant for this caller alone. A subagent worker inherits it from the
+   * orchestrator config (buildWorkerConfig), so a small-model worker gets the
+   * reduced context even while the orchestrator runs full-strength.
+   */
+  smallModelMode?: boolean;
   showThoughts: boolean;
   providerOptions?: ProviderOptions;
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */

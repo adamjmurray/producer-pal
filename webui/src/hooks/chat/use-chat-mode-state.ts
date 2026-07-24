@@ -142,6 +142,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     extraParams: {
       baseUrl,
       showThoughts: settings.showThoughts,
+      smallModelMode: settings.smallModelMode,
       provider: settings.provider,
       apiKey: resolvedApiKey,
       systemInstructionOverride,
