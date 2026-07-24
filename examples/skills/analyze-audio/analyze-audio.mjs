@@ -21,10 +21,23 @@
 // it for exact tempo/key/onset numbers; measure those with DSP if you need them.
 
 import { readFile, stat } from "node:fs/promises";
-import { basename } from "node:path";
+import { basename, extname } from "node:path";
 
 const API_ROOT = "https://generativelanguage.googleapis.com";
-const INLINE_MAX_BYTES = 12 * 1024 * 1024; // above this, use the Files API
+// Gemini caps a request's inline data at 20 MB and base64 inflates bytes by ~4/3,
+// so keep the raw file under ~14 MB inline; larger goes through the Files API.
+const INLINE_MAX_BYTES = 14 * 1024 * 1024;
+// Gemini audio MIME types, keyed by file extension (all accepted natively).
+const AUDIO_MIME = {
+  ".mp3": "audio/mp3",
+  ".wav": "audio/wav",
+  ".flac": "audio/flac",
+  ".aiff": "audio/aiff",
+  ".aif": "audio/aiff",
+  ".aac": "audio/aac",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+};
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_PROMPT =
   "You are an audio engineer. Analyze this rendered audio: describe the " +
@@ -60,15 +73,16 @@ async function main() {
       "Usage: node analyze-audio.mjs <file.wav> [--prompt <text>]",
     );
 
-  const apiKey = opts["--api-key"] ?? process.env.GEMINI_API_KEY;
+  const apiKey =
+    opts["--api-key"] ?? process.env.GEMINI_API_KEY ?? process.env.GEMINI_KEY;
   if (!apiKey) {
     throw new Error(
-      "Missing GEMINI_API_KEY (set the env var or pass --api-key).",
+      "Missing API key (set GEMINI_API_KEY or GEMINI_KEY, or pass --api-key).",
     );
   }
   const model = opts["--model"] ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
   const prompt = opts["--prompt"] ?? opts["-p"] ?? DEFAULT_PROMPT;
-  const mimeType = "audio/wav";
+  const mimeType = AUDIO_MIME[extname(file).toLowerCase()] ?? "audio/wav";
 
   const { size } = await stat(file);
   process.stderr.write(
