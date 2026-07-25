@@ -17,6 +17,8 @@ export function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
     description: "Slot description.",
     builtIn: "BUILT-IN",
     override: "",
+    enabled: true,
+    canDisable: true,
     drifted: false,
     forkedFromVersion: null,
     ...over,

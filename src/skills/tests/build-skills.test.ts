@@ -131,7 +131,7 @@ describe("buildSkills - overrides", () => {
   it("replaces the active notation head fragment", () => {
     const result = buildSkills(
       { notation: "barbeat" },
-      { "barbeat-standard": "MY CUSTOM HEAD" },
+      { fragments: { "barbeat-standard": "MY CUSTOM HEAD" } },
     );
 
     expect(result).toContain("MY CUSTOM HEAD");
@@ -142,7 +142,11 @@ describe("buildSkills - overrides", () => {
   it("replaces the whole document when the driver slot is overridden", () => {
     const result = buildSkills(
       { notation: "barbeat" },
-      { standard: `MY CUSTOM CORE\n\n@include "./{notation}-standard.md"` },
+      {
+        fragments: {
+          standard: `MY CUSTOM CORE\n\n@include "./{notation}-standard.md"`,
+        },
+      },
     );
 
     expect(result).toBe(`MY CUSTOM CORE\n\n${barbeatStandard}`);
@@ -152,9 +156,11 @@ describe("buildSkills - overrides", () => {
     const result = buildSkills(
       { notation: "barbeat" },
       {
-        basic: "IGNORED",
-        "midi-json": "IGNORED",
-        "stark-standard": "IGNORED",
+        fragments: {
+          basic: "IGNORED",
+          "midi-json": "IGNORED",
+          "stark-standard": "IGNORED",
+        },
       },
     );
 
@@ -166,11 +172,11 @@ describe("buildSkills - overrides", () => {
     // folds both onto the single `midi-json` slot the user actually edits.
     const standard = buildSkills(
       { notation: "midi-json" },
-      { "midi-json": "MJ!" },
+      { fragments: { "midi-json": "MJ!" } },
     );
     const basic = buildSkills(
       { notation: "midi-json", smallModelMode: true },
-      { "midi-json": "MJ!" },
+      { fragments: { "midi-json": "MJ!" } },
     );
 
     expect(standard).toContain("MJ!");
@@ -179,8 +185,7 @@ describe("buildSkills - overrides", () => {
 
   it("overrides stark's standard and basic heads independently", () => {
     const overrides = {
-      "stark-standard": "STD HEAD",
-      "stark-basic": "BASIC HEAD",
+      fragments: { "stark-standard": "STD HEAD", "stark-basic": "BASIC HEAD" },
     };
     const standard = buildSkills({ notation: "stark" }, overrides);
     const basic = buildSkills(
@@ -196,8 +201,10 @@ describe("buildSkills - overrides", () => {
 
   it("overrides the context fragment per depth, never across depths", () => {
     const overrides = {
-      "context-standard": "STD CONTEXT",
-      "context-basic": "BASIC CONTEXT",
+      fragments: {
+        "context-standard": "STD CONTEXT",
+        "context-basic": "BASIC CONTEXT",
+      },
     };
     const standard = buildSkills({ notation: "barbeat" }, overrides);
     const basic = buildSkills(
@@ -219,7 +226,7 @@ describe("buildSkills - overrides", () => {
     const warnings: string[] = [];
     const result = buildSkills(
       { notation: "barbeat" },
-      { standard: `KEPT\n\n@include "./core-devices.md"` },
+      { fragments: { standard: `KEPT\n\n@include "./core-devices.md"` } },
       (message) => warnings.push(message),
     );
 
@@ -235,7 +242,7 @@ describe("buildSkills - overrides", () => {
     const warnings: string[] = [];
     const result = buildSkills(
       { notation: "barbeat" },
-      { "core-devices": "MY OLD DEVICES OVERRIDE" },
+      { fragments: { "core-devices": "MY OLD DEVICES OVERRIDE" } },
       (message) => warnings.push(message),
     );
 
@@ -256,8 +263,10 @@ describe("buildSkills - overrides", () => {
 
     for (const proto of ["toString", "constructor", "__proto__"]) {
       expect(() =>
-        buildSkills({ notation: "barbeat" }, { [proto]: "hi" }, (message) =>
-          warnings.push(message),
+        buildSkills(
+          { notation: "barbeat" },
+          { fragments: { [proto]: "hi" } },
+          (message) => warnings.push(message),
         ),
       ).not.toThrow();
     }
@@ -270,8 +279,10 @@ describe("buildSkills - overrides", () => {
     const result = buildSkills(
       { notation: "barbeat" },
       {
-        "getting-help": `MINE\n\n@include "./my-extra.md"`,
-        "my-extra": "MY EXTRA SECTION",
+        fragments: {
+          "getting-help": `MINE\n\n@include "./my-extra.md"`,
+          "my-extra": "MY EXTRA SECTION",
+        },
       },
       (message) => warnings.push(message),
     );
@@ -292,7 +303,7 @@ describe("buildSkills - overrides", () => {
     expect(standardDriver).toContain(directive); // guard: replace() below is real
     const result = buildSkills(
       { notation: "barbeat" },
-      { standard: standardDriver.replace(directive, "") },
+      { fragments: { standard: standardDriver.replace(directive, "") } },
     );
 
     expect(result).not.toContain("## Devices & Instruments");
@@ -314,10 +325,12 @@ describe("buildSkills - overrides", () => {
     const result = buildSkills(
       { notation: "barbeat" },
       {
-        standard: standardDriver.replace(
-          `@include "./transforms-core.md"\n\n`,
-          "",
-        ),
+        fragments: {
+          standard: standardDriver.replace(
+            `@include "./transforms-core.md"\n\n`,
+            "",
+          ),
+        },
       },
       (message) => warnings.push(message),
     );
@@ -339,7 +352,11 @@ describe("buildSkills - overrides", () => {
 
     buildSkills(
       { notation: "barbeat" },
-      { standard: standardDriver.replace(`@include "./devices.md"\n\n`, "") },
+      {
+        fragments: {
+          standard: standardDriver.replace(`@include "./devices.md"\n\n`, ""),
+        },
+      },
       (message) => warnings.push(message),
     );
 
@@ -362,7 +379,7 @@ describe("buildSkills - overrides", () => {
 
     const result = buildSkills(
       { notation: "barbeat" },
-      { standard: forked },
+      { fragments: { standard: forked } },
       (message) => warnings.push(message),
     );
 
@@ -375,13 +392,123 @@ describe("buildSkills - overrides", () => {
     const result = buildSkills(
       { notation: "barbeat" },
       {
-        standard: `MY INTRO\n\n@include "./my-notation.md"`,
-        "my-notation": "MY OWN NOTATION GUIDE",
+        fragments: {
+          standard: `MY INTRO\n\n@include "./my-notation.md"`,
+          "my-notation": "MY OWN NOTATION GUIDE",
+        },
       },
     );
 
     expect(result).toBe("MY INTRO\n\nMY OWN NOTATION GUIDE");
     expect(result).not.toContain("## Time & Note Values");
+  });
+});
+
+describe("buildSkills - disabled fragments", () => {
+  it("drops a disabled fragment without falling back to the built-in", () => {
+    // The whole reason the flag exists: an EMPTY override body means "track the
+    // built-in", so suppression needs a channel of its own.
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["library"] },
+    );
+
+    expect(result).not.toContain("## Finding Library Content");
+    expect(result).toContain("## Devices & Instruments");
+  });
+
+  it("drops a disabled fragment the user also customized", () => {
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { fragments: { library: "MY LIBRARY NOTES" }, disabled: ["library"] },
+    );
+
+    expect(result).not.toContain("MY LIBRARY NOTES");
+    expect(result).not.toContain("## Finding Library Content");
+  });
+
+  it("leaves the include line valid, so nothing is reported as unknown", () => {
+    // Same contract as a tool-gated fragment: present-but-empty, not missing.
+    const warnings: string[] = [];
+
+    buildSkills({ notation: "barbeat" }, { disabled: ["arrangement"] }, (m) =>
+      warnings.push(m),
+    );
+
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("warns when a kept fragment's prerequisite was switched off", () => {
+    // Unlike tool gating (where a dependent's gate is a subset of its
+    // prerequisite's, so both go together), a user can switch off exactly the
+    // grammar the surviving tiers are written against.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["transforms-core"] },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain("### Generative Transforms"); // kept, and orphaned
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(
+        `"transforms-expressions" needs "transforms-core"`,
+      ),
+      expect.stringContaining(
+        `"transforms-generative" needs "transforms-core"`,
+      ),
+    ]);
+  });
+
+  it("stays silent when a fragment is switched off with its dependents", () => {
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["devices", "specialized-devices"] },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).not.toContain("## Devices & Instruments");
+    expect(result).not.toContain("### Specialized Device Controls");
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("resolves an aliased notation head through its canonical slot", () => {
+    // The drivers ask for `midi-json-standard`; the switch is stored under the
+    // one slot a user edits, so the alias has to be applied before the check.
+    const result = buildSkills(
+      { notation: "midi-json" },
+      { disabled: ["midi-json"] },
+    );
+
+    expect(result).not.toContain("MIDI-JSON");
+  });
+
+  it("warns about a switched-off file keyed to a retired slot name", () => {
+    // An orphaned file is inert whether it carries a body or only the flag.
+    const warnings: string[] = [];
+
+    buildSkills({ notation: "barbeat" }, { disabled: ["core-devices"] }, (m) =>
+      warnings.push(m),
+    );
+
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"core-devices.md" is no longer used`),
+    ]);
+  });
+
+  it("warns once about a slot that is both overridden and switched off", () => {
+    const warnings: string[] = [];
+
+    buildSkills(
+      { notation: "barbeat" },
+      { fragments: { "core-devices": "MINE" }, disabled: ["core-devices"] },
+      (message) => warnings.push(message),
+    );
+
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"core-devices.md" is no longer used`),
+    ]);
   });
 });
 
@@ -419,7 +546,7 @@ describe("buildSkills - tool gating", () => {
         notation: "barbeat",
         tools: ALL_TOOLS.filter((name) => name !== "ppal-library"),
       },
-      { library: "MY LIBRARY NOTES" },
+      { fragments: { library: "MY LIBRARY NOTES" } },
     );
 
     expect(result).not.toContain("MY LIBRARY NOTES");

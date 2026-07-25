@@ -56,10 +56,22 @@ export function hashBuiltIn(builtIn: string): string {
  * @returns Markdown with a `---` provenance block above the body
  */
 export function stampProvenance(body: string, builtInHash: string): string {
-  return serializeFrontmatter(
-    { producerPalVersion: VERSION, builtInHash },
-    body,
-  );
+  // Spread into a plain record: an interface has no index signature, which is
+  // what the flat frontmatter serializer takes.
+  return serializeFrontmatter({ ...freshProvenance(builtInHash) }, body);
+}
+
+/**
+ * Provenance for an override being forked from the current built-in RIGHT NOW.
+ * Its field names double as the frontmatter keys, so a store that assembles its
+ * own frontmatter block (the skills store, which also writes an `enabled` flag)
+ * can spread this straight in rather than re-deriving the version.
+ *
+ * @param builtInHash - Hash of the built-in being forked from ({@link hashBuiltIn})
+ * @returns Provenance stamped with the running Producer Pal version
+ */
+export function freshProvenance(builtInHash: string): OverrideProvenance {
+  return { producerPalVersion: VERSION, builtInHash };
 }
 
 /**

@@ -112,6 +112,14 @@ export interface SkillSlotDef {
   /** The release-tuned built-in fragment this slot replaces. */
   builtIn: string;
   /**
+   * True for the two DRIVER roots, which have no per-slot on/off switch. They
+   * are the document being assembled rather than a section of it, so switching
+   * one off would resolve the root to "" and empty the whole blob — a one-click
+   * blanking with nothing else on screen to explain it. Trimming what a driver
+   * composes is what overriding it (deleting `@include` lines) is for.
+   */
+  alwaysOn?: boolean;
+  /**
    * Fragments this one is incomplete without. The carve is by task, not by
    * independence: a few fragments teach a vocabulary whose GRAMMAR lives in
    * another (the transforms tiers name `swing()`/`ratchet()` but the
@@ -136,6 +144,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "The standard skills document: Producer Pal's instructions to the AI, sent when it connects. It's a list of @include lines, one per section below — delete a line to drop that section, or rewrite the document freely.",
     builtIn: standardDriver,
+    alwaysOn: true,
   },
 
   basic: {
@@ -143,6 +152,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "The skills document for smaller or local models: a much shorter set of essentials, plus the notation and context guides via @include.",
     builtIn: basicDriver,
+    alwaysOn: true,
   },
 
   "time-and-values": {
@@ -280,4 +290,16 @@ export function isSkillSlotName(value: unknown): value is SkillSlotName {
     typeof value === "string" &&
     (SKILL_SLOT_NAMES as readonly string[]).includes(value)
   );
+}
+
+/**
+ * Whether a slot may be switched off (see {@link SkillSlotDef.alwaysOn}). The
+ * editor hides the toggle for the drivers and the route refuses to store a
+ * disable for them, so the two surfaces read one answer.
+ *
+ * @param name - The slot to check
+ * @returns True for every slot except the driver roots
+ */
+export function isDisableableSkillSlot(name: SkillSlotName): boolean {
+  return SKILL_SLOTS[name].alwaysOn !== true;
 }

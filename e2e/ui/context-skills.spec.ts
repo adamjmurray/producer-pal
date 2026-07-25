@@ -40,4 +40,28 @@ test.describe("Context editor — skills fragments (stubbed backend)", () => {
 
     expectNoConsoleOutput(captured);
   });
+
+  test("switches a fragment off and persists it across reload", async ({
+    page,
+  }) => {
+    const state = await setupContextTest(page);
+
+    await openContextTab(page, "Skills");
+    // The box is server-authoritative (checked from the slot state), so it
+    // settles on the write's echo rather than on the click itself.
+    await page.getByLabel("Include").click();
+
+    await expect
+      .poll(() => state.slots.find((s) => s.name === "slot-one")?.enabled)
+      .toBe(false);
+    await expect(page.getByLabel("Include")).not.toBeChecked();
+
+    // The dropdown marks it off, and the state survives a reload.
+    await expect(page.getByRole("option", { name: /✕/ })).toBeAttached();
+    await page.reload();
+    await openContextTab(page, "Skills");
+    await expect(page.getByLabel("Include")).not.toBeChecked();
+
+    expectNoConsoleOutput(captured);
+  });
 });

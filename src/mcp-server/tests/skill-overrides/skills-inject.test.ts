@@ -75,15 +75,28 @@ describe("withSkills", () => {
   });
 
   it("applies a user fragment override read from disk", async () => {
-    writeSkillOverride("barbeat-standard", "MY OVERRIDDEN HEAD");
+    writeSkillOverride("barbeat-standard", { content: "MY OVERRIDDEN HEAD" });
     const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
 
     const result = await wrapped("ppal-connect", {});
 
     expect(lastText(result)).toContain("MY OVERRIDDEN HEAD");
     expect(lastText(result)).toBe(
-      buildSkills({}, { "barbeat-standard": "MY OVERRIDDEN HEAD" }),
+      buildSkills(
+        {},
+        { fragments: { "barbeat-standard": "MY OVERRIDDEN HEAD" } },
+      ),
     );
+  });
+
+  it("drops a fragment the user switched off, from disk", async () => {
+    writeSkillOverride("library", { enabled: false });
+    const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
+
+    const result = await wrapped("ppal-connect", {});
+
+    expect(lastText(result)).not.toContain("## Finding Library Content");
+    expect(lastText(result)).toBe(buildSkills({}, { disabled: ["library"] }));
   });
 
   it("passes the original tool, args, and overrides through to the inner", async () => {
@@ -107,7 +120,9 @@ describe("withSkills", () => {
     // A driver override naming a fragment that no longer exists: the blob is
     // still returned (degraded), and the warning is logged rather than
     // swallowed — the whole point of surfacing a stale override.
-    writeSkillOverride("standard", `INTRO\n\n@include "./core-devices.md"`);
+    writeSkillOverride("standard", {
+      content: `INTRO\n\n@include "./core-devices.md"`,
+    });
     const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
 
     const result = await wrapped("ppal-connect", {});

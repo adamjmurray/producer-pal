@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  isDisableableSkillSlot,
   isSkillSlotName,
   RETIRED_SKILL_SLOTS,
   SKILL_SLOT_NAMES,
@@ -92,6 +93,18 @@ describe("RETIRED_SKILL_SLOTS", () => {
       expect(replacedBy.length).toBeGreaterThan(0);
       for (const name of replacedBy) expect(isSkillSlotName(name)).toBe(true);
     }
+  });
+});
+
+describe("isDisableableSkillSlot", () => {
+  it("marks the driver roots always-on and every section switchable", () => {
+    // The drivers are the document being assembled; switching one off resolves
+    // the root to "" and empties the whole blob.
+    const alwaysOn = SKILL_SLOT_NAMES.filter(
+      (name) => !isDisableableSkillSlot(name),
+    );
+
+    expect(alwaysOn).toStrictEqual(["standard", "basic"]);
   });
 });
 

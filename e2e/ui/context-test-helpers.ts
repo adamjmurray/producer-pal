@@ -35,6 +35,8 @@ export interface FakeSkillSlot {
   description: string;
   builtIn: string;
   override: string;
+  enabled: boolean;
+  canDisable: boolean;
   drifted: boolean;
   provenance: { producerPalVersion: string } | null;
 }
@@ -257,8 +259,9 @@ async function handleContentDoc(
 }
 
 /**
- * `/skill-overrides/:slot`: PUT stores that slot's override; DELETE resets it to
- * the built-in. Both echo the updated slot.
+ * `/skill-overrides/:slot`: PUT stores that slot's override and/or its on/off
+ * flag (an omitted field is left alone, as the real route does); DELETE resets
+ * the override to the built-in, keeping the flag. Both echo the updated slot.
  * @param route - The intercepted route
  * @param state - The mutable backend
  */
@@ -277,8 +280,12 @@ async function handleSkillSlot(
 
   const method = route.request().method();
 
-  if (method === "PUT") slot.override = readJsonBody(route).content ?? "";
-  else if (method === "DELETE") slot.override = "";
+  if (method === "PUT") {
+    const body = readJsonBody(route);
+
+    if (body.content != null) slot.override = body.content;
+    if (body.enabled != null) slot.enabled = body.enabled;
+  } else if (method === "DELETE") slot.override = "";
 
   await fulfillJson(route, { slot });
 }
@@ -371,6 +378,8 @@ function makeSlot(name: string, builtIn: string): FakeSkillSlot {
     description: `Fragment ${name}.`,
     builtIn,
     override: "",
+    enabled: true,
+    canDisable: true,
     drifted: false,
     provenance: null,
   };
@@ -379,6 +388,7 @@ function makeSlot(name: string, builtIn: string): FakeSkillSlot {
 /** The parsed shape of the JSON bodies these endpoints receive. */
 interface RequestBody {
   content?: string;
+  enabled?: boolean;
   projectContext?: string;
   description?: string;
   newName?: string;

@@ -34,6 +34,8 @@ function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
     description: "Slot description.",
     builtIn: "BUILT-IN",
     override: "",
+    enabled: true,
+    canDisable: true,
     drifted: false,
     provenance: null,
     ...over,
@@ -93,6 +95,8 @@ describe("useSkillOverrides", () => {
         description: "Slot description.",
         builtIn: "BUILT-IN",
         override: "",
+        enabled: true,
+        canDisable: true,
         drifted: false,
         forkedFromVersion: null,
       },
@@ -102,6 +106,8 @@ describe("useSkillOverrides", () => {
         description: "Slot description.",
         builtIn: "BUILT-IN",
         override: "MINE",
+        enabled: true,
+        canDisable: true,
         drifted: true,
         forkedFromVersion: "1.4.0",
       },
@@ -184,6 +190,47 @@ describe("useSkillOverrides", () => {
         body: JSON.stringify({ content: "MINE" }),
       }),
     );
+  });
+
+  it("setSlotEnabled PUTs only the flag, so a body save can't be clobbered", async () => {
+    const result = await renderReady([rawSlot({ override: "MINE\n" })]);
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ slot: rawSlot({ override: "MINE\n", enabled: false }) }),
+    );
+
+    await act(async () => {
+      await result.current.setSlotEnabled("barbeat-standard", false);
+    });
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+      enabled: false,
+      override: "MINE\n",
+    });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      SLOT_URL,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ enabled: false }),
+      }),
+    );
+  });
+
+  it("reads a slot with no enabled/canDisable fields as on and switchable", async () => {
+    // Backwards-compatible read: an older server omits both, and defaulting the
+    // other way would show every fragment as switched off.
+    const result = await renderReady([
+      { ...rawSlot(), enabled: undefined, canDisable: undefined },
+    ]);
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+      enabled: true,
+      canDisable: true,
+    });
   });
 
   it("resetSlot DELETEs the slot and merges the reset echo", async () => {

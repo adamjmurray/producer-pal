@@ -27,6 +27,10 @@ export interface SkillSlotView {
   builtIn: string;
   /** The user's override body ("" when the slot tracks the built-in). */
   override: string;
+  /** Whether this fragment is included in the assembled skills. */
+  enabled: boolean;
+  /** Whether to offer an off switch (false for the whole-document drivers). */
+  canDisable: boolean;
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
   /** Producer Pal version the override was forked from (null when none). */
@@ -45,6 +49,8 @@ export interface UseSkillOverridesReturn {
   saveError: string | null;
   /** Save an override for one slot (blank content resets it to the built-in). */
   saveSlot: (name: string, content: string) => Promise<boolean>;
+  /** Switch one slot's fragment on or off, leaving any override body alone. */
+  setSlotEnabled: (name: string, enabled: boolean) => Promise<boolean>;
   /** Reset one slot to the built-in (delete its override file). */
   resetSlot: (name: string) => Promise<boolean>;
   /** Re-read all slots from the server. */
@@ -108,7 +114,13 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
 
   const saveSlot = useCallback(
     (name: string, content: string): Promise<boolean> =>
-      writeSlot(name, () => putSlot(name, content)),
+      writeSlot(name, () => putSlot(name, { content })),
+    [writeSlot],
+  );
+
+  const setSlotEnabled = useCallback(
+    (name: string, enabled: boolean): Promise<boolean> =>
+      writeSlot(name, () => putSlot(name, { enabled })),
     [writeSlot],
   );
 
@@ -124,6 +136,7 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
     saveStatus,
     saveError,
     saveSlot,
+    setSlotEnabled,
     resetSlot,
     refresh,
     resetSaveStatus,
@@ -141,6 +154,15 @@ interface RawSkillSlot {
   override: string;
   drifted: boolean;
   provenance: { producerPalVersion: string } | null;
+  /** Optional so a slot from an older server reads as on rather than off. */
+  enabled?: boolean;
+  canDisable?: boolean;
+}
+
+/** The fields a per-slot PUT may carry; either alone is a valid write. */
+interface SlotWriteBody {
+  content?: string;
+  enabled?: boolean;
 }
 
 /**
@@ -162,13 +184,17 @@ async function fetchSlots(): Promise<SkillSlotView[]> {
 }
 
 /**
- * PUT an override for one slot.
+ * PUT one slot's override body and/or its on/off flag. An omitted field is left
+ * exactly as stored, so a toggle never clobbers an in-flight body save.
  * @param name - The slot name
- * @param content - The override body (blank resets to built-in)
+ * @param write - The body (blank resets to built-in) and/or the flag
  * @returns The server's echo of the updated slot
  */
-async function putSlot(name: string, content: string): Promise<SkillSlotView> {
-  return await sendSlot(getSkillOverrideUrl(name), "PUT", { content });
+async function putSlot(
+  name: string,
+  write: SlotWriteBody,
+): Promise<SkillSlotView> {
+  return await sendSlot(getSkillOverrideUrl(name), "PUT", write);
 }
 
 /**
@@ -184,14 +210,13 @@ async function deleteSlot(name: string): Promise<SkillSlotView> {
  * Send a per-slot write and parse the echoed slot.
  * @param url - The per-slot endpoint URL
  * @param method - HTTP method ("PUT" or "DELETE")
- * @param jsonBody - Optional JSON request body
- * @param jsonBody.content - The override body to send (PUT only)
+ * @param jsonBody - Optional JSON request body (PUT only)
  * @returns The server's echo of the updated slot
  */
 async function sendSlot(
   url: string,
   method: "PUT" | "DELETE",
-  jsonBody?: { content: string },
+  jsonBody?: SlotWriteBody,
 ): Promise<SkillSlotView> {
   const response = await fetch(url, {
     method,
@@ -243,6 +268,10 @@ function toView(raw: RawSkillSlot): SkillSlotView {
     description: raw.description,
     builtIn: raw.builtIn,
     override: raw.override,
+    // Both flags default the safe way when a field is absent: the fragment
+    // ships, and the toggle shows.
+    enabled: raw.enabled !== false,
+    canDisable: raw.canDisable !== false,
     drifted: raw.drifted,
     forkedFromVersion: raw.provenance?.producerPalVersion ?? null,
   };

@@ -100,6 +100,9 @@ export function SkillSlotScreen(
         widthClass={widthClass}
         onImport={io.onImport}
         onExport={io.onExport}
+        onSetEnabled={(enabled) =>
+          void overrides.setSlotEnabled(slot.name, enabled)
+        }
       />
       <div
         className={`mx-auto w-full ${widthClass} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
@@ -183,20 +186,23 @@ interface SkillControlsProps {
   widthClass: string;
   onImport: () => void;
   onExport: () => void;
+  /** Switch the selected fragment on or off. */
+  onSetEnabled: (enabled: boolean) => void;
 }
 
 /**
- * Controls strip: the slot dropdown, a one-line explainer for the selected slot,
- * and a drift note. The border spans full width while the content is centered to
- * match the editor below. The Preview/Source view toggle sits in the editor's
- * pane header (see OverridePanes), and resetting an override to the built-in
- * lives in the revealed built-in header there — neither belongs here.
+ * Controls strip: the slot dropdown, the include toggle, a one-line explainer
+ * for the selected slot, and a drift note. The border spans full width while the
+ * content is centered to match the editor below. The Preview/Source view toggle
+ * sits in the editor's pane header (see OverridePanes), and resetting an
+ * override to the built-in lives in the revealed built-in header there — neither
+ * belongs here.
  * @param props - Controls props
  * @returns Controls element
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
   const { slots, selected, onSelectSlot, slot } = props;
-  const { widthClass, onImport, onExport } = props;
+  const { widthClass, onImport, onExport, onSetEnabled } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
@@ -206,6 +212,7 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
           selected={selected}
           onSelect={onSelectSlot}
         />
+        <IncludeToggle slot={slot} onSetEnabled={onSetEnabled} />
         <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
           {slot.description}
         </span>
@@ -216,5 +223,42 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
         <ContextIoButtons onImport={onImport} onExport={onExport} />
       </div>
     </div>
+  );
+}
+
+interface IncludeToggleProps {
+  slot: SkillSlotView;
+  onSetEnabled: (enabled: boolean) => void;
+}
+
+/**
+ * Checkbox switching the selected fragment in or out of the assembled skills —
+ * the one-click form of deleting its `@include` line, and unlike an emptied
+ * override it keeps the body for when it goes back on. Rendered as nothing for
+ * the whole-document drivers, which have no line to drop (see
+ * SkillSlotDef.alwaysOn).
+ * @param props - Toggle props
+ * @returns Toggle element, or null when the slot can't be switched off
+ */
+function IncludeToggle(props: IncludeToggleProps): preact.JSX.Element | null {
+  const { slot, onSetEnabled } = props;
+
+  if (!slot.canDisable) return null;
+
+  return (
+    <label
+      className="shrink-0 flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400"
+      title="Off: this section is left out of the skills the AI receives. Your override is kept."
+    >
+      <input
+        type="checkbox"
+        checked={slot.enabled}
+        onChange={(event) =>
+          onSetEnabled((event.target as HTMLInputElement).checked)
+        }
+        className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-600"
+      />
+      Include
+    </label>
   );
 }

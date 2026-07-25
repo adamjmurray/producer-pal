@@ -31,9 +31,10 @@ reading order:
 @include "./devices.md"
 ```
 
-Each fragment can be overridden independently. When you override one, your
-version replaces the built-in; every fragment you _don't_ override keeps
-tracking Producer Pal's built-ins as they improve from release to release.
+Each fragment can be overridden independently, or switched off entirely. When
+you override one, your version replaces the built-in; every fragment you _don't_
+override keeps tracking Producer Pal's built-ins as they improve from release to
+release.
 
 Fragments are cut along the lines of what you're actually doing, so you can drop
 a whole area you never use:
@@ -74,15 +75,27 @@ file.
 button in the header) and switch to the **Skills** tab. Pick a fragment from the
 dropdown: it shows read-only until you press **Customize**, which forks the
 built-in into an editable override that auto-saves as you type. The trash button
-resets a fragment, deleting your override. In the dropdown, ✎ marks a customized
-fragment and ⚠ one whose built-in has changed since you forked it. **Preview**
-shows the fully assembled skills exactly as the AI will receive them. See
+resets a fragment, deleting your override. The **Include** checkbox beside the
+dropdown switches a fragment out of the skills entirely. In the dropdown, ✕
+marks a fragment that's switched off, ✎ one that's customized, and ⚠ one whose
+built-in has changed since you forked it. **Preview** shows the fully assembled
+skills exactly as the AI will receive them. See
 [Context & Memory](/guide/context#skills) for screenshots.
 
 **On disk:** overrides are plain Markdown files in `~/.producer-pal/skills/`,
 named after the fragment (`devices.md`, `standard.md`, …). A file's presence is
-the override; delete the file to reset. Edit them with any editor — the Chat UI
-and external MCP clients pick up changes on the next conversation.
+the override; delete the file to reset. A fragment is switched off by an
+`enabled: false` line in that file's frontmatter, so a switched-off fragment
+with no override is a file holding just:
+
+```
+---
+enabled: false
+---
+```
+
+Edit them with any editor — the Chat UI and external MCP clients pick up changes
+on the next conversation.
 
 ### The `@include` directive
 
@@ -126,21 +139,28 @@ trimming below for areas you want dropped while keeping the tool.
 
 :::
 
-If you never use a whole area of Producer Pal, remove its guidance: override the
-**Full skills (standard)** fragment and delete the include line for that area.
-Everything you keep continues to track the built-ins.
+If you never use a whole area of Producer Pal, remove its guidance: pick that
+fragment in the Skills tab and uncheck **Include**. Everything you keep
+continues to track the built-ins, and switching a fragment off keeps any
+override you wrote for it — check the box again and it comes back.
 
-| If you never…                                           | Delete these lines                                                                                      |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Use ratchets, echoes, or waveform modulation            | `@include "./transforms-generative.md"`                                                                 |
-| Use swing, quantize, or math on note values             | `@include "./transforms-expressions.md"` **and** `@include "./transforms-generative.md"`                |
-| Use transforms to edit notes/audio params               | `@include "./transforms-core.md"` **and** both other `transforms-` lines — the whole area goes together |
-| Search Live's library or your sample folder with the AI | `@include "./library.md"`                                                                               |
-| Edit Drift, Wavetable, EQ Eight… with the AI            | `@include "./specialized-devices.md"`                                                                   |
-| Build or tweak instruments with the AI                  | `@include "./devices.md"` **and** `@include "./specialized-devices.md"`                                 |
-| Work in the Arrangement view with the AI                | `@include "./arrangement.md"`                                                                           |
-| Use project/global context or memory                    | `@include "./context-standard.md"`                                                                      |
-| Write or edit MIDI notes at all                         | `@include "./{notation}-standard.md"`                                                                   |
+| If you never…                                           | Switch off                                                                            |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Use ratchets, echoes, or waveform modulation            | `transforms-generative`                                                               |
+| Use swing, quantize, or math on note values             | `transforms-expressions` **and** `transforms-generative`                              |
+| Use transforms to edit notes/audio params               | `transforms-core` **and** both other `transforms-` fragments — the area goes together |
+| Search Live's library or your sample folder with the AI | `library`                                                                             |
+| Edit Drift, Wavetable, EQ Eight… with the AI            | `specialized-devices`                                                                 |
+| Build or tweak instruments with the AI                  | `devices` **and** `specialized-devices`                                               |
+| Work in the Arrangement view with the AI                | `arrangement`                                                                         |
+| Use project/global context or memory                    | `context-standard`                                                                    |
+| Write or edit MIDI notes at all                         | the notation guide for your notation (e.g. `barbeat-standard`)                        |
+
+The same trims by hand: override the **Full skills (standard)** fragment and
+delete a fragment's `@include` line. That's the route when you also want to
+reorder sections or add your own, and it's the only way to cut down the Full
+skills documents themselves — they have no **Include** checkbox, since switching
+one off would leave the AI with no skills at all.
 
 ::: warning Some fragments need another one
 
@@ -149,10 +169,10 @@ guides all build on `transforms-core` — keeping `transforms-generative` withou
 it leaves the AI knowing `ratchet()` and the waveforms but not the shape of a
 transform, which is worse than dropping all three. `specialized-devices` sits
 inside `devices` the same way. That's why the rows above are ordered
-most-specific-first and say which lines travel together.
+most-specific-first and say which fragments travel together.
 
-If you do delete a line something else needs, Producer Pal says so — the Skills
-**Preview** view shows a warning, and so does the Max window.
+If you do drop a fragment something else needs, Producer Pal says so — the
+Skills **Preview** view shows a warning, and so does the Max window.
 
 :::
 

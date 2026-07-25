@@ -13,9 +13,10 @@ interface SkillSlotSelectProps {
 
 /**
  * Dropdown that picks which skills fragment to edit. Each option is glyph-marked
- * so the whole set's state is visible without clicking through: "⚠" when the
- * built-in changed since the override was forked (drift), "✎" when customized
- * and in sync, and unmarked when the slot tracks the built-in.
+ * so the whole set's state is visible without clicking through: "✕" when the
+ * fragment is switched off, "⚠" when the built-in changed since the override was
+ * forked (drift), "✎" when customized and in sync, and unmarked when the slot
+ * tracks the built-in.
  * @param props - Select props
  * @returns Select element
  */
@@ -47,10 +48,13 @@ export function SkillSlotSelect(
  * The leading status glyph for a slot's dropdown option. A pencil (rather than a
  * heavy "●" dot) reads as "customized/edited" and stays lighter in the option
  * row; the "⚠" drift mark takes precedence since drift implies an override too.
+ * Being switched off outranks both — a fragment that isn't sent at all makes its
+ * override and any drift in it moot.
  * @param slot - The slot to mark
- * @returns "⚠ " when drifted, "✎ " when customized-and-synced, else ""
+ * @returns "✕ " when off, "⚠ " when drifted, "✎ " when customized, else ""
  */
 function slotGlyph(slot: SkillSlotView): string {
+  if (!slot.enabled) return "✕ ";
   if (slot.drifted) return "⚠ ";
   if (slot.override) return "✎ ";
 

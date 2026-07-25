@@ -111,12 +111,15 @@ context instead — that's what it's for.
 
 The **Producer Pal Skills** are the instructions AI receives when it connects —
 how to write notes, edit clips, build instruments, and search your library. The
-Skills tab lets you override any fragment of them. The dropdown picks a
-fragment; each shows read-only with a **Customize** button until you fork it.
+Skills tab lets you override any fragment of them — or leave one out entirely.
+The dropdown picks a fragment; each shows read-only with a **Customize** button
+until you fork it. The **Include** checkbox beside the dropdown drops that
+fragment from what the AI receives, keeping your override for when you switch it
+back on.
 
-Customized fragments are marked ✎ in the dropdown, and ⚠ if the built-in changed
-in a newer Producer Pal release after you forked it (your override still applies
-— the mark just tells you it's now behind).
+Customized fragments are marked ✎ in the dropdown, ✕ if switched off, and ⚠ if
+the built-in changed in a newer Producer Pal release after you forked it (your
+override still applies — the mark just tells you it's now behind).
 
 Once you customize a fragment, the editor shows your override beside the
 built-in so you can see what you changed:

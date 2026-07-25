@@ -67,6 +67,7 @@ function overrides(
     saveStatus: "idle",
     saveError: null,
     saveSlot: vi.fn().mockResolvedValue(true),
+    setSlotEnabled: vi.fn().mockResolvedValue(true),
     resetSlot: vi.fn().mockResolvedValue(true),
     refresh: vi.fn().mockResolvedValue(undefined),
     resetSaveStatus: vi.fn(),
@@ -198,6 +199,36 @@ describe("SkillsScreen", () => {
     renderSlots([slot({ description: "Explains what this fragment does." })]);
 
     expect(screen.getByText("Explains what this fragment does.")).toBeTruthy();
+  });
+
+  it("switches the selected fragment off from the Include checkbox", () => {
+    const setSlotEnabled = vi.fn().mockResolvedValue(true);
+
+    renderSlots([slot({ override: "MINE" })], { setSlotEnabled });
+
+    const toggle = screen.getByLabelText("Include") as HTMLInputElement;
+
+    expect(toggle.checked).toBe(true);
+
+    fireEvent.click(toggle);
+
+    expect(setSlotEnabled).toHaveBeenCalledWith("barbeat-standard", false);
+  });
+
+  it("shows a switched-off fragment unchecked, and marks it in the dropdown", () => {
+    renderSlots([slot({ enabled: false })]);
+
+    expect((screen.getByLabelText("Include") as HTMLInputElement).checked).toBe(
+      false,
+    );
+    expect(screen.getByRole("option").textContent).toContain("✕");
+  });
+
+  it("offers no Include toggle for a slot that cannot be switched off", () => {
+    // The drivers ARE the document — switching one off would empty the blob.
+    renderSlots([slot({ name: "standard", canDisable: false })]);
+
+    expect(screen.queryByLabelText("Include")).toBeNull();
   });
 
   it("shows a drift note for a drifted slot", () => {
