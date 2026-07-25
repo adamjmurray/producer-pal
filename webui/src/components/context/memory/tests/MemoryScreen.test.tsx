@@ -503,4 +503,52 @@ describe("MemoryScreen — new-draft discard guard", () => {
     expect(window.confirm).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox", { name: "Rename" })).toBeTruthy();
   });
+
+  // New means a BLANK form even when the create form is the pane already open:
+  // it used to keep the half-filled draft, so the button looked inert.
+  it("clears a half-filled new draft once the discard is confirmed", () => {
+    stubConfirm(true);
+    renderGuardedReady();
+
+    typeNewName("half-typed");
+    clickNewMemory();
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(nameFieldValue()).toBe("");
+  });
+
+  it("keeps the half-filled new draft when the discard is cancelled", () => {
+    stubConfirm(false);
+    renderGuardedReady();
+
+    typeNewName("half-typed");
+    clickNewMemory();
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(nameFieldValue()).toBe("half-typed");
+  });
+
+  it("does not confirm when New is pressed on an already-blank form", () => {
+    stubConfirm();
+    renderGuardedReady();
+
+    clickNewMemory();
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(nameFieldValue()).toBe("");
+  });
 });
+
+/** Click the left pane's "New memory" button. */
+function clickNewMemory(): void {
+  fireEvent.click(screen.getByRole("button", { name: "New memory" }));
+}
+
+/**
+ * The create form's Name field value.
+ * @returns The current text in the Name input
+ */
+function nameFieldValue(): string {
+  return (screen.getByRole("textbox", { name: /Name/ }) as HTMLInputElement)
+    .value;
+}
