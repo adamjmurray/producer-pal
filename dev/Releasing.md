@@ -216,18 +216,25 @@ in CI — see `e2e/ui/README.md`.
    npm login
    ```
 
-2. Publish the package:
+2. Publish the package under the `next` tag:
 
    ```sh
-   cd npm && npm publish
+   cd npm && npm publish --tag next
    ```
+
+   Publishing to `next` rather than `latest` is what keeps this step safe to run
+   before testing finishes. A published version can never be replaced on npm, so
+   publishing straight to `latest` both puts untested portal code in front of
+   every `npx producer-pal` user and burns the version number — any fix found
+   afterward has to ship as a new version. Step 5 flips the tag once testing
+   passes.
 
 3. Test the published package with LM Studio or another MCP client:
 
    ```json
    "producer-pal": {
      "command": "npx",
-     "args": ["-y", "producer-pal@latest", "--small-model-mode"]
+     "args": ["-y", "producer-pal@next", "--small-model-mode"]
    }
    ```
 
@@ -250,6 +257,11 @@ After testing succeeds:
    - Remove the pre-release notice from the notes (leave the build marker — it
      still identifies these files)
    - Update release (no need to re-upload files)
+3. Point npm's `latest` tag at the published version:
+
+   ```sh
+   npm dist-tag add producer-pal@X.Y.Z latest
+   ```
 
 ## Fixing Issues During Pre-Release
 
@@ -293,8 +305,17 @@ If problems are found during pre-release testing:
 This is acceptable for pre-releases since they're explicitly marked as not
 production-ready.
 
-If problems are discovered after the npm had been published, it should be
-republished (TODO: document the process if this ever happens)
+If problems are discovered after publishing to npm, republish under the same
+`next` tag with a fresh version — npm never lets a published version be
+replaced, so the burned number is skipped:
+
+```sh
+npm run version:bump   # X.Y.Z is spent; move to X.Y.Z+1
+cd npm && npm publish --tag next
+```
+
+`latest` still points at the previous release throughout, so no `npx` user is
+affected. Only Step 5's `dist-tag add` promotes the new version.
 
 ## Publishing to npm
 
@@ -325,8 +346,8 @@ npm install -g ./producer-pal-X.Y.Z.tgz
 npx producer-pal # actually use this with an MCP Client, running it on the command line does nothing visible
 npm uninstall -g producer-pal
 
-# When ready to publish
-npm publish
+# When ready to publish (see Step 4 for why this is not `latest`)
+npm publish --tag next
 
 # Return to root directory
 cd ..
