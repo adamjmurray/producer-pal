@@ -3,24 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-const RELEASES_URL =
-  "https://api.github.com/repos/adamjmurray/producer-pal/releases/latest";
+const REPO_API_URL = "https://api.github.com/repos/adamjmurray/producer-pal";
+const RELEASES_URL = `${REPO_API_URL}/releases/latest`;
 
 const TIMEOUT_MS = 5000;
-
-// Machine-readable build identity published in the GitHub release notes (see
-// dev/Releasing.md). Two builds of the same version are otherwise
-// indistinguishable: a pre-release tester who downloads an early release
-// candidate keeps reporting that version after the artifacts are re-cut under
-// the same tag, so a version-only check tells them they're up to date forever.
-// Comparing builds catches that — and stays silent when a pre-release is
-// promoted without re-cutting, where the tester already has the published bytes.
-const BUILD_MARKER_LABEL = "Producer Pal build:";
-const BUILD_MARKER_PATTERN = new RegExp(
-  // The SHA may be wrapped in backticks so it renders as code in the notes.
-  `${BUILD_MARKER_LABEL}\\s*\`?([0-9a-f]{7,40})\`?`,
-  "i",
-);
 
 export interface UpdateInfo {
   /** The version published as the latest release */
@@ -65,18 +51,21 @@ export async function checkForUpdate(
       return { version: latest, isRebuild: false };
     }
 
-    // Same version number — the published artifacts can still be a different
-    // build than ours. Neither version being newer than the other is what makes
-    // them equal, which also skips a build comparison for a local build that is
-    // ahead of the latest release.
-    const publishedBuild = parseBuildMarker(data);
+    // Neither version is newer, so either they're equal or this is a local build
+    // running ahead of the latest release. Only the equal case is worth a second
+    // request, and only when we know which build we are.
+    if (currentBuild === "" || isNewerVersion(latest, currentVersion)) {
+      return null;
+    }
 
-    if (
-      currentBuild !== "" &&
-      publishedBuild != null &&
-      publishedBuild !== currentBuild &&
-      !isNewerVersion(latest, currentVersion)
-    ) {
+    // Same version number, so compare builds. A release candidate that gets
+    // re-cut is re-tagged at the new commit, which is what makes the published
+    // tag a truthful build identity — and what keeps this silent when a
+    // pre-release is promoted untouched, where the tag never moved and the
+    // tester already has the published bytes.
+    const publishedBuild = await fetchTagCommit(tagName);
+
+    if (publishedBuild != null && !publishedBuild.startsWith(currentBuild)) {
       return { version: latest, isRebuild: true };
     }
 
@@ -87,29 +76,24 @@ export async function checkForUpdate(
 }
 
 /**
- * Formats the build marker line to publish in a GitHub release's notes.
- * @param buildSha - The short commit SHA the release was built from
- * @returns The marker line
+ * Resolves a release tag to the commit it points at. GitHub dereferences
+ * annotated tags here, so this is the commit SHA a build of that tag baked in.
+ * @param tagName - The release's tag, e.g. "v2.0.0"
+ * @returns The full commit SHA, or null when it can't be resolved
  */
-export function formatBuildMarker(buildSha: string): string {
-  return `${BUILD_MARKER_LABEL} \`${buildSha}\``;
-}
+async function fetchTagCommit(tagName: string): Promise<string | null> {
+  const response = await fetch(
+    `${REPO_API_URL}/commits/${encodeURIComponent(tagName)}`,
+    { signal: AbortSignal.timeout(TIMEOUT_MS) },
+  );
 
-/**
- * Extracts the build SHA from a GitHub release's notes.
- * @param release - The release object from the GitHub API
- * @returns The published build SHA, or null when the notes carry no marker
- */
-function parseBuildMarker(release: object): string | null {
-  if (!("body" in release) || typeof release.body !== "string") return null;
+  if (!response.ok) return null;
 
-  const match = BUILD_MARKER_PATTERN.exec(release.body);
+  const data: unknown = await response.json();
 
-  if (match == null) return null;
+  if (data == null || typeof data !== "object" || !("sha" in data)) return null;
 
-  // Group 1 is always present when the pattern matches. Lowercased so a
-  // hand-edited marker still compares equal to the git-generated SHA.
-  return (match[1] as string).toLowerCase();
+  return typeof data.sha === "string" ? data.sha.toLowerCase() : null;
 }
 
 /**

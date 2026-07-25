@@ -14,7 +14,6 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatBuildMarker } from "#src/shared/version-check.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -41,11 +40,10 @@ try {
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 
-// Resolve the build identity here and pass it into the build, so the SHA baked
-// into the artifacts and the marker published in the release notes can't
-// disagree. Without it, a release re-cut under an existing tag is
-// indistinguishable from the copy testers already downloaded, and their update
-// check stays silent forever.
+// Resolve the build identity here and pass it into the build. The update check
+// compares this against the commit the release tag points at, which is how a
+// re-cut release is told apart from the copy testers already downloaded — so
+// the release tag MUST end up on this exact commit.
 let buildSha: string;
 
 try {
@@ -109,7 +107,7 @@ console.log(
   "5. Create/update the GitHub release, test, and proceed per dev/Releasing.md",
 );
 console.log(
-  "\n🔖 Put this line in the release notes (every time the files are re-uploaded)\n" +
-    "   so an earlier download can tell it's out of date:\n\n" +
-    `   ${formatBuildMarker(buildSha)}\n`,
+  `\n🔖 These files identify themselves as build ${buildSha}. The release tag must\n` +
+    "   point at that commit, or the update check can't tell them apart from an\n" +
+    "   earlier download (see dev/Releasing.md).\n",
 );

@@ -3,12 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
-import {
-  checkForUpdate,
-  formatBuildMarker,
-  isNewerVersion,
-} from "../version-check.ts";
+import { describe, expect, it, vi, type MockInstance } from "vitest";
+import { checkForUpdate, isNewerVersion } from "../version-check.ts";
 
 describe("isNewerVersion", () => {
   it("returns true when latest has a newer patch", () => {
@@ -122,10 +118,6 @@ describe("isNewerVersion", () => {
   });
 });
 
-function markerBody(sha: string): string {
-  return `Release notes go here.\n\n${formatBuildMarker(sha)}\n`;
-}
-
 describe("checkForUpdate", () => {
   function mockFetchResponse(body: unknown, ok = true): void {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -180,14 +172,6 @@ describe("checkForUpdate", () => {
     expect(await checkForUpdate("1.0.0")).toBeNull();
   });
 
-  it("returns null when the current version is newer even if the build differs", async () => {
-    // A local build ahead of the latest release. Only the "neither is newer"
-    // check keeps this quiet — the build SHAs differ, so dropping it would nag
-    // every dev build forever.
-    mockFetchResponse({ tag_name: "v1.0.0", body: markerBody("aaaaaaa") });
-    expect(await checkForUpdate("2.0.0", "bbbbbbb")).toBeNull();
-  });
-
   it("passes a timeout signal to fetch", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
@@ -202,18 +186,42 @@ describe("checkForUpdate", () => {
   });
 });
 
-describe("checkForUpdate build marker", () => {
-  // A release candidate that gets re-cut under the same tag keeps its version
-  // number, so testers who downloaded the earlier build are told they're up to
-  // date forever. The published build identity is what breaks that tie.
-  function mockRelease(body: unknown, tag = "v2.0.0"): void {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ tag_name: tag, body })),
-    );
+describe("checkForUpdate build comparison", () => {
+  // A release candidate that gets re-cut keeps its version number, so testers
+  // who downloaded the earlier build are told they're up to date forever. The
+  // commit behind the published tag is what breaks that tie.
+  const TAG_COMMIT_URL =
+    "https://api.github.com/repos/adamjmurray/producer-pal/commits/v2.0.0";
+
+  function mockGitHub({
+    tag = "v2.0.0",
+    commit,
+    commitOk = true,
+  }: {
+    tag?: string;
+    commit?: string;
+    commitOk?: boolean;
+  }): MockInstance<typeof fetch> {
+    return vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input: RequestInfo | URL) =>
+        Promise.resolve(
+          String(input).includes("/releases/latest")
+            ? new Response(JSON.stringify({ tag_name: tag }))
+            : new Response(
+                JSON.stringify(commit == null ? {} : { sha: commit }),
+                {
+                  status: commitOk ? 200 : 404,
+                },
+              ),
+        ),
+      );
   }
 
-  it("flags a rebuild when the published build differs from ours", async () => {
-    mockRelease(markerBody("9f8e7d6"));
+  const PUBLISHED = "9f8e7d6c5b4a39281706f5e4d3c2b1a098765432";
+
+  it("flags a rebuild when the tag points at a different commit", async () => {
+    mockGitHub({ commit: PUBLISHED });
 
     expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
       version: "2.0.0",
@@ -221,57 +229,83 @@ describe("checkForUpdate build marker", () => {
     });
   });
 
-  it("stays quiet when the published build matches ours", async () => {
-    // The promote-a-pre-release-unchanged path: the tester already has the
-    // published bytes, so there is nothing to download.
-    mockRelease(markerBody("1a2b3c4"));
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
+  it("resolves the published tag, not a hardcoded one", async () => {
+    const fetchSpy = mockGitHub({ commit: PUBLISHED });
+
+    await checkForUpdate("2.0.0", "1a2b3c4");
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      TAG_COMMIT_URL,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
-  it("stays quiet when this build has no SHA", async () => {
-    // Running from source, or a build made before the marker existed.
-    mockRelease(markerBody("9f8e7d6"));
+  it("stays quiet when the tag commit starts with our short SHA", async () => {
+    // The promote-a-pre-release-unchanged path: the tag never moved, so the
+    // tester already has the published bytes. Our SHA is short, the API's is
+    // full length, so this has to match on prefix.
+    mockGitHub({ commit: PUBLISHED });
+    expect(await checkForUpdate("2.0.0", "9f8e7d6")).toBeNull();
+  });
+
+  it("matches case-insensitively", async () => {
+    mockGitHub({ commit: PUBLISHED.toUpperCase() });
+    expect(await checkForUpdate("2.0.0", "9f8e7d6")).toBeNull();
+  });
+
+  it("skips the second request when this build has no SHA", async () => {
+    // Running from source. Nothing to compare, so don't spend the request.
+    const fetchSpy = mockGitHub({ commit: PUBLISHED });
+
     expect(await checkForUpdate("2.0.0")).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("stays quiet when the release notes carry no marker", async () => {
-    mockRelease("Just some release notes.");
+  it("skips the second request when our version is ahead of the release", async () => {
+    // A local build running ahead of the latest release. Its commit differs, so
+    // without the version guard every dev build would be nagged forever.
+    const fetchSpy = mockGitHub({ tag: "v1.0.0", commit: PUBLISHED });
+
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays quiet when the tag can't be resolved", async () => {
+    // Offline, rate-limited, or a tag this build predates: fall back to the
+    // version-only comparison rather than guessing.
+    mockGitHub({ commit: PUBLISHED, commitOk: false });
     expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
   });
 
-  it("stays quiet when the release has no notes at all", async () => {
-    // GitHub returns body: null for a release published with empty notes.
-    mockRelease(null);
+  it("stays quiet when the commit response carries no sha", async () => {
+    mockGitHub({});
     expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
   });
 
-  it("reports a newer version as a version update, not a rebuild", async () => {
-    mockRelease(markerBody("9f8e7d6"), "v3.0.0");
+  it("stays quiet when sha is not a string", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (input: RequestInfo | URL) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              String(input).includes("/releases/latest")
+                ? { tag_name: "v2.0.0" }
+                : { sha: 12345 },
+            ),
+          ),
+        ),
+    );
+
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
+  });
+
+  it("reports a newer version as a version update without resolving the tag", async () => {
+    const fetchSpy = mockGitHub({ tag: "v3.0.0", commit: PUBLISHED });
 
     expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
       version: "3.0.0",
       isRebuild: false,
     });
-  });
-
-  it("matches a hand-edited marker with no backticks or mixed case", async () => {
-    mockRelease("Producer Pal build: 9F8E7D6");
-
-    expect(await checkForUpdate("2.0.0", "9f8e7d6")).toBeNull();
-  });
-
-  it("matches a full-length SHA", async () => {
-    mockRelease(formatBuildMarker("9f8e7d6c5b4a39281706f5e4d3c2b1a098765432"));
-
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
-      version: "2.0.0",
-      isRebuild: true,
-    });
-  });
-});
-
-describe("formatBuildMarker", () => {
-  it("formats a marker the check can read back", () => {
-    expect(formatBuildMarker("1a2b3c4")).toBe("Producer Pal build: `1a2b3c4`");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

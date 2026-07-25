@@ -16,7 +16,6 @@ const { mockCheckForUpdate } = vi.hoisted(() => ({
 
 vi.mock(import("#src/shared/version-check"), () => ({
   checkForUpdate: mockCheckForUpdate,
-  formatBuildMarker: vi.fn(),
   isNewerVersion: vi.fn(),
 }));
 

@@ -77,9 +77,9 @@ release build.
    This creates:
    - `release/Producer_Pal.mcpb` (Claude Desktop extension)
 
-   It also prints a **build marker** line to put in the release notes. Keep it —
-   Step 2 needs it, and [About the build marker](#about-the-build-marker)
-   explains why.
+   It also prints the **build** these files identify themselves as. The release
+   tag has to land on that commit — see
+   [How update detection works](#how-update-detection-works).
 
 2. Freeze a fresh Max device:
    - Add the freshly built `max-for-live-device/Producer_Pal.amxd` to Ableton
@@ -109,50 +109,42 @@ release build.
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
 7. Check "Set as a pre-release"
-8. Write release notes. They must end with two things:
-   - The pre-release notice, so testers know a same-version update prompt is
-     expected:
+8. Write release notes, ending with the pre-release notice so testers know a
+   same-version update prompt is expected:
 
-     ```md
-     > ⚠️ **This is a pre-release.** If these files are replaced during testing,
-     > Producer Pal will tell you an update is available even though the version
-     > number hasn't changed. Download from this page again when that happens.
-     ```
-
-   - The build marker line printed by `npm run release`, verbatim:
-
-     ```md
-     Producer Pal build: `abc1234`
-     ```
+   ```md
+   > ⚠️ **This is a pre-release.** If these files are replaced during testing,
+   > Producer Pal will tell you an update is available even though the version
+   > number hasn't changed. Download from this page again when that happens.
+   ```
 
 9. Publish pre-release
 
-### About the build marker
+### How update detection works
 
-The build marker is how an installed copy knows it's stale when the version
-number can't tell it. Producer Pal bakes the commit SHA it was built from into
-its bundles and compares it against the marker in the latest release's notes: a
-different SHA at the same version number means the files were re-cut after that
-copy was downloaded, and the update prompt appears.
+An installed copy has to know it's stale even when the version number can't tell
+it — pre-release testing regularly replaces the files under an existing version.
+Producer Pal bakes the commit SHA it was built from into its bundles, and when
+the published version matches its own, it resolves the release's tag to a commit
+and compares. Different commit ⇒ the files were re-cut after that copy was
+downloaded ⇒ the update prompt appears.
 
-This matters because pre-release testing regularly replaces the files under an
-existing tag (see
-[Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)). Without
-the marker, everyone who downloaded an earlier release candidate is told they're
-up to date until the _next_ version ships.
+This rides entirely on the tag, so it needs nothing extra at release time — but
+it does mean **the release tag must point at the commit the artifacts were built
+from.** `npm run release` prints the build it baked in; tag that commit.
 
-Two things follow:
+Two things follow, both of which the existing process already gets right:
 
-- **Re-upload the files ⇒ update the marker.** A stale marker is worse than
-  none: it tells testers who have the newest files to re-download, and tells
-  testers with old files that they're current.
-- **Promoting a pre-release unchanged needs no marker change.** Same files, same
-  SHA, so nobody is prompted — which is correct, since they already have the
-  published bytes.
+- **Re-cutting a pre-release moves the tag** (the delete-and-recreate in
+  [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)), so
+  everyone holding the previous files is prompted.
+- **Promoting a pre-release unchanged leaves the tag alone**, so nobody is
+  prompted to re-download bytes they already have.
 
-If the marker is missing or malformed, the check quietly falls back to comparing
-version numbers alone (the old behavior). Nothing breaks; the same-version case
-just goes undetected.
+If the tag can't be resolved — offline, rate-limited, or a release published
+without a tag Producer Pal was built from — the check falls back to comparing
+version numbers alone. Nothing breaks; the same-version case just goes
+undetected.
 
 ## Step 3: Test Pre-Release
 
@@ -254,8 +246,7 @@ After testing succeeds:
    - Go to the pre-release page on GitHub
    - Click "Edit"
    - Uncheck "Set as a pre-release"
-   - Remove the pre-release notice from the notes (leave the build marker — it
-     still identifies these files)
+   - Remove the pre-release notice from the notes
    - Update release (no need to re-upload files)
 3. Point npm's `latest` tag at the published version:
 
@@ -295,9 +286,9 @@ If problems are found during pre-release testing:
    - Go to the existing pre-release on GitHub
    - Delete the old files
    - Upload the new files
-   - **Replace the build marker line** with the one the rebuild printed —
-     otherwise testers holding the previous files are never told to re-download
-     (see [About the build marker](#about-the-build-marker))
+   - Nothing else to update — re-tagging in step 2 is what tells testers holding
+     the previous files to re-download (see
+     [How update detection works](#how-update-detection-works))
    - No need to recreate the release
 
 5. **Retest** and repeat if necessary
