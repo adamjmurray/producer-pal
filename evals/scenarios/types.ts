@@ -19,7 +19,13 @@ export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
 export type { ConfigOptions };
 
 export type EvalProvider =
-  "anthropic" | "codex-code" | "google" | "local" | "openai" | "openrouter";
+  | "anthropic"
+  | "claude-code"
+  | "codex-code"
+  | "google"
+  | "local"
+  | "openai"
+  | "openrouter";
 
 /**
  * A test scenario that runs against Ableton Live

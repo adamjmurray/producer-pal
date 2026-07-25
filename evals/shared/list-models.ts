@@ -11,7 +11,7 @@
  * or an eval run.
  */
 
-import { CODEX_MODEL_ALIASES } from "#evals/chat/codex/codex-cli-protocol.ts";
+import { requireAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import {
   PROVIDERS,
@@ -173,10 +173,11 @@ async function fetchModelsForProvider(
         },
       );
 
+    case "claude-code":
     case "codex-code":
-      // Fixed alias set (no models endpoint); read from the transport so the
-      // listing can't advertise an alias the CLI can't resolve.
-      return Object.keys(CODEX_MODEL_ALIASES).sort();
+      // Fixed name set (no models endpoint); read from the transport so the
+      // listing can't advertise a name the CLI can't resolve.
+      return requireAgentCliTransport(provider).models;
 
     case "google":
       return await fetchGoogleModels();

@@ -3,9 +3,26 @@
 // AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+/**
+ * The Codex CLI's half of the agent-CLI transport contract: `codex exec --json`
+ * argv, and the JSONL event schema it streams back.
+ */
+
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
-import { mcpResultText } from "../shared/mcp-result-text.ts";
-import { type ToolCall } from "../shared/types.ts";
+import {
+  type AgentStreamState,
+  parseAgentCliStream,
+  stringifyToolResult,
+  tokenCount,
+  toToolArguments,
+} from "../agent-cli/agent-cli-stream.ts";
+import {
+  type AgentCliArgsInput,
+  type AgentCliTransport,
+  type AgentCliTurnArgsInput,
+  MCP_SERVER_NAME,
+  type ParsedAgentTurn,
+} from "../agent-cli/agent-cli-transport.ts";
 
 export const CODEX_MODEL_ALIASES: Record<string, string> = {
   luna: "gpt-5.6-luna",
@@ -13,28 +30,40 @@ export const CODEX_MODEL_ALIASES: Record<string, string> = {
   terra: "gpt-5.6-terra",
 };
 
-export const DEFAULT_CODEX_SYSTEM_PROMPT =
-  "You are Producer Pal, an AI assistant for music production in Ableton Live. " +
-  "Use only the available Producer Pal MCP tools (ppal-*) to inspect or change " +
-  "the Live Set. Do not use shell commands, files, web search, or subagents.";
-
-export interface CodexSessionArgsInput {
-  instructionsFile: string;
-  mcpUrl: string;
-  model: string;
-  resumeThreadId?: string;
-}
+export const CODEX_CLI_TRANSPORT: AgentCliTransport = {
+  provider: "codex-code",
+  label: "codex CLI",
+  bin: "codex",
+  binEnvVar: "CODEX_BIN",
+  tmpPrefix: "producer-pal-codex-",
+  strippedEnvVars: ["CODEX_API_KEY", "OPENAI_API_KEY", "OPENAI_KEY"],
+  // Fixed alias set (no models endpoint); read from the aliases so a listing
+  // can't advertise a name the CLI can't resolve.
+  models: Object.keys(CODEX_MODEL_ALIASES).sort(),
+  judgeModel: "luna",
+  buildTurnArgs: codexTurnArgs,
+  buildJudgeArgs: codexJudgeArgs,
+  parseStream: parseCodexStream,
+};
 
 /**
  * Build arguments for an initial or resumed Codex eval turn.
- * @param input - Model, instructions, MCP URL, and optional thread ID
+ * @param input - Model, instructions, MCP URL, and optional session ID
  * @returns Codex CLI arguments
  */
-export function codexCliProtocol(input: CodexSessionArgsInput): string[] {
-  const common = buildCommonArgs(input);
+export function codexTurnArgs(input: AgentCliTurnArgsInput): string[] {
+  const common = [
+    ...buildRestrictedArgs(input),
+    "-c",
+    `mcp_servers.${MCP_SERVER_NAME}.url=${JSON.stringify(input.mcpUrl)}`,
+    "-c",
+    `mcp_servers.${MCP_SERVER_NAME}.required=true`,
+    "-c",
+    `mcp_servers.${MCP_SERVER_NAME}.default_tools_approval_mode="approve"`,
+  ];
 
-  if (input.resumeThreadId != null) {
-    return ["exec", "resume", ...common, input.resumeThreadId, "-"];
+  if (input.resumeSessionId != null) {
+    return ["exec", "resume", ...common, input.resumeSessionId, "-"];
   }
 
   return ["exec", "--sandbox", "read-only", ...common, "-"];
@@ -42,20 +71,16 @@ export function codexCliProtocol(input: CodexSessionArgsInput): string[] {
 
 /**
  * Build arguments for an isolated Codex judge call.
- * @param model - Friendly alias or explicit model ID
- * @param instructionsFile - Absolute path to judge instructions
+ * @param input - Model and instructions for the judge
  * @returns Codex CLI arguments
  */
-export function codexJudgeArgs(
-  model: string,
-  instructionsFile: string,
-): string[] {
+export function codexJudgeArgs(input: AgentCliArgsInput): string[] {
   return [
     "exec",
     "--sandbox",
     "read-only",
     "--ephemeral",
-    ...buildRestrictedArgs(model, instructionsFile),
+    ...buildRestrictedArgs(input),
     "-",
   ];
 }
@@ -70,95 +95,25 @@ export function resolveCodexModel(model: string): string {
 }
 
 /**
- * Remove OpenAI API keys so Codex uses the logged-in subscription.
- * @param env - Parent process environment
- * @returns Environment without OpenAI API keys or undefined values
- */
-export function scrubOpenAiKeys(
-  env: NodeJS.ProcessEnv,
-): Record<string, string> {
-  const stripped = new Set(["CODEX_API_KEY", "OPENAI_API_KEY", "OPENAI_KEY"]);
-  const result: Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(env)) {
-    if (typeof value === "string" && !stripped.has(key)) result[key] = value;
-  }
-
-  return result;
-}
-
-export interface ParsedCodexTurn {
-  text: string;
-  toolCalls: ToolCall[];
-  threadId?: string;
-  usage?: TokenUsage;
-}
-
-/**
  * Parse one Codex JSONL turn into the shared eval result shape.
  * @param stdout - Codex JSONL stdout
- * @returns Parsed assistant text, MCP calls, thread ID, and token usage
+ * @returns Parsed assistant text, MCP calls, session ID, and token usage
  */
-export function parseCodexStream(stdout: string): ParsedCodexTurn {
-  const state: CodexStreamState = {
-    text: "",
-    toolCalls: [],
-    openCalls: new Map(),
-  };
-
-  for (const line of stdout.split("\n")) {
-    const event = parseLine(line);
-
-    if (event != null) handleEvent(event, state);
-  }
-
-  if (state.error != null) throw new Error(`codex CLI error: ${state.error}`);
-
-  return {
-    text: state.text,
-    toolCalls: state.toolCalls,
-    ...(state.threadId != null ? { threadId: state.threadId } : {}),
-    ...(state.usage != null ? { usage: state.usage } : {}),
-  };
-}
-
-interface CodexStreamState {
-  text: string;
-  toolCalls: ToolCall[];
-  /** In-flight MCP calls awaiting completion, keyed by callKey(). */
-  openCalls: Map<string, ToolCall>;
-  threadId?: string;
-  usage?: TokenUsage;
-  error?: string;
-}
-
-/**
- * Build restrictions and the Producer Pal MCP configuration.
- * @param input - Model, instructions, and MCP session options
- * @returns CLI arguments shared by initial and resumed turns
- */
-function buildCommonArgs(input: CodexSessionArgsInput): string[] {
-  return [
-    ...buildRestrictedArgs(input.model, input.instructionsFile),
-    "-c",
-    `mcp_servers.producer-pal.url=${JSON.stringify(input.mcpUrl)}`,
-    "-c",
-    "mcp_servers.producer-pal.required=true",
-    "-c",
-    'mcp_servers.producer-pal.default_tools_approval_mode="approve"',
-  ];
+export function parseCodexStream(stdout: string): ParsedAgentTurn {
+  return parseAgentCliStream(stdout, {
+    label: "codex CLI",
+    // Codex emits its message as one `agent_message` item, so parts concatenate.
+    textSeparator: "",
+    handleEvent,
+  });
 }
 
 /**
  * Build arguments shared by MCP turns and judge calls.
- * @param model - Friendly alias or explicit model ID
- * @param instructionsFile - Absolute path to base instructions
+ * @param input - Model and instructions
  * @returns Restricted Codex CLI arguments
  */
-function buildRestrictedArgs(
-  model: string,
-  instructionsFile: string,
-): string[] {
+function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
   return [
     "--json",
     "--skip-git-repo-check",
@@ -171,7 +126,7 @@ function buildRestrictedArgs(
     "--disable",
     "multi_agent",
     "--model",
-    resolveCodexModel(model),
+    resolveCodexModel(input.model),
     "-c",
     'approval_policy="never"',
     "-c",
@@ -179,25 +134,8 @@ function buildRestrictedArgs(
     "-c",
     'sandbox_mode="read-only"',
     "-c",
-    `model_instructions_file=${JSON.stringify(instructionsFile)}`,
+    `model_instructions_file=${JSON.stringify(input.instructionsFile)}`,
   ];
-}
-
-/**
- * Parse a JSONL line, ignoring diagnostics written to stdout.
- * @param line - One stdout line
- * @returns Parsed event or undefined for non-JSON output
- */
-function parseLine(line: string): Record<string, unknown> | undefined {
-  const trimmed = line.trim();
-
-  if (!trimmed) return undefined;
-
-  try {
-    return JSON.parse(trimmed) as Record<string, unknown>;
-  } catch {
-    return undefined;
-  }
 }
 
 /**
@@ -207,10 +145,10 @@ function parseLine(line: string): Record<string, unknown> | undefined {
  */
 function handleEvent(
   event: Record<string, unknown>,
-  state: CodexStreamState,
+  state: AgentStreamState,
 ): void {
   if (event.type === "thread.started" && typeof event.thread_id === "string") {
-    state.threadId = event.thread_id;
+    state.sessionId = event.thread_id;
   } else if (event.type === "turn.completed") {
     state.usage = mapCodexUsage(event.usage);
   } else if (event.type === "turn.failed" || event.type === "error") {
@@ -225,12 +163,12 @@ function handleEvent(
  * @param itemValue - Event item payload
  * @param state - Mutable turn accumulator
  */
-function handleItem(itemValue: unknown, state: CodexStreamState): void {
+function handleItem(itemValue: unknown, state: AgentStreamState): void {
   if (itemValue == null || typeof itemValue !== "object") return;
   const item = itemValue as Record<string, unknown>;
 
   if (item.type === "agent_message" && typeof item.text === "string") {
-    state.text += item.text;
+    state.textParts.push(item.text);
   } else if (item.type === "mcp_tool_call") {
     collectMcpCall(item, state);
   }
@@ -243,7 +181,7 @@ function handleItem(itemValue: unknown, state: CodexStreamState): void {
  */
 function collectMcpCall(
   item: Record<string, unknown>,
-  state: CodexStreamState,
+  state: AgentStreamState,
 ): void {
   const key = callKey(item);
 
@@ -253,18 +191,18 @@ function collectMcpCall(
 
   if (call == null) {
     if (typeof item.tool !== "string") return;
-    call = { name: item.tool, args: toArguments(item.arguments) };
+    call = { name: item.tool, args: toToolArguments(item.arguments) };
     state.toolCalls.push(call);
     state.openCalls.set(key, call);
   } else {
     // `item.started` can carry empty `arguments`, with the real ones only on
     // completion — so let a non-empty payload replace what landed first.
-    const args = toArguments(item.arguments);
+    const args = toToolArguments(item.arguments);
 
     if (Object.keys(args).length > 0) call.args = args;
   }
 
-  if (item.result != null) call.result = stringifyResult(item.result);
+  if (item.result != null) call.result = stringifyToolResult(item.result);
 
   if (item.status === "failed") {
     const message = getErrorMessage(item);
@@ -305,35 +243,6 @@ function isFinishedCall(item: Record<string, unknown>): boolean {
 }
 
 /**
- * Normalize object or JSON-string tool arguments.
- * @param value - Raw Codex arguments
- * @returns Object arguments for the shared tool-call shape
- */
-function toArguments(value: unknown): Record<string, unknown> {
-  if (value != null && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-
-      if (
-        parsed != null &&
-        typeof parsed === "object" &&
-        !Array.isArray(parsed)
-      ) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {
-      return {};
-    }
-  }
-
-  return {};
-}
-
-/**
  * Map Codex token counters to the shared usage shape.
  * @param value - Raw turn usage
  * @returns Shared token usage or undefined
@@ -341,44 +250,19 @@ function toArguments(value: unknown): Record<string, unknown> {
 function mapCodexUsage(value: unknown): TokenUsage | undefined {
   if (value == null || typeof value !== "object") return undefined;
   const usage = value as Record<string, unknown>;
-  const inputTokens = numberValue(usage.input_tokens);
-  const outputTokens = numberValue(usage.output_tokens);
+  const inputTokens = tokenCount(usage.input_tokens);
+  const outputTokens = tokenCount(usage.output_tokens);
   const result: TokenUsage = {
     inputTokens,
     outputTokens,
   };
-  const cached = numberValue(usage.cached_input_tokens);
-  const reasoning = numberValue(usage.reasoning_output_tokens);
+  const cached = tokenCount(usage.cached_input_tokens);
+  const reasoning = tokenCount(usage.reasoning_output_tokens);
 
   if (cached > 0) result.cacheReadTokens = cached;
   if (reasoning > 0) result.reasoningTokens = reasoning;
 
   return result;
-}
-
-/**
- * Return a numeric counter or zero when absent.
- * @param value - Raw counter
- * @returns Numeric counter
- */
-function numberValue(value: unknown): number {
-  return typeof value === "number" ? value : 0;
-}
-
-/**
- * Serialize a Codex MCP result for eval reports.
- *
- * Codex reports the whole MCP envelope (`{ content: [...] }`); unwrap its first
- * text block so results read like the AI SDK path's. This string is what the
- * console, the JSON report, and the judge prompt all show.
- *
- * @param value - Raw MCP result
- * @returns String result
- */
-function stringifyResult(value: unknown): string {
-  if (typeof value === "string") return value;
-
-  return mcpResultText(value) || JSON.stringify(value);
 }
 
 /**

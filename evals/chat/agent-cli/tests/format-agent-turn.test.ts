@@ -5,9 +5,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { formatCodexTurn } from "./format-codex-turn.ts";
+import { formatAgentTurn } from "../format-agent-turn.ts";
 
-describe("formatCodexTurn", () => {
+describe("formatAgentTurn", () => {
   const turn = {
     text: "Added a kick pattern.",
     toolCalls: [
@@ -17,7 +17,7 @@ describe("formatCodexTurn", () => {
   };
 
   it("renders tool calls, results, and the reply", () => {
-    const output = formatCodexTurn(turn, false);
+    const output = formatAgentTurn(turn, false);
 
     expect(output).toBe(
       "🔧 ppal-connect({})\n" +
@@ -30,11 +30,11 @@ describe("formatCodexTurn", () => {
   });
 
   it("drops the trailing newline when a usage line follows", () => {
-    expect(formatCodexTurn(turn, true)).toMatch(/Added a kick pattern\.$/);
+    expect(formatAgentTurn(turn, true)).toMatch(/Added a kick pattern\.$/);
   });
 
   it("omits the result line for a call that never reported one", () => {
-    const output = formatCodexTurn(
+    const output = formatAgentTurn(
       { text: "", toolCalls: [{ name: "ppal-connect", args: {} }] },
       false,
     );
@@ -44,11 +44,11 @@ describe("formatCodexTurn", () => {
 
   it("renders reply-only turns without a leading blank line", () => {
     expect(
-      formatCodexTurn({ text: "No tools needed.", toolCalls: [] }, false),
+      formatAgentTurn({ text: "No tools needed.", toolCalls: [] }, false),
     ).toBe("No tools needed.\n");
   });
 
   it("returns nothing for an empty turn", () => {
-    expect(formatCodexTurn({ text: "", toolCalls: [] }, false)).toBe("");
+    expect(formatAgentTurn({ text: "", toolCalls: [] }, false)).toBe("");
   });
 });
