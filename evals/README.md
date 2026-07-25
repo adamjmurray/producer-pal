@@ -38,6 +38,7 @@ scripts/eval [options]
 | `-s, --skip-setup`    | Skip Live Set setup (reuse existing connection)   |
 | `--skip-judge`        | Skip the LLM-as-judge step (checks only)          |
 | `--skip-reflection`   | Skip the self-reflection turn after a failure     |
+| `--no-seed-connect`   | Let the model run the opening connect turn        |
 | `-q, --quiet`         | Suppress detailed AI and judge responses          |
 | `-r, --repeat <N>`    | Run each scenario N times (for flakiness)         |
 | `-u, --usage`         | Show token usage per turn                         |
@@ -142,6 +143,37 @@ scripts/eval -l
 Run `scripts/eval -l` for the current list. Scenarios are tagged as
 **regression** (should always pass) or **capability** (improvement targets, may
 have low pass rates).
+
+### The seeded connect turn
+
+Nearly every scenario opens with "Connect to Ableton Live", and every model
+answers it the same way: one `ppal-connect` call, then a sentence acknowledging
+it. That turn is setup — the behavior under test starts at the next message —
+but it is the run's most expensive turn, because the connect result (Live Set
+overview + Producer Pal skills) is re-sent as input on the round trip that
+produces the acknowledgment.
+
+So the runner writes that turn into the conversation itself, for free. It is not
+a recording: `ppal-connect` is called for real over MCP against the Live Set
+that is actually open, under the run's actual config, so nothing can go stale.
+Only the assistant's closing sentence is canned, and the model reads the same
+context either way. Turn numbering is unchanged, so `turn: 0` assertions still
+mean the connect turn.
+
+A scenario is seeded when its first message is the connect message and something
+follows it. Set `seedConnect: false` on scenarios that GRADE that turn — its
+prose, or what it did or didn't write (`connect-to-ableton`, the
+`context-onboarding-*` family). `--no-seed-connect` disables it for a whole run,
+which is how to A/B the seeding against real connect turns.
+
+Note that a `{ type: "tool_called", tool: "ppal-connect", turn: 0 }` assertion
+passes trivially in a seeded scenario. `connect-to-ableton` is where "does the
+model reach for `ppal-connect`" is actually graded.
+
+The `codex-code` provider is never seeded: the Codex CLI resumes a thread by id
+and owns its own history, so there is nothing to write into and it falls back to
+a real connect turn. Worth remembering when comparing a `codex-code` run against
+any other provider — only one of them paid for that turn.
 
 ### Scoring
 

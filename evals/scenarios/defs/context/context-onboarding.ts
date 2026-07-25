@@ -46,6 +46,14 @@ import {
 const DECLINED = "declined-personal-context";
 
 /**
+ * Every scenario here grades the connect turn ITSELF — the prose of that first
+ * reply, and what it did or didn't write — so it has to be the model's own.
+ * Elsewhere that turn is seeded (see `seed-connect.ts`), which would replace
+ * exactly the reply these read.
+ */
+const GRADES_THE_CONNECT_TURN = { seedConnect: false } as const;
+
+/**
  * Stands in for an external client's own memory. Claude Desktop and friends
  * inject what they remember about the user into the system prompt, so that is
  * exactly where this goes — the model believes these facts before it connects,
@@ -68,6 +76,7 @@ export const contextOnboardingOffer: EvalScenario = {
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
   requires: REQUIRES_MEMORY,
+  ...GRADES_THE_CONNECT_TURN,
 
   // A stranger: no global context, no memories.
   ...seedContext({}),
@@ -113,6 +122,7 @@ export const contextOnboardingNoImport: EvalScenario = {
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
   requires: REQUIRES_MEMORY,
+  ...GRADES_THE_CONNECT_TURN,
 
   // An assistant that arrives already believing things about the user — the
   // external-client case (Claude Desktop, LM Studio), where the host injects its
@@ -156,6 +166,7 @@ export const contextOnboardingRecordsDecline: EvalScenario = {
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
   requires: REQUIRES_MEMORY,
+  ...GRADES_THE_CONNECT_TURN,
 
   ...seedContext({}),
 
@@ -190,6 +201,7 @@ export const contextOnboardingStaysQuiet: EvalScenario = {
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
   requires: REQUIRES_MEMORY,
+  ...GRADES_THE_CONNECT_TURN,
 
   // The decline from a previous session. Any memory at all suppresses the
   // offer, so this fixture stands in for "we already asked once".

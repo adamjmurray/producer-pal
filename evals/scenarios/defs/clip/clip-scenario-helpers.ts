@@ -13,6 +13,7 @@ import { hasPerfectMatching } from "#evals/shared/bipartite-matching.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
+import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -30,7 +31,7 @@ export const TOOL_UPDATE_CLIP = "ppal-update-clip";
 export const TOOL_READ_CLIP = "ppal-read-clip";
 
 /** Standard turn-0 message that opens a connection to Live. */
-export const MSG_CONNECT = "Connect to Ableton Live";
+export const MSG_CONNECT = CONNECT_MESSAGE;
 
 /** Standard message to read the drum clip in scene 1 (drum scenarios). */
 export const READ_DRUM_NOTES =

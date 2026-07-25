@@ -22,6 +22,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { getToolCalls } from "../../assertions/index.ts";
+import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -37,7 +38,7 @@ export const TOOL_CONNECT = "ppal-connect";
 export const TOOL_CONTEXT = "ppal-context";
 
 /** Standard turn-0 message that opens a connection to Live. */
-export const MSG_CONNECT = "Connect to Ableton Live";
+export const MSG_CONNECT = CONNECT_MESSAGE;
 
 /** The Live Set every context scenario shares, so they can reuse one open. */
 export const CONTEXT_LIVE_SET = "basic-midi-4-track";
