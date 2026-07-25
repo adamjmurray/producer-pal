@@ -93,6 +93,7 @@ export async function createEvalSession(
       ...(options.instructions != null
         ? { instructions: options.instructions }
         : {}),
+      ...(options.usage != null ? { usage: options.usage } : {}),
     });
   }
 

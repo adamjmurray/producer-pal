@@ -10,7 +10,9 @@ import { type EvalSession } from "#evals/scenarios/eval-session.ts";
 import { logTurnStart } from "#evals/scenarios/helpers/eval-session-base.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { CODEX_CODE_CONFIG } from "#evals/shared/provider-configs.ts";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { connectMcp } from "../mcp.ts";
+import { printStepUsage } from "../shared/formatting.ts";
 import { type TurnResult } from "../shared/types.ts";
 import {
   codexCliProtocol,
@@ -23,6 +25,8 @@ export interface CodexCliSessionOptions {
   instructions?: string;
   mcpUrl?: string;
   model?: string;
+  /** Print per-turn token usage (the CLI's -u/--usage flag). */
+  usage?: boolean;
 }
 
 /**
@@ -59,6 +63,7 @@ export async function createCodexCliSession(
   }
 
   let threadId: string | undefined;
+  let prevUsage: TokenUsage | undefined;
 
   return {
     mcpClient,
@@ -79,6 +84,13 @@ export async function createCodexCliSession(
 
       // eslint-disable-next-line require-atomic-updates -- turns run sequentially
       if (parsed.threadId != null) threadId = parsed.threadId;
+
+      if (options.usage && parsed.usage != null) {
+        // Codex reports usage once per turn (turn.completed), not per step, so
+        // there is one line per turn rather than one per tool round-trip.
+        printStepUsage(parsed.usage, prevUsage, true);
+        prevUsage = parsed.usage;
+      }
 
       return {
         text: parsed.text,
