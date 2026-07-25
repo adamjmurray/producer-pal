@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { mcpResultText } from "../shared/mcp-result-text.ts";
 import { type ToolCall } from "../shared/types.ts";
 
 export const CODEX_MODEL_ALIASES: Record<string, string> = {
@@ -366,11 +367,18 @@ function numberValue(value: unknown): number {
 
 /**
  * Serialize a Codex MCP result for eval reports.
+ *
+ * Codex reports the whole MCP envelope (`{ content: [...] }`); unwrap its first
+ * text block so results read like the AI SDK path's. This string is what the
+ * console, the JSON report, and the judge prompt all show.
+ *
  * @param value - Raw MCP result
  * @returns String result
  */
 function stringifyResult(value: unknown): string {
-  return typeof value === "string" ? value : JSON.stringify(value);
+  if (typeof value === "string") return value;
+
+  return mcpResultText(value) || JSON.stringify(value);
 }
 
 /**

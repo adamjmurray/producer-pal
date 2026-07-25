@@ -146,14 +146,10 @@ describe("parseCodexStream", () => {
 
     expect(parsed.text).toBe("Connected.");
     expect(parsed.threadId).toBe("thread-abc");
+    // The MCP envelope is unwrapped to its text block, matching what the AI SDK
+    // path records — this string reaches the console, reports, and judge prompt.
     expect(parsed.toolCalls).toStrictEqual([
-      {
-        name: "ppal-connect",
-        args: {},
-        result: JSON.stringify({
-          content: [{ type: "text", text: "connected" }],
-        }),
-      },
+      { name: "ppal-connect", args: {}, result: "connected" },
     ]);
     expect(parsed.usage).toStrictEqual({
       inputTokens: 100,
@@ -252,6 +248,24 @@ describe("parseCodexStream", () => {
     expect(parseCodexStream(stdout).toolCalls).toStrictEqual([
       { name: "ppal-update-clip", args: { ids: "1/1" } },
     ]);
+  });
+
+  it("falls back to JSON for a result carrying no text block", () => {
+    const stdout = JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "call-1",
+        type: "mcp_tool_call",
+        tool: "ppal-connect",
+        arguments: {},
+        status: "completed",
+        result: { content: [{ type: "image", data: "…" }] },
+      },
+    });
+
+    expect(parseCodexStream(stdout).toolCalls[0]?.result).toBe(
+      JSON.stringify({ content: [{ type: "image", data: "…" }] }),
+    );
   });
 
   it("records a failed MCP result without failing the whole turn", () => {

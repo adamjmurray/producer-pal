@@ -13,6 +13,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { type ToolSet, jsonSchema } from "ai";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { parseCompactJSLiteral } from "#src/shared/compact/compact-parser.ts";
+import { mcpResultText } from "./shared/mcp-result-text.ts";
 
 const MCP_CLIENT_NAME = "producer-pal-chat";
 const MCP_CLIENT_VERSION = "1.0.0";
@@ -96,9 +97,7 @@ export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
  * @returns The text content from the first content item, or empty string
  */
 export function extractToolResultText(result: unknown): string {
-  const typed = result as { content?: Array<{ text?: string }> } | null;
-
-  return typed?.content?.[0]?.text ?? "";
+  return mcpResultText(result);
 }
 
 /**
