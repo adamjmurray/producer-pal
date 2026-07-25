@@ -211,6 +211,7 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
     })),
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
+    ...(turn.seeded === true && { seeded: true }),
   };
 }
 

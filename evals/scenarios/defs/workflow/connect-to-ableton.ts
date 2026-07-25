@@ -7,6 +7,7 @@
  */
 
 import { getToolCalls } from "../../assertions/index.ts";
+import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
 import { type EvalScenario } from "../../types.ts";
 
 export const connectToAbleton: EvalScenario = {
@@ -15,7 +16,12 @@ export const connectToAbleton: EvalScenario = {
   kind: "regression",
   liveSet: "basic-midi-4-track",
 
-  messages: ["Connect to Ableton Live"],
+  messages: [CONNECT_MESSAGE],
+
+  // The scenario IS the connect turn: this is where "does the model reach for
+  // ppal-connect, and does it report what came back" is actually graded. Every
+  // other scenario seeds that turn and leans on this one to cover it.
+  seedConnect: false,
 
   assertions: [
     // Verify ppal-connect was called immediately

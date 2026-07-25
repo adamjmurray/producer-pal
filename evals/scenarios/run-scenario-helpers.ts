@@ -9,6 +9,7 @@
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { styleText } from "node:util";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
@@ -20,15 +21,73 @@ import {
   assertResponseContains,
   type CheckSummary,
 } from "./assertions/index.ts";
+import { type EvalSession } from "./eval-session.ts";
 import { assertionLabel } from "./helpers/json-results/assertion-label.ts";
+import { isQuietMode } from "./helpers/output-config.ts";
+import {
+  seedConnectTurn,
+  shouldSeedConnect,
+} from "./helpers/seed-connect/seed-connect.ts";
 import { type RunEnv } from "./run-env/run-env.ts";
 import {
   type EvalAssertion,
   type EvalAssertionResult,
+  type EvalScenario,
   type EvalTurnResult,
 } from "./types.ts";
 
 const LIVE_SETS_DIR = "evals/live-sets";
+
+/**
+ * Run the scenario's message turns, appending one result per turn.
+ *
+ * The opening connect turn is seeded when the scenario allows it and the
+ * transport supports it — see `seed-connect.ts` for why, and for the fallback
+ * to a real turn.
+ *
+ * @param scenario - The scenario being run
+ * @param session - Active evaluation session
+ * @param turns - Turn results, appended in place
+ * @param seedConnect - Whether connect-turn seeding is enabled for this run
+ */
+export async function runMessageTurns(
+  scenario: EvalScenario,
+  session: EvalSession,
+  turns: EvalTurnResult[],
+  seedConnect: boolean,
+): Promise<void> {
+  const seedFirst =
+    shouldSeedConnect(scenario, seedConnect) && session.seedTurn != null;
+
+  for (const [i, message] of scenario.messages.entries()) {
+    if (i === 0 && seedFirst) {
+      // Narrowing: `seedFirst` already established `seedTurn` is present.
+      const seedable = session as EvalSession & {
+        seedTurn: NonNullable<EvalSession["seedTurn"]>;
+      };
+
+      turns.push(await seedConnectTurn(seedable, message));
+
+      if (!isQuietMode()) {
+        console.log("\n" + styleText("gray", `Turn 1 (seeded): ${message}`));
+      }
+
+      continue;
+    }
+
+    const turnStart = Date.now();
+    const turnResult = await session.sendMessage(message, i + 1);
+
+    turns.push({
+      turnIndex: i,
+      userMessage: message,
+      assistantResponse: turnResult.text,
+      toolCalls: turnResult.toolCalls,
+      durationMs: Date.now() - turnStart,
+      stepUsages: turnResult.stepUsages,
+    });
+  }
+}
 
 /**
  * Run a single correctness assertion (non-LLM judge)

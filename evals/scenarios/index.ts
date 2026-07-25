@@ -64,6 +64,8 @@ interface CliOptions {
   skipSetup?: boolean;
   skipJudge?: boolean;
   skipReflection?: boolean;
+  /** Whether to seed the opening connect turn (--no-seed-connect sets false). */
+  seedConnect?: boolean;
   quiet?: boolean;
   usage?: boolean;
   /** Whether to write JSON result files to disk (--no-save sets false). */
@@ -140,6 +142,10 @@ program
   .option(
     "--skip-reflection",
     "Skip the self-reflection turn injected after a deterministic failure",
+  )
+  .option(
+    "--no-seed-connect",
+    "Let the model run the opening connect turn instead of seeding it",
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-u, --usage", "Show per-step token usage")
@@ -411,6 +417,7 @@ async function runTrials(
       usage: options.usage,
       skipJudge: options.skipJudge,
       skipReflection: options.skipReflection,
+      seedConnect: options.seedConnect,
     });
 
     const trialInfo: TrialInfo | undefined =

@@ -23,6 +23,10 @@ import {
 } from "#evals/shared/provider-configs.ts";
 import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
 import { logTurnStart } from "./helpers/eval-session-base.ts";
+import {
+  buildSeededMessages,
+  type SeededTurn,
+} from "./helpers/seed-connect/seeded-turn.ts";
 import { type EvalProvider, type TurnResult } from "./types.ts";
 
 const MAX_TOOL_STEPS = 10;
@@ -69,6 +73,11 @@ export interface EvalSession {
   mcpClient: Client;
   /** Close the session */
   close: () => Promise<void>;
+  /** Append a pre-built turn to history without calling the model. Absent on
+   *  transports that own their conversation state (the Codex CLI resumes a
+   *  thread by id, so there is no history array to write into) — callers must
+   *  fall back to a real `sendMessage` turn when this is undefined. */
+  seedTurn?: (turn: SeededTurn) => void;
 }
 
 interface EvalSessionOptions {
@@ -108,6 +117,12 @@ export async function createEvalSession(
 
   return {
     mcpClient,
+
+    seedTurn: (turn: SeededTurn): void => {
+      const toolCallId = `seeded-${turn.toolName}-${messages.length}`;
+
+      messages.push(...buildSeededMessages(turn, toolCallId));
+    },
 
     sendMessage: async (
       message: string,
