@@ -11,9 +11,9 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { type ToolSet, jsonSchema } from "ai";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { parseCompactJSLiteral } from "#src/shared/compact/compact-parser.ts";
 
-const DEFAULT_MCP_URL = "http://localhost:3350/mcp";
 const MCP_CLIENT_NAME = "producer-pal-chat";
 const MCP_CLIENT_VERSION = "1.0.0";
 
@@ -37,7 +37,7 @@ export interface McpTools {
  * @returns MCP connection with client and transport
  */
 export async function connectMcp(
-  url: string = DEFAULT_MCP_URL,
+  url: string = MCP_URL,
 ): Promise<McpConnection> {
   const transport = new StreamableHTTPClientTransport(new URL(url));
   const client = new Client({
@@ -57,9 +57,7 @@ export async function connectMcp(
  * @param url - MCP server URL
  * @returns AI SDK tools and the underlying MCP client
  */
-export async function createMcpTools(
-  url: string = DEFAULT_MCP_URL,
-): Promise<McpTools> {
+export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
   const transport = new StreamableHTTPClientTransport(new URL(url));
   const mcpClient = new Client({
     name: MCP_CLIENT_NAME,
