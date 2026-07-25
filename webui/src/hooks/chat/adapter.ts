@@ -206,6 +206,13 @@ function buildSubagentConfig(
       // Carry the preset's toolset through; buildWorkerConfig replaces the
       // worker's tools with it (and always re-strips spawn_subagent).
       enabledTools: preset.enabledTools,
+      // And its notation, which reaches the worker's MCP requests and its
+      // briefing fetch as the per-request header — so a stark worker can serve a
+      // bar|beat orchestrator without either one touching the device global.
+      // Conditional, not `notation: preset.notation`: buildWorkerConfig spreads
+      // this whole object over the clone, so a present-but-undefined key would
+      // erase an inherited notation rather than leaving it alone.
+      ...(preset.notation ? { notation: preset.notation } : {}),
     };
   } catch (error) {
     console.warn(

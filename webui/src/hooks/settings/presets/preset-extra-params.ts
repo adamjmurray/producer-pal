@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Notation } from "#src/shared/notation";
 import { type ChatPreset, type Provider } from "#webui/types/settings";
 
 /** Resolves a provider's live connection (decrypted key + base URL). */
@@ -30,15 +31,16 @@ export interface PresetConnection {
 /**
  * A "Default subagent" preset resolved to everything buildWorkerConfig needs:
  * the connection (provider + live key/baseUrl), the model/inference a preset
- * swaps, and the preset's toolset when it saved one (absent = inherit the
- * orchestrator's tools). The system instruction is absent by design — a worker
- * always inherits it from the orchestrator.
+ * swaps, and the preset's toolset and notation when it saved them (absent =
+ * inherit the orchestrator's). The system instruction is absent by design — a
+ * worker always inherits it from the orchestrator.
  */
 export interface ResolvedSubagentPreset extends PresetConnection {
   model: string;
   thinking: string;
   smallModelMode: boolean;
   enabledTools?: Record<string, boolean>;
+  notation?: Notation;
 }
 
 /**
@@ -93,5 +95,8 @@ export function resolveSubagentPreset(
     // Only carry a toolset when the preset actually saved one; a legacy preset
     // omits it, meaning the worker inherits the orchestrator's tools.
     ...(preset.enabledTools ? { enabledTools: preset.enabledTools } : {}),
+    // Same for notation: absent means the worker sends no notation header of its
+    // own and falls through to whatever the orchestrator/device is using.
+    ...(preset.notation ? { notation: preset.notation } : {}),
   };
 }

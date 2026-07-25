@@ -130,8 +130,9 @@ export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
       <p className="text-xs text-zinc-500 mt-1">
         What spawned subagents run as when the Subagent tool is enabled. A
         preset runs each subagent on its own model, thinking, small-model mode,
-        and toolset (a preset with no saved toolset keeps this conversation's
-        tools). Subagents can never spawn their own subagents.
+        toolset, and notation (a preset saved without a toolset or notation
+        keeps this conversation's). Subagents can never spawn their own
+        subagents.
       </p>
     </div>
   );

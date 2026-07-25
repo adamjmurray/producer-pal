@@ -89,6 +89,30 @@ describe("resolveSubagentPreset", () => {
     expect(resolved).not.toHaveProperty("enabledTools");
   });
 
+  it("carries the preset's notation when it saved one", () => {
+    const starkWorker: ChatPreset = { ...cheapWorker, notation: "stark" };
+
+    const resolved = resolveSubagentPreset(
+      "1",
+      [starkWorker],
+      getProviderConnection,
+    );
+
+    expect(resolved?.notation).toBe("stark");
+  });
+
+  it("omits the notation for a legacy preset that saved none", () => {
+    // The key must be absent, not undefined: buildWorkerConfig spreads this
+    // bundle over the clone, so a present key would erase an inherited notation.
+    const resolved = resolveSubagentPreset(
+      "1",
+      [cheapWorker],
+      getProviderConnection,
+    );
+
+    expect(resolved).not.toHaveProperty("notation");
+  });
+
   it("returns undefined for the inherit sentinel (null / empty)", () => {
     expect(
       resolveSubagentPreset(null, [cheapWorker], getProviderConnection),

@@ -353,9 +353,9 @@ setting).
 ### Presets
 
 A preset is a named, one-click bundle of a full chat setup: **provider**,
-**model**, **thinking** level, **small model mode**, and the **enabled
-toolset**. Because a preset spans both the Connection and Tools tabs, it gets
-its own home here.
+**model**, **thinking** level, **small model mode**, the **enabled toolset**,
+and the **notation**. Because a preset spans both the Connection and Tools tabs,
+it gets its own home here.
 
 - **Preset** dropdown - Select a saved preset to load its whole bundle into the
   form. It doesn't take effect until you **Save** the settings, so you can
@@ -369,16 +369,28 @@ its own home here.
   experimental **Subagent** tool is enabled (on the Tools tab). Leave it on
   **Inherit current settings** and each subagent clones your current chat
   config. Pick a preset instead and every subagent runs on that preset's
-  **model**, **thinking**, **small model mode**, and **toolset** — so you can
-  pair a strong planner with uniform, cheaper workers. (A preset that never
-  saved a toolset keeps the current conversation's tools.) Subagents can never
-  spawn their own subagents, whatever a preset's toolset enables.
+  **model**, **thinking**, **small model mode**, **toolset**, and **notation** —
+  so you can pair a strong planner with uniform, cheaper workers, or send a
+  Stark-speaking subagent to do drum work while your own chat stays on bar|beat.
+  (A preset that never saved a toolset or notation keeps the current
+  conversation's.) Subagents can never spawn their own subagents, whatever a
+  preset's toolset enables.
 
-Configure the model and inference on the **Connection** tab and the toolset on
-the **Tools** tab, then come here to save them together. API keys (kept
-per-provider) and appearance preferences are never part of a preset — a preset
-only _names_ which provider to use and resolves its key from your stored
+Configure the model and inference on the **Connection** tab and the toolset and
+notation on the **Tools** tab, then come here to save them together. API keys
+(kept per-provider) and appearance preferences are never part of a preset — a
+preset only _names_ which provider to use and resolves its key from your stored
 settings.
+
+::: warning Notation is a global setting
+
+Unlike the rest of a preset, notation lives on the device, not in the browser.
+Loading a preset that carries one and Saving changes the notation for **every**
+chat and MCP client, the same as setting it directly on the Tools tab. A
+preset's notation only stays local to its own worker when it's used as the
+**Default subagent**.
+
+:::
 
 ### Tools
 

@@ -71,6 +71,7 @@ describe("preset-storage", () => {
       { ...makePreset({ id: "d" }), description: 42 }, // wrong description type
       { ...makePreset({ id: "t" }), enabledTools: { "ppal-delete": "no" } }, // non-boolean
       { ...makePreset({ id: "a" }), enabledTools: ["ppal-delete"] }, // not a map
+      { ...makePreset({ id: "n" }), notation: "tablature" }, // not a notation
       null,
       "string",
     ];
@@ -80,10 +81,11 @@ describe("preset-storage", () => {
     expect(loadPresets()).toStrictEqual([good]);
   });
 
-  it("keeps the optional description and enabledTools fields", () => {
+  it("keeps the optional description, enabledTools, and notation fields", () => {
     const withExtras = makePreset({
       description: "cheap worker",
       enabledTools: { "ppal-delete": false, "ppal-read-clip": true },
+      notation: "stark",
     });
 
     savePresets([withExtras]);
@@ -139,6 +141,27 @@ describe("preset-storage", () => {
         presetMatchesFields(makePreset({ enabledTools: tools }), {
           ...fields,
           enabledTools: { "ppal-delete": true },
+        }),
+      ).toBe(false);
+    });
+
+    it("compares the notation only when the preset captured one", () => {
+      // A legacy preset must not read as perpetually "modified" just because the
+      // buffer carries the device's notation.
+      expect(
+        presetMatchesFields(makePreset(), { ...fields, notation: "stark" }),
+      ).toBe(true);
+
+      expect(
+        presetMatchesFields(makePreset({ notation: "stark" }), {
+          ...fields,
+          notation: "stark",
+        }),
+      ).toBe(true);
+      expect(
+        presetMatchesFields(makePreset({ notation: "stark" }), {
+          ...fields,
+          notation: "barbeat",
         }),
       ).toBe(false);
     });

@@ -431,6 +431,26 @@ describe("chatAdapter", () => {
         expect(config.subagentConfig?.enabledTools).toBeUndefined();
       });
 
+      it("carries the preset's notation onto the override", () => {
+        const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined, {
+          ...extraParams,
+          subagentPreset: { ...subagentPreset, notation: "stark" as const },
+        });
+
+        expect(config.subagentConfig?.notation).toBe("stark");
+      });
+
+      it("omits the notation key entirely when the preset saved none", () => {
+        const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined, {
+          ...extraParams,
+          subagentPreset, // no notation
+        });
+
+        // Absent, not undefined: buildWorkerConfig spreads the override, so a
+        // present key would erase an inherited notation instead of leaving it.
+        expect(config.subagentConfig).not.toHaveProperty("notation");
+      });
+
       it("leaves subagentConfig undefined when no preset is chosen", () => {
         const config = chatAdapter.buildConfig(
           "gpt-4o",

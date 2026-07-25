@@ -26,8 +26,11 @@ interface PresetControlsProps {
  * Preset picker + Save-as/Update/Delete controls, the description editor, and
  * the "Default subagent" selector, shown on the dedicated Presets tab. Selecting
  * a preset loads its full bundle — provider/model/thinking + small-model mode +
- * toolset — into the live editable settings buffer (settings.applyPreset); the
- * user then Saves through the normal footer flow. The Default subagent selector
+ * toolset + notation — into the live editable settings buffer
+ * (settings.applyPreset); the fields are captured from that same buffer, so each
+ * one is edited by its own existing control (notation by the Notation dropdown
+ * on the Tools tab) rather than duplicated here. The user then Saves through the
+ * normal footer flow. The Default subagent selector
  * (SubagentDefaultRow) reuses this live preset list to pick which preset spawned
  * subagents run under. Presets never capture the API key (that stays in the
  * per-provider store).
@@ -50,6 +53,7 @@ export function PresetControls({ settings }: PresetControlsProps) {
     thinking: settings.thinking,
     smallModelMode: settings.smallModelMode,
     enabledTools: settings.enabledTools,
+    notation: settings.notation,
   };
   const selected = presets.find((p) => p.id === selectedId) ?? null;
   const fieldsModified =

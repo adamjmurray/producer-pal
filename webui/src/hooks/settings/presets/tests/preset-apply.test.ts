@@ -44,9 +44,16 @@ describe("useApplyPreset", () => {
     const setProvider = vi.fn();
     const setSmallModelMode = vi.fn();
     const setEnabledTools = vi.fn();
+    const setNotation = vi.fn();
 
     const { result } = renderHook(() =>
-      useApplyPreset(setters, setProvider, setSmallModelMode, setEnabledTools),
+      useApplyPreset(
+        setters,
+        setProvider,
+        setSmallModelMode,
+        setEnabledTools,
+        setNotation,
+      ),
     );
 
     const preset: ChatPreset = {
@@ -57,6 +64,7 @@ describe("useApplyPreset", () => {
       thinking: "Max",
       smallModelMode: true,
       enabledTools: { "ppal-delete": false },
+      notation: "stark",
     };
 
     await act(() => result.current(preset));
@@ -85,17 +93,19 @@ describe("useApplyPreset", () => {
     expect(setSmallModelMode).toHaveBeenCalledWith(true);
     // The captured toolset is applied verbatim (as a fresh copy).
     expect(setEnabledTools).toHaveBeenCalledWith({ "ppal-delete": false });
+    expect(setNotation).toHaveBeenCalledWith("stark");
   });
 
-  it("leaves the toolset untouched for a preset with no captured tools", async () => {
+  it("leaves the toolset and notation untouched for a legacy preset", async () => {
     const setters = {} as ProviderStateSetters;
 
     for (const p of ALL_PROVIDERS) setters[p] = vi.fn();
 
     const setEnabledTools = vi.fn();
+    const setNotation = vi.fn();
 
     const { result } = renderHook(() =>
-      useApplyPreset(setters, vi.fn(), vi.fn(), setEnabledTools),
+      useApplyPreset(setters, vi.fn(), vi.fn(), setEnabledTools, setNotation),
     );
 
     const legacy: ChatPreset = {
@@ -109,7 +119,10 @@ describe("useApplyPreset", () => {
 
     await act(() => result.current(legacy));
 
-    // No enabledTools captured => "inherit": the current tools stay as-is.
+    // Neither captured => "inherit": the current values stay as-is. Not calling
+    // setNotation also keeps its dirty flag clear, so Save posts no /config
+    // write for a preset that never had an opinion about notation.
     expect(setEnabledTools).not.toHaveBeenCalled();
+    expect(setNotation).not.toHaveBeenCalled();
   });
 });

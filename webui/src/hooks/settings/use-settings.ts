@@ -166,6 +166,7 @@ export function useSettings(): UseSettingsReturn {
     setProviderState,
     setSmallModelModeState,
     setEnabledToolsState,
+    setNotation,
   );
 
   const applyLoadedSettings = useCallback(

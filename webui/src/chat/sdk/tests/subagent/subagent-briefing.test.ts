@@ -229,4 +229,26 @@ describe("spawn_subagent briefing wiring", () => {
 
     expect(workerConfig?.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
   });
+
+  it("asks for the briefing in the preset's notation, not the orchestrator's", async () => {
+    // The last link of the preset-notation chain: a stark preset has to reach
+    // the config the briefing fetch derives its headers from, or the worker
+    // would be taught bar|beat and then handed stark note strings.
+    await spawn(
+      createConfig({
+        notation: "barbeat",
+        subagentConfig: {
+          model: { modelId: "cheap", provider: "openai" } as never,
+          smallModelMode: false,
+          notation: "stark",
+        },
+      }),
+    );
+
+    const requested = getBriefing.mock.calls[0]?.[0] as ChatClientConfig;
+
+    expect(requested.notation).toBe("stark");
+    // And the same config runs the worker, so its MCP client sends it too.
+    expect(workerConfig?.notation).toBe("stark");
+  });
 });

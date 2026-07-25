@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isNotation } from "#src/shared/notation";
 import { isValidProvider } from "#webui/hooks/settings/settings-helpers";
 import { type ChatPreset, type PresetFields } from "#webui/types/settings";
 
@@ -58,8 +59,9 @@ export function createPresetId(): string {
 /**
  * Whether a preset's captured settings equal the given live buffer fields —
  * used to flag "unsaved edits" when the buffer has drifted from the selected
- * preset. A preset with no captured toolset (legacy / "inherit") never counts
- * the toolset toward the comparison, so it isn't perpetually "modified".
+ * preset. A preset with no captured toolset or notation (legacy / "inherit")
+ * never counts that field toward the comparison, so it isn't perpetually
+ * "modified".
  * @param preset - A saved preset
  * @param fields - The live editable settings buffer
  * @returns True when every captured field matches
@@ -74,7 +76,8 @@ export function presetMatchesFields(
     preset.thinking === fields.thinking &&
     preset.smallModelMode === fields.smallModelMode &&
     (preset.enabledTools == null ||
-      enabledToolsEqual(preset.enabledTools, fields.enabledTools))
+      enabledToolsEqual(preset.enabledTools, fields.enabledTools)) &&
+    (preset.notation == null || preset.notation === fields.notation)
   );
 }
 
@@ -121,10 +124,11 @@ function isValidPreset(value: unknown): value is ChatPreset {
     typeof p.model === "string" &&
     typeof p.thinking === "string" &&
     typeof p.smallModelMode === "boolean" &&
-    // Both additive fields are optional; reject only a present-but-wrong-typed
-    // value so a hand-edited entry can't crash the picker.
+    // The additive fields are all optional; reject only a present-but-wrong-
+    // typed value so a hand-edited entry can't crash the picker.
     (p.description === undefined || typeof p.description === "string") &&
-    (p.enabledTools === undefined || isBooleanMap(p.enabledTools))
+    (p.enabledTools === undefined || isBooleanMap(p.enabledTools)) &&
+    (p.notation === undefined || isNotation(p.notation))
   );
 }
 

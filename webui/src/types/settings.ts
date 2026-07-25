@@ -66,6 +66,15 @@ export interface PresetFields {
    * tools untouched). A present map is applied verbatim; a missing key within it
    * falls back to that tool's own default (all on except the opt-in Subagent). */
   enabledTools?: Record<string, boolean>;
+  /** Captured notation (how the AI reads and writes clip notes). Additive/
+   * optional on the same terms as `enabledTools`: a preset saved before this
+   * omits it, meaning "inherit the current notation" (applying such a preset
+   * leaves notation untouched and its dirty flag clear). Applying a preset that
+   * carries one writes the live buffer, so Saving posts it as the device global
+   * — the same reach the Notation dropdown already has. A subagent worker
+   * running under the preset gets it per-request instead, via its own notation
+   * header, so a stark worker can serve a bar|beat orchestrator. */
+  notation?: Notation;
 }
 
 /**
@@ -169,9 +178,9 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
    * slice (a functional update, so it's correct even when the preset switches
    * provider — the per-field setters otherwise target only the active slice),
    * switches the active provider, sets the global small-model mode, and applies
-   * the captured toolset (skipped when the preset carries none, so a legacy
-   * preset inherits the current tools). The provider's apiKey/baseUrl are left
-   * untouched. The user then Saves normally. */
+   * the captured toolset and notation (each skipped when the preset carries
+   * none, so a legacy preset inherits the current tools/notation). The
+   * provider's apiKey/baseUrl are left untouched. The user then Saves normally. */
   applyPreset: (preset: ChatPreset) => void;
   /** Persists in-modal settings and resolves only after the at-rest envelope
    * has landed. Returns true on durable success, false on failure (saveError
@@ -198,8 +207,8 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
   /** The preset a spawned subagent runs under: its model/inference and, when the
-   * preset saved one, its toolset (a preset without one keeps the orchestrator's
-   * tools). The system instruction always inherits. Null = "inherit current
+   * preset saved them, its toolset and notation (a preset without them keeps the
+   * orchestrator's). The system instruction always inherits. Null = "inherit current
    * settings", the shipped phase-1 behavior. A global preference (not locked per
    * conversation) and a modal-local buffer persisted on Save. */
   defaultSubagentPresetId: string | null;
