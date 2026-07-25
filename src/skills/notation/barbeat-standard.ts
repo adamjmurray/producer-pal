@@ -6,13 +6,14 @@
 /**
  * bar|beat standard notation head. Just the bar|beat-specific syntax (positions,
  * the note-writing grammar, bar copying). The notation-neutral note-value /
- * `Nbar` / dual-meter grammar lives in {@link coreStandard} (shared by every
- * notation's transforms and length fields), which `@include`s this head at the
- * position it chooses — `resolveIncludes` composes them, buildSkills glues nothing.
+ * `Nbar` / dual-meter grammar lives in the `time-and-values` fragment (shared by
+ * every notation's transforms and length fields); the `standard` driver's
+ * manifest orders the two — `resolveIncludes` composes them, buildSkills glues
+ * nothing.
  */
 export const barbeatStandard = `## Positions & Meter
 
-- Positions: bar|beat — reads left-to-right like the name: \`4|2\` is bar 4 beat 2, \`2|4\` is bar 2 beat 4. 1-indexed, meter-relative grid. For one note per bar, step the LEFT number (\`1|1 2|1 3|1 4|1\`); to move within a bar, step the right number. Sub-beat placement has two tools for two jobs: a **decimal** (\`2|3.5\`) for *partway through a beat* (a fraction of the musical beat), and a **\`±n\` offset** (\`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\`) for an *exact note value* off the grid beat (tuplets, compound-meter placement). The offset attaches to an integer **or decimal** grid beat — \`1|1.5+n/4\` is beat 1.5 plus a quarter. They coincide only in x/4 — see the meter note below. A \`-n\` offset can pull *before* a downbeat for a **pickup**: \`1|1-n/4\` is a quarter-note pickup ahead of bar 1 (it lands before the clip start, which Live allows); use \`n/8\`, \`n/12\`, etc. for the lead-in you want. Serialized output uses the exact \`±n\` form for tuplet positions. No bare fractions (beats are 1-indexed — beat 0 is invalid; use a \`-n\` pickup instead). See core's **Time & Note Values** for note values (\`n/4\`, \`Nbar\`) and the dual-meter rule
+- Positions: bar|beat — reads left-to-right like the name: \`4|2\` is bar 4 beat 2, \`2|4\` is bar 2 beat 4. 1-indexed, meter-relative grid. For one note per bar, step the LEFT number (\`1|1 2|1 3|1 4|1\`); to move within a bar, step the right number. Sub-beat placement has two tools for two jobs: a **decimal** (\`2|3.5\`) for *partway through a beat* (a fraction of the musical beat), and a **\`±n\` offset** (\`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\`) for an *exact note value* off the grid beat (tuplets, compound-meter placement). The offset attaches to an integer **or decimal** grid beat — \`1|1.5+n/4\` is beat 1.5 plus a quarter. They coincide only in x/4 — see the meter note below. A \`-n\` offset can pull *before* a downbeat for a **pickup**: \`1|1-n/4\` is a quarter-note pickup ahead of bar 1 (it lands before the clip start, which Live allows); use \`n/8\`, \`n/12\`, etc. for the lead-in you want. Serialized output uses the exact \`±n\` form for tuplet positions. No bare fractions (beats are 1-indexed — beat 0 is invalid; use a \`-n\` pickup instead). See **Time & Note Values** for note values (\`n/4\`, \`Nbar\`) and the dual-meter rule
 
 **In meters other than x/4, the grid beat is NOT a quarter** (in 6/8 it's an eighth), so consecutive grid beats are not one note value apart. To place notes a fixed note value apart — e.g. fill a bar with quarter notes — use a repeat pattern \`1|1x<count>\` with a real number for \`<count>\` (its step defaults to the current duration, which is meter-safe), not hand-enumerated grid beats: in 6/8, \`n/4 C1 1|1x3\` lands quarters on grid beats 1, 3, 5 (filling the bar), and in 5/4 \`n/4 C1 1|1x5\` fills the bar, while \`n/4 C1 1|1,2,3\` is consecutive *eighths* in 6/8 (wrong). Same trap for decimals: in 6/8 \`1|1.5\` is half an eighth, \`1|1+n/8\` a full eighth.
 

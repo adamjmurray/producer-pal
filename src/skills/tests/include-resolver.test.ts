@@ -56,19 +56,6 @@ describe("resolveIncludes - composition", () => {
     expect(result).toBe("A+B");
   });
 
-  it("resolves nested includes (a wrapper that includes another fragment)", () => {
-    const result = resolveIncludes(
-      "root",
-      options({
-        root: `@include "./wrapper.md"`,
-        wrapper: `@include "./leaf.md"`,
-        leaf: "LEAF",
-      }),
-    );
-
-    expect(result).toBe("LEAF");
-  });
-
   it("resolves an include ref written without the .md extension", () => {
     const result = resolveIncludes(
       "root",
@@ -78,13 +65,11 @@ describe("resolveIncludes - composition", () => {
     expect(result).toBe("H");
   });
 
-  it("expands the same fragment twice when reached by distinct paths (diamond)", () => {
+  it("expands the same fragment twice when the driver includes it twice", () => {
     const result = resolveIncludes(
       "root",
       options({
-        root: `@include "./a.md"|@include "./b.md"`,
-        a: `@include "./shared.md"`,
-        b: `@include "./shared.md"`,
+        root: `@include "./shared.md"|@include "./shared.md"`,
         shared: "S",
       }),
     );
@@ -108,21 +93,108 @@ describe("resolveIncludes - {notation} interpolation", () => {
   });
 });
 
-describe("resolveIncludes - missing fragments", () => {
-  it("expands a missing fragment to empty (the silent-absence gate)", () => {
+describe("resolveIncludes - depth-1 only", () => {
+  it("refuses an include INSIDE an included fragment, and warns", () => {
+    // A fragment's cost must be its own length: if a fragment could pull in
+    // another, dropping one include line would silently drop two fragments.
+    const onWarn = vi.fn();
     const result = resolveIncludes(
       "root",
-      options({ root: `x@include "./gone.md"y` }),
+      options(
+        {
+          root: `A@include "./wrapper.md"B`,
+          wrapper: `[@include "./leaf.md"]`,
+          leaf: "LEAF",
+        },
+        "barbeat",
+        onWarn,
+      ),
+    );
+
+    expect(result).toBe("A[]B");
+    expect(result).not.toContain("LEAF");
+    expect(onWarn).toHaveBeenCalledWith(
+      expect.stringContaining("include nesting refused"),
+    );
+    expect(onWarn).toHaveBeenCalledWith(expect.stringContaining("leaf"));
+  });
+
+  it("terminates a self-including fragment instead of looping", () => {
+    // What used to need cycle detection: at depth 1 the second level's own
+    // include is simply refused, so there is nothing to recurse into.
+    const onWarn = vi.fn();
+    const result = resolveIncludes(
+      "a",
+      options({ a: `loop:@include "./a.md"` }, "barbeat", onWarn),
+    );
+
+    expect(result).toBe("loop:loop:");
+    expect(onWarn).toHaveBeenCalledWith(
+      expect.stringContaining("include nesting refused"),
+    );
+  });
+
+  it("refuses a two-fragment cycle in one pass (a → b → a)", () => {
+    const onWarn = vi.fn();
+    const result = resolveIncludes(
+      "a",
+      options(
+        { a: `A@include "./b.md"`, b: `B@include "./a.md"` },
+        "barbeat",
+        onWarn,
+      ),
+    );
+
+    expect(result).toBe("AB");
+    expect(onWarn).toHaveBeenCalledWith(
+      expect.stringContaining("include nesting refused"),
+    );
+  });
+});
+
+describe("resolveIncludes - unknown fragments", () => {
+  it("warns when an include names a fragment that does not exist", () => {
+    // The migration hazard this fixes: a driver override naming a renamed
+    // fragment used to resolve to "" with no signal at all.
+    const onWarn = vi.fn();
+    const result = resolveIncludes(
+      "root",
+      options({ root: `x@include "./gone.md"y` }, "barbeat", onWarn),
     );
 
     expect(result).toBe("xy");
+    expect(onWarn).toHaveBeenCalledWith(
+      expect.stringContaining(`unknown fragment: "gone"`),
+    );
   });
 
-  it("returns empty for a missing root", () => {
-    expect(resolveIncludes("nope", options({}))).toBe("");
+  it("returns empty and warns for a missing root", () => {
+    const onWarn = vi.fn();
+
+    expect(resolveIncludes("nope", options({}, "barbeat", onWarn))).toBe("");
+    expect(onWarn).toHaveBeenCalledWith(
+      expect.stringContaining("unknown fragment"),
+    );
   });
 
-  it("treats an Object.prototype name as a missing fragment, not a crash", () => {
+  it("expands a KNOWN but empty fragment silently (the build-gated case)", () => {
+    // code-transforms is present-and-empty in a release build, so its manifest
+    // line must not warn — that is what distinguishes it from a typo'd name.
+    const onWarn = vi.fn();
+    const result = resolveIncludes(
+      "root",
+      options(
+        { root: `a\n\n@include "./gated.md"\n\nb`, gated: "" },
+        "barbeat",
+        onWarn,
+      ),
+    );
+
+    expect(result).toBe("a\n\nb");
+    expect(onWarn).not.toHaveBeenCalled();
+  });
+
+  it("treats an Object.prototype name as an unknown fragment, not a crash", () => {
     // A naive `map[name]` lookup returns inherited members for names like
     // "constructor" / "__proto__" (a function / an object), which would crash on
     // `.replaceAll`. The resolver must treat any non-string body as absent → "".
@@ -137,49 +209,62 @@ describe("resolveIncludes - missing fragments", () => {
   });
 });
 
-describe("resolveIncludes - no loops", () => {
-  it("refuses a direct self-include and warns", () => {
-    const onWarn = vi.fn();
-    const result = resolveIncludes(
-      "a",
-      options({ a: `loop:@include "./a.md"` }, "barbeat", onWarn),
-    );
+describe("resolveIncludes - onFragment", () => {
+  it("reports each resolved include in document order", () => {
+    const seen: string[] = [];
 
-    expect(result).toBe("loop:");
-    expect(onWarn).toHaveBeenCalledWith(
-      expect.stringContaining("include cycle refused"),
-    );
+    resolveIncludes("root", {
+      notation: "barbeat",
+      lookup: (name) =>
+        ({ root: `@include "./a.md"\n@include "./b.md"`, a: "A", b: "B" })[
+          name
+        ] ?? null,
+      onFragment: (name) => seen.push(name),
+    });
+
+    expect(seen).toStrictEqual(["a", "b"]);
   });
 
-  it("refuses a transitive cycle (a → b → a)", () => {
-    const onWarn = vi.fn();
+  it("does not report the root, unknown names, or refused paths", () => {
+    // The caller uses this set to check declared prerequisites, so a name that
+    // contributed no text must not count as present.
+    const seen: string[] = [];
+
+    resolveIncludes("root", {
+      notation: "barbeat",
+      lookup: (name) =>
+        ({
+          root: `@include "./gone.md"@include "../nope.md"@include "./a.md"`,
+          a: "A",
+        })[name] ?? null,
+      onFragment: (name) => seen.push(name),
+    });
+
+    expect(seen).toStrictEqual(["a"]);
+  });
+});
+
+describe("resolveIncludes - blank line collapse", () => {
+  it("collapses the blank-line run a dropped fragment leaves behind", () => {
     const result = resolveIncludes(
-      "a",
-      options(
-        { a: `A@include "./b.md"`, b: `B@include "./a.md"` },
-        "barbeat",
-        onWarn,
-      ),
+      "root",
+      options({ root: `a\n\n@include "./gone.md"\n\nb`, gone: "" }),
     );
 
-    expect(result).toBe("AB");
-    expect(onWarn).toHaveBeenCalledWith(expect.stringContaining("a → b → a"));
+    expect(result).toBe("a\n\nb");
   });
 
-  it("bails out and warns past the max include depth", () => {
-    // A long non-cyclic chain (no name repeats, so the cycle guard never fires)
-    // must still terminate at the depth backstop rather than nest unboundedly.
-    const chain: Record<string, string> = { f20: "DEEP" };
-
-    for (let i = 0; i < 20; i++) chain[`f${i}`] = `@include "./f${i + 1}.md"`;
-
-    const onWarn = vi.fn();
-    const result = resolveIncludes("f0", options(chain, "barbeat", onWarn));
-
-    expect(result).toBe(""); // the tail past the cap collapses to nothing
-    expect(onWarn).toHaveBeenCalledWith(
-      expect.stringContaining("depth exceeded"),
+  it("collapses a run left by several adjacent empty includes", () => {
+    const result = resolveIncludes(
+      "root",
+      options({
+        root: `a\n\n@include "./x.md"\n\n@include "./y.md"\n\nb`,
+        x: "",
+        y: "",
+      }),
     );
+
+    expect(result).toBe("a\n\nb");
   });
 });
 

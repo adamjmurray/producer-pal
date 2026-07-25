@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Skills text for the experimental, dev-only `code` transform parameter (gated
-// behind ENABLE_CODE_EXEC). Kept in its own module so `core-standard.ts` stays
-// under the source line limit; it is interpolated into the standard core skills
-// only when code execution is enabled.
-export const codeTransformsSkills = `
-
-### Code Transforms
+// behind ENABLE_CODE_EXEC). A top-level entry in the standard driver's manifest
+// like every other fragment — in a release build the fragment resolves to an
+// EMPTY body rather than being absent, so the manifest's include line stays
+// valid and the resolver's unknown-fragment warning keeps its meaning (see
+// builtin-fragments.ts).
+export const codeTransforms = `### Code Transforms
 
 For complex logic beyond transforms, use the \`code\` parameter with JavaScript. \`code\` is a single string (function body only), broadcast across every clip/copy. It runs as:
 \`(function(notes, context) { <code> })(notes, context)\`

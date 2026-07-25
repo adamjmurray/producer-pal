@@ -3,23 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The ppal-context sections of the skills, pulled into the drivers via
-// `@include` (see core-standard.ts / core-basic.ts). Both levels live here
-// because they teach the same tool at different depths — keeping them side by
-// side is how they stay in sync when the tool's behavior changes. They take the
-// level suffix the notation heads use (core-context-standard /
-// core-context-basic); the other core-* sections exist at the standard level
-// only, so they need none.
+// The ppal-context fragments. Both DEPTHS live here because they teach the same
+// tool at different depths — keeping them side by side is how they stay in sync
+// when the tool's behavior changes. Depth is a variant, not a boundary, so they
+// take the same `-standard` / `-basic` suffix the notation heads use; most
+// fragments exist at the standard depth only and need no suffix.
 //
-// Each is its own override slot (skill-slots.ts) so users can edit it in
-// isolation — or suppress it by deleting its include line in a driver override.
-// core-context-basic is the only non-notation include in the basic driver.
+// Audience matters here: ppal-context is the ORCHESTRATOR's tool. A worker
+// executing a scoped task neither reads nor writes these layers, so this is one
+// of the first fragments a worker drops.
 
 /**
- * The Context & Memory section of the standard core: the three ppal-context
+ * The Context & Memory fragment at standard depth: the three ppal-context
  * scopes, who owns each, and how to manage the memory index.
  */
-export const coreContextStandard = `## Context & Memory
+export const contextStandard = `## Context & Memory
 
 \`ppal-context\` is where durable info lives. Keep music facts HERE, not only in a memory system of your own: the user may come back to this music with a different AI, and only these layers travel with it.
 
@@ -47,7 +45,7 @@ Managing memory:
 - Save MEMORIES quietly as facts emerge; don't announce each one.`;
 
 /**
- * The Context section of the basic (small-model) core. Deliberately minimal:
+ * The Context fragment at basic (small-model) depth. Deliberately minimal:
  * small-model mode's ppal-context is blobs-only (no memory scope), so this
  * covers the project/global documents and nothing else.
  *
@@ -67,6 +65,6 @@ Managing memory:
  * empty document freely) — a bare prohibition here makes the model refuse to
  * write even when asked, which is the failure the standard tier hit first.
  */
-export const coreContextBasic = `## Context
+export const contextBasic = `## Context
 
 \`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is across all projects (style, preferences, goals). Both are single documents — read the same scope before writing (write replaces the whole document). Put a fact in exactly ONE scope, never both. These documents are the user's: when the scope already has content, say what you'd add and write it once they agree or ask — an empty one you can just fill in, then say what you saved. Write each note so a future assistant with none of this chat can use it: the whole structure, not one isolated detail.`;

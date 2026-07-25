@@ -104,15 +104,18 @@ describe("withSkills", () => {
   });
 
   it("logs assembly warnings from a broken override instead of failing silently", async () => {
-    // A driver override that includes itself is a cycle: the blob is still
-    // returned (degraded), and the warning is logged rather than swallowed.
-    writeSkillOverride("standard", `INTRO\n\n@include "./standard.md"`);
+    // A driver override naming a fragment that no longer exists: the blob is
+    // still returned (degraded), and the warning is logged rather than
+    // swallowed — the whole point of surfacing a stale override.
+    writeSkillOverride("standard", `INTRO\n\n@include "./core-devices.md"`);
     const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
 
     const result = await wrapped("ppal-connect", {});
 
     expect(lastText(result)).toContain("INTRO");
-    expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining("cycle"));
+    expect(loggerWarn).toHaveBeenCalledWith(
+      expect.stringContaining("unknown fragment"),
+    );
   });
 
   it("does not inject when the connect response is an error", async () => {

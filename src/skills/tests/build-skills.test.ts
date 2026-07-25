@@ -6,22 +6,47 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NOTATIONS } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
-import { standardDriver } from "#src/skills/builtin-fragments.ts";
+import { standardDriver } from "#src/skills/drivers.ts";
 import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
 
 const HEADER = "# Producer Pal Skills";
 
+/**
+ * Assemble a combination, collecting any warnings.
+ *
+ * @param smallModelMode - Whether to build the small-model variant
+ * @returns The assembled blob and the warnings raised
+ */
+function assemble(smallModelMode: boolean): {
+  skills: string;
+  warnings: string[];
+} {
+  const warnings: string[] = [];
+  const skills = buildSkills({ smallModelMode }, {}, (m) => warnings.push(m));
+
+  return { skills, warnings };
+}
+
 describe("buildSkills - composition", () => {
-  it("assembles header + notation head + shared core at standard level", () => {
+  it("assembles header + notation head + the task fragments at standard depth", () => {
     const result = buildSkills({ notation: "barbeat" });
 
     expect(result.startsWith(HEADER)).toBe(true);
     expect(result).toContain("## Positions & Meter"); // bar|beat head
-    expect(result).toContain("## Time & Note Values"); // shared core
-    expect(result).toContain("## Devices & Instruments"); // shared core
+    expect(result).toContain("## Time & Note Values");
+    expect(result).toContain("## Transforms");
+    expect(result).toContain("### Transform Expressions & Functions");
+    expect(result).toContain("### Generative Transforms");
+    expect(result).toContain("## Finding Library Content");
+    expect(result).toContain("## Devices & Instruments");
+    expect(result).toContain("### Specialized Device Controls");
+    expect(result).toContain("## Arrangement");
+    expect(result).toContain("## Working with Ableton Live");
+    expect(result).toContain("## Context & Memory");
+    expect(result).toContain("## Getting Help");
   });
 
-  it("gives every notation its own head at both levels — never a fallback", () => {
+  it("gives every notation its own head at both depths — never a fallback", () => {
     for (const notation of NOTATIONS) {
       const standard = buildSkills({ notation });
       const basic = buildSkills({ notation, smallModelMode: true });
@@ -37,23 +62,25 @@ describe("buildSkills - composition", () => {
     expect(new Set(standards).size).toBe(NOTATIONS.length);
   });
 
-  it("selects the basic core in small-model mode", () => {
+  it("selects the basic driver in small-model mode", () => {
     const basic = buildSkills({ notation: "barbeat", smallModelMode: true });
 
-    expect(basic).toContain("If a tool call errors, read the message"); // coreBasic body
-    expect(basic).toContain("## Add notes to an existing clip"); // basic core heading
+    expect(basic).toContain("If a tool call errors, read the message");
+    expect(basic).toContain("## Add notes to an existing clip");
+    // Standard-only fragments stay out of the small-model blob.
+    expect(basic).not.toContain("## Devices & Instruments");
   });
 
-  it("pulls in each level's context fragment", () => {
+  it("pulls in each depth's context fragment", () => {
     expect(buildSkills({ notation: "barbeat" })).toContain(
-      "## Context & Memory", // core-context-standard
+      "## Context & Memory", // context-standard
     );
     expect(
       buildSkills({ notation: "barbeat", smallModelMode: true }),
-    ).toContain("scope:project stores facts about THIS Live Set"); // core-context-basic
+    ).toContain("scope:project stores facts about THIS Live Set"); // context-basic
   });
 
-  it("defaults to bar|beat at both levels", () => {
+  it("defaults to bar|beat at both depths", () => {
     expect(buildSkills()).toBe(buildSkills({ notation: "barbeat" }));
     expect(buildSkills({ smallModelMode: true })).toBe(
       buildSkills({ notation: "barbeat", smallModelMode: true }),
@@ -66,6 +93,29 @@ describe("buildSkills - composition", () => {
       expect(buildSkills({ notation, smallModelMode: true })).not.toContain(
         "@include",
       );
+    }
+  });
+
+  it("assembles every built-in combination without a single warning", () => {
+    // The manifest names ~13 fragments by string. A typo, a rename that missed
+    // the driver, or a fragment dropped from builtinFragments all surface here
+    // as an unknown-fragment warning rather than a quietly shortened blob.
+    for (const notation of NOTATIONS) {
+      for (const smallModelMode of [false, true]) {
+        const warnings: string[] = [];
+
+        buildSkills({ notation, smallModelMode }, {}, (m) => warnings.push(m));
+
+        expect(warnings).toStrictEqual([]);
+      }
+    }
+  });
+
+  it("never stacks blank lines, even where a fragment resolved to nothing", () => {
+    // code-transforms is present-but-empty in a release build, so its manifest
+    // line collapses rather than leaving a gap.
+    for (const smallModelMode of [false, true]) {
+      expect(assemble(smallModelMode).skills).not.toContain("\n\n\n");
     }
   });
 });
@@ -85,13 +135,10 @@ describe("buildSkills - overrides", () => {
 
     expect(result).toContain("MY CUSTOM HEAD");
     expect(result).not.toContain(barbeatStandard);
-    expect(result).toContain("## Time & Note Values"); // core still present
+    expect(result).toContain("## Time & Note Values"); // rest still present
   });
 
   it("replaces the whole document when the driver slot is overridden", () => {
-    // The core is inlined into the driver, so there is no separate core slot to
-    // override — replacing `standard` replaces everything, and the notation
-    // include embedded in the override still resolves against the built-in head.
     const result = buildSkills(
       { notation: "barbeat" },
       { standard: `MY CUSTOM CORE\n\n@include "./{notation}-standard.md"` },
@@ -113,7 +160,9 @@ describe("buildSkills - overrides", () => {
     expect(result).toBe(buildSkills({ notation: "barbeat" }));
   });
 
-  it("shares one override across both levels for midi-json", () => {
+  it("shares one override across both depths for midi-json", () => {
+    // The drivers ask for `midi-json-standard` / `midi-json-basic`; the alias
+    // folds both onto the single `midi-json` slot the user actually edits.
     const standard = buildSkills(
       { notation: "midi-json" },
       { "midi-json": "MJ!" },
@@ -144,13 +193,10 @@ describe("buildSkills - overrides", () => {
     expect(basic).not.toContain("STD HEAD");
   });
 
-  it("overrides the context fragment per level, never across levels", () => {
-    // The context section is the one core section carved out at BOTH levels, so
-    // each level has its own slot (like the notation heads) and the small-model
-    // fragment stays out of the standard skills.
+  it("overrides the context fragment per depth, never across depths", () => {
     const overrides = {
-      "core-context-standard": "STD CONTEXT",
-      "core-context-basic": "BASIC CONTEXT",
+      "context-standard": "STD CONTEXT",
+      "context-basic": "BASIC CONTEXT",
     };
     const standard = buildSkills({ notation: "barbeat" }, overrides);
     const basic = buildSkills(
@@ -163,31 +209,84 @@ describe("buildSkills - overrides", () => {
     expect(standard).not.toContain("## Context & Memory");
     expect(basic).toContain("BASIC CONTEXT");
     expect(basic).not.toContain("STD CONTEXT");
-    expect(basic).toContain("## Rules"); // rest of the basic core intact
+    expect(basic).toContain("## Rules"); // rest of the basic driver intact
   });
 
-  it("reports assembly warnings (cycles) to onWarn while still producing output", () => {
-    // A forked driver that includes itself is a cycle: the resolver drops the
-    // cyclic include with a warning rather than looping. Without an onWarn sink
-    // that warning is silently lost (the bug this thread fixes).
+  it("warns when a stale driver override names a fragment that no longer exists", () => {
+    // The silent-break hazard of renaming fragments: the override still parses,
+    // and every renamed include used to vanish without a word.
     const warnings: string[] = [];
     const result = buildSkills(
       { notation: "barbeat" },
-      { standard: `INTRO\n\n@include "./standard.md"\n\nOUTRO` },
+      { standard: `KEPT\n\n@include "./core-devices.md"` },
       (message) => warnings.push(message),
     );
 
-    expect(result).toContain("INTRO");
-    expect(result).toContain("OUTRO");
-    expect(result).not.toContain("@include");
-    expect(warnings.some((w) => w.includes("cycle"))).toBe(true);
+    expect(result).toContain("KEPT");
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`unknown fragment: "core-devices"`),
+    ]);
   });
 
-  it("suppresses one core section when a driver override deletes its include", () => {
-    // The suppression story the core-* carve exists for: fork the driver,
-    // delete one include line, and that section is gone while every section
-    // still included keeps resolving the LIVE built-ins (no frozen fork).
-    const directive = `@include "./core-devices.md"\n\n`;
+  it("warns about an override file keyed to a retired slot name", () => {
+    // The other half of the silent-rename hazard: an orphaned override file is
+    // never referenced by any include, so the resolver can't catch it.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { "core-devices": "MY OLD DEVICES OVERRIDE" },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).not.toContain("MY OLD DEVICES OVERRIDE");
+    expect(result).toContain("## Devices & Instruments"); // built-in came back
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"core-devices.md" is no longer used`),
+    ]);
+  });
+
+  it("survives an override file named after an Object.prototype member", () => {
+    // Override keys are FILENAMES from ~/.producer-pal/skills, so `toString.md`
+    // reaches the retired-slot lookup as "toString" and a naive `map[name]`
+    // finds Object.prototype.toString — a function that passes `!= null` and
+    // then throws on `.join`. This runs before assembly with no try/catch above
+    // it, so the crash took out the whole ppal-connect call.
+    const warnings: string[] = [];
+
+    for (const proto of ["toString", "constructor", "__proto__"]) {
+      expect(() =>
+        buildSkills({ notation: "barbeat" }, { [proto]: "hi" }, (message) =>
+          warnings.push(message),
+        ),
+      ).not.toThrow();
+    }
+
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("warns and refuses when an override fragment includes another fragment", () => {
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      {
+        "getting-help": `MINE\n\n@include "./my-extra.md"`,
+        "my-extra": "MY EXTRA SECTION",
+      },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain("MINE");
+    expect(result).not.toContain("MY EXTRA SECTION");
+    expect(warnings).toStrictEqual([
+      expect.stringContaining("include nesting refused"),
+    ]);
+  });
+
+  it("suppresses one fragment when a driver override deletes its include", () => {
+    // The suppression story the carve exists for: fork the driver, delete one
+    // line, and that section is gone while every section still included keeps
+    // resolving the LIVE built-ins (no frozen fork).
+    const directive = `@include "./devices.md"\n\n`;
 
     expect(standardDriver).toContain(directive); // guard: replace() below is real
     const result = buildSkills(
@@ -199,11 +298,79 @@ describe("buildSkills - overrides", () => {
     expect(result).toContain("## Transforms");
     expect(result).toContain("## Finding Library Content");
     expect(result).toContain("## Arrangement");
+    // Dropping a fragment must drop ONLY it — the nesting ban is what makes
+    // "this line costs exactly this fragment" true.
+    expect(result).toContain("### Specialized Device Controls");
+  });
+
+  it("warns when a kept fragment lost the fragment it needs", () => {
+    // Deleting one include line is the documented way to trim skills, and this
+    // is its worst case: the transforms tiers survive with their VOCABULARY
+    // (swing(), ratchet(), waveforms) and no GRAMMAR, which is worse than
+    // dropping all three. Every include still resolves, so only the declared
+    // requirement can catch it.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      {
+        standard: standardDriver.replace(
+          `@include "./transforms-core.md"\n\n`,
+          "",
+        ),
+      },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).not.toContain("## Transforms");
+    expect(result).toContain("### Generative Transforms"); // kept, and orphaned
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(
+        `"transforms-expressions" needs "transforms-core"`,
+      ),
+      expect.stringContaining(
+        `"transforms-generative" needs "transforms-core"`,
+      ),
+    ]);
+  });
+
+  it("warns when specialized-devices outlives the devices guide it sits under", () => {
+    const warnings: string[] = [];
+
+    buildSkills(
+      { notation: "barbeat" },
+      { standard: standardDriver.replace(`@include "./devices.md"\n\n`, "") },
+      (message) => warnings.push(message),
+    );
+
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"specialized-devices" needs "devices"`),
+    ]);
+  });
+
+  it("stays silent when a fragment is dropped together with its dependents", () => {
+    // Dropping the whole transforms area is a legitimate trim, not a mistake.
+    const warnings: string[] = [];
+    const forked = [
+      "transforms-core",
+      "transforms-expressions",
+      "transforms-generative",
+    ].reduce(
+      (driver, name) => driver.replace(`@include "./${name}.md"\n\n`, ""),
+      standardDriver,
+    );
+
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { standard: forked },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).not.toContain("## Transforms");
+    expect(result).toContain("## Finding Library Content");
+    expect(warnings).toStrictEqual([]);
   });
 
   it("lets a user fork the driver: delete an include, add their own file", () => {
-    // The customization story — a forked driver drops the core include and
-    // points the notation include at a fragment of the user's own.
     const result = buildSkills(
       { notation: "barbeat" },
       {
@@ -213,7 +380,7 @@ describe("buildSkills - overrides", () => {
     );
 
     expect(result).toBe("MY INTRO\n\nMY OWN NOTATION GUIDE");
-    expect(result).not.toContain("## Time & Note Values"); // core include removed
+    expect(result).not.toContain("## Time & Note Values");
   });
 });
 
@@ -231,6 +398,10 @@ describe("buildSkills - ENABLE_CODE_EXEC", () => {
   it("excludes code transforms skills when ENABLE_CODE_EXEC is not set", () => {
     vi.stubEnv("ENABLE_CODE_EXEC", "");
 
-    expect(buildSkills()).not.toContain("Code Transforms");
+    const { skills, warnings } = assemble(false);
+
+    expect(skills).not.toContain("Code Transforms");
+    // Present-but-empty, not missing: the manifest line must stay silent.
+    expect(warnings).toStrictEqual([]);
   });
 });

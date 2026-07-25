@@ -105,13 +105,15 @@ describe("SkillsPreviewScreen", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the header note, active fragments, and the blob size", async () => {
+  it("shows the header note, the active slots, and the blob size", async () => {
     renderPreview();
 
     expect(screen.getByText("Read-only preview")).toBeTruthy();
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: standard \+ barbeat/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: standard · Notation: barbeat/),
+      ).toBeTruthy();
     });
 
     // "S:barbeat:false" is 15 chars → ceil(15/4) = 4 tokens.
@@ -139,7 +141,9 @@ describe("SkillsPreviewScreen", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: standard \+ stark/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: standard · Notation: stark/),
+      ).toBeTruthy();
     });
     expect(screen.queryByText("★ Current settings")).toBeNull();
   });
@@ -148,7 +152,9 @@ describe("SkillsPreviewScreen", () => {
     renderPreview();
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: standard \+ barbeat/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: standard · Notation: barbeat/),
+      ).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText("Preview model size"), {
@@ -156,7 +162,9 @@ describe("SkillsPreviewScreen", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: basic \+ barbeat/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: basic · Notation: barbeat/),
+      ).toBeTruthy();
     });
   });
 
@@ -186,7 +194,7 @@ describe("SkillsPreviewScreen", () => {
 
   it("surfaces override assembly warnings above the blob", async () => {
     renderPreview({ notation: "barbeat", smallModelMode: false }, "ok", [
-      "skills include cycle refused: standard → standard",
+      `skills include names an unknown fragment: "core-devices"`,
     ]);
 
     await waitFor(() => {
@@ -195,14 +203,14 @@ describe("SkillsPreviewScreen", () => {
     expect(
       screen.getByText(/This override didn't fully assemble/),
     ).toBeTruthy();
-    expect(screen.getByText(/cycle refused/)).toBeTruthy();
+    expect(screen.getByText(/unknown fragment/)).toBeTruthy();
   });
 
   it("shows no warning banner when the blob assembled cleanly", async () => {
     renderPreview();
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments:/)).toBeTruthy();
+      expect(screen.getByText(/Driver: /)).toBeTruthy();
     });
     expect(screen.queryByRole("alert")).toBeNull();
   });

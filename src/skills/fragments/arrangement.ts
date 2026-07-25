@@ -3,12 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// A section of the standard skills body, pulled into the standard driver via
-// `@include` (see core-standard.ts, which lists the manifest). Each section is
-// its own override slot (skill-slots.ts) so users can edit it in isolation —
-// or suppress it by deleting its include line in a `standard` driver override.
-// The Arrangement section of the standard core: moving clips and take lanes.
-export const coreArrangement = `## Arrangement
+// Moving clips on the arrangement timeline, and take lanes. Gated by duplicate
+// and update-clip — a session-only task never needs it.
+export const arrangement = `## Arrangement
 
 ### Moving Clips
 

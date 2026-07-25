@@ -79,6 +79,19 @@ and sidesteps all of this.)
    simply inert. Resolution is confined to the skills dir (refs starting with
    `/ . .. ~`, or containing `..`, are rejected).
 
+   **Amended in 2.0.1.** The slot set was re-cut once, along task lines
+   (`core-transforms` → `transforms-core`/`-expressions`/`-generative`,
+   `core-devices` → `devices`/`specialized-devices`, and so on), to make each
+   slot map to the tools — or the audience — a job actually has. "Stable" cost
+   real money here: the break is paid for with two warnings rather than left
+   silent, since both halves of it are invisible by default. An include naming a
+   retired fragment warns (`include-resolver.ts`), and an override FILE keyed to
+   a retired slot warns too (`RETIRED_SKILL_SLOTS` in `skill-slots.ts`) — the
+   resolver can't see that one, because an orphaned override appears in no
+   include. Includes are also **depth-1** now: only a driver may include, so a
+   fragment's cost stays exactly its own length even when the fragment is
+   arbitrary user text.
+
 ## Alternatives rejected / deferred
 
 - **A `config.json` settings mirror** — rejected on the corrected premise above.

@@ -124,15 +124,18 @@ describe("skills-preview route", () => {
     expect(body.skills).toContain("MY CUSTOM STARK");
   });
 
-  it("surfaces assembly warnings when a saved override is broken (cycle)", async () => {
-    // A driver override that includes itself is a cycle: the preview must flag
-    // it instead of silently returning a truncated blob.
+  it("surfaces assembly warnings when a saved override is broken", async () => {
+    // A driver override naming a fragment that no longer exists (e.g. one the
+    // task-line re-carve renamed): the preview must flag it instead of silently
+    // returning a shortened blob.
     await putJson(`${overridesBase}/standard`, {
-      content: `INTRO\n\n@include "./standard.md"`,
+      content: `INTRO\n\n@include "./core-devices.md"`,
     });
 
     const body = await getPreview("notation=barbeat");
 
-    expect(body.warnings.some((w) => w.includes("cycle"))).toBe(true);
+    expect(body.warnings.some((w) => w.includes("unknown fragment"))).toBe(
+      true,
+    );
   });
 });
