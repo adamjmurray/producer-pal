@@ -22,6 +22,7 @@ import {
   type SaveStatus,
   useRefreshOnFocusAndPoll,
   useSaveRefreshGuard,
+  useWriteOrdering,
 } from "./use-doc";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -123,7 +124,12 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
   // shared "saved"/"error" indicator onto the now-active entry (the list merge
   // still applies — only the status indicator is entry-scoped).
   const saveGenerationRef = useRef(0);
-  const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
+  // Per-ENTRY write ordering, distinct from saveGenerationRef (which scopes the
+  // status indicator to the selected entry): a slow earlier save landing after a
+  // newer one must not revert that entry in the cached list.
+  const { claim } = useWriteOrdering();
+  const { beginSave, endSave, guardRefresh, isUnmounted } =
+    useSaveRefreshGuard();
 
   const refresh = useCallback(
     (): Promise<void> =>
@@ -138,15 +144,22 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
 
   // Shared save lifecycle for the mutators: mark saving, run `op`, commit its
   // result (a setStatus) on success, record the error on failure, and always
-  // clear the in-flight guard. Resolves `op`'s result, or null on failure — so
+  // clear the in-flight guard. `names` are the entries the mutation targets —
+  // its result is committed only while it is still the newest write for all of
+  // them (see useWriteOrdering). Resolves `op`'s result, or null on failure — so
   // saveEntry/renameEntry return the entry (or null) and deleteEntry maps the
   // void result to a boolean.
   const mutate = useCallback(
     async <T>(
       op: () => Promise<T>,
       commit: (result: T) => void,
+      names: string[],
     ): Promise<T | null> => {
       const generation = saveGenerationRef.current;
+      // Ordering is per entry, NOT newest-write-wins: beginSave's own predicate
+      // would let a save of entry B discard entry A's echo. Only its
+      // unmounted half applies here.
+      const superseded = claim(...names);
 
       beginSave();
       setSaveStatus("saving");
@@ -155,11 +168,15 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
       try {
         const result = await op();
 
-        commit(result);
+        if (isUnmounted()) return result;
+        if (!superseded()) commit(result);
+
         if (saveGenerationRef.current === generation) setSaveStatus("saved");
 
         return result;
       } catch (error: unknown) {
+        if (isUnmounted()) return null;
+
         if (saveGenerationRef.current === generation) {
           setSaveError(errorMessage(error));
           setSaveStatus("error");
@@ -170,7 +187,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
         endSave();
       }
     },
-    [beginSave, endSave],
+    [beginSave, endSave, claim, isUnmounted],
   );
 
   const saveEntry = useCallback(
@@ -178,6 +195,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
       mutate(
         () => putEntry<TView, TInput>(entryUrl(name), input, createOnly, label),
         (entry) => setStatus((prev) => mergeEntry(prev, entry)),
+        [name],
       ),
     [mutate, entryUrl, label],
   );
@@ -196,6 +214,8 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
         // re-adds it; the list re-sorts by name, so order is irrelevant).
         (entry) =>
           setStatus((prev) => mergeEntry(removeEntry(prev, oldName), entry)),
+        // A rename touches both slugs, so a later write to EITHER supersedes it.
+        [oldName, newName],
       ),
     [mutate, entryUrl, label],
   );
@@ -207,6 +227,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
       const result = await mutate(
         () => deleteEntryRequest(entryUrl(name), label),
         () => setStatus((prev) => removeEntry(prev, name)),
+        [name],
       );
 
       return result !== null;

@@ -26,6 +26,19 @@ function clearTimer(ref: TimerRef): void {
   }
 }
 
+/**
+ * Every save POST currently in flight, as one promise to await before the
+ * caller's own write goes out — or null when the editor is idle, so clear/import
+ * reach their POST without an extra microtask hop (the single-promise ref this
+ * replaced had that same fast path). Promise.all walks the set synchronously, so
+ * the saves that settle (and remove themselves) afterward are still awaited.
+ * @param saves - The live set of in-flight save promises
+ * @returns A promise for all current saves, or null when there are none
+ */
+function pendingSaves(saves: Set<Promise<boolean>>): Promise<unknown> | null {
+  return saves.size === 0 ? null : Promise.all(saves);
+}
+
 export interface UseContextEditorStateReturn {
   /**
    * Bumped on Clear / Reload-from-server to remount the uncontrolled
@@ -102,9 +115,13 @@ export function useContextEditorState(
   const lastSavedRef = useRef<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Tracks the most recent in-flight save() promise so handleClear can await
-  // it (prevents a stale draft POST from landing after clear's POST).
-  const inFlightSaveRef = useRef<Promise<boolean> | null>(null);
+  // Every in-flight save() promise, so handleClear/handleImport can await them
+  // ALL before dispatching their own write (prevents a stale draft POST from
+  // landing after theirs). A set rather than one ref: saves can overlap (a
+  // debounce flush, then a blur flush before the first echo lands), and keeping
+  // only the newest would silently stop awaiting the earlier one — the very
+  // write-ordering hazard this is here to close.
+  const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
   const memoryRef = useRef(memory);
   // False once the hook has unmounted, so the unmount flush's save promise
   // can't schedule a retry or setState after teardown (a persistent failure
@@ -208,14 +225,16 @@ export function useContextEditorState(
     lastSavedRef.current = value;
     // Track the in-flight save so handleClear can await it before dispatching
     // clear (orders the writes on the wire — clear already accepts the
-    // round-trip latency).
-    const savePromise = current.save(value);
+    // round-trip latency). Tracked as a promise that SETTLES rather than the
+    // raw one: a rejection would otherwise leave the entry in the set forever
+    // and wedge every later clear/import on a rejecting Promise.all. save()
+    // resolves false rather than throwing today — this keeps that from being
+    // load-bearing, and routes an unexpected throw into the retry path below.
+    const savePromise = current.save(value).catch(() => false);
 
-    inFlightSaveRef.current = savePromise;
+    inFlightSavesRef.current.add(savePromise);
     void savePromise.then((saved) => {
-      if (inFlightSaveRef.current === savePromise) {
-        inFlightSaveRef.current = null;
-      }
+      inFlightSavesRef.current.delete(savePromise);
 
       // The hook unmounted mid-save: don't touch state or reschedule. The
       // flush already went out (best-effort); retrying after teardown would
@@ -289,12 +308,12 @@ export function useContextEditorState(
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
 
-    // Wait for any in-flight save POST to complete before clear's POST goes
-    // out. Without this, the older draft's POST could land AFTER clear's
+    // Wait for every in-flight save POST to complete before clear's POST goes
+    // out. Without this, an older draft's POST could land AFTER clear's
     // POST and resurrect the cleared content. (The fetch promise resolves
     // only after the server has responded, so awaiting it orders the writes
     // server-side.)
-    const pending = inFlightSaveRef.current;
+    const pending = pendingSaves(inFlightSavesRef.current);
 
     if (pending != null) await pending;
 
@@ -353,9 +372,9 @@ export function useContextEditorState(
       clearTimer(debounceTimerRef);
       clearTimer(retryTimerRef);
 
-      // Order the import POST after any in-flight save so a stale draft POST
+      // Order the import POST after every in-flight save so a stale draft POST
       // can't land after it and resurrect the old content (see handleClear).
-      const pending = inFlightSaveRef.current;
+      const pending = pendingSaves(inFlightSavesRef.current);
 
       if (pending != null) await pending;
 

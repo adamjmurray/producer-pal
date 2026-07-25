@@ -157,6 +157,33 @@ async function drainMicrotasks(turns = 3): Promise<void> {
 }
 
 /**
+ * Fire Clear (its confirm already stubbed) and prove it is still blocked on an
+ * in-flight save: the clear POST must not go out until every save it was
+ * ordered behind has settled.
+ * @param result - The rendered hook's result handle
+ * @param clear - The clear spy, asserted not to have fired yet
+ * @returns The pending handleClear promise, for the test to await later
+ */
+async function startBlockedClear(
+  result: RenderedEditor["result"],
+  clear: ReturnType<typeof vi.fn>,
+): Promise<{ pending: Promise<boolean> }> {
+  let clearPromise: Promise<boolean> | null = null;
+
+  await act(() => {
+    clearPromise = result.current.handleClear();
+  });
+
+  // Allow microtasks to run; clear must still be waiting on the in-flight save.
+  await drainMicrotasks();
+  expect(clear).not.toHaveBeenCalled();
+
+  // Wrapped, not returned bare: an async function returning a promise awaits it,
+  // which would hang here — the whole point is that this one is still pending.
+  return { pending: clearPromise as unknown as Promise<boolean> };
+}
+
+/**
  * Stub `window.confirm` to return the given answer.
  * @param answer - What confirm() should return (accept vs cancel)
  * @returns The confirm spy, for asserting whether/how it was called
@@ -325,19 +352,69 @@ describe("useContextEditorState", () => {
       expect(clear).not.toHaveBeenCalled();
 
       // Fire Clear. Promise stays pending until we resolve the save below.
-      let clearPromise: Promise<boolean> | null = null;
-
-      await act(() => {
-        clearPromise = result.current.handleClear();
-      });
-      // Allow microtasks to run; clear must still be blocked on the in-flight save.
-      await drainMicrotasks();
-      expect(clear).not.toHaveBeenCalled();
+      const { pending: clearPromise } = await startBlockedClear(result, clear);
 
       // Release the in-flight save's response; clear should then proceed.
       await act(async () => {
         resolveSave(true);
         await clearPromise;
+      });
+      expect(clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("handleClear awaits EVERY in-flight save, not just the newest", async () => {
+      // Two saves overlap (a debounced flush, then another before the first
+      // echo lands). Tracking only the newest would stop awaiting the older
+      // one, whose POST could then land after clear's and resurrect content.
+      const resolvers: Array<(saved: boolean) => void> = [];
+      const save = vi
+        .fn()
+        .mockImplementation(
+          () => new Promise<boolean>((resolve) => resolvers.push(resolve)),
+        );
+      const clear = vi.fn().mockResolvedValue(true);
+      const { result } = renderReadyEditor({ save, clear });
+
+      stubConfirm(true);
+
+      await typeDraft(result, "draft one");
+      await flushDebounceWindow();
+      await typeDraft(result, "draft two");
+      await flushDebounceWindow();
+      expect(save).toHaveBeenCalledTimes(2);
+
+      const { pending: clearPromise } = await startBlockedClear(result, clear);
+
+      // Release only the NEWER save: the older one is still on the wire.
+      await act(async () => {
+        resolvers[1]?.(true);
+      });
+      await drainMicrotasks();
+      expect(clear).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolvers[0]?.(true);
+        await clearPromise;
+      });
+      expect(clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("is not wedged by a save that rejects instead of resolving false", async () => {
+      // save() resolves false on failure today; if that ever changed, a rejected
+      // promise left in the in-flight set would make every later clear/import
+      // await a rejecting Promise.all.
+      const save = vi.fn().mockRejectedValue(new Error("network down"));
+      const clear = vi.fn().mockResolvedValue(true);
+      const { result } = renderReadyEditor({ save, clear });
+
+      stubConfirm(true);
+
+      await typeDraft(result, "draft");
+      await flushDebounceWindow(2);
+      expect(save).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await expect(result.current.handleClear()).resolves.toBe(true);
       });
       expect(clear).toHaveBeenCalledTimes(1);
     });
