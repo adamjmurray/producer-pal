@@ -71,7 +71,7 @@ export function MemoryEntryEditor(
   const doSave = (): Promise<MemoryEntryView | null> =>
     collection.saveEntry(targetName, { description, content: body }, isNew);
 
-  const { noteSaved, externalUpdate, adoptExternal } =
+  const { noteSaved, externalUpdate, adoptExternal, settlePendingSave } =
     useCollectionEntryAutosave({
       canSave,
       draftKey: memoryEntryKey({ name: targetName, description, body }),
@@ -108,6 +108,7 @@ export function MemoryEntryEditor(
     body,
     requiredError: validation.errors.name,
     noteSaved,
+    settlePendingSave,
     onRenamed,
   });
 
@@ -214,6 +215,8 @@ interface MemoryRenameParams {
   requiredError?: string;
   /** Advance the autosave baseline to the renamed entry's echo. */
   noteSaved: (echoKey: string) => void;
+  /** Settle the idle autosave (which targets the OLD slug) before renaming. */
+  settlePendingSave: () => Promise<void>;
   /** Follow the entry to its new slug, keeping this editor mounted. */
   onRenamed: (name: string) => void;
 }
@@ -233,6 +236,11 @@ interface MemoryRenameParams {
  * field adopts the server's slug, and the baseline advances to that echo, so a
  * draft that did diverge mid-rename is left dirty for the autosave to persist
  * under the NEW name — and a clean one doesn't re-save.
+ *
+ * The idle autosave is settled BEFORE the rename is dispatched
+ * ({@link CollectionEntryAutosaveReturn.settlePendingSave}): both writes target
+ * the current slug, and a save still racing the rename can re-create the entry
+ * the rename just moved away from.
  * Extracted so the editor body stays within the line limit.
  * @param params - The live draft + collection the rename needs
  * @returns The name field's error and its change/rename handlers
@@ -243,7 +251,7 @@ function useMemoryRename(params: MemoryRenameParams): {
   onRename: (raw: string) => void;
 } {
   const { collection, entry, setName, description, body } = params;
-  const { requiredError, noteSaved, onRenamed } = params;
+  const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
   const [renameFailed, setRenameFailed] = useState(false);
 
   const nameError =
@@ -257,6 +265,28 @@ function useMemoryRename(params: MemoryRenameParams): {
   };
 
   // Commit a rename on blur / Enter; see the hook's doc for the full contract.
+  const commitRename = async (oldName: string, to: string): Promise<void> => {
+    // Never leave an autosave of the OLD slug racing the rename.
+    await settlePendingSave();
+
+    const renamed = await collection.renameEntry(oldName, to, {
+      description,
+      content: body,
+    });
+
+    if (renamed == null) {
+      setRenameFailed(true);
+      setName(oldName);
+
+      return;
+    }
+
+    setRenameFailed(false);
+    setName(renamed.name);
+    noteSaved(memoryEntryKey(renamed));
+    onRenamed(renamed.name);
+  };
+
   const onRename = (raw: string): void => {
     if (entry == null) return;
     const trimmed = raw.trim();
@@ -267,21 +297,7 @@ function useMemoryRename(params: MemoryRenameParams): {
       return;
     }
 
-    void collection
-      .renameEntry(entry.name, trimmed, { description, content: body })
-      .then((renamed) => {
-        if (renamed == null) {
-          setRenameFailed(true);
-          setName(entry.name);
-
-          return;
-        }
-
-        setRenameFailed(false);
-        setName(renamed.name);
-        noteSaved(memoryEntryKey(renamed));
-        onRenamed(renamed.name);
-      });
+    void commitRename(entry.name, trimmed);
   };
 
   return { nameError, onNameChange, onRename };

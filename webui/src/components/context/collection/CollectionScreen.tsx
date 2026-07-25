@@ -133,6 +133,13 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     selected.mode === "edit"
       ? (entries.find((entry) => entry.name === selected.name) ?? null)
       : null;
+  // A rename resolves this to null for ONE render: the collection hook's commit
+  // drops the old slug before the caller's `.then` moves `selected` to the new
+  // one. That is not a paintable flicker — both updates are microtasks in the
+  // same task, and a browser can only paint between tasks, so the banner below
+  // is added and removed within one checkpoint (guarded by MemoryScreen-rename's
+  // next-task assertion). Keep those two updates in the same task: an `await`
+  // on I/O between them would make this transient banner genuinely visible.
   const deletedExternally = selected.mode === "edit" && activeEntry == null;
 
   // Point the right pane at another draft, remounting the editor so it re-seeds.

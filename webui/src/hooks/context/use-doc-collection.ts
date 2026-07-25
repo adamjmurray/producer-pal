@@ -269,6 +269,16 @@ export interface CollectionEntryAutosaveReturn {
    * so reading it off the same ref is safe here.
    */
   adoptExternal: () => void;
+  /**
+   * Settle the idle autosave before a write that MOVES this entry (a rename):
+   * cancel the armed debounce, and resolve once any already-dispatched save has
+   * landed. Both target the entry's CURRENT slug, so a rename issued on top of
+   * one leaves two writes racing for the same file — and if the rename lands
+   * first, the save re-creates the entry it just moved away from (a duplicate
+   * under the old name). Cancelling loses nothing: the rename carries the same
+   * live draft to the new slug.
+   */
+  settlePendingSave: () => Promise<void>;
 }
 
 /**
@@ -304,6 +314,9 @@ export function useCollectionEntryAutosave(
   const deletedExternallyRef = useRef(false);
   const lastSavedRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The persist currently in flight, so a rename can wait it out (see
+  // settlePendingSave); null whenever no save is outstanding.
+  const inFlightRef = useRef<Promise<void> | null>(null);
   const mountedRef = useRef(true);
   const seededRef = useRef(false);
   const [externalUpdate, setExternalUpdate] = useState(false);
@@ -356,11 +369,15 @@ export function useCollectionEntryAutosave(
     const previous = lastSavedRef.current;
 
     lastSavedRef.current = key;
-    void persistRef.current().then((echoKey) => {
+
+    const pending = persistRef.current().then((echoKey) => {
+      if (inFlightRef.current === pending) inFlightRef.current = null;
       if (!mountedRef.current || lastSavedRef.current !== key) return;
 
       lastSavedRef.current = echoKey ?? previous;
     });
+
+    inFlightRef.current = pending;
   }, []);
 
   // Seed the baseline once (an unedited existing entry must not re-save on
@@ -441,7 +458,15 @@ export function useCollectionEntryAutosave(
     setExternalUpdate(false);
   }, []);
 
-  return { noteSaved, externalUpdate, adoptExternal };
+  // Cancel the armed debounce (the rename carries the same draft onward), then
+  // wait out a save already dispatched — it can only be resolved by letting it
+  // land, since the request is gone. See the interface doc for why.
+  const settlePendingSave = useCallback(async (): Promise<void> => {
+    clearTimer(timerRef);
+    await inFlightRef.current;
+  }, []);
+
+  return { noteSaved, externalUpdate, adoptExternal, settlePendingSave };
 }
 
 // --- Helpers below main export ---
