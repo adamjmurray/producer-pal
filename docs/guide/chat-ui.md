@@ -408,6 +408,13 @@ library search and the AI stops being told how to search a library it can't
 reach. The saving is therefore bigger than the tool's own schema, and you don't
 have to trim skills by hand to match your toolset.
 
+A toolset change reaches a conversation the next time it connects — a new chat,
+or an older one reopened from the history panel. An open chat keeps the tools it
+connected with. Unlike the notation below, a reopened conversation is _not_
+pinned to its old toolset: it reconnects with whatever is enabled now, and
+settings notes when that differs from what it last ran with. So you can turn a
+tool on specifically to continue an old conversation.
+
 Consult [the Features page](/features) for more info on what each tool does.
 
 <img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>

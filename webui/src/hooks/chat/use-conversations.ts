@@ -533,5 +533,6 @@ function syncMetaRef(
     smallModelMode: record.smallModelMode ?? null,
     systemInstruction: record.systemInstruction ?? null,
     notation: record.notation ?? null,
+    enabledTools: record.enabledTools ?? null,
   };
 }

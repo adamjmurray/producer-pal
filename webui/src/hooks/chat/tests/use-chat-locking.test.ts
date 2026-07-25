@@ -22,12 +22,26 @@ const defaultProps = createDefaultProps(mockAdapter);
 // request then carries as its header.
 const withNotation = { ...defaultProps, extraParams: { notation: "barbeat" } };
 
+// A chat whose Tools tab currently has the library tool switched on.
+const withTools = {
+  ...defaultProps,
+  enabledTools: { "ppal-library": true },
+};
+
 /**
  * The `lockedNotation` carried by the init the adapter last built a config from.
  * @returns The locked notation, or undefined when the init carried no key
  */
 function lastLockedNotation(): unknown {
   return vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[4]?.lockedNotation;
+}
+
+/**
+ * The toolset the adapter last built a config from.
+ * @returns The tool-enablement map passed to buildConfig
+ */
+function lastEnabledTools(): unknown {
+  return vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[2];
 }
 
 describe("useChat system instruction locking", () => {
@@ -110,5 +124,54 @@ describe("useChat notation locking", () => {
     });
 
     expect(result.current.activeNotation).toBeNull();
+  });
+});
+
+describe("useChat toolset recording", () => {
+  it("records the toolset a new conversation connected with", async () => {
+    const { result } = renderHook(() => useChat(withTools));
+
+    await act(async () => {
+      await result.current.handleSend("hello");
+    });
+
+    expect(result.current.activeEnabledTools).toStrictEqual({
+      "ppal-library": true,
+    });
+  });
+
+  it("reconnects a restored conversation with today's tools, not its own", async () => {
+    // Deliberately unlike model/notation: a tool the user just turned on to keep
+    // working on an old conversation has to be reachable. The restored map is
+    // still surfaced first, which is what the settings notice reports.
+    const { result } = renderHook(() => useChat(withTools));
+
+    await act(async () => {
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings({ enabledTools: { "ppal-library": false } }),
+      );
+    });
+
+    expect(result.current.activeEnabledTools).toStrictEqual({
+      "ppal-library": false,
+    });
+
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    expect(lastEnabledTools()).toStrictEqual({ "ppal-library": true });
+    expect(result.current.activeEnabledTools).toStrictEqual({
+      "ppal-library": true,
+    });
+  });
+
+  it("records nothing until a conversation connects", () => {
+    // A chat that has never built a client has no toolset to be compared
+    // against, so the settings notice has nothing to report.
+    const { result } = renderHook(() => useChat(withTools));
+
+    expect(result.current.activeEnabledTools).toBeNull();
   });
 });

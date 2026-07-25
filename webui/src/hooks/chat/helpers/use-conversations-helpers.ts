@@ -33,6 +33,8 @@ export interface ActiveMeta {
   systemInstruction: string | null;
   /** Notation in effect (snapshotted onto the record so a restore keeps it). */
   notation: Notation | null;
+  /** Toolset the conversation last connected with (recorded, not enforced). */
+  enabledTools: Record<string, boolean> | null;
 }
 
 export const DEFAULT_META: ActiveMeta = {
@@ -45,6 +47,7 @@ export const DEFAULT_META: ActiveMeta = {
   smallModelMode: null,
   systemInstruction: null,
   notation: null,
+  enabledTools: null,
 };
 
 /** Ref snapshot for building a save record */
@@ -149,6 +152,7 @@ export function buildLockedSettings(
     smallModelMode: record.smallModelMode,
     systemInstruction: record.systemInstruction ?? null,
     notation: record.notation ?? null,
+    enabledTools: record.enabledTools ?? null,
   };
 }
 
@@ -185,7 +189,7 @@ export function buildSaveRecord(
     sessionType: "text",
     messages: chatHistory as ConversationRecord["messages"],
     voiceHistory: null,
-    ...lockedSnapshotFields(refs, existing),
+    ...snapshotFields(refs, existing),
     // Carry branch linkage across updates. A fork's later saves (e.g. the
     // post-response autosave) route through here too; without this they would
     // strip the fields that make it a sibling, so its ‹ n/m › arrows vanish and
@@ -200,19 +204,22 @@ export function buildSaveRecord(
 }
 
 /**
- * The two fields a record locks at its FIRST save: the system instruction and
- * the notation the conversation actually ran with. Both prefer an already-stored
- * value over the current one, so a later save can't re-capture a global the user
- * has since changed, and both are omitted when unknown so a record that knows
- * neither keeps its prior shape.
+ * The optional fields recording what the conversation ran with, all omitted when
+ * unknown so a record that knows none of them keeps its prior shape.
+ *
+ * The system instruction and notation are locked at the FIRST save: both prefer
+ * an already-stored value over the current one, so a later save can't re-capture
+ * a global the user has since changed. `enabledTools` is the opposite — it is
+ * re-captured every save, because a restored conversation genuinely reconnects
+ * with the current toolset and the record should say which one it last used.
  * @param refs - Active refs supplying the currently-locked values
  * @param existing - Previously saved record (if updating)
  * @returns The snapshot fields to spread onto the record
  */
-function lockedSnapshotFields(
+function snapshotFields(
   refs: ActiveRefs,
   existing: ConversationRecord | undefined,
-): Pick<ConversationRecord, "systemInstruction" | "notation"> {
+): Pick<ConversationRecord, "systemInstruction" | "notation" | "enabledTools"> {
   const systemInstruction =
     existing?.systemInstruction ?? refs.systemInstruction;
   const notation = existing?.notation ?? refs.notation;
@@ -220,6 +227,7 @@ function lockedSnapshotFields(
   return {
     ...(systemInstruction != null && { systemInstruction }),
     ...(notation != null && { notation }),
+    ...(refs.enabledTools != null && { enabledTools: refs.enabledTools }),
   };
 }
 

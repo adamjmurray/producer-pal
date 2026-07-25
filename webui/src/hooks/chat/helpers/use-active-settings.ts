@@ -16,18 +16,27 @@ export interface ActiveSettings {
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
   activeNotation: Notation | null;
+  activeEnabledTools: Record<string, boolean> | null;
+}
+
+/**
+ * The values a conversation locks when its client is (re)initialized. Passed as
+ * an object rather than positionally: there are enough same-typed fields here
+ * that argument order would be easy to get wrong and impossible to read.
+ */
+export interface LockedSettingsInput {
+  model: string;
+  provider: Provider;
+  thinking: string;
+  smallModelMode: boolean;
+  systemInstruction: string;
+  notation: Notation | null;
+  enabledTools: Record<string, boolean>;
 }
 
 interface ActiveSettingsActions {
   /** Lock settings when a new conversation starts */
-  lockSettings: (
-    model: string,
-    provider: Provider,
-    thinking: string,
-    smallModelMode: boolean,
-    systemInstruction: string,
-    notation: Notation | null,
-  ) => void;
+  lockSettings: (settings: LockedSettingsInput) => void;
   /** Restore settings from a saved conversation */
   restoreSettings: (lockedSettings?: ConversationLockedSettings) => void;
   /** Clear all active settings (new conversation) */
@@ -53,25 +62,20 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     string | null
   >(null);
   const [activeNotation, setActiveNotation] = useState<Notation | null>(null);
+  const [activeEnabledTools, setActiveEnabledTools] = useState<Record<
+    string,
+    boolean
+  > | null>(null);
 
-  const lockSettings = useCallback(
-    (
-      model: string,
-      provider: Provider,
-      thinking: string,
-      smallModelMode: boolean,
-      systemInstruction: string,
-      notation: Notation | null,
-    ) => {
-      setActiveModel(model);
-      setActiveProvider(provider);
-      setActiveThinking(thinking);
-      setActiveSmallModelMode(smallModelMode);
-      setActiveSystemInstruction(systemInstruction);
-      setActiveNotation(notation);
-    },
-    [],
-  );
+  const lockSettings = useCallback((settings: LockedSettingsInput) => {
+    setActiveModel(settings.model);
+    setActiveProvider(settings.provider);
+    setActiveThinking(settings.thinking);
+    setActiveSmallModelMode(settings.smallModelMode);
+    setActiveSystemInstruction(settings.systemInstruction);
+    setActiveNotation(settings.notation);
+    setActiveEnabledTools(settings.enabledTools);
+  }, []);
 
   const restoreSettings = useCallback(
     (lockedSettings?: ConversationLockedSettings) => {
@@ -81,6 +85,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
       setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
       setActiveNotation(lockedSettings?.notation ?? null);
+      setActiveEnabledTools(lockedSettings?.enabledTools ?? null);
     },
     [],
   );
@@ -92,6 +97,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveSmallModelMode(null);
     setActiveSystemInstruction(null);
     setActiveNotation(null);
+    setActiveEnabledTools(null);
   }, []);
 
   return {
@@ -101,6 +107,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     activeSmallModelMode,
     activeSystemInstruction,
     activeNotation,
+    activeEnabledTools,
     lockSettings,
     restoreSettings,
     clearSettings,

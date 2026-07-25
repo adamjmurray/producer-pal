@@ -200,14 +200,19 @@ export function useChat<
       clientRef.current?.dispose?.();
       clientRef.current = adapter.createClient(init.apiKey, config);
       await clientRef.current.initialize();
-      lockSettings(
-        init.model,
-        init.provider,
-        effectiveThinking,
+      lockSettings({
+        model: init.model,
+        provider: init.provider,
+        thinking: effectiveThinking,
         smallModelMode,
-        init.systemInstruction,
-        init.notation,
-      );
+        systemInstruction: init.systemInstruction,
+        notation: init.notation,
+        // The toolset this client was just built with. Unlike the others this is
+        // always the CURRENT setting, never a restored snapshot — a restored
+        // conversation reconnects with today's tools on purpose. Recording it is
+        // what lets the settings notice point out that they moved.
+        enabledTools,
+      });
     },
     [
       smallModelMode,

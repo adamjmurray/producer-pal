@@ -44,6 +44,14 @@ export interface ConversationRecord {
   // parsed in it. Optional/schemaless: legacy records read fine without it (no
   // DB_VERSION bump), and it rides the conversation export/import.
   notation?: Notation;
+  // The tool selection this conversation last connected with. Unlike the two
+  // snapshots above it is re-captured on every save (like thinking/smallModelMode)
+  // and is NOT enforced on restore — continuing a conversation reconnects with
+  // whatever is enabled now. It exists so the settings notice can say the toolset
+  // moved, rather than the model silently gaining or losing a tool.
+  // Optional/schemaless: legacy records read fine without it (no DB_VERSION bump),
+  // and it rides the conversation export/import.
+  enabledTools?: Record<string, boolean>;
   // --- Conversation branching (edit/retry forks) ---
   // Set on records created by forking an earlier turn. The fork stores a pointer
   // back to the record it diverged from (its "trunk") plus the UI message index

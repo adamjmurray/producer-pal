@@ -18,6 +18,7 @@ export interface SyncActiveMetaParams {
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
   activeNotation: Notation | null;
+  activeEnabledTools: Record<string, boolean> | null;
 }
 
 /**
@@ -40,6 +41,7 @@ export function useSyncActiveMeta(
     activeSmallModelMode,
     activeSystemInstruction,
     activeNotation,
+    activeEnabledTools,
   } = props;
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export function useSyncActiveMeta(
     if (activeSystemInstruction != null)
       meta.systemInstruction = activeSystemInstruction;
     if (activeNotation != null) meta.notation = activeNotation;
+    if (activeEnabledTools != null) meta.enabledTools = activeEnabledTools;
   }, [
     activeMetaRef,
     activeModel,
@@ -62,5 +65,6 @@ export function useSyncActiveMeta(
     activeSmallModelMode,
     activeSystemInstruction,
     activeNotation,
+    activeEnabledTools,
   ]);
 }

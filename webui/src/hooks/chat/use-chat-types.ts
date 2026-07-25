@@ -99,6 +99,14 @@ export interface ConversationLockedSettings {
    * taught. Null for legacy records and for a chat that has yet to lock one.
    */
   notation: Notation | null;
+  /**
+   * The tool selection the conversation last connected with. Reported, not
+   * enforced: continuing a restored chat reconnects with whatever is enabled
+   * now, because a tool the user just turned on to keep working on an old
+   * conversation has to be reachable. Kept so the settings notice can say the
+   * toolset moved. Null for legacy records.
+   */
+  enabledTools: Record<string, boolean> | null;
 }
 
 /**
@@ -135,6 +143,8 @@ export interface UseChatReturn {
   activeSystemInstruction: string | null;
   /** The notation locked for the active conversation. */
   activeNotation: Notation | null;
+  /** The tool selection the active conversation last connected with. */
+  activeEnabledTools: Record<string, boolean> | null;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
   enqueueMessage: (text: string, overrides?: MessageOverrides) => void;

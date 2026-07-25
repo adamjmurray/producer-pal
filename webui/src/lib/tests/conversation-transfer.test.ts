@@ -508,4 +508,42 @@ describe("conversation-transfer", () => {
 
     expect(imported).not.toHaveProperty("notation");
   });
+
+  it("round-trips the toolset the conversation last connected with", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "with-tools",
+          createdAt: 100,
+          messages: [{ role: "user", content: "hi" }],
+          enabledTools: { "ppal-library": false },
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "with-tools");
+
+    expect(imported.enabledTools).toStrictEqual({ "ppal-library": false });
+  });
+
+  it("drops a malformed toolset rather than importing it", async () => {
+    // It gets compared against live settings, so a non-boolean map would report
+    // a bogus divergence forever.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "bad-tools",
+          createdAt: 100,
+          messages: [{ role: "user", content: "hi" }],
+          enabledTools: ["ppal-library"],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "bad-tools");
+
+    expect(imported).not.toHaveProperty("enabledTools");
+  });
 });

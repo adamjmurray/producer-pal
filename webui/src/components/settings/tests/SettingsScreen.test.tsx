@@ -199,6 +199,7 @@ describe("SettingsScreen", () => {
       activeProvider: null,
       activeSmallModelMode: null,
       activeNotation: null,
+      activeEnabledTools: null,
     },
     liveApiForcedOn: false,
     activeVoice: null,

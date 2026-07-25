@@ -220,6 +220,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
       // doesn't rewrite an existing conversation's record. Same for notation.
       activeSystemInstruction: chat.activeSystemInstruction,
       activeNotation: chat.activeNotation,
+      // The toolset the live client was built with, which is the current one —
+      // recorded so a later restore can tell the user the tools have moved.
+      activeEnabledTools: chat.activeEnabledTools,
     },
     onForeignRecord,
     pendingForkRef,

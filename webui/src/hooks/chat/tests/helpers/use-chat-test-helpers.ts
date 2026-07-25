@@ -213,6 +213,7 @@ export function lockedSettings(
     smallModelMode: null,
     systemInstruction: null,
     notation: null,
+    enabledTools: null,
     ...over,
   };
 }

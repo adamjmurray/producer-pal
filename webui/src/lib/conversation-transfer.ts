@@ -16,6 +16,7 @@ import {
   saveConversation,
   getConversationDb,
 } from "#webui/lib/conversation-db";
+import { isEnabledToolsMap } from "#webui/lib/utils/enabled-tools";
 
 interface ExportData {
   version: 1;
@@ -280,6 +281,12 @@ function normalizeRecord(
     // isNotation, not a bare typeof: an unknown notation string would be
     // sent as a header the server can't resolve.
     ...(isNotation(record.notation) && { notation: record.notation }),
+    // And the toolset it last ran with, so an imported conversation can still
+    // report that today's tools differ. Guarded to a boolean map: a malformed
+    // value would be persisted and then compared against live settings.
+    ...(isEnabledToolsMap(record.enabledTools) && {
+      enabledTools: record.enabledTools,
+    }),
     // Round-trip the branching pointers so exported fork families re-import as a
     // linked set. Both are optional; only carry them when present and well-typed
     // so a plain (non-forked) record keeps its shape. Dropped entirely when the

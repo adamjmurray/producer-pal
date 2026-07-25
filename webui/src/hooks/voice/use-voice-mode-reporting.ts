@@ -93,6 +93,10 @@ export function useVoiceModeReporting(
         // Voice locks no notation of its own — its MCP calls fall through to the
         // device global, so there is never anything to diverge from.
         activeNotation: null,
+        // Voice reconnects its tools from current settings every session, and a
+        // voice transcript isn't resumable, so there is no earlier toolset to
+        // report having drifted from either.
+        activeEnabledTools: null,
       },
       onDeleteAllConversations: () => void handlersRef.current.deleteAll(),
       onDeleteUnbookmarkedConversations: () =>

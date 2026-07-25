@@ -5,6 +5,7 @@
 
 import { isNotation } from "#src/shared/notation";
 import { isValidProvider } from "#webui/hooks/settings/settings-helpers";
+import { isEnabledToolsMap } from "#webui/lib/utils/enabled-tools";
 import { type ChatPreset, type PresetFields } from "#webui/types/settings";
 
 /** localStorage key holding the JSON-serialized ChatPreset[]. */
@@ -127,21 +128,7 @@ function isValidPreset(value: unknown): value is ChatPreset {
     // The additive fields are all optional; reject only a present-but-wrong-
     // typed value so a hand-edited entry can't crash the picker.
     (p.description === undefined || typeof p.description === "string") &&
-    (p.enabledTools === undefined || isBooleanMap(p.enabledTools)) &&
+    (p.enabledTools === undefined || isEnabledToolsMap(p.enabledTools)) &&
     (p.notation === undefined || isNotation(p.notation))
   );
-}
-
-/**
- * Type guard for a plain object whose every value is a boolean — the shape of a
- * captured toolset map.
- * @param value - A parsed value
- * @returns True when value is a Record<string, boolean>
- */
-function isBooleanMap(value: unknown): value is Record<string, boolean> {
-  if (typeof value !== "object" || value == null || Array.isArray(value)) {
-    return false;
-  }
-
-  return Object.values(value).every((v) => typeof v === "boolean");
 }

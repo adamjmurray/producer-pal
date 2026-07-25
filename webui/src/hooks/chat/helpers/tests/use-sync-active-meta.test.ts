@@ -24,6 +24,7 @@ const ALL_NULL: SyncActiveMetaParams = {
   activeSmallModelMode: null,
   activeSystemInstruction: null,
   activeNotation: null,
+  activeEnabledTools: null,
 };
 
 describe("useSyncActiveMeta", () => {
@@ -46,6 +47,7 @@ describe("useSyncActiveMeta", () => {
         activeSmallModelMode: false,
         activeSystemInstruction: "Be brief.",
         activeNotation: "stark",
+        activeEnabledTools: { "ppal-read-clip": false },
       }),
     );
 
@@ -57,6 +59,7 @@ describe("useSyncActiveMeta", () => {
       smallModelMode: false,
       systemInstruction: "Be brief.",
       notation: "stark",
+      enabledTools: { "ppal-read-clip": false },
     });
   });
 });

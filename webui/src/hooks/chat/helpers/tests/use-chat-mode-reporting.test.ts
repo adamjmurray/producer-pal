@@ -30,6 +30,7 @@ describe("useChatModeReporting", () => {
           activeProvider: null,
           activeSmallModelMode: null,
           activeNotation: null,
+          activeEnabledTools: null,
         },
         settings: {
           model: "gemini-1.5-flash",

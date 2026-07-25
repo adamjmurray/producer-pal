@@ -36,6 +36,7 @@ function refs(over: Partial<ActiveRefs> = {}): ActiveRefs {
     thinking: null,
     smallModelMode: null,
     systemInstruction: null,
+    enabledTools: null,
     ...over,
   };
 }
@@ -153,6 +154,42 @@ describe("buildSaveRecord notation snapshot", () => {
     const rec = buildSaveRecord(refs(), undefined, HISTORY);
 
     expect("notation" in rec).toBe(false);
+  });
+});
+
+describe("buildSaveRecord toolset snapshot", () => {
+  it("records the toolset the conversation last connected with", () => {
+    const rec = buildSaveRecord(
+      refs({ enabledTools: { "ppal-library": false } }),
+      undefined,
+      HISTORY,
+    );
+
+    expect(rec.enabledTools).toStrictEqual({ "ppal-library": false });
+  });
+
+  it("re-captures the toolset on later saves", () => {
+    // The opposite of the two snapshots above: a restored conversation really
+    // does reconnect with the current tools, so the record has to follow rather
+    // than freeze what it first ran with.
+    const existing = buildSaveRecord(
+      refs({ enabledTools: { "ppal-library": false } }),
+      undefined,
+      HISTORY,
+    );
+    const updated = buildSaveRecord(
+      refs({ enabledTools: { "ppal-library": true } }),
+      existing,
+      HISTORY,
+    );
+
+    expect(updated.enabledTools).toStrictEqual({ "ppal-library": true });
+  });
+
+  it("omits the field when no toolset is known", () => {
+    const rec = buildSaveRecord(refs(), undefined, HISTORY);
+
+    expect("enabledTools" in rec).toBe(false);
   });
 });
 

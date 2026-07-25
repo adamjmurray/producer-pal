@@ -34,6 +34,7 @@ export function createConversationsProps() {
         activeSmallModelMode: null as boolean | null,
         activeSystemInstruction: null as string | null,
         activeNotation: null as Notation | null,
+        activeEnabledTools: null as Record<string, boolean> | null,
       },
       onForeignRecord: undefined as
         ((record: ConversationRecord) => void) | undefined,

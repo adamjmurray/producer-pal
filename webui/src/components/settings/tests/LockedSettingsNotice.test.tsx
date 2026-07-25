@@ -19,6 +19,7 @@ describe("LockedSettingsNotice", () => {
     provider: "openai" as const,
     smallModelMode: false,
     notation: "barbeat" as const,
+    enabledTools: {} as Record<string, boolean>,
   };
 
   it("returns null when activeModel is null", () => {
@@ -27,6 +28,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: null,
       activeSmallModelMode: null,
       activeNotation: null,
+      activeEnabledTools: null,
     };
     const { container } = render(
       <LockedSettingsNotice conversationLock={lock} {...defaultProps} />,
@@ -41,6 +43,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "openai",
       activeSmallModelMode: false,
       activeNotation: "barbeat",
+      activeEnabledTools: null,
     };
     const { container } = render(
       <LockedSettingsNotice conversationLock={lock} {...defaultProps} />,
@@ -55,6 +58,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "openai",
       activeSmallModelMode: false,
       activeNotation: "barbeat",
+      activeEnabledTools: null,
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -70,6 +74,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "anthropic",
       activeSmallModelMode: false,
       activeNotation: "barbeat",
+      activeEnabledTools: null,
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -85,6 +90,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "openai",
       activeSmallModelMode: true,
       activeNotation: "barbeat",
+      activeEnabledTools: null,
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -101,6 +107,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "openai",
       activeSmallModelMode: false,
       activeNotation: "barbeat",
+      activeEnabledTools: null,
     };
 
     render(
@@ -120,6 +127,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "openai",
       activeSmallModelMode: true,
       activeNotation: "barbeat",
+      activeEnabledTools: null,
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -135,6 +143,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "openai",
       activeSmallModelMode: false,
       activeNotation: "stark",
+      activeEnabledTools: null,
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -153,6 +162,7 @@ describe("LockedSettingsNotice", () => {
       activeProvider: "openai",
       activeSmallModelMode: false,
       activeNotation: null,
+      activeEnabledTools: null,
     };
 
     const { container } = render(
@@ -166,12 +176,92 @@ describe("LockedSettingsNotice", () => {
     expect(container.innerHTML).toBe("");
   });
 
+  it("reports a toolset that has moved since the conversation connected", () => {
+    const lock: ConversationLock = {
+      activeModel: "gpt-4o",
+      activeProvider: "openai",
+      activeSmallModelMode: false,
+      activeNotation: "barbeat",
+      activeEnabledTools: { "ppal-library": false },
+    };
+
+    render(
+      <LockedSettingsNotice
+        conversationLock={lock}
+        {...defaultProps}
+        enabledTools={{ "ppal-library": true }}
+      />,
+    );
+
+    expect(screen.getByText(/different set of tools/)).toBeTruthy();
+    // Tools are reported, not locked, so the notice says what actually happens
+    // next rather than listing them alongside the pinned settings.
+    expect(screen.queryByText(/Current conversation uses/)).toBeNull();
+  });
+
+  it("ignores a toolset that only spells out the defaults", () => {
+    // Absent means enabled, so a record that lists every tool as true matches a
+    // settings map that lists none of them. Reporting that as a change would
+    // make the notice permanent for anyone who has never touched the Tools tab.
+    const lock: ConversationLock = {
+      activeModel: "gpt-4o",
+      activeProvider: "openai",
+      activeSmallModelMode: false,
+      activeNotation: "barbeat",
+      activeEnabledTools: { "ppal-read-clip": true, "ppal-library": true },
+    };
+
+    const { container } = render(
+      <LockedSettingsNotice conversationLock={lock} {...defaultProps} />,
+    );
+
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("stays quiet about tools for a conversation that recorded none", () => {
+    // A record saved before the toolset was recorded has nothing to compare
+    // against — same reasoning as the notation case above.
+    const lock: ConversationLock = {
+      activeModel: "gpt-4o",
+      activeProvider: "openai",
+      activeSmallModelMode: false,
+      activeNotation: "barbeat",
+      activeEnabledTools: null,
+    };
+
+    const { container } = render(
+      <LockedSettingsNotice
+        conversationLock={lock}
+        {...defaultProps}
+        enabledTools={{ "ppal-library": false }}
+      />,
+    );
+
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("lists the pinned settings alongside the tools line when both diverge", () => {
+    const lock: ConversationLock = {
+      activeModel: "gpt-3.5-turbo",
+      activeProvider: "openai",
+      activeSmallModelMode: false,
+      activeNotation: "barbeat",
+      activeEnabledTools: { "ppal-library": false },
+    };
+
+    render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
+
+    expect(screen.getByText(/Current conversation uses/)).toBeTruthy();
+    expect(screen.getByText(/different set of tools/)).toBeTruthy();
+  });
+
   it("uses provider from settings when activeProvider is null", () => {
     const lock: ConversationLock = {
       activeModel: "different-model",
       activeProvider: null,
       activeSmallModelMode: false,
       activeNotation: "barbeat",
+      activeEnabledTools: null,
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
