@@ -1,6 +1,6 @@
 // Producer Pal
-// Copyright (C) 2026 Taylor Haun
-// AI assistance: Codex (OpenAI)
+// Copyright (C) 2026 Taylor Haun, Adam Murray
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -12,6 +12,24 @@ import {
   resolveCodexModel,
   scrubOpenAiKeys,
 } from "./codex-cli-protocol.ts";
+
+/**
+ * Assert every sandbox restriction survives on one argv. `evals/**` is excluded
+ * from coverage, so these assertions are the only guard against a dropped flag.
+ * @param args - Codex CLI arguments to check
+ */
+function expectRestrictions(args: string[]): void {
+  const flat = args.join(" ");
+
+  expect(flat).toContain("--disable shell_tool");
+  expect(flat).toContain("--disable unified_exec");
+  expect(flat).toContain("--disable multi_agent");
+  expect(args).toContain("--ignore-user-config");
+  expect(args).toContain("--ignore-rules");
+  expect(args).toContain('approval_policy="never"');
+  expect(args).toContain('web_search="disabled"');
+  expect(args).toContain('sandbox_mode="read-only"');
+}
 
 describe("codexCliProtocol", () => {
   const input = {
@@ -27,7 +45,7 @@ describe("codexCliProtocol", () => {
     expect(args).toStrictEqual(
       expect.arrayContaining(["--model", "gpt-5.6-terra"]),
     );
-    expect(args).toContain('sandbox_mode="read-only"');
+    expectRestrictions(args);
     expect(args).toContain("mcp_servers.producer-pal.required=true");
     expect(args).toContain(
       'mcp_servers.producer-pal.default_tools_approval_mode="approve"',
@@ -35,12 +53,12 @@ describe("codexCliProtocol", () => {
     expect(args.at(-1)).toBe("-");
   });
 
-  it("pins resumed turns to the read-only sandbox through config", () => {
+  it("pins resumed turns to every restriction through config", () => {
     const args = codexCliProtocol({ ...input, resumeThreadId: "thread-123" });
 
     expect(args.slice(0, 2)).toStrictEqual(["exec", "resume"]);
     expect(args).not.toContain("--sandbox");
-    expect(args).toContain('sandbox_mode="read-only"');
+    expectRestrictions(args);
     expect(args.slice(-2)).toStrictEqual(["thread-123", "-"]);
   });
 });
@@ -53,6 +71,7 @@ describe("codexJudgeArgs", () => {
     expect(args).toStrictEqual(
       expect.arrayContaining(["--model", "gpt-5.6-luna"]),
     );
+    expectRestrictions(args);
     expect(args.join(" ")).not.toContain("mcp_servers");
   });
 });
@@ -142,6 +161,97 @@ describe("parseCodexStream", () => {
       cacheReadTokens: 80,
       reasoningTokens: 5,
     });
+  });
+
+  it("pairs an id-less started/completed item into one call", () => {
+    const stdout = [
+      {
+        type: "item.started",
+        item: {
+          type: "mcp_tool_call",
+          tool: "ppal-create-clip",
+          arguments: "",
+          status: "in_progress",
+        },
+      },
+      {
+        type: "item.completed",
+        item: {
+          type: "mcp_tool_call",
+          tool: "ppal-create-clip",
+          arguments: { trackIndex: 0 },
+          status: "completed",
+          result: "created",
+        },
+      },
+    ]
+      .map((event) => JSON.stringify(event))
+      .join("\n");
+
+    expect(parseCodexStream(stdout).toolCalls).toStrictEqual([
+      { name: "ppal-create-clip", args: { trackIndex: 0 }, result: "created" },
+    ]);
+  });
+
+  it("keeps repeat calls to one tool separate", () => {
+    const stdout = ["1", "2"]
+      .flatMap((sceneIndex) => [
+        {
+          type: "item.started",
+          item: {
+            type: "mcp_tool_call",
+            tool: "ppal-create-clip",
+            status: "in_progress",
+          },
+        },
+        {
+          type: "item.completed",
+          item: {
+            type: "mcp_tool_call",
+            tool: "ppal-create-clip",
+            arguments: { sceneIndex },
+            status: "completed",
+          },
+        },
+      ])
+      .map((event) => JSON.stringify(event))
+      .join("\n");
+
+    expect(parseCodexStream(stdout).toolCalls).toStrictEqual([
+      { name: "ppal-create-clip", args: { sceneIndex: "1" } },
+      { name: "ppal-create-clip", args: { sceneIndex: "2" } },
+    ]);
+  });
+
+  it("refreshes args when the started event reported none", () => {
+    const stdout = [
+      {
+        type: "item.started",
+        item: {
+          id: "call-1",
+          type: "mcp_tool_call",
+          tool: "ppal-update-clip",
+          arguments: {},
+          status: "in_progress",
+        },
+      },
+      {
+        type: "item.completed",
+        item: {
+          id: "call-1",
+          type: "mcp_tool_call",
+          tool: "ppal-update-clip",
+          arguments: { ids: "1/1" },
+          status: "completed",
+        },
+      },
+    ]
+      .map((event) => JSON.stringify(event))
+      .join("\n");
+
+    expect(parseCodexStream(stdout).toolCalls).toStrictEqual([
+      { name: "ppal-update-clip", args: { ids: "1/1" } },
+    ]);
   });
 
   it("records a failed MCP result without failing the whole turn", () => {

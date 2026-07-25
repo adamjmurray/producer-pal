@@ -1,6 +1,6 @@
 // Producer Pal
-// Copyright (C) 2026 Taylor Haun
-// AI assistance: Codex (OpenAI)
+// Copyright (C) 2026 Taylor Haun, Adam Murray
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
@@ -102,7 +102,7 @@ export function parseCodexStream(stdout: string): ParsedCodexTurn {
   const state: CodexStreamState = {
     text: "",
     toolCalls: [],
-    callsById: new Map(),
+    openCalls: new Map(),
   };
 
   for (const line of stdout.split("\n")) {
@@ -124,7 +124,8 @@ export function parseCodexStream(stdout: string): ParsedCodexTurn {
 interface CodexStreamState {
   text: string;
   toolCalls: ToolCall[];
-  callsById: Map<string, ToolCall>;
+  /** In-flight MCP calls awaiting completion, keyed by callKey(). */
+  openCalls: Map<string, ToolCall>;
   threadId?: string;
   usage?: TokenUsage;
   error?: string;
@@ -243,19 +244,25 @@ function collectMcpCall(
   item: Record<string, unknown>,
   state: CodexStreamState,
 ): void {
-  const id = typeof item.id === "string" ? item.id : undefined;
-  let call = id == null ? undefined : state.callsById.get(id);
+  const key = callKey(item);
 
-  if (call == null && typeof item.tool === "string") {
-    call = {
-      name: item.tool,
-      args: toArguments(item.arguments),
-    };
+  if (key == null) return;
+
+  let call = state.openCalls.get(key);
+
+  if (call == null) {
+    if (typeof item.tool !== "string") return;
+    call = { name: item.tool, args: toArguments(item.arguments) };
     state.toolCalls.push(call);
-    if (id != null) state.callsById.set(id, call);
+    state.openCalls.set(key, call);
+  } else {
+    // `item.started` can carry empty `arguments`, with the real ones only on
+    // completion — so let a non-empty payload replace what landed first.
+    const args = toArguments(item.arguments);
+
+    if (Object.keys(args).length > 0) call.args = args;
   }
 
-  if (call == null) return;
   if (item.result != null) call.result = stringifyResult(item.result);
 
   if (item.status === "failed") {
@@ -263,6 +270,37 @@ function collectMcpCall(
 
     call.result ??= `ERROR: ${message}`;
   }
+
+  // Stop tracking once the call is done, so a later call to the same tool
+  // starts a fresh entry instead of merging into this one.
+  if (isFinishedCall(item)) state.openCalls.delete(key);
+}
+
+/**
+ * Key an MCP item so `item.started` and `item.completed` collapse into one
+ * entry. `item.id` is optional in the stream; without it, pair the events by
+ * tool name (only one call per tool is ever in flight at a time).
+ * @param item - MCP tool-call item
+ * @returns Dedup key, or undefined when the item identifies neither
+ */
+function callKey(item: Record<string, unknown>): string | undefined {
+  if (typeof item.id === "string") return `id:${item.id}`;
+  if (typeof item.tool === "string") return `tool:${item.tool}`;
+
+  return undefined;
+}
+
+/**
+ * Report whether an MCP item represents a finished call.
+ * @param item - MCP tool-call item
+ * @returns True when the call succeeded, failed, or carries a result
+ */
+function isFinishedCall(item: Record<string, unknown>): boolean {
+  return (
+    item.status === "completed" ||
+    item.status === "failed" ||
+    item.result != null
+  );
 }
 
 /**
