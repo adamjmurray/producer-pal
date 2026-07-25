@@ -7,6 +7,8 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { parseCodexStream, scrubOpenAiKeys } from "./codex-cli-protocol.ts";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+/** Grace period between SIGTERM and SIGKILL when a turn times out. */
+const SIGKILL_GRACE_MS = 2000;
 
 export interface SpawnCodexOptions {
   cwd: string;
@@ -37,11 +39,22 @@ export function spawnCodex(
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let killTimer: NodeJS.Timeout | undefined;
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill("SIGTERM");
-      setTimeout(() => child.kill("SIGKILL"), 2000);
+      // Escalate only if SIGTERM is ignored. Captured so clearTimers() can drop
+      // it — left pending it holds the event loop open past the rejection.
+      killTimer = setTimeout(() => child.kill("SIGKILL"), SIGKILL_GRACE_MS);
     }, timeoutMs);
+
+    /**
+     * Drop both timers so neither keeps the event loop alive after settling.
+     */
+    const clearTimers = (): void => {
+      clearTimeout(timer);
+      if (killTimer != null) clearTimeout(killTimer);
+    };
 
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
@@ -52,11 +65,11 @@ export function spawnCodex(
       stderr += data;
     });
     child.on("error", (error) => {
-      clearTimeout(timer);
+      clearTimers();
       reject(error);
     });
     child.on("close", (code) => {
-      clearTimeout(timer);
+      clearTimers();
 
       if (timedOut) {
         reject(new Error(`codex CLI timed out after ${timeoutMs / 1000}s`));
@@ -67,7 +80,7 @@ export function spawnCodex(
       }
     });
     child.stdin.on("error", (error) => {
-      clearTimeout(timer);
+      clearTimers();
       child.kill("SIGKILL");
       reject(error);
     });
