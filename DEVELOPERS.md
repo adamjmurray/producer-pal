@@ -25,15 +25,20 @@ which require v24+.
    → Settings → Extension
 
 **Note**: For development and testing, use `npm run build:debug` to enable
-debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`). `ENABLE_LIVE_API=true`
-forces the runtime `liveApiEnabled` flag on so the Direct Live API tool
-(`ppal-live-api`) is always available — the Setup-tab toggle cannot disable it
-in this build. `POST /config { liveApiEnabled }` still works in either direction
-so e2e tests can exercise both states. Chat UI development (`npm run ui:dev`)
-works against any build: the MCP server reflects CORS for localhost origins by
-default, so a browser page on another local port can reach it. Set
-`ENABLE_REMOTE_CORS=true` before a build only if you need to reach the server
-from a non-localhost browser origin (a remote inspector, or over the LAN).
+debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`, `ENABLE_WARP_MARKERS`).
+`ENABLE_LIVE_API=true` forces the runtime `liveApiEnabled` flag on so the Direct
+Live API tool (`ppal-live-api`) is always available — the Setup-tab toggle
+cannot disable it in this build. `POST /config { liveApiEnabled }` still works
+in either direction so e2e tests can exercise both states.
+`ENABLE_WARP_MARKERS=true` exposes the work-in-progress warp-marker surface —
+`warpMarkers` in `ppal-read-clip`'s `warp` include, and the `warpOp` /
+`warpBeatTime` / `warpSampleTime` / `warpDistance` params on `ppal-update-clip`
+— so it can be exercised by hand; release builds omit it entirely. Chat UI
+development (`npm run ui:dev`) works against any build: the MCP server reflects
+CORS for localhost origins by default, so a browser page on another local port
+can reach it. Set `ENABLE_REMOTE_CORS=true` before a build only if you need to
+reach the server from a non-localhost browser origin (a remote inspector, or
+over the LAN).
 
 ## Core Development Scripts
 

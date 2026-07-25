@@ -358,6 +358,7 @@ function processAudioClip(
 
     result.warpMode = WARP_MODE_MAPPING[warpModeValue] ?? "unknown";
 
+    // Warp markers are work-in-progress: debug builds only (build:debug)
     if (process.env.ENABLE_WARP_MARKERS === "true") {
       const warpMarkers = processWarpMarkers(clip);
 
