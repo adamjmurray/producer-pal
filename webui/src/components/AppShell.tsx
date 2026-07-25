@@ -58,7 +58,7 @@ export function AppShell({
   onOpenContext,
   children,
 }: AppShellProps) {
-  const latestVersion = useUpdateCheck();
+  const update = useUpdateCheck();
 
   const activeConv = conversationPanel.activeConversationId
     ? conversationPanel.conversations.find(
@@ -73,7 +73,7 @@ export function AppShell({
         mcpStatus={mcpStatus}
         isHistoryOpen={conversationPanel.isOpen}
         isActiveBookmarked={activeConv?.bookmarked}
-        latestVersion={latestVersion}
+        update={update}
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
         onOpenConnectionSettings={onOpenConnectionSettings}

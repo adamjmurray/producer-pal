@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { checkForUpdate, isNewerVersion } from "../version-check.ts";
+import {
+  checkForUpdate,
+  formatBuildMarker,
+  isNewerVersion,
+} from "../version-check.ts";
 
 describe("isNewerVersion", () => {
   it("returns true when latest has a newer patch", () => {
@@ -118,6 +122,10 @@ describe("isNewerVersion", () => {
   });
 });
 
+function markerBody(sha: string): string {
+  return `Release notes go here.\n\n${formatBuildMarker(sha)}\n`;
+}
+
 describe("checkForUpdate", () => {
   function mockFetchResponse(body: unknown, ok = true): void {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -129,14 +137,14 @@ describe("checkForUpdate", () => {
     mockFetchResponse({ tag_name: "v2.0.0" });
     const result = await checkForUpdate("1.0.0");
 
-    expect(result).toStrictEqual({ version: "2.0.0" });
+    expect(result).toStrictEqual({ version: "2.0.0", isRebuild: false });
   });
 
   it("returns version when tag_name has no v prefix", async () => {
     mockFetchResponse({ tag_name: "2.0.0" });
     const result = await checkForUpdate("1.0.0");
 
-    expect(result).toStrictEqual({ version: "2.0.0" });
+    expect(result).toStrictEqual({ version: "2.0.0", isRebuild: false });
   });
 
   it("returns null when the current version matches latest", async () => {
@@ -172,6 +180,14 @@ describe("checkForUpdate", () => {
     expect(await checkForUpdate("1.0.0")).toBeNull();
   });
 
+  it("returns null when the current version is newer even if the build differs", async () => {
+    // A local build ahead of the latest release. Only the "neither is newer"
+    // check keeps this quiet — the build SHAs differ, so dropping it would nag
+    // every dev build forever.
+    mockFetchResponse({ tag_name: "v1.0.0", body: markerBody("aaaaaaa") });
+    expect(await checkForUpdate("2.0.0", "bbbbbbb")).toBeNull();
+  });
+
   it("passes a timeout signal to fetch", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
@@ -183,5 +199,79 @@ describe("checkForUpdate", () => {
       "https://api.github.com/repos/adamjmurray/producer-pal/releases/latest",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+});
+
+describe("checkForUpdate build marker", () => {
+  // A release candidate that gets re-cut under the same tag keeps its version
+  // number, so testers who downloaded the earlier build are told they're up to
+  // date forever. The published build identity is what breaks that tie.
+  function mockRelease(body: unknown, tag = "v2.0.0"): void {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ tag_name: tag, body })),
+    );
+  }
+
+  it("flags a rebuild when the published build differs from ours", async () => {
+    mockRelease(markerBody("9f8e7d6"));
+
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
+      version: "2.0.0",
+      isRebuild: true,
+    });
+  });
+
+  it("stays quiet when the published build matches ours", async () => {
+    // The promote-a-pre-release-unchanged path: the tester already has the
+    // published bytes, so there is nothing to download.
+    mockRelease(markerBody("1a2b3c4"));
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
+  });
+
+  it("stays quiet when this build has no SHA", async () => {
+    // Running from source, or a build made before the marker existed.
+    mockRelease(markerBody("9f8e7d6"));
+    expect(await checkForUpdate("2.0.0")).toBeNull();
+  });
+
+  it("stays quiet when the release notes carry no marker", async () => {
+    mockRelease("Just some release notes.");
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
+  });
+
+  it("stays quiet when the release has no notes at all", async () => {
+    // GitHub returns body: null for a release published with empty notes.
+    mockRelease(null);
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
+  });
+
+  it("reports a newer version as a version update, not a rebuild", async () => {
+    mockRelease(markerBody("9f8e7d6"), "v3.0.0");
+
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
+      version: "3.0.0",
+      isRebuild: false,
+    });
+  });
+
+  it("matches a hand-edited marker with no backticks or mixed case", async () => {
+    mockRelease("Producer Pal build: 9F8E7D6");
+
+    expect(await checkForUpdate("2.0.0", "9f8e7d6")).toBeNull();
+  });
+
+  it("matches a full-length SHA", async () => {
+    mockRelease(formatBuildMarker("9f8e7d6c5b4a39281706f5e4d3c2b1a098765432"));
+
+    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
+      version: "2.0.0",
+      isRebuild: true,
+    });
+  });
+});
+
+describe("formatBuildMarker", () => {
+  it("formats a marker the check can read back", () => {
+    expect(formatBuildMarker("1a2b3c4")).toBe("Producer Pal build: `1a2b3c4`");
   });
 });

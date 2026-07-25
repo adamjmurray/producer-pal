@@ -84,6 +84,22 @@ describe("build flags", () => {
   });
 });
 
+describe("build identity", () => {
+  // BUILD_SHA is not a feature flag — it's the build's identity, read in
+  // src/shared/config.ts so the update check can tell two builds of the same
+  // version apart. Every bundler must substitute it: left unreplaced, the
+  // `process` reference throws in the Max V8 runtime and the browser bundle.
+  it("substitutes BUILD_SHA in the rollup bundles", () => {
+    expect(rollupConfig).toContain("process.env.BUILD_SHA");
+  });
+
+  it("substitutes BUILD_SHA in the chat UI bundle", () => {
+    expect(readRepoFile("config/vite.config.ts")).toContain(
+      "process.env.BUILD_SHA",
+    );
+  });
+});
+
 /**
  * Collect the build flags read from process.env anywhere in src/
  * @returns Set of flag names

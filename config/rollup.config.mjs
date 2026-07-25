@@ -14,6 +14,7 @@ import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
 import copy from "rollup-plugin-copy";
 import esbuild from "rollup-plugin-esbuild";
+import { BUILD_SHA } from "./build-sha.mjs";
 import { inlineChatUI } from "./rollup-plugin-inline-chat-ui.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ const terserOptions = {
 };
 
 const envVarReplacements = {
+  "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
   "process.env.ENABLE_LIVE_API": JSON.stringify(process.env.ENABLE_LIVE_API),
   "process.env.ENABLE_CODE_EXEC": JSON.stringify(process.env.ENABLE_CODE_EXEC),
   "process.env.ENABLE_WARP_MARKERS": JSON.stringify(

@@ -8,14 +8,40 @@ const RELEASES_URL =
 
 const TIMEOUT_MS = 5000;
 
+// Machine-readable build identity published in the GitHub release notes (see
+// dev/Releasing.md). Two builds of the same version are otherwise
+// indistinguishable: a pre-release tester who downloads an early release
+// candidate keeps reporting that version after the artifacts are re-cut under
+// the same tag, so a version-only check tells them they're up to date forever.
+// Comparing builds catches that — and stays silent when a pre-release is
+// promoted without re-cutting, where the tester already has the published bytes.
+const BUILD_MARKER_LABEL = "Producer Pal build:";
+const BUILD_MARKER_PATTERN = new RegExp(
+  // The SHA may be wrapped in backticks so it renders as code in the notes.
+  `${BUILD_MARKER_LABEL}\\s*\`?([0-9a-f]{7,40})\`?`,
+  "i",
+);
+
+export interface UpdateInfo {
+  /** The version published as the latest release */
+  version: string;
+  /**
+   * True when the published version matches ours but its build doesn't — the
+   * release was re-cut after this copy was downloaded.
+   */
+  isRebuild: boolean;
+}
+
 /**
  * Checks GitHub for a newer release of Producer Pal.
  * @param currentVersion - The current version string
- * @returns The latest version info, or null if no update or on any error
+ * @param currentBuild - The current build SHA, or "" when unknown
+ * @returns The available update, or null if up to date or on any error
  */
 export async function checkForUpdate(
   currentVersion: string,
-): Promise<{ version: string } | null> {
+  currentBuild = "",
+): Promise<UpdateInfo | null> {
   try {
     const response = await fetch(RELEASES_URL, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -36,13 +62,54 @@ export async function checkForUpdate(
     const latest = tagName.startsWith("v") ? tagName.slice(1) : tagName;
 
     if (isNewerVersion(currentVersion, latest)) {
-      return { version: latest };
+      return { version: latest, isRebuild: false };
+    }
+
+    // Same version number — the published artifacts can still be a different
+    // build than ours. Neither version being newer than the other is what makes
+    // them equal, which also skips a build comparison for a local build that is
+    // ahead of the latest release.
+    const publishedBuild = parseBuildMarker(data);
+
+    if (
+      currentBuild !== "" &&
+      publishedBuild != null &&
+      publishedBuild !== currentBuild &&
+      !isNewerVersion(latest, currentVersion)
+    ) {
+      return { version: latest, isRebuild: true };
     }
 
     return null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Formats the build marker line to publish in a GitHub release's notes.
+ * @param buildSha - The short commit SHA the release was built from
+ * @returns The marker line
+ */
+export function formatBuildMarker(buildSha: string): string {
+  return `${BUILD_MARKER_LABEL} \`${buildSha}\``;
+}
+
+/**
+ * Extracts the build SHA from a GitHub release's notes.
+ * @param release - The release object from the GitHub API
+ * @returns The published build SHA, or null when the notes carry no marker
+ */
+function parseBuildMarker(release: object): string | null {
+  if (!("body" in release) || typeof release.body !== "string") return null;
+
+  const match = BUILD_MARKER_PATTERN.exec(release.body);
+
+  if (match == null) return null;
+
+  // Group 1 is always present when the pattern matches. Lowercased so a
+  // hand-edited marker still compares equal to the git-generated SHA.
+  return (match[1] as string).toLowerCase();
 }
 
 /**

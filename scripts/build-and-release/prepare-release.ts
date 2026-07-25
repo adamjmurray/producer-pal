@@ -14,6 +14,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { formatBuildMarker } from "#src/shared/version-check.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -40,7 +41,25 @@ try {
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 
-console.log(`Building version: ${pkg.version}\n`);
+// Resolve the build identity here and pass it into the build, so the SHA baked
+// into the artifacts and the marker published in the release notes can't
+// disagree. Without it, a release re-cut under an existing tag is
+// indistinguishable from the copy testers already downloaded, and their update
+// check stays silent forever.
+let buildSha: string;
+
+try {
+  buildSha = execSync("git rev-parse --short=7 HEAD", {
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "ignore"],
+  }).trim();
+} catch (error) {
+  console.error(`\n❌ Could not resolve the build SHA: ${String(error)}`);
+  console.error("   Releases must be built from a git checkout.");
+  process.exit(1);
+}
+
+console.log(`Building version: ${pkg.version} (build ${buildSha})\n`);
 
 // Clean release directory
 const releaseDir = join(rootDir, "release");
@@ -56,7 +75,11 @@ mkdirSync(releaseDir);
 console.log("Building desktop extension...");
 
 try {
-  execSync("npm run build", { cwd: rootDir, stdio: "inherit" });
+  execSync("npm run build", {
+    cwd: rootDir,
+    stdio: "inherit",
+    env: { ...process.env, BUILD_SHA: buildSha },
+  });
 } catch (error) {
   console.error(`\n❌ Build failed: ${String(error)}`);
   console.error("Release directory was created but contains no artifacts.");
@@ -84,4 +107,9 @@ console.log("3. Save as: release/Producer_Pal.amxd");
 console.log("4. Test both files work correctly");
 console.log(
   "5. Create/update the GitHub release, test, and proceed per dev/Releasing.md",
+);
+console.log(
+  "\n🔖 Put this line in the release notes (every time the files are re-uploaded)\n" +
+    "   so an earlier download can tell it's out of date:\n\n" +
+    `   ${formatBuildMarker(buildSha)}\n`,
 );

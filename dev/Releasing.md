@@ -35,7 +35,7 @@ and see how much is accumulating for the release.
 
 The version bump script updates the following:
 
-1. `src/shared/version.js` controls the version reported by the runtime (Max for
+1. `src/shared/config.ts` controls the version reported by the runtime (Max for
    Live device UI / MCP server)
 2. `claude-desktop-extension/manifest.json` controls version in Claude Desktop
    Extension (this file is generated during the build)
@@ -77,6 +77,10 @@ release build.
    This creates:
    - `release/Producer_Pal.mcpb` (Claude Desktop extension)
 
+   It also prints a **build marker** line to put in the release notes. Keep it —
+   Step 2 needs it, and [About the build marker](#about-the-build-marker)
+   explains why.
+
 2. Freeze a fresh Max device:
    - Add the freshly built `max-for-live-device/Producer_Pal.amxd` to Ableton
      Live
@@ -105,8 +109,50 @@ release build.
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
 7. Check "Set as a pre-release"
-8. Write release notes
+8. Write release notes. They must end with two things:
+   - The pre-release notice, so testers know a same-version update prompt is
+     expected:
+
+     ```md
+     > ⚠️ **This is a pre-release.** If these files are replaced during testing,
+     > Producer Pal will tell you an update is available even though the version
+     > number hasn't changed. Download from this page again when that happens.
+     ```
+
+   - The build marker line printed by `npm run release`, verbatim:
+
+     ```md
+     Producer Pal build: `abc1234`
+     ```
+
 9. Publish pre-release
+
+### About the build marker
+
+The build marker is how an installed copy knows it's stale when the version
+number can't tell it. Producer Pal bakes the commit SHA it was built from into
+its bundles and compares it against the marker in the latest release's notes: a
+different SHA at the same version number means the files were re-cut after that
+copy was downloaded, and the update prompt appears.
+
+This matters because pre-release testing regularly replaces the files under an
+existing tag (see
+[Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)). Without
+the marker, everyone who downloaded an earlier release candidate is told they're
+up to date until the _next_ version ships.
+
+Two things follow:
+
+- **Re-upload the files ⇒ update the marker.** A stale marker is worse than
+  none: it tells testers who have the newest files to re-download, and tells
+  testers with old files that they're current.
+- **Promoting a pre-release unchanged needs no marker change.** Same files, same
+  SHA, so nobody is prompted — which is correct, since they already have the
+  published bytes.
+
+If the marker is missing or malformed, the check quietly falls back to comparing
+version numbers alone (the old behavior). Nothing breaks; the same-version case
+just goes undetected.
 
 ## Step 3: Test Pre-Release
 
@@ -201,6 +247,8 @@ After testing succeeds:
    - Go to the pre-release page on GitHub
    - Click "Edit"
    - Uncheck "Set as a pre-release"
+   - Remove the pre-release notice from the notes (leave the build marker — it
+     still identifies these files)
    - Update release (no need to re-upload files)
 
 ## Fixing Issues During Pre-Release
@@ -235,6 +283,9 @@ If problems are found during pre-release testing:
    - Go to the existing pre-release on GitHub
    - Delete the old files
    - Upload the new files
+   - **Replace the build marker line** with the one the rebuild printed —
+     otherwise testers holding the previous files are never told to re-download
+     (see [About the build marker](#about-the-build-marker))
    - No need to recreate the release
 
 5. **Retest** and repeat if necessary

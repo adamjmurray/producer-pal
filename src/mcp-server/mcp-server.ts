@@ -5,7 +5,7 @@
 
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
-import { VERSION } from "#src/shared/config.ts";
+import { BUILD_SHA, VERSION } from "#src/shared/config.ts";
 import { checkForUpdate } from "#src/shared/version-check.ts";
 import { createExpressApp } from "./create-express-app.ts";
 import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
@@ -44,7 +44,13 @@ for (const [index, arg] of args.entries()) {
   }
 }
 
-console.log(`Producer Pal ${VERSION} starting MCP server on port ${port}...`);
+// The build SHA disambiguates two builds of the same version — the only way a
+// bug report can name the exact artifact it came from.
+const versionLabel = BUILD_SHA ? `${VERSION} (${BUILD_SHA})` : VERSION;
+
+console.log(
+  `Producer Pal ${versionLabel} starting MCP server on port ${port}...`,
+);
 
 const devFlags = [
   ["ENABLE_LIVE_API", process.env.ENABLE_LIVE_API],
@@ -67,7 +73,7 @@ appServer
     const url = `http://localhost:${port}/mcp`;
 
     console.log(
-      `Producer Pal ${VERSION} running.\nConnect Claude Desktop or another MCP client to ${url}`,
+      `Producer Pal ${versionLabel} running.\nConnect Claude Desktop or another MCP client to ${url}`,
     );
     void Max.outlet("version", VERSION);
 
@@ -75,9 +81,14 @@ appServer
     // occurs too early, before our message handlers are registered.
     void Max.outlet("started");
 
-    void checkForUpdate(VERSION).then((update) => {
+    void checkForUpdate(VERSION, BUILD_SHA).then((update) => {
       if (update) {
-        console.log(`Producer Pal update available: ${update.version}`);
+        // A rebuild carries the same version number, so say which it is.
+        console.log(
+          `Producer Pal update available: ${update.version}${
+            update.isRebuild ? " (newer build of this version)" : ""
+          }`,
+        );
         void Max.outlet("update_available", update.version);
       }
     });

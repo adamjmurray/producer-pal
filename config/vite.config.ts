@@ -10,6 +10,7 @@ import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { BUILD_SHA } from "./build-sha.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -17,6 +18,11 @@ const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
 
 export default defineConfig({
+  // Bake the build identity in, same as the rollup bundles do. The browser has
+  // no `process`, so this must always substitute to a literal.
+  define: {
+    "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
+  },
   resolve: {
     alias: {
       "#webui": resolve(__dirname, "../webui/src"),

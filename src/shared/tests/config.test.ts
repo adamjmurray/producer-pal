@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  BUILD_SHA,
   MIN_LIVE_VERSION,
   SAME_TIME_EPSILON,
   SMALL_MODEL_MODE_HEADER,
@@ -26,6 +27,24 @@ describe("config constants", () => {
   it("SAME_TIME_EPSILON is a small positive position tolerance", () => {
     expect(SAME_TIME_EPSILON).toBeGreaterThan(0);
     expect(SAME_TIME_EPSILON).toBeLessThan(0.01);
+  });
+
+  it('BUILD_SHA is "" when nothing was baked in', () => {
+    // Running from source. The update check treats "" as "build unknown" and
+    // falls back to comparing version numbers alone.
+    expect(BUILD_SHA).toBe("");
+  });
+
+  it("BUILD_SHA carries the SHA the build substituted in", async () => {
+    vi.resetModules();
+    vi.stubEnv("BUILD_SHA", "1a2b3c4");
+
+    const reloaded = await import("#src/shared/config.ts");
+
+    expect(reloaded.BUILD_SHA).toBe("1a2b3c4");
+
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 });
 

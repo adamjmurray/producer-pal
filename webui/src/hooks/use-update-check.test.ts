@@ -8,7 +8,7 @@
  */
 import { renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { VERSION } from "#src/shared/config";
+import { BUILD_SHA, VERSION } from "#src/shared/config";
 
 const { mockCheckForUpdate } = vi.hoisted(() => ({
   mockCheckForUpdate: vi.fn(),
@@ -16,6 +16,7 @@ const { mockCheckForUpdate } = vi.hoisted(() => ({
 
 vi.mock(import("#src/shared/version-check"), () => ({
   checkForUpdate: mockCheckForUpdate,
+  formatBuildMarker: vi.fn(),
   isNewerVersion: vi.fn(),
 }));
 
@@ -29,19 +30,23 @@ describe("useUpdateCheck", () => {
     const { result } = renderHook(() => useUpdateCheck());
 
     await waitFor(() => {
-      expect(mockCheckForUpdate).toHaveBeenCalledWith(VERSION);
+      // The build SHA goes along so a re-cut release of the same version is
+      // still detected.
+      expect(mockCheckForUpdate).toHaveBeenCalledWith(VERSION, BUILD_SHA);
     });
 
     expect(result.current).toBeNull();
   });
 
-  it("returns latest version when update is available", async () => {
-    mockCheckForUpdate.mockResolvedValue({ version: "2.0.0" });
+  it("returns the update when one is available", async () => {
+    const update = { version: "2.0.0", isRebuild: false };
+
+    mockCheckForUpdate.mockResolvedValue(update);
 
     const { result } = renderHook(() => useUpdateCheck());
 
     await waitFor(() => {
-      expect(result.current).toBe("2.0.0");
+      expect(result.current).toStrictEqual(update);
     });
   });
 });

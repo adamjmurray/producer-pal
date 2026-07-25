@@ -12,6 +12,16 @@
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
 export const VERSION = "2.0.1";
 
+// The short commit SHA this build came from, or "" when unknown (running from
+// source, tests). Substituted at build time by config/build-sha.mjs — read via
+// process.env so it survives as a plain literal in the Max V8 runtime and the
+// browser bundle, neither of which has a `process` global. The narrowed local
+// declaration below is what lets this file type-check under both the Node-typed
+// src project and the DOM-only webui project.
+declare const process: { env: Record<string, string | undefined> };
+
+export const BUILD_SHA = process.env.BUILD_SHA ?? "";
+
 // Minimum required Ableton Live version (no "v" prefix)
 export const MIN_LIVE_VERSION = "12.3.0";
 
