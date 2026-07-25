@@ -470,4 +470,42 @@ describe("conversation-transfer", () => {
 
     expect(imported).not.toHaveProperty("systemInstruction");
   });
+
+  it("round-trips the notation snapshot on import", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "with-notation",
+          createdAt: 100,
+          messages: [{ role: "user", content: "hi" }],
+          notation: "stark",
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "with-notation");
+
+    expect(imported.notation).toBe("stark");
+  });
+
+  it("drops an unknown notation rather than importing it", async () => {
+    // It would be sent as a header the server can't resolve, so the record is
+    // better off with no opinion at all.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "bad-notation",
+          createdAt: 100,
+          messages: [{ role: "user", content: "hi" }],
+          notation: "tablature",
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "bad-notation");
+
+    expect(imported).not.toHaveProperty("notation");
+  });
 });

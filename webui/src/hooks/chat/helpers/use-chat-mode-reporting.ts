@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useMemo, useRef } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { type ModeContext } from "#webui/components/mode-context";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
@@ -13,6 +14,7 @@ interface ChatLike {
   activeModel: HeaderInfo["activeModel"];
   activeProvider: HeaderInfo["activeProvider"];
   activeSmallModelMode: boolean | null;
+  activeNotation: Notation | null;
 }
 
 interface UseChatModeReportingParams {
@@ -66,6 +68,7 @@ export function useChatModeReporting(
         activeModel: chat.activeModel,
         activeProvider: chat.activeProvider,
         activeSmallModelMode: chat.activeSmallModelMode,
+        activeNotation: chat.activeNotation,
       },
       onDeleteAllConversations: () => handlersRef.current.handleDeleteAll(),
       onDeleteUnbookmarkedConversations: () =>
@@ -76,6 +79,7 @@ export function useChatModeReporting(
     chat.activeModel,
     chat.activeProvider,
     chat.activeSmallModelMode,
+    chat.activeNotation,
     setModeContext,
   ]);
 

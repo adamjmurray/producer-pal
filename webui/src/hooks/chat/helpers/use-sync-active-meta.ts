@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useEffect } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import {
   type ActiveMeta,
   DEFAULT_META,
@@ -16,6 +17,7 @@ export interface SyncActiveMetaParams {
   activeThinking: string | null;
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
+  activeNotation: Notation | null;
 }
 
 /**
@@ -37,6 +39,7 @@ export function useSyncActiveMeta(
     activeThinking,
     activeSmallModelMode,
     activeSystemInstruction,
+    activeNotation,
   } = props;
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export function useSyncActiveMeta(
       meta.smallModelMode = activeSmallModelMode;
     if (activeSystemInstruction != null)
       meta.systemInstruction = activeSystemInstruction;
+    if (activeNotation != null) meta.notation = activeNotation;
   }, [
     activeMetaRef,
     activeModel,
@@ -57,5 +61,6 @@ export function useSyncActiveMeta(
     activeThinking,
     activeSmallModelMode,
     activeSystemInstruction,
+    activeNotation,
   ]);
 }

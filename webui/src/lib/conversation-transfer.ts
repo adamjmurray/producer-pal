@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isNotation } from "#src/shared/notation";
 import {
   type BranchRecord,
   branchFamilyIds,
@@ -274,6 +275,11 @@ function normalizeRecord(
     ...(typeof record.systemInstruction === "string" && {
       systemInstruction: record.systemInstruction,
     }),
+    // Round-trip the notation snapshot too, so continuing an imported
+    // conversation reads its notes the way they were written. Guarded by
+    // isNotation, not a bare typeof: an unknown notation string would be
+    // sent as a header the server can't resolve.
+    ...(isNotation(record.notation) && { notation: record.notation }),
     // Round-trip the branching pointers so exported fork families re-import as a
     // linked set. Both are optional; only carry them when present and well-typed
     // so a plain (non-forked) record keeps its shape. Dropped entirely when the

@@ -442,6 +442,7 @@ describe("useChat", () => {
           apiKey: "test-key",
           baseUrl: undefined,
           lockedSystemInstruction: null,
+          lockedNotation: null,
         },
       );
     });

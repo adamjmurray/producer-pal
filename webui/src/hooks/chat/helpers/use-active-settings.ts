@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useState } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
 import { type Provider } from "#webui/types/settings";
 
@@ -14,6 +15,7 @@ export interface ActiveSettings {
   activeThinking: string | null;
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
+  activeNotation: Notation | null;
 }
 
 interface ActiveSettingsActions {
@@ -24,6 +26,7 @@ interface ActiveSettingsActions {
     thinking: string,
     smallModelMode: boolean,
     systemInstruction: string,
+    notation: Notation | null,
   ) => void;
   /** Restore settings from a saved conversation */
   restoreSettings: (lockedSettings?: ConversationLockedSettings) => void;
@@ -49,6 +52,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
   const [activeSystemInstruction, setActiveSystemInstruction] = useState<
     string | null
   >(null);
+  const [activeNotation, setActiveNotation] = useState<Notation | null>(null);
 
   const lockSettings = useCallback(
     (
@@ -57,12 +61,14 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       thinking: string,
       smallModelMode: boolean,
       systemInstruction: string,
+      notation: Notation | null,
     ) => {
       setActiveModel(model);
       setActiveProvider(provider);
       setActiveThinking(thinking);
       setActiveSmallModelMode(smallModelMode);
       setActiveSystemInstruction(systemInstruction);
+      setActiveNotation(notation);
     },
     [],
   );
@@ -74,6 +80,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       setActiveThinking(lockedSettings?.thinking ?? null);
       setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
       setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
+      setActiveNotation(lockedSettings?.notation ?? null);
     },
     [],
   );
@@ -84,6 +91,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveThinking(null);
     setActiveSmallModelMode(null);
     setActiveSystemInstruction(null);
+    setActiveNotation(null);
   }, []);
 
   return {
@@ -92,6 +100,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     activeThinking,
     activeSmallModelMode,
     activeSystemInstruction,
+    activeNotation,
     lockSettings,
     restoreSettings,
     clearSettings,

@@ -212,6 +212,7 @@ export function lockedSettings(
     thinking: null,
     smallModelMode: null,
     systemInstruction: null,
+    notation: null,
     ...over,
   };
 }
@@ -236,6 +237,7 @@ export async function streamingHelpersMockBody(): Promise<
     // so client (re)init still resolves the locked provider/model correctly and
     // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
     resolveInitConnection: actual.resolveInitConnection,
+    resolveLockedNotation: actual.resolveLockedNotation,
     recoverFromChatError: actual.recoverFromChatError,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {

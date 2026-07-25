@@ -206,6 +206,7 @@ export function useChat<
         effectiveThinking,
         smallModelMode,
         init.systemInstruction,
+        init.notation,
       );
     },
     [

@@ -95,6 +95,54 @@ describe("chatAdapter", () => {
       expect(off.smallModelMode).toBe(false);
     });
 
+    it("carries the current notation onto the config for a new conversation", () => {
+      // Without this the chat sent no notation header at all and every request
+      // fell through to the device global, so flipping the dropdown re-taught an
+      // open conversation mid-turn.
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        "default",
+        {},
+        undefined,
+        {
+          ...extraParams,
+          notation: "stark",
+        },
+      );
+
+      expect(config.notation).toBe("stark");
+    });
+
+    it("uses a locked notation over the current setting", () => {
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        "default",
+        {},
+        undefined,
+        {
+          ...extraParams,
+          lockedNotation: "stark",
+          notation: "barbeat",
+        },
+      );
+
+      expect(config.notation).toBe("stark");
+    });
+
+    it("omits the notation key entirely when the caller has none", () => {
+      // Present-but-undefined would read as an opinion; the key has to be absent
+      // so the request carries no header and the device global still wins.
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        "default",
+        {},
+        undefined,
+        extraParams,
+      );
+
+      expect(config).not.toHaveProperty("notation");
+    });
+
     it("passes enabled tools to config", () => {
       const enabledTools = { "ppal-connect": true, "ppal-read": false };
       const config = chatAdapter.buildConfig(

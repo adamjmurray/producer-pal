@@ -57,6 +57,7 @@ export const DEFAULT_MODE_CONTEXT: ModeContext = {
     activeModel: null,
     activeProvider: null,
     activeSmallModelMode: null,
+    activeNotation: null,
   },
   onDeleteAllConversations: noop,
   onDeleteUnbookmarkedConversations: noop,

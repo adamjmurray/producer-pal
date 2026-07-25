@@ -176,6 +176,12 @@ export function useChatModeState(params: UseChatModeStateParams) {
       provider: settings.provider,
       apiKey: resolvedApiKey,
       systemInstructionOverride,
+      // The notation a NEW conversation locks and then sends on every request.
+      // This is the value the Tools tab is showing, seeded from the device
+      // global — so the chat runs the notation the user can see, and changing it
+      // no longer reaches back into conversations already in flight. A restored
+      // conversation ignores this in favor of its own locked snapshot.
+      notation: settings.notation,
       [SUBAGENT_PRESET_PARAM]: subagentPreset,
     },
     autoSaveRef,
@@ -211,8 +217,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
       activeSmallModelMode: chat.activeSmallModelMode,
       // Snapshot the LOCKED instruction (what this conversation actually ran
       // with), not the current global override — so editing the global later
-      // doesn't rewrite an existing conversation's record.
+      // doesn't rewrite an existing conversation's record. Same for notation.
       activeSystemInstruction: chat.activeSystemInstruction,
+      activeNotation: chat.activeNotation,
     },
     onForeignRecord,
     pendingForkRef,

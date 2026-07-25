@@ -532,5 +532,6 @@ function syncMetaRef(
     thinking: record.thinking,
     smallModelMode: record.smallModelMode ?? null,
     systemInstruction: record.systemInstruction ?? null,
+    notation: record.notation ?? null,
   };
 }

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isNotation, type Notation } from "#src/shared/notation";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -209,6 +210,12 @@ export interface InitConnection {
   extraParams: Record<string, unknown>;
   /** The resolved system instruction to lock and send for this init. */
   systemInstruction: string;
+  /**
+   * The notation to lock and send for this init, or null when the caller has no
+   * notation of its own (voice mode, tests) and the request should fall through
+   * to the device global.
+   */
+  notation: Notation | null;
 }
 
 /**
@@ -223,12 +230,14 @@ export interface InitConnection {
  * A restored conversation also carries its locked system instruction through as
  * `lockedSystemInstruction`, so the adapter sends what the conversation started
  * with rather than the current global override. Null (brand-new conversation)
- * lets the adapter fall back to resolving the current override.
+ * lets the adapter fall back to resolving the current override. Its locked
+ * notation rides along the same way, as `lockedNotation`.
  *
- * @param locked - Conversation's locked provider/model/system-instruction (null fields if unset)
+ * @param locked - Conversation's locked provider/model/system-instruction/notation (null fields if unset)
  * @param locked.activeProvider - Locked provider, or null when not locked
  * @param locked.activeModel - Locked model, or null when not locked
  * @param locked.activeSystemInstruction - Locked system instruction, or null when not locked
+ * @param locked.activeNotation - Locked notation, or null when not locked
  * @param fallback - Current-settings provider/model (used when not locked)
  * @param fallback.provider - Current-settings provider
  * @param fallback.model - Current-settings model
@@ -241,6 +250,7 @@ export function resolveInitConnection(
     activeProvider: Provider | null;
     activeModel: string | null;
     activeSystemInstruction: string | null;
+    activeNotation: Notation | null;
   },
   fallback: { provider: Provider; model: string },
   resolveConnection: (provider: Provider) => {
@@ -258,6 +268,7 @@ export function resolveInitConnection(
     apiKey,
     baseUrl,
     lockedSystemInstruction: locked.activeSystemInstruction,
+    lockedNotation: locked.activeNotation,
   };
 
   return {
@@ -266,6 +277,7 @@ export function resolveInitConnection(
     apiKey,
     extraParams: mergedExtraParams,
     systemInstruction: resolveLockedSystemInstruction(mergedExtraParams),
+    notation: resolveLockedNotation(mergedExtraParams),
   };
 }
 
@@ -286,4 +298,24 @@ export function resolveLockedSystemInstruction(
       extraParams.systemInstructionOverride as string | undefined,
     )
   );
+}
+
+/**
+ * The notation to lock and send for an init: the conversation's locked snapshot
+ * when continuing a restored chat, else the caller's current notation for a
+ * brand-new one. Mirrors the adapter's resolution so the locked value equals
+ * what was sent. Null when neither is present — a caller with no notation of its
+ * own (voice mode, tests) sends no header and gets the device global, the same
+ * contract external MCP clients have.
+ * @param extraParams - The init's extra params (locked snapshot + current setting)
+ * @returns The effective notation, or null to fall through to the device global
+ */
+export function resolveLockedNotation(
+  extraParams: Record<string, unknown>,
+): Notation | null {
+  const locked = extraParams.lockedNotation;
+
+  if (isNotation(locked)) return locked;
+
+  return isNotation(extraParams.notation) ? extraParams.notation : null;
 }

@@ -8,6 +8,8 @@ import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
   handleMessageStream,
+  resolveInitConnection,
+  resolveLockedNotation,
   showMissingApiKeyError,
   validateMcpConnection,
 } from "#webui/hooks/chat/helpers/streaming-helpers";
@@ -129,6 +131,69 @@ describe("streaming-helpers", () => {
       const stashed = pendingHistoryRef.current as { content: string }[];
 
       expect(stashed[0]?.content).toBe("Hello");
+    });
+  });
+
+  describe("resolveLockedNotation", () => {
+    it("prefers the conversation's locked notation over the current setting", () => {
+      // The whole point of locking: a chat whose notes were written in stark
+      // keeps being parsed as stark after the user switches the dropdown.
+      expect(
+        resolveLockedNotation({
+          lockedNotation: "stark",
+          notation: "barbeat",
+        }),
+      ).toBe("stark");
+    });
+
+    it("falls back to the current setting for a brand-new conversation", () => {
+      expect(
+        resolveLockedNotation({ lockedNotation: null, notation: "midi-json" }),
+      ).toBe("midi-json");
+    });
+
+    it("returns null when the caller has no notation of its own", () => {
+      // No header, so the request falls through to the device global — the same
+      // contract an external MCP client gets.
+      expect(resolveLockedNotation({})).toBeNull();
+    });
+
+    it("ignores an unknown notation from a hand-edited record", () => {
+      expect(
+        resolveLockedNotation({ lockedNotation: "tablature", notation: 42 }),
+      ).toBeNull();
+    });
+  });
+
+  describe("resolveInitConnection", () => {
+    const locked = {
+      activeProvider: null,
+      activeModel: null,
+      activeSystemInstruction: null,
+      activeNotation: null,
+    };
+    const fallback = { provider: "openai" as const, model: "gpt-4o" };
+    const resolveConnection = () => ({ apiKey: "sk-test" });
+
+    it("passes the locked notation through to the adapter and back out", () => {
+      const init = resolveInitConnection(
+        { ...locked, activeNotation: "stark" },
+        fallback,
+        resolveConnection,
+        { notation: "barbeat" },
+      );
+
+      expect(init.extraParams.lockedNotation).toBe("stark");
+      expect(init.notation).toBe("stark");
+    });
+
+    it("locks the current notation for a conversation that has none yet", () => {
+      const init = resolveInitConnection(locked, fallback, resolveConnection, {
+        notation: "barbeat",
+      });
+
+      expect(init.extraParams.lockedNotation).toBeNull();
+      expect(init.notation).toBe("barbeat");
     });
   });
 

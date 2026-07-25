@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type IDBPDatabase } from "idb";
+import { type Notation } from "#src/shared/notation";
 import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
 import { collapseBranchFamilies } from "#webui/lib/conversation-branch-helpers";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
@@ -37,6 +38,12 @@ export interface ConversationRecord {
   // edited. Optional/schemaless: legacy records read fine without it (no
   // DB_VERSION bump), and it rides the conversation export/import.
   systemInstruction?: string;
+  // The notation this conversation ran with, snapshotted on the same terms as
+  // systemInstruction. Restoring a conversation sends this rather than the
+  // current device global, so a transcript written in one notation keeps being
+  // parsed in it. Optional/schemaless: legacy records read fine without it (no
+  // DB_VERSION bump), and it rides the conversation export/import.
+  notation?: Notation;
   // --- Conversation branching (edit/retry forks) ---
   // Set on records created by forking an earlier turn. The fork stores a pointer
   // back to the record it diverged from (its "trunk") plus the UI message index

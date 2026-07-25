@@ -382,13 +382,14 @@ notation on the **Tools** tab, then come here to save them together. API keys
 preset only _names_ which provider to use and resolves its key from your stored
 settings.
 
-::: warning Notation is a global setting
+::: warning Loading a preset can change the device notation
 
-Unlike the rest of a preset, notation lives on the device, not in the browser.
-Loading a preset that carries one and Saving changes the notation for **every**
-chat and MCP client, the same as setting it directly on the Tools tab. A
-preset's notation only stays local to its own worker when it's used as the
-**Default subagent**.
+Unlike the rest of a preset, notation also lives on the device. Loading a preset
+that carries one and Saving changes the default notation for MCP clients and the
+device Setup pane too, the same as setting it directly on the Tools tab.
+Conversations already open are unaffected — each keeps the notation it started
+with — and a preset used as the **Default subagent** applies its notation only
+to its own worker, never to the device.
 
 :::
 
@@ -464,12 +465,14 @@ clip notes — **[bar|beat](/features/midi-notation#bar-beat)** (the default),
 **[Stark](/features/midi-notation#stark)** (a literal, round-trippable notation
 with chord symbols, friendly to small/local models). See
 [MIDI Notation](/features/midi-notation) for the tradeoffs. Like the Live API
-toggle, this is a global device setting rather than a per-conversation one: it
-mirrors the device's Setup pane and applies to MCP clients and the REST API too.
-Because the AI's notation instructions are fixed at the start of a conversation,
-the switch takes full effect in a **new conversation** — changing it mid-chat
-re-parses your notes under the new notation but the AI keeps writing the old one
-until then.
+toggle, this mirrors the device's Setup pane, so changing it here also changes
+the default for MCP clients and the [REST API](/guide/rest-api).
+
+Each chat conversation locks the notation it started with, so the switch takes
+effect in a **new conversation**. An open chat keeps reading and writing the
+notation it has been using all along, and reopening an old conversation resumes
+in whatever notation its notes were written in — the AI is never taught one
+notation and then handed notes in another.
 
 ### Preferences
 

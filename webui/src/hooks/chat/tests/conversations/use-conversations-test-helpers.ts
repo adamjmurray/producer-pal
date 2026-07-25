@@ -5,6 +5,7 @@
 
 import { renderHook, act } from "@testing-library/preact";
 import { vi } from "vitest";
+import { type Notation } from "#src/shared/notation";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   type ConversationRecord,
@@ -32,6 +33,7 @@ export function createConversationsProps() {
         activeThinking: null as string | null,
         activeSmallModelMode: null as boolean | null,
         activeSystemInstruction: null as string | null,
+        activeNotation: null as Notation | null,
       },
       onForeignRecord: undefined as
         ((record: ConversationRecord) => void) | undefined,

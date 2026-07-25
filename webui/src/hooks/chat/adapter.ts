@@ -12,6 +12,7 @@ import {
   type ChatMessage,
   type SubagentConfigOverride,
 } from "#webui/chat/sdk/types";
+import { resolveLockedNotation } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
@@ -263,6 +264,14 @@ export const chatAdapter: ChatAdapter<
     // Carried onto the config so client.initialize sends it as the per-request
     // MCP header (schema shrink + basic skills variant for this caller).
     const smallModelMode = Boolean(extraParams?.smallModelMode);
+    // Same idea for notation, which the chat also sends per-request rather than
+    // letting every call fall through to the device global — otherwise flipping
+    // the dropdown re-teaches an open conversation mid-turn and the next tool
+    // call parses its notes as something else. A restored conversation passes its
+    // locked snapshot (lockedNotation) so continuing it keeps parsing the way it
+    // was written; a brand-new one takes the current setting. Null when neither
+    // exists: no header, device global wins, external MCP clients unaffected.
+    const notation = resolveLockedNotation(extraParams ?? {});
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(provider, thinking, model);
@@ -288,6 +297,9 @@ export const chatAdapter: ChatAdapter<
         buildProviderOptions(provider, overrideThinking, model),
       chatHistory,
       subagentConfig,
+      // Conditional: ChatClientConfig.notation is optional and a present-but-
+      // undefined key would still be read as "the caller has an opinion".
+      ...(notation ? { notation } : {}),
     };
   },
 

@@ -23,6 +23,7 @@ const ALL_NULL: SyncActiveMetaParams = {
   activeThinking: null,
   activeSmallModelMode: null,
   activeSystemInstruction: null,
+  activeNotation: null,
 };
 
 describe("useSyncActiveMeta", () => {
@@ -44,6 +45,7 @@ describe("useSyncActiveMeta", () => {
         activeThinking: "high",
         activeSmallModelMode: false,
         activeSystemInstruction: "Be brief.",
+        activeNotation: "stark",
       }),
     );
 
@@ -54,6 +56,7 @@ describe("useSyncActiveMeta", () => {
       thinking: "high",
       smallModelMode: false,
       systemInstruction: "Be brief.",
+      notation: "stark",
     });
   });
 });

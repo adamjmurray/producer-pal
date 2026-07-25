@@ -49,10 +49,10 @@ plus small-model mode.
 
 ### Setting the notation
 
-The notation is a **global device setting**, not a per-conversation or per-tool
-one. Whatever you pick applies to the built-in [Chat UI](/guide/chat-ui),
-external MCP clients, and the [REST API](/guide/rest-api) alike. Set it in any
-of these places:
+The notation is a **global device setting**, not a per-tool one. Whatever you
+pick becomes the default for the built-in [Chat UI](/guide/chat-ui), external
+MCP clients, and the [REST API](/guide/rest-api) alike. Set it in any of these
+places:
 
 - **Max for Live device** — the **Notation** control on the
   [Setup tab](/guide/device#behavior)
@@ -62,11 +62,14 @@ of these places:
 - **Coding agents** — the [Agent Skill](/guide/skills) sets it itself with
   `node ppal.mjs --set-config '{"notation":"midi-json"}'`
 
-::: warning Switching takes effect in a new conversation
+::: tip Switching takes effect in a new conversation
 
-The AI is taught its notation once, at the start of a conversation. If you
-switch mid-chat, it can still _read_ your existing notes in the new notation,
-but it will keep _writing_ the old one until you start a new conversation.
+The AI is taught its notation once, at the start of a conversation, and the Chat
+UI holds each conversation to the notation it started with. Switch mid-chat and
+the open conversation carries on unchanged — reading and writing the notation it
+already knows — while the next new conversation picks up your choice. External
+MCP clients have no conversation of their own, so they follow the global
+immediately.
 
 :::
 

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
@@ -30,6 +31,8 @@ export interface ActiveMeta {
   smallModelMode: boolean | null;
   /** Resolved system instruction in effect (snapshotted onto the record). */
   systemInstruction: string | null;
+  /** Notation in effect (snapshotted onto the record so a restore keeps it). */
+  notation: Notation | null;
 }
 
 export const DEFAULT_META: ActiveMeta = {
@@ -41,6 +44,7 @@ export const DEFAULT_META: ActiveMeta = {
   thinking: null,
   smallModelMode: null,
   systemInstruction: null,
+  notation: null,
 };
 
 /** Ref snapshot for building a save record */
@@ -144,6 +148,7 @@ export function buildLockedSettings(
     thinking: record.thinking,
     smallModelMode: record.smallModelMode,
     systemInstruction: record.systemInstruction ?? null,
+    notation: record.notation ?? null,
   };
 }
 
@@ -164,9 +169,6 @@ export function buildSaveRecord(
   const now = Date.now();
   const existingTitle = existing?.title ?? refs.title ?? null;
   const title = deriveTitle(existingTitle, chatHistory);
-  // Lock the snapshot at the first save: prefer an already-stored value.
-  const systemInstruction =
-    existing?.systemInstruction ?? refs.systemInstruction;
 
   return {
     id: refs.id,
@@ -183,9 +185,7 @@ export function buildSaveRecord(
     sessionType: "text",
     messages: chatHistory as ConversationRecord["messages"],
     voiceHistory: null,
-    // Snapshot the system instruction (locked above). Omitted when unknown so a
-    // record with no resolved instruction keeps its prior shape.
-    ...(systemInstruction != null && { systemInstruction }),
+    ...lockedSnapshotFields(refs, existing),
     // Carry branch linkage across updates. A fork's later saves (e.g. the
     // post-response autosave) route through here too; without this they would
     // strip the fields that make it a sibling, so its ‹ n/m › arrows vanish and
@@ -196,6 +196,30 @@ export function buildSaveRecord(
     ...(existing?.forkedAtIndex != null && {
       forkedAtIndex: existing.forkedAtIndex,
     }),
+  };
+}
+
+/**
+ * The two fields a record locks at its FIRST save: the system instruction and
+ * the notation the conversation actually ran with. Both prefer an already-stored
+ * value over the current one, so a later save can't re-capture a global the user
+ * has since changed, and both are omitted when unknown so a record that knows
+ * neither keeps its prior shape.
+ * @param refs - Active refs supplying the currently-locked values
+ * @param existing - Previously saved record (if updating)
+ * @returns The snapshot fields to spread onto the record
+ */
+function lockedSnapshotFields(
+  refs: ActiveRefs,
+  existing: ConversationRecord | undefined,
+): Pick<ConversationRecord, "systemInstruction" | "notation"> {
+  const systemInstruction =
+    existing?.systemInstruction ?? refs.systemInstruction;
+  const notation = existing?.notation ?? refs.notation;
+
+  return {
+    ...(systemInstruction != null && { systemInstruction }),
+    ...(notation != null && { notation }),
   };
 }
 
@@ -272,10 +296,15 @@ export async function buildConversationSaveRecord(args: {
     });
 
     // A fork shares the trunk's transcript, so it inherits the trunk's
-    // system-prompt snapshot rather than re-capturing the current global.
-    return source?.systemInstruction != null
-      ? { ...forked, systemInstruction: source.systemInstruction }
-      : forked;
+    // system-prompt and notation snapshots rather than re-capturing the current
+    // globals — the turns it carries were written under the trunk's pair.
+    return {
+      ...forked,
+      ...(source?.systemInstruction != null && {
+        systemInstruction: source.systemInstruction,
+      }),
+      ...(source?.notation != null && { notation: source.notation }),
+    };
   }
 
   const existing = reuseId == null ? undefined : await loadConversation(id);

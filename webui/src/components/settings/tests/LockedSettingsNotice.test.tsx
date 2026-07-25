@@ -18,6 +18,7 @@ describe("LockedSettingsNotice", () => {
     model: "gpt-4o",
     provider: "openai" as const,
     smallModelMode: false,
+    notation: "barbeat" as const,
   };
 
   it("returns null when activeModel is null", () => {
@@ -25,6 +26,7 @@ describe("LockedSettingsNotice", () => {
       activeModel: null,
       activeProvider: null,
       activeSmallModelMode: null,
+      activeNotation: null,
     };
     const { container } = render(
       <LockedSettingsNotice conversationLock={lock} {...defaultProps} />,
@@ -38,6 +40,7 @@ describe("LockedSettingsNotice", () => {
       activeModel: "gpt-4o",
       activeProvider: "openai",
       activeSmallModelMode: false,
+      activeNotation: "barbeat",
     };
     const { container } = render(
       <LockedSettingsNotice conversationLock={lock} {...defaultProps} />,
@@ -51,6 +54,7 @@ describe("LockedSettingsNotice", () => {
       activeModel: "gpt-3.5-turbo",
       activeProvider: "openai",
       activeSmallModelMode: false,
+      activeNotation: "barbeat",
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -65,6 +69,7 @@ describe("LockedSettingsNotice", () => {
       activeModel: "gpt-4o",
       activeProvider: "anthropic",
       activeSmallModelMode: false,
+      activeNotation: "barbeat",
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -79,6 +84,7 @@ describe("LockedSettingsNotice", () => {
       activeModel: "gpt-4o",
       activeProvider: "openai",
       activeSmallModelMode: true,
+      activeNotation: "barbeat",
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -94,6 +100,7 @@ describe("LockedSettingsNotice", () => {
       activeModel: "gpt-4o",
       activeProvider: "openai",
       activeSmallModelMode: false,
+      activeNotation: "barbeat",
     };
 
     render(
@@ -112,6 +119,7 @@ describe("LockedSettingsNotice", () => {
       activeModel: "gpt-3.5-turbo",
       activeProvider: "openai",
       activeSmallModelMode: true,
+      activeNotation: "barbeat",
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
@@ -121,11 +129,49 @@ describe("LockedSettingsNotice", () => {
     ).toBeTruthy();
   });
 
+  it("shows notice when notation diverges", () => {
+    const lock: ConversationLock = {
+      activeModel: "gpt-4o",
+      activeProvider: "openai",
+      activeSmallModelMode: false,
+      activeNotation: "stark",
+    };
+
+    render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);
+
+    expect(
+      screen.getByText("Changes apply to new conversations only."),
+    ).toBeTruthy();
+    expect(screen.getByText(/Stark notation/)).toBeTruthy();
+  });
+
+  it("stays quiet about notation for a conversation that locked none", () => {
+    // A record saved before notation was locked has nothing to compare against,
+    // so claiming a divergence would be inventing one.
+    const lock: ConversationLock = {
+      activeModel: "gpt-4o",
+      activeProvider: "openai",
+      activeSmallModelMode: false,
+      activeNotation: null,
+    };
+
+    const { container } = render(
+      <LockedSettingsNotice
+        conversationLock={lock}
+        {...defaultProps}
+        notation="stark"
+      />,
+    );
+
+    expect(container.innerHTML).toBe("");
+  });
+
   it("uses provider from settings when activeProvider is null", () => {
     const lock: ConversationLock = {
       activeModel: "different-model",
       activeProvider: null,
       activeSmallModelMode: false,
+      activeNotation: "barbeat",
     };
 
     render(<LockedSettingsNotice conversationLock={lock} {...defaultProps} />);

@@ -101,6 +101,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           model={settings.model}
           provider={settings.provider}
           smallModelMode={settings.smallModelMode}
+          notation={settings.notation}
         />
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>

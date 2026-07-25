@@ -90,6 +90,9 @@ export function useVoiceModeReporting(
         activeModel: hasActiveVoiceConv ? activeModel : null,
         activeProvider: hasActiveVoiceConv ? activeProvider : null,
         activeSmallModelMode: hasActiveVoiceConv ? false : null,
+        // Voice locks no notation of its own — its MCP calls fall through to the
+        // device global, so there is never anything to diverge from.
+        activeNotation: null,
       },
       onDeleteAllConversations: () => void handlersRef.current.deleteAll(),
       onDeleteUnbookmarkedConversations: () =>

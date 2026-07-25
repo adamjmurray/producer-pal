@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Notation } from "#src/shared/notation";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
@@ -89,6 +90,15 @@ export interface ConversationLockedSettings {
    * with, even after the global override changes. Null for legacy records.
    */
   systemInstruction: string | null;
+  /**
+   * The notation the conversation runs with, sent per-request so it is this
+   * chat's notation rather than the device global. Hard-locked like the system
+   * instruction rather than re-read per init: notation decides how clip notes are
+   * PARSED, so a transcript written in one notation must keep being read in it —
+   * swapping mid-conversation would hand the model note strings it was never
+   * taught. Null for legacy records and for a chat that has yet to lock one.
+   */
+  notation: Notation | null;
 }
 
 /**
@@ -123,6 +133,8 @@ export interface UseChatReturn {
   activeSmallModelMode: boolean | null;
   /** The resolved system instruction locked for the active conversation. */
   activeSystemInstruction: string | null;
+  /** The notation locked for the active conversation. */
+  activeNotation: Notation | null;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
   enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
