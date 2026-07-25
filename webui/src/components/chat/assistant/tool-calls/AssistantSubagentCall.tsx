@@ -6,12 +6,12 @@
 import { type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { CANCELED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
-import { SUBAGENT_LABEL_PATTERN } from "#webui/chat/sdk/spawn-subagent-tool";
+import { SUBAGENT_LABEL_PATTERN } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   type SubagentRateLimitStatus,
   getSubagentRateLimit,
   subscribeToSubagentRateLimits,
-} from "#webui/chat/sdk/subagent-rate-limit";
+} from "#webui/chat/sdk/subagent/subagent-rate-limit";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { truncateString } from "#webui/lib/utils/truncate-string";

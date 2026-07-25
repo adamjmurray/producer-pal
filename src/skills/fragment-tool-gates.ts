@@ -59,10 +59,23 @@ const DEVICE_TOOLS = [
  *   music-making judgment that outlives any one tool.
  * - `"conversation-only"` — maps to no tool at all, because its subject is what
  *   to TELL someone when a tool won't do. Tool gating can never drop it; the
- *   audience gating that should (a subagent worker has no user to explain
- *   anything to) is a separate axis this table doesn't model yet.
+ *   audience axis below is what does (a subagent worker has no user to explain
+ *   anything to).
  */
 export type FragmentGate = readonly string[] | "always" | "conversation-only";
+
+/**
+ * Who the assembled skills are for. `"chat"` is the user-facing conversation
+ * (the built-in chat and every external MCP client); `"subagent"` is a spawned
+ * worker, which receives its task as its one and only user turn and reports back
+ * to the orchestrator, not to a person.
+ *
+ * The distinction is deliberately AUDIENCE, not capability: a worker's toolset
+ * already narrows its skills through {@link gatedOutFragments}, and this axis
+ * adds only what no toolset could decide — guidance whose whole purpose is to be
+ * said out loud to someone.
+ */
+export type SkillsAudience = "chat" | "subagent";
 
 /**
  * Fragment name → the condition under which it ships. Drivers are absent: they
@@ -128,6 +141,37 @@ export function gatedOutFragments(
     if (!gate.some((tool) => live.has(tool))) {
       dropped.add(name);
     }
+  }
+
+  return dropped;
+}
+
+/**
+ * The fragments to drop for a given audience: the `"conversation-only"` ones,
+ * for a subagent worker only.
+ *
+ * Kept separate from {@link gatedOutFragments} because the two answer different
+ * questions — "can this caller reach the tool" vs "is there anyone here to talk
+ * to" — and a caller may know one without the other. The main chat and every
+ * external MCP client omit the audience and drop nothing.
+ *
+ * These fragments have no `requires` dependents (they are leaves — guidance to
+ * relay, never syntax another fragment builds on), so dropping them cannot
+ * produce the vocabulary-without-grammar case `warnUnmetRequirements` exists to
+ * catch. A test asserts that stays true.
+ *
+ * @param audience - Who the skills are for; omit for the user-facing default
+ * @returns Names of the fragments to omit
+ */
+export function audienceGatedFragments(
+  audience?: SkillsAudience,
+): ReadonlySet<string> {
+  const dropped = new Set<string>();
+
+  if (audience !== "subagent") return dropped;
+
+  for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
+    if (gate === "conversation-only") dropped.add(name);
   }
 
   return dropped;

@@ -21,7 +21,7 @@ import {
   runSubagentWithRetry,
   setSubagentRateLimit,
   subscribeToSubagentRateLimits,
-} from "#webui/chat/sdk/subagent-rate-limit";
+} from "#webui/chat/sdk/subagent/subagent-rate-limit";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { MAX_RETRY_ATTEMPTS } from "#webui/lib/rate-limit";
 

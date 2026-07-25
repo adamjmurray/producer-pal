@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   type SubagentRun,
   type SubagentTranscriptStash,
@@ -12,7 +12,7 @@ import {
   collectSubagentTranscript,
   highestSubagentIndex,
   isSpawnToolResult,
-} from "#webui/chat/sdk/subagent-session";
+} from "#webui/chat/sdk/subagent/subagent-session";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 
 const transcript = (text: string): ChatMessage[] => [

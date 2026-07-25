@@ -55,6 +55,45 @@ export async function createConnectedMcpClient(
   enabledTools?: Record<string, boolean>,
   notation?: Notation,
 ): Promise<Client> {
+  const headers = perRequestHeaders(smallModelMode, enabledTools, notation);
+
+  const transport = new StreamableHTTPClientTransport(
+    new URL(mcpUrl),
+    Object.keys(headers).length === 0
+      ? undefined
+      : { requestInit: { headers } },
+  );
+  const client = new Client({
+    name: MCP_CLIENT_NAME,
+    version: MCP_CLIENT_VERSION,
+  });
+
+  await client.connect(transport);
+
+  return client;
+}
+
+/**
+ * The three per-request headers that describe one caller's profile: its
+ * small-model mode, the tools it withholds, and its notation. Each is omitted
+ * when the caller has no opinion, which is what makes the server fall back to
+ * the device global.
+ *
+ * Exported because the MCP transport is no longer the only thing that sends
+ * them — GET /subagent-briefing takes the same three, so a worker's briefing is
+ * assembled for exactly the profile its tool calls will run under. One builder
+ * keeps the two from drifting.
+ *
+ * @param smallModelMode - Per-request small-model mode; omit for the global
+ * @param enabledTools - Map of tool name to enabled state (absent = enabled)
+ * @param notation - Per-request notation; omit for the global setting
+ * @returns The headers to send, possibly empty
+ */
+export function perRequestHeaders(
+  smallModelMode?: boolean,
+  enabledTools?: Record<string, boolean>,
+  notation?: Notation,
+): Record<string, string> {
   const headers: Record<string, string> = {};
 
   if (smallModelMode != null) {
@@ -71,20 +110,7 @@ export async function createConnectedMcpClient(
     headers[NOTATION_HEADER] = notation;
   }
 
-  const transport = new StreamableHTTPClientTransport(
-    new URL(mcpUrl),
-    Object.keys(headers).length === 0
-      ? undefined
-      : { requestInit: { headers } },
-  );
-  const client = new Client({
-    name: MCP_CLIENT_NAME,
-    version: MCP_CLIENT_VERSION,
-  });
-
-  await client.connect(transport);
-
-  return client;
+  return headers;
 }
 
 /**

@@ -13,6 +13,7 @@
  * that hook, so everything they need lives here instead.
  */
 
+import { type ChatMessage } from "#webui/chat/sdk/types";
 import {
   calculateRetryDelay,
   detectRateLimit,
@@ -20,7 +21,6 @@ import {
   shouldRetry,
 } from "#webui/lib/rate-limit";
 import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
-import { type ChatMessage } from "./types";
 
 /** Follow-up sent when a retry resumes a worker that already did some work. */
 const RESUME_MESSAGE = "continue";

@@ -289,6 +289,39 @@ per-request `ToolContext`. That keeps the notation a caller is _taught_
 identical to the one it is _answered in_; without it a stark worker would hand
 stark note strings to a bar|beat parser.
 
+### Subagent briefings
+
+A spawned subagent worker does not call `ppal-connect`. `GET /subagent-briefing`
+(`src/mcp-server/routes/subagent-briefing-route.ts`) assembles what that call
+would have taught it — the Live Set overview, the skills its toolset needs, and
+the project/global context blocks — and the webui appends the result to the
+worker's **system instruction** at spawn
+(`webui/src/chat/sdk/subagent/subagent-briefing.ts`).
+
+The endpoint reads the caller's profile off the **same three headers** above, so
+a briefing describes exactly the toolset and notation the worker's own tool
+calls will run under; one builder (`perRequestHeaders`) emits them for both.
+
+Two things move the blob out of message history and into the system prompt:
+
+- **Cost.** A worker is a fresh conversation with no history to amortize a
+  cached blob against, so the connect result is written at full price every
+  spawn — plus an entire inference round spent making the call. The system
+  prompt is the only part of a worker's request that repeats byte-for-byte
+  across spawns of the same profile, which is what makes a cache hit possible at
+  all.
+- **Framing.** The connect response ends with a next step written for someone
+  talking to a user ("report the connection status … then wait for their
+  instructions"). A briefing replaces it with the subagent framing, and drops
+  the memory index (a briefed worker has no `ppal-context` to load a body with)
+  and the `"conversation-only"` skills fragments — the **audience** axis in
+  `src/skills/fragment-tool-gates.ts`, which exists for guidance no toolset
+  could ever have decided was unnecessary.
+
+Every failure path — server down, Live unreachable (the route answers 502),
+malformed body — resolves to no briefing, and the worker keeps `ppal-connect`
+and bootstraps itself the old way. A worker with neither is blind.
+
 ## Build System
 
 Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite

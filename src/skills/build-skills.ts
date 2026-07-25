@@ -8,7 +8,11 @@ import {
   builtinFragments,
   resolveFragmentAlias,
 } from "#src/skills/builtin-fragments.ts";
-import { gatedOutFragments } from "#src/skills/fragment-tool-gates.ts";
+import {
+  audienceGatedFragments,
+  gatedOutFragments,
+  type SkillsAudience,
+} from "#src/skills/fragment-tool-gates.ts";
 import { resolveIncludes } from "#src/skills/include-resolver.ts";
 import {
   isSkillSlotName,
@@ -28,6 +32,12 @@ export interface BuildSkillsOptions {
    * known — every fragment then ships, which is the safe direction.
    */
   tools?: readonly string[];
+  /**
+   * Who this blob is for. A subagent worker additionally drops the
+   * conversation-only fragments — guidance whose only purpose is to be said to a
+   * person. Omit for the user-facing default.
+   */
+  audience?: SkillsAudience;
 }
 
 /**
@@ -58,8 +68,9 @@ export interface SkillOverrides {
  * directives in that driver. Each fragment resolves to the user's override when
  * present, else the release built-in.
  *
- * A fragment whose tools are all disabled — or that the user switched off —
- * resolves to an EMPTY body rather than being skipped, matching how a release
+ * A fragment whose tools are all disabled, whose audience isn't listening, or
+ * that the user switched off resolves to an EMPTY body rather than being
+ * skipped, matching how a release
  * build handles `code-transforms`: the driver's include line stays valid, so an
  * unknown fragment keeps meaning a stale reference worth warning about.
  * Suppression is applied AFTER the override lookup — a customized `library.md`
@@ -69,6 +80,7 @@ export interface SkillOverrides {
  * @param options.notation - The global notation setting (defaults to bar|beat).
  * @param options.smallModelMode - Whether small-model mode is active.
  * @param options.tools - The tools available to this caller (omit for no gating).
+ * @param options.audience - Who the blob is for (omit for the user-facing chat).
  * @param overrides - Per-fragment user overrides (empty by default).
  * @param onWarn - Sink for non-fatal assembly warnings (unknown fragments,
  *   refused nesting, unsafe refs, overrides keyed to a retired slot name).
@@ -82,6 +94,7 @@ export function buildSkills(
     notation = DEFAULT_NOTATION,
     smallModelMode = false,
     tools,
+    audience,
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
   onWarn?: (message: string) => void,
@@ -89,10 +102,11 @@ export function buildSkills(
   const builtIns = builtinFragments();
   const root = smallModelMode ? "basic" : "standard";
   const fragments = overrides.fragments ?? {};
-  // Tool gating and the user's per-slot off switches empty a fragment in exactly
-  // the same way, so both resolve through one set.
+  // Tool gating, audience gating, and the user's per-slot off switches empty a
+  // fragment in exactly the same way, so all three resolve through one set.
   const suppressed = new Set([
     ...gatedOutFragments(tools),
+    ...audienceGatedFragments(audience),
     ...(overrides.disabled ?? []),
   ]);
 

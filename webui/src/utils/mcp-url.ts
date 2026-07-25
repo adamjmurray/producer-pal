@@ -137,6 +137,17 @@ export function getSkillsPreviewUrl(
 }
 
 /**
+ * Gets the subagent-briefing endpoint URL (the system-prompt addendum a spawned
+ * worker starts with: skills, the Live Set, and the user's context layers). The
+ * caller's profile rides on request headers, not query params, so there is
+ * nothing to interpolate here.
+ * @returns {string} The subagent-briefing endpoint URL
+ */
+export function getSubagentBriefingUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/subagent-briefing");
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL

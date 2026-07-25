@@ -8,6 +8,7 @@ import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { builtinFragments } from "#src/skills/builtin-fragments.ts";
 import {
   FRAGMENT_GATES,
+  audienceGatedFragments,
   gatedOutFragments,
 } from "#src/skills/fragment-tool-gates.ts";
 import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
@@ -127,5 +128,45 @@ describe("gatedOutFragments", () => {
 
     expect(dropped).toContain("specialized-devices");
     expect(dropped).not.toContain("devices");
+  });
+});
+
+describe("audienceGatedFragments", () => {
+  it("drops nothing when the audience is unknown or the user-facing chat", () => {
+    expect(audienceGatedFragments().size).toBe(0);
+    expect(audienceGatedFragments("chat").size).toBe(0);
+  });
+
+  it("drops every conversation-only fragment for a subagent worker", () => {
+    const dropped = audienceGatedFragments("subagent");
+    const conversationOnly = Object.keys(FRAGMENT_GATES).filter(
+      (name) => FRAGMENT_GATES[name] === "conversation-only",
+    );
+
+    expect(conversationOnly.length).toBeGreaterThan(0);
+    expect([...dropped].sort()).toStrictEqual(conversationOnly.sort());
+  });
+
+  it("drops nothing a toolset could have decided", () => {
+    // The axis exists only for what no toolset can express. Anything with a
+    // tool-list gate must be left to gatedOutFragments, or the two mechanisms
+    // start disagreeing about the same fragment.
+    for (const name of audienceGatedFragments("subagent")) {
+      expect(gateTools(name)).toBeNull();
+    }
+  });
+
+  it("drops no fragment another fragment requires", () => {
+    // Audience-dropped fragments are leaves: guidance to relay, never syntax
+    // something else builds on. If that stops being true, the subagent blob
+    // starts shipping vocabulary whose grammar is gone — the exact failure
+    // warnUnmetRequirements exists to catch, arriving without a user switch.
+    const dropped = audienceGatedFragments("subagent");
+
+    for (const name of SKILL_SLOT_NAMES) {
+      for (const required of SKILL_SLOTS[name].requires ?? []) {
+        expect(dropped).not.toContain(required);
+      }
+    }
   });
 });

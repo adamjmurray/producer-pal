@@ -5,7 +5,7 @@
 
 import { type ComponentChildren, Fragment } from "preact";
 import { useMemo } from "preact/hooks";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import {
   type UIMessage,

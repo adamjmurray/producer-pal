@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Tool, jsonSchema } from "ai";
-import { type ChatClientConfig, type ChatMessage } from "./types";
+import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
 
 /**
  * Client-side delegation tool name. Not an MCP tool: it runs a nested chat
@@ -17,8 +18,10 @@ export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
 
 /**
  * A worker's nested tool-step budget. Higher than the orchestrator's default so
- * a delegated subtask — which does its own connect plus multi-step editing — has
- * room to finish.
+ * a delegated subtask — reading what it needs, then multi-step editing — has
+ * room to finish. Not lowered when a briefing removes the connect step: a worker
+ * that runs out of steps strands the orchestrator, and the unused headroom of a
+ * short task costs nothing.
  */
 export const MAX_WORKER_STEPS = 20;
 
@@ -94,6 +97,14 @@ export interface SpawnSubagentDeps {
    * seed a resume; undefined when this conversation has no such worker.
    */
   getSession?: (index: number) => ChatMessage[] | undefined;
+  /**
+   * Fetch the worker's system-prompt briefing (skills, Live Set, context) for a
+   * resolved worker config. Resolving null — or omitting this dep entirely —
+   * leaves the worker to bootstrap itself with ppal-connect, which is the
+   * pre-briefing behavior and the required fallback when the server or Live
+   * can't be reached.
+   */
+  getBriefing?: (config: ChatClientConfig) => Promise<string | null>;
 }
 
 /** Mutable spawn bookkeeping shared by the tool and its owning client. */
@@ -174,7 +185,7 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
 
       try {
         const transcript = await deps.runWorker({
-          workerConfig: buildWorkerConfig(deps.config, session),
+          workerConfig: await resolveWorkerConfig(deps, session),
           task,
           toolCallId,
           subagentIndex,
@@ -190,6 +201,36 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
       }
     },
   };
+}
+
+/**
+ * The config a worker actually starts with: the cloned orchestrator config,
+ * briefed if a briefing can be had.
+ *
+ * The order matters and is not interchangeable. The withheld tools are applied
+ * FIRST because the briefing request reads its toolset off the config — asking
+ * for a briefing before withholding ppal-context would ship the worker guidance
+ * for a tool it won't have. They are only KEPT when a briefing came back: a
+ * worker with neither a briefing nor ppal-connect knows nothing about the Live
+ * Set it is about to edit, which is strictly worse than the round-trip this
+ * whole path exists to avoid.
+ *
+ * @param deps - The tool's injected dependencies
+ * @param session - Recorded session to continue; omit to start fresh
+ * @returns The worker config to run
+ */
+async function resolveWorkerConfig(
+  deps: SpawnSubagentDeps,
+  session?: ChatMessage[],
+): Promise<ChatClientConfig> {
+  const inherited = buildWorkerConfig(deps.config, session);
+
+  if (!deps.getBriefing) return inherited;
+
+  const narrowed = withheldToolsApplied(inherited);
+  const briefing = await deps.getBriefing(narrowed);
+
+  return briefing == null ? inherited : withBriefing(narrowed, briefing);
 }
 
 /**
@@ -216,6 +257,9 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * wins — so a worker can never spawn its own subagents, regardless of what a
  * chosen preset's toolset enables. (The worker's ToolSet then omits the spawn
  * tool anyway, since client.initialize only injects it when enabled.)
+ *
+ * This is the INHERITED config, not the final one: resolveWorkerConfig layers
+ * the briefing and its withheld tools on top when a briefing is available.
  *
  * `session` continues an existing worker: it becomes the clone's chatHistory, so
  * the next turn lands on top of everything that worker already did. It must be a

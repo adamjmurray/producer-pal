@@ -43,7 +43,7 @@ interface ExecuteWithRetryArgs<TMessage> {
  *
  * NOTE: subagent workers stream below this hook (inside the spawn tool's
  * execute), so they carry their own copy of this strategy in
- * chat/sdk/subagent-rate-limit.ts. A change to the budget, the delay schedule,
+ * chat/sdk/subagent/subagent-rate-limit.ts. A change to the budget, the delay schedule,
  * or the resume rule has to be made in both.
  * @param deps - Adapter, autoSave ref, parent abort ref, and state setters
  * @returns executeWithRetry function and abortRetry canceler

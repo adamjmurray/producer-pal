@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   resetSubagentRateLimits,
   setSubagentRateLimit,
-} from "#webui/chat/sdk/subagent-rate-limit";
+} from "#webui/chat/sdk/subagent/subagent-rate-limit";
 import { AssistantSubagentCall } from "#webui/components/chat/assistant/tool-calls/AssistantSubagentCall";
 
 /**

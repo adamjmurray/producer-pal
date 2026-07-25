@@ -5,8 +5,8 @@
 
 import { type Express, type Request, type Response } from "express";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import { rejectCrossOriginWrite } from "../helpers/http/request-origin.ts";
-import * as console from "../node-for-max-logger.ts";
+import { rejectCrossOriginWrite } from "../../helpers/http/request-origin.ts";
+import * as console from "../../node-for-max-logger.ts";
 
 const OPENAI_CLIENT_SECRETS_URL =
   "https://api.openai.com/v1/realtime/client_secrets";

@@ -7,6 +7,7 @@ import {
   detectCorsBlock,
   getMcpUrl,
   getSkillsPreviewUrl,
+  getSubagentBriefingUrl,
   isViteDevServer,
 } from "#webui/utils/mcp-url";
 
@@ -90,6 +91,22 @@ describe("getSkillsPreviewUrl", () => {
     });
     expect(getSkillsPreviewUrl("barbeat", false)).toBe(
       "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false",
+    );
+  });
+});
+
+describe("getSubagentBriefingUrl", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("derives the endpoint from the MCP URL, with no query params", () => {
+    // The worker's profile rides on request headers, not the URL.
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "3350", protocol: "http:" },
+    });
+    expect(getSubagentBriefingUrl()).toBe(
+      "http://localhost:3350/subagent-briefing",
     );
   });
 });

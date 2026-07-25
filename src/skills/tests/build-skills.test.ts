@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { NOTATIONS } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { standardDriver } from "#src/skills/drivers.ts";
@@ -509,89 +508,6 @@ describe("buildSkills - disabled fragments", () => {
     expect(warnings).toStrictEqual([
       expect.stringContaining(`"core-devices.md" is no longer used`),
     ]);
-  });
-});
-
-describe("buildSkills - tool gating", () => {
-  const ALL_TOOLS = [...TOOL_NAMES];
-
-  it("ships everything when the toolset is not supplied", () => {
-    expect(buildSkills({ notation: "barbeat" })).toBe(
-      buildSkills({ notation: "barbeat", tools: ALL_TOOLS }),
-    );
-  });
-
-  it("drops a section whose every tool is off, and says nothing about it", () => {
-    // Disabling a tool is a setting, not a broken document — no warning.
-    const warnings: string[] = [];
-    const result = buildSkills(
-      {
-        notation: "barbeat",
-        tools: ALL_TOOLS.filter((name) => name !== "ppal-library"),
-      },
-      {},
-      (message) => warnings.push(message),
-    );
-
-    expect(result).not.toContain("## Finding Library Content");
-    expect(result).toContain("## Devices & Instruments");
-    expect(warnings).toStrictEqual([]);
-  });
-
-  it("drops a user's override of a gated fragment too", () => {
-    // The override slot is named for the fragment's subject, so a customized
-    // library guide is exactly as dead as the built-in when the tool is off.
-    const result = buildSkills(
-      {
-        notation: "barbeat",
-        tools: ALL_TOOLS.filter((name) => name !== "ppal-library"),
-      },
-      { fragments: { library: "MY LIBRARY NOTES" } },
-    );
-
-    expect(result).not.toContain("MY LIBRARY NOTES");
-  });
-
-  it("drops a dependent together with what it requires, never alone", () => {
-    const warnings: string[] = [];
-    const result = buildSkills(
-      {
-        notation: "barbeat",
-        tools: ALL_TOOLS.filter((name) => !name.endsWith("-device")),
-      },
-      {},
-      (message) => warnings.push(message),
-    );
-
-    expect(result).not.toContain("## Devices & Instruments");
-    expect(result).not.toContain("### Specialized Device Controls");
-    expect(warnings).toStrictEqual([]);
-  });
-
-  it("cuts the blob down to the conversational core for a minimal toolset", () => {
-    const full = buildSkills({ notation: "barbeat", tools: ALL_TOOLS });
-    const minimal = buildSkills({
-      notation: "barbeat",
-      tools: ["ppal-connect", "ppal-playback", "ppal-select"],
-    });
-
-    expect(minimal).toContain("## Time & Note Values");
-    expect(minimal).toContain("## Working with Ableton Live");
-    expect(minimal).toContain("## Getting Help");
-    expect(minimal).not.toContain("## Positions & Meter"); // bar|beat head
-    expect(minimal).not.toContain("## Transforms");
-    expect(minimal).not.toContain("## Context & Memory");
-    expect(minimal.length).toBeLessThan(full.length / 2);
-  });
-
-  it("gates the small-model document the same way", () => {
-    const result = buildSkills({
-      smallModelMode: true,
-      tools: ALL_TOOLS.filter((name) => name !== "ppal-context"),
-    });
-
-    expect(result).toContain(HEADER);
-    expect(result).not.toContain("## Context");
   });
 });
 

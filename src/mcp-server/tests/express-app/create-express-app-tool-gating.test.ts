@@ -9,6 +9,7 @@ import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 import {
   connectSkillsBlock,
   listToolNames,
+  mockMaxSuccess,
   SKILLS_HEADER,
 } from "./mcp-header-test-helpers.ts";
 
@@ -137,5 +138,27 @@ describe("GET /skills-preview tool gating", () => {
     } finally {
       await appState.postConfig({ tools: full.tools });
     }
+  });
+});
+
+describe("GET /subagent-briefing tool gating", () => {
+  it("gates a worker's briefing on the same header its tool calls send", async () => {
+    // The briefing route reads the device config through a getter, exactly as
+    // POST /mcp does, so the two can't drift on what a worker is allowed.
+    mockMaxSuccess();
+
+    const response = await fetch(`${appState.baseUrl}/subagent-briefing`, {
+      headers: headers("ppal-library"),
+    });
+
+    expect(response.status).toBe(200);
+
+    const { briefing } = (await response.json()) as { briefing: string };
+
+    expect(briefing).toContain(SKILLS_HEADER);
+    expect(briefing).not.toContain(LIBRARY_SECTION);
+    expect(briefing).toContain("## Devices & Instruments");
+    // Never the user-facing next step — a worker has nobody to report to.
+    expect(briefing).toContain("## You are a subagent");
   });
 });

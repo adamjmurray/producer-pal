@@ -23,7 +23,25 @@ vi.mock(import("#webui/chat/sdk/mcp-tools"), () => ({
 
 vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: vi.fn(() => "http://localhost:3000/mcp"),
+  getSubagentBriefingUrl: vi.fn(
+    () => "http://localhost:3000/subagent-briefing",
+  ),
 }));
+
+// No briefing here: these cases are about the worker RUNNER (streaming, retry,
+// transcripts), and a real fetch would hit the network under happy-dom. The
+// briefing path itself is covered in tests/subagent/subagent-briefing.test.ts.
+vi.mock(
+  import("#webui/chat/sdk/subagent/subagent-briefing"),
+  async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return {
+      ...actual,
+      fetchSubagentBriefing: vi.fn().mockResolvedValue(null),
+    };
+  },
+);
 
 // Shrink the worker's rate-limit backoff so the retry test doesn't wait seconds.
 // A vi.fn so the shared-gate test can lengthen it for its own window.
@@ -38,11 +56,11 @@ import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
   SPAWN_SUBAGENT_TOOL_NAME,
   labelWorkerResult,
-} from "#webui/chat/sdk/spawn-subagent-tool";
+} from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   getSubagentRateLimit,
   resetSubagentRateLimits,
-} from "#webui/chat/sdk/subagent-rate-limit";
+} from "#webui/chat/sdk/subagent/subagent-rate-limit";
 import {
   createConfig,
   mockStreamParts,

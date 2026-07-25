@@ -13,13 +13,13 @@ import {
   createSpawnSubagentTool,
   extractWorkerResult,
   labelWorkerResult,
-} from "#webui/chat/sdk/spawn-subagent-tool";
+} from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   type ChatClientConfig,
   type ChatMessage,
   type SubagentConfigOverride,
 } from "#webui/chat/sdk/types";
-import { createConfig } from "./client-test-helpers";
+import { createConfig } from "#webui/chat/sdk/tests/client-test-helpers";
 
 type RunWorker = (options: RunWorkerOptions) => Promise<ChatMessage[]>;
 

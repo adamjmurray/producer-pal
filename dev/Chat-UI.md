@@ -71,11 +71,13 @@ webui/
     │   │   └── use-settings.ts   # Settings + localStorage
     │   └── ...
     ├── chat/               # Chat utilities (kebab-case)
-    │   ├── ai-sdk/
-    │   │   ├── ai-sdk-client.ts  # Wraps streamText(), processes events
+    │   ├── sdk/
+    │   │   ├── client.ts         # Wraps streamText(), processes events
     │   │   ├── formatter.ts      # Formats stream data for UI
     │   │   ├── mcp-tools.ts      # Converts MCP tools to AI SDK format
-    │   │   └── provider-factories.ts # Creates provider model instances
+    │   │   ├── provider-factories.ts # Creates provider model instances
+    │   │   ├── streaming/        # Stream part handlers, error signal
+    │   │   └── subagent/         # spawn tool, briefing, session, rate limit
     │   └── helpers/              # Shared chat utilities
     └── utils/              # General utilities
 ```
@@ -317,6 +319,23 @@ routing surprises (e.g., OpenRouter fallbacks, Ollama aliases).
 Mismatch detection logic is in `chat/helpers/model-identity.ts`. To test: use
 OpenRouter with the `openrouter/auto` model, which auto-selects a model and
 always triggers the mismatch indicator.
+
+**Subagents:**
+
+`spawn_subagent` is a client-side tool (no `ppal-` prefix, never in the MCP tool
+list): it runs a nested `ChatSdkClient` in the browser, because a worker needs
+the decrypted API key the server never sees. `buildWorkerConfig` clones the
+orchestrator config — layering a chosen "Default subagent" preset over it — and
+always re-strips `spawn_subagent` as the recursion guard.
+
+A worker's system instruction then gets a **briefing** appended: the Live Set
+overview, the skills for its toolset and notation, and the user's context
+layers, fetched once from `GET /subagent-briefing`
+(`subagent/subagent-briefing.ts`). That replaces the `ppal-connect` call each
+worker used to make, so `ppal-connect` and `ppal-context` are withheld from a
+briefed worker. If the briefing can't be fetched, both stay enabled and the
+worker bootstraps itself as before — see Architecture.md → Subagent briefings
+for why the blob belongs in the system prompt.
 
 **Formatting:**
 

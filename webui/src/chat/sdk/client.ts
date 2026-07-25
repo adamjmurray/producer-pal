@@ -13,25 +13,26 @@ import {
 } from "./build-model-messages";
 import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
+import { handleStreamPart } from "./streaming/stream-part-handlers";
+import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
 import {
   type RunWorkerOptions,
   SPAWN_SUBAGENT_TOOL_NAME,
   createSpawnSubagentTool,
-} from "./spawn-subagent-tool";
-import { handleStreamPart } from "./streaming/stream-part-handlers";
-import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
+} from "./subagent/spawn-subagent-tool";
+import { fetchSubagentBriefing } from "./subagent/subagent-briefing";
 import {
   RateLimitGate,
   runSubagentWithRetry,
   setSubagentRateLimit,
-} from "./subagent-rate-limit";
+} from "./subagent/subagent-rate-limit";
 import {
   type SubagentTranscriptStash,
   attachStashedTranscripts,
   collectSubagentTranscript,
   highestSubagentIndex,
   isSpawnToolResult,
-} from "./subagent-session";
+} from "./subagent/subagent-session";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
@@ -131,6 +132,7 @@ export class ChatSdkClient {
           spawnState: this.spawnState,
           getSession: (index) =>
             collectSubagentTranscript(this.chatHistory, index),
+          getBriefing: fetchSubagentBriefing,
         }),
       };
     } else {

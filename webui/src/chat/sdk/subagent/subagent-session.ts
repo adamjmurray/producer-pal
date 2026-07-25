@@ -22,8 +22,8 @@
  * whatever preset is selected now (see SubagentConfigOverride).
  */
 
+import { type ChatMessage } from "#webui/chat/sdk/types";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "./spawn-subagent-tool";
-import { type ChatMessage } from "./types";
 
 /** One worker run: the transcript it produced and the worker's own index. */
 export interface SubagentRun {
