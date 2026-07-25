@@ -59,7 +59,10 @@ export interface SpawnSubagentDeps {
    * worker's final chat history. Injected by the client so this module needs no
    * ChatSdkClient import (avoids an import cycle) and stays unit-testable. The
    * tool-call id goes along so the runner can publish the worker's live status
-   * (e.g. a rate-limit backoff) to the card this call renders as.
+   * (e.g. a rate-limit backoff) to the card this call renders as, and so it can
+   * stash the transcript under that id — the runner owns recording, because it
+   * still holds the worker's history on the paths where this tool throws (a Stop
+   * mid-worker above all).
    */
   runWorker: (
     workerConfig: ChatClientConfig,
@@ -69,20 +72,14 @@ export interface SpawnSubagentDeps {
   ) => Promise<ChatMessage[]>;
   /** Mutable per-conversation spawn counter; enforces MAX_SPAWNS. */
   spawnState: { count: number };
-  /**
-   * Stash the worker's full transcript for the UI, keyed by tool-call id. The
-   * client attaches it to the tool result out-of-band so it reaches the card but
-   * NOT the orchestrator model (execute's return value is the only thing the
-   * model sees). Optional so the tool works without a UI sink.
-   */
-  recordTranscript?: (toolCallId: string, transcript: ChatMessage[]) => void;
 }
 
 /**
  * Build the client-side spawn_subagent tool. Its execute() clones the
  * orchestrator config, runs a nested worker to completion, and returns a compact
  * result (the worker's final message) to the orchestrator model — never the full
- * sub-transcript, which would blow up the orchestrator's context.
+ * sub-transcript, which the runner stashes for the UI instead (it would blow up
+ * the orchestrator's context).
  * @param deps - Config to clone, worker runner, and the shared spawn counter
  * @returns An AI SDK tool that spawns and awaits one subagent
  */
@@ -126,8 +123,6 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
         toolCallId,
         abortSignal,
       );
-
-      deps.recordTranscript?.(toolCallId, transcript);
 
       return extractWorkerResult(transcript);
     },

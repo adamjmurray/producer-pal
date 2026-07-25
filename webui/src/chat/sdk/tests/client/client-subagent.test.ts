@@ -92,6 +92,36 @@ function partsStream(parts: Record<string, unknown>[]): {
 }
 
 /**
+ * A stream that emits `parts` and then fails — how a provider stream ends when
+ * the turn is aborted partway through.
+ * @param parts - Stream parts to emit before failing
+ * @param error - The error to throw after the last part
+ * @returns A streamText-shaped result
+ */
+function failingAfterStream(
+  parts: Record<string, unknown>[],
+  error: unknown,
+): { fullStream: AsyncIterable<Record<string, unknown>> } {
+  async function* iterate(): AsyncIterable<Record<string, unknown>> {
+    for (const p of parts) yield p;
+
+    throw error;
+  }
+
+  return { fullStream: iterate() };
+}
+
+/**
+ * The error an aborted fetch/stream rejects with.
+ * @returns An AbortError
+ */
+function abortError(): Error {
+  return Object.assign(new Error("The operation was aborted."), {
+    name: "AbortError",
+  });
+}
+
+/**
  * Grab the spawn tool the orchestrator injected into its last streamText call.
  * @returns The spawn tool's execute function
  */
@@ -318,6 +348,62 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
 
     expect(entry?.subagentTranscript).toBeDefined();
     expect(entry?.subagentTranscript?.at(-1)?.content).toBe("Worker done.");
+  });
+
+  it("keeps a stopped worker's partial transcript on the canceled result", async () => {
+    // Stop mid-worker: the spawn rejects, so no tool-result part ever streams and
+    // reconcileDanglingToolCalls synthesizes a "canceled" one. The partial log —
+    // which may describe edits already made to the Live Set — has to survive onto
+    // that synthetic entry, or the worker's work vanishes from the conversation.
+    const { client, execute } = await orchestratorWithSpawnTool();
+    const controller = new AbortController();
+
+    // The worker got one message out before the Stop killed its stream.
+    streamTextMock.mockReturnValueOnce(
+      failingAfterStream(
+        [{ type: "text-delta", text: "Renamed the Bass track." }],
+        abortError(),
+      ),
+    );
+
+    controller.abort();
+    await expect(
+      execute(
+        { task: "rename tracks" },
+        { toolCallId: "tc-stop", messages: [], abortSignal: controller.signal },
+      ),
+    ).rejects.toThrow("aborted");
+
+    // The orchestrator turn that issued the spawn is aborted too, so its stream
+    // dies after the tool-call part with no matching result.
+    streamTextMock.mockReturnValueOnce(
+      failingAfterStream(
+        [
+          {
+            type: "tool-call",
+            toolCallId: "tc-stop",
+            toolName: SPAWN_SUBAGENT_TOOL_NAME,
+            input: { task: "rename tracks" },
+          },
+        ],
+        abortError(),
+      ),
+    );
+
+    await expect(async () => {
+      for await (const _ of client.sendMessage("rename tracks")) {
+        /* consume */
+      }
+    }).rejects.toThrow("aborted");
+
+    const entry = client.chatHistory
+      .flatMap((m) => m.toolResults ?? [])
+      .find((tr) => tr.id === "tc-stop");
+
+    expect(entry?.result).toContain("Canceled");
+    expect(entry?.subagentTranscript?.at(-1)?.content).toBe(
+      "Renamed the Bass track.",
+    );
   });
 });
 

@@ -248,20 +248,6 @@ describe("createSpawnSubagentTool", () => {
     expect(spawnState.count).toBe(1);
   });
 
-  it("records the worker transcript keyed by tool-call id (UI side channel)", async () => {
-    const recordTranscript = vi.fn();
-    const tool = createSpawnSubagentTool({
-      config: createConfig(),
-      runWorker: vi.fn<RunWorker>().mockResolvedValue(workerHistory),
-      spawnState: { count: 0 },
-      recordTranscript,
-    });
-
-    await tool.execute!({ task: "x" }, options());
-
-    expect(recordTranscript).toHaveBeenCalledWith("tc1", workerHistory);
-  });
-
   it("throws for a missing or empty task", async () => {
     const { tool, runWorker } = setup();
 
@@ -272,17 +258,11 @@ describe("createSpawnSubagentTool", () => {
     expect(runWorker).not.toHaveBeenCalled();
   });
 
-  it("runs concurrent spawns without corrupting the counter or transcripts", async () => {
+  it("runs concurrent spawns without corrupting the counter", async () => {
     // The AI SDK invokes N execute() closures concurrently for parallel tool
-    // calls; each must record its own transcript and advance the shared counter.
-    const recordTranscript = vi.fn();
-    const spawnState = { count: 0 };
-    const tool = createSpawnSubagentTool({
-      config: createConfig(),
-      runWorker: vi.fn<RunWorker>().mockResolvedValue(workerHistory),
-      spawnState,
-      recordTranscript,
-    });
+    // calls; each must reach the runner with its own tool-call id (the key its
+    // transcript is stashed under) and advance the shared counter once.
+    const { tool, runWorker, spawnState } = setup();
 
     await Promise.all([
       tool.execute!({ task: "one" }, options()),
@@ -293,8 +273,7 @@ describe("createSpawnSubagentTool", () => {
     ]);
 
     expect(spawnState.count).toBe(2);
-    expect(recordTranscript).toHaveBeenCalledTimes(2);
-    expect(recordTranscript.mock.calls.map((c) => c[0]).sort()).toStrictEqual([
+    expect(runWorker.mock.calls.map((c) => c[2]).sort()).toStrictEqual([
       "tc1",
       "tc2",
     ]);

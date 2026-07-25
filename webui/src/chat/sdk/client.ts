@@ -23,6 +23,11 @@ import {
   runSubagentWithRetry,
   setSubagentRateLimit,
 } from "./subagent-rate-limit";
+import {
+  type SubagentTranscriptStash,
+  attachStashedTranscripts,
+  isSpawnToolResult,
+} from "./subagent-session";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
@@ -60,12 +65,12 @@ export class ChatSdkClient {
    */
   private spawnState = { count: 0 };
   /**
-   * Worker transcripts recorded by the spawn tool, keyed by tool-call id.
-   * Drained in processStream to attach each transcript to its tool-result
-   * (UI-only; the model never sees it). A restored conversation reads the
-   * transcript straight off the persisted tool-result, so this stays empty then.
+   * Worker transcripts recorded by runSubagent, keyed by tool-call id. Read in
+   * processStream to attach each transcript to its tool-result (UI-only; the
+   * model never sees it). A restored conversation reads the transcript straight
+   * off the persisted tool-result, so this stays empty then.
    */
-  private spawnTranscripts = new Map<string, ChatMessage[]>();
+  private spawnTranscripts: SubagentTranscriptStash = new Map();
   /**
    * Backoff window shared by every worker this client spawns. Parallel workers
    * stream on separate connections, so without it a provider-wide 429 hits each
@@ -116,8 +121,6 @@ export class ChatSdkClient {
           runWorker: (workerConfig, task, toolCallId, signal) =>
             this.runSubagent(workerConfig, task, toolCallId, signal),
           spawnState: this.spawnState,
-          recordTranscript: (toolCallId, transcript) =>
-            this.spawnTranscripts.set(toolCallId, transcript),
         }),
       };
     } else {
@@ -145,6 +148,12 @@ export class ChatSdkClient {
    * rate-limits repeatedly can therefore run more total tool steps than one that
    * doesn't. Accepted: retries are rare, and carrying a partial budget forward
    * risks stranding a resumed worker mid-task with no steps left to finish.
+   *
+   * The transcript is stashed in a finally, so it survives the failure paths too
+   * — above all a Stop mid-worker, where the partial log is the only record of
+   * work the worker may already have done in the Live Set. Discarding it there
+   * would lose that; attachStashedTranscripts hangs it off the synthetic
+   * "canceled" tool-result instead.
    * @param workerConfig - Cloned config for the worker (spawn disabled)
    * @param task - The delegated instruction, sent as the worker's user message
    * @param toolCallId - The spawn tool-call id, used to key the card's live status
@@ -180,38 +189,10 @@ export class ChatSdkClient {
 
       return worker.chatHistory;
     } finally {
+      this.spawnTranscripts.set(toolCallId, worker.chatHistory);
       setSubagentRateLimit(toolCallId, null);
       worker.dispose();
     }
-  }
-
-  /**
-   * If `part` is a spawn_subagent tool-result, attach the worker transcript the
-   * spawn tool stashed (keyed by tool-call id) to the just-recorded tool-result
-   * entry. This is the out-of-band path that gets the transcript to the UI card
-   * without putting it in the value the orchestrator model receives.
-   * @param part - The stream part just handled
-   * @param msg - The assistant message currently being built
-   */
-  private attachSubagentTranscript(
-    part: Record<string, unknown>,
-    msg: ChatMessage,
-  ): void {
-    if (
-      part.type !== "tool-result" ||
-      part.toolName !== SPAWN_SUBAGENT_TOOL_NAME
-    ) {
-      return;
-    }
-
-    const toolCallId = part.toolCallId as string;
-    const transcript = this.spawnTranscripts.get(toolCallId);
-
-    if (!transcript) return;
-
-    const entry = msg.toolResults?.find((tr) => tr.id === toolCallId);
-
-    if (entry) entry.subagentTranscript = transcript;
   }
 
   /**
@@ -337,11 +318,19 @@ export class ChatSdkClient {
         const handled = handleStreamPart(part.type, part, currentMsg);
 
         if (handled) {
-          this.attachSubagentTranscript(part, currentMsg);
-
           if (!addedCurrentMsg) {
             this.chatHistory.push(currentMsg);
             addedCurrentMsg = true;
+          }
+
+          // A worker just finished: get its transcript onto the tool-result the
+          // card renders from, before this yield paints it.
+          if (isSpawnToolResult(part)) {
+            attachStashedTranscripts(
+              this.chatHistory,
+              historyLengthBefore,
+              this.spawnTranscripts,
+            );
           }
 
           yield [...this.chatHistory];
@@ -364,6 +353,14 @@ export class ChatSdkClient {
       // history stays valid (providers reject an unmatched tool-call) and the UI
       // doesn't render the tool as perpetually running. No-op on clean finishes.
       reconcileDanglingToolCalls(this.chatHistory, historyLengthBefore);
+      // A stopped subagent's tool-result is one of those synthetic "canceled"
+      // entries, so it never passed through the mid-stream attach above. Hang the
+      // worker's partial transcript off it here so its work log survives the Stop.
+      attachStashedTranscripts(
+        this.chatHistory,
+        historyLengthBefore,
+        this.spawnTranscripts,
+      );
     }
 
     this.toolLimitReached = detectToolLimitReached(
