@@ -14,6 +14,7 @@ import {
   type SaveStatus,
   useRefreshOnFocusAndPoll,
   useSaveRefreshGuard,
+  useWriteOrdering,
 } from "./use-doc";
 
 /** One overridable skills fragment, as the editor needs it. */
@@ -77,10 +78,14 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   // shared "saved"/"error" indicator onto the now-active slot (the list merge
   // still applies — only the status indicator is slot-scoped).
   const saveGenerationRef = useRef(0);
+  // Per-SLOT write ordering, so two overlapping saves of one slot resolve to
+  // the newest (see writeSlot) while unrelated slots never interfere.
   // Same refresh-vs-save coordination as useDoc (a focus/poll read can
   // resolve older slot data than a concurrent save's echo and, landing last,
   // clobber it), just over the slot collection instead of one document.
-  const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
+  const { claim } = useWriteOrdering();
+  const { beginSave, endSave, guardRefresh, isUnmounted } =
+    useSaveRefreshGuard();
 
   const refresh = useCallback(
     (): Promise<void> =>
@@ -94,8 +99,19 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   );
 
   const writeSlot = useCallback(
-    async (write: () => Promise<SkillSlotView>): Promise<boolean> => {
+    async (
+      name: string,
+      write: () => Promise<SkillSlotView>,
+    ): Promise<boolean> => {
       const generation = saveGenerationRef.current;
+      // Slots autosave through useContextEditorState (a debounce flush, then a
+      // blur flush right behind it), so two writes of ONE slot overlap and the
+      // older echo can land last. Merging it would put `override` back, flip the
+      // status SkillSlotScreen memoizes off this list, and raise a spurious
+      // "updated outside the editor" banner whose Reload adopts the superseded
+      // content. Ordering is per slot, so a write to another slot never
+      // interferes.
+      const superseded = claim(name);
 
       beginSave();
       setSaveStatus("saving");
@@ -104,11 +120,15 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
       try {
         const updated = await write();
 
-        setStatus((prev) => mergeSlot(prev, updated));
+        if (isUnmounted()) return true;
+        if (!superseded()) setStatus((prev) => mergeSlot(prev, updated));
+
         if (saveGenerationRef.current === generation) setSaveStatus("saved");
 
         return true;
       } catch (error: unknown) {
+        if (isUnmounted()) return false;
+
         if (saveGenerationRef.current === generation) {
           setSaveError(errorMessage(error));
           setSaveStatus("error");
@@ -119,17 +139,17 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
         endSave();
       }
     },
-    [beginSave, endSave],
+    [beginSave, endSave, claim, isUnmounted],
   );
 
   const saveSlot = useCallback(
     (name: string, content: string): Promise<boolean> =>
-      writeSlot(() => putSlot(name, content)),
+      writeSlot(name, () => putSlot(name, content)),
     [writeSlot],
   );
 
   const resetSlot = useCallback(
-    (name: string): Promise<boolean> => writeSlot(() => deleteSlot(name)),
+    (name: string): Promise<boolean> => writeSlot(name, () => deleteSlot(name)),
     [writeSlot],
   );
 

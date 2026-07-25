@@ -17,6 +17,8 @@ import {
   deferred,
   installFetchMock,
   jsonResponse,
+  type RacedWrite,
+  raceTwoWrites,
   renderAndWait,
 } from "./doc-transport-test-helpers";
 
@@ -121,6 +123,34 @@ async function saveResolvingAfterReset(
     put.resolve(late);
     await saving;
   });
+}
+
+/**
+ * Save one entry's body through the collection hook.
+ * @param result - The rendered hook's `result` handle
+ * @param name - The entry to save
+ * @param content - The body to store
+ * @returns The saved entry, or null on failure
+ */
+function saveBody(
+  result: HookResult,
+  name: string,
+  content: string,
+): Promise<MemoryEntryView | null> {
+  return result.current.saveEntry(name, { ...SAMPLE_INPUT, content });
+}
+
+/**
+ * The older, slower write the same-entry race tests dispatch first: a save of
+ * "prefers-c-minor" whose echo lands last and must not be committed.
+ * @param result - The rendered hook's `result` handle
+ * @returns The raced write descriptor
+ */
+function slowSaveOfSampleEntry(result: HookResult): RacedWrite {
+  return {
+    dispatch: () => saveBody(result, "prefers-c-minor", "OLD"),
+    echo: jsonResponse({ entry: rawEntry({ body: "OLD" }) }),
+  };
 }
 
 describe("useMemoryCollection", () => {
@@ -474,6 +504,59 @@ describe("useMemoryCollection", () => {
     await waitFor(() => {
       expect(readyEntries(result)[0]?.body).toBe("v2");
     });
+  });
+
+  it("drops an older save's echo for the same entry when a newer save has landed", async () => {
+    // Two overlapping saves of one entry (a debounced autosave, then the
+    // unmount flush or an explicit Save). The FIRST echo is slow and lands
+    // last, which would merge superseded content back into the list.
+    const result = await mountReady([rawEntry({ body: "loaded" })]);
+
+    await raceTwoWrites(fetchMock, slowSaveOfSampleEntry(result), {
+      dispatch: () => saveBody(result, "prefers-c-minor", "NEW"),
+      echo: jsonResponse({ entry: rawEntry({ body: "NEW" }) }),
+    });
+
+    expect(readyEntries(result)[0]?.body).toBe("NEW");
+  });
+
+  it("does not let a save of one entry discard another entry's echo", async () => {
+    // Ordering is per entry: a collection-wide newest-write-wins rule would
+    // drop this first entry's merge just because a second entry was saved after.
+    const result = await mountReady([
+      rawEntry({ body: "loaded" }),
+      rawEntry({ name: "loose-drums", body: "loaded" }),
+    ]);
+
+    await raceTwoWrites(
+      fetchMock,
+      {
+        dispatch: () => saveBody(result, "prefers-c-minor", "A"),
+        echo: jsonResponse({ entry: rawEntry({ body: "A" }) }),
+      },
+      {
+        dispatch: () => saveBody(result, "loose-drums", "B"),
+        echo: jsonResponse({
+          entry: rawEntry({ name: "loose-drums", body: "B" }),
+        }),
+      },
+    );
+
+    expect(readyEntries(result).map((entry) => entry.body)).toStrictEqual([
+      "A",
+      "B",
+    ]);
+  });
+
+  it("keeps a delete that a slower save of the same entry would resurrect", async () => {
+    const result = await mountReady([rawEntry({ body: "loaded" })]);
+
+    await raceTwoWrites(fetchMock, slowSaveOfSampleEntry(result), {
+      dispatch: () => result.current.deleteEntry("prefers-c-minor"),
+      echo: jsonResponse({}),
+    });
+
+    expect(readyEntries(result)).toStrictEqual([]);
   });
 
   it("drops a refresh that a concurrent save superseded", async () => {

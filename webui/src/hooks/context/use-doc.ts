@@ -91,12 +91,21 @@ export function useDoc(
 
   const save = useCallback(
     async (content: string): Promise<boolean> => {
-      beginSave();
+      // Two saves can overlap (a debounced flush, then a blur or another
+      // keystroke's flush before the first echo lands). Whichever echo arrives
+      // LAST would otherwise win the state, so an older save landing late would
+      // revert the editor to superseded content: commit only while this save is
+      // still the newest one issued. The outcome is still reported truthfully —
+      // it's the state commit that is superseded, not the write.
+      const discardSave = beginSave();
+
       setSaveStatus("saving");
       setSaveError(null);
 
       try {
         const stored = await write(content);
+
+        if (discardSave()) return true;
 
         setStatus({ kind: "ready", content: stored.content });
         setDrift(stored.drift);
@@ -104,6 +113,8 @@ export function useDoc(
 
         return true;
       } catch (error: unknown) {
+        if (discardSave()) return false;
+
         setSaveError(errorMessage(error));
         setSaveStatus("error");
 
@@ -139,10 +150,17 @@ export function useDoc(
 
 /** Save/refresh race coordination primitives (see {@link useSaveRefreshGuard}). */
 export interface SaveRefreshGuard {
-  /** Mark a save started (before its write begins). */
-  beginSave: () => void;
+  /** Mark a save started (before its write begins). The returned predicate
+   *  reports whether THIS save's result should be DISCARDED — a newer save was
+   *  issued after it (whose echo is the one the UI must keep), or the component
+   *  unmounted while it was in flight. */
+  beginSave: () => () => boolean;
   /** Mark a save finished (in the write's finally). */
   endSave: () => void;
+  /** True once the component has unmounted — the half of `beginSave`'s
+   *  predicate a collection hook wants on its own, since ordering there is per
+   *  entry ({@link useWriteOrdering}) rather than newest-write-wins. */
+  isUnmounted: () => boolean;
   /** Snapshot the guard at a refresh's start; the returned predicate reports
    *  whether the refresh's result should be DISCARDED — because a save overlapped
    *  its round-trip (the save's echo should win) or the component unmounted while
@@ -160,6 +178,11 @@ export interface SaveRefreshGuard {
  * overlapped the round-trip. The same predicate also reports true once the
  * component has unmounted, so a late-resolving fetch can't setState on a dead
  * component (matching the AbortController guard the preview/config hooks use).
+ *
+ * The same generation counter orders saves against EACH OTHER: `beginSave`
+ * returns a predicate that reports whether its own save has since been
+ * superseded, so an older write's echo landing last can't revert the UI to
+ * content the user has already typed past.
  * @returns The save-bracketing and refresh-guard helpers
  */
 export function useSaveRefreshGuard(): SaveRefreshGuard {
@@ -174,9 +197,12 @@ export function useSaveRefreshGuard(): SaveRefreshGuard {
     [],
   );
 
-  const beginSave = useCallback((): void => {
+  const beginSave = useCallback((): (() => boolean) => {
     saveCountRef.current++;
-    saveGenRef.current++;
+    const generation = ++saveGenRef.current;
+
+    return (): boolean =>
+      !mountedRef.current || saveGenRef.current !== generation;
   }, []);
 
   const endSave = useCallback((): void => {
@@ -193,7 +219,47 @@ export function useSaveRefreshGuard(): SaveRefreshGuard {
       saveGenRef.current !== genAtStart;
   }, []);
 
-  return { beginSave, endSave, guardRefresh };
+  const isUnmounted = useCallback((): boolean => !mountedRef.current, []);
+
+  return { beginSave, endSave, guardRefresh, isUnmounted };
+}
+
+/** Per-target write ordering (see {@link useWriteOrdering}). */
+export interface WriteOrdering {
+  /**
+   * Stamp the targets a write is about to touch. The returned predicate reports
+   * whether this write has since been SUPERSEDED — a later write claimed one of
+   * the same targets — so its result must not be committed.
+   */
+  claim: (...names: string[]) => () => boolean;
+}
+
+/**
+ * Order writes against each other WITHIN a collection, where "newest write
+ * wins" (what {@link useSaveRefreshGuard}'s generation counter gives a single
+ * document) is too coarse: saving entry B must not discard entry A's echo.
+ * Each write stamps the names it touches with a monotonic sequence number, and
+ * a stamp overwritten by a later write invalidates the earlier one's commit —
+ * so two overlapping saves of ONE entry resolve to the newest, and a delete
+ * beats a slower save it was issued after, while unrelated entries never
+ * interfere. Shared by the entry collections (`useDocCollection`) and the skill
+ * slots (`useSkillOverrides`).
+ * @returns The claim helper
+ */
+export function useWriteOrdering(): WriteOrdering {
+  const sequenceRef = useRef(0);
+  const latestRef = useRef<Map<string, number>>(new Map());
+
+  const claim = useCallback((...names: string[]): (() => boolean) => {
+    const sequence = ++sequenceRef.current;
+
+    for (const name of names) latestRef.current.set(name, sequence);
+
+    return (): boolean =>
+      names.some((name) => latestRef.current.get(name) !== sequence);
+  }, []);
+
+  return { claim };
 }
 
 /**

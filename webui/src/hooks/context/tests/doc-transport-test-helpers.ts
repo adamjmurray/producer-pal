@@ -209,6 +209,8 @@ export function describeDocTransport(spec: DocTransportSpec): void {
       expect(result.current.saveError).toContain(spec.writeError);
     });
 
+    registerSaveOrderingTests(fetchMock, renderReady);
+
     it("save() echoes empty string when the PUT omits content", async () => {
       const result = await renderReady("x");
 
@@ -224,4 +226,110 @@ export function describeDocTransport(spec: DocTransportSpec): void {
       });
     });
   });
+}
+
+/**
+ * Register the save-vs-save ordering tests inside the caller's describe block.
+ * Two saves of the same doc can overlap (a debounced flush, then a blur or a
+ * further keystroke before the first echo lands), and whichever echo arrives
+ * LAST would otherwise win — reverting the editor to content the user has
+ * already typed past. Split out of {@link describeDocTransport} to keep that
+ * function within the per-function line limit.
+ * @param fetchMock - The suite's fetch mock, queued in issue order
+ * @param renderReady - Renders the hook past its mount GET
+ */
+function registerSaveOrderingTests(
+  fetchMock: ReturnType<typeof vi.fn>,
+  renderReady: (content?: string) => Promise<{ current: UseDocReturn }>,
+): void {
+  // Both ordering tests race the same two saves; only the first write's echo
+  // (a stored document, or a failure) differs.
+  const raceSaves = async (
+    result: { current: UseDocReturn },
+    firstEcho: Response,
+  ): Promise<boolean | undefined> => {
+    const [firstOk] = await raceTwoWrites(
+      fetchMock,
+      { dispatch: () => result.current.save("one"), echo: firstEcho },
+      {
+        dispatch: () => result.current.save("two"),
+        echo: jsonResponse({ content: "two" }),
+      },
+    );
+
+    return firstOk as boolean | undefined;
+  };
+
+  it("keeps the newest save's content when an older save's echo lands last", async () => {
+    const result = await renderReady();
+
+    await raceSaves(result, jsonResponse({ content: "one" }));
+
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "two",
+    });
+    expect(result.current.saveStatus).toBe("saved");
+  });
+
+  it("does not let a superseded save's failure paint an error over the newest save", async () => {
+    const result = await renderReady();
+
+    const firstOk = await raceSaves(
+      result,
+      new Response("nope", { status: 500, statusText: "Server Error" }),
+    );
+
+    // The caller still learns its own write failed (so it can retry) — only the
+    // shared UI state belongs to the newest save.
+    expect(firstOk).toBe(false);
+    expect(result.current.saveStatus).toBe("saved");
+    expect(result.current.saveError).toBeNull();
+  });
+}
+
+/** One write in a {@link raceTwoWrites} pair: how to dispatch it, and its echo. */
+export interface RacedWrite {
+  /** Dispatch the write (the hook call under test). */
+  dispatch: () => Promise<unknown>;
+  /** The response its request eventually resolves with. */
+  echo: Response;
+}
+
+/**
+ * Run two writes concurrently and settle the SECOND one FIRST, so the first
+ * write's echo lands last — the out-of-order landing every write-ordering guard
+ * in these hooks exists for. Shared by the document, entry-collection, and
+ * slot-collection suites, which differ only in which hook call they dispatch.
+ * @param fetchMock - The suite's fetch mock, queued in dispatch order
+ * @param first - The write dispatched first, whose echo resolves last
+ * @param second - The write dispatched second, whose echo resolves first
+ * @returns Both writes' resolved values, in dispatch order
+ */
+export async function raceTwoWrites(
+  fetchMock: ReturnType<typeof vi.fn>,
+  first: RacedWrite,
+  second: RacedWrite,
+): Promise<[unknown, unknown]> {
+  const firstRequest = deferred<Response>();
+  const secondRequest = deferred<Response>();
+
+  fetchMock.mockReturnValueOnce(firstRequest.promise);
+  fetchMock.mockReturnValueOnce(secondRequest.promise);
+
+  let firstResult: unknown;
+  let secondResult: unknown;
+
+  await act(async () => {
+    const firstPending = first.dispatch();
+    const secondPending = second.dispatch();
+
+    secondRequest.resolve(second.echo);
+    secondResult = await secondPending;
+
+    firstRequest.resolve(first.echo);
+    firstResult = await firstPending;
+  });
+
+  return [firstResult, secondResult];
 }

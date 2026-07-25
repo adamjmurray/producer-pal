@@ -13,6 +13,7 @@ import {
   deferred,
   installFetchMock,
   jsonResponse,
+  raceTwoWrites,
   renderAndWait,
 } from "./doc-transport-test-helpers";
 
@@ -38,6 +39,25 @@ function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
   };
 }
 
+/** A rendered hook's `result` handle. */
+type HookResult = { current: ReturnType<typeof useSkillOverrides> };
+
+/**
+ * One slot's current override, asserting the collection is ready first.
+ * @param result - The rendered hook's `result` handle
+ * @param index - Position in the slot list
+ * @returns That slot's override body
+ */
+function overrideOf(result: HookResult, index: number): string | undefined {
+  const { status } = result.current;
+
+  if (status.kind !== "ready") {
+    throw new Error(`expected ready, got ${status.kind}`);
+  }
+
+  return status.slots[index]?.override;
+}
+
 describe("useSkillOverrides", () => {
   const fetchMock = installFetchMock();
 
@@ -45,7 +65,7 @@ describe("useSkillOverrides", () => {
   // Most tests only need the mount to succeed before exercising a write.
   async function renderReady(
     slots: Array<Record<string, unknown>> = [rawSlot()],
-  ): Promise<{ current: ReturnType<typeof useSkillOverrides> }> {
+  ): Promise<HookResult> {
     fetchMock.mockResolvedValueOnce(jsonResponse({ slots }));
 
     return await renderAndWait(useSkillOverrides, "ready");
@@ -277,6 +297,52 @@ describe("useSkillOverrides", () => {
 
       expect(status.kind === "ready" && status.slots[0]?.override).toBe("v2");
     });
+  });
+
+  it("drops an older save's echo for the same slot when a newer save has landed", async () => {
+    // The slot editor autosaves (debounce flush, then a blur flush behind it),
+    // so two writes of one slot overlap. An older echo landing last would put
+    // `override` back and raise a spurious "changed outside the editor" banner
+    // whose Reload adopts the superseded content.
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    await raceTwoWrites(
+      fetchMock,
+      {
+        dispatch: () => result.current.saveSlot("barbeat-standard", "OLD"),
+        echo: jsonResponse({ slot: rawSlot({ override: "OLD" }) }),
+      },
+      {
+        dispatch: () => result.current.saveSlot("barbeat-standard", "NEW"),
+        echo: jsonResponse({ slot: rawSlot({ override: "NEW" }) }),
+      },
+    );
+
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
+  it("does not let a save of one slot discard another slot's echo", async () => {
+    // Ordering is per slot: newest-write-wins across the whole collection would
+    // drop this first slot's merge just because a second slot was saved after.
+    const result = await renderReady([
+      rawSlot({ override: "loaded" }),
+      rawSlot({ name: "stark", override: "loaded" }),
+    ]);
+
+    await raceTwoWrites(
+      fetchMock,
+      {
+        dispatch: () => result.current.saveSlot("barbeat-standard", "A"),
+        echo: jsonResponse({ slot: rawSlot({ override: "A" }) }),
+      },
+      {
+        dispatch: () => result.current.saveSlot("stark", "B"),
+        echo: jsonResponse({ slot: rawSlot({ name: "stark", override: "B" }) }),
+      },
+    );
+
+    expect(overrideOf(result, 0)).toBe("A");
+    expect(overrideOf(result, 1)).toBe("B");
   });
 
   it("drops a refresh that a concurrent save superseded", async () => {

@@ -83,7 +83,12 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     props;
   const { description } = props;
   const [selected, setSelected] = useState<Selection>({ mode: "new" });
-  const selectionKey = selected.mode === "edit" ? selected.name : "__new__";
+  // Bumped by every New press so the create form REMOUNTS on a fresh key, even
+  // when it is already the active pane — otherwise "New" left a half-filled
+  // draft sitting there and looked like it did nothing.
+  const [newEpoch, setNewEpoch] = useState(0);
+  const selectionKey =
+    selected.mode === "edit" ? selected.name : `__new__:${newEpoch}`;
   // Selecting another entry unmounts the active editor; confirm a discard first
   // if it holds an unsaved new draft (the editor registers the guard).
   const leaveGuard = useLeaveGuardContext();
@@ -118,7 +123,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     selected.mode === "edit"
       ? (entries.find((entry) => entry.name === selected.name) ?? null)
       : null;
-  const editorKey = selected.mode === "edit" ? selected.name : "__new__";
+  const editorKey = selectionKey;
   const deletedExternally = selected.mode === "edit" && activeEntry == null;
   const editor = props.renderEditor({
     entry: activeEntry,
@@ -168,14 +173,17 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
               if (leaveGuard.confirmLeave())
                 setSelected({ mode: "edit", name });
             },
-            // From the create form, New keeps it mounted (same key), so a dirty
-            // draft isn't abandoned — no guard. But from an entry (including one
-            // deleted out from under us, whose kept draft is a dirty NEW entry)
-            // New unmounts the editor, so confirm a discard first like onSelect.
+            // New always means a BLANK form — including when the create form is
+            // already open holding a half-filled draft, which used to be kept
+            // (the button appeared to do nothing). The editor's own discard
+            // confirm gates it, exactly as onSelect does: memory registers one
+            // for a dirty new draft, so the user is asked before losing it. An
+            // editor that registers nothing (custom skills, whose new drafts
+            // persist on navigate-away instead) just gets the fresh form.
             onNew: () => {
-              if (selected.mode === "edit" && !leaveGuard.confirmLeave())
-                return;
+              if (!leaveGuard.confirmLeave()) return;
               setSelected({ mode: "new" });
+              setNewEpoch((epoch) => epoch + 1);
             },
             onDelete: (name) => void handleDeleteEntry(name),
           })}
