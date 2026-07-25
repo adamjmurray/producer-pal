@@ -5,7 +5,10 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { SMALL_MODEL_MODE_HEADER } from "#src/shared/config";
+import {
+  DISABLED_TOOLS_HEADER,
+  SMALL_MODEL_MODE_HEADER,
+} from "#src/shared/config";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
@@ -98,5 +101,39 @@ describe("createConnectedMcpClient", () => {
     expect(
       mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
     ).toStrictEqual({ [SMALL_MODEL_MODE_HEADER]: "false" });
+  });
+
+  it("lists only the explicitly disabled tools in the disabled-tools header", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp", undefined, {
+      "tool-a": true,
+      "tool-b": false,
+      "tool-c": false,
+    });
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [DISABLED_TOOLS_HEADER]: "tool-b,tool-c" });
+  });
+
+  it("sends both headers when both apply", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp", true, {
+      "tool-b": false,
+    });
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({
+      [SMALL_MODEL_MODE_HEADER]: "true",
+      [DISABLED_TOOLS_HEADER]: "tool-b",
+    });
+  });
+
+  it("sends no disabled-tools header when nothing is disabled", async () => {
+    // An all-enabled map must leave the server's toolset alone, not send "".
+    await createConnectedMcpClient("http://localhost:3000/mcp", undefined, {
+      "tool-a": true,
+    });
+
+    expect(mockTransport.mock.calls[0]?.[1]).toBeUndefined();
   });
 });

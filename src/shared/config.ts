@@ -118,3 +118,49 @@ export function resolveSmallModelMode(
 
   return fallback;
 }
+
+// --- Per-request tool subsetting (MCP transport) ---
+
+/**
+ * HTTP header that narrows one request's toolset: a comma-separated list of
+ * tools to withhold from the server's configured set.
+ *
+ * A SUBTRACTION rather than a whitelist, for two reasons. The client-side
+ * toggles it carries are themselves a sparse map where absent means enabled, and
+ * the header has to be set when the transport is built — before `listTools`
+ * could tell the caller what the full catalog even is. Subtracting needs no
+ * catalog: a name the server doesn't know is simply a no-op, and a tool added in
+ * a later release stays enabled by default.
+ *
+ * It drives BOTH tool registration (the caller's `listTools` shrinks, so it
+ * isn't paying for schemas it disabled) and the skills variant — a fragment
+ * teaching only withheld tools is dropped from the ppal-connect blob. Absent ⇒
+ * the server's global `config.tools`, so external MCP clients are unaffected;
+ * same contract as {@link SMALL_MODEL_MODE_HEADER}.
+ */
+export const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
+
+/**
+ * Resolve the tools available to one request: the server's configured set minus
+ * anything the request's header withholds. An absent or empty header leaves the
+ * configured set untouched.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @param configuredTools - The server's global `config.tools`
+ * @returns The tools to register and to gate skills fragments on
+ */
+export function resolveEnabledTools(
+  headerValue: string | undefined,
+  configuredTools: readonly string[],
+): string[] {
+  const disabled = new Set(
+    (headerValue ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name !== ""),
+  );
+
+  if (disabled.size === 0) return [...configuredTools];
+
+  return configuredTools.filter((name) => !disabled.has(name));
+}

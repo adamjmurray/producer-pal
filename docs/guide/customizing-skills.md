@@ -115,6 +115,17 @@ few rules:
 
 ## Trimming skills you don't need
 
+::: tip Disabling a tool already trims its skills
+
+Fragments are cut along tool lines, so turning a tool off drops the fragment
+that teaches it — automatically, wherever you turned it off: the Tools tab in
+the [Chat UI](/guide/chat-ui#tools) (per preset, and per subagent), or the tool
+list an external MCP client is configured with. Switch off library search and
+the library guide is gone from that conversation's skills. Reach for the manual
+trimming below for areas you want dropped while keeping the tool.
+
+:::
+
 If you never use a whole area of Producer Pal, remove its guidance: override the
 **Full skills (standard)** fragment and delete the include line for that area.
 Everything you keep continues to track the built-ins.
@@ -148,7 +159,9 @@ If you do delete a line something else needs, Producer Pal says so — the Skill
 ::: tip Check the result
 
 After editing, use the Skills tab's **Preview** view to see the assembled
-document, and start a new conversation for the change to take effect.
+document, and start a new conversation for the change to take effect. The
+preview shows what an external MCP client receives; a chat whose preset disables
+tools gets a shorter document still.
 
 :::
 

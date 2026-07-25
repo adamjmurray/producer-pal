@@ -3,43 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import Max from "max-api";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
-
-type MockMax = typeof Max & {
-  defaultMcpResponseHandler:
-    ((requestId: string, ...chunks: string[]) => void) | null;
-};
-const mockMax = Max as MockMax;
+import {
+  connectSkillsBlock,
+  connectWithHeaders,
+  SKILLS_HEADER,
+} from "./mcp-header-test-helpers.ts";
 
 /**
- * Connect an MCP client to the server with (or without) the small-model-mode
- * header. The transport carries the header on every request the client makes.
+ * Headers for a given small-model-mode value, or none when it is omitted.
  *
- * @param serverUrl - The running server's /mcp URL
  * @param header - Value for the small-model-mode header, or undefined to omit it
- * @returns A connected client and its transport (close the transport when done)
+ * @returns The request headers to send
  */
-async function connectWithHeader(
-  serverUrl: string,
-  header: string | undefined,
-): Promise<{ client: Client; transport: StreamableHTTPClientTransport }> {
-  const client = new Client({ name: "test-client", version: "1.0.0" });
-  const transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
-    requestInit:
-      header == null
-        ? undefined
-        : { headers: { [SMALL_MODEL_MODE_HEADER]: header } },
-  });
-
-  await client.connect(transport);
-
-  return { client, transport };
+function headers(header: string | undefined): Record<string, string> {
+  return header == null ? {} : { [SMALL_MODEL_MODE_HEADER]: header };
 }
 
 /**
@@ -56,60 +36,16 @@ async function createTrackHasCount(
   serverUrl: string,
   header: string | undefined,
 ): Promise<boolean> {
-  const { client, transport } = await connectWithHeader(serverUrl, header);
+  const { client, transport } = await connectWithHeaders(
+    serverUrl,
+    headers(header),
+  );
 
   try {
     const { tools } = await client.listTools();
     const createTrack = tools.find((t) => t.name === "ppal-create-track");
 
     return createTrack?.inputSchema.properties?.count != null;
-  } finally {
-    await transport.close();
-  }
-}
-
-/**
- * Call ppal-connect with a header and return the injected skills block — the
- * text block starting with the skills heading, which enrich-connect appends
- * Node-side and which varies (basic vs standard) by small-model mode. This is
- * the second consumer the header drives. Max is mocked to return a bare success
- * so the connect handler resolves and enrichment runs.
- *
- * @param serverUrl - The running server's /mcp URL
- * @param header - Value for the small-model-mode header, or undefined to omit it
- * @returns The injected skills block text, or "" when none was found
- */
-async function connectSkillsBlock(
-  serverUrl: string,
-  header: string | undefined,
-): Promise<string> {
-  Max.outlet = vi.fn((message: string, requestId: string) => {
-    if (message === "mcp_request") {
-      setTimeout(() => {
-        mockMax.defaultMcpResponseHandler!(
-          requestId,
-          JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
-          MAX_ERROR_DELIMITER,
-        );
-      }, 1);
-    }
-
-    return Promise.resolve();
-  }) as typeof Max.outlet;
-
-  const { client, transport } = await connectWithHeader(serverUrl, header);
-
-  try {
-    const result = await client.callTool({
-      name: "ppal-connect",
-      arguments: {},
-    });
-    const content = result.content as Array<{ type: string; text?: string }>;
-
-    return (
-      content.find((c) => c.text?.startsWith("# Producer Pal Skills"))?.text ??
-      ""
-    );
   } finally {
     await transport.close();
   }
@@ -147,12 +83,18 @@ describe("POST /mcp per-request small-model-mode header", () => {
 
   describe("skills variant", () => {
     it("serves a different skills variant per-request driven by the header", async () => {
-      const basic = await connectSkillsBlock(appState.serverUrl, "true");
-      const standard = await connectSkillsBlock(appState.serverUrl, "false");
+      const basic = await connectSkillsBlock(
+        appState.serverUrl,
+        headers("true"),
+      );
+      const standard = await connectSkillsBlock(
+        appState.serverUrl,
+        headers("false"),
+      );
 
       // Both connect requests inject a skills block...
-      expect(basic.startsWith("# Producer Pal Skills")).toBe(true);
-      expect(standard.startsWith("# Producer Pal Skills")).toBe(true);
+      expect(basic.startsWith(SKILLS_HEADER)).toBe(true);
+      expect(standard.startsWith(SKILLS_HEADER)).toBe(true);
       // ...but the small-model (basic) variant differs from the standard one,
       // proving the per-request header — not just the global — selects it.
       expect(basic).not.toBe(standard);

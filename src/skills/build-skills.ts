@@ -8,6 +8,7 @@ import {
   builtinFragments,
   resolveFragmentAlias,
 } from "#src/skills/builtin-fragments.ts";
+import { gatedOutFragments } from "#src/skills/fragment-tool-gates.ts";
 import { resolveIncludes } from "#src/skills/include-resolver.ts";
 import {
   isSkillSlotName,
@@ -21,6 +22,12 @@ export interface BuildSkillsOptions {
   notation?: Notation;
   /** Whether small-model mode is active (selects the basic driver). */
   smallModelMode?: boolean;
+  /**
+   * The tools this caller can actually call. Fragments teaching only disabled
+   * tools are dropped (see fragment-tool-gates.ts). Omit when the toolset isn't
+   * known — every fragment then ships, which is the safe direction.
+   */
+  tools?: readonly string[];
 }
 
 /**
@@ -38,9 +45,17 @@ export type SkillOverrides = Record<string, string>;
  * directives in that driver. Each fragment resolves to the user's override when
  * present, else the release built-in.
  *
+ * A fragment whose tools are all disabled resolves to an EMPTY body rather than
+ * being skipped, matching how a release build handles `code-transforms`: the
+ * driver's include line stays valid, so an unknown fragment keeps meaning a
+ * stale reference worth warning about. Gating is applied AFTER the override
+ * lookup — a customized `library.md` is just as dead as the built-in when the
+ * library tool is off.
+ *
  * @param options - Runtime context ({@link BuildSkillsOptions}).
  * @param options.notation - The global notation setting (defaults to bar|beat).
  * @param options.smallModelMode - Whether small-model mode is active.
+ * @param options.tools - The tools available to this caller (omit for no gating).
  * @param overrides - Per-fragment user overrides (empty by default).
  * @param onWarn - Sink for non-fatal assembly warnings (unknown fragments,
  *   refused nesting, unsafe refs, overrides keyed to a retired slot name).
@@ -53,12 +68,14 @@ export function buildSkills(
   {
     notation = DEFAULT_NOTATION,
     smallModelMode = false,
+    tools,
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
   onWarn?: (message: string) => void,
 ): string {
   const builtIns = builtinFragments();
   const root = smallModelMode ? "basic" : "standard";
+  const gatedOut = gatedOutFragments(tools);
 
   warnRetiredOverrides(overrides, onWarn);
 
@@ -67,6 +84,8 @@ export function buildSkills(
     notation,
     lookup: (name) => {
       const key = resolveFragmentAlias(name);
+
+      if (gatedOut.has(key)) return "";
 
       return overrides[key] ?? builtIns[key] ?? null;
     },

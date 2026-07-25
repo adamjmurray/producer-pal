@@ -30,9 +30,18 @@ import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
  * truncated blob. Read-only, so it is not origin-gated (unlike the override
  * writes) — it exposes nothing a GET /skill-overrides didn't already.
  *
+ * The preview reflects the DEVICE's tool whitelist, so a fragment whose tools
+ * are all switched off shows as gone here too — this is the blob an external MCP
+ * client receives. It cannot reflect the chat's per-preset tool toggles: those
+ * are client-side, ride a per-request header, and differ per conversation.
+ *
  * @param app - Express application
+ * @param getTools - Reads the device's tool whitelist; omit for no tool gating
  */
-export function registerSkillsPreviewRoute(app: Express): void {
+export function registerSkillsPreviewRoute(
+  app: Express,
+  getTools?: () => readonly string[],
+): void {
   app.get("/skills-preview", (req: Request, res: Response): void => {
     // Overrides can change on the device/filesystem between calls — never cache.
     res.set("Cache-Control", "no-store");
@@ -55,7 +64,7 @@ export function registerSkillsPreviewRoute(app: Express): void {
     // silently truncated blob.
     const warnings: string[] = [];
     const skills = buildSkills(
-      { notation, smallModelMode },
+      { notation, smallModelMode, tools: getTools?.() },
       readSkillOverrides(),
       (message) => warnings.push(message),
     );

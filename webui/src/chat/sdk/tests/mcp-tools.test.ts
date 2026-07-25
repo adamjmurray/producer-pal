@@ -61,6 +61,7 @@ describe("createMcpTools", () => {
     expect(createConnectedMcpClient).toHaveBeenCalledWith(
       "http://custom:9000/mcp",
       undefined,
+      undefined,
     );
   });
 
@@ -70,6 +71,7 @@ describe("createMcpTools", () => {
     expect(createConnectedMcpClient).toHaveBeenCalledWith(
       "http://localhost:3000/mcp",
       true,
+      undefined,
     );
   });
 
@@ -79,6 +81,18 @@ describe("createMcpTools", () => {
     await createMcpTools("http://localhost:3000/mcp", enabledTools);
 
     expect(filterEnabledTools).toHaveBeenCalledWith(mockTools, enabledTools);
+  });
+
+  it("forwards enabledTools to the MCP client so the server withholds them too", async () => {
+    const enabledTools = { "ppal-read": false };
+
+    await createMcpTools("http://localhost:3000/mcp", enabledTools, false);
+
+    expect(createConnectedMcpClient).toHaveBeenCalledWith(
+      "http://localhost:3000/mcp",
+      false,
+      enabledTools,
+    );
   });
 
   it("sets tool descriptions", async () => {
