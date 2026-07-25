@@ -9,13 +9,15 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ModelMessage, stepCountIs, streamText } from "ai";
-import { createCodexCliSession } from "#evals/chat/codex/codex-cli-session.ts";
+import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
+import { createAgentCliSession } from "#evals/chat/agent-cli/agent-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { printStepUsage } from "#evals/chat/shared/formatting.ts";
 import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
+  CLAUDE_CODE_CONFIG,
   CODEX_CODE_CONFIG,
   GEMINI_CONFIG,
   OPENAI_CONFIG,
@@ -42,6 +44,8 @@ export function getDefaultModel(provider: EvalProvider): string {
   switch (provider) {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
+    case "claude-code":
+      return CLAUDE_CODE_CONFIG.defaultModel;
     case "codex-code":
       return CODEX_CODE_CONFIG.defaultModel;
     case "google":
@@ -74,8 +78,8 @@ export interface EvalSession {
   /** Close the session */
   close: () => Promise<void>;
   /** Append a pre-built turn to history without calling the model. Absent on
-   *  transports that own their conversation state (the Codex CLI resumes a
-   *  thread by id, so there is no history array to write into) — callers must
+   *  transports that own their conversation state (the agent CLIs resume a
+   *  session by id, so there is no history array to write into) — callers must
    *  fall back to a real `sendMessage` turn when this is undefined. */
   seedTurn?: (turn: SeededTurn) => void;
 }
@@ -96,8 +100,10 @@ interface EvalSessionOptions {
 export async function createEvalSession(
   options: EvalSessionOptions,
 ): Promise<EvalSession> {
-  if (options.provider === "codex-code") {
-    return await createCodexCliSession({
+  const agentCli = getAgentCliTransport(options.provider);
+
+  if (agentCli != null) {
+    return await createAgentCliSession(agentCli, {
       ...(options.model != null ? { model: options.model } : {}),
       ...(options.instructions != null
         ? { instructions: options.instructions }

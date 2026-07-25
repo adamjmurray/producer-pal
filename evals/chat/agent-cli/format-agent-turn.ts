@@ -4,33 +4,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Render a parsed Codex turn for the console.
+ * Render a parsed agent-CLI turn for the console.
  *
- * The AI SDK providers print as they stream (evals/chat/stream.ts); the Codex
- * transport only has the finished JSONL, so it renders the whole turn at once
- * with the same shapes — `🔧 tool(args)` / `   ↳ result` lines, then the reply.
+ * The AI SDK providers print as they stream (evals/chat/stream.ts); the
+ * agent-CLI transports only have the finished JSONL, so they render the whole
+ * turn at once with the same shapes — `🔧 tool(args)` / `   ↳ result` lines,
+ * then the reply.
  */
 
 import {
   formatToolCall,
   formatToolResult,
 } from "#evals/chat/shared/formatting.ts";
-import { type ParsedCodexTurn } from "./codex-cli-protocol.ts";
+import { type ParsedAgentTurn } from "./agent-cli-transport.ts";
 
 /**
- * Format one Codex turn's tool calls and reply text for stdout.
+ * Format one turn's tool calls and reply text for stdout.
  *
- * Tool calls come first, then the reply: parseCodexStream concatenates every
- * `agent_message` into one string, so text/tool interleaving is not recoverable
- * (and Codex emits its message last in practice anyway).
+ * Tool calls come first, then the reply: a parsed turn joins every assistant
+ * message into one string, so text/tool interleaving is not recoverable (and
+ * these CLIs emit their closing message last anyway).
  *
  * @param parsed - The parsed turn
  * @param showUsage - Whether a usage line follows (it supplies its own leading
  *   blank line, so the trailing newline is left off)
  * @returns Text to write to stdout, "" when there is nothing to show
  */
-export function formatCodexTurn(
-  parsed: ParsedCodexTurn,
+export function formatAgentTurn(
+  parsed: ParsedAgentTurn,
   showUsage: boolean,
 ): string {
   const parts: string[] = [];

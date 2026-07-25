@@ -72,6 +72,8 @@ export function buildProviderOptions(
       return buildOpenRouterThinking(level);
     case "local":
       return undefined;
+    // The agent CLIs carry their own reasoning configuration.
+    case "claude-code":
     case "codex-code":
       return undefined;
 

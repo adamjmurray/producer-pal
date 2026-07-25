@@ -5,12 +5,13 @@
 
 import { describe, expect, it } from "vitest";
 
+import { scrubAgentCliEnv } from "../agent-cli/agent-cli-transport.ts";
 import {
-  codexCliProtocol,
+  CODEX_CLI_TRANSPORT,
   codexJudgeArgs,
+  codexTurnArgs,
   parseCodexStream,
   resolveCodexModel,
-  scrubOpenAiKeys,
 } from "./codex-cli-protocol.ts";
 
 /**
@@ -31,15 +32,16 @@ function expectRestrictions(args: string[]): void {
   expect(args).toContain('sandbox_mode="read-only"');
 }
 
-describe("codexCliProtocol", () => {
+describe("codexTurnArgs", () => {
   const input = {
+    instructions: "You are Producer Pal.",
     instructionsFile: "/tmp/instructions.md",
     mcpUrl: "http://localhost:3350/mcp",
     model: "terra",
   };
 
   it("builds a restricted initial MCP turn", () => {
-    const args = codexCliProtocol(input);
+    const args = codexTurnArgs(input);
 
     expect(args.slice(0, 3)).toStrictEqual(["exec", "--sandbox", "read-only"]);
     expect(args).toStrictEqual(
@@ -54,7 +56,7 @@ describe("codexCliProtocol", () => {
   });
 
   it("pins resumed turns to every restriction through config", () => {
-    const args = codexCliProtocol({ ...input, resumeThreadId: "thread-123" });
+    const args = codexTurnArgs({ ...input, resumeSessionId: "thread-123" });
 
     expect(args.slice(0, 2)).toStrictEqual(["exec", "resume"]);
     expect(args).not.toContain("--sandbox");
@@ -65,7 +67,11 @@ describe("codexCliProtocol", () => {
 
 describe("codexJudgeArgs", () => {
   it("runs ephemerally without MCP configuration", () => {
-    const args = codexJudgeArgs("luna", "/tmp/judge.md");
+    const args = codexJudgeArgs({
+      instructions: "You are a judge.",
+      instructionsFile: "/tmp/judge.md",
+      model: "luna",
+    });
 
     expect(args).toContain("--ephemeral");
     expect(args).toStrictEqual(
@@ -85,22 +91,25 @@ describe("resolveCodexModel", () => {
   });
 });
 
-describe("scrubOpenAiKeys", () => {
+describe("scrubAgentCliEnv", () => {
   it("forces Codex subscription auth while preserving other variables", () => {
-    const env = scrubOpenAiKeys({
-      CODEX_API_KEY: "codex-secret",
-      OPENAI_API_KEY: "api-secret",
-      OPENAI_KEY: "eval-secret",
-      PATH: "/usr/bin",
-      EMPTY: undefined,
-    });
+    const env = scrubAgentCliEnv(
+      {
+        CODEX_API_KEY: "codex-secret",
+        OPENAI_API_KEY: "api-secret",
+        OPENAI_KEY: "eval-secret",
+        PATH: "/usr/bin",
+        EMPTY: undefined,
+      },
+      CODEX_CLI_TRANSPORT.strippedEnvVars,
+    );
 
     expect(env).toStrictEqual({ PATH: "/usr/bin" });
   });
 });
 
 describe("parseCodexStream", () => {
-  it("collects text, MCP calls, results, thread id and usage", () => {
+  it("collects text, MCP calls, results, session id and usage", () => {
     const stdout = [
       { type: "thread.started", thread_id: "thread-abc" },
       {
@@ -145,7 +154,7 @@ describe("parseCodexStream", () => {
     const parsed = parseCodexStream(stdout);
 
     expect(parsed.text).toBe("Connected.");
-    expect(parsed.threadId).toBe("thread-abc");
+    expect(parsed.sessionId).toBe("thread-abc");
     // The MCP envelope is unwrapped to its text block, matching what the AI SDK
     // path records — this string reaches the console, reports, and judge prompt.
     expect(parsed.toolCalls).toStrictEqual([

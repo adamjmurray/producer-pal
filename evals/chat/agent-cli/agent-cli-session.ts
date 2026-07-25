@@ -10,20 +10,19 @@ import { type EvalSession } from "#evals/scenarios/eval-session.ts";
 import { logTurnStart } from "#evals/scenarios/helpers/eval-session-base.ts";
 import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
-import { CODEX_CODE_CONFIG } from "#evals/shared/provider-configs.ts";
+import { PROVIDER_CONFIGS } from "#evals/shared/provider-configs.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { connectMcp } from "../mcp.ts";
 import { printStepUsage } from "../shared/formatting.ts";
 import { type TurnResult } from "../shared/types.ts";
+import { spawnAgentCli } from "./agent-cli-spawn.ts";
 import {
-  codexCliProtocol,
-  DEFAULT_CODEX_SYSTEM_PROMPT,
-  parseCodexStream,
-} from "./codex-cli-protocol.ts";
-import { spawnCodex } from "./codex-cli.ts";
-import { formatCodexTurn } from "./format-codex-turn.ts";
+  type AgentCliTransport,
+  DEFAULT_AGENT_CLI_SYSTEM_PROMPT,
+} from "./agent-cli-transport.ts";
+import { formatAgentTurn } from "./format-agent-turn.ts";
 
-export interface CodexCliSessionOptions {
+export interface AgentCliSessionOptions {
   instructions?: string;
   mcpUrl?: string;
   model?: string;
@@ -32,39 +31,38 @@ export interface CodexCliSessionOptions {
 }
 
 /**
- * Create a multi-turn Codex session backed by Producer Pal's MCP server.
+ * Create a multi-turn agent-CLI session backed by Producer Pal's MCP server.
+ *
+ * Each turn is a fresh subprocess; continuity comes from replaying the session
+ * id the CLI reported on the previous turn, so the CLI — not this process —
+ * owns the conversation history.
+ *
+ * @param transport - Transport describing the CLI to drive
  * @param options - Model, instructions, and optional MCP URL
  * @returns Eval session compatible with the scenario runner
  */
-export async function createCodexCliSession(
-  options: CodexCliSessionOptions,
+export async function createAgentCliSession(
+  transport: AgentCliTransport,
+  options: AgentCliSessionOptions,
 ): Promise<EvalSession> {
-  const model = options.model ?? CODEX_CODE_CONFIG.defaultModel;
+  const model =
+    options.model ?? PROVIDER_CONFIGS[transport.provider].defaultModel;
   const mcpUrl = options.mcpUrl ?? MCP_URL;
-  const sessionDir = await mkdtemp(join(tmpdir(), "producer-pal-codex-"));
+  const instructions = options.instructions ?? DEFAULT_AGENT_CLI_SYSTEM_PROMPT;
+  const sessionDir = await mkdtemp(join(tmpdir(), transport.tmpPrefix));
   const instructionsFile = join(sessionDir, "instructions.md");
-
-  try {
-    await writeFile(
-      instructionsFile,
-      options.instructions ?? DEFAULT_CODEX_SYSTEM_PROMPT,
-      "utf8",
-    );
-  } catch (error) {
-    await rm(sessionDir, { recursive: true, force: true });
-    throw error;
-  }
 
   let mcpClient: Awaited<ReturnType<typeof connectMcp>>["client"];
 
   try {
+    await writeFile(instructionsFile, instructions, "utf8");
     ({ client: mcpClient } = await connectMcp(mcpUrl));
   } catch (error) {
     await rm(sessionDir, { recursive: true, force: true });
     throw error;
   }
 
-  let threadId: string | undefined;
+  let sessionId: string | undefined;
   let prevUsage: TokenUsage | undefined;
 
   return {
@@ -74,28 +72,29 @@ export async function createCodexCliSession(
       turnNumber: number,
     ): Promise<TurnResult> => {
       logTurnStart(turnNumber, message);
-      const args = codexCliProtocol({
+      const args = transport.buildTurnArgs({
+        instructions,
         instructionsFile,
         mcpUrl,
         model,
-        ...(threadId != null ? { resumeThreadId: threadId } : {}),
+        ...(sessionId != null ? { resumeSessionId: sessionId } : {}),
       });
-      const parsed = parseCodexStream(
-        await spawnCodex(args, message, { cwd: sessionDir }),
+      const parsed = transport.parseStream(
+        await spawnAgentCli(transport, args, message, { cwd: sessionDir }),
       );
 
       // eslint-disable-next-line require-atomic-updates -- turns run sequentially
-      if (parsed.threadId != null) threadId = parsed.threadId;
+      if (parsed.sessionId != null) sessionId = parsed.sessionId;
 
       const usage = options.usage === true ? parsed.usage : undefined;
 
       if (!isQuietMode()) {
-        process.stdout.write(formatCodexTurn(parsed, usage != null));
+        process.stdout.write(formatAgentTurn(parsed, usage != null));
       }
 
       if (usage != null) {
-        // Codex reports usage once per turn (turn.completed), not per step, so
-        // there is one line per turn rather than one per tool round-trip.
+        // These CLIs report usage once per turn, not per step, so there is one
+        // line per turn rather than one per tool round-trip.
         printStepUsage(usage, prevUsage, true);
         prevUsage = usage;
       }

@@ -59,6 +59,14 @@ export function parseModelArg(arg: string): ModelSpec {
  * @throws Error if provider-only input or unknown prefix
  */
 function inferProviderFromModel(model: string): ModelSpec {
+  // Provider-only FIRST, before prefix inference: `claude-code` is both a
+  // provider name and a `claude-` prefix match, and inferring would silently
+  // route it to the metered Anthropic API — the exact thing someone reaching
+  // for the subscription CLI is trying to avoid.
+  if (PROVIDERS.includes(model as EvalProvider)) {
+    throw new Error(`Provider-only not allowed: "${model}". Specify a model.`);
+  }
+
   if (model.startsWith("claude-")) {
     return { provider: "anthropic", model };
   }
@@ -69,11 +77,6 @@ function inferProviderFromModel(model: string): ModelSpec {
 
   if (model.startsWith("gemini-")) {
     return { provider: "google", model };
-  }
-
-  // Check if it's a provider-only input (error)
-  if (PROVIDERS.includes(model as EvalProvider)) {
-    throw new Error(`Provider-only not allowed: "${model}". Specify a model.`);
   }
 
   throw new Error(
