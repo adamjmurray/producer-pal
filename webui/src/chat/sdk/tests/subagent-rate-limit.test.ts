@@ -20,7 +20,6 @@ import {
   resetSubagentRateLimits,
   runSubagentWithRetry,
   setSubagentRateLimit,
-  sleep,
   subscribeToSubagentRateLimits,
 } from "#webui/chat/sdk/subagent-rate-limit";
 import { type ChatMessage } from "#webui/chat/sdk/types";
@@ -256,6 +255,52 @@ describe("runSubagentWithRetry", () => {
     expect(statuses.at(-1)).toBeNull();
   });
 
+  it("reports a wait forced purely by a sibling's backoff as not its own", async () => {
+    // This worker was never rate-limited; it's only holding the shared gate, so
+    // its card must not claim it is retrying.
+    const gate = new RateLimitGate();
+    const statuses: Array<SubagentRateLimitStatus | null> = [];
+
+    gate.penalize(30);
+
+    const { options } = setup(
+      [(h) => h.push({ role: "assistant", content: "Done." })],
+      { gate, onStatus: (status) => statuses.push(status) },
+    );
+
+    await runSubagentWithRetry(options);
+
+    expect(statuses.find((s) => s != null)?.attempt).toBeNull();
+  });
+
+  it("republishes the deadline when a sibling extends the window mid-wait", async () => {
+    // Without this the card counts down to 0 and then sits there for however
+    // much longer the sibling's Retry-After added — the "looks hung" state the
+    // card exists to prevent.
+    const gate = new RateLimitGate();
+    const statuses: Array<SubagentRateLimitStatus | null> = [];
+
+    gate.penalize(40);
+
+    const { options } = setup(
+      [(h) => h.push({ role: "assistant", content: "Done." })],
+      { gate, onStatus: (status) => statuses.push(status) },
+    );
+
+    const run = runSubagentWithRetry(options);
+
+    gate.penalize(120);
+    await run;
+
+    const deadlines = statuses
+      .filter((s) => s != null)
+      .map((s) => s.retryAtMs)
+      .filter((value, index, all) => all.indexOf(value) === index);
+
+    expect(deadlines.length).toBeGreaterThan(1);
+    expect(deadlines.at(-1)).toBeGreaterThan(deadlines[0] as number);
+  });
+
   it("clears the published backoff even when the worker ends up failing", async () => {
     const statuses: Array<SubagentRateLimitStatus | null> = [];
     const { options } = setup(
@@ -329,6 +374,34 @@ describe("RateLimitGate", () => {
     expect(released).toBe(true);
   });
 
+  it("reports the current deadline to a waiter, and again when it moves", async () => {
+    const gate = new RateLimitGate();
+    const deadlines: number[] = [];
+
+    gate.penalize(1000);
+
+    const waiting = gate.wait(undefined, (deadlineMs) =>
+      deadlines.push(deadlineMs),
+    );
+
+    await vi.advanceTimersByTimeAsync(600);
+    gate.penalize(2000);
+    await vi.advanceTimersByTimeAsync(3000);
+    await waiting;
+
+    // Slices re-read the window, so the extension is reported, not swallowed.
+    expect(deadlines.at(-1)).toBeGreaterThan(deadlines[0] as number);
+  });
+
+  it("does not report a deadline when the gate is already open", async () => {
+    const gate = new RateLimitGate();
+    const deadlines: number[] = [];
+
+    await gate.wait(undefined, (deadlineMs) => deadlines.push(deadlineMs));
+
+    expect(deadlines).toStrictEqual([]);
+  });
+
   it("never shortens an existing cooldown", () => {
     const gate = new RateLimitGate();
 
@@ -345,41 +418,6 @@ describe("RateLimitGate", () => {
     await vi.advanceTimersByTimeAsync(1500);
 
     expect(gate.remainingMs).toBe(0);
-  });
-});
-
-describe("sleep", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("rejects a pending sleep when the signal aborts", async () => {
-    const controller = new AbortController();
-    const pending = sleep(1000, controller.signal);
-
-    controller.abort();
-
-    await expect(pending).rejects.toThrow("Aborted");
-  });
-
-  it("rejects immediately when the signal is already aborted", async () => {
-    const controller = new AbortController();
-
-    controller.abort();
-
-    await expect(sleep(1000, controller.signal)).rejects.toThrow("Aborted");
-  });
-
-  it("resolves normally when the signal never aborts", async () => {
-    const controller = new AbortController();
-    const pending = sleep(1000, controller.signal);
-
-    await vi.advanceTimersByTimeAsync(1000);
-    await expect(pending).resolves.toBeUndefined();
   });
 });
 
@@ -421,6 +459,20 @@ describe("subagent rate-limit status", () => {
     setSubagentRateLimit("tc1", null);
     unsubscribe();
     setSubagentRateLimit("tc1", backoff);
+
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not notify when republishing an unchanged status", () => {
+    // Gate waits republish the same deadline every slice; that must not
+    // re-render every card once a second.
+    const listener = vi.fn();
+    const unsubscribe = subscribeToSubagentRateLimits(listener);
+
+    setSubagentRateLimit("tc1", backoff);
+    setSubagentRateLimit("tc1", { ...backoff });
+    setSubagentRateLimit("tc1", { ...backoff, retryAtMs: 2000 });
+    unsubscribe();
 
     expect(listener).toHaveBeenCalledTimes(2);
   });

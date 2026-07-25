@@ -19,10 +19,19 @@ import {
   MAX_RETRY_ATTEMPTS,
   shouldRetry,
 } from "#webui/lib/rate-limit";
+import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
 import { type ChatMessage } from "./types";
 
 /** Follow-up sent when a retry resumes a worker that already did some work. */
 const RESUME_MESSAGE = "continue";
+
+/**
+ * Longest single sleep inside a gate wait. The window can be extended by a
+ * sibling mid-wait, so waiting the whole remainder in one go would leave the
+ * published deadline (and the card's countdown) stale until it expired. Waking
+ * each second re-reads the window and republishes.
+ */
+const WAIT_SLICE_MS = 1000;
 
 /** Options for one worker's retry-wrapped run. */
 export interface SubagentRetryOptions {
@@ -56,6 +65,11 @@ export interface SubagentRetryOptions {
  * "continue" and keeps the work; with nothing to keep, the failed attempt's
  * echoed task is dropped so the retry sends one clean turn instead of stacking
  * duplicate user messages.
+ *
+ * NOTE: this and useChat's executeWithRetry encode the same retry strategy for
+ * two different layers (this one throws; that one writes UI state and an error
+ * message into history). They are deliberately separate, so a change to the
+ * budget, the delay schedule, or the resume rule has to be made in both.
  * @param options - Task, attempt runner, history accessor, gate, and callbacks
  * @throws The underlying error when it isn't a rate limit, when the retry
  *   budget is exhausted, or when the turn was aborted
@@ -65,12 +79,26 @@ export async function runSubagentWithRetry(
 ): Promise<void> {
   const { task, runAttempt, getHistory, gate, abortSignal, onStatus } = options;
   let attempt = 0;
+  // Which attempt the pending wait is for: null until this worker is itself
+  // rate-limited, so a wait forced purely by a sibling's backoff is reported as
+  // such rather than as this worker's own retry.
+  let waitingFor: number | null = null;
 
   try {
     for (;;) {
+      const pendingAttempt = waitingFor;
+
       // Hold off while any sibling is serving a shared cooldown, so N parallel
       // spawns don't all hammer a provider that just rate-limited one of them.
-      await gate.wait(abortSignal);
+      // The window can be extended mid-wait, so the deadline is republished as
+      // it moves instead of being snapshotted once.
+      await gate.wait(abortSignal, (retryAtMs) =>
+        onStatus?.({
+          attempt: pendingAttempt,
+          maxAttempts: MAX_RETRY_ATTEMPTS,
+          retryAtMs,
+        }),
+      );
       onStatus?.(null);
 
       try {
@@ -85,11 +113,7 @@ export async function runSubagentWithRetry(
         if (!shouldRetry(attempt + 1)) throw exhaustedError(error, attempt + 1);
 
         gate.penalize(calculateRetryDelay(attempt, rateLimitInfo.retryAfterMs));
-        onStatus?.({
-          attempt,
-          maxAttempts: MAX_RETRY_ATTEMPTS,
-          retryAtMs: Date.now() + gate.remainingMs,
-        });
+        waitingFor = attempt;
         attempt++;
       }
     }
@@ -131,15 +155,22 @@ export class RateLimitGate {
 
   /**
    * Resolve once the shared cooldown has elapsed (immediately when open).
-   * Re-checks after each sleep so a sibling extending the window mid-wait keeps
-   * this caller parked rather than releasing it early.
+   * Sleeps in slices, re-reading the window each time, so a sibling extending
+   * it mid-wait keeps this caller parked AND gets the new deadline reported
+   * promptly instead of after the original one passes.
    * @param abortSignal - Cancels the wait (rejects) when the turn is aborted
+   * @param onDeadline - Called with the current end-of-cooldown timestamp
+   *   before each slice; never called when the gate is already open
    */
-  async wait(abortSignal?: AbortSignal): Promise<void> {
+  async wait(
+    abortSignal?: AbortSignal,
+    onDeadline?: (deadlineMs: number) => void,
+  ): Promise<void> {
     let remaining = this.remainingMs;
 
     while (remaining > 0) {
-      await sleep(remaining, abortSignal);
+      onDeadline?.(this.cooldownUntilMs);
+      await abortableSleep(Math.min(remaining, WAIT_SLICE_MS), abortSignal);
       remaining = this.remainingMs;
     }
   }
@@ -147,11 +178,14 @@ export class RateLimitGate {
 
 /** A worker's in-progress rate-limit backoff, as shown on its card. */
 export interface SubagentRateLimitStatus {
-  /** 0-indexed retry attempt about to be made */
-  attempt: number;
+  /**
+   * 0-indexed retry attempt this wait leads to, or null when the worker was
+   * never rate-limited itself and is only holding for a sibling's backoff.
+   */
+  attempt: number | null;
   /** Retry budget, matching the main chat's MAX_RETRY_ATTEMPTS */
   maxAttempts: number;
-  /** Epoch ms when the backoff ends and the retry fires */
+  /** Epoch ms when the backoff ends and the wait releases */
   retryAtMs: number;
 }
 
@@ -170,8 +204,9 @@ const listeners = new Set<() => void>();
 
 /**
  * Publish (or clear, with null) a worker's rate-limit status and notify
- * subscribers. Clearing an id that has no status is a no-op — no notification,
- * so the common finish path doesn't re-render every card.
+ * subscribers. A write that changes nothing is a no-op — clearing an id that
+ * has no status (the common finish path) or republishing an unchanged deadline
+ * (every gate wait slice) must not re-render every card.
  * @param toolCallId - The spawn tool-call id identifying the worker's card
  * @param status - The backoff in progress, or null to clear
  */
@@ -182,6 +217,8 @@ export function setSubagentRateLimit(
   if (status == null) {
     if (!statuses.delete(toolCallId)) return;
   } else {
+    if (isSameStatus(statuses.get(toolCallId), status)) return;
+
     statuses.set(toolCallId, status);
   }
 
@@ -223,33 +260,22 @@ export function resetSubagentRateLimits(): void {
 }
 
 /**
- * Promise-based setTimeout that rejects instead of resolving when the signal
- * aborts, so an aborted turn unwinds its waiters rather than serving out a
- * minute-long backoff nobody is waiting for anymore.
- * @param ms - Delay in milliseconds
- * @param abortSignal - Signal that cancels the delay
+ * Whether a republished status is identical to what's already stored.
+ * @param previous - The stored status, if any
+ * @param next - The status being published
+ * @returns True when nothing subscribers care about changed
  */
-export function sleep(ms: number, abortSignal?: AbortSignal): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    if (abortSignal?.aborted) {
-      reject(new Error("Aborted"));
+function isSameStatus(
+  previous: SubagentRateLimitStatus | undefined,
+  next: SubagentRateLimitStatus,
+): boolean {
+  if (previous == null) return false;
 
-      return;
-    }
-
-    const timer: { id: ReturnType<typeof setTimeout> | null } = { id: null };
-
-    const onAbort = () => {
-      if (timer.id != null) clearTimeout(timer.id);
-      reject(new Error("Aborted"));
-    };
-
-    timer.id = setTimeout(() => {
-      abortSignal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    abortSignal?.addEventListener("abort", onAbort, { once: true });
-  });
+  return (
+    previous.attempt === next.attempt &&
+    previous.maxAttempts === next.maxAttempts &&
+    previous.retryAtMs === next.retryAtMs
+  );
 }
 
 /**

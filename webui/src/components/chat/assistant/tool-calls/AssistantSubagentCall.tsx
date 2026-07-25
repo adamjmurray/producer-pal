@@ -56,13 +56,18 @@ export function AssistantSubagentCall({
   // concerned; without this the card would sit on "working…" through a backoff
   // that can last minutes.
   const rateLimit = useSubagentRateLimit(running ? toolCallId : undefined);
-  const status = running
-    ? rateLimit
-      ? "rate limited"
-      : "working…"
-    : isError
-      ? "failed"
-      : "done";
+  // A wait forced by a sibling's backoff (attempt null) is not this worker's own
+  // rate limit — the docs promise that shared pause, so name it distinctly.
+  const waiting = running && rateLimit != null;
+  const status = waiting
+    ? rateLimit.attempt == null
+      ? "waiting"
+      : "rate limited"
+    : running
+      ? "working…"
+      : isError
+        ? "failed"
+        : "done";
 
   return (
     <details
@@ -76,9 +81,7 @@ export function AssistantSubagentCall({
         <span className="truncate min-w-0 text-zinc-600 dark:text-zinc-400">
           {truncateString(task, 80)}
         </span>
-        <span
-          className={`ml-auto shrink-0 ${statusColor(isError, rateLimit != null)}`}
-        >
+        <span className={`ml-auto shrink-0 ${statusColor(isError, waiting)}`}>
           {status}
         </span>
       </summary>
@@ -94,7 +97,7 @@ export function AssistantSubagentCall({
         />
       )}
 
-      {rateLimit && <RateLimitNotice status={rateLimit} />}
+      {waiting && <RateLimitNotice status={rateLimit} />}
 
       {transcript != null && (
         <details className="disclosure mt-2">
@@ -122,8 +125,14 @@ function RateLimitNotice({ status }: { status: SubagentRateLimitStatus }) {
 
   return (
     <div className="mt-2 text-amber-700 dark:text-amber-400">
-      Rate limited — retrying in {seconds}s (attempt {status.attempt + 1} of{" "}
-      {status.maxAttempts})
+      {status.attempt == null ? (
+        <>Another subagent hit a rate limit — starting in {seconds}s</>
+      ) : (
+        <>
+          Rate limited — retrying in {seconds}s (attempt {status.attempt + 1} of{" "}
+          {status.maxAttempts})
+        </>
+      )}
     </div>
   );
 }

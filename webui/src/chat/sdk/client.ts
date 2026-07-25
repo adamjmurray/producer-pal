@@ -139,6 +139,12 @@ export class ChatSdkClient {
    * reach of useChat's executeWithRetry, so an unhandled 429 would come back as a
    * dead tool-error. Retries share this client's gate with the worker's siblings
    * and publish their backoff to the card.
+   *
+   * Each attempt is a fresh sendMessage, so it gets its own MAX_WORKER_STEPS
+   * budget rather than resuming under the first attempt's — a worker that
+   * rate-limits repeatedly can therefore run more total tool steps than one that
+   * doesn't. Accepted: retries are rare, and carrying a partial budget forward
+   * risks stranding a resumed worker mid-task with no steps left to finish.
    * @param workerConfig - Cloned config for the worker (spawn disabled)
    * @param task - The delegated instruction, sent as the worker's user message
    * @param toolCallId - The spawn tool-call id, used to key the card's live status

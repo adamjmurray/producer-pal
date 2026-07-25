@@ -130,6 +130,24 @@ describe("AssistantSubagentCall", () => {
     expect(screen.queryByText(/Rate limited/)).toBeNull();
   });
 
+  it("distinguishes waiting on a sibling's backoff from its own rate limit", async () => {
+    // attempt null = this worker was never rate-limited, it's only holding the
+    // shared gate. Calling that "rate limited" would misreport it.
+    render(<AssistantSubagentCall task="x" result={null} toolCallId="tc1" />);
+
+    await act(() =>
+      setSubagentRateLimit("tc1", {
+        attempt: null,
+        maxAttempts: 5,
+        retryAtMs: Date.now() + 20_000,
+      }),
+    );
+
+    expect(screen.getByText("waiting")).toBeDefined();
+    expect(screen.getByText(/Another subagent hit a rate limit/)).toBeDefined();
+    expect(screen.queryByText("rate limited")).toBeNull();
+  });
+
   it("counts the backoff down while it elapses", async () => {
     vi.useFakeTimers();
 

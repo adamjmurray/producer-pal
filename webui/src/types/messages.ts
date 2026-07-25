@@ -31,7 +31,7 @@ export interface UIToolPart {
   type: "tool";
   /**
    * The provider's tool-call id. Carried through so a still-running call can be
-   * matched to out-of-band live status (see subagent-rate-limit-status).
+   * matched to out-of-band live status (see chat/sdk/subagent-rate-limit.ts).
    * Optional because pre-existing persisted history may predate it.
    */
   id?: string;

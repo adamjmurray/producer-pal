@@ -26,10 +26,11 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 // Shrink the worker's rate-limit backoff so the retry test doesn't wait seconds.
+// A vi.fn so the shared-gate test can lengthen it for its own window.
 vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
   const actual = await importOriginal();
 
-  return { ...actual, calculateRetryDelay: () => 10 };
+  return { ...actual, calculateRetryDelay: vi.fn(() => 10) };
 });
 
 import { streamText } from "ai";
@@ -43,6 +44,7 @@ import {
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
+import { calculateRetryDelay } from "#webui/lib/rate-limit";
 
 const streamTextMock = streamText as ReturnType<typeof vi.fn>;
 
@@ -105,6 +107,16 @@ function spawnToolExecute(): (
   };
 
   return tool.execute;
+}
+
+/**
+ * Wait real wall-clock time and let pending microtasks drain. Real timers (not
+ * fake ones) because the code under test interleaves timer waits with many
+ * awaits, and advancing fake timers doesn't reliably flush those.
+ * @param ms - Milliseconds to wait
+ */
+async function settle(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -309,7 +321,10 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
 describe("ChatSdkClient subagent rate-limit handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    streamTextMock.mockReset();
     resetSubagentRateLimits();
+    // Restore the file-wide short backoff; the shared-gate test lengthens it.
+    vi.mocked(calculateRetryDelay).mockReturnValue(10);
   });
 
   /**
@@ -354,6 +369,51 @@ describe("ChatSdkClient subagent rate-limit handling", () => {
     expect(result).toBe("Worker done.");
     // Cleared on the way out, so the card never keeps a stale countdown.
     expect(getSubagentRateLimit("t1")).toBeNull();
+  });
+
+  it("shares one backoff window across parallel workers", async () => {
+    // The gate lives on the orchestrator client, not per worker: a 429 in the
+    // first parallel spawn must stop the second from issuing its own request
+    // until the cooldown elapses. Moving the gate into runSubagent would break
+    // this and nothing else in the suite.
+    const execute = await orchestratorSpawnTool();
+    const cooldownMs = 300;
+
+    vi.mocked(calculateRetryDelay).mockReturnValue(cooldownMs);
+    streamTextMock
+      .mockReturnValueOnce(
+        throwingStream(
+          Object.assign(new Error("Too Many Requests"), { statusCode: 429 }),
+        ),
+      )
+      .mockImplementation(() =>
+        partsStream([
+          { type: "text-delta", text: "Worker done." },
+          { type: "finish", finishReason: "stop" },
+        ]),
+      );
+
+    const first = execute(
+      { task: "a" },
+      { toolCallId: "a", messages: [], abortSignal: undefined },
+    );
+
+    // Let the first worker reach its 429 and penalize the shared gate.
+    await settle(50);
+
+    const callsBeforeSecond = streamTextMock.mock.calls.length;
+    const second = execute(
+      { task: "b" },
+      { toolCallId: "b", messages: [], abortSignal: undefined },
+    );
+
+    // Well inside the cooldown: the second worker must still be parked.
+    await settle(50);
+    expect(streamTextMock.mock.calls).toHaveLength(callsBeforeSecond);
+    expect(getSubagentRateLimit("b")?.attempt).toBeNull();
+
+    await Promise.all([first, second]);
+    expect(streamTextMock.mock.calls.length).toBeGreaterThan(callsBeforeSecond);
   });
 
   it("still surfaces a non-rate-limit worker failure to the orchestrator", async () => {
