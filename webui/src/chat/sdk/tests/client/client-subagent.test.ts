@@ -25,9 +25,20 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: vi.fn(() => "http://localhost:3000/mcp"),
 }));
 
+// Shrink the worker's rate-limit backoff so the retry test doesn't wait seconds.
+vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return { ...actual, calculateRetryDelay: () => 10 };
+});
+
 import { streamText } from "ai";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/spawn-subagent-tool";
+import {
+  getSubagentRateLimit,
+  resetSubagentRateLimits,
+} from "#webui/chat/sdk/subagent-rate-limit";
 import {
   createConfig,
   mockStreamParts,
@@ -45,6 +56,55 @@ function lastStreamTools(): Record<string, { execute?: unknown }> {
     { tools?: Record<string, { execute?: unknown }> } | undefined;
 
   return call?.tools ?? {};
+}
+
+/**
+ * A stream that rejects the way a provider 429 does, for the worker retry path.
+ * @param error - The error to throw on first iteration
+ * @returns A streamText-shaped result whose fullStream throws
+ */
+function throwingStream(error: unknown): {
+  fullStream: AsyncIterable<Record<string, unknown>>;
+} {
+  return {
+    fullStream: {
+      [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(error) }),
+    },
+  };
+}
+
+/**
+ * A stream that yields the given parts (same shape as mockStreamParts, but
+ * returned rather than installed, so it can be queued with mockReturnValueOnce).
+ * @param parts - Stream parts to emit
+ * @returns A streamText-shaped result
+ */
+function partsStream(parts: Record<string, unknown>[]): {
+  fullStream: AsyncIterable<Record<string, unknown>>;
+} {
+  async function* iterate(): AsyncIterable<Record<string, unknown>> {
+    for (const p of parts) yield p;
+  }
+
+  return { fullStream: iterate() };
+}
+
+/**
+ * Grab the spawn tool the orchestrator injected into its last streamText call.
+ * @returns The spawn tool's execute function
+ */
+function spawnToolExecute(): (
+  args: Record<string, unknown>,
+  opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
+) => Promise<string> {
+  const tool = lastStreamTools()[SPAWN_SUBAGENT_TOOL_NAME] as {
+    execute: (
+      args: Record<string, unknown>,
+      opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
+    ) => Promise<string>;
+  };
+
+  return tool.execute;
 }
 
 /**
@@ -243,5 +303,72 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
 
     expect(entry?.subagentTranscript).toBeDefined();
     expect(entry?.subagentTranscript?.at(-1)?.content).toBe("Worker done.");
+  });
+});
+
+describe("ChatSdkClient subagent rate-limit handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetSubagentRateLimits();
+  });
+
+  /**
+   * Stand up an orchestrator and hand back its spawn tool's execute.
+   * @returns The spawn tool's execute function
+   */
+  async function orchestratorSpawnTool() {
+    const client = new ChatSdkClient(
+      "key",
+      createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
+    );
+
+    await client.initialize();
+    await runTurn(client);
+
+    return spawnToolExecute();
+  }
+
+  it("retries a rate-limited worker instead of failing the spawn", async () => {
+    // Workers stream below useChat's executeWithRetry, so without the retry
+    // inside runSubagent a single 429 killed the whole delegated subtask.
+    const execute = await orchestratorSpawnTool();
+
+    streamTextMock
+      .mockReturnValueOnce(
+        throwingStream(
+          Object.assign(new Error("Too Many Requests"), { statusCode: 429 }),
+        ),
+      )
+      .mockReturnValueOnce(
+        partsStream([
+          { type: "text-delta", text: "Worker done." },
+          { type: "finish", finishReason: "stop" },
+        ]),
+      );
+
+    const result = await execute(
+      { task: "add a bassline" },
+      { toolCallId: "t1", messages: [], abortSignal: undefined },
+    );
+
+    expect(result).toBe("Worker done.");
+    // Cleared on the way out, so the card never keeps a stale countdown.
+    expect(getSubagentRateLimit("t1")).toBeNull();
+  });
+
+  it("still surfaces a non-rate-limit worker failure to the orchestrator", async () => {
+    const execute = await orchestratorSpawnTool();
+
+    streamTextMock.mockReturnValueOnce(
+      throwingStream(new Error("MCP connection refused")),
+    );
+
+    await expect(
+      execute(
+        { task: "x" },
+        { toolCallId: "t2", messages: [], abortSignal: undefined },
+      ),
+    ).rejects.toThrow("MCP connection refused");
+    expect(getSubagentRateLimit("t2")).toBeNull();
   });
 });

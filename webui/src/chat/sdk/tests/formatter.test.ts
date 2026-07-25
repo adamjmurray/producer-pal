@@ -70,6 +70,8 @@ describe("formatChatMessages", () => {
     expect(result[0]!.parts).toStrictEqual([
       {
         type: "tool",
+        // Carried through so a running call can be matched to live status.
+        id: "tc1",
         name: "ppal-connect",
         args: {},
         result: '"Connected"',
@@ -144,6 +146,7 @@ describe("formatChatMessages", () => {
     expect(result[0]!.parts).toStrictEqual([
       {
         type: "tool",
+        id: "tc1",
         name: "ppal-connect",
         args: {},
         result: null,

@@ -29,6 +29,12 @@ export interface UIThoughtPart {
 
 export interface UIToolPart {
   type: "tool";
+  /**
+   * The provider's tool-call id. Carried through so a still-running call can be
+   * matched to out-of-band live status (see subagent-rate-limit-status).
+   * Optional because pre-existing persisted history may predate it.
+   */
+  id?: string;
   name: string;
   args: Record<string, unknown>;
   result: string | null;

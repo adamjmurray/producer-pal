@@ -374,6 +374,11 @@ its own home here.
   saved a toolset keeps the current conversation's tools.) Subagents can never
   spawn their own subagents, whatever a preset's toolset enables.
 
+If a provider rate-limits a subagent, its card shows a **rate limited**
+countdown and the subagent retries on its own instead of failing. Subagents
+running in parallel share that backoff, so one hitting a limit pauses the others
+rather than leaving them to hammer the provider.
+
 Configure the model and inference on the **Connection** tab and the toolset on
 the **Tools** tab, then come here to save them together. API keys (kept
 per-provider) and appearance preferences are never part of a preset — a preset
