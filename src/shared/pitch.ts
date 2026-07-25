@@ -156,7 +156,8 @@ export function numberToPitchClass(num: number): string | null {
     return null;
   }
 
-  return PITCH_CLASS_NAMES[num] ?? null;
+  // num is a validated 0-11 integer above, so the lookup always hits.
+  return PITCH_CLASS_NAMES[num] as string;
 }
 
 /**

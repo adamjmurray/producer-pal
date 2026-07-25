@@ -29,6 +29,7 @@ import {
 } from "#src/notation/midi-json/parser/midi-json-parser.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 
 const DEFAULT_DENOMINATOR = 4;
 
@@ -61,9 +62,9 @@ export function interpretMidiJson(
   try {
     parsed = parseMidiJson(input);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    throw new Error(`Invalid MIDI JSON: ${message}`, { cause: error });
+    throw new Error(`Invalid MIDI JSON: ${errorMessage(error)}`, {
+      cause: error,
+    });
   }
 
   const timeSigDenominator = options.timeSigDenominator ?? DEFAULT_DENOMINATOR;

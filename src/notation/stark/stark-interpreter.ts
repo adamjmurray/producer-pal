@@ -46,6 +46,7 @@ import {
   VELOCITY_SOFT_MIN,
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { assertDefined } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 /** Natural pitch class offsets (semitones above C). */
@@ -132,9 +133,11 @@ function isDrumSection(section: StarkSection): section is DrumSection {
 // pitch is fixed — the named drum's GM pitch (section.midi) or a pitch-name
 // header resolved arithmetically (Ableton C3=60).
 function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
+  // DrumHeader sets exactly one of midi (a named drum's fixed GM pitch) or
+  // noteName (a pitch-name header), so the fallback always has a name to resolve.
   const pitch =
     section.midi ??
-    (section.noteName ? drumHeaderPitch(section.noteName) : null);
+    drumHeaderPitch(assertDefined(section.noteName, "drum header note name"));
 
   if (pitch == null) {
     console.warn(
@@ -175,13 +178,14 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
 // same arithmetic way Stark note tokens resolve pitch, so enharmonic spellings
 // (Cb/E#/Fb/B#) work. pitch.ts's noteNameToMidi rejects those — its exact table
 // omits them — silently dropping the whole drum line. Ableton C3 = 60; returns
-// null for an unparseable name or an out-of-MIDI-range result.
+// null for an out-of-MIDI-range result (e.g. "C9").
 function drumHeaderPitch(noteName: string): number | null {
-  // Anchored match → all three groups present (accidental is "" when absent).
-  const match = noteName.match(/^([A-Ga-g])([#b]?)(-?\d+)$/);
-
-  if (match == null) return null;
-
+  // The grammar's DrumPitchName is this same shape, so the anchored match always
+  // succeeds → all three groups present (accidental is "" when absent).
+  const match = assertDefined(
+    noteName.match(/^([A-Ga-g])([#b]?)(-?\d+)$/),
+    "drum pitch name shape",
+  );
   const letter = (match[1] as string).toUpperCase();
   const accidental = match[2] === "#" ? "#" : match[2] === "b" ? "b" : null;
   const octave = Number.parseInt(match[3] as string);
@@ -202,7 +206,8 @@ function velocityFor(dynamic: StarkDynamic): number {
 
 // Compute semitone offset from the register's C for a note letter + accidental.
 function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
-  const base = NATURAL_PC[letter] ?? 0;
+  // Callers pass an uppercased A-G letter, so the table lookup always hits.
+  const base = NATURAL_PC[letter] as number;
 
   if (accidental === "#") return base + 1;
   if (accidental === "b") return base - 1;

@@ -149,9 +149,10 @@ export function pitchParts(
   registerDefault: number,
 ): { letter: string; accidental: string; octaveShift: number } {
   const pitchClass = ((midi % 12) + 12) % 12;
-  // PITCH_CLASS_NAMES uses flats: C, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B
-  const name = PITCH_CLASS_NAMES[pitchClass] ?? "C";
-  const letter = name.at(0) ?? "C";
+  // PITCH_CLASS_NAMES uses flats: C, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B.
+  // pitchClass is 0-11 by construction, so the lookup always hits a 1-2 char name.
+  const name = PITCH_CLASS_NAMES[pitchClass] as string;
+  const letter = name.at(0) as string;
   const accidental = name.length > 1 ? "b" : "";
   // The "natural" MIDI position for this pitch class in the register
   const naturalMidi = registerDefault + pitchClass;

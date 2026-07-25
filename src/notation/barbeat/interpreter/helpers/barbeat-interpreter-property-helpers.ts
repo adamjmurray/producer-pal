@@ -50,12 +50,13 @@ export function processVelocityRangeUpdate(
   element: ASTElement,
   state: InterpreterState,
 ): void {
+  // The dispatcher only routes here when both bounds are present.
   const velocityMin = clampVelocity(
-    element.velocityMin ?? 0,
+    element.velocityMin as number,
     "velocity range min",
   );
   const velocityMax = clampVelocity(
-    element.velocityMax ?? 0,
+    element.velocityMax as number,
     "velocity range max",
   );
 
@@ -87,8 +88,10 @@ export function processDurationUpdate(
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
 ): void {
+  // The dispatcher only routes here when the duration fraction is present; the
+  // meter-aware `bars` component is genuinely optional (`n/4` vs `1bar+n/4`).
   const fractionBeats = wholeNoteFractionToMusicalBeats(
-    element.duration ?? 0,
+    element.duration as number,
     timeSigDenominator,
   );
   const barBeats = (element.bars ?? 0) * beatsPerBar;

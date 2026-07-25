@@ -338,5 +338,37 @@ describe("barbeat-interpreter-helpers", () => {
       );
       warn.mockRestore();
     });
+
+    // The state-change warning fires for a mid-group change (both flags) or for
+    // any change after emission.
+    it.each([
+      [{ stateChangedSinceLastPitch: true, pitchGroupStarted: true }],
+      [{ stateChangedAfterEmission: true }],
+    ])("warns about a wasted state change for %o", (flags) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      validateBufferedState({ ...defaultBufferState, ...flags }, "test-op");
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("state change won't affect anything"),
+      );
+      warn.mockRestore();
+    });
+
+    it("stays silent for a state change before any pitch group started", () => {
+      // Nothing is wasted yet — the next pitch group picks the change up. This
+      // isolates the `&& pitchGroupStarted` conjunct from the warning above.
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const state: BufferState = {
+        ...defaultBufferState,
+        stateChangedSinceLastPitch: true,
+        pitchGroupStarted: false,
+      };
+
+      validateBufferedState(state, "test-op");
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
   });
 });

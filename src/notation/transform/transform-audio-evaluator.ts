@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   applyBinaryOp,
@@ -123,11 +123,13 @@ export function applyAudioTransform(
         clipContext,
       );
 
+      // audioAssignments is filtered to gain/pitchShift above, so these two
+      // arms are exhaustive.
       if (assignment.parameter === "gain") {
         newGainDb = nextAudioValue(assignment.operator, newGainDb, value);
         audioProperties.gain = newGainDb;
         gainModified = true;
-      } else if (assignment.parameter === "pitchShift") {
+      } else {
         newPitchShift = nextAudioValue(
           assignment.operator,
           newPitchShift,
@@ -384,37 +386,31 @@ function resolveAudioVariable(
     return audioProperties[node.name as keyof AudioProperties];
   }
 
-  if (node.namespace === "clip") {
-    if (clipContext == null) {
-      throw new Error(
-        `Variable "clip.${node.name}" is not available in this context`,
-      );
-    }
-
-    const clipProps: Record<string, number | undefined> = {
-      barDuration: clipContext.barDuration,
-      duration: clipContext.clipDuration,
-      index: clipContext.clipIndex,
-      count: clipContext.clipCount,
-      position: clipContext.arrangementStart,
-    };
-
-    if (node.name === "position" && clipContext.arrangementStart == null) {
-      // Session clips have no arrangement origin; 0 is the neutral position so
-      // the transform keeps running instead of failing the clip.
-      console.warn(`clip.position is not available for session clips; using 0`);
-
-      return 0;
-    }
-
-    const value = clipProps[node.name];
-
-    if (value != null) return value;
+  // By elimination this is the clip namespace: the grammar emits only
+  // note/next/audio/clip variables, and clip.* names are limited to these five.
+  if (clipContext == null) {
+    throw new Error(
+      `Variable "clip.${node.name}" is not available in this context`,
+    );
   }
 
-  throw new Error(
-    `Variable "${node.namespace}.${node.name}" is not available in this context`,
-  );
+  const clipProps: Record<string, number | undefined> = {
+    barDuration: clipContext.barDuration,
+    duration: clipContext.clipDuration,
+    index: clipContext.clipIndex,
+    count: clipContext.clipCount,
+    position: clipContext.arrangementStart,
+  };
+
+  if (node.name === "position" && clipContext.arrangementStart == null) {
+    // Session clips have no arrangement origin; 0 is the neutral position so
+    // the transform keeps running instead of failing the clip.
+    console.warn(`clip.position is not available for session clips; using 0`);
+
+    return 0;
+  }
+
+  return assertDefined(clipProps[node.name], `clip.${node.name} value`);
 }
 
 /**

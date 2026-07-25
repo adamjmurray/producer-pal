@@ -169,20 +169,19 @@ function emitPitchAtPosition(
   const barStartAbletonBeats = (actualBar - 1) * barDuration;
   const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
 
-  if (!notesByBar.has(actualBar)) {
-    notesByBar.set(actualBar, []);
-  }
-
   // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
-  const barNotes = notesByBar.get(actualBar);
+  let barNotes = notesByBar.get(actualBar);
 
-  if (barNotes) {
-    barNotes.push({
-      ...noteEvent,
-      relativeTime: relativeAbletonBeats,
-      originalBar: actualBar,
-    });
+  if (barNotes == null) {
+    barNotes = [];
+    notesByBar.set(actualBar, barNotes);
   }
+
+  barNotes.push({
+    ...noteEvent,
+    relativeTime: relativeAbletonBeats,
+    originalBar: actualBar,
+  });
 }
 
 /**

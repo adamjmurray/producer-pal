@@ -86,6 +86,21 @@ describe("drum mode serializer", () => {
     expect(result).toContain("1|1");
   });
 
+  it("does not use repeat pattern for stacked notes at the same position", () => {
+    // Live allows two identical notes on the same pad at the same time, which
+    // makes the first step 0. A zero/negative step is not a repeat pattern (it
+    // would emit `x3` at no spacing), so the positions are listed instead.
+    const notes: NoteEvent[] = [
+      createNote({ pitch: 36, start_time: 0, duration: 0.25 }),
+      createNote({ pitch: 36, start_time: 0, duration: 0.25 }),
+      createNote({ pitch: 36, start_time: 1, duration: 0.25 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes, { drumMode: true });
+
+    expect(result).toBe("v100 n/16 C1 1|1,1,2");
+  });
+
   it("prefers listing when repeat format is not shorter", () => {
     // Non-uniform in-bar spacing: beats 1, 2.5, 4
     const notes: NoteEvent[] = [

@@ -33,19 +33,18 @@ export function copyNoteToDestination(
   events.push(copiedNote);
 
   // Track in notesByBar cache
-  if (!notesByBar.has(destBar)) {
-    notesByBar.set(destBar, []);
+  let destBarNotes = notesByBar.get(destBar);
+
+  if (destBarNotes == null) {
+    destBarNotes = [];
+    notesByBar.set(destBar, destBarNotes);
   }
 
-  const destBarNotes = notesByBar.get(destBar);
-
-  if (destBarNotes) {
-    destBarNotes.push({
-      ...copiedNote,
-      relativeTime: sourceNote.relativeTime,
-      originalBar: destBar,
-    });
-  }
+  destBarNotes.push({
+    ...copiedNote,
+    relativeTime: sourceNote.relativeTime,
+    originalBar: destBar,
+  });
 }
 
 /**

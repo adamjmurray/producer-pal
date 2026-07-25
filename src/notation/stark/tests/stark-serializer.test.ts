@@ -283,6 +283,18 @@ describe("stark serializer — warns when a note is too long to spell", () => {
     );
   });
 
+  it("counts a ceiling clip on a drum line", () => {
+    // Drum lines walk a separate token path from pitched lines, so the tally has
+    // to happen there too: an 8-beat kick with nothing after it snaps to 6.
+    const out = formatNotation([note(36, 0, 8)], DRUM);
+
+    expect(out).toBe("kick /1.: X");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("longer than 6 beats"),
+    );
+  });
+
   it("counts a ceiling clip when the overlong note is a *N repeat group", () => {
     // Three identical 8-beat notes, each spaced far enough apart that the cap
     // stays above the 6-beat grid, collapse into a single repeat group. The
