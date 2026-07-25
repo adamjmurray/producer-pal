@@ -110,13 +110,23 @@ function spawnToolExecute(): (
 }
 
 /**
- * Wait real wall-clock time and let pending microtasks drain. Real timers (not
- * fake ones) because the code under test interleaves timer waits with many
- * awaits, and advancing fake timers doesn't reliably flush those.
- * @param ms - Milliseconds to wait
+ * Poll until `condition` holds. Real timers (not fake ones) because the code
+ * under test interleaves timer waits with many awaits, and advancing fake timers
+ * doesn't reliably flush those. Waiting on an observable condition rather than a
+ * fixed delay matters here: a fixed wait that proved too short would make the
+ * shared-gate assertions fail as though the gate were per-worker.
+ * @param condition - Checked after each tick
+ * @param timeoutMs - Give up (and let the assertion report the real state) after this
  */
-async function settle(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
+async function until(
+  condition: () => boolean,
+  timeoutMs = 2000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (!condition() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
 }
 
 /**
@@ -398,8 +408,9 @@ describe("ChatSdkClient subagent rate-limit handling", () => {
       { toolCallId: "a", messages: [], abortSignal: undefined },
     );
 
-    // Let the first worker reach its 429 and penalize the shared gate.
-    await settle(50);
+    // The first worker publishing a backoff IS the signal that it took the 429
+    // and penalized the gate — wait for that rather than guessing a delay.
+    await until(() => getSubagentRateLimit("a") != null);
 
     const callsBeforeSecond = streamTextMock.mock.calls.length;
     const second = execute(
@@ -407,10 +418,12 @@ describe("ChatSdkClient subagent rate-limit handling", () => {
       { toolCallId: "b", messages: [], abortSignal: undefined },
     );
 
-    // Well inside the cooldown: the second worker must still be parked.
-    await settle(50);
-    expect(streamTextMock.mock.calls).toHaveLength(callsBeforeSecond);
+    // The second worker parks on the shared window instead of requesting, and
+    // publishes attempt null (waiting on a sibling, not its own retry). Reaching
+    // that state at all proves it consulted the same gate.
+    await until(() => getSubagentRateLimit("b") != null);
     expect(getSubagentRateLimit("b")?.attempt).toBeNull();
+    expect(streamTextMock.mock.calls).toHaveLength(callsBeforeSecond);
 
     await Promise.all([first, second]);
     expect(streamTextMock.mock.calls.length).toBeGreaterThan(callsBeforeSecond);
