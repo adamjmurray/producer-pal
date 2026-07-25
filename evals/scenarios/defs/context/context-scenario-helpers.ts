@@ -128,10 +128,15 @@ export function seedContext(seed: {
       // "whatever this developer happens to have". Global context is injected on
       // every connect and instructs behavior directly, so inheriting the real
       // one makes results depend on the machine the eval ran on.
+      // `force` on both the seed and the restore below: these REPLACE the
+      // document wholesale, which is exactly what the tool's clobber guard
+      // skips for a model. Setup/teardown are the deliberate case it exists to
+      // let through.
       await callContext(mcpClient, {
         action: "write",
         scope: "global",
         content: seed.global ?? "",
+        force: true,
       });
 
       for (const memory of memories) {
@@ -171,6 +176,7 @@ export function seedContext(seed: {
           action: "write",
           scope: "global",
           content: originalGlobal,
+          force: true,
         });
       }
 

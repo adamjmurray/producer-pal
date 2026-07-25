@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -24,11 +25,18 @@ const ctx = setupMcpTestContext({ once: true });
 async function callProjectContextTool(
   action: "read" | "write",
   content?: string,
+  force?: boolean,
 ): Promise<unknown> {
-  const args: { action: string; content?: string } = { action };
+  const args: { action: string; content?: string; force?: boolean } = {
+    action,
+  };
 
   if (content !== undefined) {
     args.content = content;
+  }
+
+  if (force !== undefined) {
+    args.force = force;
   }
 
   return ctx.client!.callTool({ name: "ppal-context", arguments: args });
@@ -63,8 +71,10 @@ describe("ppal-context (project scope)", () => {
 
     await setConfig({ projectContext: INITIAL_CONTENT });
 
+    // A total replacement of a non-empty document needs `force` — see the
+    // clobber-guard test below.
     const writeResult = parseToolResult<ContentResult>(
-      await callProjectContextTool("write", UPDATED_CONTENT),
+      await callProjectContextTool("write", UPDATED_CONTENT, true),
     );
 
     expect(writeResult.content).toBe(UPDATED_CONTENT);
@@ -74,6 +84,26 @@ describe("ppal-context (project scope)", () => {
     );
 
     expect(verifyResult.content).toBe(UPDATED_CONTENT);
+  });
+
+  it("skips an unforced write that keeps none of the existing document", async () => {
+    const INITIAL_CONTENT = "- Genre: deep house.\n- Drop at bar 33.";
+
+    await setConfig({ projectContext: INITIAL_CONTENT });
+
+    const response = extractToolResultText(
+      await callProjectContextTool("write", "- Key: A minor."),
+    );
+
+    // The warning rides along as a WARNING: block on the same result.
+    expect(response).toContain("scope:project write SKIPPED");
+    expect(response).toContain("force:true");
+
+    const verifyResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(verifyResult.content).toBe(INITIAL_CONTENT);
   });
 
   it("requires content for write action", async () => {
@@ -94,6 +124,7 @@ async function callContextTool(args: {
   content?: string;
   name?: string;
   description?: string;
+  force?: boolean;
 }): Promise<unknown> {
   return ctx.client!.callTool({ name: "ppal-context", arguments: args });
 }
@@ -111,11 +142,15 @@ describe("ppal-context (global scope)", () => {
     try {
       const testContent = `e2e global context ${randomUUID()}`;
 
+      // `force` because this replaces whatever the developer already had — the
+      // clobber guard (see the project-scope test above) would otherwise skip
+      // both this write and the restore below.
       const written = parseToolResult<ContentResult>(
         await callContextTool({
           action: "write",
           scope: "global",
           content: testContent,
+          force: true,
         }),
       );
 
@@ -131,6 +166,7 @@ describe("ppal-context (global scope)", () => {
         action: "write",
         scope: "global",
         content: original,
+        force: true,
       });
     }
 

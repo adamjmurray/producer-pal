@@ -96,5 +96,20 @@ export const toolDefContext = defineTool("ppal-context", {
         "when it's relevant. Required on a memory write.",
       smallModel: null,
     }),
+
+    // The escape hatch for the clobber guard (context-helpers.ts's
+    // clobberWarning), and deliberately NOT taught in the skills: the model
+    // learns of it from the warning, at the moment it is relevant, so it never
+    // reaches for it casually. Declared in EVERY mode — including small-model,
+    // where it costs a few tokens — because a guard whose only way out is hidden
+    // from the tier that hits it would deadlock the write, which is worse than
+    // the clobber it prevents.
+    force: z
+      .boolean()
+      .optional()
+      .describe(
+        "Only when a write was skipped for dropping the whole document: " +
+          "true replaces it anyway.",
+      ),
   },
 });

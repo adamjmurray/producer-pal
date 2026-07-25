@@ -75,6 +75,7 @@ describe("ppal-context modal config — default (large-model) mode", () => {
       "content",
       "name",
       "description",
+      "force",
     ]);
     expect(enumOptions(shape.action as unknown as ZodType)).toStrictEqual([
       "read",
@@ -117,7 +118,21 @@ describe("ppal-context modal config — small-model mode", () => {
     const config = registerContext({ smallModelMode: true });
     const shape = getShape(config);
 
-    expect(Object.keys(shape)).toStrictEqual(["action", "scope", "content"]);
+    expect(Object.keys(shape)).toStrictEqual([
+      "action",
+      "scope",
+      "content",
+      "force",
+    ]);
+  });
+
+  // Small models preserve content anyway, so the guard rarely fires for them —
+  // but if it does, hiding its escape hatch would deadlock the write.
+  it("keeps force reachable so the clobber guard can't deadlock a write", () => {
+    const config = registerContext({ smallModelMode: true });
+    const shape = getShape(config);
+
+    expect(shape.force?.description).toContain("true replaces it anyway");
   });
 
   it("overrides the content description to drop the memory-entry clause", () => {

@@ -52,8 +52,8 @@ than scope-specific verbs:
 
 | Scope     | Storage                                       | Actions                                                                                         |
 | --------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace)                                                                       |
-| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace)                                                                       |
+| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace, guarded)                                                              |
+| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace, guarded)                                                              |
 | `memory`  | indexed collection, `~/.producer-pal/memory/` | `read` (entry by `name`, or the index if no `name`), `write` (upsert `name`), `delete` (`name`) |
 
 `scope` defaults to `project`; `action` defaults to `read`. `read` on `memory`
@@ -368,7 +368,30 @@ the whole thing:
 - **Non-empty document** — say what you'd add and wait for a yes. Once they
   agree (or asked in the first place), write immediately; don't ask twice, and
   don't fall back to memory as a way of avoiding the question.
-- Carry the existing content forward, or the write erases it.
+- Carry the existing content forward. A write that doesn't is now refused rather
+  than applied — see the clobber guard below.
+
+**The clobber guard** (`clobberWarning` in `context-helpers.ts`). Instructions
+are not a mechanism, so the destructive case is also blocked in code: a
+`project`/`global` write whose content keeps NONE of the existing document is
+skipped, and the model gets a `WARNING:` block plus the current document back,
+so it can re-send a merged write. `force: true` overrides it — declared in
+`context.def.ts` in every mode (a guard whose escape hatch is invisible to the
+tier that hits it would deadlock the write) but deliberately absent from the
+skills, so the model meets it in the warning rather than reaching for it.
+
+Detection is line containment, both sides normalized (list marker stripped,
+whitespace collapsed, trailing punctuation dropped) so an ordinary reformat
+survives, and only lines of ≥ 8 non-whitespace characters may vouch for a write
+— otherwise a `---` rule or a table row would satisfy it for free. The guard is
+inert on an empty document, on a blank write (the documented clear), and on a
+document with nothing substantive to test.
+
+It applies to the TOOL path only. The webui/REST editors write through their own
+routes, so the user may select-all-and-replace their own document freely; this
+guards an LLM discarding content it never meant to touch, not the user's
+editing. Automation that legitimately replaces a whole document through the tool
+(the e2e round-trip, the eval seed/restore) passes `force`.
 
 **Managing memory** (the assistant's own layer):
 
