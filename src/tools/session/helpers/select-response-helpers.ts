@@ -156,10 +156,9 @@ function buildTrackInfo(
 
   if (category == null) return undefined;
 
-  const type = computeTrackType(track, category);
   const info: NonNullable<SelectResult["selectedTrack"]> = {
     id: String(track.id),
-    type: type ?? "unknown",
+    type: computeTrackType(track, category),
   };
 
   if (category === "regular" && track.trackIndex != null) {
@@ -243,22 +242,15 @@ function readSelectedDeviceInfo(
 }
 
 /**
- * Compute merged track type from category and has_midi_input
+ * Compute merged track type from category and has_midi_input. The caller has
+ * already established that the track exists and has a category.
  * @param track - Selected track LiveAPI object
  * @param category - Internal category: "regular", "return", or "master"
- * @returns Merged type: "midi", "audio", "return", "master", or null
+ * @returns Merged type: "midi", "audio", "return", or "master"
  */
-function computeTrackType(
-  track: LiveAPI,
-  category: TrackCategory | null,
-): string | null {
-  if (category == null) return null;
+function computeTrackType(track: LiveAPI, category: TrackCategory): string {
   if (category === "return") return "return";
   if (category === "master") return "master";
 
-  const isMidi = track.exists()
-    ? (track.getProperty("has_midi_input") as number) > 0
-    : false;
-
-  return isMidi ? "midi" : "audio";
+  return (track.getProperty("has_midi_input") as number) > 0 ? "midi" : "audio";
 }

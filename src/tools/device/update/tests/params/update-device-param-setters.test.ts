@@ -309,7 +309,7 @@ describe("updateDevice - param value conversion", () => {
     });
   });
 
-  describe("resolve param by relative device path", () => {
+  describe("resolve param registered at a relative device path", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
@@ -338,11 +338,10 @@ describe("updateDevice - param value conversion", () => {
       });
     });
 
-    it("should resolve param via device-relative 'parameters N' path", () => {
-      // Use numeric key "3" which triggers resolveParamForDevice
-      // with "3" as paramId. Since "3" doesn't match /parameters (\d+)$/,
-      // it falls through to LiveAPI.from("3") — the absolute ID path.
-      // To test the relative "parameters N" path, use name-based resolution.
+    it("should resolve a param living under 'parameters N' by name", () => {
+      // Param keys are either a name or an absolute numeric id — there is no
+      // device-relative "parameters N" key form, so a param at that path is
+      // reached by name like any other.
       updateDevice({ ids: "dev1", params: [{ name: "Freq", value: "0.6" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.6);

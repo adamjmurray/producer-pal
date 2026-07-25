@@ -54,6 +54,35 @@ describe("duplicate - arrangementLength functionality", () => {
     // Just verify the result is correct - the holding area operations are tested in arrangement-tiling.test.js
   });
 
+  it("warns when shortening an audio clip without a silence wav in context", async () => {
+    // Shortening an audio clip fills the holding area with a silent wav; without
+    // that path in context the operation may fail, so it warns and continues
+    // (MIDI shortening needs no wav, so it stays silent).
+    registerSourceClip({
+      length: 8,
+      looping: 0,
+      loop_start: 0,
+      loop_end: 8,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 0,
+    });
+    registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "5|1",
+      arrangementLength: "1bar",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("silenceWavPath missing in context"),
+    );
+  });
+
   it("should duplicate a looping clip with lengthening via updateClip", async () => {
     registerSourceClip({
       length: 4,
