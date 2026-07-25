@@ -5,7 +5,8 @@
 
 import { type LanguageModelUsage } from "ai";
 import { describe, expect, it } from "vitest";
-import { toTokenUsage } from "#webui/chat/sdk/types";
+import { NOTATIONS } from "#src/shared/notation";
+import { type ChatClientConfig, toTokenUsage } from "#webui/chat/sdk/types";
 
 /**
  * Create a LanguageModelUsage with sensible defaults.
@@ -31,6 +32,23 @@ function makeUsage(
     ...overrides,
   };
 }
+
+describe("ChatClientConfig.notation", () => {
+  it("accepts every supported notation", () => {
+    // types.ts inlines the Notation union rather than importing it: the evals
+    // project compiles that module under NodeNext (which requires `.ts` in
+    // import paths) while the webui project rejects them, so no one spelling of
+    // the import satisfies both. This file is webui-only and CAN import the real
+    // union, so the annotation below is the drift guard — a notation added to
+    // NOTATIONS but not to the inlined union stops this from compiling.
+    const configs = NOTATIONS.map((notation): ChatClientConfig => ({
+      model: "test-model",
+      notation,
+    }));
+
+    expect(configs.map((c) => c.notation)).toStrictEqual([...NOTATIONS]);
+  });
+});
 
 describe("toTokenUsage", () => {
   it("extracts all fields from populated usage", () => {

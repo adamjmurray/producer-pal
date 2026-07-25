@@ -89,6 +89,14 @@ describe("buildWorkerConfig", () => {
     expect(worker.smallModelMode).toBe(true);
   });
 
+  it("inherits notation, and leaves it absent when the orchestrator has none", () => {
+    // Absent = the device's global notation, which is the shipped default.
+    expect(buildWorkerConfig(createConfig()).notation).toBeUndefined();
+    expect(
+      buildWorkerConfig(createConfig({ notation: "stark" })).notation,
+    ).toBe("stark");
+  });
+
   describe("with a default-subagent preset override", () => {
     const override: SubagentConfigOverride = {
       model: { modelId: "cheap-worker", provider: "openai" } as never,
@@ -159,6 +167,19 @@ describe("buildWorkerConfig", () => {
       expect(worker.enabledTools).not.toHaveProperty("ppal-delete");
       // The recursion guard overrides the preset's attempt to enable spawning.
       expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
+    });
+
+    it("runs the worker in the preset's notation, not the orchestrator's", () => {
+      // The per-worker notation unblock: a bar|beat orchestrator delegating to a
+      // stark worker. It rides the same spread as model/inference.
+      const worker = buildWorkerConfig(
+        createConfig({
+          notation: "barbeat",
+          subagentConfig: { ...override, notation: "stark" },
+        }),
+      );
+
+      expect(worker.notation).toBe("stark");
     });
 
     it("drops the override from the worker config (workers never spawn)", () => {

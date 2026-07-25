@@ -17,7 +17,9 @@ import {
 import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   DEFAULT_NOTATION,
+  NOTATION_HEADER,
   isNotation,
+  resolveNotation,
   type Notation,
 } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
@@ -32,6 +34,7 @@ import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
+import { withNotationOverride } from "./helpers/request-overrides/notation-override.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
@@ -159,22 +162,28 @@ function applyLiveApiEnabled(next: boolean): void {
 /**
  * Enrich ppal-connect Node-side with the skills, context, memory, and next-step
  * blocks (see enrich-connect.ts for the block order and why it matters).
- * config.projectContext is the per-Live Set context blob. smallModelMode and the
- * toolset arrive through getters (not config directly) so a POST /mcp request
- * can supply its own per-request values — the same values that shrink its tool
- * schemas and its registered tools — while REST routes keep reading the live
- * globals.
+ * config.projectContext is the per-Live Set context blob. smallModelMode, the
+ * toolset, and notation arrive through getters (not config directly) so a POST
+ * /mcp request can supply its own per-request values — the same values that
+ * shrink its tool schemas and its registered tools — while REST routes keep
+ * reading the live globals.
+ *
+ * Notation is also pushed down as a request override (withNotationOverride), so
+ * the notation the skills teach is the one V8 actually parses and formats notes
+ * in. It wraps the inner call, inside the connect-enrichment chain.
  *
  * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
  * @param getTools - Reads the toolset skills fragments are gated on
+ * @param getNotation - Reads the notation for this wrapper's calls
  * @returns A callLiveApi whose ppal-connect results carry every block
  */
 function buildEnrichedCall(
   getSmallModelMode: () => boolean,
   getTools: () => readonly string[],
+  getNotation: () => Notation,
 ): WrappedCallLiveApi {
-  return enrichConnect(callLiveApi, () => ({
-    notation: config.notation,
+  return enrichConnect(withNotationOverride(callLiveApi, getNotation), () => ({
+    notation: getNotation(),
     smallModelMode: getSmallModelMode(),
     projectContext: config.projectContext,
     tools: getTools(),
@@ -185,6 +194,7 @@ function buildEnrichedCall(
 const callLiveApiEnriched = buildEnrichedCall(
   () => config.smallModelMode,
   () => config.tools,
+  () => config.notation,
 );
 
 interface JsonRpcError {
@@ -275,14 +285,25 @@ export function createExpressApp(): Express {
         config.tools,
       );
 
+      // Per-request notation: reaches further than the two above — besides the
+      // skills variant and the notation-keyed param descriptions, it decides how
+      // V8 parses and formats clip notes (pushed down as a request override by
+      // buildEnrichedCall). So a stark worker both learns and speaks stark while
+      // the orchestrator stays on the global bar|beat.
+      const requestNotation = resolveNotation(
+        req.get(NOTATION_HEADER),
+        config.notation,
+      );
+
       const server = createMcpServer(
         buildEnrichedCall(
           () => requestSmallModelMode,
           () => requestTools,
+          () => requestNotation,
         ),
         {
           smallModelMode: requestSmallModelMode,
-          notation: config.notation,
+          notation: requestNotation,
           liveApiEnabled: config.liveApiEnabled,
           tools: requestTools,
         },

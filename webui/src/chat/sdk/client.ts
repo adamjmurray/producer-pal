@@ -111,6 +111,7 @@ export class ChatSdkClient {
       mcpUrl,
       this.config.enabledTools,
       this.config.smallModelMode,
+      this.config.notation,
     );
 
     this.mcpClient = mcpClient;

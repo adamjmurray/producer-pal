@@ -47,3 +47,42 @@ export function isNotation(value: unknown): value is Notation {
     (NOTATIONS as readonly string[]).includes(value)
   );
 }
+
+// --- Per-request notation (MCP transport) ---
+
+/**
+ * HTTP header that carries a per-request notation override on POST /mcp.
+ *
+ * Third of the per-request axes, alongside SMALL_MODEL_MODE_HEADER and
+ * DISABLED_TOOLS_HEADER (both in config.ts — this one lives here so it can reach
+ * the {@link isNotation} guard it validates against, which config.ts must stay
+ * import-free of). One caller — the built-in chat, or a spawned subagent worker
+ * — can run a notation the concurrently-running main session isn't using, which
+ * a POST /config would clobber for everyone.
+ *
+ * Notation reaches further than the other two axes: besides selecting the skills
+ * variant and the notation-keyed param descriptions, it decides how V8 PARSES
+ * and FORMATS clip notes. So the resolved value also rides down to the tools as
+ * a request override (see RequestOverrides.notation) — a worker taught stark
+ * would otherwise be handed bar|beat note strings by ppal-read-clip.
+ *
+ * Absent ⇒ the server falls back to `config.notation`, leaving external MCP
+ * clients and the device dropdown on the global.
+ */
+export const NOTATION_HEADER = "x-producer-pal-notation";
+
+/**
+ * Resolve the effective notation for one request from its header value, falling
+ * back to the global default when the header is absent or not a known notation
+ * (so a stray value can't wedge a request into an invalid notation).
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @param fallback - The global `config.notation` to use when no header applies
+ * @returns The notation to apply for this request
+ */
+export function resolveNotation(
+  headerValue: string | undefined,
+  fallback: Notation,
+): Notation {
+  return isNotation(headerValue) ? headerValue : fallback;
+}

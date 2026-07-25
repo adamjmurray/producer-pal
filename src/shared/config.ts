@@ -5,6 +5,12 @@
 
 // Shared, cross-cutting configuration constants used across the codebase
 // (notation layer, tools layer, server, portal, and web UI).
+//
+// Deliberately import-free: the web UI compiles this file under a tsconfig
+// without allowImportingTsExtensions, so a `#src/...ts` import here breaks that
+// build. The third per-request header (NOTATION_HEADER / resolveNotation) lives
+// in notation.ts with the Notation union it validates against, for that reason
+// and because that module already owns notation identity.
 
 // Semantic versioning: major.minor.patch
 // Currently in pre-release, working towards 1.0.0

@@ -62,6 +62,7 @@ describe("createMcpTools", () => {
       "http://custom:9000/mcp",
       undefined,
       undefined,
+      undefined,
     );
   });
 
@@ -72,6 +73,23 @@ describe("createMcpTools", () => {
       "http://localhost:3000/mcp",
       true,
       undefined,
+      undefined,
+    );
+  });
+
+  it("forwards notation to the MCP client (per-request header)", async () => {
+    await createMcpTools(
+      "http://localhost:3000/mcp",
+      undefined,
+      undefined,
+      "stark",
+    );
+
+    expect(createConnectedMcpClient).toHaveBeenCalledWith(
+      "http://localhost:3000/mcp",
+      undefined,
+      undefined,
+      "stark",
     );
   });
 
@@ -92,6 +110,7 @@ describe("createMcpTools", () => {
       "http://localhost:3000/mcp",
       false,
       enabledTools,
+      undefined,
     );
   });
 

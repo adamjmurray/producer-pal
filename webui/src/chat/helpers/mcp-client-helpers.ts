@@ -11,6 +11,7 @@ import {
   DISABLED_TOOLS_HEADER,
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config";
+import { NOTATION_HEADER, type Notation } from "#src/shared/notation";
 
 const MCP_CLIENT_NAME = "producer-pal-chat-ui";
 const MCP_CLIENT_VERSION = "1.0.0";
@@ -36,16 +37,23 @@ export interface McpToolDefinition {
  * fragments that teach them. The settings connection (which needs the full
  * catalog to draw the toggles) passes neither argument and sends no headers.
  *
+ * `notation` is the third such header, and the one with teeth beyond context: it
+ * selects the notation this caller's skills teach AND the notation the server
+ * parses/formats clip notes in, so a stark worker can run under a bar|beat
+ * orchestrator. Omit it to stay on the device's global notation setting.
+ *
  * @param mcpUrl - URL of the MCP server
  * @param smallModelMode - Per-request small-model mode; omit to use the global
  * @param enabledTools - Map of tool name to enabled state (absent = enabled);
  *   omit to leave the server's toolset untouched
+ * @param notation - Per-request notation; omit to use the global setting
  * @returns Connected MCP client
  */
 export async function createConnectedMcpClient(
   mcpUrl: string,
   smallModelMode?: boolean,
   enabledTools?: Record<string, boolean>,
+  notation?: Notation,
 ): Promise<Client> {
   const headers: Record<string, string> = {};
 
@@ -57,6 +65,10 @@ export async function createConnectedMcpClient(
 
   if (disabled !== "") {
     headers[DISABLED_TOOLS_HEADER] = disabled;
+  }
+
+  if (notation != null) {
+    headers[NOTATION_HEADER] = notation;
   }
 
   const transport = new StreamableHTTPClientTransport(

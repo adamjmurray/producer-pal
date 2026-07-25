@@ -5,6 +5,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ToolSet, jsonSchema } from "ai";
+import { type Notation } from "#src/shared/notation";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
@@ -28,17 +29,22 @@ export interface McpTools {
  * @param smallModelMode - Per-request small-model mode carried on every MCP
  *   request (shrinks tool schemas + selects the basic skills variant); omit for
  *   the global default
+ * @param notation - Per-request notation carried on every MCP request (selects
+ *   the skills variant AND how the server parses/formats clip notes); omit for
+ *   the global default
  * @returns AI SDK tools and the underlying MCP client
  */
 export async function createMcpTools(
   mcpUrl: string,
   enabledTools?: Record<string, boolean>,
   smallModelMode?: boolean,
+  notation?: Notation,
 ): Promise<McpTools> {
   const mcpClient = await createConnectedMcpClient(
     mcpUrl,
     smallModelMode,
     enabledTools,
+    notation,
   );
   const toolsResult = await mcpClient.listTools();
   const filtered = filterEnabledTools(toolsResult.tools, enabledTools);

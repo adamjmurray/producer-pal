@@ -9,6 +9,7 @@ import {
   DISABLED_TOOLS_HEADER,
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config";
+import { NOTATION_HEADER } from "#src/shared/notation";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
@@ -135,5 +136,42 @@ describe("createConnectedMcpClient", () => {
     });
 
     expect(mockTransport.mock.calls[0]?.[1]).toBeUndefined();
+  });
+
+  it("sends the notation header when a notation is given", async () => {
+    await createConnectedMcpClient(
+      "http://localhost:3000/mcp",
+      undefined,
+      undefined,
+      "stark",
+    );
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [NOTATION_HEADER]: "stark" });
+  });
+
+  it("sends no notation header when it is omitted", async () => {
+    // The main chat leaves notation to the device's global setting.
+    await createConnectedMcpClient("http://localhost:3000/mcp");
+
+    expect(mockTransport.mock.calls[0]?.[1]).toBeUndefined();
+  });
+
+  it("sends all three per-request headers together", async () => {
+    await createConnectedMcpClient(
+      "http://localhost:3000/mcp",
+      true,
+      { "tool-b": false },
+      "midi-json",
+    );
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({
+      [SMALL_MODEL_MODE_HEADER]: "true",
+      [DISABLED_TOOLS_HEADER]: "tool-b",
+      [NOTATION_HEADER]: "midi-json",
+    });
   });
 });

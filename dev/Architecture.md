@@ -255,23 +255,39 @@ where the filesystem lives and the result is injected into `ppal-connect`.
 
 ### Per-request assembly
 
-`POST /mcp` builds a fresh `createMcpServer` per request, so two settings can
-vary per caller rather than per device. Both ride an HTTP header (see
-`src/shared/config.ts`), and both fall back to the global config when absent, so
-external MCP clients are unaffected:
+`POST /mcp` builds a fresh `createMcpServer` per request, so three settings can
+vary per caller rather than per device. Each rides an HTTP header, and each
+falls back to the global config when absent, so external MCP clients are
+unaffected:
 
-- `SMALL_MODEL_MODE_HEADER` — shrinks tool schemas and selects the `basic`
-  skills driver.
-- `DISABLED_TOOLS_HEADER` — a comma-separated **subtraction** from
-  `config.tools`. It withholds those tools from registration _and_ drops the
-  skills fragments that teach them (`src/skills/fragment-tool-gates.ts`), so a
-  caller never pays for guidance about a tool it can't call.
+- `SMALL_MODEL_MODE_HEADER` (`src/shared/config.ts`) — shrinks tool schemas and
+  selects the `basic` skills driver.
+- `DISABLED_TOOLS_HEADER` (`src/shared/config.ts`) — a comma-separated
+  **subtraction** from `config.tools`. It withholds those tools from
+  registration _and_ drops the skills fragments that teach them
+  (`src/skills/fragment-tool-gates.ts`), so a caller never pays for guidance
+  about a tool it can't call.
+- `NOTATION_HEADER` (`src/shared/notation.ts`, next to the `isNotation` guard it
+  validates against — `config.ts` stays import-free because the webui compiles
+  it under a tsconfig that rejects `.ts` import paths) — selects the notation
+  variant of the skills and the notation-keyed param descriptions.
 
 The subtraction shape is what the webui can actually send: its `enabledTools` is
 a sparse map (absent = enabled), and the header must be set when the transport
 is built — before `listTools` could reveal the catalog a whitelist would need.
 Together these are what lets one server serve a full-strength orchestrator and
 several narrowly-scoped subagent workers concurrently.
+
+Notation is the one axis that crosses the runtime boundary. The other two are
+settled entirely Node-side, but notation also decides how V8 parses and formats
+clip notes (`ToolContext.notation`), and V8 holds it as a session global with no
+per-request setter. So `withNotationOverride`
+(`src/mcp-server/helpers/request-overrides/`) wraps `callLiveApi` and puts the
+resolved value in the same `RequestOverrides` blob as
+`timeoutMs`/`compactOutput` — V8's `buildRequestContext` spreads it onto the
+per-request `ToolContext`. That keeps the notation a caller is _taught_
+identical to the one it is _answered in_; without it a stark worker would hand
+stark note strings to a bar|beat parser.
 
 ## Build System
 

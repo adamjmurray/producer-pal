@@ -207,7 +207,10 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * its default-enabled state downstream — same as applying the preset in the
  * picker). A preset without one (and the no-preset case) inherits the
  * orchestrator's tools. The system instruction always inherits (subagentConfig
- * never carries it).
+ * never carries it). `notation` layers the same way, through the spread — a
+ * worker that carries one runs its whole MCP conversation in it (skills, param
+ * descriptions, and how notes are parsed and formatted), independent of the
+ * orchestrator.
  *
  * The spawn_subagent recursion guard is applied LAST — over whatever toolset
  * wins — so a worker can never spawn its own subagents, regardless of what a

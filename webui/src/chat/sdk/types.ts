@@ -7,6 +7,16 @@ import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import { type LanguageModel, type LanguageModelUsage } from "ai";
 
 /**
+ * The `Notation` union, inlined rather than imported from #src/shared/notation.
+ * This module is compiled by BOTH the webui project (bundler resolution, which
+ * rejects `.ts` in import paths) and the evals project (NodeNext, which requires
+ * them) — evals imports TokenUsage from here — so no single spelling of that
+ * import satisfies both. Same reason src/types/max-globals.d.ts inlines it.
+ * types.test.ts asserts this stays identical to the real union.
+ */
+type Notation = "barbeat" | "midi-json" | "stark";
+
+/**
  * Intermediate message type for the AI SDK client.
  * We use this instead of the SDK's ModelMessage because ModelMessage uses
  * union content types (string | Array<Part>) that are awkward to incrementally
@@ -130,6 +140,16 @@ export interface SubagentConfigOverride {
    * disables). Absent = inherit the orchestrator's tools. buildWorkerConfig
    * always re-strips spawn_subagent over this map. */
   enabledTools?: Record<string, boolean>;
+  /**
+   * The notation this worker runs under — e.g. a stark worker doing drum work
+   * for a bar|beat orchestrator. Reaches the worker through buildWorkerConfig's
+   * `...subagentConfig` spread. Absent = inherit (the orchestrator's own value,
+   * or the global when it has none). A stark worker should generate fresh
+   * content or edit via `transforms`, not read-modify-write `notes`: stark
+   * carries no probability, so a round trip through it drops any the
+   * orchestrator authored.
+   */
+  notation?: Notation;
 }
 
 /** Configuration for the AI SDK client */
@@ -147,6 +167,14 @@ export interface ChatClientConfig {
    * reduced context even while the orchestrator runs full-strength.
    */
   smallModelMode?: boolean;
+  /**
+   * Notation for THIS client's MCP requests, sent as a per-request header. It
+   * picks both the notation the skills teach and the one the server parses and
+   * formats clip notes in, so the two can never disagree. Absent = the device's
+   * global notation setting, which is what the main chat uses; a worker gets its
+   * own only when a subagent preset supplies one (buildWorkerConfig).
+   */
+  notation?: Notation;
   providerOptions?: ProviderOptions;
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
