@@ -12,7 +12,11 @@ import {
   createSpawnSubagentTool,
   extractWorkerResult,
 } from "#webui/chat/sdk/spawn-subagent-tool";
-import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import {
+  type ChatClientConfig,
+  type ChatMessage,
+  type SubagentConfigOverride,
+} from "#webui/chat/sdk/types";
 import { createConfig } from "./client-test-helpers";
 
 type RunWorker = (
@@ -69,6 +73,87 @@ describe("buildWorkerConfig", () => {
     const worker = buildWorkerConfig(createConfig({ smallModelMode: true }));
 
     expect(worker.smallModelMode).toBe(true);
+  });
+
+  describe("with a default-subagent preset override", () => {
+    const override: SubagentConfigOverride = {
+      model: { modelId: "cheap-worker", provider: "openai" } as never,
+      smallModelMode: true,
+      providerOptions: { openai: { reasoningEffort: "low" } },
+      buildProviderOptions: () => {},
+    };
+
+    it("swaps in the override's model and inference", () => {
+      const config = createConfig({
+        model: { modelId: "orchestrator", provider: "anthropic" } as never,
+        smallModelMode: false,
+        subagentConfig: override,
+      });
+
+      const worker = buildWorkerConfig(config);
+
+      expect(worker.model).toBe(override.model);
+      expect(worker.smallModelMode).toBe(true);
+      expect(worker.providerOptions).toStrictEqual({
+        openai: { reasoningEffort: "low" },
+      });
+      expect(worker.buildProviderOptions).toBe(override.buildProviderOptions);
+    });
+
+    it("inherits tools when the preset saved no toolset, always the system instruction", () => {
+      const config = createConfig({
+        systemInstruction: "orchestrator prompt",
+        enabledTools: {
+          "ppal-read-live-set": true,
+          [SPAWN_SUBAGENT_TOOL_NAME]: true,
+        },
+        subagentConfig: override, // no enabledTools on this override
+      });
+
+      const worker = buildWorkerConfig(config);
+
+      // System instruction is never part of the override, so it always inherits.
+      expect(worker.systemInstruction).toBe("orchestrator prompt");
+      // No preset toolset → inherit the orchestrator's tools (minus the guard).
+      expect(worker.enabledTools?.["ppal-read-live-set"]).toBe(true);
+      expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
+    });
+
+    it("uses the preset's captured toolset as-is, still stripping spawn_subagent", () => {
+      const config = createConfig({
+        enabledTools: { "ppal-read-live-set": true, "ppal-delete": false },
+        subagentConfig: {
+          ...override,
+          // A preset toolset that omits a tool the orchestrator had AND tries to
+          // enable spawn_subagent — the guard must win regardless (no-nested-
+          // spawn invariant preserved under presets).
+          enabledTools: {
+            "ppal-create-clip": true,
+            [SPAWN_SUBAGENT_TOOL_NAME]: true,
+          },
+        },
+      });
+
+      const worker = buildWorkerConfig(config);
+
+      // Worker tools are the preset's captured map, not a merge with the
+      // orchestrator's. The orchestrator's explicit `ppal-delete: false` is NOT
+      // carried over — it's absent here, which downstream (filterEnabledTools)
+      // means enabled. So the preset map is used verbatim, sparse semantics and
+      // all; it does not restrict the worker to only its listed tools.
+      expect(worker.enabledTools?.["ppal-create-clip"]).toBe(true);
+      expect(worker.enabledTools).not.toHaveProperty("ppal-delete");
+      // The recursion guard overrides the preset's attempt to enable spawning.
+      expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
+    });
+
+    it("drops the override from the worker config (workers never spawn)", () => {
+      const worker = buildWorkerConfig(
+        createConfig({ subagentConfig: override }),
+      );
+
+      expect(worker.subagentConfig).toBeUndefined();
+    });
   });
 });
 

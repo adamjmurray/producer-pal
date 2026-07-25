@@ -29,6 +29,10 @@ function makeSettings(over?: Partial<UseSettingsReturn>): UseSettingsReturn {
     enabledTools: {},
     setEnabledTools: vi.fn(),
     applyPreset: vi.fn(),
+    defaultSubagentPresetId: null,
+    setDefaultSubagentPresetId: vi.fn(),
+    settingsLoaded: true,
+    getProviderConnection: vi.fn(() => ({ apiKey: "sk-test" })),
     ...over,
   } as unknown as UseSettingsReturn;
 }
@@ -182,6 +186,109 @@ describe("PresetControls", () => {
     fireEvent.click(screen.getByTestId("preset-delete"));
     expect(loadPresets()).toHaveLength(0);
     expect(screen.queryByTestId("preset-update")).toBeNull();
+  });
+
+  it("offers Inherit plus every preset in the Default subagent selector", () => {
+    savePresets([seeded]);
+    render(
+      <PresetControls
+        settings={makeSettings({ defaultSubagentPresetId: "seed" })}
+      />,
+    );
+
+    const select = screen.getByTestId(
+      "subagent-default-select",
+    ) as HTMLSelectElement;
+
+    expect(select.value).toBe("seed");
+    const optionLabels = [...select.options].map((o) => o.textContent);
+
+    expect(optionLabels).toStrictEqual(["Inherit current settings", "Seeded"]);
+  });
+
+  it("sets the default subagent preset (and null for Inherit)", () => {
+    savePresets([seeded]);
+    const setDefaultSubagentPresetId = vi.fn();
+
+    render(
+      <PresetControls
+        settings={makeSettings({ setDefaultSubagentPresetId })}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId("subagent-default-select"), {
+      target: { value: "seed" },
+    });
+    expect(setDefaultSubagentPresetId).toHaveBeenCalledWith("seed");
+
+    fireEvent.change(screen.getByTestId("subagent-default-select"), {
+      target: { value: "" },
+    });
+    expect(setDefaultSubagentPresetId).toHaveBeenCalledWith(null);
+  });
+
+  it("flags Default subagent presets whose provider has no API key", () => {
+    savePresets([
+      { ...seeded, id: "keyed", name: "Keyed", provider: "anthropic" },
+      { ...seeded, id: "keyless", name: "Keyless", provider: "openai" },
+      { ...seeded, id: "local", name: "Local", provider: "ollama" },
+    ]);
+    render(
+      <PresetControls
+        settings={makeSettings({
+          getProviderConnection: vi.fn((p: string) => ({
+            apiKey: p === "anthropic" ? "sk-ok" : "",
+          })),
+        })}
+      />,
+    );
+
+    const labels = [
+      ...(screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+        .options,
+    ].map((o) => o.textContent);
+
+    expect(labels).toStrictEqual([
+      "Inherit current settings",
+      "Keyed",
+      "Keyless (no API key)",
+      "Local", // ollama needs no key → never flagged
+    ]);
+  });
+
+  it("doesn't flag missing keys until settings finish loading", () => {
+    savePresets([
+      { ...seeded, id: "keyless", name: "Keyless", provider: "openai" },
+    ]);
+    render(
+      <PresetControls
+        settings={makeSettings({
+          settingsLoaded: false,
+          getProviderConnection: vi.fn(() => ({ apiKey: "" })),
+        })}
+      />,
+    );
+
+    const labels = [
+      ...(screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+        .options,
+    ].map((o) => o.textContent);
+
+    expect(labels).toStrictEqual(["Inherit current settings", "Keyless"]);
+  });
+
+  it("shows Inherit when the saved default id no longer matches a preset", () => {
+    savePresets([seeded]);
+    render(
+      <PresetControls
+        settings={makeSettings({ defaultSubagentPresetId: "deleted" })}
+      />,
+    );
+
+    expect(
+      (screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+        .value,
+    ).toBe("");
   });
 
   it("flags unsaved edits when the buffer drifts from the selected preset", () => {

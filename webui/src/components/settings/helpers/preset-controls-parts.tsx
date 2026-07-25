@@ -80,6 +80,63 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
   );
 }
 
+interface SubagentDefaultRowProps {
+  presets: ChatPreset[];
+  /** Saved default-subagent preset id, or null to inherit. */
+  value: string | null;
+  onChange: (id: string | null) => void;
+  /** Preset ids whose provider has no usable API key, annotated in the options
+   * (a worker on such a preset would fail at request time). */
+  missingKeyIds: Set<string>;
+}
+
+/**
+ * The "Default subagent" selector: which preset a spawned subagent runs under.
+ * "Inherit current settings" (the empty value) clones the orchestrator's config;
+ * a preset runs each worker on that preset's model/inference and toolset. Shown
+ * below the preset controls on the Presets tab. Options whose provider has no
+ * API key are annotated. Falls back to "Inherit" when the saved id no longer
+ * matches a preset (deleted), matching the runtime's graceful inherit.
+ * @param {SubagentDefaultRowProps} props - Selector props
+ * @returns {JSX.Element} The default-subagent selector
+ */
+export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
+  const { presets, value, missingKeyIds } = props;
+  const selectValue =
+    value != null && presets.some((p) => p.id === value) ? value : "";
+
+  return (
+    <div className="pt-3 border-t border-zinc-300 dark:border-zinc-600">
+      <label className="block text-sm mb-1" htmlFor="subagent-default-select">
+        Default subagent
+      </label>
+      <select
+        id="subagent-default-select"
+        value={selectValue}
+        onChange={(e) =>
+          props.onChange((e.target as HTMLSelectElement).value || null)
+        }
+        className={`w-full ${INPUT_CLASS}`}
+        data-testid="subagent-default-select"
+      >
+        <option value="">Inherit current settings</option>
+        {presets.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+            {missingKeyIds.has(p.id) ? " (no API key)" : ""}
+          </option>
+        ))}
+      </select>
+      <p className="text-xs text-zinc-500 mt-1">
+        What spawned subagents run as when the Subagent tool is enabled. A
+        preset runs each subagent on its own model, thinking, small-model mode,
+        and toolset (a preset with no saved toolset keeps this conversation's
+        tools). Subagents can never spawn their own subagents.
+      </p>
+    </div>
+  );
+}
+
 interface PresetCreateFormProps {
   draftName: string;
   draftDescription: string;

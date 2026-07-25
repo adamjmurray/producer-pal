@@ -15,6 +15,7 @@ vi.mock(import("#webui/chat/sdk/provider-factories"), () => ({
   createProviderModel: vi.fn(() => mockModel),
 }));
 
+import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 
 describe("chatAdapter", () => {
@@ -457,6 +458,103 @@ describe("chatAdapter", () => {
       const overridden = config.buildProviderOptions!("Off");
 
       expect(overridden).toBeUndefined();
+    });
+
+    describe("subagentConfig from a default-subagent preset", () => {
+      const subagentPreset = {
+        provider: "openai" as const,
+        apiKey: "worker-key",
+        baseUrl: undefined,
+        model: "gpt-5.2",
+        thinking: "Max",
+        smallModelMode: true,
+      };
+
+      it("builds the worker override from the resolved preset", () => {
+        const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined, {
+          ...extraParams,
+          subagentPreset,
+        });
+
+        expect(config.subagentConfig?.model).toBe(mockModel);
+        expect(config.subagentConfig?.smallModelMode).toBe(true);
+        // The worker override uses the PRESET's model+thinking (gpt-5.2 / Max),
+        // independent of the orchestrator's (gpt-4o / Off → no options).
+        expect(config.providerOptions).toBeUndefined();
+        expect(config.subagentConfig?.providerOptions).toStrictEqual({
+          openai: { reasoningEffort: "xhigh", reasoningSummary: "auto" },
+        });
+        // The worker's buildProviderOptions rebuilds against the preset's model
+        // (gpt-5.2 reasoning model) — Off yields no options.
+        expect(
+          config.subagentConfig?.buildProviderOptions?.("Off"),
+        ).toBeUndefined();
+      });
+
+      it("carries the preset's toolset onto the override", () => {
+        const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined, {
+          ...extraParams,
+          subagentPreset: {
+            ...subagentPreset,
+            enabledTools: { "ppal-create-clip": true },
+          },
+        });
+
+        expect(config.subagentConfig?.enabledTools).toStrictEqual({
+          "ppal-create-clip": true,
+        });
+      });
+
+      it("leaves the override toolset undefined when the preset saved none", () => {
+        const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined, {
+          ...extraParams,
+          subagentPreset, // no enabledTools
+        });
+
+        expect(config.subagentConfig?.enabledTools).toBeUndefined();
+      });
+
+      it("leaves subagentConfig undefined when no preset is chosen", () => {
+        const config = chatAdapter.buildConfig(
+          "gpt-4o",
+          "Default",
+          {},
+          undefined,
+          extraParams,
+        );
+
+        expect(config.subagentConfig).toBeUndefined();
+      });
+
+      it("falls back to inherit and warns when the worker model can't be built", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        // Only the worker model fails to build (e.g. custom provider with no
+        // URL); the orchestrator's own model must still succeed.
+        vi.mocked(createProviderModel).mockImplementation((_p, modelId) => {
+          if (modelId === "broken-worker") throw new Error("needs a URL");
+
+          return mockModel;
+        });
+
+        const config = chatAdapter.buildConfig(
+          "gpt-4o",
+          "Default",
+          {},
+          undefined,
+          {
+            ...extraParams,
+            subagentPreset: { ...subagentPreset, model: "broken-worker" },
+          },
+        );
+
+        expect(config.model).toBe(mockModel); // orchestrator unaffected
+        expect(config.subagentConfig).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledOnce();
+
+        vi.mocked(createProviderModel).mockImplementation(() => mockModel);
+        warnSpy.mockRestore();
+      });
     });
   });
 

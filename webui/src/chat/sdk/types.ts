@@ -92,6 +92,29 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
   };
 }
 
+/**
+ * Config a subagent worker runs under, resolved from the user's chosen "Default
+ * subagent" preset. Carries the fields a preset can swap: provider/model baked
+ * into `model`, thinking into `providerOptions`/`buildProviderOptions`,
+ * `smallModelMode`, and `enabledTools` (the preset's toolset, when it saved one;
+ * absent means the worker inherits the orchestrator's tools). The system
+ * instruction is deliberately NOT here, so a worker always inherits it
+ * (buildWorkerConfig). Absent on the orchestrator config = "inherit current
+ * settings", the shipped phase-1 behavior.
+ */
+export interface SubagentConfigOverride {
+  model: LanguageModel;
+  smallModelMode: boolean;
+  providerOptions?: ProviderOptions;
+  buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
+  /** The preset's captured toolset, used as-is (a sparse map — an absent key
+   * means that tool keeps its default-enabled state downstream, same as applying
+   * the preset in the picker; it does NOT carry over the orchestrator's explicit
+   * disables). Absent = inherit the orchestrator's tools. buildWorkerConfig
+   * always re-strips spawn_subagent over this map. */
+  enabledTools?: Record<string, boolean>;
+}
+
 /** Configuration for the AI SDK client */
 export interface ChatClientConfig {
   model: LanguageModel;
@@ -102,7 +125,8 @@ export interface ChatClientConfig {
    * Small-model mode for THIS client's MCP requests, sent as a per-request
    * header so the server shrinks tool schemas and serves the basic skills
    * variant for this caller alone. A subagent worker inherits it from the
-   * orchestrator config (buildWorkerConfig), so a small-model worker gets the
+   * orchestrator config unless a chosen "Default subagent" preset overrides it
+   * (buildWorkerConfig applies subagentConfig), so a small-model worker gets the
    * reduced context even while the orchestrator runs full-strength.
    */
   smallModelMode?: boolean;
@@ -116,4 +140,14 @@ export interface ChatClientConfig {
    * orchestrator with subagents enabled widens to MAX_ORCHESTRATOR_STEPS.
    */
   maxSteps?: number;
+  /**
+   * Preset-derived config a spawned worker runs under (model/inference + the
+   * preset's toolset when it saved one). Set on the orchestrator config when the
+   * user picked a "Default subagent" preset; read only by buildWorkerConfig,
+   * which layers it over the cloned orchestrator config. Absent = the worker
+   * inherits the orchestrator's config. This tracks the CURRENT global
+   * preference — it is deliberately not locked per conversation, so continuing a
+   * restored conversation spawns workers under whatever preset is selected now.
+   */
+  subagentConfig?: SubagentConfigOverride;
 }

@@ -24,6 +24,8 @@ function makeSettings(): UseSettingsReturn {
     enabledTools: {},
     setEnabledTools: vi.fn(),
     applyPreset: vi.fn(),
+    defaultSubagentPresetId: null,
+    setDefaultSubagentPresetId: vi.fn(),
   } as unknown as UseSettingsReturn;
 }
 

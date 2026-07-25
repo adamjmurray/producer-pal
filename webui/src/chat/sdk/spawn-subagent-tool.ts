@@ -49,7 +49,10 @@ const TASK_DESCRIPTION =
 
 /** Dependencies the spawn tool needs from its owning ChatSdkClient. */
 export interface SpawnSubagentDeps {
-  /** The orchestrator config, cloned per worker (inherits model, thinking, tools). */
+  /** The orchestrator config, cloned per worker. The clone inherits model,
+   * thinking, small-model mode, and tools by default, but a chosen "Default
+   * subagent" preset (carried as config.subagentConfig) overrides those in
+   * buildWorkerConfig. */
   config: ChatClientConfig;
   /**
    * Run a fully self-contained worker session for `task` and resolve with the
@@ -128,16 +131,41 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * budget, and spawn_subagent disabled. Disabling it is the recursion guard — the
  * worker's ToolSet omits the spawn tool (client.initialize only injects it when
  * enabled), so workers cannot spawn their own subagents.
+ *
+ * When the user picked a "Default subagent" preset, the orchestrator config
+ * carries a resolved `subagentConfig` whose model/inference AND toolset (when
+ * the preset saved one) are layered over the clone — so a strong planner can
+ * drive uniform cheaper workers. A preset that carries a toolset supplies the
+ * worker's tools as-is (its captured sparse map; it does NOT carry over the
+ * orchestrator's explicit disables, so a tool the preset never captured stays at
+ * its default-enabled state downstream — same as applying the preset in the
+ * picker). A preset without one (and the no-preset case) inherits the
+ * orchestrator's tools. The system instruction always inherits (subagentConfig
+ * never carries it).
+ *
+ * The spawn_subagent recursion guard is applied LAST — over whatever toolset
+ * wins — so a worker can never spawn its own subagents, regardless of what a
+ * chosen preset's toolset enables. (The worker's ToolSet then omits the spawn
+ * tool anyway, since client.initialize only injects it when enabled.)
  * @param config - The orchestrator config to clone
  * @returns A worker config that inherits everything but can't delegate further
  */
 export function buildWorkerConfig(config: ChatClientConfig): ChatClientConfig {
+  // Drop subagentConfig from the worker (workers never spawn) and pull
+  // enabledTools out so the worker's toolset is rebuilt explicitly below.
+  const { subagentConfig, enabledTools, ...rest } = config;
+
   return {
-    ...config,
+    ...rest,
+    ...subagentConfig,
     chatHistory: [],
     maxSteps: MAX_WORKER_STEPS,
     enabledTools: {
-      ...config.enabledTools,
+      // Preset toolset (if the preset saved one), used as-is; otherwise inherit
+      // the orchestrator's. It's a sparse map — absent keys stay default-enabled
+      // downstream (filterEnabledTools), so this does not carry over the
+      // orchestrator's disables. Guard applied last, unconditionally.
+      ...(subagentConfig?.enabledTools ?? enabledTools),
       [SPAWN_SUBAGENT_TOOL_NAME]: false,
     },
   };

@@ -164,6 +164,13 @@ describe("useHasUnsavedChanges", () => {
     expect(result.current).toBe(true);
   });
 
+  it("detects a default-subagent-preset change", () => {
+    const { result, update } = renderWithOpenModal(makeSettings());
+
+    update(makeSettings({ defaultSubagentPresetId: "cheap-worker" }));
+    expect(result.current).toBe(true);
+  });
+
   it("flags a notation change via its dirty flag (notation is not serialized)", () => {
     const { result, update } = renderWithOpenModal(makeSettings());
 
