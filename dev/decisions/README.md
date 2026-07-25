@@ -79,3 +79,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0011](0011-dotted-triplet-note-value-suffixes.md) | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`    |
 | [0012](0012-no-chord-symbols-in-bar-beat.md)       | No chord symbols in bar\|beat; they stay Stark-only                  |
 | [0013](0013-config-override-gate.md)               | Config-override env vars are opt-in (gated), not opt-out             |
+| [0014](0014-subagent-resume-from-transcript.md)    | A subagent resumes from its recorded transcript, not a live session  |

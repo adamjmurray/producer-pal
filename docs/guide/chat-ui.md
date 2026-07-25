@@ -401,12 +401,31 @@ connects either way, so to stop it reading a layer, empty that layer. **Edit
 Context** below the checkbox opens the context editor.
 
 The experimental **Subagent** checkbox lets the AI delegate a self-contained
-subtask to a nested assistant working in the same Live Set. Each subagent
-appears as its own card in the transcript — expand it for the result it reported
-back, and expand the card inside that for its full work log. When the AI
-delegates several independent subtasks at once, the subagents run in parallel.
-Choose what they run under with **Default subagent** on the
+subtask to a nested assistant working in the same Live Set. Each subagent is
+numbered and appears as its own card in the transcript — expand it for the
+result it reported back, and expand the card inside that for its full work log.
+When the AI delegates several independent subtasks at once, the subagents run in
+parallel. Choose what they run under with **Default subagent** on the
 [Presets tab](#presets).
+
+A subagent can be given more work later instead of being replaced by a fresh
+one. The AI does this on its own when it makes sense — that run's card is marked
+**resumed** and carries the same subagent number, because it is the same
+subagent picking up with everything it already did and knows. Asking for a
+change to a subagent's work ("subagent 2's bassline is too busy — thin it out")
+is usually enough for the AI to continue that subagent rather than start over.
+
+::: tip Resuming is the cheap option
+
+A fresh subagent has to be briefed from scratch and re-reads the Live Set before
+it can start. Resuming skips all of that, so follow-up work on the same material
+costs much less.
+
+:::
+
+Pressing **Stop** while a subagent is working no longer throws its work away.
+The card reads **stopped** and keeps the work log it got through, and the AI can
+resume that subagent to finish the job.
 
 If a provider rate-limits a subagent, its card shows a **rate limited**
 countdown and the subagent retries on its own instead of failing. Subagents

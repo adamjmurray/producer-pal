@@ -59,6 +59,68 @@ describe("AssistantSubagentCall", () => {
     ).toBeDefined();
   });
 
+  it("titles the card with the subagent's number", () => {
+    render(
+      <AssistantSubagentCall
+        task="x"
+        result={JSON.stringify("Done.")}
+        index={3}
+      />,
+    );
+
+    expect(screen.getByText("subagent 3")).toBeDefined();
+  });
+
+  it("falls back to a bare title for a spawn predating numbering", () => {
+    render(<AssistantSubagentCall task="x" result={JSON.stringify("Done.")} />);
+
+    expect(screen.getByText("subagent")).toBeDefined();
+  });
+
+  it("marks a run that continued an existing subagent", () => {
+    render(
+      <AssistantSubagentCall
+        task="now make it swing"
+        result={JSON.stringify("Swung it.")}
+        index={1}
+        resumed
+      />,
+    );
+
+    expect(screen.getByText("subagent 1")).toBeDefined();
+    expect(screen.getByText("resumed")).toBeDefined();
+  });
+
+  it("strips the worker label the model needs from the displayed result", () => {
+    // The label is there so the orchestrator can resume this worker; the card's
+    // own header already says which subagent it is.
+    render(
+      <AssistantSubagentCall
+        task="x"
+        result={JSON.stringify("[subagent 2]\nAdded the bassline.")}
+        index={2}
+      />,
+    );
+
+    expect(screen.getByText("Added the bassline.")).toBeDefined();
+    expect(screen.queryByText(/\[subagent 2\]/)).toBeNull();
+  });
+
+  it("reads as stopped, not done, after a Stop mid-worker", () => {
+    render(
+      <AssistantSubagentCall
+        task="rename tracks"
+        result={JSON.stringify(
+          "Canceled by the user before this tool finished.",
+        )}
+        index={1}
+      />,
+    );
+
+    expect(screen.getByText("stopped")).toBeDefined();
+    expect(screen.queryByText("done")).toBeNull();
+  });
+
   it("shows a failed status and red border on error", () => {
     const { container } = render(
       <AssistantSubagentCall task="x" result={"boom"} isError />,

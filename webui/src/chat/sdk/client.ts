@@ -18,8 +18,8 @@ import {
   SPAWN_SUBAGENT_TOOL_NAME,
   createSpawnSubagentTool,
 } from "./spawn-subagent-tool";
-import { handleStreamPart } from "./stream-part-handlers";
-import { createStreamErrorSignal } from "./stream-with-error-signal";
+import { handleStreamPart } from "./streaming/stream-part-handlers";
+import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
 import {
   RateLimitGate,
   runSubagentWithRetry,

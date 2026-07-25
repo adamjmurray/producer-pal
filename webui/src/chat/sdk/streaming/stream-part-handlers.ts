@@ -11,7 +11,7 @@
  * accumulating onto one ChatMessage.
  */
 
-import { type ChatMessage } from "./types";
+import { type ChatMessage } from "#webui/chat/sdk/types";
 
 /**
  * Handle a single stream part, updating the current message.

@@ -68,6 +68,9 @@ function addToolParts(msg: ChatMessage, parts: UIPart[]): void {
       ...(result?.subagentTranscript && {
         subagentMessages: formatChatMessages(result.subagentTranscript),
       }),
+      ...(result?.subagentIndex != null && {
+        subagentIndex: result.subagentIndex,
+      }),
     });
   }
 }

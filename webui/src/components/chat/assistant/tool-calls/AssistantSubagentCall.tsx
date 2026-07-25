@@ -5,6 +5,8 @@
 
 import { type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
+import { CANCELED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
+import { SUBAGENT_LABEL_PATTERN } from "#webui/chat/sdk/spawn-subagent-tool";
 import {
   type SubagentRateLimitStatus,
   getSubagentRateLimit,
@@ -23,6 +25,10 @@ interface AssistantSubagentCallProps {
   toolCallId?: string;
   /** Rendered worker transcript for the deep-dive tier; omitted when none. */
   transcript?: ComponentChildren;
+  /** Which subagent ran (1-based); omitted for spawns predating numbering. */
+  index?: number;
+  /** True when this run continued an existing subagent rather than starting one. */
+  resumed?: boolean;
 }
 
 const baseClasses =
@@ -40,6 +46,8 @@ const baseClasses =
  * @param {boolean} [root0.isResponding] - Whether the assistant is still responding
  * @param {string} [root0.toolCallId] - Spawn tool-call id for live status lookup
  * @param {ComponentChildren} [root0.transcript] - Rendered worker transcript
+ * @param {number} [root0.index] - Which subagent ran (1-based)
+ * @param {boolean} [root0.resumed] - Whether this run continued an existing subagent
  * @returns {JSX.Element} - React component
  */
 export function AssistantSubagentCall({
@@ -49,6 +57,8 @@ export function AssistantSubagentCall({
   isResponding,
   toolCallId,
   transcript,
+  index,
+  resumed,
 }: AssistantSubagentCallProps) {
   const running = result == null;
   const returnValue = unwrapResult(result);
@@ -59,6 +69,10 @@ export function AssistantSubagentCall({
   // A wait forced by a sibling's backoff (attempt null) is not this worker's own
   // rate limit — the docs promise that shared pause, so name it distinctly.
   const waiting = running && rateLimit != null;
+  // Stop mid-worker leaves the synthetic canceled result here, which is not a
+  // failure and certainly not "done" — and the worker is resumable from this
+  // card's transcript, so say what actually happened.
+  const stopped = !running && returnValue === CANCELED_TOOL_RESULT_TEXT;
   const status = waiting
     ? rateLimit.attempt == null
       ? "waiting"
@@ -67,7 +81,9 @@ export function AssistantSubagentCall({
       ? "working…"
       : isError
         ? "failed"
-        : "done";
+        : stopped
+          ? "stopped"
+          : "done";
 
   return (
     <details
@@ -77,7 +93,15 @@ export function AssistantSubagentCall({
     >
       <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
         <DisclosureChevron />
-        🤖 <span className="font-semibold">subagent</span>
+        🤖{" "}
+        <span className="font-semibold">
+          {index == null ? "subagent" : `subagent ${index}`}
+        </span>
+        {resumed && (
+          <span className="shrink-0 text-indigo-700 dark:text-indigo-300">
+            resumed
+          </span>
+        )}
         <span className="truncate min-w-0 text-zinc-600 dark:text-zinc-400">
           {truncateString(task, 80)}
         </span>
@@ -208,6 +232,9 @@ function statusColor(isError?: boolean, isRateLimited?: boolean): string {
  * Unwrap a tool-result string for display. Subagent results are JSON-stringified
  * plain strings (e.g. `"\"Done.\""`); parse those back to the bare text. Anything
  * that isn't a JSON string is shown verbatim.
+ *
+ * The `[subagent N]` label the model needs in order to resume this worker is
+ * dropped here — the card's own header already says which subagent this is.
  * @param {string | null} result - The formatted tool result, or null while running
  * @returns {string} The display text
  */
@@ -217,8 +244,11 @@ function unwrapResult(result: string | null): string {
   try {
     const parsed: unknown = JSON.parse(result);
 
-    return typeof parsed === "string" ? parsed : result;
+    return (typeof parsed === "string" ? parsed : result).replace(
+      SUBAGENT_LABEL_PATTERN,
+      "",
+    );
   } catch {
-    return result;
+    return result.replace(SUBAGENT_LABEL_PATTERN, "");
   }
 }

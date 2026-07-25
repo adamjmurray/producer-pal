@@ -29,6 +29,7 @@ export interface ChatMessage {
     args: Record<string, unknown>;
     result: unknown;
     isError?: boolean;
+
     /**
      * For a spawn_subagent result: the worker's chat history, kept for the UI
      * deep-dive. Persisted with the conversation but NEVER sent to the model
@@ -42,6 +43,7 @@ export interface ChatMessage {
      * back into one session when seeding the next resume.
      */
     subagentTranscript?: ChatMessage[];
+
     /**
      * For a spawn_subagent result: which subagent produced it, 1-based. Doubles
      * as the worker's durable identity — resuming keeps the index, so every run
@@ -51,6 +53,7 @@ export interface ChatMessage {
      */
     subagentIndex?: number;
   }>;
+
   reasoning?: string;
   /**
    * Structured reasoning blocks with provider signatures, captured from the

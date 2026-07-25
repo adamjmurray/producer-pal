@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { createStreamErrorSignal } from "#webui/chat/sdk/stream-with-error-signal";
+import { createStreamErrorSignal } from "#webui/chat/sdk/streaming/stream-with-error-signal";
 
 /**
  * Create an async iterable that yields values immediately.
