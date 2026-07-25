@@ -7,6 +7,7 @@ import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-c
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
+  applyBinaryOp,
   type ClipContext,
   isNoteOp,
   type NoteProperties,
@@ -435,20 +436,7 @@ function evaluateBinaryOp(
     clipContext,
   );
 
-  switch (node.type) {
-    case "add":
-      return left + right;
-    case "subtract":
-      return left - right;
-    case "multiply":
-      return left * right;
-    case "divide":
-      return right === 0 ? 0 : left / right;
-    case "modulo":
-      // Modulo by zero yields 0 (same as division)
-      // Use wraparound behavior: ((val % n) + n) % n
-      return right === 0 ? 0 : ((left % right) + right) % right;
-  }
+  return applyBinaryOp(node.type, left, right);
 }
 
 /**

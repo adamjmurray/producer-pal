@@ -227,16 +227,9 @@ function processPitchedSection(
 
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT[section.type];
 
-  let time = 0;
-
-  for (const item of section.content) {
-    // `*N` expands one token into N copies (a barMarker has no repeat → once).
-    const count = "barMarker" in item ? 1 : (item.repeat ?? 1);
-
-    for (let i = 0; i < count; i++) {
-      time = processItem(item, time, registerDefault, lineDefault, notes);
-    }
-  }
+  runLine(section.content, (item, time) =>
+    processItem(item, time, registerDefault, lineDefault, notes),
+  );
 }
 
 // Process a chords section: each token is a chord symbol realized into concrete
@@ -247,13 +240,25 @@ function processChordsSection(
 ): void {
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT.chords;
 
+  runLine(section.content, (item, time) =>
+    processChordItem(item, time, lineDefault, notes),
+  );
+}
+
+// Walk one line's content from time 0, advancing the cursor by whatever `step`
+// returns. `*N` expands one token into N copies (a barMarker has no repeat →
+// once).
+function runLine<T extends { repeat?: number | null } | { barMarker: unknown }>(
+  content: T[],
+  step: (item: T, time: number) => number,
+): void {
   let time = 0;
 
-  for (const item of section.content) {
+  for (const item of content) {
     const count = "barMarker" in item ? 1 : (item.repeat ?? 1);
 
     for (let i = 0; i < count; i++) {
-      time = processChordItem(item, time, lineDefault, notes);
+      time = step(item, time);
     }
   }
 }

@@ -39,22 +39,17 @@ export interface GeminiMessageDeps {
   isMutedRef: BooleanRef;
 }
 
-/** Inputs buildGeminiMessageDeps assembles into a GeminiMessageDeps bag. */
-export interface GeminiMessageDepsOptions {
-  builder: GeminiHistoryBuilder;
+/**
+ * Inputs buildGeminiMessageDeps assembles into a GeminiMessageDeps bag: every
+ * dep passed straight through, with `publishHistory` replaced by the pieces it
+ * is built from.
+ */
+export interface GeminiMessageDepsOptions extends Omit<
+  GeminiMessageDeps,
+  "publishHistory"
+> {
   builderRef: { current: GeminiHistoryBuilder | null };
-  player: GeminiPcmPlayer;
-  getSession: () => Session | null;
-  executeTool: (name: string, args: Record<string, unknown>) => Promise<string>;
   setHistory: (items: RealtimeItem[]) => void;
-  setAssistantSpeaking: (value: boolean) => void;
-  setAssistantThinking: (value: boolean) => void;
-  setError: (value: string | null) => void;
-  setResumeHandle: (handle: string) => void;
-  halfDuplex: boolean;
-  getMic: () => MutableMic | null;
-  autoMutedRef: BooleanRef;
-  isMutedRef: BooleanRef;
 }
 
 /**

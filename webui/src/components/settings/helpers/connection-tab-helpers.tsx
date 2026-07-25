@@ -190,7 +190,7 @@ export function VoiceLanguageSelector({
   );
 }
 
-interface VoiceSettingsProps {
+export interface VoiceSettingsProps {
   provider: Provider;
   model: string;
   realtimeVoice: string;
@@ -203,6 +203,8 @@ interface VoiceSettingsProps {
   setVoiceSpeed: (speed: number) => void;
   turnDetection: TurnDetectionSettings;
   setTurnDetection: (settings: TurnDetectionSettings) => void;
+  /** Voice currently locked into the live RealtimeSession (or null when idle).
+   * Used to render a pending-change notice. */
   activeVoice: string | null;
 }
 

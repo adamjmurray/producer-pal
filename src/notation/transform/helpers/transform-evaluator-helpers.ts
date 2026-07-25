@@ -318,7 +318,24 @@ function evaluateBinaryOp(node: BinaryOpNode, ctx: EvalContext): number {
     noteProperties,
   );
 
-  switch (node.type) {
+  return applyBinaryOp(node.type, left, right);
+}
+
+/**
+ * Apply a binary arithmetic operator to two already-evaluated operands. Shared
+ * by the note and audio evaluators, whose operand evaluation differs but whose
+ * arithmetic (including the divide/modulo-by-zero rules) must not.
+ * @param type - The operator
+ * @param left - Left operand
+ * @param right - Right operand
+ * @returns Result of the operation
+ */
+export function applyBinaryOp(
+  type: BinaryOpNode["type"],
+  left: number,
+  right: number,
+): number {
+  switch (type) {
     case "add":
       return left + right;
     case "subtract":

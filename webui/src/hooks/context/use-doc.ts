@@ -128,11 +128,6 @@ export function useDoc(
 
   const clear = useCallback((): Promise<boolean> => save(""), [save]);
 
-  // Initial load.
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
   useRefreshOnFocusAndPoll(refresh);
 
   return {
@@ -262,6 +257,110 @@ export function useWriteOrdering(): WriteOrdering {
   return { claim };
 }
 
+// --- Collection save lifecycle (shared by useDocCollection and
+// useSkillOverrides) ---
+//
+// Both collection hooks drive one save-status indicator scoped to the entry
+// being edited, order overlapping writes per entry, and defer to the refresh
+// guard above. Only what they read and merge differs, which is the caller's
+// `commit`.
+
+/** The save-side state and actions shared by the collection hooks. */
+export interface CollectionMutator {
+  /** Status of the most recent write for the entry currently being edited. */
+  saveStatus: SaveStatus;
+  /** Message of the most recent failed write, or null. */
+  saveError: string | null;
+  /** Detach the indicator from the previous entry when the selection changes. */
+  resetSaveStatus: () => void;
+  /** The refresh guard snapshot factory (see {@link useSaveRefreshGuard}). */
+  guardRefresh: () => () => boolean;
+  /**
+   * Run one mutation: mark saving, run `op`, commit its result on success,
+   * record the error on failure, and always clear the in-flight guard. `names`
+   * are the entries the mutation targets — its result is committed only while
+   * it is still the newest write for all of them (see
+   * {@link useWriteOrdering}). Resolves `op`'s result, or null on failure, so a
+   * void-resolving op (a delete) maps success to `result !== null`.
+   */
+  mutate: <T>(
+    op: () => Promise<T>,
+    commit: (result: T) => void,
+    names: string[],
+  ) => Promise<T | null>;
+}
+
+/**
+ * Save lifecycle for a ~/.producer-pal collection hook: the status indicator,
+ * per-entry write ordering, and the save-vs-refresh guard.
+ * @returns The save-side state plus the `mutate` runner and refresh guard
+ */
+export function useCollectionMutator(): CollectionMutator {
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  // Bumped whenever the edited entry changes (via resetSaveStatus). A save
+  // captures this at dispatch; if it has advanced by the time the save
+  // resolves, the user switched entries, so the outcome must not paint the
+  // shared "saved"/"error" indicator onto the now-active entry (the list merge
+  // still applies — only the status indicator is entry-scoped).
+  const saveGenerationRef = useRef(0);
+  // Per-ENTRY write ordering, distinct from saveGenerationRef (which scopes the
+  // status indicator to the selected entry): a slow earlier save landing after a
+  // newer one must not revert that entry in the cached list.
+  const { claim } = useWriteOrdering();
+  const { beginSave, endSave, guardRefresh, isUnmounted } =
+    useSaveRefreshGuard();
+
+  const mutate = useCallback(
+    async <T>(
+      op: () => Promise<T>,
+      commit: (result: T) => void,
+      names: string[],
+    ): Promise<T | null> => {
+      const generation = saveGenerationRef.current;
+      // Ordering is per entry, NOT newest-write-wins: beginSave's own predicate
+      // would let a save of entry B discard entry A's echo. Only its
+      // unmounted half applies here.
+      const superseded = claim(...names);
+
+      beginSave();
+      setSaveStatus("saving");
+      setSaveError(null);
+
+      try {
+        const result = await op();
+
+        if (isUnmounted()) return result;
+        if (!superseded()) commit(result);
+
+        if (saveGenerationRef.current === generation) setSaveStatus("saved");
+
+        return result;
+      } catch (error: unknown) {
+        if (isUnmounted()) return null;
+
+        if (saveGenerationRef.current === generation) {
+          setSaveError(errorMessage(error));
+          setSaveStatus("error");
+        }
+
+        return null;
+      } finally {
+        endSave();
+      }
+    },
+    [beginSave, endSave, claim, isUnmounted],
+  );
+
+  const resetSaveStatus = useCallback((): void => {
+    saveGenerationRef.current += 1;
+    setSaveStatus("idle");
+    setSaveError(null);
+  }, []);
+
+  return { saveStatus, saveError, resetSaveStatus, guardRefresh, mutate };
+}
+
 /**
  * Run one guarded refresh: load via `load`, then commit through `onReady` UNLESS
  * the read was superseded — the component unmounted or a concurrent save landed
@@ -296,13 +395,14 @@ export async function runGuardedRefresh<T>(
 }
 
 /**
- * Refresh on window focus and on a focus-gated interval so external writes
- * (device/AI/hand edits made while the tab was elsewhere) surface within a few
- * seconds without a manual reload. Polling is gated on `document.hasFocus()` to
- * avoid idle background traffic; the focus listener fires unconditionally on
- * return. The refresh must defer to in-flight saves (see
- * {@link useSaveRefreshGuard}) so a tick mid-save can't clobber the echo.
- * @param refresh - Stable refresh callback to run on focus and each poll tick
+ * Load once on mount, then refresh on window focus and on a focus-gated
+ * interval so external writes (device/AI/hand edits made while the tab was
+ * elsewhere) surface within a few seconds without a manual reload. Polling is
+ * gated on `document.hasFocus()` to avoid idle background traffic; the focus
+ * listener fires unconditionally on return. The refresh must defer to in-flight
+ * saves (see {@link useSaveRefreshGuard}) so a tick mid-save can't clobber the
+ * echo.
+ * @param refresh - Stable refresh callback for the initial load, focus, and each poll tick
  */
 export function useRefreshOnFocusAndPoll(
   refresh: () => void | Promise<void>,
@@ -312,6 +412,7 @@ export function useRefreshOnFocusAndPoll(
       void refresh();
     };
 
+    void refresh();
     window.addEventListener("focus", handleFocus);
     const id = setInterval(() => {
       if (document.hasFocus()) void refresh();

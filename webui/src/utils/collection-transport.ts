@@ -56,20 +56,11 @@ export async function putEntry<TView, TInput>(
   createOnly: boolean,
   label: string,
 ): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(createOnly ? { ...input, createOnly } : input),
-    keepalive: true,
-  });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
-
-  const body = (await response.json()) as { entry: TView };
-
-  return body.entry;
+  return await putJson<TView>(
+    url,
+    createOnly ? { ...input, createOnly } : input,
+    label,
+  );
 }
 
 /**
@@ -86,20 +77,7 @@ export async function putRename<TView, TInput>(
   input: TInput,
   label: string,
 ): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...input, newName }),
-    keepalive: true,
-  });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
-
-  const body = (await response.json()) as { entry: TView };
-
-  return body.entry;
+  return await putJson<TView>(url, { ...input, newName }, label);
 }
 
 /**
@@ -116,6 +94,34 @@ export async function deleteEntryRequest(
   if (!response.ok) {
     throw new Error(await writeErrorMessage(response, label));
   }
+}
+
+/**
+ * PUT a JSON body to an entry endpoint and unwrap the server's `{ entry }` echo.
+ * @param url - The endpoint to write to
+ * @param body - The payload to serialize
+ * @param label - Error-message label (e.g. "Memory")
+ * @returns The server's echo of the stored entry
+ */
+async function putJson<TView>(
+  url: string,
+  body: unknown,
+  label: string,
+): Promise<TView> {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    keepalive: true,
+  });
+
+  if (!response.ok) {
+    throw new Error(await writeErrorMessage(response, label));
+  }
+
+  const parsed = (await response.json()) as { entry: TView };
+
+  return parsed.entry;
 }
 
 /**

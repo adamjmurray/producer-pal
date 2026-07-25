@@ -3,18 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { useCallback, useState } from "preact/hooks";
 import {
   getSkillOverrideUrl,
   getSkillOverridesUrl,
 } from "#webui/utils/mcp-url";
 import {
   runGuardedRefresh,
+  useCollectionMutator,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
-  useSaveRefreshGuard,
-  useWriteOrdering,
 } from "./use-doc";
 
 /** One overridable skills fragment, as the editor needs it. */
@@ -70,22 +68,8 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   const [status, setStatus] = useState<SkillOverridesStatus>({
     kind: "loading",
   });
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  // Bumped whenever the edited slot changes (via resetSaveStatus). A save
-  // captures this at dispatch; if it has advanced by the time the save
-  // resolves, the user switched slots, so the outcome must not paint the
-  // shared "saved"/"error" indicator onto the now-active slot (the list merge
-  // still applies — only the status indicator is slot-scoped).
-  const saveGenerationRef = useRef(0);
-  // Per-SLOT write ordering, so two overlapping saves of one slot resolve to
-  // the newest (see writeSlot) while unrelated slots never interfere.
-  // Same refresh-vs-save coordination as useDoc (a focus/poll read can
-  // resolve older slot data than a concurrent save's echo and, landing last,
-  // clobber it), just over the slot collection instead of one document.
-  const { claim } = useWriteOrdering();
-  const { beginSave, endSave, guardRefresh, isUnmounted } =
-    useSaveRefreshGuard();
+  const { saveStatus, saveError, resetSaveStatus, guardRefresh, mutate } =
+    useCollectionMutator();
 
   const refresh = useCallback(
     (): Promise<void> =>
@@ -98,48 +82,28 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
     [guardRefresh],
   );
 
+  // Slots autosave through useContextEditorState (a debounce flush, then a blur
+  // flush right behind it), so two writes of ONE slot overlap and the older echo
+  // can land last. Merging it would put `override` back, flip the status
+  // SkillSlotScreen memoizes off this list, and raise a spurious "updated
+  // outside the editor" banner whose Reload adopts the superseded content —
+  // hence the per-slot claim (a write to another slot never interferes).
+  // `mutate` resolves the slot on success and null on failure, and a slot view
+  // is never itself null, so the null check is the success signal.
   const writeSlot = useCallback(
     async (
       name: string,
       write: () => Promise<SkillSlotView>,
     ): Promise<boolean> => {
-      const generation = saveGenerationRef.current;
-      // Slots autosave through useContextEditorState (a debounce flush, then a
-      // blur flush right behind it), so two writes of ONE slot overlap and the
-      // older echo can land last. Merging it would put `override` back, flip the
-      // status SkillSlotScreen memoizes off this list, and raise a spurious
-      // "updated outside the editor" banner whose Reload adopts the superseded
-      // content. Ordering is per slot, so a write to another slot never
-      // interferes.
-      const superseded = claim(name);
+      const updated = await mutate(
+        write,
+        (slot) => setStatus((prev) => mergeSlot(prev, slot)),
+        [name],
+      );
 
-      beginSave();
-      setSaveStatus("saving");
-      setSaveError(null);
-
-      try {
-        const updated = await write();
-
-        if (isUnmounted()) return true;
-        if (!superseded()) setStatus((prev) => mergeSlot(prev, updated));
-
-        if (saveGenerationRef.current === generation) setSaveStatus("saved");
-
-        return true;
-      } catch (error: unknown) {
-        if (isUnmounted()) return false;
-
-        if (saveGenerationRef.current === generation) {
-          setSaveError(errorMessage(error));
-          setSaveStatus("error");
-        }
-
-        return false;
-      } finally {
-        endSave();
-      }
+      return updated !== null;
     },
-    [beginSave, endSave, claim, isUnmounted],
+    [mutate],
   );
 
   const saveSlot = useCallback(
@@ -152,17 +116,6 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
     (name: string): Promise<boolean> => writeSlot(name, () => deleteSlot(name)),
     [writeSlot],
   );
-
-  const resetSaveStatus = useCallback((): void => {
-    saveGenerationRef.current += 1;
-    setSaveStatus("idle");
-    setSaveError(null);
-  }, []);
-
-  // Initial load.
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useRefreshOnFocusAndPoll(refresh);
 
