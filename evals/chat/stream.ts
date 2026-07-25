@@ -20,6 +20,7 @@ import {
   formatWarning,
   startThought,
 } from "./shared/formatting.ts";
+import { mcpResultText } from "./shared/mcp-result-text.ts";
 import { type TurnResult } from "./shared/types.ts";
 
 /** Mutable state tracked during stream processing */
@@ -340,11 +341,5 @@ function formatOutput(output: unknown): string {
   if (output == null) return "";
 
   // MCP content array format: [{ type: "text", text: "..." }]
-  if (Array.isArray(output)) {
-    const first = output[0] as { text?: string } | undefined;
-
-    if (first?.text) return first.text;
-  }
-
-  return JSON.stringify(output);
+  return mcpResultText(output) || JSON.stringify(output);
 }

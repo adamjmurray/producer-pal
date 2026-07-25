@@ -185,6 +185,10 @@ Interactive chat for manual testing and debugging.
 scripts/chat [options] [text...]
 ```
 
+Every provider except `codex-code` is supported: codex-code runs through the
+Codex CLI transport (a spawned `codex exec` subprocess), which only the eval CLI
+drives.
+
 ### Options
 
 | Flag                             | Description                                  |

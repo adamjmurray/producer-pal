@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -22,10 +23,10 @@ import { existsSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
 const ABLETON_APP = "Ableton Live 12 Suite"; // For `open -a`
 const ABLETON_PROCESS = "Live"; // For System Events
-const MCP_URL = "http://localhost:3350/mcp";
 const DIALOG_POLL_INTERVAL_MS = 250;
 const DIALOG_TIMEOUT_MS = 2500;
 const MCP_POLL_INTERVAL_MS = 500;

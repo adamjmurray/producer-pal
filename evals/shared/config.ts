@@ -6,10 +6,9 @@
  * Configuration utilities for MCP server settings
  */
 
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
-
-const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 
 export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
 

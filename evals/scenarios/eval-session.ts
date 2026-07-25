@@ -9,16 +9,14 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ModelMessage, stepCountIs, streamText } from "ai";
-import {
-  CODEX_CODE_DEFAULT_MODEL,
-  createCodexCliSession,
-} from "#evals/chat/codex/codex-cli-session.ts";
+import { createCodexCliSession } from "#evals/chat/codex/codex-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { printStepUsage } from "#evals/chat/shared/formatting.ts";
 import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
+  CODEX_CODE_CONFIG,
   GEMINI_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
@@ -41,7 +39,7 @@ export function getDefaultModel(provider: EvalProvider): string {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
     case "codex-code":
-      return CODEX_CODE_DEFAULT_MODEL;
+      return CODEX_CODE_CONFIG.defaultModel;
     case "google":
       return GEMINI_CONFIG.defaultModel;
     case "openai":
@@ -95,6 +93,7 @@ export async function createEvalSession(
       ...(options.instructions != null
         ? { instructions: options.instructions }
         : {}),
+      ...(options.usage != null ? { usage: options.usage } : {}),
     });
   }
 
