@@ -30,12 +30,26 @@ export interface ChatMessage {
     result: unknown;
     isError?: boolean;
     /**
-     * For a spawn_subagent result: the worker's full chat history, kept for the
-     * UI deep-dive. Persisted with the conversation but NEVER sent to the model
+     * For a spawn_subagent result: the worker's chat history, kept for the UI
+     * deep-dive. Persisted with the conversation but NEVER sent to the model
      * (buildModelMessages reads only `result`), so the orchestrator context can't
      * blow up. Absent for ordinary tool results.
+     *
+     * A resumed run stores only what it ADDED to the session it continued — the
+     * seeded prefix already lives on the earlier run's entry, so each card shows
+     * just its own work and a repeatedly-resumed worker doesn't re-persist its
+     * whole history every time. collectSubagentTranscript stitches the entries
+     * back into one session when seeding the next resume.
      */
     subagentTranscript?: ChatMessage[];
+    /**
+     * For a spawn_subagent result: which subagent produced it, 1-based. Doubles
+     * as the worker's durable identity — resuming keeps the index, so every run
+     * of one worker shares it, and `resumeFrom` addresses a worker by this
+     * number. Absent for ordinary tool results and for spawns from before
+     * subagents were resumable.
+     */
+    subagentIndex?: number;
   }>;
   reasoning?: string;
   /**

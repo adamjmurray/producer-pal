@@ -35,7 +35,10 @@ vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
 
 import { streamText } from "ai";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/spawn-subagent-tool";
+import {
+  SPAWN_SUBAGENT_TOOL_NAME,
+  labelWorkerResult,
+} from "#webui/chat/sdk/spawn-subagent-tool";
 import {
   getSubagentRateLimit,
   resetSubagentRateLimits,
@@ -303,7 +306,7 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
       { toolCallId: "t1", messages: [], abortSignal: undefined },
     );
 
-    expect(result).toBe("Worker done.");
+    expect(result).toBe(labelWorkerResult(1, "Worker done."));
   });
 
   it("attaches the worker transcript to the tool result (UI-only)", async () => {
@@ -407,6 +410,303 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
   });
 });
 
+describe("ChatSdkClient resuming a worker", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Run one worker through the spawn tool and land its result on the
+   * orchestrator's history, the way a completed turn does.
+   * @param client - The orchestrator client
+   * @param execute - Its injected spawn tool
+   * @param args - Spawn arguments (task, and resumeFrom when continuing)
+   * @param toolCallId - The spawn tool-call id for this run
+   * @param workerText - The worker's final message this run
+   * @returns The labeled result the orchestrator model received
+   */
+  async function recordSpawn(
+    client: ChatSdkClient,
+    execute: ReturnType<typeof spawnToolExecute>,
+    args: Record<string, unknown>,
+    toolCallId: string,
+    workerText: string,
+  ): Promise<string> {
+    mockStreamParts([
+      { type: "text-delta", text: workerText },
+      { type: "finish", finishReason: "stop" },
+    ]);
+
+    const result = await execute(args, {
+      toolCallId,
+      messages: [],
+      abortSignal: undefined,
+    });
+
+    mockStreamParts([
+      {
+        type: "tool-call",
+        toolCallId,
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+        input: args,
+      },
+      {
+        type: "tool-result",
+        toolCallId,
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+        input: args,
+        output: result,
+      },
+      { type: "finish", finishReason: "stop" },
+    ]);
+
+    for await (const _ of client.sendMessage(String(args.task))) {
+      /* consume */
+    }
+
+    return result;
+  }
+
+  /**
+   * The `messages` the most recent streamText call was given.
+   * @returns Model messages from the last request
+   */
+  function lastStreamMessages(): { role: string; content: unknown }[] {
+    const call = streamTextMock.mock.calls.at(-1)?.[0] as
+      { messages?: { role: string; content: unknown }[] } | undefined;
+
+    return call?.messages ?? [];
+  }
+
+  it("seeds a resumed worker with its own earlier session", async () => {
+    const { client, execute } = await orchestratorWithSpawnTool();
+
+    await recordSpawn(
+      client,
+      execute,
+      { task: "add a bassline" },
+      "tc-1",
+      "Added the bassline.",
+    );
+
+    // Resume it with a follow-up. The whole point: the worker still has its
+    // context, so this turn lands on top of what it already did.
+    const resumed = await recordSpawn(
+      client,
+      execute,
+      { task: "now make it swing", resumeFrom: 1 },
+      "tc-2",
+      "Swung it.",
+    );
+
+    // The worker keeps its number, so the orchestrator can resume it again.
+    expect(resumed).toBe(labelWorkerResult(1, "Swung it."));
+
+    const entries = client.chatHistory.flatMap((m) => m.toolResults ?? []);
+    const first = entries.find((tr) => tr.id === "tc-1");
+    const second = entries.find((tr) => tr.id === "tc-2");
+
+    expect(first?.subagentIndex).toBe(1);
+    expect(second?.subagentIndex).toBe(1);
+    // The resume stores only what it added — the seeded prefix already lives on
+    // the first run's entry, so a repeatedly-resumed worker doesn't re-persist
+    // its whole history (connect result included) every time.
+    expect(second?.subagentTranscript?.map((m) => m.content)).toStrictEqual([
+      "now make it swing",
+      "Swung it.",
+    ]);
+    // And the two entries stitch back into one continuous session.
+    expect(
+      [
+        ...(first?.subagentTranscript ?? []),
+        ...(second?.subagentTranscript ?? []),
+      ].map((m) => m.content),
+    ).toStrictEqual([
+      "add a bassline",
+      "Added the bassline.",
+      "now make it swing",
+      "Swung it.",
+    ]);
+  });
+
+  it("sends the resumed worker's prior turns to the provider", async () => {
+    const { client, execute } = await orchestratorWithSpawnTool();
+
+    await recordSpawn(
+      client,
+      execute,
+      { task: "add a bassline" },
+      "tc-1",
+      "Added the bassline.",
+    );
+
+    // Capture the worker's own request, not the orchestrator turn that follows.
+    mockStreamParts([
+      { type: "text-delta", text: "Swung it." },
+      { type: "finish", finishReason: "stop" },
+    ]);
+    await execute(
+      { task: "now make it swing", resumeFrom: 1 },
+      { toolCallId: "tc-2", messages: [], abortSignal: undefined },
+    );
+
+    expect(lastStreamMessages().map((m) => m.content)).toStrictEqual([
+      "add a bassline",
+      "Added the bassline.",
+      "now make it swing",
+    ]);
+  });
+
+  it("does not write through to the persisted transcript it seeded from", async () => {
+    // The seeded array is the worker's live history; if it were the stored one,
+    // the resumed run would append to (and the retry path could truncate) the
+    // record of a run that already happened.
+    const { client, execute } = await orchestratorWithSpawnTool();
+
+    await recordSpawn(
+      client,
+      execute,
+      { task: "add a bassline" },
+      "tc-1",
+      "Added the bassline.",
+    );
+    await recordSpawn(
+      client,
+      execute,
+      { task: "more", resumeFrom: 1 },
+      "tc-2",
+      "Did more.",
+    );
+
+    const first = client.chatHistory
+      .flatMap((m) => m.toolResults ?? [])
+      .find((tr) => tr.id === "tc-1");
+
+    expect(first?.subagentTranscript?.map((m) => m.content)).toStrictEqual([
+      "add a bassline",
+      "Added the bassline.",
+    ]);
+  });
+
+  it("continues numbering past workers a restored conversation already has", async () => {
+    // nextIndex is seeded from history in initialize(); without that a new
+    // worker would take number 1 again and resumeFrom would address two
+    // different sessions at once.
+    const client = new ChatSdkClient(
+      "key",
+      createConfig({
+        enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true },
+        chatHistory: [
+          {
+            role: "assistant",
+            content: "",
+            toolCalls: [
+              {
+                id: "old",
+                name: SPAWN_SUBAGENT_TOOL_NAME,
+                args: { task: "earlier" },
+              },
+            ],
+            toolResults: [
+              {
+                id: "old",
+                name: SPAWN_SUBAGENT_TOOL_NAME,
+                args: { task: "earlier" },
+                result: "done",
+                subagentIndex: 2,
+                subagentTranscript: [
+                  { role: "assistant", content: "earlier work" },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await client.initialize();
+    await runTurn(client);
+
+    mockStreamParts([
+      { type: "text-delta", text: "Fresh worker." },
+      { type: "finish", finishReason: "stop" },
+    ]);
+
+    const result = await spawnToolExecute()(
+      { task: "something new" },
+      { toolCallId: "tc-new", messages: [], abortSignal: undefined },
+    );
+
+    expect(result).toBe(labelWorkerResult(3, "Fresh worker."));
+  });
+
+  it("resumes a worker restored from a persisted conversation", async () => {
+    const client = new ChatSdkClient(
+      "key",
+      createConfig({
+        enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true },
+        chatHistory: [
+          {
+            role: "assistant",
+            content: "",
+            toolCalls: [
+              {
+                id: "old",
+                name: SPAWN_SUBAGENT_TOOL_NAME,
+                args: { task: "earlier" },
+              },
+            ],
+            toolResults: [
+              {
+                id: "old",
+                name: SPAWN_SUBAGENT_TOOL_NAME,
+                args: { task: "earlier" },
+                result: "done",
+                subagentIndex: 1,
+                subagentTranscript: [
+                  { role: "user", content: "earlier task" },
+                  { role: "assistant", content: "earlier work" },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await client.initialize();
+    await runTurn(client);
+
+    mockStreamParts([
+      { type: "text-delta", text: "Picked up where I left off." },
+      { type: "finish", finishReason: "stop" },
+    ]);
+
+    const result = await spawnToolExecute()(
+      { task: "keep going", resumeFrom: 1 },
+      { toolCallId: "tc-resume", messages: [], abortSignal: undefined },
+    );
+
+    expect(result).toBe(labelWorkerResult(1, "Picked up where I left off."));
+    expect(lastStreamMessages().map((m) => m.content)).toStrictEqual([
+      "earlier task",
+      "earlier work",
+      "keep going",
+    ]);
+  });
+
+  it("refuses to resume a worker the conversation never had", async () => {
+    const { execute } = await orchestratorWithSpawnTool();
+
+    await expect(
+      execute(
+        { task: "keep going", resumeFrom: 4 },
+        { toolCallId: "tc-x", messages: [], abortSignal: undefined },
+      ),
+    ).rejects.toThrow("no subagent 4");
+  });
+});
+
 describe("ChatSdkClient subagent rate-limit handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -439,7 +739,7 @@ describe("ChatSdkClient subagent rate-limit handling", () => {
       { toolCallId: "t1", messages: [], abortSignal: undefined },
     );
 
-    expect(result).toBe("Worker done.");
+    expect(result).toBe(labelWorkerResult(1, "Worker done."));
     // Cleared on the way out, so the card never keeps a stale countdown.
     expect(getSubagentRateLimit("t1")).toBeNull();
   });

@@ -38,13 +38,15 @@ function rateLimitError(): Error {
  * the messages it was sent and applies each scripted attempt outcome.
  * @param attempts - Per-attempt behavior: throw the error, or mutate history
  * @param overrides - Extra option overrides (gate, abortSignal, onStatus)
+ * @param initial - History the worker starts with (a resumed worker's session)
  * @returns The options plus the history and the messages runAttempt saw
  */
 function setup(
   attempts: Array<(history: ChatMessage[]) => void>,
   overrides?: Partial<SubagentRetryOptions>,
+  initial?: ChatMessage[],
 ) {
-  const history: ChatMessage[] = [];
+  const history: ChatMessage[] = [...(initial ?? [])];
   const messages: string[] = [];
   let index = 0;
 
@@ -139,6 +141,85 @@ describe("runSubagentWithRetry", () => {
     await runSubagentWithRetry(options);
 
     expect(messages).toStrictEqual(["add a bassline", "continue"]);
+  });
+
+  describe("with a seeded session (a resumed worker)", () => {
+    /**
+     * A session the worker completed before this run was started.
+     * @returns The seeded history
+     */
+    const seed = (): ChatMessage[] => [
+      { role: "user", content: "add a bassline" },
+      { role: "assistant", content: "Added a bassline." },
+    ];
+
+    /**
+     * Retry options for a run that continues the seeded session.
+     * @returns The option overrides
+     */
+    const resumeOptions = (): Partial<SubagentRetryOptions> => ({
+      task: "make it swing",
+      baselineLength: 2,
+    });
+
+    it("sends the follow-up on the first attempt, not continue", async () => {
+      // The seeded session reads as worker output, so without the baseline the
+      // very first attempt would send "continue" and the follow-up instruction
+      // would never reach the worker at all.
+      const { options, messages } = setup(
+        [(h) => h.push({ role: "assistant", content: "Swung it." })],
+        resumeOptions(),
+        seed(),
+      );
+
+      await runSubagentWithRetry(options);
+
+      expect(messages).toStrictEqual(["make it swing"]);
+    });
+
+    it("rewinds a restart to the baseline, keeping the seeded session", async () => {
+      const { options, history, messages } = setup(
+        [
+          () => {
+            throw rateLimitError();
+          },
+          (h) => h.push({ role: "assistant", content: "Swung it." }),
+        ],
+        resumeOptions(),
+        seed(),
+      );
+
+      await runSubagentWithRetry(options);
+
+      // The failed attempt's echoed turn is dropped, but the session it was
+      // continuing survives — truncating to 0 would erase an earlier run.
+      expect(messages).toStrictEqual(["make it swing", "make it swing"]);
+      expect(history.map((m) => m.content)).toStrictEqual([
+        "add a bassline",
+        "Added a bassline.",
+        "make it swing",
+        "Swung it.",
+      ]);
+    });
+
+    it("still resumes with continue once this run has produced output", async () => {
+      const { options, messages } = setup(
+        [
+          (h) => {
+            h.push({ role: "assistant", content: "Half swung." });
+
+            throw rateLimitError();
+          },
+          (h) => h.push({ role: "assistant", content: "Swung it." }),
+        ],
+        resumeOptions(),
+        seed(),
+      );
+
+      await runSubagentWithRetry(options);
+
+      expect(messages).toStrictEqual(["make it swing", "continue"]);
+    });
   });
 
   it("penalizes the shared gate so sibling workers back off too", async () => {
