@@ -50,7 +50,23 @@ Managing memory:
  * The Context section of the basic (small-model) core. Deliberately minimal:
  * small-model mode's ppal-context is blobs-only (no memory scope), so this
  * covers the project/global documents and nothing else.
+ *
+ * Two rules here are a deliberate token spend in the tier that can least afford
+ * it, because both defects they fix are invisible to the tool schema:
+ *  - **Exactly one scope.** Small models wrote an always-applies preference to
+ *    global AND copied it into project. A duplicated fact burns context on every
+ *    turn (both layers are always injected) and goes stale as soon as one side
+ *    is updated.
+ *  - **Confirm before replacing.** The standard tier's confirm rule was never
+ *    mirrored here, so small models wrote the user's own document unasked. It is
+ *    a consent bug rather than data loss (they do carry existing content
+ *    forward — see the context-write-preserves-* evals), and the tool-side
+ *    clobber guard covers the destructive case regardless of tier.
+ *
+ * Both are stated WITH their release condition (write on agreement; fill an
+ * empty document freely) — a bare prohibition here makes the model refuse to
+ * write even when asked, which is the failure the standard tier hit first.
  */
 export const coreContextBasic = `## Context
 
-\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is across all projects (style, preferences, goals). Both are single documents — read the same scope before writing (write replaces the whole document). Write each note so a future assistant with none of this chat can use it: the whole structure, not one isolated detail.`;
+\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is across all projects (style, preferences, goals). Both are single documents — read the same scope before writing (write replaces the whole document). Put a fact in exactly ONE scope, never both. These documents are the user's: when the scope already has content, say what you'd add and write it once they agree or ask — an empty one you can just fill in, then say what you saved. Write each note so a future assistant with none of this chat can use it: the whole structure, not one isolated detail.`;
