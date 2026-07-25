@@ -194,10 +194,15 @@ export async function handleWriteGlobalContext(
  *
  * Deliberately line containment, not a similarity score: cheap, explainable, and
  * with no threshold to argue about. Both sides are normalized first (list marker
- * stripped, internal whitespace collapsed, trailing punctuation dropped) so an
- * ordinary reformat — prose rewrapped into bullets, a re-indent — still counts
- * as surviving; headings are ignored for the same reason. One surviving line is
- * enough to read as an edit rather than a replacement.
+ * stripped, internal whitespace collapsed, trailing punctuation dropped) so a
+ * reformat OF A LINE — bulleted, re-indented, a period added — still counts as
+ * surviving; headings are ignored for the same reason. Tolerance stops there:
+ * the needle is a whole existing line and the haystack is one incoming line, so
+ * restructuring that SPLITS a line across several (or merges several into one)
+ * trips the guard even though every fact survived. That is the conservative
+ * direction, and the designed recovery — the model gets the warning and re-sends
+ * a merged write. One surviving line is enough to read as an edit rather than a
+ * replacement.
  *
  * Only SUBSTANTIVE lines can vouch for a write, measured in ALPHANUMERIC
  * characters so punctuation can't pad a line over the floor. Without that, a

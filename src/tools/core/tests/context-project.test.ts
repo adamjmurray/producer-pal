@@ -219,6 +219,22 @@ describe("context - project scope (default)", () => {
       },
     );
 
+    // Where that tolerance ends: normalization forgives a line's markup, not a
+    // restructuring that splits one line across several. Every fact below
+    // survives but no whole line does, so the guard fires — conservative by
+    // design, and the model recovers by re-sending a merged write. Pinned so a
+    // change to normalizeForContainment can't move this boundary unnoticed.
+    it("fires when a reformat splits one line into several", async () => {
+      await expectWriteSkipped(
+        "Working title: Nightshade. Deep house, 124 BPM.",
+        [
+          "- Working title: Nightshade",
+          "- Genre: deep house, 124 BPM",
+          "- Key: A minor",
+        ].join("\n"),
+      );
+    });
+
     // Structural boilerplate must not vouch for a write: it appears in almost
     // any markdown, so a document containing one would otherwise be unguarded.
     it("still fires when only a horizontal rule survives", async () => {
