@@ -253,6 +253,26 @@ This is why the built-in skills blob — historically assembled in the V8
 picture: the override files are only readable from Node, so `buildSkills` runs
 where the filesystem lives and the result is injected into `ppal-connect`.
 
+### Per-request assembly
+
+`POST /mcp` builds a fresh `createMcpServer` per request, so two settings can
+vary per caller rather than per device. Both ride an HTTP header (see
+`src/shared/config.ts`), and both fall back to the global config when absent, so
+external MCP clients are unaffected:
+
+- `SMALL_MODEL_MODE_HEADER` — shrinks tool schemas and selects the `basic`
+  skills driver.
+- `DISABLED_TOOLS_HEADER` — a comma-separated **subtraction** from
+  `config.tools`. It withholds those tools from registration _and_ drops the
+  skills fragments that teach them (`src/skills/fragment-tool-gates.ts`), so a
+  caller never pays for guidance about a tool it can't call.
+
+The subtraction shape is what the webui can actually send: its `enabledTools` is
+a sparse map (absent = enabled), and the header must be set when the transport
+is built — before `listTools` could reveal the catalog a whitelist would need.
+Together these are what lets one server serve a full-strength orchestrator and
+several narrowly-scoped subagent workers concurrently.
+
 ## Build System
 
 Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite

@@ -389,6 +389,12 @@ For state-of-the-art cloud providers (Gemini, OpenAI, etc), you generally want
 to keep everything enabled to make full use of Producer Pal's capabilities. If
 you want to prevent the AI from using a specific tool, you can disable it here.
 
+Disabling a tool also drops the part of the
+[Producer Pal Skills](/guide/customizing-skills) that teaches it — turn off
+library search and the AI stops being told how to search a library it can't
+reach. The saving is therefore bigger than the tool's own schema, and you don't
+have to trim skills by hand to match your toolset.
+
 Consult [the Features page](/features) for more info on what each tool does.
 
 <img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>

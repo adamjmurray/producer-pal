@@ -21,7 +21,10 @@ export interface McpTools {
  * Creates AI SDK-compatible tools from an MCP server connection.
  * Each tool's execute function delegates to mcpClient.callTool().
  * @param mcpUrl - URL of the MCP server
- * @param enabledTools - Map of tool names to enabled state
+ * @param enabledTools - Map of tool names to enabled state. Sent to the server
+ *   as the disabled-tools header (so it withholds those tools AND their skills
+ *   fragments) and applied again to the returned list, which also drops names
+ *   the server doesn't know about.
  * @param smallModelMode - Per-request small-model mode carried on every MCP
  *   request (shrinks tool schemas + selects the basic skills variant); omit for
  *   the global default
@@ -32,7 +35,11 @@ export async function createMcpTools(
   enabledTools?: Record<string, boolean>,
   smallModelMode?: boolean,
 ): Promise<McpTools> {
-  const mcpClient = await createConnectedMcpClient(mcpUrl, smallModelMode);
+  const mcpClient = await createConnectedMcpClient(
+    mcpUrl,
+    smallModelMode,
+    enabledTools,
+  );
   const toolsResult = await mcpClient.listTools();
   const filtered = filterEnabledTools(toolsResult.tools, enabledTools);
 

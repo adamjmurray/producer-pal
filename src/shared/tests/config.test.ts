@@ -6,10 +6,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   BUILD_SHA,
+  DISABLED_TOOLS_HEADER,
   MIN_LIVE_VERSION,
   SAME_TIME_EPSILON,
   SMALL_MODEL_MODE_HEADER,
   VERSION,
+  resolveEnabledTools,
   resolveSmallModelMode,
 } from "#src/shared/config.ts";
 
@@ -74,5 +76,57 @@ describe("resolveSmallModelMode", () => {
     expect(resolveSmallModelMode("1", true)).toBe(true);
     expect(resolveSmallModelMode("yes", false)).toBe(false);
     expect(resolveSmallModelMode("", true)).toBe(true);
+  });
+});
+
+describe("resolveEnabledTools", () => {
+  const CONFIGURED = ["ppal-connect", "ppal-read-clip", "ppal-library"];
+
+  it("is a lowercase header name (HTTP headers are matched case-insensitively)", () => {
+    expect(DISABLED_TOOLS_HEADER).toBe(DISABLED_TOOLS_HEADER.toLowerCase());
+  });
+
+  it("returns the configured set when the header is absent or empty", () => {
+    expect(resolveEnabledTools(undefined, CONFIGURED)).toStrictEqual(
+      CONFIGURED,
+    );
+    expect(resolveEnabledTools("", CONFIGURED)).toStrictEqual(CONFIGURED);
+    expect(resolveEnabledTools(" , ", CONFIGURED)).toStrictEqual(CONFIGURED);
+  });
+
+  it("copies rather than aliasing the configured set", () => {
+    // The caller holds the live config.tools array; a request must not be able
+    // to hand a mutable reference to it around.
+    expect(resolveEnabledTools(undefined, CONFIGURED)).not.toBe(CONFIGURED);
+  });
+
+  it("subtracts the named tools", () => {
+    expect(resolveEnabledTools("ppal-library", CONFIGURED)).toStrictEqual([
+      "ppal-connect",
+      "ppal-read-clip",
+    ]);
+    expect(
+      resolveEnabledTools("ppal-library,ppal-read-clip", CONFIGURED),
+    ).toStrictEqual(["ppal-connect"]);
+  });
+
+  it("tolerates whitespace and stray separators", () => {
+    expect(
+      resolveEnabledTools(" ppal-library , , ppal-read-clip ", CONFIGURED),
+    ).toStrictEqual(["ppal-connect"]);
+  });
+
+  it("ignores names the server doesn't offer", () => {
+    // A subtraction needs no catalog: an unknown name — a client-side tool, or
+    // one from a newer build — is a no-op rather than an error.
+    expect(
+      resolveEnabledTools("spawn_subagent,ppal-nonesuch", CONFIGURED),
+    ).toStrictEqual(CONFIGURED);
+  });
+
+  it("can empty the toolset entirely", () => {
+    expect(resolveEnabledTools(CONFIGURED.join(","), CONFIGURED)).toStrictEqual(
+      [],
+    );
   });
 });

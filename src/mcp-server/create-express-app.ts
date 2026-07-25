@@ -5,16 +5,13 @@
 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
-import express, {
-  type Request,
-  type Response,
-  type NextFunction,
-  type Express,
-} from "express";
+import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import {
+  DISABLED_TOOLS_HEADER,
   SMALL_MODEL_MODE_HEADER,
+  resolveEnabledTools,
   resolveSmallModelMode,
 } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -31,11 +28,9 @@ import {
 } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
+import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
-import {
-  isLocalOrigin,
-  rejectCrossOriginWrite,
-} from "./helpers/http/request-origin.ts";
+import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -164,26 +159,33 @@ function applyLiveApiEnabled(next: boolean): void {
 /**
  * Enrich ppal-connect Node-side with the skills, context, memory, and next-step
  * blocks (see enrich-connect.ts for the block order and why it matters).
- * config.projectContext is the per-Live Set context blob. smallModelMode arrives
- * through a getter (not config directly) so a POST /mcp request can supply its
- * own per-request value for the skills variant — the same value that shrinks its
- * tool schemas — while REST routes keep reading the live global.
+ * config.projectContext is the per-Live Set context blob. smallModelMode and the
+ * toolset arrive through getters (not config directly) so a POST /mcp request
+ * can supply its own per-request values — the same values that shrink its tool
+ * schemas and its registered tools — while REST routes keep reading the live
+ * globals.
  *
  * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
+ * @param getTools - Reads the toolset skills fragments are gated on
  * @returns A callLiveApi whose ppal-connect results carry every block
  */
 function buildEnrichedCall(
   getSmallModelMode: () => boolean,
+  getTools: () => readonly string[],
 ): WrappedCallLiveApi {
   return enrichConnect(callLiveApi, () => ({
     notation: config.notation,
     smallModelMode: getSmallModelMode(),
     projectContext: config.projectContext,
+    tools: getTools(),
   }));
 }
 
 // REST routes read the live global; POST /mcp builds its own per-request wrapper.
-const callLiveApiEnriched = buildEnrichedCall(() => config.smallModelMode);
+const callLiveApiEnriched = buildEnrichedCall(
+  () => config.smallModelMode,
+  () => config.tools,
+);
 
 interface JsonRpcError {
   jsonrpc: string;
@@ -229,50 +231,9 @@ function setNoStore(res: Response): void {
 export function createExpressApp(): Express {
   const app = express();
 
-  // CORS: by default reflect only localhost origins, so a browser page you
-  // serve locally (a dev server, the MCP Inspector, your own tool on another
-  // port) can call the API, while pages from the internet stay blocked. The
-  // Origin header is browser-set and can't be forged by page JS, so an internet
-  // page always carries its real domain and gets no header. Non-browser clients
-  // (curl, scripts, Max) ignore CORS entirely and are unaffected either way.
-  // Set ENABLE_REMOTE_CORS to widen this to any origin ("*") — needed only for
-  // browser dev tooling served from a non-localhost origin (a remote Inspector,
-  // LAN). Specify it manually on the CLI before a build; it is never baked into
-  // an npm script.
-  app.use((req: Request, res: Response, next: NextFunction): void => {
-    const origin = req.get("Origin");
-    let allowOrigin: string | null = null;
-
-    if (process.env.ENABLE_REMOTE_CORS === "true") {
-      allowOrigin = "*";
-    } else if (origin != null && isLocalOrigin(origin)) {
-      allowOrigin = origin;
-    }
-
-    if (allowOrigin != null) {
-      res.setHeader("Access-Control-Allow-Origin", allowOrigin);
-
-      // Reflected origins vary per request, so caches must key on Origin.
-      if (allowOrigin !== "*") {
-        res.setHeader("Vary", "Origin");
-      }
-
-      res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS, DELETE",
-      );
-      res.setHeader("Access-Control-Allow-Headers", "*");
-
-      // Answer the preflight for an allowed origin.
-      if (req.method === "OPTIONS") {
-        res.status(200).end();
-
-        return;
-      }
-    }
-
-    next();
-  });
+  // Localhost-only CORS by default; ENABLE_REMOTE_CORS widens it (see the
+  // middleware for the reasoning).
+  app.use(corsMiddleware);
 
   // Tool arguments with large MIDI note arrays or bar|beat transforms can
   // exceed Express's 100 KB default.
@@ -305,13 +266,25 @@ export function createExpressApp(): Express {
         config.smallModelMode,
       );
 
+      // Per-request tool subsetting: the chat and each subagent worker withhold
+      // the tools their preset turned off, so this caller neither registers
+      // those schemas nor receives the skills fragments that teach them. A
+      // subtraction from the global whitelist — absent ⇒ the global unchanged.
+      const requestTools = resolveEnabledTools(
+        req.get(DISABLED_TOOLS_HEADER),
+        config.tools,
+      );
+
       const server = createMcpServer(
-        buildEnrichedCall(() => requestSmallModelMode),
+        buildEnrichedCall(
+          () => requestSmallModelMode,
+          () => requestTools,
+        ),
         {
           smallModelMode: requestSmallModelMode,
           notation: config.notation,
           liveApiEnabled: config.liveApiEnabled,
-          tools: config.tools,
+          tools: requestTools,
         },
       );
       const transport = new StreamableHTTPServerTransport({
@@ -387,7 +360,7 @@ export function createExpressApp(): Express {
   registerCustomSkillsCollectionRoutes(app);
   registerSystemPromptRoutes(app);
   registerSkillOverridesRoutes(app);
-  registerSkillsPreviewRoute(app);
+  registerSkillsPreviewRoute(app, () => config.tools);
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);
