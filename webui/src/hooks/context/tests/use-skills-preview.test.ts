@@ -87,6 +87,44 @@ async function renderReady(
   return await renderAndWait(useSkillsPreview, "ready");
 }
 
+/**
+ * A preview response that echoes back the notation the request asked for, so a
+ * case can assert which selection the hook actually fetched.
+ * @param url - The preview request URL
+ * @param driver - Driver body to return
+ * @param skills - Skills body to return
+ * @returns The stubbed preview response
+ */
+function echoPreview(
+  url: string,
+  driver: string,
+  skills: string,
+): Promise<Response> {
+  const params = new URL(url).searchParams;
+
+  return Promise.resolve(
+    jsonResponse({ head: params.get("notation"), driver, skills }),
+  );
+}
+
+/**
+ * Install a bespoke fetch stub, mount the hook, and switch the selection to
+ * midi-json — the arrangement the hand-rolled-transport cases share.
+ * @param fetchMock - The fetch stub for this case
+ * @returns The rendered hook result
+ */
+async function mountAndSelectMidiJson(fetchMock: typeof fetch) {
+  vi.stubGlobal("fetch", fetchMock);
+
+  const { result } = renderHook(useSkillsPreview);
+
+  await act(async () => {
+    result.current.setNotation("midi-json");
+  });
+
+  return result;
+}
+
 describe("useSkillsPreview", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -179,24 +217,10 @@ describe("useSkillsPreview", () => {
         });
       }
 
-      const params = new URL(url).searchParams;
-
-      return Promise.resolve(
-        jsonResponse({
-          head: params.get("notation"),
-          driver: "c",
-          skills: "s",
-        }),
-      );
+      return echoPreview(url, "c", "s");
     });
 
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await act(async () => {
-      result.current.setNotation("midi-json");
-    });
+    const result = await mountAndSelectMidiJson(fetchMock);
 
     await act(async () => {
       resolveConfig(jsonResponse({ notation: "stark", smallModelMode: true }));
@@ -284,24 +308,10 @@ describe("useSkillsPreview", () => {
         });
       }
 
-      const params = new URL(url).searchParams;
-
-      return Promise.resolve(
-        jsonResponse({
-          head: params.get("notation"),
-          driver: "d",
-          skills: "later",
-        }),
-      );
+      return echoPreview(url, "d", "later");
     });
 
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await act(async () => {
-      result.current.setNotation("midi-json");
-    });
+    const result = await mountAndSelectMidiJson(fetchMock);
 
     // Now reject the first (already-aborted) request; it must be swallowed.
     await act(async () => {

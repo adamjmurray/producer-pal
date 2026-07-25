@@ -33,6 +33,29 @@ function createMockClip({
   } as unknown as LiveAPI;
 }
 
+/**
+ * Run handleArrangementLengthOperation on a clip it must refuse, and assert it
+ * returned no clips and warned with `reason`.
+ * @param clip - The clip stub under test
+ * @param warnSpy - The console.warn spy for this case
+ * @param reason - Substring the warning must contain
+ */
+function expectSkippedWithWarning(
+  clip: LiveAPI,
+  warnSpy: ReturnType<typeof vi.spyOn>,
+  reason: string,
+): void {
+  const result = handleArrangementLengthOperation({
+    clip,
+    isAudioClip: false,
+    arrangementLengthBeats: 16,
+    context: { holdingAreaStartBeats: 40000 },
+  });
+
+  expect(result).toStrictEqual([]);
+  expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(reason));
+}
+
 describe("handleArrangementLengthOperation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -42,17 +65,7 @@ describe("handleArrangementLengthOperation", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const clip = createMockClip({ props: { is_arrangement_clip: 0 } });
 
-    const result = handleArrangementLengthOperation({
-      clip,
-      isAudioClip: false,
-      arrangementLengthBeats: 16,
-      context: { holdingAreaStartBeats: 40000 },
-    });
-
-    expect(result).toStrictEqual([]);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("ignored for session clip"),
-    );
+    expectSkippedWithWarning(clip, warnSpy, "ignored for session clip");
   });
 
   it("warns and skips for a take-lane clip", () => {
@@ -61,17 +74,7 @@ describe("handleArrangementLengthOperation", () => {
       path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
     });
 
-    const result = handleArrangementLengthOperation({
-      clip,
-      isAudioClip: false,
-      arrangementLengthBeats: 16,
-      context: { holdingAreaStartBeats: 40000 },
-    });
-
-    expect(result).toStrictEqual([]);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("ignored for take-lane clip"),
-    );
+    expectSkippedWithWarning(clip, warnSpy, "ignored for take-lane clip");
   });
 
   it("delegates to handleArrangementLengthening when target length is longer", () => {

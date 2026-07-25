@@ -89,19 +89,27 @@ describe("applyNotesToClip collision warning", () => {
     };
   }
 
+  /**
+   * A silenced warn spy plus a 4-beat clip stub — the arrangement every
+   * collision-warning case needs before calling applyNotesToClip.
+   * @returns The warn spy and the clip stub
+   */
+  function setupCollisionCase() {
+    return {
+      warn: vi.spyOn(v8Console, "warn").mockImplementation(() => {}),
+      mockClip: {
+        getProperty: vi.fn().mockReturnValue(4),
+        call: vi.fn(),
+      } as unknown as LiveAPI,
+    };
+  }
+
   it("emits no warning when there are no collisions", () => {
     // Two distinct onsets → collisions === 0 → the `collisions > 0` guard must
     // stay closed (kills the >=0 and forced-true mutants).
-    const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
-    const mockClip = {
-      getProperty: vi.fn().mockReturnValue(4),
-      call: vi.fn(),
-    };
+    const { warn, mockClip } = setupCollisionCase();
 
-    applyNotesToClip(mockClip as unknown as LiveAPI, [
-      note(0, 1, 100),
-      note(1, 1, 100),
-    ]);
+    applyNotesToClip(mockClip, [note(0, 1, 100), note(1, 1, 100)]);
 
     expect(warn).not.toHaveBeenCalled();
   });
@@ -109,16 +117,9 @@ describe("applyNotesToClip collision warning", () => {
   it("uses the singular noun for exactly one collision", () => {
     // Two same-pitch+start notes → 1 collision → "1 duplicate note" (no "s").
     // Full-string assertion kills the plural-forcing and "s"-blanking mutants.
-    const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
-    const mockClip = {
-      getProperty: vi.fn().mockReturnValue(4),
-      call: vi.fn(),
-    };
+    const { warn, mockClip } = setupCollisionCase();
 
-    applyNotesToClip(mockClip as unknown as LiveAPI, [
-      note(0, 1, 100),
-      note(0, 2, 80),
-    ]);
+    applyNotesToClip(mockClip, [note(0, 1, 100), note(0, 2, 80)]);
 
     expect(warn).toHaveBeenCalledWith(
       "Dropped 1 duplicate note at the same pitch and start",
@@ -128,13 +129,9 @@ describe("applyNotesToClip collision warning", () => {
   it("uses the plural noun for more than one collision", () => {
     // Three same-pitch+start notes → 2 collisions → "2 duplicate notes".
     // Kills the singular-forcing, blanked-"s", and "Stryker was here!" mutants.
-    const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
-    const mockClip = {
-      getProperty: vi.fn().mockReturnValue(4),
-      call: vi.fn(),
-    };
+    const { warn, mockClip } = setupCollisionCase();
 
-    applyNotesToClip(mockClip as unknown as LiveAPI, [
+    applyNotesToClip(mockClip, [
       note(0, 1, 100),
       note(0, 2, 90),
       note(0, 3, 80),

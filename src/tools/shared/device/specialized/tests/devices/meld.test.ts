@@ -13,6 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
 
 /**
  * Register a mock Meld device and return its LiveAPI.
@@ -87,43 +88,7 @@ describe("Meld pseudo-params", () => {
     });
   });
 
-  describe("write monoPoly", () => {
-    it("maps the enum label 'mono' to index 0", () => {
-      const device = registerMeld({ mono_poly: 1 });
-
-      applySpecializedParamWrite(device, "monoPoly", "mono", "updateDevice");
-
-      expect(device.set).toHaveBeenCalledWith("mono_poly", 0);
-    });
-
-    it("maps the enum label 'poly' to index 1", () => {
-      const device = registerMeld();
-
-      applySpecializedParamWrite(device, "monoPoly", "poly", "updateDevice");
-
-      expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
-    });
-
-    it("is case-insensitive on the param name", () => {
-      const device = registerMeld();
-
-      applySpecializedParamWrite(device, "monopoly", "poly", "updateDevice");
-
-      expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
-    });
-
-    it("warns and skips an invalid monoPoly label", () => {
-      const device = registerMeld();
-
-      applySpecializedParamWrite(device, "monoPoly", "stereo", "updateDevice");
-
-      expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("not a valid monoPoly"),
-      );
-    });
-  });
+  registerMonoPolyWriteTests(registerMeld);
 
   describe("write polyVoices", () => {
     it("sets poly_voices when value is in range", () => {

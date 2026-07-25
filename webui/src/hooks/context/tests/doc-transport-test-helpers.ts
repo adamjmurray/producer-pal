@@ -289,6 +289,25 @@ function registerSaveOrderingTests(
 }
 
 /** One write in a {@link raceTwoWrites} pair: how to dispatch it, and its echo. */
+/**
+ * The fake-timer lifecycle every focus-gated polling block needs, plus the poll
+ * interval the doc hooks use. Registers its own beforeEach/afterEach on the
+ * calling suite.
+ * @returns The poll interval in ms (mirrors POLL_INTERVAL_MS in use-doc)
+ */
+export function useFakeTimersForPolling(): number {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  return 5000;
+}
+
 export interface RacedWrite {
   /** Dispatch the write (the hook call under test). */
   dispatch: () => Promise<unknown>;

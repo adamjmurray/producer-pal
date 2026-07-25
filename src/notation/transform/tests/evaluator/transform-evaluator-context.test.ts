@@ -429,15 +429,18 @@ describe("Context Variables", () => {
   });
 
   describe("note-value period is meter-invariant", () => {
-    // `n/4` = a quarter-note cycle. At a fixed absolute time, a synced LFO
-    // must produce the same value in any meter — the period scales with the
-    // beat unit. Position is given in each meter's musical beats.
-    it.each([
-      { num: 4, den: 4, beats: 1 }, // 1 quarter = 1 beat
-      { num: 6, den: 8, beats: 2 }, // 1 quarter = 2 eighth-note beats
-      { num: 5, den: 4, beats: 1 }, // 1 quarter = 1 beat
-    ])("cos(n/4, sync) peaks one quarter note in ($num/$den)", (tc) => {
-      const result = evaluateTransform(
+    /**
+     * Evaluate a quarter-note-synced cosine at `tc.beats` in `tc.num`/`tc.den`.
+     * The period scales with the beat unit, so each meter reaches the same
+     * phase at the same absolute time — only the beat count differs.
+     * @param tc - The meter and position for this row
+     * @param tc.num - Time-signature numerator
+     * @param tc.den - Time-signature denominator
+     * @param tc.beats - Position in that meter's musical beats
+     * @returns The evaluated transform result
+     */
+    const syncedCosine = (tc: { num: number; den: number; beats: number }) =>
+      evaluateTransform(
         "velocity += 100 * cos(n/4, sync)",
         createContext({
           position: tc.beats,
@@ -446,6 +449,16 @@ describe("Context Variables", () => {
         }),
         { "clip:position": 0 },
       );
+
+    // `n/4` = a quarter-note cycle. At a fixed absolute time, a synced LFO
+    // must produce the same value in any meter — the period scales with the
+    // beat unit. Position is given in each meter's musical beats.
+    it.each([
+      { num: 4, den: 4, beats: 1 }, // 1 quarter = 1 beat
+      { num: 6, den: 8, beats: 2 }, // 1 quarter = 2 eighth-note beats
+      { num: 5, den: 4, beats: 1 }, // 1 quarter = 1 beat
+    ])("cos(n/4, sync) peaks one quarter note in ($num/$den)", (tc) => {
+      const result = syncedCosine(tc);
 
       expect(result.velocity!.value).toBeCloseTo(100, 10);
     });
@@ -455,15 +468,7 @@ describe("Context Variables", () => {
       { num: 6, den: 8, beats: 1 }, // half a quarter = 1 eighth-note beat
       { num: 5, den: 4, beats: 0.5 }, // half a quarter = 0.5 beat
     ])("cos(n/4, sync) troughs half a quarter note in ($num/$den)", (tc) => {
-      const result = evaluateTransform(
-        "velocity += 100 * cos(n/4, sync)",
-        createContext({
-          position: tc.beats,
-          numerator: tc.num,
-          denominator: tc.den,
-        }),
-        { "clip:position": 0 },
-      );
+      const result = syncedCosine(tc);
 
       expect(result.velocity!.value).toBeCloseTo(-100, 10);
     });

@@ -7,13 +7,14 @@
  * @vitest-environment happy-dom
  */
 import { renderHook, waitFor, act } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useProjectContext } from "#webui/hooks/context/use-project-context";
 import {
   deferred,
   type Deferred,
   installFetchMock,
   jsonResponse,
+  useFakeTimersForPolling,
 } from "./doc-transport-test-helpers";
 
 // happy-dom defaults to http://localhost:3000/, so the same-origin /config
@@ -345,16 +346,7 @@ describe("useProjectContext", () => {
   // external writes (ppal-context tool, Max textedit) surface without a manual
   // refocus. Fake timers + a stubbed document.hasFocus drive the cases.
   describe("focus-gated polling", () => {
-    const POLL_MS = 5000; // mirrors POLL_INTERVAL_MS in the hook
-
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-      vi.restoreAllMocks();
-    });
+    const POLL_MS = useFakeTimersForPolling();
 
     // Flush the mount-time load (a microtask chain, not a timer).
     async function flushInitialLoad(): Promise<void> {

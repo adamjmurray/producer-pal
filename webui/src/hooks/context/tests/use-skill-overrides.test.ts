@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { act, renderHook, waitFor } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import {
   deferred,
@@ -15,6 +15,7 @@ import {
   jsonResponse,
   raceTwoWrites,
   renderAndWait,
+  useFakeTimersForPolling,
 } from "./doc-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
@@ -375,16 +376,7 @@ describe("useSkillOverrides", () => {
   });
 
   describe("focus-gated polling", () => {
-    const POLL_MS = 5000; // mirrors POLL_INTERVAL_MS in the hook
-
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-      vi.restoreAllMocks();
-    });
+    const POLL_MS = useFakeTimersForPolling();
 
     it("re-reads each interval while focused", async () => {
       vi.spyOn(document, "hasFocus").mockReturnValue(true);

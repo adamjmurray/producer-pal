@@ -81,6 +81,29 @@ async function runWarpedAudioLengthening(
   return { clip, result, mockCreate, sessionSlot };
 }
 
+/**
+ * runWarpedAudioLengthening for the `it.each` cases, which all share a file
+ * boundary of 8 beats and a 14-beat target and receive their row values as
+ * `unknown`.
+ * @param clipId - Clip ID (row value)
+ * @param sourceEndTime - End time for the source clip (row value)
+ * @param name - Clip name (row value)
+ * @returns clip mock, updateClip result, mockCreate spy, and sessionSlot mock
+ */
+async function runBoundary8Case(
+  clipId: unknown,
+  sourceEndTime: unknown,
+  name: unknown,
+) {
+  return await runWarpedAudioLengthening(
+    clipId as string,
+    sourceEndTime as number,
+    name as string,
+    8.0,
+    "3bar+n/2",
+  );
+}
+
 describe("Unlooped warped audio clips - skip when no additional content", () => {
   // These clips show all file content (end_marker = file boundary = 8)
   // No hidden content → nothing to reveal → skip
@@ -95,12 +118,10 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
       const cId = clipId as string;
 
       // File boundary = 8, target = 14 → insufficient
-      const { clip, result, mockCreate } = await runWarpedAudioLengthening(
+      const { clip, result, mockCreate } = await runBoundary8Case(
         cId,
-        sourceEndTime as number,
-        name as string,
-        8.0,
-        "3bar+n/2",
+        sourceEndTime,
+        name,
       );
 
       // Source clip NOT modified (no end_marker extension)
@@ -130,12 +151,10 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       const cId = clipId as string;
 
       // File boundary = 8, target = 14 → cap to 8 (partial extension)
-      const { clip, result, mockCreate } = await runWarpedAudioLengthening(
+      const { clip, result, mockCreate } = await runBoundary8Case(
         cId,
-        sourceEndTime as number,
-        name as string,
-        8.0,
-        "3bar+n/2",
+        sourceEndTime,
+        name,
       );
 
       // Source clip loop_end set: loopStart(0) + effectiveTarget(8) = 8.0
