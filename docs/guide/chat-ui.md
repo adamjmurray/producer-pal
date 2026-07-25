@@ -400,6 +400,20 @@ project context, global context, and the memory index are attached when AI
 connects either way, so to stop it reading a layer, empty that layer. **Edit
 Context** below the checkbox opens the context editor.
 
+The experimental **Subagent** checkbox lets the AI delegate a self-contained
+subtask to a nested assistant working in the same Live Set. Each subagent
+appears as its own card in the transcript — expand it for the result it reported
+back, and expand the card inside that for its full work log. When the AI
+delegates several independent subtasks at once, the subagents run in parallel.
+Choose what they run under with **Default subagent** on the
+[Presets tab](#presets).
+
+If a provider rate-limits a subagent, its card shows a **rate limited**
+countdown and the subagent retries on its own instead of failing. Subagents
+running in parallel share that backoff: when one hits a limit the others show
+**waiting** and pause with it, rather than piling more requests onto the
+provider.
+
 The **Live API** checkbox under **Advanced** behaves differently from the other
 toggles. The rest only filter which tools the Chat UI's AI can see, but this one
 mirrors the device's Setup-tab **Direct Live API** toggle, so enabling it here

@@ -143,6 +143,7 @@ function renderSinglePart(
           result={part.result}
           isError={part.isError}
           isResponding={isResponding}
+          toolCallId={part.id}
           transcript={renderSubagentTranscript(part.subagentMessages)}
         />
       );

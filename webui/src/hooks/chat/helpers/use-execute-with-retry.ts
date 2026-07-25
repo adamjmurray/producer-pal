@@ -15,6 +15,7 @@ import {
   MAX_RETRY_ATTEMPTS,
   shouldRetry,
 } from "#webui/lib/rate-limit";
+import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
 import { type UIMessage } from "#webui/types/messages";
 import { handleMessageStream } from "./streaming-helpers";
 
@@ -39,6 +40,11 @@ interface ExecuteWithRetryArgs<TMessage> {
 /**
  * Hook that wraps a streaming chat call with rate-limit-aware retry logic.
  * Owns the retry AbortController and exposes a way to cancel pending retries.
+ *
+ * NOTE: subagent workers stream below this hook (inside the spawn tool's
+ * execute), so they carry their own copy of this strategy in
+ * chat/sdk/subagent-rate-limit.ts. A change to the budget, the delay schedule,
+ * or the resume rule has to be made in both.
  * @param deps - Adapter, autoSave ref, parent abort ref, and state setters
  * @returns executeWithRetry function and abortRetry canceler
  */
@@ -131,24 +137,14 @@ export function useExecuteWithRetry<
             delayMs,
           });
 
-          // Wait before retrying
-          await new Promise<void>((resolve, reject) => {
-            const signal = retryAbortRef.current?.signal;
-            const timer: { id: ReturnType<typeof setTimeout> | null } = {
-              id: null,
-            };
-
-            const onAbort = () => {
-              if (timer.id != null) clearTimeout(timer.id);
-              reject(new Error("Retry cancelled"));
-            };
-
-            timer.id = setTimeout(() => {
-              signal?.removeEventListener("abort", onAbort);
-              resolve();
-            }, delayMs);
-            signal?.addEventListener("abort", onAbort, { once: true });
-          });
+          // Wait before retrying. Rejecting on abort is load-bearing: the
+          // rejection propagates out of executeWithRetry so the canceled turn is
+          // recorded as a failure upstream.
+          await abortableSleep(
+            delayMs,
+            retryAbortRef.current.signal,
+            "Retry cancelled",
+          );
           // Clear the indicator now that the wait is over. If the next attempt
           // also rate-limits, the catch block above will re-set it. Without
           // this, the indicator stays visible during the entire retry response

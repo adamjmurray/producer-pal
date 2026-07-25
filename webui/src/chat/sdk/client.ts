@@ -18,6 +18,11 @@ import {
   createSpawnSubagentTool,
 } from "./spawn-subagent-tool";
 import { createStreamErrorSignal } from "./stream-with-error-signal";
+import {
+  RateLimitGate,
+  runSubagentWithRetry,
+  setSubagentRateLimit,
+} from "./subagent-rate-limit";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
@@ -62,6 +67,14 @@ export class ChatSdkClient {
    */
   private spawnTranscripts = new Map<string, ChatMessage[]>();
   /**
+   * Backoff window shared by every worker this client spawns. Parallel workers
+   * stream on separate connections, so without it a provider-wide 429 hits each
+   * one independently; with it, the first worker to be rate-limited parks its
+   * siblings for the same cooldown. Orchestrator turns keep using useChat's
+   * executeWithRetry — no worker is in flight while that retry runs.
+   */
+  private rateLimitGate = new RateLimitGate();
+  /**
    * The MCP client backing `tools`. Each tool's execute() closure calls
    * mcpClient.callTool(), so it must stay connected for this client's whole
    * lifetime and only close when the client is discarded — see dispose().
@@ -100,8 +113,8 @@ export class ChatSdkClient {
         ...tools,
         [SPAWN_SUBAGENT_TOOL_NAME]: createSpawnSubagentTool({
           config: this.config,
-          runWorker: (workerConfig, task, signal) =>
-            this.runSubagent(workerConfig, task, signal),
+          runWorker: (workerConfig, task, toolCallId, signal) =>
+            this.runSubagent(workerConfig, task, toolCallId, signal),
           spawnState: this.spawnState,
           recordTranscript: (toolCallId, transcript) =>
             this.spawnTranscripts.set(toolCallId, transcript),
@@ -120,8 +133,21 @@ export class ChatSdkClient {
    * history. The worker gets its OWN ChatSdkClient — own MCP client, own tools,
    * own abort — so aborting or disposing it never touches the orchestrator's
    * long-lived client. Injected into the spawn tool as runWorker.
+   *
+   * The run is wrapped in rate-limit backoff (runSubagentWithRetry) because
+   * nothing above it retries: the worker streams below the tool boundary, out of
+   * reach of useChat's executeWithRetry, so an unhandled 429 would come back as a
+   * dead tool-error. Retries share this client's gate with the worker's siblings
+   * and publish their backoff to the card.
+   *
+   * Each attempt is a fresh sendMessage, so it gets its own MAX_WORKER_STEPS
+   * budget rather than resuming under the first attempt's — a worker that
+   * rate-limits repeatedly can therefore run more total tool steps than one that
+   * doesn't. Accepted: retries are rare, and carrying a partial budget forward
+   * risks stranding a resumed worker mid-task with no steps left to finish.
    * @param workerConfig - Cloned config for the worker (spawn disabled)
    * @param task - The delegated instruction, sent as the worker's user message
+   * @param toolCallId - The spawn tool-call id, used to key the card's live status
    * @param abortSignal - The orchestrator turn's signal, forwarded so Stop also
    *   aborts the worker's in-flight stream
    * @returns The worker's complete chat history (kept UI-side, not sent to the model)
@@ -129,6 +155,7 @@ export class ChatSdkClient {
   private async runSubagent(
     workerConfig: ChatClientConfig,
     task: string,
+    toolCallId: string,
     abortSignal?: AbortSignal,
   ): Promise<ChatMessage[]> {
     const worker = new ChatSdkClient("", workerConfig);
@@ -136,14 +163,24 @@ export class ChatSdkClient {
     await worker.initialize();
 
     try {
-      // Drain the generator; we only need the accumulated final history.
-      const stream = worker.sendMessage(task, abortSignal);
-      let step = await stream.next();
+      await runSubagentWithRetry({
+        task,
+        runAttempt: async (message) => {
+          // Drain the generator; we only need the accumulated final history.
+          const stream = worker.sendMessage(message, abortSignal);
+          let step = await stream.next();
 
-      while (!step.done) step = await stream.next();
+          while (!step.done) step = await stream.next();
+        },
+        getHistory: () => worker.chatHistory,
+        gate: this.rateLimitGate,
+        abortSignal,
+        onStatus: (status) => setSubagentRateLimit(toolCallId, status),
+      });
 
       return worker.chatHistory;
     } finally {
+      setSubagentRateLimit(toolCallId, null);
       worker.dispose();
     }
   }

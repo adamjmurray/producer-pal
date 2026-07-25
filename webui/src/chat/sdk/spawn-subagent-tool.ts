@@ -57,11 +57,14 @@ export interface SpawnSubagentDeps {
   /**
    * Run a fully self-contained worker session for `task` and resolve with the
    * worker's final chat history. Injected by the client so this module needs no
-   * ChatSdkClient import (avoids an import cycle) and stays unit-testable.
+   * ChatSdkClient import (avoids an import cycle) and stays unit-testable. The
+   * tool-call id goes along so the runner can publish the worker's live status
+   * (e.g. a rate-limit backoff) to the card this call renders as.
    */
   runWorker: (
     workerConfig: ChatClientConfig,
     task: string,
+    toolCallId: string,
     abortSignal?: AbortSignal,
   ) => Promise<ChatMessage[]>;
   /** Mutable per-conversation spawn counter; enforces MAX_SPAWNS. */
@@ -117,7 +120,12 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
       deps.spawnState.count++;
 
       const workerConfig = buildWorkerConfig(deps.config);
-      const transcript = await deps.runWorker(workerConfig, task, abortSignal);
+      const transcript = await deps.runWorker(
+        workerConfig,
+        task,
+        toolCallId,
+        abortSignal,
+      );
 
       deps.recordTranscript?.(toolCallId, transcript);
 

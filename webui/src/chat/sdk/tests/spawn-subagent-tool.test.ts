@@ -22,6 +22,7 @@ import { createConfig } from "./client-test-helpers";
 type RunWorker = (
   workerConfig: ChatClientConfig,
   task: string,
+  toolCallId: string,
   abortSignal?: AbortSignal,
 ) => Promise<ChatMessage[]>;
 
@@ -228,13 +229,15 @@ describe("createSpawnSubagentTool", () => {
     expect(runWorker.mock.calls[0]?.[1]).toBe("write a bassline");
   });
 
-  it("forwards the abort signal to the worker", async () => {
+  it("forwards the tool-call id and abort signal to the worker", async () => {
     const { tool, runWorker } = setup();
     const controller = new AbortController();
 
     await tool.execute!({ task: "x" }, options(controller.signal));
 
-    expect(runWorker.mock.calls[0]?.[2]).toBe(controller.signal);
+    // The id keys the card's live status, so it must reach the runner.
+    expect(runWorker.mock.calls[0]?.[2]).toBe("tc1");
+    expect(runWorker.mock.calls[0]?.[3]).toBe(controller.signal);
   });
 
   it("increments the shared spawn counter", async () => {

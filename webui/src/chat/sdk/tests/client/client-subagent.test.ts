@@ -25,13 +25,26 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: vi.fn(() => "http://localhost:3000/mcp"),
 }));
 
+// Shrink the worker's rate-limit backoff so the retry test doesn't wait seconds.
+// A vi.fn so the shared-gate test can lengthen it for its own window.
+vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return { ...actual, calculateRetryDelay: vi.fn(() => 10) };
+});
+
 import { streamText } from "ai";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/spawn-subagent-tool";
 import {
+  getSubagentRateLimit,
+  resetSubagentRateLimits,
+} from "#webui/chat/sdk/subagent-rate-limit";
+import {
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
+import { calculateRetryDelay } from "#webui/lib/rate-limit";
 
 const streamTextMock = streamText as ReturnType<typeof vi.fn>;
 
@@ -45,6 +58,75 @@ function lastStreamTools(): Record<string, { execute?: unknown }> {
     { tools?: Record<string, { execute?: unknown }> } | undefined;
 
   return call?.tools ?? {};
+}
+
+/**
+ * A stream that rejects the way a provider 429 does, for the worker retry path.
+ * @param error - The error to throw on first iteration
+ * @returns A streamText-shaped result whose fullStream throws
+ */
+function throwingStream(error: unknown): {
+  fullStream: AsyncIterable<Record<string, unknown>>;
+} {
+  return {
+    fullStream: {
+      [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(error) }),
+    },
+  };
+}
+
+/**
+ * A stream that yields the given parts (same shape as mockStreamParts, but
+ * returned rather than installed, so it can be queued with mockReturnValueOnce).
+ * @param parts - Stream parts to emit
+ * @returns A streamText-shaped result
+ */
+function partsStream(parts: Record<string, unknown>[]): {
+  fullStream: AsyncIterable<Record<string, unknown>>;
+} {
+  async function* iterate(): AsyncIterable<Record<string, unknown>> {
+    for (const p of parts) yield p;
+  }
+
+  return { fullStream: iterate() };
+}
+
+/**
+ * Grab the spawn tool the orchestrator injected into its last streamText call.
+ * @returns The spawn tool's execute function
+ */
+function spawnToolExecute(): (
+  args: Record<string, unknown>,
+  opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
+) => Promise<string> {
+  const tool = lastStreamTools()[SPAWN_SUBAGENT_TOOL_NAME] as {
+    execute: (
+      args: Record<string, unknown>,
+      opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
+    ) => Promise<string>;
+  };
+
+  return tool.execute;
+}
+
+/**
+ * Poll until `condition` holds. Real timers (not fake ones) because the code
+ * under test interleaves timer waits with many awaits, and advancing fake timers
+ * doesn't reliably flush those. Waiting on an observable condition rather than a
+ * fixed delay matters here: a fixed wait that proved too short would make the
+ * shared-gate assertions fail as though the gate were per-worker.
+ * @param condition - Checked after each tick
+ * @param timeoutMs - Give up (and let the assertion report the real state) after this
+ */
+async function until(
+  condition: () => boolean,
+  timeoutMs = 2000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (!condition() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
 }
 
 /**
@@ -243,5 +325,123 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
 
     expect(entry?.subagentTranscript).toBeDefined();
     expect(entry?.subagentTranscript?.at(-1)?.content).toBe("Worker done.");
+  });
+});
+
+describe("ChatSdkClient subagent rate-limit handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamTextMock.mockReset();
+    resetSubagentRateLimits();
+    // Restore the file-wide short backoff; the shared-gate test lengthens it.
+    vi.mocked(calculateRetryDelay).mockReturnValue(10);
+  });
+
+  /**
+   * Stand up an orchestrator and hand back its spawn tool's execute.
+   * @returns The spawn tool's execute function
+   */
+  async function orchestratorSpawnTool() {
+    const client = new ChatSdkClient(
+      "key",
+      createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
+    );
+
+    await client.initialize();
+    await runTurn(client);
+
+    return spawnToolExecute();
+  }
+
+  it("retries a rate-limited worker instead of failing the spawn", async () => {
+    // Workers stream below useChat's executeWithRetry, so without the retry
+    // inside runSubagent a single 429 killed the whole delegated subtask.
+    const execute = await orchestratorSpawnTool();
+
+    streamTextMock
+      .mockReturnValueOnce(
+        throwingStream(
+          Object.assign(new Error("Too Many Requests"), { statusCode: 429 }),
+        ),
+      )
+      .mockReturnValueOnce(
+        partsStream([
+          { type: "text-delta", text: "Worker done." },
+          { type: "finish", finishReason: "stop" },
+        ]),
+      );
+
+    const result = await execute(
+      { task: "add a bassline" },
+      { toolCallId: "t1", messages: [], abortSignal: undefined },
+    );
+
+    expect(result).toBe("Worker done.");
+    // Cleared on the way out, so the card never keeps a stale countdown.
+    expect(getSubagentRateLimit("t1")).toBeNull();
+  });
+
+  it("shares one backoff window across parallel workers", async () => {
+    // The gate lives on the orchestrator client, not per worker: a 429 in the
+    // first parallel spawn must stop the second from issuing its own request
+    // until the cooldown elapses. Moving the gate into runSubagent would break
+    // this and nothing else in the suite.
+    const execute = await orchestratorSpawnTool();
+    const cooldownMs = 300;
+
+    vi.mocked(calculateRetryDelay).mockReturnValue(cooldownMs);
+    streamTextMock
+      .mockReturnValueOnce(
+        throwingStream(
+          Object.assign(new Error("Too Many Requests"), { statusCode: 429 }),
+        ),
+      )
+      .mockImplementation(() =>
+        partsStream([
+          { type: "text-delta", text: "Worker done." },
+          { type: "finish", finishReason: "stop" },
+        ]),
+      );
+
+    const first = execute(
+      { task: "a" },
+      { toolCallId: "a", messages: [], abortSignal: undefined },
+    );
+
+    // The first worker publishing a backoff IS the signal that it took the 429
+    // and penalized the gate — wait for that rather than guessing a delay.
+    await until(() => getSubagentRateLimit("a") != null);
+
+    const callsBeforeSecond = streamTextMock.mock.calls.length;
+    const second = execute(
+      { task: "b" },
+      { toolCallId: "b", messages: [], abortSignal: undefined },
+    );
+
+    // The second worker parks on the shared window instead of requesting, and
+    // publishes attempt null (waiting on a sibling, not its own retry). Reaching
+    // that state at all proves it consulted the same gate.
+    await until(() => getSubagentRateLimit("b") != null);
+    expect(getSubagentRateLimit("b")?.attempt).toBeNull();
+    expect(streamTextMock.mock.calls).toHaveLength(callsBeforeSecond);
+
+    await Promise.all([first, second]);
+    expect(streamTextMock.mock.calls.length).toBeGreaterThan(callsBeforeSecond);
+  });
+
+  it("still surfaces a non-rate-limit worker failure to the orchestrator", async () => {
+    const execute = await orchestratorSpawnTool();
+
+    streamTextMock.mockReturnValueOnce(
+      throwingStream(new Error("MCP connection refused")),
+    );
+
+    await expect(
+      execute(
+        { task: "x" },
+        { toolCallId: "t2", messages: [], abortSignal: undefined },
+      ),
+    ).rejects.toThrow("MCP connection refused");
+    expect(getSubagentRateLimit("t2")).toBeNull();
   });
 });

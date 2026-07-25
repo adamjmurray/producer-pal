@@ -4,6 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ComponentChildren } from "preact";
+import { useEffect, useState } from "preact/hooks";
+import {
+  type SubagentRateLimitStatus,
+  getSubagentRateLimit,
+  subscribeToSubagentRateLimits,
+} from "#webui/chat/sdk/subagent-rate-limit";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { truncateString } from "#webui/lib/utils/truncate-string";
@@ -13,6 +19,8 @@ interface AssistantSubagentCallProps {
   result: string | null;
   isError?: boolean;
   isResponding?: boolean;
+  /** Spawn tool-call id, used to pick up the worker's live rate-limit backoff. */
+  toolCallId?: string;
   /** Rendered worker transcript for the deep-dive tier; omitted when none. */
   transcript?: ComponentChildren;
 }
@@ -30,6 +38,7 @@ const baseClasses =
  * @param {string | null} root0.result - Compact return value, or null while running
  * @param {boolean} [root0.isError] - Whether the subagent call failed
  * @param {boolean} [root0.isResponding] - Whether the assistant is still responding
+ * @param {string} [root0.toolCallId] - Spawn tool-call id for live status lookup
  * @param {ComponentChildren} [root0.transcript] - Rendered worker transcript
  * @returns {JSX.Element} - React component
  */
@@ -38,11 +47,27 @@ export function AssistantSubagentCall({
   result,
   isError,
   isResponding,
+  toolCallId,
   transcript,
 }: AssistantSubagentCallProps) {
   const running = result == null;
   const returnValue = unwrapResult(result);
-  const status = running ? "working…" : isError ? "failed" : "done";
+  // A worker waiting out a 429 is still "running" as far as the tool result is
+  // concerned; without this the card would sit on "working…" through a backoff
+  // that can last minutes.
+  const rateLimit = useSubagentRateLimit(running ? toolCallId : undefined);
+  // A wait forced by a sibling's backoff (attempt null) is not this worker's own
+  // rate limit — the docs promise that shared pause, so name it distinctly.
+  const waiting = running && rateLimit != null;
+  const status = waiting
+    ? rateLimit.attempt == null
+      ? "waiting"
+      : "rate limited"
+    : running
+      ? "working…"
+      : isError
+        ? "failed"
+        : "done";
 
   return (
     <details
@@ -56,9 +81,7 @@ export function AssistantSubagentCall({
         <span className="truncate min-w-0 text-zinc-600 dark:text-zinc-400">
           {truncateString(task, 80)}
         </span>
-        <span
-          className={`ml-auto shrink-0 ${isError ? "text-red-700 dark:text-red-400" : "text-zinc-500"}`}
-        >
+        <span className={`ml-auto shrink-0 ${statusColor(isError, waiting)}`}>
           {status}
         </span>
       </summary>
@@ -74,6 +97,8 @@ export function AssistantSubagentCall({
         />
       )}
 
+      {waiting && <RateLimitNotice status={rateLimit} />}
+
       {transcript != null && (
         <details className="disclosure mt-2">
           <summary className="text-zinc-600 dark:text-zinc-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
@@ -86,6 +111,97 @@ export function AssistantSubagentCall({
       )}
     </details>
   );
+}
+
+/**
+ * The waiting-it-out line shown while a worker serves a rate-limit backoff, so
+ * a multi-minute wait reads as a countdown rather than a hung subagent.
+ * @param {object} root0 - Component props
+ * @param {SubagentRateLimitStatus} root0.status - The backoff in progress
+ * @returns {JSX.Element} - React component
+ */
+function RateLimitNotice({ status }: { status: SubagentRateLimitStatus }) {
+  const seconds = useSecondsUntil(status.retryAtMs);
+
+  return (
+    <div className="mt-2 text-amber-700 dark:text-amber-400">
+      {status.attempt == null ? (
+        <>Another subagent hit a rate limit — starting in {seconds}s</>
+      ) : (
+        <>
+          Rate limited — retrying in {seconds}s (attempt {status.attempt + 1} of{" "}
+          {status.maxAttempts})
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Subscribe a card to its worker's rate-limit backoff. The worker runs below
+ * the orchestrator's stream, so this out-of-band store — not the message
+ * history — is the only thing that can re-render the card while it waits.
+ * @param {string} [toolCallId] - The spawn tool-call id; undefined for a
+ *   finished call or restored history predating ids (then there is no status)
+ * @returns {SubagentRateLimitStatus | null} The backoff, or null when not waiting
+ */
+function useSubagentRateLimit(
+  toolCallId: string | undefined,
+): SubagentRateLimitStatus | null {
+  const [status, setStatus] = useState<SubagentRateLimitStatus | null>(null);
+
+  useEffect(() => {
+    if (toolCallId == null) {
+      setStatus(null);
+
+      return;
+    }
+
+    setStatus(getSubagentRateLimit(toolCallId));
+
+    return subscribeToSubagentRateLimits(() =>
+      setStatus(getSubagentRateLimit(toolCallId)),
+    );
+  }, [toolCallId]);
+
+  return status;
+}
+
+/**
+ * Whole seconds left until a deadline, ticking down twice a second.
+ * @param {number} targetMs - Epoch ms the countdown runs to
+ * @returns {number} Seconds remaining, floored at 0
+ */
+function useSecondsUntil(targetMs: number): number {
+  const [remainingMs, setRemainingMs] = useState(() => targetMs - Date.now());
+
+  useEffect(() => {
+    setRemainingMs(targetMs - Date.now());
+
+    const interval = setInterval(
+      () => setRemainingMs(targetMs - Date.now()),
+      500,
+    );
+
+    return () => clearInterval(interval);
+  }, [targetMs]);
+
+  return Math.max(0, Math.ceil(remainingMs / 1000));
+}
+
+/**
+ * Status-chip color: red for a failed call, amber while rate-limited, muted
+ * otherwise.
+ * @param {boolean} [isError] - Whether the subagent call failed
+ * @param {boolean} [isRateLimited] - Whether the worker is serving a backoff
+ * @returns {string} Tailwind color classes
+ */
+function statusColor(isError?: boolean, isRateLimited?: boolean): string {
+  if (isError) return "text-red-700 dark:text-red-400";
+
+  if (isRateLimited) return "text-amber-700 dark:text-amber-400";
+
+  return "text-zinc-500";
 }
 
 /**

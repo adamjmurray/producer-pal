@@ -56,6 +56,7 @@ function addToolParts(msg: ChatMessage, parts: UIPart[]): void {
 
     parts.push({
       type: "tool",
+      id: tc.id,
       name: tc.name,
       args: tc.args,
       result: resultStr,
