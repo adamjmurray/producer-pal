@@ -14,6 +14,17 @@ import {
 } from "#webui/chat/sdk/subagent-rate-limit";
 import { AssistantSubagentCall } from "#webui/components/chat/assistant/tool-calls/AssistantSubagentCall";
 
+/**
+ * A backoff record for tool-call "tc1", five seconds out.
+ * @param attempt - Retry attempt, or null when only holding a sibling's gate
+ * @returns The rate-limit record to publish
+ */
+const backoff = (attempt: number | null) => ({
+  attempt,
+  maxAttempts: 5,
+  retryAtMs: Date.now() + 5000,
+});
+
 describe("AssistantSubagentCall", () => {
   afterEach(() => {
     resetSubagentRateLimits();
@@ -98,13 +109,7 @@ describe("AssistantSubagentCall", () => {
   it("drops back to working when the backoff clears", async () => {
     render(<AssistantSubagentCall task="x" result={null} toolCallId="tc1" />);
 
-    await act(() =>
-      setSubagentRateLimit("tc1", {
-        attempt: 0,
-        maxAttempts: 5,
-        retryAtMs: Date.now() + 5000,
-      }),
-    );
+    await act(() => setSubagentRateLimit("tc1", backoff(0)));
     await act(() => setSubagentRateLimit("tc1", null));
 
     expect(screen.getByText("working…")).toBeDefined();
@@ -112,11 +117,7 @@ describe("AssistantSubagentCall", () => {
   });
 
   it("ignores a stale backoff once the call has a result", () => {
-    setSubagentRateLimit("tc1", {
-      attempt: 0,
-      maxAttempts: 5,
-      retryAtMs: Date.now() + 5000,
-    });
+    setSubagentRateLimit("tc1", backoff(0));
 
     render(
       <AssistantSubagentCall
@@ -174,11 +175,7 @@ describe("AssistantSubagentCall", () => {
   });
 
   it("picks up a backoff that was already in flight before it mounted", () => {
-    setSubagentRateLimit("tc1", {
-      attempt: 0,
-      maxAttempts: 5,
-      retryAtMs: Date.now() + 5000,
-    });
+    setSubagentRateLimit("tc1", backoff(0));
 
     render(<AssistantSubagentCall task="x" result={null} toolCallId="tc1" />);
 
@@ -204,13 +201,7 @@ describe("AssistantSubagentCall", () => {
       <AssistantSubagentCall task="x" result={null} toolCallId="tc1" />,
     );
 
-    await act(() =>
-      setSubagentRateLimit("tc1", {
-        attempt: 0,
-        maxAttempts: 5,
-        retryAtMs: Date.now() + 5000,
-      }),
-    );
+    await act(() => setSubagentRateLimit("tc1", backoff(0)));
     expect(screen.getByText("rate limited")).toBeDefined();
 
     rerender(
@@ -231,13 +222,7 @@ describe("AssistantSubagentCall", () => {
     );
 
     unmount();
-    await act(() =>
-      setSubagentRateLimit("tc1", {
-        attempt: 0,
-        maxAttempts: 5,
-        retryAtMs: Date.now() + 5000,
-      }),
-    );
+    await act(() => setSubagentRateLimit("tc1", backoff(0)));
 
     expect(screen.queryByText("rate limited")).toBeNull();
   });

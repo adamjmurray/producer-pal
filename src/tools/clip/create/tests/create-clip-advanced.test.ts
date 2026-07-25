@@ -41,6 +41,35 @@ function registerEmptyClipSlot(sceneIndex: number): void {
   });
 }
 
+/**
+ * Create a clip from two identical p60/start0 notes and assert the dedupe
+ * collapsed them keep-last and warned the LLM about the drop.
+ * @param extraParams - Extra create-clip params this case adds (e.g. transforms)
+ */
+async function expectDuplicatePairDeduped(
+  extraParams: Record<string, unknown> = {},
+): Promise<void> {
+  const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+  const { clip } = setupSessionMocks({
+    liveSet: { signature_numerator: 4, signature_denominator: 4 },
+  });
+
+  await createClip(
+    {
+      slot: "0/0",
+      notes:
+        '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
+      ...extraParams,
+    },
+    { notation: "midi-json" },
+  );
+
+  expectNotesAdded(clip, [note(60, 0, 1)]);
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("Dropped 1 duplicate note"),
+  );
+}
+
 describe("createClip - advanced features", () => {
   it("should set time signature when provided", async () => {
     const { clip } = setupSessionMocks({
@@ -343,24 +372,7 @@ describe("createClip - advanced features", () => {
       // Two identical p:60,t:0 notes, no transform. The create path only sorted
       // before, so both reached add_new_notes and Live silently dropped one. The
       // dedupe collapses them keep-last and warns so the LLM sees the drop.
-      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
-      const { clip } = setupSessionMocks({
-        liveSet: { signature_numerator: 4, signature_denominator: 4 },
-      });
-
-      await createClip(
-        {
-          slot: "0/0",
-          notes:
-            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
-        },
-        { notation: "midi-json" },
-      );
-
-      expectNotesAdded(clip, [note(60, 0, 1)]);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Dropped 1 duplicate note"),
-      );
+      await expectDuplicatePairDeduped();
     });
 
     it("treats a blank transforms string as no transform: dedupes and warns", async () => {
@@ -369,25 +381,7 @@ describe("createClip - advanced features", () => {
       // dedupe warning — while applyTransforms no-oped on "". Written notes stayed
       // correct (the post-transform dedupe still collapsed them) but the
       // LLM-visible "Dropped N duplicate note(s)" warning was silently lost.
-      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
-      const { clip } = setupSessionMocks({
-        liveSet: { signature_numerator: 4, signature_denominator: 4 },
-      });
-
-      await createClip(
-        {
-          slot: "0/0",
-          notes:
-            '[{"pitch":60,"start":0,"duration":1,"velocity":100},{"pitch":60,"start":0,"duration":1,"velocity":100}]',
-          transforms: "",
-        },
-        { notation: "midi-json" },
-      );
-
-      expectNotesAdded(clip, [note(60, 0, 1)]);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("Dropped 1 duplicate note"),
-      );
+      await expectDuplicatePairDeduped({ transforms: "" });
     });
 
     it("keeps notes a separating transform pulls apart (transforms then dedupes, like update-clip)", async () => {

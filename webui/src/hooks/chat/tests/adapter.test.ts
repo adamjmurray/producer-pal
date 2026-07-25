@@ -51,6 +51,24 @@ describe("chatAdapter", () => {
   });
 
   describe("buildConfig", () => {
+    /**
+     * Build a config for one provider's thinking mapping — the axis these
+     * cases vary. Model and thinking default to the Anthropic pair most of
+     * them use.
+     * @param provider - Provider id passed through extraParams
+     * @param thinking - Thinking level to map
+     * @param model - Model id
+     * @returns The built config
+     */
+    const buildForProvider = (
+      provider: string,
+      thinking = "Default",
+      model = "claude-sonnet-4-6-20250514",
+    ) =>
+      chatAdapter.buildConfig(model, thinking, {}, undefined, {
+        ...extraParams,
+        provider,
+      });
     const extraParams = {
       provider: "openai",
       apiKey: "test-key",
@@ -164,10 +182,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets reasoning effort and summary for openai reasoning model with Max thinking", () => {
-      const config = chatAdapter.buildConfig("o3-mini", "Max", {}, undefined, {
-        ...extraParams,
-        provider: "openai",
-      });
+      const config = buildForProvider("openai", "Max", "o3-mini");
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "high", reasoningSummary: "auto" },
@@ -175,10 +190,7 @@ describe("chatAdapter", () => {
     });
 
     it("includes reasoningSummary for an openai reasoning model", () => {
-      const config = chatAdapter.buildConfig("gpt-5.2", "Max", {}, undefined, {
-        ...extraParams,
-        provider: "openai",
-      });
+      const config = buildForProvider("openai", "Max", "gpt-5.2");
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "xhigh", reasoningSummary: "auto" },
@@ -186,13 +198,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets reasoningEffort and reasoningSummary for openai reasoning model with Default thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "gpt-5.2",
-        "Default",
-        {},
-        undefined,
-        { ...extraParams, provider: "openai" },
-      );
+      const config = buildForProvider("openai", "Default", "gpt-5.2");
 
       expect(config.providerOptions).toStrictEqual({
         openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
@@ -200,22 +206,13 @@ describe("chatAdapter", () => {
     });
 
     it("returns undefined providerOptions for an openai reasoning model with Off thinking", () => {
-      const config = chatAdapter.buildConfig("o3-mini", "Off", {}, undefined, {
-        ...extraParams,
-        provider: "openai",
-      });
+      const config = buildForProvider("openai", "Off", "o3-mini");
 
       expect(config.providerOptions).toBeUndefined();
     });
 
     it("sets reasoning for openrouter provider with Max thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "some-model",
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "openrouter" },
-      );
+      const config = buildForProvider("openrouter", "Max", "some-model");
 
       expect(config.providerOptions).toStrictEqual({
         openrouter: {
@@ -227,13 +224,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets Gemini thinkingConfig for Max thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "gemini-2.5-flash",
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "gemini" },
-      );
+      const config = buildForProvider("gemini", "Max", "gemini-2.5-flash");
 
       expect(config.providerOptions).toStrictEqual({
         google: {
@@ -246,13 +237,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets Gemini thinkingConfig with -1 budget for Default thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "gemini-2.0-flash",
-        "Default",
-        {},
-        undefined,
-        { ...extraParams, provider: "gemini" },
-      );
+      const config = buildForProvider("gemini", "Default", "gemini-2.0-flash");
 
       expect(config.providerOptions).toStrictEqual({
         google: {
@@ -265,13 +250,7 @@ describe("chatAdapter", () => {
     });
 
     it("returns undefined providerOptions for Gemini with Off thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "gemini-2.0-flash",
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "gemini" },
-      );
+      const config = buildForProvider("gemini", "Off", "gemini-2.0-flash");
 
       expect(config.providerOptions).toBeUndefined();
     });
@@ -289,10 +268,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets ollama think option for supported model", () => {
-      const config = chatAdapter.buildConfig("qwq", "Max", {}, undefined, {
-        ...extraParams,
-        provider: "ollama",
-      });
+      const config = buildForProvider("ollama", "Max", "qwq");
 
       expect(config.providerOptions).toStrictEqual({
         openai: { think: true },
@@ -300,10 +276,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets ollama think:false for Off thinking", () => {
-      const config = chatAdapter.buildConfig("qwq", "Off", {}, undefined, {
-        ...extraParams,
-        provider: "ollama",
-      });
+      const config = buildForProvider("ollama", "Off", "qwq");
 
       expect(config.providerOptions).toStrictEqual({
         openai: { think: false },
@@ -311,25 +284,13 @@ describe("chatAdapter", () => {
     });
 
     it("returns undefined providerOptions for ollama with Default thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "llama3",
-        "Default",
-        {},
-        undefined,
-        { ...extraParams, provider: "ollama" },
-      );
+      const config = buildForProvider("ollama", "Default", "llama3");
 
       expect(config.providerOptions).toBeUndefined();
     });
 
     it("sets medium reasoning effort for openrouter with Default thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "some-model",
-        "Default",
-        {},
-        undefined,
-        { ...extraParams, provider: "openrouter" },
-      );
+      const config = buildForProvider("openrouter", "Default", "some-model");
 
       expect(config.providerOptions).toStrictEqual({
         openrouter: {
@@ -341,25 +302,13 @@ describe("chatAdapter", () => {
     });
 
     it("returns undefined providerOptions for openrouter with Off thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "some-model",
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "openrouter" },
-      );
+      const config = buildForProvider("openrouter", "Off", "some-model");
 
       expect(config.providerOptions).toBeUndefined();
     });
 
     it("sets anthropic adaptive thinking with max effort for Max thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
+      const config = buildForProvider("anthropic", "Max");
 
       expect(config.providerOptions).toStrictEqual({
         anthropic: {
@@ -370,13 +319,7 @@ describe("chatAdapter", () => {
     });
 
     it("sets anthropic adaptive thinking with high effort for Default thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        "Default",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
+      const config = buildForProvider("anthropic");
 
       expect(config.providerOptions).toStrictEqual({
         anthropic: {
@@ -387,25 +330,13 @@ describe("chatAdapter", () => {
     });
 
     it("returns undefined provider options for anthropic with Off thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
+      const config = buildForProvider("anthropic", "Off");
 
       expect(config.providerOptions).toBeUndefined();
     });
 
     it("uses legacy enabled thinking for haiku model", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-haiku-4-5",
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
+      const config = buildForProvider("anthropic", "Max", "claude-haiku-4-5");
 
       expect(config.providerOptions).toStrictEqual({
         anthropic: {
@@ -417,37 +348,23 @@ describe("chatAdapter", () => {
     it("omits thinking for a pre-3.7 anthropic model even when thinking is active", () => {
       // Pre-3.7 ids (only reachable via the "Other..." input) reject any
       // `thinking` field with a 400, so no adaptive payload must be sent.
-      const config = chatAdapter.buildConfig(
-        "claude-3-5-sonnet-20241022",
+      const config = buildForProvider(
+        "anthropic",
         "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
+        "claude-3-5-sonnet-20241022",
       );
 
       expect(config.providerOptions).toBeUndefined();
     });
 
     it("returns undefined provider options for mistral provider", () => {
-      const config = chatAdapter.buildConfig(
-        "mistral-large",
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "mistral" },
-      );
+      const config = buildForProvider("mistral", "Max", "mistral-large");
 
       expect(config.providerOptions).toBeUndefined();
     });
 
     it("buildProviderOptions callback rebuilds options with overridden thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
+      const config = buildForProvider("anthropic", "Max");
 
       // Original config has Max thinking (adaptive with max effort)
       expect(config.providerOptions).toStrictEqual({

@@ -16,6 +16,18 @@ describe("context - project scope (default)", () => {
     };
   });
 
+  /**
+   * Write `content` and assert the guard let it through: echoed back verbatim
+   * and pushed out the project-context outlet.
+   * @param content - The document body to write
+   */
+  async function expectWriteAllowed(content: string): Promise<void> {
+    const result = await context({ action: "write", content }, toolContext);
+
+    expect(result).toStrictEqual({ content });
+    expect(outlet).toHaveBeenCalledWith(0, "update_project_context", content);
+  }
+
   describe("read action", () => {
     it("returns current content", async () => {
       toolContext.projectContext!.content = "test content";
@@ -143,30 +155,14 @@ describe("context - project scope (default)", () => {
     });
 
     it("is inert when the document is empty (nothing to destroy)", async () => {
-      const result = await context(
-        { action: "write", content: "- Key: A minor." },
-        toolContext,
-      );
-
-      expect(result).toStrictEqual({ content: "- Key: A minor." });
-      expect(outlet).toHaveBeenCalledWith(
-        0,
-        "update_project_context",
-        "- Key: A minor.",
-      );
+      await expectWriteAllowed("- Key: A minor.");
     });
 
     it("allows the normal append case (one existing line survives verbatim)", async () => {
       toolContext.projectContext!.content = EXISTING;
       const merged = `${EXISTING}- Key: A minor.`;
 
-      const result = await context(
-        { action: "write", content: merged },
-        toolContext,
-      );
-
-      expect(result).toStrictEqual({ content: merged });
-      expect(outlet).toHaveBeenCalledWith(0, "update_project_context", merged);
+      await expectWriteAllowed(merged);
     });
 
     it("allows a restructuring rewrite that drops only headings", async () => {
@@ -174,17 +170,7 @@ describe("context - project scope (default)", () => {
       const rewritten =
         "## Track notes\n- Genre: deep house.\n- Drop at bar 33.";
 
-      const result = await context(
-        { action: "write", content: rewritten },
-        toolContext,
-      );
-
-      expect(result).toStrictEqual({ content: rewritten });
-      expect(outlet).toHaveBeenCalledWith(
-        0,
-        "update_project_context",
-        rewritten,
-      );
+      await expectWriteAllowed(rewritten);
     });
 
     // Both sides are normalized before the containment test, so an ordinary
@@ -201,17 +187,7 @@ describe("context - project scope (default)", () => {
         toolContext.projectContext!.content =
           "Genre: deep house.\nDrop at bar 33.";
 
-        const result = await context(
-          { action: "write", content: rewritten },
-          toolContext,
-        );
-
-        expect(result).toStrictEqual({ content: rewritten });
-        expect(outlet).toHaveBeenCalledWith(
-          0,
-          "update_project_context",
-          rewritten,
-        );
+        await expectWriteAllowed(rewritten);
       },
     );
 
@@ -241,29 +217,13 @@ describe("context - project scope (default)", () => {
     it("stays out of the way when no line is substantive", async () => {
       toolContext.projectContext!.content = "---\n- 124\n- A min";
 
-      const result = await context(
-        { action: "write", content: "- Key: A minor." },
-        toolContext,
-      );
-
-      expect(result).toStrictEqual({ content: "- Key: A minor." });
-      expect(outlet).toHaveBeenCalledWith(
-        0,
-        "update_project_context",
-        "- Key: A minor.",
-      );
+      await expectWriteAllowed("- Key: A minor.");
     });
 
     it("still allows an empty write to clear a non-empty document", async () => {
       toolContext.projectContext!.content = EXISTING;
 
-      const result = await context(
-        { action: "write", content: "" },
-        toolContext,
-      );
-
-      expect(result).toStrictEqual({ content: "" });
-      expect(outlet).toHaveBeenCalledWith(0, "update_project_context", "");
+      await expectWriteAllowed("");
     });
   });
 

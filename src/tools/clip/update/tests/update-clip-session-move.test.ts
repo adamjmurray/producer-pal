@@ -152,20 +152,25 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).toMatchObject({ id: "123" });
   });
 
-  it("should warn when only the track index is unknown", () => {
-    const updatedClips: ClipResult[] = [];
-
-    // sceneIndex is a real number: the guard must still fire (|| not &&, and the
-    // whole conditional must not be forced false).
+  /**
+   * Move a clip whose source slot is only half-known, and assert the guard
+   * warned rather than computing a bogus source slot.
+   * @param trackIndex - Source track index, or null when unknown
+   * @param sceneIndex - Source scene index, or null when unknown
+   */
+  function expectUnknownSlotWarning(
+    trackIndex: number | null,
+    sceneIndex: number | null,
+  ): void {
     handleSessionSlotMove({
       clip: {
         id: "123",
-        trackIndex: null,
-        sceneIndex: 0,
+        trackIndex,
+        sceneIndex,
         getProperty: vi.fn(),
       } as unknown as LiveAPI,
       toSlot: { trackIndex: 1, sceneIndex: 2 },
-      updatedClips,
+      updatedClips: [],
       noteResult: null,
     });
 
@@ -173,29 +178,18 @@ describe("handleSessionSlotMove", () => {
       1,
       "could not determine slot position for clip 123",
     );
+  }
+
+  it("should warn when only the track index is unknown", () => {
+    // sceneIndex is a real number: the guard must still fire (|| not &&, and the
+    // whole conditional must not be forced false).
+    expectUnknownSlotWarning(null, 0);
   });
 
   it("should warn when only the scene index is unknown", () => {
-    const updatedClips: ClipResult[] = [];
-
     // trackIndex is a real number, sceneIndex is null: the second operand of the
     // guard must stay live (kills the srcSceneIndex == null -> false mutant).
-    handleSessionSlotMove({
-      clip: {
-        id: "123",
-        trackIndex: 0,
-        sceneIndex: null,
-        getProperty: vi.fn(),
-      } as unknown as LiveAPI,
-      toSlot: { trackIndex: 1, sceneIndex: 2 },
-      updatedClips,
-      noteResult: null,
-    });
-
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "could not determine slot position for clip 123",
-    );
+    expectUnknownSlotWarning(0, null);
   });
 
   it("should move (not no-op) when only the scene index matches", () => {

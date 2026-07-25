@@ -309,6 +309,25 @@ describe("useCollectionEntryAutosave", () => {
   });
 });
 
+/**
+ * The seeded, savable, idle-autosaving params the externalUpdate cases start
+ * from — each case overrides only the key(s) it is pinning.
+ * @param overrides - Fields this case diverges on
+ * @returns Params for setup()/rerender()
+ */
+function seededParams(
+  overrides: Partial<CollectionEntryAutosaveParams> = {},
+): CollectionEntryAutosaveParams {
+  return {
+    canSave: true,
+    draftKey: "seed",
+    autosaveOnIdle: true,
+    persist: vi.fn().mockResolvedValue("seed"),
+    externalKey: "seed",
+    ...overrides,
+  };
+}
+
 describe("useCollectionEntryAutosave — externalUpdate", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -319,56 +338,31 @@ describe("useCollectionEntryAutosave — externalUpdate", () => {
   });
 
   it("is false while the entry prop matches the baseline", () => {
-    const { result } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist: vi.fn().mockResolvedValue("seed"),
-      externalKey: "seed",
-    });
+    const { result } = setup(seededParams());
 
     expect(result.current.externalUpdate).toBe(false);
   });
 
   it("is true when the draft is clean and the entry prop diverges (an assistant write, or another tab)", () => {
-    const { result, rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist: vi.fn().mockResolvedValue("seed"),
-      externalKey: "seed",
-    });
+    const { result, rerender } = setup(seededParams());
 
     // The entry prop changed externally; the local draft did not.
-    rerender({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist: vi.fn().mockResolvedValue("seed"),
-      externalKey: "changed-elsewhere",
-    });
+    rerender(seededParams({ externalKey: "changed-elsewhere" }));
 
     expect(result.current.externalUpdate).toBe(true);
   });
 
   it("is false when the draft is dirty, even if the entry prop diverges (last-write-wins)", () => {
-    const { result, rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist: vi.fn().mockResolvedValue("seed"),
-      externalKey: "seed",
-    });
+    const { result, rerender } = setup(seededParams());
 
     // The user typed (draftKey moves off the baseline) in the same tick the
     // entry prop diverges — the dirty draft must suppress the banner.
-    rerender({
-      canSave: true,
-      draftKey: "typed-by-user",
-      autosaveOnIdle: true,
-      persist: vi.fn().mockResolvedValue("seed"),
-      externalKey: "changed-elsewhere",
-    });
+    rerender(
+      seededParams({
+        draftKey: "typed-by-user",
+        externalKey: "changed-elsewhere",
+      }),
+    );
 
     expect(result.current.externalUpdate).toBe(false);
   });

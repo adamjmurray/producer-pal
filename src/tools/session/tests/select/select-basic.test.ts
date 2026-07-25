@@ -24,6 +24,22 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
   return selectSharedUtilsMockBody(await importOriginal());
 });
 
+/**
+ * Assert whether select() emitted the "ignoring view=" conflict warning.
+ * @param fired - True when the warning is expected, false for the negative control
+ */
+function expectViewConflictWarning(fired: boolean): void {
+  const outletMock = (globalThis as Record<string, unknown>)
+    .outlet as ReturnType<typeof vi.fn>;
+  const warning = expect.stringContaining("ignoring view=");
+
+  if (fired) {
+    expect(outletMock).toHaveBeenCalledWith(1, warning);
+  } else {
+    expect(outletMock).not.toHaveBeenCalledWith(1, warning);
+  }
+}
+
 describe("view", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -275,13 +291,7 @@ describe("view", () => {
       );
       // No view was requested, so the conflict warn (which is gated on a
       // non-null requestedView) must not fire.
-      const outletMock = (globalThis as Record<string, unknown>)
-        .outlet as ReturnType<typeof vi.fn>;
-
-      expect(outletMock).not.toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("ignoring view="),
-      );
+      expectViewConflictWarning(false);
     });
   });
 
@@ -293,13 +303,7 @@ describe("view", () => {
 
       const result = select({ id: `id ${clip.id}`, view: "arrangement" });
 
-      const outletMock = (globalThis as Record<string, unknown>)
-        .outlet as ReturnType<typeof vi.fn>;
-
-      expect(outletMock).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("ignoring view="),
-      );
+      expectViewConflictWarning(true);
       // Live switches to the clip's required (session) view, so the response
       // must report that — not the overridden requested "arrangement" view.
       expect(result.view).toBe("session");
@@ -314,13 +318,7 @@ describe("view", () => {
 
       select({ id: `id ${clip.id}`, view: "session" });
 
-      const outletMock = (globalThis as Record<string, unknown>)
-        .outlet as ReturnType<typeof vi.fn>;
-
-      expect(outletMock).not.toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("ignoring view="),
-      );
+      expectViewConflictWarning(false);
     });
   });
 

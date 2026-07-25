@@ -43,6 +43,27 @@ describe("ToolToggles", () => {
     settingsConfigured: true,
   };
 
+  /**
+   * Render with the Live API toggle forced on, click `buttonName`, and assert the
+   * bulk action left the forced toggle alone.
+   * @param buttonName - Accessible name of the bulk-action button to click
+   */
+  function expectForcedLiveApiPreserved(buttonName: string): void {
+    const setLiveApiEnabled = vi.fn();
+
+    render(
+      <ToolToggles
+        {...defaultProps}
+        liveApiEnabled={true}
+        liveApiForcedOn={true}
+        setLiveApiEnabled={setLiveApiEnabled}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: buttonName }));
+    expect(setLiveApiEnabled).not.toHaveBeenCalled();
+  }
+
   describe("basic rendering", () => {
     it("renders title", () => {
       render(<ToolToggles {...defaultProps} />);
@@ -168,21 +189,7 @@ describe("ToolToggles", () => {
     );
 
     it("Enable default toolset preserves Live API when forced on", () => {
-      const setLiveApiEnabled = vi.fn();
-
-      render(
-        <ToolToggles
-          {...defaultProps}
-          liveApiEnabled={true}
-          liveApiForcedOn={true}
-          setLiveApiEnabled={setLiveApiEnabled}
-        />,
-      );
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "Enable default toolset" }),
-      );
-      expect(setLiveApiEnabled).not.toHaveBeenCalled();
+      expectForcedLiveApiPreserved("Enable default toolset");
     });
   });
 
@@ -452,19 +459,7 @@ describe("ToolToggles", () => {
     });
 
     it("Disable all preserves Live API when forced on", () => {
-      const setLiveApiEnabled = vi.fn();
-
-      render(
-        <ToolToggles
-          {...defaultProps}
-          liveApiEnabled={true}
-          liveApiForcedOn={true}
-          setLiveApiEnabled={setLiveApiEnabled}
-        />,
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: "Disable all" }));
-      expect(setLiveApiEnabled).not.toHaveBeenCalled();
+      expectForcedLiveApiPreserved("Disable all");
     });
   });
 

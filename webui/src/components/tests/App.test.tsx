@@ -474,6 +474,26 @@ describe("App", () => {
       if (btn) fireEvent.click(btn);
     };
 
+    /**
+     * Open the context overlay under fake timers, run `interact`, then let the
+     * 200ms close transition settle so the assertion sees the final state.
+     * Callers restore real timers after asserting.
+     * @param interact - Drives the case (a key press, a click, ...)
+     */
+    const openContextThen = async (
+      interact: (container: ParentNode) => void,
+    ): Promise<void> => {
+      vi.useFakeTimers();
+
+      const { container } = render(<App />);
+
+      openContext(container);
+      interact(container);
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+    };
+
     it("opens the context overlay via the header button", () => {
       const { container } = render(<App />);
 
@@ -528,17 +548,12 @@ describe("App", () => {
     });
 
     it("closes the context overlay when the close button is clicked", async () => {
-      vi.useFakeTimers();
-      const { container } = render(<App />);
+      await openContextThen((container) => {
+        const close = container.querySelector(
+          'button[aria-label="Close context editor"]',
+        );
 
-      openContext(container);
-      const close = container.querySelector(
-        'button[aria-label="Close context editor"]',
-      );
-
-      if (close) fireEvent.click(close);
-      await act(() => {
-        vi.advanceTimersByTime(200);
+        if (close) fireEvent.click(close);
       });
 
       expect(contextStub()).toBe(null);
@@ -546,14 +561,7 @@ describe("App", () => {
     });
 
     it("closes the context overlay on Escape", async () => {
-      vi.useFakeTimers();
-      const { container } = render(<App />);
-
-      openContext(container);
-      fireEvent.keyDown(window, { key: "Escape" });
-      await act(() => {
-        vi.advanceTimersByTime(200);
-      });
+      await openContextThen(() => fireEvent.keyDown(window, { key: "Escape" }));
 
       expect(contextStub()).toBe(null);
       vi.useRealTimers();
@@ -568,15 +576,10 @@ describe("App", () => {
     });
 
     it("does not close when clicking inside the context view", async () => {
-      vi.useFakeTimers();
-      const { container } = render(<App />);
+      await openContextThen(() => {
+        const inner = contextStub();
 
-      openContext(container);
-      const inner = contextStub();
-
-      if (inner) fireEvent.click(inner);
-      await act(() => {
-        vi.advanceTimersByTime(200);
+        if (inner) fireEvent.click(inner);
       });
 
       // Backdrop-only dismissal: a click on content shouldn't fire close.
@@ -585,16 +588,9 @@ describe("App", () => {
     });
 
     it("keeps the overlay open on Escape when the leave guard vetoes a dirty draft", async () => {
-      vi.useFakeTimers();
       // ContextTabs publishes a guard that refuses to leave (unsaved new draft).
       setStubLeaveGuard(() => false);
-      const { container } = render(<App />);
-
-      openContext(container);
-      fireEvent.keyDown(window, { key: "Escape" });
-      await act(() => {
-        vi.advanceTimersByTime(200);
-      });
+      await openContextThen(() => fireEvent.keyDown(window, { key: "Escape" }));
 
       // Escape consulted the guard and was vetoed — overlay stays up.
       expect(contextStub()).not.toBe(null);
@@ -602,32 +598,20 @@ describe("App", () => {
     });
 
     it("closes the overlay on Escape when the leave guard approves", async () => {
-      vi.useFakeTimers();
       setStubLeaveGuard(() => true);
-      const { container } = render(<App />);
-
-      openContext(container);
-      fireEvent.keyDown(window, { key: "Escape" });
-      await act(() => {
-        vi.advanceTimersByTime(200);
-      });
+      await openContextThen(() => fireEvent.keyDown(window, { key: "Escape" }));
 
       expect(contextStub()).toBe(null);
       vi.useRealTimers();
     });
 
     it("keeps the overlay open on a backdrop click when the leave guard vetoes", async () => {
-      vi.useFakeTimers();
       setStubLeaveGuard(() => false);
-      const { container } = render(<App />);
+      await openContextThen((container) => {
+        const overlay = container.querySelector(".settings-overlay");
 
-      openContext(container);
-      const overlay = container.querySelector(".settings-overlay");
-
-      // A backdrop hit (target === currentTarget) routes through the guard.
-      if (overlay) fireEvent.click(overlay);
-      await act(() => {
-        vi.advanceTimersByTime(200);
+        // A backdrop hit (target === currentTarget) routes through the guard.
+        if (overlay) fireEvent.click(overlay);
       });
 
       expect(contextStub()).not.toBe(null);

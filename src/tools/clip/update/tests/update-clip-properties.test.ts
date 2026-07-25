@@ -277,6 +277,17 @@ describe("buildClipPropertiesToSet", () => {
   const build = (overrides: Partial<BuildClipPropertiesArgs>): ClipPropsToSet =>
     buildClipPropertiesToSet({ ...BASE, ...overrides });
 
+  // Every case sets name/color and one signature pair; only the loop/marker
+  // fields vary, so cases spell out just those.
+  const expected = (fields: Partial<ClipPropsToSet>): ClipPropsToSet =>
+    ({
+      name: "clip",
+      color: "#000000",
+      signature_numerator: null,
+      signature_denominator: null,
+      ...fields,
+    }) as ClipPropsToSet;
+
   it("sets signature numerator/denominator from the time sig when timeSignature is present", () => {
     const result = build({
       timeSignature: "3/8",
@@ -284,25 +295,23 @@ describe("buildClipPropertiesToSet", () => {
       timeSigDenominator: 8,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: 3,
-      signature_denominator: 8,
-      looping: undefined,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        signature_numerator: 3,
+        signature_denominator: 8,
+        looping: undefined,
+      }),
+    );
   });
 
   it("sets signature numerator/denominator to null when timeSignature is absent", () => {
     const result = build({ timeSigNumerator: 3, timeSigDenominator: 8 });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: undefined,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: undefined,
+      }),
+    );
   });
 
   it("sets loop_end before loop_start when expanding (startBeats > currentLoopEnd)", () => {
@@ -314,15 +323,13 @@ describe("buildClipPropertiesToSet", () => {
       currentLoopEnd: 4,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: true,
-      loop_end: 16,
-      loop_start: 8,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: true,
+        loop_end: 16,
+        loop_start: 8,
+      }),
+    );
     // Order matters: loop_end is set first when expanding.
     expect(Object.keys(result)).toStrictEqual([
       "name",
@@ -344,15 +351,13 @@ describe("buildClipPropertiesToSet", () => {
       currentLoopEnd: 4,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: true,
-      loop_start: 2,
-      loop_end: 16,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: true,
+        loop_start: 2,
+        loop_end: 16,
+      }),
+    );
     expect(Object.keys(result)).toStrictEqual([
       "name",
       "color",
@@ -383,15 +388,13 @@ describe("buildClipPropertiesToSet", () => {
       "loop_end",
       "loop_start",
     ]);
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: true,
-      loop_end: 16,
-      loop_start: 4,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: true,
+        loop_end: 16,
+        loop_start: 4,
+      }),
+    );
   });
 
   it("does not expand (loop_start first) when currentLoopEnd is null", () => {
@@ -412,15 +415,13 @@ describe("buildClipPropertiesToSet", () => {
       "loop_start",
       "loop_end",
     ]);
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: true,
-      loop_start: 4,
-      loop_end: 16,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: true,
+        loop_start: 4,
+        loop_end: 16,
+      }),
+    );
   });
 
   it("uses the current isLooping state (not requested looping) to decide expansion order", () => {
@@ -444,16 +445,14 @@ describe("buildClipPropertiesToSet", () => {
       "loop_end",
       "end_marker",
     ]);
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: undefined,
-      loop_start: 8,
-      loop_end: 16,
-      end_marker: 16,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: undefined,
+        loop_start: 8,
+        loop_end: 16,
+        end_marker: 16,
+      }),
+    );
   });
 
   it("sets only end_marker (no loop props) when turning looping off, expanding case", () => {
@@ -465,14 +464,12 @@ describe("buildClipPropertiesToSet", () => {
       currentLoopEnd: 4,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: false,
-      end_marker: 16,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: false,
+        end_marker: 16,
+      }),
+    );
   });
 
   it("sets only end_marker (no loop props) when turning looping off, non-expanding case", () => {
@@ -484,14 +481,12 @@ describe("buildClipPropertiesToSet", () => {
       currentLoopEnd: 4,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: false,
-      end_marker: 16,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: false,
+        end_marker: 16,
+      }),
+    );
   });
 
   it("does not set loop props for a currently non-looping clip when looping is explicitly true", () => {
@@ -503,14 +498,12 @@ describe("buildClipPropertiesToSet", () => {
       currentLoopEnd: 4,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: true,
-      end_marker: 16,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: true,
+        end_marker: 16,
+      }),
+    );
   });
 
   it("sets start_marker (not end_marker) for a non-looping clip with a start marker and no endBeats", () => {
@@ -523,14 +516,12 @@ describe("buildClipPropertiesToSet", () => {
       currentLoopEnd: null,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: false,
-      start_marker: 8,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: false,
+        start_marker: 8,
+      }),
+    );
   });
 
   it("does not set loop_end when endBeats is null for a looping clip", () => {
@@ -542,13 +533,11 @@ describe("buildClipPropertiesToSet", () => {
       currentLoopEnd: null,
     });
 
-    expect(result).toStrictEqual({
-      name: "clip",
-      color: "#000000",
-      signature_numerator: null,
-      signature_denominator: null,
-      looping: true,
-      loop_start: 4,
-    });
+    expect(result).toStrictEqual(
+      expected({
+        looping: true,
+        loop_start: 4,
+      }),
+    );
   });
 });

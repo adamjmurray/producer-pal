@@ -130,6 +130,26 @@ async function until(
 }
 
 /**
+ * Boot an orchestrator with spawn_subagent enabled and run one turn, so the
+ * injected tool is captured in the streamText args.
+ * @returns The client and the injected spawn tool's execute function
+ */
+async function orchestratorWithSpawnTool(): Promise<{
+  client: ChatSdkClient;
+  execute: ReturnType<typeof spawnToolExecute>;
+}> {
+  const client = new ChatSdkClient(
+    "key",
+    createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
+  );
+
+  await client.initialize();
+  await runTurn(client);
+
+  return { client, execute: spawnToolExecute() };
+}
+
+/**
  * Run one orchestrator turn to completion with a trivial stop stream.
  * @param client - The client to drive
  * @param message - User message to send
@@ -240,21 +260,7 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
   });
 
   it("runs a worker session and returns its compact final message", async () => {
-    const client = new ChatSdkClient(
-      "key",
-      createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
-    );
-
-    await client.initialize();
-    // One orchestrator turn so the injected tool is captured in streamText args.
-    await runTurn(client);
-
-    const spawnTool = lastStreamTools()[SPAWN_SUBAGENT_TOOL_NAME] as {
-      execute: (
-        args: Record<string, unknown>,
-        opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
-      ) => Promise<string>;
-    };
+    const { execute } = await orchestratorWithSpawnTool();
 
     // The worker streams a final assistant message.
     mockStreamParts([
@@ -262,7 +268,7 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
       { type: "finish", finishReason: "stop" },
     ]);
 
-    const result = await spawnTool.execute(
+    const result = await execute(
       { task: "add a bassline" },
       { toolCallId: "t1", messages: [], abortSignal: undefined },
     );
@@ -271,27 +277,14 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
   });
 
   it("attaches the worker transcript to the tool result (UI-only)", async () => {
-    const client = new ChatSdkClient(
-      "key",
-      createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
-    );
-
-    await client.initialize();
-    await runTurn(client);
-
-    const spawnTool = lastStreamTools()[SPAWN_SUBAGENT_TOOL_NAME] as {
-      execute: (
-        args: Record<string, unknown>,
-        opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
-      ) => Promise<string>;
-    };
+    const { client, execute } = await orchestratorWithSpawnTool();
 
     // Run the worker; it records its transcript keyed by tool-call id "tc-x".
     mockStreamParts([
       { type: "text-delta", text: "Worker done." },
       { type: "finish", finishReason: "stop" },
     ]);
-    await spawnTool.execute(
+    await execute(
       { task: "x" },
       { toolCallId: "tc-x", messages: [], abortSignal: undefined },
     );
@@ -337,26 +330,10 @@ describe("ChatSdkClient subagent rate-limit handling", () => {
     vi.mocked(calculateRetryDelay).mockReturnValue(10);
   });
 
-  /**
-   * Stand up an orchestrator and hand back its spawn tool's execute.
-   * @returns The spawn tool's execute function
-   */
-  async function orchestratorSpawnTool() {
-    const client = new ChatSdkClient(
-      "key",
-      createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
-    );
-
-    await client.initialize();
-    await runTurn(client);
-
-    return spawnToolExecute();
-  }
-
   it("retries a rate-limited worker instead of failing the spawn", async () => {
     // Workers stream below useChat's executeWithRetry, so without the retry
     // inside runSubagent a single 429 killed the whole delegated subtask.
-    const execute = await orchestratorSpawnTool();
+    const { execute } = await orchestratorWithSpawnTool();
 
     streamTextMock
       .mockReturnValueOnce(
@@ -386,7 +363,7 @@ describe("ChatSdkClient subagent rate-limit handling", () => {
     // first parallel spawn must stop the second from issuing its own request
     // until the cooldown elapses. Moving the gate into runSubagent would break
     // this and nothing else in the suite.
-    const execute = await orchestratorSpawnTool();
+    const { execute } = await orchestratorWithSpawnTool();
     const cooldownMs = 300;
 
     vi.mocked(calculateRetryDelay).mockReturnValue(cooldownMs);
@@ -430,7 +407,7 @@ describe("ChatSdkClient subagent rate-limit handling", () => {
   });
 
   it("still surfaces a non-rate-limit worker failure to the orchestrator", async () => {
-    const execute = await orchestratorSpawnTool();
+    const { execute } = await orchestratorWithSpawnTool();
 
     streamTextMock.mockReturnValueOnce(
       throwingStream(new Error("MCP connection refused")),

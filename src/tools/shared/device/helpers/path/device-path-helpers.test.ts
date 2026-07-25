@@ -35,6 +35,26 @@ interface MockLiveApiContext {
   id?: string;
 }
 
+/**
+ * Register a Drum Rack at t0/d0 holding one drum chain on C1 (note 36), the
+ * layout every `pC1` path case resolves against.
+ */
+function registerDrumRackOnC1(): void {
+  const drumChainId = "drum-chain-36";
+
+  registerMockObject("drum-rack", {
+    path: "live_set tracks 0 devices 0",
+    type: "RackDevice",
+    properties: {
+      chains: ["id", drumChainId],
+    },
+  });
+  registerMockObject(drumChainId, {
+    type: "DrumChain",
+    properties: { in_note: 36 },
+  });
+}
+
 describe("device-path-helpers", () => {
   describe("extractDevicePath", () => {
     describe("regular track devices", () => {
@@ -482,19 +502,7 @@ describe("device-path-helpers", () => {
     });
 
     it("resolves drum pad paths (append and with position)", () => {
-      const drumChainId = "drum-chain-36";
-
-      registerMockObject("drum-rack", {
-        path: "live_set tracks 0 devices 0",
-        type: "RackDevice",
-        properties: {
-          chains: ["id", drumChainId],
-        },
-      });
-      registerMockObject(drumChainId, {
-        type: "DrumChain",
-        properties: { in_note: 36 },
-      });
+      registerDrumRackOnC1();
 
       expect(resolveInsertionPath("t0/d0/pC1").position).toBeNull();
       // "t0/d0/pC1/c2" means chain index 2 within C1 (no position)
@@ -750,21 +758,7 @@ describe("device-path-helpers", () => {
         // Path "t0/d0/pC1/c0/c1": remainingSegments=["c0","c1"].
         // "c0" is consumed as chain index, "c1" doesn't start with "d" →
         // resolveDrumPadFromPath returns {target: null, targetType: "device"}.
-        const drumChainId = "drum-chain-36";
-
-        registerMockObject("drum-rack", {
-          path: "live_set tracks 0 devices 0",
-          type: "RackDevice",
-          properties: {
-            chains: ["id", drumChainId],
-          },
-        });
-        registerMockObject(drumChainId, {
-          type: "DrumChain",
-          properties: {
-            in_note: 36,
-          },
-        });
+        registerDrumRackOnC1();
 
         const result = resolveInsertionPath("t0/d0/pC1/c0/c1");
 

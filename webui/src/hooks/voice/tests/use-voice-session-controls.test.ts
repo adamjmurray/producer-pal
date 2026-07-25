@@ -220,20 +220,11 @@ describe("useVoiceSession mute / interrupt / retry", () => {
     const { result, session } = await connectAndGetSession();
 
     // Force into rate-limited state first.
-    await act(() => {
-      session.emit("transport_event", {
-        type: "response.done",
-        response: {
-          status: "failed",
-          status_details: {
-            error: {
-              code: "rate_limit_exceeded",
-              message: "Please try again in 1s",
-            },
-          },
-        },
-      });
-    });
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Please try again in 1s",
+    );
     expect(result.current.rateLimitedUntil).not.toBeNull();
 
     await act(() => {
@@ -251,20 +242,11 @@ describe("useVoiceSession mute / interrupt / retry", () => {
 
     // No "try again in …" in the message — without a fallback this would leave a
     // dead error banner with no retry path.
-    await act(() => {
-      session.emit("transport_event", {
-        type: "response.done",
-        response: {
-          status: "failed",
-          status_details: {
-            error: {
-              code: "rate_limit_exceeded",
-              message: "Rate limit reached. Please slow down.",
-            },
-          },
-        },
-      });
-    });
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Rate limit reached. Please slow down.",
+    );
     expect(result.current.rateLimitedUntil).not.toBeNull();
   });
 
@@ -274,20 +256,11 @@ describe("useVoiceSession mute / interrupt / retry", () => {
     vi.useFakeTimers();
 
     try {
-      await act(() => {
-        session.emit("transport_event", {
-          type: "response.done",
-          response: {
-            status: "failed",
-            status_details: {
-              error: {
-                code: "rate_limit_exceeded",
-                message: "Please try again in 166ms",
-              },
-            },
-          },
-        });
-      });
+      await emitResponseFailure(
+        session,
+        "rate_limit_exceeded",
+        "Please try again in 166ms",
+      );
       expect(result.current.rateLimitedUntil).not.toBeNull();
       expect(session.transport.sendEvent).not.toHaveBeenCalled();
 

@@ -3,13 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { listCategories } from "../list-categories.ts";
-import { setupLibraryFixtureLifecycle } from "./fixtures/library-fixture.ts";
+import {
+  createPartialSchemaDb,
+  FILES_ONLY_SCHEMA,
+  setupLibraryFixtureLifecycle,
+} from "./fixtures/library-fixture.ts";
 
 vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
@@ -132,21 +132,9 @@ function createDbMissingMetadataTables(): {
   dbPath: string;
   cleanup: () => void;
 } {
-  const dir = mkdtempSync(join(tmpdir(), "ppal-cats-broken-"));
-  const dbPath = join(dir, "Live-files-11000.db");
-  const db = new DatabaseSync(dbPath);
-
-  // `metadata` / `metadata_values` deliberately omitted.
-  db.exec(`
-    CREATE TABLE files (
-      file_id INTEGER PRIMARY KEY,
-      name TEXT
-    );
-  `);
-  db.close();
-
-  return {
-    dbPath,
-    cleanup: () => rmSync(dir, { recursive: true, force: true }),
-  };
+  return createPartialSchemaDb(
+    "ppal-cats-broken-",
+    FILES_ONLY_SCHEMA,
+    "Live-files-11000.db",
+  );
 }

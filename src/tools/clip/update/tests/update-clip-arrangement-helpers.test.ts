@@ -14,6 +14,48 @@ import {
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
 
+/**
+ * A clip stub answering the one property handleArrangementStartOperation reads.
+ * @param id - The clip id it reports
+ * @param isArrangementClip - 1 for an arrangement clip, 0 for a session clip
+ * @param trackIndex - Owning track index, or null when it can't be determined
+ * @returns A clip stub for the `clip` argument
+ */
+function clipStub(
+  id: string,
+  isArrangementClip: number,
+  trackIndex: number | null = null,
+): LiveAPI {
+  return {
+    id,
+    getProperty: vi.fn((prop) =>
+      prop === "is_arrangement_clip" ? isArrangementClip : null,
+    ),
+    trackIndex,
+  } as unknown as LiveAPI;
+}
+
+/**
+ * Run handleArrangementStartOperation with the fixed context every case shares.
+ * @param clip - The clip stub under test
+ * @param arrangementStartBeats - Requested arrangement start
+ * @param tracksWithMovedClips - Move tally, for cases that assert on it
+ * @returns The clip id the operation resolved to
+ */
+function runStartOperation(
+  clip: LiveAPI,
+  arrangementStartBeats: number,
+  tracksWithMovedClips = new Map<number, number>(),
+) {
+  return handleArrangementStartOperation({
+    clip,
+    arrangementStartBeats,
+    tracksWithMovedClips,
+    isMidiClip: true,
+    context: mockContext,
+  });
+}
+
 describe("update-clip-arrangement-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -21,26 +63,7 @@ describe("update-clip-arrangement-helpers", () => {
 
   describe("handleArrangementStartOperation", () => {
     it("should warn and return original ID for session clips", () => {
-      const mockClip = {
-        id: "123",
-        getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") {
-            return 0; // Session clip
-          }
-
-          return null;
-        }),
-      };
-
-      const tracksWithMovedClips = new Map();
-
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 16,
-        tracksWithMovedClips,
-        isMidiClip: true,
-        context: mockContext,
-      });
+      const result = runStartOperation(clipStub("123", 0), 16);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -50,28 +73,8 @@ describe("update-clip-arrangement-helpers", () => {
     });
 
     it("should warn and return original clip id when trackIndex is null for arrangement clips", () => {
-      const mockClip = {
-        id: "456",
-        getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") {
-            return 1; // Arrangement clip
-          }
-
-          return null;
-        }),
-        trackIndex: null, // No track index
-      };
-
-      const tracksWithMovedClips = new Map();
-
       // Should not throw, just warn and return original clip id
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 16,
-        tracksWithMovedClips,
-        isMidiClip: true,
-        context: mockContext,
-      });
+      const result = runStartOperation(clipStub("456", 1, null), 16);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -97,27 +100,13 @@ describe("update-clip-arrangement-helpers", () => {
         path: livePath.track(trackIndex).arrangementClip(0),
       });
 
-      const mockClip = {
-        id: "789", // LiveAPI.id returns just the number
-        getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") {
-            return 1;
-          }
-
-          return null;
-        }),
-        trackIndex,
-      };
-
-      const tracksWithMovedClips = new Map();
-
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 32,
+      const tracksWithMovedClips = new Map<number, number>();
+      // LiveAPI.id returns just the number
+      const result = runStartOperation(
+        clipStub("789", 1, trackIndex),
+        32,
         tracksWithMovedClips,
-        isMidiClip: true,
-        context: mockContext,
-      });
+      );
 
       // Code now formats ID with "id " prefix for Live API calls
       expect(trackMock.call).toHaveBeenCalledWith(

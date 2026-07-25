@@ -28,6 +28,25 @@ import {
 import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
+/**
+ * Register one empty chain under a device, the shape every chain-stripping case
+ * needs (the chain's own contents are irrelevant — only that it exists).
+ * @param chainId - Mock-registry id for the chain
+ * @param deviceIndex - Index of the owning device on track 0
+ * @param name - The chain's display name
+ */
+function registerEmptyChain(
+  chainId: string,
+  deviceIndex: number,
+  name: string,
+): void {
+  registerMockObject(chainId, {
+    path: livePath.track(0).device(deviceIndex).chain(0),
+    type: "Chain",
+    properties: createChainMockProperties({ name, color: 0, deviceIds: [] }),
+  });
+}
+
 describe("readTrack", () => {
   describe("trackId parameter", () => {
     it("reads track by trackId", () => {
@@ -203,33 +222,9 @@ describe("readTrack", () => {
           chainIds: ["audio_chain"],
         }),
       });
-      registerMockObject("midi_chain", {
-        path: livePath.track(0).device(0).chain(0),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "MIDI Chain",
-          color: 0,
-          deviceIds: [],
-        }),
-      });
-      registerMockObject("inst_chain", {
-        path: livePath.track(0).device(1).chain(0),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "Inst Chain",
-          color: 0,
-          deviceIds: [],
-        }),
-      });
-      registerMockObject("audio_chain", {
-        path: livePath.track(0).device(2).chain(0),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "Audio Chain",
-          color: 0,
-          deviceIds: [],
-        }),
-      });
+      registerEmptyChain("midi_chain", 0, "MIDI Chain");
+      registerEmptyChain("inst_chain", 1, "Inst Chain");
+      registerEmptyChain("audio_chain", 2, "Audio Chain");
 
       const result = readTrack({
         trackIndex: 0,
@@ -280,15 +275,7 @@ describe("readTrack", () => {
           chainIds: ["chain1"],
         }),
       });
-      registerMockObject("chain1", {
-        path: livePath.track(0).device(0).chain(0),
-        type: "Chain",
-        properties: createChainMockProperties({
-          name: "Chain 1",
-          color: 0,
-          deviceIds: [],
-        }),
-      });
+      registerEmptyChain("chain1", 0, "Chain 1");
 
       const result = readTrack({
         trackIndex: 0,

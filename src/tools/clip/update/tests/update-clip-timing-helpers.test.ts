@@ -10,21 +10,28 @@ describe("update-clip-timing-helpers", () => {
     vi.clearAllMocks();
   });
 
+  /**
+   * A clip stub answering only the properties calculateBeatPositions reads;
+   * anything else reads 0, matching the Live API's numeric default.
+   * @param props - The property values this case pins
+   * @returns A clip stub for the `clip` argument
+   */
+  const clipStub = (props: Record<string, number>): LiveAPI =>
+    ({
+      getProperty: vi.fn((prop: string) => props[prop] ?? 0),
+    }) as unknown as LiveAPI;
+
   describe("calculateBeatPositions", () => {
     it("should warn when firstStart exceeds end_marker", () => {
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "end_marker") return 4; // 1 bar at 4/4
-
-          return 0;
-        }),
-      };
+      const mockClip = clipStub({
+        end_marker: 4, // 1 bar at 4/4
+      });
 
       const result = calculateBeatPositions({
         firstStart: "3|1", // 8 beats > end_marker (4)
         timeSigNumerator: 4,
         timeSigDenominator: 4,
-        clip: mockClip as unknown as LiveAPI,
+        clip: mockClip,
         isLooping: true,
       });
 
@@ -43,19 +50,15 @@ describe("update-clip-timing-helpers", () => {
     it("should set startMarkerBeats when firstStart is within end_marker", () => {
       vi.mocked(outlet).mockClear();
 
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "end_marker") return 8; // 2 bars at 4/4
-
-          return 0;
-        }),
-      };
+      const mockClip = clipStub({
+        end_marker: 8, // 2 bars at 4/4
+      });
 
       const result = calculateBeatPositions({
         firstStart: "1|3", // 2 beats < end_marker (8)
         timeSigNumerator: 4,
         timeSigDenominator: 4,
-        clip: mockClip as unknown as LiveAPI,
+        clip: mockClip,
         isLooping: true,
       });
 
@@ -65,32 +68,28 @@ describe("update-clip-timing-helpers", () => {
     });
 
     it("rejects a 0-indexed start with the 1-indexing steer (parity with create-clip)", () => {
-      const mockClip = {
-        getProperty: vi.fn(() => 0),
-      };
+      const mockClip = clipStub({});
 
       expect(() =>
         calculateBeatPositions({
           start: "1|0",
           timeSigNumerator: 4,
           timeSigDenominator: 4,
-          clip: mockClip as unknown as LiveAPI,
+          clip: mockClip,
           isLooping: true,
         }),
       ).toThrow(/beats are 1-indexed/);
     });
 
     it("rejects a 0-indexed firstStart with the 1-indexing steer", () => {
-      const mockClip = {
-        getProperty: vi.fn(() => 0),
-      };
+      const mockClip = clipStub({});
 
       expect(() =>
         calculateBeatPositions({
           firstStart: "0|1",
           timeSigNumerator: 4,
           timeSigDenominator: 4,
-          clip: mockClip as unknown as LiveAPI,
+          clip: mockClip,
           isLooping: true,
         }),
       ).toThrow(/bars are 1-indexed/);
@@ -99,19 +98,15 @@ describe("update-clip-timing-helpers", () => {
     it("should not warn when start exceeds end_marker (silent skip intentional)", () => {
       vi.mocked(outlet).mockClear();
 
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "end_marker") return 4; // 1 bar at 4/4
-
-          return 0;
-        }),
-      };
+      const mockClip = clipStub({
+        end_marker: 4, // 1 bar at 4/4
+      });
 
       const result = calculateBeatPositions({
         start: "3|1", // 8 beats > end_marker (4), but no warning for start param
         timeSigNumerator: 4,
         timeSigDenominator: 4,
-        clip: mockClip as unknown as LiveAPI,
+        clip: mockClip,
         isLooping: true,
       });
 
@@ -125,15 +120,13 @@ describe("update-clip-timing-helpers", () => {
       // firstStartBeats === end_marker: the strict `<` rejects it, warns, and
       // leaves start_marker unset. `<=` would wrongly accept it and return the
       // value with no warning.
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "end_marker" ? 4 : 0)),
-      };
+      const mockClip = clipStub({ end_marker: 4 });
 
       const result = calculateBeatPositions({
         firstStart: "2|1", // exactly 4 beats == end_marker (4)
         timeSigNumerator: 4,
         timeSigDenominator: 4,
-        clip: mockClip as unknown as LiveAPI,
+        clip: mockClip,
         isLooping: true,
       });
 
@@ -149,15 +142,13 @@ describe("update-clip-timing-helpers", () => {
       // startBeats === end_marker (no firstStart): strict `<` rejects it, so
       // start_marker stays null. Both `<=` and forcing the whole guard true
       // would return the start value instead.
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => (prop === "end_marker" ? 4 : 0)),
-      };
+      const mockClip = clipStub({ end_marker: 4 });
 
       const result = calculateBeatPositions({
         start: "2|1", // exactly 4 beats == end_marker (4)
         timeSigNumerator: 4,
         timeSigDenominator: 4,
-        clip: mockClip as unknown as LiveAPI,
+        clip: mockClip,
         isLooping: false,
       });
 
@@ -171,21 +162,17 @@ describe("update-clip-timing-helpers", () => {
       // end_marker - lengthBeats = 8 - 4 = 4 (a `+` gives 12). With start_marker
       // matching the derived start, abs diff is 0 so there is no drift warning
       // (a `+` inside abs(), or forcing the guard true, would warn).
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "end_marker") return 8;
-          if (prop === "start_marker") return 4;
-          if (prop === "is_midi_clip") return 1;
-
-          return 0;
-        }),
-      };
+      const mockClip = clipStub({
+        end_marker: 8,
+        start_marker: 4,
+        is_midi_clip: 1,
+      });
 
       const result = calculateBeatPositions({
         length: "1bar", // 4 beats at 4/4
         timeSigNumerator: 4,
         timeSigDenominator: 4,
-        clip: mockClip as unknown as LiveAPI,
+        clip: mockClip,
         isLooping: false,
       });
 
@@ -198,21 +185,17 @@ describe("update-clip-timing-helpers", () => {
       // Derived start = 4 - 4 = 0; start_marker = -0.001 → abs diff == 0.001 ==
       // SAME_TIME_EPSILON exactly. The strict `>` does NOT warn at the boundary;
       // `>=` would.
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "end_marker") return 4;
-          if (prop === "start_marker") return -0.001;
-          if (prop === "is_midi_clip") return 1;
-
-          return 0;
-        }),
-      };
+      const mockClip = clipStub({
+        end_marker: 4,
+        start_marker: -0.001,
+        is_midi_clip: 1,
+      });
 
       const result = calculateBeatPositions({
         length: "1bar", // 4 beats → derived start = 4 - 4 = 0
         timeSigNumerator: 4,
         timeSigDenominator: 4,
-        clip: mockClip as unknown as LiveAPI,
+        clip: mockClip,
         isLooping: false,
       });
 
