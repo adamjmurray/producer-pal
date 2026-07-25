@@ -53,11 +53,12 @@ export function MemoryScreen(props: MemoryScreenProps): preact.JSX.Element {
           onDelete={onDelete}
         />
       )}
-      renderEditor={({ entry, onSaved }) => (
+      renderEditor={({ entry, onSaved, onRenamed }) => (
         <MemoryEntryEditor
           collection={collection}
           entry={entry}
           onSaved={onSaved}
+          onRenamed={onRenamed}
         />
       )}
     />

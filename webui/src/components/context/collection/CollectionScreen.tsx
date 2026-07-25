@@ -39,6 +39,14 @@ export interface CollectionEditorRenderArgs<TView> {
   entry: TView | null;
   onSaved: (name: string) => void;
   onDeleted: () => void;
+  /**
+   * Follow this editor's entry to a new slug WITHOUT remounting the editor (a
+   * rename). The live draft — including anything typed during the rename's
+   * round trip — exists only in the mounted instance's state, so remounting
+   * there re-seeds from the server's pre-edit echo and drops it. Editors whose
+   * collection can't rename (custom skills) ignore this.
+   */
+  onRenamed: (name: string) => void;
 }
 
 interface CollectionScreenProps<TView extends DocCollectionEntry, TInput> {
@@ -69,9 +77,10 @@ interface CollectionScreenProps<TView extends DocCollectionEntry, TInput> {
  * Owns the selection state, loading/error gating, and the delete-out-from-under
  * affordance; the caller supplies the domain list + editor and the labels.
  *
- * The editor is keyed by the selection (not the found entry) so its draft
+ * The editor is keyed by a selection epoch (not the found entry) so its draft
  * re-seeds on switch, yet a poll that deletes the entry mid-edit keeps the
- * editor mounted with the user's draft (the banner explains it; Save re-creates).
+ * editor mounted with the user's draft (the banner explains it; Save
+ * re-creates), and so does a rename (see `onRenamed`).
  *
  * @param props - Screen props
  * @returns Screen element
@@ -83,24 +92,25 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     props;
   const { description } = props;
   const [selected, setSelected] = useState<Selection>({ mode: "new" });
-  // Bumped by every New press so the create form REMOUNTS on a fresh key, even
-  // when it is already the active pane — otherwise "New" left a half-filled
-  // draft sitting there and looked like it did nothing.
-  const [newEpoch, setNewEpoch] = useState(0);
-  const selectionKey =
-    selected.mode === "edit" ? selected.name : `__new__:${newEpoch}`;
+  // The editor's identity. Bumped by every selection change that lands on a
+  // DIFFERENT draft, so the editor remounts and re-seeds — including a New
+  // press while the create form is already the active pane (otherwise a
+  // half-filled draft sat there and the button looked inert). A RENAME
+  // deliberately does NOT bump it: see the onRenamed doc.
+  const [editorEpoch, setEditorEpoch] = useState(0);
+  const editorKey = `${selected.mode}:${editorEpoch}`;
   // Selecting another entry unmounts the active editor; confirm a discard first
   // if it holds an unsaved new draft (the editor registers the guard).
   const leaveGuard = useLeaveGuardContext();
 
-  // Reset the save indicator whenever the edited entry (or the create form)
-  // changes, so it never carries the previous entry's "Saved" onto the next one
-  // or onto the create form.
+  // Reset the save indicator whenever the editor switches to another draft, so
+  // it never carries the previous entry's "Saved" onto the next one or onto the
+  // create form. A rename keeps the same editor, and with it its own outcome.
   const { resetSaveStatus } = collection;
 
   useEffect(() => {
     resetSaveStatus();
-  }, [selectionKey, resetSaveStatus]);
+  }, [editorKey, resetSaveStatus]);
 
   if (collection.status.kind !== "ready") {
     return (
@@ -123,12 +133,33 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     selected.mode === "edit"
       ? (entries.find((entry) => entry.name === selected.name) ?? null)
       : null;
-  const editorKey = selectionKey;
   const deletedExternally = selected.mode === "edit" && activeEntry == null;
+
+  // Point the right pane at another draft, remounting the editor so it re-seeds.
+  // Re-selecting the entry already open is a no-op, so clicking its row again
+  // (or re-saving it under the same slug) keeps the in-progress draft.
+  const selectDraft = (next: Selection): void => {
+    if (
+      next.mode === "edit" &&
+      selected.mode === "edit" &&
+      selected.name === next.name
+    ) {
+      return;
+    }
+
+    setSelected(next);
+    setEditorEpoch((epoch) => epoch + 1);
+  };
+
   const editor = props.renderEditor({
     entry: activeEntry,
-    onSaved: (name) => setSelected({ mode: "edit", name }),
-    onDeleted: () => setSelected({ mode: "new" }),
+    onSaved: (name) => selectDraft({ mode: "edit", name }),
+    onDeleted: () => selectDraft({ mode: "new" }),
+    // No epoch bump: the entry changes slug under the SAME mounted editor.
+    onRenamed: (name) =>
+      setSelected((prev) =>
+        prev.mode === "edit" ? { mode: "edit", name } : prev,
+      ),
   });
 
   // Delete from the list (the row trash). Return to the create form when the
@@ -139,7 +170,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     const ok = await collection.deleteEntry(name);
 
     if (ok && selected.mode === "edit" && selected.name === name) {
-      setSelected({ mode: "new" });
+      selectDraft({ mode: "new" });
     }
   };
 
@@ -171,7 +202,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             creating: activeEntry == null,
             onSelect: (name) => {
               if (leaveGuard.confirmLeave())
-                setSelected({ mode: "edit", name });
+                selectDraft({ mode: "edit", name });
             },
             // New always means a BLANK form — including when the create form is
             // already open holding a half-filled draft, which used to be kept
@@ -182,8 +213,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             // persist on navigate-away instead) just gets the fresh form.
             onNew: () => {
               if (!leaveGuard.confirmLeave()) return;
-              setSelected({ mode: "new" });
-              setNewEpoch((epoch) => epoch + 1);
+              selectDraft({ mode: "new" });
             },
             onDelete: (name) => void handleDeleteEntry(name),
           })}
@@ -192,7 +222,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
           {deletedExternally && (
             <DeletedExternallyBanner
               message={deletedBanner}
-              onDiscard={() => setSelected({ mode: "new" })}
+              onDiscard={() => selectDraft({ mode: "new" })}
             />
           )}
           {cloneElement(editor, { key: editorKey })}

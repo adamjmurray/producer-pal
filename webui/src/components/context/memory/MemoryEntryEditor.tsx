@@ -25,12 +25,20 @@ interface MemoryEntryEditorProps {
   entry: MemoryEntryView | null;
   /** Called after a successful save with the stored entry's slug. */
   onSaved: (name: string) => void;
+  /**
+   * Called after a successful rename with the stored entry's new slug. Distinct
+   * from `onSaved` because it must NOT remount this editor — the live draft is
+   * only here (see {@link CollectionEditorRenderArgs.onRenamed}).
+   */
+  onRenamed: (name: string) => void;
 }
 
 /**
  * Right-pane form for one memory: an editable name (rename in place, or the new
  * draft's slug), a one-line description, and a markdown body. Keyed by the
- * selected entry in the parent so the local draft re-seeds on selection change.
+ * selection in the parent so the local draft re-seeds when another memory is
+ * picked — but NOT by a rename, which keeps this instance (and its draft) alive
+ * while the entry changes slug underneath it (see {@link useMemoryRename}).
  *
  * An existing memory autosaves — there is no Save button; the save state shows
  * in the header (see {@link CollectionScreen}). A new memory is created only by
@@ -43,7 +51,7 @@ interface MemoryEntryEditorProps {
 export function MemoryEntryEditor(
   props: MemoryEntryEditorProps,
 ): preact.JSX.Element {
-  const { collection, entry, onSaved } = props;
+  const { collection, entry, onSaved, onRenamed } = props;
   const isNew = entry == null;
   const [name, setName] = useState(entry?.name ?? "");
   const [description, setDescription] = useState(entry?.description ?? "");
@@ -100,7 +108,7 @@ export function MemoryEntryEditor(
     body,
     requiredError: validation.errors.name,
     noteSaved,
-    onSaved,
+    onRenamed,
   });
 
   const handleSave = async (): Promise<void> => {
@@ -204,10 +212,10 @@ interface MemoryRenameParams {
   body: string;
   /** The client-side required-name error; it takes priority over a rename error. */
   requiredError?: string;
-  /** Advance the autosave baseline for the OLD name after a successful rename. */
+  /** Advance the autosave baseline to the renamed entry's echo. */
   noteSaved: (echoKey: string) => void;
-  /** Navigate to the renamed entry's new slug. */
-  onSaved: (name: string) => void;
+  /** Follow the entry to its new slug, keeping this editor mounted. */
+  onRenamed: (name: string) => void;
 }
 
 /**
@@ -216,9 +224,15 @@ interface MemoryRenameParams {
  * a server-rejected slug) — read fresh from the collection each render, not off
  * the stale rename closure — cleared as soon as the user edits the name. An
  * emptied/unchanged name never renames (an emptied one keeps its required error
- * visible; an unchanged one just normalizes whitespace). On success, the OLD
- * name's draft is marked saved so the navigation's unmount flush can't re-create
- * the old slug; the current draft fields ride along so a dirty body isn't lost.
+ * visible; an unchanged one just normalizes whitespace). The current draft
+ * fields ride along on the write so a dirty body isn't lost.
+ *
+ * On success the editor stays MOUNTED and follows the entry to its new slug
+ * (`onRenamed`): remounting would re-seed the fields from the server's echo,
+ * silently dropping anything typed during the rename's round trip. The name
+ * field adopts the server's slug, and the baseline advances to that echo, so a
+ * draft that did diverge mid-rename is left dirty for the autosave to persist
+ * under the NEW name — and a clean one doesn't re-save.
  * Extracted so the editor body stays within the line limit.
  * @param params - The live draft + collection the rename needs
  * @returns The name field's error and its change/rename handlers
@@ -229,7 +243,7 @@ function useMemoryRename(params: MemoryRenameParams): {
   onRename: (raw: string) => void;
 } {
   const { collection, entry, setName, description, body } = params;
-  const { requiredError, noteSaved, onSaved } = params;
+  const { requiredError, noteSaved, onRenamed } = params;
   const [renameFailed, setRenameFailed] = useState(false);
 
   const nameError =
@@ -264,8 +278,9 @@ function useMemoryRename(params: MemoryRenameParams): {
         }
 
         setRenameFailed(false);
-        noteSaved(memoryEntryKey({ name: entry.name, description, body }));
-        onSaved(renamed.name);
+        setName(renamed.name);
+        noteSaved(memoryEntryKey(renamed));
+        onRenamed(renamed.name);
       });
   };
 
