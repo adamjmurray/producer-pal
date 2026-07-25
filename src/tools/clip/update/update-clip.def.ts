@@ -183,26 +183,25 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       smallModel: null,
     }),
 
-    // Warp marker parameters
+    // Warp marker parameters (debug builds only - see ENABLE_WARP_MARKERS)
     ...(process.env.ENABLE_WARP_MARKERS === "true"
       ? {
           warpOp: param(z.enum(["add", "move", "remove"]).optional(), {
             default:
-              'warp marker operation: "add" (create at beat), "move" (shift by distance), "remove" (delete at beat)',
+              'warp marker operation (audio clips only): "add" (create at warpBeatTime), "move" (shift by warpDistance), "remove" (delete at warpBeatTime)',
             smallModel: null,
           }),
           warpBeatTime: param(z.coerce.number().optional(), {
             default:
-              "beat position from clip 1.1.1 (exact value from read-clip for move/remove, target for add)",
+              "warp marker position in beats from clip start (a number, not bar|beat); for move/remove use the exact beatTime from ppal-read-clip warpMarkers",
             smallModel: null,
           }),
           warpSampleTime: param(z.coerce.number().optional(), {
-            default:
-              "sample time in seconds (optional for add - omit to preserve timing)",
+            default: "sample time in seconds for add (omit to preserve timing)",
             smallModel: null,
           }),
           warpDistance: param(z.coerce.number().optional(), {
-            default: "beats to shift (+forward, -backward) for move operation",
+            default: "beats to shift (+forward, -backward) for move",
             smallModel: null,
           }),
         }
