@@ -174,7 +174,7 @@ export function assertClipDetails(
   }
 }
 
-type LengthenResult = {
+export type LengthenResult = {
   trackType: "midi" | "audio";
   initialClips: ReadClipResult[];
   resultClips: ReadClipResult[];

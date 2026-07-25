@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -130,10 +131,8 @@ describe("ppal-update-scene", () => {
       name: "ppal-update-scene",
       arguments: { ids: `${sceneId}, ${secondSceneId}`, name: "BatchUpdated" },
     });
-    const batch = parseToolResult<UpdateSceneResult[]>(batchResult);
 
-    expect(Array.isArray(batch)).toBe(true);
-    expect(batch).toHaveLength(2);
+    parseBatchResult<UpdateSceneResult>(batchResult, 2);
 
     await sleep(100);
     const verifyFirst = await ctx.client!.callTool({

@@ -30,9 +30,11 @@ import {
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
-  sleep,
 } from "../mcp-test-helpers.ts";
-import { emptyMidiTrack } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import {
+  createClipInSlot,
+  emptyMidiTrack,
+} from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -147,19 +149,11 @@ async function createAndReadback(
   slot: string,
   notes: string,
 ): Promise<{ notation: string; events: NoteEvent[] }> {
-  const created = parseToolResult<{ id: string }>(
-    await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: { slot, notes },
-    }),
-  );
-
-  await sleep(100);
-
+  const clipId = await createClipInSlot(ctx, slot, { notes });
   const read = parseToolResult<ReadClipResult>(
     await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: created.id, include: ["notes", "timing"] },
+      arguments: { clipId, include: ["notes", "timing"] },
     }),
   );
   const notation = read.notes ?? "";

@@ -8,19 +8,23 @@
  * Provides common MIDI clip creation, reading, transform application, and
  * notation round-trip utilities.
  */
-import { expect } from "vitest";
+import { afterAll, expect } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import {
   type CreateClipResult,
   parseToolResult,
   type ReadClipResult,
+  resetConfig,
   setConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
 
 export const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
+
+/** One triplet subdivision in beats — the round-trip suites' unit of spacing. */
+export const THIRD = 1 / 3;
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 
@@ -45,6 +49,32 @@ export async function createMidiClip(
     },
   });
   const clip = parseToolResult<CreateClipResult>(result);
+
+  await sleep(100);
+
+  return clip.id;
+}
+
+/**
+ * Creates a session clip in `slot` with arbitrary create-clip arguments, for
+ * suites that vary looping/length/notes per case rather than taking
+ * {@link createMidiClip}'s fixed 2-bar shape.
+ * @param ctx - MCP test context with client
+ * @param slot - Session slot (trackIndex/sceneIndex)
+ * @param args - Create-clip arguments beyond the slot (notes, length, looping)
+ * @returns Clip ID
+ */
+export async function createClipInSlot(
+  ctx: { client: { callTool: CallToolFn } | null },
+  slot: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  const clip = parseToolResult<CreateClipResult>(
+    await ctx.client!.callTool({
+      name: TOOL_CREATE_CLIP,
+      arguments: { slot, ...args },
+    }),
+  );
 
   await sleep(100);
 
@@ -254,24 +284,23 @@ export async function createAndReadback(
 ): Promise<{ notation: string; events: NoteEvent[] }> {
   await setConfig({ notation });
 
-  const created = parseToolResult<{ id: string }>(
-    await ctx.client!.callTool({
-      name: TOOL_CREATE_CLIP,
-      arguments: { slot, notes },
-    }),
+  const readback = await readClipNotes(
+    ctx,
+    await createClipInSlot(ctx, slot, { notes }),
   );
-
-  await sleep(100);
-
-  const read = parseToolResult<ReadClipResult>(
-    await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: created.id, include: ["notes"] },
-    }),
-  );
-  const readback = read.notes ?? "";
 
   return { notation: readback, events: interpret(readback) };
+}
+
+/**
+ * Restore the default notation after the calling file. The per-test setup
+ * already resets before each test, so this only tidies the trailing server
+ * state for suites that flip notation inside their test bodies.
+ */
+export function restoreNotationAfterAll(): void {
+  afterAll(async () => {
+    await resetConfig();
+  });
 }
 
 /**

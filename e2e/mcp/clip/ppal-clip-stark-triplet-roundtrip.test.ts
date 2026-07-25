@@ -22,24 +22,20 @@
  *
  * Run with: npm run e2e:mcp -- ppal-clip-stark-triplet-roundtrip
  */
-import { afterAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
-import { resetConfig, setupMcpTestContext } from "../mcp-test-helpers.ts";
+import { setupMcpTestContext } from "../mcp-test-helpers.ts";
 import {
   createAndReadback,
   emptyMidiTrack,
   expectEvenlySpaced,
+  restoreNotationAfterAll,
+  THIRD,
 } from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
-const THIRD = 1 / 3;
-
-// Restore the default notation after this file; the per-test setup already resets
-// before each test, so this only tidies the trailing server state.
-afterAll(async () => {
-  await resetConfig();
-});
+restoreNotationAfterAll();
 
 describe("ppal-create-clip Stark triplet round-trip", () => {
   it("round-trips eighth-note triplets (/8t) as thirds-of-a-beat", async () => {

@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -223,10 +224,8 @@ describe("ppal-update-track", () => {
       name: "ppal-update-track",
       arguments: { ids: `${trackId}, ${secondTrackId}`, mute: true },
     });
-    const batch = parseToolResult<UpdateTrackResult[]>(batchResult);
 
-    expect(Array.isArray(batch)).toBe(true);
-    expect(batch).toHaveLength(2);
+    parseBatchResult<UpdateTrackResult>(batchResult, 2);
 
     await sleep(100);
     const verifyFirst = await ctx.client!.callTool({

@@ -8,7 +8,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, expect } from "vitest";
 import {
   connectMcp,
   extractToolResultText,
@@ -64,6 +64,23 @@ export function parseToolResult<T>(result: unknown): T {
     console.error("Failed to parse JSON response. Raw text:", text);
     throw error;
   }
+}
+
+/**
+ * Parse a batch create/update result and assert its shape. Every batch tool
+ * answers with an array whatever it operates on, so the scene and track suites
+ * share this check before their own per-domain assertions.
+ * @param result - Raw tool result from a batch call
+ * @param count - Expected number of items in the batch
+ * @returns The parsed batch items
+ */
+export function parseBatchResult<T>(result: unknown, count: number): T[] {
+  const batch = parseToolResult<T[]>(result);
+
+  expect(Array.isArray(batch)).toBe(true);
+  expect(batch).toHaveLength(count);
+
+  return batch;
 }
 
 /**

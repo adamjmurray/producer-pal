@@ -58,17 +58,30 @@ function blockIndex(result: unknown, prefix: string): number {
   return typed?.content?.findIndex((c) => c.text?.startsWith(prefix)) ?? -1;
 }
 
+/**
+ * Parse a connect result and assert the baseline connection status every mode
+ * must report, whatever skills it goes on to inject.
+ * @param result - Raw ppal-connect tool result
+ * @returns The parsed connect result, for mode-specific assertions
+ */
+function expectConnected(result: unknown): ConnectResult {
+  const parsed = parseToolResult<ConnectResult>(result);
+
+  expect(parsed.connected).toBe(true);
+  expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
+
+  return parsed;
+}
+
 describe("ppal-connect", () => {
   it("returns standard mode skills (smallModelMode=false)", async () => {
     // Ensure standard mode is active, with notation pinned so the assertion is
     // deterministic regardless of any notation left set by a prior test.
     await setConfig({ smallModelMode: false, notation: "barbeat" });
-    const result = await callConnectRaw();
-    const parsed = parseToolResult<ConnectResult>(result);
 
-    // Connection status
-    expect(parsed.connected).toBe(true);
-    expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    const result = await callConnectRaw();
+    const parsed = expectConnected(result);
+
     expect(parsed.abletonLiveVersion).toBeDefined();
     expect(typeof parsed.abletonLiveVersion).toBe("string");
     expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
@@ -95,12 +108,11 @@ describe("ppal-connect", () => {
   it("returns simplified skills (smallModelMode=true)", async () => {
     // Enable small model mode, notation pinned (see standard-mode test above).
     await setConfig({ smallModelMode: true, notation: "barbeat" });
+
     const result = await callConnectRaw();
-    const parsed = parseToolResult<ConnectResult>(result);
 
     // Connection status still works
-    expect(parsed.connected).toBe(true);
-    expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    expectConnected(result);
 
     // Small model mode injects the notation's basic skills verbatim — and,
     // crucially, something different from standard mode, proving the mode

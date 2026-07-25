@@ -59,27 +59,42 @@ describe("ppal-update-clip v±N / p±N shorthand", () => {
 describe("ppal-update-clip clipseq() (clip-axis cycling)", () => {
   it("cycles by clip.index across a MIDI batch", async () => {
     // Three clips, all C3 (pitch 60). pitch += clipseq(0, 5, 7) → C3 / F3 / G3.
-    const id0 = await createMidiClip(0, "C3 1|1");
-    const id1 = await createMidiClip(1, "C3 1|1");
-    const id2 = await createMidiClip(2, "C3 1|1");
-
-    await applyTransformToClips([id0, id1, id2], "pitch += clipseq(0, 5, 7)");
-
-    expect(await readClipNotes(id0)).toContain("C3"); // 60 + 0
-    expect(await readClipNotes(id1)).toContain("F3"); // 60 + 5
-    expect(await readClipNotes(id2)).toContain("G3"); // 60 + 7
+    await expectClipseqTransposes("pitch += clipseq(0, 5, 7)", [
+      "C3", // 60 + 0
+      "F3", // 60 + 5
+      "G3", // 60 + 7
+    ]);
   });
 
   it("wraps around when there are fewer args than clips", async () => {
     // clipseq(0, 12) across 3 clips → +0 / +12 / +0 (clip 2 wraps to args[0]).
-    const id0 = await createMidiClip(0, "C3 1|1");
-    const id1 = await createMidiClip(1, "C3 1|1");
-    const id2 = await createMidiClip(2, "C3 1|1");
-
-    await applyTransformToClips([id0, id1, id2], "pitch += clipseq(0, 12)");
-
-    expect(await readClipNotes(id0)).toContain("C3"); // 60 + 0
-    expect(await readClipNotes(id1)).toContain("C4"); // 60 + 12
-    expect(await readClipNotes(id2)).toContain("C3"); // wraps → 60 + 0
+    await expectClipseqTransposes("pitch += clipseq(0, 12)", [
+      "C3", // 60 + 0
+      "C4", // 60 + 12
+      "C3", // wraps → 60 + 0
+    ]);
   });
 });
+
+/**
+ * Create three single-C3 clips, apply one clip-axis transform across the batch,
+ * and assert each clip landed on its expected pitch.
+ * @param transform - The clipseq transform to apply to all three clips
+ * @param expectedPitches - Expected pitch per clip, in clip.index order
+ */
+async function expectClipseqTransposes(
+  transform: string,
+  expectedPitches: string[],
+): Promise<void> {
+  const ids = [
+    await createMidiClip(0, "C3 1|1"),
+    await createMidiClip(1, "C3 1|1"),
+    await createMidiClip(2, "C3 1|1"),
+  ];
+
+  await applyTransformToClips(ids, transform);
+
+  for (const [index, id] of ids.entries()) {
+    expect(await readClipNotes(id)).toContain(expectedPitches[index]);
+  }
+}
