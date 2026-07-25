@@ -28,6 +28,33 @@ describe("context - project scope (default)", () => {
     expect(outlet).toHaveBeenCalledWith(0, "update_project_context", content);
   }
 
+  /**
+   * Write `incoming` over `existing` and assert the clobber guard skipped it:
+   * the document stands and the warning is relayed to the model.
+   * @param existing - The document as it stands
+   * @param incoming - The content the write attempts
+   */
+  async function expectWriteSkipped(
+    existing: string,
+    incoming: string,
+  ): Promise<void> {
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    toolContext.projectContext!.content = existing;
+
+    const result = await context(
+      { action: "write", content: incoming },
+      toolContext,
+    );
+
+    expect(result).toStrictEqual({ content: existing });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("scope:project write SKIPPED"),
+    );
+
+    warnSpy.mockRestore();
+  }
+
   describe("read action", () => {
     it("returns current content", async () => {
       toolContext.projectContext!.content = "test content";
@@ -104,6 +131,7 @@ describe("context - project scope (default)", () => {
     const EXISTING = ["# Notes", "- Genre: deep house.", "- Drop at bar 33."]
       .join("\n")
       .concat("\n");
+    const TABLE = "| a | b |\n| --- | --- |\n| Genre | deep house |";
 
     it("skips the write and warns when the new content keeps none of the document", async () => {
       const warnSpy = vi.spyOn(v8Console, "warn");
@@ -194,22 +222,28 @@ describe("context - project scope (default)", () => {
     // Structural boilerplate must not vouch for a write: it appears in almost
     // any markdown, so a document containing one would otherwise be unguarded.
     it("still fires when only a horizontal rule survives", async () => {
-      const warnSpy = vi.spyOn(v8Console, "warn");
-      const existing = "---\n\nGenre: deep house.\nDrop at bar 33.";
-
-      toolContext.projectContext!.content = existing;
-
-      const result = await context(
-        { action: "write", content: "---\n\nKey: A minor." },
-        toolContext,
+      await expectWriteSkipped(
+        "---\n\nGenre: deep house.\nDrop at bar 33.",
+        "---\n\nKey: A minor.",
       );
+    });
 
-      expect(result).toStrictEqual({ content: existing });
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("scope:project write SKIPPED"),
+    // The floor counts alphanumerics, not non-whitespace: a table separator is
+    // 9 non-whitespace characters but zero letters or digits, so reusing the
+    // same column count must not vouch for replacing the rows around it.
+    it("still fires when only a table separator row survives", async () => {
+      await expectWriteSkipped(
+        TABLE,
+        "| x | y |\n| --- | --- |\n| Key | A minor |",
       );
+    });
 
-      warnSpy.mockRestore();
+    // The content row is the other half of that rule: it really is surviving
+    // content, so keeping it must still read as an edit.
+    it("allows a table rewrite that keeps a content row", async () => {
+      toolContext.projectContext!.content = TABLE;
+
+      await expectWriteAllowed(`${TABLE}\n| Key | A minor |`);
     });
 
     // Nothing distinctive enough to test containment on — the guard has no

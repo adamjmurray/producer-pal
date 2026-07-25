@@ -382,10 +382,10 @@ skills, so the model meets it in the warning rather than reaching for it.
 
 Detection is line containment, both sides normalized (list marker stripped,
 whitespace collapsed, trailing punctuation dropped) so an ordinary reformat
-survives, and only lines of ≥ 8 non-whitespace characters may vouch for a write
-— otherwise a `---` rule or a table row would satisfy it for free. The guard is
-inert on an empty document, on a blank write (the documented clear), and on a
-document with nothing substantive to test.
+survives, and only lines of ≥ 8 _alphanumeric_ characters may vouch for a write
+— otherwise a `---` rule or a `| --- | --- |` table separator would satisfy it
+for free. The guard is inert on an empty document, on a blank write (the
+documented clear), and on a document with nothing substantive to test.
 
 It applies to the TOOL path only. The webui/REST editors write through their own
 routes, so the user may select-all-and-replace their own document freely; this

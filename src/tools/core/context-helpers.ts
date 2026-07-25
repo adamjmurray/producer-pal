@@ -199,11 +199,15 @@ export async function handleWriteGlobalContext(
  * as surviving; headings are ignored for the same reason. One surviving line is
  * enough to read as an edit rather than a replacement.
  *
- * Only SUBSTANTIVE lines can vouch for a write. Without that floor, a `---`
- * rule, a `|` table row, or any short line that happens to appear in the new
- * content would satisfy the guard for free, leaving a document with a horizontal
- * rule effectively unguarded. A document with nothing substantive in it has
- * nothing distinctive to test, so the guard stays out of the way there.
+ * Only SUBSTANTIVE lines can vouch for a write, measured in ALPHANUMERIC
+ * characters so punctuation can't pad a line over the floor. Without that, a
+ * `---` rule, a code fence, a `| --- | --- |` table separator, or any short line
+ * that happens to appear in the new content would satisfy the guard for free,
+ * leaving a document containing one effectively unguarded. Content-bearing lines
+ * still count — `| Genre | deep house |` is 14 alphanumerics, and if it survives
+ * into the new content that really is surviving content. A document with nothing
+ * substantive in it has nothing distinctive to test, so the guard stays out of
+ * the way there.
  *
  * Inert in the two cases where nothing can be lost: an empty existing document,
  * and a blank incoming write (the documented explicit clear, which the webui's
@@ -233,7 +237,10 @@ export function clobberWarning(
   const incomingLines = incoming.split("\n").map(normalizeForContainment);
   const checkable = lines
     .map(normalizeForContainment)
-    .filter((line) => line.replaceAll(/\s/g, "").length >= MIN_SURVIVING_CHARS);
+    .filter(
+      (line) =>
+        line.replaceAll(/[^\p{L}\p{N}]/gu, "").length >= MIN_SURVIVING_CHARS,
+    );
 
   if (checkable.length === 0) return null;
 
@@ -252,7 +259,7 @@ export function clobberWarning(
 }
 
 /**
- * Shortest line that may vouch for a write (non-whitespace chars, after
+ * Shortest line that may vouch for a write (alphanumeric chars, after
  * normalization). Long enough that structural boilerplate — `---`, `| --- |`,
  * a fence, a one-word list item — can't stand in for the user's content.
  */
