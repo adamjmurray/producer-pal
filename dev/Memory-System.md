@@ -298,8 +298,8 @@ Two design constraints worth preserving:
 - **It lives here, not in the skills.** As a connect-response block it costs
   tokens only for the users who need it (zero for everyone else), and it arrives
   as a just-in-time instruction rather than one rule inside a ~10k-token skills
-  blob. It also keeps the skills free of a contradiction: `core-context.ts` says
-  to save memories _quietly, as facts emerge_, which reads as the opposite of
+  blob. It also keeps the skills free of a contradiction: `context.ts` says to
+  save memories _quietly, as facts emerge_, which reads as the opposite of
   "interview the user up front" when both sit in the same always-on document.
 - **`withNextStep` must stay outermost.** The old static `nextStep` field lived
   inside V8's connect result, which put "wait for their instructions" _before_
@@ -328,9 +328,9 @@ view of what's stored never goes stale mid-conversation.
 ## Layer discipline
 
 Instructions for the model live in the shipped skills fragments
-(`src/skills/core/core-context.ts`, the `core-context-standard` fragment;
-large-model mode only — the `core-context-basic` fragment it ships alongside has
-no memory instructions since the small-model tool surface excludes it).
+(`src/skills/fragments/context.ts`, the `context-standard` fragment; large-model
+mode only — the `context-basic` fragment it ships alongside has no memory
+instructions since the small-model tool surface excludes it).
 
 **What goes where.** The split is by _how often the fact applies_, not by who it
 is about:

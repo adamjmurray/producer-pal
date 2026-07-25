@@ -3,13 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// A section of the standard skills body, pulled into the standard driver via
-// `@include` (see core-standard.ts, which lists the manifest). Each section is
-// its own override slot (skill-slots.ts) so users can edit it in isolation —
-// or suppress it by deleting its include line in a `standard` driver override.
-// The Finding Library Content section of the standard core: ppal-library
-// search, tags, kinds, and similarity actions.
-export const coreLibrary = `## Finding Library Content
+// ppal-library search: tags, kinds, sources, and the similarity actions. One of
+// the cleanest tool-line cuts in the set — a task that never searches the
+// browser library never needs a word of it.
+export const library = `## Finding Library Content
 
 Use \`ppal-library\` to search Live's browser library and the user's configured sample folder.
 

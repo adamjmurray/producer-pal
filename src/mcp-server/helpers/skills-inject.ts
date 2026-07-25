@@ -25,8 +25,9 @@ import { readSkillOverrides } from "./skill-overrides-store.ts";
  * is self-labeled (it starts with the "# Producer Pal Skills" header), so it is
  * appended raw — no extra framing. Notation/small-model context is read from
  * the live device config via `getContext` at call time. Assembly warnings from
- * a broken user override (cycles, unsafe/too-deep refs) are logged to the Max
- * window so the blob doesn't silently truncate.
+ * a broken user override (unknown fragments, refused nesting, unsafe refs, or an
+ * override keyed to a retired slot) are logged to the Max window so the blob
+ * doesn't silently shorten.
  *
  * @param inner - The underlying callLiveApi to wrap
  * @param getContext - Reads the current notation/small-model settings

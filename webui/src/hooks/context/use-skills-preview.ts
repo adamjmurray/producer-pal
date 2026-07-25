@@ -28,7 +28,7 @@ export interface SkillsPreview extends SkillsCombination {
   skills: string;
   /** Exact character count of the blob (token estimate is derived at display). */
   charCount: number;
-  /** Non-fatal assembly warnings (override cycles/unsafe refs); [] when clean. */
+  /** Non-fatal assembly warnings (unknown/nested/unsafe refs); [] when clean. */
   warnings: string[];
 }
 

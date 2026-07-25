@@ -224,7 +224,9 @@ interface PreviewBodyProps {
 
 /**
  * The assembled-blob body: a loading/error state, or the read-only skills text
- * with a caption naming its two active slots and a Copy button. Every state is
+ * with a caption naming the two slots this combination selects (the driver,
+ * whose manifest names every other fragment, and the notation head) and a Copy
+ * button. Every state is
  * wrapped in {@link PreviewFrame} so the view toggle stays centered in the same
  * on-screen spot as the editor's toggle — switching views never moves it.
  * @param props - Body props
@@ -260,7 +262,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
       viewSlot={viewSlot}
       left={
         <span className="min-w-0 truncate text-xs text-zinc-400 dark:text-zinc-500">
-          Fragments: {driver} + {head}
+          Driver: {driver} · Notation: {head}
         </span>
       }
       right={
@@ -319,8 +321,9 @@ interface PreviewWarningsProps {
 }
 
 /**
- * Banner listing assembly warnings (override cycles, unsafe/too-deep refs) so a
- * broken user override is visible here rather than silently truncating the blob.
+ * Banner listing assembly warnings (unknown fragments, refused nesting, unsafe
+ * refs, overrides keyed to a retired slot) so a broken user override is visible
+ * here rather than silently shortening the blob.
  * @param props - Warnings props
  * @returns Banner element
  */

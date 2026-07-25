@@ -179,9 +179,10 @@ further, you can customize Producer Pal's behavior for your specific model:
 1. Download this repository and follow the dev setup and build instructions in
    [DEVELOPERS.md](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md)
 2. Edit the skills files in `src/skills/` - Small Model Mode uses the basic
-   skills for the active notation (e.g. `src/skills/notation/barbeat-basic.ts`),
-   while regular mode assembles `src/skills/core/core-standard.ts` with a
-   notation head (e.g. `src/skills/notation/barbeat-standard.ts`). See
+   driver (`src/skills/drivers.ts`) with the basic notation head for the active
+   notation (e.g. `src/skills/notation/barbeat-basic.ts`), while regular mode
+   assembles the standard driver's fragments (`src/skills/fragments/`) with a
+   standard notation head (e.g. `src/skills/notation/barbeat-standard.ts`). See
    `src/skills/build-skills.ts` for how they are selected
 3. Experiment with instruction wording, remove features your model struggles
    with, or adjust the guidance

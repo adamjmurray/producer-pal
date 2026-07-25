@@ -22,7 +22,8 @@
 // the same language and compute matching values where they overlap. It is the
 // single source of truth that keeps the sites from silently diverging again
 // (the intent stated in the skills' Time & Note Values section,
-// skills/core/core-standard.ts: "same `n` fraction grammar everywhere"), and it
+// skills/fragments/time-and-values.ts: "same `n` fraction grammar everywhere"),
+// and it
 // pins the deliberate, documented rules:
 //   - `Nbar` is a note value on every surface (closed by allowing it in the
 //     transform grammar);

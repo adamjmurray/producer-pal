@@ -5,9 +5,10 @@
 
 /**
  * MIDI JSON notation head. A literal array-of-objects notes format. One shared
- * head used at both skill levels (standard and basic) — the format has no
- * simplified variant, so the only standard/basic difference is which core body
- * ({@link coreStandard} / {@link coreBasic}) `@include`s this shared head.
+ * head used at both skill depths (standard and basic) — the format has no
+ * simplified variant, so both drivers' `{notation}-{depth}` include refs are
+ * ALIASED onto this one body (see builtin-fragments.ts), and a user's single
+ * `midi-json` override applies at both depths.
  */
 export const midiJson = `## MIDI Notation — MIDI JSON
 
