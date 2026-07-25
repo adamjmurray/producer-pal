@@ -35,6 +35,17 @@ drag. Those skills still let Producer Pal do the hard part (generate a correct
 file and optionally stage it as a draggable Session clip); only the final drop
 is manual.
 
+## Render and analyze
+
+| Skill                                 | Does                                                                                                                                                                                                                             |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[`analyze-audio`](analyze-audio/)** | Render audio out of Live (export the Main mix / a track over a time range, or bounce a clip to a new track) and analyze the `.wav` with Google's Gemini API. **macOS only** (AppleScript UI automation); needs `GEMINI_API_KEY`. |
+
+Ableton exposes no Live API for rendering, so this one drives Live's
+menus/dialogs with AppleScript and then polls for the rendered file — a
+different shape from the generators above, which synthesize files directly in
+Node.
+
 ## Shared conventions
 
 - **Plain-Node DSP** — oscillators, envelopes, filters, and a hand-written WAV
