@@ -110,6 +110,20 @@ program
     }
 
     const { provider, model } = spec;
+
+    // codex-code runs through the Codex CLI transport (a spawned subprocess),
+    // not the AI SDK this CLI streams from. Without this the provider factory
+    // throws past commander's handler as a raw stack trace.
+    if (provider === "codex-code") {
+      program.error(
+        `Provider "codex-code" is only supported by the eval CLI, which drives ` +
+          `the Codex CLI transport instead of the AI SDK. ` +
+          `Try: scripts/eval -m ${provider}/${model} -t <scenario>`,
+      );
+
+      return;
+    }
+
     const instructions = rawOptions.instructions ?? SYSTEM_INSTRUCTION;
     const options: ChatOptions = {
       ...rawOptions,
