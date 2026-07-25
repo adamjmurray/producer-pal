@@ -45,6 +45,12 @@ export interface UIToolPart {
    * sees it (only the compact `result`). Absent for ordinary tool calls.
    */
   subagentMessages?: UIMessage[];
+  /**
+   * For a spawn_subagent call: which subagent ran, 1-based. Titles the card, so
+   * the runs of a resumed worker read as one worker rather than several. Absent
+   * for ordinary tool calls and for spawns predating worker numbering.
+   */
+  subagentIndex?: number;
 }
 
 export interface UIStepUsagePart {

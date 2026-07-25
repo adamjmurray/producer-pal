@@ -17,7 +17,7 @@ import { type ChatMessage } from "./types";
  * Used both to keep the model conversation valid (every tool-call needs a
  * matching tool-result or providers 400) and to render a sensible UI state.
  */
-const CANCELED_TOOL_RESULT_TEXT =
+export const CANCELED_TOOL_RESULT_TEXT =
   "Canceled by the user before this tool finished.";
 
 /**

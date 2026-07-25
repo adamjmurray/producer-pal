@@ -41,6 +41,13 @@ export interface SubagentRetryOptions {
   runAttempt: (message: string) => Promise<void>;
   /** The worker's live chat history (read to decide resume vs. restart). */
   getHistory: () => ChatMessage[];
+  /**
+   * Where this run's own messages start in that history — nonzero when the
+   * worker was seeded with a session to continue. Everything below it belongs to
+   * an earlier run: not output this attempt may claim credit for, and not history
+   * a restart may throw away. Defaults to 0 (a fresh worker).
+   */
+  baselineLength?: number;
   /** Backoff window shared with every sibling worker. */
   gate: RateLimitGate;
   /** The orchestrator turn's signal; aborts stop retrying immediately. */
@@ -77,7 +84,15 @@ export interface SubagentRetryOptions {
 export async function runSubagentWithRetry(
   options: SubagentRetryOptions,
 ): Promise<void> {
-  const { task, runAttempt, getHistory, gate, abortSignal, onStatus } = options;
+  const {
+    task,
+    runAttempt,
+    getHistory,
+    baselineLength = 0,
+    gate,
+    abortSignal,
+    onStatus,
+  } = options;
   let attempt = 0;
   // Which attempt the pending wait is for: null until this worker is itself
   // rate-limited, so a wait forced purely by a sibling's backoff is reported as
@@ -102,7 +117,7 @@ export async function runSubagentWithRetry(
       onStatus?.(null);
 
       try {
-        await runAttempt(nextMessage(task, getHistory()));
+        await runAttempt(nextMessage(task, getHistory(), baselineLength));
 
         return;
       } catch (error) {
@@ -281,14 +296,25 @@ function isSameStatus(
 /**
  * The user turn the next attempt should send, dropping a leftover echo of the
  * task when the failed attempt produced nothing worth resuming.
+ *
+ * Everything below `baseline` is a seeded session from an earlier run, so it is
+ * neither output this run produced nor history a restart may discard — the
+ * restart rewinds to the baseline, not to empty. Getting this wrong on a resumed
+ * worker would send "continue" on the FIRST attempt (the seeded session reads as
+ * output) and drop the follow-up instruction entirely.
  * @param task - The original delegated instruction
- * @param history - The worker's chat history (cleared when restarting)
+ * @param history - The worker's chat history (rewound when restarting)
+ * @param baseline - Index where this run's own messages start
  * @returns "continue" to resume partial work, or the task to start over
  */
-function nextMessage(task: string, history: ChatMessage[]): string {
-  if (hasWorkerOutput(history)) return RESUME_MESSAGE;
+function nextMessage(
+  task: string,
+  history: ChatMessage[],
+  baseline: number,
+): string {
+  if (hasWorkerOutput(history, baseline)) return RESUME_MESSAGE;
 
-  history.length = 0;
+  history.length = baseline;
 
   return task;
 }
@@ -298,15 +324,18 @@ function nextMessage(task: string, history: ChatMessage[]): string {
  * even with no text: it may already have changed the Live Set, so restarting
  * from scratch would redo it.
  * @param history - The worker's chat history
+ * @param from - Index to start looking from (skips any seeded session)
  * @returns True when there is assistant output worth resuming from
  */
-function hasWorkerOutput(history: ChatMessage[]): boolean {
-  return history.some(
-    (msg) =>
-      msg.role === "assistant" &&
-      !msg.isError &&
-      (msg.content.trim() !== "" || (msg.toolCalls?.length ?? 0) > 0),
-  );
+function hasWorkerOutput(history: ChatMessage[], from: number): boolean {
+  return history
+    .slice(from)
+    .some(
+      (msg) =>
+        msg.role === "assistant" &&
+        !msg.isError &&
+        (msg.content.trim() !== "" || (msg.toolCalls?.length ?? 0) > 0),
+    );
 }
 
 /**

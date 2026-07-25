@@ -14,15 +14,24 @@ import {
 import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
 import {
+  type RunWorkerOptions,
   SPAWN_SUBAGENT_TOOL_NAME,
   createSpawnSubagentTool,
 } from "./spawn-subagent-tool";
-import { createStreamErrorSignal } from "./stream-with-error-signal";
+import { handleStreamPart } from "./streaming/stream-part-handlers";
+import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
 import {
   RateLimitGate,
   runSubagentWithRetry,
   setSubagentRateLimit,
 } from "./subagent-rate-limit";
+import {
+  type SubagentTranscriptStash,
+  attachStashedTranscripts,
+  collectSubagentTranscript,
+  highestSubagentIndex,
+  isSpawnToolResult,
+} from "./subagent-session";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
@@ -55,17 +64,20 @@ export class ChatSdkClient {
    */
   private maxSteps = MAX_TOOL_STEPS;
   /**
-   * Per-conversation subagent counter, shared with the spawn tool so MAX_SPAWNS
-   * caps total workers across every sendMessage in this client's lifetime.
+   * Per-conversation subagent bookkeeping, shared with the spawn tool: MAX_SPAWNS
+   * caps total worker runs across every sendMessage in this client's lifetime,
+   * and the index allocator hands each worker its durable number. `nextIndex` is
+   * seeded from history in initialize() so a restored conversation resumes
+   * numbering instead of colliding with its own persisted workers.
    */
-  private spawnState = { count: 0 };
+  private spawnState = { count: 0, nextIndex: 0, active: new Set<number>() };
   /**
-   * Worker transcripts recorded by the spawn tool, keyed by tool-call id.
-   * Drained in processStream to attach each transcript to its tool-result
-   * (UI-only; the model never sees it). A restored conversation reads the
-   * transcript straight off the persisted tool-result, so this stays empty then.
+   * Worker transcripts recorded by runSubagent, keyed by tool-call id. Read in
+   * processStream to attach each transcript to its tool-result (UI-only; the
+   * model never sees it). A restored conversation reads the transcript straight
+   * off the persisted tool-result, so this stays empty then.
    */
-  private spawnTranscripts = new Map<string, ChatMessage[]>();
+  private spawnTranscripts: SubagentTranscriptStash = new Map();
   /**
    * Backoff window shared by every worker this client spawns. Parallel workers
    * stream on separate connections, so without it a provider-wide 429 hits each
@@ -109,15 +121,15 @@ export class ChatSdkClient {
       // share enough headroom. A worker never reaches here — its cloned config
       // sets spawn_subagent false (the recursion guard).
       this.maxSteps = MAX_ORCHESTRATOR_STEPS;
+      this.spawnState.nextIndex = highestSubagentIndex(this.chatHistory);
       this.tools = {
         ...tools,
         [SPAWN_SUBAGENT_TOOL_NAME]: createSpawnSubagentTool({
           config: this.config,
-          runWorker: (workerConfig, task, toolCallId, signal) =>
-            this.runSubagent(workerConfig, task, toolCallId, signal),
+          runWorker: (options) => this.runSubagent(options),
           spawnState: this.spawnState,
-          recordTranscript: (toolCallId, transcript) =>
-            this.spawnTranscripts.set(toolCallId, transcript),
+          getSession: (index) =>
+            collectSubagentTranscript(this.chatHistory, index),
         }),
       };
     } else {
@@ -145,20 +157,28 @@ export class ChatSdkClient {
    * rate-limits repeatedly can therefore run more total tool steps than one that
    * doesn't. Accepted: retries are rare, and carrying a partial budget forward
    * risks stranding a resumed worker mid-task with no steps left to finish.
-   * @param workerConfig - Cloned config for the worker (spawn disabled)
-   * @param task - The delegated instruction, sent as the worker's user message
-   * @param toolCallId - The spawn tool-call id, used to key the card's live status
-   * @param abortSignal - The orchestrator turn's signal, forwarded so Stop also
-   *   aborts the worker's in-flight stream
-   * @returns The worker's complete chat history (kept UI-side, not sent to the model)
+   *
+   * The transcript is stashed in a finally, so it survives the failure paths too
+   * — above all a Stop mid-worker, where the partial log is the only record of
+   * work the worker may already have done in the Live Set. Discarding it there
+   * would lose that; attachStashedTranscripts hangs it off the synthetic
+   * "canceled" tool-result instead. It is also what a later resume seeds from.
+   *
+   * A resume arrives as a workerConfig already carrying the session to continue.
+   * Only what this run ADDS to it is stashed — the seeded prefix is already
+   * persisted on the earlier run's tool-result, and re-storing it per resume
+   * would duplicate the worker's whole history (its connect result included)
+   * every time.
+   * @param options - Worker config, instruction, tool-call id, index, and signal
+   * @returns The worker's complete chat history, seeded prefix included
    */
-  private async runSubagent(
-    workerConfig: ChatClientConfig,
-    task: string,
-    toolCallId: string,
-    abortSignal?: AbortSignal,
-  ): Promise<ChatMessage[]> {
+  private async runSubagent(options: RunWorkerOptions): Promise<ChatMessage[]> {
+    const { workerConfig, task, toolCallId, subagentIndex, abortSignal } =
+      options;
     const worker = new ChatSdkClient("", workerConfig);
+    // Where this run's own messages begin. Doubles as the floor the rate-limit
+    // restart path truncates to, so a retry never eats the seeded session.
+    const seedLength = workerConfig.chatHistory?.length ?? 0;
 
     await worker.initialize();
 
@@ -173,6 +193,7 @@ export class ChatSdkClient {
           while (!step.done) step = await stream.next();
         },
         getHistory: () => worker.chatHistory,
+        baselineLength: seedLength,
         gate: this.rateLimitGate,
         abortSignal,
         onStatus: (status) => setSubagentRateLimit(toolCallId, status),
@@ -180,38 +201,13 @@ export class ChatSdkClient {
 
       return worker.chatHistory;
     } finally {
+      this.spawnTranscripts.set(toolCallId, {
+        index: subagentIndex,
+        transcript: worker.chatHistory.slice(seedLength),
+      });
       setSubagentRateLimit(toolCallId, null);
       worker.dispose();
     }
-  }
-
-  /**
-   * If `part` is a spawn_subagent tool-result, attach the worker transcript the
-   * spawn tool stashed (keyed by tool-call id) to the just-recorded tool-result
-   * entry. This is the out-of-band path that gets the transcript to the UI card
-   * without putting it in the value the orchestrator model receives.
-   * @param part - The stream part just handled
-   * @param msg - The assistant message currently being built
-   */
-  private attachSubagentTranscript(
-    part: Record<string, unknown>,
-    msg: ChatMessage,
-  ): void {
-    if (
-      part.type !== "tool-result" ||
-      part.toolName !== SPAWN_SUBAGENT_TOOL_NAME
-    ) {
-      return;
-    }
-
-    const toolCallId = part.toolCallId as string;
-    const transcript = this.spawnTranscripts.get(toolCallId);
-
-    if (!transcript) return;
-
-    const entry = msg.toolResults?.find((tr) => tr.id === toolCallId);
-
-    if (entry) entry.subagentTranscript = transcript;
   }
 
   /**
@@ -337,11 +333,19 @@ export class ChatSdkClient {
         const handled = handleStreamPart(part.type, part, currentMsg);
 
         if (handled) {
-          this.attachSubagentTranscript(part, currentMsg);
-
           if (!addedCurrentMsg) {
             this.chatHistory.push(currentMsg);
             addedCurrentMsg = true;
+          }
+
+          // A worker just finished: get its transcript onto the tool-result the
+          // card renders from, before this yield paints it.
+          if (isSpawnToolResult(part)) {
+            attachStashedTranscripts(
+              this.chatHistory,
+              historyLengthBefore,
+              this.spawnTranscripts,
+            );
           }
 
           yield [...this.chatHistory];
@@ -364,6 +368,14 @@ export class ChatSdkClient {
       // history stays valid (providers reject an unmatched tool-call) and the UI
       // doesn't render the tool as perpetually running. No-op on clean finishes.
       reconcileDanglingToolCalls(this.chatHistory, historyLengthBefore);
+      // A stopped subagent's tool-result is one of those synthetic "canceled"
+      // entries, so it never passed through the mid-stream attach above. Hang the
+      // worker's partial transcript off it here so its work log survives the Stop.
+      attachStashedTranscripts(
+        this.chatHistory,
+        historyLengthBefore,
+        this.spawnTranscripts,
+      );
     }
 
     this.toolLimitReached = detectToolLimitReached(
@@ -428,158 +440,4 @@ function stampOverrides(msg: ChatMessage, overrides?: MessageOverrides): void {
   if (!overrides) return;
 
   if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
-}
-
-/**
- * Handle a single stream part, updating the current message.
- * @param type - Stream part type
- * @param part - The full stream part object
- * @param msg - Current assistant message to update
- * @returns True if content was added (should yield)
- */
-function handleStreamPart(
-  type: string,
-  part: Record<string, unknown>,
-  msg: ChatMessage,
-): boolean {
-  if (type === "text-delta") {
-    msg.content += part.text as string;
-
-    return true;
-  }
-
-  // Reasoning arrives as start → delta(s) → end. We keep the flattened text in
-  // `reasoning` for display AND capture each block (text + signature) in
-  // `reasoningParts` so the signed thinking block can be re-sent on later turns
-  // (see buildAssistantContent — keeps the Anthropic cache prefix stable).
-  if (type === "reasoning-start") {
-    msg.reasoningParts ??= [];
-    msg.reasoningParts.push({ text: "" });
-    captureReasoningSignature(part, msg);
-
-    // A fully-redacted thinking block can be a turn's ONLY content (no
-    // reasoning-delta/text-delta/tool-call follows). Treat the captured
-    // redactedData as content-bearing so the message is pushed to history
-    // instead of being silently dropped along with its reasoning.
-    return msg.reasoningParts.at(-1)?.redactedData != null;
-  }
-
-  if (type === "reasoning-delta") {
-    const text = part.text as string;
-
-    msg.reasoning = (msg.reasoning ?? "") + text;
-    msg.reasoningParts ??= [];
-
-    if (msg.reasoningParts.length === 0) msg.reasoningParts.push({ text: "" });
-
-    const last = msg.reasoningParts.at(-1) as { text: string };
-
-    last.text += text;
-    captureReasoningSignature(part, msg);
-
-    return true;
-  }
-
-  if (type === "reasoning-end") {
-    captureReasoningSignature(part, msg);
-
-    return false;
-  }
-
-  if (type === "tool-call") {
-    msg.toolCalls ??= [];
-    // If tool-input-start already created an entry, update it with parsed args
-    const existing = msg.toolCalls.find(
-      (tc) => tc.id === (part.toolCallId as string),
-    );
-
-    if (existing) {
-      existing.args = part.input as Record<string, unknown>;
-    } else {
-      msg.toolCalls.push({
-        id: part.toolCallId as string,
-        name: part.toolName as string,
-        args: part.input as Record<string, unknown>,
-      });
-    }
-
-    return true;
-  }
-
-  // Chat Completions models stream tool calls as tool-input-start + tool-input-delta
-  if (type === "tool-input-start") {
-    msg.toolCalls ??= [];
-    msg.toolCalls.push({
-      id: part.id as string,
-      name: part.toolName as string,
-      args: {},
-    });
-
-    return true;
-  }
-
-  if (type === "tool-result") {
-    msg.toolResults ??= [];
-    msg.toolResults.push({
-      id: part.toolCallId as string,
-      name: part.toolName as string,
-      args: part.input as Record<string, unknown>,
-      result: part.output,
-      isError: false,
-    });
-
-    return true;
-  }
-
-  if (type === "tool-error") {
-    msg.toolResults ??= [];
-    msg.toolResults.push({
-      id: part.toolCallId as string,
-      name: part.toolName as string,
-      args: part.input as Record<string, unknown>,
-      result: extractErrorMessage(part.error),
-      isError: true,
-    });
-
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Capture an Anthropic reasoning block's signature (or redacted data) from a
- * stream part's provider metadata onto the message's current reasoning block.
- * @param part - Stream part (reasoning-start/delta/end)
- * @param msg - Message whose last reasoning block receives the signature
- */
-function captureReasoningSignature(
-  part: Record<string, unknown>,
-  msg: ChatMessage,
-): void {
-  const providerMetadata = part.providerMetadata as
-    { anthropic?: { signature?: unknown; redactedData?: unknown } } | undefined;
-  const meta = providerMetadata?.anthropic;
-  const last = msg.reasoningParts?.at(-1);
-
-  if (!meta || !last) return;
-
-  if (typeof meta.signature === "string") last.signature = meta.signature;
-
-  if (typeof meta.redactedData === "string") {
-    last.redactedData = meta.redactedData;
-  }
-}
-
-/**
- * Extract a displayable message from a tool-error part's error value.
- * The AI SDK may pass an Error object (which JSON.stringify turns into "{}").
- * @param error - Error value from stream part (Error object or string)
- * @returns Error message string
- */
-function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-
-  return String(error);
 }

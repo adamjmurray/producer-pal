@@ -145,6 +145,8 @@ function renderSinglePart(
           isResponding={isResponding}
           toolCallId={part.id}
           transcript={renderSubagentTranscript(part.subagentMessages)}
+          index={part.subagentIndex}
+          resumed={part.args.resumeFrom != null}
         />
       );
     }
