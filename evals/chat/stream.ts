@@ -5,7 +5,7 @@
 
 /**
  * CLI stream processor for AI SDK streamText() results.
- * Processes fullStream events and prints to terminal with formatting.
+ * Processes stream events and prints to terminal with formatting.
  */
 
 import { type streamText } from "ai";
@@ -38,7 +38,7 @@ interface StreamState {
 }
 
 /**
- * Process a streamText fullStream and print events to the terminal.
+ * Process a streamText result stream and print events to the terminal.
  * Returns a TurnResult with the collected text and tool calls for assertions.
  *
  * @param result - The streamText result to process
@@ -60,7 +60,7 @@ export async function processCliStream(
     sawReasoning: false,
   };
 
-  for await (const part of result.fullStream) {
+  for await (const part of result.stream) {
     handleStreamPart(part, state);
   }
 
@@ -72,7 +72,7 @@ export async function processCliStream(
 /**
  * Handle a single stream part, updating state and printing to terminal
  *
- * @param part - Stream part from fullStream
+ * @param part - Stream part from the streamText result
  * @param part.type - Stream part type identifier
  * @param state - Mutable stream state
  */

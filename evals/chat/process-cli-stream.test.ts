@@ -13,12 +13,12 @@ type StreamPart = { type: string; [key: string]: unknown };
 /**
  * Wrap fake stream parts in the minimal streamText result processCliStream reads.
  *
- * @param parts - Ordered fullStream parts to replay
- * @returns A streamText-shaped result whose fullStream yields the parts
+ * @param parts - Ordered stream parts to replay
+ * @returns A streamText-shaped result whose stream yields the parts
  */
 function fakeResult(parts: StreamPart[]): ReturnType<typeof streamText> {
   return {
-    fullStream: (async function* () {
+    stream: (async function* () {
       for (const part of parts) yield part;
     })(),
   } as unknown as ReturnType<typeof streamText>;

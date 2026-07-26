@@ -92,7 +92,7 @@ export async function runChat(
             maxOutputTokens: sess.options.outputTokens ?? DEFAULT_MAX_TOKENS,
             system: sess.options.instructions,
             // Errors are rendered (in red) by processCliStream via the
-            // fullStream "error" part; suppress the SDK's default raw dump.
+            // stream's "error" part; suppress the SDK's default raw dump.
             onError: () => {},
             onStepFinish: (event) => {
               const usage = toTokenUsage(event.usage);
@@ -121,7 +121,7 @@ export async function runChat(
           }
 
           // Append generated messages to history for multi-turn
-          const response = await result.response;
+          const { response } = await result.finalStep;
 
           sess.messages.push(...response.messages);
 

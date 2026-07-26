@@ -37,6 +37,6 @@ export function mockStreamParts(parts: Record<string, unknown>[]): void {
   }
 
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
+    stream: iterate(),
   });
 }

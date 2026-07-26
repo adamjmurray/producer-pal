@@ -146,7 +146,7 @@ export async function createEvalSession(
         stopWhen: stepCountIs(MAX_TOOL_STEPS),
         maxOutputTokens: DEFAULT_MAX_TOKENS,
         system: options.instructions,
-        // Errors are rendered (in red) by processCliStream via the fullStream
+        // Errors are rendered (in red) by processCliStream via the stream's
         // "error" part; suppress the SDK's default raw dump.
         onError: () => {},
         onStepFinish: (event) => {
@@ -173,7 +173,7 @@ export async function createEvalSession(
       }
 
       // Append generated messages to history for multi-turn
-      const response = await result.response;
+      const { response } = await result.finalStep;
 
       messages.push(...response.messages);
 

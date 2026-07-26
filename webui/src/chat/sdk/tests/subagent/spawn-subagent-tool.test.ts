@@ -27,6 +27,7 @@ const options = (abortSignal?: AbortSignal) => ({
   toolCallId: "tc1",
   messages: [],
   abortSignal,
+  context: undefined,
 });
 
 describe("buildWorkerConfig", () => {
@@ -358,7 +359,12 @@ describe("createSpawnSubagentTool", () => {
       tool.execute!({ task: "one" }, options()),
       tool.execute!(
         { task: "two" },
-        { toolCallId: "tc2", messages: [], abortSignal: undefined },
+        {
+          toolCallId: "tc2",
+          messages: [],
+          abortSignal: undefined,
+          context: undefined,
+        },
       ),
     ]);
 
