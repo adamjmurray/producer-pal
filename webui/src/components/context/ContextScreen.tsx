@@ -47,11 +47,11 @@ export interface ContextEditorLabels {
    */
   description?: string;
   /**
-   * Optional read-only built-in reference. When set, the editor renders
-   * side-by-side (editable override | built-in with a Copy button) so a user
-   * can fork the shipped default instead of starting from a blank slate. Used
-   * by the custom-instructions tab; the plain context tabs (no shipped default)
-   * omit it and stay single-pane.
+   * Optional built-in default. When set, the editor seeds from it rather than
+   * from a blank slate — typing forks it into an override — and the default can
+   * then be revealed side-by-side (override | built-in with a Copy button) for
+   * comparison. Used by the custom-instructions tab; the plain context tabs (no
+   * shipped default) omit it and stay single-pane.
    */
   builtIn?: string;
   /**
@@ -148,7 +148,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
           onReset={editor.handleClear}
-          onCustomize={() => void editor.handleImport(labels.builtIn ?? "")}
+          onBeginOverride={editor.beginOverride}
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
           onImportText={io.onImportText}
@@ -181,7 +181,7 @@ interface ContextControlsProps {
   charCount: number;
   /**
    * The document's built-in default, when it has one (custom instructions). Its
-   * presence hides the strip Clear (reset lives in the revealed built-in header)
+   * presence hides the strip Clear (reset lives beside the editor's pane label)
    * and, with no override yet, makes the size readout reflect the built-in shown
    * on screen rather than the empty override.
    */
@@ -282,7 +282,8 @@ interface ContextBodyProps {
   onReload: () => void;
   /** See {@link OverridePanes}: resolves whether the reset actually happened. */
   onReset: () => Promise<boolean>;
-  onCustomize: () => void;
+  /** See {@link OverridePanes}: latch into override mode on the first edit. */
+  onBeginOverride: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
   onImportText: (text: string) => void;
@@ -297,7 +298,8 @@ interface ContextBodyProps {
  * the server has changed under us) or a status message for loading/error.
  * The editor is mounted once per `ready` session; bumping `editorKey`
  * forces a remount (used by Clear and Reload). When `builtIn` is supplied the
- * editor renders side-by-side with the read-only default (see OverridePanes).
+ * editor seeds from that default and forks it on the first edit, revealing it
+ * side-by-side on demand (see OverridePanes).
  * @param props - Body props
  * @returns Body element
  */
@@ -316,7 +318,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     externalUpdate,
     onReload,
     onReset,
-    onCustomize,
+    onBeginOverride,
     onChange,
     onBlur,
     onImportText,
@@ -366,7 +368,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={onToggleBuiltIn}
             onReset={onReset}
-            onCustomize={onCustomize}
+            onBeginOverride={onBeginOverride}
             onChange={onChange}
             onBlur={onBlur}
           />

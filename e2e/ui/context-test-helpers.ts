@@ -194,17 +194,24 @@ export async function typeInPrimaryEditor(
 }
 
 /**
- * Fork the current built-in into an editable override (the "Customize" button on
- * the Instructions / Skills tabs) and wait for the editable pane to appear (the
- * "Reset to default" affordance only shows once there is an override).
+ * Fork the built-in into an override by typing over it — the only way in, on the
+ * Instructions / Skills tabs. Waits for the override chrome to appear (the
+ * "Reset to default" affordance only shows once there is an override), which
+ * doubles as the assertion that the editor was NOT remounted out from under the
+ * typing: a remount would re-seed from the built-in and lose `text`.
  * @param page - Playwright page
+ * @param text - Replacement text to type over the built-in
  */
-export async function customizeOverride(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Customize" }).click();
+export async function forkByTyping(page: Page, text: string): Promise<void> {
+  await typeInPrimaryEditor(page, text, true);
   await expect(
     page.getByRole("button", { name: "Reset to default" }),
   ).toBeVisible();
+  await expect(primaryEditor(page)).toHaveText(text);
 }
+
+/** Pane label shown while a built-in has not been forked into an override. */
+export const UNFORKED_LABEL = "Default — start typing to customize";
 
 // --- Endpoint handlers below main exports ---
 

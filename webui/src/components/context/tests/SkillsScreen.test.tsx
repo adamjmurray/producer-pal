@@ -167,14 +167,16 @@ describe("SkillsScreen", () => {
     expect(screen.getByText("No skills fragments available.")).toBeTruthy();
   });
 
-  it("shows the built-in with a Customize button for an untracked slot", () => {
+  it("seeds the editor with the built-in for an untracked slot", () => {
     renderSlots([slot()]);
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
-    // With no override the built-in is the sole (read-only) content, offered
-    // with a Customize fork — no editable pane, reveal toggle, reset, or drift.
-    expect(editorValues()).toContain("BUILT-IN");
-    expect(screen.getByText("Customize")).toBeTruthy();
+    // With no override the built-in is the editor's starting text, labelled as
+    // the fork invitation — no reveal toggle, reset, or drift yet.
+    expect(editorValues()).toStrictEqual(["BUILT-IN"]);
+    expect(
+      screen.getByText("Default — start typing to customize"),
+    ).toBeTruthy();
     expect(screen.queryByText("Show default")).toBeNull();
     expect(screen.queryByLabelText("Reset to default")).toBeNull();
     expect(screen.queryByText(/Default changed since you forked/)).toBeNull();
@@ -183,15 +185,20 @@ describe("SkillsScreen", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
   });
 
-  it("forks the built-in into an override when Customize is clicked", async () => {
+  it("forks the built-in into an override on the first keystroke", async () => {
     const saveSlot = vi.fn().mockResolvedValue(true);
 
     renderSlots([slot({ builtIn: "FORK-ME", override: "" })], { saveSlot });
 
-    fireEvent.click(screen.getByText("Customize"));
+    fireEvent.input(screen.getByTestId("editor"), {
+      target: { value: "FORK-ME NOW" },
+    });
+    fireEvent.blur(screen.getByTestId("editor"));
 
+    // The chrome flips immediately; the edit itself is what gets persisted.
+    expect(screen.getByText("Your override")).toBeTruthy();
     await waitFor(() => {
-      expect(saveSlot).toHaveBeenCalledWith("barbeat-standard", "FORK-ME");
+      expect(saveSlot).toHaveBeenCalledWith("barbeat-standard", "FORK-ME NOW");
     });
   });
 

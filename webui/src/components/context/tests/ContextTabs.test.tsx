@@ -174,11 +174,13 @@ describe("ContextTabs", () => {
         .getByRole("button", { name: "Skills" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
-    // The slot dropdown renders; with no override the built-in shows directly,
-    // read-only, offered with a Customize fork.
+    // The slot dropdown renders; with no override the built-in seeds the
+    // editor directly, labelled as the fork invitation.
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
     expect(screen.getByText("CORE-BUILTIN")).toBeTruthy();
-    expect(screen.getByText("Customize")).toBeTruthy();
+    expect(
+      screen.getByText("Default — start typing to customize"),
+    ).toBeTruthy();
   });
 
   it("switches to the Memory tab and shows the collection manager", () => {

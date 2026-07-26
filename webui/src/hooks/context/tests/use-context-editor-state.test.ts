@@ -301,14 +301,14 @@ describe("useContextEditorState", () => {
     });
 
     it("does NOT surface the banner when the server echoes a whitespace-normalized (trimmed) copy of our own save", async () => {
-      // Regression: the Node-side stores trim on save, so forking a built-in
-      // that ends in a newline (Customize) records an untrimmed baseline while
-      // the save echo comes back trimmed. That must not read as an external
-      // write — the first Customize used to flash a spurious Reload banner.
+      // Regression: the Node-side stores trim on save, so importing a built-in
+      // that ends in a newline records an untrimmed baseline while the save
+      // echo comes back trimmed. That must not read as an external write — the
+      // first fork used to flash a spurious Reload banner.
       const save = vi.fn().mockResolvedValue(true);
       const { result, setMemory } = renderEditor(makeMemory({ save }));
 
-      // Customize forks the built-in (trailing newline) as the baseline.
+      // Import the built-in (trailing newline) as the baseline.
       await act(async () => {
         await result.current.handleImport("BUILT-IN DEFAULT\n");
       });
@@ -549,7 +549,7 @@ describe("useContextEditorState", () => {
       expect(result.current.hasOverride).toBe(false);
     });
 
-    it("flips true after Customize/import forks the built-in", async () => {
+    it("flips true after an import forks the built-in", async () => {
       const { result } = renderEditor(makeReady(""));
 
       expect(result.current.hasOverride).toBe(false);
@@ -559,6 +559,27 @@ describe("useContextEditorState", () => {
       });
 
       expect(result.current.hasOverride).toBe(true);
+    });
+
+    it("flips true on beginOverride without touching the save lifecycle", async () => {
+      // The typing fork: the pane's editor is already seeded with the built-in,
+      // so latching the chrome is ALL this does — no write of its own, and no
+      // editorKey bump (a remount would re-seed and eat the keystroke that
+      // forked it). The edit's own debounced save is what persists the fork.
+      const save = vi.fn().mockResolvedValue(true);
+      const { result } = renderEditor(makeMemory({ save }));
+      const startingKey = result.current.editorKey;
+
+      expect(result.current.hasOverride).toBe(false);
+
+      await act(() => {
+        result.current.beginOverride();
+      });
+
+      expect(result.current.hasOverride).toBe(true);
+      expect(result.current.editorKey).toBe(startingKey);
+      expect(result.current.getContent()).toBe("");
+      expect(save).not.toHaveBeenCalled();
     });
 
     it("reflects the adopted content on Reload (external clear ⇒ built-in view)", async () => {

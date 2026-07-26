@@ -5,13 +5,13 @@
 
 import { expect, test } from "@playwright/test";
 import {
-  customizeOverride,
   expectNoConsoleOutput,
+  forkByTyping,
   openContextTab,
   primaryEditor,
   setupConsoleCapture,
   setupContextTest,
-  typeInPrimaryEditor,
+  UNFORKED_LABEL,
 } from "./context-test-helpers";
 
 const captured = setupConsoleCapture();
@@ -23,12 +23,11 @@ test.describe("Context editor — custom instructions (stubbed backend)", () => 
     const state = await setupContextTest(page);
 
     await openContextTab(page, "Instructions");
-    // With no override the built-in is shown read-only behind a "Customize".
-    await expect(page.getByRole("button", { name: "Customize" })).toBeVisible();
+    // With no override the editor holds the built-in, ready to be typed over.
+    await expect(page.getByText(UNFORKED_LABEL)).toBeVisible();
 
-    // Fork the built-in, replace it, and confirm it saved to /system-prompt.
-    await customizeOverride(page);
-    await typeInPrimaryEditor(page, "MY CUSTOM INSTRUCTIONS", true);
+    // Typing over the built-in forks it; confirm it saved to /system-prompt.
+    await forkByTyping(page, "MY CUSTOM INSTRUCTIONS");
     await expect.poll(() => state.systemPrompt).toBe("MY CUSTOM INSTRUCTIONS");
 
     // The override persists across a reload.
@@ -40,7 +39,11 @@ test.describe("Context editor — custom instructions (stubbed backend)", () => 
     page.on("dialog", (dialog) => void dialog.accept());
     await page.getByRole("button", { name: "Reset to default" }).click();
     await expect.poll(() => state.systemPrompt).toBe("");
-    await expect(page.getByRole("button", { name: "Customize" })).toBeVisible();
+    await expect(page.getByText(UNFORKED_LABEL)).toBeVisible();
+    // The reset re-seeded the editor with the built-in, ready to fork again.
+    await expect(primaryEditor(page)).toContainText(
+      "You are an AI music composition assistant",
+    );
 
     expectNoConsoleOutput(captured);
   });

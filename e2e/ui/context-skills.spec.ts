@@ -5,13 +5,13 @@
 
 import { expect, test } from "@playwright/test";
 import {
-  customizeOverride,
   expectNoConsoleOutput,
+  forkByTyping,
   openContextTab,
   primaryEditor,
   setupConsoleCapture,
   setupContextTest,
-  typeInPrimaryEditor,
+  UNFORKED_LABEL,
 } from "./context-test-helpers";
 
 const captured = setupConsoleCapture();
@@ -23,12 +23,11 @@ test.describe("Context editor — skills fragments (stubbed backend)", () => {
     const state = await setupContextTest(page);
 
     await openContextTab(page, "Skills");
-    // The first slot has no override, so its built-in is shown with "Customize".
-    await expect(page.getByRole("button", { name: "Customize" })).toBeVisible();
+    // The first slot has no override, so the editor holds its built-in.
+    await expect(page.getByText(UNFORKED_LABEL)).toBeVisible();
 
-    // Fork the built-in fragment, replace it, and confirm the override saved.
-    await customizeOverride(page);
-    await typeInPrimaryEditor(page, "CUSTOM SKILL FRAGMENT", true);
+    // Typing over the built-in forks it; confirm the override saved.
+    await forkByTyping(page, "CUSTOM SKILL FRAGMENT");
     await expect
       .poll(() => state.slots.find((s) => s.name === "slot-one")?.override)
       .toBe("CUSTOM SKILL FRAGMENT");

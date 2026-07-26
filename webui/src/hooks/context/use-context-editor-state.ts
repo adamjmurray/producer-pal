@@ -59,12 +59,13 @@ export interface UseContextEditorStateReturn {
   dirty: boolean;
   /**
    * `true` when this slot is in "override" mode — it had stored content at
-   * load, or the user forked the built-in (Customize) / imported a file — and
-   * stays true until an explicit Reset. Drives the OverridePanes editable-vs-
-   * built-in structure, LATCHED rather than derived from live content: editing
-   * an override down to empty (or a debounced `save("")` echo) must not unmount
-   * the editable pane mid-edit and drop the next keystrokes. Only meaningful
-   * for documents with a built-in default; plain context tabs ignore it.
+   * load, or the user forked the built-in by typing into it
+   * ({@link UseContextEditorStateReturn.beginOverride}) / imported a file — and
+   * stays true until an explicit Reset. Drives the OverridePanes built-in-vs-
+   * override framing, LATCHED rather than derived from live content: editing an
+   * override down to empty (or a debounced `save("")` echo) must not revert the
+   * pane to its built-in framing mid-edit. Only meaningful for documents with a
+   * built-in default; plain context tabs ignore it.
    */
   hasOverride: boolean;
   /** Editor `onChange` handler — updates the draft and debounces a save. */
@@ -87,6 +88,14 @@ export interface UseContextEditorStateReturn {
    * content and remounts the editor so it re-seeds from it.
    */
   handleImport: (content: string) => Promise<void>;
+  /**
+   * Latches `hasOverride` on, without touching the draft, the save lifecycle,
+   * or the editor mount. Called on the first edit made in a pane still showing
+   * its built-in default: the editor is already seeded with that default, so the
+   * edit's own debounced save persists the fork — this only flips the chrome.
+   * Idempotent, so the pane can call it on every keystroke it isn't sure about.
+   */
+  beginOverride: () => void;
   /** The editor's current draft text (includes not-yet-saved edits). */
   getContent: () => string;
   /**
@@ -389,6 +398,10 @@ export function useContextEditorState(
     [memory],
   );
 
+  const beginOverride = useCallback((): void => {
+    setHasOverride(true);
+  }, []);
+
   const getContent = useCallback((): string => draftRef.current ?? "", []);
 
   // Flush on tab close so an in-flight debounce doesn't drop edits.
@@ -429,6 +442,7 @@ export function useContextEditorState(
     handleClear,
     handleReload,
     handleImport,
+    beginOverride,
     getContent,
     charCount,
   };

@@ -73,8 +73,8 @@ file.
 
 **In the Chat UI:** open the [context editor](/guide/context) (the **Context**
 button in the header) and switch to the **Skills** tab. Pick a fragment from the
-dropdown: it shows read-only until you press **Customize**, which forks the
-built-in into an editable override that auto-saves as you type. The trash button
+dropdown: it opens showing Producer Pal's default, and typing into it forks that
+default into your own override, which auto-saves as you go. The trash button
 resets a fragment, deleting your override. The **Include** checkbox beside the
 dropdown switches a fragment out of the skills entirely. In the dropdown, ✕
 marks a fragment that's switched off, ✎ one that's customized, and ⚠ one whose

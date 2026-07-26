@@ -88,20 +88,21 @@ project — a new Live Set starts with your preferences already in place.
 
 <img src="/img/producer-pal-context-instructions.png" alt="Instructions tab" width="700"/>
 
-The system prompt for the built-in Chat UI. It ships with a default (shown
-read-only, with its size) that tells AI to act as a music-composition assistant
+The system prompt for the built-in Chat UI. It ships with a default (shown in
+the editor, with its size) that tells AI to act as a music-composition assistant
 and to use its tools rather than asking you for details it could look up.
 
-Press **Customize** to fork the default into an editable copy, and the trash
-button to reset back to the default. Only the built-in Chat UI uses this —
-external apps like Claude Desktop or Claude Code bring their own system prompt.
+Just start typing to make it yours — the first edit forks the default into your
+own editable copy, and the trash button resets back to the default. Only the
+built-in Chat UI uses this — external apps like Claude Desktop or Claude Code
+bring their own system prompt.
 
 ::: warning This replaces, not appends
 
 Custom instructions replace the default entirely. If you want AI to keep
-behaving like Producer Pal's assistant, start from the default (Customize forks
-it for you) rather than from a blank page. To _add_ a preference, use Global
-context instead — that's what it's for.
+behaving like Producer Pal's assistant, edit the default rather than clearing it
+and starting from a blank page. To _add_ a preference, use Global context
+instead — that's what it's for.
 
 :::
 
@@ -112,24 +113,24 @@ context instead — that's what it's for.
 The **Producer Pal Skills** are the instructions AI receives when it connects —
 how to write notes, edit clips, build instruments, and search your library. The
 Skills tab lets you override any fragment of them — or leave one out entirely.
-The dropdown picks a fragment; each shows read-only with a **Customize** button
-until you fork it. The **Include** checkbox beside the dropdown drops that
-fragment from what the AI receives, keeping your override for when you switch it
-back on.
+The dropdown picks a fragment; each opens showing Producer Pal's default, and
+typing into it forks that default into your own override. The **Include**
+checkbox beside the dropdown drops that fragment from what the AI receives,
+keeping your override for when you switch it back on.
 
 Customized fragments are marked ✎ in the dropdown, ✕ if switched off, and ⚠ if
 the built-in changed in a newer Producer Pal release after you forked it (your
 override still applies — the mark just tells you it's now behind).
 
-Once you customize a fragment, the editor shows your override beside the
-built-in so you can see what you changed:
+Once you've customized a fragment, **Show default** puts the built-in beside
+your override so you can see what you changed:
 
 <img src="/img/producer-pal-context-skills-customized.png" alt="A customized skills fragment" width="700"/>
 
 - **Your override** (left) is editable and auto-saves
 - **Default** (right) is the built-in, with **Copy** to grab its text and
   **Hide** to collapse back to one column
-- The trash button beside "Default" resets the fragment, deleting your override
+- The trash button beside "Your override" resets the fragment, deleting it
 
 **Preview** shows what AI actually receives — the whole assembled document for a
 given notation and model size, with your overrides applied. The customized

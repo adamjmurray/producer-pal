@@ -51,13 +51,13 @@ interface SkillSlotScreenProps {
 
 /**
  * Editor for one skills-fragment override. With no override the built-in is
- * shown read-only with a "Customize" button; once customized, the editable
- * override shows and the built-in is revealed on demand (see
+ * shown in the editor as its starting text — typing forks it into an override —
+ * after which the built-in is revealed on demand for comparison (see
  * {@link OverridePanes}). Keyed by the selected slot so the uncontrolled editor
  * re-seeds on slot switch. Reuses the context-editor autosave lifecycle by
  * adapting the selected slot to a single-document {@link UseDocReturn}:
- * save writes the override, clear resets it to the built-in (deleting the file),
- * and Customize forks the built-in into the override via the import handler.
+ * save writes the override and clear resets it to the built-in (deleting the
+ * file), so a fork is just the first edit's autosave.
  * @param props - Screen props
  * @returns Screen element
  */
@@ -129,7 +129,7 @@ export function SkillSlotScreen(
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
             onReset={editor.handleClear}
-            onCustomize={() => void editor.handleImport(slot.builtIn)}
+            onBeginOverride={editor.beginOverride}
             onChange={editor.handleChange}
             onBlur={editor.handleBlur}
           />

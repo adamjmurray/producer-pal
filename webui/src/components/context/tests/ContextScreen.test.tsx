@@ -741,30 +741,47 @@ describe("ContextScreen", () => {
       expect(saveMock).toHaveBeenCalledWith("edited");
     });
 
-    it("shows only the built-in with a Customize fork when there is no override", async () => {
+    it("seeds the editor with the built-in when there is no override", () => {
       mockStatus.kind = "ready";
       mockStatus.content = "";
       render(<ContextScreen doc={buildHookValue()} labels={BUILTIN_LABELS} />);
 
-      // Built-in-only view: the default is shown read-only with a Customize
-      // button; the editable pane and its reveal affordance are absent.
-      expect(screen.getByText("Customize")).toBeTruthy();
+      // The default IS the editor's content — editable, so typing forks it —
+      // and no override chrome is offered until it does.
+      expect(lastEditorProps?.initialValue).toBe("SHIPPED DEFAULT");
+      expect(lastEditorProps?.readOnly).toBe(false);
+      expect(
+        screen.getByText("Default — start typing to customize"),
+      ).toBeTruthy();
       expect(screen.queryByText("Your instructions")).toBeNull();
       expect(screen.queryByText("Show default")).toBeNull();
-      expect(lastEditorProps?.readOnly).toBe(true);
-      expect(editorMountedValues).toContain("SHIPPED DEFAULT");
       // The size readout reflects the 15-char default that's on screen,
       // labelled so it isn't mistaken for the (empty) override.
       expect(screen.getByText(/Default: 15 chars · ≈4 tokens/)).toBeTruthy();
+    });
 
-      // Customize forks the built-in into the override (persists it via the
-      // import path so the view flips to editing).
+    it("forks the built-in into an override on the first keystroke", async () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "";
+      render(<ContextScreen doc={buildHookValue()} labels={BUILTIN_LABELS} />);
+
+      // The editor already holds the default, so an edit's ordinary autosave
+      // persists default+edit as the override — no separate fork write.
+      await act(() => {
+        editorChange("SHIPPED DEFAULT + MINE");
+      });
+
+      expect(screen.getByText("Your instructions")).toBeTruthy();
+      expect(screen.getByLabelText("Reset to default")).toBeTruthy();
+      // The seeded editor is NOT remounted by the fork, so the keystroke lives.
+      expect(editorMountedValues).toStrictEqual(["SHIPPED DEFAULT"]);
+
       await act(async () => {
-        fireEvent.click(screen.getByText("Customize"));
+        vi.advanceTimersByTime(800);
         await Promise.resolve();
       });
 
-      expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT");
+      expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT + MINE");
     });
 
     it("shows the drift note when the built-in changed since the user forked", () => {
