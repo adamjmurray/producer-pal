@@ -160,7 +160,7 @@
     "eslint-plugin-unicorn": "69.0.0",
     "fake-indexeddb": "6.2.5",
     "globals": "17.7.0",
-    "happy-dom": "20.10.6",
+    "happy-dom": "20.11.0",
     "jscpd": "5.0.12",
     "peggy": "5.1.0",
     "prettier": "3.9.5",
