@@ -22,6 +22,7 @@ import {
   saveWithMessage,
   saveAndRename,
   resetConversationsTestState,
+  waitForHookState,
 } from "./use-conversations-test-helpers";
 
 /**
@@ -469,8 +470,12 @@ describe("useConversations", () => {
     expect(result.current.notification?.message).toContain("Deleted");
     expect(result.current.notification?.action?.label).toBe("Undo");
 
+    // The banner's onClick is fire-and-forget (`() => void undo()`), so act()
+    // has no promise to await. Poll rather than waiting one fixed tick: the
+    // restore does two IndexedDB round-trips (save, then list refresh), which
+    // can outrun a single tick on a loaded CI runner.
     await act(() => result.current.notification!.action!.onClick());
-    await waitForEffects();
+    await waitForHookState(() => result.current.conversations.length === 1);
 
     expect(result.current.conversations).toHaveLength(1);
     expect(result.current.conversations[0]?.id).toBe(savedId);
