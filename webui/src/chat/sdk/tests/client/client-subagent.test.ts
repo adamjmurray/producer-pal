@@ -84,13 +84,13 @@ function lastStreamTools(): Record<string, { execute?: unknown }> {
 /**
  * A stream that rejects the way a provider 429 does, for the worker retry path.
  * @param error - The error to throw on first iteration
- * @returns A streamText-shaped result whose fullStream throws
+ * @returns A streamText-shaped result whose stream throws
  */
 function throwingStream(error: unknown): {
-  fullStream: AsyncIterable<Record<string, unknown>>;
+  stream: AsyncIterable<Record<string, unknown>>;
 } {
   return {
-    fullStream: {
+    stream: {
       [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(error) }),
     },
   };
@@ -103,13 +103,13 @@ function throwingStream(error: unknown): {
  * @returns A streamText-shaped result
  */
 function partsStream(parts: Record<string, unknown>[]): {
-  fullStream: AsyncIterable<Record<string, unknown>>;
+  stream: AsyncIterable<Record<string, unknown>>;
 } {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
     for (const p of parts) yield p;
   }
 
-  return { fullStream: iterate() };
+  return { stream: iterate() };
 }
 
 /**
@@ -122,14 +122,14 @@ function partsStream(parts: Record<string, unknown>[]): {
 function failingAfterStream(
   parts: Record<string, unknown>[],
   error: unknown,
-): { fullStream: AsyncIterable<Record<string, unknown>> } {
+): { stream: AsyncIterable<Record<string, unknown>> } {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
     for (const p of parts) yield p;
 
     throw error;
   }
 
-  return { fullStream: iterate() };
+  return { stream: iterate() };
 }
 
 /**

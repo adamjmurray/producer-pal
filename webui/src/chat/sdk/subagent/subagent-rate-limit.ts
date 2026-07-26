@@ -208,7 +208,7 @@ export interface SubagentRateLimitStatus {
  * Live per-worker status keyed by the spawn tool-call id that owns the card.
  *
  * A worker runs entirely inside the spawn tool's execute(), so nothing it does
- * reaches the orchestrator's fullStream — the card is frozen at "working…" for
+ * reaches the orchestrator's stream — the card is frozen at "working…" for
  * the whole worker run and cannot otherwise learn that the worker is sitting out
  * a backoff. Module-level (not React state) because the writer is this
  * framework-free client. Entries are transient: each is cleared when its worker

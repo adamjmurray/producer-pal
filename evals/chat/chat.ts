@@ -92,7 +92,7 @@ export async function runChat(
             maxOutputTokens: sess.options.outputTokens ?? DEFAULT_MAX_TOKENS,
             system: sess.options.instructions,
             // Errors are rendered (in red) by processCliStream via the
-            // fullStream "error" part; suppress the SDK's default raw dump.
+            // stream's "error" part; suppress the SDK's default raw dump.
             onError: () => {},
             onStepFinish: (event) => {
               const usage = toTokenUsage(event.usage);
@@ -112,18 +112,21 @@ export async function runChat(
             showUsage: sess.options.usage,
           });
 
-          // On a stream error, result.response rejects; the error was already
-          // shown by processCliStream, so flag a non-zero exit and skip history.
+          // On a stream error, result.responseMessages rejects; the error was
+          // already shown by processCliStream, so flag a non-zero exit and skip
+          // history.
           if (turnResult.error != null) {
             process.exitCode = 1;
 
             return { ...turnResult, stepUsages };
           }
 
-          // Append generated messages to history for multi-turn
-          const response = await result.response;
-
-          sess.messages.push(...response.messages);
+          // Append generated messages to history for multi-turn. Use
+          // responseMessages, which accumulates across every step: as of AI SDK
+          // v7 a step's response.messages holds only that step's messages, so
+          // reading the final step alone would drop the tool calls and results
+          // from earlier steps out of the next turn's history.
+          sess.messages.push(...(await result.responseMessages));
 
           return { ...turnResult, stepUsages };
         },

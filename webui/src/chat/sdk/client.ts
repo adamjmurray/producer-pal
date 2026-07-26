@@ -271,9 +271,9 @@ export class ChatSdkClient {
   }
 
   /**
-   * Call streamText, process the fullStream, and yield chat history updates.
+   * Call streamText, process the stream, and yield chat history updates.
    * Wires the AI SDK's onError callback into the stream iterator so browser
-   * CORS/network errors (which hang fullStream) surface immediately.
+   * CORS/network errors (which hang the stream) surface immediately.
    * @param providerOptions - Provider-specific options for streamText
    * @param abortSignal - Signal to abort the stream
    * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
@@ -326,7 +326,7 @@ export class ChatSdkClient {
       },
     });
 
-    const stream = errorSignal.wrapStream(result.fullStream);
+    const stream = errorSignal.wrapStream(result.stream);
 
     let completedSteps = 0;
     let finalFinishReason: FinishReason | undefined;

@@ -7,7 +7,7 @@
  * Create an error signal that can break a hung async iterator.
  *
  * This is needed because browser CORS and network errors inside the AI SDK's
- * TransformStream can hang the fullStream async iterator forever instead of
+ * TransformStream can hang the result stream async iterator forever instead of
  * throwing. The AI SDK's `onError` callback fires in these cases — call
  * `signal.reject(error)` from it to unblock the iterator.
  * @returns Object with `reject` function and `wrapStream` to apply to an async iterable

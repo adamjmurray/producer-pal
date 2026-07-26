@@ -150,7 +150,7 @@ async function sendWithResponse(
       });
     }
 
-    return { fullStream: iterate() };
+    return { stream: iterate() };
   });
 
   const client = new ChatSdkClient("key", createConfig());
@@ -205,7 +205,7 @@ async function sendWithHistory(
   async function* empty(): AsyncIterable<Record<string, unknown>> {}
 
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: empty(),
+    stream: empty(),
   });
 
   const client = new ChatSdkClient("key", createConfig({ chatHistory }));
@@ -418,7 +418,7 @@ describe("ChatSdkClient", () => {
       }
 
       (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: iterate(),
+        stream: iterate(),
       });
 
       const client = new ChatSdkClient("key", createConfig());
@@ -527,7 +527,7 @@ describe("ChatSdkClient", () => {
             });
           }
 
-          return { fullStream: iterate() };
+          return { stream: iterate() };
         },
       );
 
@@ -796,7 +796,7 @@ describe("ChatSdkClient", () => {
       }
 
       (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: clean(),
+        stream: clean(),
       });
 
       for await (const _ of client.sendMessage("again")) {

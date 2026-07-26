@@ -131,6 +131,7 @@ describe("createMcpTools", () => {
         toolCallId: "tc1",
         messages: [],
         abortSignal: new AbortController().signal,
+        context: undefined,
       },
     );
 
@@ -157,6 +158,7 @@ describe("createMcpTools", () => {
           toolCallId: "tc1",
           messages: [],
           abortSignal: new AbortController().signal,
+          context: undefined,
         },
       ),
     ).rejects.toThrow("Invalid bar|beat format");
