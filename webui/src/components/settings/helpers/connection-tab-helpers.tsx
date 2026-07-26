@@ -63,7 +63,7 @@ export function ModelDocsLink({ provider, providerLabel }: ModelDocsLinkProps) {
   if (!url) return null;
 
   return (
-    <p className="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
+    <p className="text-xs text-zinc-500 dark:text-zinc-300 -mt-2">
       <a
         href={url}
         target="_blank"
@@ -284,7 +284,7 @@ export function VoiceSettings({
               />
             </>
           )}
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs text-zinc-500 dark:text-zinc-300">
             Applied on the next session (Stop, then Talk) — except Volume, which
             is live.
           </p>

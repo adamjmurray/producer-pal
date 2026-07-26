@@ -39,7 +39,7 @@ export function SettingsFooter({
   return (
     <>
       {!settingsConfigured && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-6">
+        <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-6">
           Settings will be stored in this web browser.
         </p>
       )}

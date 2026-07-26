@@ -79,7 +79,7 @@ export function ToolToggles({
         <label className="block text-sm font-medium mb-3">
           Available Tools
         </label>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-500 dark:text-zinc-300">
           {mcpStatus === "error"
             ? "Tools cannot be loaded"
             : "Loading tools..."}
@@ -263,7 +263,7 @@ function ToolGroupSection({
 }: ToolGroupSectionProps) {
   return (
     <div className="flex flex-col h-full">
-      <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
+      <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-300 uppercase tracking-wide mb-1">
         {group.label}
       </h4>
       <div className="space-y-1">

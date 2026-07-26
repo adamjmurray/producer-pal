@@ -127,7 +127,7 @@ export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
           </option>
         ))}
       </select>
-      <p className="text-xs text-zinc-500 mt-1">
+      <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
         What spawned subagents run as when the Subagent tool is enabled. A
         preset runs each subagent on its own model, thinking, small-model mode,
         toolset, and notation (a preset saved without a toolset or notation
@@ -208,7 +208,7 @@ export function PresetDescriptionField(props: PresetDescriptionFieldProps) {
   return (
     <div>
       <label
-        className="block text-xs text-zinc-500 mb-1"
+        className="block text-xs text-zinc-500 dark:text-zinc-300 mb-1"
         htmlFor="preset-description"
       >
         Description (optional)

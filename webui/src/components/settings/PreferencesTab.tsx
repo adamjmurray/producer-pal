@@ -95,7 +95,7 @@ export function PreferencesTab({
       </label>
 
       <div className="border-t border-zinc-300 dark:border-zinc-600 pt-4 mt-4">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+        <p className="text-sm text-zinc-500 dark:text-zinc-300 mb-2">
           Cleanup Conversations
         </p>
         <div className="flex gap-2">

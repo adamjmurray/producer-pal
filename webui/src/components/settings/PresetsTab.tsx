@@ -22,7 +22,7 @@ interface PresetsTabProps {
 export function PresetsTab({ settings }: PresetsTabProps) {
   return (
     <div className="space-y-4">
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-zinc-500 dark:text-zinc-300">
         A preset saves and recalls a full chat setup — provider, model,
         thinking, small-model mode, and the enabled toolset — in one click. Set
         those up on the Connection and Tools tabs, then save them here as a

@@ -38,7 +38,7 @@ export function VoiceVolumeSlider({
         <button
           type="button"
           onClick={() => setVolume(VOICE_VOLUME_DEFAULT)}
-          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
         >
           Reset
         </button>

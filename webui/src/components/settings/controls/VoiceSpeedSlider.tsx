@@ -34,7 +34,7 @@ export function VoiceSpeedSlider({ speed, setSpeed }: VoiceSpeedSliderProps) {
         <button
           type="button"
           onClick={() => setSpeed(VOICE_SPEED_DEFAULT)}
-          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
         >
           Reset
         </button>
