@@ -49,35 +49,6 @@ export async function waitForEffects(): Promise<void> {
   });
 }
 
-/**
- * Poll until `predicate` holds, flushing renders between attempts.
- *
- * Use this — not `waitFor` — when the assertion reads hook state through
- * `result.current`. preact testing-library runs the whole of `waitFor` inside a
- * single `act()`, which defers re-renders until it returns, so `result.current`
- * stays frozen at its pre-`waitFor` value for every poll and the condition can
- * never come true. (`waitFor` is still right for polling the DB directly, which
- * act batching doesn't touch.) A single fixed-length {@link waitForEffects} is
- * the other trap: it silently under-waits when a loaded CI runner takes longer
- * than one tick to settle.
- * @param predicate - Returns true once the awaited state has landed
- * @param timeoutMs - How long to keep polling before failing
- */
-export async function waitForHookState(
-  predicate: () => boolean,
-  timeoutMs = 2000,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-
-  while (!predicate()) {
-    if (Date.now() > deadline) {
-      throw new Error(`Timed out after ${timeoutMs}ms waiting for hook state`);
-    }
-
-    await waitForEffects();
-  }
-}
-
 export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
 
 /**

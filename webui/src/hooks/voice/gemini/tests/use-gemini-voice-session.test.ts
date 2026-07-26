@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook } from "@testing-library/preact";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- hoisted doubles (vi.mock factories can only see vi.hoisted values) ---
@@ -604,12 +604,21 @@ describe("useGeminiVoiceSession", () => {
 
     await act(async () => {
       h.state.callbacks.onclose?.();
-      // Wait past openResumableGeminiSession's linear backoff (attempt 1 = 1s).
-      await new Promise((r) => setTimeout(r, 1100));
     });
 
-    expect(h.liveConnect).toHaveBeenCalledTimes(2);
-    expect(result.current.status).toBe("connected");
+    // openResumableGeminiSession retries behind a linear backoff (attempt 1 =
+    // 1s). Poll past it instead of sleeping a hair over: a 1100ms fixed wait
+    // leaves only a 10% margin, so a loaded runner clips the resume and fails
+    // these assertions. The timeout must clear the backoff itself, which the
+    // 1s waitFor default would not.
+    await waitFor(
+      () => {
+        expect(h.liveConnect).toHaveBeenCalledTimes(2);
+        expect(result.current.status).toBe("connected");
+      },
+      { timeout: 5000 },
+    );
+
     expect(result.current.error).toBeNull();
     const cfg = h.state.connectParams!.config as {
       sessionResumption?: { handle?: string };
