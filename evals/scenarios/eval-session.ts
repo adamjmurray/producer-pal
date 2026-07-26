@@ -166,16 +166,16 @@ export async function createEvalSession(
         showUsage: options.usage,
       });
 
-      // On a stream error, result.response rejects; the error was already shown
-      // by processCliStream. Skip history so the scenario can grade the miss.
+      // On a stream error, result.responseMessages rejects; the error was already
+      // shown by processCliStream. Skip history so the scenario can grade the miss.
       if (turnResult.error != null) {
         return { ...turnResult, stepUsages };
       }
 
-      // Append generated messages to history for multi-turn
-      const { response } = await result.finalStep;
-
-      messages.push(...response.messages);
+      // Append generated messages to history for multi-turn. See the note in
+      // evals/chat/chat.ts: responseMessages accumulates across every step,
+      // while finalStep.response.messages holds only the last step's.
+      messages.push(...(await result.responseMessages));
 
       return { ...turnResult, stepUsages };
     },
