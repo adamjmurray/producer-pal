@@ -85,6 +85,27 @@ Peggy-generated parsers are wrapped in TypeScript files (e.g.,
 - ES6 shorthand: `{ name, color }`
 - Minimize comments, prefer self-documenting code
 
+### Index Access (`noUncheckedIndexedAccess`)
+
+`noUncheckedIndexedAccess: true` is set in every tsconfig (`src`, `webui`,
+`scripts`, `evals`, `config`, and the four `e2e/*`), so indexing an array or
+record yields `T | undefined`.
+
+Where the index is provably in range — a bounded loop, a length-checked lookup —
+narrow with a commented `as T`:
+
+```typescript
+for (let i = 0; i < tracks.length; i++) {
+  const track = tracks[i] as Track; // bounded by tracks.length
+}
+```
+
+- **Never use `!`** — ESLint forbids the non-null assertion.
+- **Don't add a runtime null guard you can't reach.** The branch is dead, so it
+  registers as an uncovered branch and drags the file below the enforced
+  coverage threshold. See [Coverage](#coverage) — the fix for an unreachable
+  defensive branch is to delete it, not to test it.
+
 ## Tools
 
 Always pass args in `src/main.ts`:
