@@ -191,9 +191,13 @@ interface SkillControlsProps {
 }
 
 /**
- * Controls strip: the slot dropdown, the include toggle, a one-line explainer
- * for the selected slot, and a drift note. The border spans full width while the
- * content is centered to match the editor below. The Preview/Source view toggle
+ * Controls strip: the slot dropdown, the include toggle, the selected slot's
+ * human title and one-line explainer, and a drift note. The title lives here
+ * rather than in the dropdown, which lists fragments by filename so it reads the
+ * way an `@include` line does (see {@link SkillSlotSelect}).
+ *
+ * The border spans full width while the content is centered to match the editor
+ * below. The Preview/Source view toggle
  * sits in the editor's pane header (see OverridePanes), and resetting an
  * override to the built-in lives in the revealed built-in header there — neither
  * belongs here.
@@ -214,6 +218,10 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
         />
         <IncludeToggle slot={slot} onSetEnabled={onSetEnabled} />
         <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+            {slot.title}
+          </span>
+          {" — "}
           {slot.description}
         </span>
         <DriftNote

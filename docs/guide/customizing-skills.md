@@ -73,14 +73,16 @@ file.
 
 **In the Chat UI:** open the [context editor](/guide/context) (the **Context**
 button in the header) and switch to the **Skills** tab. Pick a fragment from the
-dropdown: it opens showing Producer Pal's default, and typing into it forks that
-default into your own override, which auto-saves as you go. The trash button
-resets a fragment, deleting your override. The **Include** checkbox beside the
-dropdown switches a fragment out of the skills entirely. In the dropdown, ✕
-marks a fragment that's switched off, ✎ one that's customized, and ⚠ one whose
-built-in has changed since you forked it. **Preview** shows the fully assembled
-skills exactly as the AI will receive them. See
-[Context & Memory](/guide/context#skills) for screenshots.
+dropdown — they're listed by filename (`devices.md`), the name their `@include`
+line uses, with the fragment's title and explainer beside it. It opens showing
+Producer Pal's default, and typing into it forks that default into your own
+override, which auto-saves as you go. The trash button resets a fragment,
+deleting your override. The **Include** checkbox beside the dropdown switches a
+fragment out of the skills entirely. In the dropdown, ✕ marks a fragment that's
+switched off, ✎ one that's customized, and ⚠ one whose built-in has changed
+since you forked it. **Preview** shows the fully assembled skills exactly as the
+AI will receive them. See [Context & Memory](/guide/context#skills) for
+screenshots.
 
 **On disk:** overrides are plain Markdown files in `~/.producer-pal/skills/`,
 named after the fragment (`devices.md`, `standard.md`, …). A file's presence is

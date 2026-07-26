@@ -12,20 +12,44 @@ import { SkillSlotSelect } from "#webui/components/context/skills/SkillSlotSelec
 import { slot } from "./skill-slot-test-helpers";
 
 describe("SkillSlotSelect", () => {
-  it("glyph-marks drifted, customized, and tracking slots", () => {
+  it("labels options by filename and glyph-marks drifted, customized, and tracking slots", () => {
     const slots = [
-      slot({ name: "a", title: "Tracking", override: "" }),
-      slot({ name: "b", title: "Customized", override: "MINE" }),
-      slot({ name: "c", title: "Drifted", override: "MINE", drifted: true }),
+      slot({ name: "arrangement", title: "Tracking", override: "" }),
+      slot({ name: "devices", title: "Customized", override: "MINE" }),
+      slot({
+        name: "library",
+        title: "Drifted",
+        override: "MINE",
+        drifted: true,
+      }),
     ];
 
-    render(<SkillSlotSelect slots={slots} selected="a" onSelect={vi.fn()} />);
+    render(
+      <SkillSlotSelect
+        slots={slots}
+        selected="arrangement"
+        onSelect={vi.fn()}
+      />,
+    );
 
     const options = screen.getAllByRole("option");
 
-    expect(options[0]?.textContent).toBe("Tracking");
-    expect(options[1]?.textContent).toBe("✎ Customized");
-    expect(options[2]?.textContent).toBe("⚠ Drifted");
+    // The filename is what an @include line names, so that is what is listed.
+    expect(options[0]?.textContent).toBe("arrangement.md");
+    expect(options[1]?.textContent).toBe("✎ devices.md");
+    expect(options[2]?.textContent).toBe("⚠ library.md");
+  });
+
+  it("keeps the human title reachable as each option's tooltip", () => {
+    const slots = [slot({ name: "basic", title: "Full skills (small-model)" })];
+
+    render(
+      <SkillSlotSelect slots={slots} selected="basic" onSelect={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("option").getAttribute("title")).toBe(
+      "Full skills (small-model)",
+    );
   });
 
   it("calls onSelect with the chosen slot name", () => {

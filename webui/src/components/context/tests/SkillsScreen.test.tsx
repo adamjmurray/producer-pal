@@ -202,10 +202,17 @@ describe("SkillsScreen", () => {
     });
   });
 
-  it("shows the selected slot's one-line explainer", () => {
-    renderSlots([slot({ description: "Explains what this fragment does." })]);
+  it("shows the selected slot's title and one-line explainer", () => {
+    // The dropdown lists the filename, so the human title has to land here.
+    renderSlots([
+      slot({
+        title: "bar|beat notation (standard)",
+        description: "Explains what this fragment does.",
+      }),
+    ]);
 
-    expect(screen.getByText("Explains what this fragment does.")).toBeTruthy();
+    expect(screen.getByText("bar|beat notation (standard)")).toBeTruthy();
+    expect(screen.getByText(/Explains what this fragment does\./)).toBeTruthy();
   });
 
   it("switches the selected fragment off from the Include checkbox", () => {
