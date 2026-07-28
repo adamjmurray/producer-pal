@@ -58,9 +58,16 @@ const PROCESS = "Live"; // System Events process name for Ableton Live
 // --- CLI ---------------------------------------------------------------------
 
 const argv = process.argv.slice(2);
+// A flag with no value (last token, or followed by another --flag) is a
+// malformed invocation, not a request for the default — throw rather than hand
+// back undefined. main()'s catch turns this into a clean stderr line + exit 1.
 const opt = (name, def) => {
   const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : def;
+  if (i < 0) return def;
+  const v = argv[i + 1];
+  if (v == null || v.startsWith("--"))
+    throw new Error(`Missing value for ${name}`);
+  return v;
 };
 
 async function main() {

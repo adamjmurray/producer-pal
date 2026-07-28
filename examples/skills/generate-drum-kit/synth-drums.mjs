@@ -15,13 +15,34 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const argv = process.argv.slice(2);
+const fail = (msg) => {
+  process.stderr.write(`${msg}\n`);
+  process.exit(1);
+};
+// A flag with no value (last token, or followed by another --flag) is a
+// malformed invocation, not a request for the default. Say so instead of
+// handing back undefined — a NaN --sr writes header-only, silent .wav files.
 const opt = (name, def) => {
   const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : def;
+  if (i < 0) return def;
+  const v = argv[i + 1];
+  if (v == null || v.startsWith("--")) fail(`Missing value for ${name}`);
+  return v;
+};
+// Range-checked because the sample rate is load-bearing: it's a uint32 WAV
+// header field, and it scales every buffer. Too low and voices round down to
+// zero samples (silent files); absurdly high and the script allocates until it
+// hangs. isInteger also rejects NaN/Infinity.
+const int = (name, def, min, max) => {
+  const raw = opt(name, def);
+  const v = Number(raw);
+  if (!Number.isInteger(v) || v < min || v > max)
+    fail(`${name} must be a whole number from ${min} to ${max}, got "${raw}"`);
+  return v;
 };
 
 const OUT = resolve(opt("--out", "./drum-kit"));
-const SR = Number(opt("--sr", "44100"));
+const SR = int("--sr", 44100, 8000, 192000);
 const TRACK = opt("--track", "t0"); // create-device insertion path (a MIDI track)
 
 mkdirSync(OUT, { recursive: true });

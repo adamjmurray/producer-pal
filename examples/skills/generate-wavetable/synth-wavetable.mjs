@@ -17,16 +17,37 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const argv = process.argv.slice(2);
+const fail = (msg) => {
+  process.stderr.write(`${msg}\n`);
+  process.exit(1);
+};
+// A flag with no value (last token, or followed by another --flag) is a
+// malformed invocation, not a request for the default. Say so instead of
+// handing back undefined — a NaN --sr writes a header-only, silent .wav file.
 const opt = (name, def) => {
   const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : def;
+  if (i < 0) return def;
+  const v = argv[i + 1];
+  if (v == null || v.startsWith("--")) fail(`Missing value for ${name}`);
+  return v;
+};
+// All three numbers here size buffers or fill a uint32 WAV header field, so
+// each is a bounded whole number: a fractional count is an invalid typed-array
+// length, and an absurd one allocates until the script hangs. isInteger also
+// rejects NaN/Infinity.
+const int = (name, def, min, max) => {
+  const raw = opt(name, def);
+  const v = Number(raw);
+  if (!Number.isInteger(v) || v < min || v > max)
+    fail(`${name} must be a whole number from ${min} to ${max}, got "${raw}"`);
+  return v;
 };
 
 const OUT = resolve(opt("--out", "./wavetables"));
 const TYPE = opt("--type", "saw");
-const FRAMES = Number(opt("--frames", "16"));
-const FRAME = Number(opt("--frame-size", "2048")); // samples per single cycle
-const SR = Number(opt("--sr", "48000"));
+const FRAMES = int("--frames", 16, 1, 1024);
+const FRAME = int("--frame-size", 2048, 4, 16384); // samples per single cycle
+const SR = int("--sr", 48000, 8000, 192000);
 
 mkdirSync(OUT, { recursive: true });
 

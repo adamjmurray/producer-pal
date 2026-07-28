@@ -21,18 +21,46 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const argv = process.argv.slice(2);
+const fail = (msg) => {
+  process.stderr.write(`${msg}\n`);
+  process.exit(1);
+};
+// A flag with no value (last token, or followed by another --flag) is a
+// malformed invocation, not a request for the default. Say so instead of
+// handing back undefined — a NaN --sr writes a header-only, silent .wav file.
 const opt = (name, def) => {
   const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : def;
+  if (i < 0) return def;
+  const v = argv[i + 1];
+  if (v == null || v.startsWith("--")) fail(`Missing value for ${name}`);
+  return v;
+};
+// Every number here scales a buffer or a filter coefficient, so each carries
+// its documented range: out-of-range values yield silence, noise, or (at the
+// top end) allocate until the script hangs. isFinite also rejects NaN.
+const num = (name, def, min, max) => {
+  const raw = opt(name, def);
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v < min || v > max)
+    fail(`${name} must be a number from ${min} to ${max}, got "${raw}"`);
+  return v;
+};
+// The sample rate additionally fills a uint32 WAV header field, so it must be
+// whole — a fractional rate is silently truncated in the header while the DSP
+// runs at the untruncated value.
+const int = (name, def, min, max) => {
+  const v = num(name, def, min, max);
+  if (!Number.isInteger(v)) fail(`${name} must be a whole number, got "${v}"`);
+  return v;
 };
 
 const OUT = resolve(opt("--out", "./reverb-irs"));
-const DECAY = Number(opt("--decay", "1.8"));
-const PREDELAY_MS = Number(opt("--predelay", "20"));
-const SIZE = Number(opt("--size", "1"));
-const TONE = Number(opt("--tone", "0.5"));
-const ER = Number(opt("--er", "1"));
-const SR = Number(opt("--sr", "48000"));
+const DECAY = num("--decay", 1.8, 0.01, 60);
+const PREDELAY_MS = num("--predelay", 20, 0, 5000);
+const SIZE = num("--size", 1, 0.01, 10);
+const TONE = num("--tone", 0.5, 0, 1);
+const ER = num("--er", 1, 0, 1);
+const SR = int("--sr", 48000, 8000, 192000);
 
 mkdirSync(OUT, { recursive: true });
 
