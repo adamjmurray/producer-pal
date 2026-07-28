@@ -39,7 +39,9 @@ export function formatAgentTurn(
   for (const call of parsed.toolCalls) {
     parts.push(formatToolCall(call.name, call.args) + "\n");
 
-    if (call.result != null) parts.push(formatToolResult(call.result));
+    if (call.result != null) {
+      parts.push(formatToolResult(call.result, call.warnings));
+    }
   }
 
   if (parsed.text !== "") {

@@ -277,6 +277,43 @@ describe("parseCodexStream", () => {
     );
   });
 
+  // The bug this pins: unwrapping to the payload block dropped the relayed
+  // `WARNING:` blocks that follow it, so the device scenarios' acceptance
+  // checks — which grade on whether the engine warn-and-skipped — saw a clean
+  // result and passed no matter what the engine did.
+  it("keeps the relayed WARNING blocks beside the payload", () => {
+    const stdout = JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "call-1",
+        type: "mcp_tool_call",
+        tool: "ppal-update-device",
+        arguments: {},
+        status: "completed",
+        result: {
+          content: [
+            { type: "text", text: '{"id":"device1"}' },
+            {
+              type: "text",
+              text: 'WARNING: updateDevice: setModulation target "Flt 1 Freq" — parameter not found',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(parseCodexStream(stdout).toolCalls).toStrictEqual([
+      {
+        name: "ppal-update-device",
+        args: {},
+        result: '{"id":"device1"}',
+        warnings: [
+          'WARNING: updateDevice: setModulation target "Flt 1 Freq" — parameter not found',
+        ],
+      },
+    ]);
+  });
+
   it("records a failed MCP result without failing the whole turn", () => {
     const stdout = JSON.stringify({
       type: "item.completed",

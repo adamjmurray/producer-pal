@@ -185,6 +185,36 @@ describe("seedConnectTurn", () => {
     expect(turn.toolCalls[0]?.result).toBe(CONNECT_RESULT);
   });
 
+  it("carries any relayed WARNING blocks beside the result, as the streaming path does", async () => {
+    const { session } = sessionStub({
+      connectContent: [
+        { type: "text", text: CONNECT_RESULT },
+        { type: "text", text: "WARNING: could not read track 3" },
+      ],
+    });
+    const seedable = session as EvalSession & {
+      seedTurn: NonNullable<EvalSession["seedTurn"]>;
+    };
+
+    const turn = await seedConnectTurn(seedable, CONNECT_MESSAGE);
+
+    expect(turn.toolCalls[0]?.result).toBe(CONNECT_RESULT);
+    expect(turn.toolCalls[0]?.warnings).toStrictEqual([
+      "WARNING: could not read track 3",
+    ]);
+  });
+
+  it("omits warnings entirely when the connect call warned about nothing", async () => {
+    const { session } = sessionStub();
+    const seedable = session as EvalSession & {
+      seedTurn: NonNullable<EvalSession["seedTurn"]>;
+    };
+
+    const turn = await seedConnectTurn(seedable, CONNECT_MESSAGE);
+
+    expect(turn.toolCalls[0]).not.toHaveProperty("warnings");
+  });
+
   it("reports no token usage — nothing was spent", async () => {
     const { session } = sessionStub();
     const seedable = session as EvalSession & {

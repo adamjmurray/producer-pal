@@ -21,7 +21,7 @@ import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   type AgentStreamState,
   parseAgentCliStream,
-  stringifyToolResult,
+  recordToolResult,
   tokenCount,
   toToolArguments,
 } from "../agent-cli/agent-cli-stream.ts";
@@ -232,9 +232,10 @@ function handleToolResult(
 
   if (call == null) return;
 
-  const text = stringifyToolResult(block.content);
+  recordToolResult(call, block.content);
 
-  call.result = block.is_error === true ? `ERROR: ${text}` : text;
+  if (block.is_error === true) call.result = `ERROR: ${call.result ?? ""}`;
+
   state.openCalls.delete(block.tool_use_id);
 }
 

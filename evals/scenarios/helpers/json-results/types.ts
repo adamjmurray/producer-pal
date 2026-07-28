@@ -101,8 +101,10 @@ export interface JsonTurnRecord {
 export interface JsonToolCall {
   name: string;
   args: Record<string, unknown>;
-  /** Tool result text */
+  /** Tool result text (the payload block alone) */
   result?: string;
+  /** Relayed `WARNING:` blocks from the same result, when the tool emitted any */
+  warnings?: string[];
 }
 
 export interface JsonTokenUsage {

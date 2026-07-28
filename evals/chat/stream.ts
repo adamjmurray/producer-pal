@@ -20,7 +20,7 @@ import {
   formatWarning,
   startThought,
 } from "./shared/formatting.ts";
-import { mcpResultText } from "./shared/mcp-result-text.ts";
+import { mcpResultText, mcpResultWarnings } from "./shared/mcp-result-text.ts";
 import { type TurnResult } from "./shared/types.ts";
 
 /** Mutable state tracked during stream processing */
@@ -207,7 +207,9 @@ function handleToolResult(
   attachToolResult(state.toolCalls, toolName, toolCallId, output);
 
   if (!isQuietMode()) {
-    process.stdout.write(formatToolResult(formatOutput(output)));
+    process.stdout.write(
+      formatToolResult(formatOutput(output), mcpResultWarnings(output)),
+    );
   }
 }
 
@@ -313,7 +315,7 @@ function attachToolResult(
     : undefined;
 
   if (byId != null) {
-    byId.result = formatOutput(output);
+    recordOutput(byId, output);
 
     return;
   }
@@ -323,11 +325,30 @@ function attachToolResult(
     const tc = toolCalls[i] as TurnResult["toolCalls"][number];
 
     if (tc.name === toolName && tc.result == null) {
-      tc.result = formatOutput(output);
+      recordOutput(tc, output);
 
       return;
     }
   }
+}
+
+/**
+ * Store a tool's output on its call: the payload string plus any relayed
+ * `WARNING:` blocks, which sit in later content blocks and would otherwise be
+ * dropped by the payload-only unwrapping.
+ *
+ * @param toolCall - The call the output belongs to
+ * @param output - Raw tool output
+ */
+function recordOutput(
+  toolCall: TurnResult["toolCalls"][number],
+  output: unknown,
+): void {
+  toolCall.result = formatOutput(output);
+
+  const warnings = mcpResultWarnings(output);
+
+  if (warnings.length > 0) toolCall.warnings = warnings;
 }
 
 /**

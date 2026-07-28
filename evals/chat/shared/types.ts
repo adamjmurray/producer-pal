@@ -55,6 +55,14 @@ export interface ToolCall {
   args: Record<string, unknown>;
   result?: string;
   /**
+   * Relayed `WARNING:` blocks from the tool result, if any.
+   *
+   * Kept apart from `result` because `result` is the payload block alone and
+   * has to stay parseable — assertions run `parseToolResult` over it. Warnings
+   * are how a tool reports warn-and-skip, so grading them means reading this.
+   */
+  warnings?: string[];
+  /**
    * AI SDK tool-call id. Used to attach each tool-result to its originating
    * call so parallel same-name calls in one step don't get their results
    * swapped (the SDK emits both tool-call parts before either result).

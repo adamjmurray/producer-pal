@@ -12,7 +12,7 @@ import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   type AgentStreamState,
   parseAgentCliStream,
-  stringifyToolResult,
+  recordToolResult,
   tokenCount,
   toToolArguments,
 } from "../agent-cli/agent-cli-stream.ts";
@@ -202,7 +202,7 @@ function collectMcpCall(
     if (Object.keys(args).length > 0) call.args = args;
   }
 
-  if (item.result != null) call.result = stringifyToolResult(item.result);
+  if (item.result != null) recordToolResult(call, item.result);
 
   if (item.status === "failed") {
     const message = getErrorMessage(item);

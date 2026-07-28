@@ -13,7 +13,7 @@
  */
 
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
-import { mcpResultText } from "../shared/mcp-result-text.ts";
+import { mcpResultText, mcpResultWarnings } from "../shared/mcp-result-text.ts";
 import { type ToolCall } from "../shared/types.ts";
 import { type ParsedAgentTurn } from "./agent-cli-transport.ts";
 
@@ -126,6 +126,24 @@ export function toToolArguments(value: unknown): Record<string, unknown> {
   }
 
   return {};
+}
+
+/**
+ * Store an MCP tool result on the call that produced it.
+ *
+ * `result` is the payload alone, matching the AI SDK path — but the relayed
+ * `WARNING:` blocks live in the content blocks after it, so they are collected
+ * separately instead of being dropped along with them.
+ *
+ * @param call - The call the result belongs to
+ * @param value - Raw MCP result, its content array, or plain text
+ */
+export function recordToolResult(call: ToolCall, value: unknown): void {
+  call.result = stringifyToolResult(value);
+
+  const warnings = mcpResultWarnings(value);
+
+  if (warnings.length > 0) call.warnings = warnings;
 }
 
 /**

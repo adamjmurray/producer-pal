@@ -187,6 +187,57 @@ describe("parseClaudeCodeStream", () => {
     });
   });
 
+  // The bug this pins: unwrapping to the payload block dropped the relayed
+  // `WARNING:` blocks that follow it, so the device scenarios' acceptance
+  // checks — which grade on whether the engine warn-and-skipped — saw a clean
+  // result and passed no matter what the engine did.
+  it("keeps the relayed WARNING blocks beside the payload", () => {
+    const stdout = jsonl([
+      {
+        type: "assistant",
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_1",
+              name: "mcp__producer-pal__ppal-update-device",
+              input: {},
+            },
+          ],
+        },
+      },
+      {
+        type: "user",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_1",
+              content: [
+                { type: "text", text: '{"id":"device1"}' },
+                {
+                  type: "text",
+                  text: 'WARNING: updateDevice: setModulation source "LFO 9" is invalid',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+
+    expect(parseClaudeCodeStream(stdout).toolCalls).toStrictEqual([
+      {
+        name: "ppal-update-device",
+        args: {},
+        result: '{"id":"device1"}',
+        warnings: [
+          'WARNING: updateDevice: setModulation source "LFO 9" is invalid',
+        ],
+      },
+    ]);
+  });
+
   it("records a failed tool result without failing the whole turn", () => {
     const stdout = jsonl([
       {

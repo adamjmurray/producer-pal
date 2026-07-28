@@ -208,6 +208,8 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
       name: tc.name,
       args: tc.args,
       ...(tc.result != null && { result: tc.result }),
+      ...(tc.warnings != null &&
+        tc.warnings.length > 0 && { warnings: tc.warnings }),
     })),
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),

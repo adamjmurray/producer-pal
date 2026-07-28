@@ -263,6 +263,8 @@ export interface EvalTurnResult {
     name: string;
     args: Record<string, unknown>;
     result?: string;
+    /** Relayed `WARNING:` blocks — `result` is the payload block alone. */
+    warnings?: string[];
   }>;
   durationMs: number;
   stepUsages?: TokenUsage[];

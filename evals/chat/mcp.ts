@@ -93,6 +93,10 @@ export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
 /**
  * Extract text content from an MCP tool call result
  *
+ * The payload only — relayed `WARNING:` blocks sit in the content items after
+ * it and are read with `mcpResultWarnings`. Keeping them out is what lets
+ * callers hand this straight to `parseToolResult`.
+ *
  * @param result - The result from an MCP callTool invocation
  * @returns The text content from the first content item, or empty string
  */
