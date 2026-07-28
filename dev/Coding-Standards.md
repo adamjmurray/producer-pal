@@ -101,10 +101,9 @@ for (let i = 0; i < tracks.length; i++) {
 ```
 
 - **Never use `!`** — ESLint forbids the non-null assertion.
-- **Don't add a runtime null guard you can't reach.** The branch is dead, so it
-  registers as an uncovered branch and drags the file below the enforced
-  coverage threshold. See [Coverage](#coverage) — the fix for an unreachable
-  defensive branch is to delete it, not to test it.
+- A commented `as` is for an index you can _prove_ is in range. Never delete a
+  runtime guard to buy coverage — warn-and-skip is a product requirement, not
+  coverage noise.
 
 ## Tools
 
