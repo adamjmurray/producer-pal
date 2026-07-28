@@ -113,9 +113,11 @@ release build.
    same-version update prompt is expected:
 
    ```md
-   > ⚠️ **This is a pre-release.** If these files are replaced during testing,
-   > Producer Pal will tell you an update is available even though the version
-   > number hasn't changed. Download from this page again when that happens.
+   > ⚠️ **This is a pre-release.** Producer Pal's update check ignores
+   > pre-releases, so it won't prompt you while testing — if these files are
+   > replaced, I'll let you know directly. Once this is promoted to a final
+   > release, you may be prompted to update even though the version number
+   > hasn't changed; download from this page again when that happens.
    ```
 
 9. Publish pre-release
@@ -133,13 +135,27 @@ This rides entirely on the tag, so it needs nothing extra at release time — bu
 it does mean **the release tag must point at the commit the artifacts were built
 from.** `npm run release` prints the build it baked in; tag that commit.
 
-Two things follow, both of which the existing process already gets right:
+**Pre-releases are invisible to the check, on purpose.** Producer Pal asks
+GitHub for `/releases/latest`, which by definition skips anything marked "Set as
+a pre-release." So while X.Y.Z is in pre-release testing, everyone on the
+previous stable release still sees that previous release as the latest and is
+never nudged toward a beta. There is no opt-in beta track, and this is the
+substitute for one.
 
-- **Re-cutting a pre-release moves the tag** (the delete-and-recreate in
-  [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)), so
-  everyone holding the previous files is prompted.
-- **Promoting a pre-release unchanged leaves the tag alone**, so nobody is
-  prompted to re-download bytes they already have.
+That makes the build comparison dormant for the whole pre-release window, which
+shapes what to expect at each step:
+
+- **Re-cutting a pre-release moves the tag**, but testers are **not** prompted
+  at that moment — the pre-release isn't "latest" to anyone, so their check
+  returns early. Tell them directly; you're already in contact with them. (This
+  is the delete-and-recreate in
+  [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release).)
+- **Promoting to a final release makes the tag visible**, and that is when a
+  tester still holding a superseded pre-release build finally gets prompted.
+  This is the case the mechanism exists for.
+- **Promoting a pre-release unchanged leaves the tag alone**, so a tester who
+  picked up the final pre-release build is not prompted to re-download bytes
+  they already have.
 
 If the tag can't be resolved — offline, rate-limited, or a release published
 without a tag Producer Pal was built from — the check falls back to comparing
@@ -286,10 +302,11 @@ If problems are found during pre-release testing:
    - Go to the existing pre-release on GitHub
    - Delete the old files
    - Upload the new files
-   - Nothing else to update — re-tagging in step 2 is what tells testers holding
-     the previous files to re-download (see
+   - Nothing else to update — no need to recreate the release
+   - Tell the testers directly. Re-tagging in step 2 does **not** prompt them
+     while this is still a pre-release; it's what makes them get prompted at GA
+     promotion if they never picked up this re-cut (see
      [How update detection works](#how-update-detection-works))
-   - No need to recreate the release
 
 5. **Retest** and repeat if necessary
 

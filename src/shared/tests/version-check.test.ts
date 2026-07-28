@@ -173,6 +173,11 @@ describe("checkForUpdate", () => {
   });
 
   it("passes a timeout signal to fetch", async () => {
+    // The URL is load-bearing, not incidental: `/releases/latest` is the one
+    // endpoint that hides pre-releases, which is what keeps stable users from
+    // being offered a beta. This assertion is the only guard on that choice —
+    // every mock here hand-supplies a tag_name, so none can model GitHub's own
+    // exclusion rule. See the comment on RELEASES_URL.
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(JSON.stringify({ tag_name: "v2.0.0" })));

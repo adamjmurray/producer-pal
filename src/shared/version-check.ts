@@ -4,6 +4,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 const REPO_API_URL = "https://api.github.com/repos/adamjmurray/producer-pal";
+
+// `/releases/latest` excludes anything marked as a pre-release, and we depend on
+// that: there is no opt-in beta track, so people on the current stable release
+// must never be nudged toward a beta. Do not swap this for `/releases` and take
+// [0] — that offers every stable user the in-testing pre-release.
+//
+// A tester running the pre-release therefore gets the older stable release back
+// as "latest". They are never prompted to install it: `isNewerVersion` is
+// strictly directional, so the older version fails the first check, and the
+// guard below then returns null. A downgrade prompt is not reachable.
+//
+// The trade-off is that the build comparison below is dormant for the whole
+// pre-release window — a tester holding a re-cut pre-release is not prompted
+// while it is still marked pre-release. That window is covered by talking to
+// testers directly. The comparison goes live at GA promotion, which is the case
+// it exists for: a tester still holding a pre-release build that got re-cut.
 const RELEASES_URL = `${REPO_API_URL}/releases/latest`;
 
 const TIMEOUT_MS = 5000;
