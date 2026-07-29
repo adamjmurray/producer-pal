@@ -7,7 +7,7 @@ Formatting is still Prettier; oxfmt is tracked separately.
 
 ## Why oxlint
 
-Measured on this repo (1467 files, warm cache, macOS):
+Measured on this repo (1242 files, warm cache, macOS):
 
 | tool                              | wall  | CPU  |
 | --------------------------------- | ----- | ---- |
@@ -31,7 +31,7 @@ comment in `.oxlintrc.json` lists the edits the generator cannot make itself.
 ## How the config is organized
 
 The generator emitted one override per eslint flat-config block, each spelling
-out its complete rule set — 1262 entries over 2354 lines, because eslint's
+out its complete rule set — 1304 entries over 2354 lines, because eslint's
 `rules` entries **replace** rather than merge, so every block had to repeat
 everything it wanted. oxlint's overrides **do** merge (top-level first, then
 each matching override in array order, later winning per rule), so that
@@ -39,14 +39,20 @@ repetition buys nothing.
 
 The blocks are therefore grouped by which trees share a rule. Each rule appears
 exactly once, in a block whose `files` is the union of the trees that carried it
-— 296 entries over 876 lines, with no rule enabled or disabled anywhere it was
+— 275 entries over 886 lines, with no rule enabled or disabled anywhere it was
 not before. Read a block's `files` as "these trees agree about these rules".
 
-This is mechanically equivalent, and was verified as such rather than assumed:
-for all 1243 files oxlint lints, the resolved rule map and `env` are identical
-between the old config and the new one. A clean `npm run lint` proves nothing
-here — both configs report zero — so the check has to be on the resolution, not
-the outcome.
+The grouping is mechanical, and was verified as such rather than assumed: for
+every file oxlint lints (`oxlint --debug=files`, 1242 of them), the resolved
+rule map and `env` came out identical to the config it replaced, and a separate
+pass injected violations across every tree and diffed the diagnostics. A clean
+`npm run lint` proves nothing here — both configs report zero — so the check has
+to be on the resolution, not the outcome.
+
+Two entries were then deliberately dropped, and are the only intended
+differences: `eslint-comments/no-unlimited-disable` and the webui
+`no-restricted-imports`. Neither ever executed (see below), so removing them
+changes what the file claims, not what runs.
 
 To change one tree's rules, move the rule into a block matching only that tree.
 Do **not** edit a shared block's `files` — that silently changes every other
@@ -62,10 +68,11 @@ run through oxlint's ESLint-compatible `jsPlugins` bridge, so their packages
 remain devDependencies: `eslint-plugin-sonarjs`, `@stylistic/eslint-plugin`,
 `@eslint-community/eslint-plugin-eslint-comments`, and `eslint-plugin-unicorn`.
 
-The first three have no native equivalent at all. `unicorn` is different: oxlint
-implements 22 of the 33 rules this repo uses natively, and the bridge supplies
-the other 10 (see below). Because `unicorn` is a reserved native plugin name,
-the bridged copy is aliased and its rules carry a distinct prefix:
+The first three have no native equivalent at all. `unicorn` is different: of the
+33 rules the eslint config named, oxlint implements 22 natively, the bridge
+supplies 10 (see below), and one was a no-op alias that never enforced anything.
+Because `unicorn` is a reserved native plugin name, the bridged copy is aliased
+and its rules carry a distinct prefix:
 
 ```json
 "jsPlugins": [{ "name": "unicorn-js", "specifier": "eslint-plugin-unicorn" }],
@@ -75,14 +82,22 @@ the bridged copy is aliased and its rules carry a distinct prefix:
 **Gotchas:**
 
 - An override that names a rule must also list that rule's plugin in its own
-  `plugins` array — even when the entry only turns the rule off. Without it the
-  entry is silently ignored, with no error. (`jsPlugins` and `plugins` do
-  accumulate across matching overrides; it is the naming that must be local.)
+  `plugins`/`jsPlugins` — even when the entry only turns the rule off. Nothing
+  accumulates across overrides: declaring the plugin in one block and naming the
+  rule in another silently does nothing, with no error. Verified both ways.
 - The bridge only sees `eslint-`prefixed suppression directives. oxlint itself
   honors `oxlint-disable` equally, but `eslint-comments/require-description`
   does not fire on it — so **write directives with the `eslint-` prefix**, and
   treat the `oxlint-` spelling as an escape hatch from the description
   requirement.
+- **Never put a lint directive on line 1 of a file.** The bridge's line/column
+  translation is off by one, so a directive on line 1 computes a negative offset
+  and `require-description` dies with
+  `RangeError: Line/column pair translates to an out of range offset`. The run
+  fails loudly (exit 1), but the stack trace replaces every other JS-plugin
+  finding in that file. The SPDX header keeps line 1 occupied everywhere except
+  `examples/**`, which is exempt from headers. Reported positions are one line
+  high throughout, not just at the boundary.
 - Bridged rules get no type information (no `parserServices`), so a rule that
   needs types will silently under-report rather than error. This is why
   `sonarjs/assertions-in-tests` had to be dropped entirely.
@@ -102,12 +117,13 @@ are no stricter than the rules they replace:
 | `no-restricted-imports` regex form      | `src/test/meta/import-restrictions.test.ts` |
 | `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`  |
 
-`eslint-comments/no-unlimited-disable` is a partial case: it still runs through
-the bridge, which covers the `eslint-` prefix, and
-`src/test/lint-suppression-limits.test.ts` backstops the `oxlint-` prefix the
-bridge cannot see. Note that oxlint (unlike ESLint) treats a bare
-`// oxlint-disable` **line** comment as file-wide, so the backstop matches that
-form as well as the block form.
+`eslint-comments/no-unlimited-disable` could not survive the bridge at all, for
+a circular reason: a file-wide disable turns off every rule, including the one
+that would have reported it, so it never fires no matter the prefix. Its config
+entry was removed rather than left claiming enforcement, and
+`src/test/lint-suppression-limits.test.ts` is now the sole backstop. Note that
+oxlint (unlike ESLint) treats a bare `// oxlint-disable` **line** comment as
+file-wide, so the backstop matches that form as well as the block form.
 
 Every check in those tests is verified by injecting a known violation, not just
 by passing on a clean tree.

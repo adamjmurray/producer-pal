@@ -39,8 +39,12 @@
 //     required: `unicorn` is a reserved native plugin name.
 //
 // An override that names a rule MUST also list that rule's plugin in its own
-// `plugins` array, even to turn the rule off — otherwise the entry is silently
-// ignored.
+// `plugins`/`jsPlugins`, even to turn the rule off — nothing accumulates across
+// blocks, and a rule named without its plugin is silently ignored.
+//
+// Never put a lint directive on line 1 of a file: the JS-plugin bridge is off by
+// one on positions, and at line 1 it throws instead of reporting. See
+// dev/Linting.md.
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": [],
@@ -169,7 +173,6 @@
             "ignore": []
           }
         ],
-        "@eslint-community/eslint-comments/no-unlimited-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -593,22 +596,6 @@
       ],
       "rules": {
         "no-loop-func": "off"
-      }
-    },
-    {
-      "files": ["webui/**/*.{ts,tsx}"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "patterns": [
-              {
-                "message": "webui may only import from #src/shared/",
-                "regex": "^#src/(?!shared/)"
-              }
-            ]
-          }
-        ]
       }
     },
     {

@@ -39,8 +39,9 @@ updates:
           - "rollup"
           - "@rollup/*"
           - "rollup-plugin-*"
-      # oxlint replaced eslint, but three eslint plugins remain: oxlint runs
-      # them through its jsPlugins bridge, which has no native equivalent.
+      # oxlint replaced eslint, but four eslint plugins remain: oxlint runs them
+      # through its jsPlugins bridge, natively implementing none of their rules
+      # (unicorn is the partial case — see dev/Linting.md).
       lint-plugins:
         patterns:
           - "eslint-plugin-*"

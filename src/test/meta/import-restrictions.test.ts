@@ -189,8 +189,12 @@ describe("import restrictions", () => {
       )) {
         const rel = path.relative(projectRoot, file);
 
-        // Tests are exempt: a test may import whatever it exercises.
+        // Tests are exempt: a test may import whatever it exercises. Fixtures
+        // and case tables count as tests here, matching the paths the eslint
+        // block ignored — findSourceFiles only drops the project's narrower
+        // definition of a test file.
         if (/(^|\/)(tests?|test-utils|test-cases)\//.test(rel)) continue;
+        if (/-test-(?:case|fixtures)\.tsx?$/.test(rel)) continue;
 
         const lines = fs.readFileSync(file, "utf8").split("\n");
 

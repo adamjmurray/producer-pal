@@ -374,7 +374,7 @@ oxlint reports violations, consult it for strategies.
 
 Key oxlint limits (all ignoring blank/comment lines):
 
-- `max-lines-per-function`: 120. Exception: a webui hook's main `useHook()` may
+- `max-lines-per-function`: 115. Exception: a webui hook's main `useHook()` may
   use `eslint-disable-next-line max-lines-per-function` (not a whole-file
   disable).
 

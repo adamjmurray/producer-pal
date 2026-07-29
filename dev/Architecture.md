@@ -233,8 +233,8 @@ reaches across layers and is excluded.
 Two runtimes cooperate to serve every request. **V8** (the Max `v8` object,
 `src/live-api-adapter/`) holds the Live API and has **no filesystem**. **Node
 for Max** (`src/mcp-server/`) runs the Express/MCP service and **owns all
-filesystem access** (`node:fs`). Shipped `src/**` also cannot shell out — ESLint
-bans `child_process`.
+filesystem access** (`node:fs`). Shipped `src/**` also cannot shell out — the
+lint config bans `child_process`.
 
 The consequence for user-content and config features (global context, custom
 system prompt, `~/.producer-pal` skills overrides): **all filesystem reads and
