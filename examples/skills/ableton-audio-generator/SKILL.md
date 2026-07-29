@@ -60,6 +60,17 @@ over content that is already associated. For those two the final drop is a human
 gesture. Generate the file, stage it as a draggable Session clip, and say
 plainly that the drag is theirs to do. Do not promise to load it.
 
+## Translating the request
+
+`cookbook.md` maps the words people actually use — "gritty", "boomy",
+"metallic", "808", "dusty", "sounds cheap" — onto concrete parameters, with
+starting numbers that were rendered and listened to rather than guessed. It is
+target-agnostic, so read it **alongside** your target doc: the target doc owns
+the format contract, the cookbook owns the character.
+
+Reach for it twice — when the request describes a sound rather than specifies
+one, and again when the user asks for a change in their own words.
+
 ## Working method
 
 Generating once and declaring victory is the main failure mode. This is a loop,
@@ -73,7 +84,8 @@ and the user is in it:
 3. **Render and land it** in Live using the target's method, so they can hear it
    in the actual arrangement rather than describe it in the abstract.
 4. **Ask what to change**, in their words — darker, shorter, more air, less
-   click. Map that onto parameters and re-render. Say which knob you turned.
+   click. Map that onto parameters with `cookbook.md` and re-render. Say which
+   knob you turned.
 5. **Keep the script.** It is the artifact that makes iteration cheap, and it is
    theirs to keep editing after you're gone.
 
