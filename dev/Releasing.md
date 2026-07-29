@@ -258,6 +258,10 @@ troubleshooting.
 After testing succeeds:
 
 1. Review and merge the PR in the GitHub UI
+   - A squash merge prefills the body with every commit message on `dev`. One
+     grandfathered commit still carries an `AJM-NNN` reference (allowlisted in
+     `src/test/meta/no-linear-refs.test.ts`) — delete that line before merging
+     so the private ticket number stays out of `main`.
 2. Promote the github release
    - Go to the pre-release page on GitHub
    - Click "Edit"

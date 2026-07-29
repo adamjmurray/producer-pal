@@ -206,7 +206,11 @@ architecture.
 - **No Linear ticket references in the repo**: Public repo, private ticket
   numbers. Never write an `AJM-NNN` reference in any tracked file (comments,
   docs, test names) or commit/PR text — explain the reasoning directly. Enforced
-  by `src/test/meta/no-linear-refs.test.ts`.
+  by `src/test/meta/no-linear-refs.test.ts` for tracked files and for the commit
+  messages in `origin/main..HEAD` (the set a squash merge pastes into public
+  history). The commit scan is local-only — CI checks out shallow and has no
+  base ref to diff against — so run `npm run check` before pushing. PR titles
+  and bodies stay unguarded.
 
 - **Producer Pal Skills maintenance**: Returned by the ppal-connect tool
   (`src/tools/core/connect.ts`). Adjust it after bar|beat notation changes and
