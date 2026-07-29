@@ -107,6 +107,28 @@ export function deferredSave(): {
 }
 
 /**
+ * A save spy whose every call stays pending until the test resolves it by call
+ * index, so a test can hold several writes in flight at once and settle them in
+ * a chosen order. {@link deferredSave} covers the single-write case; this one is
+ * for overlaps where the same spy backs more than one write.
+ * @returns The save spy and a resolver taking the 0-based call index
+ */
+export function deferredSaveQueue(): {
+  save: ReturnType<typeof vi.fn>;
+  resolveCall: (index: number, saved: boolean) => void;
+} {
+  const resolvers: Array<(saved: boolean) => void> = [];
+  const save = vi.fn().mockImplementation(
+    () =>
+      new Promise<boolean>((r) => {
+        resolvers.push(r);
+      }),
+  );
+
+  return { save, resolveCall: (index, saved) => resolvers[index]?.(saved) };
+}
+
+/**
  * Type into the editor draft without advancing any timers, leaving the
  * debounced save armed but unfired.
  * @param result - The rendered hook's result handle

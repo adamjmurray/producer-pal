@@ -49,6 +49,13 @@ function pendingSaves(saves: Set<Promise<boolean>>): Promise<unknown> | null {
  * The UI still resolves correctly — use-doc's generation counter discards the
  * superseded echo — but the file on disk keeps whichever PUT the server happened
  * to handle last, so a poll can resurrect content the user just cleared.
+ *
+ * Chaining and registration are both SYNCHRONOUS, before any await — the same
+ * shape as flushSave. Awaiting `pending` first and registering afterwards would
+ * leave a window in which a second manual write reads a pre-registration
+ * snapshot of `saves`: with an autosave already in flight, a Clear and an Import
+ * would compute the same `pending`, then both resume when it settles and put two
+ * writes on the wire anyway. Only the DISPATCH defers.
  * @param saves - The live set of in-flight write promises
  * @param write - Dispatches the write; called only once the pending ones settle
  * @returns Whether the write succeeded
@@ -58,14 +65,14 @@ async function dispatchOrderedWrite(
   write: () => Promise<boolean>,
 ): Promise<boolean> {
   const pending = pendingSaves(saves);
-
-  if (pending != null) await pending;
-
   // Registered as a promise that SETTLES, matching flushSave: a rejection left
   // in the set would wedge every later clear/import on a rejecting Promise.all.
   // save()/clear() resolve false rather than throwing today — this keeps that
-  // from being load-bearing.
-  const dispatched = write().catch(() => false);
+  // from being load-bearing. pendingSaves' null fast path keeps the idle case
+  // dispatching in this very turn.
+  const dispatched = (
+    pending == null ? write() : pending.then(() => write())
+  ).catch(() => false);
 
   saves.add(dispatched);
 

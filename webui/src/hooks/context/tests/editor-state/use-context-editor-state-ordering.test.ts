@@ -16,6 +16,7 @@ import { act } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   deferredSave,
+  deferredSaveQueue,
   drainMicrotasks,
   flushDebounceWindow,
   renderReadyEditor,
@@ -253,6 +254,64 @@ describe("useContextEditorState write ordering", () => {
         await importPromise;
       });
       expect(save).toHaveBeenCalledWith("# imported");
+    });
+
+    it("orders an Import behind a Clear that is itself still waiting on an autosave", async () => {
+      // The three-way overlap, which the two-write cases above cannot reach:
+      // with nothing in flight they find an empty set, so dispatch and
+      // registration happen in the same turn and the ordering holds either way.
+      // Here an autosave is already on the wire, so Clear has to await before it
+      // can dispatch — and Clear resets the draft to "" synchronously, which
+      // makes a file dropped right after it skip the import confirm and reach
+      // dispatchOrderedWrite inside that await window. Registration must
+      // therefore be synchronous: if Clear registered only after awaiting, the
+      // Import would read the same pending set and both would hit the wire
+      // together the moment the autosave landed.
+      const { save, resolveCall } = deferredSaveQueue();
+      const { save: clear, resolveSave: resolveClear } = deferredSave();
+      const { result } = renderReadyEditor({ save, clear });
+
+      stubConfirm(true);
+
+      // 1. An autosave is in flight and held open.
+      await typeDraft(result, "draft");
+      await flushDebounceWindow();
+      expect(save).toHaveBeenCalledTimes(1);
+
+      // 2. Clear, blocked behind that autosave.
+      const { pending: clearPromise } = await startBlockedClear(result, clear);
+
+      // 3. Import while Clear is still waiting. The draft is "" by now, so this
+      //    takes the no-confirm path and dispatches straight away.
+      let importPromise: Promise<void> | undefined;
+
+      await act(() => {
+        importPromise = result.current.handleImport("# imported");
+      });
+      await drainMicrotasks();
+      expect(save).toHaveBeenCalledTimes(1);
+
+      // 4. Release the autosave. Clear may now go out; the Import may not.
+      await act(async () => {
+        resolveCall(0, true);
+      });
+      await drainMicrotasks(5);
+      expect(clear).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledTimes(1);
+
+      // 5. Release Clear. Only now does the Import reach the wire.
+      await act(async () => {
+        resolveClear(true);
+        await clearPromise;
+      });
+      await drainMicrotasks(5);
+      expect(save).toHaveBeenNthCalledWith(2, "# imported");
+
+      // Settle the import's own POST so nothing is left pending on teardown.
+      await act(async () => {
+        resolveCall(1, true);
+        await importPromise;
+      });
     });
 
     it("does not wedge the next manual write when a clear POST rejects", async () => {
