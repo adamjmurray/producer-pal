@@ -6,23 +6,25 @@ Do this early in the development cycle, ideally soon after the previous release.
 This way, whenever going back to a previous release (e.g. to confirm a behavior
 is a regression), it's always clear which build is running.
 
-1. Bump the version:
+1. Open the next release cycle:
 
    ```sh
-   npm run version:bump        # patch: 0.9.0 → 0.9.1
-   npm run version:bump:minor  # minor: 0.9.1 → 0.10.0
-   npm run version:bump:major  # major: 0.9.1 → 1.0.0
+   npm run version:bump        # patch: 0.9.0 → 0.9.1-rc1
+   npm run version:bump:minor  # minor: 0.9.1 → 0.10.0-rc1
+   npm run version:bump:major  # major: 0.9.1 → 1.0.0-rc1
    ```
 
-   If unsure, start with patch. The version can be re-bumped during a
-   development cycle.
+   If unsure, start with patch. Any of these can be re-run during the cycle to
+   retarget: from `0.9.1-rc3`, `version:bump:minor` gives `0.10.0-rc1`. They
+   ignore the suffix that's already there and restart the candidate count,
+   because they name where the release is going, not where it's been.
 
 2. Commit and push:
 
    ```sh
    npm run check
    git add .
-   git commit -m "bump version to X.Y.Z"
+   git commit -m "bump version to X.Y.Z-rc1"
    git push origin dev
    ```
 
@@ -33,14 +35,40 @@ and see how much is accumulating for the release.
 
 ### About the Versioning System
 
-The version bump script updates the following:
+**Every build says what it is.** A release candidate is a real version —
+`2.1.0-rc1`, not `2.1.0` with a tag draped over it — and it's baked into the
+artifacts, not just git. Nothing downstream has to infer which build it's
+holding.
 
-1. `src/shared/config.ts` controls the version reported by the runtime (Max for
-   Live device UI / MCP server)
-2. `claude-desktop-extension/manifest.json` controls version in Claude Desktop
-   Extension (this file is generated during the build)
-3. `npm/package.json` controls the `producer-pal` npm module's version
-4. `package.json` and `claude-desktop-extension/package.json` for consistency
+The rest of the cycle moves within that version:
+
+```sh
+npm run version:bump:rc  # 2.1.0-rc1 → 2.1.0-rc2, for each re-cut
+npm run version:bump:ga  # 2.1.0-rc4 → 2.1.0, at promotion
+```
+
+`version:bump:rc` refuses to run on a release version and `version:bump:ga`
+refuses to run on one too, so a cycle can only be opened by choosing its size
+(patch/minor/major) and can only be closed once. There's an escape hatch that
+skips every rule and only checks the shape:
+
+```sh
+npm run version:bump:to -- 2.1.0-rc1
+```
+
+The bump script writes the version to nine places across four files:
+
+1. `src/shared/config.ts` — the version the runtime reports (Max for Live device
+   UI / MCP server), and the one the build itself uses
+2. `claude-desktop-extension/manifest.json` — the version Claude Desktop shows
+   (generated during the build)
+3. `npm/package.json` — the `producer-pal` npm module's version
+4. `package.json`, `claude-desktop-extension/package.json`, and the `version` +
+   `packages[""].version` fields of all three lockfiles
+
+Nothing reconciles those at runtime — whichever copy an artifact happens to read
+is what it claims to be — so `src/test/meta/version-agreement.test.ts` asserts
+they're identical, and `npm run tag` re-checks the config.ts one.
 
 ## Step 0: Checklist before releasing
 
@@ -90,77 +118,84 @@ release build.
 
 ## Step 2: Create GitHub Pre-Release
 
-1. Create and push the version tag. `-s` signs it and `-m` gives it a message,
-   which a signed (annotated) tag requires:
+1. Tag the build you just checked:
 
    ```sh
-   git tag -s -m "vX.Y.Z" vX.Y.Z
-   git push origin dev vX.Y.Z
+   npm run tag
    ```
 
-   Create the tag here rather than letting GitHub create it in Step 2 — a tag
+   This runs after the build, not before, so the tag goes on something that has
+   been looked at. It creates the tag locally and prints the push command;
+   nothing is public until you run that. It refuses to move an existing tag — if
+   the build needs to change, that's a new candidate, not a re-tag (see
+   [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)).
+
+   Tag here rather than letting GitHub create one in the next step — a tag
    GitHub makes is lightweight and unsigned.
 
 2. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
 3. Click "Draft a new release"
-4. Release title: `X.Y.Z`
-5. Choose tag: `vX.Y.Z`
+4. Release title: `X.Y.Z-rcN`
+5. Choose tag: `vX.Y.Z-rcN`
 6. Upload files from `release/`:
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
 7. Check "Set as a pre-release"
-8. Write release notes, ending with the pre-release notice so testers know a
-   same-version update prompt is expected:
+8. Write release notes, ending with the pre-release notice:
 
    ```md
    > ⚠️ **This is a pre-release.** Producer Pal's update check ignores
-   > pre-releases, so it won't prompt you while testing — if these files are
-   > replaced, I'll let you know directly. Once this is promoted to a final
-   > release, you may be prompted to update even though the version number
-   > hasn't changed; download from this page again when that happens.
+   > pre-releases, so it won't prompt you while testing — if a newer candidate
+   > is cut, I'll let you know directly. You'll be prompted once this becomes a
+   > final release.
    ```
 
 9. Publish pre-release
 
+Each candidate gets its own pre-release, because each one is its own version
+with its own tag and its own artifacts. Superseded ones can be deleted from the
+releases page once nobody is testing them.
+
 ### How update detection works
 
-An installed copy has to know it's stale even when the version number can't tell
-it — pre-release testing regularly replaces the files under an existing version.
-Producer Pal bakes the commit SHA it was built from into its bundles, and when
-the published version matches its own, it resolves the release's tag to a commit
-and compares. Different commit ⇒ the files were re-cut after that copy was
-downloaded ⇒ the update prompt appears.
+An installed copy asks GitHub for `/releases/latest` once — when the Max for
+Live device loads the server, and never again — and compares the version it gets
+back against its own. Newer ⇒ show the update prompt. That's the whole
+mechanism. It needs nothing at release time beyond publishing the release.
 
-This rides entirely on the tag, so it needs nothing extra at release time — but
-it does mean **the release tag must point at the commit the artifacts were built
-from.** `npm run release` prints the build it baked in; tag that commit.
+Once per process is a hard requirement, not an optimization. GitHub's
+unauthenticated API allows 60 requests an hour **per IP**, shared with
+everything else on that IP, so the chat UI reads the server's cached answer
+(`GET /update`) rather than asking GitHub each time it's opened. See
+`src/mcp-server/helpers/http/update-check.ts`.
 
-**Pre-releases are invisible to the check, on purpose.** Producer Pal asks
-GitHub for `/releases/latest`, which by definition skips anything marked "Set as
-a pre-release." So while X.Y.Z is in pre-release testing, everyone on the
-previous stable release still sees that previous release as the latest and is
-never nudged toward a beta. There is no opt-in beta track, and this is the
-substitute for one.
+**Pre-releases are invisible to the check, on purpose.** `/releases/latest`
+skips anything marked "Set as a pre-release" by definition. So while `X.Y.Z-rcN`
+is in testing, everyone on the previous stable release still sees that as the
+latest and is never nudged toward a candidate. There's no opt-in beta track, and
+this is the substitute for one.
 
-That makes the build comparison dormant for the whole pre-release window, which
-shapes what to expect at each step:
+What that means at each step:
 
-- **Re-cutting a pre-release moves the tag**, but testers are **not** prompted
-  at that moment — the pre-release isn't "latest" to anyone, so their check
-  returns early. Tell them directly; you're already in contact with them. (This
-  is the delete-and-recreate in
-  [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release).)
-- **Promoting to a final release makes the tag visible**, and that is when a
-  tester still holding a superseded pre-release build finally gets prompted.
-  This is the case the mechanism exists for.
-- **Promoting a pre-release unchanged leaves the tag alone**, so a tester who
-  picked up the final pre-release build is not prompted to re-download bytes
-  they already have.
+- **A tester on `2.1.0-rc1` is never prompted to "downgrade"** to the older
+  stable release the API hands back. The comparison is strictly directional, so
+  an older version is simply not an update.
+- **They are prompted the moment `2.1.0` is published**, because `2.1.0-rc1` and
+  `2.1.0` are genuinely different versions. A semver pre-release sorts before
+  the release of the same numbers, which is exactly the answer wanted here.
+- **A new candidate does not prompt anyone**, since it's still a pre-release.
+  Tell testers directly; you're already in contact with them.
 
-If the tag can't be resolved — offline, rate-limited, or a release published
-without a tag Producer Pal was built from — the check falls back to comparing
-version numbers alone. Nothing breaks; the same-version case just goes
-undetected.
+This is why candidates carry a real `-rcN` rather than being tagged copies of
+`X.Y.Z`. When every build of a cycle called itself `2.1.0`, the version string
+couldn't distinguish them, and telling a re-cut build apart from the one a
+tester already had took a second GitHub request to resolve the release's tag to
+a commit — twice the rate-limit cost, to answer something the version number now
+answers by itself.
+
+The commit SHA is still baked into the artifacts and shown next to the version
+in the device UI, but it's diagnostic only: it says which commit produced these
+bytes when a bug report and a version number disagree. Nothing branches on it.
 
 ## Step 3: Test Pre-Release
 
@@ -216,39 +251,41 @@ in CI — see `e2e/ui/README.md`.
       `provider-factories.ts`), or LM Studio returns a 400 "Invalid type for
       'input'".
 
-## Step 4: Publish to npm / test npx
+## Step 4: Test the npm portal locally
 
-1. Login to NPM:
+**Nothing is published to npm during pre-release.** An `-rcN` never goes to the
+registry: a published version can't be unpublished or replaced, and npm has no
+notion of a version that's real-but-not-current beyond dist-tags, which the
+`latest` tag would still have to be steered around. `npm/package.json` enforces
+it — `prepublishOnly` runs a guard that fails on any version containing a `-`.
 
-   ```sh
-   npm login
-   ```
+Test the exact bytes that would be published, from a local tarball instead:
 
-2. Publish the package under the `next` tag:
+```sh
+cd npm
+npm pack                              # → producer-pal-X.Y.Z-rcN.tgz
+tar -tzf producer-pal-*.tgz           # inspect contents
+npm install -g ./producer-pal-*.tgz
+```
 
-   ```sh
-   cd npm && npm publish --tag next
-   ```
+Then point an MCP client (LM Studio or similar) at the globally installed
+command:
 
-   Publishing to `next` rather than `latest` is what keeps this step safe to run
-   before testing finishes. A published version can never be replaced on npm, so
-   publishing straight to `latest` both puts untested portal code in front of
-   every `npx producer-pal` user and burns the version number — any fix found
-   afterward has to ship as a new version. Step 5 flips the tag once testing
-   passes.
-
-3. Test the published package with LM Studio or another MCP client:
-
-   ```json
-   "producer-pal": {
-     "command": "npx",
-     "args": ["-y", "producer-pal@next", "--small-model-mode"]
-   }
-   ```
+```json
+"producer-pal": {
+  "command": "producer-pal",
+  "args": ["--small-model-mode"]
+}
+```
 
 The `--small-model-mode` option should automatically enable small model mode.
+Connect and confirm `ppal-read-live-set` is called, then clean up:
 
-4. Connect and confirm `ppal-read-live-set` is called
+```sh
+npm uninstall -g producer-pal
+rm npm/producer-pal-*.tgz
+cd ..
+```
 
 See [Publishing to npm](#publishing-to-npm) for more details and
 troubleshooting.
@@ -257,26 +294,54 @@ troubleshooting.
 
 After testing succeeds:
 
-1. Review and merge the PR in the GitHub UI
+1. Promote the version to GA **on `dev`, before merging**:
+
+   ```sh
+   npm run version:bump:ga   # 2.1.0-rc4 → 2.1.0
+   npm run check
+   git add .
+   git commit -m "bump version to X.Y.Z"
+   git push origin dev
+   ```
+
+   Order matters: producer-pal.org is built from `main` and puts the version in
+   its install instructions, so merging while `dev` still says `-rc4` publishes
+   a docs site advertising a release candidate.
+
+2. Review and merge the PR in the GitHub UI
    - A squash merge prefills the body with every commit message on `dev`. One
      grandfathered commit still carries an `AJM-NNN` reference (allowlisted in
      `src/test/meta/no-linear-refs.test.ts`) — delete that line before merging
      so the private ticket number stays out of `main`.
-2. Promote the github release
-   - Go to the pre-release page on GitHub
-   - Click "Edit"
-   - Uncheck "Set as a pre-release"
-   - Remove the pre-release notice from the notes
-   - Update release (no need to re-upload files)
-3. Point npm's `latest` tag at the published version:
+
+3. Build, tag, and release the GA version. It's a rebuild, not a re-labelling —
+   the artifacts have to carry `X.Y.Z`, not `X.Y.Z-rc4`:
 
    ```sh
-   npm dist-tag add producer-pal@X.Y.Z latest
+   npm run release   # then freeze the Max device, as in Step 1
+   npm run tag       # creates vX.Y.Z
    ```
+
+   Create a new GitHub release for `vX.Y.Z` (not a pre-release), upload the
+   fresh files, and leave the pre-release notice out of the notes. This is the
+   release everyone gets prompted to install.
+
+4. Publish to npm — the first and only publish of this version:
+
+   ```sh
+   npm login
+   cd npm && npm publish && cd ..
+   ```
+
+   No `--tag next` dance: what's being published has already been tested as a
+   tarball, and the version is a GA version, so `latest` is where it belongs.
 
 ## Fixing Issues During Pre-Release
 
 If problems are found during pre-release testing:
+
+Replacing files under a version that's already been handed out is what the
+candidate numbering exists to avoid. A fix means the next candidate:
 
 1. **Fix the issues** (on dev branch)
 
@@ -286,48 +351,39 @@ If problems are found during pre-release testing:
    git commit -m "Fix: description of fix"
    ```
 
-2. **Delete and recreate the tag**
+2. **Cut the next candidate**
 
    ```sh
-   git push origin --delete vX.Y.Z
-   git tag -d vX.Y.Z
-   git tag -s -m "vX.Y.Z" vX.Y.Z
-   git push origin dev vX.Y.Z
+   npm run version:bump:rc   # 2.1.0-rc1 → 2.1.0-rc2
+   npm run check
+   git add .
+   git commit -m "bump version to X.Y.Z-rcN"
+   git push origin dev
    ```
 
-3. **Rebuild**
+3. **Rebuild and tag**
 
    ```sh
    npm run release
    # Freeze Max device again
+   npm run tag
+   git push origin dev vX.Y.Z-rcN
    ```
 
-4. **Update the pre-release**
-   - Go to the existing pre-release on GitHub
-   - Delete the old files
-   - Upload the new files
-   - Nothing else to update — no need to recreate the release
-   - Tell the testers directly. Re-tagging in step 2 does **not** prompt them
-     while this is still a pre-release; it's what makes them get prompted at GA
-     promotion if they never picked up this re-cut (see
-     [How update detection works](#how-update-detection-works))
+4. **Publish a new pre-release** for the new tag (Step 2), and tell the testers
+   directly — a pre-release never prompts anyone
+   ([How update detection works](#how-update-detection-works)). The superseded
+   pre-release can be deleted once nobody's on it.
 
 5. **Retest** and repeat if necessary
 
-This is acceptable for pre-releases since they're explicitly marked as not
-production-ready.
+Any number of candidates can burn this way at no cost: they're never published
+to npm, and the version people upgrade to is still the plain `X.Y.Z` at the end
+of the cycle.
 
-If problems are discovered after publishing to npm, republish under the same
-`next` tag with a fresh version — npm never lets a published version be
-replaced, so the burned number is skipped:
-
-```sh
-npm run version:bump   # X.Y.Z is spent; move to X.Y.Z+1
-cd npm && npm publish --tag next
-```
-
-`latest` still points at the previous release throughout, so no `npx` user is
-affected. Only Step 5's `dist-tag add` promotes the new version.
+If a problem is discovered **after** Step 5's npm publish, that version is spent
+— npm never lets a published version be replaced. Open a new cycle
+(`npm run version:bump` → `X.Y.Z+1-rc1`) and run the process again.
 
 ## Publishing to npm
 
@@ -337,8 +393,9 @@ can run `npx producer-pal` to connect any MCP client to Producer Pal.
 **Prerequisites:**
 
 - npm account with publish access to `producer-pal` package
-- Version numbers must already be updated in `package.json` (root) and
-  `npm/package.json`
+- A GA version — `prepublishOnly` refuses to publish anything with a `-` in it
+- Version numbers already updated everywhere (`npm run version:bump:*` does
+  this; `npm run check` asserts it)
 
 **Publishing Process:**
 
@@ -358,8 +415,8 @@ npm install -g ./producer-pal-X.Y.Z.tgz
 npx producer-pal # actually use this with an MCP Client, running it on the command line does nothing visible
 npm uninstall -g producer-pal
 
-# When ready to publish (see Step 4 for why this is not `latest`)
-npm publish --tag next
+# When ready to publish
+npm publish
 
 # Return to root directory
 cd ..
@@ -367,8 +424,9 @@ cd ..
 
 **Notes:**
 
-- The `prepublishOnly` hook in `npm/package.json` automatically runs
-  `npm run build` before publishing to ensure fresh build artifacts
+- The `prepublishOnly` hook in `npm/package.json` runs `guard:no-prerelease`
+  (which fails on an `-rcN` version) and then `npm run build`, so a publish
+  always ships fresh artifacts of a releasable version
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
   - `LICENSE` (GPL 3.0 license)
