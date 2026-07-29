@@ -1,11 +1,11 @@
 # Producer Pal example skills
 
 Agent skills that pair with [Producer Pal](https://producer-pal.org) to compose
-music in Ableton Live. Each is a self-contained folder with a `SKILL.md` (and,
-for the generators, a zero-dependency Node.js script). Copy the folders you want
-into your agent's skills directory.
+music in Ableton Live. Each is a self-contained folder with a `SKILL.md` and,
+where relevant, zero-dependency Node.js scripts. Copy the folders you want into
+your agent's skills directory.
 
-## Connect first, then generate
+## Connect first
 
 - **[`producer-pal`](producer-pal/)** — the foundation. Connects to Ableton Live
   over Producer Pal's local REST API and bundles a dependency-free CLI
@@ -44,13 +44,18 @@ a draggable Session clip); only the final drop is manual.
 
 ## Render and analyze
 
-| Skill                                 | Does                                                                                                                                                                                                                             |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **[`analyze-audio`](analyze-audio/)** | Render audio out of Live (export the Main mix / a track over a time range, or bounce a clip to a new track) and analyze the `.wav` with Google's Gemini API. **macOS only** (AppleScript UI automation); needs `GEMINI_API_KEY`. |
+- **[`ableton-analyze-audio`](ableton-analyze-audio/)** — get audio _out_ of
+  Live. Two halves that also work on their own:
+  - **Render** the Main mix or a single track to a file (whole arrangement).
+    **macOS only** — AppleScript UI automation. No API key needed, so this is
+    also the way to get a plain bounce or stem on disk.
+  - **Analyze** any audio file with Google's Gemini API for feedback on timbre,
+    mix, and arrangement. Needs `GEMINI_KEY` (or `GEMINI_API_KEY`); works on
+    files from anywhere, no Ableton involved.
 
 Ableton exposes no Live API for rendering, so this one drives Live's
 menus/dialogs with AppleScript and then polls for the rendered file — a
-different shape from the generators above, which synthesize files directly in
+different shape from the generator above, which synthesizes files directly in
 Node.
 
 ## Shared conventions

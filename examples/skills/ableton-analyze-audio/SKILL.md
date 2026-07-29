@@ -1,18 +1,26 @@
 ---
-name: analyze-audio
+name: ableton-analyze-audio
 description:
-  Render audio out of Ableton Live (the whole mix or a single track) and analyze
-  it with Google's Gemini API. Use when the user wants to hear/analyze how
-  something sounds, render a mixdown or stem, or get feedback on timbre, mix, or
-  arrangement. macOS + Ableton Live 12 only.
+  Get audio out of Ableton Live and optionally hand it to an audio-capable LLM.
+  Two halves that work independently: render/bounce/export the whole mix or a
+  single track to a file (macOS UI automation, no API key needed), and analyze
+  any audio file with Google's Gemini API (needs a key, works on files from
+  anywhere). Use when the user wants a mixdown, a stem, or a bounce of what
+  they've got — or wants feedback on how something actually sounds, its timbre,
+  mix, or arrangement. Rendering is macOS + Ableton Live 12 only.
 ---
 
-# Analyze Audio
+# Ableton: Render and Analyze Audio
 
 Get audio **out** of Ableton Live and hand it to an audio-capable LLM for
 feedback. Ableton exposes no Live API for rendering, so `render.mjs` drives
 Live's Export dialog with AppleScript (macOS accessibility automation), then
 `analyze-audio.mjs` sends the result to Gemini.
+
+**The two scripts stand alone.** Use `render.mjs` by itself whenever the user
+wants a bounce, a stem, or a mixdown on disk — no API key or analysis involved.
+Use `analyze-audio.mjs` by itself on any audio file, wherever it came from; it
+has nothing to do with Live. Together they're the loop below.
 
 **Why a skill and not a Producer Pal tool?** Rendering needs UI automation and
 analysis needs an API key + network — neither fits the Max-for-Live runtime
@@ -24,15 +32,25 @@ a temp file that you delete after analysis; pass `--out <dir>` to keep it.
 
 ## Prerequisites
 
+Split by half — a missing Gemini key does not block a render, and rendering's
+macOS requirement does not block analyzing a file you already have.
+
+**To render (`render.mjs`):**
+
 - **macOS** with **Accessibility permission** for whatever app runs the agent
   (Terminal, your IDE, etc.): System Settings → Privacy & Security →
   Accessibility. Without it the keystrokes silently do nothing.
 - **Ableton Live 12** running and **frontmost**, with the material you want in
   the **Arrangement** (Export renders the arrangement timeline).
+- English Live UI and default shortcuts are assumed.
+
+**To analyze (`analyze-audio.mjs`):**
+
 - A **`GEMINI_KEY`** (or `GEMINI_API_KEY`) in the environment, or pass
   `--api-key`. Model IDs move — override with `--model` / `GEMINI_MODEL`.
-- **Node.js 18+** (global `fetch`; no npm packages).
-- English Live UI and default shortcuts are assumed.
+- Network access. Any platform; no Ableton involved.
+
+**Both:** Node.js 18+ (global `fetch`; no npm packages).
 
 ## Render — whole mix or one track
 
