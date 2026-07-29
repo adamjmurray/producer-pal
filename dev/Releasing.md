@@ -125,10 +125,15 @@ release build.
    ```
 
    This runs after the build, not before, so the tag goes on something that has
-   been looked at. It creates the tag locally and prints the push command;
-   nothing is public until you run that. It refuses to move an existing tag — if
-   the build needs to change, that's a new candidate, not a re-tag (see
+   been looked at. `npm run release` records the version and commit it built
+   from, and this checks the tag against them — commit anything, or bump the
+   version, between the two steps and it refuses rather than tagging code the
+   artifacts didn't come from. It also refuses to move an existing tag: if the
+   build needs to change, that's a new candidate, not a re-tag (see
    [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)).
+
+   It creates the tag locally and prints the push command. Nothing is public
+   until you run that.
 
    Tag here rather than letting GitHub create one in the next step — a tag
    GitHub makes is lightweight and unsigned.

@@ -57,6 +57,41 @@ if (git("status", "--porcelain") !== "") {
   );
 }
 
+// What the previous flow had no way to check. Building and tagging are separate
+// steps by design, so the tag can drift off the artifacts — commit something
+// after the build and the tag points at code nothing was built from. It used to
+// be worse than untidy: the update check resolved the release tag to a commit
+// and compared it against the SHA baked into the build, so a tag one commit
+// ahead made every installed copy think it had been superseded, permanently.
+// That comparison is gone, but the tag should still mean what it says.
+const build = readBuildInfo();
+
+if (build == null) {
+  fail(
+    "Nothing has been built from this checkout.",
+    "release/build-info.json is missing. Run `npm run release` first — this",
+    "tags a build you have already looked at, so there has to be one.",
+  );
+}
+
+if (build.version !== version) {
+  fail(
+    `The build in release/ is ${build.version}, but package.json says ${version}.`,
+    `The version moved after the build, so ${tag} would name artifacts that do`,
+    "not exist. Rebuild: npm run release",
+  );
+}
+
+const head = git("rev-parse", "--short=7", "HEAD");
+
+if (build.commit !== head) {
+  fail(
+    `The build in release/ came from ${build.commit}, but HEAD is ${head}.`,
+    "Something was committed after the build, so the tag would point at code",
+    "the artifacts were not built from. Rebuild: npm run release",
+  );
+}
+
 if (git("tag", "--list", tag) !== "") {
   fail(
     `${tag} already exists locally.`,
@@ -77,14 +112,45 @@ if (existsOnRemote(tag)) {
 // -s signs it, which makes it annotated, which is why -m is required.
 gitInteractive("tag", "-s", "-m", tag, tag);
 
-const sha = git("rev-parse", "--short=7", "HEAD");
-
-console.log(`\n✅ Created ${tag} at ${sha}`);
-console.log(`   Confirm that matches the build \`npm run release\` printed.\n`);
-console.log("Push it (nothing is public until you do):");
+console.log(
+  `\n✅ Created ${tag} at ${head}, the commit release/ was built from`,
+);
+console.log("\nPush it (nothing is public until you do):");
 console.log(`   git push origin HEAD ${tag}\n`);
 
 // --- Helpers below ---
+
+interface BuildInfo {
+  version: string;
+  commit: string;
+}
+
+/**
+ * Reads what the last `npm run release` recorded about its build.
+ * @returns The build's version and commit, or null if nothing has been built
+ */
+function readBuildInfo(): BuildInfo | null {
+  let raw;
+
+  try {
+    raw = readFileSync(join(rootDir, "release/build-info.json"), "utf8");
+  } catch {
+    return null;
+  }
+
+  const parsed: unknown = JSON.parse(raw);
+
+  if (
+    parsed == null ||
+    typeof parsed !== "object" ||
+    !("version" in parsed) ||
+    !("commit" in parsed)
+  ) {
+    return null;
+  }
+
+  return { version: String(parsed.version), commit: String(parsed.commit) };
+}
 
 /**
  * Runs a git command and captures its output.

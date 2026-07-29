@@ -11,6 +11,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,6 +84,16 @@ if (!existsSync(dxtSource)) {
 
 copyFileSync(dxtSource, dxtDest);
 console.log("\n✅ Copied Producer_Pal.mcpb to release/");
+
+// Building and tagging are separate steps so the tag lands on artifacts someone
+// has looked at. The gap between them is the risk: a commit, or a version bump,
+// made in between moves the tag off what was built without anything noticing.
+// `npm run tag` reads this back and refuses in that case. Gitignored with the
+// rest of release/.
+writeFileSync(
+  join(releaseDir, "build-info.json"),
+  JSON.stringify({ version: pkg.version, commit: buildSha }, null, 2) + "\n",
+);
 
 console.log("\n📋 Next steps:");
 console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
