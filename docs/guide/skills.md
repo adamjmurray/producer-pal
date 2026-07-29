@@ -178,6 +178,24 @@ into the skill folder.
 
 :::
 
+## Companion skills
+
+The `producer-pal` skill is the connection. Two more skills in the same folder
+build on it, and are installed the same way — copy the folder into your agent's
+skills directory:
+
+- **`ableton-audio-generator`** — synthesize audio from scratch with plain
+  Node.js DSP and place it in Live: drum kits and Drum Racks, samples for
+  Simpler, wavetables, reverb impulse responses, and open-ended clips like
+  drones and textures. The agent writes the DSP for what you asked for; a shared
+  library handles WAV encoding so custom algorithms are cheap to try.
+- **`analyze-audio`** — render audio out of Live and analyze it with Google's
+  Gemini API. macOS only, and needs a `GEMINI_API_KEY`.
+
+See the
+[skills README](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills)
+for the full list.
+
 ## Source
 
 - Skill folder:
