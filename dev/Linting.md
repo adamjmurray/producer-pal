@@ -28,6 +28,34 @@ npx @oxlint/migrate eslint.config.js --type-aware --js-plugins --with-nursery
 That converts 226 of 262 rules and reproduces every override block. The header
 comment in `.oxlintrc.json` lists the edits the generator cannot make itself.
 
+## How the config is organized
+
+The generator emitted one override per eslint flat-config block, each spelling
+out its complete rule set — 1262 entries over 2354 lines, because eslint's
+`rules` entries **replace** rather than merge, so every block had to repeat
+everything it wanted. oxlint's overrides **do** merge (top-level first, then
+each matching override in array order, later winning per rule), so that
+repetition buys nothing.
+
+The blocks are therefore grouped by which trees share a rule. Each rule appears
+exactly once, in a block whose `files` is the union of the trees that carried it
+— 296 entries over 876 lines, with no rule enabled or disabled anywhere it was
+not before. Read a block's `files` as "these trees agree about these rules".
+
+This is mechanically equivalent, and was verified as such rather than assumed:
+for all 1243 files oxlint lints, the resolved rule map and `env` are identical
+between the old config and the new one. A clean `npm run lint` proves nothing
+here — both configs report zero — so the check has to be on the resolution, not
+the outcome.
+
+To change one tree's rules, move the rule into a block matching only that tree.
+Do **not** edit a shared block's `files` — that silently changes every other
+tree in it.
+
+Two kinds of block follow the groups: keys-only blocks carrying `env` per tree
+(globals are not rules, so they have no group to belong to), then the narrow
+exceptions — a rule turned off for one path, each with its reason.
+
 All 26 type-aware `@typescript-eslint` rules are native, through
 `oxlint-tsgolint` (a typescript-go checker, stable since 2026-07). Four plugins
 run through oxlint's ESLint-compatible `jsPlugins` bridge, so their packages
