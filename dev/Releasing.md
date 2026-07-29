@@ -371,7 +371,7 @@ cd ..
   `npm run build` before publishing to ensure fresh build artifacts
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
-  - `LICENSE` (MIT license)
+  - `LICENSE` (GPL 3.0 license)
   - `licenses/` (only portal dependencies: MCP SDK, zod)
   - `README.md` (npm-specific documentation)
   - `producer-pal-logo.svg` (logo for npm page)
