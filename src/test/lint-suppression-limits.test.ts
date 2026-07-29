@@ -22,9 +22,9 @@ type TreeLimits = Record<string, number>;
 // SELF-REFERENCE: this file is itself a srcTests file, so the pattern
 // definitions and error strings below match themselves. Every srcTests limit
 // includes a floor of self-matches that no cleanup can remove — annotated as
-// "N self". Subtract it to read the real suppression debt. Two of the maps
-// below are currently 100% self-reference (zero real suppressions in any src
-// test file), so their srcTests limits are already as low as they can go.
+// "N self". Subtract it to read the real suppression debt. The coverage map
+// below is currently 100% self-reference (no src test file suppresses coverage
+// at all), so its srcTests limit is already as low as it can go.
 // Mentioning a pattern literally in this comment would raise its own count.
 const ESLINT_DISABLE_LIMITS: TreeLimits = {
   src: 10,
@@ -36,23 +36,18 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   src: 0,
   srcTests: 17, // 15 real + 2 self
-  scripts: 4, // Accessing private MCP SDK properties (_registeredTools, _serverVersion)
+  scripts: 3, // Accessing the MCP SDK's private _serverVersion
   webui: 0,
 };
 
-// TODO: This looks to be enforced by eslint, so we can probably safely simplify and remove it here
-const TS_NOCHECK_LIMITS: TreeLimits = {
-  src: 0,
-  srcTests: 3, // 0 real + 3 self (pattern definitions)
-  scripts: 0,
-  webui: 0,
-};
-
+// Counts only the directives that open a region (start, next, …). "v8 ignore
+// stop" is exempt: pairing it with its start double-counts one suppression and
+// makes the limits read as twice the real debt.
 const V8_IGNORE_LIMITS: TreeLimits = {
-  src: 8, // Defensive guards with caller guarantees/lookup tables
-  srcTests: 8, // 0 real + 8 self (pattern definitions + description enforcement)
+  src: 4, // Defensive guards with caller guarantees/lookup tables
+  srcTests: 7, // 0 real + 7 self (pattern definition + description enforcement)
   scripts: 0,
-  webui: 13, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
+  webui: 8, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
 };
 
 const TREES = Object.keys(ESLINT_DISABLE_LIMITS);
@@ -76,14 +71,8 @@ const SUPPRESSION_CONFIGS: Record<string, SuppressionConfig> = {
     errorSuffix:
       "Consider fixing the type issues or improving type definitions.",
   },
-  "@ts-nocheck": {
-    pattern: /@ts-nocheck/,
-    limits: TS_NOCHECK_LIMITS,
-    errorSuffix:
-      "Add JSDoc type annotations and remove @ts-nocheck to enable type checking.",
-  },
   "v8 ignore": {
-    pattern: /v8 ignore/,
+    pattern: /v8 ignore (?!stop)/,
     limits: V8_IGNORE_LIMITS,
     errorSuffix:
       "Consider restructuring code to make error paths testable instead of ignoring coverage.",
