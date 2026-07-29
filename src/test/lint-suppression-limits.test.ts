@@ -18,16 +18,24 @@ type TreeLimits = Record<string, number>;
 
 // Per-tree limits for lint suppressions (ratcheted to current counts)
 // "srcTests" checks test files in src/ (vs "src" which excludes test files)
+//
+// SELF-REFERENCE: this file is itself a srcTests file, so the pattern
+// definitions and error strings below match themselves. Every srcTests limit
+// includes a floor of self-matches that no cleanup can remove — annotated as
+// "N self". Subtract it to read the real suppression debt. Two of the maps
+// below are currently 100% self-reference (zero real suppressions in any src
+// test file), so their srcTests limits are already as low as they can go.
+// Mentioning a pattern literally in this comment would raise its own count.
 const ESLINT_DISABLE_LIMITS: TreeLimits = {
   src: 10,
-  srcTests: 18,
+  srcTests: 16, // 14 real + 2 self
   scripts: 0,
   webui: 4,
 };
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   src: 0,
-  srcTests: 17,
+  srcTests: 17, // 15 real + 2 self
   scripts: 4, // Accessing private MCP SDK properties (_registeredTools, _serverVersion)
   webui: 0,
 };
@@ -35,14 +43,14 @@ const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
 // TODO: This looks to be enforced by eslint, so we can probably safely simplify and remove it here
 const TS_NOCHECK_LIMITS: TreeLimits = {
   src: 0,
-  srcTests: 3, // This test file's pattern definitions
+  srcTests: 3, // 0 real + 3 self (pattern definitions)
   scripts: 0,
   webui: 0,
 };
 
 const V8_IGNORE_LIMITS: TreeLimits = {
   src: 8, // Defensive guards with caller guarantees/lookup tables
-  srcTests: 8, // This test file's pattern definitions + description enforcement
+  srcTests: 8, // 0 real + 8 self (pattern definitions + description enforcement)
   scripts: 0,
   webui: 13, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
 };
