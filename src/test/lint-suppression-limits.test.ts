@@ -18,7 +18,15 @@ const projectRoot = path.resolve(import.meta.dirname, "../..");
 // union makes a missing entry a compile error: with Record<string, number> a
 // forgotten tree read back as undefined, and `count > undefined` is false, so
 // the tree silently stopped being enforced.
-const TREES = ["src", "srcTests", "scripts", "webui", "webuiTests"] as const;
+const TREES = [
+  "src",
+  "srcTests",
+  "scripts",
+  "webui",
+  "webuiTests",
+  "evals",
+  "evalsTests",
+] as const;
 
 type Tree = (typeof TREES)[number];
 type TreeLimits = Record<Tree, number>;
@@ -43,6 +51,11 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
   // yielding), 5 only-throw-error (non-Error throw branches), 2 no-deprecated
   // (need the undoctored DOM factory), 1 no-unnecessary-condition
   webuiTests: 17,
+  // 1 require-atomic-updates: the agent-CLI session id is read, awaited across,
+  // then written — safe only because turns run sequentially, which ESLint
+  // can't see
+  evals: 1,
+  evalsTests: 0,
 };
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
@@ -51,6 +64,8 @@ const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   scripts: 3, // Accessing the MCP SDK's private _serverVersion
   webui: 0,
   webuiTests: 2, // Partial Client mocks that omit most of the interface
+  evals: 0,
+  evalsTests: 0,
 };
 
 // Counts only the directives that open a region (start, next, …). "v8 ignore
@@ -62,6 +77,8 @@ const V8_IGNORE_LIMITS: TreeLimits = {
   scripts: 0,
   webui: 8, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
   webuiTests: 0,
+  evals: 0,
+  evalsTests: 0,
 };
 
 interface SuppressionConfig {
@@ -113,7 +130,7 @@ describe("Lint suppression limits", () => {
 
   // v8 ignore next/start must include a "-- reason" description (v8 ignore stop is exempt)
   it("should require descriptions on v8 ignore next/start comments", () => {
-    const dirs = ["src", "webui", "scripts"];
+    const dirs = ["src", "webui", "scripts", "evals"];
     const allFiles = dirs.flatMap((dir) => {
       const dirPath = path.join(projectRoot, dir);
 
