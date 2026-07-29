@@ -166,7 +166,7 @@ describe("subagent-briefing route", () => {
     });
 
     expect(briefing).not.toContain("## Devices & Instruments");
-    expect(briefing).toContain("## Add notes to an existing clip");
+    expect(briefing).toContain("## Delete / clear notes");
   });
 
   it("drops the fragments for tools the header withholds", async () => {

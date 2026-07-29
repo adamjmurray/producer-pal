@@ -14,7 +14,10 @@ import { gettingHelp } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
 import { specializedDevices } from "#src/skills/fragments/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
-import { transformsCore } from "#src/skills/fragments/transforms-core.ts";
+import {
+  transformsBasic,
+  transformsCore,
+} from "#src/skills/fragments/transforms-core.ts";
 import { transformsExpressions } from "#src/skills/fragments/transforms-expressions.ts";
 import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
@@ -42,7 +45,10 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 // depths (the context pair; bar|beat and stark) the depth is a `-standard` /
 // `-basic` suffix, NOT a separate boundary. midi-json reuses one head across
 // both depths, so it is a single slot (the drivers reach it through an alias,
-// see builtin-fragments.ts).
+// see builtin-fragments.ts). `transforms-basic` wears the suffix with no
+// `-standard` twin: the standard depth is the three `transforms-*` tiers, and
+// renaming those to pair with it would retire three live slot names to buy
+// symmetry.
 //
 // `code-transforms` is deliberately absent: it only carries text in a build with
 // code execution enabled, so there is nothing stable for a user to override.
@@ -54,6 +60,7 @@ export const SKILL_SLOT_NAMES = [
   TRANSFORMS_CORE,
   TRANSFORMS_EXPRESSIONS,
   "transforms-generative",
+  "transforms-basic",
   "library",
   "devices",
   "specialized-devices",
@@ -183,6 +190,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
       "Transforms that invent material: ratchet, repeat, split, merge, and the waveforms that modulate a value across a clip. Needs the core and expressions transforms guides.",
     builtIn: transformsGenerative,
     requires: [TRANSFORMS_CORE, TRANSFORMS_EXPRESSIONS],
+  },
+
+  "transforms-basic": {
+    title: "Deleting notes (small-model)",
+    description:
+      "The whole transforms guide for smaller or local models (small-model mode): clearing and deleting notes already in a clip with update-clip's preTransforms.",
+    builtIn: transformsBasic,
   },
 
   library: {

@@ -66,7 +66,7 @@ describe("buildSkills - composition", () => {
     const basic = buildSkills({ notation: "barbeat", smallModelMode: true });
 
     expect(basic).toContain("If a tool call errors, read the message");
-    expect(basic).toContain("## Add notes to an existing clip");
+    expect(basic).toContain("## Delete / clear notes"); // transforms-basic
     // Standard-only fragments stay out of the small-model blob.
     expect(basic).not.toContain("## Devices & Instruments");
   });

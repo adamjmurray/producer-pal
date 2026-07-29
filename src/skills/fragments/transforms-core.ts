@@ -3,8 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Tier 1 of the three transforms fragments: everything a task needs to select
-// notes and set a value on them. The tiers are cut by REQUEST FREQUENCY, not by
+// Tier 1 of the three transforms fragments, plus the small-model tier's whole
+// transforms guide (`transformsBasic`, at the bottom). Both DEPTHS live here for
+// the reason the context pair shares a file: they teach the same parameter at
+// different depths, and side by side is how they stay in sync when its behavior
+// changes. The basic one carries no `-standard` twin — the standard depth is
+// three fragments, not one, so there is no pair to suffix.
+//
+// Tier 1 is everything a task needs to select notes and set a value on them.
+// The tiers are cut by REQUEST FREQUENCY, not by
 // conceptual complexity — so `where(...)` and `preTransforms` are here (they are
 // how you say "delete the quiet notes" and "clear that bar", among the most
 // common asks) even though one is a value test and the other is the last section
@@ -64,3 +71,24 @@ Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple sl
 ### preTransforms (editing notes already in the clip)
 
 \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`delete\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)`;
+
+/**
+ * The transforms fragment at basic (small-model) depth: `preTransforms` clearing
+ * and nothing else. Small-model mode teaches no transforms LANGUAGE — no
+ * selectors-as-syntax, no expressions, no generative functions — so this is a
+ * four-line recipe for the one job that tier cannot do without: getting rid of
+ * notes that are already there.
+ *
+ * It is a fragment rather than driver prose because `preTransforms` is an
+ * update-clip parameter and nothing else's (verified across the tool defs), so
+ * its gate is exactly one tool. Inline in the driver it was ~12% of the
+ * small-model document that a caller without update-clip paid for and could
+ * never use — precisely backwards for the narrow-toolset workers gating exists
+ * to serve.
+ */
+export const transformsBasic = `## Delete / clear notes (update-clip preTransforms)
+
+\`preTransforms\` clears or edits notes already in the clip, before any new \`notes\` in the same call:
+- \`v0\` — delete all notes
+- \`[range]: v0\` — delete notes in a range
+- ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)`;

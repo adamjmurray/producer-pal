@@ -15,11 +15,13 @@
 //                               (subject / direction / audience), so a subagent
 //                               worker or a user with a checkbox can take the
 //                               ones a job actually needs. Depth is a variant,
-//                               not a boundary: the two fragments that exist at
-//                               both depths (notation heads, context) carry the
-//                               `-standard` / `-basic` suffix, and small-model
-//                               mode means FEWER fragments, not basic variants
-//                               of all of them.
+//                               not a boundary: a fragment that exists at both
+//                               depths (notation heads, context, transforms)
+//                               carries the `-standard` / `-basic` suffix —
+//                               except transforms, whose standard depth is three
+//                               fragments, so only the basic one is suffixed.
+//                               Small-model mode means FEWER fragments, not
+//                               basic variants of all of them.
 //
 // Two entries are not quite leaves-as-written:
 //   code-transforms ........... build-gated. It is always PRESENT here and empty
@@ -44,7 +46,10 @@ import { gettingHelp } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
 import { specializedDevices } from "#src/skills/fragments/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
-import { transformsCore } from "#src/skills/fragments/transforms-core.ts";
+import {
+  transformsBasic,
+  transformsCore,
+} from "#src/skills/fragments/transforms-core.ts";
 import { transformsExpressions } from "#src/skills/fragments/transforms-expressions.ts";
 import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
@@ -81,6 +86,7 @@ export function builtinFragments(
     "transforms-core": transformsCore,
     "transforms-expressions": transformsExpressions,
     "transforms-generative": transformsGenerative,
+    "transforms-basic": transformsBasic,
     "code-transforms": enableCodeExec ? codeTransforms : "",
     library,
     devices,

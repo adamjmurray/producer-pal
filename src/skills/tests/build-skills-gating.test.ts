@@ -96,6 +96,20 @@ describe("buildSkills - tool gating", () => {
     expect(result).toContain(HEADER);
     expect(result).not.toContain("## Context");
   });
+
+  it("drops the small-model preTransforms guide without update-clip", () => {
+    // The narrow-toolset case gating exists for: a worker that reads notes and
+    // creates clips has no `preTransforms` (an update-clip parameter alone), but
+    // still needs the notation head it shares with the read tools.
+    const result = buildSkills({
+      smallModelMode: true,
+      tools: ALL_TOOLS.filter((name) => name !== "ppal-update-clip"),
+    });
+
+    expect(result).not.toContain("## Delete / clear notes");
+    expect(result).toContain("## MIDI Notation");
+    expect(result).toContain("## Rules");
+  });
 });
 
 describe("buildSkills - audience gating", () => {

@@ -17,10 +17,14 @@
 // names contain no includes of their own (the resolver refuses nesting), so a
 // fragment's cost is exactly its own length.
 //
-// `basic` still inlines its body. Small-model mode means FEWER FRAGMENTS plus
+// `basic` still inlines its tail. Small-model mode means FEWER FRAGMENTS plus
 // basic notation, not basic variants of all thirteen — the whole document is
-// under 800 tokens, so carving it would cost more in include lines than it could
-// ever save.
+// under 800 tokens, so carving it fragment-by-fragment would cost more in
+// include lines than it could ever save. What it composes is what a TOOLSET can
+// decide: anything inlined here ships to every small-model caller, including the
+// narrow-toolset subagent workers gating exists to serve, so a section that maps
+// cleanly to one tool belongs in a fragment however short the document is. See
+// `## Rules` below for the other half of that judgment.
 
 const HEADER = "# Producer Pal Skills";
 
@@ -61,25 +65,22 @@ export const standardDriver = `${HEADER}
 `;
 
 /**
- * Small-model driver: header, the basic notation head, and a terse inline body —
- * the shared tail (notes-merge, preTransforms clearing, the general Rules) that
- * every small-model task needs. Context is the one carved-out fragment, so it
- * can be dropped or overridden on its own.
+ * Small-model driver: header, three includes, and the general Rules inline.
+ *
+ * The `## Rules` tail stays inline as a DECISION, not an oversight. Its four
+ * bullets have four different natural gates — clip length is the clip writers,
+ * read-before-you-ask is the read tools, retry-on-error is everyone, audio
+ * limits are conversation-only — and three of them are one line each, so a
+ * fragment per bullet is more include line and more permanent slot name than the
+ * text it would save. The one substantial bullet is also the one that refuses to
+ * pick an axis: "say so if asked" is guidance for a person, but the list of what
+ * Producer Pal *can* still do with audio is capability a worker acts on.
  */
 export const basicDriver = `${HEADER}
 
 @include "./{notation}-basic.md"
 
-## Add notes to an existing clip (update-clip)
-
-\`notes\` MERGES into the clip: a note at the *same* pitch+start overwrites that note; every other note stays. So to add, just pass the new notes — don't resend the whole clip.
-
-## Delete / clear notes (update-clip preTransforms)
-
-\`preTransforms\` clears or edits notes already in the clip, before any new \`notes\` in the same call:
-- \`v0\` — delete all notes
-- \`[range]: v0\` — delete notes in a range
-- ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)
+@include "./transforms-basic.md"
 
 @include "./context-basic.md"
 
