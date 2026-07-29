@@ -13,6 +13,7 @@ import {
   loadPresets,
   savePresets,
 } from "#webui/hooks/settings/presets/preset-storage";
+import { breakStorageWrites } from "#webui/test-utils/dom-test-helpers";
 import { type ChatPreset, type UseSettingsReturn } from "#webui/types/settings";
 
 /**
@@ -115,6 +116,40 @@ describe("PresetControls", () => {
 
     expect(screen.getByTestId("preset-error")).toBeTruthy();
     expect(loadPresets()).toHaveLength(0);
+  });
+
+  it("keeps the form open and explains itself when the write fails", () => {
+    breakStorageWrites();
+    render(<PresetControls settings={makeSettings()} />);
+
+    fireEvent.click(screen.getByTestId("preset-save-as"));
+    fireEvent.input(screen.getByTestId("preset-name-input"), {
+      target: { value: "Doomed" },
+    });
+    fireEvent.click(screen.getByTestId("preset-name-save"));
+
+    expect(screen.getByTestId("preset-error").textContent).toMatch(
+      /quota exceeded/,
+    );
+    // Still the name form, not a selected preset: nothing was saved.
+    expect(screen.getByTestId("preset-name-input")).toBeTruthy();
+    expect(screen.queryByTestId("preset-update")).toBeNull();
+  });
+
+  it("surfaces a failed write from Update, which has no result to return", () => {
+    savePresets([seeded]);
+    render(<PresetControls settings={makeSettings({ model: "changed" })} />);
+
+    fireEvent.change(screen.getByTestId("preset-select"), {
+      target: { value: "seed" },
+    });
+    breakStorageWrites();
+    fireEvent.click(screen.getByTestId("preset-update"));
+
+    expect(screen.getByTestId("preset-error").textContent).toMatch(
+      /quota exceeded/,
+    );
+    expect(loadPresets()[0]?.model).toBe("llama3");
   });
 
   it("captures the description and enabled toolset in a new preset", () => {

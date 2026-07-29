@@ -39,7 +39,8 @@ interface PresetControlsProps {
  * @returns {JSX.Element} The preset controls
  */
 export function PresetControls({ settings }: PresetControlsProps) {
-  const { presets, createPreset, updatePreset, deletePreset } = usePresets();
+  const { presets, saveError, createPreset, updatePreset, deletePreset } =
+    usePresets();
   const [selectedId, setSelectedId] = useState<string>("");
   const [naming, setNaming] = useState<boolean>(false);
   const [draftName, setDraftName] = useState<string>("");
@@ -146,12 +147,16 @@ export function PresetControls({ settings }: PresetControlsProps) {
         />
       )}
 
-      {error && (
+      {/* One paragraph for both channels: `error` is this form's own rejection
+          (blank/duplicate name), `saveError` is a storage write that failed —
+          including from Update/Delete, which have no result to return. A failed
+          create sets both to the same message, so `??` shows it once. */}
+      {(error ?? saveError) != null && (
         <p
           className="text-xs text-red-600 dark:text-red-400"
           data-testid="preset-error"
         >
-          {error}
+          {error ?? saveError}
         </p>
       )}
 

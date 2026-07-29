@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useState } from "preact/hooks";
+import { errorMessage } from "#src/shared/error-utils";
 import { type ChatPreset, type PresetFields } from "#webui/types/settings";
 import { createPresetId, loadPresets, savePresets } from "./preset-storage";
 
@@ -14,6 +15,8 @@ export type CreatePresetResult =
 /** Browser-local preset collection: list + create/update/delete. */
 export interface UsePresetsReturn {
   presets: ChatPreset[];
+  /** Why the last create/update/delete failed to reach storage, else null. */
+  saveError: string | null;
   createPreset: (
     name: string,
     fields: PresetFields,
@@ -36,10 +39,38 @@ export interface UsePresetsReturn {
  */
 export function usePresets(): UsePresetsReturn {
   const [presets, setPresets] = useState<ChatPreset[]>(loadPresets);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const persist = useCallback((next: ChatPreset[]) => {
+  /**
+   * Write the list to storage and adopt it only once the write lands.
+   *
+   * Write-first matters twice over. localStorage is the source of truth for
+   * readers outside this hook (use-chat-mode-state parses the raw blob every
+   * render to resolve the default subagent preset), so adopting a list that
+   * never reached storage would show a preset the subagent resolver can't find.
+   * And a `setItem` throw (quota, or storage blocked/full) used to escape all
+   * the way into the click handler: the list state was already committed, so
+   * the picker showed a preset that silently vanished on reload while the
+   * create form stayed open with nothing explaining why. Mirrors the same
+   * persist-then-commit ordering `use-settings`' saveSettings uses.
+   * @param next - The list to store
+   * @returns Null on success, or the message to surface on failure
+   */
+  const persist = useCallback((next: ChatPreset[]): string | null => {
+    try {
+      savePresets(next);
+    } catch (err) {
+      const message = `Couldn't save presets: ${errorMessage(err)}`;
+
+      setSaveError(message);
+
+      return message;
+    }
+
+    setSaveError(null);
     setPresets(next);
-    savePresets(next);
+
+    return null;
   }, []);
 
   const createPreset = useCallback(
@@ -63,7 +94,9 @@ export function usePresets(): UsePresetsReturn {
         description,
       );
 
-      persist([...presets, preset]);
+      const failure = persist([...presets, preset]);
+
+      if (failure != null) return { ok: false, error: failure };
 
       return { ok: true, preset };
     },
@@ -88,7 +121,7 @@ export function usePresets(): UsePresetsReturn {
     [presets, persist],
   );
 
-  return { presets, createPreset, updatePreset, deletePreset };
+  return { presets, saveError, createPreset, updatePreset, deletePreset };
 }
 
 /**

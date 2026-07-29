@@ -13,6 +13,7 @@ import {
   type CreatePresetResult,
   usePresets,
 } from "#webui/hooks/settings/presets/use-presets";
+import { breakStorageWrites } from "#webui/test-utils/dom-test-helpers";
 import { type PresetFields } from "#webui/types/settings";
 
 const fields: PresetFields = {
@@ -148,5 +149,63 @@ describe("usePresets", () => {
 
     expect(result.current.presets).toHaveLength(0);
     expect(loadPresets()).toHaveLength(0);
+  });
+
+  it("reports a failed write instead of listing an unsaved preset", async () => {
+    breakStorageWrites();
+    const { result } = renderHook(() => usePresets());
+    let created: CreatePresetResult | undefined;
+
+    await act(() => {
+      created = result.current.createPreset("Doomed", fields);
+    });
+
+    expect(created).toStrictEqual({ ok: false, error: expect.any(String) });
+    // The list never adopts a preset that isn't in storage — otherwise it shows
+    // as saved, then vanishes on reload.
+    expect(result.current.presets).toHaveLength(0);
+    expect(result.current.saveError).toMatch(/quota exceeded/);
+  });
+
+  it("keeps the list unchanged when an update or delete can't be written", async () => {
+    const { result } = renderHook(() => usePresets());
+    let id = "";
+
+    await act(() => {
+      id = expectCreatedId(result.current.createPreset("P", fields));
+    });
+
+    breakStorageWrites();
+
+    await act(() => {
+      result.current.updatePreset(id, { ...fields, model: "unsaveable" });
+    });
+    expect(result.current.presets[0]?.model).toBe("claude");
+    expect(result.current.saveError).toMatch(/quota exceeded/);
+
+    await act(() => {
+      result.current.deletePreset(id);
+    });
+    expect(result.current.presets).toHaveLength(1);
+    expect(result.current.saveError).toMatch(/quota exceeded/);
+  });
+
+  it("clears the save error once a write lands", async () => {
+    const spy = breakStorageWrites();
+    const { result } = renderHook(() => usePresets());
+
+    await act(() => {
+      result.current.createPreset("First try", fields);
+    });
+    expect(result.current.saveError).not.toBeNull();
+
+    spy.mockRestore();
+
+    await act(() => {
+      result.current.createPreset("Second try", fields);
+    });
+
+    expect(result.current.saveError).toBeNull();
+    expect(loadPresets().map((p) => p.name)).toStrictEqual(["Second try"]);
   });
 });
