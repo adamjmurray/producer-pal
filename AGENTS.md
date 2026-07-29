@@ -256,10 +256,9 @@ architecture.
   exits before slow polls fire) and only appear under `npm run check` /
   `test:coverage`. Any test mounting a component that does same-origin `fetch`
   on mount or a timer must mock the transport. Tests rendering the real `<App>`
-  must mock `use-system-prompt-memory` and `ContextTabs` (the
-  `use-doc-memory.ts` hooks fetch on mount AND on a 5s poll) — reuse the shared
-  payloads in `webui/src/components/tests/App-context-mocks.tsx` rather than
-  re-inlining.
+  must mock `use-system-prompt` and `ContextTabs` (the `use-doc.ts` hooks fetch
+  on mount AND on a 5s poll) — reuse the shared payloads in
+  `webui/src/components/tests/App-context-mocks.tsx` rather than re-inlining.
 
 - **File organization and size limits** (numeric ESLint limits under Refactoring
   & Code Quality):
