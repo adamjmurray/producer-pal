@@ -262,10 +262,27 @@ describe("context - project scope (default)", () => {
       await expectWriteAllowed(`${TABLE}\n| Key | A minor |`);
     });
 
-    // Nothing distinctive enough to test containment on — the guard has no
-    // opinion rather than blocking every write to such a document.
-    it("stays out of the way when no line is substantive", async () => {
-      toolContext.projectContext!.content = "---\n- 124\n- A min";
+    // The floor decides which line vouches, not whether the document is worth
+    // guarding. A terse-but-real note style clears no floor at all, so applying
+    // it unconditionally would leave exactly these documents unprotected while
+    // a wordier one is fully covered.
+    const TERSE = "---\n- 124\n- A min";
+
+    it("fires when a terse document would be discarded whole", async () => {
+      await expectWriteSkipped(TERSE, "- Drop at bar 33.");
+    });
+
+    it("allows a terse document's write that keeps one of its lines", async () => {
+      toolContext.projectContext!.content = TERSE;
+
+      await expectWriteAllowed("- 124\n- A min\n- Drop at bar 33.");
+    });
+
+    // Where the fallback stops: no letters or digits anywhere means nothing to
+    // test containment on, so the guard has no opinion rather than blocking
+    // every write to such a document.
+    it("stays out of the way when the document is pure structure", async () => {
+      toolContext.projectContext!.content = "---\n***";
 
       await expectWriteAllowed("- Key: A minor.");
     });

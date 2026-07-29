@@ -210,13 +210,21 @@ export async function handleWriteGlobalContext(
  * that happens to appear in the new content would satisfy the guard for free,
  * leaving a document containing one effectively unguarded. Content-bearing lines
  * still count — `| Genre | deep house |` is 14 alphanumerics, and if it survives
- * into the new content that really is surviving content. A document with nothing
- * substantive in it has nothing distinctive to test, so the guard stays out of
- * the way there.
+ * into the new content that really is surviving content.
  *
- * Inert in the two cases where nothing can be lost: an empty existing document,
- * and a blank incoming write (the documented explicit clear, which the webui's
- * "empty the file" path also uses).
+ * The floor picks WHICH line vouches; it does not decide whether a document is
+ * worth guarding. A terse but real note style — `- 124` / `- A min` — clears no
+ * floor at all, so applying it unconditionally would leave exactly those
+ * documents with zero protection while a wordier one is fully covered. When no
+ * line clears the floor, any line carrying letters or digits may vouch instead.
+ * Short needles match by accident more often, so this tier is the weaker guard —
+ * but it is strictly more protection than none, and it never loosens a document
+ * that has a substantive line to test.
+ *
+ * Inert in the three cases where nothing can be lost: an empty existing
+ * document, a blank incoming write (the documented explicit clear, which the
+ * webui's "empty the file" path also uses), and a document of pure structure
+ * (`---`, a bare fence) with no letters or digits anywhere.
  *
  * @param scope - The layer being written (project | global), for the message
  * @param existing - The document as it stands
@@ -240,12 +248,16 @@ export function clobberWarning(
   // Compared line-by-line rather than against the whole blob, so a match can't
   // straddle two lines of the incoming content.
   const incomingLines = incoming.split("\n").map(normalizeForContainment);
-  const checkable = lines
+  const withText = lines
     .map(normalizeForContainment)
-    .filter(
-      (line) =>
-        line.replaceAll(/[^\p{L}\p{N}]/gu, "").length >= MIN_SURVIVING_CHARS,
-    );
+    .filter((line) => alphanumericCount(line) > 0);
+  const substantive = withText.filter(
+    (line) => alphanumericCount(line) >= MIN_SURVIVING_CHARS,
+  );
+  // The floor is about which line gets to vouch, not whether the document is
+  // worth guarding: when EVERY line is terse the floor would leave the whole
+  // document unguarded, so it drops to any line carrying letters or digits.
+  const checkable = substantive.length > 0 ? substantive : withText;
 
   if (checkable.length === 0) return null;
 
@@ -269,6 +281,17 @@ export function clobberWarning(
  * a fence, a one-word list item — can't stand in for the user's content.
  */
 const MIN_SURVIVING_CHARS = 8;
+
+/**
+ * Count the letters and digits in a line, ignoring punctuation, markup and
+ * whitespace — the measure both guard tiers are expressed in.
+ *
+ * @param line - A normalized line
+ * @returns How many alphanumeric characters it carries
+ */
+function alphanumericCount(line: string): number {
+  return line.replaceAll(/[^\p{L}\p{N}]/gu, "").length;
+}
 
 /**
  * Reduce a line to what containment should ignore differences in: leading list

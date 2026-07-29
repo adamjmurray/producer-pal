@@ -385,9 +385,16 @@ whitespace collapsed, trailing punctuation dropped) so a reformat _of a line_
 survives — a restructuring that splits one line across several still fires,
 since an existing line must land whole inside one incoming line — and only lines
 of ≥ 8 _alphanumeric_ characters may vouch for a write — otherwise a `---` rule
-or a `| --- | --- |` table separator would satisfy it for free. The guard is
-inert on an empty document, on a blank write (the documented clear), and on a
-document with nothing substantive to test.
+or a `| --- | --- |` table separator would satisfy it for free.
+
+That floor picks _which_ line vouches; it does not decide whether a document is
+worth guarding. A terse but real note style (`- 124` / `- A min`) clears no
+floor, so a document where _every_ line is terse falls back to any line carrying
+letters or digits — weaker (short needles match by accident more often) but far
+better than leaving exactly those documents unprotected. A document with a
+substantive line is unaffected. The guard is inert on an empty document, on a
+blank write (the documented clear), and on a document of pure structure with no
+letters or digits anywhere.
 
 It applies to the TOOL path only. The webui/REST editors write through their own
 routes, so the user may select-all-and-replace their own document freely; this
