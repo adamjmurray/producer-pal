@@ -37,9 +37,20 @@ node ../producer-pal/ppal.mjs ppal-create-clip \
   '{"slot":"5/0","sampleFile":"/abs/path/drone.wav","name":"Drone 20s"}'
 ```
 
-Or place it on the timeline with `arrangementStart` instead of `slot`. Check the
-returned `length` against what you rendered — it is a cheap confirmation that
-Live parsed the header the way you intended.
+Or place it on the timeline with `arrangementStart` instead of `slot`.
+
+**Then turn warping off**, or Live time-stretches your file to the Set tempo:
+
+```bash
+node ../producer-pal/ppal.mjs ppal-update-clip \
+  '{"ids":"<id from create-clip>","warping":false,"looping":false}'
+```
+
+A new audio clip arrives warped, looping, and with its region clamped to the
+next full bar — so a render longer than a bar is both stretched and cut off. For
+generated audio the stretch is the worse half: it alters the timbre, which is
+the entire content of a synthesized sound. Neither shows up in the tool result,
+which reports the clamped region as `length` and looks perfectly reasonable.
 
 ## Design notes
 
@@ -70,3 +81,5 @@ and compute the length in seconds from bars rather than guessing.
   optional, and clipping in `float32` won't announce itself until Live plays it.
 - **A clip is not an instrument.** If they want to play the sound at different
   pitches, that's `simpler-sample.md`.
+- **Check `length` against what you rendered** after disabling warp — a cheap
+  confirmation that Live parsed the header the way you intended.

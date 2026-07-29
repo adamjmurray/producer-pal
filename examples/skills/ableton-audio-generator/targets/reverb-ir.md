@@ -54,6 +54,11 @@ node ../producer-pal/ppal.mjs ppal-create-clip \
   '{"slot":"5/0","sampleFile":"/abs/path/ir-hall-2s.wav","name":"IR hall 2s"}'
 ```
 
+The drag reads the file, so warping on the staged clip doesn't affect the IR
+that lands on the device — but it makes the clip misleading to audition, and a
+tail clamped to the next bar is not the tail you rendered. See the warp note in
+`audio-clip.md`.
+
 ## Design notes
 
 - **Decay time is the headline parameter.** Everything else is character. Get it

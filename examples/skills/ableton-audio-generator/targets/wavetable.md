@@ -58,7 +58,10 @@ node ../producer-pal/ppal.mjs ppal-create-clip \
   '{"slot":"5/0","sampleFile":"/abs/path/wavetable-glass.wav","name":"WT glass"}'
 ```
 
-Then drag from the Session grid onto the oscillator.
+Then drag from the Session grid onto the oscillator. The drag reads the file, so
+Live warping the staged clip doesn't corrupt what lands on the oscillator — but
+it does make the clip misleading to audition. See the warp note in
+`audio-clip.md` if you play it back.
 
 ## Design notes
 
