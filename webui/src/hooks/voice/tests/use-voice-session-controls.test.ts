@@ -581,7 +581,7 @@ describe("useVoiceSession output volume", () => {
     });
 
     const audioElement = (
-      mocks.FakeTransport.instances[0]?.options as {
+      mocks.FakeTransport.instances[0]!.options as {
         audioElement: HTMLAudioElement;
       }
     ).audioElement;

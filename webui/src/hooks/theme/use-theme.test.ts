@@ -24,8 +24,6 @@ const createMediaQueryListMock = (
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
     ...overrides,
   }) as MediaQueryList;

@@ -42,7 +42,7 @@ export async function summarizeHistory(
   const transcript = renderTranscript(history);
   const { text } = await generateText({
     model,
-    system: COMPACTION_PROMPT,
+    instructions: COMPACTION_PROMPT,
     messages: [
       { role: "user", content: `${transcript}\n\n${SUMMARIZE_INSTRUCTION}` },
     ],

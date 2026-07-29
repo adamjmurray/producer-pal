@@ -39,14 +39,19 @@ updates:
           - "rollup"
           - "@rollup/*"
           - "rollup-plugin-*"
-      eslint:
+      # oxlint replaced eslint, but three eslint plugins remain: oxlint runs
+      # them through its jsPlugins bridge, which has no native equivalent.
+      lint-plugins:
         patterns:
-          - "eslint"
-          - "eslint-*"
+          - "eslint-plugin-*"
           - "@eslint-community/*"
-          - "@typescript-eslint/*"
           - "@stylistic/eslint-plugin"
-          - "@vitest/eslint-plugin"
+      # oxlint pins an exact tsgolint build, so the two must move together or
+      # `npm ci` resolves a mismatched pair.
+      oxlint:
+        patterns:
+          - "oxlint"
+          - "oxlint-*"
       vite:
         patterns:
           - "vite"

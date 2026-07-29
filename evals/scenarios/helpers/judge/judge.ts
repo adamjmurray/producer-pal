@@ -61,7 +61,7 @@ export async function callJudge(
 
   const result = streamText({
     model: languageModel,
-    system: systemPrompt,
+    instructions: systemPrompt,
     messages: [{ role: "user", content: prompt }],
   });
 

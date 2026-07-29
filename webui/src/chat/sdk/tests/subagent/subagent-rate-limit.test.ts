@@ -59,7 +59,10 @@ function setup(
       // Every attempt echoes the user turn into history first, like sendMessage.
       history.push({ role: "user", content: message });
       await Promise.resolve();
-      (attempts[index++] ?? (() => {}))(history);
+      const attempt = attempts[index] ?? (() => {});
+
+      index += 1;
+      attempt(history);
     },
     ...overrides,
   };

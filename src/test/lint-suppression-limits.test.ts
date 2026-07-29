@@ -46,7 +46,7 @@ type TreeLimits = Record<Tree, number>;
 // Mentioning a pattern literally in this comment would raise its own count.
 const ESLINT_DISABLE_LIMITS: TreeLimits = {
   src: 10,
-  srcTests: 16, // 14 real + 2 self
+  srcTests: 15, // 14 real + 1 self
   scripts: 0,
   webui: 4,
   // 4 any (SDK mock-call records), 5 require-yield (streams that throw before
@@ -96,8 +96,12 @@ interface SuppressionConfig {
 }
 
 const SUPPRESSION_CONFIGS: Record<string, SuppressionConfig> = {
-  "eslint-disable": {
-    pattern: /eslint-disable/,
+  // oxlint honors both prefixes, so both have to count against the same budget —
+  // otherwise a new suppression written the oxlint way escapes the limit
+  // entirely. The repo holds none of the oxlint form today, so widening the
+  // pattern leaves every count below unchanged.
+  "lint-disable": {
+    pattern: /(?:es|ox)lint-disable/,
     limits: ESLINT_DISABLE_LIMITS,
     errorSuffix:
       "Consider fixing the underlying issues instead of suppressing lint rules.",
@@ -135,6 +139,30 @@ describe("Lint suppression limits", () => {
       }
     });
   }
+
+  // Ports eslint-comments/no-unlimited-disable, which oxlint does not implement.
+  // A block directive naming no rule switches off EVERY rule for the rest of the
+  // file, so one stale line can silently drop all coverage from a whole module.
+  it("should not disable every rule at once", () => {
+    const dirs = ["src", "webui", "scripts", "evals", "e2e"];
+    const allFiles = dirs.flatMap((dir) => {
+      const dirPath = path.join(projectRoot, dir);
+
+      return [...findSourceFiles(dirPath), ...findTestFiles(dirPath)];
+    });
+    // A file-wide directive that closes, or reaches a "--" reason, without ever
+    // naming a rule. The lookahead keeps the -line and -next-line forms out: they
+    // affect one line, which the rule likewise permits.
+    const barePattern = /(?:es|ox)lint-disable(?!-)\s*(?:\*\/|--)/;
+    const matches = countPatternOccurrences(allFiles, barePattern);
+
+    throwOnFileViolations(
+      matches.map((m) => ({ file: `${m.file}:${m.line}`, reason: m.match })),
+      "Found unlimited lint-disable comment(s)",
+      "Name the rules being disabled, e.g. /* oxlint-disable no-console -- reason */",
+    );
+    expect(matches).toHaveLength(0); // Satisfy vitest/expect-expect rule
+  });
 
   // v8 ignore next/start must include a "-- reason" description (v8 ignore stop is exempt)
   it("should require descriptions on v8 ignore next/start comments", () => {

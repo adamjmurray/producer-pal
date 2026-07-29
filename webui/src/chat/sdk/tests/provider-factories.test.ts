@@ -496,7 +496,7 @@ describe("transformOpenRouterRequest", () => {
     });
 
     expect(
-      (parsed.messages?.[0]?.content as CacheBlock[])[0]?.cache_control,
+      (parsed.messages![0]!.content as CacheBlock[])[0]?.cache_control,
     ).toStrictEqual({ type: "ephemeral" });
   });
 
