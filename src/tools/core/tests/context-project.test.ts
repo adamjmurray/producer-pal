@@ -262,20 +262,40 @@ describe("context - project scope (default)", () => {
       await expectWriteAllowed(`${TABLE}\n| Key | A minor |`);
     });
 
-    // The floor decides which line vouches, not whether the document is worth
-    // guarding. A terse-but-real note style clears no floor at all, so applying
-    // it unconditionally would leave exactly these documents unprotected while
-    // a wordier one is fully covered.
-    const TERSE = "---\n- 124\n- A min";
+    // The floor decides WHICH line vouches, not whether the document is worth
+    // guarding — applied unconditionally it measures a document by its LONGEST
+    // LINE, which is the wrong measure. This roster is a lot of accumulated
+    // context with nothing over 7 alphanumerics on any line, so an
+    // unconditional floor would leave it entirely unguarded while a single
+    // sentence of prose is fully covered.
+    const SHORTHAND = [
+      "- 124",
+      "- A min",
+      "- kick: t0",
+      "- bass: t1",
+      "- drop: b33",
+      "- out: b65",
+    ].join("\n");
 
-    it("fires when a terse document would be discarded whole", async () => {
-      await expectWriteSkipped(TERSE, "- Drop at bar 33.");
+    it("fires when a shorthand roster would be discarded whole", async () => {
+      await expectWriteSkipped(SHORTHAND, "- Genre: melodic techno.");
     });
 
-    it("allows a terse document's write that keeps one of its lines", async () => {
-      toolContext.projectContext!.content = TERSE;
+    it("allows a shorthand roster's write that keeps its lines", async () => {
+      toolContext.projectContext!.content = SHORTHAND;
 
-      await expectWriteAllowed("- 124\n- A min\n- Drop at bar 33.");
+      await expectWriteAllowed(`${SHORTHAND}\n- Genre: melodic techno.`);
+    });
+
+    // The fallback tier's known weakness, recorded rather than endorsed: short
+    // needles match by coincidence, so this write discards the whole roster and
+    // still passes, on "A min" landing inside "A minor". The tier catches the
+    // blatant clobber and misses the accidental one — don't lean on it the way
+    // the substantive tier can be leaned on.
+    it("misses a clobber that coincidentally contains a short line", async () => {
+      toolContext.projectContext!.content = SHORTHAND;
+
+      await expectWriteAllowed("- Genre: melodic techno in A minor.");
     });
 
     // Where the fallback stops: no letters or digits anywhere means nothing to

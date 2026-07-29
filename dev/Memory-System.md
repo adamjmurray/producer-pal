@@ -422,13 +422,19 @@ of ≥ 8 _alphanumeric_ characters may vouch for a write — otherwise a `---` r
 or a `| --- | --- |` table separator would satisfy it for free.
 
 That floor picks _which_ line vouches; it does not decide whether a document is
-worth guarding. A terse but real note style (`- 124` / `- A min`) clears no
-floor, so a document where _every_ line is terse falls back to any line carrying
-letters or digits — weaker (short needles match by accident more often) but far
-better than leaving exactly those documents unprotected. A document with a
-substantive line is unaffected. The guard is inert on an empty document, on a
-blank write (the documented clear), and on a document of pure structure with no
-letters or digits anywhere.
+worth guarding. Applied unconditionally it would measure a document by its
+_longest line_, which is the wrong measure — a twelve-line roster of short
+entries (`- 124` / `- A min` / `- kick: t0` / `- drop: b33`, nothing over 7
+alphanumerics) is a lot of accumulated context and would have had zero
+protection, while one sentence of prose is fully covered. Shorthand is a note
+style, not a signal that there is little to lose. So there is one rule: test
+against the strongest lines the document _has_. When none clear the floor, any
+line carrying letters or digits vouches instead — genuinely weaker, since short
+needles match by coincidence (a write that discards that roster but says "in A
+minor" satisfies the `- A min` needle), but far better than leaving those
+documents unprotected. A document with a substantive line is unaffected. The
+guard is inert on an empty document, on a blank write (the documented clear),
+and on a document of pure structure with no letters or digits anywhere.
 
 It applies to the TOOL path only. The webui/REST editors write through their own
 routes, so the user may select-all-and-replace their own document freely; this

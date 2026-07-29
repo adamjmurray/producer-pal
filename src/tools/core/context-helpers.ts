@@ -213,13 +213,21 @@ export async function handleWriteGlobalContext(
  * into the new content that really is surviving content.
  *
  * The floor picks WHICH line vouches; it does not decide whether a document is
- * worth guarding. A terse but real note style — `- 124` / `- A min` — clears no
- * floor at all, so applying it unconditionally would leave exactly those
- * documents with zero protection while a wordier one is fully covered. When no
- * line clears the floor, any line carrying letters or digits may vouch instead.
- * Short needles match by accident more often, so this tier is the weaker guard —
- * but it is strictly more protection than none, and it never loosens a document
- * that has a substantive line to test.
+ * worth guarding. Applied unconditionally it would measure a document by its
+ * LONGEST LINE, which is the wrong measure. A twelve-line roster of short
+ * entries — `- 124` / `- A min` / `- kick: t0` / `- drop: b33`, nothing over 7
+ * alphanumerics — is a lot of accumulated context, and it would have had zero
+ * protection while a single sentence of prose is fully covered. Shorthand is a
+ * note style, not a signal that there is little to lose. So there is one rule:
+ * test against the strongest lines the document HAS. When none clear the floor,
+ * any line carrying letters or digits may vouch instead.
+ *
+ * That fallback tier really is the weaker guard, and specifically so: short
+ * needles match by coincidence, so a write that discards the roster above but
+ * happens to say "in A minor" satisfies the `- A min` needle and passes. It
+ * catches the blatant clobber and misses the accidental one. Strictly more than
+ * no guard at all, and it never loosens a document that has a substantive line
+ * to test.
  *
  * Inert in the three cases where nothing can be lost: an empty existing
  * document, a blank incoming write (the documented explicit clear, which the
@@ -254,9 +262,9 @@ export function clobberWarning(
   const substantive = withText.filter(
     (line) => alphanumericCount(line) >= MIN_SURVIVING_CHARS,
   );
-  // The floor is about which line gets to vouch, not whether the document is
-  // worth guarding: when EVERY line is terse the floor would leave the whole
-  // document unguarded, so it drops to any line carrying letters or digits.
+  // Test against the strongest lines the document HAS. Applied unconditionally
+  // the floor would measure a document by its longest line and leave a whole
+  // roster of short entries unguarded — see the JSDoc above.
   const checkable = substantive.length > 0 ? substantive : withText;
 
   if (checkable.length === 0) return null;
