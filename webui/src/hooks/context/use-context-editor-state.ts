@@ -39,6 +39,41 @@ function pendingSaves(saves: Set<Promise<boolean>>): Promise<unknown> | null {
   return saves.size === 0 ? null : Promise.all(saves);
 }
 
+/**
+ * Dispatch a manual write (Clear / Import) ordered behind every save already in
+ * flight, and register it in `saves` so the NEXT manual write is ordered behind
+ * IT too. Both halves matter: without the registration, an Import→Clear (or
+ * Clear→Import) pair finds an empty set and puts two writes on the wire at once.
+ * The UI still resolves correctly — use-doc's generation counter discards the
+ * superseded echo — but the file on disk keeps whichever PUT the server happened
+ * to handle last, so a poll can resurrect content the user just cleared.
+ * @param saves - The live set of in-flight write promises
+ * @param write - Dispatches the write; called only once the pending ones settle
+ * @returns Whether the write succeeded
+ */
+async function dispatchOrderedWrite(
+  saves: Set<Promise<boolean>>,
+  write: () => Promise<boolean>,
+): Promise<boolean> {
+  const pending = pendingSaves(saves);
+
+  if (pending != null) await pending;
+
+  // Registered as a promise that SETTLES, matching flushSave: a rejection left
+  // in the set would wedge every later clear/import on a rejecting Promise.all.
+  // save()/clear() resolve false rather than throwing today — this keeps that
+  // from being load-bearing.
+  const dispatched = write().catch(() => false);
+
+  saves.add(dispatched);
+
+  const ok = await dispatched;
+
+  saves.delete(dispatched);
+
+  return ok;
+}
+
 export interface UseContextEditorStateReturn {
   /**
    * Bumped on Clear / Reload-from-server to remount the uncontrolled
@@ -124,12 +159,13 @@ export function useContextEditorState(
   const lastSavedRef = useRef<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Every in-flight save() promise, so handleClear/handleImport can await them
-  // ALL before dispatching their own write (prevents a stale draft POST from
-  // landing after theirs). A set rather than one ref: saves can overlap (a
-  // debounce flush, then a blur flush before the first echo lands), and keeping
-  // only the newest would silently stop awaiting the earlier one — the very
-  // write-ordering hazard this is here to close.
+  // Every in-flight write promise — autosave flushes AND the manual
+  // Clear/Import writes — so handleClear/handleImport can await them ALL before
+  // dispatching their own (prevents a stale POST from landing after theirs). A
+  // set rather than one ref: writes can overlap (a debounce flush, then a blur
+  // flush before the first echo lands), and keeping only the newest would
+  // silently stop awaiting the earlier one — the very write-ordering hazard
+  // this is here to close.
   const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
   const memoryRef = useRef(memory);
   // False once the hook has unmounted, so the unmount flush's save promise
@@ -317,20 +353,19 @@ export function useContextEditorState(
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
 
-    // Wait for every in-flight save POST to complete before clear's POST goes
-    // out. Without this, an older draft's POST could land AFTER clear's
-    // POST and resurrect the cleared content. (The fetch promise resolves
-    // only after the server has responded, so awaiting it orders the writes
-    // server-side.)
-    const pending = pendingSaves(inFlightSavesRef.current);
-
-    if (pending != null) await pending;
-
-    // Bump editorKey only AFTER clear() resolves: the uncontrolled
+    // Wait for every in-flight write to complete before clear's POST goes out,
+    // and track clear's own POST for the write after it. Without this, an older
+    // draft's POST (or a concurrent import's) could land AFTER clear's and
+    // resurrect the cleared content. (The fetch promise resolves only after the
+    // server has responded, so awaiting it orders the writes server-side.)
+    //
+    // editorKey is bumped only AFTER clear() resolves: the uncontrolled
     // MarkdownEditor seeds from `status.content` at mount, and status doesn't
     // update to "" until the POST round-trips. Remounting earlier would
     // re-seed with the pre-clear content and the next edit would save it back.
-    const ok = await memory.clear();
+    const ok = await dispatchOrderedWrite(inFlightSavesRef.current, () =>
+      memory.clear(),
+    );
 
     if (ok) {
       setEditorKey((k) => k + 1);
@@ -381,13 +416,12 @@ export function useContextEditorState(
       clearTimer(debounceTimerRef);
       clearTimer(retryTimerRef);
 
-      // Order the import POST after every in-flight save so a stale draft POST
-      // can't land after it and resurrect the old content (see handleClear).
-      const pending = pendingSaves(inFlightSavesRef.current);
-
-      if (pending != null) await pending;
-
-      const ok = await memory.save(content);
+      // Order the import POST after every in-flight write, and track it for the
+      // write after it, so a stale draft POST — or a Clear the user fires while
+      // this one is on the wire — can't land after it (see handleClear).
+      const ok = await dispatchOrderedWrite(inFlightSavesRef.current, () =>
+        memory.save(content),
+      );
 
       if (ok) {
         setEditorKey((k) => k + 1);

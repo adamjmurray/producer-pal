@@ -448,6 +448,91 @@ describe("useContextEditorState", () => {
     });
   });
 
+  describe("clear vs import ordering", () => {
+    // The two manual writes must be ordered against EACH OTHER, not just
+    // against autosave: each registers its own POST in the in-flight set. Left
+    // untracked, the second one finds an empty set and dispatches immediately,
+    // putting two writes on the wire at once — the UI resolves correctly
+    // (use-doc discards the superseded echo) but the file on disk keeps
+    // whichever the server handled last, and the next poll surfaces it.
+    it("blocks a Clear fired while the import POST is still on the wire", async () => {
+      const { save, resolveSave: resolveImport } = deferredSave();
+      const clear = vi.fn().mockResolvedValue(true);
+      const { result } = renderReadyEditor({ save, clear });
+
+      stubConfirm(true);
+
+      // Never awaited inside the act: the point is to observe the state while
+      // the import's POST is still pending.
+      let importPromise: Promise<void> | undefined;
+
+      await act(() => {
+        importPromise = result.current.handleImport("# imported");
+      });
+      expect(save).toHaveBeenCalledWith("# imported");
+
+      const { pending: clearPromise } = await startBlockedClear(result, clear);
+
+      await act(async () => {
+        resolveImport(true);
+        await importPromise;
+        await clearPromise;
+      });
+      expect(clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("blocks an Import fired while the clear POST is still on the wire", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const { save: clear, resolveSave: resolveClear } = deferredSave();
+      const { result } = renderReadyEditor({ save, clear });
+
+      stubConfirm(true);
+
+      let clearPromise: Promise<boolean> | undefined;
+      let importPromise: Promise<void> | undefined;
+
+      await act(() => {
+        clearPromise = result.current.handleClear();
+      });
+      expect(clear).toHaveBeenCalledTimes(1);
+
+      await act(() => {
+        importPromise = result.current.handleImport("# imported");
+      });
+      await drainMicrotasks();
+      expect(save).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveClear(true);
+        await clearPromise;
+        await importPromise;
+      });
+      expect(save).toHaveBeenCalledWith("# imported");
+    });
+
+    it("does not wedge the next manual write when a clear POST rejects", async () => {
+      // clear() resolves false on failure today; a rejection left in the
+      // in-flight set would make every later clear/import await a rejecting
+      // Promise.all, so the tracked promise must be one that settles.
+      const clear = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("network down"))
+        .mockResolvedValue(true);
+      const { result } = renderReadyEditor({ clear });
+
+      stubConfirm(true);
+
+      await act(async () => {
+        await expect(result.current.handleClear()).resolves.toBe(false);
+      });
+
+      await act(async () => {
+        await expect(result.current.handleClear()).resolves.toBe(true);
+      });
+      expect(clear).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("dirty flag", () => {
     it("starts false, flips true on edit, flips false after a successful save", async () => {
       const save = vi.fn().mockResolvedValue(true);
