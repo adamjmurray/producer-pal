@@ -151,6 +151,18 @@ export const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
  * anything the request's header withholds. An absent or empty header leaves the
  * configured set untouched.
  *
+ * NOTHING IS RESERVED HERE, and that is deliberate — `ppal-connect` included.
+ * `validateTools` (create-mcp-server.ts) does require it, which looks like an
+ * inconsistency worth "fixing"; it is not. The two guard different things:
+ * `validateTools` guards the server's GLOBAL config, where dropping the entry
+ * point would leave an external MCP client with no way in. This guards ONE
+ * request's subtraction, and a subagent worker withholds `ppal-connect` on
+ * purpose — its briefing replaces the connect call, and withholding the tool is
+ * also what makes the server drop the connect/context skills fragments so the
+ * briefing stays short (see WORKER_WITHHELD_TOOLS in subagent-briefing.ts).
+ * Reserving the name here would hand every worker `ppal-connect` back and
+ * re-inflate every briefing.
+ *
  * @param headerValue - The request's header value, or undefined when absent
  * @param configuredTools - The server's global `config.tools`
  * @returns The tools to register and to gate skills fragments on
