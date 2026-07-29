@@ -189,11 +189,14 @@ skills directory:
   Simpler, wavetables, reverb impulse responses, and open-ended clips like
   drones and textures. The agent writes the DSP for what you asked for; a shared
   library handles WAV encoding so custom algorithms are cheap to try.
-- **`ableton-analyze-audio`** — get audio back out of Live. Renders the mix or a
-  single track to a file (macOS only, no API key needed — also the way to get a
-  plain bounce or stem), and separately analyzes any audio file with Google's
-  Gemini API for feedback on timbre, mix, and arrangement (needs a
-  `GEMINI_KEY`).
+- **`ableton-analyze-audio`** — get audio back out of Live, in two halves that
+  work independently. **Render** the mix or a single track to a file: macOS only
+  (it drives Live's Export dialog with AppleScript, since there's no render API)
+  but no API key needed, which also makes it the way to get a plain bounce or
+  stem on disk. **Analyze** any audio file with Google's Gemini API for feedback
+  on timbre, mix, and arrangement: any platform, no Ableton involved, needs a
+  `GEMINI_KEY`. The analysis is one short script against one HTTP endpoint —
+  swapping in a different audio-capable model or service is a small edit.
 
 See the
 [skills README](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills)

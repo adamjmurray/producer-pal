@@ -61,6 +61,20 @@ script while you listen, and change device settings mid-session:
 [Direct Live API](/features#ppal-live-api). MCP clients can only change those by
 changing settings on the device and starting a new conversation.
 
+Two [companion skills](/guide/skills#companion-skills) build on that connection.
+**`ableton-audio-generator`** synthesizes audio from scratch with plain Node.js
+DSP — drum kits, Simpler samples, wavetables, reverb impulse responses, drones —
+and places it in Live. **`ableton-analyze-audio`** goes the other way, in two
+halves that also work on their own: render the mix or a single track to a file
+(**macOS only** — Live exposes no render API, so this drives the Export dialog
+with AppleScript), then optionally hand that file to Google's Gemini for
+feedback on how it actually sounds (any platform, needs a `GEMINI_KEY`; it's one
+small script, so pointing it at a different audio-capable API is a short edit).
+
+Neither could be a Producer Pal tool: writing DSP, driving another app's UI, and
+calling an external API all need a real runtime, which a coding agent has and
+the Max for Live device doesn't.
+
 [Set up the Agent Skill →](/guide/skills)
 
 ## Customize what the AI is told
@@ -85,14 +99,16 @@ workflow in plain language, you can change how the AI works.
 
 ## Choosing the right extension point
 
-| I want to…                                      | Use                                          |
-| ----------------------------------------------- | -------------------------------------------- |
-| Script Ableton Live without AI                  | [REST API](/guide/rest-api)                  |
-| Build my own interface for Live                 | [REST API](/guide/rest-api)                  |
-| Work from Claude Code, Codex CLI, or Gemini CLI | [Agent Skill](/guide/skills)                 |
-| Teach the AI a production technique             | [Skills](/guide/customizing-skills)          |
-| Tell the AI my preferences once, for good       | [Global context](/guide/context#global)      |
-| Cut what the AI costs per conversation          | [Trim the skills](/guide/customizing-skills) |
+| I want to…                                         | Use                                                |
+| -------------------------------------------------- | -------------------------------------------------- |
+| Script Ableton Live without AI                     | [REST API](/guide/rest-api)                        |
+| Build my own interface for Live                    | [REST API](/guide/rest-api)                        |
+| Work from Claude Code, Codex CLI, or Gemini CLI    | [Agent Skill](/guide/skills)                       |
+| Synthesize audio and land it in Live               | [Companion skills](/guide/skills#companion-skills) |
+| Render a mixdown or stem (macOS), or analyze a mix | [Companion skills](/guide/skills#companion-skills) |
+| Teach the AI a production technique                | [Skills](/guide/customizing-skills)                |
+| Tell the AI my preferences once, for good          | [Global context](/guide/context#global)            |
+| Cut what the AI costs per conversation             | [Trim the skills](/guide/customizing-skills)       |
 
 ## Ideas under consideration
 
