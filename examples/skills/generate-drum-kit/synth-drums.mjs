@@ -98,7 +98,7 @@ function wav16(mono) {
   b.writeUInt32LE(n * 2, 40);
   let o = 44;
   for (let i = 0; i < n; i++) {
-    b.writeInt16LE((clamp(mono[i]) * 32767) | 0, o);
+    b.writeInt16LE(Math.round(clamp(mono[i]) * 32767), o);
     o += 2;
   }
   return b;

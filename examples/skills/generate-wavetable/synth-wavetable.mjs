@@ -147,23 +147,29 @@ if (peak > 0)
   for (let i = 0; i < table.length; i++) table[i] = (table[i] / peak) * 0.98;
 
 // ---------- WAV (32-bit float mono; preserves waveform detail) ----------
+// Non-PCM formats need an extended fmt chunk (with cbSize) plus a fact chunk,
+// so the header is 58 bytes here rather than the classic PCM 44.
 function wavFloat32(mono) {
   const n = mono.length;
-  const b = Buffer.alloc(44 + n * 4);
+  const b = Buffer.alloc(58 + n * 4);
   b.write("RIFF", 0);
-  b.writeUInt32LE(36 + n * 4, 4);
+  b.writeUInt32LE(50 + n * 4, 4);
   b.write("WAVE", 8);
   b.write("fmt ", 12);
-  b.writeUInt32LE(16, 16);
+  b.writeUInt32LE(18, 16); // fmt size: 16 + cbSize field
   b.writeUInt16LE(3, 20); // IEEE float
   b.writeUInt16LE(1, 22); // mono
   b.writeUInt32LE(SR, 24);
   b.writeUInt32LE(SR * 4, 28);
   b.writeUInt16LE(4, 32);
   b.writeUInt16LE(32, 34);
-  b.write("data", 36);
-  b.writeUInt32LE(n * 4, 40);
-  let o = 44;
+  b.writeUInt16LE(0, 36); // cbSize: no extra format bytes
+  b.write("fact", 38);
+  b.writeUInt32LE(4, 42);
+  b.writeUInt32LE(n, 46); // sample frames
+  b.write("data", 50);
+  b.writeUInt32LE(n * 4, 54);
+  let o = 58;
   for (let i = 0; i < n; i++) {
     b.writeFloatLE(mono[i], o);
     o += 4;
