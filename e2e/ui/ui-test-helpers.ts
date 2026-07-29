@@ -125,13 +125,13 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
-  // GitHub release check (useUpdateCheck) — empty body => no update banner, and
-  // keeps the test offline/deterministic.
-  await page.route("https://api.github.com/**", (route) =>
+  // Update check (useUpdateCheck) — the server's cached answer, not GitHub. A
+  // literal `null` body means "up to date", so no update link renders.
+  await page.route("**/update", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: "{}",
+      body: "null",
     }),
   );
 

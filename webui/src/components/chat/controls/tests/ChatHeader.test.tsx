@@ -519,12 +519,7 @@ describe("ChatHeader", () => {
     });
 
     it("shows update link when an update is available", () => {
-      render(
-        <VersionDisplay
-          version="1.4.4"
-          update={{ version: "1.5.0", isRebuild: false }}
-        />,
-      );
+      render(<VersionDisplay version="1.4.4" update={{ version: "1.5.0" }} />);
       const link = screen.getByText("(update)");
 
       expect(link).toBeDefined();
@@ -536,12 +531,7 @@ describe("ChatHeader", () => {
     });
 
     it("shows latest version in tooltip", () => {
-      render(
-        <VersionDisplay
-          version="1.4.4"
-          update={{ version: "2.0.0", isRebuild: false }}
-        />,
-      );
+      render(<VersionDisplay version="1.4.4" update={{ version: "2.0.0" }} />);
       const link = screen.getByText("(update)");
 
       expect(link.getAttribute("title")).toBe(

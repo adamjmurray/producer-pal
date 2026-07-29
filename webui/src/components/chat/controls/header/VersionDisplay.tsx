@@ -37,13 +37,7 @@ export function VersionDisplay({
             target="_blank"
             rel="noopener noreferrer"
             className="text-sky-500 dark:text-sky-400 hover:underline"
-            title={
-              update.isRebuild
-                ? // Same version number, so naming it would read as "you already
-                  // have this" — say what actually changed instead.
-                  `v${update.version} was re-released with a newer build — click for upgrade instructions`
-                : `v${update.version} available — click for upgrade instructions`
-            }
+            title={`v${update.version} available — click for upgrade instructions`}
             onClick={(e) => e.stopPropagation()}
           >
             (update)

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi, type MockInstance } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { checkForUpdate, isNewerVersion } from "../version-check.ts";
 
 describe("isNewerVersion", () => {
@@ -102,6 +102,27 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("v1.2.3-beta", "v1.2.3")).toBe(true);
   });
 
+  it("prompts an rc tester at GA promotion, which is the whole update path now", () => {
+    // Shipped versions are real `-rcN` strings, so promotion is an ordinary
+    // version difference and one request answers it. This replaced the second
+    // GitHub request (resolving the release tag to a commit) that existed only
+    // because every build of a cycle used to call itself the GA version.
+    expect(isNewerVersion("2.1.0-rc1", "2.1.0")).toBe(true);
+    expect(isNewerVersion("2.1.0-rc4", "2.1.0")).toBe(true);
+  });
+
+  it("never prompts an rc tester to install the older stable release", () => {
+    // `/releases/latest` hides pre-releases, so mid-cycle a tester on 2.1.0-rc1
+    // gets 2.0.0 back. A downgrade prompt must not be reachable.
+    expect(isNewerVersion("2.1.0-rc1", "2.0.0")).toBe(false);
+  });
+
+  it("does not announce a mid-cycle re-cut to a tester on an earlier rc", () => {
+    // Accepted: `/releases/latest` would never surface rc2 anyway (it's marked
+    // pre-release), so the comparison is moot. Testers are told directly.
+    expect(isNewerVersion("2.1.0-rc1", "2.1.0-rc2")).toBe(false);
+  });
+
   it("does not treat pre-release latest as newer than same stable", () => {
     // latest has suffix, current doesn't → latest is NOT newer
     expect(isNewerVersion("1.2.3", "1.2.3-beta")).toBe(false);
@@ -129,14 +150,29 @@ describe("checkForUpdate", () => {
     mockFetchResponse({ tag_name: "v2.0.0" });
     const result = await checkForUpdate("1.0.0");
 
-    expect(result).toStrictEqual({ version: "2.0.0", isRebuild: false });
+    expect(result).toStrictEqual({ version: "2.0.0" });
   });
 
   it("returns version when tag_name has no v prefix", async () => {
     mockFetchResponse({ tag_name: "2.0.0" });
     const result = await checkForUpdate("1.0.0");
 
-    expect(result).toStrictEqual({ version: "2.0.0", isRebuild: false });
+    expect(result).toStrictEqual({ version: "2.0.0" });
+  });
+
+  it("reports a GA promotion to a tester holding the pre-release", async () => {
+    // The end-to-end shape of what replaced the tag-to-commit request: a real
+    // `-rcN` in the artifact makes promotion an ordinary version difference.
+    mockFetchResponse({ tag_name: "v2.1.0" });
+
+    expect(await checkForUpdate("2.1.0-rc3")).toStrictEqual({
+      version: "2.1.0",
+    });
+  });
+
+  it("stays quiet mid-cycle, when latest is the older stable release", async () => {
+    mockFetchResponse({ tag_name: "v2.0.0" });
+    expect(await checkForUpdate("2.1.0-rc1")).toBeNull();
   });
 
   it("returns null when the current version matches latest", async () => {
@@ -189,128 +225,24 @@ describe("checkForUpdate", () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
-});
 
-describe("checkForUpdate build comparison", () => {
-  // A release candidate that gets re-cut keeps its version number, so testers
-  // who downloaded the earlier build are told they're up to date forever. The
-  // commit behind the published tag is what breaks that tie.
-  const TAG_COMMIT_URL =
-    "https://api.github.com/repos/adamjmurray/producer-pal/commits/v2.0.0";
+  it("makes exactly one request, whatever the answer is", async () => {
+    // GitHub's unauthenticated limit is 60/hr per IP. This function used to make
+    // a second request to resolve the release tag to a commit; real `-rcN`
+    // versions made that unnecessary, and it must not come back.
+    for (const [current, tag] of [
+      ["1.0.0", "v2.0.0"], // update available
+      ["2.0.0", "v2.0.0"], // up to date
+      ["2.1.0-rc1", "v2.0.0"], // pre-release, ahead of latest stable
+      ["2.1.0-rc1", "v2.1.0"], // pre-release, promoted
+    ] as const) {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify({ tag_name: tag })));
 
-  function mockGitHub({
-    tag = "v2.0.0",
-    commit,
-    commitOk = true,
-  }: {
-    tag?: string;
-    commit?: string;
-    commitOk?: boolean;
-  }): MockInstance<typeof fetch> {
-    return vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation((input: RequestInfo | URL) =>
-        Promise.resolve(
-          String(input).includes("/releases/latest")
-            ? new Response(JSON.stringify({ tag_name: tag }))
-            : new Response(
-                JSON.stringify(commit == null ? {} : { sha: commit }),
-                {
-                  status: commitOk ? 200 : 404,
-                },
-              ),
-        ),
-      );
-  }
-
-  const PUBLISHED = "9f8e7d6c5b4a39281706f5e4d3c2b1a098765432";
-
-  it("flags a rebuild when the tag points at a different commit", async () => {
-    mockGitHub({ commit: PUBLISHED });
-
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
-      version: "2.0.0",
-      isRebuild: true,
-    });
-  });
-
-  it("resolves the published tag, not a hardcoded one", async () => {
-    const fetchSpy = mockGitHub({ commit: PUBLISHED });
-
-    await checkForUpdate("2.0.0", "1a2b3c4");
-
-    expect(fetchSpy).toHaveBeenCalledWith(
-      TAG_COMMIT_URL,
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
-  });
-
-  it("stays quiet when the tag commit starts with our short SHA", async () => {
-    // The promote-a-pre-release-unchanged path: the tag never moved, so the
-    // tester already has the published bytes. Our SHA is short, the API's is
-    // full length, so this has to match on prefix.
-    mockGitHub({ commit: PUBLISHED });
-    expect(await checkForUpdate("2.0.0", "9f8e7d6")).toBeNull();
-  });
-
-  it("matches case-insensitively", async () => {
-    mockGitHub({ commit: PUBLISHED.toUpperCase() });
-    expect(await checkForUpdate("2.0.0", "9f8e7d6")).toBeNull();
-  });
-
-  it("skips the second request when this build has no SHA", async () => {
-    // Running from source. Nothing to compare, so don't spend the request.
-    const fetchSpy = mockGitHub({ commit: PUBLISHED });
-
-    expect(await checkForUpdate("2.0.0")).toBeNull();
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("skips the second request when our version is ahead of the release", async () => {
-    // A local build running ahead of the latest release. Its commit differs, so
-    // without the version guard every dev build would be nagged forever.
-    const fetchSpy = mockGitHub({ tag: "v1.0.0", commit: PUBLISHED });
-
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("stays quiet when the tag can't be resolved", async () => {
-    // Offline, rate-limited, or a tag this build predates: fall back to the
-    // version-only comparison rather than guessing.
-    mockGitHub({ commit: PUBLISHED, commitOk: false });
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
-  });
-
-  it("stays quiet when the commit response carries no sha", async () => {
-    mockGitHub({});
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
-  });
-
-  it("stays quiet when sha is not a string", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(
-      (input: RequestInfo | URL) =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify(
-              String(input).includes("/releases/latest")
-                ? { tag_name: "v2.0.0" }
-                : { sha: 12345 },
-            ),
-          ),
-        ),
-    );
-
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toBeNull();
-  });
-
-  it("reports a newer version as a version update without resolving the tag", async () => {
-    const fetchSpy = mockGitHub({ tag: "v3.0.0", commit: PUBLISHED });
-
-    expect(await checkForUpdate("2.0.0", "1a2b3c4")).toStrictEqual({
-      version: "3.0.0",
-      isRebuild: false,
-    });
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+      await checkForUpdate(current);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      fetchSpy.mockRestore();
+    }
   });
 });
