@@ -18,6 +18,13 @@ export const PRESETS_STORAGE_KEY = "producer_pal_presets";
  * Load saved chat presets from localStorage, dropping any malformed entries.
  * Presets carry no API keys (only a provider name), so this is plain sync JSON
  * with no decryption — unlike the encrypted per-provider settings store.
+ *
+ * The try covers only JSON.parse, not the getItem: a throwing storage accessor
+ * (site data blocked by policy) is an app-wide precondition, not this
+ * function's to absorb. App mounts useSettings before any preset UI exists and
+ * reads localStorage unguarded there, so blocked storage has already blanked
+ * the page — and it blocks IndexedDB too, without which no API key can be
+ * stored at all. Guarding here would buy nothing.
  * @returns The stored presets, or an empty list when absent/corrupt
  */
 export function loadPresets(): ChatPreset[] {
