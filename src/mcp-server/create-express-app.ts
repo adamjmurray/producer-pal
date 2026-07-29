@@ -33,6 +33,7 @@ import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
+import { getUpdate } from "./helpers/http/update-check.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { withNotationOverride } from "./helpers/request-overrides/notation-override.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
@@ -374,6 +375,15 @@ export function createExpressApp(): Express {
   });
 
   app.post("/config", handleConfigUpdate);
+
+  // The chat UI's update badge. It reads this instead of GitHub directly:
+  // GitHub's unauthenticated limit is per IP, and the UI remounts every time the
+  // window is opened. Served from the one check made at startup (update-check.ts),
+  // so this route never reaches the network.
+  app.get("/update", (_req: Request, res: Response): void => {
+    setNoStore(res);
+    void getUpdate().then((update) => res.json(update));
+  });
 
   registerRestApiRoutes(app, () => config, callLiveApiEnriched);
 

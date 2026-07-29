@@ -2,16 +2,6 @@
 
 When installing a new version of Producer Pal, follow these steps:
 
-::: info Told an update is available, but the version number looks the same?
-
-That's expected, and you should still upgrade. A release's files are sometimes
-replaced during pre-release testing without the version number changing.
-Producer Pal compares the exact build it's running against the one published on
-GitHub, so it can tell your copy is out of date even when both say the same
-version.
-
-:::
-
 ## 1. Download New Files
 
 Get the latest version (v{{ $frontmatter.version }}) —

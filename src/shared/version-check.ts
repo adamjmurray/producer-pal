@@ -3,46 +3,41 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-const REPO_API_URL = "https://api.github.com/repos/adamjmurray/producer-pal";
-
 // `/releases/latest` excludes anything marked as a pre-release, and we depend on
 // that: there is no opt-in beta track, so people on the current stable release
-// must never be nudged toward a beta. Do not swap this for `/releases` and take
-// [0] — that offers every stable user the in-testing pre-release.
+// must never be nudged toward a pre-release. Do not swap this for `/releases`
+// and take [0] — that offers every stable user the in-testing pre-release.
 //
-// A tester running the pre-release therefore gets the older stable release back
-// as "latest". They are never prompted to install it: `isNewerVersion` is
-// strictly directional, so the older version fails the first check, and the
-// guard below then returns null. A downgrade prompt is not reachable.
+// A tester running an `-rcN` build therefore gets the older stable release back
+// as "latest", and is never prompted to install it: `isNewerVersion` is strictly
+// directional, so the older version fails and this returns null. A downgrade
+// prompt is not reachable.
 //
-// The trade-off is that the build comparison below is dormant for the whole
-// pre-release window — a tester holding a re-cut pre-release is not prompted
-// while it is still marked pre-release. That window is covered by talking to
-// testers directly. The comparison goes live at GA promotion, which is the case
-// it exists for: a tester still holding a pre-release build that got re-cut.
-const RELEASES_URL = `${REPO_API_URL}/releases/latest`;
+// That same tester IS prompted the moment the pre-release is promoted, because
+// `2.1.0-rc1` and `2.1.0` are genuinely different versions — the version string
+// alone answers it, in one request. Pre-release versions used to be git tags
+// only, so every build of a cycle called itself `2.1.0` and a second request
+// (resolving the tag to a commit) was needed to tell re-cut builds apart. Real
+// `-rcN` versions in the artifact removed that need; keep it at one request.
+const RELEASES_URL =
+  "https://api.github.com/repos/adamjmurray/producer-pal/releases/latest";
 
 const TIMEOUT_MS = 5000;
 
 export interface UpdateInfo {
   /** The version published as the latest release */
   version: string;
-  /**
-   * True when the published version matches ours but its build doesn't — the
-   * release was re-cut after this copy was downloaded.
-   */
-  isRebuild: boolean;
 }
 
 /**
- * Checks GitHub for a newer release of Producer Pal.
+ * Checks GitHub for a newer release of Producer Pal. Makes exactly one request;
+ * callers must make it exactly once per process (see
+ * mcp-server/helpers/http/update-check.ts).
  * @param currentVersion - The current version string
- * @param currentBuild - The current build SHA, or "" when unknown
  * @returns The available update, or null if up to date or on any error
  */
 export async function checkForUpdate(
   currentVersion: string,
-  currentBuild = "",
 ): Promise<UpdateInfo | null> {
   try {
     const response = await fetch(RELEASES_URL, {
@@ -63,53 +58,10 @@ export async function checkForUpdate(
 
     const latest = tagName.startsWith("v") ? tagName.slice(1) : tagName;
 
-    if (isNewerVersion(currentVersion, latest)) {
-      return { version: latest, isRebuild: false };
-    }
-
-    // Neither version is newer, so either they're equal or this is a local build
-    // running ahead of the latest release. Only the equal case is worth a second
-    // request, and only when we know which build we are.
-    if (currentBuild === "" || isNewerVersion(latest, currentVersion)) {
-      return null;
-    }
-
-    // Same version number, so compare builds. A release candidate that gets
-    // re-cut is re-tagged at the new commit, which is what makes the published
-    // tag a truthful build identity — and what keeps this silent when a
-    // pre-release is promoted untouched, where the tag never moved and the
-    // tester already has the published bytes.
-    const publishedBuild = await fetchTagCommit(tagName);
-
-    if (publishedBuild != null && !publishedBuild.startsWith(currentBuild)) {
-      return { version: latest, isRebuild: true };
-    }
-
-    return null;
+    return isNewerVersion(currentVersion, latest) ? { version: latest } : null;
   } catch {
     return null;
   }
-}
-
-/**
- * Resolves a release tag to the commit it points at. GitHub dereferences
- * annotated tags here, so this is the commit SHA a build of that tag baked in.
- * @param tagName - The release's tag, e.g. "v2.0.0"
- * @returns The full commit SHA, or null when it can't be resolved
- */
-async function fetchTagCommit(tagName: string): Promise<string | null> {
-  const response = await fetch(
-    `${REPO_API_URL}/commits/${encodeURIComponent(tagName)}`,
-    { signal: AbortSignal.timeout(TIMEOUT_MS) },
-  );
-
-  if (!response.ok) return null;
-
-  const data: unknown = await response.json();
-
-  if (data == null || typeof data !== "object" || !("sha" in data)) return null;
-
-  return typeof data.sha === "string" ? data.sha.toLowerCase() : null;
 }
 
 /**

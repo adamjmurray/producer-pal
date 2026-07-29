@@ -11,6 +11,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,30 +21,16 @@ const rootDir = join(__dirname, "../..");
 
 console.log("Preparing release...\n");
 
-// Check if we're on a tagged commit
-try {
-  const currentTag = execSync(
-    "git describe --exact-match --tags HEAD 2>/dev/null",
-    {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "ignore"],
-    },
-  ).trim();
-
-  console.log(`✓ Building from tag: ${currentTag}\n`);
-} catch {
-  console.log("⚠️  WARNING: Not on a tagged commit!");
-  console.log("   Releases should be built from tagged commits.");
-  console.log('   Run: git tag -s -m "vX.Y.Z" vX.Y.Z\n');
-}
+// Deliberately does NOT expect a tag yet. Building comes first, tagging comes
+// after the artifacts have been looked at (`npm run tag`) — see dev/Releasing.md.
 
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 
-// Resolve the build identity here and pass it into the build. The update check
-// compares this against the commit the release tag points at, which is how a
-// re-cut release is told apart from the copy testers already downloaded — so
-// the release tag MUST end up on this exact commit.
+// Baked into the bundles and shown next to the version in the device UI. It is
+// diagnostic only: which commit produced these bytes, for when a bug report and
+// a version number disagree. The update check does not read it — the version
+// string alone answers that now that every build carries its own -rcN.
 let buildSha: string;
 
 try {
@@ -98,16 +85,27 @@ if (!existsSync(dxtSource)) {
 copyFileSync(dxtSource, dxtDest);
 console.log("\n✅ Copied Producer_Pal.mcpb to release/");
 
+// Building and tagging are separate steps so the tag lands on artifacts someone
+// has looked at. The gap between them is the risk: a commit, or a version bump,
+// made in between moves the tag off what was built without anything noticing.
+// `npm run tag` reads this back and refuses in that case. Gitignored with the
+// rest of release/.
+writeFileSync(
+  join(releaseDir, "build-info.json"),
+  JSON.stringify({ version: pkg.version, commit: buildSha }, null, 2) + "\n",
+);
+
 console.log("\n📋 Next steps:");
 console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
 console.log("2. Click the freeze button");
 console.log("3. Save as: release/Producer_Pal.amxd");
 console.log("4. Test both files work correctly");
+console.log("5. Tag the release: npm run tag");
 console.log(
-  "5. Create/update the GitHub release, test, and proceed per dev/Releasing.md",
+  "6. Create the GitHub release, test, and proceed per dev/Releasing.md",
 );
 console.log(
-  `\n🔖 These files identify themselves as build ${buildSha}. The release tag must\n` +
-    "   point at that commit, or the update check can't tell them apart from an\n" +
-    "   earlier download (see dev/Releasing.md).\n",
+  `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 4 turns up\n` +
+    "   anything, don't rebuild under the same number — npm run version:bump:rc,\n" +
+    "   then build again, so the replacement is a version testers can name.\n",
 );

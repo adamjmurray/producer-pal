@@ -34,12 +34,7 @@ describe("VersionDisplay", () => {
   });
 
   it("shows update link when newer version is available", () => {
-    render(
-      <VersionDisplay
-        version="1.2.3"
-        update={{ version: "1.3.0", isRebuild: false }}
-      />,
-    );
+    render(<VersionDisplay version="1.2.3" update={{ version: "1.3.0" }} />);
     const link = screen.getByText("(update)");
 
     expect(link).toBeDefined();
@@ -47,29 +42,12 @@ describe("VersionDisplay", () => {
     expect(link.getAttribute("title")).toContain("v1.3.0 available");
   });
 
-  it("explains a same-version rebuild instead of naming the version", () => {
-    // Naming the version here would read as "you already have this".
-    render(
-      <VersionDisplay
-        version="1.2.3"
-        update={{ version: "1.2.3", isRebuild: true }}
-      />,
-    );
-
-    expect(screen.getByText("(update)").getAttribute("title")).toContain(
-      "re-released with a newer build",
-    );
-  });
-
   it("stops propagation on update link click", () => {
     let parentClicked = false;
 
     render(
       <div onClick={() => (parentClicked = true)}>
-        <VersionDisplay
-          version="1.2.3"
-          update={{ version: "1.3.0", isRebuild: false }}
-        />
+        <VersionDisplay version="1.2.3" update={{ version: "1.3.0" }} />
       </div>,
     );
     fireEvent.click(screen.getByText("(update)"));
