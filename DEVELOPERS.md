@@ -134,8 +134,10 @@ And `npm run check:build` additionally validates:
   exception requires discussion — the AI agent is guided to raise it rather than
   silently excluding coverage.
 - **Lint suppression limits** are ratcheted to current counts. Adding a new
-  `oxlint-disable` or `@ts-expect-error` requires fixing an existing one first
-  (or getting approval to raise the limit).
+  `eslint-disable` or `@ts-expect-error` requires fixing an existing one first
+  (or getting approval to raise the limit). Write directives with the `eslint-`
+  prefix even though the linter is oxlint — the rule that requires a `-- reason`
+  only recognizes that spelling (see `dev/Linting.md`).
 - **File size limits** force agents to split code into focused modules rather
   than growing monolithic files.
 - **Duplication limits** prevent copy-paste patterns that diverge over time.

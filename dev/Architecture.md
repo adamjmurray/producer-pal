@@ -191,8 +191,8 @@ Musical notation parser and utilities for creating and manipulating MIDI clips.
 
 The `src/` tree is organized into layers with a one-directional dependency
 graph. This is not just a convention: it is an **executable contract** enforced
-in CI by the `import-x/no-restricted-paths` rule in `eslint.config.js` (a
-violation fails `npm run lint`). The layers, from foundational to top-level:
+in CI by `src/test/meta/import-restrictions.test.ts` (a violation fails
+`npm test`). The layers, from foundational to top-level:
 
 - **`shared/`** — foundational leaf. Pure utilities (path builders, config,
   pitch math, the `assertDefined` assertion helper, the V8 console shim)

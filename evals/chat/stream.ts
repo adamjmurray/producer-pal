@@ -245,7 +245,7 @@ function finishStream(state: StreamState): void {
 
   if (state.inThought) process.stdout.write(endThought());
 
-  // Skip trailing newline when usage is shown — onStepFinish adds its own
+  // Skip trailing newline when usage is shown — onStepEnd adds its own
   if (!state.showUsage) process.stdout.write("\n");
 }
 

@@ -151,22 +151,38 @@ describe("import restrictions", () => {
     expect(violations).toHaveLength(0);
   });
 
-  it("should keep src/shared and src/notation as leaf layers", () => {
+  it("should respect the src/ layering contract", () => {
     // shared/ is the foundation every other layer depends on, and notation/ sits
-    // just above it, so neither may reach back up.
+    // just above it, so neither may reach back up. tools/ is the domain layer
+    // that mcp-server composes, so the dependency must not run the other way.
     const zones = [
       {
         target: "src/shared",
-        forbidden: ["tools", "mcp-server", "live-api-adapter", "notation"],
+        forbidden: [
+          "tools",
+          "mcp-server",
+          "live-api-adapter",
+          "notation",
+          "portal",
+        ],
+        except: [],
       },
       {
         target: "src/notation",
-        forbidden: ["tools", "mcp-server", "live-api-adapter"],
+        forbidden: ["tools", "mcp-server", "live-api-adapter", "portal"],
+        except: [],
+      },
+      {
+        target: "src/tools",
+        forbidden: ["mcp-server"],
+        // The shared ppal-library data contract, consumed by both the tool
+        // (tools/session/library.ts) and its mcp-server-side implementation.
+        except: ["mcp-server/live-library/library-types.ts"],
       },
     ];
     const violations: Violation[] = [];
 
-    for (const { target, forbidden } of zones) {
+    for (const { target, forbidden, except } of zones) {
       for (const file of findSourceFiles(
         path.join(projectRoot, target),
         true,
@@ -179,9 +195,14 @@ describe("import restrictions", () => {
         const lines = fs.readFileSync(file, "utf8").split("\n");
 
         for (const { value, line } of specifiersIn(file)) {
-          const layer = layerOf(value, rel);
+          const within = pathWithinSrc(value, rel);
 
-          if (layer == null || !forbidden.includes(layer)) continue;
+          if (within == null) continue;
+
+          const layer = within.split("/")[0] ?? "";
+
+          if (!forbidden.includes(layer)) continue;
+          if (except.includes(within)) continue;
 
           if (isSuppressed(lines, line - 1, "import-x/no-restricted-paths")) {
             continue;
@@ -189,7 +210,7 @@ describe("import restrictions", () => {
 
           violations.push({
             file: `${rel}:${line}`,
-            reason: `imports "${value}" — ${target} is a leaf layer and must not depend on src/${layer}`,
+            reason: `imports "${value}" — ${target} must not depend on src/${layer}`,
           });
         }
       }
@@ -230,36 +251,40 @@ function specifiersIn(file: string): Specifier[] {
  */
 function isSuppressed(lines: string[], index: number, rule: string): boolean {
   const names = `(?:es|ox)lint`;
-  const whole = new RegExp(
-    `${names}-disable(?:\\s|$)[^\\n]*\\b${escape(rule)}\\b`,
-  );
+  const name = ruleToken(rule);
+  const whole = new RegExp(`${names}-disable(?:\\s|$)[^\\n]*${name}`);
 
   if (lines.some((l) => whole.test(l))) return true;
 
-  const line = new RegExp(`${names}-disable-line[^\\n]*\\b${escape(rule)}\\b`);
-  const next = new RegExp(
-    `${names}-disable-next-line[^\\n]*\\b${escape(rule)}\\b`,
-  );
+  const line = new RegExp(`${names}-disable-line[^\\n]*${name}`);
+  const next = new RegExp(`${names}-disable-next-line[^\\n]*${name}`);
 
   return line.test(lines[index] ?? "") || next.test(lines[index - 1] ?? "");
 }
 
 /**
- * Escape a rule name for embedding in a RegExp
- * @param value - Raw rule name
- * @returns The name with regex metacharacters escaped
+ * Build a pattern matching a rule name as a whole token in a directive.
+ * `\b` cannot delimit these: a scoped name like `@typescript-eslint/no-x` opens
+ * with a non-word character, so `\b` between the leading space and the `@` never
+ * matches and the rule reads as impossible to suppress.
+ * @param rule - Raw rule name
+ * @returns A source pattern matching that name between directive delimiters
  */
-function escape(value: string): string {
-  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+function ruleToken(rule: string): string {
+  const escaped = rule.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+
+  // Names sit between whitespace or commas, so anchor on those rather than on
+  // word boundaries, and refuse a name that is only a prefix of a longer one.
+  return String.raw`(?<![^\s,])${escaped}(?![\w/-])`;
 }
 
 /**
- * Resolve a specifier to the src/ layer it names, if any
+ * Resolve a specifier to the path it names under src/, if any
  * @param spec - The import specifier
  * @param fromRel - Repo-relative path of the importing file
- * @returns The layer directory name under src/, or null when it names none
+ * @returns The src-relative path it resolves to, or null when it names none
  */
-function layerOf(spec: string, fromRel: string): string | null {
+function pathWithinSrc(spec: string, fromRel: string): string | null {
   const aliased = spec.startsWith("#src/") ? spec.slice("#src/".length) : null;
   const relative = spec.startsWith(".")
     ? path.relative(
@@ -271,7 +296,7 @@ function layerOf(spec: string, fromRel: string): string | null {
 
   if (within == null || within.startsWith("..")) return null;
 
-  return within.split("/")[0] ?? null;
+  return within;
 }
 
 /**

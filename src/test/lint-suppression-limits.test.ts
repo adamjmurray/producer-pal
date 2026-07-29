@@ -140,20 +140,30 @@ describe("Lint suppression limits", () => {
     });
   }
 
-  // Ports eslint-comments/no-unlimited-disable, which oxlint does not implement.
-  // A block directive naming no rule switches off EVERY rule for the rest of the
-  // file, so one stale line can silently drop all coverage from a whole module.
+  // Backstops eslint-comments/no-unlimited-disable over the oxlint- prefix, which
+  // that plugin does not recognize. A directive naming no rule switches off EVERY
+  // rule for the rest of the file, so one stale line can silently drop all
+  // coverage from a whole module.
   it("should not disable every rule at once", () => {
-    const dirs = ["src", "webui", "scripts", "evals", "e2e"];
+    const dirs = [
+      "src",
+      "webui",
+      "scripts",
+      "evals",
+      "e2e",
+      "config",
+      "examples",
+    ];
     const allFiles = dirs.flatMap((dir) => {
       const dirPath = path.join(projectRoot, dir);
 
       return [...findSourceFiles(dirPath), ...findTestFiles(dirPath)];
     });
-    // A file-wide directive that closes, or reaches a "--" reason, without ever
-    // naming a rule. The lookahead keeps the -line and -next-line forms out: they
-    // affect one line, which the rule likewise permits.
-    const barePattern = /(?:es|ox)lint-disable(?!-)\s*(?:\*\/|--)/;
+    // A file-wide directive that closes, reaches a "--" reason, or simply ends
+    // the line, without ever naming a rule — oxlint honors the line-comment form
+    // as file-wide too. The lookahead keeps the -line and -next-line forms out:
+    // they affect one line, which the rule likewise permits.
+    const barePattern = /(?:es|ox)lint-disable(?!-)\s*(?:\*\/|--|$)/;
     const matches = countPatternOccurrences(allFiles, barePattern);
 
     throwOnFileViolations(

@@ -375,8 +375,14 @@ oxlint reports violations, consult it for strategies.
 Key oxlint limits (all ignoring blank/comment lines):
 
 - `max-lines-per-function`: 120. Exception: a webui hook's main `useHook()` may
-  use `oxlint-disable-next-line max-lines-per-function` (not a whole-file
+  use `eslint-disable-next-line max-lines-per-function` (not a whole-file
   disable).
+
+**Write suppression directives with the `eslint-` prefix, not `oxlint-`.**
+oxlint honors both, but the rule requiring a `-- reason` on every directive runs
+through the ESLint-compatible plugin bridge, which only recognizes the `eslint-`
+spelling — an `oxlint-disable` escapes it silently. See `dev/Linting.md`.
+
 - `max-lines` per file: 325 for source, 650 for `*.test.*` and `*-test-case.ts`.
 - `max-depth`: 4. `complexity`: 20.
 

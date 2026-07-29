@@ -15,6 +15,10 @@
 //  4. Rules whose oxlint implementation disagrees with the eslint one on this
 //     codebase are turned off where they misfire, each at its own override with
 //     the reason. Re-enable as oxlint fixes them.
+//  5. Rules the generator dropped because oxlint's native plugin of the same
+//     name lacks them are restored through the JS-plugin bridge — see the
+//     unicorn-js/* entries, and dev/Linting.md for the full list. The alias is
+//     required: `unicorn` is a reserved native plugin name.
 //
 // An override that names a rule MUST also list that rule's plugin in its own
 // `plugins` array, even to turn the rule off — otherwise the entry is silently
@@ -141,7 +145,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -279,6 +282,16 @@
         "unicorn/prefer-string-starts-ends-with": "error",
         "unicorn/no-object-as-default-parameter": "error",
         "unicorn/explicit-length-check": "error",
+        "unicorn-js/no-accidental-bitwise-operator": "error",
+        "unicorn-js/no-array-sort-for-min-max": "error",
+        "unicorn-js/no-boolean-sort-comparator": "error",
+        "unicorn-js/no-duplicate-if-branches": "error",
+        "unicorn-js/no-duplicate-logical-operands": "error",
+        "unicorn-js/no-duplicate-set-values": "error",
+        "unicorn-js/no-impossible-length-comparison": "error",
+        "unicorn-js/no-invalid-argument-count": "error",
+        "unicorn-js/no-mismatched-map-key": "error",
+        "unicorn-js/no-misrefactored-assignment": "error",
         "jsdoc/require-param": "error",
         "jsdoc/require-param-description": "error",
         "jsdoc/require-param-type": "off",
@@ -383,7 +396,8 @@
       "jsPlugins": [
         "@eslint-community/eslint-plugin-eslint-comments",
         "@stylistic/eslint-plugin",
-        "eslint-plugin-sonarjs"
+        "eslint-plugin-sonarjs",
+        { "name": "unicorn-js", "specifier": "eslint-plugin-unicorn" }
       ],
       "plugins": ["typescript", "import", "unicorn", "jsdoc"]
     },
@@ -478,7 +492,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -616,6 +629,16 @@
         "unicorn/prefer-string-starts-ends-with": "error",
         "unicorn/no-object-as-default-parameter": "error",
         "unicorn/explicit-length-check": "error",
+        "unicorn-js/no-accidental-bitwise-operator": "error",
+        "unicorn-js/no-array-sort-for-min-max": "error",
+        "unicorn-js/no-boolean-sort-comparator": "error",
+        "unicorn-js/no-duplicate-if-branches": "error",
+        "unicorn-js/no-duplicate-logical-operands": "error",
+        "unicorn-js/no-duplicate-set-values": "error",
+        "unicorn-js/no-impossible-length-comparison": "error",
+        "unicorn-js/no-invalid-argument-count": "error",
+        "unicorn-js/no-mismatched-map-key": "error",
+        "unicorn-js/no-misrefactored-assignment": "error",
         "jsdoc/require-param": "error",
         "jsdoc/require-param-description": "error",
         "jsdoc/require-param-type": "off",
@@ -709,7 +732,8 @@
       "jsPlugins": [
         "@eslint-community/eslint-plugin-eslint-comments",
         "@stylistic/eslint-plugin",
-        "eslint-plugin-sonarjs"
+        "eslint-plugin-sonarjs",
+        { "name": "unicorn-js", "specifier": "eslint-plugin-unicorn" }
       ],
       "plugins": ["typescript", "import", "unicorn", "jsdoc"],
       "env": {
@@ -813,7 +837,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -951,6 +974,16 @@
         "unicorn/prefer-string-starts-ends-with": "error",
         "unicorn/no-object-as-default-parameter": "error",
         "unicorn/explicit-length-check": "error",
+        "unicorn-js/no-accidental-bitwise-operator": "error",
+        "unicorn-js/no-array-sort-for-min-max": "error",
+        "unicorn-js/no-boolean-sort-comparator": "error",
+        "unicorn-js/no-duplicate-if-branches": "error",
+        "unicorn-js/no-duplicate-logical-operands": "error",
+        "unicorn-js/no-duplicate-set-values": "error",
+        "unicorn-js/no-impossible-length-comparison": "error",
+        "unicorn-js/no-invalid-argument-count": "error",
+        "unicorn-js/no-mismatched-map-key": "error",
+        "unicorn-js/no-misrefactored-assignment": "error",
         "import/first": "error",
         "import/no-cycle": "error",
         "import/no-self-import": "error",
@@ -983,7 +1016,8 @@
       "jsPlugins": [
         "@eslint-community/eslint-plugin-eslint-comments",
         "@stylistic/eslint-plugin",
-        "eslint-plugin-sonarjs"
+        "eslint-plugin-sonarjs",
+        { "name": "unicorn-js", "specifier": "eslint-plugin-unicorn" }
       ],
       "plugins": ["typescript", "import", "unicorn"],
       "env": {
@@ -1072,7 +1106,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -1210,6 +1243,16 @@
         "unicorn/prefer-string-starts-ends-with": "error",
         "unicorn/no-object-as-default-parameter": "error",
         "unicorn/explicit-length-check": "error",
+        "unicorn-js/no-accidental-bitwise-operator": "error",
+        "unicorn-js/no-array-sort-for-min-max": "error",
+        "unicorn-js/no-boolean-sort-comparator": "error",
+        "unicorn-js/no-duplicate-if-branches": "error",
+        "unicorn-js/no-duplicate-logical-operands": "error",
+        "unicorn-js/no-duplicate-set-values": "error",
+        "unicorn-js/no-impossible-length-comparison": "error",
+        "unicorn-js/no-invalid-argument-count": "error",
+        "unicorn-js/no-mismatched-map-key": "error",
+        "unicorn-js/no-misrefactored-assignment": "error",
         "import/first": "error",
         "import/no-cycle": "error",
         "import/no-self-import": "error",
@@ -1225,7 +1268,8 @@
       "jsPlugins": [
         "@eslint-community/eslint-plugin-eslint-comments",
         "@stylistic/eslint-plugin",
-        "eslint-plugin-sonarjs"
+        "eslint-plugin-sonarjs",
+        { "name": "unicorn-js", "specifier": "eslint-plugin-unicorn" }
       ],
       "env": {
         "es2024": true,
@@ -1315,7 +1359,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -1416,6 +1459,16 @@
         "unicorn/prefer-string-starts-ends-with": "error",
         "unicorn/no-object-as-default-parameter": "error",
         "unicorn/explicit-length-check": "error",
+        "unicorn-js/no-accidental-bitwise-operator": "error",
+        "unicorn-js/no-array-sort-for-min-max": "error",
+        "unicorn-js/no-boolean-sort-comparator": "error",
+        "unicorn-js/no-duplicate-if-branches": "error",
+        "unicorn-js/no-duplicate-logical-operands": "error",
+        "unicorn-js/no-duplicate-set-values": "error",
+        "unicorn-js/no-impossible-length-comparison": "error",
+        "unicorn-js/no-invalid-argument-count": "error",
+        "unicorn-js/no-mismatched-map-key": "error",
+        "unicorn-js/no-misrefactored-assignment": "error",
         "import/first": "error",
         "import/no-cycle": "error",
         "import/no-self-import": "error",
@@ -1431,7 +1484,8 @@
       "jsPlugins": [
         "@eslint-community/eslint-plugin-eslint-comments",
         "@stylistic/eslint-plugin",
-        "eslint-plugin-sonarjs"
+        "eslint-plugin-sonarjs",
+        { "name": "unicorn-js", "specifier": "eslint-plugin-unicorn" }
       ],
       "env": {
         "es2024": true,
@@ -1521,7 +1575,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -1708,7 +1761,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
@@ -1910,7 +1962,6 @@
           }
         ],
         "@eslint-community/eslint-comments/no-unlimited-disable": "error",
-        "@eslint-community/eslint-comments/no-unused-disable": "error",
         "no-implicit-coercion": "error",
         "default-param-last": "error",
         "no-lonely-if": "error",
