@@ -20,7 +20,7 @@ import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 /**
  * Ready useSystemPrompt value so App tests don't fetch /system-prompt.
- * @returns A stable, no-op doc-memory hook return in the "ready" state
+ * @returns A stable, no-op use-doc hook return in the "ready" state
  */
 export function systemPromptDocMock(): UseDocReturn {
   return {

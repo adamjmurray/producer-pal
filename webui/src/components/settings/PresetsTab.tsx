@@ -24,9 +24,11 @@ export function PresetsTab({ settings }: PresetsTabProps) {
     <div className="space-y-4">
       <p className="text-sm text-zinc-500 dark:text-zinc-300">
         A preset saves and recalls a full chat setup — provider, model,
-        thinking, small-model mode, and the enabled toolset — in one click. Set
-        those up on the Connection and Tools tabs, then save them here as a
-        named preset. API keys and appearance preferences are never included.
+        thinking, small-model mode, notation, and the enabled toolset — in one
+        click. Set those up on the Connection and Tools tabs, then save them
+        here as a named preset. Loading a preset that saved a notation also
+        changes the device's notation. API keys and appearance preferences are
+        never included.
       </p>
       <PresetControls settings={settings} />
     </div>
