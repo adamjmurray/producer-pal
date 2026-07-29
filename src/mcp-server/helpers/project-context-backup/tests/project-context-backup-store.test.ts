@@ -43,6 +43,31 @@ describe("projectContextSidecarPath", () => {
       projectContextSidecarPath(liveSetPath),
     );
   });
+
+  // Folder keying is a REQUIREMENT, not an implementation detail: a Live
+  // Project is a folder of Sets that share one set of project notes. These pin
+  // the two properties basename keying would break. See the store's header.
+  it("shares one sidecar across every variation of a Set in a project", () => {
+    const variations = ["Song.als", "Song (alt mix).als", "Song v2.als"].map(
+      (name) => projectContextSidecarPath(join(projectDir, name)),
+    );
+
+    expect(new Set(variations).size).toBe(1);
+  });
+
+  it("survives renaming a Set inside the project folder", () => {
+    expect(projectContextSidecarPath(join(projectDir, "Song.als"))).toBe(
+      projectContextSidecarPath(join(projectDir, "Song renamed.als")),
+    );
+  });
+
+  it("follows the project folder when it moves", () => {
+    const moved = join(tmpdir(), "Moved Project", "Song.als");
+
+    expect(projectContextSidecarPath(moved)).toBe(
+      join(tmpdir(), "Moved Project", "Producer Pal Project Context.md"),
+    );
+  });
 });
 
 describe("readProjectContextSidecar", () => {

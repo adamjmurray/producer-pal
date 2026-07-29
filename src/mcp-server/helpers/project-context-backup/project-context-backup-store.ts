@@ -5,10 +5,31 @@
 
 // Reads and writes the on-disk backup of a Live Set's project context: a
 // "Producer Pal Project Context.md" file sibling to the Live Set's .als, so it
-// survives a device upgrade (which wipes the device's own param blob). One
-// sidecar per project *folder*, shared by every .als in it — saving a new .als
-// into the same folder finds the sidecar already there, and Save-As to a new
-// folder is the case that needs a fresh write. See dev/Memory-System.md.
+// survives a device upgrade (which wipes the device's own param blob).
+//
+// ONE SIDECAR PER PROJECT FOLDER, shared by every .als in it. This is a
+// requirement, not an implementation detail — do not "fix" it by keying the
+// filename on the .als basename. A Live Project is a folder holding one or more
+// Sets, and the variations/versions inside it (Song.als, Song (alt mix).als,
+// Song v2.als) are the same project: they share its genre, arrangement, and
+// track roles, so they share its notes. One file, peer to the .als files.
+//
+// Two consequences that look like bugs and are not:
+//   - Last writer wins. The sidecar holds the last written project context of
+//     ANY Set in the folder. A fresh device in any of those Sets restores that
+//     shared blob, which is the intent — not cross-contamination.
+//   - Nothing verifies which .als a sidecar came from, because nothing should.
+//
+// Keying on the .als basename would also break the two things this must survive:
+// renaming a Set inside the folder, and moving the folder. That is the same
+// reason dev/Memory-System.md rejects a central ~/.producer-pal store keyed by
+// set path. Deriving the sidecar name from a path re-introduces exactly the
+// fragility the design avoids; deriving it from the folder does not.
+//
+// Known rough edge, tracked separately: reopening an OLDER Set overwrites the
+// sidecar with that Set's stale context, because a device load and a passing
+// sync both reach backupIfStale the same way a genuine edit does. Only a real
+// project-context write should overwrite an existing, differing sidecar.
 //
 // This writes into the user's Live project folder (a path from the Live API's
 // song file_path), NOT ~/.producer-pal, so it deliberately does NOT go through
@@ -30,9 +51,10 @@ import * as console from "../../node-for-max-logger.ts";
 const SIDECAR_FILENAME = "Producer Pal Project Context.md";
 
 /**
- * Absolute path of the backup sidecar for a given Live Set file. The sidecar is
- * a sibling of the .als (one per project folder), so the path is derived from
- * the .als's directory, not its basename.
+ * Absolute path of the backup sidecar for a given Live Set file. Derived from
+ * the .als's DIRECTORY and never its basename, so every Set in a Live Project
+ * shares one sidecar and a Set can be renamed without orphaning it. See the
+ * file header before changing this — the folder keying is a requirement.
  *
  * @param liveSetPath - Absolute path to the Live Set (.als) file
  * @returns Absolute path to the sidecar markdown file

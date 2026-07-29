@@ -80,6 +80,28 @@ were rejected: copying from a sibling device already in the set (fragile
 load-time coordination), and a central `~/.producer-pal` store keyed by set path
 (doesn't travel with the project; keying breaks on rename/move).
 
+**The sidecar is per project _folder_, and that is a requirement.** A Live
+Project is a folder holding one or more `.als` files, and the
+variations/versions inside it (`Song.als`, `Song (alt mix).als`, `Song v2.als`)
+are the same project — same genre, same arrangement, same track roles — so they
+share its notes. One sidecar, peer to the `.als` files, restored by a fresh
+device in whichever of those Sets loads it first.
+
+Two consequences follow, and both look like bugs to a reader who assumes the
+per-Set device param is the unit being backed up:
+
+- **Last writer wins is intended.** The sidecar holds the last written project
+  context of _any_ Set in the folder. A fresh device in a different Set
+  restoring that blob is the feature, not cross-contamination.
+- **Nothing verifies which `.als` a sidecar came from,** because nothing should.
+
+Do not "fix" either by keying the filename on the `.als` basename. Beyond
+discarding the sharing requirement, it breaks the two things this design must
+survive — renaming a Set inside the folder, and moving the folder — which is the
+same fragility that got the central path-keyed store rejected above. Deriving
+the sidecar name from a path re-introduces it; deriving it from the folder does
+not. (This was attempted once and reverted.)
+
 `Song.file_path` is **not observable** (no notification on save), so instead of
 reacting to a save we pull it on every MCP tool call and only act on change. The
 flow, split across the runtime boundary (V8 has the Live API; Node has the
@@ -94,15 +116,15 @@ filesystem):
   `update_project_context` outlet (so it re-persists into the `.als`).
 - **Node** (`helpers/project-context-backup/`): the `projectContext.sync` route
   owns the `fs`. Sidecar path = `<dir of .als>/Producer Pal Project Context.md`
-  — one per project _folder_, shared by every `.als` in it, so saving a new
-  `.als` into the same folder is a no-op and only Save-As to a new folder writes
-  a fresh backup. A non-empty param with a missing or stale sidecar ⇒
-  **backup**. An empty param is ambiguous, disambiguated by an `allowRestore`
-  flag V8 sends (see below): with a non-empty sidecar ⇒ **restore** (also
-  updates Node's `config.projectContext` mirror directly, so a restore during
-  `ppal-connect` shows in that response's injected block — the Max round-trip
-  that re-persists the param can't be relied on to land in time); otherwise ⇒
-  **clear** (delete the sidecar). Otherwise a no-op.
+  — one per project _folder_ (see above; folder keying is a requirement), so
+  saving a new `.als` into the same folder is a no-op and only Save-As to a new
+  folder writes a fresh backup. A non-empty param with a missing or stale
+  sidecar ⇒ **backup**. An empty param is ambiguous, disambiguated by an
+  `allowRestore` flag V8 sends (see below): with a non-empty sidecar ⇒
+  **restore** (also updates Node's `config.projectContext` mirror directly, so a
+  restore during `ppal-connect` shows in that response's injected block — the
+  Max round-trip that re-persists the param can't be relied on to land in time);
+  otherwise ⇒ **clear** (delete the sidecar). Otherwise a no-op.
 
 **Restore vs. clear.** An empty param means either "device was upgraded, param
 wiped" (restore) or "the user cleared the context"
@@ -133,6 +155,18 @@ context while the Set is _unsaved_ (no `file_path` to write beside), then saving
 and upgrading with no further tool call or context edit. The `null → path`
 transition on first save fires neither the setter nor a tool call, so no backup
 is written. Any later tool call or context edit closes it.
+
+**Known defect, tracked separately: reopening an older Set clobbers the
+sidecar.** `backupIfStale` overwrites any sidecar whose content differs from the
+param, and it is reached identically by a genuine context edit, by a device load
+(Max restores the saved param through the `projectContext()` setter), and by the
+first tool-call sync. So opening a previous version of a Set in the folder
+replaces the project's current notes with that Set's stale ones — no context
+write, no user intent. The rule this should follow: create a _missing_ sidecar
+always (that's what covers a first save, a Save-As, and a moved folder), but
+overwrite an _existing, differing_ one only on a real project-context write. The
+route can't tell those apart today — a later tool-call sync and a manual edit
+both arrive with `allowRestore: false`.
 
 The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
 through the config-markdown store — it writes into the user's Live project
