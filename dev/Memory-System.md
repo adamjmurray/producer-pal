@@ -74,11 +74,11 @@ to reach `context.md`.
 The `project` blob lives in a Max device parameter, so it's serialized into the
 `.als` and survives save/reload — but **not a device upgrade**: dropping in a
 newer `.amxd` gives a fresh device whose param is empty, losing the context. The
-backup mirrors the blob to a `Producer Pal Project Context.md` file sibling to
-the Live Set's `.als`, so an upgraded device can recover it. Two alternatives
-were rejected: copying from a sibling device already in the set (fragile
-load-time coordination), and a central `~/.producer-pal` store keyed by set path
-(doesn't travel with the project; keying breaks on rename/move).
+backup mirrors the blob to a `<Set name> - Producer Pal Project Context.md` file
+sibling to the Live Set's `.als`, so an upgraded device can recover it. Two
+alternatives were rejected: copying from a sibling device already in the set
+(fragile load-time coordination), and a central `~/.producer-pal` store keyed by
+set path (doesn't travel with the project; keying breaks on rename/move).
 
 `Song.file_path` is **not observable** (no notification on save), so instead of
 reacting to a save we pull it on every MCP tool call and only act on change. The
@@ -93,16 +93,21 @@ filesystem):
   writes the blob back into the device param via the existing
   `update_project_context` outlet (so it re-persists into the `.als`).
 - **Node** (`helpers/project-context-backup/`): the `projectContext.sync` route
-  owns the `fs`. Sidecar path = `<dir of .als>/Producer Pal Project Context.md`
-  — one per project _folder_, shared by every `.als` in it, so saving a new
-  `.als` into the same folder is a no-op and only Save-As to a new folder writes
-  a fresh backup. A non-empty param with a missing or stale sidecar ⇒
-  **backup**. An empty param is ambiguous, disambiguated by an `allowRestore`
-  flag V8 sends (see below): with a non-empty sidecar ⇒ **restore** (also
-  updates Node's `config.projectContext` mirror directly, so a restore during
-  `ppal-connect` shows in that response's injected block — the Max round-trip
-  that re-persists the param can't be relied on to land in time); otherwise ⇒
-  **clear** (delete the sidecar). Otherwise a no-op.
+  owns the `fs`. Sidecar path =
+  `<dir of .als>/<basename of .als> - Producer Pal Project Context.md` — one per
+  _Set_, matching the per-Set device param it backs up. A folder-wide file was
+  rejected: two `.als` in one folder (Save-As in place, e.g. `Song.als` +
+  `Song (alt mix).als`) would share one backup, so the second Set's context
+  clobbers the first's and a post-upgrade restore silently loads the wrong Set's
+  notes. The cost is that any Save-As — not just to a new folder — starts with
+  no backup until the next tool call or context edit, which is the same
+  documented gap as a first save. A non-empty param with a missing or stale
+  sidecar ⇒ **backup**. An empty param is ambiguous, disambiguated by an
+  `allowRestore` flag V8 sends (see below): with a non-empty sidecar ⇒
+  **restore** (also updates Node's `config.projectContext` mirror directly, so a
+  restore during `ppal-connect` shows in that response's injected block — the
+  Max round-trip that re-persists the param can't be relied on to land in time);
+  otherwise ⇒ **clear** (delete the sidecar). Otherwise a no-op.
 
 **Restore vs. clear.** An empty param means either "device was upgraded, param
 wiped" (restore) or "the user cleared the context"

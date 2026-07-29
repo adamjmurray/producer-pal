@@ -133,8 +133,8 @@ function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
 
 /**
  * Param has content: write the sidecar when it's missing or differs (covers
- * both an ordinary edit and a first-save / Save-As to a folder with no backup
- * yet). A byte-identical sidecar is left untouched.
+ * both an ordinary edit and a first-save / Save-As, which names a Set that has
+ * no backup yet). A byte-identical sidecar is left untouched.
  *
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param content - The device param's current project-context blob
