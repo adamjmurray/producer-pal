@@ -191,8 +191,8 @@ Musical notation parser and utilities for creating and manipulating MIDI clips.
 
 The `src/` tree is organized into layers with a one-directional dependency
 graph. This is not just a convention: it is an **executable contract** enforced
-in CI by the `import-x/no-restricted-paths` rule in `eslint.config.js` (a
-violation fails `npm run lint`). The layers, from foundational to top-level:
+in CI by `src/test/meta/import-restrictions.test.ts` (a violation fails
+`npm test`). The layers, from foundational to top-level:
 
 - **`shared/`** — foundational leaf. Pure utilities (path builders, config,
   pitch math, the `assertDefined` assertion helper, the V8 console shim)
@@ -233,8 +233,8 @@ reaches across layers and is excluded.
 Two runtimes cooperate to serve every request. **V8** (the Max `v8` object,
 `src/live-api-adapter/`) holds the Live API and has **no filesystem**. **Node
 for Max** (`src/mcp-server/`) runs the Express/MCP service and **owns all
-filesystem access** (`node:fs`). Shipped `src/**` also cannot shell out — ESLint
-bans `child_process`.
+filesystem access** (`node:fs`). Shipped `src/**` also cannot shell out — the
+lint config bans `child_process`.
 
 The consequence for user-content and config features (global context, custom
 system prompt, `~/.producer-pal` skills overrides): **all filesystem reads and

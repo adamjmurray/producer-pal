@@ -4,6 +4,12 @@ name: "Run Test Suite"
 # NOTE: We run individual check steps (lint, typecheck, format:check, duplication,
 # test:coverage) instead of `npm run check` so each step appears separately in the
 # GitHub Actions UI, making it easier to identify which check failed.
+#
+# Splitting those steps across separate JOBS is a different trade: every job pays
+# its own `npm ci`, which now costs more than some of the checks it hosts. Fast
+# checks are therefore grouped into code-hygiene and stay individually legible as
+# steps. Keep a check in its own job only when it is slow enough to be worth the
+# install, or needs setup the other steps do not.
 
 on:
   push:
@@ -136,24 +142,6 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-  lint:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
   typecheck:
     runs-on: ubuntu-latest
 
@@ -195,6 +183,11 @@ jobs:
 
       - name: Validate TypeScript-only directories
         run: npm run validate:typescript-only
+
+      # Folded in from its own job: oxlint runs the whole repo type-aware in
+      # seconds, so a dedicated job spent longer on `npm ci` than on linting.
+      - name: Lint
+        run: npm run lint
 
       - name: Check code duplication
         id: summary
@@ -343,7 +336,6 @@ jobs:
     needs:
       [
         build-verification,
-        lint,
         typecheck,
         unit-tests,
         playwright-tests,
@@ -385,7 +377,6 @@ jobs:
 
             // Check job statuses
             const jobs = {
-              'Lint': '${{ needs.lint.result }}',
               'Typecheck': '${{ needs.typecheck.result }}',
               'Code Hygiene': '${{ needs.code-hygiene.result }}',
               'Unit Tests': '${{ needs.unit-tests.result }}',
@@ -415,9 +406,8 @@ jobs:
               '|-----|--------|',
               `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
               `| Unit Tests | ${icon(jobs['Unit Tests'])} ${jobs['Unit Tests']} |`,
-              `| Lint | ${icon(jobs['Lint'])} ${jobs['Lint']} |`,
               `| Typecheck | ${icon(jobs['Typecheck'])} ${jobs['Typecheck']} |`,
-              `| Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
+              `| Lint & Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
               `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
               `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
             ].join('\n');

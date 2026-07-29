@@ -19,12 +19,14 @@
   },
   "editor.codeActionsOnSave": {
     "source.organizeImports": "never",
-    "source.fixAll.eslint": "always"
+    "source.fixAll.oxc": "always"
   },
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "files.insertFinalNewline": true,
   "cSpell.words": [
+    "oxfmt",
+    "oxlint",
     "ableton",
     "amxd",
     "barbeat",

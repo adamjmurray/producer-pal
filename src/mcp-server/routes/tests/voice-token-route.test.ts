@@ -127,7 +127,7 @@ describe("voice-token route", () => {
     const call = calls[0]!;
 
     expect(call.url).toContain("/v1/realtime/client_secrets");
-    expect((call.init?.headers as Record<string, string>).Authorization).toBe(
+    expect((call.init!.headers as Record<string, string>).Authorization).toBe(
       "Bearer sk-secret-do-not-leak",
     );
 

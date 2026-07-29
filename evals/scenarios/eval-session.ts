@@ -145,11 +145,11 @@ export async function createEvalSession(
         tools: hasTools ? tools : undefined,
         stopWhen: stepCountIs(MAX_TOOL_STEPS),
         maxOutputTokens: DEFAULT_MAX_TOKENS,
-        system: options.instructions,
+        instructions: options.instructions,
         // Errors are rendered (in red) by processCliStream via the stream's
         // "error" part; suppress the SDK's default raw dump.
         onError: () => {},
-        onStepFinish: (event) => {
+        onStepEnd: (event) => {
           const usage = toTokenUsage(event.usage);
 
           stepUsages.push(usage);

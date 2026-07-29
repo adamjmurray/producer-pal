@@ -123,7 +123,7 @@ const DEFAULT_USAGE = {
 
 /**
  * Send a message with full control over stream response and per-message overrides.
- * The mock calls onStepFinish after streaming to simulate the AI SDK behavior.
+ * The mock calls onStepEnd after streaming to simulate the AI SDK behavior.
  * @param options - Send options
  * @param options.text - Text to yield in the stream (default: "response")
  * @param options.modelId - Model ID for the response
@@ -143,8 +143,8 @@ async function sendWithResponse(
   (streamText as ReturnType<typeof vi.fn>).mockImplementation((opts: any) => {
     async function* iterate(): AsyncIterable<Record<string, unknown>> {
       yield { type: "text-delta", text };
-      // Simulate SDK calling onStepFinish after step completes
-      opts.onStepFinish?.({
+      // Simulate SDK calling onStepEnd after step completes
+      opts.onStepEnd?.({
         usage: DEFAULT_USAGE,
         response: { modelId: options.modelId ?? "" },
       });
@@ -521,7 +521,7 @@ describe("ChatSdkClient", () => {
         (opts: any) => {
           async function* iterate(): AsyncIterable<Record<string, unknown>> {
             yield { type: "text-delta", text: "Hi" };
-            opts.onStepFinish?.({
+            opts.onStepEnd?.({
               usage: stepUsage,
               response: { modelId: "m" },
             });

@@ -267,7 +267,7 @@ architecture.
   on mount AND on a 5s poll) — reuse the shared payloads in
   `webui/src/components/tests/App-context-mocks.tsx` rather than re-inlining.
 
-- **File organization and size limits** (numeric ESLint limits under Refactoring
+- **File organization and size limits** (numeric oxlint limits under Refactoring
   & Code Quality):
   - When a file approaches the limit, extract helpers to `{feature}-helpers.ts`
     in the same directory; group by feature/domain. If a helper file exceeds the
@@ -300,9 +300,12 @@ Implications:
 
 All of `src/`, `scripts/`, `evals/`, `webui/` is type-checked via
 `npm run typecheck`. Code must pass `typecheck` and `lint`. Prefer explicit
-return types on exported functions. ESLint enforces JSDoc on all function
-declarations in `scripts/` — add `@param`/`@returns` descriptions (no types).
-Before committing, `npm run check` must pass with zero errors.
+return types on exported functions. Every exported function declaration needs a
+JSDoc block with `@param`/`@returns` descriptions (no types — TypeScript is the
+source of truth). The block's presence is enforced by
+`src/test/meta/jsdoc-requirements.test.ts`, since oxlint has no require-jsdoc
+rule; oxlint checks that an existing block is complete. Before committing,
+`npm run check` must pass with zero errors.
 
 ## Testing After Changes
 
@@ -358,25 +361,32 @@ npm run e2e:mcp                                             # full suite (avoid 
 
 These hold code-quality thresholds — **do not relax without asking first:**
 
-- `src/test/lint-suppression-limits.test.ts` — per-tree limits for
-  eslint-disable, @ts-expect-error, and v8 ignore comments.
+- `src/test/lint-suppression-limits.test.ts` — per-tree limits for lint-disable
+  (either the `eslint-` or `oxlint-` prefix), @ts-expect-error, and v8 ignore
+  comments.
 - `vitest.config.ts` (thresholds section) — test coverage thresholds.
 - `config/.jscpd*.json` (`threshold`) — code-duplication limits (per tree).
 
 ## Refactoring & Code Quality
 
 See `.claude/skills/refactoring/SKILL.md` for comprehensive guidelines. When
-ESLint reports violations, consult it for strategies.
+oxlint reports violations, consult it for strategies.
 
-Key ESLint limits (all ignoring blank/comment lines):
+Key oxlint limits (all ignoring blank/comment lines):
 
-- `max-lines-per-function`: 120. Exception: a webui hook's main `useHook()` may
+- `max-lines-per-function`: 115. Exception: a webui hook's main `useHook()` may
   use `eslint-disable-next-line max-lines-per-function` (not a whole-file
   disable).
+
+**Write suppression directives with the `eslint-` prefix, not `oxlint-`.**
+oxlint honors both, but the rule requiring a `-- reason` on every directive runs
+through the ESLint-compatible plugin bridge, which only recognizes the `eslint-`
+spelling — an `oxlint-disable` escapes it silently. See `dev/Linting.md`.
+
 - `max-lines` per file: 325 for source, 650 for `*.test.*` and `*-test-case.ts`.
 - `max-depth`: 4. `complexity`: 20.
 
-**DRY**: no duplicate function bodies (caught by ESLint), extract repeated
+**DRY**: no duplicate function bodies (caught by oxlint), extract repeated
 logic, keep shared constants in one place; similar patterns suggest a missing
 abstraction.
 
@@ -386,6 +396,7 @@ Internal design docs live in `dev/` — filenames are descriptive, so `ls dev/` 
 find the right one. Key entries: `dev/Architecture.md` (system design),
 `dev/Coding-Standards.md` (full code-style + Live API reference),
 `dev/decisions/` (ADRs — the "why" behind settled choices, esp. rejections),
+`dev/Linting.md` (oxlint config, what moved to meta tests, what was lost),
 `dev/specs/` (bar|beat
 
 - transform grammar specs), `dev/Development-Tools.md` (CLI/e2e testing tools).

@@ -266,7 +266,7 @@ export class ChatSdkClient {
         : this.config.providerOptions;
 
     yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
-    // Final yield to ensure last step's usage (attached by onStepFinish) is emitted
+    // Final yield to ensure last step's usage (attached by onStepEnd) is emitted
     yield [...this.chatHistory];
   }
 
@@ -295,7 +295,7 @@ export class ChatSdkClient {
     const result = streamText({
       model: this.config.model,
       maxRetries: 0, // Disable SDK-level retry so app-level retry (executeWithRetry) handles 429s with UI feedback
-      system: this.config.systemInstruction,
+      instructions: this.config.systemInstruction,
       messages: buildModelMessages(
         this.chatHistory,
         isAnthropicThinkingEnabled(providerOptions),
@@ -305,7 +305,7 @@ export class ChatSdkClient {
       providerOptions,
       abortSignal,
       onError: errorSignal.onError,
-      onStepFinish: (event) => {
+      onStepEnd: (event) => {
         let count = 0;
 
         for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {

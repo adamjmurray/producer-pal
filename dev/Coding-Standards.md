@@ -100,7 +100,7 @@ for (let i = 0; i < tracks.length; i++) {
 }
 ```
 
-- **Never use `!`** — ESLint forbids the non-null assertion.
+- **Never use `!`** — the linter forbids the non-null assertion.
 - A commented `as` is for an index you can _prove_ is in range. Never delete a
   runtime guard to buy coverage — warn-and-skip is a product requirement, not
   coverage noise.
