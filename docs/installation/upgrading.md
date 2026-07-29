@@ -25,7 +25,25 @@ drag the new `.amxd` into Live to replace the old version.
 Check the version number in the device UI to confirm you're running the latest
 version.
 
-::: tip Your project context carries over
+<!-- Version-scoped: remove this warning once nobody is still arriving from a
+     pre-2.1.0 device. The tip below it is the permanent text.
+     See dev/decisions/0015-project-context-param-rename.md -->
+
+::: warning Upgrading to 2.1.0? Copy your project context first — one time only
+
+**Before you replace the device**, open each Set that has project context you
+care about, select the text in the device's Context tab, and copy it somewhere
+safe. Paste it back into the new device once it's in place.
+
+Replacing the `.amxd` gives you a fresh, empty device, and no earlier version
+wrote a backup to restore from — so anything only stored in the old device is
+lost. Version 2.1.0 adds that backup (a `Producer Pal Project Context.md` file
+saved next to each Set's `.als`), which is why **this is the last upgrade that
+needs the manual step.**
+
+:::
+
+::: tip From 2.1.0 onward, your project context carries over
 
 Project context is backed up next to each Set's `.als` and restored
 automatically on the new device — see
