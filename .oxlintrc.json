@@ -23,16 +23,21 @@
 //
 //  1. jsdoc/require-param loses its `enableFixer` option — oxlint has no such
 //     option and only applies fixers under --fix anyway.
-//  2. restrict-template-expressions' { from: "file" } allow-entry loses `path`:
-//     oxlint matches that field against an ABSOLUTE path, so the committed
-//     relative one never matched. The four *Path builder names are declared in
-//     one file, so name-only matching is equivalent here.
+//  2. Options are spelled out wherever oxlint's default differs from the eslint
+//     rule's, since the generator emits the bare rule name and lets the default
+//     stand. Each such entry carries a comment saying which way it differs; see
+//     no-eval, no-irregular-whitespace and jsdoc/require-param.
 //  3. `ignores` inside an override is dropped by the generator (oxlint has no
-//     such field). Each one is restored as a LATER override turning the rule
-//     back off over those paths — see the no-restricted-globals pair.
+//     such field). Where it still mattered it is restored as a LATER override
+//     turning the rule back off over those paths — see the no-restricted-globals
+//     pair. Two were deliberately not restored, both moot: import/extensions
+//     over the Peggy wrappers (they import with an extension, so they satisfy
+//     "always" anyway) and max-lines over a file that no longer exists.
 //  4. Rules whose oxlint implementation disagrees with the eslint one on this
-//     codebase are turned off where they misfire, each at its own override with
-//     the reason. Re-enable as oxlint fixes them.
+//     codebase are turned off where they misfire, with the reason at the entry.
+//     Most are their own narrow override at the end of the file; one that is
+//     off everywhere (sonarjs/assertions-in-tests) sits in its shared block.
+//     Re-enable as oxlint fixes them.
 //  5. Rules the generator dropped because oxlint's native plugin of the same
 //     name lacks them are restored through the JS-plugin bridge — see the
 //     unicorn-js/* entries, and dev/Linting.md for the full list. The alias is
@@ -126,7 +131,18 @@
         "no-global-assign": "error",
         "no-import-assign": "error",
         "no-invalid-regexp": "error",
-        "no-irregular-whitespace": "error",
+        // oxlint skips comments, templates, regexes and JSX by default; eslint
+        // skips only strings. Spelled out so a stray NBSP in a template literal
+        // (which would silently alter the emitted string) is still caught.
+        "no-irregular-whitespace": [
+          "error",
+          {
+            "skipComments": false,
+            "skipJSXText": false,
+            "skipRegExps": false,
+            "skipTemplates": false
+          }
+        ],
         "no-loss-of-precision": "error",
         "no-misleading-character-class": "error",
         "no-new-native-nonconstructor": "error",
@@ -185,7 +201,9 @@
         "no-useless-return": "error",
         "no-extra-bind": "error",
         "no-useless-concat": "error",
-        "no-eval": "error",
+        // allowIndirect defaults to false in eslint but TRUE in oxlint, so the
+        // bare form would permit `(0, eval)(x)` and `const g = eval; g(x)`.
+        "no-eval": ["error", { "allowIndirect": false }],
         "no-new-func": "error",
         "no-implied-eval": "error",
         "no-restricted-properties": [
@@ -265,6 +283,10 @@
         "sonarjs/no-unthrown-error": "error",
         "sonarjs/no-hardcoded-passwords": "error",
         "sonarjs/no-hardcoded-secrets": "error",
+        // Off because the bridge gives JS plugins no type information, so this
+        // rule cannot resolve imported expect* helpers and read all 100 of them
+        // as missing assertions. vitest/expect-expect with
+        // assertFunctionNames: ["expect*"] covers the same ground natively.
         "sonarjs/assertions-in-tests": "off",
         "sonarjs/no-exclusive-tests": "error",
         "sonarjs/no-nested-template-literals": "error",
@@ -383,7 +405,17 @@
             "varsIgnorePattern": "^_"
           }
         ],
-        "jsdoc/require-param": "error",
+        // oxlint's defaults differ from eslint-plugin-jsdoc's in both
+        // directions: it skips constructors and checks getters/setters, which
+        // is the reverse of the plugin. Spelled out to match the plugin.
+        "jsdoc/require-param": [
+          "error",
+          {
+            "checkConstructors": true,
+            "checkGetters": false,
+            "checkSetters": false
+          }
+        ],
         "jsdoc/require-param-description": "error",
         "jsdoc/require-param-type": "off",
         "jsdoc/require-returns": "error",
@@ -434,6 +466,9 @@
               },
               {
                 "from": "file",
+                // Resolved against the TypeScript project root, which is src/
+                // (there is no root tsconfig.json) — NOT the repo root.
+                "path": "shared/live-api-path-builders.ts",
                 "name": ["TrackPath", "DevicePath", "ClipSlotPath", "ChainPath"]
               }
             ]

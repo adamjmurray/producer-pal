@@ -31,15 +31,16 @@ comment in `.oxlintrc.json` lists the edits the generator cannot make itself.
 ## How the config is organized
 
 The generator emitted one override per eslint flat-config block, each spelling
-out its complete rule set — 1304 entries over 2354 lines, because eslint's
-`rules` entries **replace** rather than merge, so every block had to repeat
-everything it wanted. oxlint's overrides **do** merge (top-level first, then
-each matching override in array order, later winning per rule), so that
-repetition buys nothing.
+out its complete rule set — 1262 entries over 2303 lines (1304 over 2354 once
+the gaps found reviewing it were closed), because eslint's `rules` entries
+**replace** rather than merge, so every block had to repeat everything it
+wanted. oxlint's overrides **do** merge (top-level first, then each matching
+override in array order, later winning per rule), so that repetition buys
+nothing.
 
 The blocks are therefore grouped by which trees share a rule. Each rule appears
 exactly once, in a block whose `files` is the union of the trees that carried it
-— 275 entries over 886 lines, with no rule enabled or disabled anywhere it was
+— 275 entries over 925 lines, with no rule enabled or disabled anywhere it was
 not before. Read a block's `files` as "these trees agree about these rules".
 
 The grouping is mechanical, and was verified as such rather than assumed: for
@@ -101,6 +102,43 @@ and its rules carry a distinct prefix:
 - Bridged rules get no type information (no `parserServices`), so a rule that
   needs types will silently under-report rather than error. This is why
   `sonarjs/assertions-in-tests` had to be dropped entirely.
+
+## Where oxlint's option defaults differ from eslint's
+
+The generator emits a bare rule name whenever the eslint config passed no
+options, which silently adopts oxlint's default for every option — and those do
+not always match the eslint rule's. A review of all 56 such entries against the
+installed `eslint` and `eslint-plugin-unicorn` sources found four divergences.
+Three were weakenings and are now spelled out in `.oxlintrc.json`:
+
+- `no-eval` — oxlint defaults `allowIndirect` to **true**, eslint to false. The
+  bare form permits `(0, eval)(x)` and `const g = eval; g(x)`, which is the
+  bypass the rule exists to catch.
+- `no-irregular-whitespace` — oxlint skips comments, templates, regexes and JSX;
+  eslint skips only strings.
+- `jsdoc/require-param` — oxlint skips constructors and checks getters/setters;
+  eslint-plugin-jsdoc does the reverse.
+
+The fourth is oxlint being stricter and is left alone:
+`unicorn/prefer-number-properties` defaults `checkNaN` to true (eslint: false),
+so a bare `NaN` is now reported. `checkInfinity` is off in both, so bare
+`Infinity` was never enforced despite the old config's comment claiming it.
+
+Everything else matched, including every threshold rule (`max-lines`,
+`max-lines-per-function`, `complexity`, `max-depth` all count identically to
+eslint) and all 26 type-aware rules.
+
+Two things make this class of error mostly self-limiting: oxlint **hard-fails
+the run** on an unknown option key, naming the keys it expected, and the
+`jsPlugins` bridge validates against the real plugin's own schema. The one
+exception is `import/extensions`, whose options object is a free-form extension
+map — unknown keys there are silently dropped.
+
+`restrict-template-expressions`' `{ from: "file" }` allow-entry resolves `path`
+against the **TypeScript project root**, which is `src/` here (there is no root
+`tsconfig.json`) — not the repo root. The committed eslint spelling
+`src/shared/live-api-path-builders.ts` therefore never matched under oxlint;
+`shared/live-api-path-builders.ts` does.
 
 ## Rules that moved to meta tests
 
