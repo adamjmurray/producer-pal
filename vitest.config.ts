@@ -43,6 +43,7 @@ export default defineConfig({
       "webui/**/*.test.ts",
       "webui/**/*.test.tsx",
       "evals/**/*.test.ts",
+      "scripts/**/*.test.ts",
     ],
     setupFiles: ["src/test/test-setup.ts"],
     clearMocks: true,

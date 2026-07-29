@@ -15,7 +15,8 @@
     "producer-pal-logo.svg"
   ],
   "scripts": {
-    "prepublishOnly": "cd .. && npm run build"
+    "guard:no-prerelease": "node -e \"const v=require('./package.json').version; if (v.includes('-')) { console.error('\\n\\u274c Refusing to publish ' + v + ' to npm: -rcN builds are distributed as GitHub pre-releases only, and publishing one would move the npm latest tag. Promote it first: npm run version:bump:ga\\n'); process.exit(1) }\"",
+    "prepublishOnly": "npm run guard:no-prerelease && cd .. && npm run build"
   },
   "engines": {
     "node": ">=20.0.0"

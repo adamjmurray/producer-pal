@@ -16,8 +16,14 @@ import {
 } from "#src/shared/config.ts";
 
 describe("config constants", () => {
-  it("VERSION is a semver-shaped string", () => {
-    expect(VERSION).toMatch(/^\d+\.\d+\.\d+/);
+  it("VERSION is a release or an -rcN pre-release, and nothing else", () => {
+    // Anchored at both ends on purpose. This string ships in the artifact and
+    // is what every install compares against GitHub's latest release, so the
+    // update check's behavior follows from its shape: an unrecognized suffix
+    // would still parse as a pre-release (older than the same numbers without
+    // one) and quietly nag testers to "upgrade" to what they already have.
+    // scripts/build-and-release/helpers/next-version.ts produces exactly this.
+    expect(VERSION).toMatch(/^\d+\.\d+\.\d+(-rc[1-9]\d*)?$/);
   });
 
   it("MIN_LIVE_VERSION is a 3-part version with no 'v' prefix", () => {
