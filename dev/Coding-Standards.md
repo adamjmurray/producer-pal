@@ -222,6 +222,8 @@ guidance.
 
 ## Notation Grammar Duplication
 
+### Note Values
+
 The note-value notation (durations like `n/4`, `±n` beat offsets, the off-grid
 `n<beats>/4` escape, and `Nbar` forms) is parsed at six independent sites:
 
@@ -260,3 +262,21 @@ a loud test failure:
 
 When you add or change a note-value parse site, update **every** site and add it
 to the parity test's site list.
+
+### Drum-Header Pitch Names
+
+The same situation, smaller. Stark's `DrumPitchName`
+(`$([A-Ga-g] [#b]? "-"? [0-9]+)`) is respelled as `/^([A-Ga-g])([#b]?)(-?\d+)$/`
+inside `stark-interpreter.ts`'s `drumHeaderPitch`, which resolves the header
+arithmetically so enharmonic spellings (Cb/E#/Fb/B#) work — `pitch.ts`'s exact
+table omits them and would drop the whole drum line.
+
+`drumHeaderPitch` `assertDefined`s the match rather than null-checking it,
+because the grammar is what guarantees the shape. So widening one pattern alone
+— a double accidental, a Unicode ♯ — turns a header the grammar now accepts into
+a thrown `Bug:` at interpret time. `drum-pitch-name-grammar-parity.test.ts` is
+the lock: every header in its corpus must be rejected by the grammar or accepted
+by both. It also pins the split between the two failure modes, which are not the
+same — a header the user can actually mistype resolves out of MIDI range and
+gets warn-and-skip (one line dropped, rest of the clip intact), while a shape
+mismatch can only mean the patterns drifted.

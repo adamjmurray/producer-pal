@@ -233,8 +233,11 @@ architecture.
   routing per-note hot paths through the parser would cost performance, so do
   NOT extract a shared fragment. Enforced by `note-value-grammar-parity.test.ts`
   (6 parse sites across meters) and `note-value-denominator-parity.test.ts` —
-  when adding/changing a parse site, update every site AND the parity test. See
-  `dev/Coding-Standards.md` for the rationale.
+  when adding/changing a parse site, update every site AND the parity test.
+  Stark's `DrumPitchName` is duplicated the same way as a regex in
+  `stark-interpreter.ts`'s `drumHeaderPitch`, locked by
+  `drum-pitch-name-grammar-parity.test.ts`. See `dev/Coding-Standards.md` for
+  the rationale.
 
 - **Context window usage optimization**: The Producer Pal Skills, `.def.ts` tool
   and parameter descriptions, and tool results must be very short, clear, and
