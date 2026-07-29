@@ -34,28 +34,13 @@ afterEach(() => {
 });
 
 describe("projectContextSidecarPath", () => {
-  it("puts the sidecar beside the .als, named after it", () => {
+  it("puts the sidecar beside the .als, keyed on the folder not the basename", () => {
     expect(projectContextSidecarPath(liveSetPath)).toBe(
-      join(projectDir, "MySong - Producer Pal Project Context.md"),
+      join(projectDir, "Producer Pal Project Context.md"),
     );
-  });
-
-  it("gives two .als files in one folder separate sidecars", () => {
-    expect(
-      projectContextSidecarPath(join(projectDir, "MySong (alt mix).als")),
-    ).toBe(
-      join(projectDir, "MySong (alt mix) - Producer Pal Project Context.md"),
-    );
-    expect(
-      projectContextSidecarPath(join(projectDir, "MySong (alt mix).als")),
-    ).not.toBe(projectContextSidecarPath(liveSetPath));
-  });
-
-  it("strips only the .als extension, keeping dots in the Set name", () => {
-    expect(
-      projectContextSidecarPath(join(projectDir, "Track 1.5 rework.als")),
-    ).toBe(
-      join(projectDir, "Track 1.5 rework - Producer Pal Project Context.md"),
+    // A different .als in the same folder resolves to the SAME sidecar.
+    expect(projectContextSidecarPath(join(projectDir, "Other.als"))).toBe(
+      projectContextSidecarPath(liveSetPath),
     );
   });
 });

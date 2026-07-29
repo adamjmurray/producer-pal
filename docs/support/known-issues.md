@@ -33,25 +33,24 @@ envelopes (parameter values that change over time). See
 Your **project context** lives inside the Producer Pal device, so it travels
 with your Live Set. To survive a device upgrade — a newer `.amxd` starts as a
 fresh, empty device — Producer Pal also keeps a backup:
-`<Set name> - Producer Pal Project Context.md`, saved next to your Set's `.als`.
-It restores this automatically the first time you use Producer Pal after
-upgrading. Each Live Set gets its own backup file, so Sets that share a project
-folder never overwrite each other's notes.
+`Producer Pal Project Context.md`, saved next to your Set's `.als`. It restores
+this automatically the first time you use Producer Pal after upgrading.
 
 The backup is (re)written whenever the context changes through a Producer Pal
 tool call, a chat, or an edit in the device or Chat UI. One narrow sequence can
 leave the newest context un-backed-up:
 
 1. Change the project context,
-2. save the Set for the **first time**, or **Save As** under a new name, then
+2. save the Set for the **first time**, or **Save As** to a new project folder,
+   then
 3. later replace the device with a newer version — with no Producer Pal activity
    in between.
 
-The backup is named after the Set, and it's that save which establishes the
-name. A Max for Live device has no reliable way to know when the Live Set is
-saved, so Producer Pal can only write the backup while it's already doing
-something — a tool call, chat, or context edit. If nothing touches the context
-after that save, no backup has been written under the new name yet.
+The backup lives in the project's folder, and it's that first save which
+establishes the folder. A Max for Live device has no reliable way to know when
+the Live Set is saved, so Producer Pal can only write the backup while it's
+already doing something — a tool call, chat, or context edit. If nothing touches
+the context after that first save, no backup has been written there yet.
 
 **To be safe:** after saving and before upgrading, use Producer Pal once — any
 chat, tool call, or context edit writes the backup.

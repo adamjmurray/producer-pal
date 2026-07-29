@@ -4,13 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Reads and writes the on-disk backup of a Live Set's project context: a
-// "<Set name> - Producer Pal Project Context.md" file sibling to the Live Set's
-// .als, so it survives a device upgrade (which wipes the device's own param
-// blob). One sidecar per *Set*, not per folder: the blob it backs up lives in a
-// per-Set device param, so a folder-wide file would let two Sets in one folder
-// (the ordinary Save-As-in-place workflow, e.g. "Song.als" + "Song (alt
-// mix).als") overwrite each other's backup and then restore the wrong Set's
-// notes after an upgrade. See dev/Memory-System.md.
+// "Producer Pal Project Context.md" file sibling to the Live Set's .als, so it
+// survives a device upgrade (which wipes the device's own param blob). One
+// sidecar per project *folder*, shared by every .als in it — saving a new .als
+// into the same folder finds the sidecar already there, and Save-As to a new
+// folder is the case that needs a fresh write. See dev/Memory-System.md.
 //
 // This writes into the user's Live project folder (a path from the Live API's
 // song file_path), NOT ~/.producer-pal, so it deliberately does NOT go through
@@ -24,25 +22,23 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, extname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "../../node-for-max-logger.ts";
 
-/** Filename suffix of the project-context backup, dropped beside the Live Set. */
-const SIDECAR_SUFFIX = " - Producer Pal Project Context.md";
+/** Filename of the project-context backup, dropped beside the Live Set. */
+const SIDECAR_FILENAME = "Producer Pal Project Context.md";
 
 /**
- * Absolute path of the backup sidecar for a given Live Set file: a sibling of
- * the .als named after it, so each Set in a shared project folder gets its own
- * backup. The name comes from an existing filename, so it needs no sanitizing.
+ * Absolute path of the backup sidecar for a given Live Set file. The sidecar is
+ * a sibling of the .als (one per project folder), so the path is derived from
+ * the .als's directory, not its basename.
  *
  * @param liveSetPath - Absolute path to the Live Set (.als) file
  * @returns Absolute path to the sidecar markdown file
  */
 export function projectContextSidecarPath(liveSetPath: string): string {
-  const setName = basename(liveSetPath, extname(liveSetPath));
-
-  return join(dirname(liveSetPath), `${setName}${SIDECAR_SUFFIX}`);
+  return join(dirname(liveSetPath), SIDECAR_FILENAME);
 }
 
 /**
