@@ -169,6 +169,13 @@ export async function handleWriteGlobalContext(
     // The guard compares against the CURRENT document, which lives on the Node
     // side — one extra round-trip on the (rare) write path, and the freshest
     // possible baseline: the copy injected at connect may be stale.
+    //
+    // Read-then-write is check-then-act, so a webui PUT or a second MCP session
+    // can land between the two RPCs and be overwritten. Accepted, not overlooked:
+    // there is no transactional isolation across the V8→Node boundary to close
+    // it with, and the only alternative — guarding against the stale connect-time
+    // copy — trades a narrow race for a guard that is wrong whenever the document
+    // changed during the session. A fresh baseline is the point.
     const existing = await handleReadGlobalContext();
     const warning = clobberWarning("global", existing.content, content);
 

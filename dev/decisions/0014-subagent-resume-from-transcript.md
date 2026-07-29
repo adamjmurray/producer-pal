@@ -42,7 +42,8 @@ spawns workers under whatever "Default subagent" preset is selected now
 Worker identity is a 1-based index, persisted beside the transcript and surfaced
 to the model as a `[subagent N]` label on each result. The orchestrator
 addresses a worker by that number (`resumeFrom`). Implemented in
-`webui/src/chat/sdk/subagent-session.ts` and `spawn-subagent-tool.ts`.
+`webui/src/chat/sdk/subagent/subagent-session.ts` and `spawn-subagent-tool.ts`
+beside it.
 
 ## Alternatives rejected
 

@@ -141,10 +141,15 @@ export function getSkillsPreviewUrl(
  * worker starts with: skills, the Live Set, and the user's context layers). The
  * caller's profile rides on request headers, not query params, so there is
  * nothing to interpolate here.
+ *
+ * The briefing lives beside the MCP endpoint on the same server, so it follows
+ * the same base: pass a client config's `mcpUrl` override and the briefing is
+ * fetched from that server, exactly as its MCP requests would be.
+ * @param {string} [mcpUrl] - A client config's MCP URL override, if it set one
  * @returns {string} The subagent-briefing endpoint URL
  */
-export function getSubagentBriefingUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/subagent-briefing");
+export function getSubagentBriefingUrl(mcpUrl?: string): string {
+  return (mcpUrl ?? getMcpUrl()).replace(/\/mcp$/, "/subagent-briefing");
 }
 
 /**

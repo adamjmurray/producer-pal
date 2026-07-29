@@ -294,10 +294,19 @@ through this single code path via provider-specific model factories in
 
 **Locked Settings:**
 
-Provider, model, and thinking level are locked per conversation. When a
-conversation is saved, these settings are stored on the `ConversationRecord`.
-When restored, they're passed as `ConversationLockedSettings` to prevent
-settings changes from affecting the active conversation.
+Provider, model, thinking level, small-model mode, the resolved system
+instruction, and notation are locked per conversation. When a conversation is
+saved, these settings are stored on the `ConversationRecord`. When restored,
+they're passed as `ConversationLockedSettings` to prevent settings changes from
+affecting the active conversation.
+
+Notation is hard-locked rather than re-read per init: it decides how clip notes
+are PARSED, so a transcript written in one notation must keep being read in it.
+
+The toolset (`enabledTools`) rides on the same record but is **recorded, not
+enforced** — continuing a restored conversation reconnects with whatever is
+enabled now, since a tool the user just turned on to keep working has to be
+reachable. It is kept so the settings notice can say the toolset moved.
 
 Per-message overrides (`MessageOverrides`) can still override thinking for
 individual messages. When used, the overridden value is stamped on the assistant

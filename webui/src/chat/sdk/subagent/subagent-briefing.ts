@@ -51,7 +51,7 @@ export async function fetchSubagentBriefing(
   config: ChatClientConfig,
 ): Promise<string | null> {
   try {
-    const response = await fetch(getSubagentBriefingUrl(), {
+    const response = await fetch(getSubagentBriefingUrl(config.mcpUrl), {
       headers: perRequestHeaders(
         config.smallModelMode,
         config.enabledTools,

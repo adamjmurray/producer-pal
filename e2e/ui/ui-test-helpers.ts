@@ -115,7 +115,7 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
-  // Custom system prompt read (the chat mounts useSystemPromptMemory) — empty
+  // Custom system prompt read (the chat mounts useSystemPrompt) — empty
   // means "use the built-in instruction", the default state under test.
   await page.route("**/system-prompt", (route) =>
     route.fulfill({

@@ -61,11 +61,12 @@ a whole area you never use:
 ::: warning Fragment names changed in 2.0.1
 
 The `core-*` fragments (`core-transforms`, `core-devices`,
-`core-context-standard`, …) were re-cut into the list above. If you customized
-one, its file in `~/.producer-pal/skills/` is no longer used — Producer Pal
-warns about it in the Skills **Preview** view and the Max window. Copy your
-changes into whichever new fragment now covers that material and delete the old
-file.
+`core-context-standard`, …) were re-cut into the list above, and
+`midi-json-standard` / `midi-json-basic` were folded into a single `midi-json`.
+If you customized any of them, its file in `~/.producer-pal/skills/` is no
+longer used — Producer Pal warns about it in the Skills **Preview** view and the
+Max window. Copy your changes into whichever new fragment now covers that
+material and delete the old file.
 
 :::
 
