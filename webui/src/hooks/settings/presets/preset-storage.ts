@@ -5,7 +5,10 @@
 
 import { isNotation } from "#src/shared/notation";
 import { isValidProvider } from "#webui/hooks/settings/settings-helpers";
-import { isEnabledToolsMap } from "#webui/lib/utils/enabled-tools";
+import {
+  enabledToolsDiverge,
+  isEnabledToolsMap,
+} from "#webui/lib/utils/enabled-tools";
 import { type ChatPreset, type PresetFields } from "#webui/types/settings";
 
 /** localStorage key holding the JSON-serialized ChatPreset[]. */
@@ -63,6 +66,15 @@ export function createPresetId(): string {
  * preset. A preset with no captured toolset or notation (legacy / "inherit")
  * never counts that field toward the comparison, so it isn't perpetually
  * "modified".
+ *
+ * The toolset is compared by *effective* enablement (enabledToolsDiverge), not
+ * key/value equality, because a missing key means "that tool's default" — the
+ * semantics every other reader of these maps uses (isToolEnabled,
+ * disabledToolNames, the server's resolveEnabledTools). Exact equality looked
+ * sufficient because applyPreset copies the preset's map in verbatim, but the
+ * Tools tab only ever *adds* explicit keys: toggling a tool off and back on
+ * leaves `{ tool: true }` against a preset's `{}`, an inert round trip that
+ * would otherwise pin the tab to "Unsaved edits" with no way back.
  * @param preset - A saved preset
  * @param fields - The live editable settings buffer
  * @returns True when every captured field matches
@@ -77,32 +89,9 @@ export function presetMatchesFields(
     preset.thinking === fields.thinking &&
     preset.smallModelMode === fields.smallModelMode &&
     (preset.enabledTools == null ||
-      enabledToolsEqual(preset.enabledTools, fields.enabledTools)) &&
+      !enabledToolsDiverge(preset.enabledTools, fields.enabledTools ?? {})) &&
     (preset.notation == null || preset.notation === fields.notation)
   );
-}
-
-/**
- * Order-independent equality for two tool-enablement maps. Absent maps are
- * treated as empty. This is exact key/value equality (a missing key differs
- * from an explicit true/false) — sufficient because applyPreset copies the
- * preset's map into the buffer verbatim, so a matched preset and its buffer
- * carry identical keys.
- * @param a - First tool map (or undefined)
- * @param b - Second tool map (or undefined)
- * @returns True when both maps enable exactly the same tools
- */
-export function enabledToolsEqual(
-  a: Record<string, boolean> = {},
-  b: Record<string, boolean> = {},
-): boolean {
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-
-  for (const key of keys) {
-    if (a[key] !== b[key]) return false;
-  }
-
-  return true;
 }
 
 /**

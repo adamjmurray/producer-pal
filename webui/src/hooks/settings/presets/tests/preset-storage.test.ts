@@ -7,9 +7,9 @@
  * @vitest-environment happy-dom
  */
 import { beforeEach, describe, expect, it } from "vitest";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   createPresetId,
-  enabledToolsEqual,
   loadPresets,
   PRESETS_STORAGE_KEY,
   presetMatchesFields,
@@ -145,6 +145,71 @@ describe("preset-storage", () => {
       ).toBe(false);
     });
 
+    it("compares the toolset by effective enablement, not exact keys", () => {
+      // The bug this pins: the Tools tab only ever adds explicit keys, so
+      // toggling a tool off and back on turns a preset's `{}` into
+      // `{ "ppal-delete": true }`. Both enable the same tools (absent = default
+      // on), so that inert round trip must not read as "unsaved edits".
+      expect(
+        presetMatchesFields(makePreset({ enabledTools: {} }), {
+          ...fields,
+          enabledTools: { "ppal-delete": true },
+        }),
+      ).toBe(true);
+
+      // Symmetrically, spelling out a default on the preset side matches a
+      // buffer that just omits it.
+      expect(
+        presetMatchesFields(
+          makePreset({ enabledTools: { "ppal-delete": true } }),
+          {
+            ...fields,
+            enabledTools: {},
+          },
+        ),
+      ).toBe(true);
+
+      // A real difference still registers, whichever side spells it out.
+      expect(
+        presetMatchesFields(makePreset({ enabledTools: {} }), {
+          ...fields,
+          enabledTools: { "ppal-delete": false },
+        }),
+      ).toBe(false);
+
+      // A buffer with no toolset at all reads as "everything at its default".
+      expect(
+        presetMatchesFields(
+          makePreset({ enabledTools: { "ppal-delete": true } }),
+          fields,
+        ),
+      ).toBe(true);
+      expect(
+        presetMatchesFields(
+          makePreset({ enabledTools: { "ppal-delete": false } }),
+          fields,
+        ),
+      ).toBe(false);
+    });
+
+    it("honors the Subagent tool's opt-in default when comparing toolsets", () => {
+      // Subagent inverts the rule: absent means disabled, so an empty map and an
+      // explicit `true` are genuinely different toolsets here.
+      expect(
+        presetMatchesFields(makePreset({ enabledTools: {} }), {
+          ...fields,
+          enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true },
+        }),
+      ).toBe(false);
+
+      expect(
+        presetMatchesFields(
+          makePreset({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: false } }),
+          { ...fields, enabledTools: {} },
+        ),
+      ).toBe(true);
+    });
+
     it("compares the notation only when the preset captured one", () => {
       // A legacy preset must not read as perpetually "modified" just because the
       // buffer carries the device's notation.
@@ -164,20 +229,6 @@ describe("preset-storage", () => {
           notation: "barbeat",
         }),
       ).toBe(false);
-    });
-  });
-
-  describe("enabledToolsEqual", () => {
-    it("treats absent maps as empty and ignores key order", () => {
-      expect(enabledToolsEqual(undefined, {})).toBe(true);
-      expect(
-        enabledToolsEqual({ a: true, b: false }, { b: false, a: true }),
-      ).toBe(true);
-    });
-
-    it("is false when a key is missing or a value differs", () => {
-      expect(enabledToolsEqual({ a: true }, { a: true, b: false })).toBe(false);
-      expect(enabledToolsEqual({ a: true }, { a: false })).toBe(false);
     });
   });
 });
