@@ -14,10 +14,18 @@ import {
 
 const projectRoot = path.resolve(import.meta.dirname, "../..");
 
-type TreeLimits = Record<string, number>;
+// Every tree each map must declare a limit for. Keying TreeLimits off this
+// union makes a missing entry a compile error: with Record<string, number> a
+// forgotten tree read back as undefined, and `count > undefined` is false, so
+// the tree silently stopped being enforced.
+const TREES = ["src", "srcTests", "scripts", "webui", "webuiTests"] as const;
+
+type Tree = (typeof TREES)[number];
+type TreeLimits = Record<Tree, number>;
 
 // Per-tree limits for lint suppressions (ratcheted to current counts)
-// "srcTests" checks test files in src/ (vs "src" which excludes test files)
+// A "…Tests" tree checks only the test files under that directory; the bare
+// tree name checks only the non-test sources.
 //
 // SELF-REFERENCE: this file is itself a srcTests file, so the pattern
 // definitions and error strings below match themselves. Every srcTests limit
@@ -31,6 +39,10 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
   srcTests: 16, // 14 real + 2 self
   scripts: 0,
   webui: 4,
+  // 4 any (SDK mock-call records), 5 require-yield (streams that throw before
+  // yielding), 5 only-throw-error (non-Error throw branches), 2 no-deprecated
+  // (need the undoctored DOM factory), 1 no-unnecessary-condition
+  webuiTests: 17,
 };
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
@@ -38,6 +50,7 @@ const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   srcTests: 17, // 15 real + 2 self
   scripts: 3, // Accessing the MCP SDK's private _serverVersion
   webui: 0,
+  webuiTests: 2, // Partial Client mocks that omit most of the interface
 };
 
 // Counts only the directives that open a region (start, next, …). "v8 ignore
@@ -48,9 +61,8 @@ const V8_IGNORE_LIMITS: TreeLimits = {
   srcTests: 7, // 0 real + 7 self (pattern definition + description enforcement)
   scripts: 0,
   webui: 8, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
+  webuiTests: 0,
 };
-
-const TREES = Object.keys(ESLINT_DISABLE_LIMITS);
 
 interface SuppressionConfig {
   pattern: RegExp;
@@ -83,7 +95,7 @@ describe("Lint suppression limits", () => {
   for (const [name, config] of Object.entries(SUPPRESSION_CONFIGS)) {
     describe(`${name} comments`, () => {
       for (const tree of TREES) {
-        const limit = config.limits[tree]!;
+        const limit = config.limits[tree];
 
         it(`should have at most ${limit} ${name} comments in ${tree}`, () => {
           assertPatternLimit(
