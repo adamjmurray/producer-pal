@@ -109,6 +109,18 @@ describe("getSubagentBriefingUrl", () => {
       "http://localhost:3350/subagent-briefing",
     );
   });
+
+  // The briefing lives beside the MCP endpoint, so a config that points its MCP
+  // requests at another server must fetch its briefing from that server too —
+  // otherwise a worker is briefed by one Producer Pal and calls tools on another.
+  it("follows a config's mcpUrl override instead of the page origin", () => {
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "3350", protocol: "http:" },
+    });
+    expect(getSubagentBriefingUrl("http://otherhost:9000/mcp")).toBe(
+      "http://otherhost:9000/subagent-briefing",
+    );
+  });
 });
 
 describe("detectCorsBlock", () => {
