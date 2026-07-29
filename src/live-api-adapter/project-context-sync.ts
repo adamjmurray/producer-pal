@@ -63,11 +63,14 @@ export async function syncProjectContextBackup(
   // Restore is only valid on the first sync of a session: a device (re)load is
   // the one thing that wipes the param (e.g. an upgrade). After that, an empty
   // param is a deliberate user clear — Node propagates it instead of restoring.
-  const { ok, restored } = await requestSync(
-    filePath,
-    content,
-    !hasSyncedThisSession(),
-  );
+  // isEdit is always false: a sync runs before every tool call and only
+  // observes the param, so it must never push a stale blob over a differing
+  // sidecar (that is how reopening an older Set used to clobber the folder's
+  // shared notes). Creating a MISSING sidecar still works from here.
+  const { ok, restored } = await requestSync(filePath, content, {
+    allowRestore: !hasSyncedThisSession(),
+    isEdit: false,
+  });
 
   // Only memoize a completed sync, so a transient failure retries next call
   // rather than being remembered as done (important for the restore case).
@@ -111,9 +114,15 @@ export async function backupProjectContextOnEdit(
 
   if (!needsSync(filePath, content)) return;
 
-  // Manual edits never restore, so allowRestore is always false. Only memoize a
+  // Manual edits never restore, so allowRestore is always false. isEdit is
+  // always true: every caller is a genuine project-context write (a device-UI
+  // edit, a webui POST /config, or ppal-context write), which is the only thing
+  // allowed to overwrite an existing, differing sidecar. Only memoize a
   // completed sync so a transient failure retries next edit.
-  const { ok } = await requestSync(filePath, content, false);
+  const { ok } = await requestSync(filePath, content, {
+    allowRestore: false,
+    isEdit: true,
+  });
 
   if (ok) rememberSync(filePath, content);
 }
@@ -192,18 +201,22 @@ function readLiveSetFilePath(): string | null {
  *
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param content - The device param's current project-context blob
- * @param allowRestore - Whether an empty param may be restored (first sync only)
+ * @param flags - How Node should interpret this sync
+ * @param flags.allowRestore - Whether an empty param may be restored from the
+ *   sidecar (the session's first sync only)
+ * @param flags.isEdit - Whether a genuine project-context write triggered this,
+ *   the only thing allowed to overwrite an existing, differing sidecar
  * @returns `ok` false when the round-trip failed (so the caller can retry
  *   later); `restored` carries the blob on a restore, else null
  */
 async function requestSync(
   filePath: string,
   content: string,
-  allowRestore: boolean,
+  flags: { allowRestore: boolean; isEdit: boolean },
 ): Promise<{ ok: boolean; restored: string | null }> {
   const response = await requestNode<ProjectContextSyncResult>(
     "projectContext.sync",
-    { filePath, content, allowRestore },
+    { filePath, content, ...flags },
   );
 
   if (!response.success) {

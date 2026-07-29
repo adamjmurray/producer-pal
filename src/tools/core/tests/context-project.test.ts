@@ -7,10 +7,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/v8-max-console.ts";
 import { context } from "../context.ts";
 
+vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
+  backupProjectContextOnEdit: vi.fn(),
+  syncProjectContextBackup: vi.fn(),
+  resetProjectContextSyncMemo: vi.fn(),
+}));
+
+const { backupProjectContextOnEdit } =
+  await import("#src/live-api-adapter/project-context-sync.ts");
+const mockBackup = vi.mocked(backupProjectContextOnEdit);
+
 describe("context - project scope (default)", () => {
   let toolContext: Partial<ToolContext>;
 
   beforeEach(() => {
+    mockBackup.mockClear();
     toolContext = {
       projectContext: { content: "" },
     };
@@ -121,6 +132,36 @@ describe("context - project scope (default)", () => {
 
       expect(result).toStrictEqual({ content: "fresh" });
       expect(outlet).toHaveBeenCalledWith(0, "update_project_context", "fresh");
+    });
+  });
+
+  // The outlet above updates the device UI silently (the patch routes it through
+  // `prepend set`), so a tool write never re-enters V8's projectContext() setter
+  // the way a device-UI or webui edit does. Nothing else would back it up: a
+  // later tool call's sync is not a write, so it may not overwrite a differing
+  // sidecar, and a write that is the session's last tool call would never reach
+  // disk at all.
+  describe("write action - on-disk backup", () => {
+    it("backs up the sidecar immediately, without waiting for another tool call", async () => {
+      await context({ action: "write", content: "Genre: jungle" }, toolContext);
+
+      expect(mockBackup).toHaveBeenCalledExactlyOnceWith("Genre: jungle");
+    });
+
+    it("propagates a clear, so the sidecar is deleted rather than resurrected", async () => {
+      toolContext.projectContext!.content = "existing content";
+
+      await context({ action: "write", content: "" }, toolContext);
+
+      expect(mockBackup).toHaveBeenCalledExactlyOnceWith("");
+    });
+
+    it("does not back up a write the clobber guard skipped", async () => {
+      toolContext.projectContext!.content = "a long-accumulated document";
+
+      await context({ action: "write", content: "hi" }, toolContext);
+
+      expect(mockBackup).not.toHaveBeenCalled();
     });
   });
 

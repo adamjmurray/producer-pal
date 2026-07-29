@@ -26,10 +26,13 @@
 // set path. Deriving the sidecar name from a path re-introduces exactly the
 // fragility the design avoids; deriving it from the folder does not.
 //
-// Known rough edge, tracked separately: reopening an OLDER Set overwrites the
-// sidecar with that Set's stale context, because a device load and a passing
-// sync both reach backupIfStale the same way a genuine edit does. Only a real
-// project-context write should overwrite an existing, differing sidecar.
+// Because last-writer-wins is folder-wide, only a genuine WRITE may overwrite
+// an existing sidecar whose content differs (the `isEdit` flag on the sync RPC
+// — see project-context-backup-node-routes.ts). A device load and a passing
+// pre-tool-call sync only observe the param, so reopening an OLDER Set can't
+// push its stale saved blob over the folder's newer notes. A MISSING sidecar is
+// still always created, which is what covers a first save, a Save-As, and a
+// moved project folder.
 //
 // This writes into the user's Live project folder (a path from the Live API's
 // song file_path), NOT ~/.producer-pal, so it deliberately does NOT go through

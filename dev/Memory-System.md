@@ -144,8 +144,9 @@ filesystem):
   owns the `fs`. Sidecar path = `<dir of .als>/Producer Pal Project Context.md`
   — one per project _folder_ (see above; folder keying is a requirement), so
   saving a new `.als` into the same folder is a no-op and only Save-As to a new
-  folder writes a fresh backup. A non-empty param with a missing or stale
-  sidecar ⇒ **backup**. An empty param is ambiguous, disambiguated by an
+  folder writes a fresh backup. A non-empty param with a missing sidecar, or
+  with a differing one that a genuine write supersedes (the `isEdit` flag, see
+  below) ⇒ **backup**. An empty param is ambiguous, disambiguated by an
   `allowRestore` flag V8 sends (see below): with a non-empty sidecar ⇒
   **restore** (also updates Node's `config.projectContext` mirror directly, so a
   restore during `ppal-connect` shows in that response's injected block — the
@@ -175,6 +176,42 @@ an upgrade-wiped device, and deleting the sidecar would destroy the very backup
 a restore needs; a non-empty edit is always safe (it can only write). The shared
 memo dedupes the tool-call sync's own outlet round-trip, so the restore echo
 can't loop.
+
+`ppal-context write scope:project` needs the same trigger, and for a reason
+worth stating: its `update_project_context` outlet reaches the device-UI
+textedit through the patch's `prepend set`, which updates the display
+**without** output — so unlike a device-UI or webui edit, a tool write never
+re-enters the setter. `handleWriteProjectContext` therefore fires
+`backupProjectContextOnEdit` itself. Waiting for the next tool call's sync would
+be wrong twice over: a sync isn't a write (so it can't overwrite a differing
+sidecar at all), and a write that is the session's last tool call would never
+reach disk.
+
+**Edit vs. load.** Everything above hinges on the sidecar only being overwritten
+by a genuine write, which the `isEdit` flag on the sync RPC carries: true from
+`backupProjectContextOnEdit` (device-UI edit, webui `POST /config`,
+`ppal-context write`), false from the pre-tool-call `syncProjectContextBackup`.
+The hard part is V8-side, because Max delivers the device's saved blob back
+through the very same `projectContext()` setter a user edit uses — Live emits
+the textedit's embedded value when it restores the device, and the
+`---v8-started` / `---node-started` bangs re-emit it, in no guaranteed order (a
+real load was observed producing **three** echoes, two of them before Node had
+finished booting). Two facts separate them, and neither depends on init order:
+
+- The session's **first** setter call is always a load echo — that is how the
+  blob reaches V8 at all, and it lands before a user could plausibly type.
+- Every later echo carries the **same** textedit content, so a set that changes
+  nothing is never an edit.
+
+A re-entrancy bracket around V8's own `outlet(0, "started")` was tried and does
+not work: the bang is deferred, so the call returns before its own echo arrives.
+A patch-side split (routing the resync bangs through a `[gate]` so restores
+arrive as a distinct message) was also rejected — at least one restore source is
+Live re-emitting the textedit's embedded value, which never passes through those
+bangs, so the gate would misclassify it as an edit. The value guard covers every
+source. Residual gap: typing into the Context tab inside the ~1s load window
+means that edit is what gets echoed back, so it stays in the `.als` param until
+the next edit.
 
 Residual gap (accepted, not closed — a background poller was rejected): setting
 context while the Set is _unsaved_ (no `file_path` to write beside), then saving

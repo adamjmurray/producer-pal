@@ -166,17 +166,63 @@ describe("projectContext.sync — backup (non-empty param)", () => {
     expect(readProjectContextSidecar(liveSetPath)).toBe("Genre: jungle");
   });
 
-  it("overwrites a stale sidecar", async () => {
+  it("overwrites an existing sidecar on a genuine write", async () => {
     seedSidecar("old");
 
     const res = await dispatchNodeRoute("projectContext.sync", {
       filePath: liveSetPath,
       content: "new",
       allowRestore: false,
+      isEdit: true,
     });
 
     expect(res.result).toStrictEqual({ action: "backup" });
     expect(readProjectContextSidecar(liveSetPath)).toBe("new");
+  });
+
+  // One sidecar is shared by every Set in a Live Project folder, so loading an
+  // older Set must not push its saved blob over the folder's newer notes. Only
+  // a write supersedes an existing backup.
+  it("leaves an existing, differing sidecar alone when nothing was written", async () => {
+    seedSidecar("newer notes from another Set in this folder");
+
+    const res = await dispatchNodeRoute("projectContext.sync", {
+      filePath: liveSetPath,
+      content: "stale blob saved in this older .als",
+      allowRestore: false,
+      isEdit: false,
+    });
+
+    expect(res.result).toStrictEqual({ action: "none" });
+    expect(readProjectContextSidecar(liveSetPath)).toBe(
+      "newer notes from another Set in this folder",
+    );
+  });
+
+  it("creates a missing sidecar even when nothing was written", async () => {
+    const res = await dispatchNodeRoute("projectContext.sync", {
+      filePath: liveSetPath,
+      content: "Genre: jungle",
+      allowRestore: false,
+      isEdit: false,
+    });
+
+    expect(res.result).toStrictEqual({ action: "backup" });
+    expect(readProjectContextSidecar(liveSetPath)).toBe("Genre: jungle");
+  });
+
+  it("treats an empty sidecar as no backup, so a passing sync fills it", async () => {
+    seedSidecar("   ");
+
+    const res = await dispatchNodeRoute("projectContext.sync", {
+      filePath: liveSetPath,
+      content: "Genre: jungle",
+      allowRestore: false,
+      isEdit: false,
+    });
+
+    expect(res.result).toStrictEqual({ action: "backup" });
+    expect(readProjectContextSidecar(liveSetPath)).toBe("Genre: jungle");
   });
 
   it("leaves a byte-identical sidecar untouched", async () => {

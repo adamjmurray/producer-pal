@@ -30,6 +30,19 @@ export interface ProjectContextSyncArgs {
    * propagate the clear instead of resurrecting the backup.
    */
   allowRestore: boolean;
+  /**
+   * Whether this sync carries a genuine project-context WRITE (a device-UI
+   * edit, a webui `POST /config`, or `ppal-context write`) as opposed to a
+   * device-load echo or a passing pre-tool-call sync, both of which only
+   * observe the param.
+   *
+   * Only a write may overwrite an existing sidecar whose content differs. One
+   * sidecar is shared by every Set in a Live Project folder, so a load must not
+   * push an older Set's saved blob over the folder's newer notes. A MISSING
+   * sidecar is always created either way — that is what covers a first save, a
+   * Save-As, and a moved project folder.
+   */
+  isEdit: boolean;
 }
 
 /** What the route did, echoed back so V8 can apply a restore to the param. */
@@ -74,7 +87,7 @@ function syncRoute(
   args: unknown,
   deps: ProjectContextBackupDeps,
 ): ProjectContextSyncResult {
-  const { filePath, content, allowRestore } = (args ??
+  const { filePath, content, allowRestore, isEdit } = (args ??
     {}) as Partial<ProjectContextSyncArgs>;
 
   // An unsaved set has no sidecar location — nothing to do until it's saved.
@@ -85,7 +98,7 @@ function syncRoute(
   const currentContent = typeof content === "string" ? content : "";
 
   if (currentContent.trim() !== "") {
-    return backupIfStale(filePath, currentContent);
+    return backupIfStale(filePath, currentContent, isEdit === true);
   }
 
   // Empty param. On the first sync of a session it may be an upgrade-wiped
@@ -132,21 +145,33 @@ function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
 }
 
 /**
- * Param has content: write the sidecar when it's missing or differs (covers
- * both an ordinary edit and a first-save / Save-As to a folder with no backup
- * yet). A byte-identical sidecar is left untouched.
+ * Param has content: write the sidecar when there is no backup yet (covers a
+ * first save, a Save-As, and a moved project folder), or when a genuine write
+ * supersedes it. A byte-identical sidecar is left untouched, and so is a
+ * differing one that nothing wrote over — see below.
  *
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param content - The device param's current project-context blob
+ * @param isEdit - Whether a genuine project-context write triggered this sync
  * @returns A "backup" result when written, else "none"
  */
 function backupIfStale(
   filePath: string,
   content: string,
+  isEdit: boolean,
 ): ProjectContextSyncResult {
   const existing = readProjectContextSidecar(filePath);
 
   if (existing === content) {
+    return { action: "none" };
+  }
+
+  // A sidecar that exists and differs, with nothing written: the param is just
+  // what some .als had saved in it — most often an OLDER Set in this same Live
+  // Project folder, whose stale blob would otherwise replace the folder's newer
+  // shared notes on load. Only a real write supersedes an existing backup. An
+  // empty sidecar counts as no backup, matching restoreIfBackupExists.
+  if (existing != null && existing.trim() !== "" && !isEdit) {
     return { action: "none" };
   }
 

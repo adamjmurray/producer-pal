@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 export interface ContentResult {
@@ -59,6 +60,16 @@ export function handleWriteProjectContext(
 
   // Send update to Max patch via outlet
   outlet(0, "update_project_context", content);
+
+  // That outlet updates the device UI silently (the patch routes it through
+  // `prepend set`), so this write never re-enters V8's projectContext() setter
+  // the way a device-UI or webui edit does — nothing else here would back it
+  // up. Waiting for the next tool call's sync is not an option either: a sync
+  // is not a write, so it can no longer overwrite a differing sidecar, and a
+  // write that is the last tool call of a session would never reach disk at
+  // all. Fire-and-forget, like the setter: the write is Node-side and must not
+  // block the tool result, and requestNode never rejects so this can't throw.
+  void backupProjectContextOnEdit(content);
 
   return { content };
 }

@@ -215,6 +215,24 @@ export function notation(value: unknown): void {
 }
 
 /**
+ * Whether the next projectContext() call is the device's saved blob coming back
+ * at load rather than a user edit. The blob reaches V8 through the same setter
+ * either way — Live emits the textedit's embedded value when it restores the
+ * device, and the ---v8-started / ---node-started bangs re-emit it — so a load
+ * is indistinguishable from an edit by message alone. It IS separable by two
+ * facts that hold whatever order Live, V8 and Node initialize in:
+ *
+ *   - The session's FIRST setter call is always a load echo. That is how the
+ *     blob reaches V8 at all, and it lands before a user could plausibly type.
+ *   - Every later load echo carries the SAME textedit content, so a set that
+ *     changes nothing is never an edit (see the guard in projectContext()).
+ *
+ * Without this, opening an older Set in a Live Project backs its stale blob up
+ * over the folder's newer shared sidecar. See dev/Memory-System.md.
+ */
+let expectLoadEcho = true;
+
+/**
  * Set the project context content
  *
  * @param content - Project context content
@@ -222,15 +240,22 @@ export function notation(value: unknown): void {
 export function projectContext(content: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
+  const isLoadEcho = expectLoadEcho;
+
+  expectLoadEcho = false;
+
+  // A set that changes nothing can't be an edit: it's another load-time echo of
+  // the blob we already hold (Live's textedit restore and the two -started
+  // resync bangs all re-emit the same content, in no guaranteed order).
+  const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
 
   sessionState.projectContext.content = value;
 
   // Device-UI and webui edits reach us only through this setter (never an MCP
   // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
-  // forget: the write is Node-side and must not block the param update. The
-  // shared memo dedupes the tool-call sync's own outlet round-trip, so the
-  // restore echo can't loop, and requestNode never rejects so this can't throw.
-  void backupProjectContextOnEdit(value);
+  // forget: the write is Node-side and must not block the param update, and
+  // requestNode never rejects so this can't throw.
+  if (isEdit) void backupProjectContextOnEdit(value);
 }
 
 /**
@@ -412,7 +437,10 @@ const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 console.log(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 
 // send a "started" signal so UI controls can resync their values
-// while changing the code repeatedly during development:
+// while changing the code repeatedly during development. The patch answers it
+// by banging the saved project-context textedit back at us, but not
+// re-entrantly: this call returns before that echo arrives, which is why the
+// load-vs-edit split in projectContext() can't be scoped to this statement.
 outlet(0, "started");
 
 /**

@@ -87,6 +87,7 @@ describe("syncProjectContextBackup — backup", () => {
       filePath: SAVED_PATH,
       content: "Genre: jungle",
       allowRestore: true,
+      isEdit: false,
     });
   });
 
@@ -126,6 +127,7 @@ describe("syncProjectContextBackup — backup", () => {
       filePath: "/Users/x/Copy Project/Copy.als",
       content: "Genre: jungle",
       allowRestore: false,
+      isEdit: false,
     });
   });
 });
@@ -176,6 +178,7 @@ describe("syncProjectContextBackup — allowRestore gating", () => {
       filePath: SAVED_PATH,
       content: "",
       allowRestore: false,
+      isEdit: false,
     });
   });
 });
@@ -221,11 +224,13 @@ describe("backupProjectContextOnEdit — manual edits", () => {
 
     await backupProjectContextOnEdit("Genre: jungle");
 
-    // A manual edit must never restore, even as the session's first sync.
+    // A manual edit must never restore, even as the session's first sync, and
+    // it is the only thing allowed to overwrite an existing, differing sidecar.
     expect(mockRequestNode).toHaveBeenCalledWith("projectContext.sync", {
       filePath: SAVED_PATH,
       content: "Genre: jungle",
       allowRestore: false,
+      isEdit: true,
     });
   });
 
@@ -250,6 +255,7 @@ describe("backupProjectContextOnEdit — manual edits", () => {
       filePath: SAVED_PATH,
       content: "",
       allowRestore: false,
+      isEdit: true,
     });
   });
 
