@@ -26,6 +26,8 @@ const TREES = [
   "webuiTests",
   "evals",
   "evalsTests",
+  "e2e",
+  "e2eTests",
 ] as const;
 
 type Tree = (typeof TREES)[number];
@@ -56,6 +58,8 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
   // can't see
   evals: 1,
   evalsTests: 0,
+  e2e: 0,
+  e2eTests: 0,
 };
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
@@ -66,6 +70,8 @@ const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   webuiTests: 2, // Partial Client mocks that omit most of the interface
   evals: 0,
   evalsTests: 0,
+  e2e: 0,
+  e2eTests: 0,
 };
 
 // Counts only the directives that open a region (start, next, …). "v8 ignore
@@ -79,6 +85,8 @@ const V8_IGNORE_LIMITS: TreeLimits = {
   webuiTests: 0,
   evals: 0,
   evalsTests: 0,
+  e2e: 0,
+  e2eTests: 0,
 };
 
 interface SuppressionConfig {
@@ -130,7 +138,7 @@ describe("Lint suppression limits", () => {
 
   // v8 ignore next/start must include a "-- reason" description (v8 ignore stop is exempt)
   it("should require descriptions on v8 ignore next/start comments", () => {
-    const dirs = ["src", "webui", "scripts", "evals"];
+    const dirs = ["src", "webui", "scripts", "evals", "e2e"];
     const allFiles = dirs.flatMap((dir) => {
       const dirPath = path.join(projectRoot, dir);
 
