@@ -27,11 +27,13 @@ function clearTimer(ref: TimerRef): void {
 }
 
 /**
- * Every save POST currently in flight, as one promise to await before the
- * caller's own write goes out — or null when the editor is idle, so clear/import
- * reach their POST without an extra microtask hop (the single-promise ref this
- * replaced had that same fast path). Promise.all walks the set synchronously, so
- * the saves that settle (and remove themselves) afterward are still awaited.
+ * Every write POST currently in flight, as one promise to await before the
+ * caller's own write goes out — or null when the editor is idle, so a write
+ * reaches its POST without an extra microtask hop (the single-promise ref this
+ * replaced had that same fast path). The null matters beyond latency: an
+ * autosave flush during beforeunload only lands if it dispatches in the same
+ * turn. Promise.all walks the set synchronously, so the saves that settle (and
+ * remove themselves) afterward are still awaited.
  * @param saves - The live set of in-flight save promises
  * @returns A promise for all current saves, or null when there are none
  */
@@ -160,12 +162,15 @@ export function useContextEditorState(
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Every in-flight write promise — autosave flushes AND the manual
-  // Clear/Import writes — so handleClear/handleImport can await them ALL before
-  // dispatching their own (prevents a stale POST from landing after theirs). A
-  // set rather than one ref: writes can overlap (a debounce flush, then a blur
-  // flush before the first echo lands), and keeping only the newest would
-  // silently stop awaiting the earlier one — the very write-ordering hazard
-  // this is here to close.
+  // Clear/Import writes. Every write both registers here and orders behind
+  // what it finds, so only one PUT is ever on the wire and the server sees them
+  // in the order the user triggered them. Symmetric on purpose: leaving any one
+  // write out (autosave was, once) reopens the hazard from that direction —
+  // the UI still resolves correctly, because use-doc's generation counter
+  // discards the superseded echo, but the file on disk keeps whichever PUT the
+  // server happened to finish last. A set rather than one ref: writes can
+  // overlap (a debounce flush, then a blur flush before the first echo lands),
+  // and keeping only the newest would silently stop awaiting the earlier one.
   const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
   const memoryRef = useRef(memory);
   // False once the hook has unmounted, so the unmount flush's save promise
@@ -268,6 +273,23 @@ export function useContextEditorState(
     // user has since typed something newer. Also schedule an unattended retry
     // so a transient failure doesn't lose edits when the user has walked away.
     lastSavedRef.current = value;
+    // Order this save behind the writes already on the wire — the same
+    // guarantee dispatchOrderedWrite gives Clear/Import, in the other
+    // direction. Typing during an in-flight Clear (the editor stays live until
+    // clear's echo remounts it) would otherwise put two PUTs on the wire at
+    // once; if the server handled this one first, the clear would land last and
+    // strip the draft from disk while the editor still showed it saved, until a
+    // poll surfaced the emptiness as an "updated outside the editor" banner.
+    //
+    // Only the DISPATCH defers — registration below stays synchronous, so a
+    // Clear fired right after this flush is still ordered behind it — and
+    // pendingSaves' null fast path keeps the idle case dispatching in this very
+    // turn, which the beforeunload flush depends on (the transport can't use
+    // `keepalive`). The trade: on beforeunload with a write already pending,
+    // this flush now waits for a turn the closing page won't grant, so it drops
+    // instead of racing. Both are best-effort there, and racing had its own
+    // coin-flip chance of persisting the wrong content.
+    const pending = pendingSaves(inFlightSavesRef.current);
     // Track the in-flight save so handleClear can await it before dispatching
     // clear (orders the writes on the wire — clear already accepts the
     // round-trip latency). Tracked as a promise that SETTLES rather than the
@@ -275,7 +297,11 @@ export function useContextEditorState(
     // and wedge every later clear/import on a rejecting Promise.all. save()
     // resolves false rather than throwing today — this keeps that from being
     // load-bearing, and routes an unexpected throw into the retry path below.
-    const savePromise = current.save(value).catch(() => false);
+    const savePromise = (
+      pending == null
+        ? current.save(value)
+        : pending.then(() => current.save(value))
+    ).catch(() => false);
 
     inFlightSavesRef.current.add(savePromise);
     void savePromise.then((saved) => {
