@@ -105,11 +105,13 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   library: ["ppal-library"],
   devices: DEVICE_TOOLS,
   // Reading a Drift or an EQ Eight benefits from the pseudo-param names as much
-  // as writing one does, so this is not update-device alone. It stays a strict
-  // subset of the devices gate — see the requires-subset test.
-  "specialized-devices": ["ppal-read-device", "ppal-update-device"],
-  // Moving clips is update-clip; take lanes are create-clip and duplicate.
-  arrangement: [UPDATE_CLIP, "ppal-duplicate", CREATE_CLIP],
+  // as building or editing one does, so all three device tools carry it — same
+  // gate as `devices`, which also satisfies the requires-subset test.
+  "specialized-devices": DEVICE_TOOLS,
+  // Every clip tool that can put a clip on the timeline or report where one
+  // already sits: moving clips is update-clip, take lanes are create-clip and
+  // duplicate, and read-clip is how arrangement positions come back.
+  arrangement: [CREATE_CLIP, "ppal-read-clip", UPDATE_CLIP, "ppal-duplicate"],
 
   "context-standard": ["ppal-context"],
   "context-basic": ["ppal-context"],

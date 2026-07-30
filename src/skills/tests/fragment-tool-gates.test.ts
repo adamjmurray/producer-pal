@@ -121,13 +121,34 @@ describe("gatedOutFragments", () => {
     expect(gatedOutFragments(["ppal-playback"])).toContain("barbeat-standard");
   });
 
-  it("drops specialized-devices while keeping devices for a build-only toolset", () => {
-    // create-device builds a rack; the per-device pseudo-param catalog is for
-    // reading and updating them.
-    const dropped = gatedOutFragments(["ppal-create-device"]);
+  it("keeps specialized-devices for any single device tool", () => {
+    // The per-device pseudo-param catalog serves all three: building a Drift
+    // needs the names as much as reading or updating one does. So each device
+    // tool alone keeps both device fragments, and dropping them takes all three.
+    for (const tool of [
+      "ppal-create-device",
+      "ppal-read-device",
+      "ppal-update-device",
+    ]) {
+      const dropped = gatedOutFragments([tool]);
 
-    expect(dropped).toContain("specialized-devices");
-    expect(dropped).not.toContain("devices");
+      expect(dropped, `${tool} should keep specialized-devices`).not.toContain(
+        "specialized-devices",
+      );
+      expect(dropped, `${tool} should keep devices`).not.toContain("devices");
+    }
+
+    const noDeviceTools = gatedOutFragments(["ppal-playback"]);
+
+    expect(noDeviceTools).toContain("specialized-devices");
+    expect(noDeviceTools).toContain("devices");
+  });
+
+  it("keeps arrangement for a read-only clip toolset", () => {
+    // Arrangement positions come back through read-clip, so a caller that only
+    // reads still needs to make sense of them.
+    expect(gatedOutFragments(["ppal-read-clip"])).not.toContain("arrangement");
+    expect(gatedOutFragments(["ppal-playback"])).toContain("arrangement");
   });
 });
 

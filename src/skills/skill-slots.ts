@@ -216,7 +216,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "specialized-devices": {
     title: "Specialized device controls",
     description:
-      "The extra controls specific native devices expose (Drift, Wavetable, Simpler, Compressor, EQ Eight, Hybrid Reverb…). Only needed when editing those devices, and needs the devices guide it sits under.",
+      "The extra controls specific native devices expose (Drift, Wavetable, Simpler, Compressor, EQ Eight, Hybrid Reverb…). Only needed when working with those devices, and needs the devices guide it sits under.",
     builtIn: specializedDevices,
     requires: ["devices"],
   },

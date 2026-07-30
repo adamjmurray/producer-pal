@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Session-vs-Arrangement habits, playback, and general music-making advice —
-// the "how to work in Live" fragment. Gated by playback plus conversation: a
-// worker handed one clip to write doesn't decide when to start playback or how
-// to keep harmonic rhythm in sync.
+// the "how to work in Live" fragment. Gated `"always"`: this is foundational
+// judgment about the instrument, not instruction for any one tool, so no toolset
+// makes it droppable — a worker handed a single clip to write still needs to know
+// which view it lands in and what restarts when.
 //
 // This text used to leak bar|beat syntax (`n` durations and `1|1xN` repeats),
 // which stark and midi-json users don't have. Nothing here may name a notation's
