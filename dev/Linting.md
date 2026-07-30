@@ -69,6 +69,10 @@ run through oxlint's ESLint-compatible `jsPlugins` bridge, so their packages
 remain devDependencies: `eslint-plugin-sonarjs`, `@stylistic/eslint-plugin`,
 `@eslint-community/eslint-plugin-eslint-comments`, and `eslint-plugin-unicorn`.
 
+The bridge is why `typescript` resolves to the TypeScript 6 API even though
+`npm run typecheck` runs TypeScript 7 — see "Why the bridge pins TypeScript 6"
+below.
+
 The first three have no native equivalent at all. `unicorn` is different: of the
 33 rules the eslint config named, oxlint implements 22 natively, the bridge
 supplies 10 (see below), and one was a no-op alias that never enforced anything.
@@ -325,6 +329,37 @@ Drop each one as oxlint implements it natively — the native name wins, and
 keeping both would be ambiguous. oxlint errors on an unknown rule name in a JS
 plugin, so a rule that disappears upstream fails the run loudly rather than
 going quiet.
+
+## Why the bridge pins TypeScript 6
+
+TypeScript 7 is the Go port and ships **no programmatic API** — its `typescript`
+package root export is `lib/version.cjs`, just the version string. Upstream
+expects to ship a new API in 7.1.
+
+Every bridged plugin reaches the compiler API transitively (sonarjs through
+`ts-api-utils`, which reads `ts.TypeFlags` at module load), so under a plain TS
+7 install oxlint dies before linting anything:
+
+```
+x Failed to load JS plugin: eslint-plugin-sonarjs
+|   TypeError: Cannot read properties of undefined (reading 'Intrinsic')
+```
+
+There is nothing to upgrade to. `typescript-eslint` closed its TypeScript 7
+support request as `not_planned` — "there is no TS 7 API at this time" — and
+SonarSource then capped `eslint-plugin-sonarjs` to `typescript >=5 <6.1.0` to
+stay inside that window. Dropping sonarjs would cost 27 configured rules,
+including `sonarjs/no-identical-functions`, this repo's DRY enforcement.
+
+So `package.json` uses the upstream-recommended side-by-side aliasing: the
+`typescript` name resolves to `@typescript/typescript6` (full 6.0.3 API, for the
+bridge), and TypeScript 7 is installed as `@typescript/native`, whose `tsc` is
+what `npm run typecheck` runs. Nothing needs the two to agree —
+`oxlint-tsgolint` carries its own typescript-go checker, so type-aware linting
+is already on a TS-7-era engine regardless.
+
+Revisit when `typescript-eslint` supports the 7.1 API and sonarjs lifts its cap;
+at that point both aliases collapse back to a plain `typescript` pin.
 
 ## Rules disabled where oxlint disagrees
 
