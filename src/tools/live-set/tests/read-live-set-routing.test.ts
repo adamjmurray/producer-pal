@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
+import { createSimpleRoutingMock } from "#src/test/mocks/routing-test-helpers.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupRoutingTestMocks } from "./update-live-set-test-helpers.ts";
 

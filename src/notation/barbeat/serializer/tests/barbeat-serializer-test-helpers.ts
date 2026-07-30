@@ -5,7 +5,7 @@
 
 import { expect } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { sortNotes } from "../../barbeat-test-fixtures.ts";
+import { sortNotes } from "../../barbeat-test-helpers.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 

@@ -10,13 +10,13 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   createOutputOnlyRoutingMock,
   createSimpleRoutingMock,
-} from "#src/test/mocks/routing-mock-helpers.ts";
+} from "#src/test/mocks/routing-test-helpers.ts";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
-import { mockTrackProperties } from "../helpers/read-track-test-helpers.ts";
-import { setupTrackPathMappedMocks } from "../helpers/read-track-path-mapped-test-helpers.ts";
+import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 function createMasterTrackProperties(

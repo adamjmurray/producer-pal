@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { createRoutingMockProperties } from "../helpers/read-track-test-helpers.ts";
-import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+import { createRoutingMockProperties } from "./helpers/read-track-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 function expectStandardOutputRouting(result: Record<string, unknown>): void {

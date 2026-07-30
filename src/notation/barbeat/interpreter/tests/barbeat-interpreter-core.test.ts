@@ -8,7 +8,7 @@ import { createNote } from "#src/test/test-data-builders.ts";
 import {
   drumPatternNotation,
   drumPatternNotes,
-} from "#src/notation/barbeat/barbeat-test-fixtures.ts";
+} from "#src/notation/barbeat/barbeat-test-helpers.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
 describe("bar|beat interpretNotation() - core functionality", () => {

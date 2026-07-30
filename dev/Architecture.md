@@ -224,9 +224,10 @@ dependencies of its own, so the import is harmless; it is grandfathered via the
 rule's `except` clause rather than relocated, keeping the live-library feature
 cohesive.
 
-The boundary rules apply to production source only. Test infrastructure (mocks,
-fixtures, `*-test-helpers.ts`, `tests/` directories, `src/test/`) legitimately
-reaches across layers and is excluded.
+The boundary rules apply to production source only. Test infrastructure —
+everything the project classifies as a test file (AGENTS.md → Test File
+Classification) — legitimately reaches across layers and is excluded. It governs
+the shipped dependency graph, which no test file is part of.
 
 ## Runtime Boundary: Filesystem & User-Content Features
 

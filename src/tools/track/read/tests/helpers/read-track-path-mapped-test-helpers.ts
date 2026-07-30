@@ -8,7 +8,7 @@ import {
   normalizeIdLike,
   registerPathMappedObjects,
   resolveMappedObjectProperties,
-} from "#src/test/helpers/path-mapped-mock-helpers.ts";
+} from "#src/test/helpers/path-mapped-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { mockTrackProperties } from "./read-track-test-helpers.ts";
 

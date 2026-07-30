@@ -8,6 +8,6 @@
     "// SPDX-License-Identifier:.*"
   ],
   "ignore": ["**/node_modules/**", "**/parser/*.js"],
-  "pattern": "**/{*.test.{js,ts,tsx},*-test-helpers.{js,ts,tsx},*-test-case.ts,test-utils/**/*.{js,ts,tsx},test-cases/**/*.{js,ts,tsx},tests/**/*.{js,ts,tsx},e2e/**/*.{js,ts,tsx}}",
-  "path": ["../src", "../webui/src"]
+  "pattern": "**/{*.test.ts,*.test.tsx,*.spec.ts,*.spec.tsx,*-test-cases.ts,*-test-helpers.ts,*-test-helpers.tsx,test/**,tests/**,test-cases/**,test-utils/**}",
+  "path": ["../src", "../webui/src", "../scripts", "../evals"]
 }

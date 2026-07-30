@@ -9,7 +9,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   setupReturnTrackNames,
   setupTrackMixerMocks,
-} from "../helpers/read-track-registry-test-helpers.ts";
+} from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 function expectSendsWithReverbAndSecond(

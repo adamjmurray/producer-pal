@@ -19,13 +19,13 @@ import {
   expectDrumRackWithStrippedChains,
   mockTrackProperties,
   setupDrumRackMocks,
-} from "../helpers/read-track-test-helpers.ts";
+} from "./helpers/read-track-test-helpers.ts";
 import {
   createChainMockProperties,
   createDeviceMockProperties,
   createRackDeviceMockProperties,
-} from "../helpers/read-track-device-test-helpers.ts";
-import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+} from "./helpers/read-track-device-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 /**

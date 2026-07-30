@@ -9,7 +9,7 @@ import { createNote } from "#src/test/test-data-builders.ts";
 import {
   drumPatternNotes,
   kickSnareNotes,
-} from "../../barbeat-test-fixtures.ts";
+} from "../../barbeat-test-helpers.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 import { expectRoundTripNotes } from "./barbeat-serializer-test-helpers.ts";
 

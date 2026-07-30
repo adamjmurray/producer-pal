@@ -86,8 +86,22 @@ export default defineConfig({
         "**/*.peggy",
         "**/*-parser.js",
 
-        // test helper functions
+        // ignore test files and test infrastructure. Vitest already keeps the
+        // suites themselves out of the report; these are the fixtures, mocks
+        // and helpers around them. The list is the project's one definition of
+        // a test file — see src/test/helpers/test-file-classification.ts, which
+        // the meta test holds this in step with.
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts",
         "**/*-test-helpers.ts",
+        "**/*-test-helpers.tsx",
+        "**/test/**",
+        "**/tests/**",
+        "**/test-cases/**",
+        "**/test-utils/**",
 
         // type definition only files (no executable code)
         "src/notation/types.ts",
@@ -115,10 +129,6 @@ export default defineConfig({
 
         // ignore loggers:
         "src/portal/file-logger.ts",
-
-        // ignore test infrastructure:
-        "src/test/mocks/**",
-        "src/test/helpers/**",
       ],
       reportOnFailure: true,
 

@@ -228,19 +228,15 @@ describe("import restrictions", () => {
     const violations: Violation[] = [];
 
     for (const { target, forbidden, except } of zones) {
+      // Tests are exempt: a test may import whatever it exercises, and the
+      // layering contract governs the shipped dependency graph, which no test
+      // file is part of. excludeTests drops every category of them — see
+      // src/test/helpers/test-file-classification.ts.
       for (const file of findSourceFiles(
         path.join(projectRoot, target),
         true,
       )) {
         const rel = path.relative(projectRoot, file);
-
-        // Tests are exempt: a test may import whatever it exercises. Fixtures
-        // and case tables count as tests here, matching the paths the eslint
-        // block ignored — findSourceFiles only drops the project's narrower
-        // definition of a test file.
-        if (/(^|\/)(tests?|test-utils|test-cases)\//.test(rel)) continue;
-        if (/-test-(?:case|fixtures)\.tsx?$/.test(rel)) continue;
-
         const lines = fs.readFileSync(file, "utf8").split("\n");
 
         for (const { value, line } of specifiersIn(file)) {

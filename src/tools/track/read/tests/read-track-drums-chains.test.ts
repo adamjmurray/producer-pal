@@ -13,8 +13,8 @@ import {
 import {
   createSimpleInstrumentMock,
   mockTrackProperties,
-} from "../helpers/read-track-test-helpers.ts";
-import { setupTrackPathMappedMocks } from "../helpers/read-track-path-mapped-test-helpers.ts";
+} from "./helpers/read-track-test-helpers.ts";
+import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 function createNestedDrumRackProperties(

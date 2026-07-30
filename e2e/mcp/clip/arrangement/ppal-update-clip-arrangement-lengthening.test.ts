@@ -20,7 +20,7 @@ import {
 import {
   type ExpectedClip,
   expectedLengtheningClips,
-} from "../helpers/arrangement-lengthening-expected.ts";
+} from "../helpers/arrangement-lengthening-expected-test-cases.ts";
 import {
   ARRANGEMENT_CLIP_TESTS_PATH,
   assertLengthenedInPlace,

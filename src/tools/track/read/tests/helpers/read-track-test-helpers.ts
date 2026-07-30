@@ -16,7 +16,7 @@ import {
   createSimpleInstrumentMock,
   type DrumChainMockOptions,
   type SimpleInstrumentMockOptions,
-} from "./read-track-drum-rack-mock-helpers.ts";
+} from "./read-track-drum-rack-test-helpers.ts";
 
 export {
   createDrumChainMock,

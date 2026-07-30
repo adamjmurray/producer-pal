@@ -22,6 +22,7 @@ const TREES = [
   "src",
   "srcTests",
   "scripts",
+  "scriptsTests",
   "webui",
   "webuiTests",
   "evals",
@@ -45,9 +46,10 @@ type TreeLimits = Record<Tree, number>;
 // at all), so its srcTests limit is already as low as it can go.
 // Mentioning a pattern literally in this comment would raise its own count.
 const ESLINT_DISABLE_LIMITS: TreeLimits = {
-  src: 10,
-  srcTests: 15, // 14 real + 1 self
+  src: 9,
+  srcTests: 16, // 15 real + 1 self
   scripts: 0,
+  scriptsTests: 0,
   webui: 4,
   // 4 any (SDK mock-call records), 5 require-yield (streams that throw before
   // yielding), 5 only-throw-error (non-Error throw branches), 2 no-deprecated
@@ -66,6 +68,7 @@ const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   src: 0,
   srcTests: 17, // 15 real + 2 self
   scripts: 3, // Accessing the MCP SDK's private _serverVersion
+  scriptsTests: 0,
   webui: 0,
   webuiTests: 2, // Partial Client mocks that omit most of the interface
   evals: 0,
@@ -81,6 +84,7 @@ const V8_IGNORE_LIMITS: TreeLimits = {
   src: 4, // Defensive guards with caller guarantees/lookup tables
   srcTests: 7, // 0 real + 7 self (pattern definition + description enforcement)
   scripts: 0,
+  scriptsTests: 0,
   webui: 8, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
   webuiTests: 0,
   evals: 0,

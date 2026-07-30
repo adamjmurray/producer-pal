@@ -7,6 +7,19 @@
     "// AI assistance:.*",
     "// SPDX-License-Identifier:.*"
   ],
-  "ignore": ["**/tsconfig.json", "**/*.test.ts"],
+  "ignore": [
+    "**/tsconfig.json",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*-test-cases.ts",
+    "**/*-test-helpers.ts",
+    "**/*-test-helpers.tsx",
+    "**/test/**",
+    "**/tests/**",
+    "**/test-cases/**",
+    "**/test-utils/**"
+  ],
   "path": ["../scripts"]
 }

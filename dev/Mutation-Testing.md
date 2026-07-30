@@ -175,11 +175,13 @@ to **every** tool domain going forward:
   description-iteration workflow. This lifted the raw `track` score from 73.14%
   (dominated by 111 description-string survivors across 3 def files) to a
   behavioral 82.21%.
-- **`*-mock-helpers.ts` excluded.** `read-track-drum-rack-mock-helpers.ts` is
-  test-only mock infrastructure (it imports the mock Live API; its sole importer
-  is another test helper), so mutating it is meaningless. The exclusion glob
-  already caught `*-test-helpers.ts`; extended to `*-mock-helpers.ts` too. Left
-  source-classified for coverage — only the mutation scope excludes it.
+- **`read-track-drum-rack-test-helpers.ts` excluded.** It is test-only mock
+  infrastructure (it imports the mock Live API; its sole importer is another
+  test helper), so mutating it is meaningless. Triage originally spelled it
+  `*-mock-helpers.ts` and added a glob for that name, which made it a test file
+  to the mutation scope and source everywhere else — vitest measured its
+  coverage as product code. It is now named `*-test-helpers.ts`, which the
+  existing glob already caught, and is a test file to every tool.
 
 Per-file scores after triage:
 

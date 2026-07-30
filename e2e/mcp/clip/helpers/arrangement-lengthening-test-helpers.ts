@@ -15,7 +15,7 @@ import {
   parseToolResultWithWarnings,
   type ReadClipResult,
 } from "../../mcp-test-helpers.ts";
-import { type ExpectedClip } from "./arrangement-lengthening-expected.ts";
+import { type ExpectedClip } from "./arrangement-lengthening-expected-test-cases.ts";
 
 export const ARRANGEMENT_CLIP_TESTS_PATH =
   "e2e/live-sets/arrangement-clip-tests Project/arrangement-clip-tests.als";
