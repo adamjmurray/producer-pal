@@ -7,7 +7,15 @@
  * @vitest-environment happy-dom
  */
 import { act, renderHook } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  type Mock,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   type CollectionEntryAutosaveParams,
   useCollectionEntryAutosave,
@@ -307,7 +315,153 @@ describe("useCollectionEntryAutosave", () => {
 
     expect(persist).toHaveBeenCalledTimes(1);
   });
+
+  it("chains an overlapping flush behind the PUT already on the wire", async () => {
+    // An entry PUT carries the whole body, so two concurrent writes aren't a
+    // field-level overlap: a slow first PUT landing second reverts the newer
+    // content, and use-doc's generation counter keeps the SCREEN right, so the
+    // file silently disagrees with it until the next poll.
+    const { persist, resolvers } = deferredPersist();
+    const { rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    await typeAndDebounce(rerender, persist, "v1");
+    expect(persist).toHaveBeenCalledTimes(1);
+
+    // The user types again while #1 is still in flight and the re-armed debounce
+    // fires. The changed draft passes the same-key guard, so only the chaining
+    // holds it back.
+    await typeAndDebounce(rerender, persist, "v2");
+    expect(persist).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolvers[0]?.("v1");
+      await flushMicrotasks();
+    });
+
+    expect(persist).toHaveBeenCalledTimes(2);
+  });
+
+  it("queues a third flush behind the second (registration is synchronous)", async () => {
+    // Registering the new promise before any await is the load-bearing half: if
+    // flush awaited first and registered afterwards, a second and third flush in
+    // the same window would both read a pre-registration inFlightRef, compute the
+    // same predecessor, and put two writes on the wire when it settles.
+    const { persist, resolvers } = deferredPersist();
+    const { rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    await typeAndDebounce(rerender, persist, "v1");
+    await typeAndDebounce(rerender, persist, "v2");
+    await typeAndDebounce(rerender, persist, "v3");
+    expect(persist).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolvers[0]?.("v1");
+      await flushMicrotasks();
+    });
+    expect(persist).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolvers[1]?.("v2");
+      await flushMicrotasks();
+    });
+    expect(persist).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not dispatch a queued flush for an entry deleted while it waited", async () => {
+    // The queued flush was authorized before the delete, so it has to re-check
+    // at dispatch time — otherwise chaining reopens the resurrection hole the
+    // synchronous guard closes.
+    const { persist, resolvers } = deferredPersist();
+    const { rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+      externalKey: "seed",
+    });
+
+    await typeAndDebounce(rerender, persist, "v1", "seed");
+    await typeAndDebounce(rerender, persist, "v2", "seed");
+    expect(persist).toHaveBeenCalledTimes(1);
+
+    // The entry is deleted out from under the editor while #1 is in flight.
+    rerender({
+      canSave: true,
+      draftKey: "v2",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    await act(async () => {
+      resolvers[0]?.("v1");
+      await flushMicrotasks();
+    });
+
+    expect(persist).toHaveBeenCalledTimes(1);
+  });
 });
+
+/**
+ * A persist spy whose calls resolve only when the test releases them, in call
+ * order — the slow-PUT window every chaining case needs.
+ * @returns The spy and the resolver for each outstanding call
+ */
+function deferredPersist(): {
+  persist: Mock<() => Promise<string | null>>;
+  resolvers: Array<(echoKey: string | null) => void>;
+} {
+  const resolvers: Array<(echoKey: string | null) => void> = [];
+  const persist = vi.fn(
+    () =>
+      new Promise<string | null>((resolve) => {
+        resolvers.push(resolve);
+      }),
+  );
+
+  return { persist, resolvers };
+}
+
+/** Settle the promise chain a released persist unblocks. */
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 4; i++) await Promise.resolve();
+}
+
+/**
+ * Type a new draft and let the idle debounce fire, the way an editing user
+ * reaches flush.
+ * @param rerender - The rendered hook's rerender
+ * @param persist - The persist spy threaded through every render
+ * @param draftKey - The draft the user has typed to
+ * @param externalKey - The live entry prop's key, when the case tracks one
+ */
+async function typeAndDebounce(
+  rerender: (params: CollectionEntryAutosaveParams) => void,
+  persist: CollectionEntryAutosaveParams["persist"],
+  draftKey: string,
+  externalKey?: string,
+): Promise<void> {
+  rerender({
+    canSave: true,
+    draftKey,
+    autosaveOnIdle: true,
+    persist,
+    externalKey,
+  });
+  await act(async () => {
+    vi.advanceTimersByTime(800);
+    await Promise.resolve();
+  });
+}
 
 /**
  * The seeded, savable, idle-autosaving params the externalUpdate cases start

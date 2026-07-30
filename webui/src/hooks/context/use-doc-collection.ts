@@ -314,8 +314,9 @@ export function useCollectionEntryAutosave(
   const deletedExternallyRef = useRef(false);
   const lastSavedRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // The persist currently in flight, so a rename can wait it out (see
-  // settlePendingSave); null whenever no save is outstanding.
+  // Tail of the save chain: the last flush registered, so the next one queues
+  // behind it (see flush) and a rename can wait the whole chain out (see
+  // settlePendingSave). Null whenever no save is outstanding.
   const inFlightRef = useRef<Promise<void> | null>(null);
   const mountedRef = useRef(true);
   const seededRef = useRef(false);
@@ -370,7 +371,34 @@ export function useCollectionEntryAutosave(
 
     lastSavedRef.current = key;
 
-    const pending = persistRef.current().then((echoKey) => {
+    // Send the current draft — unless the entry was deleted while this flush was
+    // waiting its turn behind an earlier one. Re-creating it from the kept draft
+    // is the explicit Save button's job alone (same reason as the guard above),
+    // so the deferred dispatch has to re-check rather than trust the decision
+    // made when it was queued. Resolving null takes the failure path below,
+    // rolling the baseline back so the draft still reads as unsaved.
+    const dispatch = (): Promise<string | null> =>
+      deletedExternallyRef.current
+        ? Promise.resolve(null)
+        : persistRef.current();
+    // Chain behind whatever is already on the wire instead of racing it. An entry
+    // PUT carries the WHOLE body, so two overlapping writes are not a field-level
+    // overlap: whichever the server happens to handle last owns the file
+    // outright, and a slow first PUT landing second reverts content the UI is
+    // already showing (use-doc's generation counter keeps the SCREEN correct, so
+    // the disagreement stays silent until the next poll). The same-key guard
+    // above stops a re-flush of unchanged content, not this — a CHANGED draft
+    // dispatched mid-flight is exactly the 800ms-debounce-vs-slow-PUT case.
+    //
+    // Registration is synchronous, before any await, so a third flush arriving
+    // inside this window chains behind THIS one rather than reading a
+    // pre-registration inFlightRef and putting two writes on the wire anyway.
+    // Only the DISPATCH defers — the same split as useContextEditorState's
+    // dispatchOrderedWrite.
+    const prior = inFlightRef.current;
+    const pending: Promise<void> = (
+      prior == null ? dispatch() : prior.then(dispatch)
+    ).then((echoKey) => {
       if (inFlightRef.current === pending) inFlightRef.current = null;
       if (!mountedRef.current || lastSavedRef.current !== key) return;
 
@@ -459,8 +487,10 @@ export function useCollectionEntryAutosave(
   }, []);
 
   // Cancel the armed debounce (the rename carries the same draft onward), then
-  // wait out a save already dispatched — it can only be resolved by letting it
-  // land, since the request is gone. See the interface doc for why.
+  // wait out any save already dispatched — it can only be resolved by letting it
+  // land, since the request is gone. Awaiting the chain's tail covers a queued
+  // flush too: its PUT hasn't gone out yet, but it still targets the old slug.
+  // See the interface doc for why.
   const settlePendingSave = useCallback(async (): Promise<void> => {
     clearTimer(timerRef);
     await inFlightRef.current;
