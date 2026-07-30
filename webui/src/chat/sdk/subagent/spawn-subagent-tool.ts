@@ -26,11 +26,15 @@ export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
 export const MAX_WORKER_STEPS = 20;
 
 /**
- * Safety/cost cap on total worker RUNS in one orchestrator conversation,
- * independent of the step budget. Resuming a worker is a run, so it counts too —
- * the cap bounds spend, and a resume costs the same as a fresh spawn. Survives a
- * page reload or a conversation switch (see SpawnState.count). In a future
- * parallel mode this cap — not the step count — bounds fan-out.
+ * Safety/cost cap on worker RUNS one orchestrator TURN may start, independent of
+ * the step budget. Resuming a worker is a run, so it counts too — a resume costs
+ * a full nested session, same as a fresh spawn.
+ *
+ * Per turn, not per conversation: the human is in the loop between turns and can
+ * see what the last one spent, so this exists to stop ONE runaway turn, not to
+ * retire a long conversation's ability to delegate. With parallel spawns (several
+ * calls in one response) this cap — not the step count — is what bounds fan-out,
+ * since a whole burst costs a single step.
  */
 export const MAX_SPAWNS = 10;
 
@@ -112,9 +116,10 @@ export interface SpawnSubagentDeps {
 /** Mutable spawn bookkeeping shared by the tool and its owning client. */
 export interface SpawnState {
   /**
-   * Worker runs started in this conversation; enforces MAX_SPAWNS. Seeded from
-   * history in initialize() (see recordedSubagentRuns), so reloading the page or
-   * switching away and back does not hand the conversation a fresh budget.
+   * Worker runs started in the CURRENT turn; enforces MAX_SPAWNS. Reset at the top
+   * of every sendMessage, so the cap bounds a single turn's fan-out rather than
+   * budgeting a whole conversation. Unlike `nextIndex` it is deliberately NOT
+   * seeded from history — see MAX_SPAWNS for why per-turn is the intended shape.
    */
   count: number;
   /**
@@ -167,8 +172,8 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
 
       if (deps.spawnState.count >= MAX_SPAWNS) {
         throw new Error(
-          `Subagent limit reached (${MAX_SPAWNS} per conversation). ` +
-            "Finish the remaining work directly instead of delegating.",
+          `Subagent limit reached (${MAX_SPAWNS} per turn). Finish the ` +
+            "remaining work directly, or say what is left for the next turn.",
         );
       }
 

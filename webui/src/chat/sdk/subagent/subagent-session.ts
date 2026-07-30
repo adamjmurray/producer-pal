@@ -139,36 +139,6 @@ export function highestSubagentIndex(history: ChatMessage[]): number {
 }
 
 /**
- * How many worker runs `history` already records — the spawn counter's value for
- * a restored conversation.
- *
- * Counts RUNS, not workers: each recorded spawn result is one run, so a worker
- * resumed twice contributes three, matching how the live counter incremented at
- * the time. A recorded index is the marker of a run that actually STARTED, so a
- * spawn refused before it reached a worker (a bad `resumeFrom`, a name already
- * running) never burns the budget it never spent.
- *
- * Seeds the cap counter so MAX_SPAWNS survives a client rebuild. Without it the
- * cap silently resets whenever the client is discarded — switching conversations
- * or reloading the page — and a conversation that already hit "Subagent limit
- * reached" could immediately spawn a whole new batch, which is precisely the cost
- * the cap exists to bound.
- * @param history - The orchestrator's chat history
- * @returns The number of worker runs recorded in the conversation
- */
-export function recordedSubagentRuns(history: ChatMessage[]): number {
-  let runs = 0;
-
-  for (const msg of history) {
-    for (const entry of msg.toolResults ?? []) {
-      if (entry.subagentIndex != null) runs++;
-    }
-  }
-
-  return runs;
-}
-
-/**
  * Whether a stream part is a spawn_subagent tool-result — the mid-stream moment
  * a worker's transcript becomes attachable.
  * @param part - The stream part just handled

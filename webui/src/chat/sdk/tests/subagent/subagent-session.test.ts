@@ -12,7 +12,6 @@ import {
   collectSubagentTranscript,
   highestSubagentIndex,
   isSpawnToolResult,
-  recordedSubagentRuns,
 } from "#webui/chat/sdk/subagent/subagent-session";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 
@@ -259,31 +258,6 @@ describe("highestSubagentIndex", () => {
     expect(highestSubagentIndex([{ role: "user", content: "hi" }])).toBe(0);
     // A spawn from before workers were numbered carries no index.
     expect(highestSubagentIndex([spawnMessage("tc1")])).toBe(0);
-  });
-});
-
-describe("recordedSubagentRuns", () => {
-  it("counts runs, not workers — a resumed worker counts each time", () => {
-    // Worker 1 ran twice here (a spawn and a resume), which is exactly what the
-    // live counter charged against MAX_SPAWNS while the conversation was open.
-    const history = [
-      recordedRun(1, transcript("first")),
-      recordedRun(2, transcript("other")),
-      recordedRun(1, transcript("resumed")),
-    ];
-
-    expect(recordedSubagentRuns(history)).toBe(3);
-  });
-
-  it("returns 0 for a conversation with no subagents", () => {
-    expect(recordedSubagentRuns([])).toBe(0);
-    expect(recordedSubagentRuns([{ role: "user", content: "hi" }])).toBe(0);
-  });
-
-  it("does not charge for a spawn refused before a worker started", () => {
-    // A bad resumeFrom (or an index already running) throws out of execute, so
-    // the result carries no index: nothing ran, so nothing is spent.
-    expect(recordedSubagentRuns([spawnMessage("tc1")])).toBe(0);
   });
 });
 

@@ -32,7 +32,6 @@ import {
   collectSubagentTranscript,
   highestSubagentIndex,
   isSpawnToolResult,
-  recordedSubagentRuns,
 } from "./subagent/subagent-session";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
@@ -41,8 +40,10 @@ const MAX_TOOL_STEPS = 10;
 /**
  * Orchestrator step budget when subagents are enabled. Widened off the default
  * because context-gathering steps and each SEQUENTIAL spawn share this budget (a
- * spawn costs one step; N parallel spawns in one turn cost just one). MAX_SPAWNS,
- * not this, is the real ceiling on total worker count.
+ * spawn costs one step; N parallel spawns in one turn cost just one). So this
+ * bounds how many sequential spawns fit alongside a turn's other tool work, while
+ * MAX_SPAWNS bounds how many workers the turn may start at all — a parallel burst
+ * costs one step but still spends the whole spawn budget.
  */
 const MAX_ORCHESTRATOR_STEPS = 25;
 
@@ -66,12 +67,16 @@ export class ChatSdkClient {
    */
   private maxSteps = MAX_TOOL_STEPS;
   /**
-   * Per-conversation subagent bookkeeping, shared with the spawn tool: MAX_SPAWNS
-   * caps total worker runs across the conversation, and the index allocator hands
-   * each worker its durable number. Both `count` and `nextIndex` are seeded from
-   * history in initialize(), so a restored conversation resumes its cap and its
-   * numbering rather than colliding with — or being handed a fresh budget
-   * alongside — its own persisted workers.
+   * Subagent bookkeeping shared with the spawn tool. The two fields have
+   * deliberately different lifetimes: `count` enforces MAX_SPAWNS as a per-TURN
+   * fan-out bound and is reset at the top of every sendMessage, while `nextIndex`
+   * is durable and seeded from history in initialize() so a restored conversation
+   * resumes numbering instead of colliding with its own persisted workers.
+   *
+   * Not a conversation-lifetime budget: the user regains control between turns and
+   * can see what the last one spent, so the cap's job is to stop one runaway turn
+   * rather than to retire a long conversation's ability to delegate. See
+   * MAX_SPAWNS.
    */
   private spawnState = { count: 0, nextIndex: 0, active: new Set<number>() };
   /**
@@ -126,7 +131,6 @@ export class ChatSdkClient {
       // sets spawn_subagent false (the recursion guard).
       this.maxSteps = MAX_ORCHESTRATOR_STEPS;
       this.spawnState.nextIndex = highestSubagentIndex(this.chatHistory);
-      this.spawnState.count = recordedSubagentRuns(this.chatHistory);
       this.tools = {
         ...tools,
         [SPAWN_SUBAGENT_TOOL_NAME]: createSpawnSubagentTool({
@@ -259,6 +263,10 @@ export class ChatSdkClient {
     const userMsg: ChatMessage = { role: "user", content: message };
 
     this.toolLimitReached = false;
+    // MAX_SPAWNS bounds fan-out per turn, so the counter starts fresh here. A
+    // turn that spent the whole budget reports back and the user decides what
+    // happens next; the following turn can delegate again.
+    this.spawnState.count = 0;
     stampOverrides(userMsg, overrides);
     this.chatHistory.push(userMsg);
     yield [...this.chatHistory];

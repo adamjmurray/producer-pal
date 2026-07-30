@@ -683,22 +683,47 @@ describe("ChatSdkClient resuming a worker", () => {
     expect(result).toBe(labelWorkerResult(3, "Fresh worker."));
   });
 
-  it("resumes the spawn cap from history instead of granting a fresh budget", async () => {
-    // count is seeded alongside nextIndex, so the cap is per CONVERSATION as the
-    // error message says. Without that, switching conversations or reloading the
-    // page hands an orchestrator that already hit MAX_SPAWNS a whole new budget —
-    // the client is rebuilt from scratch either way, and the field initializer
-    // starts at 0.
-    const execute = await restoredOrchestrator(
-      Array.from({ length: MAX_SPAWNS }, (_, i) => persistedSpawn(i + 1)),
-    );
+  it("caps fan-out within one turn, then clears the budget for the next", async () => {
+    // MAX_SPAWNS bounds ONE turn's fan-out, not a conversation's lifetime spend:
+    // the user regains control between turns and can see what the last one cost,
+    // so the cap's job is to stop a single runaway turn. A turn that spends the
+    // whole budget must therefore refuse the next spawn AND leave the following
+    // turn able to delegate again.
+    const { client, execute } = await orchestratorWithSpawnTool();
+
+    for (let i = 0; i < MAX_SPAWNS; i++) {
+      mockStreamParts([
+        { type: "text-delta", text: `Worker ${i + 1}.` },
+        { type: "finish", finishReason: "stop" },
+      ]);
+      await execute(
+        { task: `piece ${i + 1}` },
+        { toolCallId: `tc-${i}`, messages: [], abortSignal: undefined },
+      );
+    }
 
     await expect(
       execute(
-        { task: "one more" },
+        { task: "one too many" },
         { toolCallId: "tc-over", messages: [], abortSignal: undefined },
       ),
-    ).rejects.toThrow(`${MAX_SPAWNS}`);
+    ).rejects.toThrow(`${MAX_SPAWNS} per turn`);
+
+    // The next turn starts fresh. runTurn's sendMessage is what resets the
+    // counter, and the tool it re-injects shares the same spawnState.
+    await runTurn(client, "keep going");
+
+    mockStreamParts([
+      { type: "text-delta", text: "Next turn's worker." },
+      { type: "finish", finishReason: "stop" },
+    ]);
+
+    await expect(
+      spawnToolExecute()(
+        { task: "the rest" },
+        { toolCallId: "tc-next", messages: [], abortSignal: undefined },
+      ),
+    ).resolves.toContain("Next turn's worker.");
   });
 
   it("resumes a worker restored from a persisted conversation", async () => {
