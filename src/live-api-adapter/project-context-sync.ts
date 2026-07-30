@@ -11,6 +11,7 @@
 // filesystem side (project-context-backup-node-routes.ts); this decides when to
 // ask and applies a restore back into the device param. See dev/Memory-System.md.
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { requestNode } from "./node-request-v8-protocol.ts";
 
@@ -187,7 +188,7 @@ function forgetMemoPath(): void {
  */
 function readLiveSetFilePath(): string | null {
   try {
-    const raw = LiveAPI.from("live_set").getProperty("file_path");
+    const raw = LiveAPI.from(livePath.liveSet).getProperty("file_path");
 
     return typeof raw === "string" && raw.length > 0 ? raw : null;
   } catch {
