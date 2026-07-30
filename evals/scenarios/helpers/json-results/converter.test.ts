@@ -66,6 +66,41 @@ function makeResult(
   };
 }
 
+/**
+ * Convert a scenario result using the standard run metadata.
+ *
+ * @param overrides - Scenario result fields to override
+ * @returns The converted JSON result
+ */
+function convert(overrides?: Partial<EvalScenarioResult>) {
+  return toJsonResult(
+    makeResult(overrides),
+    "run-1",
+    "google/gemini",
+    "default",
+  );
+}
+
+/**
+ * Build an llm_judge assertion result.
+ *
+ * @param details - The judge verdict recorded on the assertion
+ * @param message - The assertion message
+ * @returns An llm_judge assertion result
+ */
+function judgeAssertion(
+  details: { pass: boolean; issues: string[] },
+  message: string,
+): EvalAssertionResult {
+  return makeAssertion({
+    assertion: { type: "llm_judge", prompt: "Evaluate" },
+    earned: 0,
+    maxScore: 0,
+    message,
+    details,
+  });
+}
+
 describe("toJsonResult", () => {
   it("converts a basic passing result", () => {
     const result = toJsonResult(
@@ -90,21 +125,16 @@ describe("toJsonResult", () => {
   });
 
   it("includes turns with aggregated step usage", () => {
-    const result = toJsonResult(
-      makeResult({
-        turns: [
-          makeTurn({
-            stepUsages: [
-              { inputTokens: 3000, outputTokens: 1000 },
-              { inputTokens: 2000, outputTokens: 1000 },
-            ],
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      turns: [
+        makeTurn({
+          stepUsages: [
+            { inputTokens: 3000, outputTokens: 1000 },
+            { inputTokens: 2000, outputTokens: 1000 },
+          ],
+        }),
+      ],
+    });
 
     expect(result.turns).toHaveLength(1);
     expect(result.turns[0]?.usage).toStrictEqual({
@@ -114,45 +144,21 @@ describe("toJsonResult", () => {
   });
 
   it("excludes judge and token_usage from checks", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion(),
-          makeAssertion({
-            assertion: { type: "llm_judge", prompt: "Evaluate" },
-            earned: 0,
-            maxScore: 0,
-            message: "LLM judge: pass",
-            details: PASSING_JUDGE,
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [
+        makeAssertion(),
+        judgeAssertion(PASSING_JUDGE, "LLM judge: pass"),
+      ],
+    });
 
     expect(result.checks.results).toHaveLength(1);
     expect(result.checks.results[0]?.type).toBe("tool_called");
   });
 
   it("derives judge from llm_judge assertion (passing)", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion({
-            assertion: { type: "llm_judge", prompt: "Evaluate" },
-            earned: 0,
-            maxScore: 0,
-            message: "LLM judge: pass",
-            details: PASSING_JUDGE,
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [judgeAssertion(PASSING_JUDGE, "LLM judge: pass")],
+    });
 
     expect(result.judge).toBeDefined();
     expect(result.judge?.pass).toBe(true);
@@ -165,22 +171,11 @@ describe("toJsonResult", () => {
   });
 
   it("derives judge from llm_judge assertion (failing)", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion({
-            assertion: { type: "llm_judge", prompt: "Evaluate" },
-            earned: 0,
-            maxScore: 0,
-            message: "LLM judge: fail (2 issue(s))",
-            details: FAILING_JUDGE,
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [
+        judgeAssertion(FAILING_JUDGE, "LLM judge: fail (2 issue(s))"),
+      ],
+    });
 
     expect(result.judge?.pass).toBe(false);
     expect(result.judge?.issues).toHaveLength(2);
@@ -189,31 +184,20 @@ describe("toJsonResult", () => {
   });
 
   it("does not let an advisory judge gate the overall result", () => {
-    const result = toJsonResult(
-      makeResult({
-        scenario: {
-          id: "advisory-scenario",
-          description: "Judge is advisory",
-          liveSet: "test",
-          messages: ["Connect to Ableton"],
-          assertions: [],
-          judgeAdvisory: true,
-        },
-        assertions: [
-          makeAssertion(), // passing deterministic check
-          makeAssertion({
-            assertion: { type: "llm_judge", prompt: "Evaluate" },
-            earned: 0,
-            maxScore: 0,
-            message: "LLM judge: fail (2 issue(s))",
-            details: FAILING_JUDGE,
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      scenario: {
+        id: "advisory-scenario",
+        description: "Judge is advisory",
+        liveSet: "test",
+        messages: ["Connect to Ableton"],
+        assertions: [],
+        judgeAdvisory: true,
+      },
+      assertions: [
+        makeAssertion(), // passing deterministic check
+        judgeAssertion(FAILING_JUDGE, "LLM judge: fail (2 issue(s))"),
+      ],
+    });
 
     // The judge still records its verdict + issues...
     expect(result.judge?.pass).toBe(false);
@@ -224,14 +208,9 @@ describe("toJsonResult", () => {
   });
 
   it("marks result as fail when a check fails", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [makeAssertion({ earned: 0, maxScore: 1 })],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [makeAssertion({ earned: 0, maxScore: 1 })],
+    });
 
     expect(result.result).toBe("fail");
     expect(result.checks.pass).toBe(false);
@@ -239,37 +218,20 @@ describe("toJsonResult", () => {
   });
 
   it("passes with no judge and all checks passing", () => {
-    const result = toJsonResult(
-      makeResult(),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert();
 
     expect(result.result).toBe("pass");
     expect(result.judge).toBeUndefined();
   });
 
   it("includes error field when present", () => {
-    const result = toJsonResult(
-      makeResult({ error: "Connection failed" }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({ error: "Connection failed" });
 
     expect(result.error).toBe("Connection failed");
   });
 
   it("handles zero checks gracefully", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({ assertions: [] });
 
     expect(result.checks).toStrictEqual({ pass: false, results: [] });
     expect(result.result).toBe("fail");
@@ -277,41 +239,31 @@ describe("toJsonResult", () => {
 
   it("preserves full tool results in turns", () => {
     const longResult = "x".repeat(600);
-    const result = toJsonResult(
-      makeResult({
-        turns: [
-          makeTurn({
-            toolCalls: [{ name: "ppal-connect", args: {}, result: longResult }],
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      turns: [
+        makeTurn({
+          toolCalls: [{ name: "ppal-connect", args: {}, result: longResult }],
+        }),
+      ],
+    });
 
     expect(result.turns[0]?.toolCalls[0]?.result).toBe(longResult);
   });
 
   it("strips tool results from check details matchingCalls", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion({
-            details: {
-              matchingCalls: [
-                { name: "ppal-connect", args: {}, result: "big response" },
-              ],
-              count: 1,
-              expectedCount: { min: 1 },
-            },
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [
+        makeAssertion({
+          details: {
+            matchingCalls: [
+              { name: "ppal-connect", args: {}, result: "big response" },
+            ],
+            count: 1,
+            expectedCount: { min: 1 },
+          },
+        }),
+      ],
+    });
 
     const details = result.checks.results[0]?.details as Record<
       string,
@@ -324,54 +276,39 @@ describe("toJsonResult", () => {
   });
 
   it("includes reasoning tokens when present", () => {
-    const result = toJsonResult(
-      makeResult({
-        turns: [
-          makeTurn({
-            stepUsages: [
-              { inputTokens: 3000, outputTokens: 1000, reasoningTokens: 500 },
-            ],
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      turns: [
+        makeTurn({
+          stepUsages: [
+            { inputTokens: 3000, outputTokens: 1000, reasoningTokens: 500 },
+          ],
+        }),
+      ],
+    });
 
     expect(result.turns[0]?.usage?.reasoningTokens).toBe(500);
   });
 
   it("omits reasoning tokens when zero", () => {
-    const result = toJsonResult(
-      makeResult(),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert();
 
     expect(result.turns[0]?.usage).not.toHaveProperty("reasoningTokens");
   });
 
   it("includes reflection on failing check when present", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion({
-            earned: 0,
-            maxScore: 1,
-            details: {
-              count: 0,
-              expectedCount: { min: 1 },
-              reflection: "I chose not to call the tool because...",
-            },
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [
+        makeAssertion({
+          earned: 0,
+          maxScore: 1,
+          details: {
+            count: 0,
+            expectedCount: { min: 1 },
+            reflection: "I chose not to call the tool because...",
+          },
+        }),
+      ],
+    });
 
     expect(result.checks.results[0]?.reflection).toBe(
       "I chose not to call the tool because...",
@@ -379,46 +316,36 @@ describe("toJsonResult", () => {
   });
 
   it("omits reflection when not present on details", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion({
-            earned: 0,
-            maxScore: 1,
-            details: { count: 0, expectedCount: { min: 1 } },
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [
+        makeAssertion({
+          earned: 0,
+          maxScore: 1,
+          details: { count: 0, expectedCount: { min: 1 } },
+        }),
+      ],
+    });
 
     expect(result.checks.results[0]?.reflection).toBeUndefined();
   });
 
   it("builds efficiency from token_usage assertion", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion(),
-          makeAssertion({
-            assertion: {
-              type: "token_usage",
-              metric: "inputTokens",
-              maxTokens: 20_000,
-            },
-            earned: 0,
-            maxScore: 0,
-            message: "inputTokens 15.5k / 20k target (77%)",
-            details: { total: 15500, target: 20000, percentage: 77 },
-          }),
-        ],
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
+    const result = convert({
+      assertions: [
+        makeAssertion(),
+        makeAssertion({
+          assertion: {
+            type: "token_usage",
+            metric: "inputTokens",
+            maxTokens: 20_000,
+          },
+          earned: 0,
+          maxScore: 0,
+          message: "inputTokens 15.5k / 20k target (77%)",
+          details: { total: 15500, target: 20000, percentage: 77 },
+        }),
+      ],
+    });
 
     expect(result.efficiency).toStrictEqual({
       inputTokens: 15500,

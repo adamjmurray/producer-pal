@@ -33,83 +33,102 @@ interface StateDetails {
 }
 
 /**
- * Create a mock MCP client that returns the specified result
+ * Create a mock MCP client whose callTool resolves to MCP text content
  *
- * @param result - The result to return from callTool
+ * @param text - The text content to wrap
  * @returns Mock Client with callTool method
  */
-function createMockClient(result: unknown): Client {
+function textClient(text: string): Client {
   return {
-    callTool: vi.fn().mockResolvedValue(result),
+    callTool: vi.fn().mockResolvedValue({ content: [{ text }] }),
   } as unknown as Client;
 }
 
 /**
- * Create an MCP-formatted result with text content
+ * Create a mock MCP client that returns `value` JSON-serialized
  *
- * @param text - The text content to wrap
- * @returns MCP result object
+ * @param value - The value to serialize into the MCP text content
+ * @returns Mock Client with callTool method
  */
-function mcpResult(text: string): { content: Array<{ text: string }> } {
-  return { content: [{ text }] };
+function jsonClient(value: unknown): Client {
+  return textClient(JSON.stringify(value));
+}
+
+/**
+ * Create a mock MCP client whose callTool rejects
+ *
+ * @param error - The rejection value
+ * @returns Mock Client with callTool method
+ */
+function throwingClient(error: unknown): Client {
+  return {
+    callTool: vi.fn().mockRejectedValue(error),
+  } as unknown as Client;
+}
+
+/**
+ * Run a state assertion; `type: "state"` is implied
+ *
+ * @param assertion - The assertion minus its discriminant
+ * @param client - Mock MCP client to read state through
+ * @param turns - Completed turns passed to the assertion
+ * @returns The assertion result
+ */
+function runState(
+  assertion: Omit<StateAssertion, "type">,
+  client: Client,
+  turns: EvalTurnResult[] = [],
+) {
+  return assertState({ type: "state", ...assertion }, turns, client);
 }
 
 describe("assertState", () => {
   describe("object matching with partialMatch", () => {
     it("passes when state matches expected object", async () => {
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ name: "Track 1", muted: false })),
-      );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "read-track",
-        args: { trackId: "1" },
-        expect: { name: "Track 1" },
-      };
+      const client = jsonClient({ name: "Track 1", muted: false });
 
-      const result = await assertState(assertion, [], mockClient);
+      const result = await runState(
+        {
+          tool: "read-track",
+          args: { trackId: "1" },
+          expect: { name: "Track 1" },
+        },
+        client,
+      );
 
       expect(result.earned).toBe(result.maxScore);
       expect(result.message).toContain("passed");
-      expect(mockClient.callTool).toHaveBeenCalledWith({
+      expect(client.callTool).toHaveBeenCalledWith({
         name: "read-track",
         arguments: { trackId: "1" },
       });
     });
 
     it("passes with partial match on nested objects", async () => {
-      const mockClient = createMockClient(
-        mcpResult(
-          JSON.stringify({
-            track: { name: "Bass", volume: 0.8 },
-            clips: [{ id: "1" }],
-          }),
-        ),
+      const result = await runState(
+        {
+          tool: "read-track",
+          args: { trackId: "2" },
+          expect: { track: { name: "Bass" } },
+        },
+        jsonClient({
+          track: { name: "Bass", volume: 0.8 },
+          clips: [{ id: "1" }],
+        }),
       );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "read-track",
-        args: { trackId: "2" },
-        expect: { track: { name: "Bass" } },
-      };
-
-      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when state does not match expected", async () => {
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ name: "Track 1", muted: true })),
+      const result = await runState(
+        {
+          tool: "read-track",
+          args: { trackId: "1" },
+          expect: { name: "Track 2" },
+        },
+        jsonClient({ name: "Track 1", muted: true }),
       );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "read-track",
-        args: { trackId: "1" },
-        expect: { name: "Track 2" },
-      };
-
-      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
       expect(result.message).toContain("failed");
@@ -123,39 +142,27 @@ describe("assertState", () => {
     });
 
     it("fails when expected field is missing", async () => {
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ name: "Track 1" })),
+      const result = await runState(
+        { tool: "read-track", args: { trackId: "1" }, expect: { volume: 0.5 } },
+        jsonClient({ name: "Track 1" }),
       );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "read-track",
-        args: { trackId: "1" },
-        expect: { volume: 0.5 },
-      };
-
-      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
     });
   });
 
   describe("custom expect function", () => {
+    const countAbove3 = (result: unknown) => {
+      const data = result as { count: number };
+
+      return data.count > 3;
+    };
+
     it("passes when custom function returns true", async () => {
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ count: 5 })),
+      const result = await runState(
+        { tool: "count-tracks", args: {}, expect: countAbove3 },
+        jsonClient({ count: 5 }),
       );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "count-tracks",
-        args: {},
-        expect: (result) => {
-          const data = result as { count: number };
-
-          return data.count > 3;
-        },
-      };
-
-      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
@@ -164,21 +171,10 @@ describe("assertState", () => {
     });
 
     it("fails when custom function returns false", async () => {
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ count: 2 })),
+      const result = await runState(
+        { tool: "count-tracks", args: {}, expect: countAbove3 },
+        jsonClient({ count: 2 }),
       );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "count-tracks",
-        args: {},
-        expect: (result) => {
-          const data = result as { count: number };
-
-          return data.count > 3;
-        },
-      };
-
-      const result = await assertState(assertion, [], mockClient);
 
       expect(result.earned).toBe(0);
     });
@@ -186,15 +182,14 @@ describe("assertState", () => {
 
   describe("non-JSON text handling", () => {
     it("handles plain text response", async () => {
-      const mockClient = createMockClient(mcpResult("Connected to Ableton"));
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "ppal-connect",
-        args: {},
-        expect: (result) => typeof result === "string",
-      };
-
-      const result = await assertState(assertion, [], mockClient);
+      const result = await runState(
+        {
+          tool: "ppal-connect",
+          args: {},
+          expect: (value) => typeof value === "string",
+        },
+        textClient("Connected to Ableton"),
+      );
 
       expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
@@ -203,15 +198,14 @@ describe("assertState", () => {
     });
 
     it("falls back to string when JSON parsing fails", async () => {
-      const mockClient = createMockClient(mcpResult("Not valid JSON {"));
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "some-tool",
-        args: {},
-        expect: (result) => result === "Not valid JSON {",
-      };
-
-      const result = await assertState(assertion, [], mockClient);
+      const result = await runState(
+        {
+          tool: "some-tool",
+          args: {},
+          expect: (value) => value === "Not valid JSON {",
+        },
+        textClient("Not valid JSON {"),
+      );
 
       expect(result.earned).toBe(result.maxScore);
     });
@@ -219,17 +213,14 @@ describe("assertState", () => {
 
   describe("error handling", () => {
     it("returns failed result when tool call throws", async () => {
-      const mockClient = {
-        callTool: vi.fn().mockRejectedValue(new Error("Connection refused")),
-      } as unknown as Client;
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "read-track",
-        args: { trackId: "1" },
-        expect: { name: "Track 1" },
-      };
-
-      const result = await assertState(assertion, [], mockClient);
+      const result = await runState(
+        {
+          tool: "read-track",
+          args: { trackId: "1" },
+          expect: { name: "Track 1" },
+        },
+        throwingClient(new Error("Connection refused")),
+      );
 
       expect(result.earned).toBe(0);
       expect(result.message).toContain("error");
@@ -240,17 +231,10 @@ describe("assertState", () => {
     });
 
     it("handles non-Error exceptions", async () => {
-      const mockClient = {
-        callTool: vi.fn().mockRejectedValue("string error"),
-      } as unknown as Client;
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "read-track",
-        args: { trackId: "1" },
-        expect: {},
-      };
-
-      const result = await assertState(assertion, [], mockClient);
+      const result = await runState(
+        { tool: "read-track", args: { trackId: "1" }, expect: {} },
+        throwingClient("string error"),
+      );
 
       expect(result.earned).toBe(0);
       const details = result.details as StateDetails;
@@ -261,23 +245,19 @@ describe("assertState", () => {
 
   describe("dynamic args from turns", () => {
     it("resolves args from a function of the completed turns", async () => {
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ ok: true })),
-      );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "ppal-read-clip",
-        args: (turns) => ({ clipId: `clip-${turns.length}` }),
-        expect: {},
-      };
+      const client = jsonClient({ ok: true });
 
-      await assertState(
-        assertion,
+      await runState(
+        {
+          tool: "ppal-read-clip",
+          args: (turns) => ({ clipId: `clip-${turns.length}` }),
+          expect: {},
+        },
+        client,
         [{}, {}] as unknown as EvalTurnResult[],
-        mockClient,
       );
 
-      expect(mockClient.callTool).toHaveBeenCalledWith({
+      expect(client.callTool).toHaveBeenCalledWith({
         name: "ppal-read-clip",
         arguments: { clipId: "clip-2" },
       });
@@ -286,7 +266,6 @@ describe("assertState", () => {
 
   describe("assertion result structure", () => {
     it("includes original assertion in result", async () => {
-      const mockClient = createMockClient(mcpResult(JSON.stringify({})));
       const assertion: StateAssertion = {
         type: "state",
         tool: "test-tool",
@@ -294,21 +273,16 @@ describe("assertState", () => {
         expect: {},
       };
 
-      const result = await assertState(assertion, [], mockClient);
+      const result = await assertState(assertion, [], jsonClient({}));
 
       expect(result.assertion).toBe(assertion);
     });
 
     it("includes tool name in message", async () => {
-      const mockClient = createMockClient(mcpResult(JSON.stringify({})));
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "custom-tool-name",
-        args: {},
-        expect: {},
-      };
-
-      const result = await assertState(assertion, [], mockClient);
+      const result = await runState(
+        { tool: "custom-tool-name", args: {}, expect: {} },
+        jsonClient({}),
+      );
 
       expect(result.message).toContain("custom-tool-name");
     });
@@ -320,33 +294,24 @@ describe("assertState", () => {
       vi.mocked(getNotation).mockReset().mockResolvedValue(DEFAULT_NOTATION);
     });
 
-    it("leaves config untouched when no notation override is set", async () => {
-      const mockClient = createMockClient(mcpResult(JSON.stringify({})));
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "read-track",
-        args: {},
-        expect: {},
-      };
+    const overridingRead: Omit<StateAssertion, "type"> = {
+      tool: "ppal-read-clip",
+      notation: "midi-json",
+      args: { clipId: "1" },
+      expect: () => true,
+    };
 
-      await assertState(assertion, [], mockClient);
+    it("leaves config untouched when no notation override is set", async () => {
+      await runState(
+        { tool: "read-track", args: {}, expect: {} },
+        jsonClient({}),
+      );
 
       expect(setConfig).not.toHaveBeenCalled();
     });
 
     it("restores the prior notation after a per-assertion override", async () => {
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ ok: true })),
-      );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "ppal-read-clip",
-        notation: "midi-json",
-        args: { clipId: "1" },
-        expect: () => true,
-      };
-
-      await assertState(assertion, [], mockClient);
+      await runState(overridingRead, jsonClient({ ok: true }));
 
       // Override applied for the read, then reset so it can't leak downstream.
       expect(setConfig).toHaveBeenNthCalledWith(1, { notation: "midi-json" });
@@ -359,18 +324,8 @@ describe("assertState", () => {
       // Scenario configured a non-default notation; a mid-scenario assertion
       // that overrides notation must restore that configured value, not barbeat.
       vi.mocked(getNotation).mockResolvedValue("stark");
-      const mockClient = createMockClient(
-        mcpResult(JSON.stringify({ ok: true })),
-      );
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "ppal-read-clip",
-        notation: "midi-json",
-        args: { clipId: "1" },
-        expect: () => true,
-      };
 
-      await assertState(assertion, [], mockClient);
+      await runState(overridingRead, jsonClient({ ok: true }));
 
       expect(setConfig).toHaveBeenNthCalledWith(1, { notation: "midi-json" });
       expect(setConfig).toHaveBeenNthCalledWith(2, { notation: "stark" });
@@ -378,18 +333,11 @@ describe("assertState", () => {
 
     it("still restores the notation when the read throws", async () => {
       vi.mocked(getNotation).mockResolvedValue("stark");
-      const mockClient = {
-        callTool: vi.fn().mockRejectedValue(new Error("boom")),
-      } as unknown as Client;
-      const assertion: StateAssertion = {
-        type: "state",
-        tool: "ppal-read-clip",
-        notation: "midi-json",
-        args: {},
-        expect: () => true,
-      };
 
-      const result = await assertState(assertion, [], mockClient);
+      const result = await runState(
+        { ...overridingRead, args: {} },
+        throwingClient(new Error("boom")),
+      );
 
       expect(result.earned).toBe(0);
       expect(setConfig).toHaveBeenNthCalledWith(2, { notation: "stark" });

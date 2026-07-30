@@ -203,6 +203,25 @@ async function orchestratorWithSpawnTool(): Promise<{
 }
 
 /**
+ * Spend a turn's entire spawn budget, one successful worker per allowance.
+ * @param execute - The injected spawn tool's execute function
+ */
+async function exhaustSpawnBudget(
+  execute: ReturnType<typeof spawnToolExecute>,
+): Promise<void> {
+  for (let i = 0; i < MAX_SPAWNS; i++) {
+    mockStreamParts([
+      { type: "text-delta", text: `Worker ${i + 1}.` },
+      { type: "finish", finishReason: "stop" },
+    ]);
+    await execute(
+      { task: `piece ${i + 1}` },
+      { toolCallId: `tc-${i}`, messages: [], abortSignal: undefined },
+    );
+  }
+}
+
+/**
  * Run one orchestrator turn to completion with a trivial stop stream.
  * @param client - The client to drive
  * @param message - User message to send
@@ -694,16 +713,7 @@ describe("ChatSdkClient resuming a worker", () => {
     // turn able to delegate again.
     const { client, execute } = await orchestratorWithSpawnTool();
 
-    for (let i = 0; i < MAX_SPAWNS; i++) {
-      mockStreamParts([
-        { type: "text-delta", text: `Worker ${i + 1}.` },
-        { type: "finish", finishReason: "stop" },
-      ]);
-      await execute(
-        { task: `piece ${i + 1}` },
-        { toolCallId: `tc-${i}`, messages: [], abortSignal: undefined },
-      );
-    }
+    await exhaustSpawnBudget(execute);
 
     await expect(
       execute(
@@ -736,16 +746,7 @@ describe("ChatSdkClient resuming a worker", () => {
     // per-turn cap would become per-attempt.
     const { client, execute } = await orchestratorWithSpawnTool();
 
-    for (let i = 0; i < MAX_SPAWNS; i++) {
-      mockStreamParts([
-        { type: "text-delta", text: `Worker ${i + 1}.` },
-        { type: "finish", finishReason: "stop" },
-      ]);
-      await execute(
-        { task: `piece ${i + 1}` },
-        { toolCallId: `tc-${i}`, messages: [], abortSignal: undefined },
-      );
-    }
+    await exhaustSpawnBudget(execute);
 
     mockStreamParts([{ type: "finish", finishReason: "stop" }]);
 

@@ -46,6 +46,23 @@ function seedSidecar(content: string): void {
   writeFileSync(projectContextSidecarPath(liveSetPath), content, "utf8");
 }
 
+/**
+ * Dispatch projectContext.sync against the test Live Set.
+ * @param args - Sync args other than filePath; omitting `content` exercises the
+ *   non-string path
+ * @returns The route response
+ */
+async function sync(args: {
+  content?: string;
+  allowRestore?: boolean;
+  isEdit?: boolean;
+}) {
+  return await dispatchNodeRoute("projectContext.sync", {
+    filePath: liveSetPath,
+    ...args,
+  });
+}
+
 describe("projectContext.sync — unsaved set", () => {
   it("does nothing when filePath is null", async () => {
     const res = await dispatchNodeRoute("projectContext.sync", {
@@ -79,11 +96,7 @@ describe("projectContext.sync — restore (empty param, first sync)", () => {
   it("restores from a sidecar with real content", async () => {
     seedSidecar("Genre: jungle");
 
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      content: "",
-      allowRestore: true,
-    });
+    const res = await sync({ content: "", allowRestore: true });
 
     expect(res.result).toStrictEqual({
       action: "restore",
@@ -93,11 +106,7 @@ describe("projectContext.sync — restore (empty param, first sync)", () => {
   });
 
   it("does not restore when there is no sidecar", async () => {
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      content: "",
-      allowRestore: true,
-    });
+    const res = await sync({ content: "", allowRestore: true });
 
     expect(res.result).toStrictEqual({ action: "none" });
     expect(setProjectContext).not.toHaveBeenCalled();
@@ -106,11 +115,7 @@ describe("projectContext.sync — restore (empty param, first sync)", () => {
   it("treats a whitespace-only sidecar as no backup", async () => {
     seedSidecar("   \n  ");
 
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      content: "",
-      allowRestore: true,
-    });
+    const res = await sync({ content: "", allowRestore: true });
 
     expect(res.result).toStrictEqual({ action: "none" });
     expect(setProjectContext).not.toHaveBeenCalled();
@@ -118,10 +123,7 @@ describe("projectContext.sync — restore (empty param, first sync)", () => {
 
   it("treats non-string content as empty", async () => {
     // content omitted → typeof !== "string" → "" → empty-param path.
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      allowRestore: true,
-    });
+    const res = await sync({ allowRestore: true });
 
     expect(res.result).toStrictEqual({ action: "none" });
   });
@@ -131,11 +133,7 @@ describe("projectContext.sync — clear (empty param, later sync)", () => {
   it("deletes the sidecar when the user clears (not first sync)", async () => {
     seedSidecar("Genre: jungle");
 
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      content: "",
-      allowRestore: false,
-    });
+    const res = await sync({ content: "", allowRestore: false });
 
     expect(res.result).toStrictEqual({ action: "clear" });
     expect(existsSync(projectContextSidecarPath(liveSetPath))).toBe(false);
@@ -144,11 +142,7 @@ describe("projectContext.sync — clear (empty param, later sync)", () => {
   });
 
   it("is a no-op when there is no sidecar to clear", async () => {
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      content: "",
-      allowRestore: false,
-    });
+    const res = await sync({ content: "", allowRestore: false });
 
     expect(res.result).toStrictEqual({ action: "none" });
   });
@@ -156,11 +150,7 @@ describe("projectContext.sync — clear (empty param, later sync)", () => {
 
 describe("projectContext.sync — backup (non-empty param)", () => {
   it("writes a sidecar when none exists (first save / Save-As to new folder)", async () => {
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      content: "Genre: jungle",
-      allowRestore: false,
-    });
+    const res = await sync({ content: "Genre: jungle", allowRestore: false });
 
     expect(res.result).toStrictEqual({ action: "backup" });
     expect(readProjectContextSidecar(liveSetPath)).toBe("Genre: jungle");
@@ -169,8 +159,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
   it("overwrites an existing sidecar on a genuine write", async () => {
     seedSidecar("old");
 
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
+    const res = await sync({
       content: "new",
       allowRestore: false,
       isEdit: true,
@@ -186,8 +175,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
   it("leaves an existing, differing sidecar alone when nothing was written", async () => {
     seedSidecar("newer notes from another Set in this folder");
 
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
+    const res = await sync({
       content: "stale blob saved in this older .als",
       allowRestore: false,
       isEdit: false,
@@ -200,8 +188,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
   });
 
   it("creates a missing sidecar even when nothing was written", async () => {
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
+    const res = await sync({
       content: "Genre: jungle",
       allowRestore: false,
       isEdit: false,
@@ -214,8 +201,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
   it("treats an empty sidecar as no backup, so a passing sync fills it", async () => {
     seedSidecar("   ");
 
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
+    const res = await sync({
       content: "Genre: jungle",
       allowRestore: false,
       isEdit: false,
@@ -228,11 +214,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
   it("leaves a byte-identical sidecar untouched", async () => {
     seedSidecar("same");
 
-    const res = await dispatchNodeRoute("projectContext.sync", {
-      filePath: liveSetPath,
-      content: "same",
-      allowRestore: false,
-    });
+    const res = await sync({ content: "same", allowRestore: false });
 
     expect(res.result).toStrictEqual({ action: "none" });
   });

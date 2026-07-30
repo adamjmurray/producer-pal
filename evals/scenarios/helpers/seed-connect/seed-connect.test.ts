@@ -46,6 +46,15 @@ function scenario(
   };
 }
 
+interface StubOptions {
+  seedable?: boolean;
+  connectContent?: Array<{ type: string; text: string }>;
+}
+
+type SeedableSession = EvalSession & {
+  seedTurn: NonNullable<EvalSession["seedTurn"]>;
+};
+
 /**
  * Build a session stub that records what it was asked to do.
  *
@@ -54,12 +63,7 @@ function scenario(
  * @param options.connectContent - Content blocks the connect tool returns
  * @returns The session plus the recorded seeds and sent messages
  */
-function sessionStub(
-  options: {
-    seedable?: boolean;
-    connectContent?: Array<{ type: string; text: string }>;
-  } = {},
-): {
+function sessionStub(options: StubOptions = {}): {
   session: EvalSession;
   seeded: SeededTurn[];
   sent: string[];
@@ -92,6 +96,53 @@ function sessionStub(
   };
 
   return { session, seeded, sent };
+}
+
+/**
+ * Narrow a stub session to one that supports seeding.
+ *
+ * @param session - The stub session
+ * @returns The same session typed with a non-optional `seedTurn`
+ */
+function asSeedable(session: EvalSession): SeedableSession {
+  return session as SeedableSession;
+}
+
+/**
+ * Seed a connect turn against a fresh stub session.
+ *
+ * @param options - Stub configuration forwarded to `sessionStub`
+ * @returns The stub's recordings plus the seeded turn
+ */
+async function seedWithStub(options: StubOptions = {}) {
+  const stub = sessionStub(options);
+  const turn = await seedConnectTurn(asSeedable(stub.session), CONNECT_MESSAGE);
+
+  return { ...stub, turn };
+}
+
+/**
+ * Run the standard connect-then-prompt scenario through `runMessageTurns`.
+ *
+ * @param seedConnect - Whether the run has seeding enabled
+ * @param options - Stub configuration forwarded to `sessionStub`
+ * @returns The stub's recordings plus the collected turns
+ */
+async function runTwoMessageScenario(
+  seedConnect: boolean,
+  options: StubOptions = {},
+) {
+  const stub = sessionStub(options);
+  const turns: EvalTurnResult[] = [];
+
+  await runMessageTurns(
+    scenario([CONNECT_MESSAGE, "make a clip"]),
+    stub.session,
+    turns,
+    seedConnect,
+  );
+
+  return { ...stub, turns };
 }
 
 describe("shouldSeedConnect", () => {
@@ -127,12 +178,7 @@ describe("shouldSeedConnect", () => {
 
 describe("seedConnectTurn", () => {
   it("calls the connect tool and writes the turn into history", async () => {
-    const { session, seeded } = sessionStub();
-    const seedable = session as EvalSession & {
-      seedTurn: NonNullable<EvalSession["seedTurn"]>;
-    };
-
-    const turn = await seedConnectTurn(seedable, CONNECT_MESSAGE);
+    const { session, seeded, turn } = await seedWithStub();
 
     expect(session.mcpClient.callTool).toHaveBeenCalledWith({
       name: CONNECT_TOOL,
@@ -162,41 +208,26 @@ describe("seedConnectTurn", () => {
   // check still passed; the only tell was the input-token count dropping by
   // exactly the size of the skills.
   it("puts every content block into history, not just the first", async () => {
-    const { session, seeded } = sessionStub();
-    const seedable = session as EvalSession & {
-      seedTurn: NonNullable<EvalSession["seedTurn"]>;
-    };
-
-    await seedConnectTurn(seedable, CONNECT_MESSAGE);
+    const { seeded } = await seedWithStub();
 
     expect(seeded[0]?.toolOutput).toStrictEqual(CONNECT_CONTENT);
   });
 
   it("records only the first block as the turn's result text", async () => {
-    const { session } = sessionStub();
-    const seedable = session as EvalSession & {
-      seedTurn: NonNullable<EvalSession["seedTurn"]>;
-    };
-
     // Matches what the streaming path records for a real call, so assertions
     // and the judge transcript read the same string either way.
-    const turn = await seedConnectTurn(seedable, CONNECT_MESSAGE);
+    const { turn } = await seedWithStub();
 
     expect(turn.toolCalls[0]?.result).toBe(CONNECT_RESULT);
   });
 
   it("carries any relayed WARNING blocks beside the result, as the streaming path does", async () => {
-    const { session } = sessionStub({
+    const { turn } = await seedWithStub({
       connectContent: [
         { type: "text", text: CONNECT_RESULT },
         { type: "text", text: "WARNING: could not read track 3" },
       ],
     });
-    const seedable = session as EvalSession & {
-      seedTurn: NonNullable<EvalSession["seedTurn"]>;
-    };
-
-    const turn = await seedConnectTurn(seedable, CONNECT_MESSAGE);
 
     expect(turn.toolCalls[0]?.result).toBe(CONNECT_RESULT);
     expect(turn.toolCalls[0]?.warnings).toStrictEqual([
@@ -205,50 +236,29 @@ describe("seedConnectTurn", () => {
   });
 
   it("omits warnings entirely when the connect call warned about nothing", async () => {
-    const { session } = sessionStub();
-    const seedable = session as EvalSession & {
-      seedTurn: NonNullable<EvalSession["seedTurn"]>;
-    };
-
-    const turn = await seedConnectTurn(seedable, CONNECT_MESSAGE);
+    const { turn } = await seedWithStub();
 
     expect(turn.toolCalls[0]).not.toHaveProperty("warnings");
   });
 
   it("reports no token usage — nothing was spent", async () => {
-    const { session } = sessionStub();
-    const seedable = session as EvalSession & {
-      seedTurn: NonNullable<EvalSession["seedTurn"]>;
-    };
-
-    const turn = await seedConnectTurn(seedable, CONNECT_MESSAGE);
+    const { turn } = await seedWithStub();
 
     expect(turn.stepUsages).toBeUndefined();
   });
 
   it("throws when the connect tool returns no text", async () => {
     const { session } = sessionStub({ connectContent: [] });
-    const seedable = session as EvalSession & {
-      seedTurn: NonNullable<EvalSession["seedTurn"]>;
-    };
 
-    await expect(seedConnectTurn(seedable, CONNECT_MESSAGE)).rejects.toThrow(
-      /returned no text/,
-    );
+    await expect(
+      seedConnectTurn(asSeedable(session), CONNECT_MESSAGE),
+    ).rejects.toThrow(/returned no text/);
   });
 });
 
 describe("runMessageTurns", () => {
   it("seeds the connect turn and sends the rest to the model", async () => {
-    const { session, seeded, sent } = sessionStub();
-    const turns: EvalTurnResult[] = [];
-
-    await runMessageTurns(
-      scenario([CONNECT_MESSAGE, "make a clip"]),
-      session,
-      turns,
-      true,
-    );
+    const { seeded, sent, turns } = await runTwoMessageScenario(true);
 
     expect(seeded).toHaveLength(1);
     expect(sent).toStrictEqual(["make a clip"]);
@@ -258,15 +268,7 @@ describe("runMessageTurns", () => {
   });
 
   it("sends every turn to the model when seeding is off", async () => {
-    const { session, seeded, sent } = sessionStub();
-    const turns: EvalTurnResult[] = [];
-
-    await runMessageTurns(
-      scenario([CONNECT_MESSAGE, "make a clip"]),
-      session,
-      turns,
-      false,
-    );
+    const { seeded, sent, turns } = await runTwoMessageScenario(false);
 
     expect(seeded).toStrictEqual([]);
     expect(sent).toStrictEqual([CONNECT_MESSAGE, "make a clip"]);
@@ -274,15 +276,9 @@ describe("runMessageTurns", () => {
   });
 
   it("falls back to a real turn on a transport that cannot seed", async () => {
-    const { session, sent } = sessionStub({ seedable: false });
-    const turns: EvalTurnResult[] = [];
-
-    await runMessageTurns(
-      scenario([CONNECT_MESSAGE, "make a clip"]),
-      session,
-      turns,
-      true,
-    );
+    const { sent, turns } = await runTwoMessageScenario(true, {
+      seedable: false,
+    });
 
     expect(sent).toStrictEqual([CONNECT_MESSAGE, "make a clip"]);
     expect(turns[0]?.seeded).toBeUndefined();
