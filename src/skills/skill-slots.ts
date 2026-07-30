@@ -22,7 +22,10 @@ import { transformsExpressions } from "#src/skills/fragments/transforms-expressi
 import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
-import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
+import {
+  barbeatStandard,
+  barbeatStandardWrite,
+} from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
 import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 
@@ -50,6 +53,13 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 // renaming those to pair with it would retire three live slot names to buy
 // symmetry.
 //
+// A second, independent suffix axis is DIRECTION: a head may spin its authoring
+// syntax out into a `-write` sibling, gated on the two clip writers, so a
+// read-only caller stops paying for it (ADR-0019). The base name keeps meaning
+// what it meant — the head, minus what only a writer can use — which is why
+// splitting one costs no rename and no retired slot. Only `barbeat-standard` is
+// split so far.
+//
 // `code-transforms` is deliberately absent: it only carries text in a build with
 // code execution enabled, so there is nothing stable for a user to override.
 export const SKILL_SLOT_NAMES = [
@@ -71,6 +81,7 @@ export const SKILL_SLOT_NAMES = [
   "getting-help",
 
   "barbeat-standard",
+  "barbeat-standard-write",
   "barbeat-basic",
   "midi-json",
   "stark-standard",
@@ -259,8 +270,16 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "barbeat-standard": {
     title: "bar|beat notation (standard)",
     description:
-      "How to read and write bar|beat notation, the default note format. Used with capable models.",
+      "How to read bar|beat notation, the default note format: positions, meter, and the note syntax read-clip returns. Used with capable models. The syntax for writing notes is the separate section below.",
     builtIn: barbeatStandard,
+  },
+
+  "barbeat-standard-write": {
+    title: "bar|beat notation: writing notes (standard)",
+    description:
+      "The bar|beat syntax only used to CREATE notes — repeat patterns, pattern brackets, bar copying, v0 deletes, and the examples. Never appears in a clip you read back, so it's dropped for anything that can't write clips. Needs the bar|beat notation guide it builds on.",
+    builtIn: barbeatStandardWrite,
+    requires: ["barbeat-standard"],
   },
 
   "barbeat-basic": {

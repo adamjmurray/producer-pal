@@ -46,6 +46,33 @@ describe("buildSkills - composition", () => {
     expect(result).toContain("## Getting Help");
   });
 
+  it("loses nothing to the bar|beat read/write carve", () => {
+    // The split moved whole sections between two fragments. Nothing catches a
+    // section dropped on the floor mid-move — every include still resolves and
+    // both halves still look like prose — so pin the markers of everything that
+    // moved, plus the two lines that were REWRITTEN rather than moved (the meter
+    // fact kept on the read side, the repeat prescription sent to the write one).
+    const result = buildSkills({ notation: "barbeat" });
+
+    for (const marker of [
+      "## Positions & Meter",
+      "## MIDI Syntax",
+      "## Writing Notes",
+      "**Repeat patterns**",
+      "**Pattern brackets**",
+      "@N-M=P-Q tiles bars",
+      "### Editing Existing Notes (update-clip)",
+      "## Examples",
+      "### Bar Copying",
+      "### Repeats with Variations",
+      "the grid beat is NOT a quarter",
+      "Prefer repeats over hand-listing beats",
+      "`v0` deletes earlier notes",
+    ]) {
+      expect(result, `lost "${marker}"`).toContain(marker);
+    }
+  });
+
   it("gives every notation its own head at both depths — never a fallback", () => {
     for (const notation of NOTATIONS) {
       const standard = buildSkills({ notation });

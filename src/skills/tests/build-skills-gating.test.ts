@@ -87,6 +87,62 @@ describe("buildSkills - tool gating", () => {
     expect(minimal.length).toBeLessThan(full.length / 2);
   });
 
+  it("keeps the note format but drops the authoring half for a read-only caller", () => {
+    // The case the notation-head split exists for: a worker that reads clips
+    // needs the grammar to PARSE what read-clip returns, and none of the sugar a
+    // serializer never emits. Silent, like any gating — nothing is broken.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      {
+        notation: "barbeat",
+        tools: ["ppal-read-clip", "ppal-read-track", "ppal-read-scene"],
+      },
+      {},
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain("## Positions & Meter");
+    expect(result).toContain("## MIDI Syntax");
+    expect(result).not.toContain("## Writing Notes");
+    expect(result).not.toContain("**Pattern brackets**");
+    expect(result).not.toContain("### Bar Copying");
+    expect(result).not.toContain("### Editing Existing Notes");
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("keeps both halves for anything that can write a clip", () => {
+    // Either writer alone is enough, and each keeps the base head it builds on —
+    // the requires-subset invariant, seen from the assembled document.
+    for (const tool of ["ppal-create-clip", "ppal-update-clip"]) {
+      const result = buildSkills({ notation: "barbeat", tools: [tool] });
+
+      expect(result, `${tool} lost the note format`).toContain(
+        "## Positions & Meter",
+      );
+      expect(result, `${tool} lost the authoring half`).toContain(
+        "## Writing Notes",
+      );
+    }
+  });
+
+  it("leaves an unsplit notation head whole, with no gap where its write half would be", () => {
+    // stark and midi-json register an EMPTY `-write` fragment so the driver's
+    // notation-templated ref resolves. That must read as one clean section
+    // break, not a stack of blank lines, and must never warn.
+    for (const notation of ["stark", "midi-json"] as const) {
+      const warnings: string[] = [];
+      const result = buildSkills(
+        { notation, tools: ALL_TOOLS },
+        {},
+        (message) => warnings.push(message),
+      );
+
+      expect(result, `${notation} lost its head`).toContain("## MIDI Notation");
+      expect(result, `${notation} stacked blank lines`).not.toMatch(/\n{3,}/);
+      expect(warnings, `${notation} warned`).toStrictEqual([]);
+    }
+  });
+
   it("gates the small-model document the same way", () => {
     const result = buildSkills({
       smallModelMode: true,

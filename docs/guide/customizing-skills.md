@@ -56,6 +56,7 @@ a whole area you never use:
 | `context-standard` / `context-basic` | [Context & Memory](/guide/context) — the project, global, and memory layers                       |
 | `getting-help`                       | What to tell you when a request is outside Producer Pal's reach                                   |
 | `barbeat-standard` / `barbeat-basic` | The bar\|beat note notation guide (default notation)                                              |
+| `barbeat-standard-write`             | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples        |
 | `stark-standard` / `stark-basic`     | The stark note notation guide                                                                     |
 | `midi-json`                          | The midi-json note notation guide                                                                 |
 
@@ -138,8 +139,10 @@ Fragments are cut along tool lines, so turning a tool off drops the fragment
 that teaches it — automatically, wherever you turned it off: the Tools tab in
 the [Chat UI](/guide/chat-ui#tools) (per preset, and per subagent), or the tool
 list an external MCP client is configured with. Switch off library search and
-the library guide is gone from that conversation's skills. Reach for the manual
-trimming below for areas you want dropped while keeping the tool.
+the library guide is gone from that conversation's skills. Direction counts too:
+a conversation that can read clips but not create or update them keeps the
+bar\|beat note format and drops the syntax used only to write notes. Reach for
+the manual trimming below for areas you want dropped while keeping the tool.
 
 :::
 
@@ -158,6 +161,7 @@ override you wrote for it — check the box again and it comes back.
 | Build or tweak instruments with the AI                  | `devices` **and** `specialized-devices`                                              |
 | Work in the Arrangement view with the AI                | `arrangement`                                                                        |
 | Use project/global context or memory                    | `context-standard`                                                                   |
+| Ask for new MIDI notes, but still want them read back   | `barbeat-standard-write` (bar\|beat only — the other notations aren't split)         |
 | Write or edit MIDI notes at all                         | the notation guide for your notation (e.g. `barbeat-standard`)                       |
 
 The same trims by hand: override the **Full skills (standard)** fragment and
@@ -172,8 +176,9 @@ A few fragments teach a vocabulary whose syntax lives elsewhere. The transforms
 guides all build on `transforms-core` — keeping `transforms-generative` without
 it leaves the AI knowing `ratchet()` and the waveforms but not the shape of a
 transform, which is worse than dropping all three. `specialized-devices` sits
-inside `devices` the same way. That's why the rows above are ordered
-most-specific-first and say which fragments travel together.
+inside `devices` the same way, and so does `barbeat-standard-write` inside
+`barbeat-standard`. That's why the rows above are ordered most-specific-first
+and say which fragments travel together.
 
 If you do drop a fragment something else needs, Producer Pal says so — the
 Skills **Preview** view shows a warning, and so does the Max window.

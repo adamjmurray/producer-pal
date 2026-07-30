@@ -33,11 +33,10 @@ const UPDATE_CLIP = "ppal-update-clip";
  * them makes the notation head load-bearing.
  *
  * Spanning both directions is deliberate and can't be narrowed to the writers: a
- * read-only caller still needs the grammar to parse what read-clip RETURNS. The
- * cost is that it also receives the authoring half it can't use (~680-1160 tokens
- * of `barbeat-standard`), which is a known, measured floor rather than an
- * oversight — splitting the head is blocked on override migration, not on this
- * table. See ADR-0016.
+ * read-only caller still needs the grammar to parse what read-clip RETURNS. What
+ * a read-only caller does NOT need is the authoring syntax, and that is a
+ * separate `-write` fragment rather than a narrower gate here — see
+ * {@link NOTE_WRITE_TOOLS} and ADR-0019.
  */
 const NOTE_TOOLS = [
   "ppal-read-clip",
@@ -46,6 +45,14 @@ const NOTE_TOOLS = [
   "ppal-read-track",
   "ppal-read-scene",
 ] as const;
+
+/**
+ * The two tools that take `notes` as INPUT — the gate on a notation head's
+ * `-write` sibling. A strict subset of {@link NOTE_TOOLS}, so the requires-subset
+ * invariant holds: any toolset keeping the authoring half also keeps the base
+ * head whose grammar it builds on.
+ */
+const NOTE_WRITE_TOOLS = [CREATE_CLIP, UPDATE_CLIP] as const;
 
 /** The tools whose schemas accept `transforms` / `preTransforms`. */
 const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, "ppal-duplicate"] as const;
@@ -121,6 +128,13 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "stark-standard": NOTE_TOOLS,
   "stark-basic": NOTE_TOOLS,
   "midi-json": NOTE_TOOLS,
+
+  // The authoring halves. The two empty ones are placeholders for heads that
+  // aren't split (see builtin-fragments.ts); gating them the same way keeps the
+  // rule uniform, and an empty body costs a caller nothing either way.
+  "barbeat-standard-write": NOTE_WRITE_TOOLS,
+  "stark-standard-write": NOTE_WRITE_TOOLS,
+  "midi-json-standard-write": NOTE_WRITE_TOOLS,
 };
 
 /**
