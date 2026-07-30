@@ -26,10 +26,11 @@ import {
 // Scope note: the eslint config also carried a src-wide ban on every ".."
 // specifier, but the later block for the LiveAPI constructor ban replaced it —
 // flat-config `rules` entries replace rather than merge, so only the last block
-// for a given rule survives. That ban never actually ran, and src/ holds ~418
-// relative parent imports written against its absence, so reviving it here would
-// be a new rule rather than a port. Deliberately not ported; webui's identical
-// ban was never shadowed and is enforced below.
+// for a given rule survives. That ban never ran, and src/ holds hundreds of
+// relative parent imports written against its absence, so it is not ported as
+// written. What replaces it is the module-boundary check below, which is the
+// rule src/ already follows. webui's identical total ban was never shadowed and
+// is enforced as-is.
 
 /**
  * Matches the specifier of a static import/export or a dynamic import(). Group 1
@@ -88,6 +89,50 @@ describe("import restrictions", () => {
       violations,
       "Found ../ import(s) in webui",
       "Rewrite as #webui/*.",
+    );
+
+    expect(violations).toHaveLength(0);
+  });
+
+  it("should keep src/ relative imports inside their own module", () => {
+    // A file that the organization rules pushed down into helpers/ or tests/
+    // reaching back up to its own module root is the shape src/ is written in,
+    // and #src/* spelling of that is worse, not better. What the alias is for is
+    // crossing into a *sibling* module — so the boundary is the module, not the
+    // number of "../" segments.
+    const violations: Violation[] = [];
+    const srcRoot = path.join(projectRoot, "src");
+
+    for (const file of findSourceFiles(srcRoot)) {
+      const rel = path.relative(projectRoot, file);
+      const from = moduleOf(path.relative(srcRoot, file));
+      const lines = fs.readFileSync(file, "utf8").split("\n");
+
+      for (const { value, line } of specifiersIn(file)) {
+        if (!value.startsWith("..")) continue;
+
+        const within = pathWithinSrc(value, rel);
+
+        // Leaves src/ altogether — the repo-root package.json, which has no
+        // alias to prefer. Not a module crossing, so not this rule's business.
+        if (within == null) continue;
+
+        const to = moduleOf(within);
+
+        if (to === from) continue;
+        if (isSuppressed(lines, line - 1, "no-restricted-syntax")) continue;
+
+        violations.push({
+          file: `${rel}:${line}`,
+          reason: `"${value}" leaves src/${from} for src/${to} — use "#src/${within}"`,
+        });
+      }
+    }
+
+    throwOnFileViolations(
+      violations,
+      "Found cross-module relative import(s) in src",
+      "Reach a sibling module through #src/*; keep ../ for your own module.",
     );
 
     expect(violations).toHaveLength(0);
@@ -301,6 +346,15 @@ function pathWithinSrc(spec: string, fromRel: string): string | null {
   if (within == null || within.startsWith("..")) return null;
 
   return within;
+}
+
+/**
+ * Name the top-level src/ module a path belongs to
+ * @param withinSrc - A path relative to src/
+ * @returns Its first segment, which names the module
+ */
+function moduleOf(withinSrc: string): string {
+  return withinSrc.split("/")[0] ?? "";
 }
 
 /**

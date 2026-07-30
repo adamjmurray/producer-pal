@@ -155,6 +155,23 @@ are no stricter than the rules they replace:
 | `no-restricted-imports` regex form      | `src/test/meta/import-restrictions.test.ts` |
 | `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`  |
 
+One of those is not a straight port. The eslint config carried a src-wide ban on
+**every** `..` specifier, which never actually ran — the later block adding the
+`new LiveAPI()` ban replaced the whole `no-restricted-syntax` entry for
+`src/**`, since flat-config `rules` entries replace rather than merge. Reviving
+it as written would have been a new rule: `src/` holds 475 parent-relative
+specifiers, overwhelmingly files that the file-organization rules pushed down
+into `helpers/` or `tests/` reaching back up to their own module root.
+
+What is enforced instead is the boundary the code already respects — **a
+relative import must stay inside its own top-level `src/` module**. Measured
+across all 475: 473 comply, and the 2 that don't are `src/test/*` reaching the
+repo-root `package.json`, which leaves `src/` entirely and is exempt for that
+reason. Finer definitions were tried and rejected: keying on the first three
+path segments gives 102 violations and the first four gives 263, every one of
+them a `helpers/` or `tests/` file reaching its own module root. webui's
+identical total ban was never shadowed and is enforced as written.
+
 `eslint-comments/no-unlimited-disable` could not survive the bridge at all, for
 a circular reason: a file-wide disable turns off every rule, including the one
 that would have reported it, so it never fires no matter the prefix. Its config
@@ -166,24 +183,47 @@ file-wide, so the backstop matches that form as well as the block form.
 Every check in those tests is verified by injecting a known violation, not just
 by passing on a clean tree.
 
+### What the meta tests cost
+
+Moving rules out of lint and into vitest moves work rather than removing it, so
+the obvious worry is that whole-repo scans have quietly become the bottleneck.
+Measured (warm, macOS), they have not:
+
+| `npm run check` step | wall  |
+| -------------------- | ----- |
+| `test:coverage`      | 31.7s |
+| `lint`               | 6.4s  |
+| `typecheck`          | 6.3s  |
+| `duplication`        | 0.5s  |
+
+All 11 files in `src/test/meta/` plus `lint-suppression-limits.test.ts` run in
+**1.7s wall / 3.9s CPU** — about 5% of the test step's wall time and 2.3% of its
+CPU. What makes tests the slowest step is their size (607 files, 10,671 tests),
+not the meta scans.
+
+So a separate vitest project or a parallel CI job for the meta tests was
+considered and **rejected**: it would save ~1.7s and cost a job with its own
+`npm ci` and startup. Adding another whole-repo meta test is likewise not a
+performance decision. (The unrelated failure mode — whole-repo scans timing out
+when two `npm run check` runs overlap across worktrees — is a reason not to run
+concurrent checks, not an argument for parallelizing them.)
+
 ## Rules with no replacement
 
-Enforcement genuinely lost in the migration, all previously reporting zero:
+Every rule in this section reported zero at migration time, so none of it broke
+anything. They are split by whether anything was actually lost.
 
-- `require-atomic-updates` — needs dataflow analysis; not portable to a meta
-  test. Three suppressions across `webui/` and `evals/` document the pattern it
-  used to guard.
-- `import-x/no-extraneous-dependencies` — importing a package absent from
-  `package.json` is now caught only at build/test time.
-- `import-x/no-useless-path-segments`, `import-x/no-relative-packages` — no
-  oxlint counterpart.
-- `import-x/order` — no oxlint counterpart, and Prettier does not sort imports,
-  so import grouping and ordering are now unenforced.
+### Substituted or never enforced — settled, don't re-open
+
 - `sonarjs/assertions-in-tests` — resolves imported `expect*` helpers through
   typescript-eslint parserServices, and oxlint JS plugins get no type
   information, so every helper-based assertion read as absent (100 false
   positives). `vitest/expect-expect` with `assertFunctionNames: ["expect*"]`
-  covers the same ground natively and is enabled.
+  covers the same ground natively and is enabled. The substitution was checked
+  rather than assumed: a test whose only assertion is a local
+  `expectSomething()` helper is correctly **not** reported. Nothing to rebuild.
+- `unicorn/no-array-push-push` — a no-op deprecated alias in unicorn 69 for
+  `prefer-single-call`, which was never enabled. No enforcement existed to lose.
 - `eslint-comments/no-unused-disable` — configured but inert through the bridge,
   so the entries were removed rather than left claiming enforcement. oxlint's
   native `--report-unused-disable-directives` flag does the same job, but every
@@ -191,8 +231,30 @@ Enforcement genuinely lost in the migration, all previously reporting zero:
   `no-restricted-syntax` the meta-test port still reads, three
   `require-atomic-updates` documenting a rule that no longer runs), so it is
   left off rather than deleting comments that still carry meaning.
-- `unicorn/no-array-push-push` — a no-op deprecated alias in unicorn 69 for
-  `prefer-single-call`, which was never enabled. No enforcement existed to lose.
+
+### Accepted losses — deliberately not rebuilt
+
+- `require-atomic-updates` — needs dataflow analysis, so there is no honest meta
+  test for it. Tolerable because the rule's shape is already baked into how the
+  code is written: three suppressions across `webui/`, `evals/`, and `src/` name
+  it explicitly, and six more sites carry comments explaining that the code is
+  arranged the way it is to avoid tripping it. That is documentation the rule's
+  absence does not erase.
+- `import-x/no-extraneous-dependencies` — a package missing from `package.json`
+  entirely still fails immediately, since rollup's node-resolve cannot find it
+  and CI runs `npm ci` + `npm run build`. What is genuinely unguarded is the
+  _phantom_ dependency: a package installed as someone else's transitive,
+  imported directly, never declared. That resolves fine from `node_modules` and
+  keeps resolving until a lockfile change removes the provider. A meta test is
+  feasible but has to model `#` subpaths, `node:` builtins, type-only imports,
+  and a deps/devDeps split across four bundles plus `webui/`, `evals/`,
+  `scripts/`, and `e2e/` — real permanent surface against a failure that is loud
+  (`could not resolve X`) and one line to fix. Left unguarded on purpose; a
+  one-off `npx depcheck` is the cheaper answer if it ever comes up.
+- `import-x/no-useless-path-segments`, `import-x/no-relative-packages` — no
+  oxlint counterpart.
+- `import-x/order` — no oxlint counterpart, and Prettier does not sort imports,
+  so import grouping and ordering are now unenforced.
 
 ## unicorn rules kept alive through the bridge
 

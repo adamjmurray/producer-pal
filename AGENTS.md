@@ -87,8 +87,17 @@ architecture.
 
 - **Path aliases**: Use `#src/`, `#webui/`, `#evals/` (Node.js package subpath
   imports in package.json `"imports"`). The `#` prefix is required for unbundled
-  execution (build scripts, CLI tools). Never use relative `../../` when an
-  alias is available.
+  execution (build scripts, CLI tools).
+
+  The boundary is the **module**, not the number of `../` segments. In `src/`, a
+  relative import must stay inside its own top-level module (`src/notation`,
+  `src/mcp-server`, `src/tools`, …); crossing into a sibling module uses
+  `#src/*`. So `../../types.ts` from `src/notation/barbeat/interpreter/helpers/`
+  is correct — the file-organization rules below push helpers and tests down a
+  level, and reaching back up to your own module root is the shape the code is
+  written in. But `src/tools/**` reaching `../../shared/x.ts` is not: that is
+  `#src/shared/x.ts`. Enforced by `src/test/meta/import-restrictions.test.ts`.
+  In `webui/`, `..` is banned outright — always `#webui/*`.
 
 - **No barrel files**: No index.ts or other pure re-export files. Import
   directly from the source.
