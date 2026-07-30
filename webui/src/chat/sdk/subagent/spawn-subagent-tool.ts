@@ -26,9 +26,11 @@ export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
 export const MAX_WORKER_STEPS = 20;
 
 /**
- * Safety/cost cap on total subagents spawned in one orchestrator conversation,
- * independent of the step budget. In a future parallel mode this cap — not the
- * step count — bounds fan-out.
+ * Safety/cost cap on total worker RUNS in one orchestrator conversation,
+ * independent of the step budget. Resuming a worker is a run, so it counts too —
+ * the cap bounds spend, and a resume costs the same as a fresh spawn. Survives a
+ * page reload or a conversation switch (see SpawnState.count). In a future
+ * parallel mode this cap — not the step count — bounds fan-out.
  */
 export const MAX_SPAWNS = 10;
 
@@ -109,7 +111,11 @@ export interface SpawnSubagentDeps {
 
 /** Mutable spawn bookkeeping shared by the tool and its owning client. */
 export interface SpawnState {
-  /** Worker runs started in this client's lifetime; enforces MAX_SPAWNS. */
+  /**
+   * Worker runs started in this conversation; enforces MAX_SPAWNS. Seeded from
+   * history in initialize() (see recordedSubagentRuns), so reloading the page or
+   * switching away and back does not hand the conversation a fresh budget.
+   */
   count: number;
   /**
    * Highest worker index handed out. Seeded from history when a conversation is

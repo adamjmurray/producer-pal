@@ -32,6 +32,7 @@ import {
   collectSubagentTranscript,
   highestSubagentIndex,
   isSpawnToolResult,
+  recordedSubagentRuns,
 } from "./subagent/subagent-session";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
@@ -66,10 +67,11 @@ export class ChatSdkClient {
   private maxSteps = MAX_TOOL_STEPS;
   /**
    * Per-conversation subagent bookkeeping, shared with the spawn tool: MAX_SPAWNS
-   * caps total worker runs across every sendMessage in this client's lifetime,
-   * and the index allocator hands each worker its durable number. `nextIndex` is
-   * seeded from history in initialize() so a restored conversation resumes
-   * numbering instead of colliding with its own persisted workers.
+   * caps total worker runs across the conversation, and the index allocator hands
+   * each worker its durable number. Both `count` and `nextIndex` are seeded from
+   * history in initialize(), so a restored conversation resumes its cap and its
+   * numbering rather than colliding with — or being handed a fresh budget
+   * alongside — its own persisted workers.
    */
   private spawnState = { count: 0, nextIndex: 0, active: new Set<number>() };
   /**
@@ -124,6 +126,7 @@ export class ChatSdkClient {
       // sets spawn_subagent false (the recursion guard).
       this.maxSteps = MAX_ORCHESTRATOR_STEPS;
       this.spawnState.nextIndex = highestSubagentIndex(this.chatHistory);
+      this.spawnState.count = recordedSubagentRuns(this.chatHistory);
       this.tools = {
         ...tools,
         [SPAWN_SUBAGENT_TOOL_NAME]: createSpawnSubagentTool({

@@ -54,6 +54,7 @@ vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
 import { streamText } from "ai";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
+  MAX_SPAWNS,
   SPAWN_SUBAGENT_TOOL_NAME,
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
@@ -65,6 +66,7 @@ import {
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
+import { type ChatMessage } from "#webui/chat/sdk/types";
 import { calculateRetryDelay } from "#webui/lib/rate-limit";
 
 const streamTextMock = streamText as ReturnType<typeof vi.fn>;
@@ -211,6 +213,62 @@ async function runTurn(client: ChatSdkClient, message = "hi"): Promise<void> {
   for await (const _ of client.sendMessage(message)) {
     /* consume */
   }
+}
+
+/**
+ * One persisted spawn turn, the way a restored conversation carries it: an
+ * assistant message holding the spawn call and its result, with the worker's
+ * index and recorded transcript attached. This is the only durable record of a
+ * worker run, so it is what initialize() reseeds both spawn counters from.
+ * @param index - The worker index recorded on the result
+ * @param transcript - The worker's recorded messages
+ * @returns The assistant message to seed chatHistory with
+ */
+function persistedSpawn(
+  index: number,
+  transcript: ChatMessage[] = [{ role: "assistant", content: "earlier work" }],
+): ChatMessage {
+  const id = `old-${index}`;
+  const args = { task: "earlier" };
+
+  return {
+    role: "assistant",
+    content: "",
+    toolCalls: [{ id, name: SPAWN_SUBAGENT_TOOL_NAME, args }],
+    toolResults: [
+      {
+        id,
+        name: SPAWN_SUBAGENT_TOOL_NAME,
+        args,
+        result: "done",
+        subagentIndex: index,
+        subagentTranscript: transcript,
+      },
+    ],
+  };
+}
+
+/**
+ * Boot an orchestrator over a restored conversation and run one turn, so its
+ * injected spawn tool (and the counters initialize() reseeded) are in play.
+ * @param chatHistory - The persisted conversation to restore
+ * @returns The injected spawn tool's execute function
+ */
+async function restoredOrchestrator(
+  chatHistory: ChatMessage[],
+): Promise<ReturnType<typeof spawnToolExecute>> {
+  const client = new ChatSdkClient(
+    "key",
+    createConfig({
+      enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true },
+      chatHistory,
+    }),
+  );
+
+  await client.initialize();
+  await runTurn(client);
+
+  return spawnToolExecute();
 }
 
 describe("ChatSdkClient subagent injection", () => {
@@ -610,47 +668,14 @@ describe("ChatSdkClient resuming a worker", () => {
     // nextIndex is seeded from history in initialize(); without that a new
     // worker would take number 1 again and resumeFrom would address two
     // different sessions at once.
-    const client = new ChatSdkClient(
-      "key",
-      createConfig({
-        enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true },
-        chatHistory: [
-          {
-            role: "assistant",
-            content: "",
-            toolCalls: [
-              {
-                id: "old",
-                name: SPAWN_SUBAGENT_TOOL_NAME,
-                args: { task: "earlier" },
-              },
-            ],
-            toolResults: [
-              {
-                id: "old",
-                name: SPAWN_SUBAGENT_TOOL_NAME,
-                args: { task: "earlier" },
-                result: "done",
-                subagentIndex: 2,
-                subagentTranscript: [
-                  { role: "assistant", content: "earlier work" },
-                ],
-              },
-            ],
-          },
-        ],
-      }),
-    );
-
-    await client.initialize();
-    await runTurn(client);
+    const execute = await restoredOrchestrator([persistedSpawn(2)]);
 
     mockStreamParts([
       { type: "text-delta", text: "Fresh worker." },
       { type: "finish", finishReason: "stop" },
     ]);
 
-    const result = await spawnToolExecute()(
+    const result = await execute(
       { task: "something new" },
       { toolCallId: "tc-new", messages: [], abortSignal: undefined },
     );
@@ -658,49 +683,38 @@ describe("ChatSdkClient resuming a worker", () => {
     expect(result).toBe(labelWorkerResult(3, "Fresh worker."));
   });
 
-  it("resumes a worker restored from a persisted conversation", async () => {
-    const client = new ChatSdkClient(
-      "key",
-      createConfig({
-        enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true },
-        chatHistory: [
-          {
-            role: "assistant",
-            content: "",
-            toolCalls: [
-              {
-                id: "old",
-                name: SPAWN_SUBAGENT_TOOL_NAME,
-                args: { task: "earlier" },
-              },
-            ],
-            toolResults: [
-              {
-                id: "old",
-                name: SPAWN_SUBAGENT_TOOL_NAME,
-                args: { task: "earlier" },
-                result: "done",
-                subagentIndex: 1,
-                subagentTranscript: [
-                  { role: "user", content: "earlier task" },
-                  { role: "assistant", content: "earlier work" },
-                ],
-              },
-            ],
-          },
-        ],
-      }),
+  it("resumes the spawn cap from history instead of granting a fresh budget", async () => {
+    // count is seeded alongside nextIndex, so the cap is per CONVERSATION as the
+    // error message says. Without that, switching conversations or reloading the
+    // page hands an orchestrator that already hit MAX_SPAWNS a whole new budget —
+    // the client is rebuilt from scratch either way, and the field initializer
+    // starts at 0.
+    const execute = await restoredOrchestrator(
+      Array.from({ length: MAX_SPAWNS }, (_, i) => persistedSpawn(i + 1)),
     );
 
-    await client.initialize();
-    await runTurn(client);
+    await expect(
+      execute(
+        { task: "one more" },
+        { toolCallId: "tc-over", messages: [], abortSignal: undefined },
+      ),
+    ).rejects.toThrow(`${MAX_SPAWNS}`);
+  });
+
+  it("resumes a worker restored from a persisted conversation", async () => {
+    const execute = await restoredOrchestrator([
+      persistedSpawn(1, [
+        { role: "user", content: "earlier task" },
+        { role: "assistant", content: "earlier work" },
+      ]),
+    ]);
 
     mockStreamParts([
       { type: "text-delta", text: "Picked up where I left off." },
       { type: "finish", finishReason: "stop" },
     ]);
 
-    const result = await spawnToolExecute()(
+    const result = await execute(
       { task: "keep going", resumeFrom: 1 },
       { toolCallId: "tc-resume", messages: [], abortSignal: undefined },
     );
