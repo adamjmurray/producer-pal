@@ -76,6 +76,33 @@ describe("useSyncServerSetting", () => {
     expect(seed).toHaveBeenCalledWith(true);
   });
 
+  it("skips a nullish serverValue (not known yet) and seeds once it arrives", () => {
+    // Null means the mount-time fetch hasn't answered — not "seed a blank". The
+    // caller keeps its provisional value AND its own not-yet-seeded flag, which
+    // is what lets the chat's first-send gate wait for the real notation.
+    const seed = vi.fn<(value: string) => void>();
+
+    const { rerender } = renderHook(
+      ({ serverValue, dirty }) =>
+        useSyncServerSetting(serverValue, dirty, seed),
+      { initialProps: { serverValue: null as string | null, dirty: false } },
+    );
+
+    expect(seed).not.toHaveBeenCalled();
+
+    rerender({ serverValue: "stark", dirty: false });
+
+    expect(seed).toHaveBeenCalledWith("stark");
+  });
+
+  it("still seeds a falsy-but-present value (false is an answer, not absence)", () => {
+    const seed = vi.fn();
+
+    renderHook(() => useSyncServerSetting(false, false, seed));
+
+    expect(seed).toHaveBeenCalledWith(false);
+  });
+
   it("works with non-boolean values (e.g. the notation enum)", () => {
     const seed = vi.fn<(value: string) => void>();
 

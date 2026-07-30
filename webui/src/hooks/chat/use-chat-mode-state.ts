@@ -27,7 +27,6 @@ import {
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
-import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
 import {
   resolveSubagentPreset,
   SUBAGENT_PRESET_PARAM,
@@ -36,6 +35,7 @@ import {
   loadPresets,
   PRESETS_STORAGE_KEY,
 } from "#webui/hooks/settings/presets/preset-storage";
+import { useFirstSendGate } from "#webui/hooks/use-first-send-gate";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
@@ -180,7 +180,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
       // This is the value the Tools tab is showing, seeded from the device
       // global — so the chat runs the notation the user can see, and changing it
       // no longer reaches back into conversations already in flight. A restored
-      // conversation ignores this in favor of its own locked snapshot.
+      // conversation ignores this in favor of its own locked snapshot. The first
+      // send is gated below until this is a real answer rather than the
+      // provisional mount-time default.
       notation: settings.notation,
       [SUBAGENT_PRESET_PARAM]: subagentPreset,
     },
@@ -191,11 +193,13 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({ chat: aiSdkChat });
 
-  // Hold the first send until the custom system prompt has finished loading, so a
-  // turn fired during the mount-time fetch doesn't lock the built-in instruction
-  // when the user actually has an override. Transparent once the status resolves.
-  const gatedHandleSend = useSystemPromptSendGate(
-    systemPromptDoc.status,
+  // Hold the first send until everything it LOCKS has finished loading: the
+  // custom system prompt (else a turn fired during the fetch locks the built-in
+  // instruction when the user has an override) and the notation (else it locks
+  // the provisional default and teaches the wrong grammar for the whole
+  // conversation). Transparent once both have resolved.
+  const gatedHandleSend = useFirstSendGate(
+    systemPromptDoc.status.kind === "loading" || !settings.notationKnown,
     wrappedHandleSend,
   );
 

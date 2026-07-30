@@ -121,6 +121,14 @@ export function useSettings(): UseSettingsReturn {
   // seedNotation and leaves dirty false.
   const [notation, setNotationState] = useState<Notation>(DEFAULT_NOTATION);
   const [notationDirty, setNotationDirty] = useState<boolean>(false);
+  // Whether `notation` is a real answer (server-seeded or user-chosen) rather
+  // than the provisional mount-time default. A new conversation locks the
+  // notation at its first send, so the chat has to be able to tell the two
+  // apart — DEFAULT_NOTATION is itself a valid choice, so the value can't say.
+  // Set in the same update as the value so any render that sees this true also
+  // sees the notation it refers to; a flag derived further upstream would lag a
+  // render behind and defeat the point.
+  const [notationKnown, setNotationKnown] = useState<boolean>(false);
   // Surfaced after a failed persist so the modal can stay open with a visible
   // error instead of closing with silent data loss (previously persistAllSettings
   // swallowed errors and the saved* snapshots were committed before the
@@ -145,11 +153,13 @@ export function useSettings(): UseSettingsReturn {
   const setNotation = useCallback((value: Notation) => {
     setNotationState(value);
     setNotationDirty(true);
+    setNotationKnown(true);
   }, []);
 
   const seedNotation = useCallback((value: Notation) => {
     setNotationState(value);
     setNotationDirty(false);
+    setNotationKnown(true);
   }, []);
   const {
     providerSettings,
@@ -322,6 +332,7 @@ export function useSettings(): UseSettingsReturn {
     seedLiveApiEnabled,
     notation,
     notationDirty,
+    notationKnown,
     setNotation,
     seedNotation,
     realtimeVoice: voiceModeSettings.realtimeVoice,

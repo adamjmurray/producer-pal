@@ -233,6 +233,14 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   // handler only POSTs on real intent.
   notation: Notation;
   notationDirty: boolean;
+  /**
+   * False until `notation` holds a real answer — server-seeded or user-chosen —
+   * instead of the provisional mount-time default. The chat's first-send gate
+   * waits on this: a new conversation locks its notation at the first send, and
+   * DEFAULT_NOTATION is a legitimate choice, so the value alone can't say
+   * whether it was chosen or merely assumed.
+   */
+  notationKnown: boolean;
   setNotation: (notation: Notation) => void;
   seedNotation: (notation: Notation) => void;
 }

@@ -148,6 +148,7 @@ describe("SettingsScreen", () => {
     seedLiveApiEnabled: vi.fn(),
     notation: "barbeat" as const,
     notationDirty: false,
+    notationKnown: true,
     setNotation: vi.fn(),
     seedNotation: vi.fn(),
     realtimeVoice: "marin",

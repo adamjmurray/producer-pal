@@ -69,6 +69,7 @@ export const mockSettingsHook = {
 
   notation: DEFAULT_NOTATION,
   notationDirty: false,
+  notationKnown: true,
   setNotation: vi.fn(),
   seedNotation: vi.fn(),
 
