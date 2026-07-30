@@ -130,15 +130,18 @@ interface BuildInfo {
  * @returns The build's version and commit, or null if nothing has been built
  */
 function readBuildInfo(): BuildInfo | null {
-  let raw;
+  let parsed: unknown;
 
   try {
-    raw = readFileSync(join(rootDir, "release/build-info.json"), "utf8");
+    // Parse inside the try as well: an interrupted `npm run release` can leave a
+    // truncated build-info.json, and a raw SyntaxError stack here would replace
+    // the caller's polished fail() message.
+    parsed = JSON.parse(
+      readFileSync(join(rootDir, "release/build-info.json"), "utf8"),
+    );
   } catch {
     return null;
   }
-
-  const parsed: unknown = JSON.parse(raw);
 
   if (
     parsed == null ||
