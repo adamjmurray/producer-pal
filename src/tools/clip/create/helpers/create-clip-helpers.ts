@@ -16,6 +16,7 @@ import {
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import {
+  applyAudioClipWarping,
   createAudioArrangementClip,
   createAudioSessionClip,
 } from "./create-clip-audio-helpers.ts";
@@ -206,6 +207,7 @@ function createArrangementClip(
  * @param sampleFile - Audio file path (for audio clips)
  * @param transformedCount - Number of notes matched by transform selectors
  * @param takeLane - Take lane to create arrangement clips on, or null for main lane
+ * @param warping - Requested audio warp state, or null to keep Live's own choice
  * @returns Clip result for this iteration
  */
 export function processClipIteration(
@@ -230,6 +232,7 @@ export function processClipIteration(
   sampleFile: string | null,
   transformedCount: number | undefined,
   takeLane: LiveAPI | null = null,
+  warping: boolean | null = null,
 ): object {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
@@ -270,6 +273,8 @@ export function processClipIteration(
     if (Object.keys(propsToSet).length > 0) {
       clip.setAll(propsToSet);
     }
+
+    applyAudioClipWarping(clip, warping);
   } else {
     // MIDI clip creation
     if (view === "session") {

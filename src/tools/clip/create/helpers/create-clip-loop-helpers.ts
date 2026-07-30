@@ -55,6 +55,8 @@ export interface CreateClipsParams {
   code: string | null;
   /** Take lane to create arrangement clips on, or null for the main lane */
   takeLane: LiveAPI | null;
+  /** Requested audio warp state, or null to keep Live's own choice */
+  warping: boolean | null;
 }
 
 /**
@@ -183,6 +185,7 @@ async function createClipAtIndex(
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
       params.takeLane,
+      params.warping,
     );
 
     createdClips.push(clipResult);

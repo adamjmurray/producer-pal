@@ -66,7 +66,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Clip meter. Default: next full bar after latest note",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
@@ -109,6 +109,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe("absolute path to audio file - audio clips only"),
+
+    warping: param(z.boolean().optional(), {
+      default:
+        "audio clips only. Omit and Live decides per its Loop/Warp Short Samples setting, often time-stretching the file to the tempo (a warning says so). false = play the file as rendered",
+      smallModel: "audio clips only: false plays the file as rendered",
+    }),
 
     auto: param(z.enum(["play-scene", "play-clip"]).optional(), {
       default: "auto-play session clips (play-scene keeps scene in sync)",

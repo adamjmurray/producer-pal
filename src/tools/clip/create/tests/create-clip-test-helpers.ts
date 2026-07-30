@@ -139,7 +139,7 @@ export function setupSessionAudioClipMocks(
 
   const clip = registerMockObject("audio_clip_0_0", {
     path: livePath.track(0).clipSlot(0).clip(),
-    properties: { length: clipLength },
+    properties: audioClipProperties(clipLength),
   });
 
   return { liveSet, clipSlot, clip };
@@ -171,7 +171,7 @@ export function setupAudioArrangementClipMocks(
   });
 
   const clip = registerMockObject("arrangement_audio_clip", {
-    properties: { length: clipLength },
+    properties: audioClipProperties(clipLength),
   });
 
   return { liveSet, track, clip };
@@ -226,7 +226,7 @@ export function setupMultiSessionAudioClipMocks(
 
     registerMockObject(`audio_clip_0_${i}`, {
       path: livePath.track(0).clipSlot(i).clip(),
-      properties: { length: clipLength },
+      properties: audioClipProperties(clipLength),
     });
 
     return clipSlot;
@@ -273,7 +273,7 @@ export function setupMultiAudioArrangementClipMocks(
 
   for (let i = 0; i < clipCount; i++) {
     registerMockObject(`arrangement_audio_clip_${i}`, {
-      properties: { length: clipLength },
+      properties: audioClipProperties(clipLength),
     });
   }
 
@@ -343,6 +343,46 @@ export function setupSessionMocks(
   return { clipSlot, clip };
 }
 
+/** Tempo the mocked Live Set runs at, so audio clip seconds convert to beats */
+const MOCK_TEMPO = 120;
+
+/** Sample rate for mocked audio clips */
+const MOCK_SAMPLE_RATE = 48000;
+
+/**
+ * Properties for a mocked audio clip, modelling what Live reports for a warped
+ * clip whose region covers the whole sample at a 1:1 warp — the ordinary case,
+ * where no time-stretching is happening.
+ *
+ * Marker properties, not `length`, are what the code reads: `length` is stale
+ * on an unwarped clip. Set `warping: false` for a clip Live imported as a
+ * one-shot, whose markers are then in seconds.
+ *
+ * @param clipLengthBeats - The region's length in beats
+ * @param options - Overrides
+ * @param options.warping - Whether the clip is warped (default true)
+ * @returns Live API properties for registerMockObject
+ */
+export function audioClipProperties(
+  clipLengthBeats: number,
+  { warping = true }: { warping?: boolean } = {},
+): Record<string, unknown> {
+  const seconds = (clipLengthBeats * 60) / MOCK_TEMPO;
+
+  return {
+    length: clipLengthBeats,
+    warping: warping ? 1 : 0,
+    looping: 0,
+    start_marker: 0,
+    // Beats while warped, seconds once not — the unit switch this models
+    end_marker: warping ? clipLengthBeats : seconds,
+    loop_start: 0,
+    loop_end: warping ? clipLengthBeats : seconds,
+    sample_rate: MOCK_SAMPLE_RATE,
+    sample_length: seconds * MOCK_SAMPLE_RATE,
+  };
+}
+
 /**
  * Register a LiveSet mock with 4/4 time signature and scene children.
  * @param sceneIds - Scene IDs for the live set
@@ -354,6 +394,7 @@ function registerLiveSetWithScenes(sceneIds: string[]): RegisteredMockObject {
     properties: {
       signature_numerator: 4,
       signature_denominator: 4,
+      tempo: MOCK_TEMPO,
       scenes: children(...sceneIds),
     },
   });
@@ -366,6 +407,10 @@ function registerLiveSetWithScenes(sceneIds: string[]): RegisteredMockObject {
 function registerLiveSetWithTimeSig(): RegisteredMockObject {
   return registerMockObject("live-set", {
     path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      tempo: MOCK_TEMPO,
+    },
   });
 }

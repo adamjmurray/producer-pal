@@ -30,6 +30,7 @@ import {
   validateCreateClipParams,
   validatePositions,
   validateSessionTracks,
+  warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
@@ -59,6 +60,8 @@ export interface CreateClipArgs {
   firstStart?: string | null;
   /** Enable looping for the clip */
   looping?: boolean | null;
+  /** Audio clips only: warp state, or null to keep Live's own choice */
+  warping?: boolean | null;
   /** Automatic playback action */
   auto?: string | null;
   /** Select the created clip and show clip detail view */
@@ -87,6 +90,7 @@ export interface CreateClipArgs {
  * @param args.length - Clip length: Nbar, n<fraction> note value, or Nbar+n<fraction>
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
+ * @param args.warping - Audio warp state, or null to keep Live's own choice
  * @param args.auto - Automatic playback action
  * @param args.focus - Select the created clip and show clip detail view
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
@@ -110,6 +114,7 @@ export async function createClip(
     length = null,
     firstStart = null,
     looping = null,
+    warping = null,
     auto = null,
     focus,
     code = null,
@@ -132,6 +137,7 @@ export async function createClip(
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
+  warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
   validateSessionTracks(sessionSlots);
   validateArrangementTrack(arrangementStarts, trackIndex);
 
@@ -217,6 +223,7 @@ export async function createClip(
       sampleFile,
       deadline,
       code,
+      warping,
     });
 
   const sessionClips = await clipsForView("session", 0);

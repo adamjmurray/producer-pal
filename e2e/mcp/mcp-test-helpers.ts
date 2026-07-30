@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -260,6 +261,9 @@ export interface CreateClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
+  length?: string;
+  /** Audio clips only: whether Live is time-stretching the sample */
+  warping?: boolean;
 }
 
 /** Result from ppal-update-clip tool (single clip) */
@@ -301,4 +305,7 @@ export interface ReadClipResult {
   warpMode?: string;
   warpMarkers?: Array<{ sampleTime: number; beatTime: number }>;
   firstStart?: string;
+  sampleFile?: string;
+  sampleLength?: number;
+  sampleRate?: number;
 }

@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as v8Console from "#src/shared/v8-max-console.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,
@@ -80,6 +81,7 @@ describe("createClip - audio clips", () => {
         id: "audio_clip_0_0",
         slot: "0/0",
         length: "4bar", // 16 beats = 4 bars in 4/4
+        warping: true,
       });
     });
 
@@ -103,6 +105,7 @@ describe("createClip - audio clips", () => {
         id: "audio_clip_0_0",
         slot: "0/0",
         length: "2bar",
+        warping: true,
       });
     });
 
@@ -132,11 +135,13 @@ describe("createClip - audio clips", () => {
           id: "audio_clip_0_0",
           slot: "0/0",
           length: "1bar",
+          warping: true,
         },
         {
           id: "audio_clip_0_1",
           slot: "0/1",
           length: "1bar",
+          warping: true,
         },
       ]);
     });
@@ -234,6 +239,7 @@ describe("createClip - audio clips", () => {
         trackIndex: 0,
         arrangementStart: "1|1",
         length: "2bar",
+        warping: true,
       });
     });
 
@@ -256,6 +262,7 @@ describe("createClip - audio clips", () => {
         trackIndex: 0,
         arrangementStart: "5|1",
         length: "4bar",
+        warping: true,
       });
     });
 
@@ -292,18 +299,21 @@ describe("createClip - audio clips", () => {
           trackIndex: 0,
           arrangementStart: "1|1",
           length: "1bar",
+          warping: true,
         },
         {
           id: "arrangement_audio_clip_1",
           trackIndex: 0,
           arrangementStart: "2|1",
           length: "1bar",
+          warping: true,
         },
         {
           id: "arrangement_audio_clip_2",
           trackIndex: 0,
           arrangementStart: "3|1",
           length: "1bar",
+          warping: true,
         },
       ]);
     });
@@ -381,6 +391,7 @@ describe("createClip - audio clips", () => {
         id: "audio_clip_0_0",
         slot: "0/0",
         length: "3bar+n/8", // 12.5 beats in 4/4 = 3bar + 0.5 quarter (1/8 whole)
+        warping: true,
       });
     });
 
@@ -398,11 +409,13 @@ describe("createClip - audio clips", () => {
           id: "audio_clip_0_0",
           slot: "0/0",
           length: "2bar",
+          warping: true,
         },
         {
           id: "audio_clip_0_1",
           slot: "0/1",
           length: "2bar",
+          warping: true,
         },
       ]);
     });
@@ -417,6 +430,7 @@ describe("createClip - audio clips", () => {
         sampleFile: "/path/to/audio.wav",
         start: "1|1",
         length: "2bar",
+        warping: true,
         looping: true,
         firstStart: "1|2",
       });
@@ -502,6 +516,120 @@ describe("createAudioArrangementClip (unit)", () => {
 
     expect(() => createAudioArrangementClip(0, 0, "/samples/loop.wav")).toThrow(
       "failed to create audio Arrangement clip",
+    );
+  });
+});
+
+describe("createClip - audio clip warping", () => {
+  /**
+   * Register a session audio clip whose sample is `sampleSeconds` long and
+   * whose warped region spans `regionBeats`, so a mismatch between the two is
+   * exactly the time-stretching Live applied.
+   * @param sampleSeconds - The sample's duration in seconds
+   * @param regionBeats - The warped region's length in beats
+   * @returns Handles for the registered mocks
+   */
+  function setupStretchedAudioClip(sampleSeconds: number, regionBeats: number) {
+    const handles = setupSessionAudioClipMocks({ clipLength: regionBeats });
+
+    handles.clip.properties.sample_length = sampleSeconds * 48000;
+    handles.clip.properties.sample_rate = 48000;
+
+    return handles;
+  }
+
+  it("keeps Live's own choice when warping is not specified", async () => {
+    const { clip } = setupSessionAudioClipMocks({ clipLength: 8 });
+
+    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
+
+    expect(clip.set).not.toHaveBeenCalledWith("warping", expect.anything());
+  });
+
+  it("turns warping off and restates the end marker in seconds", async () => {
+    // Live leaves end_marker at the warped beat value, which then reads as
+    // seconds. Restating it keeps the region honest and stops a later re-warp
+    // from converting the stale number and inflating the clip.
+    const { clip } = setupStretchedAudioClip(2.4, 4);
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: false,
+    });
+
+    expect(clip.set).toHaveBeenCalledWith("warping", 0);
+    expect(clip.set).toHaveBeenCalledWith("end_marker", 2.4);
+  });
+
+  it("turns warping on when asked", async () => {
+    const { clip } = setupSessionAudioClipMocks({ clipLength: 8 });
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: true,
+    });
+
+    expect(clip.set).toHaveBeenCalledWith("warping", 1);
+  });
+
+  it("warns when Live's warp grid time-stretches the file", async () => {
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    // A 2.7s render mapped onto 4 beats plays over 2s at 120bpm
+    setupStretchedAudioClip(2.7, 4);
+
+    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("2.70s sample over 2.00s"),
+    );
+  });
+
+  it("stays quiet when the warp is 1:1", async () => {
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    // 8s over 16 beats at 120bpm is native speed
+    setupStretchedAudioClip(8, 16);
+
+    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("time-stretching"),
+    );
+  });
+
+  it("does not warn about stretching when warping is turned off", async () => {
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    setupStretchedAudioClip(2.7, 4);
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: false,
+    });
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("time-stretching"),
+    );
+  });
+
+  it("warns that MIDI-only timing params are ignored for audio", async () => {
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    setupSessionAudioClipMocks({ clipLength: 8 });
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      length: "4bar",
+      looping: true,
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("length, looping ignored for audio clips"),
     );
   });
 });

@@ -51,13 +51,12 @@ To stage a draggable clip:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-clip \
-  '{"slot":"5/0","sampleFile":"/abs/path/ir-hall-2s.wav","name":"IR hall 2s"}'
+  '{"slot":"5/0","sampleFile":"/abs/path/ir-hall-2s.wav","name":"IR hall 2s","warping":false}'
 ```
 
-The drag reads the file, so warping on the staged clip doesn't affect the IR
-that lands on the device — but it makes the clip misleading to audition, and a
-tail clamped to the next bar is not the tail you rendered. See the warp note in
-`audio-clip.md`.
+The drag reads the file, so the IR that lands on the device is the same either
+way — `warping: false` is there so the staged clip auditions as the tail you
+rendered rather than a time-stretched one.
 
 ## Design notes
 

@@ -30,27 +30,26 @@ node ../producer-pal/ppal.mjs ppal-create-track \
   '{"type":"audio","name":"Generated"}'
 ```
 
-Then drop the file into a Session slot (`trackIndex/sceneIndex`, both 0-based):
+Then drop the file into a Session slot (`trackIndex/sceneIndex`, both 0-based),
+passing **`warping: false`** so it plays exactly as rendered:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-clip \
-  '{"slot":"5/0","sampleFile":"/abs/path/drone.wav","name":"Drone 20s"}'
+  '{"slot":"5/0","sampleFile":"/abs/path/drone.wav","name":"Drone 20s","warping":false}'
 ```
 
 Or place it on the timeline with `arrangementStart` instead of `slot`.
 
-**Then turn warping off**, or Live time-stretches your file to the Set tempo:
+Omit `warping` and Live decides for itself, following the user's Loop/Warp Short
+Samples setting — which no API can read, so the same call lands differently on
+different machines. Its habit with transient-free material longer than about a
+second and a half is to assume a one-bar loop and stretch the render to fit,
+which for a synthesized sound alters the timbre that _is_ the content. Material
+with clear transients usually gets beat-detected correctly instead.
 
-```bash
-node ../producer-pal/ppal.mjs ppal-update-clip \
-  '{"ids":"<id from create-clip>","warping":false,"looping":false}'
-```
-
-A new audio clip arrives warped, looping, and with its region clamped to the
-next full bar — so a render longer than a bar is both stretched and cut off. For
-generated audio the stretch is the worse half: it alters the timbre, which is
-the entire content of a synthesized sound. Neither shows up in the tool result,
-which reports the clamped region as `length` and looks perfectly reasonable.
+`ppal-create-clip` reports `warping` back and warns when the file is being
+stretched, so an omitted `warping` is at least visible rather than silent. Being
+explicit is still less to think about.
 
 ## Design notes
 
@@ -81,5 +80,5 @@ and compute the length in seconds from bars rather than guessing.
   optional, and clipping in `float32` won't announce itself until Live plays it.
 - **A clip is not an instrument.** If they want to play the sound at different
   pitches, that's `simpler-sample.md`.
-- **Check `length` against what you rendered** after disabling warp — a cheap
-  confirmation that Live parsed the header the way you intended.
+- **Check `length` against what you rendered** — a cheap confirmation that Live
+  parsed the header the way you intended.

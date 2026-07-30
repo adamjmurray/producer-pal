@@ -21,6 +21,7 @@ import {
   parseSlot,
 } from "#src/tools/shared/validation/position-parsing.ts";
 import {
+  clipRegionBeats,
   isDrumRackTrack,
   processWarpMarkers,
   resolveClip,
@@ -155,7 +156,7 @@ export function readClip(
 
   // Add timing properties when requested
   if (includeTiming) {
-    addTimingProperties(result, clip);
+    addTimingProperties(result, clip, result.type === "audio");
   }
 
   // Process MIDI clip properties
@@ -212,21 +213,25 @@ function addBooleanStateProperties(
  * Add timing properties (timeSignature, looping, start, end, length, firstStart)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
+ * @param isAudioClip - Whether the clip is an audio clip, whose marker
+ *   properties are in seconds rather than beats when it is not warped
  */
-function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
+function addTimingProperties(
+  result: ReadClipResult,
+  clip: LiveAPI,
+  isAudioClip: boolean,
+): void {
   const timeSigNumerator = clip.getProperty("signature_numerator") as number;
   const timeSigDenominator = clip.getProperty(
     "signature_denominator",
   ) as number;
   const isLooping = (clip.getProperty("looping") as number) > 0;
 
-  const startMarkerBeats = clip.getProperty("start_marker") as number;
-  const loopStartBeats = clip.getProperty("loop_start") as number;
-  const loopEndBeats = clip.getProperty("loop_end") as number;
-  const endMarkerBeats = clip.getProperty("end_marker") as number;
-
-  const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
-  const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
+  const { startBeats, endBeats, startMarkerBeats } = clipRegionBeats(
+    clip,
+    isAudioClip,
+    isLooping,
+  );
 
   result.timeSignature = clip.timeSignature;
   result.looping = isLooping;

@@ -55,13 +55,12 @@ To stage a draggable clip, put the file on an audio track:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-clip \
-  '{"slot":"5/0","sampleFile":"/abs/path/wavetable-glass.wav","name":"WT glass"}'
+  '{"slot":"5/0","sampleFile":"/abs/path/wavetable-glass.wav","name":"WT glass","warping":false}'
 ```
 
 Then drag from the Session grid onto the oscillator. The drag reads the file, so
-Live warping the staged clip doesn't corrupt what lands on the oscillator — but
-it does make the clip misleading to audition. See the warp note in
-`audio-clip.md` if you play it back.
+what lands on the oscillator is the same either way — `warping: false` is there
+so the staged clip auditions as rendered rather than time-stretched.
 
 ## Design notes
 
