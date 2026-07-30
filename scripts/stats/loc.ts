@@ -19,6 +19,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
+import { isTestFile } from "#src/test/helpers/test-file-classification.ts";
 import {
   printCliDerivedStats,
   printMarkdownDerivedStats,
@@ -72,19 +73,6 @@ export const CODE_GROUPS = new Set<Group>([
 export const CATEGORIES = ["source", "test"] as const;
 
 type Category = (typeof CATEGORIES)[number];
-
-const TEST_FILE_SUFFIXES = [
-  ".test.ts",
-  ".test.tsx",
-  ".test.js",
-  "-test-helpers.ts",
-  "-test-helpers.js",
-  "-test-case.ts",
-  ".spec.ts",
-  ".spec.tsx",
-];
-
-const TEST_DIR_NAMES = new Set(["tests", "test-cases", "test-utils"]);
 
 interface ClocFileEntry {
   blank: number;
@@ -301,31 +289,12 @@ function accumulateEntry(
 function classifyFile(filePath: string): { group: Group; category: Category } {
   // cloc --vcs=git paths start with "./"
   const clean = filePath.replace(/^\.\//, "");
-  const segments = clean.split(path.sep);
-  const topDir = segments[0] ?? "";
+  const topDir = clean.split(path.sep)[0] ?? "";
   const group: Group = DIR_TO_GROUP[topDir] ?? "other";
-
-  let category: Category = "source";
-
-  if (CODE_GROUPS.has(group)) {
-    const filename = segments.at(-1) ?? "";
-    const inTestDir = segments.some((seg) => TEST_DIR_NAMES.has(seg));
-
-    if (inTestDir || isTestFileBySuffix(filename)) {
-      category = "test";
-    }
-  }
+  const category: Category =
+    CODE_GROUPS.has(group) && isTestFile(clean) ? "test" : "source";
 
   return { group, category };
-}
-
-/**
- * Check if a filename matches a test file suffix pattern.
- * @param filename - File name to check
- * @returns True if it matches a test suffix
- */
-function isTestFileBySuffix(filename: string): boolean {
-  return TEST_FILE_SUFFIXES.some((suffix) => filename.endsWith(suffix));
 }
 
 /** AST node kinds that count as functions (matching v8 coverage). */

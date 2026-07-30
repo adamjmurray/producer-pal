@@ -813,16 +813,23 @@
         "src/types/**",
         "**/*.d.ts",
         "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts",
         "**/*-test-helpers.ts",
-        "src/**/tests/**",
-        "src/test/**"
+        "**/*-test-helpers.tsx",
+        "**/test/**",
+        "**/tests/**",
+        "**/test-cases/**",
+        "**/test-utils/**"
       ],
       "rules": {
         "no-restricted-globals": "off"
       }
     },
     {
-      "files": ["**/*.test.{js,ts,tsx}", "**/test-setup.ts"],
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/test-setup.ts"],
       "rules": {
         "vitest/expect-expect": [
           "error",
@@ -846,14 +853,6 @@
         "vitest/valid-expect": "error",
         "vitest/valid-expect-in-promise": "error",
         "vitest/valid-title": "error",
-        "max-lines-per-function": [
-          "error",
-          {
-            "max": 630,
-            "skipBlankLines": true,
-            "skipComments": true
-          }
-        ],
         "complexity": ["error", 28],
         "sonarjs/no-duplicate-string": "off",
         "vitest/prefer-import-in-mock": "error",
@@ -885,7 +884,13 @@
       "plugins": ["vitest", "typescript", "import"]
     },
     {
-      "files": ["**/*.test.{js,ts,tsx}"],
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts"
+      ],
       "rules": {
         "sonarjs/cognitive-complexity": ["error", 38],
         "typescript/no-unnecessary-type-assertion": "off"
@@ -926,7 +931,13 @@
       }
     },
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*-test-case.ts"],
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts"
+      ],
       "rules": {
         "max-lines": [
           "error",
@@ -938,13 +949,50 @@
         ]
       }
     },
+    // The two budgets a whole suite gets that no other file does. A `describe`
+    // or `test.describe` callback is a suite container, not a function anyone
+    // reads top-to-bottom, so 630 rather than 115. This is scoped to every
+    // suite rather than to vitest's block above: a Playwright `.spec.ts` is the
+    // same shape, and scoping by runner is what left it at 115 before.
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts"
+      ],
+      "rules": {
+        "max-lines-per-function": [
+          "error",
+          {
+            "max": 630,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ]
+      }
+    },
     // oxlint attaches an enclosing function's JSDoc block to a nested arrow that
     // is assigned to a GLOBAL member, then demands tags for the arrow's
     // signature. Repro: a documented `function f(): void { window.confirm = () =>
     // false; }` reports jsdoc/require-returns on the arrow. Only test helpers
-    // stub globals that way, so scope it here and keep production code covered.
+    // stub globals that way, so scope it to test files and keep production code
+    // covered. jsdoc-requirements.test.ts still demands the block itself here.
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*-test-helpers.ts"],
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts",
+        "**/*-test-helpers.ts",
+        "**/*-test-helpers.tsx",
+        "**/test/**",
+        "**/tests/**",
+        "**/test-cases/**",
+        "**/test-utils/**"
+      ],
       "rules": {
         "jsdoc/require-param": "off",
         "jsdoc/require-returns": "off"
@@ -962,23 +1010,6 @@
       "plugins": ["typescript"],
       "rules": {
         "typescript/no-unnecessary-type-assertion": "off"
-      }
-    },
-    // A Playwright `test.describe` callback is a suite container, not a
-    // function anyone reads top-to-bottom — the same reason `**/*.test.*` gets
-    // 630 rather than 115. Playwright suites are `.spec.ts`, so they miss that
-    // block; per-FILE max-lines still applies at 325.
-    {
-      "files": ["e2e/**/*.spec.ts"],
-      "rules": {
-        "max-lines-per-function": [
-          "error",
-          {
-            "max": 630,
-            "skipBlankLines": true,
-            "skipComments": true
-          }
-        ]
       }
     },
     // The fixture records its own cwd so the transport test can assert what

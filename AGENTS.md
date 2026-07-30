@@ -294,16 +294,42 @@ architecture.
 
 ## Test File Classification
 
-A file is a **test file** if it matches: `*.test.{ts,tsx}`, `*-test-helpers.ts`,
-`*-test-case.ts`, or lives in a `tests/`, `test-cases/`, or `test-utils/`
-directory.
+A file is a **test file** if its name ends with `*.test.ts`, `*.test.tsx`,
+`*.spec.ts`, `*.spec.tsx`, `*-test-cases.ts`, `*-test-helpers.ts`, or
+`*-test-helpers.tsx`, or if it lives under a `test/`, `tests/`, `test-cases/`,
+or `test-utils/` directory. `*.test.*` is a vitest suite, `*.spec.*` a
+Playwright one (`e2e/` only) — the runner split matters because vitest's lint
+rules misfire on a Playwright spec.
+
+**That is the whole list — do not invent another category.** A fixture, mock, or
+case table belongs in one of the names above; a suffix only one config
+recognizes reads as a test there and as source everywhere else, which is exactly
+how these definitions came apart before. `*-test-fixtures.ts`,
+`*-mock-helpers.ts`, and the singular `*-test-case.ts` are retired and rejected
+by a meta test — mocks are test helpers, so name them `*-test-helpers.ts`.
+
+The definition lives in `src/test/helpers/test-file-classification.ts`.
+`.oxlintrc.json`, `config/.jscpd*.json`, `vitest.config.ts`, and this section
+are held in step with it by `src/test/meta/test-file-classification.test.ts` —
+change the module first, then let that test name the configs that fell out of
+step.
 
 Implications:
 
-- **Duplication**: higher threshold (3%) vs source code (0.3%).
-- **Line limits**: only `*.test.*` and `*-test-case.ts` get 650 lines max; test
-  helpers use the standard 325.
-- **Coverage**: test helpers are excluded from coverage requirements.
+- **Duplication**: `src/`, `webui/`, `scripts/` and `evals/` split source from
+  test — test files are scanned by `config/.jscpd-tests.json` at a looser
+  threshold than their tree's own config. `e2e/` does **not** split: 67 of its
+  85 files are tests and only two of the rest are TypeScript, so
+  `config/.jscpd-e2e.json` holds the whole tree to one threshold.
+- **Line limits**: only whole test suites (`*.test.*`, `*.spec.*`,
+  `*-test-cases.ts`) get 650 lines max and 630 lines per function; test helpers
+  and fixtures use the standard 325 / 115.
+- **Coverage**: excluded from coverage requirements.
+- **Suppression budgets**: counted against the `…Tests` tree in
+  `src/test/lint-suppression-limits.test.ts`, not the source tree. Every code
+  tree has both halves, so no test file is left unbudgeted.
+- **Layering**: exempt from the `src/` layering contract, which governs the
+  shipped dependency graph that no test file is part of.
 
 ## Type Checking
 
@@ -392,7 +418,8 @@ oxlint honors both, but the rule requiring a `-- reason` on every directive runs
 through the ESLint-compatible plugin bridge, which only recognizes the `eslint-`
 spelling — an `oxlint-disable` escapes it silently. See `dev/Linting.md`.
 
-- `max-lines` per file: 325 for source, 650 for `*.test.*` and `*-test-case.ts`.
+- `max-lines` per file: 325 for source, 650 for whole test suites (see Test File
+  Classification).
 - `max-depth`: 4. `complexity`: 20.
 
 **DRY**: no duplicate function bodies (caught by oxlint), extract repeated

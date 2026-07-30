@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
+import { createSimpleRoutingMock } from "#src/test/mocks/routing-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";

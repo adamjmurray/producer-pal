@@ -40,8 +40,8 @@ Test files should follow this pattern:
    - Example: `ChatHeader.test.tsx` tests `ChatHeader.tsx`
 
 2. **Split tests**: `{filename}-{feature-group}.test.ts` (or `.tsx`) - When test
-   files exceed size limits (600 lines for source, 800 for tests), split by
-   feature area
+   files exceed size limits (325 lines for source, 650 for whole test suites),
+   split by feature area
    - Example: `update-clip-audio-arrangement.test.ts`
    - Example: `read-track-drums-advanced.test.ts`
    - Example: `duplicate-arrangement-length.test.ts`
@@ -52,10 +52,17 @@ Test files should follow this pattern:
 4. **Helper tests**: `{filename}-helpers.test.ts` - Tests for helper functions
    - Example: `duplicate-helpers.test.ts`
 
-5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities and shared
-   test setup (NOT a test file itself)
+5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities, fixtures,
+   and shared test setup. A test file (see AGENTS.md → Test File
+   Classification), but not a suite, so it keeps the 325-line source budget.
    - Example: `duplicate-test-helpers.ts`
    - Example: `update-clip-test-helpers.ts`
+
+Those names, plus `*.spec.ts` / `*.spec.tsx` (Playwright suites in `e2e/`),
+`*-test-cases.ts`, and the `test/`, `tests/`, `test-cases/`, and `test-utils/`
+directories, are the project's complete definition of a test file. It lives in
+`src/test/helpers/test-file-classification.ts`; do not add a category without
+updating it.
 
 ### Naming Utilities and Helpers
 
