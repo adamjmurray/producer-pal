@@ -79,14 +79,16 @@ function computeDerivedStats(groups: GroupStats[]): DerivedRow[] {
  * @returns Array of formatted values
  */
 function fmtRow(r: DerivedRow): string[] {
-  /**
-   * Format to 1 decimal place.
-   * @param n - Number to format
-   * @returns Formatted string
-   */
-  const d = (n: number): string => n.toFixed(1);
-
   return [r.tree, d(r.linesPerFunc), d(r.linesPerFile), `${d(r.commentPct)}%`];
+}
+
+/**
+ * Format to 1 decimal place.
+ * @param n - Number to format
+ * @returns Formatted string
+ */
+function d(n: number): string {
+  return n.toFixed(1);
 }
 
 /**

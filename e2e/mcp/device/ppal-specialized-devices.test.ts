@@ -403,7 +403,7 @@ describe("specialized devices: Compressor", () => {
 
     await sleep(100);
 
-    const returnTrackId = String(created.id);
+    const returnTrackId = created.id;
 
     await createTestDevice(
       ctx.client!,

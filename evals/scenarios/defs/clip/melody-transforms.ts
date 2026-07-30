@@ -54,7 +54,7 @@ export const melodyTransforms: EvalScenario = {
         // Must have notes param with bar-copy syntax, or noteCount showing
         // more notes than the original 12
         const notes = String(updateCall.args.notes ?? "");
-        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+        const result = parseToolResult(updateCall.result ?? "{}") as {
           noteCount?: number;
         };
         const noteCount = result.noteCount;
@@ -121,7 +121,7 @@ export const melodyTransforms: EvalScenario = {
         }
 
         // Verify notes were actually transformed (not 0)
-        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+        const result = parseToolResult(updateCall.result ?? "{}") as {
           transformed?: number;
         };
         const transformed = result.transformed;

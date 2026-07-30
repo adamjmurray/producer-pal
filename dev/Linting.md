@@ -59,6 +59,37 @@ To change one tree's rules, move the rule into a block matching only that tree.
 Do **not** edit a shared block's `files` — that silently changes every other
 tree in it.
 
+### The category opt-out section
+
+Everything above describes the rules named **explicitly**. On top of them,
+`correctness` and `suspicious` are enabled as whole categories at the top level
+(`pedantic` and `style` are not — see
+[ADR-0017](decisions/0017-oxlint-category-baseline.md) for the reasoning and the
+per-rule triage). The last section of the overrides array turns back off the
+category rules this codebase does not yet satisfy, one commented entry per rule
+with its violation count. Deleting an entry is the unit of work: fix the
+violations, drop the line, and the rule stays on.
+
+Two structural rules keep that section working, and both are easy to get wrong:
+
+1. **It has to go last.** Naming a plugin in an override re-seeds that plugin's
+   category rules over the override's paths, so an opt-out placed earlier is
+   silently undone by any later block mentioning the same plugin. The
+   later-wins-per-rule merge described above governs explicitly-named rules;
+   categories do not follow it.
+2. **Its `files` and `plugins` lists are copies, not new surface.** Naming a
+   plugin over a path that did not already have it turns the plugin **on**
+   there, and with categories enabled that means every rule it owns — not just
+   the one being disabled. When a block above changes its trees, the matching
+   opt-out block has to move with it.
+
+One block breaks rule 2 on purpose: the test-scoped `unicorn` opt-out uses the
+canonical test globs (which `src/test/meta/test-file-classification.test.ts`
+requires) rather than a hand-rolled "unicorn's trees ∩ test paths" list, so it
+widens unicorn onto e2e and docs suites. The widening surfaced only rules
+already deferred; they are turned off in the same block and the rest of the
+plugin is new coverage there.
+
 Two kinds of block follow the groups: keys-only blocks carrying `env` per tree
 (globals are not rules, so they have no group to belong to), then the narrow
 exceptions — a rule turned off or retuned for one path, each with its reason.
@@ -338,8 +369,18 @@ fixes them upstream:
   global member. Repro: a documented
   `function f(): void { window.confirm = () => false; }` reports
   `require-returns` against the arrow.
-- `typescript/no-unnecessary-type-assertion`, in one file — oxlint calls an
-  assertion redundant that `tsc` requires.
+- `jsdoc/require-yields`, in test files — the same attribution bug seen from the
+  other side: a documented factory whose body declares a nested
+  `async function*` has the outer block read as the generator's.
+- `typescript/no-unnecessary-type-assertion`, in two files — oxlint calls an
+  assertion redundant that `tsc` requires under `noUncheckedIndexedAccess`. Note
+  this rule's fixer also fights `no-unsafe-enum-comparison`: the `as number`
+  that one wants is the assertion this one deletes, so a fix applied at the
+  comparison site does not survive `npm run fix`. Widen through a typed module
+  constant instead.
+- `typescript/no-unnecessary-type-conversion`, in `create-express-app.ts` — the
+  `Boolean()` calls it reports are the runtime guard on an unvalidated request
+  body, redundant against the declared types and load-bearing against the wire.
 - `no-unused-vars` counts `a[i++]` as never reading `i`. Too valuable to
   disable, so the one site reads and increments on separate lines instead.
 

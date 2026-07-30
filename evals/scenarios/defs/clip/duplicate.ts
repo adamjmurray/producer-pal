@@ -164,11 +164,11 @@ function assertDoubledInPlace(): EvalAssertion {
         throw new Error("update-clip result missing in turn 2");
       }
 
-      const before = parseToolResult(String(createCall.result)) as {
+      const before = parseToolResult(createCall.result) as {
         id?: unknown;
         noteCount?: number;
       };
-      const after = parseToolResult(String(updateCall.result)) as {
+      const after = parseToolResult(updateCall.result) as {
         id?: unknown;
         noteCount?: number;
       };

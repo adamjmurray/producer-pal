@@ -30,7 +30,7 @@ export function hasPerfectMatching<L, R>(
   // matchedLeftOf[j] = index of the left item currently matched to right[j], or
   // -1 if right[j] is unmatched. Indices are in range by construction, so the
   // reads use `as` casts (repo bans non-null `!`) rather than guards.
-  const matchedLeftOf = new Array<number>(right.length).fill(-1);
+  const matchedLeftOf = Array.from({ length: right.length }, () => -1);
 
   /**
    * Try to match left item `i` by finding an augmenting path: claim any pairable
@@ -59,7 +59,13 @@ export function hasPerfectMatching<L, R>(
   };
 
   for (let i = 0; i < left.length; i++) {
-    if (!augment(i, new Array<boolean>(right.length).fill(false))) return false;
+    if (
+      !augment(
+        i,
+        Array.from({ length: right.length }, () => false),
+      )
+    )
+      return false;
   }
 
   return true;

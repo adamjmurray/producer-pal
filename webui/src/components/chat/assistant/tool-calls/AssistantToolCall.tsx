@@ -98,7 +98,7 @@ export function AssistantToolCall({
  * @returns {JSX.Element} - React component
  */
 function FullResultDetails({ result }: { result: string }) {
-  const s = `${result}`;
+  const s = result;
   let formatted: string | null = null;
 
   if (s.startsWith("{") || s.startsWith("[") || s.startsWith('"')) {

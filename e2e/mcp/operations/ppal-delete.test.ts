@@ -39,7 +39,7 @@ describe("ppal-delete", () => {
     });
     const deletedTrack = parseToolResult<DeleteResult>(deleteTrack);
 
-    expect(String(deletedTrack.id)).toBe(String(track.id));
+    expect(deletedTrack.id).toBe(track.id);
     expect(deletedTrack.type).toBe("track");
     expect(deletedTrack.deleted).toBe(true);
 
@@ -110,7 +110,7 @@ describe("ppal-delete", () => {
     const { data: deletedHost, warnings: deleteHostWarnings } =
       parseToolResultWithWarnings<DeleteResult>(deleteHost);
 
-    expect(String(deletedHost.id)).toBe(String(hostTrack.id));
+    expect(deletedHost.id).toBe(hostTrack.id);
     expect(deletedHost.type).toBe("track");
     expect(deletedHost.deleted).toBe(false);
     expect(deleteHostWarnings.join(" ").toLowerCase()).toContain(
@@ -124,7 +124,7 @@ describe("ppal-delete", () => {
     });
     const verifiedHost = parseToolResult<{ id: string }>(verifyHost);
 
-    expect(String(verifiedHost.id)).toBe(String(hostTrack.id));
+    expect(verifiedHost.id).toBe(hostTrack.id);
 
     // Test 5: Delete single scene by ID
     const createScene = await ctx.client!.callTool({
@@ -141,7 +141,7 @@ describe("ppal-delete", () => {
     });
     const deletedScene = parseToolResult<DeleteResult>(deleteScene);
 
-    expect(String(deletedScene.id)).toBe(String(scene.id));
+    expect(deletedScene.id).toBe(scene.id);
     expect(deletedScene.type).toBe("scene");
     expect(deletedScene.deleted).toBe(true);
 
@@ -192,7 +192,7 @@ describe("ppal-delete", () => {
     });
     const deletedClip = parseToolResult<DeleteResult>(deleteClip);
 
-    expect(String(deletedClip.id)).toBe(String(clip.id));
+    expect(deletedClip.id).toBe(clip.id);
     expect(deletedClip.type).toBe("clip");
     expect(deletedClip.deleted).toBe(true);
 

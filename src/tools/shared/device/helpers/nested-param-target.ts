@@ -247,8 +247,17 @@ function createSimplerInChain(
  * @returns True when the device is a DrumSampler
  */
 function isDrumSampler(className: string): boolean {
-  const normalize = (value: string): string =>
-    value.replaceAll(/\s+/g, "").toLowerCase();
+  return (
+    normalizeClassName(className) ===
+    normalizeClassName(DEVICE_CLASS.DRUM_SAMPLER)
+  );
+}
 
-  return normalize(className) === normalize(DEVICE_CLASS.DRUM_SAMPLER);
+/**
+ * Strip whitespace and case from a class_display_name for comparison.
+ * @param value - The display name to normalize
+ * @returns The name with all whitespace removed and lowercased
+ */
+function normalizeClassName(value: string): string {
+  return value.replaceAll(/\s+/g, "").toLowerCase();
 }

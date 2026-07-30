@@ -222,15 +222,6 @@ function aggregateByGroup(
   clocData: Record<string, ClocFileEntry>,
   funcCounts: Map<string, number>,
 ): GroupStats[] {
-  /**
-   * Build a map key from group and category.
-   * @param group - Group name
-   * @param category - Source or test
-   * @returns Combined key string
-   */
-  const key = (group: Group, category: Category): string =>
-    `${group}:${category}`;
-
   const map = new Map<string, GroupStats>();
 
   for (const group of GROUPS) {
@@ -342,3 +333,13 @@ function countFunctionsInFile(filePath: string): number {
 }
 
 main();
+
+/**
+ * Build a map key from group and category.
+ * @param group - Group name
+ * @param category - Source or test
+ * @returns Combined key string
+ */
+function key(group: Group, category: Category): string {
+  return `${group}:${category}`;
+}

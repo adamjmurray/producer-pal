@@ -88,8 +88,6 @@ export function ToolToggles({
     );
   }
 
-  const isAlwaysEnabled = (toolId: string) => toolId === "ppal-connect";
-
   const isToolDisabled = (toolId: string) => {
     if (isAlwaysEnabled(toolId)) return true;
     if (toolId === LIVE_API_TOOL_ID && liveApiForcedOn) return true;
@@ -337,4 +335,14 @@ function EditContextButton({
       Edit Context
     </button>
   );
+}
+
+/**
+ * ppal-connect is mandatory — every session needs it, so its checkbox is
+ * always checked and always disabled.
+ * @param toolId - MCP tool identifier
+ * @returns True when the tool cannot be turned off
+ */
+function isAlwaysEnabled(toolId: string): boolean {
+  return toolId === "ppal-connect";
 }

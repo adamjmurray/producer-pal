@@ -36,7 +36,7 @@ export function setParamValues(
 ): void {
   for (const entry of params) {
     const key = entry.name.trim();
-    const rawValue = String(entry.value).trim();
+    const rawValue = entry.value.trim();
 
     if (key === "") {
       console.warn(`${toolName}: skipping param with empty name`);

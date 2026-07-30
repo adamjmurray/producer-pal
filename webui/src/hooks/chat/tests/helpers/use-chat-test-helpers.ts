@@ -95,7 +95,7 @@ export class MockChatClient implements ChatClient<TestMessage> {
     shouldInterrupt?.();
 
     const lastUser = [...this.chatHistory]
-      .reverse()
+      .toReversed()
       .find((m) => m.role === "user");
 
     this.chatHistory.push({

@@ -59,7 +59,8 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": [],
   "categories": {
-    "correctness": "off"
+    "correctness": "error",
+    "suspicious": "error"
   },
   "options": {
     "typeAware": true
@@ -429,6 +430,15 @@
             "checkConstructors": true,
             "checkGetters": false,
             "checkSetters": false
+          }
+        ],
+        // `@vitest-environment` is a vitest pragma, not a JSDoc tag, and it
+        // only works in a JSDoc block at the top of the file. Without this the
+        // correctness category reports all 148 of them as invalid tags.
+        "jsdoc/check-tag-names": [
+          "error",
+          {
+            "definedTags": ["vitest-environment"]
           }
         ],
         "jsdoc/require-param-description": "error",
@@ -979,6 +989,11 @@
     // false; }` reports jsdoc/require-returns on the arrow. Only test helpers
     // stub globals that way, so scope it to test files and keep production code
     // covered. jsdoc-requirements.test.ts still demands the block itself here.
+    //
+    // require-yields is the same bug seen from the other side: a documented
+    // factory whose body declares a nested `async function*` gets the outer
+    // block read as the generator's, and @yields demanded for a function that
+    // has no JSDoc of its own.
     {
       "files": [
         "**/*.test.ts",
@@ -995,7 +1010,8 @@
       ],
       "rules": {
         "jsdoc/require-param": "off",
-        "jsdoc/require-returns": "off"
+        "jsdoc/require-returns": "off",
+        "jsdoc/require-yields": "off"
       },
       "plugins": ["jsdoc"]
     },
@@ -1003,9 +1019,25 @@
     // it fails typecheck with "Property 'id' does not exist on type 'object'".
     // Narrowing createdObjects past object[] would touch five files of
     // production code, so the disagreement is recorded here instead.
+    // `POST /config` reads its body through an unchecked `as
+    // Partial<ProducerPalConfig>`, so the declared boolean types are a claim
+    // about the request, not a fact about it. The `Boolean(...)` calls the rule
+    // reports as redundant are the runtime guard that makes the claim true —
+    // without them a body of `{"smallModelMode": "false"}` stores the truthy
+    // string. Redundant against the types, load-bearing against the wire.
+    {
+      "files": ["src/mcp-server/create-express-app.ts"],
+      "plugins": ["typescript"],
+      "rules": {
+        "typescript/no-unnecessary-type-conversion": "off"
+      }
+    },
+    // Same disagreement in vitest.config.ts: `split(".")[0] as string` is
+    // redundant to oxlint and required by tsc under noUncheckedIndexedAccess.
     {
       "files": [
-        "src/tools/actions/duplicate/helpers/duplicate-focus-helpers.ts"
+        "src/tools/actions/duplicate/helpers/duplicate-focus-helpers.ts",
+        "vitest.config.ts"
       ],
       "plugins": ["typescript"],
       "rules": {
@@ -1019,6 +1051,221 @@
       "files": ["evals/chat/agent-cli/tests/agent-cli-fixture.mjs"],
       "rules": {
         "no-restricted-properties": "off"
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // CATEGORY OPT-OUTS
+    //
+    // The `correctness` and `suspicious` categories at the top of this file
+    // enable every rule oxlint files under them, including rules this codebase
+    // has never been cleaned up for. The blocks below turn those rules back
+    // off, one entry per rule, each with its reason and the violation count
+    // measured when it was written. Deleting an entry is the unit of work: fix
+    // the violations, drop the line, and the rule stays on for good.
+    //
+    // Two structural rules keep this section honest:
+    //
+    //  1. It goes LAST. Naming a plugin in an override re-seeds that plugin's
+    //     category rules over the override's paths, so an earlier "off" is
+    //     silently undone by any later block that mentions the same plugin.
+    //     Ordering by "most specific wins" does not apply to categories.
+    //  2. Each block's `plugins` and `files` mirror a block above that already
+    //     enables that plugin over those paths. Naming a plugin over a path
+    //     that did not have it turns the plugin ON there, and with categories
+    //     enabled that means every one of its rules, not just the ones listed.
+    //     So these lists are copies, not new surface — keep them in step.
+    //
+    // Rules with no plugin prefix are eslint core, always active, and need
+    // neither a `plugins` list nor a narrowed `files` list.
+    {
+      "files": ["**/*"],
+      "rules": {
+        // 126. `__dirname` accounts for 20 of them and is a builtin, not a
+        // dangling identifier; the rest are this codebase's deliberate
+        // `_private` naming. Style, not a bug catcher, and it disagrees with a
+        // convention already in use.
+        "no-underscore-dangle": "off"
+      }
+    },
+    // A polyfill is the one place these two rules are exactly backwards. The
+    // Max V8 runtime lacks the ES2023 array methods, which is why this module
+    // installs them onto the prototype (no-extend-native, 8 hits, all here) by
+    // hand-writing the very method the rule wants called (no-array-reverse —
+    // its fixer rewrites `[...arr].reverse()` in polyfillToReversed to
+    // `[...arr].toReversed()`, i.e. the polyfill calling itself). Note that
+    // the unit tests do NOT catch that: they run under Node, where the native
+    // method exists.
+    {
+      "files": ["src/polyfills/**"],
+      "plugins": ["unicorn"],
+      "rules": {
+        "no-extend-native": "off",
+        "unicorn/no-array-reverse": "off"
+      }
+    },
+    {
+      "files": [
+        "webui/**/*.{ts,tsx}",
+        "scripts/**/*.ts",
+        "evals/**/*.ts",
+        "src/**/*.ts",
+        "config/**/*.ts",
+        "vitest.config.ts",
+        "e2e/webui/**/*.ts",
+        "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
+        "e2e/mcp/**/*.ts"
+      ],
+      "plugins": ["typescript"],
+      "rules": {
+        // 2236, split evenly between source and tests. Flags every `as T`.
+        // Making the codebase assertion-free is its own project.
+        "typescript/no-unsafe-type-assertion": "off",
+        // 47. A real bug catcher, but each hit needs the value inspected to
+        // tell an intended `String(x)` from a latent `[object Object]`.
+        "typescript/no-base-to-string": "off",
+        // 43. Mostly functions that return a value in one branch and fall off
+        // the end in another. Each is a judgement call about the contract.
+        "typescript/consistent-return": "off",
+        // 12. Deleting a single-use type parameter changes an exported
+        // signature, so this is an API edit wearing a lint rule's clothes.
+        "typescript/no-unnecessary-type-parameters": "off"
+      }
+    },
+    {
+      "files": [
+        "webui/**/*.{ts,tsx}",
+        "scripts/**/*.ts",
+        "evals/**/*.ts",
+        "src/**/*.ts",
+        "config/**/*.ts",
+        "vitest.config.ts",
+        "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
+        "examples/**/*.{js,mjs}"
+      ],
+      "plugins": ["unicorn"],
+      "rules": {
+        // 101. The fix rewrites `.sort()` to `.toSorted()`, which changes
+        // whether the receiver is mutated. Not mechanical — every call site
+        // has to be read for whether something relies on the mutation.
+        "unicorn/no-array-sort": "off",
+        // 11, all of them IndexedDB and Web Audio handles where `onsuccess` /
+        // `onerror` / `onended` is the idiomatic single-handler form. The
+        // rule's premise (you might want more than one listener) does not
+        // apply to a one-shot request. Off permanently, not deferred.
+        "unicorn/prefer-add-event-listener": "off"
+      }
+    },
+    {
+      "files": [
+        "webui/**/*.{ts,tsx}",
+        "scripts/**/*.ts",
+        "evals/**/*.ts",
+        "src/**/*.ts",
+        "config/**/*.ts",
+        "vitest.config.ts",
+        "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
+        "examples/**/*.{js,mjs}",
+        "e2e/docs/**/*.{js,mjs}",
+        "e2e/webui/**/*.ts",
+        "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
+        "e2e/mcp/**/*.ts"
+      ],
+      "plugins": ["import"],
+      "rules": {
+        // 79. Side-effect imports are the intended shape here: webui and docs
+        // CSS, and test-setup modules that exist only to run.
+        "import/no-unassigned-import": "off"
+      }
+    },
+    {
+      "files": ["webui/**/*.{ts,tsx}"],
+      "plugins": ["react"],
+      "rules": {
+        // 1685. Obsolete under the automatic JSX runtime — no component needs
+        // React (or Preact) in scope. This one is never coming back on.
+        "react/react-in-jsx-scope": "off"
+      }
+    },
+    // Rules whose every violation is in a test file. Off here and on
+    // everywhere else, so source code keeps the coverage. The vitest plugin's
+    // paths are narrower than the typescript plugin's, so they get one block
+    // each rather than a shared list that would widen either.
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/test-setup.ts"],
+      "plugins": ["vitest"],
+      "rules": {
+        // 1317. Wants a type parameter on every `vi.fn()`; these mocks are
+        // typed by the assertion that reads them instead.
+        "vitest/require-mock-type-parameters": "off",
+        // 104. Argues every `expect(...).toThrow()` should assert the message.
+        // Worth doing, but it is 104 separate decisions about what to assert.
+        "vitest/require-to-throw-message": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts",
+        "**/*-test-helpers.ts",
+        "**/*-test-helpers.tsx",
+        "**/test/**",
+        "**/tests/**",
+        "**/test-cases/**",
+        "**/test-utils/**"
+      ],
+      "plugins": ["typescript"],
+      "rules": {
+        // 273, every one of them here. Passing a bare method reference is how
+        // these suites assert on it; source code is still held to the rule.
+        "typescript/unbound-method": "off",
+        // 4. Suites that build a subject out of static-only helper classes.
+        "typescript/no-extraneous-class": "off"
+      }
+    },
+    // The one block here that deliberately widens a plugin. Naming unicorn
+    // over the canonical test globs turns it on for e2e and docs test files,
+    // which the unicorn block above does not cover — the alternative was a
+    // hand-rolled "unicorn's trees, intersected with test paths" glob list,
+    // and test-file-classification.test.ts rejects rival spellings of a whole
+    // category for good reason. The widening surfaced nothing but no-array-sort
+    // (already deferred), so it is turned off here too and the rest of the
+    // plugin becomes new coverage for those suites. Same for
+    // prefer-add-event-listener over e2e/ui's WebSocket handles.
+    //
+    // consistent-function-scoping: 133 of its 141 hits are in test files, where
+    // a helper defined inside a `describe` sits next to the cases it builds —
+    // better placed than hoisted. The other 8 were hoisted.
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/*-test-cases.ts",
+        "**/*-test-helpers.ts",
+        "**/*-test-helpers.tsx",
+        "**/test/**",
+        "**/tests/**",
+        "**/test-cases/**",
+        "**/test-utils/**"
+      ],
+      "plugins": ["unicorn"],
+      "rules": {
+        "unicorn/consistent-function-scoping": "off",
+        "unicorn/no-array-sort": "off",
+        "unicorn/prefer-add-event-listener": "off"
       }
     }
   ]

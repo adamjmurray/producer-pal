@@ -13,16 +13,6 @@
  */
 export function parseArgs(argv = process.argv.slice(2)) {
   /**
-   * Print a message and exit non-zero.
-   * @param {string} msg what went wrong
-   * @returns {never} exits
-   */
-  const fail = (msg) => {
-    process.stderr.write(`${msg}\n`);
-    process.exit(1);
-  };
-
-  /**
    * Read a string flag. A flag with no value — last token, or immediately
    * followed by another --flag — is a malformed invocation, not a request for
    * the default, so say so instead of handing back undefined.
@@ -89,3 +79,13 @@ export function parseArgs(argv = process.argv.slice(2)) {
 
   return { opt, num, int, flag, fail };
 }
+
+/**
+ * Print a message and exit non-zero.
+ * @param {string} msg what went wrong
+ * @returns {never} exits
+ */
+const fail = (msg) => {
+  process.stderr.write(`${msg}\n`);
+  process.exit(1);
+};
