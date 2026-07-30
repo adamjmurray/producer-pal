@@ -17,7 +17,12 @@
 //
 // The keys-only blocks after them carry `env` per tree — globals are not rules
 // and so have no group to belong to. The blocks after THOSE are the narrow
-// exceptions: a rule turned off for one path, with its reason.
+// exceptions: a rule turned off (or retuned) for one path, with its reason.
+//
+// Every file oxlint lints must resolve to a non-empty rule map. Nothing is
+// hoisted to the top level, so a tree absent from every `files` list is linted
+// with zero rules and reports clean — silently. When adding a tree, add it to
+// the blocks whose rules it agrees with; `dev/Linting.md` has the check.
 //
 // The edits the generator cannot make itself are:
 //
@@ -90,10 +95,14 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/docs/**/*.{js,mjs}",
         "e2e/webui/**/*.ts",
         "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
         "e2e/mcp/**/*.ts"
       ],
       "jsPlugins": [
@@ -252,6 +261,8 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/mcp/**/*.ts"
       ],
@@ -305,6 +316,8 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
         "examples/**/*.{js,mjs}"
       ],
       "jsPlugins": [
@@ -364,6 +377,8 @@
         "vitest.config.ts",
         "e2e/webui/**/*.ts",
         "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
         "e2e/mcp/**/*.ts"
       ],
       "plugins": ["typescript"],
@@ -514,9 +529,13 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
         "e2e/docs/**/*.{js,mjs}",
         "e2e/webui/**/*.ts",
         "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
         "e2e/mcp/**/*.ts"
       ],
       "jsPlugins": ["@stylistic/eslint-plugin"],
@@ -566,10 +585,14 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/docs/**/*.{js,mjs}",
         "e2e/webui/**/*.ts",
         "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
         "e2e/mcp/**/*.ts"
       ],
       "rules": {
@@ -579,10 +602,14 @@
     {
       "files": [
         "config/**/*.{js,mjs}",
+        "prettier.config.mjs",
+        "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/docs/**/*.{js,mjs}",
         "e2e/webui/**/*.ts",
         "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
         "e2e/mcp/**/*.ts"
       ],
       "rules": {
@@ -608,6 +635,8 @@
         "vitest.config.ts",
         "e2e/webui/**/*.ts",
         "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
         "e2e/mcp/**/*.ts"
       ],
       "plugins": ["typescript"],
@@ -653,7 +682,14 @@
       }
     },
     {
-      "files": ["config/**/*.{js,mjs}"],
+      "files": ["config/**/*.{js,mjs}", "prettier.config.mjs"],
+      "env": {
+        "es2024": true,
+        "node": true
+      }
+    },
+    {
+      "files": ["evals/**/*.mjs"],
       "env": {
         "es2024": true,
         "node": true
@@ -674,7 +710,12 @@
       }
     },
     {
-      "files": ["e2e/webui/**/*.ts", "e2e/docs/**/*.ts"],
+      "files": [
+        "e2e/webui/**/*.ts",
+        "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}"
+      ],
       "env": {
         "browser": true,
         "node": true
@@ -868,6 +909,8 @@
         "e2e/mcp/**/*.ts",
         "e2e/webui/**/*.ts",
         "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
         "webui/**/*.ts",
         "webui/**/*.tsx"
       ],
@@ -919,6 +962,32 @@
       "plugins": ["typescript"],
       "rules": {
         "typescript/no-unnecessary-type-assertion": "off"
+      }
+    },
+    // A Playwright `test.describe` callback is a suite container, not a
+    // function anyone reads top-to-bottom — the same reason `**/*.test.*` gets
+    // 630 rather than 115. Playwright suites are `.spec.ts`, so they miss that
+    // block; per-FILE max-lines still applies at 325.
+    {
+      "files": ["e2e/**/*.spec.ts"],
+      "rules": {
+        "max-lines-per-function": [
+          "error",
+          {
+            "max": 630,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ]
+      }
+    },
+    // The fixture records its own cwd so the transport test can assert what
+    // directory it was spawned in. That is the subject under test, not the
+    // path-resolution mistake the rule exists to catch.
+    {
+      "files": ["evals/chat/agent-cli/tests/agent-cli-fixture.mjs"],
+      "rules": {
+        "no-restricted-properties": "off"
       }
     }
   ]

@@ -189,6 +189,7 @@ export async function seedConversations(
           store.createIndex("updatedAt", "updatedAt");
         }
       };
+
       req.onsuccess = () => {
         const db = req.result;
         const tx = db.transaction("conversations", "readwrite");
@@ -201,8 +202,10 @@ export async function seedConversations(
           db.close();
           resolve();
         };
+
         tx.onerror = () => reject(tx.error);
       };
+
       req.onerror = () => reject(req.error);
     });
   }, conversations);
@@ -229,8 +232,10 @@ export async function readConversationsFromDb(
           db.close();
           resolve(getAll.result as SeedConversation[]);
         };
+
         getAll.onerror = () => reject(getAll.error);
       };
+
       req.onerror = () => reject(req.error);
     });
   });

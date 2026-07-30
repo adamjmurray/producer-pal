@@ -8,6 +8,7 @@ const url = computed(() => `/markdown/${page.value.relativePath}`);
 
 const filename = computed(() => {
   const parts = page.value.relativePath.split("/");
+
   return parts[parts.length - 1];
 });
 </script>
