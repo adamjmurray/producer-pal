@@ -117,7 +117,7 @@ export interface UseContextEditorStateReturn {
   /** Editor `onBlur` handler — flushes any pending save immediately. */
   handleBlur: () => void;
   /**
-   * Confirms with the user, then clears memory after any in-flight save.
+   * Confirms with the user, then clears the doc after any in-flight save.
    * Resolves whether the clear actually happened (`false` when the user
    * cancels the confirm or the POST fails), so callers can gate follow-up UI
    * changes — e.g. OverridePanes only collapses the built-in reveal on an
@@ -156,12 +156,12 @@ export interface UseContextEditorStateReturn {
  * error-recovery reset, external-update detection, and the Clear/Reload
  * remount keys. Split out from `ContextScreen.tsx` to keep that component
  * focused on layout while exercising this logic in isolation.
- * @param memory - A document memory hook return (project or global context)
+ * @param doc - A document hook return (project or global context)
  * @param clearConfirmMessage - Confirm prompt shown before clearing the doc
  * @returns Editor state + handlers wired for the screen
  */
 export function useContextEditorState(
-  memory: UseDocReturn,
+  doc: UseDocReturn,
   clearConfirmMessage: string,
 ): UseContextEditorStateReturn {
   const draftRef = useRef<string | null>(null);
@@ -179,7 +179,7 @@ export function useContextEditorState(
   // overlap (a debounce flush, then a blur flush before the first echo lands),
   // and keeping only the newest would silently stop awaiting the earlier one.
   const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
-  const memoryRef = useRef(memory);
+  const docRef = useRef(doc);
   // False once the hook has unmounted, so the unmount flush's save promise
   // can't schedule a retry or setState after teardown (a persistent failure
   // would otherwise re-POST every SAVE_RETRY_MS forever — an unbounded zombie
@@ -204,18 +204,18 @@ export function useContextEditorState(
   // draftRef changes: seed-on-ready, keystroke, Clear, Reload.
   const [charCount, setCharCount] = useState(0);
 
-  // Seed the draft markers from the server when memory first becomes ready.
+  // Seed the draft markers from the server when the doc first becomes ready.
   // Only on first ready: subsequent status updates (save echoes, AI writes,
   // toggle flips) must not blow away the user's in-progress draft.
   useEffect(() => {
-    if (memory.status.kind !== "ready") return;
+    if (doc.status.kind !== "ready") return;
     if (draftRef.current != null) return;
-    draftRef.current = memory.status.content;
-    lastSavedRef.current = memory.status.content;
-    setCharCount(memory.status.content.length);
+    draftRef.current = doc.status.content;
+    lastSavedRef.current = doc.status.content;
+    setCharCount(doc.status.content.length);
     // Decide override-vs-built-in structure from the seed content, once.
-    setHasOverride(memory.status.content !== "");
-  }, [memory.status]);
+    setHasOverride(doc.status.content !== "");
+  }, [doc.status]);
 
   // Null the draft markers on transition to error. Without this, a recovery
   // (error → ready) leaves the refs pointed at the pre-error value because
@@ -223,22 +223,22 @@ export function useContextEditorState(
   // subsequent beforeunload would then flush the stale value over the
   // server's recovered content.
   useEffect(() => {
-    if (memory.status.kind !== "error") return;
+    if (doc.status.kind !== "error") return;
     draftRef.current = null;
     lastSavedRef.current = null;
     setExternalUpdate(false);
     setDirty(false);
     setCharCount(0);
-  }, [memory.status]);
+  }, [doc.status]);
 
   // Surface an "external update" banner when an AI/device write changes
   // status.content out from under the uncontrolled editor AND the user has
   // no in-progress diff (draftRef === lastSavedRef). Clean-draft is the
   // safe case — reloading discards nothing the user typed.
   useEffect(() => {
-    if (memory.status.kind !== "ready") return;
+    if (doc.status.kind !== "ready") return;
     if (lastSavedRef.current == null) return;
-    const serverContent = memory.status.content;
+    const serverContent = doc.status.content;
 
     // Compare against the server's canonical (trimmed) form of our baseline:
     // the Node-side stores trim on save, so our OWN save echo comes back
@@ -255,7 +255,7 @@ export function useContextEditorState(
 
     if (draftRef.current !== lastSavedRef.current) return;
     setExternalUpdate(true);
-  }, [memory.status]);
+  }, [doc.status]);
 
   // Ref-indirected so flushSave can schedule a retry via setTimeout(flushSave)
   // without tripping the no-use-before-defined rule on its own const binding.
@@ -268,7 +268,7 @@ export function useContextEditorState(
     clearTimer(retryTimerRef);
 
     const value = draftRef.current;
-    const current = memoryRef.current;
+    const current = docRef.current;
 
     if (value == null) return;
     if (current.status.kind !== "ready") return;
@@ -337,7 +337,7 @@ export function useContextEditorState(
 
   // Keep refs current so callbacks always see the latest hook value.
   useEffect(() => {
-    memoryRef.current = memory;
+    docRef.current = doc;
     flushSaveRef.current = flushSave;
   });
 
@@ -369,7 +369,7 @@ export function useContextEditorState(
   }, [flushSave]);
 
   const handleClear = useCallback(async (): Promise<boolean> => {
-    if (memory.status.kind !== "ready") return false;
+    if (doc.status.kind !== "ready") return false;
 
     if (!window.confirm(clearConfirmMessage)) {
       return false;
@@ -397,7 +397,7 @@ export function useContextEditorState(
     // update to "" until the POST round-trips. Remounting earlier would
     // re-seed with the pre-clear content and the next edit would save it back.
     const ok = await dispatchOrderedWrite(inFlightSavesRef.current, () =>
-      memory.clear(),
+      doc.clear(),
     );
 
     if (ok) {
@@ -407,29 +407,29 @@ export function useContextEditorState(
     }
 
     return ok;
-  }, [memory, clearConfirmMessage]);
+  }, [doc, clearConfirmMessage]);
 
   const handleReload = useCallback((): void => {
-    if (memory.status.kind !== "ready") return;
+    if (doc.status.kind !== "ready") return;
     // Adopt the server's content as the new baseline and remount the editor.
     // Only offered when no in-progress diff exists, so this discards nothing
     // the user typed.
-    draftRef.current = memory.status.content;
-    lastSavedRef.current = memory.status.content;
+    draftRef.current = doc.status.content;
+    lastSavedRef.current = doc.status.content;
     setExternalUpdate(false);
     setDirty(false);
-    setCharCount(memory.status.content.length);
+    setCharCount(doc.status.content.length);
     // Re-decide structure from the adopted server content (an external clear
     // reverts to the built-in view; adopted content keeps the editable pane).
-    setHasOverride(memory.status.content !== "");
+    setHasOverride(doc.status.content !== "");
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
     setEditorKey((k) => k + 1);
-  }, [memory.status]);
+  }, [doc.status]);
 
   const handleImport = useCallback(
     async (content: string): Promise<void> => {
-      if (memory.status.kind !== "ready") return;
+      if (doc.status.kind !== "ready") return;
 
       // Guard against clobbering in-progress work. An empty editor imports
       // silently (the common "start from a file" case).
@@ -453,7 +453,7 @@ export function useContextEditorState(
       // write after it, so a stale draft POST — or a Clear the user fires while
       // this one is on the wire — can't land after it (see handleClear).
       const ok = await dispatchOrderedWrite(inFlightSavesRef.current, () =>
-        memory.save(content),
+        doc.save(content),
       );
 
       if (ok) {
@@ -462,7 +462,7 @@ export function useContextEditorState(
         setHasOverride(true);
       }
     },
-    [memory],
+    [doc],
   );
 
   const beginOverride = useCallback((): void => {

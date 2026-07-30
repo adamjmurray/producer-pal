@@ -115,7 +115,7 @@ describe("useProjectContext", () => {
     });
   }
 
-  it("loads memory content on mount", async () => {
+  it("loads project-context content on mount", async () => {
     mockResponses({ projectContext: "# hi" });
 
     const { result } = renderHook(() => useProjectContext());
@@ -230,7 +230,7 @@ describe("useProjectContext", () => {
     });
   });
 
-  it("refresh() re-reads memory", async () => {
+  it("refresh() re-reads the project context", async () => {
     mockResponses({ projectContext: "v1" }, { projectContext: "v2" });
 
     const { result } = renderHook(() => useProjectContext());
@@ -355,7 +355,7 @@ describe("useProjectContext", () => {
       });
     }
 
-    it("re-reads memory each interval while focused", async () => {
+    it("re-reads the project context each interval while focused", async () => {
       vi.spyOn(document, "hasFocus").mockReturnValue(true);
       mockResponses({ projectContext: "old" }, { projectContext: "external" });
 
