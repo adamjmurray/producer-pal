@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "preact/hooks";
 import { type UpdateInfo } from "#src/shared/version-check";
+import { getUpdateUrl } from "#webui/utils/mcp-url";
 
 /**
  * Reads the server's update check on mount.
@@ -15,6 +16,11 @@ import { type UpdateInfo } from "#src/shared/version-check";
  * server is running. The server checks once at startup and serves the answer
  * from memory (src/mcp-server/helpers/http/update-check.ts), so this is a
  * local round-trip.
+ *
+ * Routed through `getUpdateUrl()` rather than the bare path every other endpoint
+ * used to be: under `npm run ui:dev` the page is served by Vite on port 5173 with
+ * no proxy, so a same-origin `/update` 404s and the badge never appears. The
+ * builder's 5173 → localhost:3350 special case is what keeps it working in dev.
  * @returns The available update, or null when up to date
  */
 export function useUpdateCheck(): UpdateInfo | null {
@@ -25,7 +31,7 @@ export function useUpdateCheck(): UpdateInfo | null {
 
     void (async () => {
       try {
-        const response = await fetch("/update", {
+        const response = await fetch(getUpdateUrl(), {
           cache: "no-store",
           signal: controller.signal,
         });

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 const VITE_DEV_PORT = "5173";
@@ -75,6 +76,15 @@ export function getSkillOverridesUrl(): string {
  */
 export function getSkillOverrideUrl(slot: string): string {
   return `${getSkillOverridesUrl()}/${encodeURIComponent(slot)}`;
+}
+
+/**
+ * Gets the update-check endpoint URL (the version check the server makes once at
+ * startup and then serves from memory).
+ * @returns {string} The update-check endpoint URL
+ */
+export function getUpdateUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/update");
 }
 
 /**

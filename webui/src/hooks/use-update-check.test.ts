@@ -9,6 +9,7 @@
 import { renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useUpdateCheck } from "#webui/hooks/use-update-check";
+import { getUpdateUrl } from "#webui/utils/mcp-url";
 
 /**
  * Stub the /update transport with a single response.
@@ -39,10 +40,14 @@ describe("useUpdateCheck", () => {
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // Through the shared URL builder, not a bare "/update": on the Vite dev
+    // server (port 5173, no proxy) a same-origin path 404s and the badge silently
+    // never appears. Every sibling endpoint goes through mcp-url for this reason.
     expect(fetchSpy).toHaveBeenCalledWith(
-      "/update",
+      getUpdateUrl(),
       expect.objectContaining({ cache: "no-store" }),
     );
+    expect(getUpdateUrl()).toMatch(/\/update$/);
   });
 
   it("returns null when the server reports no update", async () => {
