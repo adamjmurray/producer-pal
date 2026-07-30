@@ -31,6 +31,13 @@ const UPDATE_CLIP = "ppal-update-clip";
  * Tools that carry clip `notes` in either direction — the three read tools all
  * have a `notes` include, and create/update-clip take notes as input. Any one of
  * them makes the notation head load-bearing.
+ *
+ * Spanning both directions is deliberate and can't be narrowed to the writers: a
+ * read-only caller still needs the grammar to parse what read-clip RETURNS. The
+ * cost is that it also receives the authoring half it can't use (~680-1160 tokens
+ * of `barbeat-standard`), which is a known, measured floor rather than an
+ * oversight — splitting the head is blocked on override migration, not on this
+ * table. See ADR-0016.
  */
 const NOTE_TOOLS = [
   "ppal-read-clip",

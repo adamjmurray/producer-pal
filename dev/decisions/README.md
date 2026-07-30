@@ -81,3 +81,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0013](0013-config-override-gate.md)               | Config-override env vars are opt-in (gated), not opt-out              |
 | [0014](0014-subagent-resume-from-transcript.md)    | A subagent resumes from its recorded transcript, not a live session   |
 | [0015](0015-project-context-param-rename.md)       | Rename the project-context device parameter in 2.1.0, while it's free |
+| [0016](0016-notation-head-gating-granularity.md)   | One fragment per notation is the tool-gating floor                    |
