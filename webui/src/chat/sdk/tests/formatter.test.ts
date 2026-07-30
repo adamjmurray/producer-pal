@@ -115,7 +115,34 @@ describe("formatChatMessages", () => {
     expect(messages?.[1]?.role).toBe("model");
   });
 
-  it("omits subagentMessages for an ordinary tool call", () => {
+  it("carries the worker's index through to the tool part", () => {
+    // The index is the worker's durable identity — the card labels itself with
+    // it and resumeFrom addresses workers by it — so it has to survive
+    // formatting independently of the transcript.
+    const history: ChatMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "tc1", name: "spawn_subagent", args: { task: "x" } }],
+        toolResults: [
+          {
+            id: "tc1",
+            name: "spawn_subagent",
+            args: { task: "x" },
+            result: "done",
+            subagentIndex: 3,
+          },
+        ],
+      },
+    ];
+    const toolPart = formatChatMessages(history)[0]!.parts[0]!;
+
+    expect(toolPart.type === "tool" ? toolPart.subagentIndex : undefined).toBe(
+      3,
+    );
+  });
+
+  it("omits subagentMessages and subagentIndex for an ordinary tool call", () => {
     const history: ChatMessage[] = [
       {
         role: "assistant",
@@ -131,6 +158,9 @@ describe("formatChatMessages", () => {
     expect(toolPart.type === "tool" && "subagentMessages" in toolPart).toBe(
       false,
     );
+    // Absent rather than present-and-undefined: index 0 is not a valid worker
+    // index, so the card can treat "has the key" as "is a worker".
+    expect(toolPart.type === "tool" && "subagentIndex" in toolPart).toBe(false);
   });
 
   it("formats tool calls without results", () => {

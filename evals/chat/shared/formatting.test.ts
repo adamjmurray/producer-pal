@@ -133,6 +133,24 @@ describe("formatToolResult", () => {
 
     expect(result).toBe("   ↳ \n");
   });
+
+  it("gives each warning its own line, untruncated", () => {
+    // Warnings are the actionable half of a warn-and-skip result, so the
+    // 160-char payload cutoff must not reach them.
+    const long = "quantize parameter ignored for audio clip ".repeat(6);
+    const result = formatToolResult("Done", ["first warning", long]);
+    const lines = result.split("\n").filter((line) => line !== "");
+
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain("↳ Done");
+    expect(lines[1]).toContain("first warning");
+    expect(lines[2]).toContain(long);
+    expect(result).toMatch(/\n$/);
+  });
+
+  it("emits no warning lines when there are none", () => {
+    expect(formatToolResult("Done", [])).toBe("   ↳ Done\n");
+  });
 });
 
 describe("thought formatting", () => {
