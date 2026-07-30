@@ -28,18 +28,21 @@ export default defineConfig({
       .replace(/\.md$/, "")
       .replace(/\/index$/, "")
       .replace(/^index$/, "");
+
     pageData.frontmatter.head ??= [];
     // Respect a page's own canonical (e.g. the /guide/examples redirect stub
     // points at /features/examples); otherwise default to a self-canonical.
     const hasCanonical = pageData.frontmatter.head.some(
       ([tag, attrs]) => tag === "link" && attrs?.rel === "canonical",
     );
+
     if (!hasCanonical) {
       pageData.frontmatter.head.push([
         "link",
         { rel: "canonical", href: `https://producer-pal.org/${path}` },
       ]);
     }
+
     pageData.frontmatter.version = VERSION;
   },
 

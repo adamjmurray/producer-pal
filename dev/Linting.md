@@ -61,7 +61,7 @@ tree in it.
 
 Two kinds of block follow the groups: keys-only blocks carrying `env` per tree
 (globals are not rules, so they have no group to belong to), then the narrow
-exceptions — a rule turned off for one path, each with its reason.
+exceptions — a rule turned off or retuned for one path, each with its reason.
 
 All 26 type-aware `@typescript-eslint` rules are native, through
 `oxlint-tsgolint` (a typescript-go checker, stable since 2026-07). Four plugins
@@ -97,11 +97,64 @@ and its rules carry a distinct prefix:
   `RangeError: Line/column pair translates to an out of range offset`. The run
   fails loudly (exit 1), but the stack trace replaces every other JS-plugin
   finding in that file. The SPDX header keeps line 1 occupied everywhere except
-  `examples/**`, which is exempt from headers. Reported positions are one line
-  high throughout, not just at the boundary.
+  `examples/**`, which is exempt from headers, and `docs/.vitepress/**`, which
+  carries none. Reported positions are one line high throughout, not just at the
+  boundary.
 - Bridged rules get no type information (no `parserServices`), so a rule that
   needs types will silently under-report rather than error. This is why
   `sonarjs/assertions-in-tests` had to be dropped entirely.
+
+## Every file must resolve to a non-empty rule map
+
+Nothing is hoisted: the top-level `rules` is empty and `correctness` is off, so
+a tree that appears in no `files` list is linted with **zero rules** and reports
+clean — indistinguishable from passing. That blind spot came over from
+`eslint.config.js` and went unnoticed until it was measured.
+
+The check, the same one used to verify the regrouping:
+
+```bash
+oxlint --debug=files   # every file oxlint lints
+```
+
+Resolve each path against the override `files` globs and assert at least one
+rule is left enabled. Fourteen files failed it: `e2e/ui/**`,
+`docs/.vitepress/**`, `prettier.config.mjs`, and `evals/**/*.mjs`. Every one is
+a tree that was created without being added to `eslint.config.js`, reported
+clean because of it, and came through the migration unchanged.
+
+They were fixed by adding each tree to the blocks whose rules it already agreed
+with — **not** by hoisting the shared set to the top level, which would subject
+them to ~192 rules at once, and not by a new block repeating rules that already
+live elsewhere. Each landed next to its closest existing sibling:
+
+| tree                            | joins                  | why                                                           |
+| ------------------------------- | ---------------------- | ------------------------------------------------------------- |
+| `e2e/ui/**/*.ts`                | `e2e/webui/**/*.ts`    | the stubbed Playwright suite next to the live one             |
+| `docs/.vitepress/**/*.{ts,vue}` | `e2e/webui/**/*.ts`    | plain TS with no tsconfig, so no type-aware rules             |
+| `prettier.config.mjs`           | `config/**/*.{js,mjs}` | a `config/` file living at root only for Prettier's discovery |
+| `evals/**/*.mjs`                | `config/**/*.{js,mjs}` | plain Node ESM, not part of the type-checked `evals/**/*.ts`  |
+
+`prettier.config.mjs` sits beside `config/**/*.{js,mjs}` exactly as
+`vitest.config.ts` already sits beside `config/**/*.ts`.
+
+`.vue` files are linted through their `<script>` block only; `<template>` and
+`<style>` are not covered by any rule here.
+
+Bringing them in cost 17 mechanical fixes (blank lines, one `!!` → `Boolean`)
+and two narrow exceptions, both in `.oxlintrc.json` with their reasons:
+
+- `max-lines-per-function` at 630 for `e2e/**/*.spec.ts`. A Playwright
+  `test.describe` callback is a suite container, the same thing `**/*.test.*`
+  already gets 630 for; Playwright suites are `.spec.ts` so they missed that
+  block. Per-**file** `max-lines` still applies at 325.
+- `no-restricted-properties` off for `agent-cli-fixture.mjs`, which calls
+  `process.cwd()` to record the directory it was spawned in — the subject under
+  test, not the path-resolution mistake the rule catches.
+
+Re-run the check when adding a tree. It is deliberately not a meta test: the
+answer for a new tree is a decision about which rules it agrees with, not a
+default to apply automatically.
 
 ## Where oxlint's option defaults differ from eslint's
 

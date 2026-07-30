@@ -151,8 +151,9 @@ test.describe("Conversation branching (stubbed backend)", () => {
 
     const navFollowsReply = await branchNav.evaluate(
       (nav, bubble) =>
-        !!(
-          bubble.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING
+        Boolean(
+          bubble.compareDocumentPosition(nav) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
         ),
       replyHandle,
     );
