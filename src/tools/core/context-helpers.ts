@@ -211,7 +211,12 @@ export async function handleWriteGlobalContext(
  * warn-and-skip), which can re-send with the content merged or pass `force`.
  *
  * Deliberately line containment, not a similarity score: cheap, explainable, and
- * with no threshold to argue about. Both sides are normalized first (list marker
+ * with no ratio to tune — the verdict is "did any existing line survive", not
+ * "did enough of the document survive". There IS one threshold, the substantive-
+ * line floor described below, but it only decides WHICH lines are allowed to
+ * vouch; it never becomes a percentage anyone has to calibrate.
+ *
+ * Both sides are normalized first (list marker
  * stripped, internal whitespace collapsed, trailing punctuation dropped) so a
  * reformat OF A LINE — bulleted, re-indented, a period added — still counts as
  * surviving; headings are ignored for the same reason. Tolerance stops there:

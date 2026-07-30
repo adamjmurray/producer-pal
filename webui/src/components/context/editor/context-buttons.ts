@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Shared chip-button styling for the context-editor pane controls — Customize,
- * Show default / Hide, Copy, and the Skills Preview/Source toggle — so they all
- * read as buttons rather than bare text links. Only the visual chip lives here;
+ * Shared chip-button styling for the context-editor pane controls — Show default
+ * / Hide, Copy, and the Skills Preview/Source toggle — so they all read as
+ * buttons rather than bare text links. Only the visual chip lives here;
  * layout classes (`justify-self-*`, `shrink-0`) stay at the call site and are
  * prepended, e.g. `` className={`shrink-0 ${CHIP_BUTTON_CLASS}`} ``.
  */

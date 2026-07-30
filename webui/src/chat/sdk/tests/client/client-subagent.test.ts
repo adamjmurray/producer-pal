@@ -219,7 +219,10 @@ async function runTurn(client: ChatSdkClient, message = "hi"): Promise<void> {
  * One persisted spawn turn, the way a restored conversation carries it: an
  * assistant message holding the spawn call and its result, with the worker's
  * index and recorded transcript attached. This is the only durable record of a
- * worker run, so it is what initialize() reseeds both spawn counters from.
+ * worker run, so it is what initialize() reseeds `nextIndex` from — numbering has
+ * to resume above the persisted workers instead of colliding with them. The
+ * per-turn spawn `count` is NOT seeded from it: sendMessage resets that to 0 at
+ * the top of every turn.
  * @param index - The worker index recorded on the result
  * @param transcript - The worker's recorded messages
  * @returns The assistant message to seed chatHistory with

@@ -47,8 +47,8 @@ disconnected:
 - `ppal-context`'s `scope` enum is `project` / `global` / `memory` — there is no
   `skills` scope, so the `skills.read` / `.remember` / `.forget` / `.list` RPC
   routes are registered but **uncallable**.
-- `withCustomSkillsInject` (`custom-skills-inject.ts`) has **no callers**, so
-  the skills index never reaches a `ppal-connect` result.
+- `withCustomSkills` (`custom-skills-inject.ts`) has **no callers**, so the
+  skills index never reaches a `ppal-connect` result.
 - `ContextTabs` never imports `CustomSkillsScreen`; its `skills` tab is
   `SkillsScreen`, the built-in-fragment _override_ editor. The custom-skills
   component tree is unreferenced.
@@ -59,7 +59,7 @@ still writes a file and regenerates the index — it just sits there, because
 nothing reads it.
 
 **That inertness is the precondition, and restoring the feature is what ends
-it.** Wiring `withCustomSkillsInject` back up turns anything already in
+it.** Wiring `withCustomSkills` back up turns anything already in
 `skills-custom/` into live instruction text on every connect. The server binds
 all interfaces with no auth, so a restore should audit or clear that directory
 as part of enabling it rather than assume it starts empty.
@@ -219,17 +219,30 @@ and upgrading with no further tool call or context edit. The `null → path`
 transition on first save fires neither the setter nor a tool call, so no backup
 is written. Any later tool call or context edit closes it.
 
-**Known defect, tracked separately: reopening an older Set clobbers the
-sidecar.** `backupIfStale` overwrites any sidecar whose content differs from the
-param, and it is reached identically by a genuine context edit, by a device load
-(Max restores the saved param through the `projectContext()` setter), and by the
-first tool-call sync. So opening a previous version of a Set in the folder
-replaces the project's current notes with that Set's stale ones — no context
-write, no user intent. The rule this should follow: create a _missing_ sidecar
-always (that's what covers a first save, a Save-As, and a moved folder), but
-overwrite an _existing, differing_ one only on a real project-context write. The
-route can't tell those apart today — a later tool-call sync and a manual edit
-both arrive with `allowRestore: false`.
+**Why merely opening a Set never writes the sidecar.** An earlier version
+overwrote any sidecar whose content differed from the param, reached identically
+by a genuine context edit, by a device load (Max restores the saved param
+through the `projectContext()` setter), and by the first tool-call sync — so
+opening a previous version of a Set in the folder replaced the project's current
+notes with that Set's stale ones, with no context write and no user intent.
+
+The rule now enforced: create a _missing_ sidecar always (covering a first save,
+a Save-As, and a moved folder), but overwrite an _existing, differing_ one only
+on a real project-context write. An `isEdit` flag on the sync request is what
+separates them, and the two V8 entry points each hardcode it, because each knows
+statically which kind it is:
+
+- `syncProjectContextBackup` runs before every tool call and only _observes_ the
+  param, so it always sends `isEdit: false`. It can still create a missing
+  sidecar; it can never replace a differing one.
+- `backupProjectContextOnEdit` is only ever reached by a genuine write, so it
+  always sends `isEdit: true`.
+
+The node route refuses the overwrite directly
+(`existing != null && !isEdit ⇒ action: "none"`, treating an empty sidecar as no
+backup). A device load is additionally filtered before it gets that far: the
+setter classifies a set that changes nothing, or the session's first set, as a
+load echo rather than an edit.
 
 The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
 through the config-markdown store — it writes into the user's Live project

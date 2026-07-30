@@ -201,9 +201,16 @@ describe("note write ordering (create + update transforms)", () => {
     expect(merged.noteCount).toBe(2);
     await sleep(100);
 
-    // Both onsets survived: the earlier note is truncated to a quarter at 1|3
-    // (not deleted), so both are quarter C1s and serialize as the canonical
-    // same-pitch comma-list "C1 1|2,3" (C1 at beats 1|2 AND 1|3).
+    // Both onsets survived. Sorting writes the new note at 1|2 FIRST, so it is
+    // the already-placed note when 1|3 lands inside its span — a tail overlap, so
+    // Live clips the half at 1|2 down to a quarter and leaves the quarter at 1|3
+    // untouched. Both end up quarter C1s and serialize as the canonical same-pitch
+    // comma-list "C1 1|2,3" (C1 at beats 1|2 AND 1|3).
+    //
+    // NOTE: this assertion cannot distinguish WHICH note got truncated — both are
+    // quarters either way. It is the sorted write order plus the tail-overlap rule
+    // in note-sort.ts that makes it the 1|2 note; the assertion only proves neither
+    // was deleted.
     expect(await readClipNotes(created.id)).toContain("C1 1|2,3");
 
     // Overwrite/dedupe: restating a note at the same pitch+start must not double

@@ -64,7 +64,11 @@ export interface SubagentBriefingConfig {
  *
  * Read-only, so it is not origin-gated (matching /skills-preview and POST /mcp:
  * the chat reaches it same-origin, which over a LAN/tunnel is a non-localhost
- * origin). It exposes the same content a ppal-connect call already would.
+ * origin). Safe to leave open because it DISCLOSES nothing a ppal-connect call on
+ * the same profile wouldn't: every block carrying user or Live Set data is one
+ * connect already returns, and what the briefing adds on top is static worker
+ * marching orders. It is not the same text — see composeBriefing for what it drops
+ * and what it adds — just never a wider surface.
  *
  * Responds 502 when Live can't be reached — the caller then falls back to
  * letting the worker connect for itself, so a briefing failure degrades to the

@@ -8,16 +8,18 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 
-// One release version is spelled out in nine places across four files, and
-// nothing at runtime reconciles them: whichever copy a given artifact happens
-// to read is the version that artifact claims to be. A stale copy is invisible
-// until something built from it reports the wrong version — the npm portal
-// announcing a version that was never released, or a device that keeps offering
-// an update it already contains.
+// One release version is spelled out many times over, and nothing at runtime
+// reconciles the copies: whichever one a given artifact happens to read is the
+// version that artifact claims to be. A stale copy is invisible until something
+// built from it reports the wrong version — the npm portal announcing a version
+// that was never released, or a device that keeps offering an update it already
+// contains.
 //
-// scripts/build-and-release/bump-version.ts writes all nine. This test is the
+// scripts/build-and-release/bump-version.ts writes every copy. This test is the
 // check that it did, which matters most for the case it cannot cover: a version
-// edited by hand.
+// edited by hand. The lists below ARE the inventory — deliberately not restated
+// as a count anywhere, since a number in prose goes stale the first time a copy
+// is added and nothing would catch it.
 const PACKAGE_JSON_FILES = [
   "package.json",
   "claude-desktop-extension/package.json",

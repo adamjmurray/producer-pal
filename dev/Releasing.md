@@ -56,19 +56,24 @@ skips every rule and only checks the shape:
 npm run version:bump:to -- 2.1.0-rc1
 ```
 
-The bump script writes the version to nine places across four files:
+The bump script writes the version to:
 
 1. `src/shared/config.ts` — the version the runtime reports (Max for Live device
    UI / MCP server), and the one the build itself uses
-2. `claude-desktop-extension/manifest.json` — the version Claude Desktop shows
-   (generated during the build)
-3. `npm/package.json` — the `producer-pal` npm module's version
-4. `package.json`, `claude-desktop-extension/package.json`, and the `version` +
-   `packages[""].version` fields of all three lockfiles
+2. `npm/package.json` — the `producer-pal` npm module's version
+3. `package.json` and `claude-desktop-extension/package.json`
+4. The `version` **and** `packages[""].version` fields of all three lockfiles
+   (npm keeps it twice per lockfile, and a hand-edit reliably misses one)
 
-Nothing reconciles those at runtime — whichever copy an artifact happens to read
-is what it claims to be — so `src/test/meta/version-agreement.test.ts` asserts
-they're identical, and `npm run tag` re-checks the config.ts one.
+`claude-desktop-extension/manifest.json` also carries a version — the one Claude
+Desktop shows — but the bump script does not write it. It's generated from the
+template during the build, so it picks the version up on its own.
+
+Nothing reconciles any of this at runtime — whichever copy an artifact happens
+to read is what it claims to be — so `src/test/meta/version-agreement.test.ts`
+asserts they're identical, and `npm run tag` re-checks the config.ts one. That
+test's file lists are the authoritative inventory; this section deliberately
+doesn't restate a total, because a count in prose goes stale silently.
 
 ## Step 0: Checklist before releasing
 

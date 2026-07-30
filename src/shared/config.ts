@@ -157,11 +157,12 @@ export const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
  * `validateTools` guards the server's GLOBAL config, where dropping the entry
  * point would leave an external MCP client with no way in. This guards ONE
  * request's subtraction, and a subagent worker withholds `ppal-connect` on
- * purpose — its briefing replaces the connect call, and withholding the tool is
- * also what makes the server drop the connect/context skills fragments so the
- * briefing stays short (see WORKER_WITHHELD_TOOLS in subagent-briefing.ts).
- * Reserving the name here would hand every worker `ppal-connect` back and
- * re-inflate every briefing.
+ * purpose: it is briefed up front instead of connecting, so reserving the name
+ * here would hand every worker back the one tool it is meant not to have.
+ *
+ * A worker withholds `ppal-context` alongside it, and THAT is what trims the
+ * context guidance from its briefing. No fragment is gated on `ppal-connect`
+ * itself — withholding it saves the tool schema, not skills text.
  *
  * @param headerValue - The request's header value, or undefined when absent
  * @param configuredTools - The server's global `config.tools`

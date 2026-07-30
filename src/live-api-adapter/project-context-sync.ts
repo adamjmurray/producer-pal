@@ -83,16 +83,21 @@ export async function syncProjectContextBackup(
 }
 
 /**
- * Back up a manual project-context edit (device UI or webui) that never passed
- * through an MCP tool call. Both manual paths funnel through the V8 param setter,
- * which fire-and-forgets this. It only backs up a non-empty blob or clears the
- * sidecar for an emptied one — it NEVER restores; treating an empty param as an
- * upgrade wipe is the first tool-call sync's job alone. The filesystem write
- * still happens Node-side (this only supplies the Live Set path and the blob),
- * and the shared memo dedupes the tool-call sync's own outlet round-trip so a
- * restore echo through the setter can't loop.
+ * Back up a genuine project-context write — the only thing allowed to overwrite
+ * an existing, differing sidecar. Three write paths reach this through two
+ * callers: a device-UI edit and a webui `POST /config` both arrive at V8's
+ * `projectContext()` param setter, which fire-and-forgets this; a `ppal-context`
+ * write calls it directly, because its own outlet is routed through `prepend set`
+ * in the patch and so never re-enters that setter.
  *
- * @param content - The project-context blob the setter just received
+ * It only backs up a non-empty blob or clears the sidecar for an emptied one — it
+ * NEVER restores; treating an empty param as an upgrade wipe is the first
+ * tool-call sync's job alone. The filesystem write still happens Node-side (this
+ * only supplies the Live Set path and the blob), and the shared memo dedupes the
+ * tool-call sync's own outlet round-trip so a restore echo through the setter
+ * can't loop.
+ *
+ * @param content - The project-context blob that was just written
  */
 export async function backupProjectContextOnEdit(
   content: string,

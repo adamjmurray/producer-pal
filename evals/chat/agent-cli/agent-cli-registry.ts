@@ -6,8 +6,11 @@
 /**
  * Which eval providers are backed by a spawned agent CLI rather than the AI SDK.
  *
- * Every place that has to branch on "is this an AI SDK model or a subprocess?"
- * asks here, so adding a CLI is one entry plus its protocol module.
+ * The place to ask "is this an AI SDK model or a subprocess?" — adding a CLI is
+ * one entry here plus its protocol module. Not the only mention of a CLI provider
+ * name, though: a few exhaustive `switch`es still name providers individually to
+ * get the compiler's `never` check on the last branch, and those need the new case
+ * added by hand.
  */
 
 import { type EvalProvider } from "#evals/scenarios/types.ts";

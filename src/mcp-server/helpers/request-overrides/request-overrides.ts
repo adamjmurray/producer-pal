@@ -25,9 +25,11 @@ export interface RequestOverrides {
    * Override the V8 session's notation for this call, so the clip tools parse
    * and format notes in the caller's notation rather than the device global.
    * Carried in the same contextJSON blob as the rest — V8's buildRequestContext
-   * spreads it straight onto the per-request ToolContext. Set for every MCP call
-   * (see notation-override.ts); REST callers leave it undefined and get the
-   * session value.
+   * spreads it straight onto the per-request ToolContext. Filled on every call
+   * that goes through the enriched wrapper, MCP and REST alike (see
+   * notation-override.ts), so it is rarely absent in practice. Which value it
+   * carries is what differs: an MCP request may name its own notation on the
+   * NOTATION_HEADER, while REST gets the device global.
    */
   notation?: Notation;
 }
