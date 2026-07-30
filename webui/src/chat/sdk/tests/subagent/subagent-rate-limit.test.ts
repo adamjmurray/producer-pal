@@ -34,55 +34,66 @@ function rateLimitError(): Error {
 }
 
 /**
- * Build retry options over a mutable history, with a runAttempt that records
- * the messages it was sent and applies each scripted attempt outcome.
+ * Build retry options over a mutable history, recording whether each attempt
+ * came through runAttempt (a first send) or resumeAttempt (a retry) and applying
+ * each scripted attempt outcome.
+ *
+ * Only the first send echoes a user turn, mirroring the client: sendMessage
+ * pushes the task, resumeStream does not push anything unconditionally.
  * @param attempts - Per-attempt behavior: throw the error, or mutate history
  * @param overrides - Extra option overrides (gate, abortSignal, onStatus)
- * @param initial - History the worker starts with (a resumed worker's session)
- * @returns The options plus the history and the messages runAttempt saw
+ * @returns The options plus the history and the sequence of attempt kinds
  */
 function setup(
   attempts: Array<(history: ChatMessage[]) => void>,
   overrides?: Partial<SubagentRetryOptions>,
-  initial?: ChatMessage[],
 ) {
-  const history: ChatMessage[] = [...(initial ?? [])];
-  const messages: string[] = [];
+  const history: ChatMessage[] = [];
+  const calls: Array<"send" | "resume"> = [];
   let index = 0;
 
-  const options: SubagentRetryOptions = {
-    task: "add a bassline",
-    getHistory: () => history,
-    gate: new RateLimitGate(),
-    runAttempt: async (message) => {
-      messages.push(message);
-      // Every attempt echoes the user turn into history first, like sendMessage.
-      history.push({ role: "user", content: message });
-      await Promise.resolve();
-      const attempt = attempts[index] ?? (() => {});
+  /**
+   * Run the next scripted outcome.
+   * @param kind - Which entry point was used
+   */
+  const attemptFn = async (kind: "send" | "resume"): Promise<void> => {
+    calls.push(kind);
 
-      index += 1;
-      attempt(history);
-    },
+    if (kind === "send") {
+      history.push({ role: "user", content: "add a bassline" });
+    }
+
+    await Promise.resolve();
+
+    const attempt = attempts[index] ?? (() => {});
+
+    index += 1;
+    attempt(history);
+  };
+
+  const options: SubagentRetryOptions = {
+    gate: new RateLimitGate(),
+    runAttempt: () => attemptFn("send"),
+    resumeAttempt: () => attemptFn("resume"),
     ...overrides,
   };
 
-  return { options, history, messages };
+  return { options, history, calls };
 }
 
 describe("runSubagentWithRetry", () => {
-  it("passes the task straight through when nothing goes wrong", async () => {
-    const { options, messages } = setup([
+  it("sends the task on the only attempt when nothing goes wrong", async () => {
+    const { options, calls } = setup([
       (history) => history.push({ role: "assistant", content: "Done." }),
     ]);
 
     await runSubagentWithRetry(options);
 
-    expect(messages).toStrictEqual(["add a bassline"]);
+    expect(calls).toStrictEqual(["send"]);
   });
 
   it("retries a rate-limited worker instead of failing the spawn", async () => {
-    const { options, messages } = setup([
+    const { options, calls } = setup([
       () => {
         throw rateLimitError();
       },
@@ -91,13 +102,14 @@ describe("runSubagentWithRetry", () => {
 
     await runSubagentWithRetry(options);
 
-    expect(messages).toStrictEqual(["add a bassline", "add a bassline"]);
+    expect(calls).toStrictEqual(["send", "resume"]);
   });
 
-  it("restarts cleanly when the failed attempt produced nothing", async () => {
-    // The failed attempt left only its echoed task behind; resending without
-    // dropping it would stack duplicate user turns in the worker's history.
-    const { options, history } = setup([
+  it("never re-sends the task, so the worker is not instructed twice", async () => {
+    // The task is already in the worker's history; replaying it stacked a
+    // duplicate user turn, and the model saw the instruction twice because
+    // consecutive user turns are concatenated for the wire.
+    const { options, history, calls } = setup([
       () => {
         throw rateLimitError();
       },
@@ -106,11 +118,15 @@ describe("runSubagentWithRetry", () => {
 
     await runSubagentWithRetry(options);
 
+    expect(calls).toStrictEqual(["send", "resume"]);
     expect(history.filter((m) => m.role === "user")).toHaveLength(1);
   });
 
-  it("resumes with continue when the worker already produced text", async () => {
-    const { options, messages, history } = setup([
+  it("resumes the same way whether or not the failed attempt produced output", async () => {
+    // This layer no longer inspects the worker's history to choose between
+    // resuming and restarting: every retry is a resume, and whether that resume
+    // needs a "continue" turn to be a valid request is the client's decision.
+    const producedOutput = setup([
       (h) => {
         h.push({ role: "assistant", content: "Wrote the first half." });
 
@@ -118,24 +134,28 @@ describe("runSubagentWithRetry", () => {
       },
       (h) => h.push({ role: "assistant", content: "Done." }),
     ]);
+    const producedNothing = setup([
+      () => {
+        throw rateLimitError();
+      },
+      (h) => h.push({ role: "assistant", content: "Done." }),
+    ]);
 
-    await runSubagentWithRetry(options);
+    await runSubagentWithRetry(producedOutput.options);
+    await runSubagentWithRetry(producedNothing.options);
 
-    expect(messages).toStrictEqual(["add a bassline", "continue"]);
-    expect(history[1]?.content).toBe("Wrote the first half.");
+    expect(producedOutput.calls).toStrictEqual(["send", "resume"]);
+    expect(producedNothing.calls).toStrictEqual(["send", "resume"]);
+    // Partial work is kept either way — nothing truncates the history here.
+    expect(producedOutput.history[1]?.content).toBe("Wrote the first half.");
   });
 
-  it("resumes with continue after a tool call with no text", async () => {
-    // A tool call may already have edited the Live Set, so restarting from
-    // scratch would redo it.
-    const { options, messages } = setup([
-      (h) => {
-        h.push({
-          role: "assistant",
-          content: "",
-          toolCalls: [{ id: "t1", name: "ppal-create-clip", args: {} }],
-        });
-
+  it("resumes every subsequent attempt, not just the first retry", async () => {
+    const { options, calls } = setup([
+      () => {
+        throw rateLimitError();
+      },
+      () => {
         throw rateLimitError();
       },
       (h) => h.push({ role: "assistant", content: "Done." }),
@@ -143,86 +163,7 @@ describe("runSubagentWithRetry", () => {
 
     await runSubagentWithRetry(options);
 
-    expect(messages).toStrictEqual(["add a bassline", "continue"]);
-  });
-
-  describe("with a seeded session (a resumed worker)", () => {
-    /**
-     * A session the worker completed before this run was started.
-     * @returns The seeded history
-     */
-    const seed = (): ChatMessage[] => [
-      { role: "user", content: "add a bassline" },
-      { role: "assistant", content: "Added a bassline." },
-    ];
-
-    /**
-     * Retry options for a run that continues the seeded session.
-     * @returns The option overrides
-     */
-    const resumeOptions = (): Partial<SubagentRetryOptions> => ({
-      task: "make it swing",
-      baselineLength: 2,
-    });
-
-    it("sends the follow-up on the first attempt, not continue", async () => {
-      // The seeded session reads as worker output, so without the baseline the
-      // very first attempt would send "continue" and the follow-up instruction
-      // would never reach the worker at all.
-      const { options, messages } = setup(
-        [(h) => h.push({ role: "assistant", content: "Swung it." })],
-        resumeOptions(),
-        seed(),
-      );
-
-      await runSubagentWithRetry(options);
-
-      expect(messages).toStrictEqual(["make it swing"]);
-    });
-
-    it("rewinds a restart to the baseline, keeping the seeded session", async () => {
-      const { options, history, messages } = setup(
-        [
-          () => {
-            throw rateLimitError();
-          },
-          (h) => h.push({ role: "assistant", content: "Swung it." }),
-        ],
-        resumeOptions(),
-        seed(),
-      );
-
-      await runSubagentWithRetry(options);
-
-      // The failed attempt's echoed turn is dropped, but the session it was
-      // continuing survives — truncating to 0 would erase an earlier run.
-      expect(messages).toStrictEqual(["make it swing", "make it swing"]);
-      expect(history.map((m) => m.content)).toStrictEqual([
-        "add a bassline",
-        "Added a bassline.",
-        "make it swing",
-        "Swung it.",
-      ]);
-    });
-
-    it("still resumes with continue once this run has produced output", async () => {
-      const { options, messages } = setup(
-        [
-          (h) => {
-            h.push({ role: "assistant", content: "Half swung." });
-
-            throw rateLimitError();
-          },
-          (h) => h.push({ role: "assistant", content: "Swung it." }),
-        ],
-        resumeOptions(),
-        seed(),
-      );
-
-      await runSubagentWithRetry(options);
-
-      expect(messages).toStrictEqual(["make it swing", "continue"]);
-    });
+    expect(calls).toStrictEqual(["send", "resume", "resume"]);
   });
 
   it("penalizes the shared gate so sibling workers back off too", async () => {
@@ -257,19 +198,19 @@ describe("runSubagentWithRetry", () => {
 
     gate.penalize(30);
 
-    const { options, messages } = setup(
+    const { options, calls } = setup(
       [(h) => h.push({ role: "assistant", content: "Done." })],
       { gate },
     );
 
     await runSubagentWithRetry(options);
 
-    expect(messages).toHaveLength(1);
+    expect(calls).toHaveLength(1);
     expect(gate.remainingMs).toBe(0);
   });
 
   it("rethrows a non-rate-limit error without retrying", async () => {
-    const { options, messages } = setup([
+    const { options, calls } = setup([
       () => {
         throw new Error("MCP connection refused");
       },
@@ -278,12 +219,12 @@ describe("runSubagentWithRetry", () => {
     await expect(runSubagentWithRetry(options)).rejects.toThrow(
       "MCP connection refused",
     );
-    expect(messages).toHaveLength(1);
+    expect(calls).toHaveLength(1);
   });
 
   it("stops retrying once the turn is aborted", async () => {
     const controller = new AbortController();
-    const { options, messages } = setup(
+    const { options, calls } = setup(
       [
         () => {
           controller.abort();
@@ -297,7 +238,7 @@ describe("runSubagentWithRetry", () => {
     await expect(runSubagentWithRetry(options)).rejects.toThrow(
       "Too Many Requests",
     );
-    expect(messages).toHaveLength(1);
+    expect(calls).toHaveLength(1);
   });
 
   it("gives the orchestrator an actionable error once the budget runs out", async () => {
@@ -306,12 +247,12 @@ describe("runSubagentWithRetry", () => {
         throw rateLimitError();
       };
     });
-    const { options, messages } = setup(alwaysRateLimited);
+    const { options, calls } = setup(alwaysRateLimited);
 
     await expect(runSubagentWithRetry(options)).rejects.toThrow(
       `gave up after ${MAX_RETRY_ATTEMPTS} rate-limited attempts`,
     );
-    expect(messages).toHaveLength(MAX_RETRY_ATTEMPTS);
+    expect(calls).toHaveLength(MAX_RETRY_ATTEMPTS);
   });
 
   it("publishes the backoff for the card and clears it when done", async () => {

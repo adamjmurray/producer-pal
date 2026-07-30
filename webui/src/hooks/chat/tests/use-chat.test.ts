@@ -393,6 +393,31 @@ describe("useChat", () => {
       expect(autoSaveRef.current).toHaveBeenCalledTimes(1);
     });
 
+    it("does not autosave on the user echo alone", async () => {
+      // The echo yield carries no response yet, so saving there would persist a
+      // turn with nothing in it. This is the whole job of hasAssistantContent now
+      // that the retry path no longer consults it — the previous test can't tell
+      // the two apart, because either way the count lands on 1.
+      const autoSaveRef = { current: vi.fn() };
+      const echoOnly = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message: string) {
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+          },
+      );
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: echoOnly, autoSaveRef }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(autoSaveRef.current).not.toHaveBeenCalled();
+    });
+
     it("sets isAssistantResponding to false after completion", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 

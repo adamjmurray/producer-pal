@@ -72,6 +72,38 @@ export class MockChatClient implements ChatClient<TestMessage> {
     });
     yield [...this.chatHistory];
   }
+
+  /**
+   * Simulates a rate-limit retry: re-streams the turn WITHOUT re-sending the
+   * user's message, which is already in chatHistory. The real client decides
+   * whether to append a "continue" turn from the built wire shape; this stand-in
+   * just answers whatever the last user turn was.
+   * @param signal - Abort signal
+   * @param _overrides - Unused overrides parameter
+   * @param shouldInterrupt - Optional interrupt callback (invoked for coverage)
+   * @yields Chat history snapshots
+   */
+  async *resumeStream(
+    signal: AbortSignal,
+    _overrides?: unknown,
+    shouldInterrupt?: () => boolean,
+  ): AsyncIterable<TestMessage[]> {
+    if (signal.aborted) {
+      throw new Error("AbortError");
+    }
+
+    shouldInterrupt?.();
+
+    const lastUser = [...this.chatHistory]
+      .reverse()
+      .find((m) => m.role === "user");
+
+    this.chatHistory.push({
+      role: "assistant",
+      content: `Response to: ${lastUser?.content ?? ""}`,
+    });
+    yield [...this.chatHistory];
+  }
 }
 
 /**
@@ -278,6 +310,9 @@ export function createScriptedAdapter(
   scriptedSendMessage: (
     client: MockChatClient,
   ) => MockChatClient["sendMessage"],
+  scriptedResumeStream?: (
+    client: MockChatClient,
+  ) => MockChatClient["resumeStream"],
 ): ChatAdapter<MockChatClient, TestMessage, TestConfig> {
   return {
     ...baseAdapter,
@@ -285,6 +320,10 @@ export function createScriptedAdapter(
       const client = new MockChatClient();
 
       client.sendMessage = scriptedSendMessage(client);
+
+      if (scriptedResumeStream) {
+        client.resumeStream = scriptedResumeStream(client);
+      }
 
       return client;
     }),
@@ -294,59 +333,64 @@ export function createScriptedAdapter(
 /** The provider error text useChat's retry logic recognizes as a rate limit */
 export const RATE_LIMIT_ERROR = "Resource has been exhausted";
 
+/** One attempt the retry path made, and the message it carried (a resume has none). */
+export interface ScriptedAttempt {
+  kind: "send" | "resume";
+  message?: string;
+}
+
 /**
- * Build an adapter that mimics the real ChatSdkClient's rate-limit shape: every
- * call echoes the user message before streaming, the first call then throws a
- * 429, and the retry completes normally.
+ * Build an adapter that mimics the real ChatSdkClient's rate-limit shape: the
+ * first attempt echoes the user message and then throws a 429; the retry arrives
+ * through resumeStream and completes.
  *
- * `partialContent` controls the one bit the retry logic branches on — whether
- * the model produced assistant content before the 429 (retry sends "continue")
- * or only the user echo was yielded (retry re-sends the original message).
+ * `partialContent` controls whether the model produced assistant content before
+ * the 429. It no longer changes what the retry SENDS — a retry never re-sends,
+ * and whether a "continue" turn is needed is the real client's decision — so it
+ * exists to check that partial work survives the resume.
  *
  * @param baseAdapter - Base adapter to spread (commonly the shared `mockAdapter`)
  * @param options - Behavior switches
  * @param options.partialContent - Assistant text to yield before the first call's 429; omit to throw right after the user echo
- * @returns The adapter and the live list of messages its client received
+ * @returns The adapter and the live list of attempts its client saw
  */
 export function createEchoThenRateLimitAdapter(
   baseAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig>,
   options: { partialContent?: string } = {},
 ): {
   adapter: ChatAdapter<MockChatClient, TestMessage, TestConfig>;
-  receivedMessages: string[];
+  attempts: ScriptedAttempt[];
 } {
-  const receivedMessages: string[] = [];
-  let callCount = 0;
+  const attempts: ScriptedAttempt[] = [];
 
   const adapter = createScriptedAdapter(
     baseAdapter,
     (client) =>
       async function* (message: string) {
-        receivedMessages.push(message);
-        callCount++;
+        attempts.push({ kind: "send", message });
 
         client.chatHistory.push({ role: "user", content: message });
         yield [...client.chatHistory];
 
-        if (callCount === 1) {
-          if (options.partialContent != null) {
-            client.chatHistory.push({
-              role: "assistant",
-              content: options.partialContent,
-            });
-            yield [...client.chatHistory];
-          }
-
-          throw new Error(RATE_LIMIT_ERROR);
+        if (options.partialContent != null) {
+          client.chatHistory.push({
+            role: "assistant",
+            content: options.partialContent,
+          });
+          yield [...client.chatHistory];
         }
 
-        client.chatHistory.push({
-          role: "assistant",
-          content: `Done: ${message}`,
-        });
+        throw new Error(RATE_LIMIT_ERROR);
+      },
+    (client) =>
+      // A resume pushes no user turn: the message is already in history.
+      async function* () {
+        attempts.push({ kind: "resume" });
+
+        client.chatHistory.push({ role: "assistant", content: "Done" });
         yield [...client.chatHistory];
       },
   );
 
-  return { adapter, receivedMessages };
+  return { adapter, attempts };
 }

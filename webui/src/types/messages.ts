@@ -98,13 +98,8 @@ export interface MessageFormatter<TRawMessage> {
   format: (history: TRawMessage[]) => UIMessage[];
 }
 
-// Chat Client Interface
-// Manages chat sessions with AI providers
-
-export interface ChatClient<TRawMessage> {
-  chatHistory: TRawMessage[];
-  initialize: () => Promise<void>;
-  sendMessage: (
-    message: string,
-  ) => AsyncGenerator<TRawMessage[], void, unknown>;
-}
+// The live chat-client interface is ChatClient in hooks/chat/use-chat-types.ts.
+// A second, unused copy lived here with a one-argument sendMessage; it was
+// deleted rather than kept, because a same-named type that no longer describes
+// the real client is worse than no type at all — the next person grepping
+// ChatClient finds two and has to work out which one anything implements.

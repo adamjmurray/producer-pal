@@ -28,9 +28,9 @@ interface ConversationActionsDeps<
     userMessage?: TMessage,
   ) => Promise<T | undefined>;
   executeWithRetry: (args: {
-    executeStream: (message: string) => AsyncIterable<TMessage[]>;
+    executeStream: () => AsyncIterable<TMessage[]>;
+    resumeStream: () => AsyncIterable<TMessage[]>;
     getHistory: () => TMessage[];
-    originalMessage: string;
   }) => Promise<boolean>;
   invalidateCompactionUndo: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
@@ -144,9 +144,10 @@ export function useConversationActions<
         abortControllerRef.current = controller;
 
         return await executeWithRetry({
-          executeStream: (msg) => client.sendMessage(msg, controller.signal),
+          executeStream: () =>
+            client.sendMessage(newMessage, controller.signal),
+          resumeStream: () => client.resumeStream(controller.signal),
           getHistory: () => client.chatHistory,
-          originalMessage: newMessage,
         });
       });
 

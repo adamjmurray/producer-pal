@@ -13,7 +13,6 @@
  * that hook, so everything they need lives here instead.
  */
 
-import { type ChatMessage } from "#webui/chat/sdk/types";
 import {
   calculateRetryDelay,
   detectRateLimit,
@@ -21,9 +20,6 @@ import {
   shouldRetry,
 } from "#webui/lib/rate-limit";
 import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
-
-/** Follow-up sent when a retry resumes a worker that already did some work. */
-const RESUME_MESSAGE = "continue";
 
 /**
  * Longest single sleep inside a gate wait. The window can be extended by a
@@ -35,19 +31,14 @@ const WAIT_SLICE_MS = 1000;
 
 /** Options for one worker's retry-wrapped run. */
 export interface SubagentRetryOptions {
-  /** The delegated instruction, sent as the worker's first user message. */
-  task: string;
-  /** Run the worker's stream to completion with `message` as the user turn. */
-  runAttempt: (message: string) => Promise<void>;
-  /** The worker's live chat history (read to decide resume vs. restart). */
-  getHistory: () => ChatMessage[];
+  /** Run the worker's first attempt, sending the delegated task. */
+  runAttempt: () => Promise<void>;
   /**
-   * Where this run's own messages start in that history — nonzero when the
-   * worker was seeded with a session to continue. Everything below it belongs to
-   * an earlier run: not output this attempt may claim credit for, and not history
-   * a restart may throw away. Defaults to 0 (a fresh worker).
+   * Re-run after a rate limit, resuming from the worker's own history instead of
+   * re-sending the task. Whether that needs a "continue" turn to be a valid
+   * request is the client's call, not this layer's — see ChatSdkClient.
    */
-  baselineLength?: number;
+  resumeAttempt: () => Promise<void>;
   /** Backoff window shared with every sibling worker. */
   gate: RateLimitGate;
   /** The orchestrator turn's signal; aborts stop retrying immediately. */
@@ -67,32 +58,24 @@ export interface SubagentRetryOptions {
  * penalizes the gate so siblings back off too instead of each rediscovering the
  * limit on their own connection.
  *
- * Resuming mirrors executeWithRetry: once the worker has produced real output
- * (text or a tool call — Live may already have been edited) the retry sends
- * "continue" and keeps the work; with nothing to keep, the failed attempt's
- * echoed task is dropped so the retry sends one clean turn instead of stacking
- * duplicate user messages.
+ * Only the FIRST attempt sends the task; every retry resumes from the worker's
+ * history, so partial work is kept and the instruction is never delivered twice.
+ * The resume itself is the client's concern, which is why this layer no longer
+ * inspects the worker's history at all.
  *
- * NOTE: this and useChat's executeWithRetry encode the same retry strategy for
- * two different layers (this one throws; that one writes UI state and an error
- * message into history). They are deliberately separate, so a change to the
- * budget, the delay schedule, or the resume rule has to be made in both.
- * @param options - Task, attempt runner, history accessor, gate, and callbacks
+ * NOTE: this and useChat's executeWithRetry still run the same strategy for two
+ * different layers (this one throws; that one writes UI state and an error
+ * message into history), so the budget and the delay schedule have to be changed
+ * in both. The resume rule no longer lives in either — both delegate it to the
+ * client, which is the only place that knows the wire shape.
+ * @param options - Attempt runners, gate, and callbacks
  * @throws The underlying error when it isn't a rate limit, when the retry
  *   budget is exhausted, or when the turn was aborted
  */
 export async function runSubagentWithRetry(
   options: SubagentRetryOptions,
 ): Promise<void> {
-  const {
-    task,
-    runAttempt,
-    getHistory,
-    baselineLength = 0,
-    gate,
-    abortSignal,
-    onStatus,
-  } = options;
+  const { runAttempt, resumeAttempt, gate, abortSignal, onStatus } = options;
   let attempt = 0;
   // Which attempt the pending wait is for: null until this worker is itself
   // rate-limited, so a wait forced purely by a sibling's backoff is reported as
@@ -117,7 +100,7 @@ export async function runSubagentWithRetry(
       onStatus?.(null);
 
       try {
-        await runAttempt(nextMessage(task, getHistory(), baselineLength));
+        await (attempt === 0 ? runAttempt : resumeAttempt)();
 
         return;
       } catch (error) {
@@ -291,51 +274,6 @@ function isSameStatus(
     previous.maxAttempts === next.maxAttempts &&
     previous.retryAtMs === next.retryAtMs
   );
-}
-
-/**
- * The user turn the next attempt should send, dropping a leftover echo of the
- * task when the failed attempt produced nothing worth resuming.
- *
- * Everything below `baseline` is a seeded session from an earlier run, so it is
- * neither output this run produced nor history a restart may discard — the
- * restart rewinds to the baseline, not to empty. Getting this wrong on a resumed
- * worker would send "continue" on the FIRST attempt (the seeded session reads as
- * output) and drop the follow-up instruction entirely.
- * @param task - The original delegated instruction
- * @param history - The worker's chat history (rewound when restarting)
- * @param baseline - Index where this run's own messages start
- * @returns "continue" to resume partial work, or the task to start over
- */
-function nextMessage(
-  task: string,
-  history: ChatMessage[],
-  baseline: number,
-): string {
-  if (hasWorkerOutput(history, baseline)) return RESUME_MESSAGE;
-
-  history.length = baseline;
-
-  return task;
-}
-
-/**
- * Whether the worker produced output a retry must preserve. A tool call counts
- * even with no text: it may already have changed the Live Set, so restarting
- * from scratch would redo it.
- * @param history - The worker's chat history
- * @param from - Index to start looking from (skips any seeded session)
- * @returns True when there is assistant output worth resuming from
- */
-function hasWorkerOutput(history: ChatMessage[], from: number): boolean {
-  return history
-    .slice(from)
-    .some(
-      (msg) =>
-        msg.role === "assistant" &&
-        !msg.isError &&
-        (msg.content.trim() !== "" || (msg.toolCalls?.length ?? 0) > 0),
-    );
 }
 
 /**

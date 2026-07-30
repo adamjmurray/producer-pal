@@ -32,9 +32,15 @@ interface UseExecuteWithRetryDeps<
 }
 
 interface ExecuteWithRetryArgs<TMessage> {
-  executeStream: (message: string) => AsyncIterable<TMessage[]>;
+  /** Runs the turn's FIRST attempt, sending the user's message. */
+  executeStream: () => AsyncIterable<TMessage[]>;
+  /**
+   * Re-runs the turn after a rate limit, resuming from history rather than
+   * re-sending the message — which is already in it. Whether the resume needs a
+   * synthetic "continue" turn to be a valid request is the client's call.
+   */
+  resumeStream: () => AsyncIterable<TMessage[]>;
   getHistory: () => TMessage[];
-  originalMessage: string;
 }
 
 /**
@@ -43,8 +49,10 @@ interface ExecuteWithRetryArgs<TMessage> {
  *
  * NOTE: subagent workers stream below this hook (inside the spawn tool's
  * execute), so they carry their own copy of this strategy in
- * chat/sdk/subagent/subagent-rate-limit.ts. A change to the budget, the delay schedule,
- * or the resume rule has to be made in both.
+ * chat/sdk/subagent/subagent-rate-limit.ts. A change to the budget or the delay
+ * schedule has to be made in both. The resume rule is NOT duplicated — both
+ * layers hand that to the client, which is the only place that knows whether the
+ * conversation is already a valid request to resume from.
  * @param deps - Adapter, autoSave ref, parent abort ref, and state setters
  * @returns executeWithRetry function and abortRetry canceler
  */
@@ -64,8 +72,8 @@ export function useExecuteWithRetry<
   const executeWithRetry = useCallback(
     async ({
       executeStream,
+      resumeStream,
       getHistory,
-      originalMessage,
     }: ExecuteWithRetryArgs<TMessage>): Promise<boolean> => {
       let attempt = 0;
       const contentState = {
@@ -100,12 +108,12 @@ export function useExecuteWithRetry<
 
       while (shouldRetry(attempt)) {
         try {
-          const msg = contentState.hasAssistantContent
-            ? "continue"
-            : originalMessage;
-
+          // Only the first attempt sends the user's message. A retry resumes the
+          // same turn from history, so the message is never replayed — replaying
+          // it duplicated the instruction in the transcript AND on the wire,
+          // since consecutive user turns are concatenated for the model.
           await handleMessageStream(
-            executeStream(msg),
+            attempt === 0 ? executeStream() : resumeStream(),
             adapter.formatMessages,
             onMessageUpdate,
           );
@@ -164,9 +172,16 @@ export function useExecuteWithRetry<
 
 /**
  * Detect whether the formatted UI history contains real assistant output
- * (text, reasoning, or tool activity). Used to decide whether a 429 retry
- * should resume with "continue" or replay the original message — the user
- * echo alone must not count as content.
+ * (text, reasoning, or tool activity). Drives WHEN the first autosave fires: the
+ * turn is persisted as soon as the model says something, rather than waiting for
+ * the stream to finish. The user echo alone must not count — saving on it would
+ * persist a turn with no response in it.
+ *
+ * It no longer has anything to do with retries. Choosing between resuming and
+ * re-asking used to hinge on this, which was wrong twice over: it reads the whole
+ * formatted history rather than this turn's output, so on any turn after the
+ * first it was already true from the PREVIOUS turn's response. A retry now
+ * resumes unconditionally — see resumeStream.
  * @param msgs - Formatted UI messages
  * @returns True if any model message has substantive content
  */

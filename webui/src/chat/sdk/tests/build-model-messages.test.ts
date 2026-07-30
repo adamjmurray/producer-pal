@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { buildModelMessages } from "#webui/chat/sdk/build-model-messages";
+import {
+  buildModelMessages,
+  endsOnAssistantTurn,
+} from "#webui/chat/sdk/build-model-messages";
+import { type ChatMessage } from "#webui/chat/sdk/types";
 
 describe("buildModelMessages", () => {
   it("merges consecutive user turns into a single user message", () => {
@@ -308,5 +312,81 @@ describe("buildModelMessages", () => {
 
       expect(result[0]!.content).toBe("answer");
     });
+  });
+});
+
+describe("endsOnAssistantTurn", () => {
+  it("is false when the last turn is the user's", () => {
+    // A 429 before the model produced anything: the request is already complete
+    // and valid, so a retry needs nothing added.
+    expect(
+      endsOnAssistantTurn([{ role: "user", content: "add a bassline" }]),
+    ).toBe(false);
+  });
+
+  it("is false after a tool step, because the wire ends on tool results", () => {
+    // The common shape for a Producer Pal 429: several tool steps completed and
+    // a later step's request was rate-limited. History ends on an assistant
+    // turn, but it emits assistant + tool, and ending on tool results is exactly
+    // what continuing a tool loop looks like.
+    const history: ChatMessage[] = [
+      { role: "user", content: "add a bassline" },
+      {
+        role: "assistant",
+        content: "Creating it.",
+        toolCalls: [{ id: "t1", name: "ppal-create-clip", args: {} }],
+        toolResults: [
+          { id: "t1", name: "ppal-create-clip", args: {}, result: "ok" },
+        ],
+      },
+    ];
+
+    expect(buildModelMessages(history).at(-1)?.role).toBe("tool");
+    expect(endsOnAssistantTurn(history)).toBe(false);
+  });
+
+  it("is true for a text turn with no tool calls", () => {
+    // The model streamed text and then the error surfaced. This is the one shape
+    // that is not a valid request to resume from.
+    expect(
+      endsOnAssistantTurn([
+        { role: "user", content: "add a bassline" },
+        { role: "assistant", content: "Working on it…" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("is false once a resume turn is already in place", () => {
+    // The second retry of the same turn: a "continue" is already the last turn,
+    // so appending another would send "continue\n\ncontinue" to the model.
+    expect(
+      endsOnAssistantTurn([
+        { role: "user", content: "add a bassline" },
+        { role: "assistant", content: "Working on it…" },
+        { role: "user", content: "continue" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("follows includeReasoning for a reasoning-only turn", () => {
+    // With thinking off the turn has no model-visible content and is dropped
+    // from the payload entirely, leaving the user turn last. With thinking on the
+    // signed block IS the content, so the conversation really does end on
+    // assistant.
+    const history: ChatMessage[] = [
+      { role: "user", content: "add a bassline" },
+      {
+        role: "assistant",
+        content: "",
+        reasoningParts: [{ text: "planning", signature: "sig" }],
+      },
+    ];
+
+    expect(endsOnAssistantTurn(history, false)).toBe(false);
+    expect(endsOnAssistantTurn(history, true)).toBe(true);
+  });
+
+  it("is false for an empty history", () => {
+    expect(endsOnAssistantTurn([])).toBe(false);
   });
 });

@@ -149,6 +149,40 @@ function appendAssistantMessages(
 }
 
 /**
+ * Whether the model conversation built from `history` would END on an assistant
+ * turn — the one shape that is not a valid request to resume from, because
+ * Gemini and Mistral reject it (and Anthropic reads it as a prefill to continue
+ * rather than a turn to answer).
+ *
+ * This is what a rate-limit retry consults to decide whether it must inject a
+ * synthetic "continue" user turn, and it deliberately asks about the WIRE shape
+ * rather than the history's last entry, because the two differ in the common
+ * case. An assistant turn carrying tool calls emits an assistant message AND a
+ * paired tool message, so a 429 on a later step of a tool loop ends the
+ * conversation on `tool` — already the canonical "here are your results, keep
+ * going" continuation point, needing nothing added. Only a text-or-reasoning
+ * turn with no tool calls ends on `assistant`. A reasoning-only turn with
+ * thinking off is dropped from the model view entirely, which is why the
+ * `includeReasoning` the request will actually use has to be passed in.
+ *
+ * Reading the built messages rather than re-deriving those rules is the point:
+ * the retry layers previously each guessed at this from history and drifted
+ * apart.
+ * @param history - Chat history the retry would resume from
+ * @param includeReasoning - Same flag the retry's own buildModelMessages call
+ *   will use (see isAnthropicThinkingEnabled)
+ * @returns True when a resume must append a user turn to be a valid request
+ */
+export function endsOnAssistantTurn(
+  history: ChatMessage[],
+  includeReasoning = false,
+): boolean {
+  return (
+    buildModelMessages(history, includeReasoning).at(-1)?.role === "assistant"
+  );
+}
+
+/**
  * Backfill a "canceled" tool-result for any tool-call in the streamed assistant
  * messages that never received one — i.e. the user pressed Stop while a tool was
  * still running. Without this, the dangling tool-call (a) makes the next request

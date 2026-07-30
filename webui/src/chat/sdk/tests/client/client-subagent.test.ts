@@ -729,6 +729,38 @@ describe("ChatSdkClient resuming a worker", () => {
     ).resolves.toContain("Next turn's worker.");
   });
 
+  it("does not refresh the spawn budget when a turn is RESUMED after a 429", async () => {
+    // A retry is the same turn, so it keeps spending that turn's budget. If
+    // resumeStream reset the counter the way sendMessage does, a turn that
+    // rate-limited would silently get a second full allowance of workers — the
+    // per-turn cap would become per-attempt.
+    const { client, execute } = await orchestratorWithSpawnTool();
+
+    for (let i = 0; i < MAX_SPAWNS; i++) {
+      mockStreamParts([
+        { type: "text-delta", text: `Worker ${i + 1}.` },
+        { type: "finish", finishReason: "stop" },
+      ]);
+      await execute(
+        { task: `piece ${i + 1}` },
+        { toolCallId: `tc-${i}`, messages: [], abortSignal: undefined },
+      );
+    }
+
+    mockStreamParts([{ type: "finish", finishReason: "stop" }]);
+
+    for await (const _ of client.resumeStream()) {
+      /* consume */
+    }
+
+    await expect(
+      spawnToolExecute()(
+        { task: "one too many" },
+        { toolCallId: "tc-over", messages: [], abortSignal: undefined },
+      ),
+    ).rejects.toThrow(`${MAX_SPAWNS} per turn`);
+  });
+
   it("resumes a worker restored from a persisted conversation", async () => {
     const execute = await restoredOrchestrator([
       persistedSpawn(1, [

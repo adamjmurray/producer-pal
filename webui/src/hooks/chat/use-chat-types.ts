@@ -30,6 +30,17 @@ export interface ChatClient<TMessage> {
     shouldInterrupt?: () => boolean,
   ) => AsyncIterable<TMessage[]>;
   /**
+   * Re-stream the current turn after a rate limit WITHOUT re-sending the user's
+   * message, which is already in chatHistory. The client owns whether the resume
+   * needs a synthetic user turn to be a valid request — that depends on the wire
+   * shape, which only it knows.
+   */
+  resumeStream: (
+    signal: AbortSignal,
+    overrides?: MessageOverrides,
+    shouldInterrupt?: () => boolean,
+  ) => AsyncIterable<TMessage[]>;
+  /**
    * Summarize a slice of history into a compaction summary string. Optional:
    * clients that don't support compaction may omit it.
    */

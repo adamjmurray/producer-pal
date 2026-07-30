@@ -9,6 +9,7 @@ import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import {
   buildModelMessages,
+  endsOnAssistantTurn,
   reconcileDanglingToolCalls,
 } from "./build-model-messages";
 import { summarizeHistory } from "./compaction";
@@ -36,6 +37,13 @@ import {
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
+
+/**
+ * The user turn a resume appends when, and only when, the conversation would
+ * otherwise end on an assistant message. Never a way to re-ask the original
+ * question — see resumeStream.
+ */
+const RESUME_MESSAGE = "continue";
 
 /**
  * Orchestrator step budget when subagents are enabled. Widened off the default
@@ -162,11 +170,14 @@ export class ChatSdkClient {
    * dead tool-error. Retries share this client's gate with the worker's siblings
    * and publish their backoff to the card.
    *
-   * Each attempt is a fresh sendMessage, so it gets its own MAX_WORKER_STEPS
+   * Each attempt issues its own streamText, so it gets a fresh MAX_WORKER_STEPS
    * budget rather than resuming under the first attempt's — a worker that
    * rate-limits repeatedly can therefore run more total tool steps than one that
    * doesn't. Accepted: retries are rare, and carrying a partial budget forward
    * risks stranding a resumed worker mid-task with no steps left to finish.
+   *
+   * Only the FIRST attempt sends the task. Retries go through resumeStream, so a
+   * rate-limited worker is never handed its instruction twice.
    *
    * The transcript is stashed in a finally, so it survives the failure paths too
    * — above all a Stop mid-worker, where the partial log is the only record of
@@ -186,24 +197,17 @@ export class ChatSdkClient {
     const { workerConfig, task, toolCallId, subagentIndex, abortSignal } =
       options;
     const worker = new ChatSdkClient("", workerConfig);
-    // Where this run's own messages begin. Doubles as the floor the rate-limit
-    // restart path truncates to, so a retry never eats the seeded session.
+    // Where this run's own messages begin, so only what it ADDS gets stashed —
+    // a resumed worker's seeded prefix is already persisted on the earlier run's
+    // tool-result.
     const seedLength = workerConfig.chatHistory?.length ?? 0;
 
     await worker.initialize();
 
     try {
       await runSubagentWithRetry({
-        task,
-        runAttempt: async (message) => {
-          // Drain the generator; we only need the accumulated final history.
-          const stream = worker.sendMessage(message, abortSignal);
-          let step = await stream.next();
-
-          while (!step.done) step = await stream.next();
-        },
-        getHistory: () => worker.chatHistory,
-        baselineLength: seedLength,
+        runAttempt: () => drain(worker.sendMessage(task, abortSignal)),
+        resumeAttempt: () => drain(worker.resumeStream(abortSignal)),
         gate: this.rateLimitGate,
         abortSignal,
         onStatus: (status) => setSubagentRateLimit(toolCallId, status),
@@ -271,14 +275,91 @@ export class ChatSdkClient {
     this.chatHistory.push(userMsg);
     yield [...this.chatHistory];
 
-    const providerOptions =
-      overrides?.thinking != null && this.config.buildProviderOptions
-        ? this.config.buildProviderOptions(overrides.thinking)
-        : this.config.providerOptions;
+    yield* this.streamTurn(
+      this.providerOptionsFor(overrides),
+      abortSignal,
+      shouldInterrupt,
+    );
+  }
 
+  /**
+   * Re-stream the CURRENT turn after a rate limit, without re-sending the user's
+   * message.
+   *
+   * The message is already in history — that is what makes a retry a resume
+   * rather than a second ask. Replaying it duplicated the user's instruction both
+   * in the transcript and on the wire (buildModelMessages concatenates
+   * consecutive user turns), so the model was asked twice.
+   *
+   * The only thing a resume may need to add is a turn that makes the conversation
+   * a valid request again, and only one shape needs it: see
+   * {@link endsOnAssistantTurn}. A 429 on a later step of a tool loop leaves the
+   * conversation ending on tool results, which resumes as-is.
+   *
+   * Unlike sendMessage this does NOT reset the spawn counter: a retry is the same
+   * turn, so it keeps spending that turn's MAX_SPAWNS budget rather than earning
+   * a fresh one. toolLimitReached does reset, because the retry issues a new
+   * streamText with its own step budget.
+   * @param abortSignal - Signal to abort the stream
+   * @param overrides - The same per-message overrides the first attempt used
+   * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
+   * @yields Complete chat history after each stream update
+   */
+  async *resumeStream(
+    abortSignal?: AbortSignal,
+    overrides?: MessageOverrides,
+    shouldInterrupt?: () => boolean,
+  ): AsyncGenerator<ChatMessage[], void, unknown> {
+    this.toolLimitReached = false;
+
+    const providerOptions = this.providerOptionsFor(overrides);
+
+    if (
+      endsOnAssistantTurn(
+        this.chatHistory,
+        isAnthropicThinkingEnabled(providerOptions),
+      )
+    ) {
+      this.chatHistory.push({ role: "user", content: RESUME_MESSAGE });
+      yield [...this.chatHistory];
+    }
+
+    // The SAME resolved options that answered endsOnAssistantTurn above drive the
+    // request, so the shape it predicted is the shape actually sent.
+    yield* this.streamTurn(providerOptions, abortSignal, shouldInterrupt);
+  }
+
+  /**
+   * Stream one attempt at the current turn and emit the trailing history update.
+   * Shared by sendMessage and resumeStream, which differ only in what they put
+   * in history first.
+   * @param providerOptions - Already-resolved providerOptions for this request
+   * @param abortSignal - Signal to abort the stream
+   * @param shouldInterrupt - Callback checked between tool steps
+   * @yields Complete chat history after each stream update
+   */
+  private async *streamTurn(
+    providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
+    abortSignal: AbortSignal | undefined,
+    shouldInterrupt: (() => boolean) | undefined,
+  ): AsyncGenerator<ChatMessage[], void, unknown> {
     yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
     // Final yield to ensure last step's usage (attached by onStepEnd) is emitted
     yield [...this.chatHistory];
+  }
+
+  /**
+   * Resolve the providerOptions for one request: a per-message thinking override
+   * when the config can build one, else the config's own.
+   * @param overrides - Per-message overrides for thinking
+   * @returns providerOptions to pass to streamText
+   */
+  private providerOptionsFor(
+    overrides?: MessageOverrides,
+  ): Parameters<typeof streamText>[0]["providerOptions"] {
+    return overrides?.thinking != null && this.config.buildProviderOptions
+      ? this.config.buildProviderOptions(overrides.thinking)
+      : this.config.providerOptions;
   }
 
   /**
@@ -454,4 +535,18 @@ function stampOverrides(msg: ChatMessage, overrides?: MessageOverrides): void {
   if (!overrides) return;
 
   if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
+}
+
+/**
+ * Run a history-yielding stream to completion, discarding the intermediate
+ * yields. A worker has no UI subscribed to its stream — the caller only needs the
+ * accumulated final history off the client.
+ * @param stream - The stream to drain
+ */
+async function drain(
+  stream: AsyncGenerator<ChatMessage[], void, unknown>,
+): Promise<void> {
+  let step = await stream.next();
+
+  while (!step.done) step = await stream.next();
 }

@@ -354,15 +354,16 @@ export function useChat<
           const shouldInterrupt = () => queueRef.current.length > queueBaseline;
 
           return await executeWithRetry({
-            executeStream: (msg) =>
+            executeStream: () =>
               client.sendMessage(
-                msg,
+                userMessage,
                 controller.signal,
                 filtered,
                 shouldInterrupt,
               ),
+            resumeStream: () =>
+              client.resumeStream(controller.signal, filtered, shouldInterrupt),
             getHistory: () => client.chatHistory,
-            originalMessage: userMessage,
           });
         }, userMessageEntry);
 
