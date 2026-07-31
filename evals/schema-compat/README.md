@@ -81,4 +81,4 @@ The conventions this probe was built to check out as **conservative-correct**:
 prefer `array<object>` for structured records, prefer a plain `array` over a
 `string | array` union (the union is the only shape that actively loses data —
 on Claude), and avoid dynamic object maps (they lose data on Gemini). See
-`AGENTS.md` → "Tool input schema shapes" for how these map onto tool design.
+`dev/Tool-Schemas.md` for how these map onto tool design.

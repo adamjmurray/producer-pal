@@ -417,7 +417,7 @@ describe("note-value grammar parity across all parse sites", () => {
     // `d` and `t` are mutually exclusive and non-stacking — the atom's
     // `("d"/"t")?` matches at most one. A doubled or mixed suffix leaves a stray
     // letter that no site can consume, so it is a parse error everywhere (the
-    // "no stacking / mutually exclusive" contract from AGENTS.md note-value rules).
+    // "no stacking / mutually exclusive" contract from the note-value grammar).
     for (const token of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
       it(`duration "${token}" is rejected by every duration site`, () => {
         for (const site of DURATION_SITES) {

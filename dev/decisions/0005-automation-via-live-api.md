@@ -5,41 +5,33 @@
 
 ## Context
 
-Supporting parameter automation (envelopes) is a recurring feature request. One
-tempting route is to manipulate the saved Ableton project file (`.als`, a
-gzipped XML document) offline — the format is inspectable and the full
-automation data lives there, including things the live Live API does not expose.
-This was reviewed concretely (2026-05-21) against external PR #829, which built
-a parallel offline `.als`-rewriting product that could technically inject valid
-`<ClipEnvelope>` XML.
+Parameter automation is a recurring feature request. A tempting shortcut is to
+edit the saved project file (`.als`, gzipped XML) directly — the format is
+inspectable and holds automation data the Live API doesn't expose. Reviewed
+concretely on 2026-05-21 against external PR #829, which built a working offline
+`.als` rewriter that could inject valid `<ClipEnvelope>` XML.
 
 ## Decision
 
-Any automation support must be implemented through the Live API at runtime, the
-same path as every other Producer Pal operation. Offline `.als` XML rewriting is
-out of scope.
+Automation must go through the Live API at runtime, like every other Producer
+Pal operation. Offline `.als` rewriting is out of scope.
 
 ## Alternatives rejected
 
-- **Offline `.als` XML rewriting** — rejected despite exposing more data:
-  - It operates on the on-disk file, not the live in-memory set, so it can't
-    participate in the real-time, "watch it happen in Ableton" interaction model
-    that defines the product.
-  - It would require closing/reopening or risky reconciliation with Live's
-    in-memory state, and couples us to an undocumented, version-volatile file
-    format.
-  - It bypasses Live's validation, inviting corrupt projects.
-  - It hits portability blockers the Live API sidesteps by enumerating at
-    runtime: e.g. the macOS device-name locale leaks into `.als` strings, so
-    closed-vocabulary routing isn't system-portable. (The same PR's STOP
-    verdicts on 6 sibling features — CV routing, external-instrument MIDI
-    routing, MIDI map, tuning, insert/delete time, cut/paste time — were all
-    rooted in this offline-format brittleness.)
+**Offline `.als` XML rewriting**, despite exposing more data:
+
+- It edits the file on disk, not the set in memory, so it can't support the
+  watch-it-happen-in-Ableton interaction that defines the product.
+- It would need a close/reopen or a risky reconciliation with Live's in-memory
+  state, and ties us to an undocumented, version-volatile format.
+- It bypasses Live's validation, so it can produce corrupt projects.
+- The file isn't portable: the macOS device-name locale leaks into `.als`
+  strings, so closed-vocabulary routing can't work across systems. The same PR's
+  stop verdicts on six sibling features all traced back to this brittleness.
 
 ## Consequences
 
-- Automation is gated on what the Live API actually allows; some envelope
-  capabilities may be impossible until Ableton extends the API. That ceiling is
-  accepted in exchange for safety and the live-interaction model.
-- Revisit only if Ableton ships first-class automation write access — not by
-  reaching for the file format as a workaround.
+- Automation is limited to what the Live API allows; some envelope work may be
+  impossible until Ableton extends it. That ceiling is accepted.
+- Revisit only if Ableton ships automation write access — not by reaching for
+  the file format as a workaround.

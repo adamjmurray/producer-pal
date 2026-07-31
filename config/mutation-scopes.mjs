@@ -24,7 +24,7 @@
 // wording would over-fit and fight the description-iteration workflow. Schema
 // constraints (`.min`/`.max`) are enforced by the MCP SDK, not our runtime code.
 // The test exclusions spell out the project's definition of a test file (see
-// AGENTS.md → Test File Classification); mutating one is meaningless. Keep them
+// dev/Testing.md); mutating one is meaningless. Keep them
 // in that vocabulary rather than adding a name only this file knows — a suffix
 // only one config recognizes reads as a test here and as source everywhere
 // else. `*-disabled.ts` are build-time substitution stubs swapped in by

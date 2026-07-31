@@ -53,8 +53,8 @@ Test files should follow this pattern:
    - Example: `duplicate-helpers.test.ts`
 
 5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities, fixtures,
-   and shared test setup. A test file (see AGENTS.md → Test File
-   Classification), but not a suite, so it keeps the 325-line source budget.
+   and shared test setup. A test file (see dev/Testing.md), but not a suite, so
+   it keeps the 325-line source budget.
    - Example: `duplicate-test-helpers.ts`
    - Example: `update-clip-test-helpers.ts`
 

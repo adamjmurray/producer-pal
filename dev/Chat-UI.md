@@ -218,6 +218,12 @@ exhaustive).
 `updatedAt` index. Max 200 conversations (`MAX_CONVERSATIONS`); oldest
 non-bookmarked conversations are auto-deleted on save when the limit is reached.
 
+**Versioning**: IndexedDB is schemaless for record data, so adding a field to a
+stored record needs no version bump — just default it when it's missing on read.
+Only bump `DB_VERSION` for structural changes (creating or deleting an object
+store or index). Prefer a backwards-compatible read over an upgrade-time data
+transform.
+
 **Schema** (`lib/conversation-db.ts`):
 
 ```typescript

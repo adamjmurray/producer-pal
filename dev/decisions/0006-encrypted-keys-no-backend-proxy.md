@@ -5,60 +5,50 @@
 
 ## Context
 
-The chat UI calls LLM providers with the user's own API keys. Two questions:
-where do those keys live, and do we keep them out of the browser entirely (e.g.
-behind a Producer Pal backend that proxies provider calls)?
+The chat UI calls LLM providers with the user's own API keys. Where do those
+keys live, and should we keep them out of the browser entirely by proxying
+provider calls through a Producer Pal backend?
 
 ## Decision
 
-Keys stay client-side and are **encrypted at rest**:
+Keys stay client-side, encrypted at rest, and no Producer Pal backend ever sees
+them.
 
-- Stored in `localStorage` as `enc:v1:<base64 iv>:<base64 ciphertext>`
-  envelopes, encrypted with a 256-bit **non-extractable** AES-GCM `CryptoKey`
-  persisted in IndexedDB (`producer-pal-crypto`). Plaintext never sits in
-  `localStorage`. See `webui/src/lib/api-key-crypto.ts`.
-- **No Producer Pal backend / LLM proxy** — for text chat, the browser calls the
-  chosen provider directly with the user's key.
-- **Voice mode is the one exception**: the key is sent to the local MCP server,
-  which exchanges it with the provider for a short-lived token
-  (`src/mcp-server/routes/voice-token-route.ts` posts the OpenAI key to
-  `client_secrets` and returns only the `ek_...` token;
-  `gemini-voice-token-route.ts` currently returns the key as-is, since the
-  browser opens the WebSocket to Google directly and the key would reach Google
-  regardless — the route exists for local-origin gating and to keep a seam for
-  ephemeral tokens later). The key is never logged or stored, but it does
-  transit the local process. This is a local key exchange, not the rejected
-  proxy: no Producer Pal-operated server is involved and no LLM traffic flows
-  through it.
-- The filesystem config (`~/.producer-pal`) holds only non-secret, user-facing
-  config; keys are not written there.
+- `localStorage` holds `enc:v1:<base64 iv>:<base64 ciphertext>` envelopes,
+  encrypted with a non-extractable 256-bit AES-GCM key kept in IndexedDB
+  (`producer-pal-crypto`). Plaintext never sits in `localStorage`. See
+  `webui/src/lib/api-key-crypto.ts`.
+- For text chat the browser calls the provider directly.
+- `~/.producer-pal` holds only non-secret config; keys are never written there.
+- **Voice mode is the one exception.** The key goes to the local MCP server,
+  which trades it for a short-lived token
+  (`src/mcp-server/routes/voice-token-route.ts`). Gemini's route currently
+  returns the key as-is, since the browser opens its WebSocket to Google
+  directly and the key would reach Google anyway — the route exists for
+  local-origin gating and to leave room for ephemeral tokens later. The key is
+  never logged or stored, but it does pass through the local process. This is a
+  local key exchange, not the rejected proxy: no Producer Pal-operated server is
+  involved and no LLM traffic flows through it.
 
-This at-rest encryption is explicitly an **interim stopgap** for the
-localhost/own-key threat model — not OS-level protection. In-origin code
-execution can still ask the non-extractable key to decrypt. The UI says so:
-_"API keys are encrypted at rest in your browser; this is not a substitute for
-OS-level protection."_
+The encryption is an interim stopgap for the localhost/own-key threat model, not
+OS-level protection — code running in the origin can still ask the
+non-extractable key to decrypt. The UI says exactly that.
 
-## Alternatives rejected / deferred
+## Alternatives rejected
 
-- **Plaintext storage** — rejected; the envelope scheme keeps cleartext out of
-  `localStorage` at negligible cost (Web Crypto, no dependency).
-- **Backend LLM proxy holding keys server-side** — not done. It would put
-  Producer Pal in the path of the user's traffic and keys and invert the "your
-  key, your provider, your machine, nothing leaves except the call you chose"
-  model (`SECURITY.md`). The earlier secure-storage / NfM-proxy tickets were
-  cancelled.
-- **OS keychain / fully robust secure storage** — deferred as over-engineering
-  for a localhost tool. The versioned stopgap (`enc:v1:`) plus honest in-product
-  disclosure is the pragmatic middle; the "real fix" is a future backend move if
-  one ever happens.
+- **Plaintext storage** — the envelope scheme keeps cleartext out of
+  `localStorage` for almost nothing (Web Crypto, no dependency).
+- **A backend proxy holding keys server-side** — it would put Producer Pal in
+  the path of the user's traffic and keys, inverting the "your key, your
+  provider, your machine" model in `SECURITY.md`.
+- **OS keychain / fully robust secure storage** — over-engineering for a
+  localhost tool. Deferred.
 
 ## Consequences
 
-- Honest security posture, surfaced in-product rather than overstated.
-- The envelope is version-tagged (`enc:v1:`), so the scheme can evolve without a
-  data migration scramble.
-- Aligns with the project's pragmatism stance — defensive hardening is flagged,
-  not ground on, for localhost/own-key surfaces.
+- The security posture is honest and stated in-product rather than overstated.
+- The `enc:v1:` version tag lets the scheme change later without a migration
+  scramble.
 - Revisit trigger: Producer Pal ever brokers third-party keys or runs as a
-  hosted service → real backend secret management, superseding this ADR.
+  hosted service, which would need real backend secret management and supersede
+  this.

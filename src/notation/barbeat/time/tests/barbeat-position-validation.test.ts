@@ -16,7 +16,7 @@ import {
 // reject the same 1-indexing mistakes the `notes` grammar rejects, while letting
 // everything the grammar accepts (including `-n` pickups) through. The low-level
 // barBeatToAbletonBeats stays never-throw; only the new boundary validator
-// throws. See AGENTS.md "Notation grammar duplication".
+// throws. See ADR-0003.
 
 // Positions the notes grammar rejects with its 1-indexing steer (badZeroBeat) or
 // a zero/leading-zero bar. validateBarBeatPosition must throw a 1-indexing

@@ -7,7 +7,7 @@
 // source/test line reads it from here: the meta-test file finders, the LOC
 // stats, and — through src/test/meta/test-file-classification.test.ts —
 // .oxlintrc.json, all five config/.jscpd*.json scans, vitest.config.ts, and
-// AGENTS.md's documented rules.
+// dev/Testing.md's documented rules.
 //
 // These used to be a handful of independent definitions that agreed by
 // accident, so a file could be a test for the line limit and source for the

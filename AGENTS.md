@@ -4,28 +4,40 @@ Producer Pal is an AI music composition tool that integrates with Ableton Live
 through a Max for Live device using the Model Context Protocol (MCP). Written
 entirely in TypeScript.
 
+## How to Write
+
+This applies to everything you write: code comments, docs, commit messages, and
+your replies.
+
+- **Be brief.** Say it once, in the fewest words that stay accurate. Leave out
+  the history, the alternatives you rejected, and the measurements — unless a
+  reader needs them to make a decision.
+- **Use plain language.** Write for a human in a hurry. Prefer an ordinary word
+  over a technical one, a short sentence over a clause pile. Don't write to
+  prove you understood the details.
+- **Shorten long comments in code you're already touching.** If a comment is
+  longer than the code it explains, rewrite it smaller and plainer. Don't go
+  hunting through the codebase for comments to fix — only fix what you're
+  editing anyway.
+- **Never cut the load-bearing part.** An assumption that causes a bug if it's
+  wrong stays. So does a "don't do the obvious thing here, because X" warning.
+  Trim the story around the fact, not the fact.
+- **Tool descriptions and results are the tightest of all** — the Producer Pal
+  Skills, `.def.ts` descriptions, and tool results all spend the user's context
+  window. Keep them short, clear, and limited to what the model needs.
+
 ## Essential Commands
 
 ```bash
-# Build with all tools (use this for development/testing!)
-npm run build:debug
+npm run build:debug  # dev build — always use this for development/testing
 
-# Code quality checks
-npm run fix   # Auto-fix formatting and linting issues
-npm run check # All checks: lint + typecheck + format check + tests
+npm run fix    # auto-fix formatting and lint
+npm run check  # lint + typecheck + format + tests
 # npm run lint / typecheck / format / test also run individually
 
-# Chat UI development
-npm run ui:build    # Production build
-npm run ui:test     # Stubbed webui Playwright suite (CI-runnable, no Ableton/keys)
-npm run ui:test:dev # Same suite in the Playwright UI for debugging
-# Live webui suite (real device + LLM, needs Ableton + .env): npm run e2e:webui
-
-# Documentation site (VitePress at https://producer-pal.org)
-npm run docs:dev / docs:build / docs:preview
-# Clean URLs: /chat-ui not /chat-ui.html (no trailing slash).
-# Page files named after folder: docs/guide.md not docs/guide/index.md (except docs/index.md).
-# Callouts: VitePress containers (::: tip Title / warning / info / details :::), NOT "> **Tip:**" blockquotes.
+npm run ui:build     # chat UI production build
+npm run ui:test      # stubbed webui Playwright suite (no Ableton or API keys)
+npm run docs:dev     # docs site (VitePress, producer-pal.org)
 ```
 
 ## Architecture
@@ -43,18 +55,12 @@ Key entry points:
 - Chat CLI: `evals/chat/index.ts`
 - Evaluation scenarios: `evals/scenarios/index.ts`
 
-See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for web UI
-architecture.
+See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 
 ## Critical Coding Rules
 
-- **License headers**: All source files need an SPDX header at the top (after
-  any shebang). List all authors; new files use the current year and
-  contributor's name. When you modify an existing file, **append** the new
-  contributor to the end of the existing `Copyright` list (don't reorder or
-  prepend), and likewise **append** the AI tool to the end of the
-  `AI assistance` line (comma-separated if one already exists) — both lists read
-  oldest-first.
+- **License headers**: every source file starts with this block (after any
+  shebang). `examples/**` is exempt — those get copied into user projects.
 
   ```typescript
   // Producer Pal
@@ -63,378 +69,143 @@ architecture.
   // SPDX-License-Identifier: GPL-3.0-or-later
   ```
 
-  **Exception:** `examples/**` files are exempt from SPDX/copyright headers.
-  They are reference snippets meant to be copied into user projects; headers add
-  friction and confuse licensing. Do not add headers there.
+  Editing an existing file: **append** yourself to the end of the `Copyright`
+  list and the AI tool to the end of `AI assistance`. Both read oldest-first, so
+  never reorder them.
 
-- **File naming**: React components use PascalCase (`ChatHeader.tsx`); all other
-  files use kebab-case (`use-chat.ts`, `live-api-adapter.ts`).
+- **File naming**: React components are PascalCase (`ChatHeader.tsx`);
+  everything else is kebab-case (`use-chat.ts`).
 
-- **Function organization**: In files that export functions, the first exported
-  function is the main one named after the file (e.g., `updateClip()` in
-  `update-clip.ts`). All helpers (internal and exported) go below it, so the
-  file's primary purpose is immediately clear.
+- **Function organization**: the first exported function is the main one, named
+  after the file (`updateClip()` in `update-clip.ts`). Helpers go below it.
 
-- **Import extensions**: `src/` imports must include `.ts` extensions matching
-  the actual file type (import Peggy parsers from their `.ts` wrapper, e.g.
-  `barbeat-parser.ts`, not the `.js`). `webui/` is bundled and must NEVER use
-  extensions in relative imports.
+- **No barrel files**: no `index.ts` or other pure re-export files.
 
-- **Generated parsers**: the Peggy `generated-*-parser.js` files are gitignored
-  and rebuilt from the `.peggy` grammars at build time (and by
-  `npm run parser:build`) — never commit them. After editing a `.peggy` grammar,
-  regenerate so tests and builds pick up the change.
+- **Imports**: `src/` imports need `.ts` extensions; `webui/` never uses
+  extensions. Use the `#src/`, `#webui/`, `#evals/` aliases to cross between
+  top-level modules — a relative import must stay inside its own module
+  (`src/notation`, `src/tools`, …), and `webui/` bans `..` entirely. Enforced by
+  `src/test/meta/import-restrictions.test.ts`.
 
-- **Path aliases**: Use `#src/`, `#webui/`, `#evals/` (Node.js package subpath
-  imports in package.json `"imports"`). The `#` prefix is required for unbundled
-  execution (build scripts, CLI tools).
+- **Null checks**: prefer `== null` over `=== null` or `=== undefined`.
 
-  The boundary is the **module**, not the number of `../` segments. In `src/`, a
-  relative import must stay inside its own top-level module (`src/notation`,
-  `src/mcp-server`, `src/tools`, …); crossing into a sibling module uses
-  `#src/*`. So `../../types.ts` from `src/notation/barbeat/interpreter/helpers/`
-  is correct — the file-organization rules below push helpers and tests down a
-  level, and reaching back up to your own module root is the shape the code is
-  written in. But `src/tools/**` reaching `../../shared/x.ts` is not: that is
-  `#src/shared/x.ts`. Enforced by `src/test/meta/import-restrictions.test.ts`.
-  In `webui/`, `..` is banned outright — always `#webui/*`.
+- **Live API**: use the `src/live-api-adapter/live-api-extensions.ts` interface,
+  not raw `.get("property")?.[0]`. Build paths with `livePath` from
+  `src/shared/live-api-path-builders.ts` — never hardcode a path string. On a
+  runtime `LiveAPI`, reach child objects with `api.child("name")` (chainable),
+  never by concatenating onto `api.path`.
 
-- **No barrel files**: No index.ts or other pure re-export files. Import
-  directly from the source.
+- **Update tools never throw** for a bad param combo or an operation that
+  doesn't apply. `console.warn()`, skip that operation, and keep going, so the
+  rest of a multi-item call still succeeds. Warnings are not silent — they're
+  appended to the tool response as `WARNING:` blocks the model reads.
 
-- **Testing builds**: Always use `npm run build:debug` for development. It sets
-  `ENABLE_LIVE_API=true` (forces `liveApiEnabled` on so the Direct Live API tool
-  is always available — the Setup-tab toggle can't disable it in this build),
-  `ENABLE_CODE_EXEC=true`, and `ENABLE_WARP_MARKERS=true` (work-in-progress warp
-  markers: `warpMarkers` in `ppal-read-clip`'s `warp` include and the `warpOp` /
-  `warpBeatTime` / `warpSampleTime` / `warpDistance` params on
-  `ppal-update-clip` — absent from release builds).
-  `POST /config { liveApiEnabled }` still works either direction (used by e2e to
-  test the disabled state).
+- **Tool schemas**: use `z.coerce.string()` for ID params and
+  `z.coerce.number()` for numeric ones — models send both strings and numbers,
+  and the MCP SDK validates before our handler runs. For choosing a param's
+  shape and writing per-mode descriptions, see `dev/Tool-Schemas.md`.
 
-- **Exact dependency versions**: All package.json versions must be exact (no
-  `^`/`~`/ranges). `.npmrc` enforces it for `npm install`;
-  `src/test/package-json-versions.test.ts` validates it.
+- **The filesystem is Node-side only**: the V8 runtime (`src/live-api-adapter/`)
+  has no filesystem, and shipped `src/**` can't shell out. All `node:fs` work
+  lives in `src/mcp-server/`. User-content features (`~/.producer-pal`
+  overrides, global context, custom system prompt) are MCP/REST concerns that
+  never touch the Live API. See `dev/Architecture.md` → Runtime Boundary.
 
-- **Tool input schema shapes**: Rich JSON Schema shapes (arrays, nested objects)
-  are safe — accepted and filled by every model the `evals/schema-compat/` probe
-  tried (see its README for the checked-in snapshot). Choose the shape by the
-  data:
-  - **Flat scalar list** (ids, note names, paths) → comma-separated string. The
-    default: natural for LLMs, token-cheap.
-  - **List of structured records** → `z.array(z.object())`. Prefer over
-    inventing a string mini-DSL (`a=1|b=2,...`) that must be taught and parsed.
-  - **Values that can contain the list delimiter** (e.g. function-call args with
-    commas) → `z.array(z.string())`. See `actions` in `update-device.def.ts`.
-  - **"One or many"** → always an array (single-element is fine). Do NOT use
-    `string | array` (`z.union` → `anyOf`): accepted everywhere but mis-filled —
-    Claude collapses to the scalar and drops data; some small models
-    JSON-stringify the array into the string slot. **Grandfathered exception:**
-    `ppal-live-api`'s `value` is
-    `z.union([string, number, boolean, array<number>])` because Live property
-    values are genuinely heterogeneous and per-property-typed at the call site
-    (the LLM picks a branch by which property it's setting) — no scalar/array
-    ambiguity. Don't pattern-match off this for new tools.
-  - Anything richer than a primitive MUST have a small-model plan: either hide
-    the param in small-model mode
-    (`param(schema, { default, smallModel: null })`, see Modal tool config), or
-    keep a small-model-tolerant schema. There is no built-in "degrade to
-    comma-separated string" switch — tolerance lives in the schema (e.g.
-    `device-params-schema.ts`'s `params` array adds a `preprocess` that also
-    accepts a JSON-stringified array).
+- **Generated parsers**: `generated-*-parser.js` files are gitignored and built
+  from the `.peggy` grammars. Never commit them; regenerate
+  (`npm run parser:build`) after editing a grammar.
 
-- **Tool schema coercion**: Use `z.coerce.string()` (not `z.string()`) for ID
-  params (`ids`, `trackId`, `clipId`, comma-separated `sceneIndex`) and
-  `z.coerce.number()` (not `z.number()`) for numeric params (`trackIndex`,
-  `sceneIndex`, `count`, `tempo`, `gainDb`). LLMs pass values as strings or
-  numbers; the MCP SDK validates before our handler runs, so coercion must be at
-  the schema level.
+- **Note-value grammar is duplicated on purpose** across both `.peggy` grammars
+  and the regexes in `src/notation/barbeat/time/barbeat-time.ts` — don't extract
+  a shared fragment. Parity tests hold the sites in step; adding a parse site
+  means updating every site and the parity test. Same deal for Stark's
+  `DrumPitchName`. See ADR-0003.
 
-- **Modal tool config**: Per-mode overrides for params and the tool description
-  are co-located via the `param()` helper
-  (`src/tools/shared/tool-framework/modal-config.ts`) — no separate
-  `smallModelModeConfig` / `notationConfig` object. A param is either a plain
-  `z.….describe("text")` (identical in every mode) or
-  `param(z.…, { default, smallModel?, "midi-json"?, stark?, "smallModel:<notation>"? })`:
-  - A mode's value is a **string** (override the description), **`null`** (hide
-    the param, the old `excludeParams`), or an **object**
-    `{ description?, excludeEnumValues? }` (trim enum values).
-  - The tool `description` field is likewise a string or
-    `{ default, smallModel?, <notation>?, "smallModel:<notation>"? }`.
-  - Two axes — model size (large / `smallModel`) and notation — give 6 cells (2
-    sizes × 3 notations): large×barbeat = `default`, small×barbeat =
-    `smallModel`, large×notation = the bare notation (`stark`), small×notation =
-    the compound (`"smallModel:stark"`).
-  - Resolution walks most-specific-first (`smallModel:<notation>` → `<notation>`
-    → `smallModel` → `default`); first key present wins (`null` there hides).
-    `barbeat` (the default notation) has no key and falls through. Add a
-    compound cell only when small×notation needs its own text.
-  - Use notation keys only for params whose text describes note-content encoding
-    (chiefly `notes` on create-clip / update-clip). Timing/position params
-    (`start`, `split`, `firstStart`, `arrangementStart`, `length`) stay
-    bar|beat.
-  - `config.notation` reaches the tool at registration because `createMcpServer`
-    runs fresh per `POST /mcp`. Co-location means no dangling override refs, so
-    no separate refs test guards it — just keep each param's modes correct.
+- **Exact dependency versions**: no `^`/`~`/ranges anywhere in package.json.
 
-- **Filesystem access is Node-side only**: The V8 runtime
-  (`src/live-api-adapter/`) has no filesystem and shipped `src/**` can't shell
-  out (`child_process` banned). All `node:fs` reads/writes live on the
-  Node-for-Max side (`src/mcp-server/`). User-content / config features
-  (`~/.producer-pal` overrides, global context, custom system prompt) are pure
-  MCP/REST concerns — they do NOT use the Live API. Content that must reach
-  external MCP clients is injected into the `ppal-connect` result Node-side (the
-  append seam in `helpers/global-context/global-context-inject.ts`), never in a
-  V8 tool handler that can't read the files. The webui round-trips through Node
-  REST routes for the same reason. See `dev/Architecture.md` → Runtime Boundary.
+- **No Linear ticket references anywhere in the repo** — this is a public repo
+  with private ticket numbers. Never write `AJM-NNN` in a tracked file or a
+  commit message; explain the reasoning instead. `npm run check` scans both
+  tracked files and your commits on this branch, but only locally, so run it
+  before pushing. PR titles and bodies are fine.
 
-- **Live API**: Always use the `src/live-api-adapter/live-api-extensions.ts`
-  interface instead of raw `.get("property")?.[0]` calls.
+- **Keep the Skills and specs current**: the Producer Pal Skills
+  (`src/tools/core/connect.ts`) need updating whenever notation or tool behavior
+  changes under them. The grammar specs in `dev/specs/` have no test guarding
+  them, so update them by hand when you change grammar syntax.
 
-- **Live API paths**: Never hardcode path strings — use `livePath` from
-  `src/shared/live-api-path-builders.ts` (e.g. `livePath.track(i)`).
-  `LiveAPI.from()` accepts `PathLike` objects. See `dev/Coding-Standards.md`.
+- **File size limits** (blank and comment lines don't count): 325 lines per
+  source file, 650 for a whole test suite; 115 lines per function; `max-depth`
+  4; `complexity` 20. When a file gets close, extract cohesive helpers into
+  `{feature}-helpers.ts` beside it — don't compress code to squeak under the
+  limit. Once a directory has 2+ helper files, move them into `helpers/`. Split
+  test files as `{feature}-{area}.test.ts`, and give a feature its own `tests/`
+  directory once it has 3+ test files. See
+  `.claude/skills/refactoring/SKILL.md`.
 
-- **Runtime sub-paths**: With a runtime `LiveAPI`, use `api.child("name")`
-  (chainable, multi-arg) for child objects — never concatenate
-  `api.path + " name"` back through `LiveAPI.from()`. E.g.
-  `track.child("mixer_device").child("panning")`.
+- **Write lint suppressions with the `eslint-` prefix**, not `oxlint-`. Both
+  work, but the rule requiring a `-- reason` on every directive only sees the
+  `eslint-` spelling. See `dev/Linting.md`.
 
-- **Null checks**: Prefer `== null` over `=== null` or `=== undefined`.
-
-- **Update tool error handling**: Update tools (update-clip, update-track,
-  update-device, …) must NOT throw for invalid param combos or incompatible
-  operations. Instead `console.warn()`, skip the operation, and continue — this
-  allows partial successes across multiple items. `console.warn()` is NOT
-  silent: it's relayed to the LLM as `WARNING:` text blocks appended to the tool
-  response (emitted on outlet 1 by `src/shared/v8-max-console.ts`, collected by
-  `src/mcp-server/max-api-adapter.ts`), so warn-and-skip is real, actionable
-  feedback. (`console.log()`/`console.error()` are NOT relayed.) E.g.
-  `console.warn("quantize parameter ignored for audio clip")`.
-
-- **No Linear ticket references in the repo**: Public repo, private ticket
-  numbers. Never write an `AJM-NNN` reference in any tracked file (comments,
-  docs, test names) or commit/PR text — explain the reasoning directly. Enforced
-  by `src/test/meta/no-linear-refs.test.ts` for tracked files and for the commit
-  messages in `origin/main..HEAD` (the set a squash merge pastes into public
-  history). The commit scan is local-only — CI checks out shallow and has no
-  base ref to diff against — so run `npm run check` before pushing. PR titles
-  and bodies stay unguarded.
-
-- **Producer Pal Skills maintenance**: Returned by the ppal-connect tool
-  (`src/tools/core/connect.ts`). Adjust it after bar|beat notation changes and
-  when changing behavior that invalidates any of its instructions.
-
-- **Notation spec maintenance**: The hand-written grammar specs in `dev/specs/`
-  (`BarBeat-Spec.md`, `Transforms-Spec.md`) are the authoritative reference for
-  the bar|beat and transform DSLs. No test guards them and they don't feed the
-  docs site (built from the skills strings), so they drift silently — update by
-  hand whenever you change grammar syntax (operators, selectors, shorthand,
-  range bounds like `N|*`/`-<`, note-value tokens, units — say "musical beats"
-  vs the internal Ableton quarter-note beat). Keep them focused on the
-  grammar/parser contract; defer usage examples to the skills.
-
-- **Notation grammar duplication**: The note-value lexer (durations like `n/4`,
-  `±n` beat offsets, the off-grid `n<beats>/4` escape, `Nbar` forms) is
-  intentionally duplicated across both Peggy grammars (`barbeat-grammar.peggy`,
-  `transform-grammar.peggy`) and the regexes in
-  `src/notation/barbeat/time/barbeat-time.ts`. Peggy has no rule-sharing and
-  routing per-note hot paths through the parser would cost performance, so do
-  NOT extract a shared fragment. Enforced by `note-value-grammar-parity.test.ts`
-  (6 parse sites across meters) and `note-value-denominator-parity.test.ts` —
-  when adding/changing a parse site, update every site AND the parity test.
-  Stark's `DrumPitchName` is duplicated the same way as a regex in
-  `stark-interpreter.ts`'s `drumHeaderPitch`, locked by
-  `drum-pitch-name-grammar-parity.test.ts`. See `dev/Coding-Standards.md` for
-  the rationale.
-
-- **Context window usage optimization**: The Producer Pal Skills, `.def.ts` tool
-  and parameter descriptions, and tool results must be very short, clear, and
-  focused on the most useful info.
-
-- **IndexedDB versioning**: IndexedDB is schemaless for record data — adding
-  fields to stored records does NOT need a version bump; handle missing fields
-  with defaults on read. Only bump `DB_VERSION` for structural changes
-  (creating/deleting object stores or indexes). Prefer backwards-compatible
-  reads over upgrade-time data transforms.
-
-- **Chat UI builds**: The webui is built with Vite (`config/vite.config.ts`)
-  into a single self-contained `max-for-live-device/chat-ui.html`. Use
-  `npm run ui:build` to check the build succeeds.
-
-- **UI testing**: Webui tests use vitest + @testing-library/preact, colocated
-  with source (`ChatHeader.tsx` → `ChatHeader.test.tsx`).
-
-- **Webui tests must not leak real fetches**: Under
-  `@vitest-environment happy-dom` the page origin is `http://localhost:3000`, so
-  any unmocked same-origin `fetch` hits the real network and surfaces as
-  `ECONNREFUSED`. These leaks are invisible in plain `npm test` (the process
-  exits before slow polls fire) and only appear under `npm run check` /
-  `test:coverage`. Any test mounting a component that does same-origin `fetch`
-  on mount or a timer must mock the transport. Tests rendering the real `<App>`
-  must mock `use-system-prompt` and `ContextTabs` (the `use-doc.ts` hooks fetch
-  on mount AND on a 5s poll) — reuse the shared payloads in
-  `webui/src/components/tests/App-context-mocks.tsx` rather than re-inlining.
-
-- **File organization and size limits** (numeric oxlint limits under Refactoring
-  & Code Quality):
-  - When a file approaches the limit, extract helpers to `{feature}-helpers.ts`
-    in the same directory; group by feature/domain. If a helper file exceeds the
-    limit, split by group: `{feature}-{group}-helpers.ts` (e.g.
-    `update-clip-audio-helpers.ts`).
-  - When a directory accumulates 2+ helper files, move them to a `helpers/`
-    subdirectory (keep the main source file in the parent).
-  - Split test files with dot notation: `{feature}-{area}.test.ts`. Shared test
-    utilities go in `{feature}-test-helpers.ts`.
-  - **Test file location**: Create a `tests/` subdirectory once 3+ test files
-    exist for a feature; fewer may be colocated or in `tests/` (either is fine).
-  - **Prefer refactoring over trimming**: extract cohesive helpers rather than
-    compressing code (merging tests into loops, collapsing whitespace,
-    shortening names, inlining helpers) to stay under a limit.
-
-## Test File Classification
-
-A file is a **test file** if its name ends with `*.test.ts`, `*.test.tsx`,
-`*.spec.ts`, `*.spec.tsx`, `*-test-cases.ts`, `*-test-helpers.ts`, or
-`*-test-helpers.tsx`, or if it lives under a `test/`, `tests/`, `test-cases/`,
-or `test-utils/` directory. `*.test.*` is a vitest suite, `*.spec.*` a
-Playwright one (`e2e/` only) — the runner split matters because vitest's lint
-rules misfire on a Playwright spec.
-
-**That is the whole list — do not invent another category.** A fixture, mock, or
-case table belongs in one of the names above; a suffix only one config
-recognizes reads as a test there and as source everywhere else, which is exactly
-how these definitions came apart before. `*-test-fixtures.ts`,
-`*-mock-helpers.ts`, and the singular `*-test-case.ts` are retired and rejected
-by a meta test — mocks are test helpers, so name them `*-test-helpers.ts`.
-
-The definition lives in `src/test/helpers/test-file-classification.ts`.
-`.oxlintrc.json`, `config/.jscpd*.json`, `vitest.config.ts`, and this section
-are held in step with it by `src/test/meta/test-file-classification.test.ts` —
-change the module first, then let that test name the configs that fell out of
-step.
-
-Implications:
-
-- **Duplication**: `src/`, `webui/`, `scripts/` and `evals/` split source from
-  test — test files are scanned by `config/.jscpd-tests.json` at a looser
-  threshold than their tree's own config. `e2e/` does **not** split: 67 of its
-  85 files are tests and only two of the rest are TypeScript, so
-  `config/.jscpd-e2e.json` holds the whole tree to one threshold.
-- **Line limits**: only whole test suites (`*.test.*`, `*.spec.*`,
-  `*-test-cases.ts`) get 650 lines max and 630 lines per function; test helpers
-  and fixtures use the standard 325 / 115.
-- **Coverage**: excluded from coverage requirements.
-- **Suppression budgets**: counted against the `…Tests` tree in
-  `src/test/lint-suppression-limits.test.ts`, not the source tree. Every code
-  tree has both halves, so no test file is left unbudgeted.
-- **Layering**: exempt from the `src/` layering contract, which governs the
-  shipped dependency graph that no test file is part of.
+- **DRY**: no duplicate function bodies (oxlint catches them), keep shared
+  constants in one place, and treat repeated patterns as a missing abstraction.
 
 ## Type Checking
 
-All of `src/`, `scripts/`, `evals/`, `webui/` is type-checked via
-`npm run typecheck`. Code must pass `typecheck` and `lint`. Prefer explicit
+`src/`, `scripts/`, `evals/`, and `webui/` are all type-checked. Prefer explicit
 return types on exported functions. Every exported function declaration needs a
-JSDoc block with `@param`/`@returns` descriptions (no types — TypeScript is the
-source of truth). The block's presence is enforced by
-`src/test/meta/jsdoc-requirements.test.ts`, since oxlint has no require-jsdoc
-rule; oxlint checks that an existing block is complete. Before committing,
-`npm run check` must pass with zero errors.
+JSDoc block with `@param`/`@returns` descriptions — no types, since TypeScript
+already has them.
 
-## Testing After Changes
+## Testing
 
-- After ALL code changes: run `npm run check` (lint + typecheck + format +
-  tests).
-- **Before claiming done**: ALWAYS run `npm run fix`, then `npm run check`, then
-  `npm run check:build` (verifies production artifacts and docs site compile).
-  This pre-empts likely errors. **If you touched the chat UI** (`webui/**` or
-  its build): ALSO run `npm run ui:test` (the stubbed Playwright suite;
-  `npm run check` doesn't run it — no Ableton/keys needed).
-- **Debug logging**: import console
-  (`import * as console from "../../shared/v8-max-console.ts"`) and use
-  `console.warn()` — it's relayed as a `WARNING:` block in both the CLI and the
-  live MCP response (the LLM sees it); `console.log()`/`console.error()` are
-  not. Invaluable for tracing tool behavior when CLI-testing AND when debugging
-  e2e tests.
-- **Diagnosing coverage gaps**: `npm run check`'s console shows only totals —
-  check `coverage/coverage-summary.txt` for the per-file breakdown. Function
-  coverage is enforced at 100%; if a function is genuinely untestable use
-  `/* v8 ignore start -- reason */` (see `dev/Coding-Standards.md` Coverage).
-- **Needs user approval** (never do unprompted): raising v8-ignore limits,
-  raising duplication thresholds, or lowering coverage thresholds — see
-  Protected Files.
-- CLI tool invocation (`scripts/ppal-client.ts`), reproducible test Live Sets,
-  and LLM-based e2e (`scripts/chat -1`) are documented in
+- Run `npm run check` after any code change. **Before claiming done**:
+  `npm run fix`, then `npm run check`, then `npm run check:build`. If you
+  touched `webui/**`, also run `npm run ui:test` — `check` doesn't include it.
+- `npm run build:debug` is the dev build. It force-enables the Direct Live API
+  tool, code execution, and work-in-progress warp markers, none of which exist
+  in a release build.
+- **Debugging**: import `console` from `src/shared/v8-max-console.ts` and use
+  `console.warn()` — it shows up in the CLI and in the live MCP response.
+  `console.log()` and `console.error()` don't.
+- **Coverage gaps**: `npm run check` prints totals only; the per-file breakdown
+  is in `coverage/coverage-summary.txt`. Function coverage must be 100%; mark a
+  genuinely untestable function with `/* v8 ignore start -- reason */`.
+- See `dev/Testing.md` for what counts as a test file, webui test gotchas, and
+  the mock registry. CLI tools and test Live Sets are in
   `dev/Development-Tools.md`.
 
-## MCP E2E Testing
+### MCP E2E Testing
 
-E2E tests for MCP tools are in `e2e/mcp/`; they open Ableton Live and verify
-tools via the MCP protocol. See `e2e/mcp/README.md` for prerequisites/patterns.
+E2E tests live in `e2e/mcp/` and drive a real Ableton Live. See
+`e2e/mcp/README.md`.
 
-**IMPORTANT:** Always ask the user before running e2e tests — they open a Live
-Set without saving the current one, which can destroy in-progress work in
-Ableton Live.
+**Always ask before running them** — they open a Live Set without saving the
+current one, which can destroy work in progress.
 
-**IMPORTANT:** Always run a single test file (the full suite takes several
-minutes). Pass a matcher after `--`:
+**Always run a single file.** The full suite takes several minutes.
 
 ```bash
-npm run e2e:mcp -- ppal-update-clip-arrangement-splitting  # single file
-npm run e2e:mcp                                             # full suite (avoid unless requested)
+npm run e2e:mcp -- ppal-update-clip-arrangement-splitting
 ```
-
-## Project Constraints
-
-- TypeScript for `src/`, `scripts/`, `evals/`, `webui/`.
-- Three rollup bundles: MCP server (Node.js), V8 code (Max), and the MCP
-  stdio-to-http "portal".
-- Dependencies bundled for distribution.
 
 ## Protected Files (Require User Approval)
 
-These hold code-quality thresholds — **do not relax without asking first:**
+These hold quality thresholds — **don't relax any of them without asking:**
 
-- `src/test/lint-suppression-limits.test.ts` — per-tree limits for lint-disable
-  (either the `eslint-` or `oxlint-` prefix), @ts-expect-error, and v8 ignore
-  comments.
-- `vitest.config.ts` (thresholds section) — test coverage thresholds.
-- `config/.jscpd*.json` (`threshold`) — code-duplication limits (per tree).
-
-## Refactoring & Code Quality
-
-See `.claude/skills/refactoring/SKILL.md` for comprehensive guidelines. When
-oxlint reports violations, consult it for strategies.
-
-Key oxlint limits (all ignoring blank/comment lines):
-
-- `max-lines-per-function`: 115. Exception: a webui hook's main `useHook()` may
-  use `eslint-disable-next-line max-lines-per-function` (not a whole-file
-  disable).
-
-**Write suppression directives with the `eslint-` prefix, not `oxlint-`.**
-oxlint honors both, but the rule requiring a `-- reason` on every directive runs
-through the ESLint-compatible plugin bridge, which only recognizes the `eslint-`
-spelling — an `oxlint-disable` escapes it silently. See `dev/Linting.md`.
-
-- `max-lines` per file: 325 for source, 650 for whole test suites (see Test File
-  Classification).
-- `max-depth`: 4. `complexity`: 20.
-
-**DRY**: no duplicate function bodies (caught by oxlint), extract repeated
-logic, keep shared constants in one place; similar patterns suggest a missing
-abstraction.
+- `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
+  `@ts-expect-error`, and v8-ignore comments.
+- `vitest.config.ts` (thresholds) — coverage.
+- `config/.jscpd*.json` (`threshold`) — code duplication.
 
 ## Documentation
 
-Internal design docs live in `dev/` — filenames are descriptive, so `ls dev/` to
-find the right one. Key entries: `dev/Architecture.md` (system design),
-`dev/Coding-Standards.md` (full code-style + Live API reference),
-`dev/decisions/` (ADRs — the "why" behind settled choices, esp. rejections),
-`dev/Linting.md` (oxlint config, what moved to meta tests, what was lost),
-`dev/specs/` (bar|beat
+Internal docs live in `dev/` — the filenames are descriptive, so `ls dev/` to
+find one. The main ones: `dev/Architecture.md` (system design),
+`dev/Coding-Standards.md` (full style guide + Live API reference),
+`dev/Testing.md`, `dev/Tool-Schemas.md`, `dev/Linting.md`, `dev/specs/`
+(bar|beat and transform grammars), `dev/Development-Tools.md`, and
+`dev/decisions/` (ADRs — why settled choices went the way they did, especially
+the rejections).
 
-- transform grammar specs), `dev/Development-Tools.md` (CLI/e2e testing tools).
-  `DEVELOPERS.md` = dev setup and testing; `CONTRIBUTING.md` = contribution
-  guide (ways to contribute, stable-core policy, branching).
+`DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.
