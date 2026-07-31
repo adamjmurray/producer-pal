@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractToolResultText,
   parseToolResult,
+  parseToolResultWithWarnings,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
@@ -91,13 +92,21 @@ describe("ppal-context (project scope)", () => {
 
     await setConfig({ projectContext: INITIAL_CONTENT });
 
-    const response = extractToolResultText(
-      await callProjectContextTool("write", "- Key: A minor."),
+    const writeResult = await callProjectContextTool(
+      "write",
+      "- Key: A minor.",
     );
 
-    // The warning rides along as a WARNING: block on the same result.
-    expect(response).toContain("scope:project write SKIPPED");
-    expect(response).toContain("force:true");
+    // Warn-and-skip: the payload block is the document as it stands, and the
+    // refusal rides along beside it as its own WARNING: block — the relayed
+    // warnings are never concatenated onto the payload, which has to stay
+    // parseable on its own.
+    const { data, warnings } =
+      parseToolResultWithWarnings<ContentResult>(writeResult);
+
+    expect(data.content).toBe(INITIAL_CONTENT);
+    expect(warnings.join("\n")).toContain("scope:project write SKIPPED");
+    expect(warnings.join("\n")).toContain("force:true");
 
     const verifyResult = parseToolResult<ContentResult>(
       await callProjectContextTool("read"),

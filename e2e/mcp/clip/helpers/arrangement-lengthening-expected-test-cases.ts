@@ -82,21 +82,26 @@ const audioUnloopedWarped: Record<number, ExpectedClip[]> = {
 // Tracks 30-35 (unwarped audio) use loop_end to extend. Ableton auto-clamps at
 // file boundary. No-hidden tracks stay unchanged; hidden-content tracks extend
 // to the file's natural sample length. All produce a single clip (no tiles).
-// Live 12.4 changed end_marker to clamp at file content boundary (2|1.8 for
-// the 4.8s sample); previous Live versions allowed end_marker beyond content.
+// Live 12.4 changed end_marker to clamp at file content boundary (the 4.8s
+// sample); previous Live versions allowed end_marker beyond content.
+// start/end are the clip region, which Live reports in SECONDS while a clip is
+// unwarped — read-clip converts at tempo/60, so at this Set's 120 BPM the 4.8s
+// file ends at 9.6 beats (3|2.6), twice the number the pre-conversion snapshot
+// recorded. arrangementLength was always in beats and is unchanged, which is
+// why it agrees with end - start only now.
 // These sample-derived lengths land exactly on the note-value grid: 1.6 beats =
 // 2/5 of a whole note (n2/5), 0.4 beats = 1/10 (n/10). Verified against Live 12.4
-// on 2026-05-29 (npm run e2e:mcp -- ppal-update-clip-arrangement-lengthening,
+// on 2026-07-31 (npm run e2e:mcp -- ppal-update-clip-arrangement-lengthening,
 // 36/36). If a future sample is off-grid the serializer would emit bare beats
 // (e.g. "9.6") and the failure message prints the exact string to paste in.
 // prettier-ignore
 const audioUnwarped: Record<number, ExpectedClip[]> = {
-  30: c([["1|1","2bar+n2/5","1|1","2|1.8"]]),
-  31: c([["1|1","2bar+n2/5","1|1","2|1.8"]]),
-  32: c([["1|1","2bar+n2/5","1|1","2|1.8"]]),
-  33: c([["1|1","2bar+n2/5","1|1","2|1.8"]]),
-  34: c([["1|1","2bar+n/10","1|1.6","2|1.8"]]),
-  35: c([["1|1","2bar+n/10","1|1.6","2|1.8"]]),
+  30: c([["1|1","2bar+n2/5","1|1","3|2.6"]]),
+  31: c([["1|1","2bar+n2/5","1|1","3|2.6"]]),
+  32: c([["1|1","2bar+n2/5","1|1","3|2.6"]]),
+  33: c([["1|1","2bar+n2/5","1|1","3|2.6"]]),
+  34: c([["1|1","2bar+n/10","1|2.2","3|2.6"]]),
+  35: c([["1|1","2bar+n/10","1|2.2","3|2.6"]]),
 };
 
 /** Expected clips after lengthening to 4bar, indexed by track number */
