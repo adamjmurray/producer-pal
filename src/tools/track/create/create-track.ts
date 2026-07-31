@@ -55,8 +55,13 @@ function createSingleTrack(
     result = liveSet.call("create_audio_track", currentIndex);
   }
 
-  // Live API returns ["id", "123"]
-  return assertDefined((result as string[])[1], "track id from result");
+  // Live API returns ["id", 123] — the second element is a NUMBER, verified
+  // against Live 12.4.3. Every other tool derives its id from `api.id`, which
+  // is always a string, so stringify here to keep `id` one type across the
+  // whole tool surface (and to make this function's return type honest).
+  return String(
+    assertDefined((result as unknown[])[1], "track id from result"),
+  );
 }
 
 /**
