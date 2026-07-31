@@ -34,6 +34,10 @@ overrides array turns back off the category rules this codebase doesn't satisfy
 yet, one commented entry per rule with its violation count. Deleting an entry is
 the unit of work: fix the violations, drop the line, and the rule stays on.
 
+Every entry is marked **PERMANENT** (the rule is wrong for this codebase — don't
+re-litigate it) or **DEFERRED** (worth doing, too big for one sitting). The
+deferred ones are the backlog and have tickets.
+
 Two structural rules keep that section working, and both are easy to get wrong:
 
 1. **It has to go last.** Naming a plugin in an override re-seeds that plugin's

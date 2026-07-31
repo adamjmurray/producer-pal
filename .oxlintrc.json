@@ -1064,6 +1064,10 @@
     // measured when it was written. Deleting an entry is the unit of work: fix
     // the violations, drop the line, and the rule stays on for good.
     //
+    // Every entry says PERMANENT (the rule is wrong here, don't revisit) or
+    // DEFERRED (worth doing, too big for one sitting — these are the backlog).
+    // Counts were re-measured 2026-07-31.
+    //
     // Two structural rules keep this section honest:
     //
     //  1. It goes LAST. Naming a plugin in an override re-seeds that plugin's
@@ -1081,14 +1085,15 @@
     {
       "files": ["**/*"],
       "rules": {
-        // 126. `__dirname` accounts for 20 of them and is a builtin, not a
-        // dangling identifier; the rest are this codebase's deliberate
-        // `_private` naming. Style, not a bug catcher, and it disagrees with a
-        // convention already in use.
+        // PERMANENT. 126. `__dirname` accounts for 20 of them and is a
+        // builtin, not a dangling identifier; the rest are this codebase's
+        // deliberate `_private` naming. Style, not a bug catcher, and it
+        // disagrees with a convention already in use.
         "no-underscore-dangle": "off"
       }
     },
-    // A polyfill is the one place these two rules are exactly backwards. The
+    // PERMANENT, both. A polyfill is the one place these two rules are
+    // exactly backwards. The
     // Max V8 runtime lacks the ES2023 array methods, which is why this module
     // installs them onto the prototype (no-extend-native, 8 hits, all here) by
     // hand-writing the very method the rule wants called (no-array-reverse —
@@ -1122,18 +1127,21 @@
       ],
       "plugins": ["typescript"],
       "rules": {
-        // 2236, split evenly between source and tests. Flags every `as T`.
-        // Making the codebase assertion-free is its own project.
+        // PERMANENT. 2223 across 588 files — every `as T`. The boundaries
+        // where an unchecked cast is actually dangerous (tool input, HTTP
+        // bodies) are already guarded by zod; the remaining ~580 files would
+        // be rewritten into `satisfies` gymnastics for no safety gained.
         "typescript/no-unsafe-type-assertion": "off",
-        // 47. A real bug catcher, but each hit needs the value inspected to
-        // tell an intended `String(x)` from a latent `[object Object]`.
+        // DEFERRED. 48 in 25 files. A real bug catcher — each hit needs the
+        // value inspected to tell an intended `String(x)` from a latent
+        // `[object Object]`. Most are eval scenario assertions interpolating
+        // loosely typed tool-call args.
         "typescript/no-base-to-string": "off",
-        // 43. Mostly functions that return a value in one branch and fall off
-        // the end in another. Each is a judgement call about the contract.
-        "typescript/consistent-return": "off",
-        // 12. Deleting a single-use type parameter changes an exported
-        // signature, so this is an API edit wearing a lint rule's clothes.
-        "typescript/no-unnecessary-type-parameters": "off"
+        // DEFERRED. 38 in 32 files. Functions that return a value in one
+        // branch and fall off the end in another; each is a judgement call
+        // about the contract. The 16 webui hits are useEffect callbacks that
+        // return a cleanup only on some paths — decide those as a group.
+        "typescript/consistent-return": "off"
       }
     },
     {
@@ -1151,14 +1159,16 @@
       ],
       "plugins": ["unicorn"],
       "rules": {
-        // 101. The fix rewrites `.sort()` to `.toSorted()`, which changes
-        // whether the receiver is mutated. Not mechanical — every call site
-        // has to be read for whether something relies on the mutation.
+        // DEFERRED. 110 in 54 files (69 in src/). The fix rewrites `.sort()`
+        // to `.toSorted()`, which changes whether the receiver is mutated. Not
+        // mechanical — every call site has to be read for whether something
+        // relies on the mutation. Safe in the V8 runtime: live-api-adapter.ts
+        // imports the es2023-array polyfill.
         "unicorn/no-array-sort": "off",
-        // 11, all of them IndexedDB and Web Audio handles where `onsuccess` /
-        // `onerror` / `onended` is the idiomatic single-handler form. The
-        // rule's premise (you might want more than one listener) does not
-        // apply to a one-shot request. Off permanently, not deferred.
+        // PERMANENT. 15, all of them IndexedDB and Web Audio handles where
+        // `onsuccess` / `onerror` / `onended` is the idiomatic single-handler
+        // form. The rule's premise (you might want more than one listener)
+        // does not apply to a one-shot request.
         "unicorn/prefer-add-event-listener": "off"
       }
     },
@@ -1183,8 +1193,8 @@
       ],
       "plugins": ["import"],
       "rules": {
-        // 79. Side-effect imports are the intended shape here: webui and docs
-        // CSS, and test-setup modules that exist only to run.
+        // PERMANENT. 79. Side-effect imports are the intended shape here:
+        // webui and docs CSS, and test-setup modules that exist only to run.
         "import/no-unassigned-import": "off"
       }
     },
@@ -1192,8 +1202,8 @@
       "files": ["webui/**/*.{ts,tsx}"],
       "plugins": ["react"],
       "rules": {
-        // 1685. Obsolete under the automatic JSX runtime — no component needs
-        // React (or Preact) in scope. This one is never coming back on.
+        // PERMANENT. 1672. Obsolete under the automatic JSX runtime — no
+        // component needs React (or Preact) in scope.
         "react/react-in-jsx-scope": "off"
       }
     },
@@ -1205,11 +1215,13 @@
       "files": ["**/*.test.ts", "**/*.test.tsx", "**/test-setup.ts"],
       "plugins": ["vitest"],
       "rules": {
-        // 1317. Wants a type parameter on every `vi.fn()`; these mocks are
-        // typed by the assertion that reads them instead.
+        // PERMANENT. 1315 in 231 files. Wants a type parameter on every
+        // `vi.fn()`; these mocks are typed by the assertion that reads them
+        // instead. 1315 hand edits restating types, catching no bugs.
         "vitest/require-mock-type-parameters": "off",
-        // 104. Argues every `expect(...).toThrow()` should assert the message.
-        // Worth doing, but it is 104 separate decisions about what to assert.
+        // DEFERRED. 104 in 29 files. Argues every `expect(...).toThrow()`
+        // should assert the message. Worth doing, but it is 104 separate
+        // decisions about what to assert.
         "vitest/require-to-throw-message": "off"
       }
     },
@@ -1229,10 +1241,14 @@
       ],
       "plugins": ["typescript"],
       "rules": {
-        // 273, every one of them here. Passing a bare method reference is how
-        // these suites assert on it; source code is still held to the rule.
+        // PERMANENT. 273, every one of them here. Passing a bare method
+        // reference is how these suites assert on it; source code is still
+        // held to the rule.
         "typescript/unbound-method": "off",
-        // 4. Suites that build a subject out of static-only helper classes.
+        // PERMANENT. 4: three constructor-only fakes the code under test does
+        // `new` on (so they have to be classes, not the functions the rule
+        // wants), and the static-only `Max` double that mirrors the shape of
+        // the real max-api module.
         "typescript/no-extraneous-class": "off"
       }
     },
@@ -1246,9 +1262,9 @@
     // plugin becomes new coverage for those suites. Same for
     // prefer-add-event-listener over e2e/ui's WebSocket handles.
     //
-    // consistent-function-scoping: 133 of its 141 hits are in test files, where
-    // a helper defined inside a `describe` sits next to the cases it builds —
-    // better placed than hoisted. The other 8 were hoisted.
+    // consistent-function-scoping: PERMANENT. 136 of its 144 hits are in test
+    // files, where a helper defined inside a `describe` sits next to the cases
+    // it builds — better placed than hoisted. The other 8 were hoisted.
     {
       "files": [
         "**/*.test.ts",
@@ -1268,6 +1284,27 @@
         "unicorn/consistent-function-scoping": "off",
         "unicorn/no-array-sort": "off",
         "unicorn/prefer-add-event-listener": "off"
+      }
+    },
+    // Typed decode helpers: `f<T>(raw): T` over a payload nothing can check —
+    // JSON.parse output, or notes captured from a mock's call args. The type
+    // parameter IS the caller's assertion, which is what the rule reports as
+    // single-use. Dropping it would return `unknown` and move the same
+    // assertion to every call site (452 of them for parseToolResult alone).
+    // Last in the file for the same reason the opt-outs are: the test-glob
+    // block above names the typescript plugin over three of these paths, and
+    // that re-seeds the plugin's category rules.
+    {
+      "files": [
+        "e2e/mcp/mcp-test-helpers.ts",
+        "scripts/stats/test-stats.ts",
+        "src/live-api-adapter/tests/v8-protocol-test-helpers.ts",
+        "src/test/meta/test-file-classification.test.ts",
+        "src/tools/clip/update/tests/notes/notes-mock-test-helpers.ts"
+      ],
+      "plugins": ["typescript"],
+      "rules": {
+        "typescript/no-unnecessary-type-parameters": "off"
       }
     }
   ]

@@ -63,6 +63,12 @@ const NARROW_OXLINT_TEST_GLOBS = new Set([
   "**/test-setup.ts", // the single vitest setup file
   "e2e/mcp/**/*.test.ts", // vitest relaxations for the MCP e2e suites alone
   "evals/chat/agent-cli/tests/agent-cli-fixture.mjs", // one file, one rule
+  // The typed decode helpers, one file each, one rule
+  // (typescript/no-unnecessary-type-parameters).
+  "e2e/mcp/mcp-test-helpers.ts",
+  "src/live-api-adapter/tests/v8-protocol-test-helpers.ts",
+  "src/test/meta/test-file-classification.test.ts",
+  "src/tools/clip/update/tests/notes/notes-mock-test-helpers.ts",
 ]);
 
 interface OxlintOverride {

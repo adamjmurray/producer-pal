@@ -107,9 +107,10 @@ export interface DocCollectionConfig {
  * @param config - The collection's endpoints and error label
  * @returns Collection state plus save/delete and refresh actions
  */
-export function useDocCollection<TView extends DocCollectionEntry, TInput>(
-  config: DocCollectionConfig,
-): UseDocCollectionReturn<TView, TInput> {
+export function useDocCollection<
+  TView extends DocCollectionEntry,
+  TInput extends object,
+>(config: DocCollectionConfig): UseDocCollectionReturn<TView, TInput> {
   const { label, collectionUrl, entryUrl } = config;
   const [status, setStatus] = useState<DocCollectionStatus<TView>>({
     kind: "loading",
@@ -133,7 +134,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
   const saveEntry = useCallback(
     (name: string, input: TInput, createOnly = false): Promise<TView | null> =>
       mutate(
-        () => putEntry<TView, TInput>(entryUrl(name), input, createOnly, label),
+        () => putEntry<TView>(entryUrl(name), input, createOnly, label),
         (entry) => setStatus((prev) => mergeEntry(prev, entry)),
         [name],
       ),
@@ -144,7 +145,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
     (oldName: string, newName: string, input: TInput): Promise<TView | null> =>
       mutate(
         () =>
-          putRename<TView, TInput>(
+          putRename<TView>(
             `${entryUrl(oldName)}/rename`,
             newName,
             input,

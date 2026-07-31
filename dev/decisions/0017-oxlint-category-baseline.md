@@ -44,6 +44,20 @@ Three groups came out of the triage:
   `vitest/require-mock-type-parameters` (1,317).
 - **Fixed on adoption** — the remaining ~100, across 18 rules.
 
+A second pass the next day (2026-07-31) re-measured every entry and gave each
+one a verdict in the config, PERMANENT or DEFERRED. The two rules that had led
+the deferred list became PERMANENT: `no-unsafe-type-assertion` because zod
+already guards the boundaries where an unchecked cast is dangerous, so the other
+~580 files would be churned for no safety gained, and
+`require-mock-type-parameters` because it is 1,315 hand edits restating types
+that the reading assertion already pins. Four rules stay deferred:
+`typescript/no-base-to-string` (48), `typescript/consistent-return` (38),
+`unicorn/no-array-sort` (110), `vitest/require-to-throw-message` (104).
+`typescript/no-unnecessary-type-parameters` came off the list entirely: seven of
+its twelve hits were single-use parameters worth deleting, and the other five
+are typed decode helpers (`f<T>(raw): T` over JSON), now a named per-file
+exception.
+
 ## Consequences
 
 - **Autofix needs review, not trust.** Of the 25 violations `oxlint --fix`
