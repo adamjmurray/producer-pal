@@ -77,9 +77,12 @@ did not have it turns the plugin **on** there, with every rule it owns.
 **Autofix needs review, not trust.** `oxlint --fix` resolved 25 violations. One
 of them rewrote `polyfillToReversed`'s body from `[...arr].reverse()` to
 `[...arr].toReversed()` — the polyfill calling the method it exists to provide.
-The unit tests do not catch it: they run under Node, where the native method
-exists, and the code only breaks in the Max V8 runtime it was written for.
-Another removed a `as string` that `tsc` requires under
+The unit tests do catch it — `es2023-array.test.ts` deletes the natives in a
+`beforeAll` before re-importing, so the rewritten body fails there — but they
+report it from the far end: a case named for prototype installation dies on
+`toReversed is not a function`, which reads as a broken harness rather than a
+rewritten polyfill. Read a red suite in that file as a question about the
+polyfill body first. Another removed a `as string` that `tsc` requires under
 `noUncheckedIndexedAccess`, caught by typecheck. A third fought
 `no-unsafe-enum-comparison`: the cast that rule wants is the cast
 `no-unnecessary-type-assertion`'s fixer deletes, so `npm run fix` undid the fix

@@ -1093,9 +1093,11 @@
     // installs them onto the prototype (no-extend-native, 8 hits, all here) by
     // hand-writing the very method the rule wants called (no-array-reverse —
     // its fixer rewrites `[...arr].reverse()` in polyfillToReversed to
-    // `[...arr].toReversed()`, i.e. the polyfill calling itself). Note that
-    // the unit tests do NOT catch that: they run under Node, where the native
-    // method exists.
+    // `[...arr].toReversed()`, i.e. the polyfill calling itself). If this
+    // opt-out is ever dropped, es2023-array.test.ts is what fails — it deletes
+    // the natives before re-importing — but it fails in a case named for
+    // prototype installation, so the message points at the harness rather than
+    // at the rewritten body.
     {
       "files": ["src/polyfills/**"],
       "plugins": ["unicorn"],
