@@ -23,10 +23,20 @@ declare global {
      */
     constructor(path: string);
 
-    /** The object ID in "id X" format */
+    /**
+     * The object ID as a integer string (e.g. "1"), or "0" when the object
+     * does not exist. Always a string — never a number, and never the "id X"
+     * form the LOM uses in child-id lists. Verified against Live 12.4.3 (v8)
+     * for a valid object, a nonexistent path, a nonexistent nested path, and a
+     * nonexistent id. Callers may treat this as a string unconditionally;
+     * guard on exists() to tell "0" from a real id.
+     */
     readonly id: string;
 
-    /** The canonical path of the object */
+    /**
+     * The canonical path of the object, or "" when the object does not exist.
+     * Always a string. Verified alongside `id` on Live 12.4.3 (v8).
+     */
     readonly path: string;
 
     /** The type of the Live object (e.g., "Track", "Clip", "Device") */
