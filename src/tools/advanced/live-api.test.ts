@@ -85,9 +85,10 @@ describe("liveApi", () => {
     });
 
     it("should throw error if operations array exceeds 50 operations", () => {
-      const operations = Array(51).fill({
-        type: "info",
-      }) as LiveApiOperation[];
+      const operations = Array.from(
+        { length: 51 },
+        () => ({ type: "info" }) as LiveApiOperation,
+      );
 
       expect(() => liveApi({ operations })).toThrow(
         "operations array cannot exceed 50 operations",
@@ -96,9 +97,10 @@ describe("liveApi", () => {
 
     it("should not throw when operations array has exactly 50 operations", () => {
       // Boundary: MAX_OPERATIONS is 50, so exactly 50 is allowed (> not >=).
-      const operations = Array(50).fill({
-        type: "exists",
-      }) as LiveApiOperation[];
+      const operations = Array.from(
+        { length: 50 },
+        () => ({ type: "exists" }) as LiveApiOperation,
+      );
 
       const result = liveApi({ operations });
 

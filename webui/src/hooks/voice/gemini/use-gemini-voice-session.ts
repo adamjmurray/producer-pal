@@ -174,7 +174,7 @@ export function useGeminiVoiceSession(
           await createGeminiMcpTools(mcpUrl, enabledTools);
 
         mcpClientRef.current = mcpClient;
-        if (stale()) return void (await cleanup());
+        if (stale()) return await cleanup();
 
         const credential = await fetchGeminiToken(
           voiceTokenUrl,
@@ -182,7 +182,7 @@ export function useGeminiVoiceSession(
           model,
         );
 
-        if (stale()) return void (await cleanup());
+        if (stale()) return await cleanup();
 
         const player = new GeminiPcmPlayer();
 
@@ -192,7 +192,7 @@ export function useGeminiVoiceSession(
         // contexts and an orphan would also keep the tab alive across HMR.
         playerRef.current = player;
         await player.resume();
-        if (stale()) return void (await cleanup());
+        if (stale()) return await cleanup();
 
         // turn-detection is fixed for the session (changes apply on the next
         // Stop → Talk), so the half-duplex flag is too — mirrors the OpenAI hook.
@@ -252,7 +252,7 @@ export function useGeminiVoiceSession(
         if (stale()) {
           closeQuietly(session);
 
-          return void (await cleanup());
+          return await cleanup();
         }
 
         sessionRef.current = session;
@@ -276,7 +276,7 @@ export function useGeminiVoiceSession(
         // If cleanup() ran during mic.start(), it stopped a partial mic and
         // didn't see the resources mic.start() set up afterward. Stop the
         // orphan locally — cleanup() already ran the rest of teardown.
-        if (stale()) return void (await mic.stop());
+        if (stale()) return await mic.stop();
 
         seedGeminiContext(session, initialHistory);
         setActiveVoice(voice ?? null);

@@ -52,7 +52,7 @@ export const legatoTransforms: EvalScenario = {
         // Should have notes param (adding the octave copies) or use transforms
         const notes = String(updateCall.args.notes ?? "");
         const transforms = String(updateCall.args.transforms ?? "");
-        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+        const result = parseToolResult(updateCall.result ?? "{}") as {
           noteCount?: number;
         };
         const noteCount = result.noteCount;

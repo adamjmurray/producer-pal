@@ -157,7 +157,7 @@ export const LIVE_SET_PATH =
  * Useful for waiting for Live API state to settle.
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((done) => setTimeout(done, ms));
 }
 
 /**
@@ -233,7 +233,7 @@ export async function createTestDevice(
 
   await sleep(100);
 
-  return String(created.id);
+  return created.id;
 }
 
 /**

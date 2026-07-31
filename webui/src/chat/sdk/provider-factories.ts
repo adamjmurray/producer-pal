@@ -19,12 +19,12 @@ import { type Provider } from "#webui/types/settings";
 
 /**
  * Creates an AI SDK LanguageModel instance for the given provider.
- * LM Studio and custom OpenAI-compatible endpoints use @ai-sdk/openai-compatible
- * (which surfaces the `reasoning_content` field local reasoning models emit as
- * thinking; @ai-sdk/openai's chat model silently drops it). Ollama stays on
- * @ai-sdk/openai because its thinking control rides on the `openai`
- * providerOptions namespace. OpenRouter uses its own SDK; Gemini uses
- * @ai-sdk/google.
+ * LM Studio and custom OpenAI-compatible endpoints use
+ * `@ai-sdk/openai-compatible` (which surfaces the `reasoning_content` field
+ * local reasoning models emit as thinking; `@ai-sdk/openai`'s chat model
+ * silently drops it). Ollama stays on `@ai-sdk/openai` because its thinking
+ * control rides on the `openai` providerOptions namespace. OpenRouter uses its
+ * own SDK; Gemini uses `@ai-sdk/google`.
  *
  * @param provider - Producer Pal provider identifier
  * @param modelId - Model identifier string
@@ -49,16 +49,16 @@ export function createProviderModel(
       })(modelId);
 
     case "openai":
-      return createOpenAI({ apiKey })(`${modelId}`);
+      return createOpenAI({ apiKey })(modelId);
 
     case "openrouter":
       return createOpenRouter({
         apiKey,
         fetch: transformOpenRouterRequest,
-      }).chat(`${modelId}`);
+      }).chat(modelId);
 
     case "mistral":
-      return createMistral({ apiKey })(`${modelId}`);
+      return createMistral({ apiKey })(modelId);
 
     case "lmstudio":
       return createOpenAICompatible({
@@ -69,13 +69,13 @@ export function createProviderModel(
         // OpenAI-compatible servers never emit a usage chunk and token counts
         // stay undefined (show as 0 in the UI).
         includeUsage: true,
-      }).chatModel(`${modelId}`);
+      }).chatModel(modelId);
 
     case "ollama":
       return createOpenAI({
         apiKey: apiKey || "not-needed",
         baseURL: baseUrl ?? "http://localhost:11434/v1",
-      }).chat(`${modelId}`);
+      }).chat(modelId);
 
     case "custom": {
       // Unlike lmstudio/ollama, the custom provider has no default endpoint and
@@ -97,11 +97,11 @@ export function createProviderModel(
         // See lmstudio note: required for OpenAI-compatible servers to report
         // token usage in streaming responses.
         includeUsage: true,
-      }).chatModel(`${modelId}`);
+      }).chatModel(modelId);
     }
 
     case "gemini":
-      return createGoogleGenerativeAI({ apiKey })(`${modelId}`);
+      return createGoogleGenerativeAI({ apiKey })(modelId);
 
     /* v8 ignore start -- exhaustive switch: all provider values handled above */
     default: {

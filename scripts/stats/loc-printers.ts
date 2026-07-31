@@ -47,13 +47,6 @@ export function makeCliRow(
   colWidths: number[],
   dimIndices: Set<number> = new Set(),
 ): (values: string[], color?: Styler) => string {
-  /**
-   * Apply dim gray styling.
-   * @param s - Text to dim
-   * @returns Dimmed text
-   */
-  const dim: Styler = (s) => styleText("gray", s);
-
   return (values: string[], color: Styler = (s) => s): string =>
     colWidths
       .map((w, i) => {
@@ -362,3 +355,10 @@ export function mdRow(...cells: string[]): string {
 export function fmt(n: number): string {
   return n.toLocaleString("en-US");
 }
+
+/**
+ * Apply dim gray styling.
+ * @param s - Text to dim
+ * @returns Dimmed text
+ */
+const dim: Styler = (s) => styleText("gray", s);

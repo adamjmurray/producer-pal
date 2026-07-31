@@ -82,7 +82,7 @@ async function findResultsInDir(dir: string): Promise<string[]> {
     return files
       .filter((f) => f.endsWith(".json"))
       .sort()
-      .reverse()
+      .toReversed()
       .map((f) => join(dir, f));
   } catch {
     return [];
@@ -141,7 +141,7 @@ async function showRun(runId: string): Promise<void> {
 async function showLatest(): Promise<void> {
   try {
     const runDirs = await readdir(RESULTS_DIR);
-    const sorted = runDirs.sort().reverse();
+    const sorted = runDirs.sort().toReversed();
 
     for (const dir of sorted) {
       const files = await findResultsInDir(join(RESULTS_DIR, dir));

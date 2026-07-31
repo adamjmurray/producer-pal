@@ -25,6 +25,13 @@ import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";
 
+// Widened to number on purpose: the code read off a thrown error is an
+// unknown narrowed to number, which shares no enum type with ErrorCode, and
+// comparing the two directly is what no-unsafe-enum-comparison reports. A
+// local `as number` does not survive --fix (no-unnecessary-type-assertion
+// deletes it), so the widening lives here instead.
+const CONNECTION_CLOSED_CODE: number = ErrorCode.ConnectionClosed;
+
 export interface BridgeOptions {
   smallModelMode?: boolean;
   notation?: Notation;
@@ -354,7 +361,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
           // timeout on a still-alive connection must not reset isConnected.
           if (
             typeof errorCode === "number" &&
-            errorCode !== ErrorCode.ConnectionClosed
+            errorCode !== CONNECTION_CLOSED_CODE
           ) {
             logger.debug(
               `[Bridge] MCP protocol error detected (code ${errorCode}), returning the error to the client`,

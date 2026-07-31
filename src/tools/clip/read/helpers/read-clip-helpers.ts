@@ -166,11 +166,6 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
 
-    const mapMarker = (marker: WarpMarkerData): WarpMarker => ({
-      sampleTime: marker.sample_time,
-      beatTime: marker.beat_time,
-    });
-
     // Handle both possible structures: direct array or nested in warp_markers property
     if (Array.isArray(warpMarkersData)) {
       return warpMarkersData.map(mapMarker);
@@ -233,4 +228,16 @@ function devicesContainDrumRack(devices: LiveAPI[]): boolean {
   }
 
   return false;
+}
+
+/**
+ * Convert one raw Live warp marker into the shape read-clip reports.
+ * @param marker - Raw marker as parsed from the clip's warp_markers JSON
+ * @returns The marker with sample and beat times renamed
+ */
+function mapMarker(marker: WarpMarkerData): WarpMarker {
+  return {
+    sampleTime: marker.sample_time,
+    beatTime: marker.beat_time,
+  };
 }

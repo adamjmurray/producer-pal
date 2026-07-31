@@ -103,7 +103,7 @@ export function createRackDeviceMockProperties({
       chains: chainIds.length > 0 ? children(...chainIds) : [],
       return_chains:
         returnChainIds.length > 0 ? children(...returnChainIds) : [],
-      ...(deviceOptions.extraProperties ?? {}),
+      ...deviceOptions.extraProperties,
     },
   });
 }

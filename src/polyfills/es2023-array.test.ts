@@ -49,7 +49,7 @@ describe("ES2023 array polyfill prototype installation", () => {
     await import(/* @vite-ignore */ `./es2023-array.ts${suffix}`);
 
     expect(Array.prototype.toSorted).toBeDefined();
-    expect([3, 1, 2].toSorted()).toStrictEqual([1, 2, 3]);
+    expect([3, 1, 2].toSorted((a, b) => a - b)).toStrictEqual([1, 2, 3]);
   });
 
   it("should install toReversed polyfill on Array.prototype", () => {

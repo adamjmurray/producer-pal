@@ -72,7 +72,7 @@ function updateNoteCount(turns: EvalTurnResult[], turn: number): number | null {
 
   if (call?.result == null) return null;
 
-  const parsed = parseToolResult(String(call.result)) as { noteCount?: number };
+  const parsed = parseToolResult(call.result) as { noteCount?: number };
 
   return parsed.noteCount ?? null;
 }
@@ -198,7 +198,7 @@ function createdNoteCount(
 
   if (call?.result == null) return null;
 
-  const parsed = parseToolResult(String(call.result)) as { noteCount?: number };
+  const parsed = parseToolResult(call.result) as { noteCount?: number };
 
   return parsed.noteCount ?? null;
 }

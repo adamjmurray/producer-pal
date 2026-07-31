@@ -151,7 +151,7 @@ describe("select-response-helpers", () => {
   describe("buildSceneResponseFromId", () => {
     it("returns scene info", () => {
       registerMockObject("scene_0", {
-        path: String(livePath.scene(0)),
+        path: livePath.scene(0),
         type: "Scene",
         properties: { sceneIndex: 0 },
       });

@@ -22,7 +22,12 @@ if (typeof LiveAPI !== "undefined") {
     return new LiveAPI(parseIdOrPath(idOrPath));
   };
   LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
-    // id can be "id 0", "0", or 0 (number) when object doesn't exist
+    // A nonexistent object reports id "0" (a string) on Live 12.4.3 (v8) —
+    // probed for a bad path, a bad nested path, and a bad id. The "id 0" and
+    // numeric 0 comparisons below have never been observed to fire; they are
+    // kept as cheap insurance against other Live versions, not because either
+    // form is known to occur. Do not read them as documentation that `id` can
+    // be a number: see the contract on `id` in src/types/live-api.d.ts.
     const id = this.id as string | number;
 
     return id !== "id 0" && id !== "0" && id !== 0;

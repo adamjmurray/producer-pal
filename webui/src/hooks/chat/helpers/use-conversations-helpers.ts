@@ -122,7 +122,7 @@ export function useHashNavigation(params: {
       if (hashId) {
         void switchConversation(hashId);
       } else {
-        void startNewConversation();
+        startNewConversation();
       }
     };
 

@@ -458,7 +458,7 @@ export function getCreatedClip(
 
   if (call.result != null) {
     try {
-      const parsed = parseToolResult(String(call.result)) as {
+      const parsed = parseToolResult(call.result) as {
         id?: unknown;
       } | null;
 
@@ -497,7 +497,7 @@ export function readClipNotesFromTurn(
     (c) => c.name.startsWith("ppal-read-") && c.result != null,
   );
 
-  for (const call of reads.reverse()) {
+  for (const call of reads.toReversed()) {
     let parsed: unknown;
 
     try {
@@ -512,7 +512,7 @@ export function readClipNotesFromTurn(
       // When a clipId is requested, require an exact id match — skip candidates
       // with a different id AND candidates with no id, so a malformed/idless
       // nested entry can't stand in for the requested clip.
-      if (clipId != null && String(clip.id ?? "") !== clipId) {
+      if (clipId != null && (clip.id ?? "") !== clipId) {
         continue;
       }
 

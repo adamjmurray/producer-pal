@@ -86,7 +86,7 @@ function fakeServer(): {
   const pending: PendingWrite[] = [];
 
   (fetchMock as unknown as FetchMock).mockImplementation((rawUrl, init) => {
-    const url = String(rawUrl);
+    const url = rawUrl;
 
     if ((init?.method ?? "GET") === "GET") {
       return Promise.resolve(jsonResponse({ entries: [...store.values()] }));
@@ -281,9 +281,7 @@ describe("MemoryScreen — editing during an in-flight rename", () => {
       setTimeout(
         () =>
           resolve(
-            String(document.body.textContent).includes(
-              "deleted outside the editor",
-            ),
+            document.body.textContent.includes("deleted outside the editor"),
           ),
         0,
       );

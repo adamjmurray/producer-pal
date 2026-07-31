@@ -82,9 +82,8 @@ export function parseLengthenResult(result: unknown): {
   // Use parseToolResultWithWarnings since lengthening operations emit expected warnings
   // (e.g. "no additional file content", "capped at file boundary")
   try {
-    const { data: asArray, warnings } = parseToolResultWithWarnings<
-      CreateClipResult[]
-    >(result as Awaited<ReturnType<Client["callTool"]>>);
+    const { data: asArray, warnings } =
+      parseToolResultWithWarnings<CreateClipResult[]>(result);
 
     if (Array.isArray(asArray)) {
       return { clips: asArray, warnings };
@@ -94,9 +93,7 @@ export function parseLengthenResult(result: unknown): {
   }
 
   const { data: asObject, warnings } =
-    parseToolResultWithWarnings<CreateClipResult>(
-      result as Awaited<ReturnType<Client["callTool"]>>,
-    );
+    parseToolResultWithWarnings<CreateClipResult>(result);
 
   return { clips: [asObject], warnings };
 }
