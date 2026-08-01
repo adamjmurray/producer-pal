@@ -59,3 +59,6 @@ report/
 
 # Live project backups
 **/live-sets/**/Backup
+
+# Project context sidecars left behind by e2e/eval runs
+**/live-sets/**/Producer Pal Project Context.md*
