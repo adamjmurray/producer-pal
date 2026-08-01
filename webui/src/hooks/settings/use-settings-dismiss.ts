@@ -18,6 +18,12 @@ interface UseSettingsDismissOptions {
    * keystroke. The click-outside dismiss path is unaffected.
    */
   blockEscape?: boolean;
+  /**
+   * When true, dismissing shakes instead of closing even with no unsaved
+   * settings — a sub-form inside the dialog (the Presets tab's create form)
+   * holds work that closing would throw away.
+   */
+  blockDismiss?: boolean;
 }
 
 interface UseSettingsDismissReturn {
@@ -41,6 +47,7 @@ export function useSettingsDismiss({
   hasUnsavedChanges,
   handleCancelSettings,
   blockEscape = false,
+  blockDismiss = false,
 }: UseSettingsDismissOptions): UseSettingsDismissReturn {
   const [shake, setShake] = useState(false);
   const clearShake = useCallback(() => setShake(false), []);
@@ -48,7 +55,7 @@ export function useSettingsDismiss({
   const handleSettingsDismiss = useCallback(() => {
     if (!settingsConfigured || settingsClosing) return;
 
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges || blockDismiss) {
       setShake(true);
     } else {
       handleCancelSettings();
@@ -57,6 +64,7 @@ export function useSettingsDismiss({
     settingsConfigured,
     settingsClosing,
     hasUnsavedChanges,
+    blockDismiss,
     handleCancelSettings,
   ]);
 

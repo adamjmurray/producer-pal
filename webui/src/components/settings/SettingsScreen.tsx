@@ -36,6 +36,10 @@ interface SettingsScreenProps {
   shake: boolean;
   onShakeEnd: () => void;
   hasUnsavedChanges: boolean;
+  /** Whether the Presets tab's create form is open. Owned by App, which uses
+   * it to block the backdrop/Esc dismiss as well as this dialog's Save. */
+  presetDraftOpen: boolean;
+  onPresetDraftOpenChange: (open: boolean) => void;
   onDeleteAllConversations: () => void;
   onDeleteUnbookmarkedConversations: () => void;
   conversationLock: ConversationLock;
@@ -116,6 +120,11 @@ export function SettingsScreen(props: SettingsScreenProps) {
           pulse={shake}
           hasUnsavedChanges={hasUnsavedChanges}
           saveError={settings.saveError}
+          blockedMessage={
+            props.presetDraftOpen
+              ? "Create or cancel the new preset first."
+              : null
+          }
         />
       </div>
     </div>
@@ -162,7 +171,12 @@ function SettingsTabContent(props: SettingsScreenProps) {
         />
       )}
 
-      {activeTab === "presets" && <PresetsTab settings={settings} />}
+      {activeTab === "presets" && (
+        <PresetsTab
+          settings={settings}
+          onDraftOpenChange={props.onPresetDraftOpenChange}
+        />
+      )}
 
       {activeTab === "tools" && (
         <ToolToggles

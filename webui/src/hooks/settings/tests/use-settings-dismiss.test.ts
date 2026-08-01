@@ -50,6 +50,24 @@ describe("useSettingsDismiss", () => {
     expect(result.current.shake).toBe(true);
   });
 
+  it("shakes instead of dismissing while a sub-form is open", async () => {
+    // No unsaved settings, but the Presets tab's create form holds a draft
+    // that closing would silently discard.
+    const handleCancel = vi.fn();
+    const { result } = renderHook(() =>
+      useSettingsDismiss({
+        ...defaultOptions,
+        blockDismiss: true,
+        handleCancelSettings: handleCancel,
+      }),
+    );
+
+    await act(() => result.current.handleSettingsDismiss());
+
+    expect(handleCancel).not.toHaveBeenCalled();
+    expect(result.current.shake).toBe(true);
+  });
+
   it("clears shake state", async () => {
     const { result } = renderHook(() =>
       useSettingsDismiss({ ...defaultOptions, hasUnsavedChanges: true }),

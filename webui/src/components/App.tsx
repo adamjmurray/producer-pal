@@ -74,6 +74,11 @@ export function App() {
 
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
+  // The Presets tab's create form is a sub-form inside the settings dialog:
+  // saving or dismissing would close the modal over an unfinished preset, so
+  // while it's open both paths are blocked. Lives here because the dismiss
+  // handlers (backdrop, Esc) do too.
+  const [presetDraftOpen, setPresetDraftOpen] = useState(false);
 
   useSyncServerSetting(
     remoteConfig.serverLiveApiEnabled,
@@ -163,6 +168,7 @@ export function App() {
       // !settingsConfigured) — without this, both handlers fire and either
       // Settings refuses to close OR both close at once.
       blockEscape: contextOpen,
+      blockDismiss: presetDraftOpen,
     });
 
   const [contextClosing, setContextClosing] = useState(false);
@@ -323,6 +329,8 @@ export function App() {
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
+            presetDraftOpen={presetDraftOpen}
+            onPresetDraftOpenChange={setPresetDraftOpen}
             onDeleteAllConversations={modeContext.onDeleteAllConversations}
             onDeleteUnbookmarkedConversations={
               modeContext.onDeleteUnbookmarkedConversations

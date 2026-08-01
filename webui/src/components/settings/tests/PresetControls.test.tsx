@@ -52,10 +52,10 @@ describe("PresetControls", () => {
     localStorage.clear();
   });
 
-  it("shows Save as… and hides Update/Delete when nothing is selected", () => {
+  it("shows New… and hides Update/Delete when nothing is selected", () => {
     render(<PresetControls settings={makeSettings()} />);
 
-    expect(screen.getByTestId("preset-save-as")).toBeTruthy();
+    expect(screen.getByTestId("preset-new")).toBeTruthy();
     expect(screen.queryByTestId("preset-update")).toBeNull();
     expect(screen.queryByTestId("preset-delete")).toBeNull();
   });
@@ -63,11 +63,11 @@ describe("PresetControls", () => {
   it("saves the current settings as a new named preset", () => {
     render(<PresetControls settings={makeSettings()} />);
 
-    fireEvent.click(screen.getByTestId("preset-save-as"));
+    fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
       target: { value: "My Preset" },
     });
-    fireEvent.click(screen.getByTestId("preset-name-save"));
+    fireEvent.click(screen.getByTestId("preset-create-confirm"));
 
     const stored = loadPresets();
 
@@ -85,7 +85,7 @@ describe("PresetControls", () => {
   it("saves via the Enter key in the name field", () => {
     render(<PresetControls settings={makeSettings()} />);
 
-    fireEvent.click(screen.getByTestId("preset-save-as"));
+    fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
       target: { value: "Keyboard" },
     });
@@ -99,7 +99,7 @@ describe("PresetControls", () => {
   it("dismisses the name form on Cancel without saving", () => {
     render(<PresetControls settings={makeSettings()} />);
 
-    fireEvent.click(screen.getByTestId("preset-save-as"));
+    fireEvent.click(screen.getByTestId("preset-new"));
     expect(screen.getByTestId("preset-name-input")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Cancel"));
@@ -111,8 +111,8 @@ describe("PresetControls", () => {
   it("shows an error and stores nothing for a blank name", () => {
     render(<PresetControls settings={makeSettings()} />);
 
-    fireEvent.click(screen.getByTestId("preset-save-as"));
-    fireEvent.click(screen.getByTestId("preset-name-save"));
+    fireEvent.click(screen.getByTestId("preset-new"));
+    fireEvent.click(screen.getByTestId("preset-create-confirm"));
 
     expect(screen.getByTestId("preset-error")).toBeTruthy();
     expect(loadPresets()).toHaveLength(0);
@@ -122,11 +122,11 @@ describe("PresetControls", () => {
     breakStorageWrites();
     render(<PresetControls settings={makeSettings()} />);
 
-    fireEvent.click(screen.getByTestId("preset-save-as"));
+    fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
       target: { value: "Doomed" },
     });
-    fireEvent.click(screen.getByTestId("preset-name-save"));
+    fireEvent.click(screen.getByTestId("preset-create-confirm"));
 
     expect(screen.getByTestId("preset-error").textContent).toMatch(
       /quota exceeded/,
@@ -159,14 +159,14 @@ describe("PresetControls", () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId("preset-save-as"));
+    fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
       target: { value: "Worker" },
     });
     fireEvent.input(screen.getByTestId("preset-description-input"), {
       target: { value: "cheap bulk editor" },
     });
-    fireEvent.click(screen.getByTestId("preset-name-save"));
+    fireEvent.click(screen.getByTestId("preset-create-confirm"));
 
     expect(loadPresets()[0]).toMatchObject({
       name: "Worker",
@@ -175,9 +175,10 @@ describe("PresetControls", () => {
     });
   });
 
-  it("shows and persists the description of the selected preset", () => {
+  it("persists a description edit as it's typed, without touching the settings", () => {
     savePresets([{ ...seeded, description: "existing note" }]);
-    render(<PresetControls settings={makeSettings()} />);
+    // Buffer drifted from the preset: a description edit must not capture it.
+    render(<PresetControls settings={makeSettings({ model: "changed" })} />);
 
     fireEvent.change(screen.getByTestId("preset-select"), {
       target: { value: "seed" },
@@ -189,10 +190,13 @@ describe("PresetControls", () => {
 
     expect(editor.value).toBe("existing note");
 
+    // No blur: Esc can close the dialog straight from the focused field.
     fireEvent.input(editor, { target: { value: "updated note" } });
-    fireEvent.click(screen.getByTestId("preset-update"));
 
-    expect(loadPresets()[0]?.description).toBe("updated note");
+    expect(loadPresets()[0]).toMatchObject({
+      description: "updated note",
+      model: "llama3",
+    });
   });
 
   it("applies a preset into the settings buffer on select", () => {
@@ -336,6 +340,39 @@ describe("PresetControls", () => {
       target: { value: "seed" },
     });
 
-    expect(screen.getByText(/Unsaved edits/)).toBeTruthy();
+    expect(screen.getByText(/no longer match/)).toBeTruthy();
+  });
+
+  it("reports the create form opening and closing to the footer", () => {
+    const onDraftOpenChange = vi.fn();
+
+    render(
+      <PresetControls
+        settings={makeSettings()}
+        onDraftOpenChange={onDraftOpenChange}
+      />,
+    );
+    onDraftOpenChange.mockClear();
+
+    fireEvent.click(screen.getByTestId("preset-new"));
+    expect(onDraftOpenChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.click(screen.getByText("Cancel"));
+    expect(onDraftOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("reports the draft closed when the tab unmounts", () => {
+    const onDraftOpenChange = vi.fn();
+    const { unmount } = render(
+      <PresetControls
+        settings={makeSettings()}
+        onDraftOpenChange={onDraftOpenChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("preset-new"));
+    unmount();
+
+    expect(onDraftOpenChange).toHaveBeenLastCalledWith(false);
   });
 });

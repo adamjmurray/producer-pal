@@ -358,14 +358,22 @@ A preset is a named, one-click bundle of a full chat setup: **provider**,
 and the **notation**. Because a preset spans both the Connection and Tools tabs,
 it gets its own home here.
 
+The preset buttons save the moment you click them — unlike everything else in
+this dialog, they don't wait for the footer **Save**.
+
 - **Preset** dropdown - Select a saved preset to load its whole bundle into the
   form. It doesn't take effect until you **Save** the settings, so you can
   review or tweak it first.
-- **Save as…** - Capture the current settings as a new named preset. You can add
-  an optional **Description** to note what it's for (e.g. "cheap bulk-edit
-  worker").
-- **Update** / **Delete** - Overwrite or remove the selected preset. An "unsaved
-  edits" note appears when the form has drifted from the selected preset.
+- **New…** - Capture the current settings as a new named preset. Fill in the
+  name and click **Create preset**. You can add an optional **Description** to
+  note what it's for (e.g. "cheap bulk-edit worker"). While this form is open
+  the dialog won't close out from under it: the footer **Save** is disabled, and
+  clicking outside or pressing <kbd>Esc</kbd> shakes the dialog instead of
+  dismissing it. Click **Cancel** to drop the draft.
+- **Update** / **Delete** - Overwrite or remove the selected preset. A note
+  appears when the form has drifted from the selected preset. Editing a selected
+  preset's **Description** saves as you type — no **Update** needed, so a
+  wording fix won't re-capture your settings.
 - **Subagent preset** - Choose what a spawned subagent runs under when the
   experimental **Subagent** tool is enabled (on the Tools tab). Leave it on
   **Inherit current settings** and each subagent clones your current chat

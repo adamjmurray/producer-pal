@@ -27,6 +27,8 @@ export interface UsePresetsReturn {
     fields: PresetFields,
     description?: string,
   ) => void;
+  /** Rewrite only the description, leaving the captured settings alone. */
+  updatePresetDescription: (id: string, description: string) => void;
   deletePreset: (id: string) => void;
 }
 
@@ -114,6 +116,17 @@ export function usePresets(): UsePresetsReturn {
     [presets, persist],
   );
 
+  const updatePresetDescription = useCallback(
+    (id: string, description: string) => {
+      persist(
+        presets.map((p) =>
+          p.id === id ? withDescription({ ...p }, description) : p,
+        ),
+      );
+    },
+    [presets, persist],
+  );
+
   const deletePreset = useCallback(
     (id: string) => {
       persist(presets.filter((p) => p.id !== id));
@@ -121,7 +134,14 @@ export function usePresets(): UsePresetsReturn {
     [presets, persist],
   );
 
-  return { presets, saveError, createPreset, updatePreset, deletePreset };
+  return {
+    presets,
+    saveError,
+    createPreset,
+    updatePreset,
+    updatePresetDescription,
+    deletePreset,
+  };
 }
 
 /**

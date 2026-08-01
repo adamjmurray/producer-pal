@@ -39,6 +39,6 @@ describe("PresetsTab", () => {
 
     expect(screen.getByText(/A preset saves and recalls/)).toBeTruthy();
     expect(screen.getByTestId("preset-select")).toBeTruthy();
-    expect(screen.getByTestId("preset-save-as")).toBeTruthy();
+    expect(screen.getByTestId("preset-new")).toBeTruthy();
   });
 });

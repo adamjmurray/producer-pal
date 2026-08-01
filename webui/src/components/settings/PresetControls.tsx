@@ -5,6 +5,7 @@
 
 import { useState } from "preact/hooks";
 import { presetMatchesFields } from "#webui/hooks/settings/presets/preset-storage";
+import { usePresetDraft } from "#webui/hooks/settings/presets/use-preset-draft";
 import { usePresets } from "#webui/hooks/settings/presets/use-presets";
 import {
   type ChatPreset,
@@ -14,12 +15,17 @@ import {
 import {
   PresetCreateForm,
   PresetDescriptionField,
+  PresetNotices,
   PresetPickerRow,
   SubagentPresetRow,
 } from "./helpers/preset-controls-parts";
 
 interface PresetControlsProps {
   settings: UseSettingsReturn;
+  /** Reports whether the "New preset" form is open, so the modal can block both
+   * Save and the backdrop/Esc dismiss — neither creates the preset nor keeps
+   * the draft, they just close the dialog on top of it. */
+  onDraftOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -34,17 +40,29 @@ interface PresetControlsProps {
  * (SubagentPresetRow) reuses this live preset list to pick which preset spawned
  * subagents run under. Presets never capture the API key (that stays in the
  * per-provider store).
+ *
+ * Note the split persistence: every button here writes to localStorage on
+ * click, while the surrounding settings stay buffered until the footer Save.
+ * The tab says so out loud, because nothing else on screen shows it.
  * @param {PresetControlsProps} props - Component props
  * @param {UseSettingsReturn} props.settings - The live settings buffer + actions
+ * @param {Function} props.onDraftOpenChange - Reports the create form's state
  * @returns {JSX.Element} The preset controls
  */
-export function PresetControls({ settings }: PresetControlsProps) {
-  const { presets, saveError, createPreset, updatePreset, deletePreset } =
-    usePresets();
+export function PresetControls({
+  settings,
+  onDraftOpenChange,
+}: PresetControlsProps) {
+  const {
+    presets,
+    saveError,
+    createPreset,
+    updatePreset,
+    updatePresetDescription,
+    deletePreset,
+  } = usePresets();
+  const draft = usePresetDraft(onDraftOpenChange);
   const [selectedId, setSelectedId] = useState<string>("");
-  const [naming, setNaming] = useState<boolean>(false);
-  const [draftName, setDraftName] = useState<string>("");
-  const [draftDescription, setDraftDescription] = useState<string>("");
   const [editDescription, setEditDescription] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
@@ -59,8 +77,6 @@ export function PresetControls({ settings }: PresetControlsProps) {
   const selected = presets.find((p) => p.id === selectedId) ?? null;
   const fieldsModified =
     selected != null && !presetMatchesFields(selected, fields);
-  const descriptionModified =
-    selected != null && editDescription.trim() !== (selected.description ?? "");
 
   const handleSelect = (id: string): void => {
     setSelectedId(id);
@@ -72,7 +88,7 @@ export function PresetControls({ settings }: PresetControlsProps) {
   };
 
   const confirmCreate = (): void => {
-    const result = createPreset(draftName, fields, draftDescription);
+    const result = createPreset(draft.name, fields, draft.description);
 
     if (!result.ok) {
       setError(result.error);
@@ -82,16 +98,7 @@ export function PresetControls({ settings }: PresetControlsProps) {
 
     setSelectedId(result.preset.id);
     setEditDescription(result.preset.description ?? "");
-    setNaming(false);
-    setDraftName("");
-    setDraftDescription("");
-    setError(null);
-  };
-
-  const cancelNaming = (): void => {
-    setNaming(false);
-    setDraftName("");
-    setDraftDescription("");
+    draft.close();
     setError(null);
   };
 
@@ -104,12 +111,10 @@ export function PresetControls({ settings }: PresetControlsProps) {
         presets={presets}
         selectedId={selectedId}
         selected={selected}
-        naming={naming}
+        naming={draft.open}
         onSelect={handleSelect}
         onStartNaming={() => {
-          setNaming(true);
-          setDraftName("");
-          setDraftDescription("");
+          draft.start();
           setError(null);
         }}
         onUpdate={() =>
@@ -122,42 +127,41 @@ export function PresetControls({ settings }: PresetControlsProps) {
         }}
       />
 
-      {selected && (fieldsModified || descriptionModified) && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          Unsaved edits — “Update” overwrites “{selected.name}”, or “Save as…”
-          keeps a new one.
-        </p>
-      )}
-
-      {naming && (
-        <PresetCreateForm
-          draftName={draftName}
-          draftDescription={draftDescription}
-          onNameChange={setDraftName}
-          onDescriptionChange={setDraftDescription}
-          onConfirm={confirmCreate}
-          onCancel={cancelNaming}
-        />
-      )}
-
-      {selected && !naming && (
-        <PresetDescriptionField
-          value={editDescription}
-          onChange={setEditDescription}
-        />
-      )}
-
-      {/* One paragraph for both channels: `error` is this form's own rejection
+      {/* One error slot for both channels: `error` is this form's own rejection
           (blank/duplicate name), `saveError` is a storage write that failed —
           including from Update/Delete, which have no result to return. A failed
           create sets both to the same message, so `??` shows it once. */}
-      {(error ?? saveError) != null && (
-        <p
-          className="text-xs text-red-600 dark:text-red-400"
-          data-testid="preset-error"
-        >
-          {error ?? saveError}
-        </p>
+      <PresetNotices
+        driftedFrom={fieldsModified ? selected.name : null}
+        error={error ?? saveError}
+      />
+
+      {draft.open && (
+        <PresetCreateForm
+          draftName={draft.name}
+          draftDescription={draft.description}
+          onNameChange={draft.setName}
+          onDescriptionChange={draft.setDescription}
+          onConfirm={confirmCreate}
+          onCancel={() => {
+            draft.close();
+            setError(null);
+          }}
+        />
+      )}
+
+      {selected && !draft.open && (
+        // Persists on every keystroke, not on blur or Update: Esc closes this
+        // dialog straight from the focused field, and a blur that never fires
+        // loses the edit. The local copy stays untrimmed so typing a trailing
+        // space isn't yanked back out from under the cursor.
+        <PresetDescriptionField
+          value={editDescription}
+          onChange={(value) => {
+            setEditDescription(value);
+            updatePresetDescription(selected.id, value);
+          }}
+        />
       )}
 
       <SubagentPresetRow

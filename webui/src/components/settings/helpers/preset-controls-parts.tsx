@@ -22,8 +22,12 @@ interface PresetPickerRowProps {
 }
 
 /**
- * The preset dropdown plus the Save-as / Update / Delete action buttons.
+ * The preset dropdown plus the New / Update / Delete action buttons.
  * Update/Delete appear only when a preset is selected.
+ *
+ * None of these say "Save": all three write to storage on click, unlike the
+ * modal's footer Save, and identical labels a few hundred pixels apart had
+ * users clicking the footer expecting their preset to be created.
  * @param {PresetPickerRowProps} props - Picker row props
  * @returns {JSX.Element} The picker + action row
  */
@@ -51,9 +55,9 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
           type="button"
           onClick={props.onStartNaming}
           className={BUTTON_CLASS}
-          data-testid="preset-save-as"
+          data-testid="preset-new"
         >
-          Save as…
+          New…
         </button>
       )}
       {selected && (
@@ -77,6 +81,51 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
         </>
       )}
     </div>
+  );
+}
+
+interface PresetNoticesProps {
+  /** Name of the selected preset when the settings have drifted from it, else
+   * null — the cue to offer Update vs New…. */
+  driftedFrom: string | null;
+  /** Rejected-input or failed-write message to show, or null. */
+  error: string | null;
+}
+
+/**
+ * The three lines under the preset picker: the always-on reminder that these
+ * buttons write immediately, the drift warning, and any error.
+ *
+ * The reminder is permanent on purpose. Presets are the only controls in this
+ * dialog that persist on click; everything else waits for the footer Save, and
+ * nothing else on screen distinguishes them.
+ * @param {PresetNoticesProps} props - Notice props
+ * @returns {JSX.Element} The notice block
+ */
+export function PresetNotices({ driftedFrom, error }: PresetNoticesProps) {
+  return (
+    <>
+      <p className="text-xs text-zinc-500 dark:text-zinc-300">
+        Presets save as soon as you click — the Save button below doesn’t apply
+        to them.
+      </p>
+
+      {driftedFrom != null && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          These settings no longer match “{driftedFrom}” — “Update” overwrites
+          it, or “New…” keeps a separate preset.
+        </p>
+      )}
+
+      {error != null && (
+        <p
+          className="text-xs text-red-600 dark:text-red-400"
+          data-testid="preset-error"
+        >
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -148,15 +197,26 @@ interface PresetCreateFormProps {
 }
 
 /**
- * The inline "name this preset" form shown after Save-as: a name field, an
- * optional description, and Save/Cancel. Enter in the name field confirms,
- * Escape cancels; the description is a textarea so Enter inserts a newline.
+ * The "name this preset" form shown after New…: a name field, an optional
+ * description, and Create/Cancel. Enter in the name field confirms, Escape
+ * cancels; the description is a textarea so Enter inserts a newline.
+ *
+ * Rendered as an inset card so it reads as its own sub-form — otherwise its
+ * fields blend into the tab and its Description looks like the selected
+ * preset's Description, which sits in the same spot.
  * @param {PresetCreateFormProps} props - Create form props
  * @returns {JSX.Element} The create-preset form
  */
 export function PresetCreateForm(props: PresetCreateFormProps) {
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2 p-3 rounded border border-zinc-300 dark:border-zinc-600 bg-zinc-200/50 dark:bg-zinc-700/40"
+      data-testid="preset-create-form"
+    >
+      <p className="text-sm font-medium">New preset</p>
+      <p className="text-xs text-zinc-500 dark:text-zinc-300">
+        Captures the settings currently in this dialog.
+      </p>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -176,9 +236,9 @@ export function PresetCreateForm(props: PresetCreateFormProps) {
           type="button"
           onClick={props.onConfirm}
           className={BUTTON_CLASS}
-          data-testid="preset-name-save"
+          data-testid="preset-create-confirm"
         >
-          Save
+          Create preset
         </button>
         <button type="button" onClick={props.onCancel} className={BUTTON_CLASS}>
           Cancel

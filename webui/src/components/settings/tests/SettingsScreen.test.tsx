@@ -193,6 +193,8 @@ describe("SettingsScreen", () => {
     shake: false,
     onShakeEnd: vi.fn(),
     hasUnsavedChanges: false,
+    presetDraftOpen: false,
+    onPresetDraftOpenChange: vi.fn(),
     onDeleteAllConversations: vi.fn(),
     onDeleteUnbookmarkedConversations: vi.fn(),
     conversationLock: {

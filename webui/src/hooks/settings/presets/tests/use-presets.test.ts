@@ -135,6 +135,29 @@ describe("usePresets", () => {
     expect(result.current.presets[0]).not.toHaveProperty("description");
   });
 
+  it("rewrites only the description, leaving captured fields alone", async () => {
+    const { result } = renderHook(() => usePresets());
+    let id = "";
+
+    await act(() => {
+      id = expectCreatedId(result.current.createPreset("P", fields, "old"));
+    });
+
+    await act(() => {
+      result.current.updatePresetDescription(id, "  new note  ");
+    });
+
+    expect(result.current.presets[0]).toMatchObject({
+      ...fields,
+      description: "new note",
+    });
+
+    await act(() => {
+      result.current.updatePresetDescription(id, "");
+    });
+    expect(result.current.presets[0]).not.toHaveProperty("description");
+  });
+
   it("deletes a preset", async () => {
     const { result } = renderHook(() => usePresets());
     let id = "";

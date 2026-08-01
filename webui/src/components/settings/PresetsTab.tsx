@@ -8,6 +8,9 @@ import { PresetControls } from "./PresetControls";
 
 interface PresetsTabProps {
   settings: UseSettingsReturn;
+  /** Reports whether the "New preset" form is open, so the footer can block
+   * its Save rather than close the modal over an unfinished draft. */
+  onDraftOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -17,9 +20,10 @@ interface PresetsTabProps {
  * API keys and UI preferences are never part of a preset.
  * @param {PresetsTabProps} props - Component props
  * @param {UseSettingsReturn} props.settings - The live settings buffer + actions
+ * @param {Function} props.onDraftOpenChange - Reports the create form's state
  * @returns {JSX.Element} The Presets tab
  */
-export function PresetsTab({ settings }: PresetsTabProps) {
+export function PresetsTab({ settings, onDraftOpenChange }: PresetsTabProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-zinc-500 dark:text-zinc-300">
@@ -30,7 +34,10 @@ export function PresetsTab({ settings }: PresetsTabProps) {
         changes the device's notation. API keys and appearance preferences are
         never included.
       </p>
-      <PresetControls settings={settings} />
+      <PresetControls
+        settings={settings}
+        onDraftOpenChange={onDraftOpenChange}
+      />
     </div>
   );
 }
