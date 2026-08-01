@@ -5,7 +5,14 @@
 
 // Moving clips on the arrangement timeline, and take lanes. Gated by duplicate
 // and update-clip — a session-only task never needs it.
+//
+// The dual-meter note leads because it frames every bar|beat below it. It moved
+// here from time-and-values, which is gated "always": the params it names belong
+// to exactly this fragment's four tools, so on an "always" gate every other
+// caller paid for it.
 export const arrangement = `## Arrangement
+
+**Dual meter per call:** \`arrangementStart\`/\`arrangementLength\` resolve against the **song** time signature, while a clip's own \`start\`/\`firstStart\`/\`length\` resolve against the **clip** time signature. When a clip's meter differs from the song's, the same bar|beat literal denotes different absolute times across those params.
 
 ### Moving Clips
 

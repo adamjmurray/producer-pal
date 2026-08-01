@@ -8,11 +8,17 @@
 // only governs how `notes` content is encoded), so this text is
 // notation-independent by construction — keep notation-specific syntax OUT of it.
 //
-// The audio-clip field list rides along rather than earning its own fragment: at
-// ~60 tokens it is under the granularity floor, and like the units above it is
-// clip reference material a reader and a writer both need. The "what Producer
-// Pal can't do with audio" blurb that used to sit beside it is a conversation
-// concern and lives in getting-help.ts instead.
+// "always" also means it may not name a tool or a parameter: a caller with one
+// tool pays for every word. Two sections used to break that. `## Audio Clips`
+// listed read-clip's `sample`/`warp` fields and create-clip's warp behavior —
+// those live on the params themselves now, the one place a caller without the
+// tool never sees. The song-vs-clip meter note moved to arrangement.ts, whose
+// gate is exactly the four tools taking those params. The "what Producer Pal
+// can't do with audio" blurb is a conversation concern and lives in
+// getting-help.ts.
+//
+// What's left defines UNITS, not fields. A rule about which field resolves
+// against which meter belongs with the fields.
 export const timeAndValues = `## Time & Note Values
 
 Applies to every notation: transforms, clip \`length\`, and arrangement durations use these units regardless of how you write \`notes\`.
@@ -24,13 +30,4 @@ Applies to every notation: transforms, clip \`length\`, and arrangement duration
 - Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`n<fraction>\` note value (e.g. \`n/4\` = quarter, \`n/8\` = eighth), or \`Nbar±n<fraction>\` mixed — the tail adds or subtracts, so \`1bar+n/4\` is a bar plus a quarter and \`1bar-n/16\` is *almost a full bar* (a bar minus a 16th). No bare fractions/integers/decimals
 - \`Nbar\` is also valid as a **note duration** — meter-aware, so \`1bar\` holds one whole bar in any meter (6 grid beats in 6/8, 5 in 5/4). Bars use the bare \`Nbar\` form — never an \`n\` prefix (\`1bar\`, not \`n1bar\`; \`n\` is only for denominator-bearing note values)
 
-**Positions** in transform selectors and single-point fields use **bar|beat**: 1-indexed, \`X|Y\` reads left-to-right (\`4|2\` = bar 4 beat 2, \`1|1\` = the very start), meter-relative. Sub-beat via a decimal (\`2|3.5\`) or an \`±n\` note-value offset off the grid beat (\`1|1+n/12\`).
-
-**Dual meter per call:** \`arrangementStart\`/\`arrangementLength\` (in create-clip, update-clip, and duplicate) resolve against the **song** time signature, while a clip's own \`start\`/\`firstStart\`/\`length\` (create/update-clip) resolve against the **clip** time signature. When a clip's meter differs from the song's, the same bar|beat literal denotes different absolute times across those params.
-
-## Audio Clips
-
-\`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
-Audio params ignored when updating MIDI clips.
-
-An audio clip's length comes from its sample, so \`start\`/\`length\`/\`looping\` are MIDI-only. A new clip inherits Live's own warp decision (a user setting the API can't read), which often time-stretches the file to the tempo — \`ppal-create-clip\` returns the settled \`warping\`. Warping to tempo is usually what you want; pass \`warping:false\` to play a file exactly as recorded.`;
+**Positions** in transform selectors and single-point fields use **bar|beat**: 1-indexed, \`X|Y\` reads left-to-right (\`4|2\` = bar 4 beat 2, \`1|1\` = the very start), meter-relative. Sub-beat via a decimal (\`2|3.5\`) or an \`±n\` note-value offset off the grid beat (\`1|1+n/12\`).`;

@@ -29,7 +29,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
         .default([]),
       {
         default:
-          'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. warp = warp settings. color. "*" = all',
+          'notes = MIDI data. timing = loop/start/end markers. sample = audio file info (sampleFile, gainDb, pitchShift). warp = warp settings (sampleLength, sampleRate, warping, warpMode). color. "*" = all',
         smallModel: {
           description:
             "notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color",

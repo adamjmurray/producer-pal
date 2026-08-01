@@ -174,9 +174,9 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   },
 
   "time-and-values": {
-    title: "Time, note values & audio clips",
+    title: "Time & note values",
     description:
-      "Beats, note values, bar|beat positions, and clip lengths — the units every other section assumes. Also the audio clip fields. Needed by nearly every task.",
+      "Beats, note values, bar|beat positions, and clip lengths — the units every other section assumes. Needed by nearly every task.",
     builtIn: timeAndValues,
   },
 
