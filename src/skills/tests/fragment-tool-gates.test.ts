@@ -59,10 +59,9 @@ const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
 // can't act on it. Shrink toward empty as the splits land; an entry that stops
 // bleeding must be deleted, which the "still bleeds" test below enforces.
 const KNOWN_BLEED: Record<string, readonly string[]> = {
-  // "always" gates, so these reach every toolset. The audio-clip fields and the
-  // locator/playback guidance both want a home behind a real gate.
+  // An "always" gate, so this reaches every toolset. The audio-clip fields want
+  // a home behind a real gate.
   "time-and-values": ["ppal-create-clip", "ppal-read-clip"],
-  "working-with-live": ["ppal-playback", "ppal-update-live-set"],
   // Pad teardown and the plug-in window belong with the device write half.
   devices: ["ppal-delete", "ppal-select"],
   arrangement: ["ppal-delete"],

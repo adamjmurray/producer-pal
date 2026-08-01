@@ -242,7 +242,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "working-with-live": {
     title: "Working with Ableton Live",
     description:
-      "Session vs. Arrangement habits, playback, layering, locators, and general music-making guidance.",
+      "Session vs. Arrangement habits, playback behavior, and general music-making guidance.",
     builtIn: workingWithLive,
   },
 
