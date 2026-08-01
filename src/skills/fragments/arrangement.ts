@@ -3,18 +3,35 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Moving clips on the arrangement timeline, and take lanes. Gated by duplicate
-// and update-clip — a session-only task never needs it.
+// What an arrangement position MEANS, whichever direction it travels. Gated by
+// every clip tool that reports or sets one — read-clip included, because it
+// returns `arrangementStart` beside the clip's own `start`/`length` and nothing
+// else tells a reader those resolve against different meters.
 //
-// The dual-meter note leads because it frames every bar|beat below it. It moved
-// here from time-and-values, which is gated "always": the params it names belong
-// to exactly this fragment's four tools, so on an "always" gate every other
-// caller paid for it.
+// The note moved here from time-and-values, which is gated "always": the params
+// it names belong to exactly this fragment's four tools, so on an "always" gate
+// every other caller paid for it.
+//
+// This fragment owns the `## Arrangement` heading; `arrangementWrite` below
+// hangs off it as `###` sections, so the standard driver's manifest order
+// matters.
 export const arrangement = `## Arrangement
 
-**Dual meter per call:** \`arrangementStart\`/\`arrangementLength\` resolve against the **song** time signature, while a clip's own \`start\`/\`firstStart\`/\`length\` resolve against the **clip** time signature. When a clip's meter differs from the song's, the same bar|beat literal denotes different absolute times across those params.
+**Dual meter per call:** \`arrangementStart\`/\`arrangementLength\` resolve against the **song** time signature, while a clip's own \`start\`/\`firstStart\`/\`length\` resolve against the **clip** time signature. When a clip's meter differs from the song's, the same bar|beat literal denotes different absolute times across those params.`;
 
-### Moving Clips
+/**
+ * Putting clips on the timeline: moving and splitting them, and stacking take
+ * lanes. Four fifths of the subject, and only create-clip, update-clip, and
+ * duplicate can run any of it — a read-only clip caller was paying for recipes
+ * it had no tool to execute. The direction split (ADR-0019), applied to
+ * arrangement.
+ *
+ * The read-track `arrangement-clips` clause rides along because it is a
+ * round-trip instruction — read the take lanes so you can write to one — and
+ * read-track's own `include` description already tells a reader that list
+ * exists. (The tool-name bleed test can't see it: it scans for `ppal-` names.)
+ */
+export const arrangementWrite = `### Moving Clips
 
 \`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, both 0-based — scene 1 = index 0) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions measured from the clip's own start (1|1 = clip start, NOT song position).

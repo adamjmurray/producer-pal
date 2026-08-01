@@ -23,9 +23,10 @@
 // two sets differ: `code-transforms` is a real fragment with no override slot.
 // A test asserts every fragment has an entry, so adding one forces the decision.
 
-// The two clip writers, named because three separate gates reach for them.
+// The clip writers, named because several separate gates reach for them.
 const CREATE_CLIP = "ppal-create-clip";
 const UPDATE_CLIP = "ppal-update-clip";
+const DUPLICATE = "ppal-duplicate";
 
 /** The gate for guidance whose whole point is to be said out loud to a person. */
 const CONVERSATION_ONLY = "conversation-only";
@@ -58,7 +59,7 @@ const NOTE_TOOLS = [
 const NOTE_WRITE_TOOLS = [CREATE_CLIP, UPDATE_CLIP] as const;
 
 /** The tools whose schemas accept `transforms` / `preTransforms`. */
-const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, "ppal-duplicate"] as const;
+const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, DUPLICATE] as const;
 
 /** The three device tools; the path grammar serves all of them. */
 const DEVICE_TOOLS = [
@@ -75,6 +76,24 @@ const DEVICE_WRITE_TOOLS = [
   "ppal-create-device",
   "ppal-update-device",
 ] as const;
+
+/**
+ * Every clip tool that reports or sets an arrangement position: read-clip is how
+ * one comes back, and the other three put clips there.
+ */
+const ARRANGEMENT_TOOLS = [
+  CREATE_CLIP,
+  "ppal-read-clip",
+  UPDATE_CLIP,
+  DUPLICATE,
+] as const;
+
+/**
+ * The three that can PUT a clip on the timeline — the gate on
+ * `arrangement-write`. A strict subset of {@link ARRANGEMENT_TOOLS}, so the
+ * requires-subset invariant holds.
+ */
+const ARRANGEMENT_WRITE_TOOLS = [CREATE_CLIP, UPDATE_CLIP, DUPLICATE] as const;
 
 /**
  * A fragment's condition for shipping: the tools it teaches (any-of), or one of
@@ -132,10 +151,9 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   // as building or editing one does, so all three device tools carry it — same
   // gate as `devices`, which also satisfies the requires-subset test.
   "specialized-devices": DEVICE_TOOLS,
-  // Every clip tool that can put a clip on the timeline or report where one
-  // already sits: moving clips is update-clip, take lanes are create-clip and
-  // duplicate, and read-clip is how arrangement positions come back.
-  arrangement: [CREATE_CLIP, "ppal-read-clip", UPDATE_CLIP, "ppal-duplicate"],
+  arrangement: ARRANGEMENT_TOOLS,
+  // Moving, splitting, and take lanes: read-clip has no tool to run any of it.
+  "arrangement-write": ARRANGEMENT_WRITE_TOOLS,
 
   "context-standard": ["ppal-context"],
   "context-basic": ["ppal-context"],

@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { basicDriver, standardDriver } from "#src/skills/drivers.ts";
-import { arrangement } from "#src/skills/fragments/arrangement.ts";
+import {
+  arrangement,
+  arrangementWrite,
+} from "#src/skills/fragments/arrangement.ts";
 import {
   contextBasic,
   contextStandard,
@@ -38,6 +41,7 @@ import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 const TRANSFORMS_CORE = "transforms-core";
 const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 const DEVICES = "devices";
+const ARRANGEMENT = "arrangement";
 
 // The user-facing override "slots" (~/.producer-pal skills overrides, ADR-0010).
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
@@ -64,7 +68,7 @@ const DEVICES = "devices";
 // write tools, so a read-only caller stops paying for it (ADR-0019). The base
 // name keeps meaning what it meant — the whole, minus what only a writer can use
 // — which is why splitting one costs no rename and no retired slot.
-// `barbeat-standard` and `devices` are split so far.
+// `barbeat-standard`, `devices`, and `arrangement` are split so far.
 //
 // `code-transforms` is deliberately absent: it only carries text in a build with
 // code execution enabled, so there is nothing stable for a user to override.
@@ -82,7 +86,8 @@ export const SKILL_SLOT_NAMES = [
   DEVICES,
   "devices-write",
   "specialized-devices",
-  "arrangement",
+  ARRANGEMENT,
+  "arrangement-write",
   "working-with-live",
   "context-standard",
   "context-basic",
@@ -116,7 +121,7 @@ export const RETIRED_SKILL_SLOTS: Record<string, readonly SkillSlotName[]> = {
   ],
   "core-library": ["library"],
   "core-devices": [DEVICES, "devices-write", "specialized-devices"],
-  "core-arrangement": ["arrangement"],
+  "core-arrangement": [ARRANGEMENT, "arrangement-write"],
   "core-context-standard": ["context-standard"],
   "core-context-basic": ["context-basic"],
 
@@ -261,8 +266,16 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   arrangement: {
     title: "Arrangement",
     description:
-      "Moving clips on the arrangement timeline and working with take lanes.",
+      "What an arrangement position means: the song meter it resolves against, versus the clip meter a clip's own start and length use.",
     builtIn: arrangement,
+  },
+
+  "arrangement-write": {
+    title: "Arrangement: placing clips",
+    description:
+      "Moving and splitting clips on the arrangement timeline, and stacking take lanes. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
+    builtIn: arrangementWrite,
+    requires: [ARRANGEMENT],
   },
 
   "working-with-live": {

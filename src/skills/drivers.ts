@@ -69,6 +69,8 @@ export const standardDriver = `${HEADER}
 
 @include "./arrangement.md"
 
+@include "./arrangement-write.md"
+
 @include "./working-with-live.md"
 
 @include "./context-standard.md"

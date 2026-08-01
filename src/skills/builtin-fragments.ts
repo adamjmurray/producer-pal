@@ -27,8 +27,9 @@
 // act on, so a read-only caller stops paying for it (ADR-0019). The base name
 // keeps its meaning — that is what lets the standard driver's
 // `{notation}-standard` ref stay put — so splitting one costs no rename. Each
-// candidate opts in separately: bar|beat and devices are split; stark and
-// midi-json are not, so their `-write` refs resolve to an empty body (below).
+// candidate opts in separately: bar|beat, devices, and arrangement are split;
+// stark and midi-json are not, so their `-write` refs resolve to an empty body
+// (below).
 //
 // Two entries are not quite leaves-as-written:
 //   code-transforms ........... build-gated. It is always PRESENT here and empty
@@ -42,7 +43,10 @@
 //                               wrapper fragment that would need nesting.
 
 import { basicDriver, standardDriver } from "#src/skills/drivers.ts";
-import { arrangement } from "#src/skills/fragments/arrangement.ts";
+import {
+  arrangement,
+  arrangementWrite,
+} from "#src/skills/fragments/arrangement.ts";
 import { codeTransforms } from "#src/skills/fragments/code-transforms.ts";
 import {
   contextBasic,
@@ -108,6 +112,7 @@ export function builtinFragments(
     "devices-write": devicesWrite,
     "specialized-devices": specializedDevices,
     arrangement,
+    "arrangement-write": arrangementWrite,
     "working-with-live": workingWithLive,
     "context-standard": contextStandard,
     "context-basic": contextBasic,

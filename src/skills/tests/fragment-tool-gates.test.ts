@@ -64,7 +64,9 @@ const KNOWN_BLEED: Record<string, readonly string[]> = {
   devices: ["ppal-select"],
   // Clearing a pad before replacing its sample.
   "devices-write": ["ppal-delete"],
-  arrangement: ["ppal-delete"],
+  // Take-lane clips refuse a delete the same way they refuse an update, so the
+  // warning belongs beside the update-clip one it shares a sentence with.
+  "arrangement-write": ["ppal-delete"],
 };
 
 describe("FRAGMENT_GATES", () => {
@@ -261,10 +263,17 @@ describe("gatedOutFragments", () => {
     );
   });
 
-  it("keeps arrangement for a read-only clip toolset", () => {
-    // Arrangement positions come back through read-clip, so a caller that only
-    // reads still needs to make sense of them.
-    expect(gatedOutFragments(["ppal-read-clip"])).not.toContain("arrangement");
+  it("keeps arrangement for a read-only clip toolset, minus the placing half", () => {
+    // read-clip returns arrangementStart, so a reader still needs the dual-meter
+    // rule — but has no tool to move, split, or take-lane anything.
+    const readOnly = gatedOutFragments(["ppal-read-clip"]);
+
+    expect(readOnly).not.toContain("arrangement");
+    expect(readOnly).toContain("arrangement-write");
+
+    expect(gatedOutFragments(["ppal-duplicate"])).not.toContain(
+      "arrangement-write",
+    );
     expect(gatedOutFragments(["ppal-playback"])).toContain("arrangement");
   });
 });

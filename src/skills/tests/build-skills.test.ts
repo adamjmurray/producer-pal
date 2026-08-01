@@ -460,8 +460,10 @@ describe("buildSkills - disabled fragments", () => {
     // Same contract as a tool-gated fragment: present-but-empty, not missing.
     const warnings: string[] = [];
 
-    buildSkills({ notation: "barbeat" }, { disabled: ["arrangement"] }, (m) =>
-      warnings.push(m),
+    buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["arrangement", "arrangement-write"] },
+      (m) => warnings.push(m),
     );
 
     expect(warnings).toStrictEqual([]);
