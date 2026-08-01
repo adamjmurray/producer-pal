@@ -498,9 +498,10 @@ export function buildSessionOptions(
     transport,
     config: {
       audio: {
-        // Pin the ASR side-channel language so short/noisy utterances aren't
-        // misclassified. This shapes the transcript text only (UI/logs/tool-call
-        // inputs); output language is locked separately via agent instructions.
+        // ASR side channel for user-facing transcripts, logs, and other
+        // text-based features. The Realtime model understands the input audio
+        // natively; this transcript is generated separately and may not exactly
+        // match the model's interpretation.
         input: {
           transcription: {
             model: OPENAI_TRANSCRIPTION_MODEL,
