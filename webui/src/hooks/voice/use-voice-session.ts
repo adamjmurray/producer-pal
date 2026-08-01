@@ -5,11 +5,9 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
-  OpenAIRealtimeWebRTC,
   RealtimeAgent,
   RealtimeSession,
   type RealtimeItem,
-  type TransportEvent,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
@@ -17,14 +15,15 @@ import {
   applyLiveVolume,
   bailIfStale,
   buildSessionOptions,
-  createPlaybackAudioElement,
   extractErrorMessage,
   fetchEphemeralToken,
-  handleTransportEvent,
   seedInitialHistory,
   teardownAudioElement,
-  type TransportEventDeps,
 } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
+import {
+  buildTransport,
+  wireSessionEvents,
+} from "#webui/hooks/voice/helpers/voice-session-wiring";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import { useVoiceRetry } from "#webui/hooks/voice/use-voice-retry";
 import {
@@ -118,9 +117,9 @@ export interface UseVoiceSessionReturn {
  * barge-in is enabled (no AEC constraints, no audio-buffer tail timeouts;
  * browser/OS handles echo cancellation natively). When barge-in is disabled
  * (turn_detection.interrupt_response off — the default), it falls back to
- * half-duplex by muting the mic for the duration of each response, so the
- * user's speech can't interrupt the assistant or be committed as a phantom
- * turn (which would also collide with the active response).
+ * half-duplex by muting the mic while the assistant is generating or still
+ * speaking, so the user's speech can't interrupt the assistant or be committed
+ * as a phantom turn (which would also collide with the active response).
  *
  * @param params - hook parameters
  * @param params.mcpUrl - URL of the Producer Pal MCP server
@@ -178,14 +177,18 @@ export function useVoiceSession(
   // a half-duplex auto-mute.
   const isMutedRef = useRef(false);
   // True while a half-duplex (barge-in disabled) response has the mic
-  // auto-muted, so response.done knows to lift it back to the manual state.
+  // auto-muted, so the end of the turn knows to lift it back to the manual state.
   const autoMutedRef = useRef(false);
-  // True between response.created and response.done (mirrors assistantThinking,
-  // kept in a ref the retry path can read synchronously). Gates retryResponse()
-  // so a manual/auto retry never fires response.create over an in-flight response
-  // — the server rejects that as "active response in progress", which on
-  // stop→restart surfaced as a spurious error banner. Also lets cleanup() cancel
-  // a response still running when the session is torn down.
+  // True while the assistant's audio is still draining out of the server's
+  // output buffer. That tail outlasts response.done, and it's when a user
+  // actually talks over the assistant, so the half-duplex mute has to span it.
+  const audioPlayingRef = useRef(false);
+  // True between response.created and response.done, maintained by
+  // handleTransportEvent. Gates retryResponse() so a manual/auto retry never
+  // fires response.create over an in-flight response — the server rejects that
+  // as "active response in progress", which on stop→restart surfaced as a
+  // spurious error banner. Also lets cleanup() cancel a response still running
+  // when the session is torn down, and holds the half-duplex mute.
   const activeResponseRef = useRef(false);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -222,7 +225,6 @@ export function useVoiceSession(
     connectGenRef.current++;
 
     if (session) closeRealtimeSession(session, activeResponseRef.current);
-    activeResponseRef.current = false;
 
     if (mcpClient) {
       try {
@@ -241,6 +243,8 @@ export function useVoiceSession(
     setIsMuted(false);
     isMutedRef.current = false;
     autoMutedRef.current = false;
+    audioPlayingRef.current = false;
+    activeResponseRef.current = false;
     // Same reasoning for the rate-limit banner: a drop mid-rate-limit would
     // otherwise render the countdown + a dead "Retry now" under the
     // "Connection lost" message until the next connect resets it.
@@ -290,25 +294,7 @@ export function useVoiceSession(
           voice,
         });
 
-        // Construct the transport supplying our own <audio> element so we
-        // control output volume (the SDK would otherwise create its own,
-        // unreachable, element). The SDK still calls getUserMedia({ audio: true })
-        // (default constraints — browser/OS-level AEC is on by default on macOS
-        // and modern Chromium/Safari) and sets autoplay + srcObject on our
-        // element when the remote track arrives.
-        const audioElement = createPlaybackAudioElement(volume);
-
-        audioElementRef.current = audioElement;
-        const transport = new OpenAIRealtimeWebRTC({ audioElement });
-
-        // Surface a dropped connection (network blip, sleep/wake, tab
-        // backgrounding): the SDK closes the transport and emits "disconnected",
-        // but the session never re-emits it as an error, so the UI would
-        // otherwise stay "connected" — or hang on "Thinking…" if the drop landed
-        // mid-response — on a dead session. cleanup() closes the dead session and
-        // resets the latched indicators; we then prompt a reconnect. Our own
-        // teardowns set intentionalCloseRef first, so they are ignored here.
-        transport.on("disconnected", () => {
+        const transport = buildTransport(volume, audioElementRef, () => {
           if (intentionalCloseRef.current) return;
 
           void cleanup().then(() => {
@@ -330,20 +316,16 @@ export function useVoiceSession(
 
         wireSessionEvents(session, setHistory, {
           // Barge-in disabled (interrupt_response off, the default) → run
-          // half-duplex: handleTransportEvent mutes the mic for the duration of
-          // each response. When turnDetection is undefined, OpenAI's default
-          // (barge-in on) applies, so we stay full-duplex. turnDetection is fixed
-          // for the session (changes apply on the next Stop → Talk).
+          // half-duplex: handleTransportEvent mutes the mic for each assistant
+          // turn. When turnDetection is undefined, OpenAI's default (barge-in
+          // on) applies, so we stay full-duplex. turnDetection is fixed for the
+          // session (changes apply on the next Stop → Talk).
           halfDuplex: turnDetection?.interruptResponse === false,
           autoMutedRef,
           isMutedRef,
-          // Track the active-response window in a ref synchronously alongside the
-          // assistantThinking state (set true on response.created, false on
-          // response.done) so retryResponse() can gate on it without a render lag.
-          setAssistantThinking: (value: boolean) => {
-            activeResponseRef.current = value;
-            setAssistantThinking(value);
-          },
+          responseActiveRef: activeResponseRef,
+          audioPlayingRef,
+          setAssistantThinking,
           setAssistantSpeaking,
           setError,
           setRateLimitedUntil,
@@ -520,32 +502,4 @@ function closeRealtimeSession(
   } catch {
     // swallow — best-effort teardown
   }
-}
-
-/**
- * Wire the realtime session's history, transport-event, and error listeners.
- * Extracted from useVoiceSession to keep the hook within its line budget.
- *
- * @param session - The realtime session to attach listeners to
- * @param setHistory - State setter for the transcript history
- * @param transportDeps - The half-duplex flag, mute refs, and UI setters
- *   handleTransportEvent needs (every TransportEventDeps field but `session`)
- */
-function wireSessionEvents(
-  session: RealtimeSession,
-  setHistory: (items: RealtimeItem[]) => void,
-  transportDeps: Omit<TransportEventDeps, "session">,
-): void {
-  session.on("history_updated", (next: RealtimeItem[]) => {
-    setHistory([...next]);
-  });
-
-  session.on("transport_event", (event: TransportEvent) =>
-    handleTransportEvent(event, { session, ...transportDeps }),
-  );
-
-  session.on("error", (err: { type: "error"; error: unknown }) => {
-    console.error("RealtimeSession error", err.error);
-    transportDeps.setError(extractErrorMessage(err.error));
-  });
 }

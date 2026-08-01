@@ -99,8 +99,28 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     expect(mic.setMuted).toHaveBeenCalledWith(true);
     expect(deps.autoMutedRef.current).toBe(true);
 
-    // The real turn end lifts it.
+    // The interrupt's flush emptied the queue, so the real turn end lifts it.
+    vi.mocked(player.hasQueued).mockReturnValue(false);
     await handleGeminiMessage(turnDone, deps);
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  // turnComplete only means the server stopped sending — the tail of the turn
+  // is still scheduled locally, and that's when a user talks over the assistant.
+  it("holds the auto-mute past turnComplete until the queue drains", async () => {
+    const { deps, drain, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+
+    expect(mic.setMuted).toHaveBeenCalledTimes(1);
+    expect(deps.autoMutedRef.current).toBe(true);
+
+    drain();
+
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
     expect(deps.autoMutedRef.current).toBe(false);
   });

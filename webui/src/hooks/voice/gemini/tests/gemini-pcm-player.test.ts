@@ -190,6 +190,56 @@ describe("GeminiPcmPlayer", () => {
     expect(player.hasQueued()).toBe(false);
   });
 
+  it("onDrained runs immediately when nothing is queued", async () => {
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+
+    const callback = vi.fn();
+
+    player.onDrained(callback);
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("onDrained waits for the last scheduled source to end", async () => {
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+    const ctx = FakeAudioContext.instances[0]!;
+
+    player.enqueueBase64(pcmBase64(10));
+    player.enqueueBase64(pcmBase64(10));
+
+    const callback = vi.fn();
+
+    player.onDrained(callback);
+    ctx.sources[0]!.onended!();
+    expect(callback).not.toHaveBeenCalled();
+
+    ctx.sources[1]!.onended!();
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    // One-shot: a later drain does not re-run it.
+    player.enqueueBase64(pcmBase64(10));
+    ctx.sources[2]!.onended!();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("onDrained fires on flush (barge-in stops the audio)", async () => {
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+    player.enqueueBase64(pcmBase64(10));
+
+    const callback = vi.fn();
+
+    player.onDrained(callback);
+    expect(callback).not.toHaveBeenCalled();
+
+    player.flush();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
   it("close flushes and closes the context (idempotent)", async () => {
     const player = new GeminiPcmPlayer();
 

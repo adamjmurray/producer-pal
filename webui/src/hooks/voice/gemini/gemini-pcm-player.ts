@@ -25,6 +25,7 @@ export class GeminiPcmPlayer {
   private nextStartTime = 0;
   private sources = new Set<AudioBufferSourceNode>();
   private volume = 1;
+  private drainedCallback: (() => void) | null = null;
 
   /** Create/resume the output context (must follow a user gesture). */
   async resume(): Promise<void> {
@@ -80,7 +81,11 @@ export class GeminiPcmPlayer {
     source.start(startAt);
     this.nextStartTime = startAt + buffer.duration;
     this.sources.add(source);
-    source.onended = () => this.sources.delete(source);
+
+    source.onended = () => {
+      this.sources.delete(source);
+      this.notifyIfDrained();
+    };
   }
 
   /**
@@ -92,6 +97,24 @@ export class GeminiPcmPlayer {
    */
   hasQueued(): boolean {
     return this.sources.size > 0;
+  }
+
+  /**
+   * Run `callback` once nothing is left to play — immediately if the queue is
+   * already empty. Only one registration is held at a time; a second call
+   * replaces the first. Used by the half-duplex mute gate: the server's
+   * turnComplete arrives while the tail of the turn is still scheduled locally,
+   * and unmuting there would open the mic under the assistant's own voice.
+   * @param callback - Runs when the queue drains (or right now, if it is empty)
+   */
+  onDrained(callback: () => void): void {
+    if (!this.hasQueued()) {
+      callback();
+
+      return;
+    }
+
+    this.drainedCallback = callback;
   }
 
   /** Barge-in: stop all scheduled audio and reset the cursor. */
@@ -107,6 +130,17 @@ export class GeminiPcmPlayer {
 
     this.sources.clear();
     this.nextStartTime = 0;
+    // Nothing is playing anymore, so a pending drain callback is due now.
+    this.notifyIfDrained();
+  }
+
+  /** Fire and clear a pending drain callback once the last source has ended. */
+  private notifyIfDrained(): void {
+    if (this.sources.size > 0) return;
+    const callback = this.drainedCallback;
+
+    this.drainedCallback = null;
+    callback?.();
   }
 
   /** Stop playback and close the output context. */

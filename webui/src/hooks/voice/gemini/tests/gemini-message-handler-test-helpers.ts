@@ -19,10 +19,26 @@ import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-
  * @returns The deps plus the fakes for assertions
  */
 export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
+  const hasQueued = vi.fn(() => false);
+  // Mirror the real player's drain semantics: onDrained runs now when nothing
+  // is queued, otherwise it waits for drain() (which flush() also triggers).
+  let pendingDrain: (() => void) | null = null;
+
+  const drain = (): void => {
+    const callback = pendingDrain;
+
+    pendingDrain = null;
+    callback?.();
+  };
+
   const player = {
-    flush: vi.fn(),
+    flush: vi.fn(drain),
     enqueueBase64: vi.fn(),
-    hasQueued: vi.fn(() => false),
+    hasQueued,
+    onDrained: vi.fn((callback: () => void) => {
+      if (hasQueued()) pendingDrain = callback;
+      else callback();
+    }),
   } as unknown as GeminiPcmPlayer;
   const sendToolResponse = vi.fn();
   const session = { sendToolResponse } as unknown as Session;
@@ -45,7 +61,7 @@ export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
     ...overrides,
   };
 
-  return { deps, player, sendToolResponse, session, mic };
+  return { deps, drain, player, sendToolResponse, session, mic };
 }
 
 /**

@@ -84,6 +84,10 @@ const h = vi.hoisted(() => {
 
     flush = vi.fn();
     enqueueBase64 = vi.fn();
+    // Nothing queued, so the half-duplex unmute is never deferred here; the
+    // deferral itself is covered in gemini-half-duplex.test.ts.
+    hasQueued = vi.fn(() => false);
+    onDrained = vi.fn((callback: () => void) => callback());
     close = vi.fn(async () => {});
     constructor() {
       FakePlayer.last = this;
