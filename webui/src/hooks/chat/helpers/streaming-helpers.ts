@@ -216,6 +216,8 @@ export interface InitConnection {
    * to the device global.
    */
   notation: Notation | null;
+  /** The small-model mode to lock and send for this init. */
+  smallModelMode: boolean;
 }
 
 /**
@@ -231,13 +233,15 @@ export interface InitConnection {
  * `lockedSystemInstruction`, so the adapter sends what the conversation started
  * with rather than the current global override. Null (brand-new conversation)
  * lets the adapter fall back to resolving the current override. Its locked
- * notation rides along the same way, as `lockedNotation`.
+ * notation and small-model mode ride along the same way, as `lockedNotation` and
+ * `lockedSmallModelMode`.
  *
- * @param locked - Conversation's locked provider/model/system-instruction/notation (null fields if unset)
+ * @param locked - Conversation's locked provider/model/system-instruction/notation/small-model mode (null fields if unset)
  * @param locked.activeProvider - Locked provider, or null when not locked
  * @param locked.activeModel - Locked model, or null when not locked
  * @param locked.activeSystemInstruction - Locked system instruction, or null when not locked
  * @param locked.activeNotation - Locked notation, or null when not locked
+ * @param locked.activeSmallModelMode - Locked small-model mode, or null when not locked
  * @param fallback - Current-settings provider/model (used when not locked)
  * @param fallback.provider - Current-settings provider
  * @param fallback.model - Current-settings model
@@ -251,6 +255,7 @@ export function resolveInitConnection(
     activeModel: string | null;
     activeSystemInstruction: string | null;
     activeNotation: Notation | null;
+    activeSmallModelMode: boolean | null;
   },
   fallback: { provider: Provider; model: string },
   resolveConnection: (provider: Provider) => {
@@ -269,6 +274,7 @@ export function resolveInitConnection(
     baseUrl,
     lockedSystemInstruction: locked.activeSystemInstruction,
     lockedNotation: locked.activeNotation,
+    lockedSmallModelMode: locked.activeSmallModelMode,
   };
 
   return {
@@ -278,6 +284,7 @@ export function resolveInitConnection(
     extraParams: mergedExtraParams,
     systemInstruction: resolveLockedSystemInstruction(mergedExtraParams),
     notation: resolveLockedNotation(mergedExtraParams),
+    smallModelMode: resolveLockedSmallModelMode(mergedExtraParams),
   };
 }
 
@@ -318,4 +325,23 @@ export function resolveLockedNotation(
   if (isNotation(locked)) return locked;
 
   return isNotation(extraParams.notation) ? extraParams.notation : null;
+}
+
+/**
+ * The small-model mode to lock and send for an init: the conversation's locked
+ * snapshot when continuing a restored chat, else the current setting for a
+ * brand-new one. Mirrors the adapter's resolution so the locked value equals
+ * what was sent — the tool schemas and skills variant a restored conversation
+ * gets must not flip when the Settings toggle moves under it.
+ * @param extraParams - The init's extra params (locked snapshot + current setting)
+ * @returns The effective small-model mode
+ */
+export function resolveLockedSmallModelMode(
+  extraParams: Record<string, unknown>,
+): boolean {
+  const locked = extraParams.lockedSmallModelMode;
+
+  if (typeof locked === "boolean") return locked;
+
+  return Boolean(extraParams.smallModelMode);
 }

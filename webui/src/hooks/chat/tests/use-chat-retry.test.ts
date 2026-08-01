@@ -443,6 +443,7 @@ describe("useChat", () => {
           baseUrl: undefined,
           lockedSystemInstruction: null,
           lockedNotation: null,
+          lockedSmallModelMode: null,
         },
       );
     });

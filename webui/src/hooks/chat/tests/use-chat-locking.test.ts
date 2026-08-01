@@ -21,6 +21,11 @@ const defaultProps = createDefaultProps(mockAdapter);
 // The chat's own notation, which a brand-new conversation locks and every
 // request then carries as its header.
 const withNotation = { ...defaultProps, extraParams: { notation: "barbeat" } };
+// A chat whose Settings currently have small model mode switched on.
+const withSmallModel = {
+  ...defaultProps,
+  extraParams: { smallModelMode: true },
+};
 
 // A chat whose Tools tab currently has the library tool switched on.
 const withTools = {
@@ -34,6 +39,16 @@ const withTools = {
  */
 function lastLockedNotation(): unknown {
   return vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[4]?.lockedNotation;
+}
+
+/**
+ * The `lockedSmallModelMode` carried by the init the adapter last built a
+ * config from.
+ * @returns The locked small-model mode, or undefined when the init carried no key
+ */
+function lastLockedSmallModelMode(): unknown {
+  return vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[4]
+    ?.lockedSmallModelMode;
 }
 
 /**
@@ -124,6 +139,42 @@ describe("useChat notation locking", () => {
     });
 
     expect(result.current.activeNotation).toBeNull();
+  });
+});
+
+describe("useChat small model mode locking", () => {
+  it("locks the current small model mode when a new conversation starts", async () => {
+    const { result } = renderHook(() => useChat(withSmallModel));
+
+    await act(async () => {
+      await result.current.handleSend("hello");
+    });
+
+    expect(lastLockedSmallModelMode()).toBeNull();
+    expect(result.current.activeSmallModelMode).toBe(true);
+  });
+
+  it("continues a restored conversation in the mode it started in", async () => {
+    // Settings now say small model mode, but this conversation was built against
+    // the full tool schemas and the standard skills — flipping either mid-chat
+    // contradicts what the model was already taught.
+    const { result } = renderHook(() => useChat(withSmallModel));
+
+    await act(async () => {
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings({ smallModelMode: false }),
+      );
+    });
+
+    expect(result.current.activeSmallModelMode).toBe(false);
+
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    expect(lastLockedSmallModelMode()).toBe(false);
+    expect(result.current.activeSmallModelMode).toBe(false);
   });
 });
 

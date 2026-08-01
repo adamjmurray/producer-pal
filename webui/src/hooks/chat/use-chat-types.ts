@@ -200,7 +200,6 @@ export interface UseChatProps<
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
-  smallModelMode: boolean;
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   /**
    * Resolve the connection (key + base URL) for a given provider from the

@@ -12,7 +12,10 @@ import {
   type ChatMessage,
   type SubagentConfigOverride,
 } from "#webui/chat/sdk/types";
-import { resolveLockedNotation } from "#webui/hooks/chat/helpers/streaming-helpers";
+import {
+  resolveLockedNotation,
+  resolveLockedSmallModelMode,
+} from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
@@ -262,8 +265,10 @@ export const chatAdapter: ChatAdapter<
       lockedSystemInstruction ??
       resolveSystemInstruction(systemInstructionOverride);
     // Carried onto the config so client.initialize sends it as the per-request
-    // MCP header (schema shrink + basic skills variant for this caller).
-    const smallModelMode = Boolean(extraParams?.smallModelMode);
+    // MCP header (schema shrink + basic skills variant for this caller). Locked
+    // like the instruction: a restored conversation passes its snapshot
+    // (lockedSmallModelMode) and keeps the schemas and skills it started with.
+    const smallModelMode = resolveLockedSmallModelMode(extraParams ?? {});
     // Same idea for notation, which the chat also sends per-request rather than
     // letting every call fall through to the device global — otherwise flipping
     // the dropdown re-teaches an open conversation mid-turn and the next tool

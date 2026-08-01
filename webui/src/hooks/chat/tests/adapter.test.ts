@@ -95,6 +95,22 @@ describe("chatAdapter", () => {
       expect(off.smallModelMode).toBe(false);
     });
 
+    it("uses a locked smallModelMode over the current setting", () => {
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        "default",
+        {},
+        undefined,
+        {
+          ...extraParams,
+          lockedSmallModelMode: true,
+          smallModelMode: false,
+        },
+      );
+
+      expect(config.smallModelMode).toBe(true);
+    });
+
     it("carries the current notation onto the config for a new conversation", () => {
       // Without this the chat sent no notation header at all and every request
       // fell through to the device global, so flipping the dropdown re-taught an

@@ -164,7 +164,6 @@ export function useChatModeState(params: UseChatModeStateParams) {
     model: settings.model,
     thinking: settings.thinking,
     enabledTools: settings.enabledTools,
-    smallModelMode: settings.smallModelMode,
     mcpStatus,
     mcpError,
     checkMcpConnection,
@@ -172,6 +171,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
     adapter: chatAdapter,
     extraParams: {
       baseUrl,
+      // What a NEW conversation locks; a restored one keeps its own snapshot,
+      // so flipping the toggle can't change the tool schemas and skills variant
+      // an open conversation is already running under.
       smallModelMode: settings.smallModelMode,
       provider: settings.provider,
       apiKey: resolvedApiKey,

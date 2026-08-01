@@ -43,7 +43,6 @@ export function useChat<
   model,
   thinking,
   enabledTools,
-  smallModelMode,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -204,7 +203,7 @@ export function useChat<
         model: init.model,
         provider: init.provider,
         thinking: effectiveThinking,
-        smallModelMode,
+        smallModelMode: init.smallModelMode,
         systemInstruction: init.systemInstruction,
         notation: init.notation,
         // The toolset this client was just built with. Unlike the others this is
@@ -215,7 +214,6 @@ export function useChat<
       });
     },
     [
-      smallModelMode,
       mcpStatus,
       mcpError,
       checkMcpConnection,

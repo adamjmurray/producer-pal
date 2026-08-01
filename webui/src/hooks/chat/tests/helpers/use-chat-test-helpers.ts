@@ -209,7 +209,6 @@ export function createDefaultProps(
     model: "test-model",
     thinking: "Default",
     enabledTools: {},
-    smallModelMode: false,
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: vi.fn(),
@@ -271,6 +270,7 @@ export async function streamingHelpersMockBody(): Promise<
     // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
     resolveInitConnection: actual.resolveInitConnection,
     resolveLockedNotation: actual.resolveLockedNotation,
+    resolveLockedSmallModelMode: actual.resolveLockedSmallModelMode,
     recoverFromChatError: actual.recoverFromChatError,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
