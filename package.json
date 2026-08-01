@@ -156,7 +156,7 @@
     "eslint-plugin-sonarjs": "4.2.0",
     "eslint-plugin-unicorn": "70.0.0",
     "fake-indexeddb": "6.2.5",
-    "happy-dom": "20.11.0",
+    "happy-dom": "20.11.1",
     "jscpd": "5.0.12",
     "oxlint": "1.75.0",
     "oxlint-tsgolint": "7.0.2001",
