@@ -50,7 +50,7 @@ import {
 
 // Inlined from #webui/lib/constants/models.ts: importing that module raw pulls
 // in extensionless webui imports Node can't resolve unbundled. Keep in sync.
-const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
+const OPENAI_REALTIME_MODEL = "gpt-realtime-2.1";
 
 // Sourced through buildSkills (HEADER + notation head + shared core per level).
 // Standard = default (bar|beat); basic = Stark, matching the historical baseline.

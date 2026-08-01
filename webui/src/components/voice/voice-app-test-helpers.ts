@@ -81,7 +81,7 @@ export interface PropOverrides {
 export function makeProps(o: PropOverrides = {}): VoiceAppProps {
   const apiKey = o.apiKey ?? "sk-test";
   const provider = o.provider ?? "openai";
-  const model = o.model ?? "gpt-realtime-2";
+  const model = o.model ?? "gpt-realtime-2.1";
   // Default the per-provider keys to match the current provider's apiKey so
   // pre-existing tests (which only set `apiKey + provider`) behave unchanged.
   // Tests that exercise record-aware routing (both keys saved, current provider

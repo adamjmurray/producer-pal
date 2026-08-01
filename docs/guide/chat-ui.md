@@ -169,7 +169,7 @@ Producer Pal includes an experimental hands-free voice mode for talking with the
 AI out loud. It's available on two providers, each requiring that provider's API
 key:
 
-- **OpenAI** — the **GPT Realtime 2 (Voice)** model
+- **OpenAI** — the **GPT Realtime 2.1 (Voice)** model
 - **Google** — the **Gemini 3.1 Flash Live (Voice)** model
 
 To enter voice mode, open [Settings](#settings), set the **Provider**, and
@@ -301,8 +301,9 @@ below live on this **Connection** tab, and only appear once a voice model is
 selected. Producer Pal includes an experimental voice mode for spoken
 conversations with the AI, available on **OpenAI** and **Google (Gemini)**. To
 use it, set the **Provider** and select that provider's voice model — **GPT
-Realtime 2 (Voice)** for OpenAI or **Gemini 3.1 Flash Live (Voice)** for Google.
-The **Voice** dropdown and a collapsible **Voice Settings** section then appear.
+Realtime 2.1 (Voice)** for OpenAI or **Gemini 3.1 Flash Live (Voice)** for
+Google. The **Voice** dropdown and a collapsible **Voice Settings** section then
+appear.
 
 <img src="/img/producer-pal-chat-settings-voice.png" alt="Voice settings" width="500"/>
 

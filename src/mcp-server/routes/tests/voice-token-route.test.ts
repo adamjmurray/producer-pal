@@ -153,7 +153,7 @@ describe("voice-token route", () => {
     expect(json.error).toContain("missing 'value'");
   });
 
-  it("defaults to gpt-realtime-2 when no model is provided", async () => {
+  it("defaults to gpt-realtime-2.1 when no model is provided", async () => {
     const { calls } = mockOpenAIFetch(async () =>
       jsonResponse(200, { value: "ek_x", expires_at: 0 }),
     );
@@ -161,7 +161,7 @@ describe("voice-token route", () => {
     await postVoiceToken(appState.baseUrl);
     const sentBody = JSON.parse(calls[0]!.init!.body as string);
 
-    expect(sentBody).toMatchObject({ session: { model: "gpt-realtime-2" } });
+    expect(sentBody).toMatchObject({ session: { model: "gpt-realtime-2.1" } });
   });
 
   it("falls back to default model when model field is non-string", async () => {
@@ -172,7 +172,7 @@ describe("voice-token route", () => {
     await postVoiceToken(appState.baseUrl, { body: { model: 12345 } });
     const sentBody = JSON.parse(calls[0]!.init!.body as string);
 
-    expect(sentBody).toMatchObject({ session: { model: "gpt-realtime-2" } });
+    expect(sentBody).toMatchObject({ session: { model: "gpt-realtime-2.1" } });
   });
 
   it("forwards upstream non-2xx with status and detail JSON", async () => {

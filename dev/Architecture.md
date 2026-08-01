@@ -97,8 +97,8 @@ UI from the MCP server's Express app and connects directly to the LLM API.
 The chat UI also has a realtime **voice mode**: speech-to-speech conversation
 with the model, with the same MCP tools and conversation store as text chat. The
 browser selects voice mode by choosing a realtime model; the provider is derived
-from the model id (`gpt-realtime-2` → OpenAI, `gemini-3.1-flash-live-preview` →
-Gemini). Two backends are supported behind one interface:
+from the model id (`gpt-realtime-2.1` → OpenAI, `gemini-3.1-flash-live-preview`
+→ Gemini). Two backends are supported behind one interface:
 
 - **OpenAI** uses the `@openai/agents` Realtime SDK over **WebRTC**. The SDK
   owns mic capture, voice-activity detection, and audio playback.

@@ -787,7 +787,7 @@ describe("VoiceApp", () => {
       const ctx = setModeContextMock.mock.calls.at(-1)?.[0] as
         ModeContext | undefined;
 
-      expect(ctx?.conversationLock.activeModel).toBe("gpt-realtime-2");
+      expect(ctx?.conversationLock.activeModel).toBe("gpt-realtime-2.1");
       expect(ctx?.conversationLock.activeProvider).toBe("openai");
       // Delete handlers route through the persistence hook
       ctx?.onDeleteAllConversations();

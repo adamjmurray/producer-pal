@@ -23,7 +23,7 @@ export const OTHER_MODEL_OPTION = {
   label: "Other...",
 } as const;
 
-export const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
+export const OPENAI_REALTIME_MODEL = "gpt-realtime-2.1";
 
 /**
  * Gemini's recommended Live API model (audio-to-audio, low latency). Used as
@@ -152,7 +152,7 @@ export const OPENAI_MODELS: ModelPresetItem[] = [
   { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
   {
     value: OPENAI_REALTIME_MODEL,
-    label: "GPT Realtime 2 (Voice)",
+    label: "GPT Realtime 2.1 (Voice)",
     kind: "realtime",
   },
   OTHER_MODEL_OPTION,

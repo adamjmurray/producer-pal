@@ -199,6 +199,6 @@ describe("VoiceApp record-aware routing", () => {
     const openAiCall = lastOpenAiCall();
 
     expect(openAiCall.openAiKey).toBe("sk-openai");
-    expect(openAiCall.model).toBe("gpt-realtime-2");
+    expect(openAiCall.model).toBe("gpt-realtime-2.1");
   });
 });
