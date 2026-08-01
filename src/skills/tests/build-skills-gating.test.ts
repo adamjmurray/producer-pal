@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
-import { buildSkills } from "#src/skills/build-skills.ts";
+import { assembleSkills, buildSkills } from "#src/skills/build-skills.ts";
 
 const HEADER = "# Producer Pal Skills";
 
@@ -85,6 +85,62 @@ describe("buildSkills - tool gating", () => {
     expect(minimal).not.toContain("## Transforms");
     expect(minimal).not.toContain("## Context & Memory");
     expect(minimal.length).toBeLessThan(full.length / 2);
+  });
+
+  it("keeps the note format but drops the authoring half for a read-only caller", () => {
+    // The case the notation-head split exists for: a worker that reads clips
+    // needs the grammar to PARSE what read-clip returns, and none of the sugar a
+    // serializer never emits. Silent, like any gating — nothing is broken.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      {
+        notation: "barbeat",
+        tools: ["ppal-read-clip", "ppal-read-track", "ppal-read-scene"],
+      },
+      {},
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain("## Positions & Meter");
+    expect(result).toContain("## MIDI Syntax");
+    expect(result).not.toContain("## Writing Notes");
+    expect(result).not.toContain("**Pattern brackets**");
+    expect(result).not.toContain("### Bar Copying");
+    expect(result).not.toContain("### Editing Existing Notes");
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("keeps both halves for anything that can write a clip", () => {
+    // Either writer alone is enough, and each keeps the base head it builds on —
+    // the requires-subset invariant, seen from the assembled document.
+    for (const tool of ["ppal-create-clip", "ppal-update-clip"]) {
+      const result = buildSkills({ notation: "barbeat", tools: [tool] });
+
+      expect(result, `${tool} lost the note format`).toContain(
+        "## Positions & Meter",
+      );
+      expect(result, `${tool} lost the authoring half`).toContain(
+        "## Writing Notes",
+      );
+    }
+  });
+
+  it("leaves an unsplit notation head whole, with no gap where its write half would be", () => {
+    // stark and midi-json register an EMPTY `-write` fragment so the driver's
+    // notation-templated ref resolves. That must read as one clean section
+    // break, not a stack of blank lines, and must never warn.
+    for (const notation of ["stark", "midi-json"] as const) {
+      const warnings: string[] = [];
+      const result = buildSkills(
+        { notation, tools: ALL_TOOLS },
+        {},
+        (message) => warnings.push(message),
+      );
+
+      expect(result, `${notation} lost its head`).toContain("## MIDI Notation");
+      expect(result, `${notation} stacked blank lines`).not.toMatch(/\n{3,}/);
+      expect(warnings, `${notation} warned`).toStrictEqual([]);
+    }
   });
 
   it("gates the small-model document the same way", () => {
@@ -167,5 +223,61 @@ describe("buildSkills - audience gating", () => {
     });
 
     expect(result).toContain(HEADER);
+  });
+});
+
+describe("assembleSkills - dropped fragments", () => {
+  const ALL_TOOLS = [...TOOL_NAMES];
+
+  it("reports nothing when no gate fires", () => {
+    expect(assembleSkills({ tools: ALL_TOOLS }).dropped).toStrictEqual([]);
+  });
+
+  it("names the fragments a disabled tool emptied", () => {
+    const { dropped } = assembleSkills({
+      notation: "barbeat",
+      tools: ALL_TOOLS.filter((name) => name !== "ppal-library"),
+    });
+
+    expect(dropped).toContain("library");
+    expect(dropped).not.toContain("devices");
+  });
+
+  it("names an audience-dropped fragment too", () => {
+    const { dropped } = assembleSkills({
+      tools: ALL_TOOLS,
+      audience: "subagent",
+    });
+
+    expect(dropped).toStrictEqual(["getting-help"]);
+  });
+
+  it("omits fragments this document never referenced", () => {
+    // transforms-basic belongs to the small-model driver, so the standard
+    // document dropping nothing of the sort is the point: the preview must not
+    // list sections that were never on the table.
+    const { dropped } = assembleSkills({ tools: [] });
+
+    expect(dropped).not.toContain("transforms-basic");
+    expect(dropped).toContain("transforms-core");
+  });
+
+  it("omits a fragment the USER switched off", () => {
+    // Their own off switch already shows as an unchecked box; only gating has
+    // nothing on screen to explain it.
+    const { dropped } = assembleSkills(
+      { tools: ALL_TOOLS },
+      {
+        disabled: ["library"],
+      },
+    );
+
+    expect(dropped).toStrictEqual([]);
+  });
+
+  it("returns the same string buildSkills does", () => {
+    const options = { notation: "stark", tools: ALL_TOOLS } as const;
+
+    expect(assembleSkills(options).skills).toBe(buildSkills(options));
   });
 });

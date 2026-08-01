@@ -97,6 +97,7 @@ describe("useSkillOverrides", () => {
         override: "",
         enabled: true,
         canDisable: true,
+        gate: null,
         drifted: false,
         forkedFromVersion: null,
       },
@@ -108,11 +109,37 @@ describe("useSkillOverrides", () => {
         override: "MINE",
         enabled: true,
         canDisable: true,
+        gate: null,
         drifted: true,
         forkedFromVersion: "1.4.0",
       },
     ]);
     expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+  });
+
+  it("maps each gate shape, and reads anything unrecognized as no gate", async () => {
+    const result = await renderReady([
+      rawSlot({ gate: ["ppal-read-clip", "ppal-create-clip"] }),
+      rawSlot({ gate: "always" }),
+      rawSlot({ gate: "conversation-only" }),
+      // A driver, and — same handling — a value from a server this webui
+      // doesn't understand. Saying nothing beats stating the wrong rule.
+      rawSlot({ gate: null }),
+      rawSlot({ gate: "made-up" }),
+      rawSlot({ gate: [1, 2] }),
+    ]);
+    const status = result.current.status;
+
+    expect(
+      status.kind === "ready" && status.slots.map((s) => s.gate),
+    ).toStrictEqual([
+      ["ppal-read-clip", "ppal-create-clip"],
+      "always",
+      "conversation-only",
+      null,
+      null,
+      null,
+    ]);
   });
 
   it("falls back to an empty list when slots is missing", async () => {

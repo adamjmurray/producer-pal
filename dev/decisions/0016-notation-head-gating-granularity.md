@@ -1,6 +1,6 @@
 # ADR-0016: One fragment per notation is the tool-gating floor
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0019](0019-notation-head-read-write-split.md)
 - **Date logged:** 2026-07-29
 
 ## Context

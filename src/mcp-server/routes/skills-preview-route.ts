@@ -14,7 +14,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { DEFAULT_NOTATION, isNotation } from "#src/shared/notation.ts";
-import { buildSkills } from "#src/skills/build-skills.ts";
+import { assembleSkills } from "#src/skills/build-skills.ts";
 import { resolveFragmentAlias } from "#src/skills/builtin-fragments.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 
@@ -24,11 +24,12 @@ import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
  * (`"true"` enables basic/small-model skills) select the combination. The
  * response carries the assembled blob, the two slot names the COMBINATION picks
  * (the driver and the notation head — every other fragment is named by the
- * driver's own manifest, which the user can read in the editor), and any
- * assembly `warnings` (unknown fragments, refused nesting, unsafe refs in a user
- * override) so the editor can flag a broken override instead of showing a
- * truncated blob. Read-only, so it is not origin-gated (unlike the override
- * writes) — it exposes nothing a GET /skill-overrides didn't already.
+ * driver's own manifest, which the user can read in the editor), the fragments
+ * the toolset `dropped`, and any assembly `warnings` (unknown fragments, refused
+ * nesting, unsafe refs in a user override) so the editor can flag a broken
+ * override instead of showing a truncated blob. Read-only, so it is not
+ * origin-gated (unlike the override writes) — it exposes nothing a GET
+ * /skill-overrides didn't already.
  *
  * The preview reflects the DEVICE's tool whitelist, so a fragment whose tools
  * are all switched off shows as gone here too — this is the blob an external MCP
@@ -63,12 +64,20 @@ export function registerSkillsPreviewRoute(
     // refs) so the editor can surface a broken override instead of showing a
     // silently truncated blob.
     const warnings: string[] = [];
-    const skills = buildSkills(
+    const { skills, dropped } = assembleSkills(
       { notation, smallModelMode, tools: getTools?.() },
       readSkillOverrides(),
       (message) => warnings.push(message),
     );
 
-    res.json({ notation, smallModelMode, head, driver, skills, warnings });
+    res.json({
+      notation,
+      smallModelMode,
+      head,
+      driver,
+      skills,
+      dropped,
+      warnings,
+    });
   });
 }

@@ -33,11 +33,19 @@ const HEADER = "# Producer Pal Skills";
  * between includes are the blank lines between the assembled sections —
  * fragments carry no leading/trailing blank lines, and the resolver collapses
  * any run left behind by a fragment that resolved to nothing (an override the
- * user emptied, or `code-transforms` in a release build).
+ * user emptied, `code-transforms` in a release build, or a notation whose head
+ * has no authoring half to split off).
+ *
+ * The notation head takes two adjacent lines so the guide stays contiguous: the
+ * base head, then its `-write` sibling carrying the syntax only the clip writers
+ * can act on (ADR-0019). Only bar|beat is split so far; the other notations
+ * resolve that second ref to nothing.
  */
 export const standardDriver = `${HEADER}
 
 @include "./{notation}-standard.md"
+
+@include "./{notation}-standard-write.md"
 
 @include "./time-and-values.md"
 

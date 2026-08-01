@@ -9,6 +9,7 @@ import { builtinFragments } from "#src/skills/builtin-fragments.ts";
 import {
   FRAGMENT_GATES,
   audienceGatedFragments,
+  fragmentGate,
   gatedOutFragments,
 } from "#src/skills/fragment-tool-gates.ts";
 import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
@@ -189,5 +190,39 @@ describe("audienceGatedFragments", () => {
         expect(dropped).not.toContain(required);
       }
     }
+  });
+});
+
+describe("fragmentGate", () => {
+  it("uses only the two string gates the webui mirrors", () => {
+    // webui hand-copies FragmentGate (it may only import #src/shared) and reads
+    // an unrecognized value as "no gate" — silently, so nothing would fail.
+    // A third literal here means updating SkillGate and toGate alongside it.
+    const literals = Object.values(FRAGMENT_GATES).filter(
+      (gate) => typeof gate === "string",
+    );
+
+    expect(new Set(literals)).toStrictEqual(
+      new Set(["always", "conversation-only"]),
+    );
+  });
+
+  it("returns each gate shape", () => {
+    expect(fragmentGate("library")).toStrictEqual(["ppal-library"]);
+    expect(fragmentGate("time-and-values")).toBe("always");
+    expect(fragmentGate("getting-help")).toBe("conversation-only");
+  });
+
+  it("returns null for a driver root and for an unknown fragment", () => {
+    expect(fragmentGate("standard")).toBeNull();
+    expect(fragmentGate("no-such-fragment")).toBeNull();
+  });
+
+  it("returns null for an inherited Object property name", () => {
+    // Names reach this from user text (an override filename), so a bare index
+    // would hand back Object.prototype.toString — a function where a gate is
+    // expected, which the editor would then try to render.
+    expect(fragmentGate("toString")).toBeNull();
+    expect(fragmentGate("constructor")).toBeNull();
   });
 });

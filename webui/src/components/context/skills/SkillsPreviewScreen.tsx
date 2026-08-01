@@ -255,7 +255,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
     );
   }
 
-  const { skills, head, driver, warnings } = status.preview;
+  const { skills, head, driver, dropped, warnings } = status.preview;
 
   return (
     <PreviewFrame
@@ -270,6 +270,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
       }
     >
       {warnings.length > 0 && <PreviewWarnings warnings={warnings} />}
+      {dropped.length > 0 && <DroppedNote dropped={dropped} />}
       <MarkdownEditor
         key={skills}
         ariaLabel="Assembled skills preview"
@@ -312,6 +313,28 @@ function PreviewFrame(props: PreviewFrameProps): preact.JSX.Element {
         <div className="justify-self-end">{right}</div>
       </div>
       {children}
+    </div>
+  );
+}
+
+interface DroppedNoteProps {
+  dropped: string[];
+}
+
+/**
+ * Names the fragments this blob is missing because the tools that would use them
+ * are switched off in Settings. Without it the preview just looks short — the
+ * gating is the only part of assembly nothing else on screen accounts for.
+ * @param props - Note props
+ * @returns Note element
+ */
+function DroppedNote(props: DroppedNoteProps): preact.JSX.Element {
+  const { dropped } = props;
+
+  return (
+    <div className="shrink-0 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs text-zinc-600 dark:text-zinc-400">
+      <span className="font-medium">Left out — no enabled tool uses them:</span>{" "}
+      <span className="font-mono">{dropped.join(", ")}</span>
     </div>
   );
 }

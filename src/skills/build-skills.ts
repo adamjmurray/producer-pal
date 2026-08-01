@@ -61,6 +61,18 @@ export interface SkillOverrides {
   disabled?: readonly string[];
 }
 
+/** An assembled blob plus what the runtime context dropped from it. */
+export interface AssembledSkills {
+  /** The skills string returned in the ppal-connect tool result. */
+  skills: string;
+  /**
+   * Fragments this document referenced that the TOOLSET or AUDIENCE emptied, in
+   * include order. The user's own off switches are excluded — those they can
+   * already see in the editor; these are the ones nothing on screen explains.
+   */
+  dropped: string[];
+}
+
 /**
  * Assemble the Producer Pal Skills string for the active runtime context. Small-
  * model mode picks the driver root (`basic` vs `standard`); everything else —
@@ -90,6 +102,29 @@ export interface SkillOverrides {
  * @returns The skills string returned in the ppal-connect tool result.
  */
 export function buildSkills(
+  options: BuildSkillsOptions = {},
+  overrides: SkillOverrides = {},
+  onWarn?: (message: string) => void,
+): string {
+  return assembleSkills(options, overrides, onWarn).skills;
+}
+
+/**
+ * Assemble as {@link buildSkills} does, and also report which of the document's
+ * fragments the toolset or audience emptied. Separate from `buildSkills` because
+ * only a surface that EXPLAINS the blob needs the second half — the live inject
+ * wants the string and nothing else.
+ *
+ * @param options - Runtime context ({@link BuildSkillsOptions}).
+ * @param options.notation - The global notation setting (defaults to bar|beat).
+ * @param options.smallModelMode - Whether small-model mode is active.
+ * @param options.tools - The tools available to this caller (omit for no gating).
+ * @param options.audience - Who the blob is for (omit for the user-facing chat).
+ * @param overrides - Per-fragment user overrides (empty by default).
+ * @param onWarn - Sink for non-fatal assembly warnings.
+ * @returns The blob and the fragments gating dropped from it.
+ */
+export function assembleSkills(
   {
     notation = DEFAULT_NOTATION,
     smallModelMode = false,
@@ -98,21 +133,25 @@ export function buildSkills(
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
   onWarn?: (message: string) => void,
-): string {
+): AssembledSkills {
   const builtIns = builtinFragments();
   const root = smallModelMode ? "basic" : "standard";
   const fragments = overrides.fragments ?? {};
-  // Tool gating, audience gating, and the user's per-slot off switches empty a
-  // fragment in exactly the same way, so all three resolve through one set.
-  const suppressed = new Set([
+  // Reported separately from the other two: a user's own off switch is already
+  // visible as an unchecked box, while these have nothing on screen to explain
+  // them.
+  const gated = new Set([
     ...gatedOutFragments(tools),
     ...audienceGatedFragments(audience),
-    ...(overrides.disabled ?? []),
   ]);
+  // Tool gating, audience gating, and the user's per-slot off switches empty a
+  // fragment in exactly the same way, so all three resolve through one set.
+  const suppressed = new Set([...gated, ...(overrides.disabled ?? [])]);
 
   warnRetiredOverrides(overrides, onWarn);
 
   const included = new Set<string>();
+  const dropped = new Set<string>();
   const skills = resolveIncludes(root, {
     notation,
     lookup: (name) => {
@@ -133,13 +172,25 @@ export function buildSkills(
     onFragment: (name) => {
       const key = resolveFragmentAlias(name);
 
-      if (!suppressed.has(key)) included.add(key);
+      if (suppressed.has(key)) {
+        // Only fragments that would otherwise have carried text. `code-transforms`
+        // in a release build, and the `-write` placeholders a notation without an
+        // authoring half registers, are empty either way — reporting them as
+        // "left out" describes a loss the caller never took.
+        if (gated.has(key) && (fragments[key] ?? builtIns[key])) {
+          dropped.add(key);
+        }
+
+        return;
+      }
+
+      included.add(key);
     },
   });
 
   warnUnmetRequirements(included, onWarn);
 
-  return skills;
+  return { skills, dropped: [...dropped] };
 }
 
 // --- Helpers below main export ---

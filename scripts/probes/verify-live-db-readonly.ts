@@ -10,7 +10,7 @@
  * staleness signals, and any errors.
  *
  * Usage:
- *   node scripts/verify-live-db-readonly.ts [--duration=<seconds>]
+ *   node scripts/probes/verify-live-db-readonly.ts [--duration=<seconds>]
  *
  * Run once with Live closed for a baseline, then again with Live open
  * (use `scripts/open-live-set` to launch a known-safe test project).

@@ -24,6 +24,7 @@ import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
+import { SkillGateNote } from "./SkillGateNote";
 import { SkillSlotSelect } from "./SkillSlotSelect";
 
 const RESET_CONFIRM =
@@ -192,9 +193,10 @@ interface SkillControlsProps {
 
 /**
  * Controls strip: the slot dropdown, the include toggle, the selected slot's
- * human title and one-line explainer, and a drift note. The title lives here
- * rather than in the dropdown, which lists fragments by filename so it reads the
- * way an `@include` line does (see {@link SkillSlotSelect}).
+ * human title and one-line explainer, and a drift note, over a second line
+ * naming the tools that gate the fragment ({@link SkillGateNote}). The title
+ * lives here rather than in the dropdown, which lists fragments by filename so
+ * it reads the way an `@include` line does (see {@link SkillSlotSelect}).
  *
  * The border spans full width while the content is centered to match the editor
  * below. The Preview/Source view toggle
@@ -210,25 +212,28 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-      <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
-        <SkillSlotSelect
-          slots={slots}
-          selected={selected}
-          onSelect={onSelectSlot}
-        />
-        <IncludeToggle slot={slot} onSetEnabled={onSetEnabled} />
-        <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">
-            {slot.title}
+      <div className={`mx-auto w-full ${widthClass} flex flex-col gap-1`}>
+        <div className="flex items-center gap-3">
+          <SkillSlotSelect
+            slots={slots}
+            selected={selected}
+            onSelect={onSelectSlot}
+          />
+          <IncludeToggle slot={slot} onSetEnabled={onSetEnabled} />
+          <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+              {slot.title}
+            </span>
+            {" — "}
+            {slot.description}
           </span>
-          {" — "}
-          {slot.description}
-        </span>
-        <DriftNote
-          drifted={slot.drifted}
-          forkedFromVersion={slot.forkedFromVersion}
-        />
-        <ContextIoButtons onImport={onImport} onExport={onExport} />
+          <DriftNote
+            drifted={slot.drifted}
+            forkedFromVersion={slot.forkedFromVersion}
+          />
+          <ContextIoButtons onImport={onImport} onExport={onExport} />
+        </div>
+        <SkillGateNote gate={slot.gate} />
       </div>
     </div>
   );

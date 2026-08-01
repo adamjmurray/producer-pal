@@ -28,6 +28,12 @@ export interface SkillsPreview extends SkillsCombination {
   skills: string;
   /** Exact character count of the blob (token estimate is derived at display). */
   charCount: number;
+  /**
+   * Fragments the device's disabled tools left out of this blob. The one part of
+   * assembly with nothing else on screen to explain it — a user's own off
+   * switches already show as unchecked boxes in the fragment editor.
+   */
+  dropped: string[];
   /** Non-fatal assembly warnings (unknown/nested/unsafe refs); [] when clean. */
   warnings: string[];
 }
@@ -151,7 +157,19 @@ interface RawPreview {
   head?: unknown;
   driver?: unknown;
   skills?: unknown;
+  dropped?: unknown;
   warnings?: unknown;
+}
+
+/**
+ * Keep only the strings in a value the server sent as an array of them.
+ * @param raw - The server's field value
+ * @returns The strings it carried (empty when it wasn't an array)
+ */
+function stringList(raw: unknown): string[] {
+  return Array.isArray(raw)
+    ? raw.filter((v): v is string => typeof v === "string")
+    : [];
 }
 
 /**
@@ -185,9 +203,8 @@ async function fetchPreview(
     driver: typeof raw.driver === "string" ? raw.driver : "",
     skills,
     charCount: skills.length,
-    warnings: Array.isArray(raw.warnings)
-      ? raw.warnings.filter((w): w is string => typeof w === "string")
-      : [],
+    dropped: stringList(raw.dropped),
+    warnings: stringList(raw.warnings),
   };
 }
 

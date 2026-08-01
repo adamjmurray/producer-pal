@@ -23,6 +23,13 @@
 //                               Small-model mode means FEWER fragments, not
 //                               basic variants of all of them.
 //
+// A notation head may also carry a `-write` SIBLING holding the syntax only the
+// clip writers can act on, so a read-only caller stops paying for the authoring
+// guide (ADR-0019). The base name keeps its meaning — that is what lets the
+// standard driver's `{notation}-standard` ref stay put — and each notation opts
+// in separately. bar|beat is split; stark and midi-json are not, so their
+// `-write` refs resolve to an empty body (below).
+//
 // Two entries are not quite leaves-as-written:
 //   code-transforms ........... build-gated. It is always PRESENT here and empty
 //                               when disabled, rather than absent: the resolver
@@ -54,7 +61,10 @@ import { transformsExpressions } from "#src/skills/fragments/transforms-expressi
 import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
-import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
+import {
+  barbeatStandard,
+  barbeatStandardWrite,
+} from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
 import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 
@@ -98,10 +108,18 @@ export function builtinFragments(
     "getting-help": gettingHelp,
 
     "barbeat-standard": barbeatStandard,
+    "barbeat-standard-write": barbeatStandardWrite,
     "barbeat-basic": barbeatBasic,
     "stark-standard": starkStandard,
     "stark-basic": starkBasic,
     "midi-json": midiJson,
+
+    // Present-but-empty, the code-transforms precedent: the standard driver's
+    // `-write` ref is notation-templated, and these two heads aren't split, so
+    // their authoring content stays inline in the head above. Registering the
+    // names keeps an unknown fragment a real error rather than a shrug.
+    "stark-standard-write": "",
+    "midi-json-standard-write": "",
   };
 }
 
