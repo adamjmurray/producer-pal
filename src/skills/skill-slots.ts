@@ -12,21 +12,24 @@ import {
   contextBasic,
   contextStandard,
 } from "#src/skills/fragments/context.ts";
-import { devices, devicesWrite } from "#src/skills/fragments/devices.ts";
+import {
+  devices,
+  devicesWrite,
+} from "#src/skills/fragments/devices/devices.ts";
 import {
   gettingHelp,
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
-import { specializedDevices } from "#src/skills/fragments/specialized-devices.ts";
+import { specializedDevices } from "#src/skills/fragments/devices/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
   transformsBasic,
   transformsCore,
   transformsEditing,
-} from "#src/skills/fragments/transforms-core.ts";
-import { transformsExpressions } from "#src/skills/fragments/transforms-expressions.ts";
-import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
+} from "#src/skills/fragments/transforms/transforms-core.ts";
+import { transformsExpressions } from "#src/skills/fragments/transforms/transforms-expressions.ts";
+import { transformsGenerative } from "#src/skills/fragments/transforms/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
 import {

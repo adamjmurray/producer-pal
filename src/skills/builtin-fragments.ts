@@ -31,6 +31,12 @@
 // stark and midi-json are not, so their `-write` refs resolve to an empty body
 // (below).
 //
+// Subjects that grew past a file or two get a fragments/ subfolder — transforms
+// and devices so far. Filenames keep their full fragment name inside it
+// (`transforms/transforms-core.ts`), stutter and all: the name is the include
+// ref and the user's override slot, so shortening it to match the folder would
+// hide the one thing a reader needs to match up.
+//
 // Two entries are not quite leaves-as-written:
 //   code-transforms ........... build-gated. It is always PRESENT here and empty
 //                               when disabled, rather than absent: the resolver
@@ -47,26 +53,29 @@ import {
   arrangement,
   arrangementWrite,
 } from "#src/skills/fragments/arrangement.ts";
-import { codeTransforms } from "#src/skills/fragments/code-transforms.ts";
+import { codeTransforms } from "#src/skills/fragments/transforms/code-transforms.ts";
 import {
   contextBasic,
   contextStandard,
 } from "#src/skills/fragments/context.ts";
-import { devices, devicesWrite } from "#src/skills/fragments/devices.ts";
+import {
+  devices,
+  devicesWrite,
+} from "#src/skills/fragments/devices/devices.ts";
 import {
   gettingHelp,
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
-import { specializedDevices } from "#src/skills/fragments/specialized-devices.ts";
+import { specializedDevices } from "#src/skills/fragments/devices/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
   transformsBasic,
   transformsCore,
   transformsEditing,
-} from "#src/skills/fragments/transforms-core.ts";
-import { transformsExpressions } from "#src/skills/fragments/transforms-expressions.ts";
-import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
+} from "#src/skills/fragments/transforms/transforms-core.ts";
+import { transformsExpressions } from "#src/skills/fragments/transforms/transforms-expressions.ts";
+import { transformsGenerative } from "#src/skills/fragments/transforms/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
 import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
 import {

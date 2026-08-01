@@ -7,8 +7,7 @@
 // small-model mode. A driver is the ONLY place arbitrary top-level prose lives;
 // everything else is a fragment it pulls in with `@include`. They sit here
 // rather than in fragments/ because they are the graph's roots, not sections of
-// it (and fragments/ is at its 12-item folder cap — the next fragment added
-// there needs a subfolder).
+// it.
 //
 // `standard` is now a bare manifest: header + one include per fragment, in
 // reading order. That is the point of the task-line carve — dropping a section
