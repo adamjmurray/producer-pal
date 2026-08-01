@@ -80,22 +80,6 @@ export function audioClipTiming(clip: LiveAPI): AudioClipTiming {
 }
 
 /**
- * The real duration an audio clip's region occupies, in seconds at the current
- * tempo. On a warped clip this differs from `sampleSeconds` by exactly the
- * amount Live is time-stretching the file.
- *
- * @param timing - Timing already read from the clip
- * @returns The region's duration in seconds, or 0 when the tempo is unreadable
- */
-export function audioClipPlayedSeconds(timing: AudioClipTiming): number {
-  const tempo = currentTempo();
-
-  if (tempo <= 0) return 0;
-
-  return ((timing.endBeats - timing.startBeats) * 60) / tempo;
-}
-
-/**
  * An audio clip's full sample duration in seconds.
  * @param clip - The audio clip to measure
  * @returns Duration in seconds, or 0 when the sample rate is unavailable

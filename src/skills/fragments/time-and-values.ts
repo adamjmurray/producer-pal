@@ -33,4 +33,4 @@ Applies to every notation: transforms, clip \`length\`, and arrangement duration
 \`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
 Audio params ignored when updating MIDI clips.
 
-An audio clip's length comes from its sample, so \`start\`/\`length\`/\`looping\` are MIDI-only. A new clip inherits Live's own warp decision (a user setting the API can't read), which often time-stretches the file to the tempo — \`ppal-create-clip\` returns \`warping\` and warns when it stretched. Pass \`warping:false\` to play a file exactly as recorded.`;
+An audio clip's length comes from its sample, so \`start\`/\`length\`/\`looping\` are MIDI-only. A new clip inherits Live's own warp decision (a user setting the API can't read), which often time-stretches the file to the tempo — \`ppal-create-clip\` returns the settled \`warping\`. Warping to tempo is usually what you want; pass \`warping:false\` to play a file exactly as recorded.`;

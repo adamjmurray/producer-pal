@@ -574,46 +574,26 @@ describe("createClip - audio clip warping", () => {
     expect(clip.set).toHaveBeenCalledWith("warping", 1);
   });
 
-  it("warns when Live's warp grid time-stretches the file", async () => {
+  it("reports the warp state Live settled on without warning about it", async () => {
     const warnSpy = vi.spyOn(v8Console, "warn");
 
-    // A 2.7s render mapped onto 4 beats plays over 2s at 120bpm
+    // A 2.7s render mapped onto 4 beats plays over 2s at 120bpm — a stretch,
+    // but warping to tempo is usually what the user wants, so it is reported
+    // on the result rather than warned about
     setupStretchedAudioClip(2.7, 4);
 
-    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("2.70s sample over 2.00s"),
-    );
-  });
-
-  it("stays quiet when the warp is 1:1", async () => {
-    const warnSpy = vi.spyOn(v8Console, "warn");
-
-    // 8s over 16 beats at 120bpm is native speed
-    setupStretchedAudioClip(8, 16);
-
-    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("time-stretching"),
-    );
-  });
-
-  it("does not warn about stretching when warping is turned off", async () => {
-    const warnSpy = vi.spyOn(v8Console, "warn");
-
-    setupStretchedAudioClip(2.7, 4);
-
-    await createClip({
+    const result = await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
-      warping: false,
     });
 
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("time-stretching"),
-    );
+    expect(result).toStrictEqual({
+      id: "audio_clip_0_0",
+      slot: "0/0",
+      length: "1bar", // 4 beats in 4/4
+      warping: true,
+    });
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("warns that MIDI-only timing params are ignored for audio", async () => {
