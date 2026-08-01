@@ -13,12 +13,9 @@ import {
   gatedOutFragments,
   type SkillsAudience,
 } from "#src/skills/fragment-tool-gates.ts";
+import { fragmentRequires } from "#src/skills/fragment-requires.ts";
 import { resolveIncludes } from "#src/skills/include-resolver.ts";
-import {
-  isSkillSlotName,
-  RETIRED_SKILL_SLOTS,
-  SKILL_SLOTS,
-} from "#src/skills/skill-slots.ts";
+import { RETIRED_SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 
 /** Runtime context that selects which skills variant is assembled. */
 export interface BuildSkillsOptions {
@@ -169,7 +166,7 @@ export function assembleSkills(
     // stays on is precisely the vocabulary-without-grammar case that warning
     // exists for. Gating alone can never produce it — a dependent's gate is a
     // subset of its prerequisite's — so this only bites on a user's own switch.
-    onFragment: (name) => {
+    onFragment: (name, body) => {
       const key = resolveFragmentAlias(name);
 
       if (suppressed.has(key)) {
@@ -184,7 +181,9 @@ export function assembleSkills(
         return;
       }
 
-      included.add(key);
+      // Same reason, in the other direction: a fragment that resolved to nothing
+      // neither needs its prerequisites nor satisfies anyone else's.
+      if (body.trim() !== "") included.add(key);
     },
   });
 
@@ -197,7 +196,7 @@ export function assembleSkills(
 
 /**
  * Warn when a document includes a fragment without the fragments it declares it
- * needs ({@link SkillSlotDef.requires}).
+ * needs ({@link FRAGMENT_REQUIRES}).
  *
  * Deleting one include line is the documented way to trim skills, and the
  * dependent cases used to fail in the worst way available: silently, and with
@@ -216,9 +215,7 @@ function warnUnmetRequirements(
   onWarn?: (message: string) => void,
 ): void {
   for (const name of included) {
-    if (!isSkillSlotName(name)) continue;
-
-    const missing = (SKILL_SLOTS[name].requires ?? []).filter(
+    const missing = fragmentRequires(name).filter(
       (required) => !included.has(required),
     );
 

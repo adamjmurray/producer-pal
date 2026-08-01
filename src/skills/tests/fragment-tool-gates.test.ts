@@ -6,13 +6,13 @@
 import { describe, expect, it } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { builtinFragments } from "#src/skills/builtin-fragments.ts";
+import { FRAGMENT_REQUIRES } from "#src/skills/fragment-requires.ts";
 import {
   FRAGMENT_GATES,
   audienceGatedFragments,
   fragmentGate,
   gatedOutFragments,
 } from "#src/skills/fragment-tool-gates.ts";
-import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 
 // The driver roots are what gets assembled, not sections of the assembly, so
 // they carry no gate.
@@ -99,12 +99,12 @@ describe("FRAGMENT_GATES", () => {
     // every toolset that keeps X must keep Y. Violate it and gating reintroduces
     // the vocabulary-without-grammar failure `requires` exists to catch — the
     // model holding ratchet() and the waveforms with no transform syntax.
-    for (const name of SKILL_SLOT_NAMES) {
+    for (const [name, requires] of Object.entries(FRAGMENT_REQUIRES)) {
       const gate = gateTools(name);
 
       if (gate == null) continue;
 
-      for (const required of SKILL_SLOTS[name].requires ?? []) {
+      for (const required of requires) {
         const requiredGate = gateTools(required);
 
         if (requiredGate == null) continue;
@@ -310,8 +310,8 @@ describe("audienceGatedFragments", () => {
     // warnUnmetRequirements exists to catch, arriving without a user switch.
     const dropped = audienceGatedFragments("subagent");
 
-    for (const name of SKILL_SLOT_NAMES) {
-      for (const required of SKILL_SLOTS[name].requires ?? []) {
+    for (const requires of Object.values(FRAGMENT_REQUIRES)) {
+      for (const required of requires) {
         expect(dropped).not.toContain(required);
       }
     }

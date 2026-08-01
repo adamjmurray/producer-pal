@@ -22,6 +22,7 @@
 // because a gate is a runtime concern while a slot is an authoring one, and the
 // two sets differ: `code-transforms` is a real fragment with no override slot.
 // A test asserts every fragment has an entry, so adding one forces the decision.
+// `fragment-requires.ts` is keyed the same way, for the same reason.
 
 // The clip writers, named because several separate gates reach for them.
 const CREATE_CLIP = "ppal-create-clip";
@@ -196,7 +197,7 @@ export function fragmentGate(name: string): FragmentGate | null {
 /**
  * The fragments to drop for a given toolset: those whose every tool is off.
  *
- * No transitive close over {@link SkillSlotDef.requires} happens here, and none
+ * No transitive close over {@link FRAGMENT_REQUIRES} happens here, and none
  * is needed — a dependent's gate is required to be a SUBSET of the gate of what
  * it requires (enforced by test), so a kept fragment's prerequisites are kept
  * too. That is what keeps gating from reintroducing the vocabulary-without-

@@ -36,8 +36,8 @@ import {
 import { midiJson } from "#src/skills/notation/midi-json.ts";
 import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 
-// The fragments other fragments point at, named because each appears in the slot
-// list, the retired-name map, and one or two `requires` edges.
+// The fragments named in more than one place here — the slot list and the
+// retired-name map.
 const TRANSFORMS_CORE = "transforms-core";
 const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 const DEVICES = "devices";
@@ -71,7 +71,9 @@ const ARRANGEMENT = "arrangement";
 // `barbeat-standard`, `devices`, and `arrangement` are split so far.
 //
 // `code-transforms` is deliberately absent: it only carries text in a build with
-// code execution enabled, so there is nothing stable for a user to override.
+// code execution enabled, so there is nothing stable for a user to override. It
+// is still a fragment, with a gate and a `requires` edge — both of those tables
+// are keyed by fragment name for exactly this reason.
 export const SKILL_SLOT_NAMES = [
   "standard",
   "basic",
@@ -152,22 +154,6 @@ export interface SkillSlotDef {
    * composes is what overriding it (deleting `@include` lines) is for.
    */
   alwaysOn?: boolean;
-  /**
-   * Fragments this one is incomplete without. The carve is by task, not by
-   * independence: a few fragments teach a vocabulary whose GRAMMAR lives in
-   * another (the transforms tiers name `swing()`/`ratchet()` but the
-   * `[selector:] param op expr` shape is only in transforms-core), or emit a
-   * `###` section under another's `##` heading.
-   *
-   * Declared here rather than described in prose because three surfaces need it
-   * mechanically and prose would drift across all of them: buildSkills warns
-   * when a document includes a fragment without its prerequisites, the docs
-   * trimming table has to stop presenting these as independent rows, and the
-   * per-worker fragment selection has to close the set rather than trust a
-   * caller to remember. Edges point at what a fragment NEEDS, so closing a
-   * selection is a transitive walk.
-   */
-  requires?: readonly SkillSlotName[];
 }
 
 /** The overridable skills fragments, keyed by their stable slot name. */
@@ -207,7 +193,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "preTransforms and quantizeGrid, for deleting, clearing, moving, and quantizing notes already in a clip. Only update-clip takes them, so anything that can't update clips never gets this. Needs the core transforms guide.",
     builtIn: transformsEditing,
-    requires: [TRANSFORMS_CORE],
   },
 
   "transforms-expressions": {
@@ -215,7 +200,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Transforms that read a note's current value and run it through a function: variables, math, swing and quantize. Needs the core transforms guide, which defines the syntax it builds on.",
     builtIn: transformsExpressions,
-    requires: [TRANSFORMS_CORE],
   },
 
   "transforms-generative": {
@@ -223,7 +207,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Transforms that invent material: ratchet, repeat, split, merge, and the waveforms that modulate a value across a clip. Needs the core and expressions transforms guides.",
     builtIn: transformsGenerative,
-    requires: [TRANSFORMS_CORE, TRANSFORMS_EXPRESSIONS],
   },
 
   "transforms-basic": {
@@ -252,7 +235,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Loading samples into a Simpler and building a whole Drum Rack in one call. Only create-device and update-device can act on it, so a read-only caller never gets it. Needs the devices guide it sits under.",
     builtIn: devicesWrite,
-    requires: [DEVICES],
   },
 
   "specialized-devices": {
@@ -260,7 +242,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "The extra controls specific native devices expose (Drift, Wavetable, Simpler, Compressor, EQ Eight, Hybrid Reverb…). Only needed when working with those devices, and needs the devices guide it sits under.",
     builtIn: specializedDevices,
-    requires: [DEVICES],
   },
 
   arrangement: {
@@ -275,7 +256,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "Moving and splitting clips on the arrangement timeline, and stacking take lanes. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
     builtIn: arrangementWrite,
-    requires: [ARRANGEMENT],
   },
 
   "working-with-live": {
@@ -325,7 +305,6 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "The bar|beat syntax only used to CREATE notes — repeat patterns, pattern brackets, bar copying, v0 deletes, and the examples. Never appears in a clip you read back, so it's dropped for anything that can't write clips. Needs the bar|beat notation guide it builds on.",
     builtIn: barbeatStandardWrite,
-    requires: ["barbeat-standard"],
   },
 
   "barbeat-basic": {
