@@ -18,8 +18,8 @@
  * configurations.
  *
  * Usage:
- *   node scripts/voice-token-probe.ts            # all scenarios, 3 turns each
- *   node scripts/voice-token-probe.ts --turns 2  # fewer turns (cheaper)
+ *   node scripts/probes/voice-token-probe.ts            # all scenarios, 3 turns each
+ *   node scripts/probes/voice-token-probe.ts --turns 2  # fewer turns (cheaper)
  *
  * Requires OPENAI_KEY in .env (see .env.example).
  */

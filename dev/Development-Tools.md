@@ -18,6 +18,26 @@ scripts/chat --list-models openai     # list one provider's models
 scripts/chat -m claude-sonnet-4-5     # start a chat
 ```
 
+## Skills Snapshots
+
+`npm run skills:snapshot` writes the assembled skills blob for every (toolset
+profile × depth × notation) to `dev/skills-snapshots/` (gitignored) and prints a
+report: the size of every combination, and which tools keep each fragment.
+
+To see what a fragment reorganization actually did to each caller's
+instructions:
+
+```bash
+npm run skills:snapshot -- --out /tmp/skills-before   # before your edits
+npm run skills:snapshot -- --diff /tmp/skills-before  # after
+```
+
+`--diff` prints per-blob size deltas, then the line-level diff.
+
+Profiles live in `scripts/skills/toolset-profiles.ts` — add one when a new use
+case matters. The point is to check a carve cheaply, before spending an eval
+run.
+
 ## CLI Tool
 
 **Purpose:** Direct MCP server interaction for end-to-end testing. Claude Code

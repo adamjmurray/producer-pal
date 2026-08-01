@@ -42,6 +42,7 @@ interface PreviewBody {
   head: string;
   driver: string;
   skills: string;
+  dropped: string[];
   warnings: string[];
 }
 
@@ -137,5 +138,48 @@ describe("skills-preview route", () => {
     expect(body.warnings.some((w) => w.includes("unknown fragment"))).toBe(
       true,
     );
+  });
+
+  it("drops nothing when the device gates no tools", async () => {
+    const body = await getPreview("notation=barbeat");
+
+    expect(body.dropped).toStrictEqual([]);
+  });
+});
+
+describe("skills-preview route - tool gating", () => {
+  let gatedServer: MarkdownRouteServer;
+  let gatedBase = "";
+
+  beforeAll(async () => {
+    gatedServer = await startMarkdownRouteServer((app) => {
+      // A read-only toolset: no library, no context, no clip writers.
+      registerSkillsPreviewRoute(app, () => [
+        "ppal-connect",
+        "ppal-read-clip",
+        "ppal-read-track",
+      ]);
+    });
+    gatedBase = `${gatedServer.baseUrl}/skills-preview`;
+  });
+
+  afterAll(async () => {
+    await gatedServer.close();
+  });
+
+  it("names the fragments the device's toolset left out", async () => {
+    const res = await fetch(`${gatedBase}?notation=barbeat`);
+    const body = (await res.json()) as PreviewBody;
+
+    expect(body.dropped).toContain("library");
+    expect(body.dropped).toContain("context-standard");
+    expect(body.dropped).toContain("barbeat-standard-write");
+    // Kept: read-clip alone is enough for the notation head and arrangement.
+    expect(body.dropped).not.toContain("barbeat-standard");
+    expect(body.dropped).not.toContain("arrangement");
+    // Empty in a release build either way, so reporting it as a loss is noise.
+    expect(body.dropped).not.toContain("code-transforms");
+    // Every name is one the user can find in the fragment editor.
+    expect(body.skills).not.toContain("## Finding Library Content");
   });
 });

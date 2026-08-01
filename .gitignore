@@ -48,6 +48,10 @@ docs/.vitepress/cache
 # Eval results (generated JSON)
 evals/results
 
+# Skills snapshots (npm run skills:snapshot — a scratch artifact for comparing
+# two states of the fragment carve, not a committed baseline)
+dev/skills-snapshots
+
 # Playwright Test Results
 test-results
 test-reports

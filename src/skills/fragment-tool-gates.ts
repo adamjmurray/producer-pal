@@ -138,6 +138,27 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
 };
 
 /**
+ * The condition one fragment ships under, for a surface that has to SHOW the
+ * rule rather than apply it (the webui fragment editor). Null for the driver
+ * roots, which have no entry — they are the document being assembled, not a
+ * section of it.
+ *
+ * Names reach this from user text (an override filename, a route param), so the
+ * `hasOwn` guard is load-bearing for the same reason it is in
+ * `resolveFragmentAlias`: a bare index would hand back
+ * `Object.prototype.toString` for a fragment named `toString`.
+ *
+ * @param name - Fragment name
+ * @returns The fragment's gate, or null when it has none
+ */
+export function fragmentGate(name: string): FragmentGate | null {
+  // hasOwn doesn't narrow an index signature; the key is present by the check.
+  return Object.hasOwn(FRAGMENT_GATES, name)
+    ? (FRAGMENT_GATES[name] as FragmentGate)
+    : null;
+}
+
+/**
  * The fragments to drop for a given toolset: those whose every tool is off.
  *
  * No transitive close over {@link SkillSlotDef.requires} happens here, and none

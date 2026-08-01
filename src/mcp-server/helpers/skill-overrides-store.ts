@@ -24,6 +24,10 @@
 
 import { type SkillOverrides } from "#src/skills/build-skills.ts";
 import {
+  fragmentGate,
+  type FragmentGate,
+} from "#src/skills/fragment-tool-gates.ts";
+import {
   isDisableableSkillSlot,
   SKILL_SLOT_NAMES,
   SKILL_SLOTS,
@@ -88,6 +92,13 @@ export interface SkillSlotState {
   enabled: boolean;
   /** Whether the editor may offer an off switch (false for the drivers). */
   canDisable: boolean;
+  /**
+   * The tools (any-of) that keep this fragment, or `"always"` /
+   * `"conversation-only"`; null for the drivers. Sent so the editor can state
+   * the rule — a fragment's conditional behavior was only ever described in its
+   * prose description, which drifts.
+   */
+  gate: FragmentGate | null;
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
   /** Fork-time provenance (null when there is no override). */
@@ -170,6 +181,7 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
     override,
     enabled: isEnabled(data),
     canDisable: isDisableableSkillSlot(name),
+    gate: fragmentGate(name),
     drifted: isDrifted(provenance, BUILT_IN_HASHES[name]),
     provenance,
   };

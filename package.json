@@ -60,6 +60,7 @@
     "duplication:evals": "printf 'Evals ' && jscpd -s --no-colors -c config/.jscpd-evals.json",
     "duplication:e2e": "printf 'E2E ' && jscpd -s --no-colors -c config/.jscpd-e2e.json",
     "duplication:verbose": "jscpd -c config/.jscpd.json && jscpd -c config/.jscpd-tests.json && jscpd -c config/.jscpd-scripts.json && jscpd -c config/.jscpd-evals.json && jscpd -c config/.jscpd-e2e.json",
+    "skills:snapshot": "node scripts/skills/snapshot-skills.ts",
     "loc": "node scripts/stats/loc.ts",
     "test:stats": "node scripts/stats/test-stats.ts",
     "e2e:stats": "node scripts/stats/e2e-stats.ts",
