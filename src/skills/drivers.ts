@@ -51,6 +51,8 @@ export const standardDriver = `${HEADER}
 
 @include "./transforms-core.md"
 
+@include "./transforms-editing.md"
+
 @include "./transforms-expressions.md"
 
 @include "./transforms-generative.md"

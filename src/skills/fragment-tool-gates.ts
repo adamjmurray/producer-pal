@@ -108,9 +108,11 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "transforms-expressions": TRANSFORM_TOOLS,
   "transforms-generative": TRANSFORM_TOOLS,
   "code-transforms": TRANSFORM_TOOLS,
-  // Narrower than the standard tiers on purpose: they teach `transforms`, which
-  // create-clip and duplicate also take, while the small-model fragment teaches
-  // only `preTransforms` — an update-clip parameter and nothing else's.
+  // Narrower than the tiers above on purpose: those teach `transforms`, which
+  // create-clip and duplicate also take, while these two teach `preTransforms`
+  // and `quantizeGrid` — update-clip parameters and nothing else's. Same subject
+  // at the two depths, so the same gate.
+  "transforms-editing": [UPDATE_CLIP],
   "transforms-basic": [UPDATE_CLIP],
 
   library: ["ppal-library"],

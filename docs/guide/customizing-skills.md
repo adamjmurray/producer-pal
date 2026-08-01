@@ -44,7 +44,8 @@ a whole area you never use:
 | `standard`                           | The standard skills document — the list of `@include` lines below                                 |
 | `basic`                              | The much shorter document used in small model mode                                                |
 | `time-and-values`                    | Beats, note values, bar\|beat positions, and clip lengths                                         |
-| `transforms-core`                    | Selecting notes and setting values on them, plus `preTransforms` for deleting and clearing        |
+| `transforms-core`                    | Selecting notes and setting values on them                                                        |
+| `transforms-editing`                 | `preTransforms` and `quantizeGrid` — editing notes already in a clip (update-clip only)           |
 | `transforms-expressions`             | Transform variables, math functions, swing and quantize                                           |
 | `transforms-generative`              | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                 |
 | `transforms-basic`                   | Deleting and clearing notes with `preTransforms` — the whole transforms guide in small model mode |
@@ -155,6 +156,7 @@ override you wrote for it — check the box again and it comes back.
 | If you never…                                           | Switch off                                                                           |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Use ratchets, echoes, or waveform modulation            | `transforms-generative`                                                              |
+| Delete or clear notes already in a clip                 | `transforms-editing`                                                                 |
 | Use swing, quantize, or math on note values             | `transforms-expressions` **and** `transforms-generative`                             |
 | Use transforms to edit notes/audio params               | `transforms-core` **and** the other `transforms-` fragments — the area goes together |
 | Search Live's library or your sample folder with the AI | `library`                                                                            |
@@ -173,13 +175,13 @@ one off would leave the AI with no skills at all.
 
 ::: warning Some fragments need another one
 
-A few fragments teach a vocabulary whose syntax lives elsewhere. The transforms
-guides all build on `transforms-core` — keeping `transforms-generative` without
-it leaves the AI knowing `ratchet()` and the waveforms but not the shape of a
-transform, which is worse than dropping all three. `specialized-devices` sits
-inside `devices` the same way, and so does `barbeat-standard-write` inside
-`barbeat-standard`. That's why the rows above are ordered most-specific-first
-and say which fragments travel together.
+A few fragments teach a vocabulary whose syntax lives elsewhere. The other
+transforms guides all build on `transforms-core` — keeping
+`transforms-generative` without it leaves the AI knowing `ratchet()` and the
+waveforms but not the shape of a transform, which is worse than dropping them
+all. `specialized-devices` sits inside `devices` the same way, and so does
+`barbeat-standard-write` inside `barbeat-standard`. That's why the rows above
+are ordered most-specific-first and say which fragments travel together.
 
 If you do drop a fragment something else needs, Producer Pal says so — the
 Skills **Preview** view shows a warning, and so does the Max window.

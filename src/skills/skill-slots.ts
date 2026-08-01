@@ -20,6 +20,7 @@ import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
   transformsBasic,
   transformsCore,
+  transformsEditing,
 } from "#src/skills/fragments/transforms-core.ts";
 import { transformsExpressions } from "#src/skills/fragments/transforms-expressions.ts";
 import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
@@ -53,8 +54,9 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 // both depths, so it is a single slot (the drivers reach it through an alias,
 // see builtin-fragments.ts). `transforms-basic` and `getting-help-basic` wear
 // the suffix with no `-standard` twin, both because pairing them would retire a
-// live slot name to buy symmetry: transforms' standard depth is the three
-// `transforms-*` tiers, and the other twin is plain `getting-help`.
+// live slot name to buy symmetry: transforms' standard depth is spread across
+// the other `transforms-*` fragments, and the other twin is plain
+// `getting-help`.
 //
 // A second, independent suffix axis is DIRECTION: a head may spin its authoring
 // syntax out into a `-write` sibling, gated on the two clip writers, so a
@@ -71,6 +73,7 @@ export const SKILL_SLOT_NAMES = [
 
   "time-and-values",
   TRANSFORMS_CORE,
+  "transforms-editing",
   TRANSFORMS_EXPRESSIONS,
   "transforms-generative",
   "transforms-basic",
@@ -105,6 +108,7 @@ export type SkillSlotName = (typeof SKILL_SLOT_NAMES)[number];
 export const RETIRED_SKILL_SLOTS: Record<string, readonly SkillSlotName[]> = {
   "core-transforms": [
     TRANSFORMS_CORE,
+    "transforms-editing",
     TRANSFORMS_EXPRESSIONS,
     "transforms-generative",
   ],
@@ -187,8 +191,16 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "transforms-core": {
     title: "Transforms: core",
     description:
-      "Selecting notes and setting values on them, plus preTransforms for deleting and clearing — the transforms most requests need.",
+      "Selecting notes and setting values on them — the transforms most requests need.",
     builtIn: transformsCore,
+  },
+
+  "transforms-editing": {
+    title: "Transforms: editing an existing clip",
+    description:
+      "preTransforms and quantizeGrid, for deleting, clearing, moving, and quantizing notes already in a clip. Only update-clip takes them, so anything that can't update clips never gets this. Needs the core transforms guide.",
+    builtIn: transformsEditing,
+    requires: [TRANSFORMS_CORE],
   },
 
   "transforms-expressions": {

@@ -59,6 +59,7 @@ import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
   transformsBasic,
   transformsCore,
+  transformsEditing,
 } from "#src/skills/fragments/transforms-core.ts";
 import { transformsExpressions } from "#src/skills/fragments/transforms-expressions.ts";
 import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
@@ -97,6 +98,7 @@ export function builtinFragments(
 
     "time-and-values": timeAndValues,
     "transforms-core": transformsCore,
+    "transforms-editing": transformsEditing,
     "transforms-expressions": transformsExpressions,
     "transforms-generative": transformsGenerative,
     "transforms-basic": transformsBasic,

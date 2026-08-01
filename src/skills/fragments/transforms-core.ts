@@ -3,23 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Tier 1 of the three transforms fragments, plus the small-model tier's whole
-// transforms guide (`transformsBasic`, at the bottom). Both DEPTHS live here for
-// the reason the context pair shares a file: they teach the same parameter at
-// different depths, and side by side is how they stay in sync when its behavior
-// changes. The basic one carries no `-standard` twin — the standard depth is
-// three fragments, not one, so there is no pair to suffix.
+// Tier 1 of the transforms fragments, plus two things that hang off it: the
+// update-clip-only params (`transformsEditing`) and the small-model tier's whole
+// transforms guide (`transformsBasic`). All three share a file the way the
+// context pair and the bar|beat head/write pair do — they teach the same
+// parameters at different depths or for different callers, and side by side is
+// how they stay in sync when behavior changes.
 //
 // Tier 1 is everything a task needs to select notes and set a value on them.
-// The tiers are cut by REQUEST FREQUENCY, not by
-// conceptual complexity — so `where(...)` and `preTransforms` are here (they are
-// how you say "delete the quiet notes" and "clear that bar", among the most
-// common asks) even though one is a value test and the other is the last section
-// of the old monolith. Anything needing the note's current value, a function, or
-// a waveform is tier 2/3 (transforms-expressions / transforms-generative).
+// The tiers are cut by REQUEST FREQUENCY, not by conceptual complexity — so
+// `where(...)` is here (it is how you say "delete the quiet notes", among the
+// most common asks) even though it is a value test. Anything needing the note's
+// current value, a function, or a waveform is tier 2/3
+// (transforms-expressions / transforms-generative).
 //
-// This fragment owns the `## Transforms` heading; the other two tiers hang off
-// it as `###` sections, so the standard driver's manifest order matters.
+// This fragment owns the `## Transforms` heading; the other tiers and
+// `transformsEditing` hang off it as `###` sections, so the standard driver's
+// manifest order matters.
 //
 // Notation-neutral by construction: transforms are the same in every notation, so
 // nothing here may claim what a `notes` string contains. Positions and note values
@@ -66,16 +66,26 @@ duration += n/16                 // lengthen every note by a sixteenth
 timing += n/8                    // nudge every note an eighth note later (relative)
 \`\`\`
 
-update-clip's \`quantizeGrid\` param uses Live's native grid enum (\`1/4\`,\`1/8\`,\`1/8T\`,\`1/16\`,\`1/16T\`,\`1/32\`) but also accepts the equivalent \`n/N\` note value (\`n/12\`=\`1/8T\`, \`n/24\`=\`1/16T\`, etc.); the mixed grids \`1/8+1/8T\`/\`1/16+1/16T\` are enum-only.
-
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones.
 MIDI params ignored for audio clips, vice versa.
-Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.
+Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
 
-### preTransforms (editing notes already in the clip)
+/**
+ * The two transforms params only update-clip takes. A SIBLING of tier 1, not a
+ * fourth tier: the tiers are cut by how often a request needs them, this one by
+ * which tool can accept it at all — `preTransforms` and `quantizeGrid` appear in
+ * no other schema, so a create-clip or duplicate caller was paying ~1.1k
+ * characters it could never use.
+ *
+ * This is `transforms-basic` at standard depth — same gate, same subject — which
+ * is the other reason that fragment has no `-standard` twin to be.
+ */
+export const transformsEditing = `### preTransforms & quantizeGrid (update-clip only)
 
-\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s.`;
+\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s.
+
+\`quantizeGrid\` uses Live's native grid enum (\`1/4\`,\`1/8\`,\`1/8T\`,\`1/16\`,\`1/16T\`,\`1/32\`) but also accepts the equivalent \`n/N\` note value (\`n/12\`=\`1/8T\`, \`n/24\`=\`1/16T\`, etc.); the mixed grids \`1/8+1/8T\`/\`1/16+1/16T\` are enum-only.`;
 
 /**
  * The transforms fragment at basic (small-model) depth: `preTransforms` clearing

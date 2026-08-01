@@ -364,6 +364,7 @@ describe("buildSkills - overrides", () => {
     expect(result).not.toContain("## Transforms");
     expect(result).toContain("### Generative Transforms"); // kept, and orphaned
     expect(warnings).toStrictEqual([
+      expect.stringContaining(`"transforms-editing" needs "transforms-core"`),
       expect.stringContaining(
         `"transforms-expressions" needs "transforms-core"`,
       ),
@@ -396,6 +397,7 @@ describe("buildSkills - overrides", () => {
     const warnings: string[] = [];
     const forked = [
       "transforms-core",
+      "transforms-editing",
       "transforms-expressions",
       "transforms-generative",
     ].reduce(
@@ -477,6 +479,7 @@ describe("buildSkills - disabled fragments", () => {
 
     expect(result).toContain("### Generative Transforms"); // kept, and orphaned
     expect(warnings).toStrictEqual([
+      expect.stringContaining(`"transforms-editing" needs "transforms-core"`),
       expect.stringContaining(
         `"transforms-expressions" needs "transforms-core"`,
       ),
