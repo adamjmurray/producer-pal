@@ -52,15 +52,18 @@ const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
     "ppal-create-device",
     "ppal-update-device",
   ],
-  devices: ["ppal-library"],
+  "devices-write": ["ppal-library"],
 };
 
 // Bleed this test found and does not yet fix: guidance shipped to callers that
 // can't act on it. Shrink toward empty as the splits land; an entry that stops
 // bleeding must be deleted, which the "still bleeds" test below enforces.
 const KNOWN_BLEED: Record<string, readonly string[]> = {
-  // Pad teardown and the plug-in window belong with the device write half.
-  devices: ["ppal-delete", "ppal-select"],
+  // The plug-in editor window is the one thing in `devices` that isn't a device
+  // tool, and it belongs with the limits it qualifies.
+  devices: ["ppal-select"],
+  // Clearing a pad before replacing its sample.
+  "devices-write": ["ppal-delete"],
   arrangement: ["ppal-delete"],
 };
 
@@ -247,6 +250,15 @@ describe("gatedOutFragments", () => {
 
     expect(noDeviceTools).toContain("specialized-devices");
     expect(noDeviceTools).toContain("devices");
+  });
+
+  it("drops the device build recipes for a read-only device toolset", () => {
+    // The direction split: a caller that can only read devices has no tool to
+    // run a Simpler or Drum Rack build recipe with.
+    expect(gatedOutFragments(["ppal-read-device"])).toContain("devices-write");
+    expect(gatedOutFragments(["ppal-create-device"])).not.toContain(
+      "devices-write",
+    );
   });
 
   it("keeps arrangement for a read-only clip toolset", () => {

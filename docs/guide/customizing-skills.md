@@ -50,7 +50,8 @@ a whole area you never use:
 | `transforms-generative`              | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                 |
 | `transforms-basic`                   | Deleting and clearing notes with `preTransforms` — the whole transforms guide in small model mode |
 | `library`                            | Searching Live's browser library and your sample folder                                           |
-| `devices`                            | Device paths, building Simpler/Drum Rack instruments, VST/AU limits                               |
+| `devices`                            | Device paths and VST/AU limits                                                                    |
+| `devices-write`                      | Building Simpler and Drum Rack instruments — loading samples                                      |
 | `specialized-devices`                | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                   |
 | `arrangement`                        | Moving clips on the Arrangement timeline and take lanes                                           |
 | `working-with-live`                  | Session vs. Arrangement habits, playback, layering, locators                                      |
@@ -161,7 +162,8 @@ override you wrote for it — check the box again and it comes back.
 | Use transforms to edit notes/audio params               | `transforms-core` **and** the other `transforms-` fragments — the area goes together |
 | Search Live's library or your sample folder with the AI | `library`                                                                            |
 | Edit Drift, Wavetable, EQ Eight… with the AI            | `specialized-devices`                                                                |
-| Build or tweak instruments with the AI                  | `devices` **and** `specialized-devices`                                              |
+| Build Simpler or Drum Rack instruments with the AI      | `devices-write`                                                                      |
+| Touch devices with the AI at all                        | `devices`, `devices-write` **and** `specialized-devices`                             |
 | Work in the Arrangement view with the AI                | `arrangement`                                                                        |
 | Use project/global context or memory                    | `context-standard`                                                                   |
 | Ask for new MIDI notes, but still want them read back   | `barbeat-standard-write` (bar\|beat only — the other notations aren't split)         |
@@ -179,9 +181,10 @@ A few fragments teach a vocabulary whose syntax lives elsewhere. The other
 transforms guides all build on `transforms-core` — keeping
 `transforms-generative` without it leaves the AI knowing `ratchet()` and the
 waveforms but not the shape of a transform, which is worse than dropping them
-all. `specialized-devices` sits inside `devices` the same way, and so does
-`barbeat-standard-write` inside `barbeat-standard`. That's why the rows above
-are ordered most-specific-first and say which fragments travel together.
+all. `devices-write` and `specialized-devices` both sit inside `devices` the
+same way, and so does `barbeat-standard-write` inside `barbeat-standard`. That's
+why the rows above are ordered most-specific-first and say which fragments
+travel together.
 
 If you do drop a fragment something else needs, Producer Pal says so — the
 Skills **Preview** view shows a warning, and so does the Max window.

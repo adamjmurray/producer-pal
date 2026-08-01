@@ -63,6 +63,8 @@ export const standardDriver = `${HEADER}
 
 @include "./devices.md"
 
+@include "./devices-write.md"
+
 @include "./specialized-devices.md"
 
 @include "./arrangement.md"

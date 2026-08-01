@@ -374,7 +374,7 @@ describe("buildSkills - overrides", () => {
     ]);
   });
 
-  it("warns when specialized-devices outlives the devices guide it sits under", () => {
+  it("warns when the device siblings outlive the guide they sit under", () => {
     const warnings: string[] = [];
 
     buildSkills(
@@ -388,6 +388,7 @@ describe("buildSkills - overrides", () => {
     );
 
     expect(warnings).toStrictEqual([
+      expect.stringContaining(`"devices-write" needs "devices"`),
       expect.stringContaining(`"specialized-devices" needs "devices"`),
     ]);
   });
@@ -493,7 +494,7 @@ describe("buildSkills - disabled fragments", () => {
     const warnings: string[] = [];
     const result = buildSkills(
       { notation: "barbeat" },
-      { disabled: ["devices", "specialized-devices"] },
+      { disabled: ["devices", "devices-write", "specialized-devices"] },
       (message) => warnings.push(message),
     );
 

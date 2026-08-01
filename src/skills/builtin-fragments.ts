@@ -23,12 +23,12 @@
 //                               Small-model mode means FEWER fragments, not
 //                               basic variants of all of them.
 //
-// A notation head may also carry a `-write` SIBLING holding the syntax only the
-// clip writers can act on, so a read-only caller stops paying for the authoring
-// guide (ADR-0019). The base name keeps its meaning — that is what lets the
-// standard driver's `{notation}-standard` ref stay put — and each notation opts
-// in separately. bar|beat is split; stark and midi-json are not, so their
-// `-write` refs resolve to an empty body (below).
+// A fragment may also carry a `-write` SIBLING holding what only the writers can
+// act on, so a read-only caller stops paying for it (ADR-0019). The base name
+// keeps its meaning — that is what lets the standard driver's
+// `{notation}-standard` ref stay put — so splitting one costs no rename. Each
+// candidate opts in separately: bar|beat and devices are split; stark and
+// midi-json are not, so their `-write` refs resolve to an empty body (below).
 //
 // Two entries are not quite leaves-as-written:
 //   code-transforms ........... build-gated. It is always PRESENT here and empty
@@ -48,7 +48,7 @@ import {
   contextBasic,
   contextStandard,
 } from "#src/skills/fragments/context.ts";
-import { devices } from "#src/skills/fragments/devices.ts";
+import { devices, devicesWrite } from "#src/skills/fragments/devices.ts";
 import {
   gettingHelp,
   gettingHelpBasic,
@@ -105,6 +105,7 @@ export function builtinFragments(
     "code-transforms": enableCodeExec ? codeTransforms : "",
     library,
     devices,
+    "devices-write": devicesWrite,
     "specialized-devices": specializedDevices,
     arrangement,
     "working-with-live": workingWithLive,

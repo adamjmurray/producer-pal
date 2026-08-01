@@ -60,9 +60,18 @@ const NOTE_WRITE_TOOLS = [CREATE_CLIP, UPDATE_CLIP] as const;
 /** The tools whose schemas accept `transforms` / `preTransforms`. */
 const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, "ppal-duplicate"] as const;
 
-/** The three device tools; the path grammar and build recipes serve all of them. */
+/** The three device tools; the path grammar serves all of them. */
 const DEVICE_TOOLS = [
   "ppal-read-device",
+  "ppal-create-device",
+  "ppal-update-device",
+] as const;
+
+/**
+ * The two device tools that can BUILD — the gate on `devices-write`. A strict
+ * subset of {@link DEVICE_TOOLS}, so the requires-subset invariant holds.
+ */
+const DEVICE_WRITE_TOOLS = [
   "ppal-create-device",
   "ppal-update-device",
 ] as const;
@@ -117,6 +126,8 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
 
   library: ["ppal-library"],
   devices: DEVICE_TOOLS,
+  // The build recipes: only create-device and update-device can run any of them.
+  "devices-write": DEVICE_WRITE_TOOLS,
   // Reading a Drift or an EQ Eight benefits from the pseudo-param names as much
   // as building or editing one does, so all three device tools carry it — same
   // gate as `devices`, which also satisfies the requires-subset test.

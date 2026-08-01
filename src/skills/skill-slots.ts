@@ -9,7 +9,7 @@ import {
   contextBasic,
   contextStandard,
 } from "#src/skills/fragments/context.ts";
-import { devices } from "#src/skills/fragments/devices.ts";
+import { devices, devicesWrite } from "#src/skills/fragments/devices.ts";
 import {
   gettingHelp,
   gettingHelpBasic,
@@ -33,10 +33,11 @@ import {
 import { midiJson } from "#src/skills/notation/midi-json.ts";
 import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
 
-// The two transforms tiers other fragments point at, named because each appears
-// in the slot list, the retired-name map, and one or two `requires` edges.
+// The fragments other fragments point at, named because each appears in the slot
+// list, the retired-name map, and one or two `requires` edges.
 const TRANSFORMS_CORE = "transforms-core";
 const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
+const DEVICES = "devices";
 
 // The user-facing override "slots" (~/.producer-pal skills overrides, ADR-0010).
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
@@ -58,12 +59,12 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 // the other `transforms-*` fragments, and the other twin is plain
 // `getting-help`.
 //
-// A second, independent suffix axis is DIRECTION: a head may spin its authoring
-// syntax out into a `-write` sibling, gated on the two clip writers, so a
-// read-only caller stops paying for it (ADR-0019). The base name keeps meaning
-// what it meant — the head, minus what only a writer can use — which is why
-// splitting one costs no rename and no retired slot. Only `barbeat-standard` is
-// split so far.
+// A second, independent suffix axis is DIRECTION: a fragment may spin the half
+// only a writer can act on out into a `-write` sibling, gated on that subject's
+// write tools, so a read-only caller stops paying for it (ADR-0019). The base
+// name keeps meaning what it meant — the whole, minus what only a writer can use
+// — which is why splitting one costs no rename and no retired slot.
+// `barbeat-standard` and `devices` are split so far.
 //
 // `code-transforms` is deliberately absent: it only carries text in a build with
 // code execution enabled, so there is nothing stable for a user to override.
@@ -78,7 +79,8 @@ export const SKILL_SLOT_NAMES = [
   "transforms-generative",
   "transforms-basic",
   "library",
-  "devices",
+  DEVICES,
+  "devices-write",
   "specialized-devices",
   "arrangement",
   "working-with-live",
@@ -113,7 +115,7 @@ export const RETIRED_SKILL_SLOTS: Record<string, readonly SkillSlotName[]> = {
     "transforms-generative",
   ],
   "core-library": ["library"],
-  "core-devices": ["devices", "specialized-devices"],
+  "core-devices": [DEVICES, "devices-write", "specialized-devices"],
   "core-arrangement": ["arrangement"],
   "core-context-standard": ["context-standard"],
   "core-context-basic": ["context-basic"],
@@ -236,8 +238,16 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   devices: {
     title: "Devices & instruments",
     description:
-      "Device paths, building Simpler and Drum Rack instruments, and what can't be reached inside a VST/AU plug-in.",
+      "Device paths and what can't be reached inside a VST/AU plug-in — what every device task needs, whichever direction it goes.",
     builtIn: devices,
+  },
+
+  "devices-write": {
+    title: "Devices: building instruments",
+    description:
+      "Loading samples into a Simpler and building a whole Drum Rack in one call. Only create-device and update-device can act on it, so a read-only caller never gets it. Needs the devices guide it sits under.",
+    builtIn: devicesWrite,
+    requires: [DEVICES],
   },
 
   "specialized-devices": {
@@ -245,7 +255,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "The extra controls specific native devices expose (Drift, Wavetable, Simpler, Compressor, EQ Eight, Hybrid Reverb…). Only needed when working with those devices, and needs the devices guide it sits under.",
     builtIn: specializedDevices,
-    requires: ["devices"],
+    requires: [DEVICES],
   },
 
   arrangement: {
