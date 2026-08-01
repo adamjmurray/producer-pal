@@ -8,7 +8,7 @@
  */
 import { renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useUpdateCheck } from "#webui/hooks/use-update-check";
+import { useUpdateCheck } from "#webui/hooks/connection/use-update-check";
 import { getUpdateUrl } from "#webui/utils/mcp-url";
 
 /**

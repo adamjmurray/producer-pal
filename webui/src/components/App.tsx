@@ -27,6 +27,7 @@ import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
+import { useBackdropClick } from "#webui/hooks/use-backdrop-click";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
@@ -149,19 +150,20 @@ export function App() {
   // Transient session state, intentionally not persisted: a refresh or a fresh
   // tab opened from the Max device lands on chat, not the context editor.
   const [contextOpen, setContextOpen] = useState(false);
-  const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
-    showSettings,
-    settingsConfigured: settings.settingsConfigured,
-    settingsClosing,
-    hasUnsavedChanges,
-    handleCancelSettings,
-    // Defer Esc to the Context overlay when both are open. Settings renders
-    // above Context in the DOM, but the Context overlay is the one with an
-    // unconditional Esc-dismiss path (Settings won't dismiss when
-    // !settingsConfigured) — without this, both handlers fire and either
-    // Settings refuses to close OR both close at once.
-    blockEscape: contextOpen,
-  });
+  const { shake, clearShake, handleOverlayMouseDown, handleOverlayClick } =
+    useSettingsDismiss({
+      showSettings,
+      settingsConfigured: settings.settingsConfigured,
+      settingsClosing,
+      hasUnsavedChanges,
+      handleCancelSettings,
+      // Defer Esc to the Context overlay when both are open. Settings renders
+      // above Context in the DOM, but the Context overlay is the one with an
+      // unconditional Esc-dismiss path (Settings won't dismiss when
+      // !settingsConfigured) — without this, both handlers fire and either
+      // Settings refuses to close OR both close at once.
+      blockEscape: contextOpen,
+    });
 
   const [contextClosing, setContextClosing] = useState(false);
   const openContext = useCallback(() => setContextOpen(true), []);
@@ -185,6 +187,18 @@ export function App() {
 
     if (confirmLeave == null || confirmLeave()) closeContext();
   }, [closeContext]);
+
+  const contextBackdrop = useBackdropClick(
+    useCallback(
+      (e: MouseEvent) => {
+        // Existing entries autosave, so a backdrop click is safe for them;
+        // an unsaved new-entry draft is guarded (confirm before discard).
+        // Only close on backdrop hits, not clicks inside the editor.
+        if (e.target === e.currentTarget) attemptCloseContext();
+      },
+      [attemptCloseContext],
+    ),
+  );
 
   // Jump from the Settings "Edit Context" shortcut straight into the context
   // editor. Settings and Context are sibling overlays with Settings stacked on
@@ -271,12 +285,8 @@ export function App() {
       {contextOpen && (
         <div
           className={`settings-overlay ${contextClosing ? "settings-closing" : ""}`}
-          onClick={(e) => {
-            // Existing entries autosave, so a backdrop click is safe for them;
-            // an unsaved new-entry draft is guarded (confirm before discard).
-            // Only close on backdrop hits, not clicks inside the editor.
-            if (e.target === e.currentTarget) attemptCloseContext();
-          }}
+          onMouseDown={contextBackdrop.onMouseDown}
+          onClick={contextBackdrop.onClick}
         >
           {/* Stable panel wrapper. The overlay's fade-in/out animation targets
               `.settings-overlay > *` (see main.css), and ContextTabs remounts
@@ -296,7 +306,8 @@ export function App() {
       {showSettings && (
         <div
           className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}
-          onClick={handleSettingsDismiss}
+          onMouseDown={handleOverlayMouseDown}
+          onClick={handleOverlayClick}
         >
           <SettingsScreen
             settings={settings}

@@ -10,7 +10,7 @@ import {
   ConversationPanel,
   type ConversationPanelProps,
 } from "#webui/components/chat/ConversationPanel";
-import { useUpdateCheck } from "#webui/hooks/use-update-check";
+import { useUpdateCheck } from "#webui/hooks/connection/use-update-check";
 
 /** State and handlers for the conversation history panel.
  * Extends ConversationPanelProps with renamed callbacks and panel toggle state. */

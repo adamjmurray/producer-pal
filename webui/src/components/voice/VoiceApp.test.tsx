@@ -36,7 +36,7 @@ vi.mock(import("#webui/hooks/voice/gemini/use-gemini-voice-session"), () => ({
   useGeminiVoiceSession: mocks.useGeminiVoiceSession,
 }));
 
-vi.mock(import("#webui/hooks/use-update-check"), () => ({
+vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
   useUpdateCheck: mocks.useUpdateCheck,
 }));
 

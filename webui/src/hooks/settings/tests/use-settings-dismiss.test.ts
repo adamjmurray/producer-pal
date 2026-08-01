@@ -78,6 +78,54 @@ describe("useSettingsDismiss", () => {
     expect(result.current.shake).toBe(false);
   });
 
+  describe("backdrop clicks", () => {
+    const overlay = { id: "overlay" };
+    const inPanel = { id: "in-panel" };
+
+    it("dismisses when press and release land on the backdrop", async () => {
+      const handleCancel = vi.fn();
+      const { result } = renderHook(() =>
+        useSettingsDismiss({
+          ...defaultOptions,
+          handleCancelSettings: handleCancel,
+        }),
+      );
+
+      await act(() => {
+        result.current.handleOverlayMouseDown({
+          target: overlay,
+        } as unknown as MouseEvent);
+        result.current.handleOverlayClick({
+          target: overlay,
+        } as unknown as MouseEvent);
+      });
+
+      expect(handleCancel).toHaveBeenCalledOnce();
+    });
+
+    it("ignores a drag that starts inside the panel and ends on the backdrop", async () => {
+      const handleCancel = vi.fn();
+      const { result } = renderHook(() =>
+        useSettingsDismiss({
+          ...defaultOptions,
+          handleCancelSettings: handleCancel,
+        }),
+      );
+
+      await act(() => {
+        result.current.handleOverlayMouseDown({
+          target: inPanel,
+        } as unknown as MouseEvent);
+        result.current.handleOverlayClick({
+          target: overlay,
+        } as unknown as MouseEvent);
+      });
+
+      expect(handleCancel).not.toHaveBeenCalled();
+      expect(result.current.shake).toBe(false);
+    });
+  });
+
   it("handles Escape key when settings are open", async () => {
     const handleCancel = vi.fn();
 
