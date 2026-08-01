@@ -32,6 +32,42 @@ function gateTools(name: string): readonly string[] | null {
   return gate == null || typeof gate === "string" ? null : gate;
 }
 
+/**
+ * The tools a fragment's prose names.
+ *
+ * @param body - The fragment's assembled body
+ * @returns Each distinct `ppal-` name in it
+ */
+function mentionedTools(body: string): string[] {
+  return [...new Set(body.match(/ppal-[a-z-]+/g) ?? [])].sort();
+}
+
+// Fragments that name a tool outside their own gate ON PURPOSE: the handoff is
+// the content. Both directions of library↔writers are here — a library result is
+// only useful as an argument to something else.
+const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
+  library: [
+    "ppal-create-clip",
+    "ppal-update-clip",
+    "ppal-create-device",
+    "ppal-update-device",
+  ],
+  devices: ["ppal-library"],
+};
+
+// Bleed this test found and does not yet fix: guidance shipped to callers that
+// can't act on it. Shrink toward empty as the splits land; an entry that stops
+// bleeding must be deleted, which the "still bleeds" test below enforces.
+const KNOWN_BLEED: Record<string, readonly string[]> = {
+  // "always" gates, so these reach every toolset. The audio-clip fields and the
+  // locator/playback guidance both want a home behind a real gate.
+  "time-and-values": ["ppal-create-clip", "ppal-read-clip"],
+  "working-with-live": ["ppal-playback", "ppal-update-live-set"],
+  // Pad teardown and the plug-in window belong with the device write half.
+  devices: ["ppal-delete", "ppal-select"],
+  arrangement: ["ppal-delete"],
+};
+
 describe("FRAGMENT_GATES", () => {
   it("declares a gate for every fragment", () => {
     // Forces the decision when a fragment is added: no entry would silently mean
@@ -77,6 +113,78 @@ describe("FRAGMENT_GATES", () => {
             requiredGate,
             `${tool} keeps ${name} but drops ${required}`,
           ).toContain(tool);
+        }
+      }
+    }
+  });
+});
+
+describe("fragment prose", () => {
+  // Code exec on, so the debug-only fragment is checked too.
+  const fragments = Object.entries(builtinFragments(true)).filter(
+    ([name]) => !DRIVERS.has(name),
+  );
+
+  it("names only tools its own gate keeps", () => {
+    // A fragment that talks about a tool its gate doesn't name ships that
+    // guidance to callers who can't act on it — the exact waste gating exists to
+    // remove, arriving through prose instead of through the table.
+    for (const [name, body] of fragments) {
+      const allowed = new Set([
+        ...(gateTools(name) ?? []),
+        ...(DELIBERATE_CROSS_REFERENCES[name] ?? []),
+        ...(KNOWN_BLEED[name] ?? []),
+      ]);
+
+      for (const tool of mentionedTools(body)) {
+        expect(
+          [...allowed],
+          `${name} names ${tool}, which its gate drops`,
+        ).toContain(tool);
+      }
+    }
+  });
+
+  it("names only real tools", () => {
+    // Catches a typo'd tool name in skills prose, which nothing else would.
+    for (const [name, body] of fragments) {
+      for (const tool of mentionedTools(body)) {
+        expect(ALL_TOOLS, `${name} names unknown ${tool}`).toContain(tool);
+      }
+    }
+  });
+
+  it("keeps deliberate cross-references rare", () => {
+    // A gate is ANY-OF, so a cross-reference can never be gated exactly — it
+    // wants "library AND a writer". A few are worth that; a pile of them means
+    // the fragment cut is wrong and two fragments want to be one. Raising this
+    // should be a decision, not a diff.
+    const total = Object.values(DELIBERATE_CROSS_REFERENCES).reduce(
+      (sum, tools) => sum + tools.length,
+      0,
+    );
+
+    expect(total).toBeLessThanOrEqual(5);
+  });
+
+  it("lists no allowance that is no longer needed", () => {
+    // Keeps both maps honest: a fragment that stops naming a tool, or a gate
+    // widened to cover it, must lose its entry rather than quietly licensing the
+    // next mention.
+    const bodies = new Map(fragments);
+
+    for (const map of [DELIBERATE_CROSS_REFERENCES, KNOWN_BLEED]) {
+      for (const [name, tools] of Object.entries(map)) {
+        const body = bodies.get(name);
+
+        expect(body, `${name} is not a fragment`).toBeDefined();
+
+        const mentions = mentionedTools(body ?? "");
+        const gate = gateTools(name) ?? [];
+
+        for (const tool of tools) {
+          expect(mentions, `${name} no longer names ${tool}`).toContain(tool);
+          expect(gate, `${name}'s gate now covers ${tool}`).not.toContain(tool);
         }
       }
     }
