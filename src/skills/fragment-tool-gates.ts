@@ -27,6 +27,9 @@
 const CREATE_CLIP = "ppal-create-clip";
 const UPDATE_CLIP = "ppal-update-clip";
 
+/** The gate for guidance whose whole point is to be said out loud to a person. */
+const CONVERSATION_ONLY = "conversation-only";
+
 /**
  * Tools that carry clip `notes` in either direction — the three read tools all
  * have a `notes` include, and create/update-clip take notes as input. Any one of
@@ -98,7 +101,8 @@ export type SkillsAudience = "chat" | "subagent";
 export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "time-and-values": "always",
   "working-with-live": "always",
-  "getting-help": "conversation-only",
+  "getting-help": CONVERSATION_ONLY,
+  "getting-help-basic": CONVERSATION_ONLY,
 
   "transforms-core": TRANSFORM_TOOLS,
   "transforms-expressions": TRANSFORM_TOOLS,
@@ -219,7 +223,7 @@ export function audienceGatedFragments(
   if (audience !== "subagent") return dropped;
 
   for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-    if (gate === "conversation-only") dropped.add(name);
+    if (gate === CONVERSATION_ONLY) dropped.add(name);
   }
 
   return dropped;

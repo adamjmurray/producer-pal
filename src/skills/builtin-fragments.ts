@@ -49,7 +49,10 @@ import {
   contextStandard,
 } from "#src/skills/fragments/context.ts";
 import { devices } from "#src/skills/fragments/devices.ts";
-import { gettingHelp } from "#src/skills/fragments/getting-help.ts";
+import {
+  gettingHelp,
+  gettingHelpBasic,
+} from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
 import { specializedDevices } from "#src/skills/fragments/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
@@ -106,6 +109,7 @@ export function builtinFragments(
     "context-standard": contextStandard,
     "context-basic": contextBasic,
     "getting-help": gettingHelp,
+    "getting-help-basic": gettingHelpBasic,
 
     "barbeat-standard": barbeatStandard,
     "barbeat-standard-write": barbeatStandardWrite,

@@ -10,7 +10,10 @@ import {
   contextStandard,
 } from "#src/skills/fragments/context.ts";
 import { devices } from "#src/skills/fragments/devices.ts";
-import { gettingHelp } from "#src/skills/fragments/getting-help.ts";
+import {
+  gettingHelp,
+  gettingHelpBasic,
+} from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
 import { specializedDevices } from "#src/skills/fragments/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
@@ -48,10 +51,10 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 // depths (the context pair; bar|beat and stark) the depth is a `-standard` /
 // `-basic` suffix, NOT a separate boundary. midi-json reuses one head across
 // both depths, so it is a single slot (the drivers reach it through an alias,
-// see builtin-fragments.ts). `transforms-basic` wears the suffix with no
-// `-standard` twin: the standard depth is the three `transforms-*` tiers, and
-// renaming those to pair with it would retire three live slot names to buy
-// symmetry.
+// see builtin-fragments.ts). `transforms-basic` and `getting-help-basic` wear
+// the suffix with no `-standard` twin, both because pairing them would retire a
+// live slot name to buy symmetry: transforms' standard depth is the three
+// `transforms-*` tiers, and the other twin is plain `getting-help`.
 //
 // A second, independent suffix axis is DIRECTION: a head may spin its authoring
 // syntax out into a `-write` sibling, gated on the two clip writers, so a
@@ -79,6 +82,7 @@ export const SKILL_SLOT_NAMES = [
   "context-standard",
   "context-basic",
   "getting-help",
+  "getting-help-basic",
 
   "barbeat-standard",
   "barbeat-standard-write",
@@ -265,6 +269,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "What to tell you when a request is outside Producer Pal's reach — audio limits, Live features it can't drive, and where to read more.",
     builtIn: gettingHelp,
+  },
+
+  "getting-help-basic": {
+    title: "Audio limits (small-model)",
+    description:
+      "What to tell you when you ask for something audio can't do, in small-model mode. Like the section above, it's only for a conversation with you — a subagent never gets it.",
+    builtIn: gettingHelpBasic,
   },
 
   "barbeat-standard": {

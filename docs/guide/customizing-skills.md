@@ -43,7 +43,7 @@ a whole area you never use:
 | ------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | `standard`                           | The standard skills document — the list of `@include` lines below                                 |
 | `basic`                              | The much shorter document used in small model mode                                                |
-| `time-and-values`                    | Beats, note values, bar\|beat positions, clip lengths, and the audio clip fields                  |
+| `time-and-values`                    | Beats, note values, bar\|beat positions, and clip lengths                                         |
 | `transforms-core`                    | Selecting notes and setting values on them, plus `preTransforms` for deleting and clearing        |
 | `transforms-expressions`             | Transform variables, math functions, swing and quantize                                           |
 | `transforms-generative`              | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                 |
@@ -55,6 +55,7 @@ a whole area you never use:
 | `working-with-live`                  | Session vs. Arrangement habits, playback, layering, locators                                      |
 | `context-standard` / `context-basic` | [Context & Memory](/guide/context) — the project, global, and memory layers                       |
 | `getting-help`                       | What to tell you when a request is outside Producer Pal's reach                                   |
+| `getting-help-basic`                 | The audio limits worth saying out loud, in small model mode                                       |
 | `barbeat-standard` / `barbeat-basic` | The bar\|beat note notation guide (default notation)                                              |
 | `barbeat-standard-write`             | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples        |
 | `stark-standard` / `stark-basic`     | The stark note notation guide                                                                     |
