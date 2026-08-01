@@ -38,6 +38,10 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
  * it guards (see `notationKnown` in useSettings): a flag that flips a render
  * early would release the send before the value it was waiting for arrived.
  *
+ * A send still parked at unmount is abandoned, not delivered: its caller settles
+ * so nothing hangs, but the message is dropped rather than pushed through a chat
+ * the user has already left.
+ *
  * @param isLoading - Whether any first-send-locked value is still resolving
  * @param send - The underlying send handler to gate
  * @returns A send handler that waits out the initial load before sending
@@ -48,6 +52,7 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
   const isLoadingRef = useRef(isLoading);
   const sendRef = useRef(send);
   const waitersRef = useRef<Array<() => void>>([]);
+  const unmountedRef = useRef(false);
 
   useEffect(() => {
     sendRef.current = send;
@@ -68,9 +73,12 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
   }, [isLoading]);
 
   // On unmount, release any still-parked sends so a caller awaiting the gate
-  // can't hang forever when the load never resolves before teardown.
+  // can't hang forever when the load never resolves before teardown. They settle
+  // without sending — see the unmounted check below.
   useEffect(
     () => () => {
+      unmountedRef.current = true;
+
       const waiters = waitersRef.current;
 
       waitersRef.current = [];
@@ -82,6 +90,11 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
   return useCallback(async (message: string, options?: MessageOverrides) => {
     if (isLoadingRef.current) {
       await new Promise<void>((resolve) => waitersRef.current.push(resolve));
+
+      // Released by teardown rather than by the load finishing (the user left
+      // chat mode mid-park). Sending now would fire an invisible request through
+      // the abandoned chat and autosave it into the conversation it left.
+      if (unmountedRef.current) return;
     }
 
     await sendRef.current(message, options);

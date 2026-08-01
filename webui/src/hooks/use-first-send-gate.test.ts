@@ -75,7 +75,7 @@ describe("useFirstSendGate", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
-  it("releases a parked send on unmount so its caller can't hang forever", async () => {
+  it("drops a parked send on unmount without hanging its caller", async () => {
     const send = vi.fn().mockResolvedValue(undefined);
     const { result, unmount } = renderHook(() => useFirstSendGate(true, send));
 
@@ -85,13 +85,16 @@ describe("useFirstSendGate", () => {
     await Promise.resolve();
     expect(send).not.toHaveBeenCalled();
 
-    // Unmount before the load ever resolves: the cleanup releases the parked
-    // waiter so the awaiting caller settles instead of hanging.
+    // Unmount before the load ever resolves — e.g. the user switched to voice
+    // mode. The cleanup releases the parked waiter so the awaiting caller
+    // settles, but the message must NOT go out: the chat hook it would reach is
+    // torn down, so the request would be invisible and would autosave into the
+    // conversation the user just left.
     await act(async () => {
       unmount();
       await sendPromise;
     });
 
-    expect(send).toHaveBeenCalledWith("hold me", undefined);
+    expect(send).not.toHaveBeenCalled();
   });
 });
