@@ -127,12 +127,13 @@ PitchedItem
   / RestToken
 
 // Pitched note token: letter + optional accidental (immediately after) +
-// any-order suffix modifiers (octave marks, /duration, dynamic).
+// optional absolute octave + any-order suffix modifiers (octave marks,
+// /duration, dynamic).
 // The accidental must immediately follow the letter so that `Cb` = C-flat while
 // a bare `b` = note B — this is the load-bearing rule that makes accidentals
 // unambiguous in a whitespace-tokenized stream.
 NoteToken
-  = letter:[A-Ga-g] acc:[#b]? suffixes:NoteTokenSuffix* rep:Repeat? {
+  = letter:[A-Ga-g] acc:[#b]? oct:AbsoluteOctave? suffixes:NoteTokenSuffix* rep:Repeat? {
       var octaveShift = 0;
       var duration = null;
       var dynamic = "normal";
@@ -146,12 +147,21 @@ NoteToken
         type: "note",
         letter: letter.toUpperCase(),
         accidental: acc,
+        octave: oct,
         octaveShift: octaveShift,
         duration: duration,
         dynamic: dynamic,
         repeat: rep
       };
     }
+
+// Absolute octave number on a note token: `C3` = Ableton C3 (MIDI 60), pinning
+// the pitch instead of placing it relative to the line register. Unambiguous
+// because a digit can otherwise only follow `/` (duration) or `*` (repeat), so
+// the slot right after letter+accidental is free. NOT available on a chords line
+// — there the digits are chord qualities (`C7`, `C9`), which win.
+AbsoluteOctave
+  = digits:$("-"? [0-9]+) { return parseInt(digits, 10); }
 
 // Suffix modifiers: glyph classes are disjoint (' , vs /N vs ! ?),
 // so any ordering is unambiguous — Eb''/8!, Eb/8''!, Eb!/8'' all parse identically.
@@ -188,10 +198,11 @@ ChordToken
       };
     }
 
-// Individual note inside a bracket chord: letter + optional accidental + optional
-// octave marks. Trailing _h consumes inter-note whitespace inside the bracket.
+// Individual note inside a bracket chord: letter + optional accidental +
+// optional absolute octave + optional octave marks. Trailing _h consumes
+// inter-note whitespace inside the bracket.
 ChordNote
-  = letter:[A-Ga-g] acc:[#b]? octaves:[',]* _h {
+  = letter:[A-Ga-g] acc:[#b]? oct:AbsoluteOctave? octaves:[',]* _h {
       var shift = 0;
       for (var i = 0; i < octaves.length; i++) {
         shift += octaves[i] === "'" ? 1 : -1;
@@ -199,6 +210,7 @@ ChordNote
       return {
         letter: letter.toUpperCase(),
         accidental: acc,
+        octave: oct,
         octaveShift: shift
       };
     }

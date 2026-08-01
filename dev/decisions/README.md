@@ -83,3 +83,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0015](0015-project-context-param-rename.md)       | Rename the project-context device parameter in 2.1.0, while it's free |
 | [0016](0016-notation-head-gating-granularity.md)   | One fragment per notation is the tool-gating floor                    |
 | [0017](0017-oxlint-category-baseline.md)           | oxlint runs on categories, with an opt-out list                       |
+| [0018](0018-tolerated-but-untaught-syntax.md)      | Accept the syntax models already write, without teaching it           |

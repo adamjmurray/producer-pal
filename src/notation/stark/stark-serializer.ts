@@ -61,7 +61,7 @@ import {
   pitchParts,
   restNoteValues,
   snapDuration,
-} from "#src/notation/stark/stark-serializer-helpers.ts";
+} from "#src/notation/stark/helpers/stark-serializer-helpers.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/v8-max-console.ts";

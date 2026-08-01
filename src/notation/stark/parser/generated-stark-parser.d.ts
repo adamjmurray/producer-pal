@@ -78,6 +78,8 @@ export interface NoteItem {
   letter: string;
   /** "#" sharp, "b" flat, or null (natural) */
   accidental: "#" | "b" | null;
+  /** Absolute octave number (`C3` = MIDI 60), or null (use the line register) */
+  octave: number | null;
   /** Net octave displacement: positive = up, negative = down */
   octaveShift: number;
   /** Explicit /N duration, or null (use line default) */
@@ -93,6 +95,8 @@ export interface ChordNoteItem {
   letter: string;
   /** "#" sharp, "b" flat, or null (natural) */
   accidental: "#" | "b" | null;
+  /** Absolute octave number (`C3` = MIDI 60), or null (use the line register) */
+  octave: number | null;
   /** Net octave displacement */
   octaveShift: number;
 }
