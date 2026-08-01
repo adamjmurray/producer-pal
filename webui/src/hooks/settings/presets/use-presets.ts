@@ -46,7 +46,7 @@ export function usePresets(): UsePresetsReturn {
    *
    * Write-first matters twice over. localStorage is the source of truth for
    * readers outside this hook (use-chat-mode-state parses the raw blob every
-   * render to resolve the default subagent preset), so adopting a list that
+   * render to resolve the subagent preset), so adopting a list that
    * never reached storage would show a preset the subagent resolver can't find.
    * And a `setItem` throw (quota, or storage blocked/full) used to escape all
    * the way into the click handler: the list state was already committed, so

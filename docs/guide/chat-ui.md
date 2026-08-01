@@ -365,7 +365,7 @@ it gets its own home here.
   worker").
 - **Update** / **Delete** - Overwrite or remove the selected preset. An "unsaved
   edits" note appears when the form has drifted from the selected preset.
-- **Default subagent** - Choose what a spawned subagent runs under when the
+- **Subagent preset** - Choose what a spawned subagent runs under when the
   experimental **Subagent** tool is enabled (on the Tools tab). Leave it on
   **Inherit current settings** and each subagent clones your current chat
   config. Pick a preset instead and every subagent runs on that preset's
@@ -388,8 +388,8 @@ Unlike the rest of a preset, notation also lives on the device. Loading a preset
 that carries one and Saving changes the default notation for MCP clients and the
 device Setup pane too, the same as setting it directly on the Tools tab.
 Conversations already open are unaffected — each keeps the notation it started
-with — and a preset used as the **Default subagent** applies its notation only
-to its own worker, never to the device.
+with — and a preset used as the **Subagent preset** applies its notation only to
+its own worker, never to the device.
 
 :::
 
@@ -431,7 +431,7 @@ subtask to a nested assistant working in the same Live Set. Each subagent is
 numbered and appears as its own card in the transcript — expand it for the
 result it reported back, and expand the card inside that for its full work log.
 When the AI delegates several independent subtasks at once, the subagents run in
-parallel. Choose what they run under with **Default subagent** on the
+parallel. Choose what they run under with **Subagent preset** on the
 [Presets tab](#presets).
 
 A subagent can be given more work later instead of being replaced by a fresh

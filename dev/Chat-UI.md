@@ -340,8 +340,8 @@ always triggers the mismatch indicator.
 `spawn_subagent` is a client-side tool (no `ppal-` prefix, never in the MCP tool
 list): it runs a nested `ChatSdkClient` in the browser, because a worker needs
 the decrypted API key the server never sees. `buildWorkerConfig` clones the
-orchestrator config — layering a chosen "Default subagent" preset over it — and
-always re-strips `spawn_subagent` as the recursion guard.
+orchestrator config — layering a chosen "Subagent preset" over it — and always
+re-strips `spawn_subagent` as the recursion guard.
 
 A worker's system instruction then gets a **briefing** appended: the Live Set
 overview, the skills for its toolset and notation, and the user's context

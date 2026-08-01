@@ -80,9 +80,9 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
   );
 }
 
-interface SubagentDefaultRowProps {
+interface SubagentPresetRowProps {
   presets: ChatPreset[];
-  /** Saved default-subagent preset id, or null to inherit. */
+  /** Saved subagent preset id, or null to inherit. */
   value: string | null;
   onChange: (id: string | null) => void;
   /** Preset ids whose provider has no usable API key, annotated in the options
@@ -91,33 +91,33 @@ interface SubagentDefaultRowProps {
 }
 
 /**
- * The "Default subagent" selector: which preset a spawned subagent runs under.
+ * The "Subagent preset" selector: which preset a spawned subagent runs under.
  * "Inherit current settings" (the empty value) clones the orchestrator's config;
  * a preset runs each worker on that preset's model/inference and toolset. Shown
  * below the preset controls on the Presets tab. Options whose provider has no
  * API key are annotated. Falls back to "Inherit" when the saved id no longer
  * matches a preset (deleted), matching the runtime's graceful inherit.
- * @param {SubagentDefaultRowProps} props - Selector props
- * @returns {JSX.Element} The default-subagent selector
+ * @param {SubagentPresetRowProps} props - Selector props
+ * @returns {JSX.Element} The Subagent preset selector
  */
-export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
+export function SubagentPresetRow(props: SubagentPresetRowProps) {
   const { presets, value, missingKeyIds } = props;
   const selectValue =
     value != null && presets.some((p) => p.id === value) ? value : "";
 
   return (
     <div className="pt-3 border-t border-zinc-300 dark:border-zinc-600">
-      <label className="block text-sm mb-1" htmlFor="subagent-default-select">
-        Default subagent
+      <label className="block text-sm mb-1" htmlFor="subagent-preset-select">
+        Subagent preset
       </label>
       <select
-        id="subagent-default-select"
+        id="subagent-preset-select"
         value={selectValue}
         onChange={(e) =>
           props.onChange((e.target as HTMLSelectElement).value || null)
         }
         className={`w-full ${INPUT_CLASS}`}
-        data-testid="subagent-default-select"
+        data-testid="subagent-preset-select"
       >
         <option value="">Inherit current settings</option>
         {presets.map((p) => (

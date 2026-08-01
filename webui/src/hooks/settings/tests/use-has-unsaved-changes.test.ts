@@ -164,10 +164,10 @@ describe("useHasUnsavedChanges", () => {
     expect(result.current).toBe(true);
   });
 
-  it("detects a default-subagent-preset change", () => {
+  it("detects a subagent preset change", () => {
     const { result, update } = renderWithOpenModal(makeSettings());
 
-    update(makeSettings({ defaultSubagentPresetId: "cheap-worker" }));
+    update(makeSettings({ subagentPresetId: "cheap-worker" }));
     expect(result.current).toBe(true);
   });
 

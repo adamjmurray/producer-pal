@@ -140,7 +140,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     [getProviderConnection],
   );
 
-  // Resolve the chosen "Default subagent" preset. Read the presets blob fresh
+  // Resolve the chosen "Subagent preset". Read the presets blob fresh
   // each render (a usePresets snapshot would go stale — presets are edited in a
   // separate hook instance), but key the actual parse/validate/resolve off that
   // blob so it only recomputes when the presets or the selection change:
@@ -151,11 +151,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const subagentPreset = useMemo(
     () =>
       resolveSubagentPreset(
-        settings.defaultSubagentPresetId,
+        settings.subagentPresetId,
         presetsBlob ? loadPresets() : [],
         resolveConnection,
       ),
-    [presetsBlob, settings.defaultSubagentPresetId, resolveConnection],
+    [presetsBlob, settings.subagentPresetId, resolveConnection],
   );
 
   const aiSdkChat = useChat({

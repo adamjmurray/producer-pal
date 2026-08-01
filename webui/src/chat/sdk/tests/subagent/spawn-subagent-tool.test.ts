@@ -98,7 +98,7 @@ describe("buildWorkerConfig", () => {
     ).toBe("stark");
   });
 
-  describe("with a default-subagent preset override", () => {
+  describe("with a subagent preset override", () => {
     const override: SubagentConfigOverride = {
       model: { modelId: "cheap-worker", provider: "openai" } as never,
       smallModelMode: true,

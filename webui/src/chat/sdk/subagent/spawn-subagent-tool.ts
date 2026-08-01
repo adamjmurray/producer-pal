@@ -250,7 +250,7 @@ async function resolveWorkerConfig(
  * worker's ToolSet omits the spawn tool (client.initialize only injects it when
  * enabled), so workers cannot spawn their own subagents.
  *
- * When the user picked a "Default subagent" preset, the orchestrator config
+ * When the user picked a "Subagent preset", the orchestrator config
  * carries a resolved `subagentConfig` whose model/inference AND toolset (when
  * the preset saved one) are layered over the clone — so a strong planner can
  * drive uniform cheaper workers. A preset that carries a toolset supplies the

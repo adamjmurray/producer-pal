@@ -15,7 +15,7 @@ import {
   PresetCreateForm,
   PresetDescriptionField,
   PresetPickerRow,
-  SubagentDefaultRow,
+  SubagentPresetRow,
 } from "./helpers/preset-controls-parts";
 
 interface PresetControlsProps {
@@ -24,14 +24,14 @@ interface PresetControlsProps {
 
 /**
  * Preset picker + Save-as/Update/Delete controls, the description editor, and
- * the "Default subagent" selector, shown on the dedicated Presets tab. Selecting
+ * the "Subagent preset" selector, shown on the dedicated Presets tab. Selecting
  * a preset loads its full bundle — provider/model/thinking + small-model mode +
  * toolset + notation — into the live editable settings buffer
  * (settings.applyPreset); the fields are captured from that same buffer, so each
  * one is edited by its own existing control (notation by the Notation dropdown
  * on the Tools tab) rather than duplicated here. The user then Saves through the
- * normal footer flow. The Default subagent selector
- * (SubagentDefaultRow) reuses this live preset list to pick which preset spawned
+ * normal footer flow. The Subagent preset selector
+ * (SubagentPresetRow) reuses this live preset list to pick which preset spawned
  * subagents run under. Presets never capture the API key (that stays in the
  * per-provider store).
  * @param {PresetControlsProps} props - Component props
@@ -160,10 +160,10 @@ export function PresetControls({ settings }: PresetControlsProps) {
         </p>
       )}
 
-      <SubagentDefaultRow
+      <SubagentPresetRow
         presets={presets}
-        value={settings.defaultSubagentPresetId}
-        onChange={settings.setDefaultSubagentPresetId}
+        value={settings.subagentPresetId}
+        onChange={settings.setSubagentPresetId}
         missingKeyIds={presetsMissingApiKey(settings, presets)}
       />
     </div>
@@ -171,7 +171,7 @@ export function PresetControls({ settings }: PresetControlsProps) {
 }
 
 /**
- * Preset ids whose provider has no usable API key, so the Default-subagent
+ * Preset ids whose provider has no usable API key, so the Subagent-preset
  * picker can flag them (such a preset builds a worker that fails at request time
  * — after burning a spawn against the cap).
  *

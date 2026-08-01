@@ -176,7 +176,7 @@ function buildOpenAIOptions(
 
 /**
  * Build the model/inference override a spawned worker runs under from the
- * user's resolved "Default subagent" preset. Returns undefined to inherit the
+ * user's resolved "Subagent preset". Returns undefined to inherit the
  * orchestrator config (no preset chosen). A preset that can't build a model
  * (e.g. a `custom` provider missing its base URL) must NOT break the
  * orchestrator's own chat init, so failures warn and fall back to inherit.
@@ -217,7 +217,7 @@ function buildSubagentConfig(
     };
   } catch (error) {
     console.warn(
-      "Default subagent preset could not be built; subagents will inherit " +
+      "Subagent preset could not be built; subagents will inherit " +
         `the current settings. ${error instanceof Error ? error.message : String(error)}`,
     );
 
@@ -275,7 +275,7 @@ export const chatAdapter: ChatAdapter<
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(provider, thinking, model);
-    // Resolve the "Default subagent" preset (if any) to the model/inference a
+    // Resolve the "Subagent preset" (if any) to the model/inference a
     // spawned worker runs under; buildWorkerConfig layers it over the clone.
     const subagentConfig = buildSubagentConfig(
       extraParams?.[SUBAGENT_PRESET_PARAM] as

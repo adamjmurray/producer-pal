@@ -30,8 +30,8 @@ function makeSettings(over?: Partial<UseSettingsReturn>): UseSettingsReturn {
     enabledTools: {},
     setEnabledTools: vi.fn(),
     applyPreset: vi.fn(),
-    defaultSubagentPresetId: null,
-    setDefaultSubagentPresetId: vi.fn(),
+    subagentPresetId: null,
+    setSubagentPresetId: vi.fn(),
     settingsLoaded: true,
     getProviderConnection: vi.fn(() => ({ apiKey: "sk-test" })),
     ...over,
@@ -223,16 +223,14 @@ describe("PresetControls", () => {
     expect(screen.queryByTestId("preset-update")).toBeNull();
   });
 
-  it("offers Inherit plus every preset in the Default subagent selector", () => {
+  it("offers Inherit plus every preset in the Subagent preset selector", () => {
     savePresets([seeded]);
     render(
-      <PresetControls
-        settings={makeSettings({ defaultSubagentPresetId: "seed" })}
-      />,
+      <PresetControls settings={makeSettings({ subagentPresetId: "seed" })} />,
     );
 
     const select = screen.getByTestId(
-      "subagent-default-select",
+      "subagent-preset-select",
     ) as HTMLSelectElement;
 
     expect(select.value).toBe("seed");
@@ -241,28 +239,24 @@ describe("PresetControls", () => {
     expect(optionLabels).toStrictEqual(["Inherit current settings", "Seeded"]);
   });
 
-  it("sets the default subagent preset (and null for Inherit)", () => {
+  it("sets the subagent preset (and null for Inherit)", () => {
     savePresets([seeded]);
-    const setDefaultSubagentPresetId = vi.fn();
+    const setSubagentPresetId = vi.fn();
 
-    render(
-      <PresetControls
-        settings={makeSettings({ setDefaultSubagentPresetId })}
-      />,
-    );
+    render(<PresetControls settings={makeSettings({ setSubagentPresetId })} />);
 
-    fireEvent.change(screen.getByTestId("subagent-default-select"), {
+    fireEvent.change(screen.getByTestId("subagent-preset-select"), {
       target: { value: "seed" },
     });
-    expect(setDefaultSubagentPresetId).toHaveBeenCalledWith("seed");
+    expect(setSubagentPresetId).toHaveBeenCalledWith("seed");
 
-    fireEvent.change(screen.getByTestId("subagent-default-select"), {
+    fireEvent.change(screen.getByTestId("subagent-preset-select"), {
       target: { value: "" },
     });
-    expect(setDefaultSubagentPresetId).toHaveBeenCalledWith(null);
+    expect(setSubagentPresetId).toHaveBeenCalledWith(null);
   });
 
-  it("flags Default subagent presets whose provider has no API key", () => {
+  it("flags Subagent preset options whose provider has no API key", () => {
     savePresets([
       { ...seeded, id: "keyed", name: "Keyed", provider: "anthropic" },
       { ...seeded, id: "keyless", name: "Keyless", provider: "openai" },
@@ -279,7 +273,7 @@ describe("PresetControls", () => {
     );
 
     const labels = [
-      ...(screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+      ...(screen.getByTestId("subagent-preset-select") as HTMLSelectElement)
         .options,
     ].map((o) => o.textContent);
 
@@ -305,7 +299,7 @@ describe("PresetControls", () => {
     );
 
     const labels = [
-      ...(screen.getByTestId("subagent-default-select") as HTMLSelectElement)
+      ...(screen.getByTestId("subagent-preset-select") as HTMLSelectElement)
         .options,
     ].map((o) => o.textContent);
 
@@ -316,13 +310,12 @@ describe("PresetControls", () => {
     savePresets([seeded]);
     render(
       <PresetControls
-        settings={makeSettings({ defaultSubagentPresetId: "deleted" })}
+        settings={makeSettings({ subagentPresetId: "deleted" })}
       />,
     );
 
     expect(
-      (screen.getByTestId("subagent-default-select") as HTMLSelectElement)
-        .value,
+      (screen.getByTestId("subagent-preset-select") as HTMLSelectElement).value,
     ).toBe("");
   });
 

@@ -425,7 +425,7 @@ describe("chatAdapter", () => {
       expect(overridden).toBeUndefined();
     });
 
-    describe("subagentConfig from a default-subagent preset", () => {
+    describe("subagentConfig from a subagent preset", () => {
       const subagentPreset = {
         provider: "openai" as const,
         apiKey: "worker-key",

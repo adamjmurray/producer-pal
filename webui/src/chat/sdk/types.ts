@@ -120,8 +120,8 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
 }
 
 /**
- * Config a subagent worker runs under, resolved from the user's chosen "Default
- * subagent" preset. Carries the fields a preset can swap: provider/model baked
+ * Config a subagent worker runs under, resolved from the user's chosen
+ * "Subagent preset". Carries the fields a preset can swap: provider/model baked
  * into `model`, thinking into `providerOptions`/`buildProviderOptions`,
  * `smallModelMode`, and `enabledTools` (the preset's toolset, when it saved one;
  * absent means the worker inherits the orchestrator's tools). The system
@@ -162,7 +162,7 @@ export interface ChatClientConfig {
    * Small-model mode for THIS client's MCP requests, sent as a per-request
    * header so the server shrinks tool schemas and serves the basic skills
    * variant for this caller alone. A subagent worker inherits it from the
-   * orchestrator config unless a chosen "Default subagent" preset overrides it
+   * orchestrator config unless a chosen "Subagent preset" overrides it
    * (buildWorkerConfig applies subagentConfig), so a small-model worker gets the
    * reduced context even while the orchestrator runs full-strength.
    */
@@ -188,7 +188,7 @@ export interface ChatClientConfig {
   /**
    * Preset-derived config a spawned worker runs under (model/inference + the
    * preset's toolset when it saved one). Set on the orchestrator config when the
-   * user picked a "Default subagent" preset; read only by buildWorkerConfig,
+   * user picked a "Subagent preset"; read only by buildWorkerConfig,
    * which layers it over the cloned orchestrator config. Absent = the worker
    * inherits the orchestrator's config. This tracks the CURRENT global
    * preference — it is deliberately not locked per conversation, so continuing a

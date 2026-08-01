@@ -211,8 +211,8 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
    * orchestrator's). The system instruction always inherits. Null = "inherit current
    * settings", the shipped phase-1 behavior. A global preference (not locked per
    * conversation) and a modal-local buffer persisted on Save. */
-  defaultSubagentPresetId: string | null;
-  setDefaultSubagentPresetId: (id: string | null) => void;
+  subagentPresetId: string | null;
+  setSubagentPresetId: (id: string | null) => void;
   // Mirrors server-side ProducerPalConfig.liveApiEnabled, kept in modal-local
   // state. Source of truth is the server (which mirrors the device Setup-tab
   // toggle) — not localStorage. The dirty flag distinguishes "user toggled
