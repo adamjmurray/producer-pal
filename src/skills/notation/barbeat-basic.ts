@@ -13,6 +13,11 @@
  * driver was the same fact a third time for two of the three notations. The
  * driver `@include`s this head and the fragments around it; `resolveIncludes`
  * composes them, not buildSkills.
+ *
+ * It keeps its own heading, which stark and midi-json don't need: theirs sit in
+ * running prose, this one would otherwise trail a code block and read as a
+ * caption on the drum example. The heading also pairs with the driver's
+ * `## Delete / clear notes` section that follows it.
  */
 export const barbeatBasic = `## MIDI Notation
 
@@ -41,5 +46,7 @@ v100 n/8 C1 1|1,3          # kick
 v100 D1 1|2,4              # snare
 v80 n/16 Gb1 1|1.5,2.5,3.5,4.5   # hats (softer, on the offbeats)
 \`\`\`
+
+## Add notes to an existing clip (update-clip)
 
 \`notes\` MERGES into the clip: a note at the *same* pitch+start overwrites that note; every other note stays. So to add, just pass the new notes — don't resend the whole clip.`;
