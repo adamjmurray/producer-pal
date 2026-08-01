@@ -107,11 +107,7 @@ const TOOL_GROUPS: ToolGroup[] = [
   },
   {
     label: "Advanced",
-    toolIds: ["ppal-live-api"],
-  },
-  {
-    label: "Experimental",
-    toolIds: [SPAWN_SUBAGENT_TOOL_ID],
+    toolIds: ["ppal-live-api", SPAWN_SUBAGENT_TOOL_ID],
   },
 ];
 

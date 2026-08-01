@@ -464,12 +464,30 @@ describe("ToolToggles", () => {
   });
 
   describe("notation selector", () => {
-    it("renders the Notation dropdown (in the Advanced group)", () => {
+    it("renders the Notation dropdown", () => {
       render(<ToolToggles {...defaultProps} notation="midi-json" />);
 
       const select = screen.getByTestId("notation-select") as HTMLSelectElement;
 
       expect(select.value).toBe("midi-json");
+    });
+
+    it("puts the Notation dropdown in the Clip group", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          tools={[
+            ...TEST_TOOLS,
+            { id: "ppal-create-clip", name: "Create Clip" },
+          ]}
+        />,
+      );
+
+      const clipGroup = screen.getByText("Clip").parentElement;
+
+      expect(
+        clipGroup?.querySelector("[data-testid=notation-select]"),
+      ).not.toBeNull();
     });
 
     it("calls setNotation when a new notation is picked", () => {

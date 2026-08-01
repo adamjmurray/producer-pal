@@ -36,9 +36,9 @@ interface ToolTogglesProps {
   // makes the device-side toggle a no-op. We disable the checkbox here so
   // the UI doesn't silently snap back after a click.
   liveApiForcedOn: boolean;
-  // Global notation setting, rendered as a dropdown in the Advanced group cell
-  // (under the Live API toggle). Mirrors server config.notation, same as the
-  // liveApiEnabled toggle above.
+  // Global notation setting, rendered as a dropdown at the bottom of the Clip
+  // group cell. Mirrors server config.notation, same as the liveApiEnabled
+  // toggle above.
   notation: Notation;
   setNotation: (notation: Notation) => void;
   // Opens the context editor from an "Edit Context" shortcut under the Core
@@ -155,11 +155,16 @@ export function ToolToggles({
   };
 
   const groups = groupTools(ensureSpawnSubagentTool(ensureLiveApiTool(tools)));
-  // Rendered as the Advanced group's footer (bottom-aligned under the Live API
-  // toggle); see ToolGroupSection.
+  // Rendered as the Clip group's footer (bottom-aligned under the clip
+  // toggles); see ToolGroupSection.
   const notationFooter = (
     <NotationSelector notation={notation} setNotation={setNotation} />
   );
+  // Fall back to the last group if the server returned no clip tools, so the
+  // notation setting can't vanish from the UI.
+  const notationGroupLabel = groups.some((g) => g.label === "Clip")
+    ? "Clip"
+    : groups.at(-1)?.label;
 
   return (
     <div>
@@ -177,7 +182,9 @@ export function ToolToggles({
             isToolDisabled={isToolDisabled}
             getDisabledReason={getDisabledReason}
             onToggle={handleToggle}
-            footer={group.label === "Advanced" ? notationFooter : undefined}
+            footer={
+              group.label === notationGroupLabel ? notationFooter : undefined
+            }
             cta={
               group.label === "Core" && onEditContext ? (
                 <EditContextButton
@@ -241,7 +248,7 @@ interface ToolGroupSectionProps {
   getDisabledReason: (toolId: string) => string | undefined;
   onToggle: (toolId: string) => void;
   // Optional control rendered at the bottom of the cell (the Notation dropdown
-  // in the Advanced group). `mt-auto` + the cell's `h-full` bottom-aligns it
+  // in the Clip group). `mt-auto` + the cell's `h-full` bottom-aligns it
   // within the grid row.
   footer?: VNode;
   // Optional call-to-action rendered directly under the tool list (the Edit

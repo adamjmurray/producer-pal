@@ -60,22 +60,22 @@ describe("ensureSpawnSubagentTool", () => {
 });
 
 describe("groupTools", () => {
-  it("places Subagent in its own Experimental group at the end", () => {
+  it("places Subagent in the Advanced group at the end", () => {
     const tools = ensureSpawnSubagentTool([tool("ppal-connect", "Connect")]);
 
     const groups = groupTools(tools);
 
-    expect(groups.at(-1)?.label).toBe("Experimental");
+    expect(groups.at(-1)?.label).toBe("Advanced");
     expect(groups.at(-1)?.tools.map((t) => t.id)).toStrictEqual([
       SPAWN_SUBAGENT_TOOL_ID,
     ]);
   });
 
-  it("places Live API in its own Advanced group at the end", () => {
-    const tools = [
+  it("places Live API and Subagent together in the Advanced group", () => {
+    const tools = ensureSpawnSubagentTool([
       tool("ppal-connect", "Connect"),
       tool(LIVE_API_TOOL_ID, "Live API"),
-    ];
+    ]);
 
     const groups = groupTools(tools);
 
@@ -83,7 +83,10 @@ describe("groupTools", () => {
     expect(groups[0]?.label).toBe("Core");
     expect(groups[0]?.tools.map((t) => t.id)).toStrictEqual(["ppal-connect"]);
     expect(groups[1]?.label).toBe("Advanced");
-    expect(groups[1]?.tools.map((t) => t.id)).toStrictEqual([LIVE_API_TOOL_ID]);
+    expect(groups[1]?.tools.map((t) => t.id)).toStrictEqual([
+      LIVE_API_TOOL_ID,
+      SPAWN_SUBAGENT_TOOL_ID,
+    ]);
   });
 
   it("groups tools by category", () => {
