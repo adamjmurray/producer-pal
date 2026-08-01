@@ -14,6 +14,26 @@ describe("Tooltip", () => {
   const infoButton = () =>
     screen.getByRole("button", { name: "Tool description" });
 
+  /**
+   * Build a DOMRect stub for getBoundingClientRect mocks.
+   * @param parts - The rect fields the assertion under test cares about
+   * @returns A DOMRect-shaped object
+   */
+  function rect(parts: Partial<DOMRect>): DOMRect {
+    return {
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+      ...parts,
+    } as DOMRect;
+  }
+
   it("renders info icon button", () => {
     render(<Tooltip text="Some description" />);
     expect(infoButton()).toBeDefined();
@@ -158,6 +178,58 @@ describe("Tooltip", () => {
       const tooltip = screen.getByRole("tooltip");
 
       expect((tooltip as HTMLElement).style.left).toBe("8px");
+    });
+
+    vi.restoreAllMocks();
+  });
+
+  it("flips above the icon when it would run off the bottom", async () => {
+    Object.defineProperty(window, "innerHeight", {
+      value: 300,
+      writable: true,
+    });
+
+    const origGetBCR = Element.prototype.getBoundingClientRect;
+    let callCount = 0;
+
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        callCount++;
+
+        // Button, near the bottom of the viewport.
+        if (callCount === 1 || callCount === 3) {
+          return rect({
+            top: 280,
+            left: 10,
+            right: 30,
+            bottom: 300,
+            height: 20,
+          });
+        }
+
+        // Tooltip, rendered below the button and hanging off the bottom.
+        if (callCount === 2) {
+          return rect({
+            top: 306,
+            left: 10,
+            right: 110,
+            bottom: 406,
+            height: 100,
+          });
+        }
+
+        return origGetBCR.call(this);
+      },
+    );
+
+    render(<Tooltip text="Some description" />);
+    fireEvent.mouseEnter(infoButton());
+
+    // Flipped: button top (280) - tooltip height (100) - gap (6) = 174
+    await vi.waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+
+      expect((tooltip as HTMLElement).style.top).toBe("174px");
     });
 
     vi.restoreAllMocks();

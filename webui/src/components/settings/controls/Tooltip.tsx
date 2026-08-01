@@ -16,10 +16,11 @@ interface Position {
 
 /**
  * Info icon with tooltip popup. Shows on hover (desktop) and tap-to-toggle (mobile).
- * Multi-line text (separated by \n) renders as separate paragraphs.
- * Uses fixed positioning so the tooltip floats above all layout content.
+ * Newlines in the text collapse to spaces, so it can be written multi-line.
+ * Uses fixed positioning so the tooltip floats above all layout content, and
+ * flips above the icon when it would run off the bottom of the viewport.
  * @param props - Component props
- * @param props.text - Tooltip content, may contain \n for line breaks
+ * @param props.text - Tooltip content; newlines are collapsed to spaces
  * @returns Tooltip component
  */
 export function Tooltip({ text }: TooltipProps) {
@@ -57,16 +58,24 @@ export function Tooltip({ text }: TooltipProps) {
   }, [isVisible]);
 
   useEffect(() => {
-    if (!position || !tooltipRef.current) return;
+    if (!position || !tooltipRef.current || !buttonRef.current) return;
 
     const rect = tooltipRef.current.getBoundingClientRect();
+    const next = { ...position };
 
     if (rect.right > window.innerWidth - 8) {
-      setPosition((prev) =>
-        prev
-          ? { ...prev, left: Math.max(8, window.innerWidth - rect.width - 8) }
-          : prev,
-      );
+      next.left = Math.max(8, window.innerWidth - rect.width - 8);
+    }
+
+    // Flip above the icon when the tooltip would run off the bottom.
+    if (rect.bottom > window.innerHeight - 8) {
+      const button = buttonRef.current.getBoundingClientRect();
+
+      next.top = Math.max(8, button.top - rect.height - 6);
+    }
+
+    if (next.top !== position.top || next.left !== position.left) {
+      setPosition(next);
     }
   }, [position]);
 
@@ -108,7 +117,7 @@ export function Tooltip({ text }: TooltipProps) {
           ref={tooltipRef}
           role="tooltip"
           style={{ top: position.top, left: position.left }}
-          className="fixed px-2.5 py-1.5 text-xs bg-zinc-800 dark:bg-zinc-700 text-white rounded border border-zinc-600 dark:border-zinc-500 shadow-md z-50 max-w-80 max-h-24 overflow-y-auto whitespace-normal wrap-break-word tooltip-fade-in"
+          className="fixed px-2.5 py-1.5 text-xs bg-zinc-800 dark:bg-zinc-700 text-white rounded border border-zinc-600 dark:border-zinc-500 shadow-md z-50 max-w-80 max-h-60 overflow-y-auto whitespace-normal wrap-break-word tooltip-fade-in"
         >
           {normalizedText}
         </div>
