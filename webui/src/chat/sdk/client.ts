@@ -90,10 +90,17 @@ export class ChatSdkClient {
   /**
    * Worker transcripts recorded by runSubagent, keyed by tool-call id. Read in
    * processStream to attach each transcript to its tool-result (UI-only; the
-   * model never sees it). A restored conversation reads the transcript straight
-   * off the persisted tool-result, so this stays empty then.
+   * model never sees it), and emptied as it goes — see
+   * attachStashedTranscripts. A restored conversation reads the transcript
+   * straight off the persisted tool-result, so this stays empty then.
    */
   private spawnTranscripts: SubagentTranscriptStash = new Map();
+  /**
+   * Worker runs still in flight, so a Stop can wait for them. Each one writes
+   * its transcript to the stash in a finally, and that write is what the turn's
+   * teardown has to see — see processStream's finally.
+   */
+  private spawnRuns = new Set<Promise<ChatMessage[]>>();
   /**
    * Backoff window shared by every worker this client spawns. Parallel workers
    * stream on separate connections, so without it a provider-wide 429 hits each
@@ -143,7 +150,7 @@ export class ChatSdkClient {
         ...tools,
         [SPAWN_SUBAGENT_TOOL_NAME]: createSpawnSubagentTool({
           config: this.config,
-          runWorker: (options) => this.runSubagent(options),
+          runWorker: (options) => this.trackSpawnRun(this.runSubagent(options)),
           spawnState: this.spawnState,
           getSession: (index) =>
             collectSubagentTranscript(this.chatHistory, index),
@@ -225,6 +232,24 @@ export class ChatSdkClient {
   }
 
   /**
+   * Register a worker run so the turn's teardown can wait for its transcript,
+   * and drop it again once it settles. Registration happens here rather than
+   * inside runSubagent because a method can't hold the promise it is still
+   * returning.
+   *
+   * The `catch` is only to mark the tracking chain handled — the run's own
+   * rejection still reaches the spawn tool, which reports it to the model.
+   * @param run - The worker run to track
+   * @returns The same promise, so the caller awaits the run itself
+   */
+  private trackSpawnRun(run: Promise<ChatMessage[]>): Promise<ChatMessage[]> {
+    this.spawnRuns.add(run);
+    void run.catch(() => {}).finally(() => this.spawnRuns.delete(run));
+
+    return run;
+  }
+
+  /**
    * Close the underlying MCP connection. Idempotent. useChat discards a client
    * on every new/restored/cleared conversation; without this each discard
    * leaks the client's open HTTP connection (the connection-test path closes
@@ -236,6 +261,9 @@ export class ChatSdkClient {
 
     this.mcpClient = null;
     this.tools = {};
+    // Anything still stashed was never attached to a tool-result, so nothing
+    // reads it again; holding it would pin every worker log the client ever ran.
+    this.spawnTranscripts.clear();
     void client?.close().catch(() => {});
   }
 
@@ -463,6 +491,14 @@ export class ChatSdkClient {
       // history stays valid (providers reject an unmatched tool-call) and the UI
       // doesn't render the tool as perpetually running. No-op on clean finishes.
       reconcileDanglingToolCalls(this.chatHistory, historyLengthBefore);
+      // Wait for any worker still unwinding. On a Stop with parallel spawns this
+      // stream can close while a sibling's abort is still in flight — its
+      // transcript reaches the stash in its own finally, which may not have run
+      // yet — and a partial log that "may describe edits already made to the Live
+      // Set" is the only thing left to resume from. The turn therefore ends when
+      // the workers have actually stopped, not when the orchestrator's socket
+      // does.
+      await Promise.allSettled(this.spawnRuns);
       // A stopped subagent's tool-result is one of those synthetic "canceled"
       // entries, so it never passed through the mid-stream attach above. Hang the
       // worker's partial transcript off it here so its work log survives the Stop.

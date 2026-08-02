@@ -51,6 +51,11 @@ export type SubagentTranscriptStash = Map<string, SubagentRun>;
  *
  * Idempotent: an entry that already carries a transcript is left alone, so the
  * mid-stream pass and the finally pass can both run over the same turn.
+ *
+ * Attaching CONSUMES the stash entry. The transcript lives on the history entry
+ * from then on, and dropping the second reference matters after a compaction
+ * reassigns chatHistory — the stash would otherwise be the sole owner of every
+ * worker log for the client's lifetime.
  * @param history - The orchestrator's chat history
  * @param fromIndex - First history index to scan (the turn's starting length)
  * @param stash - Runs recorded by this client's workers
@@ -79,6 +84,7 @@ export function attachStashedTranscripts(
 
       entry.subagentTranscript = run.transcript;
       entry.subagentIndex = run.index;
+      stash.delete(entry.id);
     }
   }
 }
@@ -139,13 +145,20 @@ export function highestSubagentIndex(history: ChatMessage[]): number {
 }
 
 /**
- * Whether a stream part is a spawn_subagent tool-result — the mid-stream moment
- * a worker's transcript becomes attachable.
+ * Whether a stream part is a spawn_subagent outcome — the mid-stream moment a
+ * worker's transcript becomes attachable.
+ *
+ * A FAILED spawn (retry budget spent, MAX_SPAWNS, a bad resumeFrom) arrives as
+ * `tool-error` and counts too. Both land in `toolResults`, and the failed one
+ * has the most to show: the transcript is the only record of what the worker did
+ * before it died. Without it the card renders empty for the rest of the
+ * orchestrator turn, until the stream's finally pass catches up.
  * @param part - The stream part just handled
- * @returns True for a spawn_subagent tool-result part
+ * @returns True for a spawn_subagent tool-result or tool-error part
  */
 export function isSpawnToolResult(part: Record<string, unknown>): boolean {
   return (
-    part.type === "tool-result" && part.toolName === SPAWN_SUBAGENT_TOOL_NAME
+    (part.type === "tool-result" || part.type === "tool-error") &&
+    part.toolName === SPAWN_SUBAGENT_TOOL_NAME
   );
 }

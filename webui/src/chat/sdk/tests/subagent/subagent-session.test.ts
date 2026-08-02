@@ -143,6 +143,20 @@ describe("attachStashedTranscripts", () => {
     );
   });
 
+  it("consumes the stash entry it attached", () => {
+    // The transcript lives on the history entry from here on. Keeping the
+    // stash's copy makes the Map the sole owner of every worker log once a
+    // compaction reassigns chatHistory.
+    const history = [spawnMessage("tc1")];
+    const stash: SubagentTranscriptStash = new Map([
+      ["tc1", run("worker one")],
+    ]);
+
+    attachStashedTranscripts(history, 0, stash);
+
+    expect(stash.size).toBe(0);
+  });
+
   it("skips messages before fromIndex", () => {
     const history: ChatMessage[] = [spawnMessage("tc1"), spawnMessage("tc2")];
     const stash: SubagentTranscriptStash = new Map([
@@ -262,13 +276,27 @@ describe("highestSubagentIndex", () => {
 });
 
 describe("isSpawnToolResult", () => {
-  it("accepts only a spawn_subagent tool-result part", () => {
+  it("accepts a spawn_subagent tool-result or tool-error part", () => {
     expect(
       isSpawnToolResult({
         type: "tool-result",
         toolName: SPAWN_SUBAGENT_TOOL_NAME,
       }),
     ).toBe(true);
+    // A spawn that threw (retry budget spent, MAX_SPAWNS, bad resumeFrom) still
+    // has a transcript worth showing — usually the most worth showing.
+    expect(
+      isSpawnToolResult({
+        type: "tool-error",
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+      }),
+    ).toBe(true);
+    expect(
+      isSpawnToolResult({
+        type: "tool-error",
+        toolName: "ppal-read-live-set",
+      }),
+    ).toBe(false);
     expect(
       isSpawnToolResult({
         type: "tool-result",
