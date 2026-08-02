@@ -416,7 +416,8 @@ function parseTurnsArg(): number {
  * @returns The value
  */
 function loadEnvKey(name: string): string {
-  const envPath = fileURLToPath(new URL("../.env", import.meta.url));
+  // Two levels up: this file is scripts/probes/, the .env is at the repo root.
+  const envPath = fileURLToPath(new URL("../../.env", import.meta.url));
   const text = readFileSync(envPath, "utf8");
 
   for (const line of text.split("\n")) {
