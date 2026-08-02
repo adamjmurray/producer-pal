@@ -28,6 +28,7 @@ interface CalculateBeatPositionsArgs {
   clip: LiveAPI;
   isLooping: boolean;
   beatsPerMarkerUnit: number;
+  markerClampSeconds: number;
 }
 
 interface TimeSignature {
@@ -77,6 +78,7 @@ function determineStartMarker(
  * @param args.clip - The clip to read defaults from
  * @param args.isLooping - Whether clip is looping
  * @param args.beatsPerMarkerUnit - Beats per marker unit (see markerBeatsPerUnit)
+ * @param args.markerClampSeconds - Sample duration to clamp markers to (see markerClampSeconds)
  * @returns Beat positions
  */
 export function calculateBeatPositions({
@@ -88,15 +90,23 @@ export function calculateBeatPositions({
   clip,
   isLooping,
   beatsPerMarkerUnit,
+  markerClampSeconds,
 }: CalculateBeatPositionsArgs): BeatPositions {
   let startBeats: number | null = null;
   let endBeats: number | null = null;
   let firstStartBeats: number | null = null;
 
   // Everything below is in beats, but the clip's markers may be seconds — read
-  // them through this so an unwarped audio clip lands on the same scale.
-  const markerBeats = (property: string) =>
-    (clip.getProperty(property) as number) * beatsPerMarkerUnit;
+  // them through this so an unwarped audio clip lands on the same scale. The
+  // clamp matters as much as the factor: read-clip reports a clamped length, so
+  // handing that length straight back has to derive from the same number.
+  const markerBeats = (property: string) => {
+    const raw = clip.getProperty(property) as number;
+    const bounded =
+      markerClampSeconds > 0 ? Math.min(raw, markerClampSeconds) : raw;
+
+    return bounded * beatsPerMarkerUnit;
+  };
 
   // Convert start to beats if provided. Validate the standalone position first
   // so a 0-indexed/zero-bar position gets the 1-indexing steer (matching

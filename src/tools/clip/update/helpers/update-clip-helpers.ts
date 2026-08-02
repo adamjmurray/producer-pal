@@ -6,7 +6,10 @@
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { markerBeatsPerUnit } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import {
+  markerBeatsPerUnit,
+  markerClampSeconds,
+} from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
@@ -264,6 +267,7 @@ function writeClipProperties(
     clip,
     isLooping,
     beatsPerMarkerUnit,
+    markerClampSeconds: markerClampSeconds(clip),
   });
   const currentLoopEnd = isLooping
     ? (clip.getProperty("loop_end") as number) * beatsPerMarkerUnit

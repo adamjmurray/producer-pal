@@ -215,10 +215,16 @@ That does not affect `start`/`length`, which name a region rather than preserve
 one. An unwarped clip plays in real time, so its region is beats at the Set
 tempo in both directions: `markerBeatsPerUnit`
 (`src/tools/clip/helpers/audio-clip-timing.ts`) is the one conversion, and
-`audioClipTiming` reads back through the same factor. The warp toggle is applied
-**before** the region write in `processSingleClipUpdate`, so `warping: false`
-plus `start`/`length` in one call compose: the unwarp resets `end_marker` first,
-then the region lands on top of it, in seconds.
+`audioClipTiming` reads back through the same factor.
+
+Reading a marker also needs `markerClampSeconds`. A stale `end_marker` can point
+past the end of the file, and read-clip clamps it to the sample — so anything
+deriving a region from a marker has to clamp too, or a `length` taken from
+read-clip writes back a region that starts past the end of the sample and plays
+silence. The warp toggle is applied **before** the region write in
+`processSingleClipUpdate`, so `warping: false` plus `start`/`length` in one call
+compose: the unwarp resets `end_marker` first, then the region lands on top of
+it, in seconds.
 
 ## Coverage
 

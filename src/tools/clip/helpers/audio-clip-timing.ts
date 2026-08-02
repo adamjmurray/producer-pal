@@ -107,19 +107,42 @@ export function clipLengthBeats(clip: LiveAPI): number {
  * `start_marker`, `end_marker`, `loop_start` and `loop_end` hold beats for MIDI
  * and warped audio, but **seconds** on an unwarped audio clip. Multiply a
  * marker by this to get beats; divide a requested beat position by it to get
- * the value to write. That is the same conversion audioClipTiming reads back
- * with, so `start`/`length` round-trip in either warp state.
+ * the value to write. Reading also needs `markerClampSeconds` to match what
+ * audioClipTiming reports, so `start`/`length` round-trip.
  *
  * @param clip - The clip whose markers are being read or written
  * @returns 1, or tempo/60 for an unwarped audio clip
  */
 export function markerBeatsPerUnit(clip: LiveAPI): number {
-  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
+  return markersAreSeconds(clip) ? currentTempo() / 60 : 1;
+}
 
-  if (!isAudioClip) return 1;
-  if ((clip.getProperty("warping") as number) > 0) return 1;
+/**
+ * How far a marker may be trusted before converting it to beats.
+ *
+ * An unwarped clip's `end_marker` is not bounded by the file — Live keeps
+ * whatever number was there when warping went off. audioClipTiming clamps it
+ * to the sample, so anything reading markers directly has to clamp the same
+ * way or a `length` that came from read-clip writes back a region past the end
+ * of the sample.
+ *
+ * @param clip - The clip whose markers are being read
+ * @returns The sample duration in seconds, or 0 when no clamp applies
+ */
+export function markerClampSeconds(clip: LiveAPI): number {
+  return markersAreSeconds(clip) ? audioClipSampleSeconds(clip) : 0;
+}
 
-  return currentTempo() / 60;
+/**
+ * Whether a clip's marker properties hold seconds rather than beats.
+ * @param clip - The clip to check
+ * @returns True for an unwarped audio clip
+ */
+function markersAreSeconds(clip: LiveAPI): boolean {
+  return (
+    (clip.getProperty("is_audio_clip") as number) > 0 &&
+    !((clip.getProperty("warping") as number) > 0)
+  );
 }
 
 /**

@@ -84,6 +84,28 @@ describe("updateClip - unwarped audio clip region", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("end_marker", 2);
   });
 
+  it("clamps a stale end_marker to the sample, like read-clip does", async () => {
+    setTempo(120);
+    setupAudioClipMock(mocks.clip123, {
+      warping: 0,
+      looping: 0,
+      start_marker: 0,
+      // Live leaves end_marker alone on unwarp, so it can point past the file:
+      // 4 was 4 beats while warped and now reads as 4 seconds on a 2 s sample.
+      end_marker: 4,
+      sample_rate: 44100,
+      sample_length: 88200, // 2 s
+    });
+
+    // read-clip reports this clip as 1 bar (2 s clamped, ×2 beats/s). Handing
+    // that length straight back has to reproduce the same region, not derive
+    // from the unclamped 4 s and land past the end of the sample.
+    await updateClip({ ids: "123", length: "1bar" });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("end_marker", 2);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 0);
+  });
+
   it("still writes beats when the audio clip is warped", async () => {
     setTempo(120);
     setupAudioClipMock(mocks.clip123, {

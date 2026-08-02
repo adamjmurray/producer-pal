@@ -34,6 +34,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
         isLooping: true,
         beatsPerMarkerUnit: 1,
+        markerClampSeconds: 0,
       });
 
       expect(outlet).toHaveBeenCalledWith(
@@ -62,6 +63,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
         isLooping: true,
         beatsPerMarkerUnit: 1,
+        markerClampSeconds: 0,
       });
 
       expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
@@ -80,6 +82,7 @@ describe("update-clip-timing-helpers", () => {
           clip: mockClip,
           isLooping: true,
           beatsPerMarkerUnit: 1,
+          markerClampSeconds: 0,
         }),
       ).toThrow(/beats are 1-indexed/);
     });
@@ -95,6 +98,7 @@ describe("update-clip-timing-helpers", () => {
           clip: mockClip,
           isLooping: true,
           beatsPerMarkerUnit: 1,
+          markerClampSeconds: 0,
         }),
       ).toThrow(/bars are 1-indexed/);
     });
@@ -113,6 +117,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
         isLooping: true,
         beatsPerMarkerUnit: 1,
+        markerClampSeconds: 0,
       });
 
       // No warning for start param - silent skip is intentional
@@ -134,6 +139,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
         isLooping: true,
         beatsPerMarkerUnit: 1,
+        markerClampSeconds: 0,
       });
 
       expect(result.firstStartBeats).toBe(4);
@@ -157,6 +163,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
         isLooping: false,
         beatsPerMarkerUnit: 1,
+        markerClampSeconds: 0,
       });
 
       expect(result.startBeats).toBe(4);
@@ -182,6 +189,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
         isLooping: false,
         beatsPerMarkerUnit: 1,
+        markerClampSeconds: 0,
       });
 
       expect(result.startBeats).toBe(4);
@@ -206,6 +214,7 @@ describe("update-clip-timing-helpers", () => {
         clip: mockClip,
         isLooping: false,
         beatsPerMarkerUnit: 1,
+        markerClampSeconds: 0,
       });
 
       expect(result.startBeats).toBe(0);
