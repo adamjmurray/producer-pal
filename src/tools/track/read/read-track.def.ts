@@ -55,10 +55,10 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         .default([]),
       {
         default:
-          'session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, available-routings, mixer = track data. color = track + clip color. "*" = all',
+          'session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, routings, available-routings, mixer = track data. drum-map = the kit\'s actual pad pitches and names; read it before writing drums. color = track + clip color. "*" = all',
         smallModel: {
           description:
-            "session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, mixer = track data. color = track + clip color",
+            "session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, routings, mixer = track data. drum-map = the kit's actual pad pitches and names; read it before writing drums. color = track + clip color",
           excludeEnumValues: ["available-routings", "*"],
         },
       },
