@@ -43,6 +43,7 @@ vi.mock(
 );
 
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { fetchSubagentBriefing } from "#webui/chat/sdk/subagent/subagent-briefing";
 import {
   abortError,
   blockedAfterStream,
@@ -98,13 +99,16 @@ describe("ChatSdkClient Stop mid-worker", () => {
       ),
     );
 
-    controller.abort();
+    // The Stop lands mid-stream, not before the spawn: a signal already
+    // aborted when the tool runs stops the worker before it starts (nothing to
+    // stash), which is a different path from the one under test here.
     await expect(
       execute(
         { task: "rename tracks" },
         { toolCallId: "tc-stop", messages: [], abortSignal: controller.signal },
       ),
     ).rejects.toThrow("aborted");
+    controller.abort();
 
     // The orchestrator turn that issued the spawn is aborted too, so its stream
     // dies after the tool-call part with no matching result.
@@ -124,6 +128,58 @@ describe("ChatSdkClient Stop mid-worker", () => {
     expect(entry?.subagentTranscript?.at(-1)?.content).toBe(
       "Renamed the Bass track.",
     );
+  });
+
+  it("waits for a worker whose briefing is still in flight", async () => {
+    // The briefing is a real round trip, and a spawn is only tracked once the
+    // runner has the run. Resolving the config before handing it over left the
+    // run invisible to teardown for that whole window: the turn ended, and the
+    // worker then edited the Live Set against a signal nobody aborted, with its
+    // transcript stranded.
+    const { client, execute } = await orchestratorWithSpawnTool();
+    const controller = new AbortController();
+    let releaseBriefing = (): void => {};
+
+    vi.mocked(fetchSubagentBriefing).mockReturnValueOnce(
+      new Promise<string | null>((resolve) => {
+        releaseBriefing = () => resolve(null);
+      }),
+    );
+
+    // The orchestrator's own stream, queued first because the worker can't
+    // reach streamText until its briefing lands.
+    streamTextMock.mockReturnValueOnce(
+      abortedAfterSpawnCall("tc-brief", "write hats"),
+    );
+
+    const workerRun = execute(
+      { task: "write hats" },
+      { toolCallId: "tc-brief", messages: [], abortSignal: controller.signal },
+    ).catch(() => "rejected");
+
+    const turn = (async () => {
+      for await (const _ of client.sendMessage("write hats")) {
+        /* consume */
+      }
+    })().catch(() => "aborted");
+
+    // Teardown has begun (the synthetic "canceled" entry is written first),
+    // with the worker still waiting on its briefing.
+    await until(() => findSpawnEntry(client, "tc-brief") != null);
+
+    streamTextMock.mockReturnValueOnce(
+      failingAfterStream(
+        [{ type: "text-delta", text: "Wrote the hats." }],
+        abortError(),
+      ),
+    );
+    releaseBriefing();
+
+    expect(await turn).toBe("aborted");
+    expect(await workerRun).toBe("rejected");
+    expect(
+      findSpawnEntry(client, "tc-brief")?.subagentTranscript?.at(-1)?.content,
+    ).toBe("Wrote the hats.");
   });
 
   it("waits for a worker still unwinding before it gives up on the transcript", async () => {

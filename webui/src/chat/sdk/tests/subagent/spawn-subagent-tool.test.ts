@@ -292,12 +292,11 @@ describe("createSpawnSubagentTool", () => {
     );
     // The worker config passed to runWorker has spawn disabled.
     const call = firstCall(runWorker);
+    const workerConfig = await call.resolveConfig();
 
-    expect(call.workerConfig.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(
-      false,
-    );
+    expect(workerConfig.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
     expect(call.task).toBe("write a bassline");
-    expect(call.workerConfig.chatHistory).toStrictEqual([]);
+    expect(workerConfig.chatHistory).toStrictEqual([]);
   });
 
   it("forwards the tool-call id and abort signal to the worker", async () => {
@@ -423,7 +422,9 @@ describe("createSpawnSubagentTool", () => {
 
       const call = firstCall(runWorker);
 
-      expect(call.workerConfig.chatHistory).toBe(session);
+      const resumedConfig = await call.resolveConfig();
+
+      expect(resumedConfig.chatHistory).toBe(session);
       expect(call.task).toBe("make it swing");
       // The worker keeps its identity, and the fresh-spawn allocator is
       // untouched so the next new worker still gets 4.
@@ -482,7 +483,9 @@ describe("createSpawnSubagentTool", () => {
       await tool.execute!({ task: "fresh", resumeFrom: "" }, options());
 
       for (const call of runWorker.mock.calls) {
-        expect(call[0].workerConfig.chatHistory).toStrictEqual([]);
+        const workerConfig = await call[0].resolveConfig();
+
+        expect(workerConfig.chatHistory).toStrictEqual([]);
       }
     });
 

@@ -198,14 +198,22 @@ export class ChatSdkClient {
    * persisted on the earlier run's tool-result, and re-storing it per resume
    * would duplicate the worker's whole history (its connect result included)
    * every time.
-   * @param options - Worker config, instruction, tool-call id, index, and signal
+   * @param options - Config thunk, instruction, tool-call id, index, and signal
    * @returns What this run added, and whether it ran out of tool steps
    */
   private async runSubagent(
     options: RunWorkerOptions,
   ): Promise<WorkerRunResult> {
-    const { workerConfig, task, toolCallId, subagentIndex, abortSignal } =
+    const { resolveConfig, task, toolCallId, subagentIndex, abortSignal } =
       options;
+    // Resolved HERE, not by the caller: this promise is already registered with
+    // the turn's teardown, so a stream that dies while the briefing is in flight
+    // still waits for the worker instead of leaving it running.
+    const workerConfig = await resolveConfig();
+
+    // A Stop during the briefing fetch shouldn't then open an MCP connection.
+    abortSignal?.throwIfAborted();
+
     const worker = new ChatSdkClient("", workerConfig);
     // Where this run's own messages begin. Only what it ADDS is stashed and
     // reported — a resumed worker's seeded prefix is already persisted on the

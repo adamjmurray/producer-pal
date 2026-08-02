@@ -67,8 +67,15 @@ const RESUME_DESCRIPTION =
 
 /** What the runner needs to start (or continue) one worker session. */
 export interface RunWorkerOptions {
-  /** Cloned orchestrator config, seeded with the session to continue if any. */
-  workerConfig: ChatClientConfig;
+  /**
+   * Produce the config this worker runs under (a clone of the orchestrator's,
+   * seeded with the session to continue if any, briefed if a briefing can be
+   * had). A thunk, not a value: fetching the briefing is a real round trip, and
+   * awaiting it before handing the run to the runner would leave the run
+   * untracked for its whole duration — a turn that ended in that window would
+   * tear down while a worker was still about to edit the Live Set.
+   */
+  resolveConfig: () => Promise<ChatClientConfig>;
   /** The instruction to send as this run's user turn. */
   task: string;
   /** Spawn tool-call id; keys the card's live status and the transcript stash. */
@@ -121,7 +128,10 @@ export interface SpawnSubagentDeps {
    * pre-briefing behavior and the required fallback when the server or Live
    * can't be reached.
    */
-  getBriefing?: (config: ChatClientConfig) => Promise<string | null>;
+  getBriefing?: (
+    config: ChatClientConfig,
+    abortSignal?: AbortSignal,
+  ) => Promise<string | null>;
 }
 
 /** Mutable spawn bookkeeping shared by the tool and its owning client. */
@@ -207,7 +217,7 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
 
       try {
         const run = await deps.runWorker({
-          workerConfig: await resolveWorkerConfig(deps, session),
+          resolveConfig: () => resolveWorkerConfig(deps, session, abortSignal),
           task,
           toolCallId,
           subagentIndex,
@@ -239,18 +249,20 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  *
  * @param deps - The tool's injected dependencies
  * @param session - Recorded session to continue; omit to start fresh
+ * @param abortSignal - The turn's signal, so Stop cancels the briefing fetch
  * @returns The worker config to run
  */
 async function resolveWorkerConfig(
   deps: SpawnSubagentDeps,
   session?: ChatMessage[],
+  abortSignal?: AbortSignal,
 ): Promise<ChatClientConfig> {
   const inherited = buildWorkerConfig(deps.config, session);
 
   if (!deps.getBriefing) return inherited;
 
   const narrowed = withheldToolsApplied(inherited);
-  const briefing = await deps.getBriefing(narrowed);
+  const briefing = await deps.getBriefing(narrowed, abortSignal);
 
   return briefing == null ? inherited : withBriefing(narrowed, briefing);
 }

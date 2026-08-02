@@ -46,13 +46,16 @@ export const WORKER_WITHHELD_TOOLS = ["ppal-connect", "ppal-context"] as const;
  * doesn't get.
  *
  * @param config - The resolved worker config
+ * @param abortSignal - The turn's signal, so Stop cancels the fetch too
  * @returns The briefing text, or null when it could not be fetched
  */
 export async function fetchSubagentBriefing(
   config: ChatClientConfig,
+  abortSignal?: AbortSignal,
 ): Promise<string | null> {
   try {
     const response = await fetch(getSubagentBriefingUrl(config.mcpUrl), {
+      signal: abortSignal,
       headers: {
         ...perRequestHeaders(
           config.smallModelMode,

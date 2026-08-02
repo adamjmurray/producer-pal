@@ -170,10 +170,10 @@ describe("spawn_subagent briefing wiring", () => {
   async function spawn(config?: ChatClientConfig): Promise<void> {
     const tool = createSpawnSubagentTool({
       config: config ?? createConfig({ systemInstruction: "Base prompt." }),
-      runWorker: (options) => {
-        workerConfig = options.workerConfig;
+      runWorker: async (options) => {
+        workerConfig = await options.resolveConfig();
 
-        return Promise.resolve({
+        return await Promise.resolve({
           messages: [{ role: "assistant", content: "done" }] as ChatMessage[],
           toolLimitReached: false,
         });
