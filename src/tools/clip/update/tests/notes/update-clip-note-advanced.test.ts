@@ -322,7 +322,8 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update both warp mode and warping together", async () => {
-    setupAudioClipMock(mocks.clip123);
+    // Warped to begin with — unwarping an already-unwarped clip is a no-op
+    setupAudioClipMock(mocks.clip123, { warping: 1 });
 
     const result = await updateClip({
       ids: "123",

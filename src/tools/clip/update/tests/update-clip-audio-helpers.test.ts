@@ -140,15 +140,19 @@ describe("setAudioParameters", () => {
   });
 
   it("should set warping to 0 when false", () => {
+    mockClip.getProperty = vi.fn((property: string) =>
+      property === "warping" ? 1 : undefined,
+    );
+
     setAudioParameters(mockClip, { warping: false });
 
     expect(mockClip.set).toHaveBeenCalledWith("warping", 0);
   });
 
   it("restates the end marker in seconds when unwarping, like create-clip", () => {
-    // Live rereads the markers as seconds without converting them, so leaving
-    // the warped beat value behind gives `warping: false` a different region
-    // here than it produces in create-clip.
+    // Live rereads end_marker as seconds without converting it, so leaving the
+    // warped beat value behind gives `warping: false` a different region here
+    // than it produces in create-clip.
     mockClip.getProperty = vi.fn((property: string) =>
       property === "sample_length" ? 115200 : 48000,
     );
@@ -157,6 +161,18 @@ describe("setAudioParameters", () => {
 
     expect(mockClip.set).toHaveBeenCalledWith("warping", 0);
     expect(mockClip.set).toHaveBeenCalledWith("end_marker", 2.4);
+  });
+
+  it("leaves an already-unwarped clip alone", () => {
+    // Its markers are seconds already. Restating would reset a shorter region
+    // to the whole sample, and Live's own conversion is a no-op here too.
+    mockClip.getProperty = vi.fn((property: string) =>
+      property === "warping" ? 0 : 48000,
+    );
+
+    setAudioParameters(mockClip, { warping: false });
+
+    expect(mockClip.set).not.toHaveBeenCalled();
   });
 
   it("should not set any properties when no parameters provided", () => {

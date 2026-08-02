@@ -184,6 +184,38 @@ ChainPath.device(i)                   → DevicePath (chainable, enables nesting
 ClipSlotPath.clip()                   → string
 ```
 
+### Audio Clip Warping
+
+Verified against Live 12. Marker properties are beats while a clip is warped and
+seconds while it is not, and toggling `warping` does **not** convert them
+uniformly:
+
+| Toggle     | `start_marker` | `loop_start` / `loop_end` | `end_marker`   | `looping`   |
+| ---------- | -------------- | ------------------------- | -------------- | ----------- |
+| warp → on  | converted      | converted                 | converted      | unchanged   |
+| warp → off | converted      | converted                 | **left as-is** | forced to 0 |
+
+Two consequences:
+
+- `end_marker` is the one property Live leaves stale on unwarp.
+  `unwarpAudioClip` (`src/tools/clip/helpers/audio-clip-warping.ts`) exists only
+  to restate it. Nothing needs restating when warp goes on.
+- An unwarped audio clip can never be looping — setting `looping` forces
+  `warping` back on. So any `isLooping` branch is unreachable in an unwarped
+  code path.
+
+Conversion runs through the **warp grid**, not `beats * 60 / tempo`. On a
+time-stretched clip the two differ; they only coincide when the grid happens to
+match the Set tempo. Live exposes the grid as `warp_markers` but has no
+`beat_to_sample_time`, so there is no cheap exact conversion.
+
+**Known limitation:** because of that, `unwarpAudioClip` resets `end_marker` to
+the whole sample rather than converting. `warping: false` combined with `start`
+or `length` in the same `ppal-update-clip` call therefore loses the requested
+region. Separately, `start`/`length` compute in beats and write straight to the
+marker properties, so they are already wrong on an audio clip that is unwarped
+to begin with.
+
 ## Coverage
 
 Function coverage is enforced at **100%** via `vitest.config.ts` thresholds.

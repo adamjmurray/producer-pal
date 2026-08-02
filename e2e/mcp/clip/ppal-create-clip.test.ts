@@ -464,6 +464,7 @@ describe("ppal-create-clip audio warping", () => {
   });
 
   it("lands a warped clip when warping is requested", async () => {
+    const song = await readSongTiming();
     const { created, clip } = await createAndRead({
       slot: `${audioWarpTrack}/7`,
       name: "warped",
@@ -473,10 +474,39 @@ describe("ppal-create-clip audio warping", () => {
     expect(created.warping).toBe(true);
     expect(clip.warping).toBe(true);
 
-    // A warped clip's markers are already beats, so the region is whatever the
-    // warp grid says — it just has to be a real span
-    expect(clip.length).toBeDefined();
+    // Live maps every marker from seconds into beats when warp goes on, so the
+    // region still spans the whole sample. Assert the exact length — a bare
+    // "not empty" check would pass on a region Live had stretched or truncated.
     expect(clip.start).toBe("1|1");
-    expect(clip.end).not.toBe("1|1");
+    expect(clip.length).toBe(expectedSampleLength(clip, song));
+  });
+
+  it("survives an unwarp then re-warp without inflating the region", async () => {
+    // The two directions are asymmetric: Live maps the markers on the way in
+    // but leaves end_marker stale on the way out, which is why unwarpAudioClip
+    // restates it. Skip that restatement and this second pass maps a beat value
+    // that is already in beats, stretching the clip by tempo/60.
+    const song = await readSongTiming();
+    const { created } = await createAndRead({
+      trackIndex: audioWarpTrack,
+      arrangementStart: "49|1",
+      name: "warp round trip",
+      warping: false,
+    });
+
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: created.id, warping: true },
+    });
+    await sleep(100);
+
+    const readResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: created.id, include: ["*"] },
+    });
+    const clip = parseToolResult<ReadClipResult>(readResult);
+
+    expect(clip.warping).toBe(true);
+    expect(clip.length).toBe(expectedSampleLength(clip, song));
   });
 });

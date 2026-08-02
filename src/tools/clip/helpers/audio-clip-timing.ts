@@ -43,7 +43,9 @@ export function audioClipTiming(clip: LiveAPI): AudioClipTiming {
   const loopStart = clip.getProperty("loop_start") as number;
   const loopEnd = clip.getProperty("loop_end") as number;
 
-  // A looping clip plays its loop brace; an unlooped one plays marker to marker
+  // A looping clip plays its loop brace; an unlooped one plays marker to marker.
+  // Only warped clips reach the loop branch — Live forces `looping` off when
+  // warp goes off, and forces warp back on if you set `looping`.
   const rawStart = isLooping ? loopStart : startMarker;
   const rawEnd = isLooping ? loopEnd : endMarker;
 

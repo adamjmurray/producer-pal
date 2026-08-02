@@ -571,6 +571,24 @@ describe("createClip - audio clip warping", () => {
     expect(clip.set).toHaveBeenCalledWith("end_marker", 2.4);
   });
 
+  it("leaves an already-unwarped clip's region alone", async () => {
+    // Restating only makes sense on the beats-to-seconds switch. On a clip Live
+    // imported unwarped, end_marker is already seconds, so writing the sample
+    // duration over it would blow a shorter region out to the whole file.
+    const { clip } = setupSessionAudioClipMocks({ clipLength: 4 });
+
+    clip.properties.warping = 0;
+    clip.properties.end_marker = 0.5;
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: false,
+    });
+
+    expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
+  });
+
   it("turns warping on when asked", async () => {
     const { clip } = setupSessionAudioClipMocks({ clipLength: 8 });
 
