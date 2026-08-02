@@ -105,6 +105,8 @@ export class GeminiPcmPlayer {
    * replaces the first. Used by the half-duplex mute gate: the server's
    * turnComplete arrives while the tail of the turn is still scheduled locally,
    * and unmuting there would open the mic under the assistant's own voice.
+   * A flush() drops the registration without running it — the audio was
+   * discarded, so the caller decides what happens instead.
    * @param callback - Runs when the queue drains (or right now, if it is empty)
    */
   onDrained(callback: () => void): void {
@@ -130,8 +132,13 @@ export class GeminiPcmPlayer {
 
     this.sources.clear();
     this.nextStartTime = 0;
-    // Nothing is playing anymore, so a pending drain callback is due now.
-    this.notifyIfDrained();
+    // Drop a pending drain callback instead of firing it. The audio it was
+    // waiting on was thrown away, not played, so the reason to defer is gone —
+    // and every flush() call site already decides for itself whether to lift the
+    // half-duplex mute. Firing it here lifted the mute behind the caller's back,
+    // mid-stream, and the next chunk re-muted: the exact indicator flicker the
+    // deferral exists to prevent.
+    this.drainedCallback = null;
   }
 
   /** Fire and clear a pending drain callback once the last source has ended. */

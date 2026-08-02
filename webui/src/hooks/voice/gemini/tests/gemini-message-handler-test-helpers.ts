@@ -21,7 +21,8 @@ import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-
 export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
   const hasQueued = vi.fn(() => false);
   // Mirror the real player's drain semantics: onDrained runs now when nothing
-  // is queued, otherwise it waits for drain() (which flush() also triggers).
+  // is queued, otherwise it waits for drain() — and flush() DROPS it unrun,
+  // since the audio it was waiting on was discarded rather than played.
   let pendingDrain: (() => void) | null = null;
 
   const drain = (): void => {
@@ -32,7 +33,9 @@ export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
   };
 
   const player = {
-    flush: vi.fn(drain),
+    flush: vi.fn(() => {
+      pendingDrain = null;
+    }),
     enqueueBase64: vi.fn(),
     hasQueued,
     onDrained: vi.fn((callback: () => void) => {

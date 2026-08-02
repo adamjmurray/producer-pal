@@ -125,6 +125,23 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     expect(deps.autoMutedRef.current).toBe(false);
   });
 
+  it("does not let an interrupt's flush fire turnComplete's deferred lift", async () => {
+    // turnComplete parks the lift on onDrained, then a mid-stream interrupt
+    // flushes. If flush() ran the pending callback, the mute would lift here —
+    // past the guard that just decided not to lift it — and the next chunk
+    // would re-mute: the indicator flicker the whole gate exists to prevent.
+    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+    await handleGeminiMessage(interrupted, deps);
+
+    expect(mic.setMuted).toHaveBeenCalledTimes(1);
+    expect(deps.autoMutedRef.current).toBe(true);
+  });
+
   it("lifts the auto-mute on interruption once the queue has drained", async () => {
     const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
 

@@ -225,7 +225,11 @@ describe("GeminiPcmPlayer", () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
-  it("onDrained fires on flush (barge-in stops the audio)", async () => {
+  it("flush drops a pending onDrained instead of firing it", async () => {
+    // The half-duplex mute gate defers its unmute to onDrained. A barge-in
+    // interrupt flushes, and firing the callback there lifted the mute behind
+    // the caller's back — mid-stream, so the next chunk re-muted and the Muted
+    // indicator flickered. The flush() call sites handle the unmute themselves.
     const player = new GeminiPcmPlayer();
 
     await player.resume();
@@ -237,7 +241,14 @@ describe("GeminiPcmPlayer", () => {
     expect(callback).not.toHaveBeenCalled();
 
     player.flush();
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).not.toHaveBeenCalled();
+
+    // And it stays dropped: a later drain does not resurrect it.
+    const ctx = FakeAudioContext.instances[0]!;
+
+    player.enqueueBase64(pcmBase64(10));
+    ctx.sources[1]!.onended!();
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("close flushes and closes the context (idempotent)", async () => {
