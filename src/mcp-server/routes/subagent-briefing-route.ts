@@ -23,6 +23,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import {
+  BRIEFING_REQUEST_HEADER,
   DISABLED_TOOLS_HEADER,
   SMALL_MODEL_MODE_HEADER,
   resolveEnabledTools,
@@ -63,13 +64,14 @@ export interface SubagentBriefingConfig {
  * under, with no second vocabulary to keep in sync. Absent headers fall back to
  * the device globals, the same contract POST /mcp has.
  *
- * Origin-gated like the content writes (see rejectForeignOriginWrite), not like
- * the other read endpoints. Disclosure isn't the reason — it reveals nothing a
- * ppal-connect call on the same profile wouldn't. The reason is the side effect:
- * this is the only read endpoint that dispatches a real Live API call, so
- * ungated, any page the user has open could drive their Live Set in a loop and
- * hold an Express socket per request until the tool timeout. Same-origin still
- * passes, so the chat reaches it over a LAN/tunnel as before.
+ * Gated like the content writes (see rejectForeignOriginWrite), not like the
+ * other read endpoints, and additionally requires {@link BRIEFING_REQUEST_HEADER}.
+ * Disclosure isn't the reason — it reveals nothing a ppal-connect call on the
+ * same profile wouldn't. The reason is the side effect: this is the only read
+ * endpoint that dispatches a real Live API call, so ungated, any page the user
+ * has open could drive their Live Set in a loop and hold an Express socket per
+ * request until the tool timeout. Same-origin still passes, so the chat reaches
+ * it over a LAN/tunnel as before.
  *
  * Responds 502 when Live can't be reached — the caller then falls back to
  * letting the worker connect for itself, so a briefing failure degrades to the
@@ -90,6 +92,17 @@ export function registerSubagentBriefingRoute(
   app.get(
     "/subagent-briefing",
     async (req: Request, res: Response): Promise<void> => {
+      // The load-bearing half of the CSRF guard: the origin gate below passes an
+      // Origin-less request, and a markup-driven GET (`<img>`, `<script>`) sends
+      // no Origin and cannot set a header. See BRIEFING_REQUEST_HEADER.
+      if (req.get(BRIEFING_REQUEST_HEADER) == null) {
+        res
+          .status(403)
+          .json({ error: "/subagent-briefing requires its client header" });
+
+        return;
+      }
+
       // Gated like a write, because it acts like one: this GET reaches Live.
       if (
         rejectForeignOriginWrite(

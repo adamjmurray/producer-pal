@@ -303,6 +303,11 @@ The endpoint reads the caller's profile off the **same three headers** above, so
 a briefing describes exactly the toolset and notation the worker's own tool
 calls will run under; one builder (`perRequestHeaders`) emits them for both.
 
+It also requires a fourth, `x-producer-pal-briefing`. It is the only read
+endpoint that dispatches a Live API call, and the origin gate alone can't cover
+it: Origin-less requests pass (non-browser clients need that), and a browser
+sends no Origin for `<img>` or `<script>` — which also can't set a header.
+
 Two things move the blob out of message history and into the system prompt:
 
 - **Cost.** A worker is a fresh conversation with no history to amortize a

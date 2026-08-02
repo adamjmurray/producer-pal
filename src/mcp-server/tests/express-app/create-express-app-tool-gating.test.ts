@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
+import {
+  BRIEFING_REQUEST_HEADER,
+  DISABLED_TOOLS_HEADER,
+} from "#src/shared/config.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 import {
   connectSkillsBlock,
@@ -148,7 +151,10 @@ describe("GET /subagent-briefing tool gating", () => {
     mockMaxSuccess();
 
     const response = await fetch(`${appState.baseUrl}/subagent-briefing`, {
-      headers: headers("ppal-library"),
+      headers: {
+        ...headers("ppal-library"),
+        [BRIEFING_REQUEST_HEADER]: "1",
+      },
     });
 
     expect(response.status).toBe(200);

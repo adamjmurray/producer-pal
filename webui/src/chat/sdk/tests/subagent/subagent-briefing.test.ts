@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  BRIEFING_REQUEST_HEADER,
   DISABLED_TOOLS_HEADER,
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config";
@@ -76,15 +77,18 @@ describe("fetchSubagentBriefing", () => {
       [NOTATION_HEADER]: "stark",
       [SMALL_MODEL_MODE_HEADER]: "true",
       [DISABLED_TOOLS_HEADER]: "ppal-library",
+      [BRIEFING_REQUEST_HEADER]: "1",
     });
   });
 
-  it("sends no header for a profile with no opinion, so the server globals win", async () => {
+  it("sends no profile header when the profile has no opinion, so the server globals win", async () => {
     mockFetchJson({ briefing: BRIEFING });
 
     await fetchSubagentBriefing(createConfig());
 
-    expect(sentHeaders()).toStrictEqual({});
+    // The client header is not a profile header — the route requires it as a
+    // CSRF guard, so it is always sent.
+    expect(sentHeaders()).toStrictEqual({ [BRIEFING_REQUEST_HEADER]: "1" });
   });
 
   it("returns null on a non-2xx (Live unreachable) so the caller falls back", async () => {
