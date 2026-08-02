@@ -11,7 +11,7 @@ import {
   formatBeatPosition,
   formatOffGridBeats,
 } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 // NOTE-VALUE PARSING IS INTENTIONALLY DUPLICATED. The note-value regexes in
 // this file (durationToAbletonBeats, barBeatToMusicalBeats, parseBeatValue)

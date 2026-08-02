@@ -13,7 +13,7 @@ import {
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/take-lane-test-helpers.ts";
 
 // Capture take lane warnings
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
   log: vi.fn(),
   warn: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { duplicateClipsToTakeLane } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-helpers.ts";
 import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-import * as consoleMock from "#src/shared/v8-max-console.ts";
+import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 const SOURCE_NOTE = {
   pitch: 60,

@@ -630,7 +630,7 @@ describe("useVoiceSession transport event handling", () => {
     expect(result.current.error).toBe("42");
   });
 
-  it("session.error stringifies an object with a circular reference safely", async () => {
+  it("session.error names the failure for an object with a circular reference", async () => {
     const { result, session } = await connectAndGetSession();
     const circular: Record<string, unknown> = { kind: "loop" };
 
@@ -639,7 +639,7 @@ describe("useVoiceSession transport event handling", () => {
     await act(() => {
       session.emit("error", { type: "error", error: circular });
     });
-    expect(result.current.error).toMatch(/loop|object/i);
+    expect(result.current.error).toBe("[unserializable error]");
   });
 });
 

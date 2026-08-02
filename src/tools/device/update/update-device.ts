@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
   resolveDrumPadFromPath,
@@ -271,6 +271,14 @@ function resolvePathToTarget(path: string): ResolvedTarget | null {
         target: drumPadResult.target,
         isDrumPadPath: !hasExplicitChainIndex,
       };
+    }
+
+    // Unreachable: every TargetType is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    default: {
+      const exhaustive: never = resolved.targetType;
+
+      return exhaustive;
     }
   }
 }

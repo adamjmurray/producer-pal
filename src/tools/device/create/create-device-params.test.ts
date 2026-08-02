@@ -12,7 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "./create-device.ts";
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
@@ -59,7 +59,7 @@ describe("createDevice params", () => {
     });
 
     it("prefixes param warnings with createDevice, not updateDevice", async () => {
-      const mockConsole = await import("#src/shared/v8-max-console.ts");
+      const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
       vi.mocked(mockConsole.warn).mockClear();
 

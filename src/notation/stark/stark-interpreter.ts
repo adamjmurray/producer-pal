@@ -52,7 +52,7 @@ import {
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { assertDefined } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 export interface StarkInterpretOptions {
   /** Time signature numerator (beats per bar). Accepted for parity; unused (timing is explicit). */

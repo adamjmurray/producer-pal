@@ -12,7 +12,7 @@ import {
   type StalenessRisk,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 /** Hard cap on queries per searchBatch call. Internal — not a user param.
  * Extra queries beyond this are dropped (warn-and-truncate) so a runaway

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -72,9 +73,12 @@ export function partialMatch(
  * @param value - The value to check
  * @returns True if value has asymmetricMatch method
  */
-function isAsymmetricMatcher(
-  value: unknown,
-): value is { asymmetricMatch: (other: unknown) => boolean } {
+function isAsymmetricMatcher(value: unknown): value is {
+  asymmetricMatch: (other: unknown) => boolean;
+  // Vitest's matchers describe themselves ("Any<String>", "StringContaining
+  // …"), which is what stringifyValue prints.
+  toString: () => string;
+} {
   return (
     typeof value === "object" &&
     value !== null &&

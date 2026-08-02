@@ -11,7 +11,7 @@ import { interpretNotation } from "#src/notation/notation.ts";
 import { dedupeAndSortNotes, sortNotes } from "#src/notation/note-sort.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";

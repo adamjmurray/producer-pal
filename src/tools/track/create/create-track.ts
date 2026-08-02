@@ -4,7 +4,8 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import { atomToString } from "#src/shared/max/max-atoms.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
   getColorForIndex,
@@ -59,7 +60,7 @@ function createSingleTrack(
   // against Live 12.4.3. Every other tool derives its id from `api.id`, which
   // is always a string, so stringify here to keep `id` one type across the
   // whole tool surface (and to make this function's return type honest).
-  return String(
+  return atomToString(
     assertDefined((result as unknown[])[1], "track id from result"),
   );
 }

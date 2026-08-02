@@ -125,7 +125,7 @@ Producer Pal does this in two halves — the V8 code and the Max patch cooperate
   special delimiter string.
 - **Outlet 1** carries **warnings**. `console.warn()` is wired to emit each
   warning string out of outlet 1 (see
-  [`v8-max-console.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/v8-max-console.ts)).
+  [`v8-max-console.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/max/v8-max-console.ts)).
 
 **In the Max patch**, a small subpatcher named **`route-results-and-warnings`**
 recombines those two separate streams into a single message:

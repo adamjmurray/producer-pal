@@ -189,7 +189,7 @@ export function useVoicePersistence(
 
   // Auto-save: debounce so we don't write IDB on every transcript token.
   useEffect(() => {
-    if (liveHistory.length === 0) return;
+    if (liveHistory.length === 0) return undefined;
 
     const id =
       activeIdRef.current ?? (pendingNewIdRef.current ??= crypto.randomUUID());

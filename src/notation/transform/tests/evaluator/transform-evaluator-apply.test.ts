@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
   createTestNote,

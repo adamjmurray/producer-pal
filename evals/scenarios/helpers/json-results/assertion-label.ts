@@ -29,6 +29,14 @@ export function assertionLabel(assertion: EvalAssertion): string {
       return assertion.description;
     case "llm_judge":
       return "llm_judge";
+
+    // Unreachable: every assertion type is handled above, and the `never` keeps
+    // it that way if a new one is added.
+    default: {
+      const exhaustive: never = assertion;
+
+      return exhaustive;
+    }
   }
 }
 

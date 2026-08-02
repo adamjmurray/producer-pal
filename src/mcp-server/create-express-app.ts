@@ -15,6 +15,7 @@ import {
   resolveSmallModelMode,
 } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
   NOTATION_HEADER,
@@ -99,8 +100,7 @@ Max.addHandler("notation", (value: unknown) => {
 });
 
 Max.addHandler("projectContext", (content: unknown) => {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = content === "bang" ? "" : String(content ?? "");
+  const value = textEditParamToString(content);
 
   config.projectContext = value;
 });
@@ -121,8 +121,7 @@ Max.addHandler("compactOutput", (enabled: unknown) => {
 });
 
 Max.addHandler("sampleFolder", (path: unknown) => {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = path === "bang" ? "" : String(path ?? "");
+  const value = textEditParamToString(path);
 
   config.sampleFolder = value;
 });

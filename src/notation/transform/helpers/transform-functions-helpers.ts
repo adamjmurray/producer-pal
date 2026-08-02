@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ExpressionNode } from "../parser/transform-parser.ts";
 import { type EvaluateExpressionFn } from "../transform-functions.ts";
 import * as waveforms from "../transform-waveforms.ts";

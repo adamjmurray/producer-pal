@@ -332,7 +332,7 @@ export function useBranchNav(
     if (activeConversationId == null) {
       setPoints([]);
 
-      return;
+      return undefined;
     }
 
     let cancelled = false;

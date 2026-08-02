@@ -15,7 +15,7 @@ import {
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "./create-device.ts";
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
@@ -268,7 +268,7 @@ describe("createDevice", () => {
       });
 
       it("should warn and append when position is past the end of the chain", async () => {
-        const mockConsole = await import("#src/shared/v8-max-console.ts");
+        const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
         track0 = registerMockObject("track-0", {
           path: livePath.track(0),
@@ -517,7 +517,7 @@ describe("createDevice", () => {
       mockNonExistentObjects();
       registerTrack0WithDevice123();
 
-      const mockConsole = await import("#src/shared/v8-max-console.ts");
+      const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
       const result = createDevice({
         path: "t0,t99",

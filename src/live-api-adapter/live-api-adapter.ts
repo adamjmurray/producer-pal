@@ -16,12 +16,13 @@ import {
   planChunks,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
+import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -238,8 +239,7 @@ let expectLoadEcho = true;
  * @param content - Project context content
  */
 export function projectContext(content: unknown): void {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = content === "bang" ? "" : String(content ?? "");
+  const value = textEditParamToString(content);
   const isLoadEcho = expectLoadEcho;
 
   expectLoadEcho = false;
@@ -278,8 +278,7 @@ function applyRestoredProjectContext(restored: string | null): void {
  * @param path - Sample folder path
  */
 export function sampleFolder(path: unknown): void {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = path === "bang" ? "" : String(path ?? "");
+  const value = textEditParamToString(path);
 
   sessionState.sampleFolder = value;
 }

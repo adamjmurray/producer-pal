@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { waitUntil } from "#src/shared/v8-sleep.ts";
+import { waitUntil } from "#src/shared/max/v8-sleep.ts";
 
 const g = globalThis as Record<string, unknown>;
 

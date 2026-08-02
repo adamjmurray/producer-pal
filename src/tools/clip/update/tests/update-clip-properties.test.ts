@@ -159,7 +159,7 @@ describe("updateClip - Properties and ID handling", () => {
     }
 
     it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       setupColorMock(16725558); // #FF3636 (quantized from #FF0000)
@@ -177,7 +177,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     it("should not emit warning when color matches exactly", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       setupColorMock(16711680); // #FF0000 (exact match)
@@ -193,7 +193,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     it("should not verify color if color parameter is not provided", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       setupMidiClipMock(mocks.clip123);

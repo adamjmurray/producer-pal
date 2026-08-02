@@ -14,7 +14,7 @@ import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts"
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
   getClipNoteCount,

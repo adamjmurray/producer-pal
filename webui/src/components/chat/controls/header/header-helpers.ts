@@ -17,22 +17,19 @@ export function getProviderName(
   provider: Provider,
   style: "brand" | "product" = "brand",
 ): string {
-  switch (provider) {
-    case "anthropic":
-      return "Anthropic";
-    case "gemini":
-      return style === "product" ? "Gemini" : "Google";
-    case "openai":
-      return "OpenAI";
-    case "mistral":
-      return "Mistral";
-    case "openrouter":
-      return "OpenRouter";
-    case "lmstudio":
-      return "LM Studio";
-    case "ollama":
-      return "Ollama";
-    case "custom":
-      return "Custom";
-  }
+  if (style === "product" && provider === "gemini") return "Gemini";
+
+  return BRAND_NAMES[provider];
 }
+
+// A Record keyed by Provider, so a new provider is a compile error here.
+const BRAND_NAMES: Record<Provider, string> = {
+  anthropic: "Anthropic",
+  gemini: "Google",
+  openai: "OpenAI",
+  mistral: "Mistral",
+  openrouter: "OpenRouter",
+  lmstudio: "LM Studio",
+  ollama: "Ollama",
+  custom: "Custom",
+};

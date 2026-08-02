@@ -11,7 +11,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 describe("updateTrack - mixer properties", () => {
   let track123: RegisteredMockObject;

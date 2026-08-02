@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   applyNotesToClip,
   getClipLocationInfo,

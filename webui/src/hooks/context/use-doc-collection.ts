@@ -420,11 +420,11 @@ export function useCollectionEntryAutosave(
       seededRef.current = true;
       lastSavedRef.current = canSave ? draftKey : null;
 
-      return;
+      return undefined;
     }
 
     if (!autosaveOnIdle || !canSave || draftKey === lastSavedRef.current) {
-      return;
+      return undefined;
     }
 
     timerRef.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
@@ -457,7 +457,7 @@ export function useCollectionEntryAutosave(
   // flushOnLeave (existing entries). A new draft is created explicitly (Create),
   // so its editor prompts a discard confirm on close instead of silently saving.
   useEffect(() => {
-    if (!flushOnLeave) return;
+    if (!flushOnLeave) return undefined;
 
     const onBeforeUnload = (): void => flush();
 

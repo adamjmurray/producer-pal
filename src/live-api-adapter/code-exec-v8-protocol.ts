@@ -9,7 +9,7 @@
  */
 
 import { oversizedSingleMessageError } from "#src/shared/mcp-response-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   validateCodeNotes,
   buildCodeExecutionContext,

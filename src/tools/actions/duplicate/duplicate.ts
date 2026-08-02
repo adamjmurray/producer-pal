@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveTakeLaneForDuplicate } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import {
@@ -461,4 +461,6 @@ function duplicateTrackOrSceneToSession(
       withoutClips,
     );
   }
+
+  return undefined;
 }

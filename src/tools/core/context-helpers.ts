@@ -5,7 +5,7 @@
 
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 export interface ContentResult {
   content: string;

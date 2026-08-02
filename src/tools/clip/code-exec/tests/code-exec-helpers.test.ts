@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as v8Console from "#src/shared/v8-max-console.ts";
+import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { type CodeNote } from "../code-exec-types.ts";
 import {
   buildCodeExecutionContext,

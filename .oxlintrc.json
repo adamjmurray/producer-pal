@@ -797,7 +797,7 @@
           "error",
           {
             "name": "console",
-            "message": "Import a Max-aware console wrapper (e.g. `import * as console from \"#src/shared/v8-max-console.ts\"`) \u2014 the built-in global console is not relayed to the LLM."
+            "message": "Import a Max-aware console wrapper (e.g. `import * as console from \"#src/shared/max/v8-max-console.ts\"`) \u2014 the built-in global console is not relayed to the LLM."
           }
         ],
         "no-restricted-imports": [
@@ -819,7 +819,7 @@
     },
     {
       "files": [
-        "src/shared/v8-max-console.ts",
+        "src/shared/max/v8-max-console.ts",
         "src/mcp-server/node-for-max-logger.ts",
         "src/portal/**",
         "src/types/**",
@@ -1133,17 +1133,7 @@
         // where an unchecked cast is actually dangerous (tool input, HTTP
         // bodies) are already guarded by zod; the remaining ~580 files would
         // be rewritten into `satisfies` gymnastics for no safety gained.
-        "typescript/no-unsafe-type-assertion": "off",
-        // DEFERRED. 48 in 25 files. A real bug catcher — each hit needs the
-        // value inspected to tell an intended `String(x)` from a latent
-        // `[object Object]`. Most are eval scenario assertions interpolating
-        // loosely typed tool-call args.
-        "typescript/no-base-to-string": "off",
-        // DEFERRED. 38 in 32 files. Functions that return a value in one
-        // branch and fall off the end in another; each is a judgement call
-        // about the contract. The 16 webui hits are useEffect callbacks that
-        // return a cleanup only on some paths — decide those as a group.
-        "typescript/consistent-return": "off"
+        "typescript/no-unsafe-type-assertion": "off"
       }
     },
     {
@@ -1167,6 +1157,13 @@
         // relies on the mutation. Safe in the V8 runtime: live-api-adapter.ts
         // imports the es2023-array polyfill.
         "unicorn/no-array-sort": "off",
+        // PERMANENT. 0 — off for a conflict, not for debt. It bans
+        // `return undefined`, which is exactly what typescript/consistent-return
+        // requires of a function that returns a value on some paths (23 sites,
+        // mostly useEffect callbacks with a cleanup on only one branch).
+        // eslint-plugin-unicorn documents the incompatibility; consistent-return
+        // is the one worth keeping, so this one goes.
+        "unicorn/no-useless-undefined": "off",
         // PERMANENT. 15, all of them IndexedDB and Web Audio handles where
         // `onsuccess` / `onerror` / `onended` is the idiomatic single-handler
         // form. The rule's premise (you might want more than one listener)

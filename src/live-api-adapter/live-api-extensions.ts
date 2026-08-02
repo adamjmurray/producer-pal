@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
 
 if (typeof LiveAPI !== "undefined") {

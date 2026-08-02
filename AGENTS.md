@@ -165,8 +165,8 @@ already has them.
 - `npm run build:debug` is the dev build. It force-enables the Direct Live API
   tool, code execution, and work-in-progress warp markers, none of which exist
   in a release build.
-- **Debugging**: import `console` from `src/shared/v8-max-console.ts` and use
-  `console.warn()` — it shows up in the CLI and in the live MCP response.
+- **Debugging**: import `console` from `src/shared/max/v8-max-console.ts` and
+  use `console.warn()` — it shows up in the CLI and in the live MCP response.
   `console.log()` and `console.error()` don't.
 - **Coverage gaps**: `npm run check` prints totals only; the per-file breakdown
   is in `coverage/coverage-summary.txt`. Function coverage must be 100%; mark a

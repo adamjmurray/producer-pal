@@ -5,7 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -161,7 +161,7 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
     const warpMarkersJson = clip.getProperty("warp_markers") as string;
 
     if (!warpMarkersJson || warpMarkersJson === "") {
-      return;
+      return undefined;
     }
 
     const warpMarkersData = JSON.parse(warpMarkersJson);
@@ -177,11 +177,15 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
     ) {
       return warpMarkersData.warp_markers.map(mapMarker);
     }
+
+    return undefined;
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
     console.warn(
       `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
     );
+
+    return undefined;
   }
 }
 

@@ -102,13 +102,15 @@ export function describeStreamError(error: unknown): string {
 
   const err = error as {
     message?: unknown;
-    statusCode?: unknown;
+    statusCode?: number | string;
     url?: unknown;
   };
+  // An error object with no message string has nothing left to show — its
+  // String() is "[object Object]", so say so plainly instead.
   const base =
     typeof err.message === "string" && err.message.length > 0
       ? err.message
-      : String(error);
+      : "unknown error";
   const details: string[] = [];
 
   if (err.statusCode != null) details.push(`HTTP ${String(err.statusCode)}`);

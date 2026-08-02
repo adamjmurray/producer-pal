@@ -76,8 +76,8 @@ export function useSettingsDismiss({
   // both overlays don't dismiss simultaneously when the user reloads with
   // contextOpen=true and !settingsConfigured.
   useEffect(() => {
-    if (!showSettings) return;
-    if (blockEscape) return;
+    if (!showSettings) return undefined;
+    if (blockEscape) return undefined;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

@@ -12,7 +12,7 @@
 // ask and applies a restore back into the device param. See dev/Memory-System.md.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { requestNode } from "./node-request-v8-protocol.ts";
 
 /** Subset of the Node route's result this side acts on. */

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import * as v8Console from "#src/shared/v8-max-console.ts";
+import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {

@@ -7,7 +7,7 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 

@@ -5,7 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as v8Console from "#src/shared/v8-max-console.ts";
+import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { describe, expect, it, vi } from "vitest";
 import { type CodeNote } from "../code-exec-types.ts";
 import {

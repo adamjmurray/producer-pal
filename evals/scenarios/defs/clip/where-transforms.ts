@@ -16,6 +16,7 @@
  * runs (`-r N`, which reuse the open Live Set) start from the same state.
  */
 
+import { argText } from "../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
@@ -59,7 +60,7 @@ async function setupWhereClip(mcpClient: Client): Promise<void> {
  * @returns The normalized string ("" when absent)
  */
 function toTransformString(raw: unknown): string {
-  return Array.isArray(raw) ? raw.join("\n") : String(raw ?? "");
+  return Array.isArray(raw) ? raw.join("\n") : argText(raw);
 }
 
 /**

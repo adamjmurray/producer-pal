@@ -68,7 +68,7 @@ describe("library tool — listPlugins action", () => {
   });
 
   it("drops deviceKind=midifx and warns instead of silently dropping it", async () => {
-    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
     const warnSpy = vi
       .spyOn(consoleModule, "warn")
       .mockImplementation(() => {});
@@ -91,7 +91,7 @@ describe("library tool — listPlugins action", () => {
   it("maps deviceKind=audiofx to the category filter without warning", async () => {
     // Pins the second PLUGIN_CATEGORIES member: audiofx is a valid plugin
     // category, so it passes through as category and must not warn.
-    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
     const warnSpy = vi
       .spyOn(consoleModule, "warn")
       .mockImplementation(() => {});
@@ -112,7 +112,7 @@ describe("library tool — listPlugins action", () => {
   it("does not warn for a valid deviceKind or when deviceKind is absent", async () => {
     // Negative control for the warn guard: only an invalid plugin category
     // (e.g. midifx) should warn — a valid one and an absent one must stay silent.
-    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
     const warnSpy = vi
       .spyOn(consoleModule, "warn")
       .mockImplementation(() => {});

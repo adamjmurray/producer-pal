@@ -21,6 +21,7 @@
  * it (no relayed `WARNING` on that call). The judge covers the rest.
  */
 
+import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
@@ -67,7 +68,7 @@ export const deviceDrumKit: EvalScenario = {
 
           const padPads = new Set(
             (c.args.params as Array<{ name?: unknown }>)
-              .map((p) => String(p.name ?? ""))
+              .map((p) => argText(p.name))
               .filter((name) => PAD_SAMPLE_PARAM.test(name)),
           );
 

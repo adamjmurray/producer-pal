@@ -416,7 +416,7 @@ describe("updateTrack", () => {
 
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       // Override get to return quantized color (different from input)
@@ -441,7 +441,7 @@ describe("updateTrack", () => {
     });
 
     it("should not emit warning when color matches exactly", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       // Override get to return exact color (same as input)
@@ -464,7 +464,7 @@ describe("updateTrack", () => {
     });
 
     it("should emit warning for each track when updating multiple tracks", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       const colorMock = (prop: string) => {
@@ -497,7 +497,7 @@ describe("updateTrack", () => {
     });
 
     it("should not verify color if color parameter is not provided", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleModule = await import("#src/shared/max/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       updateTrack({

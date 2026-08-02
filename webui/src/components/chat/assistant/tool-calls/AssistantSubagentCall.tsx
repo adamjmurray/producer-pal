@@ -178,7 +178,7 @@ function useSubagentRateLimit(
     if (toolCallId == null) {
       setStatus(null);
 
-      return;
+      return undefined;
     }
 
     setStatus(getSubagentRateLimit(toolCallId));

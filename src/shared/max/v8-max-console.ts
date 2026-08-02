@@ -29,6 +29,9 @@ const str = (value: unknown): string => {
     name?: string;
     stringify?: () => string;
     constructor?: { name: string };
+    // Declared so the fallback below can call it: whether it's Object's
+    // default (the "[object Object]" case) is what that line tests for.
+    toString: () => string;
   };
 
   switch (Object.getPrototypeOf(value ?? Object.prototype)) {

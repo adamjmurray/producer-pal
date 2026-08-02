@@ -6,7 +6,7 @@
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ExpressionNode,
   type NoteOp,
@@ -349,6 +349,14 @@ export function applyBinaryOp(
       // Modulo by zero yields 0 (same as division)
       // Use wraparound behavior: ((val % n) + n) % n
       return right === 0 ? 0 : ((left % right) + right) % right;
+
+    // Unreachable: every operator is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    default: {
+      const exhaustive: never = type;
+
+      return exhaustive;
+    }
   }
 }
 

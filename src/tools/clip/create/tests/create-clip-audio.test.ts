@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as v8Console from "#src/shared/v8-max-console.ts";
+import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,

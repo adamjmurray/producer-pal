@@ -5,6 +5,7 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
@@ -231,7 +232,7 @@ function readSelectedDeviceInfo(
 
   if (!deviceResult?.[1]) return undefined;
 
-  const rawId = String(deviceResult[1]);
+  const rawId = atomToString(deviceResult[1]);
   const device = LiveAPI.from(`id ${rawId}`);
 
   if (!device.exists()) return undefined;

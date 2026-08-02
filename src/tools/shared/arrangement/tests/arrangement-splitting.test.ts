@@ -355,6 +355,8 @@ describe("performSplitting", () => {
       if (method === "duplicate_clip_to_arrangement") {
         return ["id", "0"];
       }
+
+      return undefined;
     });
 
     performSplitting([mockClip], [4], clips, HOLDING_AREA);

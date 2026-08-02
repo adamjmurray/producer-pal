@@ -5,7 +5,7 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   LIVE_API_MONITORING_STATE_AUTO,
   LIVE_API_MONITORING_STATE_IN,

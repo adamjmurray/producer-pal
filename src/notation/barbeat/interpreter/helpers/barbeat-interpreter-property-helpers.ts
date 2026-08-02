@@ -8,7 +8,7 @@ import {
   wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   handlePropertyUpdate,
   type InterpreterState,

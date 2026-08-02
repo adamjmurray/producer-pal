@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "./arrangement-operations.ts";
 import * as helpers from "./helpers/arrangement-operations-helpers.ts";
 

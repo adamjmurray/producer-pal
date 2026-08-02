@@ -41,7 +41,7 @@ export function useConversationSearch(
     if (!query) {
       setMatchedIds(null);
 
-      return;
+      return undefined;
     }
 
     let cancelled = false;

@@ -19,6 +19,7 @@
  * so the boundary note (bar-4 downbeat / bar-3 midpoint) is always present.
  */
 
+import { argText } from "../../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
@@ -163,10 +164,7 @@ function recordClearSyntax(turn: number): EvalAssertion {
       }
 
       const sel = calls
-        .map(
-          (c) =>
-            `${String(c.args.preTransforms ?? "")} ${String(c.args.notes ?? "")}`,
-        )
+        .map((c) => `${argText(c.args.preTransforms)} ${argText(c.args.notes)}`)
         .join(" | ");
 
       let syntax = "other";

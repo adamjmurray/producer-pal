@@ -9,7 +9,7 @@ import { splitNotes } from "#src/notation/transform/helpers/note-cut-helpers.ts"
 import { type NoteOp } from "#src/notation/transform/parser/transform-parser.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   createTestNote,
   createTestNotes,

@@ -12,7 +12,7 @@ import {
   vi,
   type MockInstance,
 } from "vitest";
-import { error, log, warn } from "#src/shared/v8-max-console.ts";
+import { error, log, warn } from "#src/shared/max/v8-max-console.ts";
 
 const g = globalThis as Record<string, unknown>;
 

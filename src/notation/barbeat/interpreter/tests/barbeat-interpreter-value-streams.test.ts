@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)", () => {
   describe("velocity streams", () => {

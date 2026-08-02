@@ -376,7 +376,9 @@ export function extractErrorMessage(value: unknown): string {
     try {
       return JSON.stringify(value);
     } catch {
-      return String(value);
+      // Circular or otherwise unserializable — String() would only say
+      // "[object Object]".
+      return "[unserializable error]";
     }
   }
 

@@ -7,6 +7,7 @@
  * Shared assertion helpers for clip evaluation scenarios.
  */
 
+import { argText } from "../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { hasPerfectMatching } from "#evals/shared/bipartite-matching.ts";
@@ -397,7 +398,7 @@ export function getTransforms(
   if (!updateCall) throw new Error(`${toolName} not found in turn ${turn}`);
 
   const raw = updateCall.args.transforms;
-  const transforms = Array.isArray(raw) ? raw.join("\n") : String(raw ?? "");
+  const transforms = Array.isArray(raw) ? raw.join("\n") : argText(raw);
 
   if (!transforms) {
     throw new Error(`transforms parameter missing in turn ${turn}`);
@@ -462,7 +463,7 @@ export function getCreatedClip(
         id?: unknown;
       } | null;
 
-      if (parsed?.id != null) id = String(parsed.id);
+      if (parsed?.id != null) id = argText(parsed.id);
     } catch {
       // unparseable create result — leave id undefined
     }
@@ -605,7 +606,7 @@ export async function clearSessionSlots(
       id = null; // empty/unparseable slot read — nothing to delete
     }
 
-    if (id != null) ids.push(String(id));
+    if (id != null) ids.push(argText(id));
   }
 
   if (ids.length > 0) {

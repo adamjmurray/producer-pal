@@ -139,7 +139,7 @@ function renderSinglePart(
       return (
         <AssistantSubagentCall
           key={i}
-          task={String(part.args.task ?? "")}
+          task={typeof part.args.task === "string" ? part.args.task : ""}
           result={part.result}
           isError={part.isError}
           isResponding={isResponding}

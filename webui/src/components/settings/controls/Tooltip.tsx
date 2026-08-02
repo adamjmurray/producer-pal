@@ -32,7 +32,7 @@ export function Tooltip({ text }: TooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isPinned) return;
+    if (!isPinned) return undefined;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (

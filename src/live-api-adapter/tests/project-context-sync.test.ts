@@ -15,7 +15,7 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
 }));
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   log: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),

@@ -6,7 +6,7 @@
 import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,

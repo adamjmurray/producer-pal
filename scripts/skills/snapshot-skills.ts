@@ -60,7 +60,9 @@ function parseOrExit(): ReturnType<typeof parseArgs> {
     return parseArgs(process.argv.slice(2), DEFAULT_DIR);
   } catch (error: unknown) {
     console.error(`skills:snapshot: ${(error as Error).message}`);
-    process.exit(1);
+
+    // process.exit is typed `never`; returning it says so to the reader too.
+    return process.exit(1);
   }
 }
 

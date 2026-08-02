@@ -101,7 +101,7 @@ export function MessageList({
   useEffect(() => {
     setShowStillThinking(false);
     setEditingIndex(null);
-    if (!isAssistantResponding) return;
+    if (!isAssistantResponding) return undefined;
     const timer = setTimeout(
       () => setShowStillThinking(true),
       STILL_THINKING_DELAY_MS,

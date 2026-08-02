@@ -217,7 +217,7 @@ export function App() {
   // Escape closes the context overlay (consistent with native modal idioms),
   // honoring the editor's leave guard for an unsaved draft.
   useEffect(() => {
-    if (!contextOpen) return;
+    if (!contextOpen) return undefined;
 
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === "Escape") attemptCloseContext();

@@ -14,7 +14,7 @@ import {
 import { applyTransformsToDuplicatedClips } from "#src/tools/actions/duplicate/helpers/duplicate-transform-helpers.ts";
 
 // Capture warnings emitted for unsupported transforms/code usage
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
   log: vi.fn(),
   warn: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 
 // updateClip is mocked via duplicate-mocks-test-helpers.ts -> setup.ts
 import { updateClipMock } from "./setup.ts";
-import * as consoleMock from "#src/shared/v8-max-console.ts";
+import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /**
  * Set up two-destination session duplication mocks on track 0:

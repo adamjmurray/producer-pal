@@ -92,7 +92,7 @@ function fakeServer(): {
       return Promise.resolve(jsonResponse({ entries: [...store.values()] }));
     }
 
-    const body = JSON.parse(String(init?.body)) as {
+    const body = JSON.parse(init?.body as string) as {
       description: string;
       content: string;
       newName?: string;
@@ -158,7 +158,7 @@ function entryPuts(): CapturedSave[] {
     .filter(([url, init]) => init?.method === "PUT" && !url.endsWith("/rename"))
     .map(([url, init]) => ({
       url,
-      body: JSON.parse(String(init?.body)) as CapturedSave["body"],
+      body: JSON.parse(init?.body as string) as CapturedSave["body"],
     }));
 }
 
