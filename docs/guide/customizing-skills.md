@@ -65,7 +65,7 @@ a whole area you never use:
 | `stark-standard-write` / `stark-basic-write`     | Stark chord symbols (`Am`, `G7`, `Ebm7`) — input only, since read-back returns literal notes                  |
 | `midi-json`                                      | The midi-json note notation guide                                                                             |
 
-::: warning Fragment names changed in 2.0.1
+::: warning Fragment names changed in 2.1.0
 
 The `core-*` fragments (`core-transforms`, `core-devices`,
 `core-context-standard`, …) were re-cut into the list above, and
@@ -74,6 +74,13 @@ If you customized any of them, its file in `~/.producer-pal/skills/` is no
 longer used — Producer Pal warns about it in the Skills **Preview** view and the
 Max window. Copy your changes into whichever new fragment now covers that
 material and delete the old file.
+
+The notation guides also split in two: the `-write` fragments above were carved
+out of `barbeat-standard`, `barbeat-basic`, `stark-standard`, and `stark-basic`.
+An override of one of those still loads, but it carries a copy of the writing
+material that now ships separately — so the model reads it twice. Producer Pal
+warns when it spots that. Delete the duplicated sections from your override, or
+override its `-write` fragment too.
 
 :::
 
