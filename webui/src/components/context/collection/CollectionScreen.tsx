@@ -45,8 +45,12 @@ export interface CollectionEditorRenderArgs<TView> {
    * round trip — exists only in the mounted instance's state, so remounting
    * there re-seeds from the server's pre-edit echo and drops it. Editors whose
    * collection can't rename (custom skills) ignore this.
+   *
+   * Takes the old slug too: a rename can resolve after the user has already
+   * moved to another entry, and moving the selection then would point the
+   * mounted editor at someone else's entry — which it would autosave over.
    */
-  onRenamed: (name: string) => void;
+  onRenamed: (from: string, to: string) => void;
 }
 
 interface CollectionScreenProps<TView extends DocCollectionEntry, TInput> {
@@ -163,9 +167,14 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     onSaved: (name) => selectDraft({ mode: "edit", name }),
     onDeleted: () => selectDraft({ mode: "new" }),
     // No epoch bump: the entry changes slug under the SAME mounted editor.
-    onRenamed: (name) =>
+    // Only when that editor is still the one that was renamed — if the user
+    // navigated away while the rename was in flight, the mounted editor is on
+    // another entry and must not be dragged onto this slug.
+    onRenamed: (from, to) =>
       setSelected((prev) =>
-        prev.mode === "edit" ? { mode: "edit", name } : prev,
+        prev.mode === "edit" && prev.name === from
+          ? { mode: "edit", name: to }
+          : prev,
       ),
   });
 

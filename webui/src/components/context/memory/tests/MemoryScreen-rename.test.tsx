@@ -37,6 +37,13 @@ const ENTRY: MemoryEntryView = {
 /** The server's echo of the rename: the same fields under the new slug. */
 const RENAMED: MemoryEntryView = { ...ENTRY, name: "new-slug" };
 
+/** A second memory, for navigating away while a rename is in flight. */
+const OTHER: MemoryEntryView = {
+  name: "likes-swing",
+  description: "groove",
+  body: "Swing everything.",
+};
+
 const fetchMock = installFetchMock();
 
 /** One captured entry PUT (the autosave/create channel, not the rename one). */
@@ -333,6 +340,46 @@ describe("MemoryScreen — editing during an in-flight rename", () => {
 
     expect(bannerAtNextTask).toBe(false);
     await screen.findByRole("button", { name: "Edit new-slug" });
+  });
+});
+
+describe("MemoryScreen — navigating away during a rename", () => {
+  it("leaves the newly opened memory alone when the rename lands", async () => {
+    const renamePut = deferred<Response>();
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [ENTRY, OTHER] }));
+    fetchMock.mockReturnValueOnce(renamePut.promise);
+    fetchMock.mockResolvedValue(
+      jsonResponse({ entries: [RENAMED, OTHER], entry: RENAMED }),
+    );
+
+    render(<MemoryScreenHarness />);
+
+    await startRename();
+
+    // Blur committed the rename; the click that caused it opens another memory,
+    // so the mounted editor is now on OTHER when the rename resolves.
+    fireEvent.click(screen.getByRole("button", { name: "Edit likes-swing" }));
+
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+
+    await screen.findByRole("button", { name: "Edit new-slug" });
+
+    // Following the rename here would point this editor at the renamed entry
+    // WITHOUT remounting it, and its idle autosave would then write OTHER's
+    // fields over that entry. Every write must stay on the entry the user is
+    // actually looking at.
+    await settleAutosave();
+
+    expect(fieldValue("Rename")).toBe("likes-swing");
+    expect(entryPuts().map((put) => put.url)).not.toContain(
+      expect.stringContaining("new-slug"),
+    );
+
+    for (const put of entryPuts()) {
+      expect(put.url).toContain("likes-swing");
+      expect(put.body.description).toBe(OTHER.description);
+    }
   });
 });
 

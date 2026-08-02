@@ -26,11 +26,11 @@ interface MemoryEntryEditorProps {
   /** Called after a successful save with the stored entry's slug. */
   onSaved: (name: string) => void;
   /**
-   * Called after a successful rename with the stored entry's new slug. Distinct
-   * from `onSaved` because it must NOT remount this editor — the live draft is
-   * only here (see {@link CollectionEditorRenderArgs.onRenamed}).
+   * Called after a successful rename with the old and new slugs. Distinct from
+   * `onSaved` because it must NOT remount this editor — the live draft is only
+   * here (see {@link CollectionEditorRenderArgs.onRenamed}).
    */
-  onRenamed: (name: string) => void;
+  onRenamed: (from: string, to: string) => void;
 }
 
 /**
@@ -218,7 +218,7 @@ interface MemoryRenameParams {
   /** Settle the idle autosave (which targets the OLD slug) before renaming. */
   settlePendingSave: () => Promise<void>;
   /** Follow the entry to its new slug, keeping this editor mounted. */
-  onRenamed: (name: string) => void;
+  onRenamed: (from: string, to: string) => void;
 }
 
 /**
@@ -284,7 +284,7 @@ function useMemoryRename(params: MemoryRenameParams): {
     setRenameFailed(false);
     setName(renamed.name);
     noteSaved(memoryEntryKey(renamed));
-    onRenamed(renamed.name);
+    onRenamed(oldName, renamed.name);
   };
 
   const onRename = (raw: string): void => {
