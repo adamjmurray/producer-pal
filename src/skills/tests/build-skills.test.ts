@@ -528,6 +528,54 @@ describe("buildSkills - disabled fragments", () => {
     ]);
   });
 
+  // A driver root is the document, not a section of it, so honoring its off
+  // switch would return an empty blob — the AI silently losing every
+  // instruction. The editor hides that toggle and the REST route refuses it,
+  // but a hand-edited `enabled: false` arrives here having passed neither.
+  it("ignores an off switch on the driver root, and says so", () => {
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["standard"] },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain(HEADER);
+    expect(result).toContain("## Time & Note Values");
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"standard.md" says enabled: false`),
+    ]);
+  });
+
+  it("ignores it for the small-model driver too", () => {
+    const result = buildSkills(
+      { smallModelMode: true },
+      { disabled: ["basic"] },
+    );
+
+    expect(result).toContain(HEADER);
+  });
+
+  it("keeps honoring the off switch for a name it doesn't know", () => {
+    // A fork may include fragments of its own; only the two drivers are pinned.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      {},
+      {
+        fragments: {
+          standard: `MY INTRO\n\n@include "./mine.md"`,
+          mine: "MY SECTION",
+        },
+        disabled: ["mine"],
+      },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain("MY INTRO");
+    expect(result).not.toContain("MY SECTION");
+    expect(warnings).toStrictEqual([]);
+  });
+
   it("warns once about a slot that is both overridden and switched off", () => {
     const warnings: string[] = [];
 

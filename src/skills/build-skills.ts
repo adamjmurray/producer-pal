@@ -15,7 +15,11 @@ import {
 } from "#src/skills/fragment-tool-gates.ts";
 import { fragmentRequires } from "#src/skills/fragment-requires.ts";
 import { resolveIncludes } from "#src/skills/include-resolver.ts";
-import { RETIRED_SKILL_SLOTS } from "#src/skills/skill-slots.ts";
+import {
+  isDisableableSkillSlot,
+  isSkillSlotName,
+  RETIRED_SKILL_SLOTS,
+} from "#src/skills/skill-slots.ts";
 
 /** Runtime context that selects which skills variant is assembled. */
 export interface BuildSkillsOptions {
@@ -143,7 +147,10 @@ export function assembleSkills(
   ]);
   // Tool gating, audience gating, and the user's per-slot off switches empty a
   // fragment in exactly the same way, so all three resolve through one set.
-  const suppressed = new Set([...gated, ...(overrides.disabled ?? [])]);
+  const suppressed = new Set([
+    ...gated,
+    ...switchableOff(overrides.disabled ?? [], onWarn),
+  ]);
 
   warnRetiredOverrides(overrides, onWarn);
 
@@ -193,6 +200,36 @@ export function assembleSkills(
 }
 
 // --- Helpers below main export ---
+
+/**
+ * The user's off switches, minus the ones for a fragment that has no off switch.
+ * A driver root IS the document, so suppressing it resolves the whole blob to ""
+ * — the AI gets no instructions at all, and nothing on screen says why. The
+ * editor hides that toggle and the REST route refuses to store it, but
+ * hand-editing `enabled: false` into `~/.producer-pal/skills/standard.md` is a
+ * supported path (ADR-0010) that reaches here directly.
+ *
+ * Unknown names pass through: a fork may include fragments of its own, and
+ * switching one of those off is exactly what the flag is for.
+ *
+ * @param disabled - Fragment names the user switched off
+ * @param onWarn - Warning sink (no-op when the caller passed none)
+ * @returns The names that may actually be suppressed
+ */
+function switchableOff(
+  disabled: readonly string[],
+  onWarn?: (message: string) => void,
+): string[] {
+  return disabled.filter((name) => {
+    if (!isSkillSlotName(name) || isDisableableSkillSlot(name)) return true;
+
+    onWarn?.(
+      `skills override "${name}.md" says enabled: false, which is ignored — that fragment is the whole document, not a section of it. Delete @include lines from it to drop sections.`,
+    );
+
+    return false;
+  });
+}
 
 /**
  * Warn when a document includes a fragment without the fragments it declares it
