@@ -40,6 +40,7 @@ import {
   globalContextBlock,
   projectContextBlock,
 } from "../helpers/global-context/global-context-inject.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 import { type McpResponse } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
@@ -62,13 +63,13 @@ export interface SubagentBriefingConfig {
  * under, with no second vocabulary to keep in sync. Absent headers fall back to
  * the device globals, the same contract POST /mcp has.
  *
- * Read-only, so it is not origin-gated (matching /skills-preview and POST /mcp:
- * the chat reaches it same-origin, which over a LAN/tunnel is a non-localhost
- * origin). Safe to leave open because it DISCLOSES nothing a ppal-connect call on
- * the same profile wouldn't: every block carrying user or Live Set data is one
- * connect already returns, and what the briefing adds on top is static worker
- * marching orders. It is not the same text — see composeBriefing for what it drops
- * and what it adds — just never a wider surface.
+ * Origin-gated like the content writes (see rejectForeignOriginWrite), not like
+ * the other read endpoints. Disclosure isn't the reason — it reveals nothing a
+ * ppal-connect call on the same profile wouldn't. The reason is the side effect:
+ * this is the only read endpoint that dispatches a real Live API call, so
+ * ungated, any page the user has open could drive their Live Set in a loop and
+ * hold an Express socket per request until the tool timeout. Same-origin still
+ * passes, so the chat reaches it over a LAN/tunnel as before.
  *
  * Responds 502 when Live can't be reached — the caller then falls back to
  * letting the worker connect for itself, so a briefing failure degrades to the
@@ -89,6 +90,17 @@ export function registerSubagentBriefingRoute(
   app.get(
     "/subagent-briefing",
     async (req: Request, res: Response): Promise<void> => {
+      // Gated like a write, because it acts like one: this GET reaches Live.
+      if (
+        rejectForeignOriginWrite(
+          req,
+          res,
+          "cross-site /subagent-briefing requests are not allowed",
+        )
+      ) {
+        return;
+      }
+
       // Overrides, context, and the Live Set all change between calls — never
       // cache. (Cache stability across spawns is the MODEL's prompt cache, which
       // keys on the assembled text, not on an HTTP cache.)

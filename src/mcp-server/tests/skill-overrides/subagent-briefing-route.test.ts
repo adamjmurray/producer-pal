@@ -242,4 +242,24 @@ describe("subagent-briefing route", () => {
 
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
+
+  it("blocks a foreign origin with 403 before reaching Live", async () => {
+    // A GET, but it drives the Live Set — so any page the user has open could
+    // loop it and hold a socket per request until the tool timeout.
+    const res = await fetch(base, {
+      headers: { Origin: "https://evil.example.com" },
+    });
+
+    expect(res.status).toBe(403);
+    expect(callLiveApi).not.toHaveBeenCalled();
+  });
+
+  it("still serves a browser on the same server", async () => {
+    // The remote same-origin case (LAN/tunnel) can't be staged here — Node's
+    // fetch won't let a test forge a Host header — and is covered in
+    // request-origin.test.ts.
+    const res = await fetch(base, { headers: { Origin: server.baseUrl } });
+
+    expect(res.status).toBe(200);
+  });
 });
