@@ -80,6 +80,26 @@ export function audioClipTiming(clip: LiveAPI): AudioClipTiming {
 }
 
 /**
+ * A clip's playable length in real Ableton beats, for either clip type.
+ *
+ * `Clip.length` is right for MIDI but stale for an unwarped session audio clip
+ * (see audioClipTiming), so anything that compares a clip's length against a
+ * requested length has to go through the markers for audio.
+ *
+ * @param clip - The clip to measure
+ * @returns Length in real beats at the current tempo
+ */
+export function clipLengthBeats(clip: LiveAPI): number {
+  if ((clip.getProperty("is_midi_clip") as number) > 0) {
+    return clip.getProperty("length") as number;
+  }
+
+  const { startBeats, endBeats } = audioClipTiming(clip);
+
+  return endBeats - startBeats;
+}
+
+/**
  * An audio clip's full sample duration in seconds.
  * @param clip - The audio clip to measure
  * @returns Duration in seconds, or 0 when the sample rate is unavailable

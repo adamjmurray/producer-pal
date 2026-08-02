@@ -11,6 +11,7 @@ import {
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
@@ -169,7 +170,7 @@ export async function createClipsForLength(
   context: Partial<ToolContext & TilingContext> = {},
   color?: string,
 ): Promise<MinimalClipInfo[]> {
-  const sourceClipLength = sourceClip.getProperty("length") as number;
+  const sourceClipLength = clipLengthBeats(sourceClip);
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
   const duplicatedClips: MinimalClipInfo[] = [];
 

@@ -66,6 +66,9 @@ describe("duplicate - arrangementLength functionality", () => {
       signature_numerator: 4,
       signature_denominator: 4,
       is_midi_clip: 0,
+      warping: 1,
+      start_marker: 0,
+      end_marker: 8,
     });
     registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
     registerMockObject("live_set", { path: livePath.liveSet });
@@ -81,6 +84,41 @@ describe("duplicate - arrangementLength functionality", () => {
       1,
       expect.stringContaining("silenceWavPath missing in context"),
     );
+  });
+
+  it("measures an unwarped audio clip by its markers, not its stale length", async () => {
+    // Live reports an unwarped session clip's `length` as if it were still
+    // warped, so a 6s one-shot claims 4 beats at 120bpm when it really plays
+    // 12. Trusting that took the lengthening branch and tiled a second copy on
+    // top of audio that was still sounding.
+    registerSourceClip({
+      length: 4, // stale
+      looping: 0,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      is_midi_clip: 0,
+      warping: 0,
+      start_marker: 0,
+      end_marker: 6, // seconds while unwarped -> 12 beats at 120bpm
+      sample_length: 6 * 48000,
+      sample_rate: 48000,
+    });
+    registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tempo: 120 },
+    });
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "5|1",
+      arrangementLength: "2bar", // 8 beats: shorter than 12, longer than 4
+    });
+
+    // Shortening, so it goes through the holding area rather than tiling.
+    expect(createShortenedClipInHoldingMock).toHaveBeenCalled();
+    expect(updateClipMock).not.toHaveBeenCalled();
   });
 
   it("should duplicate a looping clip with lengthening via updateClip", async () => {
