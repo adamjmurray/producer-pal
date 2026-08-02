@@ -42,6 +42,7 @@ export function makeMessageDeps(overrides: Partial<GeminiMessageDeps> = {}) {
       if (hasQueued()) pendingDrain = callback;
       else callback();
     }),
+    hasPendingDrain: vi.fn(() => pendingDrain != null),
   } as unknown as GeminiPcmPlayer;
   const sendToolResponse = vi.fn();
   const session = { sendToolResponse } as unknown as Session;

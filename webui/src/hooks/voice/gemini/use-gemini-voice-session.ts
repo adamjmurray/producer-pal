@@ -8,7 +8,10 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { endGeminiHalfDuplexMute } from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
+import {
+  applyManualMute,
+  endGeminiHalfDuplexMute,
+} from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
 import { createGeminiMcpTools } from "#webui/hooks/voice/gemini/gemini-mcp-tools";
 import { buildGeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
@@ -308,13 +311,9 @@ export function useGeminiVoiceSession(
   }, [cleanup]);
 
   const toggleMute = useCallback(async () => {
-    const mic = micRef.current;
-
-    if (!mic) return;
-
-    mic.setMuted(!isMuted);
-    isMutedRef.current = !isMuted;
-    setIsMuted(!isMuted);
+    if (applyManualMute(micRef.current, !isMuted, isMutedRef, autoMutedRef)) {
+      setIsMuted(!isMuted);
+    }
   }, [isMuted]);
 
   // Manual interrupt: flush local playback and close the open model turn. (Gemini

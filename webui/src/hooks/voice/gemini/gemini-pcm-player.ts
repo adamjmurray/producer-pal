@@ -119,6 +119,17 @@ export class GeminiPcmPlayer {
     this.drainedCallback = callback;
   }
 
+  /**
+   * Whether a drain callback is parked (see {@link onDrained}). For the caller
+   * that has to tell "the turn is still streaming" from "the turn ended and only
+   * its tail is left" — the second means nothing later will run the deferred
+   * work, so an interrupt has to do it itself.
+   * @returns True while a registered callback has not yet run
+   */
+  hasPendingDrain(): boolean {
+    return this.drainedCallback != null;
+  }
+
   /** Barge-in: stop all scheduled audio and reset the cursor. */
   flush(): void {
     for (const source of this.sources) {

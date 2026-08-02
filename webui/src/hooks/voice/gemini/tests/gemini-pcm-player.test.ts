@@ -225,6 +225,22 @@ describe("GeminiPcmPlayer", () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
+  it("reports a parked drain callback until it runs or is flushed", async () => {
+    // How an interrupt tells "still streaming" from "turnComplete already ran
+    // and only the tail is left" — the second has nobody left to lift the mute.
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+    expect(player.hasPendingDrain()).toBe(false);
+
+    player.enqueueBase64(pcmBase64(10));
+    player.onDrained(vi.fn());
+    expect(player.hasPendingDrain()).toBe(true);
+
+    player.flush();
+    expect(player.hasPendingDrain()).toBe(false);
+  });
+
   it("flush drops a pending onDrained instead of firing it", async () => {
     // The half-duplex mute gate defers its unmute to onDrained. A barge-in
     // interrupt flushes, and firing the callback there lifted the mute behind

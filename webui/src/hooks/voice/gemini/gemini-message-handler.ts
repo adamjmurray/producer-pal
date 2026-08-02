@@ -163,18 +163,24 @@ export async function handleGeminiMessage(
  * audio, so lifting the auto-mute while audio is still queued would let the next
  * chunk re-mute and flicker the Muted indicator. There, defer the lift to
  * turnComplete; lift now only when the queue has drained (the turn really ended
- * here). hasQueued() is read before flush() clears the queue.
+ * here).
+ *
+ * Unless turnComplete ALREADY ran and parked its own deferred lift — then this
+ * interrupt is discarding the turn's tail, and flush() drops that callback, so
+ * nothing later would ever lift the mute. Both reads happen before flush()
+ * clears the queue and the registration.
  *
  * @param deps - Builder, player, mic accessor, and UI setters
  */
 function handleGeminiInterrupt(deps: GeminiMessageDeps): void {
   const audioStillQueued = deps.player.hasQueued();
+  const turnAlreadyComplete = deps.player.hasPendingDrain();
 
   deps.player.flush();
   deps.builder.completeTurn();
   deps.setAssistantSpeaking(false);
 
-  if (!(deps.halfDuplex && audioStillQueued)) {
+  if (turnAlreadyComplete || !(deps.halfDuplex && audioStillQueued)) {
     endGeminiHalfDuplexMute(deps.getMic(), deps.autoMutedRef, deps.isMutedRef);
   }
 

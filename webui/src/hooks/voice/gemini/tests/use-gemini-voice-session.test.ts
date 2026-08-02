@@ -741,6 +741,35 @@ describe("useGeminiVoiceSession", () => {
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, true);
   });
 
+  it("half-duplex: unmuting mid-turn lets the rest of the turn re-mute", async () => {
+    // Manual intent clears the auto-mute flag. Left set, every later chunk of
+    // the same turn finds beginGeminiHalfDuplexMute already "armed" and no-ops,
+    // so the assistant plays on into an open mic.
+    const { result } = await renderConnected({
+      turnDetection: HALF_DUPLEX_VAD,
+    });
+    const mic = h.FakeMic.last!;
+
+    mic.setMuted.mockClear();
+
+    await emit(assistantAudioMsg("A"));
+    expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
+
+    // The user overrides the auto-mute from the Mute/Unmute button, ending
+    // unmuted — no turnComplete in between, so nothing else clears the flag.
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    mic.setMuted.mockClear();
+
+    await emit(assistantAudioMsg("B"));
+
+    expect(mic.setMuted).toHaveBeenCalledWith(true);
+  });
+
   it("bails after MCP tools resolve if torn down first", async () => {
     // Park createGeminiMcpTools so we can tear down before the first stale check
     // (right after the MCP client is stored). The token fetch and session open

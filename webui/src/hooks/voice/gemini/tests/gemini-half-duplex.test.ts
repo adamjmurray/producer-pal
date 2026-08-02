@@ -125,17 +125,32 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     expect(deps.autoMutedRef.current).toBe(false);
   });
 
-  it("does not let an interrupt's flush fire turnComplete's deferred lift", async () => {
-    // turnComplete parks the lift on onDrained, then a mid-stream interrupt
-    // flushes. If flush() ran the pending callback, the mute would lift here —
-    // past the guard that just decided not to lift it — and the next chunk
-    // would re-mute: the indicator flicker the whole gate exists to prevent.
+  it("lifts the auto-mute when an interrupt discards the turn's tail", async () => {
+    // turnComplete parked its lift on onDrained, and the interrupt's flush
+    // drops that callback. Nothing later would ever lift the mute, so the
+    // interrupt has to — otherwise the mic stays shut for the rest of the
+    // session and the Muted indicator disagrees with it. Safe here precisely
+    // because turnComplete already ran: no further chunk can re-mute.
     const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
 
     vi.mocked(player.hasQueued).mockReturnValue(true);
 
     await handleGeminiMessage(audioChunk("A"), deps);
     await handleGeminiMessage(turnDone, deps);
+    await handleGeminiMessage(interrupted, deps);
+
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  it("keeps holding the auto-mute for a mid-stream interrupt", async () => {
+    // No turnComplete yet, so the server is still sending: lifting now would
+    // let the next chunk re-mute and flicker the indicator.
+    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
     await handleGeminiMessage(interrupted, deps);
 
     expect(mic.setMuted).toHaveBeenCalledTimes(1);
