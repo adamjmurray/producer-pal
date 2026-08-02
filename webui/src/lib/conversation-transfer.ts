@@ -265,9 +265,9 @@ function normalizeRecord(
     // Drop any individually malformed messages (validateRecord already ensured
     // at least one survives, or the array was intentionally empty) so one bad
     // entry can't strand the rest of the conversation.
-    messages: (record.messages as unknown[]).filter(
-      isValidImportedMessage,
-    ) as ConversationRecord["messages"],
+    messages: (record.messages as unknown[])
+      .filter(isValidImportedMessage)
+      .map(sanitizeImportedMessage) as ConversationRecord["messages"],
     voiceHistory:
       (record.voiceHistory as ConversationRecord["voiceHistory"] | undefined) ??
       null,
@@ -300,5 +300,53 @@ function normalizeRecord(
       typeof record.forkedAtIndex === "number" && {
         forkedAtIndex: record.forkedAtIndex,
       }),
+  };
+}
+
+/**
+ * Strip a message's unusable subagent fields. Nothing downstream re-checks them,
+ * and both fail far from the import that carried them: a transcript is spliced
+ * straight into a resumed worker's chat history, and an index is the worker's
+ * durable identity, so a bad one shows up as an opaque spawn error or a worker
+ * `resumeFrom` can never address.
+ * @param message - A message that passed {@link isValidImportedMessage}
+ * @returns The message, with any unusable subagent fields dropped
+ */
+function sanitizeImportedMessage(message: unknown): unknown {
+  const { toolResults } = message as { toolResults?: unknown };
+
+  if (!Array.isArray(toolResults)) return message;
+
+  return {
+    ...(message as object),
+    toolResults: (toolResults as unknown[]).map(sanitizeToolResult),
+  };
+}
+
+/**
+ * Drop the subagent fields of one tool result unless they hold up: a transcript
+ * must be messages of the same shape the importer demands everywhere else, and
+ * an index must be a whole number from 1 (`highestSubagentIndex` compares it with
+ * `>` and would happily seed the allocator from a numeric string that
+ * `collectSubagentTranscript`'s `===` then never matches).
+ * @param entry - Raw parsed toolResults element
+ * @returns The entry with unusable subagent fields removed
+ */
+function sanitizeToolResult(entry: unknown): unknown {
+  if (typeof entry !== "object" || entry === null) return entry;
+
+  const { subagentTranscript, subagentIndex, ...rest } = entry as {
+    subagentTranscript?: unknown;
+    subagentIndex?: unknown;
+  };
+
+  return {
+    ...rest,
+    ...(Array.isArray(subagentTranscript) &&
+      (subagentTranscript as unknown[]).every(isValidImportedMessage) && {
+        subagentTranscript,
+      }),
+    ...(Number.isInteger(subagentIndex) &&
+      (subagentIndex as number) >= 1 && { subagentIndex }),
   };
 }

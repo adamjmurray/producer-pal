@@ -53,6 +53,38 @@ const importThenReread = async (
   return parsed.conversations.find((c) => c.id === id)!;
 };
 
+/**
+ * Export-format payload whose one assistant message carries a single spawn
+ * tool result with the given raw subagent fields.
+ * @param id - Conversation id
+ * @param subagent - Raw subagent fields to put on the tool result
+ * @returns Export-format payload
+ */
+const withSubagentResult = (id: string, subagent: Record<string, unknown>) => ({
+  version: 1,
+  conversations: [
+    {
+      id,
+      createdAt: 100,
+      messages: [
+        {
+          role: "assistant",
+          content: "spawned",
+          toolResults: [
+            {
+              id: "call-1",
+              name: "spawn_subagent",
+              args: {},
+              result: "ok",
+              ...subagent,
+            },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
 describe("conversation-transfer", () => {
   beforeEach(async () => {
     await resetDbCache();
@@ -545,5 +577,69 @@ describe("conversation-transfer", () => {
     const imported = await importThenReread(data, "bad-tools");
 
     expect(imported).not.toHaveProperty("enabledTools");
+  });
+
+  it("round-trips a well-formed subagent transcript and index", async () => {
+    const imported = await importThenReread(
+      withSubagentResult("good-subagent", {
+        subagentTranscript: [{ role: "user", content: "do the thing" }],
+        subagentIndex: 2,
+      }),
+      "good-subagent",
+    );
+    const entry = imported.messages[0]!.toolResults![0]!;
+
+    expect(entry.subagentIndex).toBe(2);
+    expect(entry.subagentTranscript).toStrictEqual([
+      { role: "user", content: "do the thing" },
+    ]);
+  });
+
+  it("drops a subagent transcript holding a malformed message", async () => {
+    // It gets spliced verbatim into a resumed worker's chat history, so a
+    // message without string content fails the next spawn, not the import.
+    const imported = await importThenReread(
+      withSubagentResult("bad-transcript", {
+        subagentTranscript: [{}],
+        subagentIndex: 1,
+      }),
+      "bad-transcript",
+    );
+    const entry = imported.messages[0]!.toolResults![0]!;
+
+    expect(entry).not.toHaveProperty("subagentTranscript");
+    expect(entry.subagentIndex).toBe(1);
+  });
+
+  it("drops a subagent index that isn't a whole number from 1", async () => {
+    // highestSubagentIndex compares with `>`, so a numeric string would seed the
+    // allocator while collectSubagentTranscript's `===` never matches it.
+    const imported = await importThenReread(
+      withSubagentResult("bad-index", { subagentIndex: "2" }),
+      "bad-index",
+    );
+
+    expect(imported.messages[0]!.toolResults![0]!).not.toHaveProperty(
+      "subagentIndex",
+    );
+  });
+
+  it("leaves a tool result that isn't an object alone", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "odd-entry",
+          createdAt: 100,
+          messages: [
+            { role: "assistant", content: "spawned", toolResults: [null] },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "odd-entry");
+
+    expect(imported.messages[0]!.toolResults).toStrictEqual([null]);
   });
 });
