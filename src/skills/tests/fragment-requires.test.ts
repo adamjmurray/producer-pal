@@ -132,6 +132,24 @@ describe("the code-transforms edge", () => {
   });
 });
 
+describe("the transforms tiers", () => {
+  it("keeps the note-count ops out of transforms-core's examples", () => {
+    // `requires` points the wrong way to help here: transforms-core survives
+    // dropping the tiers above it, so a worked call in ITS text is a call to
+    // nothing with no warning attached. Naming one is fine — an empty `foo()`
+    // pointing at the tier that defines it earns its tokens (see the fragment's
+    // own comment); handing the model arguments to type is what breaks.
+    const core = builtinFragments(true)["transforms-core"] ?? "";
+
+    for (const op of ["ratchet", "repeat", "split", "merge"]) {
+      expect(
+        core.match(new RegExp(`\\b${op}\\([^)]`)),
+        `transforms-core calls ${op}(), which only transforms-generative defines`,
+      ).toBeNull();
+    }
+  });
+});
+
 describe("the time-and-values edges", () => {
   it("warns for every fragment left pointing at units that are gone", () => {
     // time-and-values is always-on, so no toolset can drop it — but it has an
