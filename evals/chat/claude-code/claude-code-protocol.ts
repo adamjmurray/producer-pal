@@ -120,10 +120,12 @@ export function parseClaudeCodeStream(stdout: string): ParsedAgentTurn {
 }
 
 /**
- * Count the model actions in one Claude Code event, for the step budget.
+ * Count the model generations in one Claude Code event, for the step budget.
  *
- * One `assistant` event is one model generation, and its blocks are what the
- * model did with it: each tool call and each reply is a step.
+ * One `assistant` event is one generation, so it costs one step however many
+ * blocks it holds — which is what the AI SDK path's stepCountIs counts. Charging
+ * per block instead made a narrated tool call cost two, so the same budget
+ * bought a Claude Code turn roughly half the tool calls.
  *
  * @param event - Parsed Claude Code event
  * @returns Steps this event spent
@@ -131,7 +133,7 @@ export function parseClaudeCodeStream(stdout: string): ParsedAgentTurn {
 export function countClaudeCodeSteps(event: Record<string, unknown>): number {
   if (event.type !== "assistant") return 0;
 
-  return messageContent(event).filter(isModelAction).length;
+  return messageContent(event).some(isModelAction) ? 1 : 0;
 }
 
 /**

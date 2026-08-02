@@ -414,14 +414,22 @@ describe("countClaudeCodeSteps", () => {
     return countClaudeCodeSteps({ type: "assistant", message: { content } });
   }
 
-  it("counts every tool call and reply in one generation", () => {
+  it("charges one step for a generation however much it holds", () => {
+    // Narration plus two tool calls is still one generation, and that's the
+    // unit the AI SDK path budgets in. Charging per block would let narration
+    // alone halve the tool calls the same budget buys.
     expect(
       stepsForAssistant([
         { type: "text", text: "Reading the song…" },
         { type: "tool_use", id: "toolu_1", name: "ppal-read-song", input: {} },
         { type: "tool_use", id: "toolu_2", name: "ppal-read-track", input: {} },
       ]),
-    ).toBe(3);
+    ).toBe(1);
+    expect(
+      stepsForAssistant([
+        { type: "tool_use", id: "toolu_1", name: "ppal-read-song", input: {} },
+      ]),
+    ).toBe(1);
   });
 
   it("ignores thinking, empty text, and non-assistant events", () => {
