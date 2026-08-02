@@ -72,7 +72,11 @@ export function PresetControls({
     thinking: settings.thinking,
     smallModelMode: settings.smallModelMode,
     enabledTools: settings.enabledTools,
-    notation: settings.notation,
+    // Only capture a notation somebody actually chose. Before `notationKnown`,
+    // `settings.notation` is the provisional mount-time default, and baking it
+    // in would make the preset force bar|beat on everyone who applies it —
+    // omitted, it means "inherit the current notation".
+    ...(settings.notationKnown && { notation: settings.notation }),
   };
   const selected = presets.find((p) => p.id === selectedId) ?? null;
   const fieldsModified =

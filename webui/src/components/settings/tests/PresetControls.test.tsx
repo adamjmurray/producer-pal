@@ -47,6 +47,21 @@ const seeded: ChatPreset = {
   smallModelMode: true,
 };
 
+/**
+ * Render the controls and save the current settings under a name.
+ * @param settings - The settings stub to capture from
+ * @param name - The preset name to type
+ */
+function createPreset(settings: UseSettingsReturn, name: string): void {
+  render(<PresetControls settings={settings} />);
+
+  fireEvent.click(screen.getByTestId("preset-new"));
+  fireEvent.input(screen.getByTestId("preset-name-input"), {
+    target: { value: name },
+  });
+  fireEvent.click(screen.getByTestId("preset-create-confirm"));
+}
+
 describe("PresetControls", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -80,6 +95,27 @@ describe("PresetControls", () => {
     });
     // The new preset becomes the selection, revealing Update/Delete.
     expect(screen.getByTestId("preset-update")).toBeTruthy();
+  });
+
+  it("captures the notation once it is known", () => {
+    createPreset(
+      makeSettings({ notation: "stark", notationKnown: true }),
+      "Stark",
+    );
+
+    expect(loadPresets()[0]?.notation).toBe("stark");
+  });
+
+  it("omits an unknown notation, so the preset can't force the default", () => {
+    // Before the server seeds it, `notation` is the provisional mount-time
+    // default. Capturing it would make the preset impose bar|beat on every
+    // later apply; omitted, it means "inherit the current notation".
+    createPreset(
+      makeSettings({ notation: "barbeat", notationKnown: false }),
+      "Unknown",
+    );
+
+    expect(loadPresets()[0]).not.toHaveProperty("notation");
   });
 
   it("saves via the Enter key in the name field", () => {
