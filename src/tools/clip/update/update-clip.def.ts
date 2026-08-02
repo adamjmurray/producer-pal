@@ -101,7 +101,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     warping: z
       .boolean()
       .optional()
-      .describe("audio clip warping on/off (ignored for MIDI)"),
+      .describe(
+        "audio clip warping on/off (ignored for MIDI). false resets the region to the whole file and turns looping off; looping:true forces warping back on",
+      ),
 
     // MIDI note parameters. Notation-keyed `notes` text so the schema reflects
     // the active note format instead of the default bar|beat.
