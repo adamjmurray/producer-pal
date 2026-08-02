@@ -191,6 +191,11 @@ write half sits inside its own guide too — `barbeat-standard-write` inside
 why the rows above are ordered most-specific-first and say which fragments
 travel together.
 
+`time-and-values` is the widest of these: it defines the units everything else
+counts in, plus the octave convention (C3 = MIDI 60). The bar|beat guide,
+`transforms-core`, `devices`, and `working-with-live` all lean on it, so it's
+best left on.
+
 If you do drop a fragment something else needs, Producer Pal says so — the
 Skills **Preview** view shows a warning, and so does the Max window.
 

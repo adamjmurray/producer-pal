@@ -25,6 +25,9 @@
 /** The one fragment four others build their syntax on. */
 const TRANSFORMS_CORE = "transforms-core";
 
+/** Where the units and the C3=60 octave convention are defined. */
+const TIME_AND_VALUES = "time-and-values";
+
 /**
  * Fragment name → the fragments it needs. Edges point at what a fragment NEEDS,
  * so closing a selection would be a transitive walk; a test asserts the edges
@@ -35,11 +38,22 @@ export const FRAGMENT_REQUIRES: Record<string, readonly string[]> = {
   "transforms-expressions": [TRANSFORMS_CORE],
   "transforms-generative": [TRANSFORMS_CORE, "transforms-expressions"],
   "code-transforms": [TRANSFORMS_CORE],
+  [TRANSFORMS_CORE]: [TIME_AND_VALUES],
 
   "devices-write": ["devices"],
   "specialized-devices": ["devices"],
+  // Not a cross-reference but the same failure: pad paths are written `pC1`, and
+  // with no notation head in a device-only toolset, time-and-values is the only
+  // place saying Live counts octaves from C3=60 (C1 is 36, not the MIDI-standard
+  // 24). Without it a device build lands a full octave off.
+  devices: [TIME_AND_VALUES],
 
   "arrangement-write": ["arrangement"],
+
+  // The standard notation head defers note values and the dual-meter rule; the
+  // basic heads and midi-json spell their own out, so neither needs the edge.
+  "barbeat-standard": [TIME_AND_VALUES],
+  "working-with-live": [TIME_AND_VALUES],
 
   // The notation authoring halves, each under the head whose grammar it builds
   // on. midi-json's two are absent: an empty fragment can't be incomplete.

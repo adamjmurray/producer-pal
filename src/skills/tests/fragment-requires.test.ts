@@ -132,10 +132,52 @@ describe("the code-transforms edge", () => {
   });
 });
 
+describe("the time-and-values edges", () => {
+  it("warns for every fragment left pointing at units that are gone", () => {
+    // time-and-values is always-on, so no toolset can drop it — but it has an
+    // off switch, and switching it off used to be silent. What goes with it:
+    // the note values barbeat-standard and working-with-live defer to by name,
+    // the bar|beat dialect transforms-core's time filter shares, and C3=60,
+    // which nothing else states for a device-only caller writing `pC1` paths.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["time-and-values"] },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).not.toContain("## Time & Note Values");
+    expect(result).toContain("See **Time & Note Values**"); // kept, and dangling
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"barbeat-standard" needs "time-and-values"`),
+      expect.stringContaining(`"transforms-core" needs "time-and-values"`),
+      expect.stringContaining(`"devices" needs "time-and-values"`),
+      expect.stringContaining(`"working-with-live" needs "time-and-values"`),
+    ]);
+  });
+
+  it("leaves the notations that define their own units alone", () => {
+    // stark and midi-json spell out durations and C3=60 in their own heads, as
+    // do both basic heads — an edge there would warn about nothing missing.
+    for (const notation of ["stark", "midi-json"] as const) {
+      const warnings: string[] = [];
+
+      buildSkills({ notation }, { disabled: ["time-and-values"] }, (message) =>
+        warnings.push(message),
+      );
+
+      // The offending warning names its own fragment, so it identifies itself.
+      expect(
+        warnings.filter((warning) => warning.includes(`"${notation}`)),
+      ).toStrictEqual([]);
+    }
+  });
+});
+
 describe("fragmentRequires", () => {
   it("returns a fragment's edges, and nothing for one with none", () => {
     expect(fragmentRequires("devices-write")).toStrictEqual(["devices"]);
-    expect(fragmentRequires("devices")).toStrictEqual([]);
+    expect(fragmentRequires("library")).toStrictEqual([]);
   });
 
   it("returns nothing for an unknown or inherited name", () => {
