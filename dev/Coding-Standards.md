@@ -204,17 +204,21 @@ Two consequences:
   `warping` back on. So any `isLooping` branch is unreachable in an unwarped
   code path.
 
-Conversion runs through the **warp grid**, not `beats * 60 / tempo`. On a
-time-stretched clip the two differ; they only coincide when the grid happens to
-match the Set tempo. Live exposes the grid as `warp_markers` but has no
-`beat_to_sample_time`, so there is no cheap exact conversion.
+Live's own conversion runs through the **warp grid**, not `beats * 60 / tempo`.
+On a time-stretched clip the two differ; they only coincide when the grid
+happens to match the Set tempo. Live exposes the grid as `warp_markers` but has
+no `beat_to_sample_time`, so there is no cheap exact conversion — which is why
+`unwarpAudioClip` resets `end_marker` to the whole sample instead of converting
+it.
 
-**Known limitation:** because of that, `unwarpAudioClip` resets `end_marker` to
-the whole sample rather than converting. `warping: false` combined with `start`
-or `length` in the same `ppal-update-clip` call therefore loses the requested
-region. Separately, `start`/`length` compute in beats and write straight to the
-marker properties, so they are already wrong on an audio clip that is unwarped
-to begin with.
+That does not affect `start`/`length`, which name a region rather than preserve
+one. An unwarped clip plays in real time, so its region is beats at the Set
+tempo in both directions: `markerBeatsPerUnit`
+(`src/tools/clip/helpers/audio-clip-timing.ts`) is the one conversion, and
+`audioClipTiming` reads back through the same factor. The warp toggle is applied
+**before** the region write in `processSingleClipUpdate`, so `warping: false`
+plus `start`/`length` in one call compose: the unwarp resets `end_marker` first,
+then the region lands on top of it, in seconds.
 
 ## Coverage
 

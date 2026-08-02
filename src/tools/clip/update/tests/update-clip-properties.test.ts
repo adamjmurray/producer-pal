@@ -272,6 +272,7 @@ describe("buildClipPropertiesToSet", () => {
     startBeats: null,
     endBeats: null,
     currentLoopEnd: null,
+    beatsPerMarkerUnit: 1,
   };
 
   const build = (overrides: Partial<BuildClipPropertiesArgs>): ClipPropsToSet =>

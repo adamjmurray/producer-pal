@@ -33,6 +33,7 @@ describe("update-clip-timing-helpers", () => {
         timeSigDenominator: 4,
         clip: mockClip,
         isLooping: true,
+        beatsPerMarkerUnit: 1,
       });
 
       expect(outlet).toHaveBeenCalledWith(
@@ -60,6 +61,7 @@ describe("update-clip-timing-helpers", () => {
         timeSigDenominator: 4,
         clip: mockClip,
         isLooping: true,
+        beatsPerMarkerUnit: 1,
       });
 
       expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
@@ -77,6 +79,7 @@ describe("update-clip-timing-helpers", () => {
           timeSigDenominator: 4,
           clip: mockClip,
           isLooping: true,
+          beatsPerMarkerUnit: 1,
         }),
       ).toThrow(/beats are 1-indexed/);
     });
@@ -91,6 +94,7 @@ describe("update-clip-timing-helpers", () => {
           timeSigDenominator: 4,
           clip: mockClip,
           isLooping: true,
+          beatsPerMarkerUnit: 1,
         }),
       ).toThrow(/bars are 1-indexed/);
     });
@@ -108,6 +112,7 @@ describe("update-clip-timing-helpers", () => {
         timeSigDenominator: 4,
         clip: mockClip,
         isLooping: true,
+        beatsPerMarkerUnit: 1,
       });
 
       // No warning for start param - silent skip is intentional
@@ -128,6 +133,7 @@ describe("update-clip-timing-helpers", () => {
         timeSigDenominator: 4,
         clip: mockClip,
         isLooping: true,
+        beatsPerMarkerUnit: 1,
       });
 
       expect(result.firstStartBeats).toBe(4);
@@ -150,6 +156,7 @@ describe("update-clip-timing-helpers", () => {
         timeSigDenominator: 4,
         clip: mockClip,
         isLooping: false,
+        beatsPerMarkerUnit: 1,
       });
 
       expect(result.startBeats).toBe(4);
@@ -174,6 +181,7 @@ describe("update-clip-timing-helpers", () => {
         timeSigDenominator: 4,
         clip: mockClip,
         isLooping: false,
+        beatsPerMarkerUnit: 1,
       });
 
       expect(result.startBeats).toBe(4);
@@ -197,6 +205,7 @@ describe("update-clip-timing-helpers", () => {
         timeSigDenominator: 4,
         clip: mockClip,
         isLooping: false,
+        beatsPerMarkerUnit: 1,
       });
 
       expect(result.startBeats).toBe(0);

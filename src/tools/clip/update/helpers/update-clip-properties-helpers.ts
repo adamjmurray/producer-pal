@@ -21,37 +21,37 @@ export interface ClipPropsToSet {
  * Order: loop_end (if expanding) -> loop_start -> start_marker -> loop_end (normal)
  * @param propsToSet - Properties object to modify
  * @param setEndFirst - Whether to set loop_end before loop_start
- * @param startBeats - Start position in beats
- * @param endBeats - End position in beats
- * @param startMarkerBeats - Start marker position in beats
+ * @param start - Start position in marker units
+ * @param end - End position in marker units
+ * @param startMarker - Start marker position in marker units
  * @param looping - Whether looping is enabled
  */
 function addLoopProperties(
   propsToSet: ClipPropsToSet,
   setEndFirst: boolean,
-  startBeats: number | null,
-  endBeats: number | null,
-  startMarkerBeats: number | null,
+  start: number | null,
+  end: number | null,
+  startMarker: number | null,
   looping?: boolean,
 ): void {
   // When expanding (setEndFirst), set loop_end first
-  if (setEndFirst && endBeats != null && looping !== false) {
-    propsToSet.loop_end = endBeats;
+  if (setEndFirst && end != null && looping !== false) {
+    propsToSet.loop_end = end;
   }
 
   // Set loop_start before start_marker
-  if (startBeats != null && looping !== false) {
-    propsToSet.loop_start = startBeats;
+  if (start != null && looping !== false) {
+    propsToSet.loop_start = start;
   }
 
   // Set start_marker after loop region is established
-  if (startMarkerBeats != null) {
-    propsToSet.start_marker = startMarkerBeats;
+  if (startMarker != null) {
+    propsToSet.start_marker = startMarker;
   }
 
   // Set loop_end after loop_start in normal case
-  if (!setEndFirst && endBeats != null && looping !== false) {
-    propsToSet.loop_end = endBeats;
+  if (!setEndFirst && end != null && looping !== false) {
+    propsToSet.loop_end = end;
   }
 }
 
@@ -67,6 +67,7 @@ export interface BuildClipPropertiesArgs {
   startBeats: number | null;
   endBeats: number | null;
   currentLoopEnd: number | null;
+  beatsPerMarkerUnit: number;
 }
 
 /**
@@ -83,6 +84,7 @@ export interface BuildClipPropertiesArgs {
  * @param args.startBeats - Start position in beats
  * @param args.endBeats - End position in beats
  * @param args.currentLoopEnd - Current loop end position in beats
+ * @param args.beatsPerMarkerUnit - Beats per marker unit (see markerBeatsPerUnit)
  * @returns Properties object ready for clip.setAll()
  */
 export function buildClipPropertiesToSet({
@@ -97,6 +99,7 @@ export function buildClipPropertiesToSet({
   startBeats,
   endBeats,
   currentLoopEnd,
+  beatsPerMarkerUnit,
 }: BuildClipPropertiesArgs): ClipPropsToSet {
   // Must expand loop_end BEFORE setting loop_start when new start >= old end
   // (otherwise Live rejects with "Cannot set LoopStart behind LoopEnd")
@@ -107,6 +110,16 @@ export function buildClipPropertiesToSet({
     currentLoopEnd != null
       ? startBeats >= currentLoopEnd
       : false;
+
+  // The markers are seconds on an unwarped audio clip and beats everywhere
+  // else. This is the only place that writes them, so it is the only place that
+  // has to convert.
+  const toMarker = (beats: number | null) =>
+    beats == null ? null : beats / beatsPerMarkerUnit;
+
+  const startMarker = toMarker(startMarkerBeats);
+  const start = toMarker(startBeats);
+  const end = toMarker(endBeats);
 
   const propsToSet: ClipPropsToSet = {
     name: name,
@@ -121,19 +134,19 @@ export function buildClipPropertiesToSet({
     addLoopProperties(
       propsToSet,
       setEndFirst,
-      startBeats,
-      endBeats,
-      startMarkerBeats,
+      start,
+      end,
+      startMarker,
       looping,
     );
-  } else if (startMarkerBeats != null) {
+  } else if (startMarker != null) {
     // Non-looping clip - just set start_marker
-    propsToSet.start_marker = startMarkerBeats;
+    propsToSet.start_marker = startMarker;
   }
 
   // Set end_marker for non-looping clips
-  if ((!isLooping || looping === false) && endBeats != null) {
-    propsToSet.end_marker = endBeats;
+  if ((!isLooping || looping === false) && end != null) {
+    propsToSet.end_marker = end;
   }
 
   return propsToSet;

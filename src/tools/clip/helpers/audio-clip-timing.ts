@@ -102,6 +102,27 @@ export function clipLengthBeats(clip: LiveAPI): number {
 }
 
 /**
+ * How many real beats one unit of a clip's marker properties is worth.
+ *
+ * `start_marker`, `end_marker`, `loop_start` and `loop_end` hold beats for MIDI
+ * and warped audio, but **seconds** on an unwarped audio clip. Multiply a
+ * marker by this to get beats; divide a requested beat position by it to get
+ * the value to write. That is the same conversion audioClipTiming reads back
+ * with, so `start`/`length` round-trip in either warp state.
+ *
+ * @param clip - The clip whose markers are being read or written
+ * @returns 1, or tempo/60 for an unwarped audio clip
+ */
+export function markerBeatsPerUnit(clip: LiveAPI): number {
+  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
+
+  if (!isAudioClip) return 1;
+  if ((clip.getProperty("warping") as number) > 0) return 1;
+
+  return currentTempo() / 60;
+}
+
+/**
  * An audio clip's full sample duration in seconds.
  * @param clip - The audio clip to measure
  * @returns Duration in seconds, or 0 when the sample rate is unavailable

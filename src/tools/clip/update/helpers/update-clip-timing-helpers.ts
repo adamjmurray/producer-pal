@@ -27,6 +27,7 @@ interface CalculateBeatPositionsArgs {
   timeSigDenominator: number;
   clip: LiveAPI;
   isLooping: boolean;
+  beatsPerMarkerUnit: number;
 }
 
 interface TimeSignature {
@@ -75,6 +76,7 @@ function determineStartMarker(
  * @param args.timeSigDenominator - Time signature denominator
  * @param args.clip - The clip to read defaults from
  * @param args.isLooping - Whether clip is looping
+ * @param args.beatsPerMarkerUnit - Beats per marker unit (see markerBeatsPerUnit)
  * @returns Beat positions
  */
 export function calculateBeatPositions({
@@ -85,10 +87,16 @@ export function calculateBeatPositions({
   timeSigDenominator,
   clip,
   isLooping,
+  beatsPerMarkerUnit,
 }: CalculateBeatPositionsArgs): BeatPositions {
   let startBeats: number | null = null;
   let endBeats: number | null = null;
   let firstStartBeats: number | null = null;
+
+  // Everything below is in beats, but the clip's markers may be seconds — read
+  // them through this so an unwarped audio clip lands on the same scale.
+  const markerBeats = (property: string) =>
+    (clip.getProperty(property) as number) * beatsPerMarkerUnit;
 
   // Convert start to beats if provided. Validate the standalone position first
   // so a 0-indexed/zero-bar position gets the 1-indexing steer (matching
@@ -113,11 +121,11 @@ export function calculateBeatPositions({
     // If start not provided, read current value from clip
     if (startBeats == null) {
       if (isLooping) {
-        startBeats = clip.getProperty("loop_start") as number;
+        startBeats = markerBeats("loop_start");
       } else {
         // For non-looping clips, derive from end_marker - length
-        const currentEndMarker = clip.getProperty("end_marker") as number;
-        const currentStartMarker = clip.getProperty("start_marker") as number;
+        const currentEndMarker = markerBeats("end_marker");
+        const currentStartMarker = markerBeats("start_marker");
         const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
 
         startBeats = currentEndMarker - lengthBeats;
@@ -148,7 +156,7 @@ export function calculateBeatPositions({
   }
 
   // Determine start_marker value (must be < end_marker content boundary)
-  const endMarker = clip.getProperty("end_marker") as number;
+  const endMarker = markerBeats("end_marker");
   const startMarkerBeats = determineStartMarker(
     firstStartBeats,
     startBeats,
