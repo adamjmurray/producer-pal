@@ -180,7 +180,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "time-and-values": {
     title: "Time & note values",
     description:
-      "Beats, note values, bar|beat positions, and clip lengths — the units every other section assumes. Needed by nearly every task.",
+      "Beats, note values, bar|beat positions, clip lengths, and Ableton's pitch names (C3=60) — the units every other section assumes. Needed by nearly every task.",
     builtIn: timeAndValues,
   },
 
@@ -194,7 +194,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "transforms-editing": {
     title: "Transforms: editing an existing clip",
     description:
-      "preTransforms and quantizeGrid, for deleting, clearing, moving, and quantizing notes already in a clip. Only update-clip takes them, so anything that can't update clips never gets this. Needs the core transforms guide.",
+      "How notes MERGE into a clip that already has some, plus preTransforms and quantizeGrid for deleting, clearing, moving, and quantizing them. Only update-clip does any of this, so anything that can't update clips never gets it. Needs the core transforms guide.",
     builtIn: transformsEditing,
   },
 
@@ -213,9 +213,9 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   },
 
   "transforms-basic": {
-    title: "Deleting notes (small-model)",
+    title: "Editing an existing clip (small-model)",
     description:
-      "The whole transforms guide for smaller or local models (small-model mode): clearing and deleting notes already in a clip with update-clip's preTransforms.",
+      "The whole transforms guide for smaller or local models (small-model mode): how notes merge into a clip that already has some, and clearing or deleting them with update-clip's preTransforms.",
     builtIn: transformsBasic,
   },
 
@@ -306,7 +306,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "barbeat-standard-write": {
     title: "bar|beat notation: writing notes (standard)",
     description:
-      "The bar|beat syntax only used to CREATE notes — repeat patterns, pattern brackets, bar copying, v0 deletes, and the examples. Never appears in a clip you read back, so it's dropped for anything that can't write clips. Needs the bar|beat notation guide it builds on.",
+      "The bar|beat syntax only used to CREATE notes — repeat patterns, pattern brackets, bar copying, v0 deletes, and the examples. Never appears in a clip you read back, so it's dropped for anything that can't write clips. Editing a clip that already has notes is update-clip's alone and lives in its own section. Needs the bar|beat notation guide it builds on.",
     builtIn: barbeatStandardWrite,
   },
 

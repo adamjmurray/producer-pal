@@ -4,20 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * bar|beat basic (small-model) notation head: the bar|beat notes syntax, closing
- * with the merge note.
+ * bar|beat basic (small-model) notation head: the bar|beat notes syntax and
+ * nothing about editing a clip that already has notes.
  *
- * That merge note lives HERE, not in the `basic` driver, because every other
- * notation head already carries its own (stark's `starkMergeNote`, midi-json's
- * last bullet) and the standard bar|beat head states it too — a copy in the
- * driver was the same fact a third time for two of the three notations. The
- * driver `@include`s this head and the fragments around it; `resolveIncludes`
- * composes them, not buildSkills.
- *
- * It keeps its own heading, which stark and midi-json don't need: theirs sit in
- * running prose, this one would otherwise trail a code block and read as a
- * caption on the drum example. The heading also pairs with the driver's
- * `## Delete / clear notes` section that follows it.
+ * The merge note used to close this head, and the equivalent closed stark's and
+ * midi-json's. All three moved to `transforms-basic`, whose gate is exactly
+ * update-clip: only update-clip merges (create-clip replaces the slot), while
+ * this head ships to every note tool including the read-only ones, so the copies
+ * here were three statements of an update-clip rule to callers who couldn't
+ * merge — and they pointed at a `preTransforms` the fragment that defines it had
+ * already been gated away from.
  */
 export const barbeatBasic = `## MIDI Notation
 
@@ -45,8 +41,4 @@ Drums (commas list beats for one pitch; re-set n per lane so it doesn't carry ov
 v100 n/8 C1 1|1,3          # kick
 v100 D1 1|2,4              # snare
 v80 n/16 Gb1 1|1.5,2.5,3.5,4.5   # hats (softer, on the offbeats)
-\`\`\`
-
-## Add notes to an existing clip (update-clip)
-
-\`notes\` MERGES into the clip: a note at the *same* pitch+start overwrites that note; every other note stays. So to add, just pass the new notes — don't resend the whole clip.`;
+\`\`\``;

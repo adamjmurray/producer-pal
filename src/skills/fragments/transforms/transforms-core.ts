@@ -50,7 +50,7 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - **MIDI parameters:** velocity (<=0 deletes note, else capped at 127), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
-- **Shorthand** (clears/simple sets): a single bar|beat-style token instead of \`param = value\` — \`delete\` (or \`v0\`) delete a note · \`vN\`/\`v±N\`/\`vA-B\` velocity (range = humanized random) · \`pN\`/\`p±N\` probability · \`n/4\`/\`Nbar\`/\`1bar+n/4\` duration · \`C4\` remap pitch (one per line; a selector still applies, e.g. \`C1: delete\`). \`delete\` is a transforms/preTransforms alias, not a \`notes\` token. Preferred for clearing/deleting; use the full \`param op expr\` form for computed changes (\`+=\`, \`*=\`, waveforms, ramps). Note \`vA-B\` is the one shorthand with no \`param = ...\` longhand — it sets velocity AND velocity_deviation together, so write it as the shorthand (\`velocity = vA-B\` errors)
+- **Shorthand** (clears/simple sets): a single bar|beat-style token instead of \`param = value\` — \`delete\` (or \`v0\`) delete a note · \`vN\`/\`v±N\`/\`vA-B\` velocity (range = humanized random) · \`pN\`/\`p±N\` probability · \`n/4\`/\`Nbar\`/\`1bar+n/4\` duration · \`C4\` remap pitch (one per line; a selector still applies, e.g. \`C1: delete\`). \`delete\` is a transforms alias, not a \`notes\` token. Preferred for clearing/deleting; use the full \`param op expr\` form for computed changes (\`+=\`, \`*=\`, waveforms, ramps). Note \`vA-B\` is the one shorthand with no \`param = ...\` longhand — it sets velocity AND velocity_deviation together, so write it as the shorthand (\`velocity = vA-B\` errors)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and durations: \`n<dur>\` note values (e.g. \`n/4\` = a quarter in any meter) and \`Nbar\` meter-aware bars (e.g. \`1bar\`, \`1bar+n/4\`) — same grammar as bar|beat and length fields. Both evaluate to musical beats and compose in any math expression (so in a non-time param like \`velocity\` a bare \`1bar\` resolves to its beat count — e.g. 4 in 4/4 — rarely what you want there)
 
 \`\`\`
@@ -72,27 +72,40 @@ MIDI params ignored for audio clips, vice versa.
 Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
 
 /**
- * The two transforms params only update-clip takes. A SIBLING of tier 1, not a
- * fourth tier: the tiers are cut by how often a request needs them, this one by
- * which tool can accept it at all — `preTransforms` and `quantizeGrid` appear in
- * no other schema, so a create-clip or duplicate caller was paying ~1.1k
- * characters it could never use.
+ * Everything about changing a clip that already has notes in it. A SIBLING of
+ * tier 1, not a fourth tier: the tiers are cut by how often a request needs
+ * them, this one by which tool can accept it at all — `preTransforms` and
+ * `quantizeGrid` appear in no other schema, so a create-clip or duplicate caller
+ * was paying ~1.1k characters it could never use.
+ *
+ * The merge rule leads because it is the same gate and the same subject: only
+ * update-clip merges (create-clip replaces the slot outright), and each notation
+ * head used to state it separately — three copies, all shipping to read-only and
+ * create-clip-only callers who have nothing to merge into and, without this
+ * fragment, no definition of the `preTransforms` those copies pointed at.
+ *
+ * Notation-neutral like tier 1: merge keys on pitch+start in every notation, so
+ * nothing here may name a notation's syntax for deleting inline.
  *
  * This is `transforms-basic` at standard depth — same gate, same subject — which
  * is the other reason that fragment has no `-standard` twin to be.
  */
-export const transformsEditing = `### preTransforms & quantizeGrid (update-clip only)
+export const transformsEditing = `### Editing Notes Already in a Clip (update-clip only)
 
-\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s.
+\`notes\` MERGES into an existing clip — a new note overwrites the existing note at the *same* pitch+start (restate it with the length or velocity you want); every other note is untouched. So **don't rewrite the whole clip to change a few notes** — restate just those.
+
+\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Prefer it over deleting inline in \`notes\`. Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s.
 
 \`quantizeGrid\` uses Live's native grid enum (\`1/4\`,\`1/8\`,\`1/8T\`,\`1/16\`,\`1/16T\`,\`1/32\`) but also accepts the equivalent \`n/N\` note value (\`n/12\`=\`1/8T\`, \`n/24\`=\`1/16T\`, etc.); the mixed grids \`1/8+1/8T\`/\`1/16+1/16T\` are enum-only.`;
 
 /**
- * The transforms fragment at basic (small-model) depth: `preTransforms` clearing
- * and nothing else. Small-model mode teaches no transforms LANGUAGE — no
- * selectors-as-syntax, no expressions, no generative functions — so this is a
- * four-line recipe for the one job that tier cannot do without: getting rid of
- * notes that are already there.
+ * The transforms fragment at basic (small-model) depth: the merge rule and
+ * `preTransforms` clearing, nothing else. Small-model mode teaches no transforms
+ * LANGUAGE — no selectors-as-syntax, no expressions, no generative functions —
+ * so this is a short recipe for the one job that tier cannot do without: getting
+ * rid of notes that are already there. It carries the merge rule for the same
+ * reason `transformsEditing` does — the basic notation heads state it no longer,
+ * and only update-clip merges.
  *
  * It is a fragment rather than driver prose because `preTransforms` is an
  * update-clip parameter and nothing else's (verified across the tool defs), so
@@ -101,7 +114,9 @@ export const transformsEditing = `### preTransforms & quantizeGrid (update-clip 
  * never use — precisely backwards for the narrow-toolset workers gating exists
  * to serve.
  */
-export const transformsBasic = `## Delete / clear notes (update-clip preTransforms)
+export const transformsBasic = `## Editing a clip that already has notes (update-clip)
+
+\`notes\` MERGES into the clip: a note at the *same* pitch+start overwrites that note; every other note stays. So to add or change notes, pass just those — don't resend the whole clip.
 
 \`preTransforms\` clears or edits notes already in the clip, before any new \`notes\` in the same call:
 - \`v0\` — delete all notes

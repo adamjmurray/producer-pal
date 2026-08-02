@@ -19,6 +19,12 @@
 //
 // What's left defines UNITS, not fields. A rule about which field resolves
 // against which meter belongs with the fields.
+//
+// Pitch names are a unit too, and they belong here rather than in the notation
+// heads: those are gated on the note tools, so a device-only or duplicate-only
+// caller was reading `pC1` and `C3:` selectors with no statement anywhere that
+// Live counts octaves from C3=60. Under the MIDI-standard convention C1 is 24,
+// not 36 — a whole octave of wrong drum pads.
 export const timeAndValues = `## Time & Note Values
 
 Applies to every notation: transforms, clip \`length\`, and arrangement durations use these units regardless of how you write \`notes\`.
@@ -30,4 +36,6 @@ Applies to every notation: transforms, clip \`length\`, and arrangement duration
 - Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`n<fraction>\` note value (e.g. \`n/4\` = quarter, \`n/8\` = eighth), or \`Nbar±n<fraction>\` mixed — the tail adds or subtracts, so \`1bar+n/4\` is a bar plus a quarter and \`1bar-n/16\` is *almost a full bar* (a bar minus a 16th). No bare fractions/integers/decimals
 - \`Nbar\` is also valid as a **note duration** — meter-aware, so \`1bar\` holds one whole bar in any meter (6 grid beats in 6/8, 5 in 5/4). Bars use the bare \`Nbar\` form — never an \`n\` prefix (\`1bar\`, not \`n1bar\`; \`n\` is only for denominator-bearing note values)
 
-**Positions** in transform selectors and single-point fields use **bar|beat**: 1-indexed, \`X|Y\` reads left-to-right (\`4|2\` = bar 4 beat 2, \`1|1\` = the very start), meter-relative. Sub-beat via a decimal (\`2|3.5\`) or an \`±n\` note-value offset off the grid beat (\`1|1+n/12\`).`;
+**Positions** in transform selectors and single-point fields use **bar|beat**: 1-indexed, \`X|Y\` reads left-to-right (\`4|2\` = bar 4 beat 2, \`1|1\` = the very start), meter-relative. Sub-beat via a decimal (\`2|3.5\`) or an \`±n\` note-value offset off the grid beat (\`1|1+n/12\`).
+
+**Pitch names** use Ableton's octave numbering, wherever a pitch is written: **C3 = MIDI 60 = middle C**, so C1 = 36 (the bottom-left drum-rack pad), C-2 = 0, G8 = 127. Sharp/flat goes right after the letter (\`C#3\`, \`Bb2\`), case-insensitive. Other software numbers the same MIDI note C4 or C5 — inside Producer Pal it is always C3.`;

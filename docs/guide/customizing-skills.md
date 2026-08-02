@@ -39,30 +39,30 @@ release.
 Fragments are cut along the lines of what you're actually doing, so you can drop
 a whole area you never use:
 
-| Fragment                             | What it teaches                                                                                   |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `standard`                           | The standard skills document — the list of `@include` lines below                                 |
-| `basic`                              | The much shorter document used in small model mode                                                |
-| `time-and-values`                    | Beats, note values, bar\|beat positions, and clip lengths                                         |
-| `transforms-core`                    | Selecting notes and setting values on them                                                        |
-| `transforms-editing`                 | `preTransforms` and `quantizeGrid` — editing notes already in a clip (update-clip only)           |
-| `transforms-expressions`             | Transform variables, math functions, swing and quantize                                           |
-| `transforms-generative`              | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                 |
-| `transforms-basic`                   | Deleting and clearing notes with `preTransforms` — the whole transforms guide in small model mode |
-| `library`                            | Searching Live's browser library and your sample folder                                           |
-| `devices`                            | Device paths and VST/AU limits                                                                    |
-| `devices-write`                      | Building Simpler and Drum Rack instruments — loading samples                                      |
-| `specialized-devices`                | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                   |
-| `arrangement`                        | What an Arrangement position means — song meter vs. clip meter                                    |
-| `arrangement-write`                  | Moving and splitting clips on the Arrangement timeline, and take lanes                            |
-| `working-with-live`                  | Session vs. Arrangement habits, playback, layering, locators                                      |
-| `context-standard` / `context-basic` | [Context & Memory](/guide/context) — the project, global, and memory layers                       |
-| `getting-help`                       | What to tell you when a request is outside Producer Pal's reach                                   |
-| `getting-help-basic`                 | The audio limits worth saying out loud, in small model mode                                       |
-| `barbeat-standard` / `barbeat-basic` | The bar\|beat note notation guide (default notation)                                              |
-| `barbeat-standard-write`             | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples        |
-| `stark-standard` / `stark-basic`     | The stark note notation guide                                                                     |
-| `midi-json`                          | The midi-json note notation guide                                                                 |
+| Fragment                             | What it teaches                                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `standard`                           | The standard skills document — the list of `@include` lines below                                             |
+| `basic`                              | The much shorter document used in small model mode                                                            |
+| `time-and-values`                    | Beats, note values, bar\|beat positions, clip lengths, and pitch names (C3=60)                                |
+| `transforms-core`                    | Selecting notes and setting values on them                                                                    |
+| `transforms-editing`                 | Editing a clip that already has notes: how `notes` merges, `preTransforms`, `quantizeGrid` (update-clip only) |
+| `transforms-expressions`             | Transform variables, math functions, swing and quantize                                                       |
+| `transforms-generative`              | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                             |
+| `transforms-basic`                   | Merging into a clip and clearing notes with `preTransforms` — the whole transforms guide in small model mode  |
+| `library`                            | Searching Live's browser library and your sample folder                                                       |
+| `devices`                            | Device paths and VST/AU limits                                                                                |
+| `devices-write`                      | Building Simpler and Drum Rack instruments — loading samples                                                  |
+| `specialized-devices`                | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                               |
+| `arrangement`                        | What an Arrangement position means — song meter vs. clip meter                                                |
+| `arrangement-write`                  | Moving and splitting clips on the Arrangement timeline, and take lanes                                        |
+| `working-with-live`                  | Session vs. Arrangement habits, playback, layering, locators                                                  |
+| `context-standard` / `context-basic` | [Context & Memory](/guide/context) — the project, global, and memory layers                                   |
+| `getting-help`                       | What to tell you when a request is outside Producer Pal's reach                                               |
+| `getting-help-basic`                 | The audio limits worth saying out loud, in small model mode                                                   |
+| `barbeat-standard` / `barbeat-basic` | The bar\|beat note notation guide (default notation)                                                          |
+| `barbeat-standard-write`             | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples                    |
+| `stark-standard` / `stark-basic`     | The stark note notation guide                                                                                 |
+| `midi-json`                          | The midi-json note notation guide                                                                             |
 
 ::: warning Fragment names changed in 2.0.1
 
@@ -158,7 +158,7 @@ override you wrote for it — check the box again and it comes back.
 | If you never…                                            | Switch off                                                                           |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Use ratchets, echoes, or waveform modulation             | `transforms-generative`                                                              |
-| Delete or clear notes already in a clip                  | `transforms-editing`                                                                 |
+| Edit, delete, or clear notes already in a clip           | `transforms-editing`                                                                 |
 | Use swing, quantize, or math on note values              | `transforms-expressions` **and** `transforms-generative`                             |
 | Use transforms to edit notes/audio params                | `transforms-core` **and** the other `transforms-` fragments — the area goes together |
 | Search Live's library or your sample folder with the AI  | `library`                                                                            |

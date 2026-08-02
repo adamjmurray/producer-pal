@@ -61,7 +61,6 @@ describe("buildSkills - composition", () => {
       "**Repeat patterns**",
       "**Pattern brackets**",
       "@N-M=P-Q tiles bars",
-      "### Editing Existing Notes (update-clip)",
       "## Examples",
       "### Bar Copying",
       "### Repeats with Variations",
@@ -93,7 +92,7 @@ describe("buildSkills - composition", () => {
     const basic = buildSkills({ notation: "barbeat", smallModelMode: true });
 
     expect(basic).toContain("If a tool call errors, read the message");
-    expect(basic).toContain("## Delete / clear notes"); // transforms-basic
+    expect(basic).toContain("## Editing a clip that already has notes"); // transforms-basic
     // Standard-only fragments stay out of the small-model blob.
     expect(basic).not.toContain("## Devices & Instruments");
   });

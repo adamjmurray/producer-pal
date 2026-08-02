@@ -57,6 +57,12 @@ MIDI clip notes use the bar|beat notation syntax:
  *
  * Opens by restating that a beat may be a repeat pattern and that v/n/p/pitch may
  * be brackets, because the read half's comma-list bullet no longer says so.
+ *
+ * Says nothing about editing a clip that already has notes: that is update-clip's
+ * alone, and this fragment also ships to a create-clip-only caller, which
+ * replaces a slot rather than merging into it. It lives in `transforms-editing`,
+ * whose gate is exactly update-clip. Don't name `preTransforms` here — that is
+ * the dangling-vocabulary bug the move fixed.
  */
 export const barbeatStandardWrite = `## Writing Notes
 
@@ -68,15 +74,11 @@ The beat in bar|beat may also be a **repeat pattern**, and v/n/p/pitch may be **
   - \`1|1x3@n/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
   - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter. To place notes a fixed note value apart — e.g. fill a bar with quarter notes — give \`<count>\` a real number instead of enumerating grid beats: in 6/8, \`n/4 C1 1|1x3\` lands quarters on grid beats 1, 3, 5 (filling the bar), and in 5/4 \`n/4 C1 1|1x5\` fills the bar (see **Positions & Meter** for the meter trap this avoids)
 - **Pattern brackets** \`[...]\`: a *cycle* of one parameter's values, stepped across notes instead of repeated. **Pitch**: \`[C3 E3 G3] 1|1x3@n/4\` (or across separate beats, \`[C3 E3 G3] 1|1 1|2 1|3\`) plays C3, E3, G3 (a melodic line, not 3× one pitch); \`(...)\` is a chord step (\`[(C3 E3) (D3 F3)] 1|1x2@n/4\`). Multiple pitch brackets (or a bare pitch + a bracket) **layer** into chords: \`C4 [E4 G4 C5] 1|1,2,3,4\` is a held C4 under a moving line; \`[C3 C4] [E3 G3 E4] 1|1,2,3,4\` stacks two voices that phase (only pitch layers — v/n/p are last-wins). **Velocity/duration/probability**: \`[v100 v60]\`, \`[n/4 n/8]\`, \`[p1 p0.5]\` cycle that value (e.g. \`[v100 v60 v60 v60] C1 1|1x16@n/16\` = accent every 4th hat). A duration bracket with **no** \`@step\` also sets the spacing — the notes gallop (\`[n/4 n/8] C3 1|1x8\` = long-short long-short). One kind per bracket. **Zip** sibling brackets to vary several at once against the same step: \`[v80 v100] [C3 E3 G3] 1|1x8@n/8\` → eight 8th notes C3 v80, E3 v100, G3 v80, C3 v100, E3 v80, G3 v100, C3 v80, E3 v100 (velocity cycles every 2, pitch every 3 — coprime lengths phase against each other). Each cycle wraps at its own length and persists until you reassign that parameter
-- \`v0\` deletes earlier notes at the same pitch/time — **sticky** like any \`v\` (keeps deleting until you set a non-zero \`v\`). Reserve it for notes built in this same \`notes\` string; to delete notes already in the clip prefer \`preTransforms\`/\`transforms\` \`delete\` — that keyword works only there, \`notes\` deletes with \`v0\` (see Editing Existing Notes). Always follow an inline \`v0\` with \`vN\` (N>0) to exit delete state
-- copying bars (**MERGES** - clear unwanted notes with \`preTransforms\`/\`transforms\` \`delete\`, or a sticky inline \`v0\`):
+- \`v0\` deletes earlier notes at the same pitch/time — **sticky** like any \`v\` (keeps deleting until you set a non-zero \`v\`). Reserve it for notes built in this same \`notes\` string; \`delete\` is a transforms keyword, not a \`notes\` token. Always follow an inline \`v0\` with \`vN\` (N>0) to exit delete state
+- copying bars (**MERGES** - clear unwanted notes with a sticky inline \`v0\`, or with \`transforms\` \`delete\`):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
   - Copies capture each note's v/n/p at the time it was written, not the current state
-
-### Editing Existing Notes (update-clip)
-
-\`notes\` MERGES into an existing clip — a new note overwrites the existing note at the *same* pitch+start (restate \`n/8 G3 4|2\` to shorten that G3); other notes are untouched. So **don't rewrite the whole clip to change a few notes** — restate just those. To delete, move, clear a region, or otherwise change notes *already* in the clip, use \`preTransforms\` — to *replace* a region rather than edit in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind.
 
 ## Examples
 
@@ -109,7 +111,7 @@ C1 4|1,3.5 D1 4|4 // bar 4
 
 ### Repeats with Variations
 
-Copy foundation to **all bars** (including variation bars), then modify. Inline \`v0\` shown here as an alternative to the preferred \`preTransforms\`/\`transforms\` \`delete\`; \`v0\` is sticky, so each is followed by \`vN\` (N>0) to exit delete state:
+Copy foundation to **all bars** (including variation bars), then modify. \`v0\` is sticky, so each is followed by \`vN\` (N>0) to exit delete state:
 
 \`\`\`
 C1 1|1,3 D1 1|2,4       // bar 1 foundation

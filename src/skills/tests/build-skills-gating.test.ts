@@ -106,8 +106,68 @@ describe("buildSkills - tool gating", () => {
     expect(result).not.toContain("## Writing Notes");
     expect(result).not.toContain("**Pattern brackets**");
     expect(result).not.toContain("### Bar Copying");
-    expect(result).not.toContain("### Editing Existing Notes");
     expect(warnings).toStrictEqual([]);
+  });
+
+  it("states the octave convention for a toolset with no notation head", () => {
+    // Device paths (`pC1`) and transform selectors (`C3:`) name pitches, but
+    // both are gated wider than the notation heads that used to be the only
+    // place saying Live counts octaves from C3=60. Under the MIDI-standard
+    // convention C1 is 24 rather than 36 — a device build a full octave off.
+    for (const tools of [
+      ["ppal-create-device", "ppal-read-device"],
+      ["ppal-duplicate"],
+    ]) {
+      const result = buildSkills({ notation: "barbeat", tools });
+
+      expect(result, `${tools.join()} kept a notation head`).not.toContain(
+        "## MIDI Syntax",
+      );
+      expect(result, `${tools.join()} lost the octave convention`).toContain(
+        "C3 = MIDI 60",
+      );
+    }
+  });
+
+  it("names no update-clip-only parameter to a caller without update-clip", () => {
+    // Vocabulary without grammar, the version gating can create on its own: the
+    // notation heads and the bar|beat write half all used to point at
+    // `preTransforms` while the fragment that DEFINES it is gated on update-clip
+    // alone, so a read-only or create-clip-only caller was told to reach for a
+    // parameter its schema doesn't have. It can't be recorded in
+    // FRAGMENT_REQUIRES either — that edge would fail the subset test, which is
+    // itself the signal the two gates disagree.
+    const withoutUpdate = ALL_TOOLS.filter((n) => n !== "ppal-update-clip");
+
+    for (const notation of ["barbeat", "stark", "midi-json"] as const) {
+      for (const smallModelMode of [false, true]) {
+        const result = buildSkills({
+          notation,
+          smallModelMode,
+          tools: withoutUpdate,
+        });
+
+        expect(result, `${notation} ${smallModelMode}`).not.toContain(
+          "preTransforms",
+        );
+        expect(result, `${notation} ${smallModelMode}`).not.toContain(
+          "quantizeGrid",
+        );
+      }
+    }
+  });
+
+  it("keeps the merge rule for update-clip, in every notation", () => {
+    // The other half of the move: it left three notation heads, so it has to
+    // arrive exactly once for anyone who can actually merge into a clip.
+    for (const notation of ["barbeat", "stark", "midi-json"] as const) {
+      const result = buildSkills({ notation, tools: ["ppal-update-clip"] });
+
+      expect(result, `${notation} lost the editing section`).toContain(
+        "### Editing Notes Already in a Clip",
+      );
+      expect(result, `${notation} lost the merge rule`).toContain("MERGES");
+    }
   });
 
   it("keeps both halves for anything that can write a clip", () => {
@@ -162,7 +222,7 @@ describe("buildSkills - tool gating", () => {
       tools: ALL_TOOLS.filter((name) => name !== "ppal-update-clip"),
     });
 
-    expect(result).not.toContain("## Delete / clear notes");
+    expect(result).not.toContain("## Editing a clip that already has notes");
     expect(result).toContain("## MIDI Notation");
     expect(result).toContain("## Rules");
   });

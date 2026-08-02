@@ -51,13 +51,15 @@ const starkHeadPitched = `
 const starkBracketVoicings = `
 - **Voicings** — a \`[C E G]\` bracket is an explicit simultaneous stack sharing one \`/N\` + dynamic: \`melody: [C E G]/2!\`. Separate the notes with SPACES only: inside a bracket \`,\` and \`'\` are octave marks (\`[C, E]\` = C and E each an octave down, still one stack), so write \`[C E G]\`, NEVER \`[C, E, G]\` — commas there would silently drop those notes an octave. Valid on melody/bass (their register) and on a \`chords:\` line (chord register), alongside symbols: \`chords: Cm7 [Eb G C']\`.`;
 
-// The merge note closes both heads. It also refines the "round-trippable" claim:
-// pitch/timing/duration are exact, but velocity is quantized to the 3 dynamics.
-const starkMergeNote = `
+// Closes both heads by refining the "round-trippable" claim: pitch/timing/
+// duration are exact, but velocity is quantized to the 3 dynamics.
+//
+// The merge rule used to close this too. It moved to `transforms-editing`
+// (update-clip's gate): this head ships to read-only callers, who have nothing
+// to merge, and it pointed at a `preTransforms` those callers were never taught.
+const starkRoundTripNote = `
 
-Round-trip preserves pitch, timing, and duration exactly; velocity is the lossy axis — on read-back it snaps to the three dynamics (soft/normal/accent) and is re-randomized within each range, so use bar|beat or midi-json when exact velocities matter.
-
-\`notes\` MERGES into an existing clip; use \`preTransforms\` to delete or edit notes already in the clip.`;
+Round-trip preserves pitch, timing, and duration exactly; velocity is the lossy axis — on read-back it snaps to the three dynamics (soft/normal/accent) and is re-randomized within each range, so use bar|beat or midi-json when exact velocities matter.`;
 
 /**
  * Standard stark head: adds the absolute pitch-name fallback for unnamed pads and
@@ -68,10 +70,11 @@ export const starkStandard =
   starkDrumPitchNameFallback +
   starkHeadPitched +
   starkBracketVoicings +
-  starkMergeNote;
+  starkRoundTripNote;
 
 /**
  * Small-model stark head: the 16 named pads and chord symbols only — no absolute
  * pitch-name fallback and no bracket voicings.
  */
-export const starkBasic = starkHeadDrums + starkHeadPitched + starkMergeNote;
+export const starkBasic =
+  starkHeadDrums + starkHeadPitched + starkRoundTripNote;
