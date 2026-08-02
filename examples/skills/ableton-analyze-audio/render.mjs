@@ -186,7 +186,7 @@ function buildExportScript({ track, dir }) {
         end repeat
         if trackPop is missing value then error "Rendered Track control not found"
 
-        -- Rendered Track -> ${track}. "set value" is a no-op and the menu is not
+        -- Pick the Rendered Track. "set value" is a no-op and the menu is not
         -- AX-navigable, so: click to open, type-to-select, Return. Verify + retry
         -- (a mistimed open would otherwise proceed with the wrong track).
         repeat 4 times
@@ -198,7 +198,7 @@ function buildExportScript({ track, dir }) {
           keystroke return
           delay 0.5
         end repeat
-        if (value of trackPop as text) is not ${as(track)} then error "Could not set Rendered Track to ${track}"
+        if (value of trackPop as text) is not ${as(track)} then error "Could not set Rendered Track to " & ${as(track)}
 
         -- MP3 on; distracting options off (idempotent: click only to change).
         -- Grab the Export button in the same pass over group 1's buttons.
