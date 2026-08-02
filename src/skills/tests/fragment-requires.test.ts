@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { NOTATIONS } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { builtinFragments } from "#src/skills/builtin-fragments.ts";
-import { standardDriver } from "#src/skills/drivers.ts";
+import { basicDriver, standardDriver } from "#src/skills/drivers.ts";
 import {
   FRAGMENT_REQUIRES,
   fragmentRequires,
@@ -55,20 +56,36 @@ describe("FRAGMENT_REQUIRES", () => {
     }
   });
 
-  it("is satisfied by the standard driver for every fragment it includes", () => {
-    // Guards the built-in manifest itself: a fragment whose prerequisite the
-    // driver never includes would ship the broken subset by default.
-    const included = new Set(
-      [...standardDriver.matchAll(/@include\s+"\.\/([^"]+)\.md"/g)].map(
-        (match) => match[1],
-      ),
-    );
+  it("is satisfied by BOTH drivers for every fragment they include", () => {
+    // Guards the built-in manifests themselves: a fragment whose prerequisite
+    // the driver never includes would ship the broken subset by default. Both
+    // drivers, because the notation edges differ per depth — checking only the
+    // standard one leaves the basic graph's edges unguarded.
+    for (const [depth, driver] of [
+      ["standard", standardDriver],
+      ["basic", basicDriver],
+    ] as const) {
+      // The refs are notation-templated; resolve them for each notation so a
+      // `{notation}-basic-write` edge is compared against real fragment names.
+      for (const notation of NOTATIONS) {
+        const included = new Set(
+          [
+            ...driver
+              .replaceAll("{notation}", notation)
+              .matchAll(/@include\s+"\.\/([^"]+)\.md"/g),
+          ].map((match) => match[1]),
+        );
 
-    for (const [name, requires] of Object.entries(FRAGMENT_REQUIRES)) {
-      if (!included.has(name)) continue;
+        for (const [name, requires] of Object.entries(FRAGMENT_REQUIRES)) {
+          if (!included.has(name)) continue;
 
-      for (const required of requires) {
-        expect(included.has(required), `${name} needs ${required}`).toBe(true);
+          for (const required of requires) {
+            expect(
+              included.has(required),
+              `${depth}/${notation}: ${name} needs ${required}`,
+            ).toBe(true);
+          }
+        }
       }
     }
   });

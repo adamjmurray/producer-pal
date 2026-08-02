@@ -37,8 +37,8 @@ const HEADER = "# Producer Pal Skills";
  *
  * The notation head takes two adjacent lines so the guide stays contiguous: the
  * base head, then its `-write` sibling carrying the syntax only the clip writers
- * can act on (ADR-0019). Only bar|beat is split so far; the other notations
- * resolve that second ref to nothing.
+ * can act on (ADR-0019). bar|beat and stark are split; midi-json resolves that
+ * second ref to nothing.
  */
 export const standardDriver = `${HEADER}
 
@@ -78,7 +78,13 @@ export const standardDriver = `${HEADER}
 `;
 
 /**
- * Small-model driver: header, four includes, and the general Rules inline.
+ * Small-model driver: header, five includes, and the general Rules inline.
+ *
+ * The notation head takes the same two adjacent lines the standard driver gives
+ * it. Small-model mode means fewer fragments, but the read/write axis is not a
+ * depth: a small-model subagent that only reads clips is exactly the caller the
+ * carve exists for, and at this size the authoring half is a third of the
+ * document.
  *
  * The three remaining `## Rules` bullets stay inline as a DECISION, not an
  * oversight: their natural gates are the clip writers, the read tools, and
@@ -93,6 +99,8 @@ export const standardDriver = `${HEADER}
 export const basicDriver = `${HEADER}
 
 @include "./{notation}-basic.md"
+
+@include "./{notation}-basic-write.md"
 
 @include "./transforms-basic.md"
 

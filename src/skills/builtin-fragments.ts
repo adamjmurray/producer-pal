@@ -25,11 +25,11 @@
 //
 // A fragment may also carry a `-write` SIBLING holding what only the writers can
 // act on, so a read-only caller stops paying for it (ADR-0019). The base name
-// keeps its meaning — that is what lets the standard driver's
-// `{notation}-standard` ref stay put — so splitting one costs no rename. Each
-// candidate opts in separately: bar|beat, devices, and arrangement are split;
-// stark and midi-json are not, so their `-write` refs resolve to an empty body
-// (below).
+// keeps its meaning — that is what lets the drivers' `{notation}-{level}` ref
+// stay put — so splitting one costs no rename. Each candidate opts in
+// separately: bar|beat (both depths), stark (both depths), devices, and
+// arrangement are split; midi-json is symmetric enough that splitting it would
+// buy nothing, so its `-write` refs resolve to an empty body (below).
 //
 // Subjects that grew past a file or two get a fragments/ subfolder — transforms
 // and devices so far. Filenames keep their full fragment name inside it
@@ -77,13 +77,21 @@ import {
 import { transformsExpressions } from "#src/skills/fragments/transforms/transforms-expressions.ts";
 import { transformsGenerative } from "#src/skills/fragments/transforms/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
-import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
+import {
+  barbeatBasic,
+  barbeatBasicWrite,
+} from "#src/skills/notation/barbeat-basic.ts";
 import {
   barbeatStandard,
   barbeatStandardWrite,
 } from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
-import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
+import {
+  starkBasic,
+  starkBasicWrite,
+  starkStandard,
+  starkStandardWrite,
+} from "#src/skills/notation/stark.ts";
 
 // Include names that resolve to another fragment's body. midi-json has one head
 // for both depths; aliasing keeps the drivers' uniform `{notation}-{level}` ref
@@ -131,16 +139,20 @@ export function builtinFragments(
     "barbeat-standard": barbeatStandard,
     "barbeat-standard-write": barbeatStandardWrite,
     "barbeat-basic": barbeatBasic,
+    "barbeat-basic-write": barbeatBasicWrite,
     "stark-standard": starkStandard,
+    "stark-standard-write": starkStandardWrite,
     "stark-basic": starkBasic,
+    "stark-basic-write": starkBasicWrite,
     "midi-json": midiJson,
 
-    // Present-but-empty, the code-transforms precedent: the standard driver's
-    // `-write` ref is notation-templated, and these two heads aren't split, so
-    // their authoring content stays inline in the head above. Registering the
-    // names keeps an unknown fragment a real error rather than a shrug.
-    "stark-standard-write": "",
+    // Present-but-empty, the code-transforms precedent: both drivers' `-write`
+    // ref is notation-templated, and midi-json isn't split, so registering the
+    // names keeps an unknown fragment a real error rather than a shrug. The
+    // alias map above can't do this job — it folds the two DEPTH refs onto one
+    // body, and there is no body here to fold onto.
     "midi-json-standard-write": "",
+    "midi-json-basic-write": "",
   };
 }
 

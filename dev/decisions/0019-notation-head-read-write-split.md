@@ -42,6 +42,12 @@ Only `barbeat-standard` is split. `stark-standard` and `midi-json` register an
 EMPTY `-write` fragment so the notation-templated ref resolves, the same
 present-but-empty shape `code-transforms` uses in a release build.
 
+**Carried out since (2026-08-02):** `barbeat-basic` and both stark heads are
+split too, and the basic driver gained the second notation line the standard one
+already had. This is the "costs no new decision" follow-through the last
+Consequence below anticipated, not a change of decision. midi-json still has no
+authoring half, so it now registers an empty `-write` fragment at both depths.
+
 ## Consequences
 
 - A read-only worker's bar|beat guidance drops from ~8,950 to ~3,680 chars.
@@ -69,7 +75,11 @@ present-but-empty shape `code-transforms` uses in a release build.
   chars) and to stark costs no new decision — add the body, add the slot.
   stark's head is composed from shared string consts, so it means restructuring
   that composition rather than moving sections. midi-json is symmetric enough
-  that splitting it would buy nothing.
+  that splitting it would buy nothing. _(Done — see the note above. Measured:
+  barbeat-basic carves 37%, stark 22% at both depths. stark's seam is chord
+  symbols alone; its bracket voicings stay on the read side because the
+  serializer emits them, which meant rewriting the Voicings bullet's chords-line
+  clause onto the write half rather than moving it.)_
 
 ## Alternatives rejected
 

@@ -186,20 +186,89 @@ describe("buildSkills - tool gating", () => {
   });
 
   it("leaves an unsplit notation head whole, with no gap where its write half would be", () => {
-    // stark and midi-json register an EMPTY `-write` fragment so the driver's
-    // notation-templated ref resolves. That must read as one clean section
-    // break, not a stack of blank lines, and must never warn.
-    for (const notation of ["stark", "midi-json"] as const) {
+    // midi-json registers an EMPTY `-write` fragment at BOTH depths so the
+    // drivers' notation-templated refs resolve. That must read as one clean
+    // section break, not a stack of blank lines, and must never warn.
+    for (const smallModelMode of [false, true]) {
       const warnings: string[] = [];
       const result = buildSkills(
-        { notation, tools: ALL_TOOLS },
+        { notation: "midi-json", smallModelMode, tools: ALL_TOOLS },
         {},
         (message) => warnings.push(message),
       );
 
-      expect(result, `${notation} lost its head`).toContain("## MIDI Notation");
-      expect(result, `${notation} stacked blank lines`).not.toMatch(/\n{3,}/);
-      expect(warnings, `${notation} warned`).toStrictEqual([]);
+      expect(result, `${smallModelMode} lost its head`).toContain(
+        "## MIDI Notation",
+      );
+      expect(result, `${smallModelMode} stacked blank lines`).not.toMatch(
+        /\n{3,}/,
+      );
+      expect(warnings, `${smallModelMode} warned`).toStrictEqual([]);
+    }
+  });
+
+  it("keeps the note format but drops the authoring half in small-model mode too", () => {
+    // Direction and depth are independent axes. A small-model subagent that only
+    // reads clips is precisely the caller the carve serves, and at this size the
+    // authoring half is a third of bar|beat's document — so the read/write gate
+    // has to hold here, not just at standard depth.
+    const readOnly = ["ppal-read-clip", "ppal-read-track", "ppal-read-scene"];
+    const warnings: string[] = [];
+    const barbeat = buildSkills(
+      { notation: "barbeat", smallModelMode: true, tools: readOnly },
+      {},
+      (message) => warnings.push(message),
+    );
+    const stark = buildSkills({
+      notation: "stark",
+      smallModelMode: true,
+      tools: readOnly,
+    });
+
+    expect(barbeat).toContain("## MIDI Notation");
+    expect(barbeat).not.toContain("## Generate notes");
+    expect(stark).toContain("## MIDI Notation — Stark");
+    expect(stark).not.toContain("## Writing Notes");
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("keeps both halves at both depths for anything that can write a clip", () => {
+    for (const tool of ["ppal-create-clip", "ppal-update-clip"]) {
+      const barbeat = buildSkills({
+        notation: "barbeat",
+        smallModelMode: true,
+        tools: [tool],
+      });
+      const stark = buildSkills({ notation: "stark", tools: [tool] });
+
+      expect(barbeat, `${tool} lost the examples`).toContain(
+        "## Generate notes",
+      );
+      expect(stark, `${tool} lost the chord symbols`).toContain(
+        "## Writing Notes",
+      );
+    }
+  });
+
+  it("teaches no chord symbol to a stark caller that can't write one", () => {
+    // The seam stark's carve turns on: the serializer realizes every symbol to
+    // literal pitches and never emits a `chords:` line, so a read-back provably
+    // contains none of this. The Voicings bullet used to demonstrate brackets
+    // with `chords: Cm7 [Eb G C']` — a symbol left dangling on the read side
+    // once the vocabulary that defines it moved.
+    for (const smallModelMode of [false, true]) {
+      const result = buildSkills({
+        notation: "stark",
+        smallModelMode,
+        tools: ["ppal-read-clip"],
+      });
+
+      expect(result, `${smallModelMode} kept a chord symbol`).not.toContain(
+        "Cm7",
+      );
+      expect(result, `${smallModelMode} kept the quality list`).not.toContain(
+        "sus4",
+      );
     }
   });
 

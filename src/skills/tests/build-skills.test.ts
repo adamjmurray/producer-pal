@@ -72,6 +72,53 @@ describe("buildSkills - composition", () => {
     }
   });
 
+  it("loses nothing to the small-model and stark carves either", () => {
+    // Same hazard as above, for the two later splits: both halves still look
+    // like prose and every include still resolves, so only pinned markers catch
+    // a section that fell on the floor mid-move.
+    const barbeatBasic = buildSkills({
+      notation: "barbeat",
+      smallModelMode: true,
+    });
+
+    for (const marker of [
+      "## MIDI Notation",
+      "## Generate notes",
+      "Melody (a quarter note per beat)",
+      "Chords (multiple pitches share one position",
+      "Drums (commas list beats for one pitch",
+    ]) {
+      expect(barbeatBasic, `lost "${marker}"`).toContain(marker);
+    }
+
+    for (const smallModelMode of [false, true]) {
+      const stark = buildSkills({ notation: "stark", smallModelMode });
+
+      for (const marker of [
+        "## MIDI Notation — Stark",
+        "- **Drums**",
+        "- **Pitched**",
+        "- **Registers**",
+        "## Writing Notes",
+        "- **Chords**",
+        "Round-trip preserves pitch, timing, and duration exactly",
+      ]) {
+        expect(stark, `${smallModelMode} lost "${marker}"`).toContain(marker);
+      }
+    }
+
+    // The bracket-voicing escape hatch is standard-only, and its chords-line use
+    // was REWRITTEN onto the write half rather than moved — the one place a
+    // regression would show up first.
+    expect(buildSkills({ notation: "stark" })).toContain("- **Voicings**");
+    expect(buildSkills({ notation: "stark" })).toContain(
+      "works on a `chords:` line too",
+    );
+    expect(
+      buildSkills({ notation: "stark", smallModelMode: true }),
+    ).not.toContain("**Voicings**");
+  });
+
   it("gives every notation its own head at both depths — never a fallback", () => {
     for (const notation of NOTATIONS) {
       const standard = buildSkills({ notation });

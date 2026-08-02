@@ -39,30 +39,31 @@ release.
 Fragments are cut along the lines of what you're actually doing, so you can drop
 a whole area you never use:
 
-| Fragment                             | What it teaches                                                                                               |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `standard`                           | The standard skills document — the list of `@include` lines below                                             |
-| `basic`                              | The much shorter document used in small model mode                                                            |
-| `time-and-values`                    | Beats, note values, bar\|beat positions, clip lengths, and pitch names (C3=60)                                |
-| `transforms-core`                    | Selecting notes and setting values on them                                                                    |
-| `transforms-editing`                 | Editing a clip that already has notes: how `notes` merges, `preTransforms`, `quantizeGrid` (update-clip only) |
-| `transforms-expressions`             | Transform variables, math functions, swing and quantize                                                       |
-| `transforms-generative`              | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                             |
-| `transforms-basic`                   | Merging into a clip and clearing notes with `preTransforms` — the whole transforms guide in small model mode  |
-| `library`                            | Searching Live's browser library and your sample folder                                                       |
-| `devices`                            | Device paths and VST/AU limits                                                                                |
-| `devices-write`                      | Building Simpler and Drum Rack instruments — loading samples                                                  |
-| `specialized-devices`                | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                               |
-| `arrangement`                        | What an Arrangement position means — song meter vs. clip meter                                                |
-| `arrangement-write`                  | Moving and splitting clips on the Arrangement timeline, and take lanes                                        |
-| `working-with-live`                  | Session vs. Arrangement habits, playback, and general music-making advice                                     |
-| `context-standard` / `context-basic` | [Context & Memory](/guide/context) — the project, global, and memory layers                                   |
-| `getting-help`                       | What to tell you when a request is outside Producer Pal's reach                                               |
-| `getting-help-basic`                 | The audio limits worth saying out loud, in small model mode                                                   |
-| `barbeat-standard` / `barbeat-basic` | The bar\|beat note notation guide (default notation)                                                          |
-| `barbeat-standard-write`             | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples                    |
-| `stark-standard` / `stark-basic`     | The stark note notation guide                                                                                 |
-| `midi-json`                          | The midi-json note notation guide                                                                             |
+| Fragment                                         | What it teaches                                                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `standard`                                       | The standard skills document — the list of `@include` lines below                                             |
+| `basic`                                          | The much shorter document used in small model mode                                                            |
+| `time-and-values`                                | Beats, note values, bar\|beat positions, clip lengths, and pitch names (C3=60)                                |
+| `transforms-core`                                | Selecting notes and setting values on them                                                                    |
+| `transforms-editing`                             | Editing a clip that already has notes: how `notes` merges, `preTransforms`, `quantizeGrid` (update-clip only) |
+| `transforms-expressions`                         | Transform variables, math functions, swing and quantize                                                       |
+| `transforms-generative`                          | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                             |
+| `transforms-basic`                               | Merging into a clip and clearing notes with `preTransforms` — the whole transforms guide in small model mode  |
+| `library`                                        | Searching Live's browser library and your sample folder                                                       |
+| `devices`                                        | Device paths and VST/AU limits                                                                                |
+| `devices-write`                                  | Building Simpler and Drum Rack instruments — loading samples                                                  |
+| `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                               |
+| `arrangement`                                    | What an Arrangement position means — song meter vs. clip meter                                                |
+| `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                        |
+| `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                     |
+| `context-standard` / `context-basic`             | [Context & Memory](/guide/context) — the project, global, and memory layers                                   |
+| `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                               |
+| `getting-help-basic`                             | The audio limits worth saying out loud, in small model mode                                                   |
+| `barbeat-standard` / `barbeat-basic`             | The bar\|beat note notation guide (default notation)                                                          |
+| `barbeat-standard-write` / `barbeat-basic-write` | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples                    |
+| `stark-standard` / `stark-basic`                 | The stark note notation guide                                                                                 |
+| `stark-standard-write` / `stark-basic-write`     | Stark chord symbols (`Am`, `G7`, `Ebm7`) — input only, since read-back returns literal notes                  |
+| `midi-json`                                      | The midi-json note notation guide                                                                             |
 
 ::: warning Fragment names changed in 2.0.1
 
@@ -155,21 +156,21 @@ fragment in the Skills tab and uncheck **Include**. Everything you keep
 continues to track the built-ins, and switching a fragment off keeps any
 override you wrote for it — check the box again and it comes back.
 
-| If you never…                                            | Switch off                                                                                                           |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Use ratchets, echoes, or waveform modulation             | `transforms-generative`                                                                                              |
-| Edit, delete, or clear notes already in a clip           | `transforms-editing`                                                                                                 |
-| Use swing, quantize, or math on note values              | `transforms-expressions` **and** `transforms-generative`                                                             |
-| Use transforms to edit notes/audio params                | `transforms-core` **and** the other `transforms-` fragments — the area goes together                                 |
-| Search Live's library or your sample folder with the AI  | `library`                                                                                                            |
-| Edit Drift, Wavetable, EQ Eight… with the AI             | `specialized-devices`                                                                                                |
-| Build Simpler or Drum Rack instruments with the AI       | `devices-write`                                                                                                      |
-| Touch devices with the AI at all                         | `devices`, `devices-write` **and** `specialized-devices`                                                             |
-| Let the AI move clips or record takes in the Arrangement | `arrangement-write`                                                                                                  |
-| Work in the Arrangement view with the AI                 | `arrangement` **and** `arrangement-write`                                                                            |
-| Use project/global context or memory                     | `context-standard`                                                                                                   |
-| Ask for new MIDI notes, but still want them read back    | `barbeat-standard-write` (bar\|beat only — the other notations aren't split)                                         |
-| Write or edit MIDI notes at all                          | the notation guide for your notation, write half included (e.g. `barbeat-standard` **and** `barbeat-standard-write`) |
+| If you never…                                            | Switch off                                                                                                                                                         |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Use ratchets, echoes, or waveform modulation             | `transforms-generative`                                                                                                                                            |
+| Edit, delete, or clear notes already in a clip           | `transforms-editing`                                                                                                                                               |
+| Use swing, quantize, or math on note values              | `transforms-expressions` **and** `transforms-generative`                                                                                                           |
+| Use transforms to edit notes/audio params                | `transforms-core` **and** the other `transforms-` fragments — the area goes together                                                                               |
+| Search Live's library or your sample folder with the AI  | `library`                                                                                                                                                          |
+| Edit Drift, Wavetable, EQ Eight… with the AI             | `specialized-devices`                                                                                                                                              |
+| Build Simpler or Drum Rack instruments with the AI       | `devices-write`                                                                                                                                                    |
+| Touch devices with the AI at all                         | `devices`, `devices-write` **and** `specialized-devices`                                                                                                           |
+| Let the AI move clips or record takes in the Arrangement | `arrangement-write`                                                                                                                                                |
+| Work in the Arrangement view with the AI                 | `arrangement` **and** `arrangement-write`                                                                                                                          |
+| Use project/global context or memory                     | `context-standard`                                                                                                                                                 |
+| Ask for new MIDI notes, but still want them read back    | the write half for your notation and mode (e.g. `barbeat-standard-write`, `stark-basic-write`) — midi-json has none, since it's the same format in both directions |
+| Write or edit MIDI notes at all                          | the notation guide for your notation, write half included (e.g. `barbeat-standard` **and** `barbeat-standard-write`)                                               |
 
 The same trims by hand: override the **Full skills (standard)** fragment and
 delete a fragment's `@include` line. That's the route when you also want to
@@ -184,9 +185,11 @@ transforms guides all build on `transforms-core` — keeping
 `transforms-generative` without it leaves the AI knowing `ratchet()` and the
 waveforms but not the shape of a transform, which is worse than dropping them
 all. `devices-write` and `specialized-devices` both sit inside `devices` the
-same way, and so do `barbeat-standard-write` inside `barbeat-standard` and
-`arrangement-write` inside `arrangement`. That's why the rows above are ordered
-most-specific-first and say which fragments travel together.
+same way, and so does `arrangement-write` inside `arrangement`. Each notation's
+write half sits inside its own guide too — `barbeat-standard-write` inside
+`barbeat-standard`, `stark-basic-write` inside `stark-basic`, and so on. That's
+why the rows above are ordered most-specific-first and say which fragments
+travel together.
 
 If you do drop a fragment something else needs, Producer Pal says so — the
 Skills **Preview** view shows a warning, and so does the Max window.
@@ -215,8 +218,9 @@ instead of the Full skills document.
 ::: details Small model mode
 
 Small model mode uses the `basic` document, which is already heavily trimmed: it
-includes the notation guide, `transforms-basic`, and the context fragment, and
-writes a short list of general rules inline. To customize it, override `basic`
-(or the `*-basic` fragments — notation, transforms, and context) the same way.
+includes the notation guide and its write half, `transforms-basic`, and the
+context fragment, and writes a short list of general rules inline. To customize
+it, override `basic` (or the `*-basic` fragments — notation, transforms, and
+context) the same way.
 
 :::

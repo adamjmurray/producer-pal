@@ -31,13 +31,21 @@ import {
 import { transformsExpressions } from "#src/skills/fragments/transforms/transforms-expressions.ts";
 import { transformsGenerative } from "#src/skills/fragments/transforms/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
-import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
+import {
+  barbeatBasic,
+  barbeatBasicWrite,
+} from "#src/skills/notation/barbeat-basic.ts";
 import {
   barbeatStandard,
   barbeatStandardWrite,
 } from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
-import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
+import {
+  starkBasic,
+  starkBasicWrite,
+  starkStandard,
+  starkStandardWrite,
+} from "#src/skills/notation/stark.ts";
 
 // The fragments named in more than one place here — the slot list and the
 // retired-name map.
@@ -70,8 +78,11 @@ const ARRANGEMENT = "arrangement";
 // only a writer can act on out into a `-write` sibling, gated on that subject's
 // write tools, so a read-only caller stops paying for it (ADR-0019). The base
 // name keeps meaning what it meant — the whole, minus what only a writer can use
-// — which is why splitting one costs no rename and no retired slot.
-// `barbeat-standard`, `devices`, and `arrangement` are split so far.
+// — which is why splitting one costs no rename and no retired slot. Split so
+// far: bar|beat and stark at BOTH depths (the axes are independent — direction
+// is about the caller, depth about the model), plus `devices` and `arrangement`.
+// midi-json is symmetric, so it has no authoring half to spin out and its
+// `-write` refs resolve to an empty non-slot fragment.
 //
 // `code-transforms` is deliberately absent: it only carries text in a build with
 // code execution enabled, so there is nothing stable for a user to override. It
@@ -102,9 +113,12 @@ export const SKILL_SLOT_NAMES = [
   "barbeat-standard",
   "barbeat-standard-write",
   "barbeat-basic",
+  "barbeat-basic-write",
   "midi-json",
   "stark-standard",
+  "stark-standard-write",
   "stark-basic",
+  "stark-basic-write",
 ] as const;
 
 export type SkillSlotName = (typeof SKILL_SLOT_NAMES)[number];
@@ -313,8 +327,15 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "barbeat-basic": {
     title: "bar|beat notation (small-model)",
     description:
-      "A trimmed bar|beat notation guide for smaller or local models (small-model mode).",
+      "A trimmed bar|beat notation guide for smaller or local models (small-model mode): the note format itself. The worked examples are the separate section below.",
     builtIn: barbeatBasic,
+  },
+
+  "barbeat-basic-write": {
+    title: "bar|beat notation: writing notes (small-model)",
+    description:
+      "Worked examples of writing melodies, chords, and drums in bar|beat (small-model mode). Dropped for anything that can't write clips. Needs the bar|beat notation guide it builds on.",
+    builtIn: barbeatBasicWrite,
   },
 
   "midi-json": {
@@ -327,8 +348,15 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "stark-standard": {
     title: "stark notation (standard)",
     description:
-      "How to read and write stark notation, the literal round-trippable note format. Used with capable models.",
+      "How to read stark notation, the literal round-trippable note format: drum, melody, and bass lines, registers, and voicings. Used with capable models. Chord symbols are the separate section below.",
     builtIn: starkStandard,
+  },
+
+  "stark-standard-write": {
+    title: "stark notation: chord symbols (standard)",
+    description:
+      "Writing a chords line as symbols (Am, G7, Ebm7, G7/B) instead of literal pitches. Read-back always returns the literal notes, so it's dropped for anything that can't write clips. Needs the stark notation guide it builds on.",
+    builtIn: starkStandardWrite,
   },
 
   "stark-basic": {
@@ -336,6 +364,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "A trimmed stark notation guide for smaller or local models (small-model mode): the 16 named drum pads only.",
     builtIn: starkBasic,
+  },
+
+  "stark-basic-write": {
+    title: "stark notation: chord symbols (small-model)",
+    description:
+      "Writing a chords line as symbols in small-model mode. Like the standard version above, it never appears in a clip you read back, so it's dropped for anything that can't write clips. Needs the stark notation guide it builds on.",
+    builtIn: starkBasicWrite,
   },
 };
 

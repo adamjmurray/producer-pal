@@ -15,7 +15,11 @@ describe("builtinFragments", () => {
     vi.unstubAllEnvs();
   });
 
-  it("exposes the driver roots with the header and their notation include", () => {
+  it("exposes the driver roots with the header and both notation includes", () => {
+    // Both depths take the head and its `-write` sibling on adjacent lines. The
+    // sibling ref is easy to forget when adding a driver, and forgetting it is
+    // silent — every remaining include still resolves, the document is just
+    // missing its authoring half.
     const frags = builtinFragments(false);
 
     for (const [root, depth] of [
@@ -23,7 +27,9 @@ describe("builtinFragments", () => {
       ["basic", "basic"],
     ] as const) {
       expect(frags[root]).toContain("# Producer Pal Skills");
-      expect(frags[root]).toContain(`@include "./{notation}-${depth}.md"`);
+      expect(frags[root]).toContain(
+        `@include "./{notation}-${depth}.md"\n\n@include "./{notation}-${depth}-write.md"`,
+      );
     }
   });
 

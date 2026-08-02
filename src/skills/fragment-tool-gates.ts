@@ -165,12 +165,15 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "stark-basic": NOTE_TOOLS,
   "midi-json": NOTE_TOOLS,
 
-  // The authoring halves. The two empty ones are placeholders for heads that
-  // aren't split (see builtin-fragments.ts); gating them the same way keeps the
-  // rule uniform, and an empty body costs a caller nothing either way.
+  // The authoring halves. The two midi-json ones are empty placeholders for a
+  // head that isn't split (see builtin-fragments.ts); gating them the same way
+  // keeps the rule uniform, and an empty body costs a caller nothing either way.
   "barbeat-standard-write": NOTE_WRITE_TOOLS,
+  "barbeat-basic-write": NOTE_WRITE_TOOLS,
   "stark-standard-write": NOTE_WRITE_TOOLS,
+  "stark-basic-write": NOTE_WRITE_TOOLS,
   "midi-json-standard-write": NOTE_WRITE_TOOLS,
+  "midi-json-basic-write": NOTE_WRITE_TOOLS,
 };
 
 /**

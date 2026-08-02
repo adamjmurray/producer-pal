@@ -41,7 +41,12 @@ export const FRAGMENT_REQUIRES: Record<string, readonly string[]> = {
 
   "arrangement-write": ["arrangement"],
 
+  // The notation authoring halves, each under the head whose grammar it builds
+  // on. midi-json's two are absent: an empty fragment can't be incomplete.
   "barbeat-standard-write": ["barbeat-standard"],
+  "barbeat-basic-write": ["barbeat-basic"],
+  "stark-standard-write": ["stark-standard"],
+  "stark-basic-write": ["stark-basic"],
 };
 
 /**
