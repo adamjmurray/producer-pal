@@ -88,6 +88,18 @@ describe("test file classification", () => {
     expect(relaxed[0]?.files).toStrictEqual(TEST_SUITE_GLOBS);
   });
 
+  it("should read a max-lines ceiling in either form oxlint accepts", () => {
+    // The check above is only as good as this read: a number-form override
+    // handing `src/**` a 900-line budget used to come back undefined, so it
+    // counted as no relaxation at all.
+    expect(lineLimitOf({ rules: { "max-lines": ["error", 900] } })).toBe(900);
+    expect(
+      lineLimitOf({ rules: { "max-lines": ["error", { max: 900 }] } }),
+    ).toBe(900);
+    expect(lineLimitOf({ rules: { "max-lines": "error" } })).toBeUndefined();
+    expect(lineLimitOf({ rules: {} })).toBeUndefined();
+  });
+
   it("should scope every oxlint test override to a whole named set", () => {
     // A block that names some test files has to name a set the rest of the
     // project also recognizes, or it splits the classification again. The three
@@ -239,16 +251,19 @@ function oxlintOverridesWithRule(rule: string): OxlintOverride[] {
 }
 
 /**
- * Read the max-lines ceiling an oxlint override block sets
+ * Read the max-lines ceiling an oxlint override block sets. oxlint honors both
+ * `["error", 900]` and `["error", { max: 900 }]`, so reading only one form would
+ * leave a whole tree's raised budget invisible to the check above.
  * @param block - An override block known to configure max-lines
- * @returns The configured maximum, or undefined if it is not the object form
+ * @returns The configured maximum, or undefined if the block sets none
  */
 function lineLimitOf(block: OxlintOverride): number | undefined {
   const setting = block.rules?.["max-lines"];
+  const options = Array.isArray(setting) ? setting[1] : undefined;
 
-  return Array.isArray(setting)
-    ? (setting[1] as { max?: number } | undefined)?.max
-    : undefined;
+  if (typeof options === "number") return options;
+
+  return (options as { max?: number } | undefined)?.max;
 }
 
 /**
