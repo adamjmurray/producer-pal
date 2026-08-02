@@ -160,9 +160,7 @@ wiped" (restore) or "the user cleared the context"
 gated on `allowRestore = !memo.syncedOnce` — allowed only on the session's first
 sync. After that first sync, an empty param is a deliberate clear, and the route
 _deletes_ the sidecar so the clear sticks and isn't resurrected by a restore on
-the next load. Residual gap: clearing as the literal first action on a
-freshly-upgraded set before any other tool call — negligible, since
-`ppal-connect` (which triggers the first sync) is the entry point.
+the next load.
 
 The tool-call sync is the primary trigger, but a **manual edit** (device-UI
 textedit or webui `POST /config`) changes the context without invoking a tool,
@@ -173,9 +171,12 @@ function only **backs up** a non-empty blob or **clears** the sidecar for an
 emptied one — it **never restores** (restore stays the first tool-call sync's
 job). An empty param seen _before_ the first sync is left untouched: it may be
 an upgrade-wiped device, and deleting the sidecar would destroy the very backup
-a restore needs; a non-empty edit is always safe (it can only write). The shared
-memo dedupes the tool-call sync's own outlet round-trip, so the restore echo
-can't loop.
+a restore needs; a non-empty edit is always safe (it can only write). Unless the
+**load echo carried content** — then nothing wiped the param, so the clear is
+real and propagates immediately. Without that, clearing the context in the
+device UI and then making any tool call would restore what was just cleared. The
+shared memo dedupes the tool-call sync's own outlet round-trip, so the restore
+echo can't loop.
 
 `ppal-context write scope:project` needs the same trigger, and for a reason
 worth stating: its `update_project_context` outlet reaches the device-UI

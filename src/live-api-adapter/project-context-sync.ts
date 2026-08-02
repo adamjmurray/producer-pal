@@ -27,12 +27,14 @@ interface ProjectContextSyncResult {
  */
 interface SyncMemo {
   syncedOnce: boolean;
+  loadedWithContent: boolean;
   lastFilePath: string | null;
   lastContent: string | null;
 }
 
 const memo: SyncMemo = {
   syncedOnce: false,
+  loadedWithContent: false,
   lastFilePath: null,
   lastContent: null,
 };
@@ -102,11 +104,18 @@ export async function syncProjectContextBackup(
 export async function backupProjectContextOnEdit(
   content: string,
 ): Promise<void> {
-  // Leave an empty param alone until a tool-call sync has run: before that the
-  // emptiness may be an upgrade-wiped device, and clearing would delete the very
-  // sidecar the first sync would restore from. A non-empty edit is always safe
-  // to back up (it can only write, never delete).
-  if (content.trim() === "" && !hasSyncedThisSession()) return;
+  // Leave an empty param alone until the emptiness is known to be deliberate:
+  // before that it may be an upgrade-wiped device, and clearing would delete the
+  // very sidecar the first sync would restore from. Either a completed sync or a
+  // load echo that carried content rules the wipe out. A non-empty edit is
+  // always safe to back up (it can only write, never delete).
+  if (
+    content.trim() === "" &&
+    !hasSyncedThisSession() &&
+    !memo.loadedWithContent
+  ) {
+    return;
+  }
 
   const filePath = readLiveSetFilePath();
 
@@ -133,9 +142,24 @@ export async function backupProjectContextOnEdit(
   if (ok) rememberSync(filePath, content);
 }
 
+/**
+ * Record what the device param held when the device loaded.
+ *
+ * A non-empty load echo rules out the upgrade wipe: nothing blanked the param,
+ * so a later empty one is a deliberate user clear and may delete the sidecar
+ * even before the session's first tool-call sync. Without this, clearing the
+ * context in the device UI and then making any tool call restores it.
+ *
+ * @param content - The blob the load echo carried
+ */
+export function noteProjectContextLoaded(content: string): void {
+  if (content.trim() !== "") memo.loadedWithContent = true;
+}
+
 /** Reset the cross-request memo. Test-only. */
 export function resetProjectContextSyncMemo(): void {
   memo.syncedOnce = false;
+  memo.loadedWithContent = false;
   memo.lastFilePath = null;
   memo.lastContent = null;
 }

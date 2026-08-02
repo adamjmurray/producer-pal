@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   backupProjectContextOnEdit,
+  noteProjectContextLoaded,
   resetProjectContextSyncMemo,
   syncProjectContextBackup,
 } from "../project-context-sync.ts";
@@ -241,6 +242,23 @@ describe("backupProjectContextOnEdit — manual edits", () => {
 
     // Deleting the sidecar here would destroy a backup the first sync restores.
     expect(mockRequestNode).not.toHaveBeenCalled();
+  });
+
+  it("clears the sidecar for an empty edit when the param loaded with content", async () => {
+    setFilePath(SAVED_PATH);
+    // The load echo carried content, so nothing wiped the device — clearing the
+    // param is a user's deliberate clear, even before the first tool call.
+    noteProjectContextLoaded("Genre: jungle");
+    mockSyncResult("clear");
+
+    await backupProjectContextOnEdit("");
+
+    expect(mockRequestNode).toHaveBeenCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "",
+      allowRestore: false,
+      isEdit: true,
+    });
   });
 
   it("clears the sidecar for an empty edit once a sync has established state", async () => {

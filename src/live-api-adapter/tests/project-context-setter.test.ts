@@ -12,13 +12,15 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   backupProjectContextOnEdit: vi.fn(),
+  noteProjectContextLoaded: vi.fn(),
   syncProjectContextBackup: vi.fn(),
   resetProjectContextSyncMemo: vi.fn(),
 }));
 
-const { backupProjectContextOnEdit } =
+const { backupProjectContextOnEdit, noteProjectContextLoaded } =
   await import("#src/live-api-adapter/project-context-sync.ts");
 const mockBackup = vi.mocked(backupProjectContextOnEdit);
+const mockNoteLoaded = vi.mocked(noteProjectContextLoaded);
 
 const { projectContext } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
@@ -38,6 +40,9 @@ describe("projectContext() setter — load echo vs. genuine edit", () => {
     projectContext(SAVED_BLOB);
 
     expect(mockBackup).not.toHaveBeenCalled();
+    // …but it does tell the sync the param arrived holding content, which is
+    // what lets a later clear delete the sidecar instead of being restored.
+    expect(mockNoteLoaded).toHaveBeenCalledExactlyOnceWith(SAVED_BLOB);
 
     // Echoes 2 and 3 — observed in a real Max load, arriving in no guaranteed
     // order relative to each other or to Node's startup. They all re-emit the

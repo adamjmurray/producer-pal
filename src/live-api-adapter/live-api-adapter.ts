@@ -50,6 +50,7 @@ import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
+  noteProjectContextLoaded,
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
 
@@ -250,6 +251,8 @@ export function projectContext(content: unknown): void {
   const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
 
   sessionState.projectContext.content = value;
+
+  if (isLoadEcho) noteProjectContextLoaded(value);
 
   // Device-UI and webui edits reach us only through this setter (never an MCP
   // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
