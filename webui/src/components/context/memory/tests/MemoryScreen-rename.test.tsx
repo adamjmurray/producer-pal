@@ -261,6 +261,50 @@ describe("MemoryScreen — editing during an in-flight rename", () => {
     expect(entryPuts()).toStrictEqual([]);
   });
 
+  it("still retries a failed autosave after a rename", async () => {
+    const renamePut = routeFetch();
+
+    const { unmount } = render(<MemoryScreenHarness />);
+
+    await startRename();
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+    await screen.findByRole("button", { name: "Edit new-slug" });
+
+    // Fail the next save. A rename passes through one render with no entry,
+    // which used to re-run the unmount effect and latch the editor "unmounted"
+    // — after which a failed save never rolled its baseline back and the draft
+    // read as saved.
+    let failNextSave = true;
+
+    (fetchMock as unknown as FetchMock).mockImplementation((_url, init) => {
+      if ((init?.method ?? "GET") === "GET") {
+        return Promise.resolve(jsonResponse({ entries: [RENAMED] }));
+      }
+
+      if (failNextSave) {
+        failNextSave = false;
+
+        return Promise.reject(new Error("network down"));
+      }
+
+      return Promise.resolve(jsonResponse({ entry: RENAMED }));
+    });
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Composes in C minor and F minor." },
+    });
+    await settleAutosave();
+
+    expect(entryPuts()).toHaveLength(1);
+
+    // Closing the editor has to retry the lost write, not drop the edit.
+    unmount();
+
+    await waitFor(() => {
+      expect(entryPuts()).toHaveLength(2);
+    });
+  });
+
   it("never leaves the deleted-externally banner paintable", async () => {
     const renamePut = routeFetch();
 

@@ -304,9 +304,11 @@ export function useCollectionEntryAutosave(
   params: CollectionEntryAutosaveParams,
 ): CollectionEntryAutosaveReturn {
   const { canSave, draftKey, autosaveOnIdle, persist, externalKey } = params;
-  // Constant per mount (isNew is fixed per editor key), so the leave effects can
-  // gate on it directly without a ref.
+  // NOT constant per mount: a rename renders once with no entry, which flips
+  // this false and back without remounting the editor. The unmount effect reads
+  // it through a ref (see below) so that blip can't re-run its cleanup.
   const flushOnLeave = params.flushOnLeave ?? true;
+  const flushOnLeaveRef = useRef(flushOnLeave);
   const canSaveRef = useRef(canSave);
   const draftKeyRef = useRef(draftKey);
   const persistRef = useRef(persist);
@@ -332,6 +334,7 @@ export function useCollectionEntryAutosave(
     draftKeyRef.current = draftKey;
     persistRef.current = persist;
     externalKeyRef.current = externalKey;
+    flushOnLeaveRef.current = flushOnLeave;
   });
 
   // Deletion detection is synced in a LAYOUT effect — it runs synchronously at
@@ -480,12 +483,17 @@ export function useCollectionEntryAutosave(
   // afterward), then flush the pending draft — overlay close, tab switch, and
   // entry-selection change all unmount this editor. A new draft skips the flush
   // (flushOnLeave false); its discard is confirmed by the nav guard instead.
+  //
+  // Depends on `flush` alone (stable), so this cleanup runs ONLY on a real
+  // unmount. Gating on `flushOnLeave` directly would re-run it on the
+  // no-entry render a rename passes through, latching `mountedRef` false for
+  // the rest of the mount and killing every later flush's rollback.
   useEffect(
     () => () => {
       mountedRef.current = false;
-      if (flushOnLeave) flush();
+      if (flushOnLeaveRef.current) flush();
     },
-    [flush, flushOnLeave],
+    [flush],
   );
 
   const noteSaved = useCallback((echoKey: string): void => {
