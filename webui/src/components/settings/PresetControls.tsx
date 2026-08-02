@@ -131,7 +131,10 @@ export function PresetControls({
           selected && updatePreset(selected.id, fields, editDescription)
         }
         onDelete={() => {
-          if (selected) deletePreset(selected.id);
+          // Keep the selection when the write failed — the preset is still in
+          // the list, and clearing here would drop the user out of Update/Delete
+          // with only the error notice to say why.
+          if (selected && deletePreset(selected.id) != null) return;
           setSelectedId("");
           setEditDescription("");
         }}

@@ -29,7 +29,8 @@ export interface UsePresetsReturn {
   ) => void;
   /** Rewrite only the description, leaving the captured settings alone. */
   updatePresetDescription: (id: string, description: string) => void;
-  deletePreset: (id: string) => void;
+  /** Returns null once it's gone, or the message if the write failed. */
+  deletePreset: (id: string) => string | null;
 }
 
 /**
@@ -128,9 +129,7 @@ export function usePresets(): UsePresetsReturn {
   );
 
   const deletePreset = useCallback(
-    (id: string) => {
-      persist(presets.filter((p) => p.id !== id));
-    },
+    (id: string): string | null => persist(presets.filter((p) => p.id !== id)),
     [presets, persist],
   );
 

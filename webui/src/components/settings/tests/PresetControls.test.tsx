@@ -327,6 +327,27 @@ describe("PresetControls", () => {
     expect(screen.queryByTestId("preset-update")).toBeNull();
   });
 
+  it("keeps the selection when a delete can't be written", () => {
+    savePresets([seeded]);
+    render(<Controls settings={makeSettings()} />);
+
+    fireEvent.change(screen.getByTestId("preset-select"), {
+      target: { value: "seed" },
+    });
+    breakStorageWrites();
+    fireEvent.click(screen.getByTestId("preset-delete"));
+
+    // The preset is still there, so the controls that act on it must be too.
+    expect(loadPresets()).toHaveLength(1);
+    expect(
+      (screen.getByTestId("preset-select") as HTMLSelectElement).value,
+    ).toBe("seed");
+    expect(screen.getByTestId("preset-delete")).toBeTruthy();
+    expect(screen.getByTestId("preset-error").textContent).toMatch(
+      /quota exceeded/,
+    );
+  });
+
   it("offers Inherit plus every preset in the Subagent preset selector", () => {
     savePresets([seeded]);
     render(<Controls settings={makeSettings({ subagentPresetId: "seed" })} />);
