@@ -28,6 +28,8 @@ interface AudioParams {
   warpMode?: string;
   /** Audio clip warping on/off */
   warping?: boolean;
+  /** Requested looping state, which can veto `warping` (see below) */
+  looping?: boolean;
 }
 
 /**
@@ -38,10 +40,11 @@ interface AudioParams {
  * @param params.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
  * @param params.warpMode - Audio clip warp mode
  * @param params.warping - Audio clip warping on/off
+ * @param params.looping - Requested looping state, which vetoes `warping: false`
  */
 export function setAudioParameters(
   clip: LiveAPI,
-  { gainDb, pitchShift, warpMode, warping }: AudioParams,
+  { gainDb, pitchShift, warpMode, warping, looping }: AudioParams,
 ): void {
   if (gainDb !== undefined) {
     const liveGain = dbToLiveGain(gainDb);
@@ -72,7 +75,12 @@ export function setAudioParameters(
     }
   }
 
-  applyAudioClipWarping(clip, warping);
+  // `looping: true` forces warping back on, so a `warping: false` alongside it
+  // is vetoed (forceWarpForLooping warns). Skip it here rather than let it run
+  // and be overridden: the unwarp resets end_marker to the whole sample, and
+  // re-warping maps that back as beats — collapsing the clip's region on the
+  // way through, even though the flag ends up where it started.
+  if (looping !== true) applyAudioClipWarping(clip, warping);
 }
 
 /**
@@ -93,11 +101,15 @@ export function forceWarpForLooping(
   warping: boolean | undefined,
 ): void {
   if (looping !== true) return;
-  if ((clip.getProperty("warping") as number) > 0) return;
 
+  // Warn before the already-warped bail-out: setAudioParameters skips the
+  // vetoed unwarp entirely, so on a warped clip there is nothing left to do
+  // here except say the flag was ignored.
   if (warping === false) {
     console.warn("warping: false ignored - looping: true forces warping on");
   }
+
+  if ((clip.getProperty("warping") as number) > 0) return;
 
   applyAudioClipWarping(clip, true);
 }

@@ -214,6 +214,32 @@ describe("updateClip - unwarped audio clip region", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("warping", 1);
   });
 
+  it("keeps the region when looping: true vetoes warping: false", async () => {
+    setTempo(120);
+    statefulAudioClip({
+      warping: 1,
+      looping: 0,
+      start_marker: 0,
+      end_marker: 4, // beats — the clip's content boundary
+    });
+
+    await updateClip({ ids: "123", warping: false, looping: true });
+
+    // The veto has to happen BEFORE the unwarp, not after: unwarping resets
+    // end_marker to the whole sample (1.09 s), and re-warping reads that back
+    // as 1.09 beats — the region collapses even though `warping` ends up
+    // exactly where it started.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "warping: false ignored - looping: true forces warping on",
+    );
+    expect(mocks.clip123.set).not.toHaveBeenCalledWith("warping", 0);
+    expect(mocks.clip123.set).not.toHaveBeenCalledWith(
+      "end_marker",
+      expect.anything(),
+    );
+  });
+
   it("leaves a warped clip alone when looping is switched on", async () => {
     setTempo(120);
     statefulAudioClip({

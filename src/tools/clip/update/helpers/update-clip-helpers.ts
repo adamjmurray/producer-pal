@@ -147,7 +147,13 @@ export function processSingleClipUpdate(
     // means: it picks the unit the markers are in, forces `looping` off, and
     // switching it off resets end_marker to the whole file — which would erase
     // a start/length requested in the same call.
-    setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
+    setAudioParameters(clip, {
+      gainDb,
+      pitchShift,
+      warpMode,
+      warping,
+      looping,
+    });
     forceWarpForLooping(clip, looping, warping);
   }
 
