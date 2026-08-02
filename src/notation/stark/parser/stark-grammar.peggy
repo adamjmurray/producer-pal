@@ -41,9 +41,11 @@ DrumSection
     }
 
 // A drum line is headed by either a fixed drum name (kick/snare/…) or an
-// absolute pitch name (e.g. C1, Gb2). Named drums carry their fixed GM pitch
-// in the grammar; pitch-name headers defer MIDI resolution to the interpreter
-// (via pitch.ts, the single source of truth) so noteName is captured verbatim.
+// absolute pitch name (e.g. C1, Gb2). Named drums carry their fixed GM pitch in
+// the grammar; pitch-name headers are captured verbatim and resolved by the
+// interpreter's drumHeaderPitch, which does the arithmetic itself. NOT
+// pitch.ts's noteNameToMidi — its exact table has no Cb/Fb/E#/B#, so those
+// headers would come back null and drop the whole drum line.
 // Drum names are tried first so the named vocabulary wins when both could match.
 DrumHeader
   = d:DrumName     { return { type: d.name, midi: d.midi, noteName: null }; }
