@@ -44,6 +44,8 @@ export interface CreateClipsParams {
   color: string | null;
   timeSigNumerator: number;
   timeSigDenominator: number;
+  /** The raw timeSignature argument, or null when the song's meter was used */
+  timeSignature: string | null;
   notationString: string | null;
   notes: MidiNote[];
   transformString: string | null;
@@ -186,6 +188,7 @@ async function createClipAtIndex(
       // Take lanes apply only to arrangement clips (ignored for session view)
       params.takeLane,
       params.warping,
+      params.timeSignature,
     );
 
     createdClips.push(clipResult);

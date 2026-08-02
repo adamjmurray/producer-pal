@@ -30,6 +30,7 @@ import {
   validateCreateClipParams,
   validatePositions,
   validateSessionTracks,
+  warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation-helpers.ts";
 
@@ -138,6 +139,7 @@ export async function createClip(
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
   warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
+  warnAudioOnlyMidiParams(sampleFile, { warping });
   validateSessionTracks(sessionSlots);
   validateArrangementTrack(arrangementStarts, trackIndex);
 
@@ -214,6 +216,7 @@ export async function createClip(
       color,
       timeSigNumerator,
       timeSigDenominator,
+      timeSignature,
       notationString,
       notes,
       transformString,

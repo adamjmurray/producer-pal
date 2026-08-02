@@ -73,13 +73,37 @@ export function warnMidiOnlyAudioParams(
 ): void {
   if (sampleFile == null) return;
 
+  warnIgnoredParams(params, "audio clips - the sample defines the clip region");
+}
+
+/**
+ * Warn about audio-only parameters supplied without a sampleFile.
+ * @param sampleFile - Audio file path, or null for a MIDI clip
+ * @param params - Candidate parameters, keyed by their tool argument name
+ */
+export function warnAudioOnlyMidiParams(
+  sampleFile: string | null,
+  params: Record<string, unknown>,
+): void {
+  if (sampleFile != null) return;
+
+  warnIgnoredParams(params, "MIDI clips");
+}
+
+/**
+ * Warn that the non-null entries of `params` were not applied.
+ * @param params - Candidate parameters, keyed by their tool argument name
+ * @param subject - What they were ignored for, completing "ignored for ..."
+ */
+function warnIgnoredParams(
+  params: Record<string, unknown>,
+  subject: string,
+): void {
   const ignored = Object.keys(params).filter((name) => params[name] != null);
 
   if (ignored.length === 0) return;
 
-  console.warn(
-    `${ignored.join(", ")} ignored for audio clips - the sample defines the clip region`,
-  );
+  console.warn(`${ignored.join(", ")} ignored for ${subject}`);
 }
 
 /**

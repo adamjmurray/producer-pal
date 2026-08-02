@@ -208,6 +208,7 @@ function createArrangementClip(
  * @param transformedCount - Number of notes matched by transform selectors
  * @param takeLane - Take lane to create arrangement clips on, or null for main lane
  * @param warping - Requested audio warp state, or null to keep Live's own choice
+ * @param timeSignature - The raw timeSignature argument, or null for the song's
  * @returns Clip result for this iteration
  */
 export function processClipIteration(
@@ -233,6 +234,7 @@ export function processClipIteration(
   transformedCount: number | undefined,
   takeLane: LiveAPI | null = null,
   warping: boolean | null = null,
+  timeSignature: string | null = null,
 ): object {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
@@ -264,11 +266,18 @@ export function processClipIteration(
       clip = result.clip;
     }
 
-    // For audio clips: only set name and color (no looping, timing, or notes)
+    // For audio clips: the sample defines the region, so no looping, timing, or
+    // notes. An explicit timeSignature still applies — it sets the clip's grid,
+    // which update-clip already honors for audio.
     const propsToSet: Record<string, unknown> = {};
 
     if (clipName) propsToSet.name = clipName;
     if (color != null) propsToSet.color = color;
+
+    if (timeSignature != null) {
+      propsToSet.signature_numerator = timeSigNumerator;
+      propsToSet.signature_denominator = timeSigDenominator;
+    }
 
     if (Object.keys(propsToSet).length > 0) {
       clip.setAll(propsToSet);

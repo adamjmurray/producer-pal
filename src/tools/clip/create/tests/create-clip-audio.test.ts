@@ -23,6 +23,7 @@ import {
   setupMultiAudioArrangementClipMocks,
   setupMultiSessionAudioClipMocks,
   setupSessionAudioClipMocks,
+  setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 
 describe("createClip - audio clips", () => {
@@ -456,7 +457,7 @@ describe("createClip - audio clips", () => {
       expect(clip.set).not.toHaveBeenCalledWith("looping", expect.anything());
     });
 
-    it("should not set time signature on audio clips", async () => {
+    it("sets an explicit time signature on audio clips, like update-clip", async () => {
       const { clip } = setupSessionAudioClipMocks();
 
       await createClip({
@@ -465,7 +466,15 @@ describe("createClip - audio clips", () => {
         timeSignature: "3/4",
       });
 
-      // Verify time signature is NOT set for audio clips
+      expect(clip.set).toHaveBeenCalledWith("signature_numerator", 3);
+      expect(clip.set).toHaveBeenCalledWith("signature_denominator", 4);
+    });
+
+    it("leaves the time signature alone on audio clips when not asked", async () => {
+      const { clip } = setupSessionAudioClipMocks();
+
+      await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
+
       expect(clip.set).not.toHaveBeenCalledWith(
         "signature_numerator",
         expect.anything(),
@@ -610,6 +619,20 @@ describe("createClip - audio clip warping", () => {
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("length, looping ignored for audio clips"),
+    );
+  });
+
+  it("warns that warping is ignored on a MIDI clip", async () => {
+    // The inverse of the audio warning: warping is documented audio-only, and
+    // the MIDI path has nowhere to put it.
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    setupSessionMocks();
+
+    await createClip({ slot: "0/0", notes: "1|1 C3", warping: true });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("warping ignored for MIDI clips"),
     );
   });
 });
