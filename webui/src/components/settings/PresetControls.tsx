@@ -5,6 +5,7 @@
 
 import { useState } from "preact/hooks";
 import { presetMatchesFields } from "#webui/hooks/settings/presets/preset-storage";
+import { type PresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
 import { usePresetDraft } from "#webui/hooks/settings/presets/use-preset-draft";
 import { usePresets } from "#webui/hooks/settings/presets/use-presets";
 import {
@@ -20,8 +21,11 @@ import {
   SubagentPresetRow,
 } from "./helpers/preset-controls-parts";
 
-interface PresetControlsProps {
+export interface PresetControlsProps {
   settings: UseSettingsReturn;
+  /** The selection, owned above this tab so a tab switch doesn't lose it —
+   * see usePresetSelection. */
+  selection: PresetSelection;
   /** Reports whether the "New preset" form is open, so the modal can block both
    * Save and the backdrop/Esc dismiss — neither creates the preset nor keeps
    * the draft, they just close the dialog on top of it. */
@@ -46,11 +50,13 @@ interface PresetControlsProps {
  * The tab says so out loud, because nothing else on screen shows it.
  * @param {PresetControlsProps} props - Component props
  * @param {UseSettingsReturn} props.settings - The live settings buffer + actions
+ * @param {PresetSelection} props.selection - The selection state, owned above the tab
  * @param {Function} props.onDraftOpenChange - Reports the create form's state
  * @returns {JSX.Element} The preset controls
  */
 export function PresetControls({
   settings,
+  selection,
   onDraftOpenChange,
 }: PresetControlsProps) {
   const {
@@ -62,8 +68,8 @@ export function PresetControls({
     deletePreset,
   } = usePresets();
   const draft = usePresetDraft(onDraftOpenChange);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [editDescription, setEditDescription] = useState<string>("");
+  const { selectedId, setSelectedId, editDescription, setEditDescription } =
+    selection;
   const [error, setError] = useState<string | null>(null);
 
   const fields: PresetFields = {
