@@ -76,6 +76,33 @@ export function setAudioParameters(
 }
 
 /**
+ * Pre-apply the warp that `looping: true` forces on an audio clip.
+ *
+ * Live turns `warping` back on when you set `looping`, which flips the markers
+ * from seconds to beats. Doing it up front keeps the region math on one side of
+ * the switch — otherwise a region computed in seconds lands in properties Live
+ * has already started reading as beats.
+ *
+ * @param clip - The audio clip
+ * @param looping - Requested looping state
+ * @param warping - Requested warp state, for the conflict warning
+ */
+export function forceWarpForLooping(
+  clip: LiveAPI,
+  looping: boolean | undefined,
+  warping: boolean | undefined,
+): void {
+  if (looping !== true) return;
+  if ((clip.getProperty("warping") as number) > 0) return;
+
+  if (warping === false) {
+    console.warn("warping: false ignored - looping: true forces warping on");
+  }
+
+  applyAudioClipWarping(clip, true);
+}
+
+/**
  * Apply transforms to audio clip gain and pitchShift
  * @param clip - The audio clip
  * @param transformString - Transform expressions

@@ -98,28 +98,36 @@ describe("updateClip - unwarped audio clip region", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("end_marker", 1);
   });
 
-  it("unwarps before writing the region, so the two compose", async () => {
-    setTempo(120);
-    // Stateful, unlike the other cases: the whole point is that the region
-    // write happens after `warping` has already flipped, so reads have to see
-    // the write.
+  /**
+   * Wire a clip mock so reads see earlier writes. Needed wherever the region
+   * write lands after `warping` has already flipped.
+   * @param overrides - Starting property values
+   */
+  function statefulAudioClip(overrides: Record<string, unknown>): void {
     const state: Record<string, unknown> = {
       is_arrangement_clip: 0,
       is_midi_clip: 0,
       is_audio_clip: 1,
       signature_numerator: 4,
       signature_denominator: 4,
-      warping: 1,
-      looping: 0,
-      start_marker: 0,
-      end_marker: 2.1819,
       sample_rate: 22050,
       sample_length: 24056, // 1.0909 s
+      ...overrides,
     };
 
     mocks.clip123.get.mockImplementation((prop: string) => [state[prop] ?? 0]);
     mocks.clip123.set.mockImplementation((prop: string, value: unknown) => {
       state[prop] = value;
+    });
+  }
+
+  it("unwarps before writing the region, so the two compose", async () => {
+    setTempo(120);
+    statefulAudioClip({
+      warping: 1,
+      looping: 0,
+      start_marker: 0,
+      end_marker: 2.1819,
     });
 
     await updateClip({
@@ -139,5 +147,62 @@ describe("updateClip - unwarped audio clip region", () => {
     expect(warpCall).toBeGreaterThanOrEqual(0);
     expect(endCall).toBeGreaterThan(warpCall);
     expect(calls[endCall]![1]).toBe(0.5);
+  });
+
+  // `looping: true` forces warp back on, so the region has to be written in
+  // beats even though the clip was unwarped when the call arrived.
+  it("re-warps before writing the region when looping is switched on", async () => {
+    setTempo(120);
+    statefulAudioClip({
+      warping: 0,
+      looping: 0,
+      start_marker: 0,
+      end_marker: 1.0909, // seconds — the whole sample
+    });
+
+    await updateClip({
+      ids: "123",
+      looping: true,
+      start: "1|1",
+      length: "1bar",
+    });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("warping", 1);
+    // One bar is 4 beats. Written as seconds it would be 2, and Live would read
+    // that back as half a bar.
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_end", 4);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 0);
+  });
+
+  it("warns that looping: true wins over warping: false", async () => {
+    setTempo(120);
+    statefulAudioClip({
+      warping: 0,
+      looping: 0,
+      start_marker: 0,
+      end_marker: 1.0909,
+    });
+
+    await updateClip({ ids: "123", warping: false, looping: true });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "warping: false ignored - looping: true forces warping on",
+    );
+    expect(mocks.clip123.set).toHaveBeenCalledWith("warping", 1);
+  });
+
+  it("leaves a warped clip alone when looping is switched on", async () => {
+    setTempo(120);
+    statefulAudioClip({
+      warping: 1,
+      looping: 0,
+      start_marker: 0,
+      end_marker: 4,
+    });
+
+    await updateClip({ ids: "123", looping: true, length: "1bar" });
+
+    expect(mocks.clip123.set).not.toHaveBeenCalledWith("warping", 1);
   });
 });

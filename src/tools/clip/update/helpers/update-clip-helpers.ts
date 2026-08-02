@@ -11,6 +11,7 @@ import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpe
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   applyAudioTransforms,
+  forceWarpForLooping,
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
@@ -112,11 +113,7 @@ export function processSingleClipUpdate(
     clipIndex,
     clipCount,
     notationString,
-    name,
-    color,
     timeSignature,
-    start,
-    length,
     firstStart,
     looping,
     gainDb,
@@ -148,6 +145,7 @@ export function processSingleClipUpdate(
     // switching it off resets end_marker to the whole file — which would erase
     // a start/length requested in the same call.
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
+    forceWarpForLooping(clip, looping, warping);
   }
 
   // Determine looping state
@@ -158,51 +156,11 @@ export function processSingleClipUpdate(
     console.warn("firstStart parameter ignored for non-looping clips");
   }
 
-  // start/length/firstStart are applied to the loop region BEFORE duplicateLoop
-  // runs (clip.setAll below precedes resolveNoteResult), so they compose: set
-  // the region to select a portion, then Live's native duplicate_loop doubles
-  // exactly that selected region. No length suppression - the selection drives
-  // what gets doubled.
-
-  const beatsPerMarkerUnit = markerBeatsPerUnit(clip);
-
-  // Calculate beat positions (includes end_marker bounds check for start_marker)
-  const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
-    start,
-    length,
-    firstStart,
+  writeClipProperties(params, {
     timeSigNumerator,
     timeSigDenominator,
-    clip,
     isLooping,
-    beatsPerMarkerUnit,
   });
-
-  // Build and set clip properties
-  const currentLoopEnd = isLooping
-    ? (clip.getProperty("loop_end") as number) * beatsPerMarkerUnit
-    : null;
-  const propsToSet = buildClipPropertiesToSet({
-    name,
-    color,
-    timeSignature,
-    timeSigNumerator,
-    timeSigDenominator,
-    startMarkerBeats,
-    looping,
-    isLooping,
-    startBeats,
-    endBeats,
-    currentLoopEnd,
-    beatsPerMarkerUnit,
-  });
-
-  clip.setAll(propsToSet);
-
-  // Verify color quantization if color was set
-  if (color != null) {
-    verifyColorQuantization(clip, color);
-  }
 
   // Build context for transform variables (clip.*, bar.*)
   // prettier-ignore
@@ -258,6 +216,79 @@ export function processSingleClipUpdate(
     noteResult,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
+}
+
+/**
+ * Write the clip's name, color, meter, and loop region.
+ *
+ * Runs BEFORE duplicateLoop (see the caller), so the two compose: the region
+ * selects a portion, then Live's native duplicate_loop doubles exactly that.
+ *
+ * @param params - The full single-clip update params
+ * @param resolved - Derived per-clip values not present on params
+ * @param resolved.timeSigNumerator - Resolved time signature numerator
+ * @param resolved.timeSigDenominator - Resolved time signature denominator
+ * @param resolved.isLooping - The clip's looping state after this update
+ */
+function writeClipProperties(
+  params: ProcessSingleClipUpdateParams,
+  {
+    timeSigNumerator,
+    timeSigDenominator,
+    isLooping,
+  }: {
+    timeSigNumerator: number;
+    timeSigDenominator: number;
+    isLooping: boolean;
+  },
+): void {
+  const {
+    clip,
+    name,
+    color,
+    timeSignature,
+    start,
+    length,
+    firstStart,
+    looping,
+  } = params;
+  const beatsPerMarkerUnit = markerBeatsPerUnit(clip);
+
+  // Includes the end_marker bounds check for start_marker
+  const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
+    start,
+    length,
+    firstStart,
+    timeSigNumerator,
+    timeSigDenominator,
+    clip,
+    isLooping,
+    beatsPerMarkerUnit,
+  });
+  const currentLoopEnd = isLooping
+    ? (clip.getProperty("loop_end") as number) * beatsPerMarkerUnit
+    : null;
+
+  clip.setAll(
+    buildClipPropertiesToSet({
+      name,
+      color,
+      timeSignature,
+      timeSigNumerator,
+      timeSigDenominator,
+      startMarkerBeats,
+      looping,
+      isLooping,
+      startBeats,
+      endBeats,
+      currentLoopEnd,
+      beatsPerMarkerUnit,
+    }),
+  );
+
+  if (color != null) {
+    verifyColorQuantization(clip, color);
+  }
 }
 
 /**
