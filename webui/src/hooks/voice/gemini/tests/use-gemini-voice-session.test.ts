@@ -88,6 +88,9 @@ const h = vi.hoisted(() => {
     // deferral itself is covered in gemini-half-duplex.test.ts.
     hasQueued = vi.fn(() => false);
     onDrained = vi.fn((callback: () => void) => callback());
+    // Reached by any `interrupted` message; without it the handler throws
+    // where the `as never` cast at the mock site would have hidden it.
+    hasPendingDrain = vi.fn(() => false);
     close = vi.fn(async () => {});
     constructor() {
       FakePlayer.last = this;

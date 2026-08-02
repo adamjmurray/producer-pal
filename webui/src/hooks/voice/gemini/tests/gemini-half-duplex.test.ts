@@ -125,6 +125,24 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     expect(deps.autoMutedRef.current).toBe(false);
   });
 
+  it("keeps the speaking indicator up as long as the mic is held muted", async () => {
+    // The indicator and the mute have to move together. Clearing it at
+    // turnComplete showed "Listening — go ahead" while the assistant was still
+    // audible and every word the user said was dropped at the mic.
+    const { deps, drain, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+
+    expect(deps.setAssistantSpeaking).not.toHaveBeenCalledWith(false);
+
+    drain();
+
+    expect(deps.setAssistantSpeaking).toHaveBeenLastCalledWith(false);
+  });
+
   it("lifts the auto-mute when an interrupt discards the turn's tail", async () => {
     // turnComplete parked its lift on onDrained, and the interrupt's flush
     // drops that callback. Nothing later would ever lift the mute, so the

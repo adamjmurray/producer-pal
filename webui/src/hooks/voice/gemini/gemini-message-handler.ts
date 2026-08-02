@@ -134,13 +134,15 @@ export async function handleGeminiMessage(
 
     if (sc.turnComplete) {
       deps.builder.completeTurn();
-      deps.setAssistantSpeaking(false);
       // turnComplete means the server is done sending, not that the assistant
       // has stopped talking — the tail of the turn is still scheduled in the
       // player. Unmuting now would open the mic under the assistant's own
       // voice, which is exactly when a user talks over it, so wait for the
-      // queue to drain.
+      // queue to drain. The speaking flag waits with it: it drives the "go
+      // ahead" indicator, and showing that while the mic is still muted invites
+      // the user to say something nothing will hear.
       deps.player.onDrained(() => {
+        deps.setAssistantSpeaking(false);
         endGeminiHalfDuplexMute(
           deps.getMic(),
           deps.autoMutedRef,
