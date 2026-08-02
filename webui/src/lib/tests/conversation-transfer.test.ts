@@ -675,6 +675,49 @@ describe("conversation-transfer", () => {
     expect(imported.messages[0]!.content).toBe("hi");
   });
 
+  it("gives a tool call with no args an empty one", async () => {
+    // The subagent card reads `args.task` with no guard, so a missing `args`
+    // threw and the message row fell back to its error boundary.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "no-args",
+          createdAt: 100,
+          messages: [
+            {
+              role: "assistant",
+              content: "",
+              toolCalls: [{ id: "1", name: "spawn_subagent" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "no-args");
+
+    expect(imported.messages[0]!.toolCalls![0]!.args).toStrictEqual({});
+  });
+
+  it("drops a toolCalls that isn't an array", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "calls-not-array",
+          createdAt: 100,
+          messages: [{ role: "assistant", content: "hi", toolCalls: "nope" }],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "calls-not-array");
+
+    expect(imported.messages[0]).not.toHaveProperty("toolCalls");
+    expect(imported.messages[0]!.content).toBe("hi");
+  });
+
   it("leaves a tool result that isn't an object alone", async () => {
     const data = {
       version: 1,

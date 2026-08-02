@@ -318,26 +318,60 @@ function normalizeRecord(
  * @returns The message, with any unusable subagent fields dropped
  */
 function sanitizeImportedMessage(message: unknown): unknown {
-  const { toolResults } = message as { toolResults?: unknown };
+  return sanitizeToolField(
+    sanitizeToolField(message, "toolResults", sanitizeToolResult),
+    "toolCalls",
+    sanitizeToolCall,
+  );
+}
 
-  if (toolResults == null) return message;
+/**
+ * Run one of a message's tool arrays through a per-entry sanitizer, or drop the
+ * field when it isn't an array at all: every reader treats it as one (`.find`,
+ * `for…of`) and would throw on the first render, OUTSIDE the per-message error
+ * boundary — leaving a conversation that can never be opened again. Dropping it
+ * costs one message's tool calls or results and keeps the rest readable.
+ * @param message - A message that passed {@link isValidImportedMessage}
+ * @param field - Which tool array to normalize
+ * @param sanitizeEntry - Per-entry sanitizer
+ * @returns The message with that field normalized, or without it
+ */
+function sanitizeToolField(
+  message: unknown,
+  field: "toolCalls" | "toolResults",
+  sanitizeEntry: (entry: unknown) => unknown,
+): unknown {
+  const value = (message as Record<string, unknown>)[field];
 
-  // Present but not an array: every reader treats it as one (`.find`, `for…of`)
-  // and would throw on the first render, OUTSIDE the per-message error
-  // boundary — leaving a conversation that can never be opened again. Dropping
-  // it costs the tool results of one message and keeps the rest readable.
-  if (!Array.isArray(toolResults)) {
-    const { toolResults: _dropped, ...rest } = message as {
-      toolResults?: unknown;
-    };
+  if (value == null) return message;
+
+  if (!Array.isArray(value)) {
+    const { [field]: _dropped, ...rest } = message as Record<string, unknown>;
 
     return rest;
   }
 
-  return {
-    ...(message as object),
-    toolResults: (toolResults as unknown[]).map(sanitizeToolResult),
-  };
+  return { ...(message as object), [field]: value.map(sanitizeEntry) };
+}
+
+/**
+ * Give a tool call the `args` object its renderers read fields straight off.
+ * The subagent card reaches for `args.task` with no guard, and the type says
+ * `args` is always there — true for anything we produced, not for what an
+ * import hands us.
+ * @param entry - Raw parsed toolCalls element
+ * @returns The entry, with `args` an object
+ */
+function sanitizeToolCall(entry: unknown): unknown {
+  if (typeof entry !== "object" || entry === null) return entry;
+
+  const { args } = entry as { args?: unknown };
+
+  if (typeof args === "object" && args !== null && !Array.isArray(args)) {
+    return entry;
+  }
+
+  return { ...entry, args: {} };
 }
 
 /**
