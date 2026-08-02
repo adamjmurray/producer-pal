@@ -396,15 +396,25 @@ export function useCollectionEntryAutosave(
     // pre-registration inFlightRef and putting two writes on the wire anyway.
     // Only the DISPATCH defers — the same split as useContextEditorState's
     // dispatchOrderedWrite.
+    //
+    // Registered as a promise that SETTLES, like dispatchOrderedWrite's: a
+    // rejection left in `inFlightRef` would never be nulled, so every later
+    // flush would `prior.then(dispatch)` without ever dispatching (autosave
+    // stops for the rest of the mount) and settlePendingSave would throw into
+    // commitRename's un-awaited call. `persist` resolves null rather than
+    // throwing today — this keeps that from being load-bearing, and a null takes
+    // the same baseline-rollback path a failed save does.
     const prior = inFlightRef.current;
     const pending: Promise<void> = (
       prior == null ? dispatch() : prior.then(dispatch)
-    ).then((echoKey) => {
-      if (inFlightRef.current === pending) inFlightRef.current = null;
-      if (!mountedRef.current || lastSavedRef.current !== key) return;
+    )
+      .catch(() => null)
+      .then((echoKey) => {
+        if (inFlightRef.current === pending) inFlightRef.current = null;
+        if (!mountedRef.current || lastSavedRef.current !== key) return;
 
-      lastSavedRef.current = echoKey ?? previous;
-    });
+        lastSavedRef.current = echoKey ?? previous;
+      });
 
     inFlightRef.current = pending;
   }, []);

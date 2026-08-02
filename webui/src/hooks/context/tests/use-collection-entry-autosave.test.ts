@@ -377,6 +377,37 @@ describe("useCollectionEntryAutosave", () => {
     expect(persist).toHaveBeenCalledTimes(3);
   });
 
+  it("keeps autosaving, and lets a rename settle, after a persist rejects", async () => {
+    // persist resolves null on failure today. A rejection would leave the
+    // rejected promise parked in inFlightRef with nothing to null it: every
+    // later flush would chain off it and never dispatch (autosave silently dead
+    // for the rest of the mount), and settlePendingSave would throw into
+    // commitRename's un-awaited call, breaking renames too.
+    const persist = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockResolvedValue("v2");
+    const { result, rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    await typeAndDebounce(rerender, persist, "v1");
+    expect(persist).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    await typeAndDebounce(rerender, persist, "v2");
+    expect(persist).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await expect(result.current.settlePendingSave()).resolves.toBeUndefined();
+    });
+  });
+
   it("does not dispatch a queued flush for an entry deleted while it waited", async () => {
     // The queued flush was authorized before the delete, so it has to re-check
     // at dispatch time — otherwise chaining reopens the resurrection hole the

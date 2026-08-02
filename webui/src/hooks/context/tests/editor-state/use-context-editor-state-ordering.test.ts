@@ -337,6 +337,70 @@ describe("useContextEditorState write ordering", () => {
     });
   });
 
+  describe("out-of-band writes via dispatchWrite", () => {
+    // The Skills "Include" toggle PUTs the same slot file the editor autosaves
+    // but isn't part of the editor's save lifecycle, so it has to borrow the
+    // ordering — in both directions, like every other write here.
+    it("holds an out-of-band write until the in-flight autosave lands", async () => {
+      // Left unordered, the smaller toggle PUT wins the race, echoes the
+      // PRE-edit body, and claims the newer sequence number — so the stale body
+      // is what the merge commits and what Reload then offers over the user's
+      // own text.
+      const { save, resolveSave } = deferredSave();
+      const toggle = vi.fn().mockResolvedValue(true);
+      const { result } = renderReadyEditor({ save });
+
+      await typeDraft(result, "edited body");
+      await flushDebounceWindow();
+      expect(save).toHaveBeenCalledTimes(1);
+
+      let togglePromise: Promise<boolean> | undefined;
+
+      await act(() => {
+        togglePromise = result.current.dispatchWrite(toggle);
+      });
+      await drainMicrotasks();
+      expect(toggle).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveSave(true);
+        await togglePromise;
+      });
+      expect(toggle).toHaveBeenCalledTimes(1);
+    });
+
+    it("holds a blur flush until an in-flight out-of-band write lands", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const { save: toggle, resolveSave: resolveToggle } = deferredSave();
+      const { result } = renderReadyEditor({ save });
+
+      let togglePromise: Promise<boolean> | undefined;
+
+      await act(() => {
+        // deferredSave's spy is typed loosely (it also stands in for the doc
+        // hook's save/clear), so the write thunk needs the narrower signature.
+        togglePromise = result.current.dispatchWrite(
+          toggle as () => Promise<boolean>,
+        );
+      });
+      expect(toggle).toHaveBeenCalledTimes(1);
+
+      await typeDraft(result, "typed during toggle");
+      await act(() => {
+        result.current.handleBlur();
+      });
+      await drainMicrotasks();
+      expect(save).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveToggle(true);
+        await togglePromise;
+      });
+      await drainMicrotasks();
+      expect(save).toHaveBeenCalledWith("typed during toggle");
+    });
+  });
+
   describe("autosave vs in-flight manual write ordering", () => {
     // The remaining direction: the editor stays live through a Clear/Import
     // round trip (it only remounts once the echo lands), so the user can type

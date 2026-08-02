@@ -396,6 +396,39 @@ describe("useSkillOverrides", () => {
     expect(overrideOf(result, 0)).toBe("NEW");
   });
 
+  it("keeps the indicator on Saving when a superseded write resolves first", async () => {
+    // A superseded write's result is discarded, so its resolution says nothing
+    // about what is on disk. Painting "Saved" here tells the user the edit they
+    // just made is persisted while its PUT is still on the wire.
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    const older = deferred<Response>();
+    const newer = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(older.promise);
+    fetchMock.mockReturnValueOnce(newer.promise);
+
+    let newerPending: Promise<boolean> | undefined;
+
+    await act(async () => {
+      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
+
+      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
+      older.resolve(jsonResponse({ slot: rawSlot({ override: "OLD" }) }));
+      await olderPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saving");
+
+    await act(async () => {
+      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+      await newerPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
   it("does not let a save of one slot discard another slot's echo", async () => {
     // Ordering is per slot: newest-write-wins across the whole collection would
     // drop this first slot's merge just because a second slot was saved after.

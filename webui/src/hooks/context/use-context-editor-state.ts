@@ -42,8 +42,9 @@ function pendingSaves(saves: Set<Promise<boolean>>): Promise<unknown> | null {
 }
 
 /**
- * Dispatch a manual write (Clear / Import) ordered behind every save already in
- * flight, and register it in `saves` so the NEXT manual write is ordered behind
+ * Dispatch a manual write (Clear / Import / the Skills Include toggle) ordered
+ * behind every save already in flight, and register it in `saves` so the NEXT
+ * manual write is ordered behind
  * IT too. Both halves matter: without the registration, an Import→Clear (or
  * Clear→Import) pair finds an empty set and puts two writes on the wire at once.
  * The UI still resolves correctly — use-doc's generation counter discards the
@@ -142,6 +143,15 @@ export interface UseContextEditorStateReturn {
   beginOverride: () => void;
   /** The editor's current draft text (includes not-yet-saved edits). */
   getContent: () => string;
+  /**
+   * Run a write that targets the same file the editor autosaves, ordered behind
+   * every write already in flight and registered so the next one orders behind
+   * IT. For writes the editor itself doesn't own — the Skills "Include" toggle,
+   * which PUTs the same slot file. Without it a toggle fired during an in-flight
+   * body save can land first and echo the pre-edit body, which then wins the
+   * merge and gets offered as a "Reload" over the user's own text.
+   */
+  dispatchWrite: (write: () => Promise<boolean>) => Promise<boolean>;
   /**
    * Live character count of the editor's current draft — seeded from the
    * server, updated on each keystroke, reset by Clear/Reload. Drives the
@@ -471,6 +481,12 @@ export function useContextEditorState(
 
   const getContent = useCallback((): string => draftRef.current ?? "", []);
 
+  const dispatchWrite = useCallback(
+    (write: () => Promise<boolean>): Promise<boolean> =>
+      dispatchOrderedWrite(inFlightSavesRef.current, write),
+    [],
+  );
+
   // Flush on tab close so an in-flight debounce doesn't drop edits.
   useEffect(() => {
     const onBeforeUnload = (): void => {
@@ -511,6 +527,7 @@ export function useContextEditorState(
     handleImport,
     beginOverride,
     getContent,
+    dispatchWrite,
     charCount,
   };
 }

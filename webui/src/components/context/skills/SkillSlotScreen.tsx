@@ -101,8 +101,13 @@ export function SkillSlotScreen(
         widthClass={widthClass}
         onImport={io.onImport}
         onExport={io.onExport}
+        // Routed through the editor's ordered-write dispatcher: the toggle PUTs
+        // the same slot file the editor autosaves, so an unordered one can land
+        // ahead of an in-flight body save and echo the pre-edit body.
         onSetEnabled={(enabled) =>
-          void overrides.setSlotEnabled(slot.name, enabled)
+          void editor.dispatchWrite(() =>
+            overrides.setSlotEnabled(slot.name, enabled),
+          )
         }
       />
       <div
