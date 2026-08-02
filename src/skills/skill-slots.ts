@@ -153,6 +153,22 @@ export const RETIRED_SKILL_SLOTS: Record<string, readonly SkillSlotName[]> = {
 };
 
 /**
+ * Slots whose authoring half was spun out into a `-write` sibling, mapped to it.
+ *
+ * The split cost no rename (the base name still means "the whole, minus what
+ * only a writer can use"), so an override made BEFORE it stays live — and holds
+ * the authoring half the driver now includes separately, shipping it twice.
+ * buildSkills warns when it can see that has happened; see warnSplitOverrides.
+ * Only pairs that were split after the slot became public need an entry.
+ */
+export const SPLIT_SKILL_SLOTS: Record<string, SkillSlotName> = {
+  "barbeat-standard": "barbeat-standard-write",
+  "barbeat-basic": "barbeat-basic-write",
+  "stark-standard": "stark-standard-write",
+  "stark-basic": "stark-basic-write",
+};
+
+/**
  * A single overridable skills fragment. The slot name is the key in
  * {@link SKILL_SLOTS}, so it is not repeated in the definition.
  */

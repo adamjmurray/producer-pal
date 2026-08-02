@@ -19,6 +19,7 @@ import {
   isDisableableSkillSlot,
   isSkillSlotName,
   RETIRED_SKILL_SLOTS,
+  SPLIT_SKILL_SLOTS,
 } from "#src/skills/skill-slots.ts";
 
 /** Runtime context that selects which skills variant is assembled. */
@@ -153,6 +154,7 @@ export function assembleSkills(
   ]);
 
   warnRetiredOverrides(overrides, onWarn);
+  warnSplitOverrides(overrides, builtIns, suppressed, onWarn);
 
   const included = new Set<string>();
   const dropped = new Set<string>();
@@ -311,4 +313,63 @@ function warnRetiredOverrides(
       `skills override "${name}.md" is no longer used — that fragment is now ${replacedBy.join(", ")}`,
     );
   }
+}
+
+/**
+ * Warn about an override of a notation head that predates its `-write` split
+ * ({@link SPLIT_SKILL_SLOTS}). The fork holds the whole guide, and the driver now
+ * includes the head AND the sibling, so the authoring half ships twice — costing
+ * context and, worse, restating guidance a later release may have changed.
+ *
+ * The split kept the head's name on purpose, so nothing else can catch this: the
+ * override still resolves, and the document still assembles. The overlap itself
+ * is the only evidence, which is why this compares HEADINGS rather than assuming
+ * every override of a split slot is stale — a fork made today carries none of
+ * the sibling's sections and stays quiet.
+ *
+ * @param overrides - The user's per-fragment overrides
+ * @param builtIns - The release built-ins, read for the sibling's headings
+ * @param suppressed - Fragments resolving to empty (a suppressed sibling ships nothing to duplicate)
+ * @param onWarn - Warning sink (no-op when the caller passed none)
+ */
+function warnSplitOverrides(
+  overrides: SkillOverrides,
+  builtIns: Record<string, string>,
+  suppressed: ReadonlySet<string>,
+  onWarn?: (message: string) => void,
+): void {
+  const fragments = overrides.fragments ?? {};
+
+  for (const [head, write] of Object.entries(SPLIT_SKILL_SLOTS)) {
+    const body = fragments[head];
+
+    // Overriding the sibling too means the user has already met the split.
+    if (body == null || fragments[write] != null || suppressed.has(write)) {
+      continue;
+    }
+
+    const shared = sharedHeadings(body, builtIns[write] ?? "");
+
+    if (shared.length === 0) continue;
+
+    onWarn?.(
+      `skills override "${head}.md" predates the writing-notes split: it still contains ${shared.map(quoted).join(", ")}, which is now the separate fragment "${write}" — that text ships twice. Delete those sections from your override, or switch "${write}" off.`,
+    );
+  }
+}
+
+/**
+ * The headings a built-in and an override body both carry.
+ *
+ * @param body - The override body
+ * @param builtIn - The built-in fragment to compare against
+ * @returns Shared heading lines, in the built-in's order
+ */
+function sharedHeadings(body: string, builtIn: string): string[] {
+  const bodyLines = new Set(body.split("\n").map((line) => line.trim()));
+
+  return builtIn
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^#{2,6} \S/.test(line) && bodyLines.has(line));
 }
