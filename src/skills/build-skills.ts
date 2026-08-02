@@ -22,6 +22,19 @@ import {
   SPLIT_SKILL_SLOTS,
 } from "#src/skills/skill-slots.ts";
 
+/**
+ * How long a line has to be before matching it verbatim means the override
+ * copied it. Short enough for one bullet lead or a specific heading, long
+ * enough that a generic `## Examples` can't trip it.
+ */
+const MIN_COPIED_LINE = 40;
+
+/** How much of a copied line a warning quotes. */
+const SNIPPET_LENGTH = 60;
+
+/** How many copied lines a warning names before the count speaks for itself. */
+const EXAMPLE_LINES = 3;
+
 /** Runtime context that selects which skills variant is assembled. */
 export interface BuildSkillsOptions {
   /** The global notation setting (defaults to bar|beat). */
@@ -323,12 +336,12 @@ function warnRetiredOverrides(
  *
  * The split kept the head's name on purpose, so nothing else can catch this: the
  * override still resolves, and the document still assembles. The overlap itself
- * is the only evidence, which is why this compares HEADINGS rather than assuming
- * every override of a split slot is stale — a fork made today carries none of
- * the sibling's sections and stays quiet.
+ * is the only evidence, which is why this looks for COPIED TEXT rather than
+ * assuming every override of a split slot is stale — a fork made today carries
+ * none of the sibling's prose and stays quiet.
  *
  * @param overrides - The user's per-fragment overrides
- * @param builtIns - The release built-ins, read for the sibling's headings
+ * @param builtIns - The release built-ins, read for the sibling's text
  * @param suppressed - Fragments resolving to empty (a suppressed sibling ships nothing to duplicate)
  * @param onWarn - Warning sink (no-op when the caller passed none)
  */
@@ -348,28 +361,47 @@ function warnSplitOverrides(
       continue;
     }
 
-    const shared = sharedHeadings(body, builtIns[write] ?? "");
+    const shared = sharedLines(body, builtIns[write] ?? "");
 
     if (shared.length === 0) continue;
 
     onWarn?.(
-      `skills override "${head}.md" predates the writing-notes split: it still contains ${shared.map(quoted).join(", ")}, which is now the separate fragment "${write}" — that text ships twice. Delete those sections from your override, or switch "${write}" off.`,
+      `skills override "${head}.md" predates the writing-notes split: ${shared.length} of its lines are still the built-in's, e.g. ${shared.slice(0, EXAMPLE_LINES).map(snippet).map(quoted).join(", ")} — that text is now the separate fragment "${write}", so it ships twice. Delete it from your override, or switch "${write}" off.`,
     );
   }
 }
 
 /**
- * The headings a built-in and an override body both carry.
+ * The substantial lines a built-in and an override body both carry, word for
+ * word.
+ *
+ * Headings alone were the wrong signal in both directions. Stark's authoring
+ * half was a BULLET before the split, with no heading of its own, so a stale
+ * fork of it could never be detected; meanwhile a fresh fork that writes its own
+ * `## Examples` shares a heading with content it never copied, and was told to
+ * delete its own text. A long line reproduced verbatim is what actually says
+ * "this came from the built-in".
  *
  * @param body - The override body
  * @param builtIn - The built-in fragment to compare against
- * @returns Shared heading lines, in the built-in's order
+ * @returns Shared lines, in the built-in's order
  */
-function sharedHeadings(body: string, builtIn: string): string[] {
+function sharedLines(body: string, builtIn: string): string[] {
   const bodyLines = new Set(body.split("\n").map((line) => line.trim()));
 
   return builtIn
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => /^#{2,6} \S/.test(line) && bodyLines.has(line));
+    .filter((line) => line.length >= MIN_COPIED_LINE && bodyLines.has(line));
+}
+
+/**
+ * The head of a line, for naming it in a warning without pasting a paragraph.
+ * @param line - The shared line
+ * @returns Its first few words, ellipsized when cut
+ */
+function snippet(line: string): string {
+  return line.length <= SNIPPET_LENGTH
+    ? line
+    : `${line.slice(0, SNIPPET_LENGTH).trimEnd()}…`;
 }

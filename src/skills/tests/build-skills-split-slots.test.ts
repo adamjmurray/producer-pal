@@ -14,6 +14,10 @@ import {
   barbeatStandard,
   barbeatStandardWrite,
 } from "#src/skills/notation/barbeat-standard.ts";
+import {
+  starkStandard,
+  starkStandardWrite,
+} from "#src/skills/notation/stark.ts";
 import { isSkillSlotName, SPLIT_SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 
 /**
@@ -26,10 +30,11 @@ import { isSkillSlotName, SPLIT_SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 function warningsFor(
   fragments: Record<string, string>,
   disabled: readonly string[] = [],
+  notation: "barbeat" | "stark" = "barbeat",
 ): string[] {
   const warnings: string[] = [];
 
-  buildSkills({ notation: "barbeat" }, { fragments, disabled }, (message) =>
+  buildSkills({ notation }, { fragments, disabled }, (message) =>
     warnings.push(message),
   );
 
@@ -40,15 +45,41 @@ function warningsFor(
 const PRE_SPLIT_FORK = `${barbeatStandard}\n\n${barbeatStandardWrite}`;
 
 describe("buildSkills — overrides that predate a -write split", () => {
-  it("warns, naming the sections that now ship twice", () => {
+  it("warns, quoting the text that now ships twice", () => {
     const warnings = warningsFor({ "barbeat-standard": PRE_SPLIT_FORK });
 
     expect(warnings).toStrictEqual([
       expect.stringContaining(`"barbeat-standard.md" predates`),
     ]);
-    expect(warnings[0]).toContain(`"## Writing Notes"`);
-    expect(warnings[0]).toContain(`"## Examples"`);
     expect(warnings[0]).toContain(`"barbeat-standard-write"`);
+    // A line of the sibling's own prose, quoted back to the user.
+    expect(warnings[0]).toContain("**Repeat patterns**");
+  });
+
+  it("warns for a split whose seam was a bullet, not a heading", () => {
+    // stark's authoring half had no heading of its own before the split, so
+    // heading overlap could never see this one — the warning was unreachable
+    // for half the notations it is registered for.
+    const warnings = warningsFor(
+      { "stark-standard": `${starkStandard}${starkStandardWrite}` },
+      [],
+      "stark",
+    );
+
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"stark-standard.md" predates`),
+    ]);
+    expect(warnings[0]).toContain(`"stark-standard-write"`);
+  });
+
+  it("stays quiet for a fork that only reuses a generic heading", () => {
+    // A fresh fork writing its own `## Examples` shares the word, not the text.
+    // Telling it to delete its own section is worse than saying nothing.
+    expect(
+      warningsFor({
+        "barbeat-standard": `${barbeatStandard}\n\n## Examples\n\nmy own examples`,
+      }),
+    ).toStrictEqual([]);
   });
 
   it("stays quiet for a fork made after the split", () => {
