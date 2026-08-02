@@ -173,9 +173,10 @@ describe("spawn_subagent briefing wiring", () => {
       runWorker: (options) => {
         workerConfig = options.workerConfig;
 
-        return Promise.resolve([
-          { role: "assistant", content: "done" },
-        ] as ChatMessage[]);
+        return Promise.resolve({
+          messages: [{ role: "assistant", content: "done" }] as ChatMessage[],
+          toolLimitReached: false,
+        });
       },
       spawnState: { count: 0, nextIndex: 0, active: new Set<number>() },
       getBriefing: getBriefing as unknown as (

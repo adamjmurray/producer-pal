@@ -79,6 +79,18 @@ export interface RunWorkerOptions {
   abortSignal?: AbortSignal;
 }
 
+/** What one worker run produced. */
+export interface WorkerRunResult {
+  /**
+   * The messages THIS run added — a resume's seeded prefix is excluded, so the
+   * result reported back is always an answer to the task just given, never the
+   * previous run's closing message.
+   */
+  messages: ChatMessage[];
+  /** Whether the run stopped on its step budget rather than finishing. */
+  toolLimitReached: boolean;
+}
+
 /** Dependencies the spawn tool needs from its owning ChatSdkClient. */
 export interface SpawnSubagentDeps {
   /** The orchestrator config, cloned per worker. The clone inherits model,
@@ -87,15 +99,14 @@ export interface SpawnSubagentDeps {
    * buildWorkerConfig. */
   config: ChatClientConfig;
   /**
-   * Run a worker session for `task` and resolve with the worker's final chat
-   * history (the whole thing, including any seeded prefix). Injected by the
-   * client so this module needs no ChatSdkClient import (avoids an import cycle)
-   * and stays unit-testable. The runner publishes the worker's live status (e.g.
-   * a rate-limit backoff) to the card, and owns stashing the transcript, because
-   * it still holds the worker's history on the paths where this tool throws (a
-   * Stop mid-worker above all).
+   * Run a worker session for `task` and resolve with what that run produced.
+   * Injected by the client so this module needs no ChatSdkClient import (avoids
+   * an import cycle) and stays unit-testable. The runner publishes the worker's
+   * live status (e.g. a rate-limit backoff) to the card, and owns stashing the
+   * transcript, because it still holds the worker's history on the paths where
+   * this tool throws (a Stop mid-worker above all).
    */
-  runWorker: (options: RunWorkerOptions) => Promise<ChatMessage[]>;
+  runWorker: (options: RunWorkerOptions) => Promise<WorkerRunResult>;
   /** Mutable per-conversation spawn state; see SpawnState. */
   spawnState: SpawnState;
   /**
@@ -195,7 +206,7 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
       deps.spawnState.active.add(subagentIndex);
 
       try {
-        const transcript = await deps.runWorker({
+        const run = await deps.runWorker({
           workerConfig: await resolveWorkerConfig(deps, session),
           task,
           toolCallId,
@@ -205,7 +216,7 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
 
         return labelWorkerResult(
           subagentIndex,
-          extractWorkerResult(transcript),
+          extractWorkerResult(run.messages, run.toolLimitReached),
         );
       } finally {
         deps.spawnState.active.delete(subagentIndex);
@@ -310,19 +321,31 @@ export function buildWorkerConfig(
  * The compact result handed back to the orchestrator model: the worker's last
  * assistant message. The full transcript is kept UI-side and never sent to the
  * model.
- * @param history - The worker's final chat history (oldest first)
+ *
+ * Takes THIS run's messages only. Scanning a resumed worker's whole history
+ * would walk back into the previous run and report its closing message as the
+ * answer to the new task — success claimed for work that never happened.
+ *
+ * @param messages - What this run added to the worker's history (oldest first)
+ * @param toolLimitReached - Whether the run stopped on its step budget
  * @returns The worker's final assistant text, or a fallback if it produced none
  */
-export function extractWorkerResult(history: ChatMessage[]): string {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const msg = history[i];
+export function extractWorkerResult(
+  messages: ChatMessage[],
+  toolLimitReached = false,
+): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
 
     if (msg?.role === "assistant" && !msg.isError && msg.content.trim()) {
       return msg.content.trim();
     }
   }
 
-  return "The subagent finished without a final message.";
+  return toolLimitReached
+    ? "The subagent ran out of tool steps before reporting back. Resume it " +
+        "(resumeFrom) to let it finish, or take the rest on yourself."
+    : "The subagent finished without a final message.";
 }
 
 /**

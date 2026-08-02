@@ -494,6 +494,32 @@ describe("ChatSdkClient resuming a worker", () => {
     ]);
   });
 
+  it("reports no final message rather than the previous run's answer", async () => {
+    const { client, execute } = await orchestratorWithSpawnTool();
+
+    await recordSpawn(
+      client,
+      execute,
+      { task: "add a bassline" },
+      "tc-1",
+      "Added the bassline.",
+    );
+
+    // The resumed run ends with no assistant text of its own. Scanning the
+    // worker's whole history would reach back into run 1 and report "Added the
+    // bassline." as the answer to a task it never did.
+    mockStreamParts([{ type: "finish", finishReason: "stop" }]);
+
+    const resumed = await execute(
+      { task: "now make it swing", resumeFrom: 1 },
+      { toolCallId: "tc-2", messages: [], abortSignal: undefined },
+    );
+
+    expect(resumed).toBe(
+      labelWorkerResult(1, "The subagent finished without a final message."),
+    );
+  });
+
   it("sends the resumed worker's prior turns to the provider", async () => {
     const { client, execute } = await orchestratorWithSpawnTool();
 

@@ -9,6 +9,7 @@ import {
   MAX_WORKER_STEPS,
   type RunWorkerOptions,
   SPAWN_SUBAGENT_TOOL_NAME,
+  type WorkerRunResult,
   buildWorkerConfig,
   createSpawnSubagentTool,
   extractWorkerResult,
@@ -21,7 +22,7 @@ import {
 } from "#webui/chat/sdk/types";
 import { createConfig } from "#webui/chat/sdk/tests/client-test-helpers";
 
-type RunWorker = (options: RunWorkerOptions) => Promise<ChatMessage[]>;
+type RunWorker = (options: RunWorkerOptions) => Promise<WorkerRunResult>;
 
 const options = (abortSignal?: AbortSignal) => ({
   toolCallId: "tc1",
@@ -225,6 +226,16 @@ describe("extractWorkerResult", () => {
       "The subagent finished without a final message.",
     );
   });
+
+  it("says so when the worker ran out of tool steps", () => {
+    const history: ChatMessage[] = [{ role: "user", content: "do it" }];
+
+    // The orchestrator can only make the right call — resume or take over — if
+    // it can tell a step-limit stop from a worker that simply said nothing.
+    expect(extractWorkerResult(history, true)).toContain(
+      "ran out of tool steps",
+    );
+  });
 });
 
 describe("createSpawnSubagentTool", () => {
@@ -243,7 +254,10 @@ describe("createSpawnSubagentTool", () => {
   }) => {
     const runWorker: Mock<RunWorker> =
       overrides?.runWorker ??
-      vi.fn<RunWorker>().mockResolvedValue(workerHistory);
+      vi.fn<RunWorker>().mockResolvedValue({
+        messages: workerHistory,
+        toolLimitReached: false,
+      });
     const spawnState = {
       count: overrides?.count ?? 0,
       nextIndex: overrides?.nextIndex ?? 0,
