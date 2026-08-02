@@ -11,8 +11,10 @@ import { clearNodeRoutes } from "#src/mcp-server/rpc/node-request-protocol.ts";
 import { dispatchNodeRoute } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
 import { registerProjectContextBackupNodeRoutes } from "../project-context-backup-node-routes.ts";
 import {
+  deleteProjectContextSidecar,
   projectContextSidecarPath,
   readProjectContextSidecar,
+  writeProjectContextSidecar,
 } from "../project-context-backup-store.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
@@ -21,6 +23,10 @@ vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+
+// Real filesystem behavior by default; a couple of tests override one call to
+// stage a failure the filesystem won't reproduce on demand.
+vi.mock(import("../project-context-backup-store.ts"), { spy: true });
 
 let projectDir = "";
 let liveSetPath = "";
@@ -44,6 +50,16 @@ afterEach(() => {
  */
 function seedSidecar(content: string): void {
   writeFileSync(projectContextSidecarPath(liveSetPath), content, "utf8");
+}
+
+/**
+ * Read back the sidecar beside the test Live Set.
+ * @returns Its contents, or null when there is nothing readable there
+ */
+function sidecarText(): string | null {
+  const read = readProjectContextSidecar(liveSetPath);
+
+  return read.status === "found" ? read.content : null;
 }
 
 /**
@@ -153,7 +169,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
     const res = await sync({ content: "Genre: jungle", allowRestore: false });
 
     expect(res.result).toStrictEqual({ action: "backup" });
-    expect(readProjectContextSidecar(liveSetPath)).toBe("Genre: jungle");
+    expect(sidecarText()).toBe("Genre: jungle");
   });
 
   it("overwrites an existing sidecar on a genuine write", async () => {
@@ -166,7 +182,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
     });
 
     expect(res.result).toStrictEqual({ action: "backup" });
-    expect(readProjectContextSidecar(liveSetPath)).toBe("new");
+    expect(sidecarText()).toBe("new");
   });
 
   // One sidecar is shared by every Set in a Live Project folder, so loading an
@@ -182,9 +198,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
     });
 
     expect(res.result).toStrictEqual({ action: "none" });
-    expect(readProjectContextSidecar(liveSetPath)).toBe(
-      "newer notes from another Set in this folder",
-    );
+    expect(sidecarText()).toBe("newer notes from another Set in this folder");
   });
 
   it("creates a missing sidecar even when nothing was written", async () => {
@@ -195,7 +209,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
     });
 
     expect(res.result).toStrictEqual({ action: "backup" });
-    expect(readProjectContextSidecar(liveSetPath)).toBe("Genre: jungle");
+    expect(sidecarText()).toBe("Genre: jungle");
   });
 
   it("treats an empty sidecar as no backup, so a passing sync fills it", async () => {
@@ -208,7 +222,7 @@ describe("projectContext.sync — backup (non-empty param)", () => {
     });
 
     expect(res.result).toStrictEqual({ action: "backup" });
-    expect(readProjectContextSidecar(liveSetPath)).toBe("Genre: jungle");
+    expect(sidecarText()).toBe("Genre: jungle");
   });
 
   it("leaves a byte-identical sidecar untouched", async () => {
@@ -216,6 +230,48 @@ describe("projectContext.sync — backup (non-empty param)", () => {
 
     const res = await sync({ content: "same", allowRestore: false });
 
+    expect(res.result).toStrictEqual({ action: "none" });
+  });
+});
+
+// Nothing the store does may fail the RPC. V8 only memoizes a completed sync,
+// so a failure it can't fix — a read-only volume, a locked cloud-sync folder —
+// would be retried on every tool call from then on, appending its warning to
+// every tool result.
+describe("projectContext.sync — the filesystem refuses", () => {
+  it("does not write over a sidecar it couldn't read, even on a genuine write", async () => {
+    seedSidecar("newer notes from another Set in this folder");
+    vi.mocked(readProjectContextSidecar).mockReturnValueOnce({
+      status: "unreadable",
+    });
+
+    const res = await sync({
+      content: "different notes",
+      allowRestore: false,
+      isEdit: true,
+    });
+
+    expect(res.result).toStrictEqual({ action: "none" });
+    expect(writeProjectContextSidecar).not.toHaveBeenCalled();
+    expect(sidecarText()).toBe("newer notes from another Set in this folder");
+  });
+
+  it("reports none, not a failed request, when the backup write fails", async () => {
+    vi.mocked(writeProjectContextSidecar).mockReturnValueOnce(false);
+
+    const res = await sync({ content: "Genre: jungle", allowRestore: false });
+
+    expect(res.success).toBe(true);
+    expect(res.result).toStrictEqual({ action: "none" });
+  });
+
+  it("reports none, not a failed request, when the clearing delete fails", async () => {
+    seedSidecar("Genre: jungle");
+    vi.mocked(deleteProjectContextSidecar).mockReturnValueOnce(false);
+
+    const res = await sync({ content: "", allowRestore: false });
+
+    expect(res.success).toBe(true);
     expect(res.result).toStrictEqual({ action: "none" });
   });
 });

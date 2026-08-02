@@ -3,7 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -71,8 +77,10 @@ describe("projectContextSidecarPath", () => {
 });
 
 describe("readProjectContextSidecar", () => {
-  it("returns null when no sidecar exists", () => {
-    expect(readProjectContextSidecar(liveSetPath)).toBeNull();
+  it("reports absent when no sidecar exists", () => {
+    expect(readProjectContextSidecar(liveSetPath)).toStrictEqual({
+      status: "absent",
+    });
   });
 
   it("returns the sidecar contents verbatim when present", () => {
@@ -82,33 +90,70 @@ describe("readProjectContextSidecar", () => {
       "utf8",
     );
 
-    expect(readProjectContextSidecar(liveSetPath)).toBe(
-      "  Keep this exactly.\n\n",
-    );
+    expect(readProjectContextSidecar(liveSetPath)).toStrictEqual({
+      status: "found",
+      content: "  Keep this exactly.\n\n",
+    });
   });
 
-  it("returns null (not throw) when the sidecar path is unreadable", () => {
-    // A directory at the sidecar path exists but can't be read as a file.
+  it("reports unreadable, apart from absent, when the read fails", () => {
+    // A directory at the sidecar path exists but can't be read as a file. The
+    // two must not collapse: a caller may create a backup that isn't there, but
+    // must never write over one it couldn't look at.
     mkdirSync(projectContextSidecarPath(liveSetPath));
 
-    expect(readProjectContextSidecar(liveSetPath)).toBeNull();
+    expect(readProjectContextSidecar(liveSetPath)).toStrictEqual({
+      status: "unreadable",
+    });
   });
 });
 
 describe("writeProjectContextSidecar", () => {
   it("writes the blob and round-trips byte-for-byte", () => {
-    writeProjectContextSidecar(liveSetPath, "Genre: jungle\nBPM: 170");
-
-    expect(readProjectContextSidecar(liveSetPath)).toBe(
-      "Genre: jungle\nBPM: 170",
-    );
+    expect(
+      writeProjectContextSidecar(liveSetPath, "Genre: jungle\nBPM: 170"),
+    ).toBe(true);
+    expect(readProjectContextSidecar(liveSetPath)).toStrictEqual({
+      status: "found",
+      content: "Genre: jungle\nBPM: 170",
+    });
   });
 
   it("overwrites an existing sidecar", () => {
     writeProjectContextSidecar(liveSetPath, "first");
     writeProjectContextSidecar(liveSetPath, "second");
 
-    expect(readProjectContextSidecar(liveSetPath)).toBe("second");
+    expect(readProjectContextSidecar(liveSetPath)).toStrictEqual({
+      status: "found",
+      content: "second",
+    });
+  });
+
+  it("reports false instead of throwing when the write fails", () => {
+    // The project folder is the user's, so a write can fail for reasons we don't
+    // control. Throwing would fail the RPC, which V8 won't memoize — so it would
+    // retry, and warn into the tool result, on every call from then on.
+    const missingFolder = join(projectDir, "gone", "Song.als");
+
+    expect(writeProjectContextSidecar(missingFolder, "notes")).toBe(false);
+  });
+
+  it("cleans up the temp file a failed write leaves in the project folder", () => {
+    // temp+rename is atomic, but failing at the rename leaves
+    // "Producer Pal Project Context.md.tmp" sitting beside the user's Sets.
+    const path = projectContextSidecarPath(liveSetPath);
+
+    mkdirSync(path); // the temp write lands, then renaming onto a directory fails
+
+    expect(writeProjectContextSidecar(liveSetPath, "notes")).toBe(false);
+    expect(existsSync(`${path}.tmp`)).toBe(false);
+  });
+
+  it("still reports false when even the temp-file cleanup fails", () => {
+    // A directory at the temp path fails the write AND the non-recursive rm.
+    mkdirSync(`${projectContextSidecarPath(liveSetPath)}.tmp`);
+
+    expect(writeProjectContextSidecar(liveSetPath, "notes")).toBe(false);
   });
 });
 
@@ -117,10 +162,19 @@ describe("deleteProjectContextSidecar", () => {
     writeProjectContextSidecar(liveSetPath, "gone soon");
 
     expect(deleteProjectContextSidecar(liveSetPath)).toBe(true);
-    expect(readProjectContextSidecar(liveSetPath)).toBeNull();
+    expect(readProjectContextSidecar(liveSetPath)).toStrictEqual({
+      status: "absent",
+    });
   });
 
   it("reports false when there is no sidecar", () => {
+    expect(deleteProjectContextSidecar(liveSetPath)).toBe(false);
+  });
+
+  it("reports false instead of throwing when the delete fails", () => {
+    // Same reason as the write path: a throw becomes a retrying failed RPC.
+    mkdirSync(projectContextSidecarPath(liveSetPath));
+
     expect(deleteProjectContextSidecar(liveSetPath)).toBe(false);
   });
 });

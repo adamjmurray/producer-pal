@@ -122,13 +122,13 @@ function restoreIfBackupExists(
 ): ProjectContextSyncResult {
   const sidecar = readProjectContextSidecar(filePath);
 
-  if (sidecar == null || sidecar.trim() === "") {
+  if (sidecar.status !== "found" || sidecar.content.trim() === "") {
     return { action: "none" };
   }
 
-  deps.setProjectContext(sidecar);
+  deps.setProjectContext(sidecar.content);
 
-  return { action: "restore", content: sidecar };
+  return { action: "restore", content: sidecar.content };
 }
 
 /**
@@ -136,7 +136,8 @@ function restoreIfBackupExists(
  * delete the sidecar so the clear sticks and isn't restored on the next load.
  *
  * @param filePath - Absolute path to the Live Set (.als) file
- * @returns A "clear" result when a sidecar was deleted, else "none"
+ * @returns A "clear" result when a sidecar was deleted, else "none" — including
+ *   when the delete failed, for the same reason a failed write reports "none"
  */
 function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
   return deleteProjectContextSidecar(filePath)
@@ -162,20 +163,32 @@ function backupIfStale(
 ): ProjectContextSyncResult {
   const existing = readProjectContextSidecar(filePath);
 
-  if (existing === content) {
+  // There IS a sidecar and we can't see what's in it, so we can't tell whether
+  // writing would bury the folder's shared notes. Treating it as "no backup"
+  // would skip the isEdit guard below in the one case it matters most.
+  if (existing.status === "unreadable") {
     return { action: "none" };
   }
 
-  // A sidecar that exists and differs, with nothing written: the param is just
-  // what some .als had saved in it — most often an OLDER Set in this same Live
-  // Project folder, whose stale blob would otherwise replace the folder's newer
-  // shared notes on load. Only a real write supersedes an existing backup. An
-  // empty sidecar counts as no backup, matching restoreIfBackupExists.
-  if (existing != null && existing.trim() !== "" && !isEdit) {
-    return { action: "none" };
+  if (existing.status === "found") {
+    if (existing.content === content) {
+      return { action: "none" };
+    }
+
+    // A sidecar that differs, with nothing written: the param is just what some
+    // .als had saved in it — most often an OLDER Set in this same Live Project
+    // folder, whose stale blob would otherwise replace the folder's newer shared
+    // notes on load. Only a real write supersedes an existing backup. An empty
+    // sidecar counts as no backup, matching restoreIfBackupExists.
+    if (existing.content.trim() !== "" && !isEdit) {
+      return { action: "none" };
+    }
   }
 
-  writeProjectContextSidecar(filePath, content);
-
-  return { action: "backup" };
+  // A failed write reports "none" rather than throwing: an RPC failure is what
+  // V8 refuses to memoize, so it would retry — and warn into the tool result —
+  // on every call from here on. Node-side logging is the whole report.
+  return writeProjectContextSidecar(filePath, content)
+    ? { action: "backup" }
+    : { action: "none" };
 }
