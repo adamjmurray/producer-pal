@@ -70,12 +70,13 @@ export function SkillSlotScreen(
   const doc = useSlotDoc(overrides, slot);
   const editor = useContextEditorState(doc, RESET_CONFIRM);
   const importNotice = useImportNotice();
-  const io = makeContextIoHandlers(
+  const io = makeContextIoHandlers({
     editor,
-    `producer-pal-skill-${slot.name}`,
-    importNotice.showNotice,
-    importNotice.clearNotice,
-  );
+    exportBasename: `producer-pal-skill-${slot.name}`,
+    builtIn: slot.builtIn,
+    onImportError: importNotice.showNotice,
+    onImportSuccess: importNotice.clearNotice,
+  });
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Match the other doc tabs at rest; widen to two columns only when the
   // built-in reference is revealed. Resetting collapses the reveal (see
