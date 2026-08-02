@@ -110,10 +110,13 @@ describe("useSettingsDismiss", () => {
       );
 
       await act(() => {
-        result.current.handleOverlayMouseDown({
+        result.current.overlayHandlers.onMouseDown({
           target: overlay,
         } as unknown as MouseEvent);
-        result.current.handleOverlayClick({
+        result.current.overlayHandlers.onMouseUp({
+          target: overlay,
+        } as unknown as MouseEvent);
+        result.current.overlayHandlers.onClick({
           target: overlay,
         } as unknown as MouseEvent);
       });
@@ -131,10 +134,13 @@ describe("useSettingsDismiss", () => {
       );
 
       await act(() => {
-        result.current.handleOverlayMouseDown({
+        result.current.overlayHandlers.onMouseDown({
           target: inPanel,
         } as unknown as MouseEvent);
-        result.current.handleOverlayClick({
+        result.current.overlayHandlers.onMouseUp({
+          target: overlay,
+        } as unknown as MouseEvent);
+        result.current.overlayHandlers.onClick({
           target: overlay,
         } as unknown as MouseEvent);
       });

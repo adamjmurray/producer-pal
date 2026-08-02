@@ -22,6 +22,7 @@ describe("useBackdropClick", () => {
 
     await act(() => {
       result.current.onMouseDown(mouseEvent(backdrop));
+      result.current.onMouseUp(mouseEvent(backdrop));
       result.current.onClick(mouseEvent(backdrop));
     });
 
@@ -34,6 +35,22 @@ describe("useBackdropClick", () => {
 
     await act(() => {
       result.current.onMouseDown(mouseEvent(inPanel));
+      result.current.onMouseUp(mouseEvent(backdrop));
+      result.current.onClick(mouseEvent(backdrop));
+    });
+
+    expect(onBackdropClick).not.toHaveBeenCalled();
+  });
+
+  it("ignores a drag that starts on the backdrop and ends inside the panel", async () => {
+    // The press alone can't catch this one: the click fires on the overlay, so
+    // it matches the press target, and only the release says where it landed.
+    const onBackdropClick = vi.fn();
+    const { result } = renderHook(() => useBackdropClick(onBackdropClick));
+
+    await act(() => {
+      result.current.onMouseDown(mouseEvent(backdrop));
+      result.current.onMouseUp(mouseEvent(inPanel));
       result.current.onClick(mouseEvent(backdrop));
     });
 
@@ -55,6 +72,7 @@ describe("useBackdropClick", () => {
 
     await act(() => {
       result.current.onMouseDown(mouseEvent(backdrop));
+      result.current.onMouseUp(mouseEvent(backdrop));
       result.current.onClick(mouseEvent(backdrop));
       result.current.onClick(mouseEvent(backdrop));
     });

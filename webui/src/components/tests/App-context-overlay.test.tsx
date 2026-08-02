@@ -237,6 +237,7 @@ describe("App", () => {
 
         if (overlay) {
           fireEvent.mouseDown(overlay);
+          fireEvent.mouseUp(overlay);
           fireEvent.click(overlay);
         }
       });
@@ -255,6 +256,26 @@ describe("App", () => {
         // press and release), but the press began inside the editor.
         if (overlay && inner) {
           fireEvent.mouseDown(inner);
+          fireEvent.mouseUp(overlay);
+          fireEvent.click(overlay);
+        }
+      });
+
+      expect(contextStub()).not.toBe(null);
+      vi.useRealTimers();
+    });
+
+    it("keeps the overlay open when a drag starts on the backdrop and ends inside", async () => {
+      // The mirror case: the press lands on the overlay, so only the release
+      // says the user let go over the editor.
+      setStubLeaveGuard(() => true);
+      await openContextThen((container) => {
+        const overlay = container.querySelector(".settings-overlay");
+        const inner = contextStub();
+
+        if (overlay && inner) {
+          fireEvent.mouseDown(overlay);
+          fireEvent.mouseUp(inner);
           fireEvent.click(overlay);
         }
       });

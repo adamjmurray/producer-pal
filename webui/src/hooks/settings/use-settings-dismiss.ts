@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { useBackdropClick } from "#webui/hooks/use-backdrop-click";
+import {
+  type BackdropClickHandlers,
+  useBackdropClick,
+} from "#webui/hooks/use-backdrop-click";
 
 interface UseSettingsDismissOptions {
   showSettings: boolean;
@@ -30,8 +33,8 @@ interface UseSettingsDismissReturn {
   shake: boolean;
   clearShake: () => void;
   handleSettingsDismiss: () => void;
-  handleOverlayMouseDown: (e: MouseEvent) => void;
-  handleOverlayClick: (e: MouseEvent) => void;
+  /** Spread onto the overlay element — press, release, and click all matter. */
+  overlayHandlers: BackdropClickHandlers;
 }
 
 /**
@@ -68,8 +71,7 @@ export function useSettingsDismiss({
     handleCancelSettings,
   ]);
 
-  const { onMouseDown: handleOverlayMouseDown, onClick: handleOverlayClick } =
-    useBackdropClick(handleSettingsDismiss);
+  const overlayHandlers = useBackdropClick(handleSettingsDismiss);
 
   // Escape key handler. When `blockEscape` is set, Esc is ceded to whichever
   // overlay has priority (e.g. Context, which renders on top in the DOM) so
@@ -94,7 +96,6 @@ export function useSettingsDismiss({
     shake,
     clearShake,
     handleSettingsDismiss,
-    handleOverlayMouseDown,
-    handleOverlayClick,
+    overlayHandlers,
   };
 }
