@@ -628,6 +628,53 @@ describe("conversation-transfer", () => {
     );
   });
 
+  it("falls back to createdAt for a non-numeric updatedAt", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "bad-timestamp",
+          createdAt: 100,
+          updatedAt: "2026-01-01",
+          messages: [{ role: "user", content: "hi" }],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "bad-timestamp");
+
+    expect(imported.updatedAt).toBe(100);
+  });
+
+  it("drops a toolResults that isn't an array", async () => {
+    // Every reader treats it as one, and the throw lands outside the
+    // per-message error boundary — so importing this used to persist a
+    // conversation that could never be opened again.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "not-an-array",
+          createdAt: 100,
+          messages: [
+            {
+              role: "assistant",
+              content: "hi",
+              toolCalls: [{ id: "1", name: "ppal-read-song", args: {} }],
+              toolResults: { id: "1" },
+            },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "not-an-array");
+
+    expect(imported.messages[0]).not.toHaveProperty("toolResults");
+    // The rest of the message survives.
+    expect(imported.messages[0]!.content).toBe("hi");
+  });
+
   it("leaves a tool result that isn't an object alone", async () => {
     const data = {
       version: 1,

@@ -247,8 +247,13 @@ function normalizeRecord(
     // be persisted and crash searchConversations for the whole list.
     title: typeof record.title === "string" ? record.title : null,
     createdAt: record.createdAt as number,
+    // Fall back to createdAt (validated above) for anything that isn't a
+    // number: the sidebar sorts on `b.updatedAt - a.updatedAt`, and one NaN
+    // there scrambles the whole list's order and the eviction that follows it.
     updatedAt:
-      (record.updatedAt as number | undefined) ?? (record.createdAt as number),
+      typeof record.updatedAt === "number"
+        ? record.updatedAt
+        : (record.createdAt as number),
     bookmarked: (record.bookmarked as boolean | undefined) ?? false,
     provider: (record.provider as string | null | undefined) ?? null,
     model: (record.model as string | null | undefined) ?? null,
@@ -315,7 +320,19 @@ function normalizeRecord(
 function sanitizeImportedMessage(message: unknown): unknown {
   const { toolResults } = message as { toolResults?: unknown };
 
-  if (!Array.isArray(toolResults)) return message;
+  if (toolResults == null) return message;
+
+  // Present but not an array: every reader treats it as one (`.find`, `for…of`)
+  // and would throw on the first render, OUTSIDE the per-message error
+  // boundary — leaving a conversation that can never be opened again. Dropping
+  // it costs the tool results of one message and keeps the rest readable.
+  if (!Array.isArray(toolResults)) {
+    const { toolResults: _dropped, ...rest } = message as {
+      toolResults?: unknown;
+    };
+
+    return rest;
+  }
 
   return {
     ...(message as object),
