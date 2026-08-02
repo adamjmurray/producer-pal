@@ -329,6 +329,10 @@ function sanitizeImportedMessage(message: unknown): unknown {
  * an index must be a whole number from 1 (`highestSubagentIndex` compares it with
  * `>` and would happily seed the allocator from a numeric string that
  * `collectSubagentTranscript`'s `===` then never matches).
+ *
+ * A transcript loses only its malformed messages, the same way the record's own
+ * message list does — dropping the whole array over one bad entry leaves the
+ * index behind, so the subagent card renders empty and resuming it throws.
  * @param entry - Raw parsed toolResults element
  * @returns The entry with unusable subagent fields removed
  */
@@ -342,10 +346,11 @@ function sanitizeToolResult(entry: unknown): unknown {
 
   return {
     ...rest,
-    ...(Array.isArray(subagentTranscript) &&
-      (subagentTranscript as unknown[]).every(isValidImportedMessage) && {
-        subagentTranscript,
-      }),
+    ...(Array.isArray(subagentTranscript) && {
+      subagentTranscript: (subagentTranscript as unknown[])
+        .filter(isValidImportedMessage)
+        .map(sanitizeImportedMessage),
+    }),
     ...(Number.isInteger(subagentIndex) &&
       (subagentIndex as number) >= 1 && { subagentIndex }),
   };

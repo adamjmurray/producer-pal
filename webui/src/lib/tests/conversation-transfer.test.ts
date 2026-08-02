@@ -595,19 +595,23 @@ describe("conversation-transfer", () => {
     ]);
   });
 
-  it("drops a subagent transcript holding a malformed message", async () => {
-    // It gets spliced verbatim into a resumed worker's chat history, so a
-    // message without string content fails the next spawn, not the import.
+  it("drops only the malformed messages from a subagent transcript", async () => {
+    // A transcript is spliced verbatim into a resumed worker's chat history, so
+    // a message without string content has to go. The rest stays: dropping the
+    // whole array leaves the index behind, and that card renders empty and
+    // fails to resume.
     const imported = await importThenReread(
       withSubagentResult("bad-transcript", {
-        subagentTranscript: [{}],
+        subagentTranscript: [{}, { role: "user", content: "do the thing" }],
         subagentIndex: 1,
       }),
       "bad-transcript",
     );
     const entry = imported.messages[0]!.toolResults![0]!;
 
-    expect(entry).not.toHaveProperty("subagentTranscript");
+    expect(entry.subagentTranscript).toStrictEqual([
+      { role: "user", content: "do the thing" },
+    ]);
     expect(entry.subagentIndex).toBe(1);
   });
 
