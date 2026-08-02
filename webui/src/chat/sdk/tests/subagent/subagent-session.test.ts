@@ -227,8 +227,8 @@ describe("collectSubagentTranscript", () => {
   });
 
   it("returns a deep copy so the worker cannot write through to history", () => {
-    // The seeded array becomes the worker's live chatHistory and the retry path
-    // truncates it in place. Sharing it would corrupt the persisted record.
+    // The seeded array becomes the worker's live chatHistory, which a run
+    // appends to and mutates in place. Sharing it would corrupt the record.
     const stored: ChatMessage[] = [{ role: "assistant", content: "original" }];
     const history = [recordedRun(1, stored)];
 

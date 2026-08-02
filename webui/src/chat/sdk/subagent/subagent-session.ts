@@ -92,13 +92,13 @@ export function attachStashedTranscripts(
 /**
  * Reassemble a worker's full session from every run recorded under `index`, in
  * conversation order: the first run's whole transcript plus each later resume's
- * delta. The result is a deep copy, so the worker it seeds can append to (and
- * the retry path can truncate) its own history without writing through to the
- * transcripts persisted on the conversation.
+ * delta. The result is a deep copy, so the worker it seeds can build on its own
+ * history without writing through to the transcripts persisted on the
+ * conversation.
  *
  * That copy is not optional. The seeded array IS the worker's live chatHistory,
- * and the rate-limit restart path truncates it in place — pointing that at a
- * persisted transcript would erase the record of a run that already happened.
+ * and a run mutates messages in place (usage stamping, nested-spawn transcript
+ * attachment) — aliasing would land those writes on a run that already happened.
  * @param history - The orchestrator's chat history
  * @param index - The 1-based worker index to reassemble
  * @returns The worker's session so far, or undefined when no such worker exists

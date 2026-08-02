@@ -226,6 +226,24 @@ describe("buildSkills - tool gating", () => {
     expect(result).toContain("## MIDI Notation");
     expect(result).toContain("## Rules");
   });
+
+  it("defines the selector syntax it teaches, in every notation", () => {
+    // The small-model document leaves out time-and-values, so the selector
+    // examples (`3|*`, `C1-C5`) have to carry their own definition. Stark times
+    // notes by token position and midi-json by a 0-indexed `t` — under either,
+    // an unglossed bar|beat range is not just undefined but contradicted.
+    for (const notation of ["barbeat", "stark", "midi-json"] as const) {
+      const result = buildSkills({ notation, smallModelMode: true });
+
+      expect(result, `${notation} lost the selectors`).toContain("`3|*`");
+      expect(result, `${notation} lost bar|beat`).toContain(
+        "**bar|beat** positions counting from 1",
+      );
+      expect(result, `${notation} lost the octave convention`).toContain(
+        "C3 = middle C = 60",
+      );
+    }
+  });
 });
 
 describe("buildSkills - audience gating", () => {

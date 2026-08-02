@@ -89,4 +89,15 @@ describe("getUpdate", () => {
     expect(await getUpdate()).toBeNull();
     expect(mockCheckForUpdate).toHaveBeenCalledTimes(1);
   });
+
+  it("resolves null when the check rejects", async () => {
+    // checkForUpdate swallows its own failures today, so this is insurance: the
+    // rejected promise would be cached, and every `GET /update` for the rest of
+    // the session would hang on a route with no catch of its own.
+    mockCheckForUpdate.mockRejectedValue(new Error("network down"));
+    const getUpdate = await freshGetUpdate();
+
+    expect(await getUpdate()).toBeNull();
+    expect(await getUpdate()).toBeNull();
+  });
 });

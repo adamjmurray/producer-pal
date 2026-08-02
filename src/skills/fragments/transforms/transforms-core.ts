@@ -121,4 +121,6 @@ export const transformsBasic = `## Editing a clip that already has notes (update
 \`preTransforms\` clears or edits notes already in the clip, before any new \`notes\` in the same call:
 - \`v0\` — delete all notes
 - \`[range]: v0\` — delete notes in a range
-- ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)`;
+- ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)
+
+Ranges always use pitch names in Ableton's octaves (C3 = middle C = 60) and **bar|beat** positions counting from 1, whatever notation you write notes in.`;

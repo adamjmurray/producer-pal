@@ -155,14 +155,12 @@ export async function createClip(
     startBeats,
     firstStartBeats,
     endBeats,
-  } = resolveClipTimingContext(
-    liveSet,
-    timeSignature,
+  } = resolveClipTimingContext(liveSet, timeSignature, sampleFile, {
     start,
     firstStart,
     length,
     looping,
-  );
+  });
 
   // Parse notation and determine clip length (transforms run per clip below)
   const { notes, clipLength: initialClipLength } = prepareClipData(

@@ -3,7 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
@@ -188,17 +194,23 @@ export function useSettings(): UseSettingsReturn {
     [providerStateSetters],
   );
 
+  // Cancels whichever decrypt-and-apply is still in flight. Every start replaces
+  // it, so a second load (cancel, then cancel again) can't have the earlier one
+  // apply on top of the later, and unmount can't apply into a dead component.
+  const cancelPendingLoadRef = useRef<(() => void) | null>(null);
+
   // Post-mount: replace the synchronous placeholder settings (apiKey blanked)
   // with the real values, decrypting each provider's apiKey from its at-rest
   // envelope. Runs once; the synchronous useState initializers above already
   // populated everything except the (async-decrypted) apiKey.
-  useEffect(
-    () =>
-      applyDecryptedSettings(applyLoadedSettings, () =>
-        setSettingsLoaded(true),
-      ),
-    [applyLoadedSettings],
-  );
+  useEffect(() => {
+    cancelPendingLoadRef.current = applyDecryptedSettings(
+      applyLoadedSettings,
+      () => setSettingsLoaded(true),
+    );
+
+    return () => cancelPendingLoadRef.current?.();
+  }, [applyLoadedSettings]);
 
   const saveSettings = useCallback(async (): Promise<boolean> => {
     if (!warnIfNotLoaded(settingsLoaded)) return false;
@@ -256,7 +268,11 @@ export function useSettings(): UseSettingsReturn {
     // post-mount effect so a cancel-during-initial-load (StrictMode remount,
     // fast cancel-then-reopen) still settles settingsLoaded → true — otherwise
     // the next Save would silently no-op via warnIfNotLoaded.
-    applyDecryptedSettings(applyLoadedSettings, () => setSettingsLoaded(true));
+    cancelPendingLoadRef.current?.();
+    cancelPendingLoadRef.current = applyDecryptedSettings(
+      applyLoadedSettings,
+      () => setSettingsLoaded(true),
+    );
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);

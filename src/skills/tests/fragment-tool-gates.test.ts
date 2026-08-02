@@ -100,16 +100,33 @@ describe("FRAGMENT_GATES", () => {
     // the vocabulary-without-grammar failure `requires` exists to catch — the
     // model holding ratchet() and the waveforms with no transform syntax.
     for (const [name, requires] of Object.entries(FRAGMENT_REQUIRES)) {
-      const gate = gateTools(name);
-
-      if (gate == null) continue;
+      const gate = FRAGMENT_GATES[name];
 
       for (const required of requires) {
-        const requiredGate = gateTools(required);
+        const requiredGate = FRAGMENT_GATES[required];
 
-        if (requiredGate == null) continue;
+        // "always" ships to every toolset and audience, so it satisfies anyone.
+        if (requiredGate === "always") continue;
 
-        for (const tool of gate) {
+        // "conversation-only" survives a subagent audience only for another
+        // "conversation-only" — a tool-gated dependent would outlive it there.
+        if (requiredGate === "conversation-only") {
+          expect(
+            gate,
+            `${name} outlives conversation-only ${required} for a worker`,
+          ).toBe("conversation-only");
+          continue;
+        }
+
+        // Tool-gated prerequisite: an unconditional dependent is the unsound
+        // direction the old `continue` skipped — it ships to toolsets that have
+        // already dropped what it depends on.
+        expect(
+          typeof gate,
+          `${name} ships unconditionally but ${required} is tool-gated`,
+        ).not.toBe("string");
+
+        for (const tool of gateTools(name) ?? []) {
           expect(
             requiredGate,
             `${tool} keeps ${name} but drops ${required}`,

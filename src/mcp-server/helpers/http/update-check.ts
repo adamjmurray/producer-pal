@@ -26,7 +26,10 @@ let pending: Promise<UpdateInfo | null> | null = null;
  * @returns The available update, or null if up to date or the check failed
  */
 export function getUpdate(): Promise<UpdateInfo | null> {
-  pending ??= checkForUpdate(VERSION);
+  // The catch enforces never-rejects here rather than trusting checkForUpdate to
+  // keep swallowing its own failures. This promise is cached for the life of the
+  // process, so one rejection would hang `GET /update` for the whole session.
+  pending ??= checkForUpdate(VERSION).catch(() => null);
 
   return pending;
 }

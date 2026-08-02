@@ -23,26 +23,43 @@ export interface ClipTimingContext {
   endBeats: number | null;
 }
 
+/** The MIDI-only timing params, as the tool received them. */
+export interface ClipTimingParams {
+  /** Loop start position in bar|beat format, or null */
+  start: string | null;
+  /** First playback start in bar|beat format, or null */
+  firstStart: string | null;
+  /** Clip length (Nbar, n<fraction>, or Nbar+n<fraction>), or null */
+  length: string | null;
+  /** Whether the clip is looping */
+  looping: boolean | null;
+}
+
 /**
  * Resolve song/clip time signatures and convert timing parameters to beats.
  * Bundles the song time signature read, clip time signature resolution, and
  * bar|beat-to-beats conversion used at the start of clip creation.
  * @param liveSet - The live_set LiveAPI object
  * @param timeSignature - Custom clip time signature (e.g. "4/4"), or null
- * @param start - Loop start position in bar|beat format, or null
- * @param firstStart - First playback start in bar|beat format, or null
- * @param length - Clip length (Nbar, n<fraction>, or Nbar+n<fraction>), or null
- * @param looping - Whether the clip is looping
+ * @param sampleFile - Audio file path, or null for a MIDI clip
+ * @param timing - The MIDI-only timing params, ignored for an audio clip
  * @returns Resolved time signatures and converted timing in beats
  */
 export function resolveClipTimingContext(
   liveSet: LiveAPI,
   timeSignature: string | null,
-  start: string | null,
-  firstStart: string | null,
-  length: string | null,
-  looping: boolean | null,
+  sampleFile: string | null,
+  timing: ClipTimingParams,
 ): ClipTimingContext {
+  // An audio clip takes its region from the sample, so create-clip has already
+  // warned these as ignored. Don't parse them: a malformed one would throw on a
+  // param we skipped, where the rule is warn and carry on. timeSignature still
+  // applies to audio, so it stays.
+  const { start, firstStart, length, looping } =
+    sampleFile != null
+      ? { start: null, firstStart: null, length: null, looping: null }
+      : timing;
+
   const songTimeSigNumerator = liveSet.getProperty(
     "signature_numerator",
   ) as number;
