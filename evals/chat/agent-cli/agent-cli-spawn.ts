@@ -57,15 +57,18 @@ export function spawnAgentCli(
     let timedOut = false;
     let overBudget = false;
     let killTimer: NodeJS.Timeout | undefined;
+    let stdinError: Error | null = null;
 
     /**
      * Stop the CLI, escalating only if SIGTERM is ignored. The kill timer is
      * captured so clearTimers() can drop it — left pending it holds the event
-     * loop open past the rejection.
+     * loop open past the rejection. A second call (budget kill, then the
+     * wall-clock timeout) must not replace the handle: clearTimers() only
+     * cancels the one it holds, so the first would be orphaned.
      */
     const terminate = (): void => {
       child.kill("SIGTERM");
-      killTimer = setTimeout(() => child.kill("SIGKILL"), SIGKILL_GRACE_MS);
+      killTimer ??= setTimeout(() => child.kill("SIGKILL"), SIGKILL_GRACE_MS);
     };
 
     const timer = setTimeout(() => {
@@ -114,15 +117,22 @@ export function spawnAgentCli(
           new Error(`${transport.label} timed out after ${timeoutMs / 1000}s`),
         );
       } else if (code !== 0) {
-        reject(new Error(exitError(transport, code, stdout, stderr)));
+        reject(
+          new Error(exitError(transport, code, stdout, stderr, stdinError)),
+        );
+      } else if (stdinError != null) {
+        reject(stdinError);
       } else {
         resolve(stdout);
       }
     });
+    // A CLI that exits before draining stdin trips EPIPE here, and rejecting on
+    // the spot beats `close` to it — so the same failure reports as a bare
+    // EPIPE some runs and as the exit code, stream error, and stderr tail
+    // others. Record it instead and let `close` (which the wall-clock timeout
+    // guarantees) do the reporting.
     child.stdin.on("error", (error) => {
-      clearTimers();
-      child.kill("SIGKILL");
-      reject(error);
+      stdinError = error;
     });
     child.stdin.end(prompt);
   });
@@ -162,6 +172,7 @@ function spawnError(
  * @param code - Process exit code
  * @param stdout - Full JSONL stdout
  * @param stderr - Captured stderr
+ * @param stdinError - Why the prompt couldn't be written, if it couldn't
  * @returns Error message describing the failure
  */
 function exitError(
@@ -169,6 +180,7 @@ function exitError(
   code: number | null,
   stdout: string,
   stderr: string,
+  stdinError: Error | null,
 ): string {
   const parts = [`${transport.label} exited ${code}.`];
 
@@ -188,6 +200,10 @@ function exitError(
 
   if (stderr.trim() !== "") {
     parts.push(`stderr: ${stderr.slice(-500)}`);
+  }
+
+  if (stdinError != null) {
+    parts.push(`The prompt was not fully written: ${stdinError.message}`);
   }
 
   return parts.join(" ");
