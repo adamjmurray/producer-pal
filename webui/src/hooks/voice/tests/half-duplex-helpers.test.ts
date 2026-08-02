@@ -9,6 +9,10 @@ import {
   endHalfDuplexMute,
   type HalfDuplexDeps,
 } from "#webui/hooks/voice/helpers/half-duplex-helpers";
+import {
+  handleTransportEvent,
+  type TransportEventDeps,
+} from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 
 /**
  * Build an endHalfDuplexMute deps bag: auto-muted, nothing manually muted, and
@@ -122,6 +126,33 @@ describe("endHalfDuplexMute", () => {
     const deps = endDeps(mute);
 
     expect(() => endHalfDuplexMute(deps)).not.toThrow();
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+});
+
+describe("recovering from a missed buffer-stopped event", () => {
+  it("clears the playing flag on the next response so the mute can lift", () => {
+    // The mic has no other way back: only the buffer events clear this flag,
+    // and with it stuck the Mute button is hidden, so the user can't unmute by
+    // hand either.
+    const mute = vi.fn();
+    const deps: TransportEventDeps = {
+      ...endDeps(mute, { autoMutedRef: false, audioPlayingRef: true }),
+      halfDuplex: true,
+      setAssistantThinking: vi.fn(),
+      setAssistantSpeaking: vi.fn(),
+      setError: vi.fn(),
+      setRateLimitedUntil: vi.fn(),
+      autoRetryAttemptsRef: { current: 0 },
+    };
+
+    handleTransportEvent({ type: "response.created" }, deps);
+
+    expect(deps.audioPlayingRef.current).toBe(false);
+
+    handleTransportEvent({ type: "response.done" }, deps);
+
+    expect(mute).toHaveBeenLastCalledWith(false);
     expect(deps.autoMutedRef.current).toBe(false);
   });
 });

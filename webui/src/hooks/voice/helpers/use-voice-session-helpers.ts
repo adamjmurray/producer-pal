@@ -210,6 +210,13 @@ export function handleTransportEvent(
     // leaving it set without an error would orphan an unrenderable countdown.
     deps.setError(null);
     deps.setRateLimitedUntil(null);
+    // Only `output_audio_buffer.stopped`/`cleared` clears this flag, and it is
+    // half of what lets the auto-mute lift — so one missed event would strand
+    // the mic muted for the rest of the session, with the Mute button hidden
+    // and no way back. A new response is the safe place to floor it: the
+    // buffer that is playing (if any) still emits its own stopped event, and
+    // this turn's audio sets it again from `started`.
+    deps.audioPlayingRef.current = false;
     beginHalfDuplexMute(deps.session, deps.autoMutedRef, deps.halfDuplex);
   } else if (event.type === "response.done") {
     deps.responseActiveRef.current = false;
