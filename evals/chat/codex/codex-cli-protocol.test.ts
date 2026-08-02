@@ -353,13 +353,15 @@ describe("countCodexSteps", () => {
     return countCodexSteps({ type: "item.completed", item: { type } });
   }
 
-  it("counts a finished MCP call and a reply", () => {
+  it("counts a finished MCP call", () => {
     expect(stepsForCompleted("mcp_tool_call")).toBe(1);
-    expect(stepsForCompleted("agent_message")).toBe(1);
   });
 
-  it("ignores reasoning, unfinished calls, and non-item events", () => {
+  it("ignores reasoning, replies, unfinished calls, and non-item events", () => {
     expect(stepsForCompleted("reasoning")).toBe(0);
+    // Narration alongside a tool call would otherwise cost the turn two steps,
+    // halving the tool work the shared budget buys.
+    expect(stepsForCompleted("agent_message")).toBe(0);
     expect(
       countCodexSteps({
         type: "item.started",
