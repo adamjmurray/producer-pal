@@ -389,6 +389,11 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
  * when the encrypted write fails so saveSettings can keep the modal open and
  * surface the error instead of committing the in-memory saved* snapshots
  * against an empty at-rest envelope.
+ *
+ * The encrypted write goes first because it's the one that can fail. The two
+ * localStorage flags after it are what cancelSettings reads back, so writing
+ * them first would leave a failed Save already applied — and Cancel would then
+ * restore the values the user was trying to abandon.
  * @param {Provider} provider - Currently selected provider
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - Settings for every provider
@@ -402,9 +407,9 @@ async function persistAllSettings(
   smallModelMode: boolean,
   subagentPresetId: string | null,
 ): Promise<void> {
+  await saveCurrentSettings(provider, enabledTools, allSettings);
   saveSmallModelMode(smallModelMode);
   saveSubagentPresetId(subagentPresetId);
-  await saveCurrentSettings(provider, enabledTools, allSettings);
 }
 
 /**
