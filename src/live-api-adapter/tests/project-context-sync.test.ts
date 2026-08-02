@@ -219,14 +219,33 @@ describe("syncProjectContextBackup — failure", () => {
 });
 
 describe("backupProjectContextOnEdit — manual edits", () => {
-  it("backs up a non-empty edit made before any tool-call sync (never restores)", async () => {
+  it("backs up a non-empty edit made before any tool-call sync, without write privileges", async () => {
     setFilePath(SAVED_PATH);
     mockSyncResult("backup");
 
     await backupProjectContextOnEdit("Genre: jungle");
 
-    // A manual edit must never restore, even as the session's first sync, and
-    // it is the only thing allowed to overwrite an existing, differing sidecar.
+    // A manual edit must never restore, even as the session's first sync. It
+    // doesn't overwrite a differing sidecar yet either: the device may have
+    // loaded upgrade-wiped, and this could be the first thing typed into an
+    // empty box — burying notes nothing could then restore. A MISSING sidecar
+    // is still created (Node's own guard).
+    expect(mockRequestNode).toHaveBeenCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "Genre: jungle",
+      allowRestore: false,
+      isEdit: false,
+    });
+  });
+
+  it("backs up an edit with write privileges once the wipe is ruled out", async () => {
+    setFilePath(SAVED_PATH);
+    // A load echo carrying content proves nothing wiped the device.
+    noteProjectContextLoaded("Genre: house");
+    mockSyncResult("backup");
+
+    await backupProjectContextOnEdit("Genre: jungle");
+
     expect(mockRequestNode).toHaveBeenCalledWith("projectContext.sync", {
       filePath: SAVED_PATH,
       content: "Genre: jungle",

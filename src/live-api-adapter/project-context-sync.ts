@@ -104,18 +104,13 @@ export async function syncProjectContextBackup(
 export async function backupProjectContextOnEdit(
   content: string,
 ): Promise<void> {
-  // Leave an empty param alone until the emptiness is known to be deliberate:
-  // before that it may be an upgrade-wiped device, and clearing would delete the
-  // very sidecar the first sync would restore from. Either a completed sync or a
-  // load echo that carried content rules the wipe out. A non-empty edit is
-  // always safe to back up (it can only write, never delete).
-  if (
-    content.trim() === "" &&
-    !hasSyncedThisSession() &&
-    !memo.loadedWithContent
-  ) {
-    return;
-  }
+  // Until this is ruled out, the device may have loaded upgrade-wiped and the
+  // sidecar still holds the user's notes. Either a completed sync or a load
+  // echo that carried content rules it out.
+  const maybeWiped = !hasSyncedThisSession() && !memo.loadedWithContent;
+
+  // Clearing now would delete the very sidecar the first sync restores from.
+  if (content.trim() === "" && maybeWiped) return;
 
   const filePath = readLiveSetFilePath();
 
@@ -129,14 +124,18 @@ export async function backupProjectContextOnEdit(
 
   if (!needsSync(filePath, content)) return;
 
-  // Manual edits never restore, so allowRestore is always false. isEdit is
-  // always true: every caller is a genuine project-context write (a device-UI
-  // edit, a webui POST /config, or ppal-context write), which is the only thing
-  // allowed to overwrite an existing, differing sidecar. Only memoize a
-  // completed sync so a transient failure retries next edit.
+  // Manual edits never restore, so allowRestore is always false. isEdit says
+  // this write may overwrite an existing, differing sidecar — true for a
+  // genuine project-context write (a device-UI edit, a webui POST /config, or
+  // ppal-context write), but NOT while the device may have loaded wiped: the
+  // first thing typed into an empty box would otherwise bury the folder's
+  // notes, and nothing can restore them afterward (the param is no longer empty
+  // and the sync only restores into an empty one). A missing sidecar is still
+  // created either way. Only memoize a completed sync so a transient failure
+  // retries next edit.
   const { ok } = await requestSync(filePath, content, {
     allowRestore: false,
-    isEdit: true,
+    isEdit: !maybeWiped,
   });
 
   if (ok) rememberSync(filePath, content);

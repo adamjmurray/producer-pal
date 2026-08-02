@@ -171,12 +171,16 @@ function only **backs up** a non-empty blob or **clears** the sidecar for an
 emptied one — it **never restores** (restore stays the first tool-call sync's
 job). An empty param seen _before_ the first sync is left untouched: it may be
 an upgrade-wiped device, and deleting the sidecar would destroy the very backup
-a restore needs; a non-empty edit is always safe (it can only write). Unless the
-**load echo carried content** — then nothing wiped the param, so the clear is
-real and propagates immediately. Without that, clearing the context in the
-device UI and then making any tool call would restore what was just cleared. The
-shared memo dedupes the tool-call sync's own outlet round-trip, so the restore
-echo can't loop.
+a restore needs. A non-empty edit in that same window is sent as a _non_-write
+(`isEdit: false`) for the same reason: it may be the first thing typed into a
+box that was wiped, and overwriting the sidecar with it buries notes nothing can
+restore afterward — the param is no longer empty, so the restore path is closed.
+It still creates a missing sidecar. Unless the **load echo carried content** —
+then nothing wiped the param, so the clear is real and propagates immediately,
+and edits get their write privileges back. Without that, clearing the context in
+the device UI and then making any tool call would restore what was just cleared.
+The shared memo dedupes the tool-call sync's own outlet round-trip, so the
+restore echo can't loop.
 
 `ppal-context write scope:project` needs the same trigger, and for a reason
 worth stating: its `update_project_context` outlet reaches the device-UI
@@ -230,14 +234,14 @@ notes with that Set's stale ones, with no context write and no user intent.
 The rule now enforced: create a _missing_ sidecar always (covering a first save,
 a Save-As, and a moved folder), but overwrite an _existing, differing_ one only
 on a real project-context write. An `isEdit` flag on the sync request is what
-separates them, and the two V8 entry points each hardcode it, because each knows
-statically which kind it is:
+separates them, and each V8 entry point knows which kind it is:
 
 - `syncProjectContextBackup` runs before every tool call and only _observes_ the
   param, so it always sends `isEdit: false`. It can still create a missing
   sidecar; it can never replace a differing one.
 - `backupProjectContextOnEdit` is only ever reached by a genuine write, so it
-  always sends `isEdit: true`.
+  sends `isEdit: true` — except while the device may have loaded wiped (no sync
+  yet and no load echo with content), where even a write waits its turn.
 
 The node route refuses the overwrite directly
 (`existing != null && !isEdit ⇒ action: "none"`, treating an empty sidecar as no
