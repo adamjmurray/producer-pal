@@ -57,8 +57,15 @@ function parseArgs(argv) {
   const opts = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (VALUE_OPTS.has(arg)) opts[arg] = argv[++i];
-    else if (arg.startsWith("--"))
+    if (VALUE_OPTS.has(arg)) {
+      const value = argv[++i];
+      // No value — last token, or another flag right after — is a malformed
+      // invocation, not a request for the default. Falling back silently ran
+      // `--api-key` against GEMINI_API_KEY with nothing to say it had.
+      if (value == null || value.startsWith("--"))
+        throw new Error(`Missing value for ${arg}`);
+      opts[arg] = value;
+    } else if (arg.startsWith("--"))
       opts[arg] = "true"; // bare boolean flag
     else positionals.push(arg);
   }
