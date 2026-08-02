@@ -128,6 +128,12 @@ to Producer Pal: built-in tools off, settings and plugins off, other MCP servers
 ignored, and the eval's system instructions REPLACING the CLI's own agent prompt
 (which is also what keeps the user's memory files out of the run).
 
+A looping model is bounded the same way it is on the AI SDK path. Neither CLI
+takes a step limit we can rely on, so the transports count the model's actions
+(each tool call, each reply) off the event stream and kill the subprocess once
+the turn goes past the shared budget in `evals/shared/step-budget.ts`. The run
+then fails as a blown budget in seconds rather than as a five-minute timeout.
+
 Two caveats when comparing a subscription-CLI run against anything else:
 
 - **Token counts are not comparable across transports.** Each vendor defines

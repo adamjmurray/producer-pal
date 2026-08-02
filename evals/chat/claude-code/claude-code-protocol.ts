@@ -59,6 +59,7 @@ export const CLAUDE_CODE_TRANSPORT: AgentCliTransport = {
   buildTurnArgs: claudeCodeTurnArgs,
   buildJudgeArgs: claudeCodeJudgeArgs,
   parseStream: parseClaudeCodeStream,
+  countSteps: countClaudeCodeSteps,
 };
 
 /**
@@ -116,6 +117,32 @@ export function parseClaudeCodeStream(stdout: string): ParsedAgentTurn {
     textSeparator: "\n\n",
     handleEvent,
   });
+}
+
+/**
+ * Count the model actions in one Claude Code event, for the step budget.
+ *
+ * One `assistant` event is one model generation, and its blocks are what the
+ * model did with it: each tool call and each reply is a step.
+ *
+ * @param event - Parsed Claude Code event
+ * @returns Steps this event spent
+ */
+export function countClaudeCodeSteps(event: Record<string, unknown>): number {
+  if (event.type !== "assistant") return 0;
+
+  return messageContent(event).filter(isModelAction).length;
+}
+
+/**
+ * Report whether an assistant block is a step rather than thinking.
+ * @param block - One assistant content block
+ * @returns True for a tool call or a non-empty reply
+ */
+function isModelAction(block: Record<string, unknown>): boolean {
+  if (block.type === "tool_use") return true;
+
+  return block.type === "text" && block.text !== "";
 }
 
 /**

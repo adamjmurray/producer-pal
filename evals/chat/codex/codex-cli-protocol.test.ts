@@ -10,6 +10,7 @@ import {
   CODEX_CLI_TRANSPORT,
   codexJudgeArgs,
   codexTurnArgs,
+  countCodexSteps,
   parseCodexStream,
   resolveCodexModel,
 } from "./codex-cli-protocol.ts";
@@ -339,5 +340,33 @@ describe("parseCodexStream", () => {
     ].join("\n");
 
     expect(() => parseCodexStream(stdout)).toThrow(/boom/);
+  });
+});
+
+describe("countCodexSteps", () => {
+  /**
+   * Count the steps in a completed item of the given type.
+   * @param type - The item's `type` field
+   * @returns Steps the event spends
+   */
+  function stepsForCompleted(type: string): number {
+    return countCodexSteps({ type: "item.completed", item: { type } });
+  }
+
+  it("counts a finished MCP call and a reply", () => {
+    expect(stepsForCompleted("mcp_tool_call")).toBe(1);
+    expect(stepsForCompleted("agent_message")).toBe(1);
+  });
+
+  it("ignores reasoning, unfinished calls, and non-item events", () => {
+    expect(stepsForCompleted("reasoning")).toBe(0);
+    expect(
+      countCodexSteps({
+        type: "item.started",
+        item: { type: "mcp_tool_call" },
+      }),
+    ).toBe(0);
+    expect(countCodexSteps({ type: "turn.completed" })).toBe(0);
+    expect(countCodexSteps({ type: "item.completed" })).toBe(0);
   });
 });

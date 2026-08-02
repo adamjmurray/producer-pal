@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   claudeCodeJudgeArgs,
   claudeCodeTurnArgs,
+  countClaudeCodeSteps,
   parseClaudeCodeStream,
 } from "./claude-code-protocol.ts";
 
@@ -400,5 +401,41 @@ describe("parseClaudeCodeStream", () => {
     ]);
 
     expect(parseClaudeCodeStream(stdout).text).toBe("");
+  });
+});
+
+describe("countClaudeCodeSteps", () => {
+  /**
+   * Count the steps in an assistant event holding the given blocks.
+   * @param content - The message's content blocks
+   * @returns Steps the event spends
+   */
+  function stepsForAssistant(content: unknown[]): number {
+    return countClaudeCodeSteps({ type: "assistant", message: { content } });
+  }
+
+  it("counts every tool call and reply in one generation", () => {
+    expect(
+      stepsForAssistant([
+        { type: "text", text: "Reading the song…" },
+        { type: "tool_use", id: "toolu_1", name: "ppal-read-song", input: {} },
+        { type: "tool_use", id: "toolu_2", name: "ppal-read-track", input: {} },
+      ]),
+    ).toBe(3);
+  });
+
+  it("ignores thinking, empty text, and non-assistant events", () => {
+    expect(
+      stepsForAssistant([
+        { type: "thinking", thinking: "hmm" },
+        { type: "text", text: "" },
+      ]),
+    ).toBe(0);
+    expect(
+      countClaudeCodeSteps({ type: "user", message: { content: [] } }),
+    ).toBe(0);
+    expect(countClaudeCodeSteps({ type: "result", subtype: "success" })).toBe(
+      0,
+    );
   });
 });

@@ -4,18 +4,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
+import { createStepBudgetWatcher } from "./agent-cli-step-budget.ts";
 import {
   type AgentCliTransport,
   scrubAgentCliEnv,
 } from "./agent-cli-transport.ts";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
-/** Grace period between SIGTERM and SIGKILL when a turn times out. */
+/** Grace period between SIGTERM and SIGKILL when a turn is cut off. */
 const SIGKILL_GRACE_MS = 2000;
 
 export interface SpawnAgentCliOptions {
   cwd: string;
   timeoutMs?: number;
+  /** Model actions the turn may complete before it is cut off. */
+  stepBudget?: number;
 }
 
 /**
@@ -28,7 +32,7 @@ export interface SpawnAgentCliOptions {
  * @param transport - Transport describing the CLI
  * @param args - CLI arguments
  * @param prompt - User prompt written to stdin
- * @param options - Working directory and optional timeout
+ * @param options - Working directory, optional timeout, optional step budget
  * @returns The CLI's JSONL stdout
  */
 export function spawnAgentCli(
@@ -38,6 +42,7 @@ export function spawnAgentCli(
   options: SpawnAgentCliOptions,
 ): Promise<string> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const stepBudget = options.stepBudget ?? MAX_TOOL_STEPS;
   const executable = process.env[transport.binEnvVar] ?? transport.bin;
   const env = scrubAgentCliEnv(process.env, transport.strippedEnvVars);
 
@@ -46,16 +51,26 @@ export function spawnAgentCli(
       cwd: options.cwd,
       env: env,
     });
+    const budgetWatcher = createStepBudgetWatcher(transport, stepBudget);
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let overBudget = false;
     let killTimer: NodeJS.Timeout | undefined;
+
+    /**
+     * Stop the CLI, escalating only if SIGTERM is ignored. The kill timer is
+     * captured so clearTimers() can drop it — left pending it holds the event
+     * loop open past the rejection.
+     */
+    const terminate = (): void => {
+      child.kill("SIGTERM");
+      killTimer = setTimeout(() => child.kill("SIGKILL"), SIGKILL_GRACE_MS);
+    };
+
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
-      // Escalate only if SIGTERM is ignored. Captured so clearTimers() can drop
-      // it — left pending it holds the event loop open past the rejection.
-      killTimer = setTimeout(() => child.kill("SIGKILL"), SIGKILL_GRACE_MS);
+      terminate();
     }, timeoutMs);
 
     /**
@@ -68,8 +83,14 @@ export function spawnAgentCli(
 
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (data) => {
+    // setEncoding above makes every chunk a string, but the event types it any.
+    child.stdout.on("data", (data: string) => {
       stdout += data;
+
+      if (!overBudget && budgetWatcher.push(data)) {
+        overBudget = true;
+        terminate();
+      }
     });
     child.stderr.on("data", (data) => {
       stderr += data;
@@ -81,7 +102,14 @@ export function spawnAgentCli(
     child.on("close", (code) => {
       clearTimers();
 
-      if (timedOut) {
+      if (overBudget) {
+        reject(
+          new Error(
+            `${transport.label} hit the step budget of ${stepBudget} steps ` +
+              `and was stopped. The model was probably looping.`,
+          ),
+        );
+      } else if (timedOut) {
         reject(
           new Error(`${transport.label} timed out after ${timeoutMs / 1000}s`),
         );
