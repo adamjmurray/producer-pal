@@ -108,7 +108,7 @@
     "e2e:webui:dev": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.webui.config.ts --ui"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "4.0.20",
+    "@ai-sdk/anthropic": "4.0.21",
     "@ai-sdk/google": "4.0.24",
     "@ai-sdk/mistral": "4.0.14",
     "@ai-sdk/openai": "4.0.20",
