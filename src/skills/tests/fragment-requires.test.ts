@@ -133,7 +133,29 @@ describe("the code-transforms edge", () => {
 });
 
 describe("the transforms tiers", () => {
-  it("keeps the note-count ops out of transforms-core's examples", () => {
+  // Everything the tiers above transforms-core define. A worked call to any of
+  // them in core's own text is a call to nothing once that tier is dropped.
+  const HIGHER_TIER_OPS = {
+    "transforms-generative": ["ratchet", "repeat", "split", "merge"],
+    "transforms-expressions": [
+      "abs",
+      "min",
+      "max",
+      "round",
+      "floor",
+      "ceil",
+      "clamp",
+      "wrap",
+      "reflect",
+      "pow",
+      "snap",
+      "legato",
+      "swing",
+      "quant",
+    ],
+  };
+
+  it("keeps the higher tiers' operations out of transforms-core's examples", () => {
     // `requires` points the wrong way to help here: transforms-core survives
     // dropping the tiers above it, so a worked call in ITS text is a call to
     // nothing with no warning attached. Naming one is fine — an empty `foo()`
@@ -141,11 +163,13 @@ describe("the transforms tiers", () => {
     // own comment); handing the model arguments to type is what breaks.
     const core = builtinFragments(true)["transforms-core"] ?? "";
 
-    for (const op of ["ratchet", "repeat", "split", "merge"]) {
-      expect(
-        core.match(new RegExp(`\\b${op}\\([^)]`)),
-        `transforms-core calls ${op}(), which only transforms-generative defines`,
-      ).toBeNull();
+    for (const [tier, ops] of Object.entries(HIGHER_TIER_OPS)) {
+      for (const op of ops) {
+        expect(
+          core.match(new RegExp(`\\b${op}\\([^)]`)),
+          `transforms-core calls ${op}(), which only ${tier} defines`,
+        ).toBeNull();
+      }
     }
   });
 });

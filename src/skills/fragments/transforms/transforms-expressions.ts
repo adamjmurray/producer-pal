@@ -32,6 +32,7 @@ duration = legato(0.1)           // legato with tolerance (after humanizing timi
 pitch = snap(note.pitch + 7)     // transpose up fifth, snap to scale
 pitch = wrap(note.pitch + 5, C3, C5) // transpose up 5, wrap within C3-C5
 gain = audio.gain - 6            // reduce audio clip by 6 dB
+where(abs(note.start - 4) < 1): velocity += 20 // functions work in where() too: near beat 4, either side
 \`\`\`
 
 swing() auto-quantizes, so changing the amount is always safe without a separate quant(). Skip it with \`raw\`: \`swing(0.05, raw)\``;
