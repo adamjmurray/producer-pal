@@ -6,6 +6,7 @@
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -71,9 +72,7 @@ export function setAudioParameters(
     }
   }
 
-  if (warping !== undefined) {
-    clip.set("warping", warping ? 1 : 0);
-  }
+  applyAudioClipWarping(clip, warping);
 }
 
 /**

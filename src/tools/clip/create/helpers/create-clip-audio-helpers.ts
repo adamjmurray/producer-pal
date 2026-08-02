@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { audioClipSampleSeconds } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 
@@ -88,49 +87,4 @@ export function createAudioArrangementClip(
   }
 
   return { clip, arrangementStartBeats };
-}
-
-/**
- * Settle a freshly created audio clip's warp state.
- *
- * Live decides for itself whether to warp an imported sample, following the
- * user's "Loop/Warp Short Samples" setting — which the Live API cannot read. So
- * an unspecified `warping` leaves Live's choice alone; an explicit value
- * overrides it. The settled state comes back on the result as `warping`.
- *
- * @param clip - The newly created audio clip
- * @param warping - Requested warp state, or null to keep Live's own choice
- */
-export function applyAudioClipWarping(
-  clip: LiveAPI,
-  warping: boolean | null,
-): void {
-  if (warping === false) {
-    unwarpAudioClip(clip);
-  } else if (warping === true) {
-    // Switching warp on converts the markers from seconds to beats, so the
-    // region still spans the whole sample afterward
-    clip.set("warping", 1);
-  }
-}
-
-/**
- * Turn warping off and restate the end marker in seconds.
- *
- * Live reinterprets the marker properties as seconds without converting them,
- * so the end marker keeps whatever number the warped beat grid had put there.
- * Playback is unharmed — Live clamps at the file boundary — but the readable
- * region is wrong, and switching warp back on would convert that stale number
- * into beats and inflate the region.
- *
- * @param clip - The audio clip to unwarp
- */
-function unwarpAudioClip(clip: LiveAPI): void {
-  clip.set("warping", 0);
-
-  const sampleSeconds = audioClipSampleSeconds(clip);
-
-  if (sampleSeconds > 0) {
-    clip.set("end_marker", sampleSeconds);
-  }
 }
