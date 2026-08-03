@@ -238,7 +238,8 @@ filesystem access** (`node:fs`). Shipped `src/**` also cannot shell out — the
 lint config bans `child_process`.
 
 The consequence for user-content and config features (global context, custom
-system prompt, `~/.producer-pal` skills overrides): **all filesystem reads and
+system prompt, `~/.producer-pal` skills overrides, and the machine-global
+preferences in `~/.producer-pal/settings.json`): **all filesystem reads and
 writes are handled Node-side, and these features do not touch the Live API.**
 From the outside it is one MCP/REST service — it does not matter which runtime
 services which part of a request. So content that must reach an external MCP

@@ -41,6 +41,7 @@ import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
+import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -387,6 +388,7 @@ export function createExpressApp(): Express {
   registerRestApiRoutes(app, () => config, callLiveApiEnriched);
 
   registerGlobalContextRoutes(app);
+  registerGlobalSettingsRoutes(app);
   registerMemoryCollectionRoutes(app);
   registerCustomSkillsCollectionRoutes(app);
   registerSystemPromptRoutes(app);
