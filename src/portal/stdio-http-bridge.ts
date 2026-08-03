@@ -71,6 +71,9 @@ export class StdioHttpBridge {
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
+  // Whether the client may be holding a cached offline fallback list. Set when
+  // we serve the fallback, cleared once we've told the client to re-list.
+  private servedFallbackTools = false;
   private smallModelMode?: boolean;
   private notation?: Notation;
   private jsonOutput?: boolean;
@@ -201,6 +204,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
       console.error("[Bridge] Connected to HTTP MCP server");
 
       await this._pushConfigOverrides();
+      this._notifyToolListChanged();
     } catch (error) {
       logger.error(`HTTP connection failed: ${errorMessage(error)}`);
       this.isConnected = false;
@@ -222,6 +226,37 @@ Tell the user to check ${SETUP_URL} for configuration help.
         { cause: error },
       );
     }
+  }
+
+  /**
+   * Tell the client to re-list tools after an offline→online transition, but
+   * only if it was ever served the offline fallback. That list reflects the
+   * portal's own config and can't see device-side settings (e.g. Direct Live
+   * API toggled on the device rather than forced here), and clients like Claude
+   * Desktop cache the tool list forever otherwise. The stateless HTTP server
+   * can't send this itself — each POST /mcp is a fresh server — but the portal
+   * holds the stdio connection, so it can.
+   *
+   * Fire-and-forget, and it must stay that way: this runs inside _doConnect's
+   * try block, so letting a send failure escape would turn a working connection
+   * into a "cannot connect to Ableton Live" error. The whole send is wrapped —
+   * a throw and a rejection are equally fatal here.
+   */
+  private _notifyToolListChanged(): void {
+    if (!this.servedFallbackTools) return;
+
+    this.servedFallbackTools = false;
+    logger.info("Sending tools/list_changed after reconnecting");
+
+    void (async () => {
+      try {
+        await this.mcpServer?.sendToolListChanged();
+      } catch (error) {
+        logger.error(
+          `Failed to send tools/list_changed: ${errorMessage(error)}`,
+        );
+      }
+    })();
   }
 
   /**
@@ -285,7 +320,9 @@ Tell the user to check ${SETUP_URL} for configuration help.
       },
       {
         capabilities: {
-          tools: {},
+          // listChanged so the portal can nudge clients to re-list after the
+          // device comes online — see _notifyToolListChanged.
+          tools: { listChanged: true },
         },
       },
     );
@@ -312,6 +349,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       // Return fallback tools when HTTP is not available
       logger.debug(`[Bridge] Returning fallback tools list`);
+      this.servedFallbackTools = true;
 
       return this.fallbackTools;
     });

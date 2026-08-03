@@ -25,6 +25,7 @@ const mockServer = {
   setRequestHandler: vi.fn(),
   connect: vi.fn(),
   close: vi.fn(),
+  sendToolListChanged: vi.fn(),
 };
 
 const mockTransport = {};
@@ -299,6 +300,11 @@ describe("StdioHttpBridge", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Every test starts the bridge, and the real Server's connect and
+    // sendToolListChanged both return promises — a bare vi.fn() returns
+    // undefined, which the awaiting code would then throw on.
+    mockServer.connect.mockResolvedValue(undefined);
+    mockServer.sendToolListChanged.mockResolvedValue(undefined);
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     bridge = new StdioHttpBridge(
       "http://localhost:3350/mcp",
@@ -607,8 +613,6 @@ describe("StdioHttpBridge", () => {
 
   describe("start", () => {
     it("starts successfully and logs appropriate messages", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-
       await bridge.start();
 
       expect(mockServer.setRequestHandler).toHaveBeenCalledTimes(2);
@@ -624,7 +628,6 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up list tools handler that returns HTTP tools when connected", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const listToolsHandler = getHandler("ListToolsRequestSchema");
@@ -642,7 +645,6 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up list tools handler that returns fallback tools when HTTP fails", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const listToolsHandler = getHandler("ListToolsRequestSchema");
@@ -656,6 +658,60 @@ describe("StdioHttpBridge", () => {
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Returning fallback tools list",
       );
+    });
+
+    it("notifies tools/list_changed once the device comes online after a fallback list", async () => {
+      await bridge.start();
+
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
+
+      mockClient.connect.mockRejectedValueOnce(new Error("Connection failed"));
+      await listToolsHandler({});
+      expect(mockServer.sendToolListChanged).not.toHaveBeenCalled();
+
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [] });
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(1);
+
+      // Already re-listed — a later reconnect must not notify again.
+      bridge.isConnected = false;
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it("still connects when the tools/list_changed send fails", async () => {
+      // The send runs inside _doConnect, so an unhandled failure here would
+      // surface to the user as "cannot connect to Ableton Live".
+      await bridge.start();
+
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
+
+      mockClient.connect.mockRejectedValueOnce(new Error("Connection failed"));
+      await listToolsHandler({});
+
+      mockServer.sendToolListChanged.mockRejectedValueOnce(
+        new Error("no pipe"),
+      );
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [{ name: "live" }] });
+
+      expect(await listToolsHandler({})).toStrictEqual({
+        tools: [{ name: "live" }],
+      });
+      expect(bridge.isConnected).toBe(true);
+    });
+
+    it("does not notify tools/list_changed when the first connect succeeds", async () => {
+      await bridge.start();
+
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [] });
+      await getHandler("ListToolsRequestSchema")({});
+
+      expect(mockServer.sendToolListChanged).not.toHaveBeenCalled();
     });
 
     it("sets up call tool handler that calls HTTP tool when connected", async () => {
