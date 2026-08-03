@@ -280,10 +280,10 @@ describe("backupProjectContextOnEdit — manual edits", () => {
     });
   });
 
-  it("clears the sidecar for an empty edit once a sync has established state", async () => {
+  it("clears the sidecar for an empty edit once a tool-call sync has ruled out the wipe", async () => {
     setFilePath(SAVED_PATH);
     mockSyncResult("backup");
-    await backupProjectContextOnEdit("Genre: jungle");
+    await syncProjectContextBackup("Genre: jungle");
 
     mockSyncResult("clear");
     await backupProjectContextOnEdit("");
@@ -293,6 +293,46 @@ describe("backupProjectContextOnEdit — manual edits", () => {
       content: "",
       allowRestore: false,
       isEdit: true,
+    });
+  });
+
+  it("keeps every edit after the first guarded while the wipe is unresolved", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("backup");
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    // The first edit's own sync must NOT count as ruling the wipe out: the user
+    // is typing into what may be an upgrade-wiped param, and this second edit
+    // would otherwise overwrite the sidecar holding their real notes.
+    mockSyncResult("backup");
+    await backupProjectContextOnEdit("Genre: jungle, dnb");
+
+    expect(mockRequestNode).toHaveBeenLastCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "Genre: jungle, dnb",
+      allowRestore: false,
+      isEdit: false,
+    });
+  });
+
+  it("stays guarded for the rest of the session once an edit lands unresolved", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("backup");
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    // A later tool-call sync sees the user's own text, not what the device
+    // loaded, so it can't answer the question either.
+    mockSyncResult("none");
+    await syncProjectContextBackup("Genre: jungle, dnb");
+
+    mockSyncResult("backup");
+    await backupProjectContextOnEdit("Genre: dnb");
+
+    expect(mockRequestNode).toHaveBeenLastCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "Genre: dnb",
+      allowRestore: false,
+      isEdit: false,
     });
   });
 

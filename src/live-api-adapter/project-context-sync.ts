@@ -22,19 +22,33 @@ interface ProjectContextSyncResult {
 }
 
 /**
+ * Where this device load stands on the upgrade-wipe question — "did the param
+ * come up empty because a device (re)load blanked it, or because the user has
+ * nothing saved?" Only "ruledOut" lets an edit overwrite a differing sidecar.
+ *
+ * - `open`: unresolved. Nothing has proven the param wasn't wiped yet.
+ * - `ruledOut`: proven not wiped — the load echo carried content, or a
+ *   tool-call sync completed before anything was edited.
+ * - `stuck`: the user edited while it was still open, so the param is no longer
+ *   what the device loaded and nothing can prove it either way. Stays
+ *   conservative for the rest of the session; the next device load re-decides.
+ */
+type WipeState = "open" | "ruledOut" | "stuck";
+
+/**
  * Cross-request memo so the vast majority of tool calls skip the Node hop. Only
  * a first sync, a changed file_path, or a changed blob warrants a round-trip.
  */
 interface SyncMemo {
   syncedOnce: boolean;
-  loadedWithContent: boolean;
+  wipe: WipeState;
   lastFilePath: string | null;
   lastContent: string | null;
 }
 
 const memo: SyncMemo = {
   syncedOnce: false,
-  loadedWithContent: false,
+  wipe: "open",
   lastFilePath: null,
   lastContent: null,
 };
@@ -79,7 +93,13 @@ export async function syncProjectContextBackup(
   // rather than being remembered as done (important for the restore case).
   // The memo reads/writes live in synchronous helpers (not this async body) so
   // concurrent tool calls don't trip require-atomic-updates over shared state.
-  if (ok) rememberSync(filePath, restored ?? content);
+  if (ok) {
+    rememberSync(filePath, restored ?? content);
+    // This sync saw the param as the device loaded it (nothing has been edited
+    // yet, or the wipe question is already settled), so it settles the question:
+    // either it restored, or the param was non-empty / no backup existed.
+    if (memo.wipe === "open") memo.wipe = "ruledOut";
+  }
 
   return restored;
 }
@@ -105,9 +125,11 @@ export async function backupProjectContextOnEdit(
   content: string,
 ): Promise<void> {
   // Until this is ruled out, the device may have loaded upgrade-wiped and the
-  // sidecar still holds the user's notes. Either a completed sync or a load
-  // echo that carried content rules it out.
-  const maybeWiped = !hasSyncedThisSession() && !memo.loadedWithContent;
+  // sidecar still holds the user's notes. Deliberately NOT "have we synced
+  // once": this function's own sync would then rule it out, so only the FIRST
+  // thing typed into a wiped param would be protected and the second would bury
+  // the notes. See WipeState.
+  const maybeWiped = memo.wipe !== "ruledOut";
 
   // Clearing now would delete the very sidecar the first sync restores from.
   if (content.trim() === "" && maybeWiped) return;
@@ -124,6 +146,12 @@ export async function backupProjectContextOnEdit(
 
   if (!needsSync(filePath, content)) return;
 
+  // Writing while the question is open puts the user's own text in the param,
+  // so nothing can answer it afterward — latch it stuck so every later edit this
+  // session stays conservative too. Set before the await so a concurrent edit
+  // sees it.
+  if (maybeWiped) memo.wipe = "stuck";
+
   // Manual edits never restore, so allowRestore is always false. isEdit says
   // this write may overwrite an existing, differing sidecar — true for a
   // genuine project-context write (a device-UI edit, a webui POST /config, or
@@ -131,8 +159,8 @@ export async function backupProjectContextOnEdit(
   // first thing typed into an empty box would otherwise bury the folder's
   // notes, and nothing can restore them afterward (the param is no longer empty
   // and the sync only restores into an empty one). A missing sidecar is still
-  // created either way. Only memoize a completed sync so a transient failure
-  // retries next edit.
+  // created either way, which covers the ordinary "no backup yet" case. Only
+  // memoize a completed sync so a transient failure retries next edit.
   const { ok } = await requestSync(filePath, content, {
     allowRestore: false,
     isEdit: !maybeWiped,
@@ -152,13 +180,13 @@ export async function backupProjectContextOnEdit(
  * @param content - The blob the load echo carried
  */
 export function noteProjectContextLoaded(content: string): void {
-  if (content.trim() !== "") memo.loadedWithContent = true;
+  if (content.trim() !== "") memo.wipe = "ruledOut";
 }
 
 /** Reset the cross-request memo. Test-only. */
 export function resetProjectContextSyncMemo(): void {
   memo.syncedOnce = false;
-  memo.loadedWithContent = false;
+  memo.wipe = "open";
   memo.lastFilePath = null;
   memo.lastContent = null;
 }
