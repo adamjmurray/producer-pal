@@ -363,57 +363,6 @@ describe("updateTrack", () => {
     });
   });
 
-  describe("arrangementFollower parameter", () => {
-    it("should set arrangementFollower to true (track follows arrangement)", () => {
-      const result = updateTrack({
-        ids: "123",
-        arrangementFollower: true,
-      });
-
-      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 0);
-
-      expect(result).toStrictEqual({ id: "123" });
-    });
-
-    it("should set arrangementFollower to false (track doesn't follow arrangement)", () => {
-      const result = updateTrack({
-        ids: "123",
-        arrangementFollower: false,
-      });
-
-      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 1);
-
-      expect(result).toStrictEqual({ id: "123" });
-    });
-
-    it("should set arrangementFollower for multiple tracks", () => {
-      const result = updateTrack({
-        ids: "123,456",
-        arrangementFollower: true,
-      });
-
-      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 0);
-      expect(track456.set).toHaveBeenCalledWith("back_to_arranger", 0);
-
-      expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
-    });
-
-    it("should combine arrangementFollower with other parameters", () => {
-      const result = updateTrack({
-        ids: "123",
-        name: "Updated Track",
-        mute: true,
-        arrangementFollower: false,
-      });
-
-      expect(track123.set).toHaveBeenCalledWith("name", "Updated Track");
-      expect(track123.set).toHaveBeenCalledWith("mute", true);
-      expect(track123.set).toHaveBeenCalledWith("back_to_arranger", 1);
-
-      expect(result).toStrictEqual({ id: "123" });
-    });
-  });
-
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
       const consoleModule = await import("#src/shared/max/v8-max-console.ts");

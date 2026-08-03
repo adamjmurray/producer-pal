@@ -209,7 +209,6 @@ interface TrackOverrides {
   trackIndex?: number;
   color?: string;
   isArmed?: boolean;
-  arrangementFollower?: boolean;
   playingSlotIndex?: number;
   firedSlotIndex?: number;
   arrangementClipCount?: number;

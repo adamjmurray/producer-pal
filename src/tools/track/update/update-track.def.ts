@@ -82,10 +82,6 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         smallModel: null,
       },
     ),
-    // arrangementFollower: z
-    //   .boolean()
-    //   .optional()
-    //   .describe("track follows the arrangement?"),
     sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
       default: "send gain in dB, requires sendReturn",
       smallModel: null,

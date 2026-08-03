@@ -45,6 +45,6 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       default: "Name for create/rename, or name-match filter for delete",
       smallModel: null,
     }),
-    // arrangementFollower removed from interface - play-arrangement always auto-follows
+    // No arrangementFollower param: play-arrangement always auto-follows.
   },
 });

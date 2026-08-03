@@ -349,43 +349,4 @@ describe("updateLiveSet", () => {
       $meta: [scaleDisabledNote],
     });
   });
-
-  it("should set arrangementFollower to true (all tracks follow arrangement) - hidden from interface but implementation remains", async () => {
-    const result = await updateLiveSet({ arrangementFollower: true });
-
-    expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0); // 0 = following arrangement
-    expect(result).toStrictEqual({
-      id: "live_set_id",
-      arrangementFollower: true,
-    });
-  });
-
-  it("should set arrangementFollower to false (tracks don't follow arrangement) - hidden from interface but implementation remains", async () => {
-    const result = await updateLiveSet({ arrangementFollower: false });
-
-    expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 1); // 1 = not following arrangement
-    expect(result).toStrictEqual({
-      id: "live_set_id",
-      arrangementFollower: false,
-    });
-  });
-
-  it("should combine arrangementFollower with other parameters - hidden from interface but implementation remains", async () => {
-    const result = await updateLiveSet({
-      tempo: 130,
-      arrangementFollower: true,
-      timeSignature: "3/4",
-    });
-
-    expect(liveSet.set).toHaveBeenCalledWith("tempo", 130);
-    expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
-    expect(liveSet.set).toHaveBeenCalledWith("signature_numerator", 3);
-    expect(liveSet.set).toHaveBeenCalledWith("signature_denominator", 4);
-    expect(result).toStrictEqual({
-      id: "live_set_id",
-      tempo: 130,
-      arrangementFollower: true,
-      timeSignature: "3/4",
-    });
-  });
 });
