@@ -3,9 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import { type UpdateInfo } from "#src/shared/version-check";
+import { patchGlobalSettings } from "#webui/hooks/connection/use-global-settings";
 import { getUpdateUrl } from "#webui/utils/mcp-url";
+
+export interface UseUpdateCheckReturn {
+  /** The available update, or null when up to date, dismissed, or opted out. */
+  update: UpdateInfo | null;
+  /** Hide this version's notification here and in the device, for good. */
+  dismissUpdate: () => void;
+}
 
 /**
  * Reads the server's update check on mount.
@@ -21,9 +29,9 @@ import { getUpdateUrl } from "#webui/utils/mcp-url";
  * used to be: under `npm run ui:dev` the page is served by Vite on port 5173 with
  * no proxy, so a same-origin `/update` 404s and the badge never appears. The
  * builder's 5173 → localhost:3350 special case is what keeps it working in dev.
- * @returns The available update, or null when up to date
+ * @returns The available update and a dismiss action
  */
-export function useUpdateCheck(): UpdateInfo | null {
+export function useUpdateCheck(): UseUpdateCheckReturn {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
@@ -50,5 +58,16 @@ export function useUpdateCheck(): UpdateInfo | null {
     return () => controller.abort();
   }, []);
 
-  return update;
+  // Recorded server-side rather than in localStorage so the device's own update
+  // notification honors the same dismissal — /update is the single answer both
+  // surfaces read. Hidden optimistically; a failed write only means it comes
+  // back on the next mount.
+  const dismissUpdate = useCallback(() => {
+    if (!update) return;
+
+    setUpdate(null);
+    void patchGlobalSettings({ dismissedUpdateVersion: update.version });
+  }, [update]);
+
+  return { update, dismissUpdate };
 }

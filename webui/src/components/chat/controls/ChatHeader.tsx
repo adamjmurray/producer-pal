@@ -25,6 +25,7 @@ interface ChatHeaderProps {
   isHistoryOpen: boolean;
   isActiveBookmarked?: boolean;
   update: UpdateInfo | null;
+  onDismissUpdate: () => void;
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
@@ -42,6 +43,7 @@ interface ChatHeaderProps {
  * @param props.isHistoryOpen - Whether conversation history panel is open
  * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
  * @param props.update - Available update, or null if up to date
+ * @param props.onDismissUpdate - Hide this version's update notification for good
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
  * @param props.onOpenConnectionSettings - Callback to open connection settings tab
@@ -57,6 +59,7 @@ export function ChatHeader({
   isHistoryOpen,
   isActiveBookmarked,
   update,
+  onDismissUpdate,
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
@@ -115,7 +118,12 @@ export function ChatHeader({
           Producer Pal Chat
         </h1>
       </a>
-      <VersionDisplay version={VERSION} build={BUILD_SHA} update={update} />
+      <VersionDisplay
+        version={VERSION}
+        build={BUILD_SHA}
+        update={update}
+        onDismissUpdate={onDismissUpdate}
+      />
 
       <div className="flex gap-1 text-xs">
         <HeaderStatus mcpStatus={mcpStatus} />

@@ -88,6 +88,16 @@ export function getUpdateUrl(): string {
 }
 
 /**
+ * Gets the global-settings endpoint URL (the machine-global
+ * ~/.producer-pal/settings.json preferences, distinct from the device's live
+ * /config state).
+ * @returns {string} The settings endpoint URL
+ */
+export function getSettingsUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/settings");
+}
+
+/**
  * Gets the memory collection endpoint URL (lists every stored memory entry;
  * the LLM-managed ~/.producer-pal/memory/ collection).
  * @returns {string} The memory collection endpoint URL

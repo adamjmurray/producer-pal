@@ -39,6 +39,7 @@ describe("ChatHeader", () => {
     mcpStatus: "connected" as const,
     isHistoryOpen: false,
     update: null,
+    onDismissUpdate: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
@@ -512,14 +513,26 @@ describe("ChatHeader", () => {
 
   describe("VersionDisplay", () => {
     it("does not show update link when there is no update", () => {
-      render(<VersionDisplay version="1.4.4" update={null} />);
+      render(
+        <VersionDisplay
+          version="1.4.4"
+          update={null}
+          onDismissUpdate={vi.fn()}
+        />,
+      );
 
       expect(screen.getByText(/v1\.4\.4/)).toBeDefined();
       expect(screen.queryByText("(update)")).toBeNull();
     });
 
     it("shows update link when an update is available", () => {
-      render(<VersionDisplay version="1.4.4" update={{ version: "1.5.0" }} />);
+      render(
+        <VersionDisplay
+          version="1.4.4"
+          update={{ version: "1.5.0" }}
+          onDismissUpdate={vi.fn()}
+        />,
+      );
       const link = screen.getByText("(update)");
 
       expect(link).toBeDefined();
@@ -531,7 +544,13 @@ describe("ChatHeader", () => {
     });
 
     it("shows latest version in tooltip", () => {
-      render(<VersionDisplay version="1.4.4" update={{ version: "2.0.0" }} />);
+      render(
+        <VersionDisplay
+          version="1.4.4"
+          update={{ version: "2.0.0" }}
+          onDismissUpdate={vi.fn()}
+        />,
+      );
       const link = screen.getByText("(update)");
 
       expect(link.getAttribute("title")).toBe(

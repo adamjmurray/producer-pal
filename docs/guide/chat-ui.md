@@ -502,11 +502,21 @@ The Preferences tab controls visual preferences and conversation management:
   header and settings
 - **Show message token usage** - Display token counts after each AI response
   (see [Token Usage](#token-usage) below)
+- **Automatically check for new versions** - On by default. Producer Pal asks
+  GitHub once per session whether a newer release exists, and shows an
+  `(update)` link next to the version number when there is one. Turn this off
+  and it never contacts GitHub.
 - **Cleanup Conversations** - Bulk-delete conversations:
   - **Delete unstarred** - Remove all non-bookmarked conversations
   - **Delete all** - Remove every conversation
 
 Both delete actions ask for confirmation and cannot be undone.
+
+Unlike the other settings on this tab, the update-check setting applies
+immediately (no Save) and is machine-wide: it is stored in
+`~/.producer-pal/settings.json` and also governs the Max for Live device's own
+update notification. The `×` beside the `(update)` link dismisses that version's
+notification in both places; a later release brings it back.
 
 ## Token Usage
 

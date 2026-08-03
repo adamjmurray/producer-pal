@@ -6,10 +6,10 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useUpdateCheck } from "#webui/hooks/connection/use-update-check";
-import { getUpdateUrl } from "#webui/utils/mcp-url";
+import { getSettingsUrl, getUpdateUrl } from "#webui/utils/mcp-url";
 
 /**
  * Stub the /update transport with a single response.
@@ -36,7 +36,7 @@ describe("useUpdateCheck", () => {
     const { result } = renderHook(() => useUpdateCheck());
 
     await waitFor(() => {
-      expect(result.current).toStrictEqual({ version: "2.0.0" });
+      expect(result.current.update).toStrictEqual({ version: "2.0.0" });
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -60,7 +60,7 @@ describe("useUpdateCheck", () => {
       expect(globalThis.fetch).toHaveBeenCalled();
     });
 
-    expect(result.current).toBeNull();
+    expect(result.current.update).toBeNull();
   });
 
   it("stays silent when the endpoint errors", async () => {
@@ -72,7 +72,7 @@ describe("useUpdateCheck", () => {
       expect(globalThis.fetch).toHaveBeenCalled();
     });
 
-    expect(result.current).toBeNull();
+    expect(result.current.update).toBeNull();
   });
 
   it("stays silent when the fetch rejects", async () => {
@@ -86,6 +86,33 @@ describe("useUpdateCheck", () => {
       expect(globalThis.fetch).toHaveBeenCalled();
     });
 
-    expect(result.current).toBeNull();
+    expect(result.current.update).toBeNull();
+  });
+
+  it("records a dismissal server-side so the device honors it too", async () => {
+    // Not localStorage: the Max for Live device shows its own notification and
+    // reads the same /update answer, so the dismissal has to live where both
+    // surfaces can see it.
+    const fetchSpy = mockFetch(
+      new Response(JSON.stringify({ version: "2.0.0" })),
+    );
+    const { result } = renderHook(() => useUpdateCheck());
+
+    await waitFor(() => {
+      expect(result.current.update).toStrictEqual({ version: "2.0.0" });
+    });
+
+    await act(() => {
+      result.current.dismissUpdate();
+    });
+
+    expect(result.current.update).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      getSettingsUrl(),
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ dismissedUpdateVersion: "2.0.0" }),
+      }),
+    );
   });
 });

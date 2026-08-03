@@ -28,7 +28,10 @@ export interface VoiceAppMocks {
 export function installVoiceAppMockDefaults(mocks: VoiceAppMocks): void {
   mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
   mocks.isFirefox.mockReturnValue(false);
-  mocks.useUpdateCheck.mockReturnValue(null);
+  mocks.useUpdateCheck.mockReturnValue({
+    update: null,
+    dismissUpdate: vi.fn(),
+  });
   mocks.useVoiceSession.mockReturnValue(baseSession());
   mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
   mocks.useVoicePersistence.mockReturnValue(basePersistence());

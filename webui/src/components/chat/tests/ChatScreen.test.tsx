@@ -13,7 +13,7 @@ import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderAc
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 
 vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
-  useUpdateCheck: () => null,
+  useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
 }));
 
 const defaultHeaderInfo: HeaderInfo = {
