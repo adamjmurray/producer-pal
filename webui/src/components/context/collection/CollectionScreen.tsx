@@ -223,10 +223,10 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             // New always means a BLANK form — including when the create form is
             // already open holding a half-filled draft, which used to be kept
             // (the button appeared to do nothing). The editor's own discard
-            // confirm gates it, exactly as onSelect does: memory registers one
-            // for a dirty new draft, so the user is asked before losing it. An
-            // editor that registers nothing (custom skills, whose new drafts
-            // persist on navigate-away instead) just gets the fresh form.
+            // confirm gates it, exactly as onSelect does: both collections
+            // register one for a dirty new draft, so the user is asked before
+            // losing it. An editor that registers nothing just gets the fresh
+            // form.
             onNew: () => {
               if (!leaveGuard.confirmLeave()) return;
               selectDraft({ mode: "new" });
