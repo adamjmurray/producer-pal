@@ -486,9 +486,12 @@ describe("StdioHttpBridge", () => {
       expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(1);
     });
 
-    it("still connects when the tools/list_changed send fails", async () => {
+    it("still connects, and retries the notification, when the send fails", async () => {
       // The send runs inside _doConnect, so an unhandled failure here would
-      // surface to the user as "cannot connect to Ableton Live".
+      // surface to the user as "cannot connect to Ableton Live". The nudge has
+      // to survive too: nothing else tells the client to re-list, so spending
+      // the flag on a failed send strands it on the cached offline tool list
+      // until it restarts.
       await bridge.start();
 
       const listToolsHandler = getHandler("ListToolsRequestSchema");
@@ -506,6 +509,12 @@ describe("StdioHttpBridge", () => {
         tools: [{ name: "live" }],
       });
       expect(bridge.isConnected).toBe(true);
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(1);
+
+      bridge.isConnected = false;
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(2);
     });
 
     it("does not notify tools/list_changed when the first connect succeeds", async () => {

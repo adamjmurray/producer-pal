@@ -245,12 +245,20 @@ Tell the user to check ${SETUP_URL} for configuration help.
   private _notifyToolListChanged(): void {
     if (!this.servedFallbackTools) return;
 
-    this.servedFallbackTools = false;
+    const server = this.mcpServer;
+
+    if (server == null) return;
+
     logger.info("Sending tools/list_changed after reconnecting");
 
     void (async () => {
       try {
-        await this.mcpServer?.sendToolListChanged();
+        await server.sendToolListChanged();
+        // Cleared only once the nudge is actually out. Clearing up front spends
+        // the flag on a send that failed, and nothing retries it — the client
+        // keeps the cached offline list until it restarts. A duplicate nudge (a
+        // reconnect racing this one) only costs an extra re-list.
+        this.servedFallbackTools = false;
       } catch (error) {
         logger.error(
           `Failed to send tools/list_changed: ${errorMessage(error)}`,
