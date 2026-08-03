@@ -401,15 +401,15 @@ describe("useContextEditorState write ordering", () => {
     });
   });
 
-  describe("autosave vs in-flight manual write ordering", () => {
+  describe("autosave vs in-flight manual write", () => {
     // The remaining direction: the editor stays live through a Clear/Import
     // round trip (it only remounts once the echo lands), so the user can type
-    // into it while that PUT is on the wire. An autosave that dispatched
-    // immediately would race it — and the damaging outcome is the quiet one:
-    // the autosave handled first, the clear landing last, the draft gone from
-    // disk while the editor still shows it saved, until a poll surfaces the
-    // emptiness as an "updated outside the editor" banner.
-    it("holds a debounced autosave until an in-flight Clear's POST lands", async () => {
+    // into it while that PUT is on the wire. Ordering that draft behind the
+    // replace only guarantees it lands LAST — writing text to disk that the
+    // remount then hides, with no banner until the next poll offers it back as
+    // an external edit. The replace is what the user ends up looking at, so the
+    // draft is dropped instead.
+    it("drops a draft typed during an in-flight Clear", async () => {
       const save = vi.fn().mockResolvedValue(true);
       const { save: clear, resolveSave: resolveClear } = deferredSave();
       const { result } = renderReadyEditor({ save, clear });
@@ -432,10 +432,11 @@ describe("useContextEditorState write ordering", () => {
         await clearPromise;
       });
       await drainMicrotasks();
-      expect(save).toHaveBeenCalledWith("typed during clear");
+      expect(save).not.toHaveBeenCalled();
+      expect(result.current.getContent()).toBe("");
     });
 
-    it("holds a blur flush until an in-flight Import's POST lands", async () => {
+    it("drops a blur flush typed during an in-flight Import", async () => {
       // Blur flushes with no debounce, so the window is the bare round trip —
       // the race is not only the 800ms one.
       let resolveImport: (saved: boolean) => void = () => {};
@@ -471,15 +472,13 @@ describe("useContextEditorState write ordering", () => {
         await importPromise;
       });
       await drainMicrotasks();
-      expect(save).toHaveBeenCalledTimes(2);
-      expect(save).toHaveBeenLastCalledWith("typed during import");
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(result.current.getContent()).toBe("# imported");
     });
 
-    it("still rolls back and schedules the retry when a held-back autosave fails", async () => {
-      // Deferring the dispatch must not cost the flush its failure handling:
-      // the rollback and the SAVE_RETRY_MS timer hang off the settled promise,
-      // not off when the PUT left.
-      const save = vi.fn().mockResolvedValue(false);
+    it("autosaves again normally once the Clear has landed", async () => {
+      // The drop lasts only as long as the replace is on the wire.
+      const save = vi.fn().mockResolvedValue(true);
       const { save: clear, resolveSave: resolveClear } = deferredSave();
       const { result } = renderReadyEditor({ save, clear });
 
@@ -490,25 +489,17 @@ describe("useContextEditorState write ordering", () => {
       await act(() => {
         clearPromise = result.current.handleClear();
       });
-
-      await typeDraft(result, "typed during clear");
-      await flushDebounceWindow();
-      expect(save).not.toHaveBeenCalled();
-
       await act(async () => {
         resolveClear(true);
         await clearPromise;
       });
       await drainMicrotasks();
-      expect(save).toHaveBeenCalledTimes(1);
 
-      // The failed save armed the unattended retry, which re-POSTs the draft.
-      await act(async () => {
-        vi.advanceTimersByTime(5000);
-        await Promise.resolve();
-      });
-      expect(save).toHaveBeenCalledTimes(2);
-      expect(save).toHaveBeenLastCalledWith("typed during clear");
+      await typeDraft(result, "typed after clear");
+      await flushDebounceWindow();
+      await drainMicrotasks();
+
+      expect(save).toHaveBeenCalledWith("typed after clear");
     });
   });
 });

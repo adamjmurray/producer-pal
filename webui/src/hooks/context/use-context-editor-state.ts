@@ -84,6 +84,94 @@ async function dispatchOrderedWrite(
   return ok;
 }
 
+/** What {@link replaceDocument} needs from the editor's state. */
+interface ReplaceContext {
+  draftRef: { current: string | null };
+  lastSavedRef: { current: string | null };
+  debounceTimerRef: TimerRef;
+  retryTimerRef: TimerRef;
+  /** How many Clear/Import writes are on the wire (see the hook's ref). */
+  replacingRef: { current: number };
+  /** The live set of in-flight write promises. */
+  saves: Set<Promise<boolean>>;
+  setCharCount: (count: number) => void;
+  setDirty: (dirty: boolean) => void;
+  setEditorKey: (update: (key: number) => number) => void;
+}
+
+/**
+ * Replace the whole document — the shape Clear and Import share. Stage the new
+ * content in the draft markers so a pending debounced save can't echo the old
+ * content out first, dispatch the write ordered behind everything already on
+ * the wire, then remount the editor on the result or put the markers back.
+ *
+ * The editor stays live through the round trip (it can only remount once the
+ * echo lands, since it seeds from `status.content`), so the user can type into
+ * content that is about to disappear. `replacingRef` holds the autosave off for
+ * exactly that window and the success path re-stages, discarding the draft —
+ * ordering it behind the replace instead would just make it land LAST, writing
+ * text to disk that the remount then hides.
+ *
+ * @param ctx - The editor's draft markers, timers, and in-flight write set
+ * @param content - What the document becomes ("" for a Clear)
+ * @param write - Dispatches the POST
+ * @returns Whether the replacement was persisted
+ */
+async function replaceDocument(
+  ctx: ReplaceContext,
+  content: string,
+  write: () => Promise<boolean>,
+): Promise<boolean> {
+  const previousDraft = ctx.draftRef.current;
+
+  stageDraft(ctx, content);
+  ctx.replacingRef.current += 1;
+
+  let ok = false;
+
+  try {
+    ok = await dispatchOrderedWrite(ctx.saves, write);
+  } finally {
+    ctx.replacingRef.current -= 1;
+  }
+
+  if (ok) {
+    stageDraft(ctx, content);
+    ctx.setEditorKey((key) => key + 1);
+
+    return true;
+  }
+
+  // Nothing remounted and the server still holds the old content, so leaving
+  // the markers forward would make getContent() (Export) and the size readout
+  // describe text nobody can see, with nothing to retry it. A draft typed since
+  // is kept — only the baseline goes back, leaving it dirty for the next flush.
+  if (ctx.draftRef.current === content) {
+    ctx.draftRef.current = previousDraft;
+    ctx.setCharCount(previousDraft?.length ?? 0);
+  }
+
+  ctx.lastSavedRef.current = previousDraft;
+  ctx.setDirty(ctx.draftRef.current !== previousDraft);
+
+  return false;
+}
+
+/**
+ * Point the draft markers at `content` and cancel the save timers, so nothing
+ * armed for the old content still fires.
+ * @param ctx - The editor's draft markers and timers
+ * @param content - The content to stage
+ */
+function stageDraft(ctx: ReplaceContext, content: string): void {
+  clearTimer(ctx.debounceTimerRef);
+  clearTimer(ctx.retryTimerRef);
+  ctx.draftRef.current = content;
+  ctx.lastSavedRef.current = content;
+  ctx.setCharCount(content.length);
+  ctx.setDirty(false);
+}
+
 export interface UseContextEditorStateReturn {
   /**
    * Bumped on Clear / Reload-from-server to remount the uncontrolled
@@ -189,6 +277,11 @@ export function useContextEditorState(
   // overlap (a debounce flush, then a blur flush before the first echo lands),
   // and keeping only the newest would silently stop awaiting the earlier one.
   const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
+  // How many Clear/Import writes are on the wire. Those two REPLACE the whole
+  // document and remount the editor from the result, so a draft typed while one
+  // is in flight is discarded by that remount — see flushSave for why it must
+  // not be saved. A counter, not a flag: the two can overlap.
+  const replacingRef = useRef(0);
   const docRef = useRef(doc);
   // False once the hook has unmounted, so the unmount flush's save promise
   // can't schedule a retry or setState after teardown (a persistent failure
@@ -284,6 +377,13 @@ export function useContextEditorState(
     if (current.status.kind !== "ready") return;
     if (value === lastSavedRef.current) return;
 
+    // A Clear or Import is on the wire. The editor stays live through its round
+    // trip, so this draft is about to be thrown away by the remount that
+    // follows — and ordering behind the replace only guarantees it lands LAST,
+    // writing text to disk the editor no longer shows and no banner reports.
+    // Dropping it matches what the user ends up looking at.
+    if (replacingRef.current > 0) return;
+
     // Mark optimistically so a concurrent flush (debounce + blur) doesn't
     // dispatch the same content twice. On failure, roll the marker back so the
     // next flush (blur, beforeunload, or further edit) retries — unless the
@@ -378,6 +478,20 @@ export function useContextEditorState(
     flushSave();
   }, [flushSave]);
 
+  // Bundled once so the module-level replaceDocument can reach the markers;
+  // every field is a stable ref or a useState setter.
+  const replaceCtxRef = useRef<ReplaceContext>({
+    draftRef,
+    lastSavedRef,
+    debounceTimerRef,
+    retryTimerRef,
+    replacingRef,
+    saves: inFlightSavesRef.current,
+    setCharCount,
+    setDirty,
+    setEditorKey,
+  });
+
   const handleClear = useCallback(async (): Promise<boolean> => {
     if (doc.status.kind !== "ready") return false;
 
@@ -385,36 +499,14 @@ export function useContextEditorState(
       return false;
     }
 
-    // Reset draft markers so a pending debounced save doesn't echo the old
-    // content back to the server before clear() lands.
-    draftRef.current = "";
-    lastSavedRef.current = "";
     setExternalUpdate(false);
-    setDirty(false);
-    setCharCount(0);
 
-    clearTimer(debounceTimerRef);
-    clearTimer(retryTimerRef);
-
-    // Wait for every in-flight write to complete before clear's POST goes out,
-    // and track clear's own POST for the write after it. Without this, an older
-    // draft's POST (or a concurrent import's) could land AFTER clear's and
-    // resurrect the cleared content. (The fetch promise resolves only after the
-    // server has responded, so awaiting it orders the writes server-side.)
-    //
-    // editorKey is bumped only AFTER clear() resolves: the uncontrolled
-    // MarkdownEditor seeds from `status.content` at mount, and status doesn't
-    // update to "" until the POST round-trips. Remounting earlier would
-    // re-seed with the pre-clear content and the next edit would save it back.
-    const ok = await dispatchOrderedWrite(inFlightSavesRef.current, () =>
+    const ok = await replaceDocument(replaceCtxRef.current, "", () =>
       doc.clear(),
     );
 
-    if (ok) {
-      setEditorKey((k) => k + 1);
-      // The override is gone — revert to the built-in "Customize" view.
-      setHasOverride(false);
-    }
+    // The override is gone — revert to the built-in "Customize" view.
+    if (ok) setHasOverride(false);
 
     return ok;
   }, [doc, clearConfirmMessage]);
@@ -447,30 +539,14 @@ export function useContextEditorState(
 
       if (current.trim() !== "" && !window.confirm(IMPORT_CONFIRM)) return;
 
-      // Adopt the imported content as the new baseline, then remount — mirrors
-      // handleClear/handleReload so draft markers, size readout, and the editor
-      // seed stay consistent.
-      draftRef.current = content;
-      lastSavedRef.current = content;
       setExternalUpdate(false);
-      setDirty(false);
-      setCharCount(content.length);
 
-      clearTimer(debounceTimerRef);
-      clearTimer(retryTimerRef);
-
-      // Order the import POST after every in-flight write, and track it for the
-      // write after it, so a stale draft POST — or a Clear the user fires while
-      // this one is on the wire — can't land after it (see handleClear).
-      const ok = await dispatchOrderedWrite(inFlightSavesRef.current, () =>
+      const ok = await replaceDocument(replaceCtxRef.current, content, () =>
         doc.save(content),
       );
 
-      if (ok) {
-        setEditorKey((k) => k + 1);
-        // Imported/forked content means the slot now overrides the built-in.
-        setHasOverride(true);
-      }
+      // Imported/forked content means the slot now overrides the built-in.
+      if (ok) setHasOverride(true);
     },
     [doc],
   );
