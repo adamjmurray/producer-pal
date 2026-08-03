@@ -193,8 +193,14 @@ export function useDocCollection<
 /** Params for {@link useCollectionEntryAutosave}. */
 export interface CollectionEntryAutosaveParams {
   /**
-   * Whether the current draft is valid to persist (name + body present and no
-   * save in flight). A non-savable draft is never flushed.
+   * Whether the current draft is valid to persist (its required fields are
+   * present). A non-savable draft is never flushed.
+   *
+   * Must NOT fold in "a save is already in flight": flush chains behind an
+   * in-flight write itself (see flush), so gating here would silently drop the
+   * unmount and tab-close flushes for exactly the edits typed during a save's
+   * round trip — type, wait for the debounce to dispatch, type once more, close
+   * the overlay, and that last edit is gone with no notice.
    */
   canSave: boolean;
   /**

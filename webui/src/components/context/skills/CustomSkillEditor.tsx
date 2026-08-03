@@ -54,10 +54,11 @@ export function CustomSkillEditor(
   const [bodyEditorKey, setBodyEditorKey] = useState(0);
 
   const targetName = isNew ? name : entry.name;
-  const canSave =
-    targetName.trim().length > 0 &&
-    body.trim().length > 0 &&
-    collection.saveStatus !== "saving";
+  // Two flavors on purpose: the autosave hook must NOT be gated on an in-flight
+  // save (it chains overlapping writes, and gating drops its unmount flush
+  // mid-save), while the footer button still disables while one is on the wire.
+  const draftValid = targetName.trim().length > 0 && body.trim().length > 0;
+  const canSave = draftValid && collection.saveStatus !== "saving";
 
   const doSave = (): Promise<CustomSkillView | null> =>
     collection.saveEntry(
@@ -68,7 +69,7 @@ export function CustomSkillEditor(
 
   const { noteSaved, externalUpdate, adoptExternal } =
     useCollectionEntryAutosave({
-      canSave,
+      canSave: draftValid,
       draftKey: customSkillKey({
         name: targetName,
         description,

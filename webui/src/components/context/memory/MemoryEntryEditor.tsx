@@ -64,7 +64,9 @@ export function MemoryEntryEditor(
   const validation = useMemoryValidation(isNew, name, description, body);
   // Autosave/create only when name (new only), description, and body are all
   // non-empty — clearing a required field blocks the write and shows its error.
-  const canSave = validation.isValid && collection.saveStatus !== "saving";
+  // Deliberately not gated on an in-flight save: the autosave hook chains
+  // overlapping writes, and gating here would drop its unmount flush mid-save.
+  const canSave = validation.isValid;
 
   // Creating (or re-creating a memory deleted out from under us) is create-only
   // so it can't silently overwrite an existing entry the name collides with.
