@@ -15,8 +15,7 @@ always-injected index of `name → description` recall hooks, and on-demand body
 load via `ppal-context read`. The store, REST routes, and webui editor are all
 built generic so a second collection is a thin binding, not a rewrite:
 
-- **Store**:
-  `src/mcp-server/helpers/markdown-store/markdown-collection-store.ts`
+- **Store**: `src/mcp-server/helpers/config-store/markdown-collection-store.ts`
   (`makeMarkdownCollectionStore`) owns the CRUD, filesystem-safe slugging +
   path-traversal guard, and reserved-index-slug protection. A binding supplies
   only what differs: subdir/index filename, how a file parses into an entry,
@@ -274,7 +273,7 @@ all, and (see below) the memory-index injection is skipped for the same reason.
 ## Memory entry format
 
 One fact per file, `~/.producer-pal/memory/<slug>.md`. Frontmatter is flat
-`key: value` (no YAML dependency — `helpers/markdown-store/frontmatter.ts`) and
+`key: value` (no YAML dependency — `helpers/config-store/frontmatter.ts`) and
 holds exactly two fields:
 
 ```markdown

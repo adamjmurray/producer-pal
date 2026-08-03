@@ -16,7 +16,7 @@ import {
   readSystemPrompt,
   readSystemPromptState,
   writeSystemPrompt,
-} from "../helpers/system-prompt-store.ts";
+} from "../../helpers/system-prompt-store.ts";
 import { registerConfigMarkdownRoute } from "./config-markdown-route.ts";
 
 /**

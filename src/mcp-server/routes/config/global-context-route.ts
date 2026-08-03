@@ -13,7 +13,7 @@ import { type Express } from "express";
 import {
   readGlobalContext,
   writeGlobalContext,
-} from "../helpers/global-context/global-context-store.ts";
+} from "../../helpers/global-context/global-context-store.ts";
 import { registerConfigMarkdownRoute } from "./config-markdown-route.ts";
 
 /**

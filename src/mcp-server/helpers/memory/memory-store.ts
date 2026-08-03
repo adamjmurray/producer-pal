@@ -19,12 +19,12 @@
 // looks at `type`. The filesystem lives on the Node-for-Max side; V8's
 // ppal-context round-trips through the memory.* RPC routes.
 
-import { parseFrontmatter } from "../markdown-store/frontmatter.ts";
+import { parseFrontmatter } from "../config-store/frontmatter.ts";
 import {
   type BuildStoredArgs,
   collectionIndexLine,
   makeMarkdownCollectionStore,
-} from "../markdown-store/markdown-collection-store.ts";
+} from "../config-store/markdown-collection-store.ts";
 
 /** One stored memory: its slug, one-line hook, and body. */
 export interface MemoryEntry {

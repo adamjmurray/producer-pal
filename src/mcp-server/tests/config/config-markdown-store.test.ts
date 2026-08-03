@@ -10,9 +10,9 @@ import {
   deleteConfigMarkdown,
   listConfigMarkdownFiles,
   listConfigMarkdownFilesRecursive,
-} from "#src/mcp-server/helpers/markdown-store/config-markdown-store.ts";
+} from "#src/mcp-server/helpers/config-store/config-markdown-store.ts";
 import { warn } from "#src/mcp-server/node-for-max-logger.ts";
-import { useTempConfigDir } from "./config-dir-test-helpers.ts";
+import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   log: vi.fn(),

@@ -38,12 +38,12 @@ import {
   listConfigMarkdownFilesRecursive,
   readConfigMarkdown,
   writeConfigMarkdown,
-} from "./markdown-store/config-markdown-store.ts";
+} from "./config-store/config-markdown-store.ts";
 import {
   parseFrontmatter,
   type ParsedFrontmatter,
   serializeFrontmatter,
-} from "./markdown-store/frontmatter.ts";
+} from "./config-store/frontmatter.ts";
 import {
   freshProvenance,
   hashBuiltIn,
