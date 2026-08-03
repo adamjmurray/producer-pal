@@ -272,6 +272,21 @@ describe("buildSkills - tool gating", () => {
     }
   });
 
+  it("teaches the comma beat list to a small-model caller that can only read", () => {
+    // The serializer comma-merges repeated pitches, so a read-back contains
+    // `1|1,3` whether or not the caller can write. The rule used to live in the
+    // authoring half, glossed inside the drums example, which gated it away from
+    // exactly the caller that has to parse it.
+    const result = buildSkills({
+      notation: "barbeat",
+      smallModelMode: true,
+      tools: ["ppal-read-clip"],
+    });
+
+    expect(result).toContain("comma-separated list");
+    expect(result).not.toContain("## Generate notes");
+  });
+
   it("gates the small-model document the same way", () => {
     const result = buildSkills({
       smallModelMode: true,
