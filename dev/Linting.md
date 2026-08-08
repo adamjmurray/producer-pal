@@ -211,9 +211,9 @@ Every rule here reported zero at migration time, so nothing broke.
   that's loud and one line to fix. A one-off `npx depcheck` is the cheaper
   answer if it ever comes up.
 - `import-x/no-useless-path-segments`, `import-x/no-relative-packages`,
-  `import-x/order` — no oxlint counterpart. Import ordering is unenforced:
-  oxfmt's `sortImports` would cover it, but turning it on reformats ~1000 files,
-  so that's its own decision.
+  `import-x/order` — no oxlint counterpart. Import ordering stays unenforced:
+  oxfmt's `sortImports` would cover it, but it breaks `vi.mock` hoisting in the
+  webui suites. See `dev/Testing.md`.
 
 ## Rules disabled where oxlint disagrees
 

@@ -76,6 +76,17 @@ Tests rendering the real `<App>` must mock `use-system-prompt` and
 poll. Reuse the shared payloads in
 `webui/src/components/tests/App-context-mocks.tsx`.
 
+**Import order is load-bearing wherever a `vi.mock` factory closes over an
+imported helper.** `vi.mock` hoists above the imports, so the component under
+test has to be imported _after_ the helper its factory calls. Sorting the
+imports alphabetically moves it ahead and the factory runs against an
+uninitialized binding. Eight suites depend on this — it's why oxfmt's
+`sortImports` is off and `source.organizeImports` is `"never"` in
+`.vscode/settings.json`.
+
+That failure reads as success: the suite dies while collecting, so vitest
+reports `0 failed` and a total quietly short by the tests that never registered.
+
 The stubbed Playwright suite is `npm run ui:test` (no Ableton or API keys
 needed); `npm run check` doesn't include it, so run it yourself after touching
 `webui/**`.
