@@ -141,6 +141,18 @@ Consult your client's documentation for MCP server configuration syntax.
 
 ### CLI Flags
 
+Full reference: https://producer-pal.org/guide/npx-cli
+
+- `--tools <list>` - Keep only these tools in this client, dropping the rest.
+  Takes tool names (`read-clip` or `ppal-read-clip`) and group names (`core`,
+  `clip`, `read-only`, …), comma or space separated. Withholding a tool also
+  drops the part of the skills that teaches it, so a narrow toolset makes every
+  conversation cheaper. Per client — the chat UI and your other MCP clients keep
+  the full toolset.
+- `--disable-tools <list>` - The inverse: drop the tools you list, keep the
+  rest.
+- `--list-tools` - Print the group names and the tools available right now, then
+  exit. Combine with the flags above to see what a session would really get.
 - `-s` / `--small-model-mode` - Enable
   [small model mode](https://producer-pal.org/installation/lm-studio)
   (simplifies tool interface for smaller LLMs and automatically enables it on
@@ -167,11 +179,13 @@ Optional environment variables can be configured through your MCP client:
 - `MCP_SERVER_ORIGIN` - URL for the Max for Live device (default:
   `http://localhost:3350`)
 - `ALLOW_CONFIGURATION_OVERRIDES` - Gate for the setting env vars below
-  (default: `false`). `SMALL_MODEL_MODE`, `NOTATION`, `FORMAT`, `JSON_OUTPUT`,
-  and `LIVE_API` are honored only when this is `true`; otherwise the device's
-  own settings stay authoritative. The equivalent CLI flags above are always
-  applied — this gate covers env vars only, which are ambient and easily
-  inherited.
+  (default: `false`). `TOOLS`, `DISABLE_TOOLS`, `SMALL_MODEL_MODE`, `NOTATION`,
+  `FORMAT`, `JSON_OUTPUT`, and `LIVE_API` are honored only when this is `true`;
+  otherwise the device's own settings stay authoritative. The equivalent CLI
+  flags above are always applied — this gate covers env vars only, which are
+  ambient and easily inherited.
+- `TOOLS` / `DISABLE_TOOLS` - Env forms of the `--tools` / `--disable-tools`
+  flags; require the gate above.
 - `SMALL_MODEL_MODE` - Enable small model mode (default: `false`). Env form of
   the `--small-model-mode` flag; requires the gate above.
 - `NOTATION` - MIDI note notation (`barbeat`, `midi-json`, or `stark`; default:

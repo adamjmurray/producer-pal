@@ -27,7 +27,7 @@ Quick options:
   Ollama, LM Studio, and other MCP-compatible platforms
 
 Already have an MCP-compatible client? Connect with `npx producer-pal`
-([details](/installation/other-mcp))
+([setup](/installation/other-mcp), [CLI reference](/guide/npx-cli))
 
 ## Quick Start
 
@@ -55,6 +55,8 @@ After installation:
 - Check out the [usage examples](/features/examples) for detailed examples and
   tips
 - Explore the [feature list](/features) to see everything Producer Pal can do
+- Cut what each conversation costs with
+  [Optimizing Cost & Context](/guide/optimizing)
 - Watch the [demo videos](/#demos) and
   [video tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - See what's coming in the [roadmap](/roadmap)

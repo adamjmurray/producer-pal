@@ -144,6 +144,7 @@ node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 `SKILL.md` tells the agent to decide once and pass the same list on every call,
 since the header applies per request. Unlike the settings above this changes
 nothing on the device, so the Chat UI and your MCP clients are unaffected.
+[Optimizing](/guide/optimizing) has the numbers.
 
 ### Direct Live API (advanced)
 

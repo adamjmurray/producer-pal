@@ -15,4 +15,6 @@ For users comfortable with the terminal. All CLI options require
 Every CLI runs the same `npx producer-pal` command under the hood, but each tool
 has its own MCP configuration format — a `claude mcp add` command, a TOML file,
 or a JSON file, depending on the tool. See the individual guides linked above
-for the exact steps and config for your CLI.
+for the exact steps and config for your CLI, and the
+[`npx producer-pal` reference](/guide/npx-cli) for every flag and environment
+variable it accepts.

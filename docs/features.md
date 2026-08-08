@@ -418,27 +418,28 @@ Adapts Producer Pal for less capable AI models by returning simplified
 ongoing R&D effort aimed at making [local models](/installation/choose-local)
 viable for completely offline, free, and private usage. Enable it on the
 [device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
-settings, or via the `npx producer-pal` MCP server's `--small-model-mode` flag —
-like [notation](/features/midi-notation), it's a global device setting that
-applies to MCP clients too.
+settings, or via the [`--small-model-mode` flag](/guide/npx-cli#flags) — like
+[notation](/features/midi-notation), it's a global device setting that applies
+to MCP clients too. It's also the biggest reduction in what a conversation
+costs; see [Optimizing](/guide/optimizing#small-model-mode) for the trade-off.
 
 ## Choosing a Toolset {#toolset}
 
 You don't have to run all 22 tools. Withholding one drops its schema _and_ the
 part of the [skills](#skills) that teaches it, so a narrower toolset makes every
-conversation cheaper — `read-only` alone cuts the skills text by more than half.
+conversation cheaper — `read-only` alone cuts the schemas and skills by 62%.
 Worth doing if you only ever use part of Producer Pal, or if you're running a
 [small/local model](/installation/choose-local) that does better with a short
-tool list.
+tool list. See [Optimizing](/guide/optimizing) for the numbers and the other
+levers.
 
 Where you set it depends on the client:
 
 - **[Chat UI](/guide/chat-ui#tools)** — the Tools tab, per conversation and per
   [preset](/guide/chat-ui#presets).
-- **MCP clients via `npx producer-pal`** — the `--tools` and `--disable-tools`
-  flags. Run `npx producer-pal --list-tools` for the group names and the tools
-  your device currently offers. See any installation page, e.g.
-  [Claude Code](/installation/claude-code).
+- **MCP clients via [`npx producer-pal`](/guide/npx-cli#toolset)** — the
+  `--tools` and `--disable-tools` flags. Run `npx producer-pal --list-tools` for
+  the group names and the tools your device currently offers.
 - **[Claude Desktop](/installation/claude-desktop)** — the extension's **Tools**
   and **Disable tools** settings.
 - **[REST API](/guide/rest-api#per-request-toolset)** — the

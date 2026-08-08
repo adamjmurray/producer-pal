@@ -2,7 +2,9 @@
 
 Producer Pal works with any LLM that supports the Model Context Protocol (MCP).
 
-Use `npx producer-pal` to connect to Producer Pal's MCP server.
+Use `npx producer-pal` to connect to Producer Pal's MCP server. Its flags and
+environment variables are listed in the
+[`npx producer-pal` reference](/guide/npx-cli).
 
 ## Requirements
 

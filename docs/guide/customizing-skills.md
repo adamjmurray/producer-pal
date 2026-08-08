@@ -15,7 +15,9 @@ Claude Desktop) in the `ppal-connect` result and used by the built-in
 [Chat UI](/guide/chat-ui) on every conversation.
 
 You can override any part of them, and — since every part of the skills costs
-tokens on every conversation — trim the parts you never use.
+tokens on every conversation — trim the parts you never use. Trimming is one of
+several levers; [Optimizing](/guide/optimizing) covers them all and says which
+pays off most.
 
 ## How skills are assembled
 
