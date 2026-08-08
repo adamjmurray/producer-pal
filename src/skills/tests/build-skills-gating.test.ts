@@ -287,6 +287,20 @@ describe("buildSkills - tool gating", () => {
     expect(result).not.toContain("## Generate notes");
   });
 
+  it("teaches the repeat pattern to a caller that can only read", () => {
+    // The drum serializer collapses evenly-spaced hits, so a Drum Rack read-back
+    // contains `1|1x16`. Only a writer can choose to author one, but everyone has
+    // to parse one — so the form is defined on the read side, and only the
+    // authoring gotchas are gated.
+    const result = buildSkills({
+      notation: "barbeat",
+      tools: ["ppal-read-clip"],
+    });
+
+    expect(result).toContain("repeat pattern");
+    expect(result).not.toContain("## Writing Notes");
+  });
+
   it("gates the small-model document the same way", () => {
     const result = buildSkills({
       smallModelMode: true,

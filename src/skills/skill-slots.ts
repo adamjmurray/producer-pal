@@ -336,7 +336,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "barbeat-standard-write": {
     title: "bar|beat notation: writing notes (standard)",
     description:
-      "The bar|beat syntax only used to CREATE notes — repeat patterns, pattern brackets, bar copying, v0 deletes, and the examples. Never appears in a clip you read back, so it's dropped for anything that can't write clips. Editing a clip that already has notes is update-clip's alone and lives in its own section. Needs the bar|beat notation guide it builds on.",
+      "The bar|beat syntax only used to CREATE notes — pattern brackets, bar copying, v0 deletes, when to reach for a repeat, and the examples. Dropped for anything that can't write clips. Editing a clip that already has notes is update-clip's alone and lives in its own section. Needs the bar|beat notation guide it builds on.",
     builtIn: barbeatStandardWrite,
   },
 
