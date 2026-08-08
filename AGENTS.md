@@ -170,7 +170,10 @@ already has them.
   `console.log()` and `console.error()` don't.
 - **Coverage gaps**: `npm run check` prints totals only; the per-file breakdown
   is in `coverage/coverage-summary.txt`. Function coverage must be 100%; mark a
-  genuinely untestable function with `/* v8 ignore start -- reason */`.
+  genuinely untestable function with `/* v8 ignore start -- reason */`. Before
+  ignoring or deleting a branch as unreachable, try to write the test — reading
+  the code is not enough to prove it, and the attempt is what tells you whether
+  the guard is dead or you just hadn't found the input.
 - See `dev/Testing.md` for what counts as a test file, webui test gotchas, and
   the mock registry. CLI tools and test Live Sets are in
   `dev/Development-Tools.md`.
