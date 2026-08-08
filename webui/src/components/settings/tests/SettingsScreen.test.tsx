@@ -8,6 +8,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
 import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
@@ -112,6 +113,9 @@ vi.mock(import("#webui/components/settings/controls/ToolToggles"), () => ({
 }));
 
 describe("SettingsScreen", () => {
+  // useGlobalSettings GETs /settings on mount; nothing here asserts on it.
+  installJsonFetchMock({ autoUpdateCheck: true });
+
   const defaultSettings = {
     provider: "gemini" as const,
     setProvider: vi.fn(),

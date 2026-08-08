@@ -60,10 +60,14 @@ import {
   setStubLeaveGuard,
   systemPromptDocMock,
 } from "./App-context-mocks";
+import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
 describe("App", () => {
+  // SettingsScreen's useGlobalSettings GETs /settings on mount.
+  installJsonFetchMock({ autoUpdateCheck: true });
+
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultMocks();
