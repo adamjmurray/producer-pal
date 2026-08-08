@@ -77,6 +77,17 @@ export async function syncProjectContextBackup(
 
   if (!needsSync(filePath, content)) return null;
 
+  const allowRestore = !hasSyncedThisSession();
+
+  // An empty param with the restore already spent and the wipe unresolved: the
+  // sidecar may still hold the notes a device (re)load blanked, and Node's only
+  // remaining move on an empty param is a clear. Skip it. Reachable only as
+  // "stuck" (an edit before the session's first sync burns the restore without
+  // answering the question), so it holds until the next device load.
+  if (content.trim() === "" && !allowRestore && memo.wipe !== "ruledOut") {
+    return null;
+  }
+
   // Restore is only valid on the first sync of a session: a device (re)load is
   // the one thing that wipes the param (e.g. an upgrade). After that, an empty
   // param is a deliberate user clear — Node propagates it instead of restoring.
@@ -85,7 +96,7 @@ export async function syncProjectContextBackup(
   // sidecar (that is how reopening an older Set used to clobber the folder's
   // shared notes). Creating a MISSING sidecar still works from here.
   const { ok, restored } = await requestSync(filePath, content, {
-    allowRestore: !hasSyncedThisSession(),
+    allowRestore,
     isEdit: false,
   });
 

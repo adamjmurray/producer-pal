@@ -182,6 +182,24 @@ describe("syncProjectContextBackup — allowRestore gating", () => {
       isEdit: false,
     });
   });
+
+  it("does not clear the sidecar while the wipe question is still open", async () => {
+    setFilePath(SAVED_PATH);
+
+    // Upgrade-wiped device: the param came up empty, the sidecar still holds the
+    // user's notes, and nothing has ruled the wipe out. Typing into the box and
+    // then emptying it again burns the restore without answering the question.
+    mockSyncResult("none");
+    await backupProjectContextOnEdit("X");
+    await backupProjectContextOnEdit("");
+    mockRequestNode.mockClear();
+
+    // The first tool call must not turn that into a delete.
+    const restored = await syncProjectContextBackup("");
+
+    expect(restored).toBeNull();
+    expect(mockRequestNode).not.toHaveBeenCalled();
+  });
 });
 
 describe("syncProjectContextBackup — Live API not ready", () => {
