@@ -648,9 +648,7 @@ describe("useChat", () => {
   });
 
   describe("compact (bootstrap + race guard)", () => {
-    it("builds no client when there is nothing to bootstrap from", async () => {
-      // Neither a live client nor pending history: nothing to summarize, so
-      // compact must no-op rather than open a connection.
+    it("no-ops when the target message index has nothing at it", async () => {
       const adapter = adapterWithClient(() => {});
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter }),
@@ -658,6 +656,26 @@ describe("useChat", () => {
 
       await act(async () => {
         await result.current.compact(0);
+      });
+
+      expect(adapter.createClient).not.toHaveBeenCalled();
+      expect(result.current.isCompacting).toBe(false);
+    });
+
+    it("builds no client when the bootstrap has no API key to use", async () => {
+      // Restored history gives compact something to target, but a key removed
+      // from Settings leaves nothing to connect with — bootstrap must bail
+      // rather than construct a client that can't authenticate.
+      const adapter = adapterWithClient(() => {});
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter, apiKey: "" }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+      await act(async () => {
+        await result.current.compact(1);
       });
 
       expect(adapter.createClient).not.toHaveBeenCalled();

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import path from "node:path";
@@ -81,7 +82,10 @@ const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
 // stop" is exempt: pairing it with its start double-counts one suppression and
 // makes the limits read as twice the real debt.
 const V8_IGNORE_LIMITS: TreeLimits = {
-  src: 4, // Defensive guards with caller guarantees/lookup tables
+  // 4 defensive guards with caller guarantees/lookup tables, 2 exhaustive-never
+  // switch defaults (read-device / update-device) that exist for the compiler —
+  // executing one would mean casting a bogus TargetType past the resolver
+  src: 6,
   srcTests: 7, // 0 real + 7 self (pattern definition + description enforcement)
   scripts: 0,
   scriptsTests: 0,
