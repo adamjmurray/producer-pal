@@ -49,6 +49,7 @@ import {
   type ConversationRecord,
   listAllConversationSummaries,
 } from "#webui/lib/conversation-db";
+import { withLiveApiTool } from "#webui/lib/utils/enabled-tools";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import { getBaseUrl, resolveProviderApiKey } from "#webui/utils/provider-url";
 
@@ -162,12 +163,22 @@ export function useChatModeState(params: UseChatModeStateParams) {
     [presetsBlob, settings.subagentPresetId, resolveConnection],
   );
 
+  // The Direct Live API tool has no entry in the Tools-tab map — its checkbox
+  // drives the device-global flag instead — so stamp the flag in before the
+  // toolset is pinned, or it would be the one tool that follows the device
+  // rather than the conversation. See withLiveApiTool.
+  const enabledTools = useMemo(
+    () =>
+      withLiveApiTool(settings.enabledTools, remoteConfig.serverLiveApiEnabled),
+    [settings.enabledTools, remoteConfig.serverLiveApiEnabled],
+  );
+
   const aiSdkChat = useChat({
     provider: settings.provider,
     apiKey: resolvedApiKey,
     model: settings.model,
     thinking: settings.thinking,
-    enabledTools: settings.enabledTools,
+    enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,

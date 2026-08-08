@@ -316,6 +316,13 @@ so withdrawing that tool mid-conversation invites a call the client can no
 longer route. Records saved before the toolset was locked have none, and fall
 back to the current selection.
 
+The Direct Live API tool needs `withLiveApiTool` to make that lock hold. Its
+Tools-tab checkbox writes no map entry — it flips the device-global
+`liveApiEnabled`, which adds or removes the tool from the server's catalog — so
+the flag is stamped into the map before it is locked. Anywhere a locked toolset
+is compared against the current one (the header's tools indicator), BOTH sides
+must be stamped the same way, or every conversation reports a divergence.
+
 Per-message overrides (`MessageOverrides`) can still override thinking for
 individual messages. When used, the overridden value is stamped on the assistant
 `ChatMessage` as `thinkingOverride` — only when it differs from the conversation

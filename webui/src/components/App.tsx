@@ -34,7 +34,10 @@ import { useBackdropClick } from "#webui/hooks/use-backdrop-click";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { enabledToolsDiverge as toolsetsDiffer } from "#webui/lib/utils/enabled-tools";
+import {
+  enabledToolsDiverge as toolsetsDiffer,
+  withLiveApiTool,
+} from "#webui/lib/utils/enabled-tools";
 import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
@@ -237,6 +240,7 @@ export function App() {
     mcpTools,
     modeContext.conversationLock.activeEnabledTools,
     settings.enabledTools,
+    remoteConfig.serverLiveApiEnabled,
   );
 
   // Mode is derived from the saved provider+model (only updates on save), not
@@ -365,15 +369,21 @@ export function App() {
  * The setting's own count rides along so the locked tooltip can name what the
  * default moved to, the way the model display does.
  *
+ * Both maps get the Direct Live API flag stamped in the same way (see
+ * withLiveApiTool), so the comparison is between two toolsets described alike —
+ * stamping only one side would report a divergence on every conversation.
+ *
  * @param mcpTools - The server's tool catalog, or null before it loads
  * @param lockedTools - The conversation's pinned toolset, or null when unpinned
  * @param settingsTools - The current Tools-tab selection
+ * @param liveApiEnabled - The device's current Direct Live API flag
  * @returns The counts to display and whether to flag the display as locked
  */
 function toolIndicatorState(
   mcpTools: McpTool[] | null,
   lockedTools: Record<string, boolean> | null,
   settingsTools: Record<string, boolean>,
+  liveApiEnabled: boolean,
 ): {
   enabledToolsCount: number;
   defaultToolsCount: number;
@@ -381,11 +391,13 @@ function toolIndicatorState(
 } {
   const count = (tools: Record<string, boolean>): number =>
     mcpTools ? mcpTools.filter((tool) => tools[tool.id] !== false).length : 0;
+  const settings = withLiveApiTool(settingsTools, liveApiEnabled);
+  const locked =
+    lockedTools == null ? null : withLiveApiTool(lockedTools, liveApiEnabled);
 
   return {
-    enabledToolsCount: count(lockedTools ?? settingsTools),
-    defaultToolsCount: count(settingsTools),
-    enabledToolsDiverge:
-      lockedTools != null && toolsetsDiffer(lockedTools, settingsTools),
+    enabledToolsCount: count(locked ?? settings),
+    defaultToolsCount: count(settings),
+    enabledToolsDiverge: locked != null && toolsetsDiffer(locked, settings),
   };
 }

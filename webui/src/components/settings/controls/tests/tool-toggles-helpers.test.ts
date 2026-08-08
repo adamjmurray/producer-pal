@@ -8,10 +8,10 @@ import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import {
   ensureLiveApiTool,
   ensureSpawnSubagentTool,
-  LIVE_API_TOOL_ID,
   SPAWN_SUBAGENT_TOOL_ID,
   groupTools,
 } from "#webui/components/settings/controls/helpers/tool-toggles-helpers";
+import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
 
 const tool = (id: string, name: string): McpTool => ({ id, name });
 

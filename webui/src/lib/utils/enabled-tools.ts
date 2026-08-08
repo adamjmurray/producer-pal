@@ -5,6 +5,37 @@
 
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 
+/** The Direct Live API tool's id, in the toolset map and the MCP catalog. */
+export const LIVE_API_TOOL_ID = "ppal-live-api";
+
+/**
+ * Write the Direct Live API tool's effective state into a toolset map, unless
+ * the map already has an opinion.
+ *
+ * Its Tools-tab checkbox is the odd one out: it doesn't write a map entry, it
+ * flips the device-global `liveApiEnabled`, which adds or removes the tool from
+ * the server's catalog. So without this the tool escapes the conversation's pin
+ * — a chat locked while it was off would pick it up on reconnect once the flag
+ * went on, because "absent" reads as enabled.
+ *
+ * Only filling a GAP is what keeps the pin honest both ways. A conversation
+ * pinned before this shipped has no entry, and no entry is exactly what it
+ * reconnects on: it follows the flag, so stamping the current flag in describes
+ * it correctly instead of flagging a divergence that isn't there.
+ *
+ * @param enabledTools - Tool-enablement map (absent = default for that tool)
+ * @param liveApiEnabled - The device's current Direct Live API flag
+ * @returns The map, with the Live API entry filled in when it was missing
+ */
+export function withLiveApiTool(
+  enabledTools: Record<string, boolean>,
+  liveApiEnabled: boolean,
+): Record<string, boolean> {
+  if (LIVE_API_TOOL_ID in enabledTools) return enabledTools;
+
+  return { ...enabledTools, [LIVE_API_TOOL_ID]: liveApiEnabled };
+}
+
 /**
  * Whether a tool is effectively enabled by a toolset map. Absent means enabled
  * for ordinary tools (the map only records deviations from the default), but the

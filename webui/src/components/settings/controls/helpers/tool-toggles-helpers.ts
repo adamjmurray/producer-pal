@@ -5,6 +5,7 @@
 
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
+import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
 
 interface ToolGroup {
   label: string;
@@ -15,8 +16,6 @@ export interface GroupedTools {
   label: string;
   tools: McpTool[];
 }
-
-export const LIVE_API_TOOL_ID = "ppal-live-api";
 
 // The client-side Subagent toggle's enabledTools key. Shares the tool name so
 // the Tools-tab checkbox and client.ts injection read/write the same flag.
