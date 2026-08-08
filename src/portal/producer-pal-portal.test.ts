@@ -53,10 +53,21 @@ const OVERRIDE_ENV_VARS = [
   "MCP_SERVER_ORIGIN",
 ] as const;
 
+const SHUTDOWN_SIGNALS = ["SIGINT", "SIGTERM"] as const;
+
 describe("producer-pal-portal", () => {
   const originalArgv = process.argv;
   const originalEnv = new Map(
     OVERRIDE_ENV_VARS.map((name) => [name, process.env[name]]),
+  );
+
+  // The portal registers its shutdown handlers at module scope, and these tests
+  // re-import it once per case. Drop the ones each import added, or they pile up
+  // on the shared process past Node's 10-listener warning, each pinning a dead
+  // bridge. Diff against this snapshot rather than removing all listeners — the
+  // vitest worker has its own.
+  const preexistingSignalListeners = SHUTDOWN_SIGNALS.map(
+    (signal) => [signal, new Set(process.listeners(signal))] as const,
   );
 
   beforeEach(() => {
@@ -68,6 +79,13 @@ describe("producer-pal-portal", () => {
 
     for (const name of OVERRIDE_ENV_VARS) {
       restoreEnv(name, originalEnv.get(name));
+    }
+
+    for (const [signal, preexisting] of preexistingSignalListeners) {
+      for (const listener of process.listeners(signal)) {
+        if (!preexisting.has(listener))
+          process.removeListener(signal, listener);
+      }
     }
   });
 
