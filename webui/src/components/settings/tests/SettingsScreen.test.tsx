@@ -141,7 +141,6 @@ describe("SettingsScreen", () => {
     enabledTools: {} as Record<string, boolean>,
     setEnabledTools: vi.fn(),
     resetBehaviorToDefaults: vi.fn(),
-    isToolEnabled: () => true,
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
     subagentPresetId: null,

@@ -203,7 +203,6 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
   resetBehaviorToDefaults: () => void;
-  isToolEnabled: (toolId: string) => boolean;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
   /** The preset a spawned subagent runs under: its model/inference and, when the

@@ -687,17 +687,9 @@ describe("useSettings", () => {
     });
   });
 
-  it("isToolEnabled returns true for enabled tools", () => {
+  it("setEnabledTools records a disabled tool", async () => {
     const { result } = renderHook(() => useSettings());
 
-    // Tools are enabled by default
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
-  });
-
-  it("isToolEnabled returns false for disabled tools", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    // Disable a tool
     await act(() => {
       result.current.setEnabledTools({
         ...result.current.enabledTools,
@@ -705,14 +697,9 @@ describe("useSettings", () => {
       });
     });
 
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
-  });
-
-  it("isToolEnabled returns true for unknown tools (default)", () => {
-    const { result } = renderHook(() => useSettings());
-
-    // Unknown tools default to enabled
-    expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
+    expect(result.current.enabledTools).toStrictEqual({
+      "ppal-connect": false,
+    });
   });
 
   it("setProvider preserves thinking value when switching providers", async () => {
@@ -772,8 +759,8 @@ describe("useSettings", () => {
     localStorage.setItem("producer_pal_enabled_tools", "invalid json{");
     const { result } = renderHook(() => useSettings());
 
-    // Should fallback to defaults, all tools enabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    // Should fall back to an empty map (no explicit overrides)
+    expect(result.current.enabledTools).toStrictEqual({});
     // Cleanup
     localStorage.removeItem("producer_pal_enabled_tools");
   });

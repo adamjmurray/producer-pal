@@ -295,10 +295,6 @@ export function useSettings(): UseSettingsReturn {
     provider === "lmstudio" || provider === "ollama"
       ? checkHasApiKey(provider)
       : Boolean(currentSettings.apiKey);
-  const isToolEnabled = useCallback(
-    (toolId: string) => enabledTools[toolId] ?? true,
-    [enabledTools],
-  );
   const resetBehaviorToDefaults = useCallback(() => {
     setThinking(DEFAULT_SETTINGS[provider].thinking);
   }, [provider, setThinking]);
@@ -336,7 +332,6 @@ export function useSettings(): UseSettingsReturn {
     enabledTools,
     setEnabledTools: setEnabledToolsState,
     resetBehaviorToDefaults,
-    isToolEnabled,
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
     subagentPresetId,
