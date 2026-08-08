@@ -1,7 +1,8 @@
 # Linting
 
 `npm run lint` runs [oxlint](https://oxc.rs) with `--type-aware`. Config is
-`.oxlintrc.json` (JSONC — it carries comments). Formatting is still Prettier.
+`.oxlintrc.json` (JSONC — it carries comments). Formatting is oxfmt
+(`.oxfmtrc.json`).
 
 oxlint replaced eslint for speed: 5.8s wall / 13s CPU versus 31s / 183s on the
 same rule set. `npm run check` runs before every push, so this was the single
@@ -60,8 +61,8 @@ there.
 Nothing is hoisted: the top-level `rules` is empty, so a tree that appears in no
 `files` list is linted with **zero rules** and reports clean — indistinguishable
 from passing. Fourteen files were in that blind spot (`e2e/ui/**`,
-`docs/.vitepress/**`, `prettier.config.mjs`, `evals/**/*.mjs`), each a tree
-created without being added to the old eslint config.
+`docs/.vitepress/**`, `evals/**/*.mjs`), each a tree created without being added
+to the old eslint config.
 
 When you add a tree, check it:
 
@@ -211,7 +212,7 @@ Every rule here reported zero at migration time, so nothing broke.
   answer if it ever comes up.
 - `import-x/no-useless-path-segments`, `import-x/no-relative-packages`,
   `import-x/order` — no oxlint counterpart. Import ordering is now unenforced,
-  since Prettier doesn't sort imports either.
+  since oxfmt doesn't sort imports either.
 
 ## Rules disabled where oxlint disagrees
 

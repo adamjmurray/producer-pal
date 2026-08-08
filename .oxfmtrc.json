@@ -19,7 +19,6 @@
     "release",
     "docs/.vitepress/cache",
     "docs/.vitepress/dist",
-    "test-results",
-    "netlify.toml"
+    "test-results"
   ]
 }

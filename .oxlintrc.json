@@ -96,7 +96,6 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/docs/**/*.{js,mjs}",
@@ -262,7 +261,6 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/mcp/**/*.ts"
@@ -317,7 +315,6 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "examples/**/*.{js,mjs}"
       ],
@@ -541,7 +538,6 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "e2e/docs/**/*.{js,mjs}",
         "e2e/webui/**/*.ts",
@@ -597,7 +593,6 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/docs/**/*.{js,mjs}",
@@ -614,7 +609,6 @@
     {
       "files": [
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/docs/**/*.{js,mjs}",
@@ -694,7 +688,7 @@
       }
     },
     {
-      "files": ["config/**/*.{js,mjs}", "prettier.config.mjs"],
+      "files": ["config/**/*.{js,mjs}"],
       "env": {
         "es2024": true,
         "node": true
@@ -1145,7 +1139,6 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "examples/**/*.{js,mjs}"
       ],
@@ -1180,7 +1173,6 @@
         "config/**/*.ts",
         "vitest.config.ts",
         "config/**/*.{js,mjs}",
-        "prettier.config.mjs",
         "evals/**/*.mjs",
         "examples/**/*.{js,mjs}",
         "e2e/docs/**/*.{js,mjs}",
