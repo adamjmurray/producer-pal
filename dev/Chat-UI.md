@@ -319,9 +319,12 @@ back to the current selection.
 The Direct Live API tool needs `withLiveApiTool` to make that lock hold. Its
 Tools-tab checkbox writes no map entry — it flips the device-global
 `liveApiEnabled`, which adds or removes the tool from the server's catalog — so
-the flag is stamped into the map before it is locked. Anywhere a locked toolset
-is compared against the current one (the header's tools indicator), BOTH sides
-must be stamped the same way, or every conversation reports a divergence.
+the flag is stamped into the map before it is locked. Every site that compares a
+locked toolset against the current one must stamp BOTH sides, or a conversation
+locked while the tool was off reports a divergence for the rest of its life.
+Nothing enforces this. Two sites compare today — the header's tools indicator
+and the Settings modal's locked-settings notice — and the notice shipped missing
+the stamp, so treat a new comparison site as a place to get this wrong.
 
 Per-message overrides (`MessageOverrides`) can still override thinking for
 individual messages. When used, the overridden value is stamped on the assistant

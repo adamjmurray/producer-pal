@@ -304,6 +304,11 @@ The endpoint reads the caller's profile off the **same three headers** above, so
 a briefing describes exactly the toolset and notation the worker's own tool
 calls will run under; one builder (`perRequestHeaders`) emits them for both.
 
+Every spawn fetches its own briefing, even in a parallel fan-out where all the
+profiles are identical. Do not collapse those into one cached fetch: the
+briefing embeds a Live Set overview, and workers change the Live Set, so a later
+worker would be briefed on a Set that no longer exists.
+
 It also requires a fourth, `x-producer-pal-briefing`. It is the only read
 endpoint that dispatches a Live API call, and the origin gate alone can't cover
 it: Origin-less requests pass (non-browser clients need that), and a browser
