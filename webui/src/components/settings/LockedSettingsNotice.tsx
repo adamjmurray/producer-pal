@@ -30,7 +30,8 @@ interface LockedSettingsNoticeProps {
 /**
  * Notice shown in settings when the active conversation's settings diverge from
  * the current defaults — model, provider, small model mode, notation, or the
- * tool selection it last connected with.
+ * toolset. All of them are pinned for the conversation's lifetime, so the notice
+ * says the same thing about each: this takes effect on the next conversation.
  * @param props - Component props
  * @param props.conversationLock - Locked state from the active conversation
  * @param props.model - Current default model from settings
@@ -65,7 +66,7 @@ export function LockedSettingsNotice({
   const notationDiverges =
     activeNotation != null && activeNotation !== notation;
   // Same for the toolset, which is likewise absent on records saved before it
-  // was recorded.
+  // was locked (those reconnect on the current selection, so stay quiet).
   const toolsDiverge =
     activeEnabledTools != null &&
     enabledToolsDiverge(activeEnabledTools, enabledTools);
@@ -95,24 +96,19 @@ export function LockedSettingsNotice({
     parts.push(`${NOTATION_LABELS[activeNotation]} notation`);
   }
 
+  if (toolsDiverge) {
+    parts.push("a different set of tools");
+  }
+
   return (
     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
       <p>Changes apply to new conversations only.</p>
 
-      {parts.length > 0 && (
-        <p className="mt-1 text-xs opacity-80">
-          Current conversation uses {parts.join(" · ")}
-        </p>
-      )}
-
-      {/* Tools are the exception to the line above: this conversation is not
-          pinned to the toolset it ran with, so say what actually happens. */}
-      {toolsDiverge && (
-        <p className="mt-1 text-xs opacity-80">
-          Current conversation connected with a different set of tools; it picks
-          up the current selection the next time it connects.
-        </p>
-      )}
+      {/* Every divergence above contributes a part, so this line always has
+          something to say by the time we get here. */}
+      <p className="mt-1 text-xs opacity-80">
+        Current conversation uses {parts.join(" · ")}
+      </p>
     </div>
   );
 }

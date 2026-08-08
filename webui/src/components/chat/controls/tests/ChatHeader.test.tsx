@@ -19,6 +19,7 @@ const defaultHeaderInfo: HeaderInfo = {
   provider: "gemini",
   enabledToolsCount: 20,
   totalToolsCount: 20,
+  defaultToolsCount: 20,
   smallModelMode: false,
   defaultSmallModelMode: false,
   showHelpLinks: true,
@@ -235,6 +236,26 @@ describe("ChatHeader", () => {
 
       expect(indicator.textContent).toContain("🔧");
       expect(indicator.textContent).toContain("15");
+    });
+
+    it("goes amber when the conversation's pinned toolset has been left behind", () => {
+      // The count is the PINNED toolset, so without the amber it would read as
+      // the current selection and the Tools tab would look like it did nothing.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({
+            enabledToolsCount: 15,
+            defaultToolsCount: 18,
+            enabledToolsDiverge: true,
+          })}
+        />,
+      );
+      const indicator = screen.getByTitle(
+        "Locked: 15/20 tools enabled (default is now 18/20)",
+      );
+
+      expect(indicator.className).toContain("amber");
     });
   });
 
@@ -508,6 +529,36 @@ describe("ChatHeader", () => {
       );
 
       expect(fullText).toBeDefined();
+    });
+
+    it("names what the default moved to when the conversation's mode is locked", () => {
+      // Same shape as the model display's locked title, so the three amber
+      // indicators read as one story rather than three phrasings.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({
+            // The lock only exists once a conversation has connected.
+            activeModel: "gemini-3.1-pro-preview",
+            smallModelMode: true,
+            defaultSmallModelMode: false,
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByTitle(
+          "Locked: small model mode (default is now large model mode)",
+        ),
+      ).toBeDefined();
+    });
+
+    it("adds no locked tooltip when nothing diverges", () => {
+      // The indicator stays untitled so the wrapping button's "Connection
+      // settings" is what the user sees, matching the model display.
+      render(<ChatHeader {...defaultProps} />);
+
+      expect(screen.queryByTitle(/^Locked:/)).toBeNull();
     });
   });
 

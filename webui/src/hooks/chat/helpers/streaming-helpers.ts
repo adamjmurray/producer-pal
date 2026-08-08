@@ -218,6 +218,8 @@ export interface InitConnection {
   notation: Notation | null;
   /** The small-model mode to lock and send for this init. */
   smallModelMode: boolean;
+  /** The toolset to lock and connect with for this init. */
+  enabledTools: Record<string, boolean>;
 }
 
 /**
@@ -236,18 +238,23 @@ export interface InitConnection {
  * notation and small-model mode ride along the same way, as `lockedNotation` and
  * `lockedSmallModelMode`.
  *
- * @param locked - Conversation's locked provider/model/system-instruction/notation/small-model mode (null fields if unset)
+ * The toolset resolves the same way but NOT through `extraParams` — no adapter
+ * reads it; it is passed to the client builder directly.
+ *
+ * @param locked - Conversation's locked provider/model/system-instruction/notation/small-model mode/toolset (null fields if unset)
  * @param locked.activeProvider - Locked provider, or null when not locked
  * @param locked.activeModel - Locked model, or null when not locked
  * @param locked.activeSystemInstruction - Locked system instruction, or null when not locked
  * @param locked.activeNotation - Locked notation, or null when not locked
  * @param locked.activeSmallModelMode - Locked small-model mode, or null when not locked
- * @param fallback - Current-settings provider/model (used when not locked)
+ * @param locked.activeEnabledTools - Locked toolset, or null when not locked
+ * @param fallback - Current-settings provider/model/toolset (used when not locked)
  * @param fallback.provider - Current-settings provider
  * @param fallback.model - Current-settings model
+ * @param fallback.enabledTools - Current-settings toolset
  * @param resolveConnection - Resolves a provider's current key + base URL
  * @param extraParams - Base extra params to merge the connection into
- * @returns Effective provider, model, key, and merged extra params
+ * @returns Effective provider, model, key, toolset, and merged extra params
  */
 export function resolveInitConnection(
   locked: {
@@ -256,8 +263,13 @@ export function resolveInitConnection(
     activeSystemInstruction: string | null;
     activeNotation: Notation | null;
     activeSmallModelMode: boolean | null;
+    activeEnabledTools: Record<string, boolean> | null;
   },
-  fallback: { provider: Provider; model: string },
+  fallback: {
+    provider: Provider;
+    model: string;
+    enabledTools: Record<string, boolean>;
+  },
   resolveConnection: (provider: Provider) => {
     apiKey: string;
     baseUrl?: string;
@@ -285,6 +297,7 @@ export function resolveInitConnection(
     systemInstruction: resolveLockedSystemInstruction(mergedExtraParams),
     notation: resolveLockedNotation(mergedExtraParams),
     smallModelMode: resolveLockedSmallModelMode(mergedExtraParams),
+    enabledTools: locked.activeEnabledTools ?? fallback.enabledTools,
   };
 }
 

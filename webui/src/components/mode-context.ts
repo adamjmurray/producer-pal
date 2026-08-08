@@ -23,7 +23,12 @@ export interface ModeAppProps {
   setViewState: (partial: Partial<ViewState>) => void;
   mcpStatus: McpStatus;
   totalToolsCount: number;
+  /** Count of the conversation's pinned toolset, falling back to the setting. */
   enabledToolsCount: number;
+  /** Count the current setting would enable, for the locked indicator's title. */
+  defaultToolsCount: number;
+  /** Whether that pinned toolset differs from the current setting. */
+  enabledToolsDiverge: boolean;
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;

@@ -23,6 +23,7 @@ const defaultHeaderInfo: HeaderInfo = {
   provider: "gemini",
   enabledToolsCount: 20,
   totalToolsCount: 20,
+  defaultToolsCount: 20,
   smallModelMode: false,
   defaultSmallModelMode: false,
   showHelpLinks: true,

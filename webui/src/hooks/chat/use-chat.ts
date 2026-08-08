@@ -180,7 +180,7 @@ export function useChat<
       // switched restored conversations to the selected model on the next send.
       const init = resolveInitConnection(
         active,
-        { provider, model },
+        { provider, model, enabledTools },
         resolveConnection,
         extraParams,
       );
@@ -188,7 +188,7 @@ export function useChat<
       const config = adapter.buildConfig(
         init.model,
         effectiveThinking,
-        enabledTools,
+        init.enabledTools,
         chatHistory,
         init.extraParams,
       );
@@ -206,11 +206,10 @@ export function useChat<
         smallModelMode: init.smallModelMode,
         systemInstruction: init.systemInstruction,
         notation: init.notation,
-        // The toolset this client was just built with. Unlike the others this is
-        // always the CURRENT setting, never a restored snapshot — a restored
-        // conversation reconnects with today's tools on purpose. Recording it is
-        // what lets the settings notice point out that they moved.
-        enabledTools,
+        // Pinned like the rest: a restored conversation reconnects with the
+        // toolset it ran with, so the model never loses a tool it has already
+        // used (or gains one its transcript never mentions).
+        enabledTools: init.enabledTools,
       });
     },
     [

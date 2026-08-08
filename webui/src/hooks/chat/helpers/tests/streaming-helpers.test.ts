@@ -199,8 +199,13 @@ describe("streaming-helpers", () => {
       activeSystemInstruction: null,
       activeNotation: null,
       activeSmallModelMode: null,
+      activeEnabledTools: null,
     };
-    const fallback = { provider: "openai" as const, model: "gpt-4o" };
+    const fallback = {
+      provider: "openai" as const,
+      model: "gpt-4o",
+      enabledTools: { "ppal-library": false },
+    };
     const resolveConnection = () => ({ apiKey: "sk-test" });
 
     it("passes the locked notation through to the adapter and back out", () => {
@@ -243,6 +248,22 @@ describe("streaming-helpers", () => {
 
       expect(init.extraParams.lockedSmallModelMode).toBeNull();
       expect(init.smallModelMode).toBe(true);
+    });
+
+    it("reconnects a restored conversation on the toolset it ran with", () => {
+      const init = resolveInitConnection(
+        { ...locked, activeEnabledTools: { "ppal-duplicate": false } },
+        fallback,
+        resolveConnection,
+      );
+
+      expect(init.enabledTools).toStrictEqual({ "ppal-duplicate": false });
+    });
+
+    it("locks the current toolset for a conversation that has none yet", () => {
+      const init = resolveInitConnection(locked, fallback, resolveConnection);
+
+      expect(init.enabledTools).toStrictEqual({ "ppal-library": false });
     });
   });
 

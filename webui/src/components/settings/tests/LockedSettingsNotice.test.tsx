@@ -133,10 +133,10 @@ describe("LockedSettingsNotice", () => {
       { enabledTools: { "ppal-library": true } },
     );
 
+    // Pinned like the rest, so it reads as one of the settings the running
+    // conversation is using — not as a special case with its own timing.
+    expect(screen.getByText(/Current conversation uses/)).toBeTruthy();
     expect(screen.getByText(/different set of tools/)).toBeTruthy();
-    // Tools are reported, not locked, so the notice says what actually happens
-    // next rather than listing them alongside the pinned settings.
-    expect(screen.queryByText(/Current conversation uses/)).toBeNull();
   });
 
   it("ignores a toolset that only spells out the defaults", () => {
@@ -150,9 +150,9 @@ describe("LockedSettingsNotice", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("stays quiet about tools for a conversation that recorded none", () => {
-    // A record saved before the toolset was recorded has nothing to compare
-    // against — same reasoning as the notation case above.
+  it("stays quiet about tools for a conversation that locked none", () => {
+    // A record saved before the toolset was locked reconnects on the current
+    // selection, so there is no divergence to report — same as the notation case.
     const { container } = renderNotice(
       {},
       { enabledTools: { "ppal-library": false } },

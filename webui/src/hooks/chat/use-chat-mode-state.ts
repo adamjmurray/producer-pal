@@ -64,6 +64,8 @@ export interface UseChatModeStateParams {
   remoteConfig: UseRemoteConfigReturn;
   totalToolsCount: number;
   enabledToolsCount: number;
+  defaultToolsCount: number;
+  enabledToolsDiverge: boolean;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -90,6 +92,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
     remoteConfig,
     totalToolsCount,
     enabledToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     onForeignRecord,
     clearViewingMode,
     setModeContext,
@@ -277,6 +281,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
     display,
     enabledToolsCount,
     totalToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     handleDeleteAll: conversationHandlers.handleDeleteAll,
     handleDeleteUnbookmarked: conversationHandlers.handleDeleteUnbookmarked,
     setModeContext,

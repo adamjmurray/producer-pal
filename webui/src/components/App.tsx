@@ -17,7 +17,10 @@ import {
 } from "#webui/components/mode-context";
 import { VoiceApp } from "#webui/components/voice/VoiceApp";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
-import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
+import {
+  type McpTool,
+  useMcpConnection,
+} from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-setting";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
@@ -31,6 +34,7 @@ import { useBackdropClick } from "#webui/hooks/use-backdrop-click";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { enabledToolsDiverge as toolsetsDiffer } from "#webui/lib/utils/enabled-tools";
 import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
@@ -68,9 +72,6 @@ export function App() {
   );
   const remoteConfig = useRemoteConfig(mcpStatus);
   const totalToolsCount = mcpTools?.length ?? 0;
-  const enabledToolsCount = mcpTools
-    ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
-    : 0;
 
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
@@ -232,6 +233,12 @@ export function App() {
   const [modeContext, setModeContext] =
     useState<ModeContext>(DEFAULT_MODE_CONTEXT);
 
+  const toolIndicator = toolIndicatorState(
+    mcpTools,
+    modeContext.conversationLock.activeEnabledTools,
+    settings.enabledTools,
+  );
+
   // Mode is derived from the saved provider+model (only updates on save), not
   // the in-modal `provider`/`model`. This prevents the underlying chat or voice
   // screen from re-mounting mid-modal whenever the user explores the dropdowns.
@@ -251,7 +258,7 @@ export function App() {
     setViewState,
     mcpStatus,
     totalToolsCount,
-    enabledToolsCount,
+    ...toolIndicator,
     onOpenSettings: () => openSettings(),
     /* v8 ignore start -- inline settings tab navigation */
     onOpenToolsSettings: () => openSettings("tools"),
@@ -341,4 +348,44 @@ export function App() {
       )}
     </ToolNamesContext.Provider>
   );
+}
+
+// --- Helpers below main export ---
+
+/**
+ * What the header's tools indicator shows: the size of the toolset the active
+ * conversation is PINNED to, and whether the current setting has moved past it.
+ *
+ * Counting the pinned map rather than the setting is what keeps the header
+ * honest — a restored conversation reconnects on the tools it ran with, so the
+ * setting can say 1/21 while the conversation is really running 21/21. Null
+ * before the first send (and in voice, which pins nothing): there the setting is
+ * what the next client will use, and nothing has diverged from it yet.
+ *
+ * The setting's own count rides along so the locked tooltip can name what the
+ * default moved to, the way the model display does.
+ *
+ * @param mcpTools - The server's tool catalog, or null before it loads
+ * @param lockedTools - The conversation's pinned toolset, or null when unpinned
+ * @param settingsTools - The current Tools-tab selection
+ * @returns The counts to display and whether to flag the display as locked
+ */
+function toolIndicatorState(
+  mcpTools: McpTool[] | null,
+  lockedTools: Record<string, boolean> | null,
+  settingsTools: Record<string, boolean>,
+): {
+  enabledToolsCount: number;
+  defaultToolsCount: number;
+  enabledToolsDiverge: boolean;
+} {
+  const count = (tools: Record<string, boolean>): number =>
+    mcpTools ? mcpTools.filter((tool) => tools[tool.id] !== false).length : 0;
+
+  return {
+    enabledToolsCount: count(lockedTools ?? settingsTools),
+    defaultToolsCount: count(settingsTools),
+    enabledToolsDiverge:
+      lockedTools != null && toolsetsDiffer(lockedTools, settingsTools),
+  };
 }

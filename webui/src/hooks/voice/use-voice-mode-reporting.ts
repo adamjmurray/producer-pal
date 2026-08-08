@@ -118,6 +118,9 @@ export function useVoiceModeReporting(
     provider: savedProvider,
     enabledToolsCount,
     totalToolsCount,
+    // Voice pins no toolset, so the count IS the current setting — nothing can
+    // diverge from it (same reason smallModelMode is hardcoded below).
+    defaultToolsCount: enabledToolsCount,
     smallModelMode: false,
     defaultSmallModelMode: false,
     showHelpLinks: display.showHelpLinks,

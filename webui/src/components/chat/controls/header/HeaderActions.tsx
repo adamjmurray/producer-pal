@@ -24,6 +24,13 @@ export interface HeaderInfo {
   provider: Provider;
   enabledToolsCount: number;
   totalToolsCount: number;
+  /** What the current setting would enable, for the locked indicator's title. */
+  defaultToolsCount: number;
+  /**
+   * Whether the conversation's pinned toolset differs from the current setting.
+   * Optional because voice sessions never pin one (they send no tool header).
+   */
+  enabledToolsDiverge?: boolean;
   smallModelMode: boolean;
   defaultSmallModelMode: boolean;
   showHelpLinks: boolean;
@@ -61,6 +68,8 @@ export function HeaderActions({
     provider,
     enabledToolsCount,
     totalToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     smallModelMode,
     defaultSmallModelMode,
     showHelpLinks,
@@ -101,6 +110,8 @@ export function HeaderActions({
         <ToolsIndicator
           enabledToolsCount={enabledToolsCount}
           totalToolsCount={totalToolsCount}
+          defaultToolsCount={defaultToolsCount}
+          diverges={enabledToolsDiverge}
         />
       </button>
 

@@ -111,11 +111,12 @@ export interface ConversationLockedSettings {
    */
   notation: Notation | null;
   /**
-   * The tool selection the conversation last connected with. Reported, not
-   * enforced: continuing a restored chat reconnects with whatever is enabled
-   * now, because a tool the user just turned on to keep working on an old
-   * conversation has to be reachable. Kept so the settings notice can say the
-   * toolset moved. Null for legacy records.
+   * The tool selection the conversation runs with. Locked for the mirror image
+   * of the notation reason: a transcript full of successful calls to a tool is
+   * itself an instruction to keep calling it, so withdrawing that tool
+   * mid-conversation invites a call the client can no longer route. Null for
+   * legacy records and for a chat that has yet to lock one; those reconnect on
+   * the current selection.
    */
   enabledTools: Record<string, boolean> | null;
 }

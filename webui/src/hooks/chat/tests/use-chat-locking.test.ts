@@ -178,8 +178,8 @@ describe("useChat small model mode locking", () => {
   });
 });
 
-describe("useChat toolset recording", () => {
-  it("records the toolset a new conversation connected with", async () => {
+describe("useChat toolset locking", () => {
+  it("locks the toolset a new conversation connected with", async () => {
     const { result } = renderHook(() => useChat(withTools));
 
     await act(async () => {
@@ -191,10 +191,10 @@ describe("useChat toolset recording", () => {
     });
   });
 
-  it("reconnects a restored conversation with today's tools, not its own", async () => {
-    // Deliberately unlike model/notation: a tool the user just turned on to keep
-    // working on an old conversation has to be reachable. The restored map is
-    // still surfaced first, which is what the settings notice reports.
+  it("reconnects a restored conversation on the toolset it ran with", async () => {
+    // Locked like the model and notation: the transcript's successful calls are
+    // themselves an instruction to keep calling those tools, so a tool switched
+    // off in Settings must not disappear from under a running conversation.
     const { result } = renderHook(() => useChat(withTools));
 
     await act(async () => {
@@ -204,8 +204,26 @@ describe("useChat toolset recording", () => {
       );
     });
 
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    expect(lastEnabledTools()).toStrictEqual({ "ppal-library": false });
     expect(result.current.activeEnabledTools).toStrictEqual({
       "ppal-library": false,
+    });
+  });
+
+  it("falls back to the current toolset for a record saved before it was locked", async () => {
+    // Legacy records carry no toolset. There is nothing to honor, so the current
+    // selection is what the client connects with — and what gets locked.
+    const { result } = renderHook(() => useChat(withTools));
+
+    await act(async () => {
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings(),
+      );
     });
 
     await act(async () => {
@@ -213,12 +231,9 @@ describe("useChat toolset recording", () => {
     });
 
     expect(lastEnabledTools()).toStrictEqual({ "ppal-library": true });
-    expect(result.current.activeEnabledTools).toStrictEqual({
-      "ppal-library": true,
-    });
   });
 
-  it("records nothing until a conversation connects", () => {
+  it("locks nothing until a conversation connects", () => {
     // A chat that has never built a client has no toolset to be compared
     // against, so the settings notice has nothing to report.
     const { result } = renderHook(() => useChat(withTools));

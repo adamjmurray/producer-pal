@@ -301,18 +301,20 @@ through this single code path via provider-specific model factories in
 **Locked Settings:**
 
 Provider, model, thinking level, small-model mode, the resolved system
-instruction, and notation are locked per conversation. When a conversation is
-saved, these settings are stored on the `ConversationRecord`. When restored,
-they're passed as `ConversationLockedSettings` to prevent settings changes from
-affecting the active conversation.
+instruction, notation, and the toolset (`enabledTools`) are locked per
+conversation. When a conversation is saved, these settings are stored on the
+`ConversationRecord`. When restored, they're passed as
+`ConversationLockedSettings` to prevent settings changes from affecting the
+active conversation.
 
 Notation is hard-locked rather than re-read per init: it decides how clip notes
 are PARSED, so a transcript written in one notation must keep being read in it.
 
-The toolset (`enabledTools`) rides on the same record but is **recorded, not
-enforced** — continuing a restored conversation reconnects with whatever is
-enabled now, since a tool the user just turned on to keep working has to be
-reachable. It is kept so the settings notice can say the toolset moved.
+The toolset is locked for the matching reason on the writing side: a transcript
+full of successful calls to a tool is itself an instruction to keep calling it,
+so withdrawing that tool mid-conversation invites a call the client can no
+longer route. Records saved before the toolset was locked have none, and fall
+back to the current selection.
 
 Per-message overrides (`MessageOverrides`) can still override thinking for
 individual messages. When used, the overridden value is stamped on the assistant
