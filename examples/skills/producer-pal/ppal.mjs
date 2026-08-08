@@ -8,9 +8,10 @@
 //   node ppal.mjs <tool> [json-args] [options]
 //
 // Options:
-//   --url <baseUrl>      override Producer Pal URL (default http://localhost:3350)
-//   --timeout-ms <ms>    per-request timeout (1–60000)
-//   --set-config <json>  update device settings, e.g. '{"notation":"midi-json"}'
+//   --url <baseUrl>          override Producer Pal URL (default http://localhost:3350)
+//   --timeout-ms <ms>        per-request timeout (1–60000)
+//   --set-config <json>      update device settings, e.g. '{"notation":"midi-json"}'
+//   --disable-tools <names>  withhold tools from this request (comma-separated)
 //
 // Examples:
 //   node ppal.mjs --set-config '{"notation":"midi-json"}'
@@ -18,6 +19,7 @@
 //   node ppal.mjs ppal-read-live-set
 //   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
 //   node ppal.mjs ppal-create-clip '{...}' --timeout-ms 10000
+//   node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 //
 // Library:
 //   import { listTools, callTool, setConfig } from "./ppal.mjs";
@@ -25,13 +27,33 @@
 
 const DEFAULT_BASE_URL = "http://localhost:3350";
 
+// Per-request tool subsetting. Unlike --set-config this changes nothing on the
+// device: it applies to the one request that carries it, so it can't strip tools
+// from the chat UI or another client.
+const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
+
+/**
+ * Request headers withholding the given tool names, or none when the list is
+ * empty. `disabledTools` is a string[] or a comma-separated string.
+ */
+function disabledToolsHeaders(disabledTools) {
+  const names = (
+    Array.isArray(disabledTools)
+      ? disabledTools.join(",")
+      : (disabledTools ?? "")
+  ).trim();
+  return names ? { [DISABLED_TOOLS_HEADER]: names } : {};
+}
+
 /**
  * GET /api/tools — returns the full envelope `{tools: [...]}` as a parsed
  * object. The tool list endpoint always returns JSON; it has no `?format`
- * toggle.
+ * toggle. `options.disabledTools` withholds tools from this catalog.
  */
-export async function listTools(baseUrl = DEFAULT_BASE_URL) {
-  const res = await fetch(`${baseUrl}/api/tools`);
+export async function listTools(baseUrl = DEFAULT_BASE_URL, options = {}) {
+  const res = await fetch(`${baseUrl}/api/tools`, {
+    headers: disabledToolsHeaders(options.disabledTools),
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -40,6 +62,10 @@ export async function listTools(baseUrl = DEFAULT_BASE_URL) {
  * Call a Producer Pal tool by name. The REST API defaults to `format=json`, so
  * `result` is a parsed value (object/array/etc.) and warnings are surfaced as a
  * separate `warnings: string[]` field.
+ *
+ * `options.disabledTools` withholds tools from this request: a withheld tool
+ * 404s, and `ppal-connect` returns a Skills blob with the fragments teaching
+ * those tools left out. Pass the same list on every call in a session.
  */
 export async function callTool(name, args = {}, options = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
@@ -53,7 +79,10 @@ export async function callTool(name, args = {}, options = {}) {
     : `${baseUrl}/api/tools/${name}`;
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...disabledToolsHeaders(options.disabledTools),
+    },
     body: JSON.stringify(args),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
@@ -95,6 +124,7 @@ function parseArgs(argv) {
     else if (arg === "--timeout-ms") opts.timeoutMs = Number(argv[++i]);
     else if (arg === "--list-tools") opts.listTools = true;
     else if (arg === "--set-config") opts.setConfig = argv[++i];
+    else if (arg === "--disable-tools") opts.disabledTools = argv[++i];
     else if (arg === "--help" || arg === "-h") opts.help = true;
     else positional.push(arg);
   }
@@ -109,16 +139,19 @@ Usage:
   node ppal.mjs <tool> [json-args] [options]
 
 Options:
-  --url <baseUrl>      override Producer Pal URL (default ${DEFAULT_BASE_URL})
-  --timeout-ms <ms>    per-request timeout (1–60000)
-  --set-config <json>  update device settings, e.g. '{"notation":"midi-json"}'
-  --help, -h           show this help
+  --url <baseUrl>          override Producer Pal URL (default ${DEFAULT_BASE_URL})
+  --timeout-ms <ms>        per-request timeout (1–60000)
+  --set-config <json>      update device settings, e.g. '{"notation":"midi-json"}'
+  --disable-tools <names>  withhold tools from this request (comma-separated
+                           tool names). Per request, not a device setting.
+  --help, -h               show this help
 
 Examples:
   node ppal.mjs --set-config '{"notation":"midi-json"}'
   node ppal.mjs --list-tools
   node ppal.mjs ppal-read-live-set
   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
+  node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 `;
 
 async function main(argv) {
@@ -129,7 +162,7 @@ async function main(argv) {
   }
 
   if (opts.listTools) {
-    const result = await listTools(opts.baseUrl);
+    const result = await listTools(opts.baseUrl, opts);
     console.log(JSON.stringify(result, null, 2));
     return;
   }

@@ -441,11 +441,15 @@ Where you set it depends on the client:
   [Claude Code](/installation/claude-code).
 - **[Claude Desktop](/installation/claude-desktop)** — the extension's **Tools**
   and **Disable tools** settings.
+- **[REST API](/guide/rest-api#per-request-toolset)** — the
+  `x-producer-pal-disabled-tools` header, per request. This is also what the
+  [Agent Skill](/guide/skills)'s `--disable-tools` flag sends.
 
 These are per client, unlike [notation](/features/midi-notation) and
 [small model mode](#small-model-mode): narrowing one client's toolset leaves the
-Chat UI and everything else alone. `ppal-connect` is always kept, since it is
-how the AI connects and receives the skills.
+Chat UI and everything else alone. Each of the clients above keeps
+`ppal-connect`, since it is how the AI connects and receives the skills — only
+the raw header lets you drop it.
 
 ## Skills {#skills}
 

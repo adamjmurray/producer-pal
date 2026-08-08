@@ -5,6 +5,10 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
+import {
+  DISABLED_TOOLS_HEADER,
+  resolveEnabledTools,
+} from "#src/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
@@ -34,12 +38,15 @@ interface RestApiConfig {
  *
  * @param app - Express application
  * @param getConfig - Returns current config (called per-request for live updates)
- * @param callLiveApi - Function to dispatch tool calls to Max V8
+ * @param buildCallLiveApi - Builds the dispatcher for one request from that
+ *   request's toolset. A builder rather than a fixed function because the
+ *   ppal-connect enrichment gates skills fragments on the toolset, so a caller
+ *   that withholds tools must get the smaller blob.
  */
 export function registerRestApiRoutes(
   app: Express,
   getConfig: () => RestApiConfig,
-  callLiveApi: CallLiveApiFunction,
+  buildCallLiveApi: (tools: readonly string[]) => CallLiveApiFunction,
 ): void {
   // Resolve which tool defs are available right now. The raw Live API
   // is opt-in via the device Setup tab; when disabled, it is fully absent
@@ -55,9 +62,9 @@ export function registerRestApiRoutes(
   // from the page URL, which over LAN/tunnel is a non-localhost origin, so a
   // localhost gate would 403 the documented unauthenticated remote-access
   // feature's own requests.
-  app.get("/api/tools", (_req: Request, res: Response): void => {
+  app.get("/api/tools", (req: Request, res: Response): void => {
     const config = getConfig();
-    const enabledSet = new Set(config.tools);
+    const enabledSet = new Set(requestTools(req, config));
     // Resolve descriptions and schemas against the active notation, matching how
     // REST tool execution registers them (define-tool.ts). REST is the
     // large-model surface, so small-model mode is off. Without this the catalog
@@ -98,7 +105,8 @@ export function registerRestApiRoutes(
       res: Response,
     ): Promise<void> => {
       const { toolName } = req.params;
-      const enabledSet = new Set(getConfig().tools);
+      const enabledTools = requestTools(req, getConfig());
+      const enabledSet = new Set(enabledTools);
 
       const toolDef = getActiveToolDefs().find(
         (td) => td.toolName === toolName,
@@ -147,7 +155,7 @@ export function registerRestApiRoutes(
       try {
         const overrides = buildOverrides(formatOverride, timeoutOverride);
 
-        const mcpResponse = (await callLiveApi(
+        const mcpResponse = (await buildCallLiveApi(enabledTools)(
           toolName,
           parsed.data,
           overrides,
@@ -174,6 +182,24 @@ export function registerRestApiRoutes(
       }
     },
   );
+}
+
+/**
+ * The toolset for one request: the device's global whitelist minus whatever the
+ * caller withheld via the disabled-tools header. Same subtraction semantics as
+ * POST /mcp — an absent header means the global whitelist, unchanged — and
+ * nothing is reserved, so a caller can withhold ppal-connect itself.
+ *
+ * It narrows the catalog, 404s a withheld tool, and shrinks the ppal-connect
+ * skills blob, which is the point: fragments are gated on the toolset, so a
+ * caller that only needs a few tools pays for only those fragments.
+ *
+ * @param req - Express request
+ * @param config - Current device config
+ * @returns The tool names available to this request
+ */
+function requestTools(req: Request, config: RestApiConfig): string[] {
+  return resolveEnabledTools(req.get(DISABLED_TOOLS_HEADER), config.tools);
 }
 
 /**

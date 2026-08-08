@@ -111,6 +111,133 @@ describe("POST /mcp per-request disabled-tools header", () => {
   });
 });
 
+describe("REST API per-request disabled-tools header", () => {
+  /**
+   * The tool names GET /api/tools serves with the given headers.
+   *
+   * @param requestHeaders - Request headers to send
+   * @returns The catalog's tool names
+   */
+  async function restToolNames(
+    requestHeaders: Record<string, string>,
+  ): Promise<string[]> {
+    const response = await fetch(`${appState.baseUrl}/api/tools`, {
+      headers: requestHeaders,
+    });
+    const body = (await response.json()) as { tools: Array<{ name: string }> };
+
+    return body.tools.map((tool) => tool.name);
+  }
+
+  /**
+   * POST a tool call with the given headers.
+   *
+   * @param toolName - Tool to call
+   * @param requestHeaders - Request headers to send
+   * @returns The raw response
+   */
+  function restCallTool(
+    toolName: string,
+    requestHeaders: Record<string, string>,
+  ): Promise<Response> {
+    mockMaxSuccess();
+
+    return fetch(`${appState.baseUrl}/api/tools/${toolName}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...requestHeaders },
+      body: "{}",
+    });
+  }
+
+  describe("GET /api/tools", () => {
+    it("withholds the named tools from this request's catalog", async () => {
+      const names = await restToolNames(headers("ppal-library", "ppal-select"));
+
+      expect(names).not.toContain("ppal-library");
+      expect(names).not.toContain("ppal-select");
+      expect(names).toContain("ppal-connect");
+    });
+
+    it("serves the full catalog when the header is absent", async () => {
+      expect(await restToolNames(headers())).toContain("ppal-library");
+    });
+
+    it("does not leak one request's toolset onto the next", async () => {
+      await restToolNames(headers("ppal-library"));
+
+      expect(await restToolNames(headers())).toContain("ppal-library");
+    });
+  });
+
+  describe("POST /api/tools/:toolName", () => {
+    it("404s a tool this request withheld", async () => {
+      const response = await restCallTool(
+        "ppal-library",
+        headers("ppal-library"),
+      );
+
+      expect(response.status).toBe(404);
+    });
+
+    it("still serves a tool the request kept", async () => {
+      const response = await restCallTool(
+        "ppal-library",
+        headers("ppal-select"),
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it("lets a caller withhold ppal-connect itself, reserving nothing", async () => {
+      // Matches POST /mcp: a caller that has no use for the entry point pays
+      // nothing for it.
+      const response = await restCallTool(
+        "ppal-connect",
+        headers("ppal-connect"),
+      );
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("skills gating", () => {
+    /**
+     * Call ppal-connect over REST and return the injected skills block. In
+     * `?format=json` (the REST default) the Node-appended blocks arrive as
+     * `appended`.
+     *
+     * @param requestHeaders - Request headers to send
+     * @returns The skills block text, or "" when none was found
+     */
+    async function restConnectSkillsBlock(
+      requestHeaders: Record<string, string>,
+    ): Promise<string> {
+      const response = await restCallTool("ppal-connect", requestHeaders);
+      const body = (await response.json()) as { appended?: string[] };
+
+      return (
+        body.appended?.find((text) => text.startsWith(SKILLS_HEADER)) ?? ""
+      );
+    }
+
+    it("omits the fragment for a tool this request withheld", async () => {
+      // The reason the header matters here at all: a coding agent driving the
+      // REST API pays for the skills blob on every session's bootstrap.
+      const gated = await restConnectSkillsBlock(headers("ppal-library"));
+
+      expect(gated.startsWith(SKILLS_HEADER)).toBe(true);
+      expect(gated).not.toContain(LIBRARY_SECTION);
+      expect(gated).toContain("## Devices & Instruments");
+    });
+
+    it("keeps every fragment when the header is absent", async () => {
+      expect(await restConnectSkillsBlock(headers())).toContain(
+        LIBRARY_SECTION,
+      );
+    });
+  });
+});
+
 describe("GET /skills-preview tool gating", () => {
   /**
    * Fetch the assembled preview blob.

@@ -171,6 +171,34 @@ values return **400**. Combinable with `?format=`:
 POST /api/tools/{name}?format=json&timeoutMs=10000
 ```
 
+### Per-request toolset {#per-request-toolset}
+
+Send `x-producer-pal-disabled-tools` — a comma-separated list of tool names — to
+withhold tools from a single request. It works on both endpoints: a withheld
+tool disappears from `GET /api/tools` and **404**s from
+`POST /api/tools/{name}`.
+
+The reason to bother is `ppal-connect`: withholding a tool also drops the part
+of the [Skills](/features#skills) it returns that teaches that tool, so a client
+that only needs a few tools stops paying for the rest in every session. See
+[Choosing a Toolset](/features#toolset).
+
+```bash
+# A read-only session: no writers, and no note-writing instructions either
+curl -X POST http://localhost:3350/api/tools/ppal-connect \
+  -H 'Content-Type: application/json' \
+  -H 'x-producer-pal-disabled-tools: ppal-create-clip,ppal-update-clip,ppal-delete' \
+  -d '{}'
+```
+
+Send the same header on every request in the session — it applies per request,
+not per client, and nothing is remembered between them. Unrecognized names are
+ignored, and unlike `POST /config` this changes nothing on the device: the
+[Chat UI](/guide/chat-ui) and other clients are unaffected.
+
+`ppal-connect` itself can be withheld. Nothing is reserved here, unlike the
+`npx producer-pal` flags.
+
 ## Quick Start with curl
 
 ```bash

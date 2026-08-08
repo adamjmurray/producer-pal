@@ -175,7 +175,10 @@ export function setupRestRoutesServer(options: {
     const app = express();
 
     app.use(express.json());
-    registerRestApiRoutes(app, getConfig, callLiveApi);
+    // The per-request toolset is ignored here: what consumes it is the connect
+    // enrichment, covered end-to-end against the real app in
+    // create-express-app-tool-gating.test.ts.
+    registerRestApiRoutes(app, getConfig, () => callLiveApi);
 
     server = app.listen(0);
     await new Promise<void>((resolve) => server?.once("listening", resolve));

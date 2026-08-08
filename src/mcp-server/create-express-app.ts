@@ -165,10 +165,10 @@ function applyLiveApiEnabled(next: boolean): void {
  * Enrich ppal-connect Node-side with the skills, context, memory, and next-step
  * blocks (see enrich-connect.ts for the block order and why it matters).
  * config.projectContext is the per-Live Set context blob. smallModelMode, the
- * toolset, and notation arrive through getters (not config directly) so a POST
- * /mcp request can supply its own per-request values — the same values that
- * shrink its tool schemas and its registered tools — while REST routes keep
- * reading the live globals.
+ * toolset, and notation arrive through getters (not config directly) so a
+ * request can supply its own per-request values — the same values that shrink
+ * its tool schemas and its registered tools. POST /mcp overrides all three;
+ * REST overrides the toolset and reads the other two live.
  *
  * Notation is also pushed down as a request override (withNotationOverride), so
  * the notation the skills teach is the one V8 actually parses and formats notes
@@ -192,12 +192,21 @@ function buildEnrichedCall(
   }));
 }
 
-// REST routes read the live global; POST /mcp builds its own per-request wrapper.
-const callLiveApiEnriched = buildEnrichedCall(
-  () => config.smallModelMode,
-  () => config.tools,
-  () => config.notation,
-);
+/**
+ * Build the enriched call for one REST request, given that request's toolset.
+ * The other two settings stay global there: REST has no per-request header for
+ * small-model mode or notation.
+ *
+ * @param tools - The toolset skills fragments are gated on for this request
+ * @returns A callLiveApi for this one request
+ */
+function buildRestCall(tools: readonly string[]): WrappedCallLiveApi {
+  return buildEnrichedCall(
+    () => config.smallModelMode,
+    () => tools,
+    () => config.notation,
+  );
+}
 
 interface JsonRpcError {
   jsonrpc: string;
@@ -385,7 +394,7 @@ export function createExpressApp(): Express {
     void getUpdate().then((update) => res.json(update));
   });
 
-  registerRestApiRoutes(app, () => config, callLiveApiEnriched);
+  registerRestApiRoutes(app, () => config, buildRestCall);
 
   registerGlobalContextRoutes(app);
   registerGlobalSettingsRoutes(app);

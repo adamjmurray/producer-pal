@@ -130,6 +130,21 @@ trims the tool descriptions) and consider `stark` instead of `midi-json`:
 node ppal.mjs --set-config '{"notation":"stark","smallModelMode":true}'
 ```
 
+### Narrowing the toolset
+
+`--disable-tools <names>` withholds tools from a request. The withheld tools
+vanish from `--list-tools`, and — the point — `ppal-connect` comes back without
+the parts of the Skills that teach them, so the agent stops paying for guidance
+it will never use. See [Choosing a Toolset](/features#toolset).
+
+```bash
+node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
+```
+
+`SKILL.md` tells the agent to decide once and pass the same list on every call,
+since the header applies per request. Unlike the settings above this changes
+nothing on the device, so the Chat UI and your MCP clients are unaffected.
+
 ### Direct Live API (advanced)
 
 The `ppal-live-api` tool gives direct, low-level access to the

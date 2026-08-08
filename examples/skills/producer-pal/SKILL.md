@@ -43,6 +43,28 @@ you control Ableton Live without an MCP client.
    `ppal-connect` also confirms the device is running and reports the current
    Live Set state.
 
+## Narrowing the toolset (optional, saves context)
+
+`--disable-tools <names>` withholds tools from a single request. A withheld tool
+disappears from `--list-tools`, 404s if called, and — the reason it's worth
+doing — drops the parts of the `ppal-connect` Skills blob that teach it. The
+full blob is large; a session that only reads a Live Set can cut most of it.
+
+Decide once, then pass the same list on every call, including `ppal-connect`:
+
+```bash
+# Read-only session: no writers, so all the note-writing and transform
+# instructions come off the Skills blob too
+node ppal.mjs ppal-connect --disable-tools ppal-create-clip,ppal-update-clip,ppal-create-track,ppal-update-track,ppal-create-scene,ppal-update-scene,ppal-create-device,ppal-update-device,ppal-update-live-set,ppal-delete,ppal-duplicate,ppal-context,ppal-playback
+```
+
+Run `--list-tools` first if you need the exact names. Only skip tools you're
+sure the task won't need — a withheld tool is unavailable for the whole session,
+and you'd have to re-run `ppal-connect` without it to get its instructions back.
+
+Unlike `--set-config`, this changes nothing on the device: it never affects the
+chat UI or another client, and it resets when your session ends.
+
 ## Notation
 
 Producer Pal encodes MIDI notes in one of three notations, selected by the
@@ -71,6 +93,9 @@ node ppal.mjs --set-config '{"notation":"midi-json"}'
 
 # Discovery
 node ppal.mjs --list-tools
+
+# Withhold tools from one request (per request, not a device setting)
+node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 
 # Tool calls (args are a JSON object)
 node ppal.mjs ppal-read-live-set
