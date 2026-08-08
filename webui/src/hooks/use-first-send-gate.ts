@@ -10,8 +10,9 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
 
 /**
  * Defer a chat send while any value the first turn will LOCK is still loading.
- * useChat's initializeChat locks the system instruction and the notation from
- * whatever is current at the first send, and both are fetched on mount:
+ * useChat's initializeChat locks the system instruction, the notation, and the
+ * toolset from whatever is current at the first send, and all are fetched on
+ * mount:
  *
  * - the custom system prompt (`/system-prompt`) — provisionally "" (built-in),
  *   so a turn fired inside the fetch window locks the built-in prompt and keeps
@@ -21,9 +22,16 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
  *   grammar for its entire life, teaching the model one notation while their
  *   clips are written in another. Nothing else catches this: the provisional
  *   value is itself a perfectly valid notation, and no error surfaces.
+ * - the Direct Live API flag (`/config`) — provisionally false, and stamped into
+ *   the locked toolset (withLiveApiTool), so a turn fired in that window pins the
+ *   tool off for the conversation's life on a device that has it on. Invisible
+ *   the same way: an off tool raises no error.
  *
- * Waiting out the load closes both races — mirroring how initializeChat already
- * awaits validateMcpConnection before locking.
+ * Waiting out the load closes all three races — mirroring how initializeChat
+ * already awaits validateMcpConnection before locking. The third rides the
+ * SECOND: both come from the one `/config` GET, so the notation wait covers the
+ * flag and callers pass no separate known-flag for it. Relaxing the notation
+ * wait would silently reopen the Live API race.
  *
  * Once nothing is loading the gate is transparent: it returns immediately and
  * never delays a later send. "Loaded" deliberately includes failure (an

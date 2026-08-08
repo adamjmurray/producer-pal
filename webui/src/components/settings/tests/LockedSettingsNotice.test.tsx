@@ -13,6 +13,7 @@ import {
   type ConversationLock,
   LockedSettingsNotice,
 } from "#webui/components/settings/LockedSettingsNotice";
+import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
 
 type NoticeProps = ComponentProps<typeof LockedSettingsNotice>;
 
@@ -23,6 +24,7 @@ describe("LockedSettingsNotice", () => {
     smallModelMode: false,
     notation: "barbeat",
     enabledTools: {},
+    liveApiEnabled: false,
   };
 
   /** A lock whose every field already agrees with defaultProps. */
@@ -156,6 +158,33 @@ describe("LockedSettingsNotice", () => {
     const { container } = renderNotice(
       {},
       { enabledTools: { "ppal-library": false } },
+    );
+
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("reports the Direct Live API tool in both directions", () => {
+    // Its checkbox flips the device flag instead of writing a map entry, so
+    // without the stamp the pinned-on/now-off case reads as "absent = enabled"
+    // on the settings side and the notice misses it.
+    for (const [pinned, liveApiEnabled] of [
+      [true, false],
+      [false, true],
+    ] as const) {
+      const { unmount } = renderNotice(
+        { activeEnabledTools: { [LIVE_API_TOOL_ID]: pinned } },
+        { liveApiEnabled },
+      );
+
+      expect(screen.getByText(/different set of tools/)).toBeTruthy();
+      unmount();
+    }
+  });
+
+  it("stays quiet when the pinned Live API state still matches the flag", () => {
+    const { container } = renderNotice(
+      { activeEnabledTools: { [LIVE_API_TOOL_ID]: true } },
+      { liveApiEnabled: true },
     );
 
     expect(container.innerHTML).toBe("");

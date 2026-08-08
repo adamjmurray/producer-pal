@@ -26,8 +26,12 @@ import { mockConfigResponse } from "./use-remote-config-test-helpers";
 //
 // useChatModeState composes these same pieces (App owns the sync); the
 // system-prompt half of its OR is covered in use-first-send-gate.test.ts.
+//
+// serverLiveApiEnabled is checked here too: it is locked at the same first send
+// (stamped into the toolset) but has no known-flag of its own, so this chain is
+// all that keeps it from pinning a provisional false.
 function useNotationSendHarness(
-  send: (notation: string) => void,
+  send: (notation: string, liveApiEnabled: boolean) => void,
   observe?: (known: boolean, notation: string) => void,
 ) {
   const remoteConfig = useRemoteConfig("connected");
@@ -42,7 +46,7 @@ function useNotationSendHarness(
   );
 
   return useFirstSendGate(!settings.notationKnown, async () => {
-    send(settings.notation);
+    send(settings.notation, remoteConfig.serverLiveApiEnabled);
   });
 }
 
@@ -75,7 +79,7 @@ describe("notation first-send wiring", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
       await configInFlight;
 
-      return mockConfigResponse({ notation: "stark" });
+      return mockConfigResponse({ notation: "stark", liveApiEnabled: true });
     });
 
     const send = vi.fn();
@@ -94,7 +98,11 @@ describe("notation first-send wiring", () => {
       await sendPromise;
     });
 
-    expect(send).toHaveBeenCalledExactlyOnceWith("stark");
+    // The Live API flag rides this same GET and has no known-flag of its own:
+    // the notation wait is the ONLY thing keeping the first send from stamping
+    // a provisional false into the toolset it pins. Asserted here so relaxing
+    // that wait fails a test instead of silently pinning the tool off.
+    expect(send).toHaveBeenCalledExactlyOnceWith("stark", true);
   });
 
   it("lets the send through with the default when /config is unreachable", async () => {
@@ -112,7 +120,7 @@ describe("notation first-send wiring", () => {
       await sendPromise;
     });
 
-    expect(send).toHaveBeenCalledWith("barbeat");
+    expect(send).toHaveBeenCalledWith("barbeat", false);
   });
 
   it("never reports the notation as known while it is still the stale default", async () => {

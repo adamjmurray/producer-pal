@@ -36,10 +36,18 @@ export interface UseRemoteConfigReturn {
  * Setup-tab changes when the user returns to the chat UI window).
  * Provides POST functions for syncing local changes to the server on save.
  *
- * The booleans start at a provisional `false` and are simply corrected when the
- * fetch lands. `serverNotation` cannot do that — see its doc on
+ * `serverSmallModelMode` starts at a provisional `false` and is simply corrected
+ * when the fetch lands. `serverNotation` cannot do that — see its doc on
  * {@link UseRemoteConfigReturn} — so it starts null and stays null until an
  * answer arrives, a failure resolves it to the default, or a POST sets it.
+ *
+ * `serverLiveApiEnabled` is provisional in the same way, but it is NOT harmless:
+ * it is stamped into the toolset a new conversation locks at its first send (see
+ * withLiveApiTool), so a turn fired inside the fetch window would pin the tool
+ * off for that conversation's whole life on a device that has it on — the same
+ * invisible, permanent failure as the notation case. It is safe only because it
+ * rides this same GET as `serverNotation`, which useFirstSendGate waits for. If
+ * that wait is ever relaxed, this needs its own known-flag.
  *
  * @param {McpStatus} mcpStatus - Current MCP connection status
  * @returns {UseRemoteConfigReturn} Server config values and POST functions

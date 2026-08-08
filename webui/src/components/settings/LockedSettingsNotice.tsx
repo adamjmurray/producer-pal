@@ -6,7 +6,10 @@
 import { type Notation, NOTATION_LABELS } from "#src/shared/notation";
 import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
 import { getModelName } from "#webui/lib/config";
-import { enabledToolsDiverge } from "#webui/lib/utils/enabled-tools";
+import {
+  enabledToolsDiverge,
+  withLiveApiTool,
+} from "#webui/lib/utils/enabled-tools";
 import { type Provider } from "#webui/types/settings";
 
 /** Locked conversation state: model/provider/small-model mode/notation/toolset from the active conversation */
@@ -25,6 +28,7 @@ interface LockedSettingsNoticeProps {
   smallModelMode: boolean;
   notation: Notation;
   enabledTools: Record<string, boolean>;
+  liveApiEnabled: boolean;
 }
 
 /**
@@ -39,6 +43,7 @@ interface LockedSettingsNoticeProps {
  * @param props.smallModelMode - Current small model mode setting
  * @param props.notation - Current notation setting
  * @param props.enabledTools - Current tool selection
+ * @param props.liveApiEnabled - Current Direct Live API flag (the modal's buffer)
  * @returns Notice element or null
  */
 export function LockedSettingsNotice({
@@ -48,6 +53,7 @@ export function LockedSettingsNotice({
   smallModelMode,
   notation,
   enabledTools,
+  liveApiEnabled,
 }: LockedSettingsNoticeProps) {
   const {
     activeModel,
@@ -67,9 +73,19 @@ export function LockedSettingsNotice({
     activeNotation != null && activeNotation !== notation;
   // Same for the toolset, which is likewise absent on records saved before it
   // was locked (those reconnect on the current selection, so stay quiet).
+  // Both sides take the Live API stamp, as in App's tools indicator: the
+  // selection carries no entry for it (its checkbox flips the device flag), so
+  // unstamped it reads as enabled and a conversation pinned while the flag was
+  // ON looks unchanged after the flag goes off. The flag here is the modal's
+  // buffer, not the server value App stamps with — like every other field in
+  // this notice, which is about the selection the user is looking at, so
+  // unchecking the box says so before the save lands.
   const toolsDiverge =
     activeEnabledTools != null &&
-    enabledToolsDiverge(activeEnabledTools, enabledTools);
+    enabledToolsDiverge(
+      withLiveApiTool(activeEnabledTools, liveApiEnabled),
+      withLiveApiTool(enabledTools, liveApiEnabled),
+    );
 
   if (
     !modelDiverges &&

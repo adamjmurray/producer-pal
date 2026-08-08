@@ -214,7 +214,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // custom system prompt (else a turn fired during the fetch locks the built-in
   // instruction when the user has an override) and the notation (else it locks
   // the provisional default and teaches the wrong grammar for the whole
-  // conversation). Transparent once both have resolved.
+  // conversation). The notation wait covers serverLiveApiEnabled too — same
+  // /config GET, and the stamp above pins it just as permanently. Transparent
+  // once they have resolved.
   const gatedHandleSend = useFirstSendGate(
     systemPromptDoc.status.kind === "loading" || !settings.notationKnown,
     wrappedHandleSend,
