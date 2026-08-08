@@ -12,13 +12,13 @@
 // Unknown keys are preserved across writes so an older build can't silently drop
 // a setting a newer one added.
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { readFileSync } from "node:fs";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "../../node-for-max-logger.ts";
 import {
   isConfigDirInert,
   resolveConfigPath,
+  writeConfigFileAtomic,
 } from "./config-markdown-store.ts";
 
 const FILENAME = "settings.json";
@@ -79,12 +79,11 @@ export function updateGlobalSettings(
   if (isConfigDirInert()) return readGlobalSettings();
 
   const merged = { ...readRaw(), ...patch };
-  const target = resolveConfigPath(FILENAME);
-  const tmpPath = `${target}.tmp`;
 
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(tmpPath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
-  renameSync(tmpPath, target);
+  writeConfigFileAtomic(
+    resolveConfigPath(FILENAME),
+    `${JSON.stringify(merged, null, 2)}\n`,
+  );
 
   return readGlobalSettings();
 }

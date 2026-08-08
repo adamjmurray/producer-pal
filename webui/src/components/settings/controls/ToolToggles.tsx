@@ -10,11 +10,13 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
+import {
+  LIVE_API_TOOL_ID,
+  isToolEnabled,
+} from "#webui/lib/utils/enabled-tools";
 import {
   ensureLiveApiTool,
   ensureSpawnSubagentTool,
-  SPAWN_SUBAGENT_TOOL_ID,
   type GroupedTools,
   groupTools,
 } from "./helpers/tool-toggles-helpers";
@@ -120,11 +122,12 @@ export function ToolToggles({
 
   const isToolChecked = (toolId: string) => {
     if (isAlwaysEnabled(toolId)) return true;
+    // Live API binds to the device flag, not the map (see the prop comment).
     if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
-    // Subagent is opt-in: off unless explicitly enabled (default true elsewhere).
-    if (toolId === SPAWN_SUBAGENT_TOOL_ID) return enabledTools[toolId] === true;
 
-    return enabledTools[toolId] ?? true;
+    // Shared with the MCP layer and preset/transfer code, so the checkbox can't
+    // drift from what the model is actually offered.
+    return isToolEnabled(enabledTools, toolId);
   };
 
   const enableDefaultTools = () => {

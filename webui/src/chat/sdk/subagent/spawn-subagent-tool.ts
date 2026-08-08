@@ -5,16 +5,8 @@
 
 import { type Tool, jsonSchema } from "ai";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
-
-/**
- * Client-side delegation tool name. Not an MCP tool: it runs a nested chat
- * session in the browser (needs the decrypted API key + chat client, both
- * unreachable from the server), so it has no `ppal-` prefix and never appears in
- * the MCP /tools response. The Tools tab surfaces it as an opt-in "Subagent"
- * toggle keyed by this exact string.
- */
-export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
 
 /**
  * A worker's nested tool-step budget. Higher than the orchestrator's default so

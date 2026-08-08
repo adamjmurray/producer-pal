@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
-import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
+import {
+  LIVE_API_TOOL_ID,
+  SPAWN_SUBAGENT_TOOL_NAME,
+} from "#webui/lib/utils/enabled-tools";
 
 interface ToolGroup {
   label: string;
@@ -17,14 +19,10 @@ export interface GroupedTools {
   tools: McpTool[];
 }
 
-// The client-side Subagent toggle's enabledTools key. Shares the tool name so
-// the Tools-tab checkbox and client.ts injection read/write the same flag.
-export const SPAWN_SUBAGENT_TOOL_ID = SPAWN_SUBAGENT_TOOL_NAME;
-
 // Subagent is client-side (never in the MCP /tools response) and opt-in (off by
 // default), so it needs a placeholder like the Live API tool. Kept terse.
 const SPAWN_SUBAGENT_TOOL: McpTool = {
-  id: SPAWN_SUBAGENT_TOOL_ID,
+  id: SPAWN_SUBAGENT_TOOL_NAME,
   name: "Subagent",
   description:
     "Experimental: let the assistant delegate subtasks to nested subagents " +
@@ -40,7 +38,7 @@ const SPAWN_SUBAGENT_TOOL: McpTool = {
  * @returns Tools list guaranteed to contain the Subagent entry
  */
 export function ensureSpawnSubagentTool(tools: McpTool[]): McpTool[] {
-  if (tools.some((t) => t.id === SPAWN_SUBAGENT_TOOL_ID)) return tools;
+  if (tools.some((t) => t.id === SPAWN_SUBAGENT_TOOL_NAME)) return tools;
 
   return [...tools, SPAWN_SUBAGENT_TOOL];
 }
@@ -106,7 +104,7 @@ const TOOL_GROUPS: ToolGroup[] = [
   },
   {
     label: "Advanced",
-    toolIds: ["ppal-live-api", SPAWN_SUBAGENT_TOOL_ID],
+    toolIds: [LIVE_API_TOOL_ID, SPAWN_SUBAGENT_TOOL_NAME],
   },
 ];
 

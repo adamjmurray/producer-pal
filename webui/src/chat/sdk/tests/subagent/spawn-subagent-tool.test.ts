@@ -8,13 +8,13 @@ import {
   MAX_SPAWNS,
   MAX_WORKER_STEPS,
   type RunWorkerOptions,
-  SPAWN_SUBAGENT_TOOL_NAME,
   type WorkerRunResult,
   buildWorkerConfig,
   createSpawnSubagentTool,
   extractWorkerResult,
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type ChatClientConfig,
   type ChatMessage,

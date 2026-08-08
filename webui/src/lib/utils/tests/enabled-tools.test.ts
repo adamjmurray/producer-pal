@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
+  SPAWN_SUBAGENT_TOOL_NAME,
   enabledToolsDiverge,
   isEnabledToolsMap,
   isToolEnabled,

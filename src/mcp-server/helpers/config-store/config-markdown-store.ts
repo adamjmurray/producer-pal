@@ -94,7 +94,21 @@ export function readConfigMarkdown(filename: string): string {
 export function writeConfigMarkdown(filename: string, content: string): void {
   if (isConfigDirInert()) return;
 
-  const target = resolveConfigPath(filename);
+  writeConfigFileAtomic(resolveConfigPath(filename), content);
+}
+
+/**
+ * Write a config file through a temp file and a rename, creating its directory
+ * if needed, so a crash mid-write can't leave a half-written file. The one
+ * place that write lives — settings.json goes through it too, not just the
+ * markdown slots.
+ *
+ * Callers check {@link isConfigDirInert} first; this does not.
+ *
+ * @param target - Absolute path to write
+ * @param content - The file's full contents
+ */
+export function writeConfigFileAtomic(target: string, content: string): void {
   const tmpPath = `${target}.tmp`;
 
   mkdirSync(dirname(target), { recursive: true });

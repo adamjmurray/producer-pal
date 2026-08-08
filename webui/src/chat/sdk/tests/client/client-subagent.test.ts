@@ -54,9 +54,9 @@ vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
   MAX_SPAWNS,
-  SPAWN_SUBAGENT_TOOL_NAME,
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   getSubagentRateLimit,
   resetSubagentRateLimits,

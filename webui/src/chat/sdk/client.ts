@@ -18,10 +18,10 @@ import { handleStreamPart } from "./streaming/stream-part-handlers";
 import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
 import {
   type RunWorkerOptions,
-  SPAWN_SUBAGENT_TOOL_NAME,
   type WorkerRunResult,
   createSpawnSubagentTool,
 } from "./subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import { fetchSubagentBriefing } from "./subagent/subagent-briefing";
 import {
   RateLimitGate,

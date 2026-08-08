@@ -3,10 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
-
 /** The Direct Live API tool's id, in the toolset map and the MCP catalog. */
 export const LIVE_API_TOOL_ID = "ppal-live-api";
+
+/**
+ * Client-side delegation tool name. Not an MCP tool: it runs a nested chat
+ * session in the browser (needs the decrypted API key + chat client, both
+ * unreachable from the server), so it has no `ppal-` prefix and never appears in
+ * the MCP /tools response. The Tools tab surfaces it as an opt-in "Subagent"
+ * toggle keyed by this exact string.
+ *
+ * Lives here, with the other tool ids the toolset map special-cases, rather than
+ * in the tool module: preset, transfer, and settings code needs the id to read a
+ * toolset map, and importing it from the tool would drag the `ai` SDK along.
+ */
+export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
 
 /**
  * Write the Direct Live API tool's effective state into a toolset map, unless

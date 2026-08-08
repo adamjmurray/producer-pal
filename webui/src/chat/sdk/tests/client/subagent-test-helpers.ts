@@ -15,10 +15,8 @@
 import { streamText } from "ai";
 import { type vi } from "vitest";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
-import {
-  MAX_SPAWNS,
-  SPAWN_SUBAGENT_TOOL_NAME,
-} from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { MAX_SPAWNS } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   createConfig,
   mockStreamParts,

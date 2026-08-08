@@ -23,7 +23,7 @@
  */
 
 import { type ChatMessage } from "#webui/chat/sdk/types";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "./spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 
 /** One worker run: the transcript it produced and the worker's own index. */
 export interface SubagentRun {

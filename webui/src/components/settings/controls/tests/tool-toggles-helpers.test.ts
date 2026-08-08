@@ -8,10 +8,12 @@ import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import {
   ensureLiveApiTool,
   ensureSpawnSubagentTool,
-  SPAWN_SUBAGENT_TOOL_ID,
   groupTools,
 } from "#webui/components/settings/controls/helpers/tool-toggles-helpers";
-import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
+import {
+  LIVE_API_TOOL_ID,
+  SPAWN_SUBAGENT_TOOL_NAME,
+} from "#webui/lib/utils/enabled-tools";
 
 const tool = (id: string, name: string): McpTool => ({ id, name });
 
@@ -43,7 +45,7 @@ describe("ensureSpawnSubagentTool", () => {
     const result = ensureSpawnSubagentTool(tools);
 
     expect(result).toHaveLength(2);
-    expect(result[1]?.id).toBe(SPAWN_SUBAGENT_TOOL_ID);
+    expect(result[1]?.id).toBe(SPAWN_SUBAGENT_TOOL_NAME);
     expect(result[1]?.name).toBe("Subagent");
     expect(result[1]?.description).toBeDefined();
   });
@@ -51,7 +53,7 @@ describe("ensureSpawnSubagentTool", () => {
   it("returns the original list when Subagent is already present", () => {
     const tools = [
       tool("ppal-connect", "Connect"),
-      tool(SPAWN_SUBAGENT_TOOL_ID, "Subagent"),
+      tool(SPAWN_SUBAGENT_TOOL_NAME, "Subagent"),
     ];
     const result = ensureSpawnSubagentTool(tools);
 
@@ -67,7 +69,7 @@ describe("groupTools", () => {
 
     expect(groups.at(-1)?.label).toBe("Advanced");
     expect(groups.at(-1)?.tools.map((t) => t.id)).toStrictEqual([
-      SPAWN_SUBAGENT_TOOL_ID,
+      SPAWN_SUBAGENT_TOOL_NAME,
     ]);
   });
 
@@ -85,7 +87,7 @@ describe("groupTools", () => {
     expect(groups[1]?.label).toBe("Advanced");
     expect(groups[1]?.tools.map((t) => t.id)).toStrictEqual([
       LIVE_API_TOOL_ID,
-      SPAWN_SUBAGENT_TOOL_ID,
+      SPAWN_SUBAGENT_TOOL_NAME,
     ]);
   });
 

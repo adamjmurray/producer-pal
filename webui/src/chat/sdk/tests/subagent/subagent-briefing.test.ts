@@ -10,10 +10,8 @@ import {
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config";
 import { NOTATION_HEADER } from "#src/shared/notation";
-import {
-  SPAWN_SUBAGENT_TOOL_NAME,
-  createSpawnSubagentTool,
-} from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { createSpawnSubagentTool } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   WORKER_WITHHELD_TOOLS,
   fetchSubagentBriefing,
