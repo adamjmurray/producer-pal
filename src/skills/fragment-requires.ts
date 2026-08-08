@@ -50,8 +50,9 @@ export const FRAGMENT_REQUIRES: Record<string, readonly string[]> = {
 
   "arrangement-write": ["arrangement"],
 
-  // The standard notation head defers note values and the dual-meter rule; the
-  // basic heads and midi-json spell their own out, so neither needs the edge.
+  // The standard notation head defers note values to time-and-values; the basic
+  // heads and midi-json spell their own out, so neither needs the edge. (The
+  // dual-meter rule lives in `arrangement`, with the params it governs.)
   "barbeat-standard": [TIME_AND_VALUES],
   "working-with-live": [TIME_AND_VALUES],
 
