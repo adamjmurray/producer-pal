@@ -25,6 +25,28 @@ export function isToolEnabled(
 }
 
 /**
+ * The comma-separated tool names to withhold, from the sparse enabled map.
+ * Only explicit `false` entries count — an absent tool is enabled, which is what
+ * keeps a tool added in a later release on by default.
+ *
+ * This is the wire form of a toolset: the chat sends it as the disabled-tools
+ * header, and the skills preview sends the same list so it can show the blob
+ * that toolset would actually receive.
+ *
+ * @param enabledTools - Map of tool name to enabled state
+ * @returns Comma-separated disabled tool names, or "" when none are disabled
+ */
+export function disabledToolNames(
+  enabledTools?: Record<string, boolean>,
+): string {
+  if (!enabledTools) return "";
+
+  return Object.keys(enabledTools)
+    .filter((name) => enabledTools[name] === false)
+    .join(",");
+}
+
+/**
  * Whether two toolset maps would offer a different set of tools. Compared by
  * effective enablement rather than key/value equality, so `{}` and
  * `{ "ppal-read-clip": true }` count as the same toolset — a saved conversation

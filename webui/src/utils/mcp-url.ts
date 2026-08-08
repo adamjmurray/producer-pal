@@ -139,19 +139,32 @@ export function getCustomSkillEntryUrl(name: string): string {
  * Gets the skills-preview endpoint URL for a notation + small-model combination
  * (the assembled "# Producer Pal Skills" blob ppal-connect would return for that
  * combination, with the user's fragment overrides applied).
+ *
+ * `disabledTools` mirrors the chat's disabled-tools header — the tools this
+ * toolset withholds, subtracted from the device's whitelist — so the preview
+ * shows the blob that toolset would receive. Pass null to turn tool gating off
+ * entirely and preview every fragment.
  * @param notation - The notation to preview
  * @param smallModel - Whether to preview the small-model (basic) skills
+ * @param disabledTools - Tools to withhold, or null for no gating at all
  * @returns {string} The skills-preview endpoint URL with query params
  */
 export function getSkillsPreviewUrl(
   notation: string,
   smallModel: boolean,
+  disabledTools: string | null,
 ): string {
   const base = getMcpUrl().replace(/\/mcp$/, "/skills-preview");
   const params = new URLSearchParams({
     notation,
     smallModel: String(smallModel),
   });
+
+  if (disabledTools == null) {
+    params.set("allTools", "true");
+  } else if (disabledTools !== "") {
+    params.set("disabledTools", disabledTools);
+  }
 
   return `${base}?${params.toString()}`;
 }

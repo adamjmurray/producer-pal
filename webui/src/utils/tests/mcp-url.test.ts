@@ -78,21 +78,40 @@ describe("getSkillsPreviewUrl", () => {
     vi.unstubAllGlobals();
   });
 
-  it("derives the endpoint from the MCP URL with query params", () => {
+  /** Point getMcpUrl at the device's default port. */
+  function stubLocation(): void {
     vi.stubGlobal("window", {
       location: { hostname: "localhost", port: "3350", protocol: "http:" },
     });
-    expect(getSkillsPreviewUrl("stark", true)).toBe(
+  }
+
+  it("derives the endpoint from the MCP URL with query params", () => {
+    stubLocation();
+    expect(getSkillsPreviewUrl("stark", true, "")).toBe(
       "http://localhost:3350/skills-preview?notation=stark&smallModel=true",
     );
   });
 
   it("encodes standard (non-small-model) selections", () => {
-    vi.stubGlobal("window", {
-      location: { hostname: "localhost", port: "3350", protocol: "http:" },
-    });
-    expect(getSkillsPreviewUrl("barbeat", false)).toBe(
+    stubLocation();
+    expect(getSkillsPreviewUrl("barbeat", false, "")).toBe(
       "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false",
+    );
+  });
+
+  it("passes the withheld tools along for gating", () => {
+    stubLocation();
+    expect(
+      getSkillsPreviewUrl("barbeat", false, "ppal-library,ppal-memory"),
+    ).toBe(
+      "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false&disabledTools=ppal-library%2Cppal-memory",
+    );
+  });
+
+  it("asks for every fragment when the toolset is null", () => {
+    stubLocation();
+    expect(getSkillsPreviewUrl("barbeat", false, null)).toBe(
+      "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false&allTools=true",
     );
   });
 });

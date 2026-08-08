@@ -10,6 +10,8 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation";
+import { loadEnabledTools } from "#webui/hooks/settings/settings-helpers";
+import { disabledToolNames } from "#webui/lib/utils/enabled-tools";
 import { getConfigUrl, getSkillsPreviewUrl } from "#webui/utils/mcp-url";
 
 /** A notation + small-model-mode combination that selects a skills blob. */
@@ -29,9 +31,10 @@ export interface SkillsPreview extends SkillsCombination {
   /** Exact character count of the blob (token estimate is derived at display). */
   charCount: number;
   /**
-   * Fragments the device's disabled tools left out of this blob. The one part of
-   * assembly with nothing else on screen to explain it — a user's own off
-   * switches already show as unchecked boxes in the fragment editor.
+   * Fragments tool gating left out of this blob. The one part of assembly with
+   * nothing else on screen to explain it — a user's own off switches already
+   * show as unchecked boxes in the fragment editor. Always empty while the
+   * preview is showing every fragment.
    */
   dropped: string[];
   /** Non-fatal assembly warnings (unknown/nested/unsafe refs); [] when clean. */
@@ -50,8 +53,11 @@ export interface UseSkillsPreviewReturn {
   selected: SkillsCombination;
   /** The device's live combination (null until /config resolves). */
   currentMode: SkillsCombination | null;
+  /** Whether the preview is gated on the tools Settings has switched on. */
+  enabledToolsOnly: boolean;
   setNotation: (notation: Notation) => void;
   setSmallModelMode: (smallModelMode: boolean) => void;
+  setEnabledToolsOnly: (enabledToolsOnly: boolean) => void;
 }
 
 /**
@@ -62,6 +68,11 @@ export interface UseSkillsPreviewReturn {
  * the user has already picked one. Each selection change refetches with an
  * AbortController so an out-of-order response can't clobber a newer one.
  *
+ * Tool gating is on by default and reads the SAME saved toolset the chat
+ * connects with (localStorage, not the live conversation's pinned one), so the
+ * preview shows what a new conversation would get. Turning it off previews every
+ * fragment regardless of toolset.
+ *
  * @returns Preview status, the selected + live combinations, and setters
  */
 export function useSkillsPreview(): UseSkillsPreviewReturn {
@@ -69,6 +80,7 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
     notation: DEFAULT_NOTATION,
     smallModelMode: false,
   });
+  const [enabledToolsOnly, setEnabledToolsOnly] = useState(true);
   const [currentMode, setCurrentMode] = useState<SkillsCombination | null>(
     null,
   );
@@ -111,7 +123,9 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
     return () => controller.abort();
   }, []);
 
-  // (Re)fetch the preview whenever the selected combination changes.
+  // (Re)fetch the preview whenever the selection or the tool gating changes.
+  // The saved toolset is read here rather than held in state so reopening the
+  // editor after a Settings change previews the new toolset.
   useEffect(() => {
     const controller = new AbortController();
 
@@ -119,7 +133,14 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
 
     void (async () => {
       try {
-        const preview = await fetchPreview(selected, controller.signal);
+        const disabledTools = enabledToolsOnly
+          ? disabledToolNames(loadEnabledTools())
+          : null;
+        const preview = await fetchPreview(
+          selected,
+          disabledTools,
+          controller.signal,
+        );
 
         // A newer selection aborted this request; don't clobber its result.
         if (controller.signal.aborted) return;
@@ -133,9 +154,17 @@ export function useSkillsPreview(): UseSkillsPreviewReturn {
     })();
 
     return () => controller.abort();
-  }, [selected]);
+  }, [selected, enabledToolsOnly]);
 
-  return { status, selected, currentMode, setNotation, setSmallModelMode };
+  return {
+    status,
+    selected,
+    currentMode,
+    enabledToolsOnly,
+    setNotation,
+    setSmallModelMode,
+    setEnabledToolsOnly,
+  };
 }
 
 // --- Helpers below main export ---
@@ -175,15 +204,21 @@ function stringList(raw: unknown): string[] {
 /**
  * Fetch and size the assembled preview for a combination.
  * @param combination - The notation + small-model combination to preview
+ * @param disabledTools - Tools to withhold, or null to preview every fragment
  * @param signal - Abort signal for the request
  * @returns The assembled preview with client-side size counts
  */
 async function fetchPreview(
   combination: SkillsCombination,
+  disabledTools: string | null,
   signal: AbortSignal,
 ): Promise<SkillsPreview> {
   const response = await fetch(
-    getSkillsPreviewUrl(combination.notation, combination.smallModelMode),
+    getSkillsPreviewUrl(
+      combination.notation,
+      combination.smallModelMode,
+      disabledTools,
+    ),
     { signal, cache: "no-store" },
   );
 

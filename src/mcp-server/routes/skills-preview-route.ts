@@ -13,6 +13,7 @@
 // skills-inject.ts assembles the live blob rather than the V8 connect() handler.
 
 import { type Express, type Request, type Response } from "express";
+import { resolveEnabledTools } from "#src/shared/config.ts";
 import { DEFAULT_NOTATION, isNotation } from "#src/shared/notation.ts";
 import { assembleSkills } from "#src/skills/build-skills.ts";
 import { resolveFragmentAlias } from "#src/skills/builtin-fragments.ts";
@@ -31,10 +32,10 @@ import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
  * origin-gated (unlike the override writes) — it exposes nothing a GET
  * /skill-overrides didn't already.
  *
- * The preview reflects the DEVICE's tool whitelist, so a fragment whose tools
- * are all switched off shows as gone here too — this is the blob an external MCP
- * client receives. It cannot reflect the chat's per-preset tool toggles: those
- * are client-side, ride a per-request header, and differ per conversation.
+ * Tool gating follows the same two-step the real request path uses: the device's
+ * whitelist, minus whatever the caller lists in `disabledTools` (the query-param
+ * twin of the chat's disabled-tools header). `allTools=true` skips gating
+ * altogether, for previewing every fragment regardless of toolset.
  *
  * @param app - Express application
  * @param getTools - Reads the device's tool whitelist; omit for no tool gating
@@ -65,7 +66,7 @@ export function registerSkillsPreviewRoute(
     // silently truncated blob.
     const warnings: string[] = [];
     const { skills, dropped } = assembleSkills(
-      { notation, smallModelMode, tools: getTools?.() },
+      { notation, smallModelMode, tools: previewTools(req, getTools) },
       readSkillOverrides(),
       (message) => warnings.push(message),
     );
@@ -80,4 +81,32 @@ export function registerSkillsPreviewRoute(
       warnings,
     });
   });
+}
+
+// --- Helpers below main export ---
+
+/**
+ * The toolset to gate this preview on: the device whitelist minus the caller's
+ * `disabledTools`, or undefined (no gating) when it asked for `allTools` — or
+ * when there is no whitelist to subtract from.
+ * @param req - The preview request
+ * @param getTools - Reads the device's tool whitelist
+ * @returns The tools to assemble for, or undefined for no gating
+ */
+function previewTools(
+  req: Request,
+  getTools?: () => readonly string[],
+): string[] | undefined {
+  if (req.query.allTools === "true") return undefined;
+
+  const configured = getTools?.();
+
+  if (configured == null) return undefined;
+
+  const disabled = req.query.disabledTools;
+
+  return resolveEnabledTools(
+    typeof disabled === "string" ? disabled : undefined,
+    configured,
+  );
 }

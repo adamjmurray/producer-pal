@@ -225,6 +225,30 @@ describe("SkillsPreviewScreen", () => {
     expect(screen.getByText("library, devices")).toBeTruthy();
   });
 
+  it("gates on the enabled tools until the checkbox is cleared", async () => {
+    const fetchMock = renderPreview();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Driver: standard/)).toBeTruthy();
+    });
+
+    const checkbox = screen.getByLabelText(
+      "Enabled tools only",
+    ) as HTMLInputElement;
+
+    expect(checkbox.checked).toBe(true);
+
+    fireEvent.click(checkbox);
+
+    await waitFor(() => {
+      const previews = fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => !url.startsWith(CONFIG_URL));
+
+      expect(previews.at(-1)).toContain("allTools=true");
+    });
+  });
+
   it("says nothing about gating when the toolset dropped nothing", async () => {
     renderPreview();
 

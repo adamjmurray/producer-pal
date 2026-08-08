@@ -12,6 +12,7 @@ import {
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config";
 import { NOTATION_HEADER, type Notation } from "#src/shared/notation";
+import { disabledToolNames } from "#webui/lib/utils/enabled-tools";
 
 const MCP_CLIENT_NAME = "producer-pal-chat-ui";
 const MCP_CLIENT_VERSION = "1.0.0";
@@ -111,22 +112,6 @@ export function perRequestHeaders(
   }
 
   return headers;
-}
-
-/**
- * The comma-separated tool names to withhold, from the sparse enabled map.
- * Only explicit `false` entries count — an absent tool is enabled, which is what
- * keeps a tool added in a later release on by default.
- *
- * @param enabledTools - Map of tool name to enabled state
- * @returns Comma-separated disabled tool names, or "" when none are disabled
- */
-function disabledToolNames(enabledTools?: Record<string, boolean>): string {
-  if (!enabledTools) return "";
-
-  return Object.keys(enabledTools)
-    .filter((name) => enabledTools[name] === false)
-    .join(",");
 }
 
 /**

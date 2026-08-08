@@ -100,6 +100,7 @@ export function SkillSlotScreen(
         onSelectSlot={onSelectSlot}
         slot={slot}
         widthClass={widthClass}
+        viewSlot={viewSlot}
         onImport={io.onImport}
         onExport={io.onExport}
         // Routed through the editor's ordered-write dispatcher: the toggle PUTs
@@ -132,7 +133,6 @@ export function SkillSlotScreen(
             value={slot.override}
             builtIn={slot.builtIn}
             overrideLabel="Your override"
-            centerControl={viewSlot}
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
             onReset={editor.handleClear}
@@ -191,6 +191,8 @@ interface SkillControlsProps {
   slot: SkillSlotView;
   /** Content width — tracks the editor below so the strip stays aligned. */
   widthClass: string;
+  /** The Preview/Source view toggle, at the end of the strip. */
+  viewSlot: preact.JSX.Element;
   onImport: () => void;
   onExport: () => void;
   /** Switch the selected fragment on or off. */
@@ -199,21 +201,20 @@ interface SkillControlsProps {
 
 /**
  * Controls strip: the slot dropdown, the include toggle, the selected slot's
- * human title and one-line explainer, and a drift note, over a second line
- * naming the tools that gate the fragment ({@link SkillGateNote}). The title
- * lives here rather than in the dropdown, which lists fragments by filename so
- * it reads the way an `@include` line does (see {@link SkillSlotSelect}).
+ * human title and one-line explainer, a drift note, and the Import/Export +
+ * view-toggle icons, over a second line naming the tools that gate the fragment
+ * ({@link SkillGateNote}). The title lives here rather than in the dropdown,
+ * which lists fragments by filename so it reads the way an `@include` line does
+ * (see {@link SkillSlotSelect}).
  *
  * The border spans full width while the content is centered to match the editor
- * below. The Preview/Source view toggle
- * sits in the editor's pane header (see OverridePanes), and resetting an
- * override to the built-in lives in the revealed built-in header there — neither
- * belongs here.
+ * below. Resetting an override to the built-in lives in the revealed built-in
+ * header (see OverridePanes), not here.
  * @param props - Controls props
  * @returns Controls element
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
-  const { slots, selected, onSelectSlot, slot } = props;
+  const { slots, selected, onSelectSlot, slot, viewSlot } = props;
   const { widthClass, onImport, onExport, onSetEnabled } = props;
 
   return (
@@ -238,6 +239,7 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
             forkedFromVersion={slot.forkedFromVersion}
           />
           <ContextIoButtons onImport={onImport} onExport={onExport} />
+          {viewSlot}
         </div>
         <SkillGateNote gate={slot.gate} />
       </div>

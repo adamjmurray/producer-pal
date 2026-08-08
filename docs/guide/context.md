@@ -134,15 +134,18 @@ your override so you can see what you changed:
   **Hide** to collapse back to one column
 - The trash button beside "Your override" resets the fragment, deleting it
 
-**Preview** shows what AI actually receives — the whole assembled document for a
-given notation and model size, with your overrides applied. The customized
-library fragment above appears here in place, right where it gets pulled in:
+The eye button at the end of the controls row shows what AI actually receives —
+the whole assembled document for a given notation and model size, with your
+overrides applied. The customized library fragment above appears here in place,
+right where it gets pulled in:
 
 <img src="/img/producer-pal-context-skills-preview.png" alt="Skills preview" width="700"/>
 
 The ★ badge marks the combination your current settings use, and the size
 readout is why trimming matters: everything here is sent on every conversation.
-**Source** switches back to editing.
+**Enabled tools only** leaves out the sections no tool you've switched on would
+use, which is what a new conversation gets; clear it to read a section whose
+tools are currently off. The `< >` button switches back to editing.
 
 See [Customizing Skills](/guide/customizing-skills) for how the fragments fit
 together, and how to drop whole areas you never use.

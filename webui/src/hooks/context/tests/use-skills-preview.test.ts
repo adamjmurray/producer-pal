@@ -128,6 +128,7 @@ async function mountAndSelectMidiJson(fetchMock: typeof fetch) {
 describe("useSkillsPreview", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    localStorage.clear();
   });
 
   it("defaults the selection to the live combination and sizes the blob", async () => {
@@ -286,6 +287,64 @@ describe("useSkillsPreview", () => {
     const result = await renderReady({ config: "throw" });
 
     expect(result.current.currentMode).toBeNull();
+  });
+
+  describe("tool gating", () => {
+    /** The query string of the most recent preview request. */
+    function lastPreviewQuery(fetchMock: ReturnType<typeof vi.fn>): string {
+      const previews = fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => !url.startsWith(CONFIG_URL));
+
+      return new URL(previews.at(-1) as string).search;
+    }
+
+    it("gates on the toolset saved in settings by default", async () => {
+      localStorage.setItem(
+        "producer_pal_enabled_tools",
+        JSON.stringify({ "ppal-library": false, "ppal-read-clip": true }),
+      );
+      const fetchMock = stubFetch({ config: "fail" });
+
+      await renderAndWait(useSkillsPreview, "ready");
+
+      // Only the explicit off switch rides along; an enabled tool is not listed.
+      expect(lastPreviewQuery(fetchMock)).toContain(
+        "disabledTools=ppal-library",
+      );
+      expect(lastPreviewQuery(fetchMock)).not.toContain("allTools");
+    });
+
+    it("asks for every fragment once gating is switched off", async () => {
+      localStorage.setItem(
+        "producer_pal_enabled_tools",
+        JSON.stringify({ "ppal-library": false }),
+      );
+      const fetchMock = stubFetch({ config: "fail" });
+      const result = await renderAndWait(useSkillsPreview, "ready");
+
+      expect(result.current.enabledToolsOnly).toBe(true);
+
+      await act(async () => {
+        result.current.setEnabledToolsOnly(false);
+      });
+
+      await waitFor(() => {
+        expect(lastPreviewQuery(fetchMock)).toContain("allTools=true");
+      });
+      expect(lastPreviewQuery(fetchMock)).not.toContain("disabledTools");
+      expect(result.current.enabledToolsOnly).toBe(false);
+    });
+
+    it("sends no toolset when nothing is switched off", async () => {
+      const fetchMock = stubFetch({ config: "fail" });
+
+      await renderAndWait(useSkillsPreview, "ready");
+
+      // Gating is still ON — the device whitelist alone decides.
+      expect(lastPreviewQuery(fetchMock)).not.toContain("disabledTools");
+      expect(lastPreviewQuery(fetchMock)).not.toContain("allTools");
+    });
   });
 
   it("ignores a preview rejection from a superseded (aborted) request", async () => {

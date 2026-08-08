@@ -63,13 +63,6 @@ interface OverridePanesProps {
    */
   onBeginOverride: () => void;
 
-  /**
-   * Optional control centered in the pane header (the Skills tab passes its
-   * Preview/Source view toggle here). Omitted by the custom-instructions editor,
-   * which has no such view.
-   */
-  centerControl?: preact.JSX.Element;
-
   /** Editable-pane callbacks (autosave lifecycle). */
   onChange: (value: string) => void;
   onBlur: () => void;
@@ -100,13 +93,13 @@ interface OverridePanesProps {
 export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   const { editorKey, hasOverride, value, builtIn, overrideLabel } = props;
   const { showBuiltIn, onToggleBuiltIn, onReset, onBeginOverride } = props;
-  const { centerControl, onChange, onBlur } = props;
+  const { onChange, onBlur } = props;
   const seedKey = useBuiltInSeedKey(builtIn, hasOverride);
 
   return (
     <div className="flex-1 min-h-0 flex gap-3">
       <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-7 gap-3">
+        <div className="flex items-center justify-between h-7 gap-3">
           <span
             className={`min-w-0 truncate text-xs font-medium ${
               hasOverride
@@ -116,8 +109,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
           >
             {hasOverride ? overrideLabel : UNFORKED_LABEL}
           </span>
-          <div className="justify-self-center">{centerControl}</div>
-          <div className="justify-self-end flex items-center gap-2">
+          <div className="flex items-center gap-2">
             {hasOverride && (
               <>
                 <button

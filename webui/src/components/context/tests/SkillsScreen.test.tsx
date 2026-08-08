@@ -351,22 +351,14 @@ describe("SkillsScreen", () => {
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
     expect(screen.queryByTestId("preview-screen")).toBeNull();
 
-    // The toggle offers the preview (with its included fragments) and switches.
-    const toPreview = screen.getByText("Preview");
-
-    expect(toPreview.getAttribute("title")).toBe(
-      "Preview with included fragments inserted",
-    );
-    fireEvent.click(toPreview);
+    // The toggle offers the whole-document preview, and switches to it.
+    fireEvent.click(screen.getByLabelText("Preview assembled skills"));
 
     expect(screen.getByTestId("preview-screen")).toBeTruthy();
     expect(screen.queryByLabelText("Skill fragment")).toBeNull();
 
-    // Still reachable inside the preview, now offering the raw fragment source.
-    const toSource = screen.getByText("Source");
-
-    expect(toSource.getAttribute("title")).toBe("Show the raw skill fragment");
-    fireEvent.click(toSource);
+    // Still reachable inside the preview, now offering the fragment editor.
+    fireEvent.click(screen.getByLabelText("Edit skill fragments"));
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
   });
@@ -374,7 +366,7 @@ describe("SkillsScreen", () => {
   it("keeps the preview reachable while the fragments list is loading", () => {
     renderScreen({ kind: "loading" });
 
-    fireEvent.click(screen.getByText("Preview"));
+    fireEvent.click(screen.getByLabelText("Preview assembled skills"));
 
     expect(screen.getByTestId("preview-screen")).toBeTruthy();
   });
