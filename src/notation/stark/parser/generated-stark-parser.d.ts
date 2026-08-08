@@ -113,7 +113,10 @@ export interface ChordItem {
 }
 
 export type PitchedContentItem =
-  BarMarkerItem | NoteItem | RestItem | ChordItem;
+  | BarMarkerItem
+  | NoteItem
+  | RestItem
+  | ChordItem;
 
 // --- Chord-symbol items (symbolic: chords lines only) ---
 
@@ -154,7 +157,10 @@ export interface ChordSymbolItem {
  * notes — a bare token is always a symbol.
  */
 export type ChordsContentItem =
-  BarMarkerItem | RestItem | ChordSymbolItem | ChordItem;
+  | BarMarkerItem
+  | RestItem
+  | ChordSymbolItem
+  | ChordItem;
 
 // --- Sections ---
 

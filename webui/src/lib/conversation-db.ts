@@ -118,7 +118,8 @@ export async function loadConversation(
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
   const raw = (await db.get(STORE_NAME, id)) as
-    Partial<ConversationRecord> | undefined;
+    | Partial<ConversationRecord>
+    | undefined;
 
   if (!raw) return undefined;
 
@@ -170,7 +171,8 @@ export async function renameConversation(
 ): Promise<void> {
   const db = await getConversationDb();
   const record = (await db.get(STORE_NAME, id)) as
-    ConversationRecord | undefined;
+    | ConversationRecord
+    | undefined;
 
   if (!record) return;
 
@@ -189,7 +191,8 @@ export async function setBookmark(
 ): Promise<void> {
   const db = await getConversationDb();
   const record = (await db.get(STORE_NAME, id)) as
-    ConversationRecord | undefined;
+    | ConversationRecord
+    | undefined;
 
   if (!record) return;
 

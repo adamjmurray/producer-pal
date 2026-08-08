@@ -163,19 +163,20 @@ export function PresetControls({
         />
       )}
 
-      {selected && !draft.open && (
-        // Persists on every keystroke, not on blur or Update: Esc closes this
-        // dialog straight from the focused field, and a blur that never fires
-        // loses the edit. The local copy stays untrimmed so typing a trailing
-        // space isn't yanked back out from under the cursor.
-        <PresetDescriptionField
-          value={editDescription}
-          onChange={(value) => {
-            setEditDescription(value);
-            updatePresetDescription(selected.id, value);
-          }}
-        />
-      )}
+      {selected &&
+        !draft.open && (
+          // Persists on every keystroke, not on blur or Update: Esc closes this
+          // dialog straight from the focused field, and a blur that never fires
+          // loses the edit. The local copy stays untrimmed so typing a trailing
+          // space isn't yanked back out from under the cursor.
+          <PresetDescriptionField
+            value={editDescription}
+            onChange={(value) => {
+              setEditDescription(value);
+              updatePresetDescription(selected.id, value);
+            }}
+          />
+        )}
 
       <SubagentPresetRow
         presets={presets}

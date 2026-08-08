@@ -92,8 +92,7 @@ export function AssistantSubagentCall({
       }`}
     >
       <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
-        <DisclosureChevron />
-        🤖{" "}
+        <DisclosureChevron />🤖{" "}
         <span className="font-semibold">
           {index == null ? "subagent" : `subagent ${index}`}
         </span>

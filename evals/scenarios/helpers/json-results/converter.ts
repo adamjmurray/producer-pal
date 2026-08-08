@@ -124,7 +124,8 @@ function buildEfficiency(
   if (!tokenResult) return undefined;
 
   const details = tokenResult.details as
-    { total: number; target: number; percentage: number } | undefined;
+    | { total: number; target: number; percentage: number }
+    | undefined;
 
   return {
     inputTokens: details?.total ?? 0,

@@ -10,7 +10,8 @@ import { createPresetId, loadPresets, savePresets } from "./preset-storage";
 
 /** Result of a create attempt: the new preset, or a reason it was rejected. */
 export type CreatePresetResult =
-  { ok: true; preset: ChatPreset } | { ok: false; error: string };
+  | { ok: true; preset: ChatPreset }
+  | { ok: false; error: string };
 
 /** Browser-local preset collection: list + create/update/delete. */
 export interface UsePresetsReturn {

@@ -46,8 +46,7 @@ export function AssistantToolCall({
       } ${effectiveIsError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
       <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
-        <DisclosureChevron />
-        🔧{" "}
+        <DisclosureChevron />🔧{" "}
         {!result ? (
           "using tool: "
         ) : effectiveIsError ? (

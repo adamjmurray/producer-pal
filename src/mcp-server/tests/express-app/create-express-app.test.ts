@@ -16,7 +16,8 @@ type MockMax = typeof Max & {
   handlers: Map<string, (input: unknown) => void>;
   mcpResponseHandler: ((requestId: string, ...chunks: string[]) => void) | null;
   defaultMcpResponseHandler:
-    ((requestId: string, ...chunks: string[]) => void) | null;
+    | ((requestId: string, ...chunks: string[]) => void)
+    | null;
 };
 const mockMax = Max as MockMax;
 

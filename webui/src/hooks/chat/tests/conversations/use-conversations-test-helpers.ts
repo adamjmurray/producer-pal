@@ -40,7 +40,8 @@ export function createConversationsProps() {
         activeEnabledTools: null as Record<string, boolean> | null,
       },
       onForeignRecord: undefined as
-        ((record: ConversationRecord) => void) | undefined,
+        | ((record: ConversationRecord) => void)
+        | undefined,
     },
   };
 }

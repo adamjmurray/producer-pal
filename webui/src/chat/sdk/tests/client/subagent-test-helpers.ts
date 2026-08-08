@@ -44,7 +44,8 @@ export type SpawnExecute = (
 export function lastStreamTools(): Record<string, { execute?: unknown }> {
   const calls = streamTextMock.mock.calls;
   const call = calls.at(-1)?.[0] as
-    { tools?: Record<string, { execute?: unknown }> } | undefined;
+    | { tools?: Record<string, { execute?: unknown }> }
+    | undefined;
 
   return call?.tools ?? {};
 }

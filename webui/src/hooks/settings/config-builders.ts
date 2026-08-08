@@ -11,7 +11,11 @@ import {
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export type RealtimeReasoningEffort =
-  "minimal" | "low" | "medium" | "high" | "xhigh";
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
 
 export type AnthropicEffort = "low" | "medium" | "high" | "max";
 

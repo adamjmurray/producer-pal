@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "proseWrap": "always",
+  "endOfLine": "lf",
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    ".claude",
+    "coverage",
+    "knowledge-base",
+    "src/**/generated-*-parser.js",
+    "src/tools/shared/clip-gain-lookup/lookup-table.json",
+    "max-for-live-device",
+    "claude-desktop-extension",
+    "npm/*.js",
+    "npm/*.svg",
+    "npm/LICENSE",
+    "npm/licenses",
+    "release",
+    "docs/.vitepress/cache",
+    "docs/.vitepress/dist",
+    "test-results",
+    "netlify.toml"
+  ]
+}

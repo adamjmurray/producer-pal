@@ -258,9 +258,12 @@ export const chatAdapter: ChatAdapter<
     // started with, even after the global override changes; a brand-new
     // conversation has none and resolves the current override instead.
     const systemInstructionOverride = extraParams?.systemInstructionOverride as
-      string | undefined;
+      | string
+      | undefined;
     const lockedSystemInstruction = extraParams?.lockedSystemInstruction as
-      string | null | undefined;
+      | string
+      | null
+      | undefined;
     const systemInstruction =
       lockedSystemInstruction ??
       resolveSystemInstruction(systemInstructionOverride);
@@ -284,7 +287,8 @@ export const chatAdapter: ChatAdapter<
     // spawned worker runs under; buildWorkerConfig layers it over the clone.
     const subagentConfig = buildSubagentConfig(
       extraParams?.[SUBAGENT_PRESET_PARAM] as
-        ResolvedSubagentPreset | undefined,
+        | ResolvedSubagentPreset
+        | undefined,
     );
 
     // Temperature is no longer sent: it was phased-out dead config (no UI, pinned

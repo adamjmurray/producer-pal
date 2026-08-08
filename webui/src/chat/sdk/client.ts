@@ -574,7 +574,8 @@ function isAnthropicThinkingEnabled(
   providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
 ): boolean {
   const anthropic = providerOptions?.anthropic as
-    { thinking?: unknown } | undefined;
+    | { thinking?: unknown }
+    | undefined;
 
   return anthropic?.thinking != null;
 }
