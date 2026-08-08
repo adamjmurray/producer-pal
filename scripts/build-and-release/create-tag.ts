@@ -30,8 +30,8 @@ const tag = `v${version}`;
 
 // The build reads its version from config.ts, not package.json, so this is the
 // one disagreement that would put a tag on artifacts calling themselves
-// something else. src/test/meta/version-agreement.test.ts checks all nine
-// copies; this checks the one that decides what was just built.
+// something else. src/test/meta/version-agreement.test.ts holds the full
+// inventory; this checks the one copy that decides what was just built.
 const configSource = readFileSync(
   join(rootDir, "src/shared/config.ts"),
   "utf8",
@@ -69,7 +69,8 @@ const build = readBuildInfo();
 if (build == null) {
   fail(
     "Nothing has been built from this checkout.",
-    "release/build-info.json is missing. Run `npm run release` first — this",
+    "release/build-info.json is missing or unreadable (an interrupted release",
+    "can leave it truncated). Run `npm run release` first — this",
     "tags a build you have already looked at, so there has to be one.",
   );
 }
