@@ -190,6 +190,10 @@ export const OPENROUTER_MODELS = [
   },
   { value: "openai/gpt-5.6-terra", label: "[Paid] OpenAI GPT-5.6 Terra" },
   { value: "openai/gpt-5.6-sol", label: "[Paid] OpenAI GPT-5.6 Sol" },
+  {
+    value: "deepseek/deepseek-v4-flash-0731",
+    label: "[Paid] DeepSeek V4 Flash",
+  },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
   { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
