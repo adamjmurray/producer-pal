@@ -422,6 +422,31 @@ settings, or via the `npx producer-pal` MCP server's `--small-model-mode` flag �
 like [notation](/features/midi-notation), it's a global device setting that
 applies to MCP clients too.
 
+## Choosing a Toolset {#toolset}
+
+You don't have to run all 22 tools. Withholding one drops its schema _and_ the
+part of the [skills](#skills) that teaches it, so a narrower toolset makes every
+conversation cheaper — `read-only` alone cuts the skills text by more than half.
+Worth doing if you only ever use part of Producer Pal, or if you're running a
+[small/local model](/installation/choose-local) that does better with a short
+tool list.
+
+Where you set it depends on the client:
+
+- **[Chat UI](/guide/chat-ui#tools)** — the Tools tab, per conversation and per
+  [preset](/guide/chat-ui#presets).
+- **MCP clients via `npx producer-pal`** — the `--tools` and `--disable-tools`
+  flags. Run `npx producer-pal --list-tools` for the group names and the tools
+  your device currently offers. See any installation page, e.g.
+  [Claude Code](/installation/claude-code).
+- **[Claude Desktop](/installation/claude-desktop)** — the extension's **Tools**
+  and **Disable tools** settings.
+
+These are per client, unlike [notation](/features/midi-notation) and
+[small model mode](#small-model-mode): narrowing one client's toolset leaves the
+Chat UI and everything else alone. `ppal-connect` is always kept, since it is
+how the AI connects and receives the skills.
+
 ## Skills {#skills}
 
 The [Connect tool](#ppal-connect) returns a skill set that teaches the AI how to

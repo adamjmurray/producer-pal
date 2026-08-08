@@ -75,6 +75,25 @@ tooling — add `--format json` and `--notation midi-json` to the args:
 
 :::
 
+::: tip Only need some of the tools?
+
+Narrow the toolset and every conversation gets smaller:
+
+```json
+{
+  "mcpServers": {
+    "producer-pal": {
+      "command": "npx",
+      "args": ["-y", "producer-pal", "--tools", "core,clip,track"]
+    }
+  }
+}
+```
+
+<!--@include: ../_partials/toolset-tip.md-->
+
+:::
+
 **Option B: Direct HTTP** - Requires Ableton running first, no
 auto-reconnection:
 

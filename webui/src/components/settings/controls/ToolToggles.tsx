@@ -10,10 +10,8 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import {
-  LIVE_API_TOOL_ID,
-  isToolEnabled,
-} from "#webui/lib/utils/enabled-tools";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { isToolEnabled } from "#webui/lib/utils/enabled-tools";
 import {
   ensureLiveApiTool,
   ensureSpawnSubagentTool,

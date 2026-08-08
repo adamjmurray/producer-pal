@@ -67,14 +67,30 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () => ({
-  // Mirror the real server's opt-in gating: ppal-live-api is registered only
-  // when liveApiEnabled is set, so the portal's offline fallback reflects it.
+  // Mirror the real server's gating: ppal-live-api is registered only when
+  // liveApiEnabled is set, and `tools` whitelists the rest — so the portal's
+  // offline fallback reflects both.
   createMcpServer: vi.fn(
-    (_callLiveApi: unknown, opts?: { liveApiEnabled?: boolean }) => ({
-      _registeredTools: opts?.liveApiEnabled
+    (
+      _callLiveApi: unknown,
+      opts?: { liveApiEnabled?: boolean; tools?: string[] },
+    ) => {
+      const registered: Record<string, unknown> = opts?.liveApiEnabled
         ? { ...mockStandardTools, ...mockLiveApiTool }
-        : mockStandardTools,
-    }),
+        : mockStandardTools;
+      const whitelist = opts?.tools;
+
+      return {
+        _registeredTools:
+          whitelist == null
+            ? registered
+            : Object.fromEntries(
+                Object.entries(registered).filter(([name]) =>
+                  whitelist.includes(name),
+                ),
+              ),
+      };
+    },
   ),
 }));
 
@@ -95,6 +111,8 @@ vi.mock(import("./file-logger.ts"), () => ({
 
 // Import the class after mocking
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { logger } from "./file-logger.ts";
 import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 
@@ -166,6 +184,67 @@ describe("StdioHttpBridge", () => {
 
       expect(toolNames).toContain("ppal-live-api");
       expect(toolNames).toContain("ppal-read-live-set");
+    });
+  });
+
+  describe("withheld tools", () => {
+    /**
+     * A bridge that withholds one tool, connected so the transport was built.
+     * @returns The transport options the bridge passed
+     */
+    async function connectWithWithheldTool(): Promise<unknown> {
+      const narrowed = new StdioHttpBridge("http://localhost:3350/mcp", {
+        disabledTools: ["ppal-create-clip"],
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await narrowed._ensureHttpConnection();
+
+      const transportMock = StreamableHTTPClientTransport as unknown as Mock;
+
+      return transportMock.mock.calls.at(-1)?.[1];
+    }
+
+    it("sends them as the disabled-tools header on every request", async () => {
+      expect(await connectWithWithheldTool()).toStrictEqual({
+        requestInit: {
+          headers: { [DISABLED_TOOLS_HEADER]: "ppal-create-clip" },
+        },
+      });
+    });
+
+    it("never pushes them via POST /config — that setting is device-global", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+
+      await connectWithWithheldTool();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("passes no transport options when nothing is withheld", async () => {
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await bridge._ensureHttpConnection();
+
+      const transportMock = StreamableHTTPClientTransport as unknown as Mock;
+
+      expect(transportMock.mock.calls.at(-1)?.[1]).toBeUndefined();
+    });
+
+    it("drops them from the offline fallback list too", () => {
+      // The fallback is what a client caches before the device comes up, and the
+      // stateless server has no list_changed to correct it later.
+      const narrowed = new StdioHttpBridge("http://localhost:3350/mcp", {
+        disabledTools: ["ppal-create-clip"],
+      }) as unknown as TestBridge;
+
+      expect(narrowed.fallbackTools.tools.map((t) => t.name)).toStrictEqual([
+        "ppal-read-live-set",
+      ]);
     });
   });
 

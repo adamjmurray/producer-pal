@@ -3,8 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/** The Direct Live API tool's id, in the toolset map and the MCP catalog. */
-export const LIVE_API_TOOL_ID = "ppal-live-api";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 
 /**
  * Client-side delegation tool name. Not an MCP tool: it runs a nested chat

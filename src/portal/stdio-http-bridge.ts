@@ -12,15 +12,11 @@ import {
   ErrorCode,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-import {
-  type CallLiveApiFunction,
-  createMcpServer,
-} from "#src/mcp-server/create-mcp-server.ts";
-import { VERSION } from "#src/shared/config.ts";
+import { DISABLED_TOOLS_HEADER, VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
+import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";
@@ -37,19 +33,14 @@ export interface BridgeOptions {
   notation?: Notation;
   jsonOutput?: boolean;
   liveApiEnabled?: boolean;
-}
-
-interface FallbackTool {
-  name: string;
-  title?: string;
-  description: string;
-  inputSchema: object;
-}
-
-interface RegisteredToolInfo {
-  title?: string;
-  description: string;
-  inputSchema?: z.ZodType;
+  /**
+   * Tools to withhold from THIS client. Unlike every other option here it is
+   * sent as a per-request header, never pushed via POST /config: `config.tools`
+   * is a global device setting, so pushing it would strip the tools from the chat
+   * UI and any other connected client, and nothing would restore them when this
+   * process exits.
+   */
+  disabledTools?: string[];
 }
 
 interface CallToolRequest {
@@ -78,6 +69,7 @@ export class StdioHttpBridge {
   private notation?: Notation;
   private jsonOutput?: boolean;
   private liveApiEnabled?: boolean;
+  private disabledTools?: string[];
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
@@ -85,48 +77,8 @@ export class StdioHttpBridge {
     this.notation = options.notation;
     this.jsonOutput = options.jsonOutput;
     this.liveApiEnabled = options.liveApiEnabled;
-    this.fallbackTools = this._generateFallbackTools();
-  }
-
-  private _generateFallbackTools(): { tools: FallbackTool[] } {
-    // Build the offline fallback from the same createMcpServer logic the live
-    // server uses, threading small-model mode, notation, AND liveApiEnabled so
-    // the offline list matches what the live server would return for this config
-    // — including whether the opt-in ppal-live-api tool is present. Clients cache
-    // the tool list and the stateless server has no tools/list_changed signal to
-    // force a re-fetch, so an inaccurate offline list (e.g. missing a forced-on
-    // ppal-live-api) can persist even after the device comes online.
-    const server = createMcpServer(null as unknown as CallLiveApiFunction, {
-      smallModelMode: this.smallModelMode,
-      notation: this.notation,
-      liveApiEnabled: this.liveApiEnabled,
-    });
-    const tools: FallbackTool[] = [];
-
-    // Access private _registeredTools for fallback tool list. No filtering here:
-    // createMcpServer already applied the opt-in gating (ppal-live-api is
-    // registered only when liveApiEnabled), so the list mirrors the live server.
-    const registeredTools = (
-      server as unknown as {
-        _registeredTools: Record<string, RegisteredToolInfo>;
-      }
-    )._registeredTools;
-
-    for (const [name, toolInfo] of Object.entries(registeredTools)) {
-      tools.push({
-        name: name,
-        title: toolInfo.title,
-        description: toolInfo.description,
-        inputSchema: toolInfo.inputSchema
-          ? z.toJSONSchema(toolInfo.inputSchema)
-          : {
-              type: "object",
-              properties: {},
-            },
-      });
-    }
-
-    return { tools };
+    this.disabledTools = options.disabledTools;
+    this.fallbackTools = buildFallbackTools(options);
   }
 
   private _createSetupErrorResponse() {
@@ -192,7 +144,21 @@ Tell the user to check ${SETUP_URL} for configuration help.
     const url = new URL(this.httpUrl); // let this throw if the URL is invalid, see handling for ERR_INVALID_URL
 
     try {
-      const httpTransport = new StreamableHTTPClientTransport(url);
+      // The withheld toolset rides on every request as a header, so it narrows
+      // this client's tools/list AND the skills fragments its ppal-connect blob
+      // carries, without touching the device's global config.
+      const httpTransport = new StreamableHTTPClientTransport(
+        url,
+        this.disabledTools?.length
+          ? {
+              requestInit: {
+                headers: {
+                  [DISABLED_TOOLS_HEADER]: this.disabledTools.join(","),
+                },
+              },
+            }
+          : undefined,
+      );
 
       this.httpClient = new Client({
         name: "producer-pal-portal",
@@ -278,6 +244,9 @@ Tell the user to check ${SETUP_URL} for configuration help.
    * settings), so we re-assert the overrides each request. This also guarantees
    * the tool list/descriptions reflect the override (e.g. enabling Direct Live
    * API makes `ppal-live-api` appear). The settings are global to the device.
+   *
+   * `disabledTools` deliberately does NOT come through here — it is the one
+   * per-client setting, and it travels as a request header instead.
    */
   private async _pushConfigOverrides(): Promise<void> {
     const overrides: {

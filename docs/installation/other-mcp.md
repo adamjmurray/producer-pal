@@ -49,6 +49,22 @@ it on the device when connected:
 
 :::
 
+::: details Only need some of the tools?
+
+Add `--tools` to keep just the tools you want, or `--disable-tools` to drop the
+ones you don't:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "producer-pal", "--tools", "core,clip,track"]
+}
+```
+
+<!--@include: ../_partials/toolset-tip.md-->
+
+:::
+
 ::: details Advanced: enabling the Direct Live API
 
 Add the `--live-api` flag to turn on the opt-in

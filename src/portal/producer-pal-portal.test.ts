@@ -30,6 +30,12 @@ vi.mock(import("./file-logger.ts"), () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
+// Stubbed so --list-tools doesn't reach for a real device here; what it prints
+// is tool-listing.test.ts's business.
+vi.mock(import("./tool-listing.ts"), () => ({
+  formatToolListing: vi.fn(() => Promise.resolve("TOOL LISTING")),
+}));
+
 /**
  * Restore an env var to its pre-test value, deleting it when it was unset.
  * @param name - Environment variable name
@@ -130,6 +136,32 @@ describe("producer-pal-portal", () => {
 
   it("passes empty options when no flags or env vars are set", async () => {
     expect(await bridgeOptionsFor([])).toStrictEqual({});
+  });
+
+  it("passes the withheld tools through to the bridge", async () => {
+    expect(
+      await bridgeOptionsFor(["--disable-tools", "library"]),
+    ).toStrictEqual({ disabledTools: ["ppal-library"] });
+  });
+
+  it("prints the tool listing on stdout and exits for --list-tools", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    // Not a real exit here, so the module keeps going and starts the bridge —
+    // what matters is that the real portal exits before stdout becomes the
+    // protocol channel.
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+
+    process.argv = ["node", "producer-pal-portal.js", "--list-tools"];
+
+    await importPortalAndGetCalls();
+
+    expect(logSpy).toHaveBeenCalledWith("TOOL LISTING");
+    expect(exitSpy).toHaveBeenCalledWith(0);
+
+    logSpy.mockRestore();
+    exitSpy.mockRestore();
   });
 
   describe("CLI flags (never gated)", () => {

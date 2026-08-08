@@ -1,0 +1,271 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { isNotation, type Notation, NOTATIONS } from "#src/shared/notation.ts";
+import {
+  ALL_TOOL_IDS,
+  CONNECT_TOOL_ID,
+  resolveToolNames,
+} from "#src/shared/tool-groups.ts";
+import { logger } from "./file-logger.ts";
+import { type BridgeOptions } from "./stdio-http-bridge.ts";
+
+type Env = Record<string, string | undefined>;
+
+export interface PortalArgs {
+  /** The device's MCP endpoint. */
+  mcpUrl: string;
+  /** Only the overrides actually requested, so unset options leave the device alone. */
+  bridgeOptions: BridgeOptions;
+  /** `--list-tools`: print the catalog and exit without starting the bridge. */
+  listTools: boolean;
+}
+
+/**
+ * Parse the portal's CLI flags and env vars into everything the bridge needs.
+ *
+ * Env vars are ambient — the Claude Desktop extension always sets them, and a
+ * shell can inherit them — so they apply only when explicitly opted in via
+ * ALLOW_CONFIGURATION_OVERRIDES="true"; otherwise the device / chat UI stay
+ * authoritative. Explicit CLI flags are NOT gated: passing a flag is already an
+ * intentional per-invocation opt-in. Opt-in (=== "true"), NOT opt-out
+ * (!== "false") — see dev/decisions/0013-config-override-gate.md for why the
+ * intuitive polarity is wrong (a stock extension would clobber the device's own
+ * settings).
+ *
+ * Invalid values are logged and ignored rather than fatal, so a portal cached by
+ * npx still starts against a device it doesn't fully understand.
+ *
+ * @param argv - CLI arguments (process.argv without node + script path)
+ * @param env - The process environment
+ * @returns The parsed portal configuration
+ */
+export function parsePortalArgs(argv: string[], env: Env): PortalArgs {
+  const flags = new Set(argv);
+  const allowEnvOverrides = env.ALLOW_CONFIGURATION_OVERRIDES === "true";
+  const envValue = (name: string): string | undefined =>
+    allowEnvOverrides ? env[name] : undefined;
+
+  // Strip trailing slashes from the origin so a value like
+  // "http://localhost:3350/" doesn't produce "http://localhost:3350//mcp" (404).
+  const mcpServerOrigin = (
+    env.MCP_SERVER_ORIGIN ?? "http://localhost:3350"
+  ).replace(/\/+$/, "");
+
+  const bridgeOptions: BridgeOptions = {};
+
+  // Small model mode: `-s` / `--small-model-mode` flag (ungated) or the
+  // SMALL_MODEL_MODE env var (gated). Tri-state — undefined leaves the device's
+  // own setting alone, while true/false are both pushed so the extension's
+  // toggle can force the setting on OR off.
+  const smallModelMode =
+    flags.has("-s") || flags.has("--small-model-mode")
+      ? true
+      : parseBoolEnv(envValue("SMALL_MODEL_MODE"));
+
+  // Direct Live API opt-in: `-l` / `--live-api` flag (ungated) or LIVE_API env
+  // (gated). Enables the low-level `ppal-live-api` tool at the device level
+  // (global — MCP clients, REST API, and the chat UI all see it). Advanced escape
+  // hatch for custom integrations, scripting, and debugging directly against the
+  // Live Object Model; not recommended as a default.
+  const liveApiEnabled =
+    flags.has("-l") || flags.has("--live-api")
+      ? true
+      : parseBoolEnv(envValue("LIVE_API"));
+
+  if (smallModelMode != null) bridgeOptions.smallModelMode = smallModelMode;
+  if (liveApiEnabled != null) bridgeOptions.liveApiEnabled = liveApiEnabled;
+
+  const notation = resolveNotationArg(argv, envValue("NOTATION"));
+
+  if (notation != null) bridgeOptions.notation = notation;
+
+  const jsonOutput = resolveJsonOutputArg(
+    argv,
+    envValue("FORMAT"),
+    envValue("JSON_OUTPUT"),
+  );
+
+  if (jsonOutput != null) bridgeOptions.jsonOutput = jsonOutput;
+
+  const disabledTools = resolveDisabledTools(
+    readOptionArg(argv, ["--tools"]) ?? envValue("TOOLS"),
+    readOptionArg(argv, ["--disable-tools"]) ?? envValue("DISABLE_TOOLS"),
+  );
+
+  if (disabledTools != null) bridgeOptions.disabledTools = disabledTools;
+
+  return {
+    mcpUrl: `${mcpServerOrigin}/mcp`,
+    bridgeOptions,
+    listTools: flags.has("--list-tools"),
+  };
+}
+
+/**
+ * Read an option value from argv, accepting long/short aliases in both the
+ * `--name value` / `-x value` and `--name=value` / `-x=value` forms. Falls back
+ * to undefined when none of the aliases are present (caller then checks the
+ * corresponding env var).
+ *
+ * @param argv - CLI arguments (process.argv without node + script path)
+ * @param names - Option aliases to match, e.g. `["--notation", "-n"]`
+ * @returns The raw option value, or undefined when not provided
+ */
+function readOptionArg(argv: string[], names: string[]): string | undefined {
+  for (const name of names) {
+    const prefix = `${name}=`;
+    const inline = argv.find((a) => a.startsWith(prefix));
+
+    if (inline) return inline.slice(prefix.length);
+
+    const idx = argv.indexOf(name);
+
+    if (idx !== -1 && idx + 1 < argv.length) return argv[idx + 1];
+  }
+
+  return undefined;
+}
+
+/**
+ * Parse a strict boolean env var: `"true"` → true, `"false"` → false, and
+ * undefined for anything else (empty, unset, or unrecognized) — i.e. "no
+ * override". Lets a Desktop-extension toggle force a setting on OR off, while an
+ * absent/blank value leaves the device's own setting untouched.
+ *
+ * @param value - Raw env var value
+ * @returns The boolean, or undefined when not a recognized boolean
+ */
+function parseBoolEnv(value: string | undefined): boolean | undefined {
+  if (value === "true") return true;
+
+  if (value === "false") return false;
+
+  return undefined;
+}
+
+/**
+ * Resolve the notation override from `--notation <value>` / `-n <value>` or the
+ * NOTATION env var. Trimmed and lower-cased so the Claude Desktop extension's
+ * free-text notation field is forgiving (mcpb user_config has no enum type, so it
+ * can't be a dropdown). An empty value — the extension's blank default — means
+ * "no override".
+ *
+ * @param argv - CLI arguments
+ * @param envNotation - The NOTATION env var, when overrides are allowed
+ * @returns The notation, or undefined for no override
+ */
+function resolveNotationArg(
+  argv: string[],
+  envNotation: string | undefined,
+): Notation | undefined {
+  const raw = readOptionArg(argv, ["--notation", "-n"]) ?? envNotation;
+  const value = raw?.trim().toLowerCase();
+
+  if (value == null || value === "") return undefined;
+
+  if (isNotation(value)) return value;
+
+  logger.error(
+    `Ignoring invalid notation "${raw}" (expected one of: ${NOTATIONS.join(", ")})`,
+  );
+
+  return undefined;
+}
+
+/**
+ * Resolve the response-format override. `--format <json|compact>` / `-f` (or the
+ * FORMAT env var) is the primary spelling; JSON_OUTPUT is a boolean alias for the
+ * Claude Desktop extension's toggle, which can't offer a dropdown, and an
+ * explicit format wins over it. `json` requests standard JSON tool output that
+ * coding agents can parse with JSON tooling; the default `compact` is a
+ * token-optimized literal.
+ *
+ * @param argv - CLI arguments
+ * @param envFormat - The FORMAT env var, when overrides are allowed
+ * @param envJsonOutput - The JSON_OUTPUT env var, when overrides are allowed
+ * @returns True for JSON, false for compact, undefined for no override
+ */
+function resolveJsonOutputArg(
+  argv: string[],
+  envFormat: string | undefined,
+  envJsonOutput: string | undefined,
+): boolean | undefined {
+  const format = readOptionArg(argv, ["--format", "-f"]) ?? envFormat;
+
+  if (format === "json") return true;
+
+  if (format === "compact") return false;
+
+  if (format != null && format !== "") {
+    logger.error(
+      `Ignoring invalid format "${format}" (expected one of: json, compact)`,
+    );
+  }
+
+  return parseBoolEnv(envJsonOutput);
+}
+
+/**
+ * Resolve the tools to withhold from this client, from `--tools` (a whitelist,
+ * how people actually think about it) and `--disable-tools` (a subtraction,
+ * matching the header's native semantics). Given both, the subtraction applies
+ * last.
+ *
+ * `--tools` becomes a local complement over the FULL catalog so both flags feed
+ * the one `x-producer-pal-disabled-tools` header. Consequence worth knowing: the
+ * complement is a snapshot of what this portal build knows, so a tool the device
+ * added after the portal was cached isn't in it and stays enabled.
+ * `--disable-tools` has no such skew.
+ *
+ * `ppal-connect` is never withheld. A subagent worker drops it on purpose (it is
+ * briefed instead of connecting), but an external MCP client that loses connect
+ * loses its entry point and the entire Skills blob.
+ *
+ * @param rawTools - The `--tools` / TOOLS value, if any
+ * @param rawDisable - The `--disable-tools` / DISABLE_TOOLS value, if any
+ * @returns The tool names to withhold, or undefined when nothing was requested
+ */
+function resolveDisabledTools(
+  rawTools: string | undefined,
+  rawDisable: string | undefined,
+): string[] | undefined {
+  const disabled = new Set<string>();
+
+  if (rawTools?.trim()) {
+    const keep = new Set(resolveToolNames(rawTools, warnUnknownTool));
+
+    for (const id of ALL_TOOL_IDS) {
+      if (!keep.has(id)) disabled.add(id);
+    }
+  }
+
+  if (rawDisable?.trim()) {
+    for (const id of resolveToolNames(rawDisable, warnUnknownTool)) {
+      disabled.add(id);
+    }
+  }
+
+  if (disabled.delete(CONNECT_TOOL_ID)) {
+    logger.info(`Keeping ${CONNECT_TOOL_ID}: MCP clients need the entry point`);
+  }
+
+  if (disabled.size === 0) return undefined;
+
+  const names = ALL_TOOL_IDS.filter((id) => disabled.has(id));
+
+  logger.info(`Withholding tools from this client: ${names.join(", ")}`);
+
+  return names;
+}
+
+/**
+ * Log an unrecognized `--tools` / `--disable-tools` item. Ignored rather than
+ * fatal so an npx-cached portal still starts against a newer device.
+ * @param item - The item as the user spelled it
+ */
+function warnUnknownTool(item: string): void {
+  logger.error(`Ignoring unknown tool or group "${item}"`);
+}

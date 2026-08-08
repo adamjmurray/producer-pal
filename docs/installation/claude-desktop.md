@@ -109,14 +109,23 @@ defaults are recommended.
 - **JSON output** — returns tool results as JSON instead of the compact default.
   Not recommended for normal use (it increases token usage), but useful when you
   want Claude to run code on the results.
+- **Tools** / **Disable tools** — narrow the [toolset](/features#toolset) Claude
+  Desktop sees. Comma-separated tool names (`read-clip` or `ppal-read-clip`)
+  and/or groups: `core`, `session`, `actions`, `live-set`, `track`, `scene`,
+  `clip`, `device`, `advanced`, `read-only`. Withholding a tool also drops the
+  [skills](/features#skills) that teach it, so every conversation gets smaller.
+  `ppal-connect` is always kept.
 
 ::: info Device stays authoritative by default
 
-The four settings below **Allow configuration overrides** take effect only when
-that toggle is on. When they do, MIDI notation, Small model mode, Direct Live
-API, and JSON output are pushed to the device as global settings — they also
-change in the [chat UI](/guide/chat-ui) and for any other connected MCP client.
-While the toggle is off, the extension leaves every device setting untouched.
+The settings below **Allow configuration overrides** take effect only when that
+toggle is on. When they do, MIDI notation, Small model mode, Direct Live API,
+and JSON output are pushed to the device as global settings — they also change
+in the [chat UI](/guide/chat-ui) and for any other connected MCP client. While
+the toggle is off, the extension leaves every device setting untouched.
+
+**Tools** and **Disable tools** are the exception: they apply to this extension
+only, and never change what the chat UI or another client can reach.
 
 :::
 

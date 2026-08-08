@@ -13,7 +13,7 @@ import {
   type ConversationLock,
   LockedSettingsNotice,
 } from "#webui/components/settings/LockedSettingsNotice";
-import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 
 type NoticeProps = ComponentProps<typeof LockedSettingsNotice>;
 

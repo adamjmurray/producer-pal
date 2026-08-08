@@ -13,8 +13,13 @@
 // states a decision instead of drifting the day a tool is added. `assertKnownTools`
 // catches the other side of that: a renamed tool would otherwise silently widen a
 // profile's snapshot.
+//
+// `read-only` is the exception: it takes the shared table's list so the snapshot
+// reports what a `--tools read-only` client actually receives. That name is now
+// user-facing vocabulary, so two definitions of it would be a trap.
 
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+import { READ_ONLY_TOOLS } from "#src/shared/tool-groups.ts";
 
 /** A named toolset the corpus is generated for. */
 export interface ToolsetProfile {
@@ -39,15 +44,8 @@ export const TOOLSET_PROFILES: readonly ToolsetProfile[] = [
   {
     name: "read-only",
     description:
-      "A caller that can look but not touch: the narrow subagent worker gating exists to serve.",
-    tools: [
-      CONNECT,
-      "ppal-read-live-set",
-      READ_TRACK,
-      "ppal-read-scene",
-      READ_CLIP,
-      "ppal-read-device",
-    ],
+      "A caller that can look but not touch: the narrow subagent worker gating exists to serve, and what --tools read-only gives an external client.",
+    tools: READ_ONLY_TOOLS,
   },
   {
     name: "clip-write",

@@ -47,7 +47,7 @@ import { ContextTabsStub, systemPromptDocMock } from "./App-context-mocks";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
-import { LIVE_API_TOOL_ID } from "#webui/lib/utils/enabled-tools";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { mockChatHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 

@@ -38,6 +38,18 @@ claude mcp add producer-pal -- npx producer-pal --format json --notation midi-js
 
 :::
 
+::: tip Only need some of the tools?
+
+Narrow the toolset and every conversation gets smaller:
+
+```bash
+claude mcp add producer-pal -- npx producer-pal --tools core,clip,track
+```
+
+<!--@include: ../_partials/toolset-tip.md-->
+
+:::
+
 **Option B: Direct HTTP** - Requires Ableton running first, no
 auto-reconnection:
 

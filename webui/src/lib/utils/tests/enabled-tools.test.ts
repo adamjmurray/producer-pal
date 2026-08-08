@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import {
   SPAWN_SUBAGENT_TOOL_NAME,
   enabledToolsDiverge,
   isEnabledToolsMap,
   isToolEnabled,
-  LIVE_API_TOOL_ID,
   withLiveApiTool,
 } from "#webui/lib/utils/enabled-tools";
 

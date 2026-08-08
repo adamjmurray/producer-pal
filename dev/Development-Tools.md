@@ -206,6 +206,15 @@ the enable-only flags, a boolean env can send `false` to force a setting off.
 This env path is what the Claude Desktop extension's toggles use. Handy for
 exercising a specific config against a release build through the inspector.
 
+`--tools <list>` / `--disable-tools <list>` (env: `TOOLS`, `DISABLE_TOOLS`) are
+the exception: they are per client, sent as the disabled-tools header rather
+than pushed via `POST /config`, since `config.tools` is device-global. Both
+accept tool names and the group aliases in `src/shared/tool-groups.ts`;
+`--tools` becomes a local complement over the full catalog so both feed one
+header. `--list-tools` prints the group aliases plus a live `tools/list` from
+the device (falling back to the portal's own catalog when it's unreachable, like
+the bridge does), then exits.
+
 ## Build Warnings
 
 ### Expected Warnings

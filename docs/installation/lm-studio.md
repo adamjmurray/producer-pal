@@ -96,6 +96,34 @@ the chat UI and any other connected clients.
 
 :::
 
+::: tip Also recommended for small models: fewer tools
+
+Small models do better with a short tool list, and a narrower toolset shrinks
+the skills they have to read too:
+
+```json
+{
+  "mcpServers": {
+    "producer-pal": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "producer-pal",
+        "--small-model-mode",
+        "--notation",
+        "stark",
+        "--tools",
+        "core,clip,track"
+      ]
+    }
+  }
+}
+```
+
+<!--@include: ../_partials/toolset-tip.md-->
+
+:::
+
 **Option B: Direct HTTP**:
 
 ```json
@@ -136,16 +164,16 @@ _See below for tips on using a subset of tools._
   significantly slower, especially as the conversation grows. Experiment to find
   the right balance.
 - To help the model make good tool choices and get more out of the limited
-  context length, disable some of the Producer Pal tools. To focus on MIDI clip
+  context length, run fewer Producer Pal tools. To focus on MIDI clip
   generation, a good minimal toolset for experimentation is:
-  - `ppal-connect`
-  - `ppal-read-live-set`
-  - `ppal-read-track`
-  - `ppal-create-clip`
-  - `ppal-delete`
-  - `ppal-playback`
 
-  Try disabling all the other tools and add back when you miss features.
+  ```
+  --tools connect,read-live-set,read-track,create-clip,delete,playback
+  ```
+
+  Add tools back when you miss features. This also shrinks the
+  [skills](/features#skills) the model reads on connect, which is where most of
+  the context goes.
 
 - **Follow-up turns are often faster.** LM Studio automatically reuses its
   cached prompt prefix between turns, so later messages in a conversation can be
