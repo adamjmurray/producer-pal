@@ -31,7 +31,8 @@ export interface McpToolDefinition {
  * per-request small-model-mode header, so the server shrinks tool schemas and
  * serves the basic skills variant for THIS caller (the built-in chat, or a
  * subagent worker) independent of the global default. Omit it — as the voice
- * paths do — to send no header and let the server fall back to the global.
+ * paths do, passing only their toolset — to send no header and let the server
+ * fall back to the global.
  *
  * `enabledTools` likewise rides along as a header, listing only what this caller
  * turned OFF: the server then neither registers those tools nor sends the skills
@@ -118,8 +119,8 @@ export function perRequestHeaders(
  * Filters MCP tools based on enabled/disabled configuration.
  *
  * Kept even though {@link createConnectedMcpClient} now withholds the same tools
- * server-side: this is what decides the toolset when no header applies (the
- * voice paths), and it covers names the server's whitelist never had.
+ * server-side: this is what decides the toolset when no header applies, and it
+ * covers names the server's whitelist never had.
  *
  * @param tools - Array of MCP tool definitions
  * @param enabledTools - Map of tool names to enabled state (undefined = enabled)

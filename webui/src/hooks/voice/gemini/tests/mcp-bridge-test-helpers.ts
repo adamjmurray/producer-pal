@@ -15,6 +15,7 @@ import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
 export const callToolMock = vi.fn();
 export const listToolsMock = vi.fn();
 export const closeMock = vi.fn();
+export const createConnectedMcpClientMock = vi.fn();
 
 export const fakeMcpClient = {
   callTool: callToolMock,
@@ -28,14 +29,14 @@ export const fakeMcpClient = {
  * @returns The mocked module shape
  */
 export function mcpClientHelpersMock(): {
-  createConnectedMcpClient: () => Promise<Client>;
+  createConnectedMcpClient: typeof createConnectedMcpClientMock;
   filterEnabledTools: (
     tools: McpToolDefinition[],
     enabledTools?: Record<string, boolean>,
   ) => McpToolDefinition[];
 } {
   return {
-    createConnectedMcpClient: vi.fn(async () => fakeMcpClient),
+    createConnectedMcpClient: createConnectedMcpClientMock,
     filterEnabledTools: (tools, enabledTools) =>
       enabledTools
         ? tools.filter((t) => enabledTools[t.name] !== false)
@@ -48,7 +49,11 @@ export function resetMcpClientMocks(): void {
   callToolMock.mockReset();
   listToolsMock.mockReset();
   closeMock.mockReset();
+  createConnectedMcpClientMock.mockReset();
+  createConnectedMcpClientMock.mockResolvedValue(fakeMcpClient);
 }
+
+createConnectedMcpClientMock.mockResolvedValue(fakeMcpClient);
 
 /**
  * Queue a `listTools()` response that returns the named bare tools (no input

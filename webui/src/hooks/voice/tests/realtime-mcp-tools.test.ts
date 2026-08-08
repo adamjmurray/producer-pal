@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
 import {
   callToolMock,
+  createConnectedMcpClientMock,
   fakeMcpClient,
   listToolsMock,
   mcpClientHelpersMock,
@@ -88,6 +89,23 @@ describe("createRealtimeMcpTools", () => {
     );
 
     expect(tools.map((t) => t.name)).toStrictEqual(["ppal_a", "ppal_c"]);
+  });
+
+  it("sends the toolset to the server, but no small-model mode or notation", async () => {
+    mockListBareTools("ppal-a");
+
+    const enabledTools = { "ppal-a": true, "ppal-b": false };
+
+    await createRealtimeMcpTools(MCP_URL, enabledTools);
+
+    // The disabled-tools header is what stops the server from shipping skills
+    // fragments for tools voice can't call. The two undefineds keep voice on the
+    // device globals for small-model mode and notation.
+    expect(createConnectedMcpClientMock).toHaveBeenCalledWith(
+      MCP_URL,
+      undefined,
+      enabledTools,
+    );
   });
 
   it("execute() forwards args to mcpClient.callTool and returns text content", async () => {

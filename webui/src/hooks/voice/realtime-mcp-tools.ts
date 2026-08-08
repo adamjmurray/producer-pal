@@ -31,7 +31,13 @@ export async function createRealtimeMcpTools(
   mcpUrl: string,
   enabledTools?: Record<string, boolean>,
 ): Promise<RealtimeMcpTools> {
-  const mcpClient = await createConnectedMcpClient(mcpUrl);
+  // Pass only the toolset: voice locks no small-model mode or notation of its
+  // own, so those stay undefined and fall through to the device globals.
+  const mcpClient = await createConnectedMcpClient(
+    mcpUrl,
+    undefined,
+    enabledTools,
+  );
   const toolsResult = await mcpClient.listTools();
   const filtered = filterEnabledTools(toolsResult.tools, enabledTools);
 
