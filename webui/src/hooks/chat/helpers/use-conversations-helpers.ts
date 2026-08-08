@@ -209,9 +209,9 @@ export function buildSaveRecord(
  *
  * The system instruction and notation are locked at the FIRST save: both prefer
  * an already-stored value over the current one, so a later save can't re-capture
- * a global the user has since changed. `enabledTools` is the opposite — it is
- * re-captured every save, because a restored conversation genuinely reconnects
- * with the current toolset and the record should say which one it last used.
+ * a global the user has since changed. `enabledTools` needs no such guard: it
+ * comes from the conversation's active toolset, which is itself pinned once the
+ * chat connects, so re-capturing it every save writes the same value.
  * @param refs - Active refs supplying the currently-locked values
  * @param existing - Previously saved record (if updating)
  * @returns The snapshot fields to spread onto the record
