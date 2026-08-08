@@ -31,8 +31,16 @@ export function ToolsIndicator({
   defaultToolsCount,
   diverges,
 }: ToolsIndicatorProps) {
+  // A divergence can leave both counts identical: the counts cover the MCP
+  // catalog, but a toolset also carries tools outside it (the client-side
+  // Subagent tool, and Direct Live API while the device flag is off). Naming a
+  // number the user can't see a difference in would read as no difference.
+  const defaultText =
+    enabledToolsCount === defaultToolsCount
+      ? "default is a different set"
+      : `default is now ${defaultToolsCount}/${totalToolsCount}`;
   const titleText = diverges
-    ? `Locked: ${enabledToolsCount}/${totalToolsCount} tools enabled (default is now ${defaultToolsCount}/${totalToolsCount})`
+    ? `Locked: ${enabledToolsCount}/${totalToolsCount} tools enabled (${defaultText})`
     : `${enabledToolsCount}/${totalToolsCount} tools enabled`;
   const textColor = diverges ? amberColor : neutralColor;
 

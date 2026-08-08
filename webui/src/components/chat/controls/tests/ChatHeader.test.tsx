@@ -257,6 +257,27 @@ describe("ChatHeader", () => {
 
       expect(indicator.className).toContain("amber");
     });
+
+    it("says the set differs when the divergence is outside the tool catalog", () => {
+      // Divergence in a tool the counts can't see (Subagent, or Direct Live API
+      // with the device flag off) leaves both numbers equal.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({
+            enabledToolsCount: 20,
+            defaultToolsCount: 20,
+            enabledToolsDiverge: true,
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByTitle(
+          "Locked: 20/20 tools enabled (default is a different set)",
+        ),
+      ).toBeDefined();
+    });
   });
 
   describe("Settings button", () => {
