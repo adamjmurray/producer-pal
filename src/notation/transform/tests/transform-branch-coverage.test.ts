@@ -5,8 +5,15 @@
 
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
-import { evaluateTransformAST } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
-import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
+import {
+  applyBinaryOp,
+  evaluateTransformAST,
+} from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { evaluatePredicate } from "#src/notation/transform/helpers/transform-predicate-helpers.ts";
+import {
+  type PredicateNode,
+  type TransformAssignment,
+} from "#src/notation/transform/parser/transform-parser.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
 import { createContext } from "./evaluator/transform-evaluator-test-helpers.ts";
@@ -157,6 +164,44 @@ describe("Transform Branch Coverage", () => {
 
       // The note op is skipped, contributing no parameter results.
       expect(Object.keys(result)).toHaveLength(0);
+    });
+
+    it("falls through on an unknown binary operator", () => {
+      // Same unreachable-by-construction default as the predicate switches.
+      const op = "exponentiate" as Parameters<typeof applyBinaryOp>[0];
+
+      expect(applyBinaryOp(op, 2, 3)).toBe(op);
+    });
+  });
+
+  describe("transform-predicate-helpers.js branch coverage", () => {
+    // The parser never produces these shapes, and the `never` in each switch
+    // default keeps it that way. Reached here by casting so the fall-through
+    // stays exercised if a node type or operator is ever added.
+    const ctx = {
+      position: 0,
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+      timeRange: { start: 0, end: 4 },
+      noteProperties: NOTE_PROPERTIES,
+      evaluateExpression: () => 60,
+    };
+
+    it("falls through on an unknown predicate node type", () => {
+      const node = { type: "nope" } as unknown as PredicateNode;
+
+      expect(evaluatePredicate(node, ctx)).toBe(node);
+    });
+
+    it("falls through on an unknown comparison operator", () => {
+      const node = {
+        type: "comparison",
+        op: "~=",
+        left: { type: "number", value: 60 },
+        right: { type: "number", value: 60 },
+      } as unknown as PredicateNode;
+
+      expect(evaluatePredicate(node, ctx)).toBe("~=");
     });
   });
 });

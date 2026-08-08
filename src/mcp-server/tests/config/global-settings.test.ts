@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   readGlobalSettings,
@@ -66,6 +67,30 @@ describe("global settings store", () => {
     writeRawSettings('{"autoUpdateCheck": "yes please"}');
     expect(readGlobalSettings().autoUpdateCheck).toBe(true);
   });
+
+  it("falls back to defaults when the file holds valid JSON that isn't an object", () => {
+    // JSON.parse succeeds on these, so only the shape check catches them.
+    for (const text of ["[1, 2, 3]", '"just a string"', "null"]) {
+      writeRawSettings(text);
+
+      expect(readGlobalSettings()).toStrictEqual({
+        autoUpdateCheck: true,
+        dismissedUpdateVersion: null,
+      });
+    }
+  });
+
+  it("warns and falls back when the file can't be read at all", () => {
+    // A directory where the file should be: readFileSync throws EISDIR, which
+    // is not the ordinary missing-file case and must be reported.
+    mkdirSync(join(getDir(), "settings.json"));
+
+    expect(readGlobalSettings().autoUpdateCheck).toBe(true);
+    expect(Max.post).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to read"),
+      "warn",
+    );
+  });
 });
 
 describe("/settings routes", () => {
@@ -110,6 +135,36 @@ describe("/settings routes", () => {
     expect(mistyped.status).toBe(400);
     expect(unknown.status).toBe(400);
     expect(readGlobalSettings().autoUpdateCheck).toBe(true);
+  });
+
+  it("clears a dismissal with an explicit null", async () => {
+    updateGlobalSettings({ dismissedUpdateVersion: "9.9.9" });
+
+    const response = await putJson(url, { dismissedUpdateVersion: null });
+
+    expect(await response.json()).toStrictEqual({
+      autoUpdateCheck: true,
+      dismissedUpdateVersion: null,
+    });
+  });
+
+  it("400s a mistyped dismissedUpdateVersion", async () => {
+    const response = await putJson(url, { dismissedUpdateVersion: 42 });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toStrictEqual({
+      error: "dismissedUpdateVersion must be a string or null",
+    });
+  });
+
+  it("400s a request with no JSON object body", async () => {
+    // No Content-Type, so express leaves req.body undefined; a bare JSON scalar
+    // parses but isn't a patch.
+    const noBody = await fetch(url, { method: "PUT" });
+    const notAnObject = await putJson(url, "nope");
+
+    expect(noBody.status).toBe(400);
+    expect(notAnObject.status).toBe(400);
   });
 
   it("403s a cross-site write", async () => {

@@ -52,6 +52,61 @@ describe("useGlobalSettings", () => {
     expect(result.current.autoUpdateCheck).toBe(true);
   });
 
+  it("keeps the default when the server answers the read with an error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("nope", { status: 500 }),
+    );
+
+    const { result } = renderHook(() => useGlobalSettings());
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalled();
+    });
+
+    expect(result.current.autoUpdateCheck).toBe(true);
+  });
+
+  it("keeps a change that the server accepted", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({})));
+
+    const { result } = renderHook(() => useGlobalSettings());
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    await act(() => {
+      result.current.setAutoUpdateCheck(false);
+    });
+
+    expect(result.current.autoUpdateCheck).toBe(false);
+  });
+
+  it("reverts a change the write never reached the server with", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({})))
+      .mockRejectedValueOnce(new Error("offline"));
+
+    const { result } = renderHook(() => useGlobalSettings());
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    await act(() => {
+      result.current.setAutoUpdateCheck(false);
+    });
+
+    await waitFor(() => {
+      expect(result.current.autoUpdateCheck).toBe(true);
+    });
+  });
+
   it("writes a change through and reverts it when the write fails", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")

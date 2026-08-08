@@ -220,6 +220,20 @@ describe("readTrack - mixer properties", () => {
     expect(result).not.toHaveProperty("pan");
   });
 
+  it("omits the split pans Live doesn't expose", () => {
+    setupTrackMixerMocks({
+      panningMode: 1,
+      leftSplitExists: false,
+      rightSplitExists: false,
+    });
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("panningMode", "split");
+    expect(result).not.toHaveProperty("leftPan");
+    expect(result).not.toHaveProperty("rightPan");
+  });
+
   it("includes sends with return track names when requested", () => {
     setupTrackMixerMocks({
       sendIds: ["send_1", "send_2"],
