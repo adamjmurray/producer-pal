@@ -30,7 +30,7 @@ import {
   type EvalTurnResult,
   type ScenarioRequirements,
 } from "../../types.ts";
-import { clearSessionSlots } from "../clip/clip-scenario-helpers.ts";
+import { clearSessionSlots } from "../clip/helpers/clip-scenario-helpers.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
 export const TOOL_CONNECT = "ppal-connect";

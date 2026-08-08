@@ -15,12 +15,14 @@
 import { act } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  deferredFirstSave,
   deferredSave,
   deferredSaveQueue,
   drainMicrotasks,
   flushDebounceWindow,
   renderReadyEditor,
   startBlockedClear,
+  startClear,
   stubConfirm,
   typeDraft,
 } from "./use-context-editor-state-test-helpers";
@@ -128,16 +130,7 @@ describe("useContextEditorState write ordering", () => {
     });
 
     it("handleImport awaits an in-flight save before importing", async () => {
-      let resolveSave: (saved: boolean) => void = () => {};
-      const save = vi
-        .fn()
-        .mockImplementationOnce(
-          () =>
-            new Promise<boolean>((resolve) => {
-              resolveSave = resolve;
-            }),
-        )
-        .mockResolvedValue(true);
+      const { save, resolveFirstSave } = deferredFirstSave();
       const { result } = renderReadyEditor({ save });
 
       stubConfirm(true);
@@ -157,7 +150,7 @@ describe("useContextEditorState write ordering", () => {
       expect(save).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        resolveSave(true);
+        resolveFirstSave(true);
         await importPromise;
       });
 
@@ -234,12 +227,9 @@ describe("useContextEditorState write ordering", () => {
 
       stubConfirm(true);
 
-      let clearPromise: Promise<boolean> | undefined;
       let importPromise: Promise<void> | undefined;
+      const { pending: clearPromise } = await startClear(result);
 
-      await act(() => {
-        clearPromise = result.current.handleClear();
-      });
       expect(clear).toHaveBeenCalledTimes(1);
 
       await act(() => {
@@ -416,11 +406,8 @@ describe("useContextEditorState write ordering", () => {
 
       stubConfirm(true);
 
-      let clearPromise: Promise<boolean> | undefined;
+      const { pending: clearPromise } = await startClear(result);
 
-      await act(() => {
-        clearPromise = result.current.handleClear();
-      });
       expect(clear).toHaveBeenCalledTimes(1);
 
       await typeDraft(result, "typed during clear");
@@ -439,16 +426,7 @@ describe("useContextEditorState write ordering", () => {
     it("drops a blur flush typed during an in-flight Import", async () => {
       // Blur flushes with no debounce, so the window is the bare round trip —
       // the race is not only the 800ms one.
-      let resolveImport: (saved: boolean) => void = () => {};
-      const save = vi
-        .fn()
-        .mockImplementationOnce(
-          () =>
-            new Promise<boolean>((resolve) => {
-              resolveImport = resolve;
-            }),
-        )
-        .mockResolvedValue(true);
+      const { save, resolveFirstSave: resolveImport } = deferredFirstSave();
       const { result } = renderReadyEditor({ save });
 
       stubConfirm(true);
@@ -484,11 +462,8 @@ describe("useContextEditorState write ordering", () => {
 
       stubConfirm(true);
 
-      let clearPromise: Promise<boolean> | undefined;
+      const { pending: clearPromise } = await startClear(result);
 
-      await act(() => {
-        clearPromise = result.current.handleClear();
-      });
       await act(async () => {
         resolveClear(true);
         await clearPromise;

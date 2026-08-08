@@ -12,7 +12,10 @@ import { argText } from "../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalScenario } from "../../types.ts";
-import { assertNotesRead, getTransforms } from "./clip-scenario-helpers.ts";
+import {
+  assertNotesRead,
+  getTransforms,
+} from "./helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 

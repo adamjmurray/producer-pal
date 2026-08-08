@@ -18,7 +18,7 @@
  * own pitch spelling is transparent to it.
  */
 
-import { type ExpectedNote } from "../clip-scenario-helpers.ts";
+import { type ExpectedNote } from "../helpers/clip-scenario-helpers.ts";
 import {
   DRUMS_TRACK,
   LEAD_TRACK,

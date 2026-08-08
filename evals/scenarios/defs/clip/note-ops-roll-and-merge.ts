@@ -51,7 +51,7 @@ import {
   readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./clip-scenario-helpers.ts";
+} from "./helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 /** 4-track Live Set used by the split scenarios (Lead + Bass tracks). */

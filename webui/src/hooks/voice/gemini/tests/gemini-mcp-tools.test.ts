@@ -14,6 +14,7 @@ import {
   mcpClientHelpersMock,
   mockCallToolText,
   mockListBareTools,
+  mockListTwoTools,
   resetMcpClientMocks,
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
@@ -29,24 +30,10 @@ const MCP_URL = "http://localhost:3350/mcp";
 
 describe("createGeminiMcpTools", () => {
   it("maps MCP tools to function declarations, keeping dashed names", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        {
-          name: "ppal-read-track",
-          description: "Read a track",
-          inputSchema: {
-            $schema: "https://json-schema.org/draft/2020-12/schema",
-            type: "object",
-            properties: { trackIndex: { type: "number" } },
-            required: ["trackIndex"],
-          },
-        },
-        {
-          name: "ppal-create-clip",
-          description: "Create a clip",
-          inputSchema: { properties: {} }, // missing type + required — defaulted
-        },
-      ],
+    // The $schema meta-key is only interesting here: Gemini's validator chokes
+    // on it, so the adapter must strip it (asserted below).
+    mockListTwoTools({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
     });
 
     const { functionDeclarations, mcpClient } =

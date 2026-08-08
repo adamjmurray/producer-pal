@@ -11,6 +11,39 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useGlobalSettings } from "#webui/hooks/connection/use-global-settings";
 import { getSettingsUrl } from "#webui/utils/mcp-url";
 
+/**
+ * Render the hook and assert the opt-out default survives a failed read.
+ * @returns Promise resolving when the assertion has run
+ */
+async function expectDefaultKept(): Promise<void> {
+  const { result } = renderHook(() => useGlobalSettings());
+
+  await waitFor(() => {
+    expect(globalThis.fetch).toHaveBeenCalled();
+  });
+
+  expect(result.current.autoUpdateCheck).toBe(true);
+}
+
+/**
+ * Mount the hook, wait for its mount read, then turn auto-update-check off.
+ * @param fetchSpy - The stubbed fetch, whose first call is the mount read
+ * @returns The hook result, after the toggle
+ */
+async function mountAndToggleOff(fetchSpy: ReturnType<typeof vi.spyOn>) {
+  const { result } = renderHook(() => useGlobalSettings());
+
+  await waitFor(() => {
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  await act(() => {
+    result.current.setAutoUpdateCheck(false);
+  });
+
+  return result;
+}
+
 describe("useGlobalSettings", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -43,13 +76,7 @@ describe("useGlobalSettings", () => {
     // imply the user had turned checking off.
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-    const { result } = renderHook(() => useGlobalSettings());
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
-
-    expect(result.current.autoUpdateCheck).toBe(true);
+    await expectDefaultKept();
   });
 
   it("keeps the default when the server answers the read with an error", async () => {
@@ -57,13 +84,7 @@ describe("useGlobalSettings", () => {
       new Response("nope", { status: 500 }),
     );
 
-    const { result } = renderHook(() => useGlobalSettings());
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
-
-    expect(result.current.autoUpdateCheck).toBe(true);
+    await expectDefaultKept();
   });
 
   it("keeps a change that the server accepted", async () => {
@@ -71,15 +92,7 @@ describe("useGlobalSettings", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(JSON.stringify({})));
 
-    const { result } = renderHook(() => useGlobalSettings());
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-    });
-
-    await act(() => {
-      result.current.setAutoUpdateCheck(false);
-    });
+    const result = await mountAndToggleOff(fetchSpy);
 
     expect(result.current.autoUpdateCheck).toBe(false);
   });
@@ -92,15 +105,7 @@ describe("useGlobalSettings", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({})))
       .mockRejectedValueOnce(new Error("offline"));
 
-    const { result } = renderHook(() => useGlobalSettings());
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-    });
-
-    await act(() => {
-      result.current.setAutoUpdateCheck(false);
-    });
+    const result = await mountAndToggleOff(fetchSpy);
 
     await waitFor(() => {
       expect(result.current.autoUpdateCheck).toBe(true);
@@ -113,15 +118,7 @@ describe("useGlobalSettings", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({})))
       .mockResolvedValueOnce(new Response("nope", { status: 500 }));
 
-    const { result } = renderHook(() => useGlobalSettings());
-
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-    });
-
-    await act(() => {
-      result.current.setAutoUpdateCheck(false);
-    });
+    const result = await mountAndToggleOff(fetchSpy);
 
     expect(fetchSpy).toHaveBeenCalledWith(
       getSettingsUrl(),

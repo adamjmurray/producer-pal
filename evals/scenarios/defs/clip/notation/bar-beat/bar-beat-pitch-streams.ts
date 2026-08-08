@@ -20,18 +20,14 @@
 
 import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import {
-  clearSessionSlots,
   clipStateAssertion,
-  type ExpectedNote,
-  MSG_CONNECT,
   notesMatch,
-  TOOL_CONNECT,
-} from "../../clip-scenario-helpers.ts";
-
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const LIVE_SET = "basic-midi-4-track";
-/** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
-const LEAD_TRACK = 3;
+  type ExpectedNote,
+} from "../../helpers/clip-scenario-helpers.ts";
+import {
+  createClipScenario,
+  LEAD_TRACK,
+} from "../../helpers/clip-scenario-builders.ts";
 
 /** Ascending C, D, E, F on quarter beats 0-3 — the shared head of the 4/4 and
  * 5/4 stepping melodies (5/4 appends G3). */
@@ -90,23 +86,18 @@ function meterSteppingScenario(opts: {
   melodies: EvalAssertion[];
   judgePrompt: string;
 }): EvalScenario {
-  return {
+  return createClipScenario({
     id: opts.id,
     description: opts.description,
-    kind: "capability",
     requires: { brackets: true },
-    liveSet: LIVE_SET,
-    judgeAdvisory: true,
-    messages: [MSG_CONNECT, ...opts.prompts],
-    setup: (mcpClient) => clearSessionSlots(mcpClient, opts.slots),
+    messages: opts.prompts,
+    clearSlots: opts.slots,
     assertions: [
-      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
       ...opts.melodies,
       { type: "llm_judge", prompt: opts.judgePrompt },
       { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
     ],
-  };
+  });
 }
 
 /**

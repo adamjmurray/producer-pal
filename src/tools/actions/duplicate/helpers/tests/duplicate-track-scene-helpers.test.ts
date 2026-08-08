@@ -11,6 +11,7 @@ import {
   expectDeleteDeviceCalls,
   type RegisteredMockObject,
   registerClipSlot,
+  registerDuplicatedTrackSlots,
   registerMockObject,
 } from "../duplicate-test-helpers.ts";
 import {
@@ -167,23 +168,10 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should delete clips when withoutClips is true", () => {
-      const newTrack = registerMockObject("live_set/tracks/1", {
-        path: livePath.track(1),
-        properties: {
-          devices: [],
-          clip_slots: children("slot0", "slot1"),
-          arrangement_clips: children("arrClip0"),
-        },
-      });
-
-      registerMockObject("slot0", {
-        path: livePath.track(1).clipSlot(0),
-        properties: { has_clip: 1 },
-      });
-      registerMockObject("slot1", {
-        path: livePath.track(1).clipSlot(1),
-        properties: { has_clip: 0 },
-      });
+      const { newTrack } = registerDuplicatedTrackSlots(
+        [true, false],
+        ["arrClip0"],
+      );
 
       duplicateTrack(0, undefined, undefined, true);
 
@@ -405,23 +393,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should skip clip slots without clips when collecting session clips", () => {
-      registerMockObject("live_set/tracks/1", {
-        path: livePath.track(1),
-        properties: {
-          devices: [],
-          clip_slots: children("slot0", "slot1"),
-          arrangement_clips: [],
-        },
-      });
-
-      registerMockObject("slot0", {
-        path: livePath.track(1).clipSlot(0),
-        properties: { has_clip: 0 },
-      });
-      registerMockObject("slot1", {
-        path: livePath.track(1).clipSlot(1),
-        properties: { has_clip: 0 },
-      });
+      registerDuplicatedTrackSlots([false, false]);
 
       const result = duplicateTrack(0);
 

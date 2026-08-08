@@ -66,6 +66,36 @@ export function mockListBareTools(...names: string[]): void {
 }
 
 /**
+ * Queue the two-tool `listTools()` response both adapter suites map: one tool
+ * with a full schema, and one whose schema omits `type` and `required` so the
+ * adapter has to supply them.
+ * @param firstSchemaExtras - Extra keys merged into the first tool's inputSchema
+ */
+export function mockListTwoTools(
+  firstSchemaExtras: Record<string, unknown> = {},
+): void {
+  listToolsMock.mockResolvedValueOnce({
+    tools: [
+      {
+        name: "ppal-read-track",
+        description: "Read a track",
+        inputSchema: {
+          ...firstSchemaExtras,
+          type: "object",
+          properties: { trackIndex: { type: "number" } },
+          required: ["trackIndex"],
+        },
+      },
+      {
+        name: "ppal-create-clip",
+        description: "Create a clip",
+        inputSchema: { properties: {} },
+      },
+    ],
+  });
+}
+
+/**
  * Queue a successful `callTool()` response of text segments that will flatten
  * into the joined string when the bridge stringifies them.
  * @param texts - Text segments

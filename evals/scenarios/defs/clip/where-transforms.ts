@@ -26,7 +26,7 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./clip-scenario-helpers.ts";
+} from "./helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";

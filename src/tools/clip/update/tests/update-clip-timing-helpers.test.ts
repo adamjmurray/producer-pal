@@ -21,20 +21,35 @@ describe("update-clip-timing-helpers", () => {
       getProperty: vi.fn((prop: string) => props[prop] ?? 0),
     }) as unknown as LiveAPI;
 
+  type CalcParams = Parameters<typeof calculateBeatPositions>[0];
+
+  /**
+   * Call calculateBeatPositions with the 4/4, looping, unclamped defaults every
+   * case here shares, so each test shows only what it varies.
+   * @param overrides - The params this case pins (clip is always required)
+   * @returns The computed beat positions
+   */
+  const calcPositions = (
+    overrides: Partial<CalcParams> & Pick<CalcParams, "clip">,
+  ): ReturnType<typeof calculateBeatPositions> =>
+    calculateBeatPositions({
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+      isLooping: true,
+      beatsPerMarkerUnit: 1,
+      markerClampSeconds: 0,
+      ...overrides,
+    });
+
   describe("calculateBeatPositions", () => {
     it("should warn when firstStart exceeds end_marker", () => {
       const mockClip = clipStub({
         end_marker: 4, // 1 bar at 4/4
       });
 
-      const result = calculateBeatPositions({
+      const result = calcPositions({
         firstStart: "3|1", // 8 beats > end_marker (4)
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
         clip: mockClip,
-        isLooping: true,
-        beatsPerMarkerUnit: 1,
-        markerClampSeconds: 0,
       });
 
       expect(outlet).toHaveBeenCalledWith(
@@ -56,14 +71,9 @@ describe("update-clip-timing-helpers", () => {
         end_marker: 8, // 2 bars at 4/4
       });
 
-      const result = calculateBeatPositions({
+      const result = calcPositions({
         firstStart: "1|3", // 2 beats < end_marker (8)
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
         clip: mockClip,
-        isLooping: true,
-        beatsPerMarkerUnit: 1,
-        markerClampSeconds: 0,
       });
 
       expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
@@ -75,14 +85,9 @@ describe("update-clip-timing-helpers", () => {
       const mockClip = clipStub({});
 
       expect(() =>
-        calculateBeatPositions({
+        calcPositions({
           start: "1|0",
-          timeSigNumerator: 4,
-          timeSigDenominator: 4,
           clip: mockClip,
-          isLooping: true,
-          beatsPerMarkerUnit: 1,
-          markerClampSeconds: 0,
         }),
       ).toThrow(/beats are 1-indexed/);
     });
@@ -91,14 +96,9 @@ describe("update-clip-timing-helpers", () => {
       const mockClip = clipStub({});
 
       expect(() =>
-        calculateBeatPositions({
+        calcPositions({
           firstStart: "0|1",
-          timeSigNumerator: 4,
-          timeSigDenominator: 4,
           clip: mockClip,
-          isLooping: true,
-          beatsPerMarkerUnit: 1,
-          markerClampSeconds: 0,
         }),
       ).toThrow(/bars are 1-indexed/);
     });
@@ -110,14 +110,9 @@ describe("update-clip-timing-helpers", () => {
         end_marker: 4, // 1 bar at 4/4
       });
 
-      const result = calculateBeatPositions({
+      const result = calcPositions({
         start: "3|1", // 8 beats > end_marker (4), but no warning for start param
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
         clip: mockClip,
-        isLooping: true,
-        beatsPerMarkerUnit: 1,
-        markerClampSeconds: 0,
       });
 
       // No warning for start param - silent skip is intentional
@@ -132,14 +127,9 @@ describe("update-clip-timing-helpers", () => {
       // value with no warning.
       const mockClip = clipStub({ end_marker: 4 });
 
-      const result = calculateBeatPositions({
+      const result = calcPositions({
         firstStart: "2|1", // exactly 4 beats == end_marker (4)
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
         clip: mockClip,
-        isLooping: true,
-        beatsPerMarkerUnit: 1,
-        markerClampSeconds: 0,
       });
 
       expect(result.firstStartBeats).toBe(4);
@@ -156,14 +146,10 @@ describe("update-clip-timing-helpers", () => {
       // would return the start value instead.
       const mockClip = clipStub({ end_marker: 4 });
 
-      const result = calculateBeatPositions({
+      const result = calcPositions({
         start: "2|1", // exactly 4 beats == end_marker (4)
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
         clip: mockClip,
         isLooping: false,
-        beatsPerMarkerUnit: 1,
-        markerClampSeconds: 0,
       });
 
       expect(result.startBeats).toBe(4);
@@ -182,14 +168,10 @@ describe("update-clip-timing-helpers", () => {
         is_midi_clip: 1,
       });
 
-      const result = calculateBeatPositions({
+      const result = calcPositions({
         length: "1bar", // 4 beats at 4/4
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
         clip: mockClip,
         isLooping: false,
-        beatsPerMarkerUnit: 1,
-        markerClampSeconds: 0,
       });
 
       expect(result.startBeats).toBe(4);
@@ -207,14 +189,10 @@ describe("update-clip-timing-helpers", () => {
         is_midi_clip: 1,
       });
 
-      const result = calculateBeatPositions({
+      const result = calcPositions({
         length: "1bar", // 4 beats → derived start = 4 - 4 = 0
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
         clip: mockClip,
         isLooping: false,
-        beatsPerMarkerUnit: 1,
-        markerClampSeconds: 0,
       });
 
       expect(result.startBeats).toBe(0);

@@ -28,7 +28,7 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import { MSG_CONNECT, TOOL_CONNECT } from "../clip-scenario-helpers.ts";
+import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const LIVE_SET = "basic-midi-4-track";

@@ -21,7 +21,7 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./clip-scenario-helpers.ts";
+} from "./helpers/clip-scenario-helpers.ts";
 
 const TOOL_DUPLICATE = "ppal-duplicate";
 

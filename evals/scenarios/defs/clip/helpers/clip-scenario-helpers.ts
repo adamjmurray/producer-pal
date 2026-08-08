@@ -7,20 +7,15 @@
  * Shared assertion helpers for clip evaluation scenarios.
  */
 
-import { argText } from "../arg-text.ts";
+import { argText } from "../../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { hasPerfectMatching } from "#evals/shared/bipartite-matching.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { getToolCalls } from "../../assertions/index.ts";
-import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
-import {
-  type EvalAssertion,
-  type EvalScenario,
-  type EvalTurnResult,
-  type ScenarioRequirements,
-} from "../../types.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
+import { CONNECT_MESSAGE } from "../../../helpers/seed-connect/seed-connect.ts";
+import { type EvalAssertion, type EvalTurnResult } from "../../../types.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
 export const TOOL_CONNECT = "ppal-connect";
@@ -30,6 +25,9 @@ export const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 /** read-clip tool name. */
 export const TOOL_READ_CLIP = "ppal-read-clip";
+
+/** create-clip tool name (turn-1 create assertion in single-clip scenarios). */
+export const TOOL_CREATE_CLIP = "ppal-create-clip";
 
 /** Standard turn-0 message that opens a connection to Live. */
 export const MSG_CONNECT = CONNECT_MESSAGE;
@@ -319,60 +317,6 @@ function diffNoteRow(
   const detail = `expected ${fmtExpected(want)} — actual ${fmtActual(got)}`;
 
   return `  ✗ ${detail}  (${reasons.join(", ")})`;
-}
-
-/** create-clip tool name (turn-1 create assertion in single-clip scenarios). */
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-/** basic-midi-4-track: the 4-track Live Set shared by Lead-track notation scenarios. */
-const LEAD_LIVE_SET = "basic-midi-4-track";
-/** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
-const LEAD_TRACK = 3;
-
-/**
- * Build a single-create-clip notation scenario on the Lead track of
- * basic-midi-4-track: connect (turn 0), then one create-clip (turn 1) whose
- * scene-1 read-back is re-interpreted in 4/4 and graded by `check`, with the LLM
- * judge advisory. Shared by the value-stream and multi-bar-spread scenarios —
- * only the prompt, the read-back check, and the judge prompt differ. Grades the
- * OUTCOME (final clip state), so it is agnostic to how the model placed the
- * notes (brackets, repeats, or hand-enumerated positions).
- *
- * @param config - Scenario specifics
- * @param config.id - Scenario id
- * @param config.description - One-line description
- * @param config.message - User turn after the connect turn
- * @param config.check - Read-back verdict over the re-interpreted notes (4/4)
- * @param config.judgePrompt - Advisory LLM-judge prompt
- * @param config.requires - Capability requirements (e.g. `{ brackets: true }`)
- * @returns The assembled eval scenario
- */
-export function leadClipNotationScenario(config: {
-  id: string;
-  description: string;
-  message: string;
-  check: (events: NoteEvent[]) => boolean;
-  judgePrompt: string;
-  /** Capability requirements (e.g. `{ brackets: true }` for stream-notation
-   *  scenarios). Omit for plain bar|beat notation taught in the basic tier. */
-  requires?: ScenarioRequirements;
-}): EvalScenario {
-  return {
-    id: config.id,
-    description: config.description,
-    kind: "capability",
-    ...(config.requires && { requires: config.requires }),
-    liveSet: LEAD_LIVE_SET,
-    judgeAdvisory: true,
-    messages: [MSG_CONNECT, config.message],
-    setup: (mcpClient) => clearSessionSlots(mcpClient, [`${LEAD_TRACK}/0`]),
-    assertions: [
-      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-      clipStateAssertion(`${LEAD_TRACK}/0`, "4/4", config.check),
-      { type: "llm_judge", prompt: config.judgePrompt },
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
-    ],
-  };
 }
 
 /**

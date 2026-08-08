@@ -15,6 +15,7 @@ import {
   mcpClientHelpersMock,
   mockCallToolText,
   mockListBareTools,
+  mockListTwoTools,
   resetMcpClientMocks,
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
@@ -53,28 +54,9 @@ async function buildSingleTool(name: string): Promise<unknown> {
 
 describe("createRealtimeMcpTools", () => {
   it("maps MCP tools to Realtime tools with normalized schemas", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        {
-          name: "ppal-read-track",
-          description: "Read a track",
-          inputSchema: {
-            type: "object",
-            properties: { trackIndex: { type: "number" } },
-            required: ["trackIndex"],
-          },
-        },
-        {
-          name: "ppal-create-clip",
-          description: "Create a clip",
-          inputSchema: { properties: {} }, // missing type + required — normalized
-        },
-      ],
-    });
+    mockListTwoTools();
 
-    const { tools, mcpClient } = await createRealtimeMcpTools(
-      "http://localhost:3350/mcp",
-    );
+    const { tools, mcpClient } = await createRealtimeMcpTools(MCP_URL);
 
     expect(mcpClient).toBe(fakeMcpClient);
     expect(tools).toHaveLength(2);

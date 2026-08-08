@@ -20,6 +20,37 @@ function mockFetch(response: Response): ReturnType<typeof vi.spyOn> {
   return vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
 }
 
+/**
+ * Render the hook against an /update that announces 2.0.0, and wait for it.
+ * @returns The hook result and the fetch spy
+ */
+async function renderWithUpdateAvailable() {
+  const fetchSpy = mockFetch(
+    new Response(JSON.stringify({ version: "2.0.0" })),
+  );
+  const { result } = renderHook(() => useUpdateCheck());
+
+  await waitFor(() => {
+    expect(result.current.update).toStrictEqual({ version: "2.0.0" });
+  });
+
+  return { result, fetchSpy };
+}
+
+/**
+ * Render the hook and assert no update surfaces once the fetch has settled.
+ * @returns Promise resolving when the assertion has run
+ */
+async function expectNoUpdate(): Promise<void> {
+  const { result } = renderHook(() => useUpdateCheck());
+
+  await waitFor(() => {
+    expect(globalThis.fetch).toHaveBeenCalled();
+  });
+
+  expect(result.current.update).toBeNull();
+}
+
 describe("useUpdateCheck", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -29,15 +60,7 @@ describe("useUpdateCheck", () => {
     // GitHub's unauthenticated limit is per IP and this hook remounts on every
     // chat-window open, so it must stay on the local route. The server made the
     // one GitHub request at startup (src/mcp-server/update-check.ts).
-    const fetchSpy = mockFetch(
-      new Response(JSON.stringify({ version: "2.0.0" })),
-    );
-
-    const { result } = renderHook(() => useUpdateCheck());
-
-    await waitFor(() => {
-      expect(result.current.update).toStrictEqual({ version: "2.0.0" });
-    });
+    const { fetchSpy } = await renderWithUpdateAvailable();
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     // Through the shared URL builder, not a bare "/update": on the Vite dev
@@ -54,25 +77,13 @@ describe("useUpdateCheck", () => {
     // The endpoint answers with a literal `null` body.
     mockFetch(new Response("null"));
 
-    const { result } = renderHook(() => useUpdateCheck());
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
-
-    expect(result.current.update).toBeNull();
+    await expectNoUpdate();
   });
 
   it("stays silent when the endpoint errors", async () => {
     mockFetch(new Response("nope", { status: 500 }));
 
-    const { result } = renderHook(() => useUpdateCheck());
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
-
-    expect(result.current.update).toBeNull();
+    await expectNoUpdate();
   });
 
   it("stays silent when the fetch rejects", async () => {
@@ -80,27 +91,14 @@ describe("useUpdateCheck", () => {
     // an error anywhere in the chat header.
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-    const { result } = renderHook(() => useUpdateCheck());
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalled();
-    });
-
-    expect(result.current.update).toBeNull();
+    await expectNoUpdate();
   });
 
   it("records a dismissal server-side so the device honors it too", async () => {
     // Not localStorage: the Max for Live device shows its own notification and
     // reads the same /update answer, so the dismissal has to live where both
     // surfaces can see it.
-    const fetchSpy = mockFetch(
-      new Response(JSON.stringify({ version: "2.0.0" })),
-    );
-    const { result } = renderHook(() => useUpdateCheck());
-
-    await waitFor(() => {
-      expect(result.current.update).toStrictEqual({ version: "2.0.0" });
-    });
+    const { result, fetchSpy } = await renderWithUpdateAvailable();
 
     await act(() => {
       result.current.dismissUpdate();

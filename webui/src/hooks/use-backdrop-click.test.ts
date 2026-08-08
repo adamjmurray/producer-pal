@@ -15,29 +15,55 @@ const inPanel = { id: "in-panel" } as unknown as EventTarget;
 
 const mouseEvent = (target: EventTarget) => ({ target }) as MouseEvent;
 
+/**
+ * Render the hook with a fresh backdrop-click spy.
+ * @returns The hook result and the spy
+ */
+function renderBackdrop() {
+  const onBackdropClick = vi.fn();
+  const { result } = renderHook(() => useBackdropClick(onBackdropClick));
+
+  return { result, onBackdropClick };
+}
+
+/**
+ * Drive a press → release → click(s) sequence through the handlers. The clicks
+ * always land on the backdrop, as a real overlay click does.
+ * @param result - The rendered hook result
+ * @param downTarget - Where the press lands
+ * @param upTarget - Where the release lands
+ * @param clicks - How many clicks follow the release
+ * @returns Promise resolving once the sequence has run
+ */
+async function pressReleaseClick(
+  result: ReturnType<typeof renderBackdrop>["result"],
+  downTarget: EventTarget,
+  upTarget: EventTarget,
+  clicks = 1,
+): Promise<void> {
+  await act(() => {
+    result.current.onMouseDown(mouseEvent(downTarget));
+    result.current.onMouseUp(mouseEvent(upTarget));
+
+    for (let i = 0; i < clicks; i++) {
+      result.current.onClick(mouseEvent(backdrop));
+    }
+  });
+}
+
 describe("useBackdropClick", () => {
   it("reports a click when press and release land on the same element", async () => {
-    const onBackdropClick = vi.fn();
-    const { result } = renderHook(() => useBackdropClick(onBackdropClick));
+    const { result, onBackdropClick } = renderBackdrop();
 
-    await act(() => {
-      result.current.onMouseDown(mouseEvent(backdrop));
-      result.current.onMouseUp(mouseEvent(backdrop));
-      result.current.onClick(mouseEvent(backdrop));
-    });
+    await pressReleaseClick(result, backdrop, backdrop);
 
     expect(onBackdropClick).toHaveBeenCalledOnce();
   });
 
   it("ignores a drag that starts inside the panel and ends on the backdrop", async () => {
-    const onBackdropClick = vi.fn();
-    const { result } = renderHook(() => useBackdropClick(onBackdropClick));
+    const { result, onBackdropClick } = renderBackdrop();
 
-    await act(() => {
-      result.current.onMouseDown(mouseEvent(inPanel));
-      result.current.onMouseUp(mouseEvent(backdrop));
-      result.current.onClick(mouseEvent(backdrop));
-    });
+    await pressReleaseClick(result, inPanel, backdrop);
 
     expect(onBackdropClick).not.toHaveBeenCalled();
   });
@@ -45,21 +71,15 @@ describe("useBackdropClick", () => {
   it("ignores a drag that starts on the backdrop and ends inside the panel", async () => {
     // The press alone can't catch this one: the click fires on the overlay, so
     // it matches the press target, and only the release says where it landed.
-    const onBackdropClick = vi.fn();
-    const { result } = renderHook(() => useBackdropClick(onBackdropClick));
+    const { result, onBackdropClick } = renderBackdrop();
 
-    await act(() => {
-      result.current.onMouseDown(mouseEvent(backdrop));
-      result.current.onMouseUp(mouseEvent(inPanel));
-      result.current.onClick(mouseEvent(backdrop));
-    });
+    await pressReleaseClick(result, backdrop, inPanel);
 
     expect(onBackdropClick).not.toHaveBeenCalled();
   });
 
   it("ignores a click with no preceding press", async () => {
-    const onBackdropClick = vi.fn();
-    const { result } = renderHook(() => useBackdropClick(onBackdropClick));
+    const { result, onBackdropClick } = renderBackdrop();
 
     await act(() => result.current.onClick(mouseEvent(backdrop)));
 
@@ -67,15 +87,9 @@ describe("useBackdropClick", () => {
   });
 
   it("forgets the press target after a click, so the next click needs its own press", async () => {
-    const onBackdropClick = vi.fn();
-    const { result } = renderHook(() => useBackdropClick(onBackdropClick));
+    const { result, onBackdropClick } = renderBackdrop();
 
-    await act(() => {
-      result.current.onMouseDown(mouseEvent(backdrop));
-      result.current.onMouseUp(mouseEvent(backdrop));
-      result.current.onClick(mouseEvent(backdrop));
-      result.current.onClick(mouseEvent(backdrop));
-    });
+    await pressReleaseClick(result, backdrop, backdrop, 2);
 
     expect(onBackdropClick).toHaveBeenCalledOnce();
   });

@@ -38,17 +38,14 @@ import {
   type EvalTurnResult,
 } from "../../../types.ts";
 import {
-  clearSessionSlots,
   clipStateAssertion,
   getCreateClipNotes,
-  MSG_CONNECT,
-  TOOL_CONNECT,
-} from "../clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
+import {
+  createClipScenario,
+  LEAD_SLOT_1,
+} from "../helpers/clip-scenario-builders.ts";
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const LIVE_SET = "basic-midi-4-track";
-/** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
-const LEAD_TRACK = 3;
 /** Float tolerance for note start_time comparisons (in beats). */
 const EPS = 1e-6;
 /**
@@ -212,25 +209,20 @@ function arpScenario(opts: {
   bars: ArpBar[];
   judgePrompt: string;
 }): EvalScenario {
-  return {
+  return createClipScenario({
     id: opts.id,
     description: opts.description,
-    kind: "capability",
     requires: { brackets: true },
-    liveSet: LIVE_SET,
-    judgeAdvisory: true,
-    messages: [MSG_CONNECT, opts.message],
-    setup: (mcpClient) => clearSessionSlots(mcpClient, [`${LEAD_TRACK}/0`]),
+    messages: [opts.message],
+    clearSlots: [LEAD_SLOT_1],
     assertions: [
-      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-      clipStateAssertion(`${LEAD_TRACK}/0`, "4/4", makeArpCheck(opts.bars)),
+      clipStateAssertion(LEAD_SLOT_1, "4/4", makeArpCheck(opts.bars)),
       usesBracketCycling,
       usesRepeatNotation,
       { type: "llm_judge", prompt: opts.judgePrompt },
       { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
     ],
-  };
+  });
 }
 
 /**
