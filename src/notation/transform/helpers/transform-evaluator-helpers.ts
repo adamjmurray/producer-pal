@@ -68,7 +68,8 @@ export interface TransformResult {
 type ProcessAssignmentResult = { skip: true } | { skip?: false; value: number };
 
 export type TimeRangeResult =
-  { skip: true } | { skip?: false; timeRange: TimeRange };
+  | { skip: true }
+  | { skip?: false; timeRange: TimeRange };
 
 /**
  * Type guard: distinguish a note-count operation from a parameter assignment.

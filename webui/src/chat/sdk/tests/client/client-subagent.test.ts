@@ -439,7 +439,8 @@ describe("ChatSdkClient resuming a worker", () => {
    */
   function lastStreamMessages(): { role: string; content: unknown }[] {
     const call = streamTextMock.mock.calls.at(-1)?.[0] as
-      { messages?: { role: string; content: unknown }[] } | undefined;
+      | { messages?: { role: string; content: unknown }[] }
+      | undefined;
 
     return call?.messages ?? [];
   }

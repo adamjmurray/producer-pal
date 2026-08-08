@@ -44,7 +44,8 @@ async function notesDescription(
     const { tools } = await client.listTools();
     const createClip = tools.find((t) => t.name === "ppal-create-clip");
     const notes = createClip?.inputSchema.properties?.notes as
-      { description?: string } | undefined;
+      | { description?: string }
+      | undefined;
 
     return notes?.description ?? "";
   } finally {

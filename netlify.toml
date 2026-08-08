@@ -1,15 +1,15 @@
 [build]
-  command = "npm run docs:build"
-  publish = "docs/.vitepress/dist"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF docs/ src/shared/version.ts src/tools/ src/skills/ scripts/build-and-release/generate-docs-markdown.ts scripts/build-and-release/generate-tool-schema-docs.ts"
+command = "npm run docs:build"
+publish = "docs/.vitepress/dist"
+ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF docs/ src/shared/version.ts src/tools/ src/skills/ scripts/build-and-release/generate-docs-markdown.ts scripts/build-and-release/generate-tool-schema-docs.ts"
 
 [build.environment]
-  NODE_VERSION = "24"
+NODE_VERSION = "24"
 
 [context.branch-deploy]
-  command = "npm run docs:build"
+command = "npm run docs:build"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+from = "/*"
+to = "/index.html"
+status = 200

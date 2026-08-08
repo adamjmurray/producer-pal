@@ -12,7 +12,8 @@ import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
   defaultMcpResponseHandler:
-    ((requestId: string, ...chunks: string[]) => void) | null;
+    | ((requestId: string, ...chunks: string[]) => void)
+    | null;
 };
 const mockMax = Max as MockMax;
 

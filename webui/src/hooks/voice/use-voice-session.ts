@@ -37,7 +37,11 @@ import {
 } from "#webui/lib/constants/voice-language";
 
 export type VoiceStatus =
-  "idle" | "connecting" | "connected" | "disconnecting" | "error";
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "disconnecting"
+  | "error";
 
 interface UseVoiceSessionParams {
   mcpUrl: string;

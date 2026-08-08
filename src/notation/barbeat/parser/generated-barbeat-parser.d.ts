@@ -35,7 +35,8 @@ export interface BarCopyDestination {
 
 /** Bar copy source */
 export type BarCopySource =
-  { bar?: number; range?: [number, number] } | "previous";
+  | { bar?: number; range?: [number, number] }
+  | "previous";
 
 /** A single pitch within a chord or stream */
 export interface StreamPitch {
@@ -44,7 +45,8 @@ export interface StreamPitch {
 
 /** A velocity stream value: a single velocity or an auto-ordered range */
 export type StreamVelocity =
-  { velocity: number } | { velocityMin: number; velocityMax: number };
+  | { velocity: number }
+  | { velocityMin: number; velocityMax: number };
 
 /**
  * A duration stream value: a whole-note fraction (`duration`) plus an optional

@@ -118,10 +118,12 @@ export function createMockAdapter(): ChatAdapter<
   const adapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
     createClient: vi.fn(() => new MockChatClient()),
 
-    buildConfig: vi.fn((model: string, thinking: string): TestConfig => ({
-      model,
-      thinking,
-    })),
+    buildConfig: vi.fn(
+      (model: string, thinking: string): TestConfig => ({
+        model,
+        thinking,
+      }),
+    ),
 
     formatMessages: vi.fn((messages: TestMessage[]): UIMessage[] => {
       return messages.map((msg, idx) => ({
@@ -158,15 +160,19 @@ export function createMockAdapter(): ChatAdapter<
       return message.role === "user" ? message.content : undefined;
     }),
 
-    createUserMessage: vi.fn((text: string): TestMessage => ({
-      role: "user",
-      content: text,
-    })),
+    createUserMessage: vi.fn(
+      (text: string): TestMessage => ({
+        role: "user",
+        content: text,
+      }),
+    ),
 
-    createCompactionSummary: vi.fn((summary: string): TestMessage => ({
-      role: "user",
-      content: summary,
-    })),
+    createCompactionSummary: vi.fn(
+      (summary: string): TestMessage => ({
+        role: "user",
+        content: summary,
+      }),
+    ),
   };
 
   return adapter;

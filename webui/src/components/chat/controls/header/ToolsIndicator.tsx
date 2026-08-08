@@ -26,8 +26,7 @@ export function ToolsIndicator({
 
   return (
     <span className={`text-xs ${textColor} hidden sm:inline`} title={titleText}>
-      🔧
-      {/* Full text at md+ */}
+      🔧{/* Full text at md+ */}
       <span className="hidden md:inline">
         {" "}
         {enabledToolsCount}/{totalToolsCount} tools

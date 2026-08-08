@@ -17,7 +17,8 @@ import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 
 type MockMax = typeof Max & {
   defaultMcpResponseHandler:
-    ((requestId: string, ...chunks: string[]) => void) | null;
+    | ((requestId: string, ...chunks: string[]) => void)
+    | null;
 };
 
 const mockMax = Max as MockMax;
