@@ -61,6 +61,16 @@ happy-dom the page origin is `http://localhost:3000`, so an unmocked same-origin
 invisible in plain `npm test` — the process exits before slow polls fire — and
 only show up under `npm run check`.
 
+The helpers are in
+`webui/src/hooks/context/tests/doc-transport-test-helpers.ts`:
+`installJsonFetchMock(body)` when the test doesn't care about the traffic,
+`installFetchMock()` when it does.
+
+**A stub that answers a save must echo back what the save wrote.** The autosave
+baseline adopts the server's echo, so a stub returning fixed content leaves the
+draft dirty and the editor flushes it on unmount — after the test ended and the
+real `fetch` is back.
+
 Tests rendering the real `<App>` must mock `use-system-prompt` and
 `ContextTabs`, because the `use-doc.ts` hooks fetch on mount and again on a 5s
 poll. Reuse the shared payloads in
