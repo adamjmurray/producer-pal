@@ -211,8 +211,9 @@ Every rule here reported zero at migration time, so nothing broke.
   that's loud and one line to fix. A one-off `npx depcheck` is the cheaper
   answer if it ever comes up.
 - `import-x/no-useless-path-segments`, `import-x/no-relative-packages`,
-  `import-x/order` — no oxlint counterpart. Import ordering is now unenforced,
-  since oxfmt doesn't sort imports either.
+  `import-x/order` — no oxlint counterpart. Import ordering is unenforced:
+  oxfmt's `sortImports` would cover it, but turning it on reformats ~1000 files,
+  so that's its own decision.
 
 ## Rules disabled where oxlint disagrees
 
