@@ -139,9 +139,24 @@ function fakeServer(): {
 }
 
 /**
+ * The entry a write's response echoes: the fields it sent, under its URL slug.
+ * @param url - The request URL
+ * @param init - The request options carrying the JSON body
+ * @returns The entry the server echoes back
+ */
+function echoOf(url: string, init: RequestInit | undefined): MemoryEntryView {
+  const { description, content } = JSON.parse(init?.body as string) as {
+    description: string;
+    content: string;
+  };
+
+  return { name: url.split("/").pop() ?? "", description, body: content };
+}
+
+/**
  * Queue the stubbed fetch for one rename round trip: the mount GET lists
- * `ENTRY`, the rename PUT hangs on a deferred the test resolves, and anything
- * after that echoes the renamed entry.
+ * `ENTRY`, the rename PUT hangs on a deferred the test resolves, and a
+ * stateless server holding the renamed entry answers everything after that.
  * @returns The rename PUT's deferred response
  */
 function routeFetch(): Deferred<Response> {
@@ -149,7 +164,16 @@ function routeFetch(): Deferred<Response> {
 
   fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [ENTRY] }));
   fetchMock.mockReturnValueOnce(renamePut.promise);
-  fetchMock.mockResolvedValue(jsonResponse({ entry: RENAMED }));
+  // A save echoes what it wrote, like the real server. Echoing a fixed entry
+  // would advance the autosave baseline to content the editor never had, so
+  // every saved draft would read dirty and flush again on unmount.
+  (fetchMock as unknown as FetchMock).mockImplementation((url, init) =>
+    Promise.resolve(
+      (init?.method ?? "GET") === "GET"
+        ? jsonResponse({ entries: [RENAMED] })
+        : jsonResponse({ entry: echoOf(url, init) }),
+    ),
+  );
 
   return renamePut;
 }
