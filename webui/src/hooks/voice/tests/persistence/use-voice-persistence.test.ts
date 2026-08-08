@@ -361,6 +361,19 @@ describe("useVoicePersistence", () => {
     );
   });
 
+  it("switchConversation clears the active id for a text record with no handler", async () => {
+    const textRecord = createTestRecord({ id: "chat-2", sessionType: "text" });
+
+    await saveConversation(textRecord);
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+    await act(() => result.current.switchConversation(textRecord.id));
+
+    expect(result.current.activeConversationId).toBeNull();
+  });
+
   it("switchConversation updates the URL hash before onForeignRecord runs", async () => {
     const textRecord = createTestRecord({ id: "chat-1", sessionType: "text" });
 

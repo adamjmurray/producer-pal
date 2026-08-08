@@ -6,6 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
+import { EditorView } from "@codemirror/view";
 import { render } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -107,44 +108,31 @@ describe("MarkdownEditor", () => {
     expect(container.querySelector(".custom-host")).toBeTruthy();
   });
 
-  it("forwards focus and blur events to callbacks", async () => {
+  it("reports the new document text when the editor state changes", () => {
+    // happy-dom won't drive contenteditable, so reach the live EditorView and
+    // dispatch a transaction — the same path a real keystroke takes.
+    const onChange = vi.fn();
+    const { container } = renderEditor({ initialValue: "hi", onChange });
+    const view = EditorView.findFromDOM(container as HTMLElement)!;
+
+    view.dispatch({ changes: { from: 2, insert: " there" } });
+
+    expect(onChange).toHaveBeenCalledWith("hi there");
+  });
+
+  it("reports focus and blur through the update listener", () => {
     const onFocus = vi.fn();
     const onBlur = vi.fn();
     const { container } = renderEditor({ onFocus, onBlur });
-    const cmContent = container.querySelector(".cm-content") as HTMLElement;
+    const view = EditorView.findFromDOM(container as HTMLElement)!;
 
-    cmContent.focus();
-    await Promise.resolve();
-    cmContent.blur();
-    await Promise.resolve();
+    view.contentDOM.focus();
+    view.dispatch({ userEvent: "select" });
+    view.contentDOM.blur();
+    view.dispatch({ userEvent: "select" });
 
-    // happy-dom may not fully drive CodeMirror's focus state; either both
-    // handlers fire (real DOM behavior) or neither does (happy-dom limitation).
-    // Just assert the wiring is in place.
-    expect(onFocus).toBeDefined();
-    expect(onBlur).toBeDefined();
-  });
-
-  it("forwards document changes to onChange", () => {
-    const onChange = vi.fn();
-    const { container } = renderEditor({ initialValue: "hi", onChange });
-
-    // Trigger a CodeMirror dispatch via the public DOM. CodeMirror reads
-    // changes via a "beforeinput" event when the contentEditable receives
-    // input.
-    const cmContent = container.querySelector(".cm-content") as HTMLElement;
-
-    cmContent.dispatchEvent(
-      new InputEvent("beforeinput", {
-        inputType: "insertText",
-        data: "x",
-        bubbles: true,
-      }),
-    );
-
-    // happy-dom may not fully simulate contenteditable's text insertion, so
-    // assert that the callback wiring exists rather than the precise call.
-    expect(onChange).toBeDefined();
+    expect(onFocus).toHaveBeenCalled();
+    expect(onBlur).toHaveBeenCalled();
   });
 });
 

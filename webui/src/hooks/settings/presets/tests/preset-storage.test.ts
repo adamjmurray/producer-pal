@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   createPresetId,
@@ -99,6 +99,16 @@ describe("preset-storage", () => {
 
     expect(a).toBeTruthy();
     expect(a).not.toBe(b);
+  });
+
+  it("falls back to a timestamp-and-random id without crypto.randomUUID", () => {
+    vi.stubGlobal("crypto", {});
+
+    try {
+      expect(createPresetId()).toMatch(/^preset-[a-z0-9]+-[a-z0-9]+$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   describe("presetMatchesFields", () => {

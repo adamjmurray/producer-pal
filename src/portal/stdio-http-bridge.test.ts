@@ -517,6 +517,23 @@ describe("StdioHttpBridge", () => {
       expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(2);
     });
 
+    it("skips the notification when the server is already torn down", async () => {
+      await bridge.start();
+
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
+
+      mockClient.connect.mockRejectedValueOnce(new Error("Connection failed"));
+      await listToolsHandler({});
+
+      // stop() raced the reconnect: there is no server left to notify.
+      bridge.mcpServer = null;
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [] });
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).not.toHaveBeenCalled();
+    });
+
     it("does not notify tools/list_changed when the first connect succeeds", async () => {
       await bridge.start();
 

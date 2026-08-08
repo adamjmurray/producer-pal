@@ -378,7 +378,7 @@ describe("conversation-db", () => {
         // are all skipped without throwing.
         null,
         { type: "function_call", name: "ppal-create-clip", arguments: "{}" },
-        { type: "message", role: "system", content: "not-an-array" },
+        { type: "message", role: "user", content: "not-an-array" },
         // A system message IS skipped even with valid array content: search
         // mirrors the transcript, which doesn't render system text.
         {

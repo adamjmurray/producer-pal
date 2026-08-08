@@ -267,6 +267,54 @@ describe("useChat", () => {
       expect(result.current.isAssistantResponding).toBe(false);
     });
 
+    it("drops updates after the stop and reports no error for the aborted turn", async () => {
+      // Stop lands between two yields, then the provider's stream rejects. The
+      // late yield must not paint, and the rejection is the user's own cancel —
+      // not something to render as a failure.
+      let release!: () => void;
+      const paused = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const adapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message: string) {
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            await paused;
+            client.chatHistory.push({ role: "assistant", content: "too late" });
+            yield [...client.chatHistory];
+
+            throw new Error("stream torn down");
+          },
+      );
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+      const sendPromise = act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // Let the first yield land before stopping.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      release();
+      await sendPromise;
+
+      expect(result.current.messages.some((m) => m.role === "model")).toBe(
+        false,
+      );
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(false);
+    });
+
     it("keeps queued messages when stop is pressed so they flush on the next send", async () => {
       const result = await renderWithQueuedMessage("queued msg");
 
@@ -600,6 +648,22 @@ describe("useChat", () => {
   });
 
   describe("compact (bootstrap + race guard)", () => {
+    it("builds no client when there is nothing to bootstrap from", async () => {
+      // Neither a live client nor pending history: nothing to summarize, so
+      // compact must no-op rather than open a connection.
+      const adapter = adapterWithClient(() => {});
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.compact(0);
+      });
+
+      expect(adapter.createClient).not.toHaveBeenCalled();
+      expect(result.current.isCompacting).toBe(false);
+    });
+
     it("bootstraps a client from restored history, then compacts", async () => {
       let created: MockChatClient | undefined;
       const adapter = adapterWithClient((client) => {

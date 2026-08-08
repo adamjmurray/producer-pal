@@ -185,6 +185,12 @@ describe("settings-helpers", () => {
     it("returns false when no apiKey is stored", () => {
       expect(checkHasApiKey("anthropic")).toBe(false);
     });
+
+    it("detects the legacy standalone gemini_api_key", () => {
+      localStorage.setItem("gemini_api_key", "AIza-old-cleartext");
+
+      expect(checkHasApiKey("gemini")).toBe(true);
+    });
   });
 
   describe("loadProviderSettings", () => {

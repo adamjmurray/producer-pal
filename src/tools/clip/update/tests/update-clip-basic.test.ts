@@ -305,6 +305,15 @@ describe("updateClip - Basic operations", () => {
     });
   });
 
+  it("should ignore an empty toSlot instead of moving the clip", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({ ids: "123", toSlot: "" });
+
+    expect(result).not.toHaveProperty("slot");
+  });
+
   it("should warn and use first slot when toSlot has multiple values", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();

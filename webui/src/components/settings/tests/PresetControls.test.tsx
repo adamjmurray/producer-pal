@@ -196,6 +196,21 @@ describe("PresetControls", () => {
     expect(loadPresets().map((p) => p.name)).toStrictEqual(["Keyboard"]);
   });
 
+  it("dismisses the name form via the Escape key", () => {
+    render(<Controls settings={makeSettings()} />);
+
+    fireEvent.click(screen.getByTestId("preset-new"));
+    fireEvent.input(screen.getByTestId("preset-name-input"), {
+      target: { value: "Abandoned" },
+    });
+    fireEvent.keyDown(screen.getByTestId("preset-name-input"), {
+      key: "Escape",
+    });
+
+    expect(screen.queryByTestId("preset-name-input")).toBeNull();
+    expect(loadPresets()).toHaveLength(0);
+  });
+
   it("dismisses the name form on Cancel without saving", () => {
     render(<Controls settings={makeSettings()} />);
 

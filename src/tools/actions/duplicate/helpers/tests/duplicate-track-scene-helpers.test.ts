@@ -179,6 +179,35 @@ describe("duplicate-track-scene-helpers", () => {
       expect(newTrack.call).toHaveBeenCalledWith("delete_clip", "id arrClip0");
     });
 
+    it("should warn and continue when this_device can't be read", () => {
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+      });
+      const realFrom = LiveAPI.from.bind(LiveAPI);
+      const spy = vi
+        .spyOn(LiveAPI, "from")
+        .mockImplementation((idOrPath: Parameters<typeof realFrom>[0]) => {
+          if (idOrPath === "this_device") throw new Error("Live API not ready");
+
+          return realFrom(idOrPath);
+        });
+
+      try {
+        expect(duplicateTrack(0).trackIndex).toBe(1);
+        expect(newTrack.call).not.toHaveBeenCalledWith(
+          "delete_device",
+          expect.anything(),
+        );
+        expect(outlet).toHaveBeenCalledWith(
+          1,
+          "Could not check for Producer Pal device in duplicated track",
+        );
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
     it("should return empty clips array when no clips exist", () => {
       registerMockObject("live_set/tracks/1", {
         path: livePath.track(1),

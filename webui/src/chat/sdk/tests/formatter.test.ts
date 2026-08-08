@@ -385,6 +385,15 @@ describe("formatChatMessages", () => {
     expect(result[0]!.parts.every((p) => p.type !== "step-usage")).toBe(true);
   });
 
+  it("skips holes in the history rather than formatting them", () => {
+    const history = [
+      { role: "user", content: "Hello" },
+      undefined,
+    ] as unknown as ChatMessage[];
+
+    expect(formatChatMessages(history)).toHaveLength(1);
+  });
+
   it("formats a compaction summary as a compaction part", () => {
     const history: ChatMessage[] = [
       { role: "user", content: "Earlier summary", isCompactionSummary: true },

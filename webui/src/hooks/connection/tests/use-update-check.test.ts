@@ -113,4 +113,19 @@ describe("useUpdateCheck", () => {
       }),
     );
   });
+
+  it("writes nothing when dismissing with no update showing", async () => {
+    const fetchSpy = mockFetch(new Response(JSON.stringify({ version: null })));
+    const { result } = renderHook(() => useUpdateCheck());
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    await act(() => {
+      result.current.dismissUpdate();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
 });

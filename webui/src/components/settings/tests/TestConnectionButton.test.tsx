@@ -119,6 +119,28 @@ describe("TestConnectionButton", () => {
     });
   });
 
+  it("restarts the auto-clear window when tested again", async () => {
+    mockTestConnection.mockResolvedValue({ ok: true, message: "Connected" });
+
+    render(<TestConnectionButton provider="openai" apiKey="key" />);
+
+    fireEvent.click(screen.getByTestId("test-connection-button"));
+    await waitFor(() => {
+      expect(screen.getByTestId("test-connection-message")).toBeDefined();
+    });
+
+    vi.advanceTimersByTime(4000);
+    fireEvent.click(screen.getByTestId("test-connection-button"));
+    await waitFor(() => {
+      expect(screen.getByTestId("test-connection-message")).toBeDefined();
+    });
+
+    // Past the first click's 5s deadline; only the second timer is live.
+    vi.advanceTimersByTime(2000);
+
+    expect(screen.getByTestId("test-connection-message")).toBeDefined();
+  });
+
   it("passes provider, apiKey, and baseUrl to testConnection", async () => {
     mockTestConnection.mockResolvedValue({ ok: true, message: "Connected" });
 

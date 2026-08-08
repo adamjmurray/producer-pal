@@ -91,6 +91,15 @@ describe("global settings store", () => {
       "warn",
     );
   });
+
+  it("writes nothing when the config dir is inert", () => {
+    delete process.env.PRODUCER_PAL_CONFIG_DIR;
+
+    expect(updateGlobalSettings({ autoUpdateCheck: false })).toStrictEqual({
+      autoUpdateCheck: true,
+      dismissedUpdateVersion: null,
+    });
+  });
 });
 
 describe("/settings routes", () => {
@@ -126,6 +135,16 @@ describe("/settings routes", () => {
       dismissedUpdateVersion: "9.9.9",
     });
     expect(readGlobalSettings().dismissedUpdateVersion).toBe("9.9.9");
+  });
+
+  it("PUTs autoUpdateCheck", async () => {
+    const response = await putJson(url, { autoUpdateCheck: false });
+
+    expect(await response.json()).toStrictEqual({
+      autoUpdateCheck: false,
+      dismissedUpdateVersion: null,
+    });
+    expect(readGlobalSettings().autoUpdateCheck).toBe(false);
   });
 
   it("400s a mistyped or unknown setting rather than silently ignoring it", async () => {

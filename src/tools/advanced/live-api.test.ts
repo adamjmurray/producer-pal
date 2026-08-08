@@ -498,6 +498,17 @@ describe("liveApi", () => {
       ).toThrow("Unknown operation type: unknown_operation");
     });
 
+    it("should reject an inherited Object.prototype key as an operation type", () => {
+      // `type in OPERATION_REQUIREMENTS` walks the prototype chain, so
+      // "toString" clears the validator. The switch's default is what actually
+      // stops it.
+      expect(() =>
+        liveApi({
+          operations: [{ type: "toString" }],
+        } as unknown as Parameters<typeof liveApi>[0]),
+      ).toThrow("Unknown operation type: toString");
+    });
+
     it("should wrap operation errors and preserve the original as cause", () => {
       let caught: unknown;
 

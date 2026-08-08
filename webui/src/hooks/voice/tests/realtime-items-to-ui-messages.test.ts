@@ -110,6 +110,20 @@ describe("realtimeItemsToUIMessages", () => {
     ).toStrictEqual([]);
   });
 
+  it("skips an assistant message whose transcript hasn't arrived yet", () => {
+    expect(
+      realtimeItemsToUIMessages([
+        {
+          itemId: "a1",
+          type: "message",
+          role: "assistant",
+          status: "in_progress",
+          content: [{ type: "output_audio", transcript: null }],
+        },
+      ]),
+    ).toStrictEqual([]);
+  });
+
   it("groups a function_call into the preceding assistant message", () => {
     const result = realtimeItemsToUIMessages([
       userMessage("u1", "rename track 1 to drums"),

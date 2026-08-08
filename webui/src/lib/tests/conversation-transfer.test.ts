@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import "fake-indexeddb/auto";
-import { describe, expect, it, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ConversationDb from "#webui/lib/conversation-db";
 import {
   type ConversationRecord,
   MAX_CONVERSATIONS,
@@ -718,6 +719,25 @@ describe("conversation-transfer", () => {
     expect(imported.messages[0]!.content).toBe("hi");
   });
 
+  it("leaves a tool call that isn't an object alone", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "odd-call",
+          createdAt: 100,
+          messages: [
+            { role: "assistant", content: "spawned", toolCalls: [null] },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "odd-call");
+
+    expect(imported.messages[0]!.toolCalls).toStrictEqual([null]);
+  });
+
   it("leaves a tool result that isn't an object alone", async () => {
     const data = {
       version: 1,
@@ -735,5 +755,47 @@ describe("conversation-transfer", () => {
     const imported = await importThenReread(data, "odd-entry");
 
     expect(imported.messages[0]!.toolResults).toStrictEqual([null]);
+  });
+});
+
+describe("importConversations when the write fails", () => {
+  afterEach(() => {
+    vi.doUnmock("#webui/lib/conversation-db");
+    vi.resetModules();
+  });
+
+  it("counts a record whose save throws as skipped and keeps going", async () => {
+    // A full disk / quota error is the only way saveConversation rejects, and
+    // one bad record must not abandon the rest of the import.
+    vi.resetModules();
+    vi.doMock(import("#webui/lib/conversation-db"), async () => ({
+      ...(await vi.importActual<typeof ConversationDb>(
+        "#webui/lib/conversation-db",
+      )),
+      saveConversation: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("QuotaExceededError"))
+        .mockResolvedValue(undefined),
+    }));
+
+    const { importConversations: importWithFailingSave } =
+      await import("#webui/lib/conversation-transfer");
+
+    const result = await importWithFailingSave(
+      JSON.stringify({
+        version: 1,
+        conversations: [
+          { id: "boom", createdAt: 100, messages: [] },
+          { id: "ok", createdAt: 100, messages: [] },
+        ],
+      }),
+    );
+
+    expect(result).toStrictEqual({
+      newCount: 1,
+      updatedCount: 0,
+      skippedCount: 1,
+      ignoredCount: 0,
+    });
   });
 });

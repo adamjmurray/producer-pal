@@ -119,4 +119,15 @@ describe("deleteConfigMarkdown", () => {
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("adir.md"));
   });
+
+  it("is inert under Vitest without a dir override", () => {
+    const path = join(getDir(), "context.md");
+
+    writeFileSync(path, "x");
+    delete process.env.PRODUCER_PAL_CONFIG_DIR;
+
+    deleteConfigMarkdown("context.md");
+
+    expect(existsSync(path)).toBe(true);
+  });
 });
