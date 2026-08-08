@@ -87,10 +87,10 @@ export const READ_ONLY_ALIAS = "read-only";
 
 /**
  * The tools that change nothing — exactly the defs declaring
- * `annotations.readOnlyHint: true`, which a test enforces. That is what settles
- * the awkward cases: `ppal-select` moves the user's view, `ppal-playback` runs
- * the transport, and `ppal-context` can rewrite stored memory, so none of the
- * three are here even though people often picture them as harmless.
+ * `annotations.readOnlyHint: true`, which a test enforces. The line is Live's
+ * undo history: `ppal-select` only moves the view and selection, which Live
+ * doesn't record, so it counts as read-only; `ppal-playback` runs the transport
+ * and `ppal-context` can rewrite stored memory, so neither is here.
  *
  * A cross-cutting alias rather than a group: it spans most of {@link
  * TOOL_GROUPS}, and it is where the token savings actually are. It withholds
@@ -101,6 +101,7 @@ export const READ_ONLY_ALIAS = "read-only";
 export const READ_ONLY_TOOLS: readonly string[] = [
   CONNECT_TOOL_ID,
   "ppal-library",
+  "ppal-select",
   "ppal-read-live-set",
   "ppal-read-track",
   "ppal-read-scene",

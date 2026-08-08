@@ -13,7 +13,7 @@ export const toolDefSelect = defineTool("ppal-select", {
     'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state.',
 
   annotations: {
-    readOnlyHint: false,
+    readOnlyHint: true,
     destructiveHint: false,
   },
 
