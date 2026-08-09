@@ -85,3 +85,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0017](0017-oxlint-category-baseline.md)           | oxlint runs on categories, with an opt-out list                       |
 | [0018](0018-tolerated-but-untaught-syntax.md)      | Accept the syntax models already write, without teaching it           |
 | [0019](0019-notation-head-read-write-split.md)     | A notation head may split off a `-write` sibling                      |
+| [0020](0020-looping-preserves-the-region.md)       | `looping` changes the loop flag and nothing else                      |

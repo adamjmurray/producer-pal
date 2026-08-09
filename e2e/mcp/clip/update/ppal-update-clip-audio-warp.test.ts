@@ -142,15 +142,8 @@ describe("ppal-update-clip audio warping", () => {
   });
 
   it("warns that looping: true wins over warping: false", async () => {
-    // The warning and the two flags are the whole observable surface of the
-    // veto, and that is a measured claim rather than a shrug. Live's raw
-    // asymmetry is real — an unwarp leaves the stale beat value in end_marker,
-    // and a re-warp maps it again, inflating the region by tempo/60 — but the
-    // skip's effect on it can't be seen from out here: `looping: true` resets
-    // the loop brace to the whole sample by itself, and a later region write
-    // recomputes end_marker. Removing the skip changes nothing this suite, or
-    // any tool call, can observe. It stays because the round trip it avoids is
-    // genuinely lossy at the Live API level.
+    // Only the warning and the two flags. ppal-update-clip-loop-toggle covers
+    // what the skipped unwarp would have done to the region.
     const { created } = await createAndRead(ctx.client!, {
       slot: SLOT,
       name: "looping veto",

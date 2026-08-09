@@ -157,8 +157,10 @@ export function processSingleClipUpdate(
     forceWarpForLooping(clip, looping, warping);
   }
 
-  // Determine looping state
-  const isLooping = looping ?? (clip.getProperty("looping") as number) > 0;
+  // Determine looping state. Read `wasLooping` here, after the audio params:
+  // switching warp off forces looping off, and that counts as the before state.
+  const wasLooping = (clip.getProperty("looping") as number) > 0;
+  const isLooping = looping ?? wasLooping;
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
@@ -169,6 +171,7 @@ export function processSingleClipUpdate(
     timeSigNumerator,
     timeSigDenominator,
     isLooping,
+    wasLooping,
   });
 
   // Build context for transform variables (clip.*, bar.*)
@@ -238,6 +241,7 @@ export function processSingleClipUpdate(
  * @param resolved.timeSigNumerator - Resolved time signature numerator
  * @param resolved.timeSigDenominator - Resolved time signature denominator
  * @param resolved.isLooping - The clip's looping state after this update
+ * @param resolved.wasLooping - The clip's looping state before this update
  */
 function writeClipProperties(
   params: ProcessSingleClipUpdateParams,
@@ -245,10 +249,12 @@ function writeClipProperties(
     timeSigNumerator,
     timeSigDenominator,
     isLooping,
+    wasLooping,
   }: {
     timeSigNumerator: number;
     timeSigDenominator: number;
     isLooping: boolean;
+    wasLooping: boolean;
   },
 ): void {
   const {
@@ -272,12 +278,15 @@ function writeClipProperties(
     timeSigDenominator,
     clip,
     isLooping,
+    wasLooping,
     beatsPerMarkerUnit,
     markerClampSeconds: markerClampSeconds(clip),
   });
-  const currentLoopEnd = isLooping
-    ? (clip.getProperty("loop_end") as number) * beatsPerMarkerUnit
-    : null;
+
+  // Both ends: loop_start and start_marker are bounded by different properties,
+  // and one call can write both.
+  const markerBeats = (property: string) =>
+    (clip.getProperty(property) as number) * beatsPerMarkerUnit;
 
   clip.setAll(
     buildClipPropertiesToSet({
@@ -291,7 +300,8 @@ function writeClipProperties(
       isLooping,
       startBeats,
       endBeats,
-      currentLoopEnd,
+      currentLoopEnd: markerBeats("loop_end"),
+      currentEndMarker: markerBeats("end_marker"),
       beatsPerMarkerUnit,
     }),
   );

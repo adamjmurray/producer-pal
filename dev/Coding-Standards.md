@@ -226,6 +226,35 @@ silence. The warp toggle is applied **before** the region write in
 compose: the unwarp resets `end_marker` first, then the region lands on top of
 it, in seconds.
 
+### The Loop Toggle
+
+Verified against Live 12, MIDI and audio alike. Every clip has two regions, and
+`looping` picks which one plays:
+
+| `looping` | region that plays             |
+| --------- | ----------------------------- |
+| off       | `start_marker` / `end_marker` |
+| on        | `loop_start` / `loop_end`     |
+
+Flipping the flag does **not** carry the region across — it reveals whatever the
+other pair was last left with, which on a fresh clip is the whole thing.
+`calculateBeatPositions` restates the playing region into the newly selected
+pair, so `looping` changes the loop flag and nothing else (ADR-0020).
+
+Writing them is not symmetric, and these two are the ones that bite:
+
+- `start_marker` is **ignored** while `looping` is off — the set reports success
+  and does nothing. `loop_start` is the writable handle for the start then, and
+  moving it drags `start_marker` along.
+- A loop brace only survives a toggle if it was written while `looping` was on.
+
+So `buildClipPropertiesToSet` writes the markers **before** switching looping
+off, and the brace **after** switching it on.
+
+Two more traps in the same write, which is why it moves the end first when the
+new start lands at or past either current end: Live rejects a `loop_start` past
+`loop_end`, and silently drops a `start_marker` past `end_marker`.
+
 ## Coverage
 
 Function coverage is enforced at **100%** via `vitest.config.ts` thresholds.
