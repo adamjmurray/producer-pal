@@ -16,7 +16,7 @@ tracks, clips, devices, and more in your Live Set.
 It works with virtually any AI, including its
 [built-in Chat UI](/guide/chat-ui), desktop apps like
 [Claude Desktop](/installation/claude-desktop) and
-[Codex](/installation/codex-app), CLI tools, and web apps.
+[ChatGPT](/installation/chatgpt-app), CLI tools, and web apps.
 
 [Get started →](/installation)
 

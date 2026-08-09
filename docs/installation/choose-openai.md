@@ -7,16 +7,16 @@ subscription or API credits is recommended for regular use.
 
 | Option                       | Best For               | Trade-offs                                  |
 | ---------------------------- | ---------------------- | ------------------------------------------- |
-| [Codex App](./codex-app)     | Most users             | Easy setup, macOS only (for now).           |
+| [ChatGPT App](./chatgpt-app) | Most users             | Easy setup, macOS and Windows only.         |
 | [ChatGPT Web](./chatgpt-web) | Existing ChatGPT users | Requires [web tunnel](./web-tunnels) setup. |
 | [Codex CLI](./codex-cli)     | Developers             | Terminal-based, good for scripting.         |
 | [Built-in Chat UI](./openai) | Direct API access      | Requires API key, pay-per-use pricing.      |
 
 ## Recommendation
 
-**[Codex App](./codex-app)** for the easiest setup on macOS. **ChatGPT Web** if
-you prefer the ChatGPT interface. **[Built-in Chat UI](./openai)** if you prefer
-pay-as-you-go API pricing.
+**[ChatGPT App](./chatgpt-app)** (formerly the Codex app) for the easiest setup.
+**ChatGPT Web** if you prefer the browser. **[Built-in Chat UI](./openai)** if
+you prefer pay-as-you-go API pricing.
 
 ## Model Notes
 

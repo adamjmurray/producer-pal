@@ -47,8 +47,8 @@ Dedicated AI apps — the easiest setup for most people:
 
 - **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
   (subscription required)
-- **[Codex App](./installation/codex-app)** — OpenAI's desktop app (macOS only,
-  subscription required)
+- **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
+  Codex built in (macOS and Windows)
 - **[LM Studio](./installation/lm-studio)** — runs models fully offline, no
   account needed
 

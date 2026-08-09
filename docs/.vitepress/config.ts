@@ -13,10 +13,14 @@ export default defineConfig({
 
   sitemap: {
     hostname: "https://producer-pal.org",
-    // Keep the /guide/examples redirect stub (moved to /features/examples) out
-    // of the sitemap so crawlers index the destination, not the redirect.
+    // Keep redirect stubs out of the sitemap so crawlers index the
+    // destination, not the redirect.
     transformItems: (items) =>
-      items.filter((item) => !item.url.startsWith("guide/examples")),
+      items.filter(
+        (item) =>
+          !item.url.startsWith("guide/examples") &&
+          item.url !== "installation/codex-app",
+      ),
   },
 
   cleanUrls: true,
@@ -30,8 +34,8 @@ export default defineConfig({
       .replace(/^index$/, "");
 
     pageData.frontmatter.head ??= [];
-    // Respect a page's own canonical (e.g. the /guide/examples redirect stub
-    // points at /features/examples); otherwise default to a self-canonical.
+    // Respect a page's own canonical (redirect stubs point at their
+    // replacement); two canonicals would make search engines ignore both.
     const hasCanonical = pageData.frontmatter.head.some(
       ([tag, attrs]) => tag === "link" && attrs?.rel === "canonical",
     );
@@ -208,7 +212,7 @@ export default defineConfig({
                 text: "Claude Desktop",
                 link: "/installation/claude-desktop",
               },
-              { text: "Codex App", link: "/installation/codex-app" },
+              { text: "ChatGPT App", link: "/installation/chatgpt-app" },
               { text: "LM Studio", link: "/installation/lm-studio" },
             ],
           },
@@ -227,7 +231,7 @@ export default defineConfig({
             link: "/installation/web-apps",
             items: [
               { text: "claude.ai", link: "/installation/claude-web" },
-              { text: "ChatGPT", link: "/installation/chatgpt-web" },
+              { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
               { text: "Le Chat", link: "/installation/mistral-le-chat" },
             ],
           },

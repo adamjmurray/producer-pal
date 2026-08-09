@@ -4,8 +4,10 @@ Use Producer Pal with OpenAI's command line coding assistant.
 
 ::: tip Prefer a Desktop App?
 
-The [Codex App](./codex-app) offers an easier setup with a graphical interface.
-The CLI is best for developers who prefer the terminal.
+The [ChatGPT App](./chatgpt-app), which now includes Codex, offers an easier
+setup with a graphical interface. The CLI is best for developers who prefer the
+terminal. Both share the same MCP configuration (`~/.codex/config.toml`), so
+setting up Producer Pal in one makes it available in the other.
 
 :::
 
