@@ -23,6 +23,7 @@ import { expect } from "vitest";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   type CreateClipResult,
+  DRUM_LOOP_FILE,
   parseToolResult,
   type ReadClipResult,
   SAMPLE_FILE,
@@ -104,6 +105,61 @@ export async function readClipFully(
   });
 
   return parseToolResult<ReadClipResult>(result);
+}
+
+/**
+ * The drum loop's real length in beats: 98000 frames at 44100 Hz is 2.2222
+ * seconds, which is exactly 4 beats at the test Set's 108 BPM.
+ */
+export const DRUM_LOOP_BEATS = 4;
+
+/**
+ * Create an unwarped drum-loop clip in a session slot.
+ * @param client - The MCP client
+ * @param slot - The session slot, "trackIndex/sceneIndex"
+ * @returns The new clip's id
+ */
+export async function createUnwarpedDrumLoop(
+  client: Client,
+  slot: string,
+): Promise<string> {
+  const result = await client.callTool({
+    name: "ppal-create-clip",
+    arguments: {
+      sampleFile: DRUM_LOOP_FILE,
+      slot,
+      name: "unwarped loop",
+      warping: false,
+    },
+  });
+  const created = parseToolResult<CreateClipResult>(result);
+
+  await sleep(100);
+
+  return created.id;
+}
+
+/**
+ * Cut a drum-loop clip's region down to the first half bar.
+ *
+ * This is what makes an unwarped clip's length testable at all. Live's
+ * `Clip.length` still reports the full bar afterwards — it never recomputes
+ * once warping is off — so anything measuring the clip by `length` rather than
+ * by its markers sees twice the region the clip actually plays.
+ *
+ * @param client - The MCP client
+ * @param clipId - The clip to shorten
+ */
+export async function halveDrumLoopRegion(
+  client: Client,
+  clipId: string,
+): Promise<void> {
+  await client.callTool({
+    name: "ppal-update-clip",
+    arguments: { ids: clipId, start: "1|1", length: "n/2" },
+  });
+
+  await sleep(100);
 }
 
 /**
