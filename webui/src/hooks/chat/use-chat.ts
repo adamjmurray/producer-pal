@@ -7,8 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
-  recoverFromChatError,
   resolveInitConnection,
+  runChatTurn,
   showMissingApiKeyError,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
@@ -75,6 +75,9 @@ export function useChat<
   // is created before initializeChat is defined below.
   const bootstrapClientRef = useRef<(() => Promise<void>) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Per-turn state runChatTurn owns; see there for why a turn takes a ticket.
+  const turnIdRef = useRef(0);
+  const pendingUserMessageRef = useRef<TMessage | null>(null);
   const thinkingRef = useRef(active.activeThinking);
 
   useEffect(() => {
@@ -244,47 +247,25 @@ export function useChat<
     bootstrapClientRef.current = bootstrapClient;
   }, [bootstrapClient]);
 
-  // Stash the user message for retry/edit when an early error (missing API
-  // key, MCP init failure) means it never reached client.chatHistory.
-  const pendingUserMessageRef = useRef<TMessage | null>(null);
-
   const runWithChat = useCallback(
     async <T>(
       fn: () => Promise<T>,
       userMessage?: TMessage,
-    ): Promise<T | undefined> => {
-      setIsAssistantResponding(true);
-      // A new request clears any prior tool-limit notice before streaming.
-      setToolLimitReached(false);
-      pendingUserMessageRef.current = userMessage ?? null;
-
-      try {
-        const result = await fn();
-
-        pendingUserMessageRef.current = null;
-        setToolLimitReached(clientRef.current?.toolLimitReached ?? false);
-
-        return result;
-      } catch (error) {
-        recoverFromChatError({
-          error,
-          adapter,
-          clientRef,
-          pendingHistoryRef,
-          stashed: pendingUserMessageRef.current,
-          setMessages,
-          autoSaveRef,
-          pendingForkRef,
-        });
-
-        return undefined;
-      } finally {
-        pendingUserMessageRef.current = null;
-        abortControllerRef.current = null;
-        setIsAssistantResponding(false);
-        setRateLimitState(null);
-      }
-    },
+    ): Promise<T | undefined> =>
+      await runChatTurn(fn, userMessage, {
+        adapter,
+        clientRef,
+        pendingHistoryRef,
+        abortControllerRef,
+        autoSaveRef,
+        pendingForkRef,
+        turnIdRef,
+        pendingUserMessageRef,
+        setMessages,
+        setIsAssistantResponding,
+        setToolLimitReached,
+        setRateLimitState,
+      }),
     [adapter, autoSaveRef, pendingForkRef],
   );
 

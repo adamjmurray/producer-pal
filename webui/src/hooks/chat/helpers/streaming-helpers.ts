@@ -9,6 +9,7 @@ import {
   type ChatClient,
   type MessageOverrides,
   type PendingForkRef,
+  type RateLimitState,
 } from "#webui/hooks/chat/use-chat-types";
 import { resolveSystemInstruction } from "#webui/lib/config";
 import { type UIMessage } from "#webui/types/messages";
@@ -199,6 +200,93 @@ export function recoverFromChatError<
     // never runs. Drop the signal here or it lingers and mis-branches the next,
     // unrelated save into a spurious sibling.
     pendingForkRef.current = null;
+  }
+}
+
+interface RunChatTurnDeps<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+> {
+  adapter: ChatAdapter<TClient, TMessage, TConfig>;
+  clientRef: { current: TClient | null };
+  pendingHistoryRef: { current: TMessage[] | null };
+  abortControllerRef: { current: AbortController | null };
+  autoSaveRef?: { current: (() => void) | null };
+  pendingForkRef?: PendingForkRef;
+  /** Ticket dispenser: bumped per turn, so a late turn knows it was superseded. */
+  turnIdRef: { current: number };
+  pendingUserMessageRef: { current: TMessage | null };
+  setMessages: (msgs: UIMessage[]) => void;
+  setIsAssistantResponding: (responding: boolean) => void;
+  setToolLimitReached: (reached: boolean) => void;
+  setRateLimitState: (state: RateLimitState | null) => void;
+}
+
+/**
+ * Run one chat turn, owning the state shared across turns: the responding flag,
+ * the abort controller, the rate-limit notice, the tool-limit notice, and the
+ * user message stashed for retry/edit.
+ *
+ * Turns can OVERLAP. Stop re-enables the composer immediately, but the stopped
+ * turn keeps unwinding — its stream waits on any subagent still finishing an MCP
+ * call, which takes no abort signal — so a send inside that window starts the
+ * next turn while the old one is still settling. Each turn therefore takes a
+ * ticket on the way in and only touches the shared state while it still holds
+ * the current one. Without that, the late turn nulls the new turn's abort
+ * controller (its Stop then silently no-ops), clears its responding flag
+ * mid-stream, and drops its retry stash.
+ *
+ * @param fn - The turn to run
+ * @param userMessage - Message to stash for retry/edit, if this turn sends one
+ * @param deps - Adapter, the chat refs, and the per-turn state setters
+ * @returns What the turn returned, or undefined when it failed
+ */
+export async function runChatTurn<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+  T,
+>(
+  fn: () => Promise<T>,
+  userMessage: TMessage | undefined,
+  deps: RunChatTurnDeps<TClient, TMessage, TConfig>,
+): Promise<T | undefined> {
+  const { turnIdRef, pendingUserMessageRef } = deps;
+  const turnId = ++turnIdRef.current;
+  const stillCurrent = () => turnId === turnIdRef.current;
+
+  deps.setIsAssistantResponding(true);
+  // A new request clears any prior tool-limit notice before streaming.
+  deps.setToolLimitReached(false);
+  pendingUserMessageRef.current = userMessage ?? null;
+
+  try {
+    const result = await fn();
+
+    if (stillCurrent()) {
+      pendingUserMessageRef.current = null;
+      deps.setToolLimitReached(
+        deps.clientRef.current?.toolLimitReached ?? false,
+      );
+    }
+
+    return result;
+  } catch (error) {
+    recoverFromChatError({
+      ...deps,
+      error,
+      stashed: pendingUserMessageRef.current,
+    });
+
+    return undefined;
+  } finally {
+    if (stillCurrent()) {
+      pendingUserMessageRef.current = null;
+      deps.abortControllerRef.current = null;
+      deps.setIsAssistantResponding(false);
+      deps.setRateLimitState(null);
+    }
   }
 }
 

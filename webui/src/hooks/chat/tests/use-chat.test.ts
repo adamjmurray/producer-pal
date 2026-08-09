@@ -315,6 +315,62 @@ describe("useChat", () => {
       ).toBe(false);
     });
 
+    it("leaves the next turn alone when a stopped turn unwinds late", async () => {
+      // Stop re-enables the composer at once, but the stopped turn keeps
+      // unwinding — its stream waits on any subagent still finishing an MCP
+      // call, which takes no abort signal. A send inside that window owns the
+      // per-turn state from then on; the late turn must not tear it down, or
+      // its Stop silently no-ops.
+      let releaseStopped!: () => void;
+      const stoppedUnwind = new Promise<void>((resolve) => {
+        releaseStopped = resolve;
+      });
+      const signals: AbortSignal[] = [];
+      let turn = 0;
+      const adapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message: string, signal: AbortSignal) {
+            signals.push(signal);
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            // First turn: the post-Stop unwind. Second: still streaming.
+            await (++turn === 1 ? stoppedUnwind : new Promise(() => {}));
+          },
+      );
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+      const stoppedSend = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      void act(() => {
+        void result.current.handleSend("second");
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // The stopped turn finishes only now, after the new one is under way.
+      releaseStopped();
+      await stoppedSend;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(result.current.isAssistantResponding).toBe(true);
+
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      expect(signals[1]?.aborted).toBe(true);
+      expect(result.current.isAssistantResponding).toBe(false);
+    });
+
     it("keeps queued messages when stop is pressed so they flush on the next send", async () => {
       const result = await renderWithQueuedMessage("queued msg");
 

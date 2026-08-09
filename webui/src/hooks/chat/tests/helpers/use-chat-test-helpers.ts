@@ -278,6 +278,7 @@ export async function streamingHelpersMockBody(): Promise<
     resolveLockedNotation: actual.resolveLockedNotation,
     resolveLockedSmallModelMode: actual.resolveLockedSmallModelMode,
     recoverFromChatError: actual.recoverFromChatError,
+    runChatTurn: actual.runChatTurn,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
         onUpdate(formatter(chatHistory));
