@@ -9,6 +9,7 @@ import {
   deriveVoiceTitle,
   mergeVoiceHistory,
 } from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
+import { VOICE_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   isGeminiRealtimeModelId,
   OPENAI_REALTIME_MODEL,
@@ -25,8 +26,6 @@ import {
   saveConversation,
   setBookmark,
 } from "#webui/lib/conversation-db";
-
-const AUTOSAVE_DEBOUNCE_MS = 600;
 
 interface UseVoicePersistenceParams {
   /** Current live voice transcript from useVoiceSession (drives auto-save). */
@@ -228,7 +227,7 @@ export function useVoicePersistence(
 
         void refreshList();
       });
-    }, AUTOSAVE_DEBOUNCE_MS);
+    }, VOICE_AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
   }, [liveHistory, model, refreshList, setActiveId]);

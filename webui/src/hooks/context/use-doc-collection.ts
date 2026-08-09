@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
+import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   deleteEntryRequest,
   fetchEntries,
@@ -22,8 +23,6 @@ import {
   type SaveStatus,
   useRefreshOnFocusAndPoll,
 } from "./use-doc";
-
-const AUTOSAVE_DEBOUNCE_MS = 800;
 
 type TimerRef = { current: ReturnType<typeof setTimeout> | null };
 
@@ -261,7 +260,8 @@ export interface CollectionEntryAutosaveReturn {
    * was open) AND the draft is clean (`draftKey` === baseline). A dirty draft
    * suppresses this — typing is an implicit last-write-wins choice, and the
    * debounced autosave would clobber the external change within
-   * `AUTOSAVE_DEBOUNCE_MS` anyway, so there is nothing more to solve there.
+   * `DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS` anyway, so there is nothing more to
+   * solve there.
    * Always false in new-entry mode (no `externalKey`).
    */
   externalUpdate: boolean;
@@ -446,7 +446,7 @@ export function useCollectionEntryAutosave(
       return undefined;
     }
 
-    timerRef.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
+    timerRef.current = setTimeout(flush, DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimer(timerRef);
   }, [canSave, draftKey, autosaveOnIdle, flush]);

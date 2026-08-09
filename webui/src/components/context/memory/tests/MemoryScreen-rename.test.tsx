@@ -26,6 +26,14 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
   markdownEditorTestMock(),
 );
 
+// Shrink the autosave debounce so settleAutosave() only has to outwait preact's
+// deferred effect, not a real 800ms idle window on every test.
+vi.mock(import("#webui/lib/constants/autosave"), () => ({
+  VOICE_AUTOSAVE_DEBOUNCE_MS: 1,
+  CONTEXT_EDITOR_SAVE_DEBOUNCE_MS: 1,
+  DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS: 1,
+}));
+
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 
 const ENTRY: MemoryEntryView = {
@@ -226,11 +234,11 @@ function fieldValue(name: string | RegExp): string {
 /**
  * Wait out the editor's idle autosave: preact defers post-paint effects (the
  * arming) to a real timeout that happy-dom's rAF never beats, then the debounce
- * itself runs. Both directions need the same settle, so whether a save fires is
- * an honest assertion either way.
+ * itself runs (mocked to ~0 above). Both directions need the same settle, so
+ * whether a save fires is an honest assertion either way.
  */
 async function settleAutosave(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+  await new Promise((resolve) => setTimeout(resolve, 150));
 }
 
 describe("MemoryScreen — editing during an in-flight rename", () => {

@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { CONTEXT_EDITOR_SAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import { type UseDocReturn } from "./use-doc";
 
-const SAVE_DEBOUNCE_MS = 800;
 const SAVE_RETRY_MS = 5000;
 
 /** Confirm shown before an import overwrites non-empty editor content. */
@@ -469,7 +469,10 @@ export function useContextEditorState(
         clearTimeout(debounceTimerRef.current);
       }
 
-      debounceTimerRef.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
+      debounceTimerRef.current = setTimeout(
+        flushSave,
+        CONTEXT_EDITOR_SAVE_DEBOUNCE_MS,
+      );
     },
     [flushSave],
   );
