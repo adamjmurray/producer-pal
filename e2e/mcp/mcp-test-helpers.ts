@@ -43,6 +43,17 @@ export const KICK_FILE = resolve(
 );
 
 /**
+ * A generated one-bar 4/4 drum loop at the test Set's tempo — 98000 frames at
+ * 44100 Hz is exactly 4 beats at 108 BPM. SAMPLE_FILE is under a bar long, so
+ * anything that needs a bar-aligned audio region uses this instead. See
+ * live-sets/samples/generate-drum-loop.mjs.
+ */
+export const DRUM_LOOP_FILE = resolve(
+  __dirname,
+  "../live-sets/samples/drum-loop-1bar.wav",
+);
+
+/**
  * Parse a tool result as JSON with type casting.
  * Throws if the result contains unexpected warnings.
  * Use parseToolResultWithWarnings() for results where warnings are expected.

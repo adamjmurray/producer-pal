@@ -392,9 +392,20 @@ _Note: Track is intentionally unnamed; Live auto-generates "9-MIDI"_
 
 ```
 e2e/live-sets/samples/
-├── sample.aiff      # Used by t4/s0, t5/s0
+├── sample.aiff             # Used by t4/s0, t5/s0
+├── drum-loop-1bar.wav      # Generated; not in the Set, loaded by tests
+├── generate-drum-loop.mjs  # Regenerates the above
 └── drums/
-    └── kick.aiff    # Used by t4 arrangement
+    └── kick.aiff           # Used by t4 arrangement
 ```
 
-Both files contain the same audio content at different paths.
+`sample.aiff` and `kick.aiff` are the same audio content at different paths.
+Both are ~1.09 s — **under one bar** at this Set's 108 BPM — so every audio
+region built from them is shorter than a bar.
+
+`drum-loop-1bar.wav` exists for the cases that need a bar line: 98000 frames at
+44100 Hz is exactly 4 beats at 108 BPM, so a clip covering the whole sample is
+one bar and its length reads as a round note value. Regenerate it with
+`node e2e/live-sets/samples/generate-drum-loop.mjs` — the script asserts the
+frame count, so a tempo or sample-rate change that no longer divides evenly
+fails instead of silently shifting every expectation.

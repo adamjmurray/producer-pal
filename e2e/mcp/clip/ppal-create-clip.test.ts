@@ -12,7 +12,6 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
-import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   type CreateClipResult,
   type CreateTrackResult,
@@ -22,6 +21,12 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import {
+  AUDIO_WARP_TRACK,
+  createAndRead,
+  expectedSampleLength,
+  readSongTiming,
+} from "./helpers/audio-warp-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -341,98 +346,16 @@ describe("ppal-create-clip", () => {
 });
 
 // ============================================================================
-// Audio clip warping
-//
-// Live decides for itself whether to warp an imported sample, following the
-// user's "Loop/Warp Short Samples" setting -- which the Live API can neither
-// read nor set. So these tests never assert what an *unspecified* `warping`
-// produces; they pin the explicit values and the timing that must follow.
-//
-// The substance is unit handling: Live reports an audio clip's markers in beats
-// while it is warped and in seconds once it is not, so an unwarped clip's
-// region is only right if that switch is honored. Live's own
-// `end_time - start_time`, surfaced as `arrangementLength`, is the oracle.
-//
-// t5 "Audio 2" is an audio track with s6/s7 free and no arrangement clips.
+// Audio clip warping on the create path. The update path is covered in
+// update/ppal-update-clip-audio-warp.test.ts; the shared setup and the reason
+// these assertions look the way they do are in the helpers module.
 // ============================================================================
-
-const audioWarpTrack = 5;
-
-interface SongTiming {
-  tempo: number;
-  numerator: number;
-  denominator: number;
-}
-
-/**
- * Read the Set's tempo and meter, rather than hardcoding them, so the test
- * survives an edit to the test set.
- * @returns The Set's tempo and time signature
- */
-async function readSongTiming(): Promise<SongTiming> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-live-set",
-    arguments: {},
-  });
-  const liveSet = parseToolResult<{ tempo: number; timeSignature: string }>(
-    result,
-  );
-  const [numerator, denominator] = liveSet.timeSignature.split("/").map(Number);
-
-  return {
-    tempo: liveSet.tempo,
-    numerator: numerator as number,
-    denominator: denominator as number,
-  };
-}
-
-/**
- * The duration an unwarped clip covering the whole sample must report.
- * @param clip - A clip read with the sample and warp includes
- * @param song - The Set's tempo and meter
- * @returns The expected bar|beat duration string
- */
-function expectedSampleLength(clip: ReadClipResult, song: SongTiming): string {
-  const sampleSeconds = clip.sampleLength! / clip.sampleRate!;
-
-  return abletonBeatsToDuration(
-    (sampleSeconds * song.tempo) / 60,
-    song.numerator,
-    song.denominator,
-  );
-}
-
-/**
- * Create an audio clip and read it back with every include.
- * @param args - ppal-create-clip arguments, merged over the shared sampleFile
- * @returns The create result and the clip as read back
- */
-async function createAndRead(
-  args: Record<string, unknown>,
-): Promise<{ created: CreateClipResult; clip: ReadClipResult }> {
-  const createResult = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: { sampleFile: SAMPLE_FILE, ...args },
-  });
-  const created = parseToolResult<CreateClipResult>(createResult);
-
-  expect(created.id).toBeDefined();
-
-  await sleep(100);
-
-  const readResult = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId: created.id, include: ["*"] },
-  });
-
-  return { created, clip: parseToolResult<ReadClipResult>(readResult) };
-}
 
 describe("ppal-create-clip audio warping", () => {
   it("lands an unwarped clip whose region is the sample, not the raw seconds", async () => {
-    const song = await readSongTiming();
-    const { created, clip } = await createAndRead({
-      slot: `${audioWarpTrack}/6`,
+    const song = await readSongTiming(ctx.client!);
+    const { created, clip } = await createAndRead(ctx.client!, {
+      slot: `${AUDIO_WARP_TRACK}/6`,
       name: "unwarped one shot",
       warping: false,
     });
@@ -451,8 +374,8 @@ describe("ppal-create-clip audio warping", () => {
   it("agrees with Live's own arrangement length when unwarped", async () => {
     // arrangementLength comes from Live's end_time - start_time, computed
     // without reference to the marker properties. The two must match.
-    const { clip } = await createAndRead({
-      trackIndex: audioWarpTrack,
+    const { clip } = await createAndRead(ctx.client!, {
+      trackIndex: AUDIO_WARP_TRACK,
       arrangementStart: "33|1",
       name: "unwarped arrangement",
       warping: false,
@@ -464,9 +387,9 @@ describe("ppal-create-clip audio warping", () => {
   });
 
   it("lands a warped clip when warping is requested", async () => {
-    const song = await readSongTiming();
-    const { created, clip } = await createAndRead({
-      slot: `${audioWarpTrack}/7`,
+    const song = await readSongTiming(ctx.client!);
+    const { created, clip } = await createAndRead(ctx.client!, {
+      slot: `${AUDIO_WARP_TRACK}/7`,
       name: "warped",
       warping: true,
     });
@@ -478,35 +401,6 @@ describe("ppal-create-clip audio warping", () => {
     // region still spans the whole sample. Assert the exact length — a bare
     // "not empty" check would pass on a region Live had stretched or truncated.
     expect(clip.start).toBe("1|1");
-    expect(clip.length).toBe(expectedSampleLength(clip, song));
-  });
-
-  it("survives an unwarp then re-warp without inflating the region", async () => {
-    // The two directions are asymmetric: Live maps the markers on the way in
-    // but leaves end_marker stale on the way out, which is why unwarpAudioClip
-    // restates it. Skip that restatement and this second pass maps a beat value
-    // that is already in beats, stretching the clip by tempo/60.
-    const song = await readSongTiming();
-    const { created } = await createAndRead({
-      trackIndex: audioWarpTrack,
-      arrangementStart: "49|1",
-      name: "warp round trip",
-      warping: false,
-    });
-
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { ids: created.id, warping: true },
-    });
-    await sleep(100);
-
-    const readResult = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: created.id, include: ["*"] },
-    });
-    const clip = parseToolResult<ReadClipResult>(readResult);
-
-    expect(clip.warping).toBe(true);
     expect(clip.length).toBe(expectedSampleLength(clip, song));
   });
 });
