@@ -113,6 +113,7 @@
     "@ai-sdk/mistral": "4.0.14",
     "@ai-sdk/openai": "4.0.20",
     "@ai-sdk/openai-compatible": "3.0.14",
+    "@ai-sdk/provider-utils": "5.0.12",
     "@codemirror/commands": "6.10.4",
     "@codemirror/lang-markdown": "6.5.1",
     "@codemirror/language": "6.12.4",
