@@ -54,14 +54,12 @@ and web clients. Tools appear natively in the client and nothing has to shell
 out.
 
 Use the **skill** with coding agents that can run commands. Because it drives
-the [REST API](/guide/rest-api) directly, it can change device settings
-mid-session — flip the [notation](/features/midi-notation), turn on
-[Direct Live API](/features#ppal-live-api), toggle small-model mode — and then
-re-read the schemas, all with `--set-config`. MCP clients bake the tool
-descriptions at the start of a conversation and have no tool for changing these
-settings, so the same switch means editing the device and starting a new
-conversation. It's also the answer for scripts and pipelines that don't run an
-MCP client at all.
+the [REST API](/guide/rest-api) directly, it can pick its own
+[notation](/features/midi-notation), toolset, and small-model mode per request
+and re-read the schemas mid-session — without moving your Chat UI or any other
+client off theirs. MCP clients bake the tool descriptions at the start of a
+conversation, so the same switch means starting a new one. It's also the answer
+for scripts and pipelines that don't run an MCP client at all.
 
 :::
 
@@ -87,21 +85,22 @@ When the user asks the agent something Producer-Pal-shaped ("set tempo to 120",
 "what's in track 2", "make a 4-bar drum loop"), the agent loads `SKILL.md` and
 follows its bootstrap:
 
-1. **Set the notation** —
-   `node ppal.mjs --set-config '{"notation":"midi-json"}'`. The active notation
-   is baked into every tool and argument description, so the skill sets it
-   _before_ listing tools. Coding agents get `midi-json` (MIDI notes as a JSON
-   array) because they can generate and parse it programmatically.
-2. **List tools** — `node ppal.mjs --list-tools` returns the full tool catalog
-   with input schemas, so the agent knows what's available without baking it
-   into the skill.
-3. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
-   Skills (the note syntax for the active notation,
+1. **List tools** — `node ppal.mjs --list-tools --notation midi-json` returns
+   the full tool catalog with input schemas, so the agent knows what's available
+   without baking it into the skill. The notation is baked into every tool and
+   argument description, so it rides on this first call already. Coding agents
+   get `midi-json` (MIDI notes as a JSON array) because they can generate and
+   parse it programmatically.
+2. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
+   Skills (the note syntax for the notation it asked for,
    [transforms](/features/midi-notation#transforms), conventions) — the same
    instructions Producer Pal's MCP clients receive at session start. The skill
    stays small; the heavy guidance comes from Producer Pal itself.
-4. **Use the other tools** per those instructions, via
-   `node ppal.mjs <tool> [json-args]`.
+3. **Use the other tools** per those instructions, via
+   `node ppal.mjs <tool> [json-args] --notation midi-json`.
+
+`--notation` applies to the one request that carries it, so the skill passes it
+every time.
 
 Because the skill is just a thin pointer + bootstrap, it stays correct as
 Producer Pal evolves: new tools, schema changes, and skill updates land in
@@ -110,24 +109,27 @@ Producer Pal evolves: new tools, schema changes, and skill updates land in
 ### Notation and small-model mode
 
 Producer Pal encodes MIDI notes in one of three
-[notations](/features/midi-notation), chosen by a **global device setting**:
+[notations](/features/midi-notation):
 [`bar|beat`](/features/midi-notation#bar-beat) (the default — compact
 human-readable text), [`midi-json`](/features/midi-notation#midi-json) (notes as
 a JSON array), and [`stark`](/features/midi-notation#stark) (a literal
-`type: content` format with event-based drum hits). The setting changes the note
-syntax in every tool/argument description and in the `ppal-connect` Skills, and
-it also applies to the Chat UI and any connected MCP clients. The skill sets
-`midi-json` because coding agents generate and parse JSON directly, rather than
-composing text notation by hand.
+`type: content` format with event-based drum hits). The choice changes the note
+syntax in every tool/argument description and in the `ppal-connect` Skills. The
+skill asks for `midi-json` because coding agents generate and parse JSON
+directly, rather than composing text notation by hand.
+
+It asks **per request**, with `--notation`, rather than writing the device
+setting. That's the important part: your Chat UI and any connected MCP clients
+keep whatever notation they were using while the agent works in its own.
 
 The skill also assumes **small-model mode is off** — coding agents generally run
 capable models that handle the full tool descriptions, so it's left at the
 default. If you drive Producer Pal from a _local_ coding agent on a smaller
-model, edit the notation step in `SKILL.md` to enable small-model mode (which
-trims the tool descriptions) and consider `stark` instead of `midi-json`:
+model, edit `SKILL.md` to pass small-model mode (which trims the tool
+descriptions) and consider `stark` instead of `midi-json`:
 
 ```bash
-node ppal.mjs --set-config '{"notation":"stark","smallModelMode":true}'
+node ppal.mjs --list-tools --notation stark --small-model-mode
 ```
 
 ### Narrowing the toolset
@@ -142,9 +144,9 @@ node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 ```
 
 `SKILL.md` tells the agent to decide once and pass the same list on every call,
-since the header applies per request. Unlike the settings above this changes
-nothing on the device, so the Chat UI and your MCP clients are unaffected.
-[Optimizing](/guide/optimizing) has the numbers.
+since the header applies per request — same as `--notation`, and equally
+invisible to the Chat UI and your MCP clients. [Optimizing](/guide/optimizing)
+has the numbers.
 
 ### Direct Live API (advanced)
 

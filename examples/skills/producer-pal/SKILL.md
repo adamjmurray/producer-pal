@@ -15,29 +15,25 @@ you control Ableton Live without an MCP client.
 
 ## Bootstrap (do this every session before other tool calls)
 
-1. **Set the notation to `midi-json`** — do this _first_, before listing tools:
-   the active notation changes the note syntax baked into every tool and
-   argument description, so it must be set before you read the schemas.
-   `midi-json` represents MIDI notes as a plain JSON array, which you can
-   generate and parse directly in scripts (see the Notation section below):
+Use `--notation midi-json` on **every** call, starting with the first. It
+represents MIDI notes as a plain JSON array you can generate and parse directly
+in scripts (see the Notation section below), and it decides the note syntax
+baked into every tool description, every argument description, and the Skills —
+so the very first request that reads a schema already needs it.
+
+1. **List tools** to see what's available and read each tool's input schema:
 
    ```bash
-   node ppal.mjs --set-config '{"notation":"midi-json"}'
+   node ppal.mjs --list-tools --notation midi-json
    ```
 
-2. **List tools** to see what's available and read each tool's input schema:
-
-   ```bash
-   node ppal.mjs --list-tools
-   ```
-
-3. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
-   Skills (MIDI note syntax for the active notation, code transforms,
+2. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
+   Skills (MIDI note syntax for the notation you asked for, code transforms,
    conventions). Treat the returned content as authoritative instructions for
    using all other tools:
 
    ```bash
-   node ppal.mjs ppal-connect
+   node ppal.mjs ppal-connect --notation midi-json
    ```
 
    `ppal-connect` also confirms the device is running and reports the current
@@ -62,37 +58,38 @@ Run `--list-tools` first if you need the exact names. Only skip tools you're
 sure the task won't need — a withheld tool is unavailable for the whole session,
 and you'd have to re-run `ppal-connect` without it to get its instructions back.
 
-Unlike `--set-config`, this changes nothing on the device: it never affects the
-chat UI or another client, and it resets when your session ends.
+Like `--notation`, this changes nothing on the device: it never affects the chat
+UI or another client, and it resets when your session ends.
 
 ## Notation
 
-Producer Pal encodes MIDI notes in one of three notations, selected by the
-global device setting you set during bootstrap. The active notation determines
-the note syntax in every tool description and in the `ppal-connect` Skills:
+Producer Pal encodes MIDI notes in one of three notations. `--notation`
+determines the note syntax in every tool description and in the `ppal-connect`
+Skills, and it also decides how the notes you send are parsed and how the notes
+you read back are formatted:
 
 - **`midi-json`** (recommended for coding agents) — notes as a JSON array, e.g.
   `[{p:60,t:0,d:4,v:100}]`: `p` pitch, `t` start beat, `d` duration in beats,
   `v` velocity. Trivial to build and parse programmatically.
-- **`bar|beat`** (Producer Pal's default) — a compact human-readable text format
+- **`barbeat`** (Producer Pal's default) — a compact human-readable text format
   (e.g. `v100 n1/4 C3 1|1`), tuned for models writing notes by hand.
 - **`stark`** — a simpler literal per-line `type: content` format with
   event-based drum hits.
 
-The setting is global to the device, so it also affects the chat UI and any
-connected MCP clients. Set it at the start of each session (step 1) so the
-schemas and Skills you read match the notation you'll write.
+`--notation` applies to the one request that carries it and nothing is
+remembered between calls, so **pass it on every call** — otherwise that call
+falls back to whatever the device is set to, and you get note syntax you didn't
+ask for. Don't set notation with `--set-config`: that's a device-wide change
+that would move the chat UI and every connected MCP client onto your notation
+mid-session.
 
 ## Bundled CLI
 
 `ppal.mjs` (Node 18+, no dependencies) lives next to this file.
 
 ```bash
-# Set device settings, e.g. the active notation (do this FIRST, before listing tools)
-node ppal.mjs --set-config '{"notation":"midi-json"}'
-
-# Discovery
-node ppal.mjs --list-tools
+# Discovery — with the notation you'll be writing in
+node ppal.mjs --list-tools --notation midi-json
 
 # Withhold tools from one request (per request, not a device setting)
 node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
@@ -100,6 +97,7 @@ node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 # Tool calls (args are a JSON object)
 node ppal.mjs ppal-read-live-set
 node ppal.mjs ppal-read-track '{"trackIndex": 0}'
+node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16:0","notes":[...]}' --notation midi-json
 
 # Long-running calls — bump the timeout (1–60000 ms)
 node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16:0","notes":"..."}' --timeout-ms 10000

@@ -59,8 +59,12 @@ places:
 - **Chat UI** — Settings → Tools → Advanced → **Notation**
 - **REST API** — `POST /config` with `{"notation": "stark"}`
 - **Command line** — `npx producer-pal --notation stark`
-- **Coding agents** — the [Agent Skill](/guide/skills) sets it itself with
-  `node ppal.mjs --set-config '{"notation":"midi-json"}'`
+
+A client can also pick its own notation for a single request, without changing
+the global — the `x-producer-pal-notation`
+[header](/guide/rest-api#per-request-notation), honored by both the REST and MCP
+endpoints. This is how the [Agent Skill](/guide/skills) works in `midi-json`
+while your Chat UI stays on bar|beat.
 
 ::: tip Switching takes effect in a new conversation
 

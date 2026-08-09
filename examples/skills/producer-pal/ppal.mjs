@@ -10,12 +10,13 @@
 // Options:
 //   --url <baseUrl>          override Producer Pal URL (default http://localhost:3350)
 //   --timeout-ms <ms>        per-request timeout (1–60000)
-//   --set-config <json>      update device settings, e.g. '{"notation":"midi-json"}'
+//   --set-config <json>      update device settings, e.g. '{"liveApiEnabled":true}'
+//   --notation <name>        barbeat | midi-json | stark, for this request only
 //   --disable-tools <names>  withhold tools from this request (comma-separated)
+//   --small-model-mode       shrink tool schemas and Skills for this request
 //
 // Examples:
-//   node ppal.mjs --set-config '{"notation":"midi-json"}'
-//   node ppal.mjs --list-tools
+//   node ppal.mjs --list-tools --notation midi-json
 //   node ppal.mjs ppal-read-live-set
 //   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
 //   node ppal.mjs ppal-create-clip '{...}' --timeout-ms 10000
@@ -27,32 +28,48 @@
 
 const DEFAULT_BASE_URL = "http://localhost:3350";
 
-// Per-request tool subsetting. Unlike --set-config this changes nothing on the
-// device: it applies to the one request that carries it, so it can't strip tools
-// from the chat UI or another client.
+// The three per-request headers. Unlike --set-config these change nothing on the
+// device: each applies to the one request that carries it, so it can't move the
+// chat UI or another client off its own notation or toolset. Absent ⇒ that
+// client keeps the device's global setting.
 const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
+const NOTATION_HEADER = "x-producer-pal-notation";
+const SMALL_MODEL_MODE_HEADER = "x-producer-pal-small-model-mode";
 
 /**
- * Request headers withholding the given tool names, or none when the list is
- * empty. `disabledTools` is a string[] or a comma-separated string.
+ * Request headers for this call's profile, omitting whichever options are
+ * absent. `disabledTools` is a string[] or a comma-separated string; `notation`
+ * is "barbeat" | "midi-json" | "stark"; `smallModelMode` is a boolean.
+ *
+ * Nothing is remembered between requests, so pass the same options on every
+ * call in a session — including the `listTools` call, so the schemas you read
+ * match the notation you'll write.
  */
-function disabledToolsHeaders(disabledTools) {
+function profileHeaders(options = {}) {
   const names = (
-    Array.isArray(disabledTools)
-      ? disabledTools.join(",")
-      : (disabledTools ?? "")
+    Array.isArray(options.disabledTools)
+      ? options.disabledTools.join(",")
+      : (options.disabledTools ?? "")
   ).trim();
-  return names ? { [DISABLED_TOOLS_HEADER]: names } : {};
+  return {
+    ...(names ? { [DISABLED_TOOLS_HEADER]: names } : {}),
+    ...(options.notation ? { [NOTATION_HEADER]: options.notation } : {}),
+    ...(options.smallModelMode != null
+      ? { [SMALL_MODEL_MODE_HEADER]: String(Boolean(options.smallModelMode)) }
+      : {}),
+  };
 }
 
 /**
  * GET /api/tools — returns the full envelope `{tools: [...]}` as a parsed
  * object. The tool list endpoint always returns JSON; it has no `?format`
- * toggle. `options.disabledTools` withholds tools from this catalog.
+ * toggle. The profile options (see profileHeaders) shape the catalog: withheld
+ * tools are omitted, and the descriptions and schemas resolve against this
+ * request's notation and small-model mode.
  */
 export async function listTools(baseUrl = DEFAULT_BASE_URL, options = {}) {
   const res = await fetch(`${baseUrl}/api/tools`, {
-    headers: disabledToolsHeaders(options.disabledTools),
+    headers: profileHeaders(options),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   return res.json();
@@ -63,9 +80,10 @@ export async function listTools(baseUrl = DEFAULT_BASE_URL, options = {}) {
  * `result` is a parsed value (object/array/etc.) and warnings are surfaced as a
  * separate `warnings: string[]` field.
  *
- * `options.disabledTools` withholds tools from this request: a withheld tool
- * 404s, and `ppal-connect` returns a Skills blob with the fragments teaching
- * those tools left out. Pass the same list on every call in a session.
+ * The profile options (see profileHeaders) apply to this request: a withheld
+ * tool 404s, `ppal-connect` returns a Skills blob matching this request's
+ * notation and toolset, and `notation` also decides how notes in the arguments
+ * are parsed and how notes in the result are formatted.
  */
 export async function callTool(name, args = {}, options = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
@@ -81,7 +99,7 @@ export async function callTool(name, args = {}, options = {}) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...disabledToolsHeaders(options.disabledTools),
+      ...profileHeaders(options),
     },
     body: JSON.stringify(args),
   });
@@ -96,11 +114,12 @@ export async function callTool(name, args = {}, options = {}) {
  * `notation` is dropped, keeping the current setting; booleans are coerced). The
  * only field that rejects with a 400 is an invalid `tools` list. Because bad
  * values are dropped rather than reported, read the returned config to confirm a
- * setting actually took effect. The main use for coding agents is the active
- * MIDI notation, e.g. `setConfig({ notation: "midi-json" })`; pass
- * `{ liveApiEnabled: true }` to turn on the advanced `ppal-live-api` tool. The
- * setting is global to the device (it also affects the chat UI and any
- * connected MCP clients).
+ * setting actually took effect.
+ *
+ * Every setting here is GLOBAL to the device — it also moves the chat UI and any
+ * connected MCP clients. Prefer the per-request `notation`, `disabledTools`, and
+ * `smallModelMode` options for anything they cover. What's left that only lives
+ * here: `{ liveApiEnabled: true }` to turn on the advanced `ppal-live-api` tool.
  */
 export async function setConfig(patch, options = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
@@ -125,6 +144,8 @@ function parseArgs(argv) {
     else if (arg === "--list-tools") opts.listTools = true;
     else if (arg === "--set-config") opts.setConfig = argv[++i];
     else if (arg === "--disable-tools") opts.disabledTools = argv[++i];
+    else if (arg === "--notation") opts.notation = argv[++i];
+    else if (arg === "--small-model-mode") opts.smallModelMode = true;
     else if (arg === "--help" || arg === "-h") opts.help = true;
     else positional.push(arg);
   }
@@ -141,16 +162,23 @@ Usage:
 Options:
   --url <baseUrl>          override Producer Pal URL (default ${DEFAULT_BASE_URL})
   --timeout-ms <ms>        per-request timeout (1–60000)
-  --set-config <json>      update device settings, e.g. '{"notation":"midi-json"}'
+  --set-config <json>      update device settings, e.g. '{"liveApiEnabled":true}'
+                           Global to the device — it moves every other client too.
+  --notation <name>        barbeat | midi-json | stark
   --disable-tools <names>  withhold tools from this request (comma-separated
-                           tool names). Per request, not a device setting.
+                           tool names)
+  --small-model-mode       shrink tool schemas and Skills
   --help, -h               show this help
 
+--notation, --disable-tools, and --small-model-mode apply to the ONE request
+that carries them. Nothing is remembered between calls, so pass them every
+time, --list-tools included.
+
 Examples:
-  node ppal.mjs --set-config '{"notation":"midi-json"}'
-  node ppal.mjs --list-tools
+  node ppal.mjs --list-tools --notation midi-json
   node ppal.mjs ppal-read-live-set
   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
+  node ppal.mjs ppal-create-clip '{...}' --notation midi-json
   node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 `;
 

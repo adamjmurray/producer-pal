@@ -8,19 +8,11 @@ import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
-import {
-  DISABLED_TOOLS_HEADER,
-  SMALL_MODEL_MODE_HEADER,
-  resolveEnabledTools,
-  resolveSmallModelMode,
-} from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
-  NOTATION_HEADER,
   isNotation,
-  resolveNotation,
   type Notation,
 } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
@@ -34,6 +26,10 @@ import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
+import {
+  resolveRequestProfile,
+  type RequestProfile,
+} from "./helpers/http/request-profile.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { withNotationOverride } from "./helpers/request-overrides/notation-override.ts";
@@ -167,8 +163,8 @@ function applyLiveApiEnabled(next: boolean): void {
  * config.projectContext is the per-Live Set context blob. smallModelMode, the
  * toolset, and notation arrive through getters (not config directly) so a
  * request can supply its own per-request values — the same values that shrink
- * its tool schemas and its registered tools. POST /mcp overrides all three;
- * REST overrides the toolset and reads the other two live.
+ * its tool schemas and its registered tools. POST /mcp and the REST tool
+ * endpoints both override all three, off the same headers.
  *
  * Notation is also pushed down as a request override (withNotationOverride), so
  * the notation the skills teach is the one V8 actually parses and formats notes
@@ -193,18 +189,17 @@ function buildEnrichedCall(
 }
 
 /**
- * Build the enriched call for one REST request, given that request's toolset.
- * The other two settings stay global there: REST has no per-request header for
- * small-model mode or notation.
+ * Build the enriched call for one REST request from that request's profile —
+ * the same three per-request values POST /mcp resolves, off the same headers.
  *
- * @param tools - The toolset skills fragments are gated on for this request
+ * @param profile - The toolset, notation, and small-model mode for this request
  * @returns A callLiveApi for this one request
  */
-function buildRestCall(tools: readonly string[]): WrappedCallLiveApi {
+function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
   return buildEnrichedCall(
-    () => config.smallModelMode,
-    () => tools,
-    () => config.notation,
+    () => profile.smallModelMode,
+    () => profile.tools,
+    () => profile.notation,
   );
 }
 
@@ -277,46 +272,30 @@ export function createExpressApp(): Express {
 
       console.info(`MCP request: ${method}`);
 
-      // Per-request small-model mode: the built-in chat and each subagent worker
-      // send their own value via this header, so one caller's mode never leaks
-      // to the concurrently-running main session (a POST /config would). Absent
-      // ⇒ the global default, so external MCP clients are unaffected. Drives both
-      // the tool-schema shrink (below) and the skills variant (enriched wrapper).
-      const requestSmallModelMode = resolveSmallModelMode(
-        req.get(SMALL_MODEL_MODE_HEADER),
-        config.smallModelMode,
-      );
-
-      // Per-request tool subsetting: the chat and each subagent worker withhold
-      // the tools their preset turned off, so this caller neither registers
-      // those schemas nor receives the skills fragments that teach them. A
-      // subtraction from the global whitelist — absent ⇒ the global unchanged.
-      const requestTools = resolveEnabledTools(
-        req.get(DISABLED_TOOLS_HEADER),
-        config.tools,
-      );
-
-      // Per-request notation: reaches further than the two above — besides the
-      // skills variant and the notation-keyed param descriptions, it decides how
-      // V8 parses and formats clip notes (pushed down as a request override by
-      // buildEnrichedCall). So a stark worker both learns and speaks stark while
-      // the orchestrator stays on the global bar|beat.
-      const requestNotation = resolveNotation(
-        req.get(NOTATION_HEADER),
-        config.notation,
-      );
+      // The caller's own profile, off the three per-request headers: the
+      // built-in chat and each subagent worker send their own values, so one
+      // caller's never reach the concurrently-running main session (a POST
+      // /config would). Absent ⇒ the globals, so external MCP clients are
+      // unaffected. See resolveRequestProfile for what each one drives.
+      //
+      // Deliberately no per-request output format or timeout here, unlike the
+      // REST endpoints' ?format= and ?timeoutMs=. Query params on /mcp are not
+      // something MCP clients do; this endpoint is built for MCP clients, which
+      // want the one MCP-shaped response; and the timeout exists for slow
+      // machines, which is a device-wide fact, not a per-call one.
+      const profile = resolveRequestProfile(req, config);
 
       const server = createMcpServer(
         buildEnrichedCall(
-          () => requestSmallModelMode,
-          () => requestTools,
-          () => requestNotation,
+          () => profile.smallModelMode,
+          () => profile.tools,
+          () => profile.notation,
         ),
         {
-          smallModelMode: requestSmallModelMode,
-          notation: requestNotation,
+          smallModelMode: profile.smallModelMode,
+          notation: profile.notation,
           liveApiEnabled: config.liveApiEnabled,
-          tools: requestTools,
+          tools: profile.tools,
         },
       );
       const transport = new StreamableHTTPServerTransport({

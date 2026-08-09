@@ -22,19 +22,9 @@
 // V8 for the Live Set. Same buildSkills underneath, different questions.
 
 import { type Express, type Request, type Response } from "express";
-import {
-  BRIEFING_REQUEST_HEADER,
-  DISABLED_TOOLS_HEADER,
-  SMALL_MODEL_MODE_HEADER,
-  resolveEnabledTools,
-  resolveSmallModelMode,
-} from "#src/shared/config.ts";
+import { BRIEFING_REQUEST_HEADER } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import {
-  NOTATION_HEADER,
-  resolveNotation,
-  type Notation,
-} from "#src/shared/notation.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import {
@@ -42,6 +32,7 @@ import {
   projectContextBlock,
 } from "../helpers/global-context/global-context-inject.ts";
 import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
+import { resolveRequestProfile } from "../helpers/http/request-profile.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 import { type McpResponse } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
@@ -120,17 +111,9 @@ export function registerSubagentBriefingRoute(
       res.set("Cache-Control", "no-store");
 
       const config = getConfig();
-      const notation = resolveNotation(
-        req.get(NOTATION_HEADER),
-        config.notation,
-      );
-      const smallModelMode = resolveSmallModelMode(
-        req.get(SMALL_MODEL_MODE_HEADER),
-        config.smallModelMode,
-      );
-      const tools = resolveEnabledTools(
-        req.get(DISABLED_TOOLS_HEADER),
-        config.tools,
+      const { notation, smallModelMode, tools } = resolveRequestProfile(
+        req,
+        config,
       );
 
       let liveSet: string;

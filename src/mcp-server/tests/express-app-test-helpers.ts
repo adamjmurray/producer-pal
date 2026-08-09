@@ -143,7 +143,8 @@ interface RestRoutesTestState {
  *
  * @param options - Setup options
  * @param options.getConfig - Function returning the runtime config (tools +
- *   liveApiEnabled; notation defaults to bar|beat when omitted)
+ *   liveApiEnabled; notation defaults to bar|beat and smallModelMode to false
+ *   when omitted)
  * @returns Test state with base URL and the shared callLiveApi mock
  */
 export function setupRestRoutesServer(options: {
@@ -151,6 +152,7 @@ export function setupRestRoutesServer(options: {
     tools: string[];
     liveApiEnabled: boolean;
     notation?: Notation;
+    smallModelMode?: boolean;
   };
 }): RestRoutesTestState {
   const callLiveApi = vi.fn<CallLiveApiFunction>();
@@ -159,10 +161,11 @@ export function setupRestRoutesServer(options: {
     tools: string[];
     liveApiEnabled: boolean;
     notation: Notation;
+    smallModelMode: boolean;
   } => {
     const config = options.getConfig();
 
-    return { notation: DEFAULT_NOTATION, ...config };
+    return { notation: DEFAULT_NOTATION, smallModelMode: false, ...config };
   };
 
   const state: RestRoutesTestState = {
@@ -175,7 +178,7 @@ export function setupRestRoutesServer(options: {
     const app = express();
 
     app.use(express.json());
-    // The per-request toolset is ignored here: what consumes it is the connect
+    // The per-request profile is ignored here: what consumes it is the connect
     // enrichment, covered end-to-end against the real app in
     // create-express-app-tool-gating.test.ts.
     registerRestApiRoutes(app, getConfig, () => callLiveApi);

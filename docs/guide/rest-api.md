@@ -171,11 +171,48 @@ values return **400**. Combinable with `?format=`:
 POST /api/tools/{name}?format=json&timeoutMs=10000
 ```
 
-### Per-request toolset {#per-request-toolset}
+### Per-request settings {#per-request-settings}
 
-Send `x-producer-pal-disabled-tools` — a comma-separated list of tool names — to
-withhold tools from a single request. It works on both endpoints: a withheld
-tool disappears from `GET /api/tools` and **404**s from
+Three headers let one client run its own profile. They work on both REST
+endpoints and on the MCP endpoint, so a script, an agent, and the
+[Chat UI](/guide/chat-ui) can each use a different notation at the same time
+without a `POST /config` changing everyone else's:
+
+| Header                            | Value                           | Overrides                                      |
+| --------------------------------- | ------------------------------- | ---------------------------------------------- |
+| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)               |
+| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode) |
+| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)        |
+
+Absent or unrecognized values fall back to the device's global setting, so
+clients that send nothing are unaffected. Nothing is remembered between requests
+— **send the headers on every request in the session**, `GET /api/tools`
+included, so the schemas you read match what you send.
+
+#### Notation {#per-request-notation}
+
+`x-producer-pal-notation` picks the [MIDI notation](/features/midi-notation) for
+one request. It decides the note syntax in the tool and argument descriptions
+`GET /api/tools` serves, the syntax the [Skills](/features#skills) teach, and —
+unlike the other two — how notes in your arguments are parsed and how notes in
+the response are formatted.
+
+```bash
+# Read a clip's notes as a JSON array, whatever the device is set to
+curl -X POST http://localhost:3350/api/tools/ppal-read-clip \
+  -H 'Content-Type: application/json' \
+  -H 'x-producer-pal-notation: midi-json' \
+  -d '{"clipId": "123", "include": ["notes"]}'
+```
+
+This is the header to reach for in a coding agent: `midi-json` gives you notes
+you can build and parse programmatically, without forcing the user's Chat UI off
+`barbeat` mid-session.
+
+#### Toolset {#per-request-toolset}
+
+`x-producer-pal-disabled-tools` withholds tools from a single request. A
+withheld tool disappears from `GET /api/tools` and **404**s from
 `POST /api/tools/{name}`.
 
 The reason to bother is `ppal-connect`: withholding a tool also drops the part
@@ -191,29 +228,22 @@ curl -X POST http://localhost:3350/api/tools/ppal-connect \
   -d '{}'
 ```
 
-Send the same header on every request in the session — it applies per request,
-not per client, and nothing is remembered between them. Unrecognized names are
-ignored, and unlike `POST /config` this changes nothing on the device: the
-[Chat UI](/guide/chat-ui) and other clients are unaffected.
+Unrecognized names are ignored. `ppal-connect` itself can be withheld — nothing
+is reserved here, unlike the `npx producer-pal` flags.
 
-`ppal-connect` itself can be withheld. Nothing is reserved here, unlike the
-`npx producer-pal` flags.
+#### Small model mode {#per-request-small-model-mode}
 
-::: tip Two more headers on the MCP endpoint
+`x-producer-pal-small-model-mode: true` shrinks the tool schemas
+`GET /api/tools` serves and switches the Skills to the shorter variant. It's
+aimed at local and lightweight models; see
+[Small Model Mode](/features#small-model-mode).
 
-An MCP client connected straight to `http://localhost:3350/mcp` can send this
-header plus two others, so it runs its own profile without a `POST /config`
-changing everyone else's:
+::: tip Output format and timeout are REST-only
 
-| Header                            | Value                           | Overrides                                      |
-| --------------------------------- | ------------------------------- | ---------------------------------------------- |
-| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)               |
-| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode) |
-| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)        |
-
-Absent or unrecognized values fall back to the device's global setting, so
-clients that send nothing are unaffected. The REST endpoints above honor only
-the toolset header — notation and small model mode come from the device there.
+`?format=` and `?timeoutMs=` above have no MCP equivalent, on purpose. Query
+params aren't something MCP clients send, `/mcp` is built to return the one
+MCP-shaped response, and the timeout exists for slow machines — a fact about the
+device, not about one call. Set it on the device's **Setup** tab.
 
 :::
 

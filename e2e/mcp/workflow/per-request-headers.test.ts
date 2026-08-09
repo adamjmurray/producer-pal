@@ -4,13 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for the per-request headers POST /mcp reads: withheld tools
- * (x-producer-pal-disabled-tools) and notation (x-producer-pal-notation).
+ * E2E tests for the per-request headers the tool surfaces read: withheld tools
+ * (x-producer-pal-disabled-tools) and notation (x-producer-pal-notation), over
+ * both POST /mcp and the REST endpoints.
  *
  * These are per-CONNECTION by nature, which is the whole point — the built-in
  * chat and each subagent worker send their own values, and one caller's must
  * never reach another. So every test runs a second client alongside the shared
  * one and checks both: the header connection changed, the plain one did not.
+ * The REST case adds a third party: the shared MCP client stands in for the
+ * chat UI a REST caller must not drag onto its notation.
  *
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track), t0/s0 "Beat"
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -25,6 +28,7 @@ import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { builtinFragments } from "#src/skills/builtin-fragments.ts";
 import {
+  CONFIG_URL,
   type CreateClipResult,
   getToolErrorMessage,
   isToolError,
@@ -250,6 +254,35 @@ describe("x-producer-pal-disabled-tools", () => {
   });
 });
 
+const REST_BASE_URL = CONFIG_URL.replace("/config", "");
+
+/**
+ * Call a tool over the REST API with the given per-request headers.
+ * @param toolName - Tool to call
+ * @param args - Tool arguments
+ * @param headers - The per-request headers this call sends
+ * @returns The `result` field of the JSON response
+ */
+async function restCallTool<T>(
+  toolName: string,
+  args: Record<string, unknown>,
+  headers: Record<string, string>,
+): Promise<T> {
+  const response = await fetch(`${REST_BASE_URL}/api/tools/${toolName}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(args),
+  });
+
+  expect(response.status).toBe(200);
+
+  const body = (await response.json()) as { result: T; isError?: boolean };
+
+  expect(body.isError ?? false).toBe(false);
+
+  return body.result;
+}
+
 describe("x-producer-pal-notation", () => {
   it("parses and formats one caller's notes as stark while the device stays bar|beat", async () => {
     await setConfig({ notation: "barbeat" });
@@ -283,5 +316,72 @@ describe("x-producer-pal-notation", () => {
     expect(barbeatNotes).toContain("C3");
     expect(barbeatNotes).toContain("E3");
     expect(barbeatNotes).toContain("G3");
+  });
+
+  it("does the same over the REST API, leaving the MCP client on bar|beat", async () => {
+    // The gap this closes: a coding agent driving REST used to have no way to
+    // pick a notation except a device-wide POST /config, which would have moved
+    // the MCP client asserted on below.
+    await setConfig({ notation: "barbeat" });
+
+    const created = await restCallTool<CreateClipResult>(
+      "ppal-create-clip",
+      {
+        slot: `${EMPTY_MIDI_TRACK}/1`,
+        notes: "melody: D F A",
+        length: "1bar",
+      },
+      { [NOTATION_HEADER]: "stark" },
+    );
+
+    await sleep(100);
+
+    const starkClip = await restCallTool<ReadClipResult>(
+      "ppal-read-clip",
+      { clipId: created.id, include: ["notes"] },
+      { [NOTATION_HEADER]: "stark" },
+    );
+
+    expect(starkClip.notes).toContain("melody");
+    expect(starkClip.notes).not.toContain("1|1");
+
+    // Same clip, read by the untouched MCP client: the notes really landed, and
+    // the device global the chat UI relies on never moved.
+    const barbeatNotes = await readNotes(ctx.client!, created.id);
+
+    expect(barbeatNotes).toContain("1|1");
+    expect(barbeatNotes).toContain("D3");
+    expect(barbeatNotes).toContain("F3");
+    expect(barbeatNotes).toContain("A3");
+  });
+
+  it("resolves the REST tool catalog against the request's notation", async () => {
+    // The catalog and execution have to agree: a stark client told to send
+    // bar|beat `notes` guidance would write input its own request can't parse.
+    const starkResponse = await fetch(`${REST_BASE_URL}/api/tools`, {
+      headers: { [NOTATION_HEADER]: "stark" },
+    });
+    const globalResponse = await fetch(`${REST_BASE_URL}/api/tools`);
+
+    const notesDescription = async (response: Response): Promise<string> => {
+      const body = (await response.json()) as {
+        tools: Array<{
+          name: string;
+          inputSchema: {
+            properties?: Record<string, { description?: string }>;
+          };
+        }>;
+      };
+
+      return (
+        body.tools.find((t) => t.name === "ppal-create-clip")?.inputSchema
+          .properties?.notes?.description ?? ""
+      );
+    };
+
+    expect(await notesDescription(starkResponse)).toContain("stark notation");
+    expect(await notesDescription(globalResponse)).toContain(
+      "bar|beat notation",
+    );
   });
 });
