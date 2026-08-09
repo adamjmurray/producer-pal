@@ -69,6 +69,23 @@ const KNOWN_BLEED: Record<string, readonly string[]> = {
   "arrangement-write": ["ppal-delete"],
 };
 
+// Tools no fragment gates on, and why. Most are here because their schema is
+// the whole guide — there is no fragment to gate. Landing here is fine; landing
+// here unnoticed is the bug, which is what the coverage test below prevents.
+const TEACHES_NO_FRAGMENT: Record<string, string> = {
+  "ppal-connect": "delivers the skills, and none of them teach it",
+  "ppal-read-live-set": "its schema is the whole guide",
+  "ppal-update-live-set": "its schema is the whole guide",
+  "ppal-create-track": "its schema is the whole guide",
+  "ppal-update-track": "its schema is the whole guide",
+  "ppal-create-scene": "its schema is the whole guide",
+  "ppal-update-scene": "its schema is the whole guide",
+  "ppal-playback": "its schema is the whole guide",
+  "ppal-select": "named inside `devices`, but never the reason it ships",
+  "ppal-delete": "named inside the write fragments, but never why one ships",
+  "ppal-live-api": "the dev-only escape hatch, deliberately unguided",
+};
+
 describe("FRAGMENT_GATES", () => {
   it("declares a gate for every fragment", () => {
     // Forces the decision when a fragment is added: no entry would silently mean
@@ -90,6 +107,40 @@ describe("FRAGMENT_GATES", () => {
 
       for (const tool of gate) {
         expect(ALL_TOOLS, `${name} gates on unknown ${tool}`).toContain(tool);
+      }
+    }
+  });
+
+  it("gates on, or excuses, every tool in the catalog", () => {
+    // The other direction of the check above, and the one a NEW tool trips. The
+    // table is keyed by fragment, so a tool joins no gate unless someone adds it
+    // to one: a note-taking tool that misses NOTE_TOOLS ships with no notation
+    // guide wherever it is the only note tool enabled, and every test passes.
+    const gated = new Set(
+      Object.keys(FRAGMENT_GATES).flatMap((name) => gateTools(name) ?? []),
+    );
+
+    for (const tool of ALL_TOOLS) {
+      expect(
+        gated.has(tool) || Object.hasOwn(TEACHES_NO_FRAGMENT, tool),
+        `${tool} joins no gate: add it to the fragments it teaches, or list it in TEACHES_NO_FRAGMENT with why`,
+      ).toBe(true);
+    }
+  });
+
+  it("excuses no tool that is gated or gone", () => {
+    // Keeps the excuse list honest the way the prose allowances are kept honest:
+    // a tool that gains a gate, or leaves the catalog, must lose its entry.
+    for (const tool of Object.keys(TEACHES_NO_FRAGMENT)) {
+      expect(ALL_TOOLS, `${tool} is not a tool`).toContain(tool);
+
+      for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
+        if (typeof gate === "string") continue;
+
+        expect(
+          gate,
+          `${tool} is excused but ${name} gates on it`,
+        ).not.toContain(tool);
       }
     }
   });

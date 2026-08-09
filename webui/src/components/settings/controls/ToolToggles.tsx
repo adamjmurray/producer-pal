@@ -10,7 +10,7 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { CONNECT_TOOL_ID, LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { isToolEnabled } from "#webui/lib/utils/enabled-tools";
 import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
 import { type GroupedTools, groupTools } from "./helpers/tool-toggles-helpers";
@@ -348,5 +348,5 @@ function EditContextButton({
  * @returns True when the tool cannot be turned off
  */
 function isAlwaysEnabled(toolId: string): boolean {
-  return toolId === "ppal-connect";
+  return toolId === CONNECT_TOOL_ID;
 }
