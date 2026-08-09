@@ -121,7 +121,7 @@
     "@codemirror/view": "6.43.6",
     "@google/genai": "2.15.0",
     "@lezer/highlight": "1.2.3",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@openai/agents": "0.14.2",
     "@openrouter/ai-sdk-provider": "3.0.0",
     "@tailwindcss/typography": "0.5.20",
