@@ -257,10 +257,9 @@ where the filesystem lives and the result is injected into `ppal-connect`.
 
 ### Per-request assembly
 
-`POST /mcp` builds a fresh `createMcpServer` per request, so three settings can
-vary per caller rather than per device. Each rides an HTTP header, and each
-falls back to the global config when absent, so external MCP clients are
-unaffected:
+Three settings vary per caller rather than per device. Each rides an HTTP
+header, and each falls back to the global config when absent, so clients that
+send nothing are unaffected:
 
 - `SMALL_MODEL_MODE_HEADER` (`src/shared/config.ts`) — shrinks tool schemas and
   selects the `basic` skills driver.
@@ -273,6 +272,13 @@ unaffected:
   validates against — `config.ts` stays import-free because the webui compiles
   it under a tsconfig that rejects `.ts` import paths) — selects the notation
   variant of the skills and the notation-keyed param descriptions.
+
+Every HTTP surface that serves tools resolves them through one
+`resolveRequestProfile` (`src/mcp-server/helpers/http/request-profile.ts`):
+`POST /mcp`, which builds a fresh `createMcpServer` per request, plus the REST
+tool endpoints and `GET /subagent-briefing`. Sharing the resolver is the point —
+REST once shipped reading only the toolset header, which left an Agent Skill no
+way to pick a notation except a device-wide `POST /config`.
 
 The subtraction shape is what the webui can actually send: its `enabledTools` is
 a sparse map (absent = enabled), and the header must be set when the transport

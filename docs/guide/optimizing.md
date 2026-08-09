@@ -100,8 +100,9 @@ It isn't a pure cost lever, though. It exists to make
 — the advanced parameters are gone, and memory is off. Reach for it when the
 model needs it, not just to save tokens.
 
-It's a global device setting, so it applies to the Chat UI and every connected
-client at once.
+The device setting applies to the Chat UI and every connected client at once. A
+REST or MCP client can switch it on for
+[just its own requests](/guide/rest-api#per-request-small-model-mode) instead.
 
 ## Notation
 

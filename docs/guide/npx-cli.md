@@ -176,7 +176,8 @@ The bridge is one of four ways to drive Producer Pal:
 - **HTTP MCP** — point an MCP client straight at `http://localhost:3350/mcp`, no
   Node required. Ableton has to be running first, and there's no
   auto-reconnection. See [other MCP clients](/installation/other-mcp).
-- **[REST API](/guide/rest-api)** — plain HTTP for scripts, with a per-request
-  toolset header.
+- **[REST API](/guide/rest-api)** — plain HTTP for scripts, with
+  [per-request headers](/guide/rest-api#per-request-settings) for toolset,
+  notation, and small-model mode.
 - **[Agent Skill](/guide/skills)** — the portable `SKILL.md` for coding agents,
   which drives the REST API.

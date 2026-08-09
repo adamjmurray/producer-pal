@@ -354,7 +354,8 @@ raw MIDI note data. Used by [Create Clip](#ppal-create-clip),
 LLMs translate natural language expressions of time to the correct time
 positions in Ableton Live clips and the arrangement timeline.
 
-Three notations are available, chosen by a global device setting:
+Three notations are available. The device setting picks the default, and a
+client can [override it per request](/guide/rest-api#per-request-notation):
 
 - **[`bar|beat`](/features/midi-notation#bar-beat)** — the default. Compact and
   expressive: pitches are names (`C3`, `F#4`), time is `bar|beat` (`1|1`,
@@ -452,9 +453,11 @@ ongoing R&D effort aimed at making [local models](/installation/choose-local)
 viable for completely offline, free, and private usage. Enable it on the
 [device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
 settings, or via the [`--small-model-mode` flag](/guide/npx-cli#flags) — like
-[notation](/features/midi-notation), it's a global device setting that applies
-to MCP clients too. It's also the biggest reduction in what a conversation
-costs; see [Optimizing](/guide/optimizing#small-model-mode) for the trade-off.
+[notation](/features/midi-notation), that's a global default MCP clients pick up
+too, and a single client can
+[override it per request](/guide/rest-api#per-request-small-model-mode). It's
+also the biggest reduction in what a conversation costs; see
+[Optimizing](/guide/optimizing#small-model-mode) for the trade-off.
 
 ## Choosing a Toolset {#toolset}
 
@@ -488,11 +491,12 @@ Where you set it depends on the client:
   `x-producer-pal-disabled-tools` header, per request. This is also what the
   [Agent Skill](/guide/skills)'s `--disable-tools` flag sends.
 
-These are per client, unlike [notation](/features/midi-notation) and
-[small model mode](#small-model-mode): narrowing one client's toolset leaves the
-Chat UI and everything else alone. Each of the clients above keeps
-`ppal-connect`, since it is how the AI connects and receives the skills — only
-the raw header lets you drop it.
+All of these are per client, so narrowing one client's toolset leaves the Chat
+UI and everything else alone — as do the
+[notation and small-model-mode headers](/guide/rest-api#per-request-settings)
+that travel with it. Each of the clients above keeps `ppal-connect`, since it is
+how the AI connects and receives the skills — only the raw header lets you drop
+it.
 
 ## Subagents {#subagents}
 
