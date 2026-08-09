@@ -4,8 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Tool, jsonSchema } from "ai";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
+import {
+  isToolEnabled,
+  SPAWN_SUBAGENT_TOOL_NAME,
+} from "#webui/lib/utils/enabled-tools";
 import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
 
 /**
@@ -272,7 +276,8 @@ async function resolveWorkerConfig(
  * worker's tools as-is (its captured sparse map; it does NOT carry over the
  * orchestrator's explicit disables, so a tool the preset never captured stays at
  * its default-enabled state downstream — same as applying the preset in the
- * picker). A preset without one (and the no-preset case) inherits the
+ * picker), except for the Direct Live API tool — see withInheritedLiveApi. A
+ * preset without one (and the no-preset case) inherits the
  * orchestrator's tools. The system instruction always inherits (subagentConfig
  * never carries it). `notation` layers the same way, through the spread — a
  * worker that carries one runs its whole MCP conversation in it (skills, param
@@ -315,9 +320,36 @@ export function buildWorkerConfig(
       // the orchestrator's. It's a sparse map — absent keys stay default-enabled
       // downstream (filterEnabledTools), so this does not carry over the
       // orchestrator's disables. Guard applied last, unconditionally.
-      ...(subagentConfig?.enabledTools ?? enabledTools),
+      ...(subagentConfig?.enabledTools
+        ? withInheritedLiveApi(subagentConfig.enabledTools, enabledTools)
+        : enabledTools),
       [SPAWN_SUBAGENT_TOOL_NAME]: false,
     },
+  };
+}
+
+/**
+ * Carry the orchestrator's Direct Live API state into a preset's toolset.
+ *
+ * That tool is the one a preset can never speak for: its checkbox writes the
+ * device-global flag instead of a map entry, so a captured toolset structurally
+ * has no key for it, and absent reads as enabled everywhere downstream. Left
+ * alone, a worker would follow the device flag while its orchestrator follows
+ * the state pinned into the conversation — a chat locked before the flag was
+ * switched on would spawn workers that can call it when it cannot. The
+ * conversation's pin wins, so the worker matches the chat that spawned it.
+ *
+ * @param presetTools - The preset's captured toolset
+ * @param inherited - The orchestrator's toolset (carrying the pinned state)
+ * @returns The preset's toolset with the Live API entry filled in
+ */
+function withInheritedLiveApi(
+  presetTools: Record<string, boolean>,
+  inherited?: Record<string, boolean>,
+): Record<string, boolean> {
+  return {
+    [LIVE_API_TOOL_ID]: isToolEnabled(inherited ?? {}, LIVE_API_TOOL_ID),
+    ...presetTools,
   };
 }
 

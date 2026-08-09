@@ -14,6 +14,7 @@ import {
   extractWorkerResult,
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type ChatClientConfig,
@@ -169,6 +170,35 @@ describe("buildWorkerConfig", () => {
       expect(worker.enabledTools).not.toHaveProperty("ppal-delete");
       // The recursion guard overrides the preset's attempt to enable spawning.
       expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
+    });
+
+    it("keeps the conversation's Direct Live API state under a preset toolset", () => {
+      // A preset can never capture this tool (its checkbox writes the device
+      // flag, not a map entry), so an absent key must not hand the worker a tool
+      // the conversation is pinned off from.
+      const worker = buildWorkerConfig(
+        createConfig({
+          enabledTools: { [LIVE_API_TOOL_ID]: false },
+          subagentConfig: {
+            ...override,
+            enabledTools: { "ppal-create-clip": true },
+          },
+        }),
+      );
+
+      expect(worker.enabledTools?.[LIVE_API_TOOL_ID]).toBe(false);
+      expect(worker.enabledTools?.["ppal-create-clip"]).toBe(true);
+    });
+
+    it("passes the Live API tool through when the conversation has it on", () => {
+      const worker = buildWorkerConfig(
+        createConfig({
+          enabledTools: { [LIVE_API_TOOL_ID]: true },
+          subagentConfig: { ...override, enabledTools: {} },
+        }),
+      );
+
+      expect(worker.enabledTools?.[LIVE_API_TOOL_ID]).toBe(true);
     });
 
     it("runs the worker in the preset's notation, not the orchestrator's", () => {
