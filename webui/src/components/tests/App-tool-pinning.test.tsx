@@ -48,7 +48,13 @@ import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
-import { mockChatHook, setupDefaultMocks } from "./App-test-helpers";
+import { useSettings } from "#webui/hooks/settings/use-settings";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
+import {
+  mockChatHook,
+  mockSettingsHook,
+  setupDefaultMocks,
+} from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
 /** The catalog the server returns while Direct Live API is switched on. */
@@ -140,19 +146,21 @@ describe("App Direct Live API pinning", () => {
     });
     render(<App />);
 
+    // 4, not 3: the denominator is the full catalog, so it also counts the
+    // Subagent tool the server never lists.
     expect(
-      screen.getByTitle("Locked: 2/3 tools enabled (default is now 3/3)"),
+      screen.getByTitle(/^Locked: 2\/4 tools enabled \(default is now 3\/4\)/),
     ).toBeTruthy();
   });
 
   it("leaves a conversation pinned before the stamp existed undisturbed", () => {
     // No entry is exactly what such a record reconnects on: it follows the
     // flag, so there is nothing to report as having diverged from it.
-    // The server only lists the tool while the flag is on, so the catalog
-    // follows it here the way it does on the device.
+    // The denominator holds at 4 either way — the flag moves the numerator, not
+    // the size of the catalog.
     for (const [liveApiEnabled, count] of [
-      [true, "3/3"],
-      [false, "2/2"],
+      [true, "3/4"],
+      [false, "2/4"],
     ] as const) {
       vi.clearAllMocks();
       setupDefaultMocks();
@@ -167,8 +175,30 @@ describe("App Direct Live API pinning", () => {
       // Scoped to the tools indicator: the model display carries its own
       // "Locked:" title, which these mocks always diverge on.
       expect(screen.queryByTitle(/^Locked:.*tools enabled/)).toBeNull();
-      expect(screen.getByTitle(`${count} tools enabled`)).toBeTruthy();
+      expect(
+        screen.getByTitle(new RegExp(`^${count} tools enabled`)),
+      ).toBeTruthy();
       unmount();
     }
+  });
+
+  it("counts the Subagent tool the server never lists", () => {
+    // The whole point of the fixed denominator: switching Subagent on has to
+    // move the number, or the setting looks like it did nothing.
+    setup({ liveApiEnabled: false });
+    render(<App />);
+
+    expect(screen.getByTitle(/^2\/4 tools enabled/)).toBeTruthy();
+
+    vi.clearAllMocks();
+    setupDefaultMocks();
+    (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockSettingsHook,
+      enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true },
+    });
+    setup({ liveApiEnabled: false });
+    render(<App />);
+
+    expect(screen.getByTitle(/^3\/4 tools enabled/)).toBeTruthy();
   });
 });

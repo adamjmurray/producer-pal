@@ -36,8 +36,10 @@ import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import {
   enabledToolsDiverge as toolsetsDiffer,
+  isToolEnabled,
   withLiveApiTool,
 } from "#webui/lib/utils/enabled-tools";
+import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
 import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
@@ -74,7 +76,6 @@ export function App() {
     [mcpTools],
   );
   const remoteConfig = useRemoteConfig(mcpStatus);
-  const totalToolsCount = mcpTools?.length ?? 0;
 
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
@@ -261,7 +262,6 @@ export function App() {
     viewState,
     setViewState,
     mcpStatus,
-    totalToolsCount,
     ...toolIndicator,
     onOpenSettings: () => openSettings(),
     /* v8 ignore start -- inline settings tab navigation */
@@ -373,6 +373,11 @@ export function App() {
  * withLiveApiTool), so the comparison is between two toolsets described alike —
  * stamping only one side would report a divergence on every conversation.
  *
+ * Counted against the full catalog rather than the MCP response, so the
+ * denominator holds still while the Live API flag moves and so the Subagent
+ * toggle registers in it at all. All zero until the server answers — a fraction
+ * of a catalog we haven't loaded would be a made-up number.
+ *
  * @param mcpTools - The server's tool catalog, or null before it loads
  * @param lockedTools - The conversation's pinned toolset, or null when unpinned
  * @param settingsTools - The current Tools-tab selection
@@ -385,17 +390,23 @@ function toolIndicatorState(
   settingsTools: Record<string, boolean>,
   liveApiEnabled: boolean,
 ): {
+  totalToolsCount: number;
   enabledToolsCount: number;
   defaultToolsCount: number;
   enabledToolsDiverge: boolean;
 } {
+  const catalog = mcpTools ? fullToolCatalog(mcpTools) : [];
+  // isToolEnabled, not a bare `!== false`: absent means enabled for ordinary
+  // tools but disabled for the opt-in Subagent, and the counts have to agree
+  // with the checkbox and with what the model is actually offered.
   const count = (tools: Record<string, boolean>): number =>
-    mcpTools ? mcpTools.filter((tool) => tools[tool.id] !== false).length : 0;
+    catalog.filter((tool) => isToolEnabled(tools, tool.id)).length;
   const settings = withLiveApiTool(settingsTools, liveApiEnabled);
   const locked =
     lockedTools == null ? null : withLiveApiTool(lockedTools, liveApiEnabled);
 
   return {
+    totalToolsCount: catalog.length,
     enabledToolsCount: count(locked ?? settings),
     defaultToolsCount: count(settings),
     enabledToolsDiverge: locked != null && toolsetsDiffer(locked, settings),

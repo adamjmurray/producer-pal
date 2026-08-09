@@ -12,12 +12,8 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { isToolEnabled } from "#webui/lib/utils/enabled-tools";
-import {
-  ensureLiveApiTool,
-  ensureSpawnSubagentTool,
-  type GroupedTools,
-  groupTools,
-} from "./helpers/tool-toggles-helpers";
+import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
+import { type GroupedTools, groupTools } from "./helpers/tool-toggles-helpers";
 import { NotationSelector } from "./NotationSelector";
 import { Tooltip } from "./Tooltip";
 
@@ -155,7 +151,7 @@ export function ToolToggles({
     if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
-  const groups = groupTools(ensureSpawnSubagentTool(ensureLiveApiTool(tools)));
+  const groups = groupTools(fullToolCatalog(tools));
   // Rendered as the Clip group's footer (bottom-aligned under the clip
   // toggles); see ToolGroupSection.
   const notationFooter = (

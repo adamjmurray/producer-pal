@@ -232,10 +232,28 @@ describe("ChatHeader", () => {
           headerInfo={hi({ enabledToolsCount: 15, totalToolsCount: 20 })}
         />,
       );
-      const indicator = screen.getByTitle("15/20 tools enabled");
+      const indicator = screen.getByTitle(/^15\/20 tools enabled/);
 
       expect(indicator.textContent).toContain("🔧");
       expect(indicator.textContent).toContain("15");
+    });
+
+    it("explains the gap the experimental tools leave in the denominator", () => {
+      // 21/23 out of the box is the normal state, not a fault.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({ enabledToolsCount: 18, totalToolsCount: 20 })}
+        />,
+      );
+
+      // Queried loosely on the gap between the lines: getByTitle collapses the
+      // newline the tooltip actually carries.
+      expect(
+        screen.getByTitle(
+          /^18\/20 tools enabled\s+Experimental tools \(Live API, Subagent\) are off by default$/,
+        ),
+      ).toBeDefined();
     });
 
     it("goes amber when the conversation's pinned toolset has been left behind", () => {
@@ -252,15 +270,15 @@ describe("ChatHeader", () => {
         />,
       );
       const indicator = screen.getByTitle(
-        "Locked: 15/20 tools enabled (default is now 18/20)",
+        /^Locked: 15\/20 tools enabled \(default is now 18\/20\)/,
       );
 
       expect(indicator.className).toContain("amber");
     });
 
-    it("says the set differs when the divergence is outside the tool catalog", () => {
-      // Divergence in a tool the counts can't see (Subagent, or Direct Live API
-      // with the device flag off) leaves both numbers equal.
+    it("says the set differs when the two toolsets are the same size", () => {
+      // One tool swapped for another: naming a number that doesn't move would
+      // read as nothing having changed.
       render(
         <ChatHeader
           {...defaultProps}

@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { EXPERIMENTAL_TOOL_NAMES } from "#webui/lib/utils/tool-catalog";
+
 interface ToolsIndicatorProps {
   enabledToolsCount: number;
   totalToolsCount: number;
@@ -31,17 +33,22 @@ export function ToolsIndicator({
   defaultToolsCount,
   diverges,
 }: ToolsIndicatorProps) {
-  // A divergence can leave both counts identical: the counts cover the MCP
-  // catalog, but a toolset also carries tools outside it (the client-side
-  // Subagent tool, and Direct Live API while the device flag is off). Naming a
-  // number the user can't see a difference in would read as no difference.
+  // Two toolsets of the same size can still differ (one tool swapped for
+  // another). Naming a number the user can't see a difference in would read as
+  // no difference.
   const defaultText =
     enabledToolsCount === defaultToolsCount
       ? "default is a different set"
       : `default is now ${defaultToolsCount}/${totalToolsCount}`;
-  const titleText = diverges
+  const countText = diverges
     ? `Locked: ${enabledToolsCount}/${totalToolsCount} tools enabled (${defaultText})`
     : `${enabledToolsCount}/${totalToolsCount} tools enabled`;
+  // The denominator counts the experimental tools whether or not they're on, so
+  // out of the box it reads 21/23. Say why, or that gap looks like a fault.
+  const titleText =
+    enabledToolsCount < totalToolsCount
+      ? `${countText}\nExperimental tools (${EXPERIMENTAL_TOOL_NAMES.join(", ")}) are off by default`
+      : countText;
   const textColor = diverges ? amberColor : neutralColor;
 
   return (

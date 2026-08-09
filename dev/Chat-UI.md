@@ -347,6 +347,22 @@ Mismatch detection logic is in `chat/helpers/model-identity.ts`. To test: use
 OpenRouter with the `openrouter/auto` model, which auto-selects a model and
 always triggers the mismatch indicator.
 
+**Tool catalog vs. MCP catalog:**
+
+`fullToolCatalog` (`lib/utils/tool-catalog.ts`) is every tool the user can
+switch on: the MCP `listTools` response plus placeholders for any experimental
+tool missing from it. Two are: `spawn_subagent` never appears (it's
+client-side), and `ppal-live-api` only while the device flag is on —
+deliberately, since `listTools` is what every MCP client offers its model, so a
+withheld tool must not be listed.
+
+The Tools tab and the header's `x/y` indicator both count against this catalog,
+not the MCP response. That keeps the denominator still while the two opt-in
+tools move, so the fraction means "how much of the full set am I running" — it
+reads 21/23 out of the box, and the indicator's tooltip says why. Counting uses
+`isToolEnabled`, since absent means enabled for ordinary tools but disabled for
+`spawn_subagent`.
+
 **Subagents:**
 
 `spawn_subagent` is a client-side tool (no `ppal-` prefix, never in the MCP tool
