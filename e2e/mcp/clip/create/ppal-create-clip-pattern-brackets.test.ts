@@ -30,11 +30,11 @@ import {
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 import {
   createClipInSlot,
   emptyMidiTrack,
-} from "./helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 

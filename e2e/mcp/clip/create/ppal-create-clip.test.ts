@@ -20,13 +20,13 @@ import {
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 import {
   AUDIO_WARP_TRACK,
   createAndRead,
   expectedSampleLength,
   readSongTiming,
-} from "./helpers/audio-warp-test-helpers.ts";
+} from "../helpers/audio-warp-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
