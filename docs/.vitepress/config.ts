@@ -115,6 +115,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide" },
       { text: "Features", link: "/features" },
       { text: "How It Works", link: "/how-it-works" },
+      { text: "Vision", link: "/vision" },
       { text: "Support", link: "/support" },
       {
         text: "GitHub",
@@ -168,6 +169,10 @@ export default defineConfig({
             link: "/how-it-works/why-not-an-extension",
           },
         ],
+      },
+      {
+        text: "Vision",
+        link: "/vision",
       },
       {
         text: "Support",
