@@ -30,17 +30,34 @@ export interface McpTools {
   mcpClient: Client;
 }
 
+/** Options for {@link connectMcp} */
+export interface ConnectMcpOptions {
+  /**
+   * Extra HTTP headers sent on every request this connection makes. The point
+   * is the per-request `x-producer-pal-*` headers (disabled tools, small-model
+   * mode, notation): they are scoped to one caller, so proving that takes a
+   * second connection carrying different ones.
+   */
+  headers?: Record<string, string>;
+}
+
 /**
  * Connect to an MCP server (raw connection without AI SDK tools).
  * Used by e2e tests and eval assertions that need direct MCP access.
  *
  * @param url - MCP server URL
+ * @param options - Connection options ({@link ConnectMcpOptions})
+ * @param options.headers - Extra HTTP headers for every request
  * @returns MCP connection with client and transport
  */
 export async function connectMcp(
   url: string = MCP_URL,
+  { headers }: ConnectMcpOptions = {},
 ): Promise<McpConnection> {
-  const transport = new StreamableHTTPClientTransport(new URL(url));
+  const transport = new StreamableHTTPClientTransport(
+    new URL(url),
+    headers ? { requestInit: { headers } } : undefined,
+  );
   const client = new Client({
     name: MCP_CLIENT_NAME,
     version: MCP_CLIENT_VERSION,
