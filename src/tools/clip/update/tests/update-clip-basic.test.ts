@@ -443,6 +443,17 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
   });
 
+  it("should warn that audio-only parameters were ignored on a MIDI clip", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ ids: "123", warping: false, gainDb: -6 });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "gainDb, warping ignored for MIDI clips",
+    );
+  });
+
   it("should apply code exactly once per clip without a failure warning", async () => {
     setupMidiClipMock(mocks.clip123);
     vi.mocked(applyCodeToSingleClip).mockResolvedValue(3);

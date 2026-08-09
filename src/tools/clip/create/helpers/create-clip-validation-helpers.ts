@@ -5,8 +5,8 @@
 
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
@@ -88,22 +88,6 @@ export function warnAudioOnlyMidiParams(
   if (sampleFile != null) return;
 
   warnIgnoredParams(params, "MIDI clips");
-}
-
-/**
- * Warn that the non-null entries of `params` were not applied.
- * @param params - Candidate parameters, keyed by their tool argument name
- * @param subject - What they were ignored for, completing "ignored for ..."
- */
-function warnIgnoredParams(
-  params: Record<string, unknown>,
-  subject: string,
-): void {
-  const ignored = Object.keys(params).filter((name) => params[name] != null);
-
-  if (ignored.length === 0) return;
-
-  console.warn(`${ignored.join(", ")} ignored for ${subject}`);
 }
 
 /**

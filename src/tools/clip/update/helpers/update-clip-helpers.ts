@@ -11,6 +11,7 @@ import {
   markerClampSeconds,
 } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   applyAudioTransforms,
@@ -155,6 +156,8 @@ export function processSingleClipUpdate(
       looping,
     });
     forceWarpForLooping(clip, looping, warping);
+  } else {
+    warnIgnoredParams({ gainDb, pitchShift, warpMode, warping }, "MIDI clips");
   }
 
   // Determine looping state. Read `wasLooping` here, after the audio params:
