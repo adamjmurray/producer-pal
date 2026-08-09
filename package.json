@@ -136,7 +136,7 @@
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2",
     "@eslint-community/eslint-plugin-eslint-comments": "4.7.2",
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "1.62.1",
     "@preact/preset-vite": "2.10.6",
     "@rollup/plugin-alias": "6.0.0",
     "@rollup/plugin-commonjs": "29.0.3",
