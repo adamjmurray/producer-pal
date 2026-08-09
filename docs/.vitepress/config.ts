@@ -1,12 +1,17 @@
 import { defineConfig } from "vitepress";
 import { VERSION } from "../../src/shared/config.ts";
 
+const SITE_URL = "https://producer-pal.org";
+const SITE_TITLE = "Producer Pal — Ableton MCP for AI music production";
+const SITE_DESCRIPTION =
+  "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.";
+const SOCIAL_IMAGE = `${SITE_URL}/producer-pal-social-card.png`;
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "Producer Pal",
   titleTemplate: ":title | Producer Pal — Ableton MCP for AI music production",
-  description:
-    "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
+  description: SITE_DESCRIPTION,
 
   // GitHub Pages base URL
   base: "/",
@@ -34,16 +39,43 @@ export default defineConfig({
       .replace(/^index$/, "");
 
     pageData.frontmatter.head ??= [];
+    const head = pageData.frontmatter.head;
+    const hasMeta = (property: string) =>
+      head.some(
+        ([tag, attrs]) => tag === "meta" && attrs?.property === property,
+      );
+
     // Respect a page's own canonical (redirect stubs point at their
     // replacement); two canonicals would make search engines ignore both.
-    const hasCanonical = pageData.frontmatter.head.some(
+    const ownCanonical = head.find(
       ([tag, attrs]) => tag === "link" && attrs?.rel === "canonical",
-    );
+    )?.[1]?.href;
+    const canonical = ownCanonical ?? `${SITE_URL}/${path}`;
 
-    if (!hasCanonical) {
-      pageData.frontmatter.head.push([
-        "link",
-        { rel: "canonical", href: `https://producer-pal.org/${path}` },
+    if (ownCanonical == null) {
+      head.push(["link", { rel: "canonical", href: canonical }]);
+    }
+
+    // Per-page social tags. Without these every page inherits the site-wide
+    // values from `head` below, so a shared deep link previews as the
+    // homepage. og:url tracks the canonical because that's the URL Facebook
+    // and Discord resolve the share to.
+    head.push(["meta", { property: "og:url", content: canonical }]);
+
+    if (!hasMeta("og:title")) {
+      head.push([
+        "meta",
+        { property: "og:title", content: socialTitle(pageData.title) },
+      ]);
+    }
+
+    if (!hasMeta("og:description")) {
+      head.push([
+        "meta",
+        {
+          property: "og:description",
+          content: pageData.description || SITE_DESCRIPTION,
+        },
       ]);
     }
 
@@ -60,54 +92,20 @@ export default defineConfig({
           "Ableton MCP, AI for Ableton, Ableton Live MCP, Ableton AI, AI music production, Max for Live MCP server, Claude Ableton, Gemini Ableton, ChatGPT Ableton, Ableton REST API, Ableton Live REST API, Ableton HTTP API, Ableton Live API, Agent Skills, Claude Skills, Codex Skills, Gemini Skills, Coding Agent Skills, Ableton Live Agent Skill, SKILL.md",
       },
     ],
+    // Fallbacks for pages transformPageData doesn't reach (404). Every real
+    // page overrides og:title/og:description/og:url with its own.
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "Producer Pal" }],
-    [
-      "meta",
-      {
-        property: "og:title",
-        content: "Producer Pal — Ableton MCP for AI music production",
-      },
-    ],
-    [
-      "meta",
-      {
-        property: "og:description",
-        content:
-          "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
-      },
-    ],
-    ["meta", { property: "og:url", content: "https://producer-pal.org" }],
-    [
-      "meta",
-      {
-        property: "og:image",
-        content: "https://producer-pal.org/producer-pal-logo.png",
-      },
-    ],
+    ["meta", { property: "og:title", content: SITE_TITLE }],
+    ["meta", { property: "og:description", content: SITE_DESCRIPTION }],
+    ["meta", { property: "og:url", content: SITE_URL }],
+    ["meta", { property: "og:image", content: SOCIAL_IMAGE }],
+    ["meta", { property: "og:image:width", content: "1200" }],
+    ["meta", { property: "og:image:height", content: "630" }],
+    ["meta", { property: "og:image:alt", content: SITE_TITLE }],
+    // X reads og:* when the twitter:* equivalents are absent, so twitter:card
+    // is the only tag worth duplicating — it picks the large card layout.
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
-    [
-      "meta",
-      {
-        name: "twitter:title",
-        content: "Producer Pal — Ableton MCP for AI music production",
-      },
-    ],
-    [
-      "meta",
-      {
-        name: "twitter:description",
-        content:
-          "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
-      },
-    ],
-    [
-      "meta",
-      {
-        name: "twitter:image",
-        content: "https://producer-pal.org/producer-pal-logo.png",
-      },
-    ],
   ],
 
   themeConfig: {
@@ -290,3 +288,15 @@ export default defineConfig({
     },
   },
 });
+
+/**
+ * Build a page's og:title. Social cards get a shorter suffix than the browser
+ * title, since preview cards truncate around 60 characters.
+ * @param title the page's resolved title
+ * @returns the title, brand-suffixed unless it already names the brand
+ */
+function socialTitle(title: string | undefined): string {
+  if (!title) return SITE_TITLE;
+
+  return title.includes("Producer Pal") ? title : `${title} — Producer Pal`;
+}
