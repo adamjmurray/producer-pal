@@ -96,6 +96,7 @@ export function useChat<
     adapter,
     autoSaveRef,
     abortControllerRef,
+    turnIdRef,
     setMessages,
     setRateLimitState,
   });

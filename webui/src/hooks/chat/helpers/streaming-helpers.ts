@@ -273,6 +273,13 @@ export async function runChatTurn<
 
     return result;
   } catch (error) {
+    // Reachable while superseded when the failure comes from the turn's SETUP
+    // rather than its stream — a client init that was still connecting when the
+    // user stopped and re-sent. recoverFromChatError renders the error, can
+    // reassign the shared client's chatHistory, and autosaves, so a stale one
+    // would corrupt the turn now streaming.
+    if (!stillCurrent()) return undefined;
+
     recoverFromChatError({
       ...deps,
       error,

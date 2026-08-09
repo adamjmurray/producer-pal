@@ -27,6 +27,8 @@ interface UseExecuteWithRetryDeps<
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   autoSaveRef?: { current: (() => void) | null };
   abortControllerRef: { current: AbortController | null };
+  /** The turn ticket runChatTurn dispenses; see stillCurrent below. */
+  turnIdRef: { current: number };
   setMessages: (messages: UIMessage[]) => void;
   setRateLimitState: (state: RateLimitState | null) => void;
 }
@@ -61,7 +63,7 @@ export function useExecuteWithRetry<
   TMessage,
   TConfig,
 >(deps: UseExecuteWithRetryDeps<TClient, TMessage, TConfig>) {
-  const { adapter, autoSaveRef, abortControllerRef } = deps;
+  const { adapter, autoSaveRef, abortControllerRef, turnIdRef } = deps;
   const { setMessages, setRateLimitState } = deps;
   const retryAbortRef = useRef<AbortController | null>(null);
 
@@ -80,12 +82,22 @@ export function useExecuteWithRetry<
         hasAssistantContent: false,
         savedUsageCount: 0,
       };
+      // This turn's ticket, read after runChatTurn dispensed it. Stop re-enables
+      // the composer while the stopped turn is still unwinding, so a newer turn
+      // can take the shared refs below — the abort controller AND retryAbortRef —
+      // out from under this one. Once that happens the aborted-signal checks are
+      // reading the NEW turn's controllers and stop protecting anything, so
+      // everything that paints or persists has to check the ticket instead.
+      const turnId = turnIdRef.current;
+      const stillCurrent = () => turnId === turnIdRef.current;
 
       retryAbortRef.current = new AbortController();
 
       const onMessageUpdate = (msgs: UIMessage[]) => {
-        // Skip updates after abort (e.g. user switched conversations)
-        if (abortControllerRef.current?.signal.aborted) return;
+        // Skip updates after abort (e.g. user switched conversations), and once
+        // a newer turn owns the transcript.
+        if (!stillCurrent() || abortControllerRef.current?.signal.aborted)
+          return;
 
         const hadAssistant = contentState.hasAssistantContent;
 
@@ -121,6 +133,12 @@ export function useExecuteWithRetry<
 
           return true;
         } catch (error) {
+          // Checked before the abort signal, which by now may belong to the
+          // newer turn: a superseded turn's failure is stale, and rendering it
+          // would drop an error into the turn currently streaming (and autosave
+          // it there).
+          if (!stillCurrent()) return false;
+
           if (retryAbortRef.current.signal.aborted) return false;
 
           const rateLimitInfo = detectRateLimit(error);
@@ -164,7 +182,14 @@ export function useExecuteWithRetry<
 
       return false;
     },
-    [adapter, autoSaveRef, abortControllerRef, setMessages, setRateLimitState],
+    [
+      adapter,
+      autoSaveRef,
+      abortControllerRef,
+      turnIdRef,
+      setMessages,
+      setRateLimitState,
+    ],
   );
 
   return { executeWithRetry, abortRetry };

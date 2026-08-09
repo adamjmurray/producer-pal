@@ -668,5 +668,51 @@ describe("useChat", () => {
       expect(errorEntry).toBeDefined();
       expect(errorEntry?.content).toContain("Retry cancelled");
     });
+
+    it("doesn't render a superseded turn's failure over the turn now streaming", async () => {
+      // Stop re-enables the composer while the stopped turn is still unwinding,
+      // so the next turn can take over the shared refs. The retry path's own
+      // aborted-signal checks then read the NEW turn's controllers and stop
+      // protecting anything — the ticket check is what holds.
+      let releaseStopped!: () => void;
+      const stoppedUnwind = new Promise<void>((resolve) => {
+        releaseStopped = resolve;
+      });
+      let turn = 0;
+      const adapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message: string) {
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            if (++turn === 1) {
+              await stoppedUnwind;
+              // Not a rate limit, so this is the render-an-error path.
+              throw new Error("provider connection died");
+            }
+
+            await new Promise(() => {});
+          },
+      );
+      const { result } = renderChat(propsWith(adapter));
+      const stoppedSend = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await stopResponse(result);
+      void act(() => {
+        void result.current.handleSend("second");
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      releaseStopped();
+      await stoppedSend;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(hasErrorPart(result)).toBe(false);
+      expect(result.current.isAssistantResponding).toBe(true);
+    });
   });
 });

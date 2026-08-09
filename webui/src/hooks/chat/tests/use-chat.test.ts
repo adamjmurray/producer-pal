@@ -8,6 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type UseChatProps } from "#webui/hooks/chat/use-chat-types";
 import {
@@ -369,6 +370,50 @@ describe("useChat", () => {
 
       expect(signals[1]?.aborted).toBe(true);
       expect(result.current.isAssistantResponding).toBe(false);
+    });
+
+    it("swallows a superseded turn's SETUP failure instead of rendering it", async () => {
+      // The other half of the same window: the failure comes from the turn's
+      // setup rather than its stream — a connection check still in flight when
+      // the user stopped and re-sent. Recovery renders the error, reassigns the
+      // shared client's history, and autosaves, so a stale one corrupts the
+      // turn now streaming.
+      let releaseCheck!: () => void;
+      const checkInFlight = new Promise<void>((resolve) => {
+        releaseCheck = resolve;
+      });
+
+      vi.mocked(validateMcpConnection).mockImplementationOnce(async () => {
+        await checkInFlight;
+        throw new Error("MCP connection failed");
+      });
+
+      const { result } = renderHook(() => useChat(defaultProps));
+      const stoppedSend = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      await act(async () => {
+        await result.current.handleSend("second");
+      });
+
+      releaseCheck();
+      await stoppedSend;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(false);
+      expect(result.current.messages.some((m) => m.role === "model")).toBe(
+        true,
+      );
     });
 
     it("keeps queued messages when stop is pressed so they flush on the next send", async () => {
