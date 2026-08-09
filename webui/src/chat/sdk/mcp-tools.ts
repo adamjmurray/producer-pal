@@ -46,8 +46,19 @@ export async function createMcpTools(
     enabledTools,
     notation,
   );
-  const toolsResult = await mcpClient.listTools();
-  const filtered = filterEnabledTools(toolsResult.tools, enabledTools);
+  // Close the connection ourselves if the catalog read fails. The caller only
+  // learns of the client through a successful return, so a throw here would
+  // strand an open transport (a held-open SSE stream) that nothing can reach.
+  let filtered;
+
+  try {
+    const toolsResult = await mcpClient.listTools();
+
+    filtered = filterEnabledTools(toolsResult.tools, enabledTools);
+  } catch (error) {
+    await mcpClient.close().catch(() => {});
+    throw error;
+  }
 
   const tools: ToolSet = {};
 

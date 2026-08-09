@@ -266,10 +266,30 @@ export function projectContext(content: unknown): void {
  * session state and re-persist it into the Max device param via the same outlet
  * ppal-context uses. A null (no restore happened) is a no-op.
  *
+ * Skips the apply when the param changed while the restore was in flight. A
+ * `ppal-context` write landing in that window (two connected clients, or the
+ * parallel tool calls a turn with subagents makes routine) is NEWER than the
+ * sidecar blob this restore is carrying, so overwriting would silently revert
+ * it in both memory and the device UI — after the tool already reported
+ * success.
+ *
  * @param restored - The restored blob, or null when nothing was restored
+ * @param snapshot - The param's content when the restore was requested
  */
-function applyRestoredProjectContext(restored: string | null): void {
+function applyRestoredProjectContext(
+  restored: string | null,
+  snapshot: string,
+): void {
   if (restored == null) return;
+
+  if (sessionState.projectContext.content !== snapshot) {
+    console.warn(
+      "Project context changed while the backup restore was in flight; " +
+        "keeping the newer content.",
+    );
+
+    return;
+  }
 
   sessionState.projectContext.content = restored;
   outlet(0, "update_project_context", restored);
@@ -397,8 +417,11 @@ export async function mcp_request(
     // for ppal-connect, to the Node-side injected project-context block. The
     // post-await write to sessionState lives in a helper so concurrent requests
     // don't trip require-atomic-updates.
+    const contextBeforeSync = sessionState.projectContext.content;
+
     applyRestoredProjectContext(
-      await syncProjectContextBackup(sessionState.projectContext.content),
+      await syncProjectContextBackup(contextBeforeSync),
+      contextBeforeSync,
     );
 
     try {
