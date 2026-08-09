@@ -28,7 +28,7 @@ Producer Pal.
 
 | Sent at the start of every conversation | Characters | Tokens  |
 | --------------------------------------- | ---------- | ------- |
-| Tool schemas (21 tools)                 | ~38,000    | ~9,500  |
+| Tool schemas (the 21 default tools)     | ~38,000    | ~9,500  |
 | [Skills](/features#skills)              | ~42,000    | ~10,500 |
 | **Total**                               | ~80,000    | ~20,000 |
 
@@ -50,11 +50,11 @@ the part of the skills that teaches it. Switch off the writing tools and the
 transform guide, the arrangement-writing guide, and the device-building guide go
 with them.
 
-Schemas plus skills, measured against the full toolset:
+Schemas plus skills, measured against the default toolset:
 
 | Toolset           | Tools | Characters | Tokens  | Saved |
 | ----------------- | ----- | ---------- | ------- | ----- |
-| Everything        | 21    | ~80,000    | ~20,000 | —     |
+| Default           | 21    | ~80,000    | ~20,000 | —     |
 | `core,clip,track` | 8     | ~47,000    | ~11,700 | 41%   |
 | `read-only`       | 8     | ~30,000    | ~7,600  | 62%   |
 

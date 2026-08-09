@@ -84,6 +84,16 @@ it to do.
 Global context is stored on your computer, so it follows you from project to
 project — a new Live Set starts with your preferences already in place.
 
+::: tip AI can't accidentally wipe either layer
+
+When AI edits Project or Global context it rewrites the whole document, so a
+model that sends only its new fact would replace everything else with it.
+Producer Pal skips a write that keeps none of what's already there and tells AI
+to re-send the existing content along with its addition. Emptying a layer on
+purpose still works — from the editor, or by asking AI to clear it.
+
+:::
+
 ## Instructions
 
 <img src="/img/producer-pal-context-instructions.png" alt="Instructions tab" width="700"/>

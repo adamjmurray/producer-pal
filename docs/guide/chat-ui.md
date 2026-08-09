@@ -349,7 +349,9 @@ setting).
 - **Enable barge-in** - When on, speaking interrupts the assistant while it's
   still talking. **Off by default for OpenAI, on by default for Gemini.** Use
   headphones — without them, the assistant's own voice can trigger
-  interruptions.
+  interruptions. With it off, your mic is muted until the assistant has actually
+  finished speaking, not just finished generating — the two are seconds apart,
+  and that tail is exactly when people talk over it.
 
 ### Presets
 
@@ -417,12 +419,23 @@ library search and the AI stops being told how to search a library it can't
 reach. The saving is therefore bigger than the tool's own schema, and you don't
 have to trim skills by hand to match your toolset.
 
-A toolset change reaches a conversation the next time it connects — a new chat,
-or an older one reopened from the history panel. An open chat keeps the tools it
-connected with. Unlike the notation below, a reopened conversation is _not_
-pinned to its old toolset: it reconnects with whatever is enabled now, and
-settings notes when that differs from what it last ran with. So you can turn a
-tool on specifically to continue an old conversation.
+The header's count is out of all 23 tools, so it reads **21/23** out of the box:
+the two experimental ones — **Live API** and **Subagent**, both under
+**Advanced** — are off until you switch them on. The denominator stays put as
+they move, so the fraction always means how much of the full set you're running.
+
+Like the notation below, each conversation is pinned to the toolset it ran with,
+so a change here takes effect in a **new conversation**. Switching a tool off
+doesn't withdraw it from a chat that has already been calling it, and reopening
+an old conversation brings back the tools it ran with rather than today's
+selection — a transcript full of successful calls to a tool is itself an
+instruction to keep calling it.
+
+When your current selection has moved on from the open conversation's, the
+header's tools count turns amber (hover it to see what the selection would
+enable), and the settings dialog says which conversation-specific settings are
+in play. Conversations saved before 2.1.0 have no pinned toolset and reconnect
+on the current selection.
 
 Consult [the Features page](/features) for more info on what each tool does.
 
@@ -473,7 +486,9 @@ toggles. The rest only filter which tools the Chat UI's AI can see, but this one
 mirrors the device's Setup-tab **Direct Live API** toggle, so enabling it here
 also turns the tool on at the device level (MCP clients and the
 [REST API](/guide/rest-api) will see it too). It is off by default; see
-[Direct Live API](/features#ppal-live-api) for why.
+[Direct Live API](/features#ppal-live-api) for why. It is still pinned to the
+conversation like the rest of the toolset, so flipping the device flag doesn't
+add or remove the tool mid-chat.
 
 The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
 clip notes — **[bar|beat](/features/midi-notation#bar-beat)** (the default),

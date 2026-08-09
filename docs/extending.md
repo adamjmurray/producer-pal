@@ -112,17 +112,18 @@ workflow in plain language, you can change how the AI works.
 
 ## Ideas under consideration
 
-These aren't commitments, just what I'm thinking about after 2.0:
+These aren't commitments, just what I'm thinking about after 2.1:
 
 - **Custom skills as first-class.** Today you extend the skills by overriding a
   fragment and `@include`-ing your own files. Registering a standalone skill —
   named, described, and loaded when it's relevant — is a natural next step.
-- **Personas.** Presets that bundle a tool set with its own context and skills,
-  so you can switch the AI's whole setup for a focused task.
-- **Workflows, or subagents, or neither.** The original idea was "workflows":
-  fixed tool-call sequences the AI runs but doesn't improvise. But maybe that's
-  just a command-oriented skill, or maybe subagents are the better version.
-  Still undecided.
+- **Personas.** [Presets](/guide/chat-ui#presets) already bundle a provider,
+  model, tool set, and notation. Carrying their own context and skills too would
+  make them a full switch of the AI's setup for a focused task.
+- **Workflows.** Fixed tool-call sequences the AI runs but doesn't improvise.
+  2.1 answered half the question with [subagents](/guide/chat-ui#tools), which
+  cover the delegation part; whether the fixed-sequence part is worth building —
+  or is just a command-oriented skill — is still undecided.
 
 Have an opinion on any of these?
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or

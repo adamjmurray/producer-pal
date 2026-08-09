@@ -199,6 +199,24 @@ ignored, and unlike `POST /config` this changes nothing on the device: the
 `ppal-connect` itself can be withheld. Nothing is reserved here, unlike the
 `npx producer-pal` flags.
 
+::: tip Two more headers on the MCP endpoint
+
+An MCP client connected straight to `http://localhost:3350/mcp` can send this
+header plus two others, so it runs its own profile without a `POST /config`
+changing everyone else's:
+
+| Header                            | Value                           | Overrides                                      |
+| --------------------------------- | ------------------------------- | ---------------------------------------------- |
+| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)               |
+| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode) |
+| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)        |
+
+Absent or unrecognized values fall back to the device's global setting, so
+clients that send nothing are unaffected. The REST endpoints above honor only
+the toolset header — notation and small model mode come from the device there.
+
+:::
+
 ## Quick Start with curl
 
 ```bash

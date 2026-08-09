@@ -228,7 +228,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Place arrangement clips on [take lanes](#take-lanes) with `takeLane`
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](#transforms) to shape notes with math expressions
-- Create audio clips from a sample file with `sampleFile`
+- Create audio clips from a sample file with `sampleFile`, and choose whether
+  Live warps it with `warping` (see [Audio Clips](#audio-clips))
 - Auto-create scenes as needed
 
 <!--@include: ./_generated/ppal-create-clip-schema.md-->
@@ -247,12 +248,44 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Add/remove MIDI notes using [custom notation](#custom-music-notation)
 - Apply [transforms](#transforms) to modify existing notes and audio properties
   (use `clip.index`/`clipseq()` for per-clip variation when updating multiple)
-- Change audio clip gain, pitch shift, and warp settings
+- Change audio clip gain, pitch shift, and warp settings (see
+  [Audio Clips](#audio-clips))
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 
 <!--@include: ./_generated/ppal-update-clip-schema.md-->
+
+### Audio Clips {#audio-clips}
+
+A new audio clip's region comes from its sample, so `start`, `length`,
+`firstStart`, and `looping` are MIDI-only on Create Clip and are ignored (with a
+warning) alongside a `sampleFile`. `timeSignature` and the audio properties —
+`gainDb`, `pitchShift`, `warpMode`, `warping` — do apply. On Update Clip,
+`start` and `length` reshape an existing audio clip's region normally.
+
+**Warping.** When you create an audio clip, Live decides for itself whether to
+warp the sample, following your **Loop/Warp Short Samples** preference — which
+no API can read, so the same call can land differently on two machines. Pass
+`warping: false` to play the file exactly as recorded or rendered. Omit it and
+Live still decides, but the result reports which way it went.
+
+`warping: false` means the same thing on Create Clip and Update Clip: reset the
+region to the whole file and turn looping off, which is what Live does
+underneath. Two consequences on Update Clip:
+
+- It erases a `start`/`length` sent in the same call. Reshape the region in a
+  follow-up call.
+- `looping: true` forces warping back on, so it vetoes a `warping: false` sent
+  alongside it, and warns that it did.
+
+**Unwarped clips are measured against the sample.** Live switches a clip's
+markers from beats to seconds when warping is off, and reports an unwarped
+session clip's `length` as though it were still warped. Producer Pal measures
+the region from the markers instead, so a 1.2-second one-shot reads as the beats
+it really occupies at your tempo rather than as 1.2 beats — which is also what
+keeps [Duplicate](#ppal-duplicate) from tiling copies over audio that's still
+sounding.
 
 ## Device Tools
 
@@ -425,13 +458,22 @@ costs; see [Optimizing](/guide/optimizing#small-model-mode) for the trade-off.
 
 ## Choosing a Toolset {#toolset}
 
-You don't have to run all 22 tools. Withholding one drops its schema _and_ the
+You don't have to run every tool. Withholding one drops its schema _and_ the
 part of the [skills](#skills) that teaches it, so a narrower toolset makes every
 conversation cheaper — `read-only` alone cuts the schemas and skills by 62%.
 Worth doing if you only ever use part of Producer Pal, or if you're running a
 [small/local model](/installation/choose-local) that does better with a short
 tool list. See [Optimizing](/guide/optimizing) for the numbers and the other
 levers.
+
+::: info Counting the tools
+
+There are **21 tools on by default**. Two more are experimental and opt-in:
+[Direct Live API](#ppal-live-api) and [Subagent](#subagents). The Chat UI counts
+all 23, so it reads `21/23` out of the box. An MCP client sees 22 — Subagent is
+client-side and never appears in `listTools`.
+
+:::
 
 Where you set it depends on the client:
 
@@ -451,6 +493,22 @@ These are per client, unlike [notation](/features/midi-notation) and
 Chat UI and everything else alone. Each of the clients above keeps
 `ppal-connect`, since it is how the AI connects and receives the skills — only
 the raw header lets you drop it.
+
+## Subagents {#subagents}
+
+In the [Chat UI](/guide/chat-ui#tools), AI can hand a self-contained task to a
+nested assistant working in the same Live Set — plan a track's arrangement, then
+delegate each part and check the results. Independent tasks run in parallel, and
+a subagent can be given follow-up work rather than replaced by a fresh one.
+
+The point is cost and context as much as speed: a worker's transcript never
+enters the main conversation, only its final answer, and each worker can run a
+cheaper model with a narrower toolset than the assistant directing it. That
+pairing is what [presets](/guide/chat-ui#presets) are for — a named bundle of
+provider, model, tool set, and notation, with one designated as what subagents
+run as. This is experimental and off by default.
+
+[Set up subagents →](/guide/chat-ui#tools)
 
 ## Skills {#skills}
 

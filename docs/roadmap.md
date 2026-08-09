@@ -2,7 +2,7 @@
 
 ## Exploring
 
-### Extensibility (post-2.0)
+### Extensibility (post-2.1)
 
 These aren't commitments — see
 [Extending Producer Pal](/extending#ideas-under-consideration) for the full
@@ -10,14 +10,29 @@ framing:
 
 - Custom skills: write your own instruction packs, plus a curated set of
   examples to install and adapt
-- Personas: presets that combine a tool set with custom context and skills
+- Personas: presets that carry their own context and skills, not just a model
+  and tool set
 - Workflows: pre-defined tool call sequences for reliable, repeatable operations
-  (still undecided vs. subagents)
 
 ## Changelog
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
+
+### 2.1 - Delegation (August 2026)
+
+- Subagents: the built-in chat can delegate self-contained tasks to nested
+  assistants that run in parallel, and be resumed for follow-up work
+- Presets: named bundles of provider, model, tool set, and notation — including
+  what subagents run as
+- Skills fragments can be switched off individually, and are dropped
+  automatically for tools you've turned off
+- Notation and the tool set are pinned to each conversation
+- Project context is backed up next to your Live Set, so it survives a device
+  upgrade
+- Audio clips: control warping when creating a clip, and correct timing for
+  unwarped clips
+- Voice mode on GPT Realtime 2.1, with cheaper transcription
 
 ### 2.0 - Personalization (July 2026)
 
