@@ -163,7 +163,7 @@
     "oxlint": "1.75.0",
     "oxlint-tsgolint": "7.0.2001",
     "peggy": "5.1.0",
-    "rollup": "4.62.3",
+    "rollup": "4.62.4",
     "rollup-plugin-copy": "3.5.0",
     "rollup-plugin-esbuild": "6.2.1",
     "typescript": "6.0.3",
