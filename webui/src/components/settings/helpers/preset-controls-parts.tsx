@@ -28,6 +28,11 @@ interface PresetPickerRowProps {
  * None of these say "Save": all three write to storage on click, unlike the
  * modal's footer Save, and identical labels a few hundred pixels apart had
  * users clicking the footer expecting their preset to be created.
+ *
+ * The dropdown is disabled while the New-preset form is open. Selecting one
+ * loads its whole bundle into the same settings buffer the form is about to
+ * capture, so a stray pick mid-naming would silently save a copy of the picked
+ * preset under the new name.
  * @param {PresetPickerRowProps} props - Picker row props
  * @returns {JSX.Element} The picker + action row
  */
@@ -40,7 +45,8 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
         id="preset-select"
         value={selectedId}
         onChange={(e) => props.onSelect((e.target as HTMLSelectElement).value)}
-        className={`flex-1 min-w-40 ${INPUT_CLASS}`}
+        disabled={naming}
+        className={`flex-1 min-w-40 ${INPUT_CLASS} disabled:opacity-50`}
         data-testid="preset-select"
       >
         <option value="">— Select a preset —</option>

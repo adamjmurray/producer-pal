@@ -196,6 +196,30 @@ describe("PresetControls", () => {
     expect(loadPresets().map((p) => p.name)).toStrictEqual(["Keyboard"]);
   });
 
+  it("locks the dropdown while naming, so a pick can't rewrite the draft", () => {
+    // Selecting a preset loads its bundle into the same settings buffer the
+    // form captures on Create — a pick mid-naming would save a copy of the
+    // picked preset under the new name.
+    savePresets([seeded]);
+
+    const applyPreset = vi.fn();
+
+    render(<Controls settings={makeSettings({ applyPreset })} />);
+
+    fireEvent.click(screen.getByTestId("preset-new"));
+
+    expect(
+      (screen.getByTestId("preset-select") as HTMLSelectElement).disabled,
+    ).toBe(true);
+
+    fireEvent.click(screen.getByText("Cancel"));
+
+    expect(
+      (screen.getByTestId("preset-select") as HTMLSelectElement).disabled,
+    ).toBe(false);
+    expect(applyPreset).not.toHaveBeenCalled();
+  });
+
   it("dismisses the name form via the Escape key", () => {
     render(<Controls settings={makeSettings()} />);
 
