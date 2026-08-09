@@ -151,9 +151,13 @@ export function registerRestApiRoutes(
       }
 
       // Validate against the FULL schema, not the small-model-filtered one the
-      // catalog advertises. Filtering only ever removes params, so validating
-      // loose keeps a caller that ignores the shrunk catalog working instead of
-      // 400ing on a param the tool still supports.
+      // catalog advertises. Deliberately looser than MCP, which validates
+      // against the filtered schema — don't "fix" the asymmetry. Filtering
+      // drops params AND narrows enums, so matching MCP here would start
+      // rejecting calls that work today whenever the device's small-model mode
+      // is on: `ppal-read-clip` with `include: ["warp"]`, `ppal-context` with
+      // `action: "delete"`, and so on. Every filtered value is one the tool
+      // still handles; only the advertising shrinks.
       const schema = z.object(toolDef.toolOptions.inputSchema);
       const parsed = schema.safeParse(req.body);
 
