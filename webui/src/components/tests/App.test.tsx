@@ -66,7 +66,12 @@ import {
   systemPromptDocMock,
 } from "./App-context-mocks";
 import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
-import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import {
+  mockChatHook,
+  mockSettingsHook,
+  setupDefaultMocks,
+} from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
 describe("App", () => {
@@ -255,6 +260,36 @@ describe("App", () => {
       expect(chatCalls.length).toBeGreaterThan(0);
       expect(chatCalls[0]![0]).toHaveProperty("apiKey");
       expect(chatCalls[0]![0]).toHaveProperty("model");
+    });
+
+    it("names a tool the server has since stopped listing", () => {
+      // Reopening a chat after Direct Live API was switched off: the catalog no
+      // longer carries the tool, but the transcript still calls it, and display
+      // names fall back to the raw id.
+      (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockChatHook,
+        messages: [
+          {
+            role: "assistant",
+            parts: [
+              {
+                type: "tool",
+                name: LIVE_API_TOOL_ID,
+                args: {},
+                result: "done",
+              },
+            ],
+          },
+        ],
+      });
+
+      const { container } = render(<App />);
+
+      // The summary is the display name; the raw id stays in the call the
+      // disclosure body shows.
+      expect(container.querySelector("summary")?.textContent).toContain(
+        "Live API",
+      );
     });
   });
 

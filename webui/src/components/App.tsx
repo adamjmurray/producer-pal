@@ -71,8 +71,14 @@ export function App() {
   );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
+  // Over the full catalog: a tool the server isn't listing right now can still
+  // appear in a restored transcript, and an unnamed tool falls back to its raw
+  // id. Reopening a chat after switching Direct Live API off is the case.
   const toolNamesMap = useMemo(
-    () => Object.fromEntries(mcpTools?.map((t) => [t.id, t.name]) ?? []),
+    () =>
+      Object.fromEntries(
+        fullToolCatalog(mcpTools ?? []).map((tool) => [tool.id, tool.name]),
+      ),
     [mcpTools],
   );
   const remoteConfig = useRemoteConfig(mcpStatus);
