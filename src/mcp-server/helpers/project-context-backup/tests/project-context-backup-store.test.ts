@@ -158,23 +158,25 @@ describe("writeProjectContextSidecar", () => {
 });
 
 describe("deleteProjectContextSidecar", () => {
-  it("deletes an existing sidecar and reports true", () => {
+  it("deletes an existing sidecar and reports deleted", () => {
     writeProjectContextSidecar(liveSetPath, "gone soon");
 
-    expect(deleteProjectContextSidecar(liveSetPath)).toBe(true);
+    expect(deleteProjectContextSidecar(liveSetPath)).toBe("deleted");
     expect(readProjectContextSidecar(liveSetPath)).toStrictEqual({
       status: "absent",
     });
   });
 
-  it("reports false when there is no sidecar", () => {
-    expect(deleteProjectContextSidecar(liveSetPath)).toBe(false);
+  it("reports absent when there is no sidecar", () => {
+    expect(deleteProjectContextSidecar(liveSetPath)).toBe("absent");
   });
 
-  it("reports false instead of throwing when the delete fails", () => {
+  // Kept apart from "absent": nothing to delete means the clear already holds,
+  // while a delete that threw leaves a sidecar that restores over the clear.
+  it("reports failed instead of throwing when the delete fails", () => {
     // Same reason as the write path: a throw becomes a retrying failed RPC.
     mkdirSync(projectContextSidecarPath(liveSetPath));
 
-    expect(deleteProjectContextSidecar(liveSetPath)).toBe(false);
+    expect(deleteProjectContextSidecar(liveSetPath)).toBe("failed");
   });
 });

@@ -43,7 +43,8 @@
 // for reasons we don't control (read-only volume, a locked cloud-sync folder) —
 // and a throw would surface as a failed RPC, which V8 declines to memoize and
 // so retries, warning into every tool result. Each function logs and reports
-// what it managed to do; the route turns that into "none".
+// what it managed to do, keeping "nothing to do" apart from "it failed" so the
+// route can report the failure as its own action.
 
 import {
   existsSync,
@@ -145,29 +146,38 @@ export function writeProjectContextSidecar(
 }
 
 /**
+ * What a delete attempt did. "absent" and "failed" are kept apart because the
+ * user only needs telling about one of them: nothing to delete means the clear
+ * already holds, while a delete that threw leaves a sidecar that will restore
+ * over the clear on the next device load.
+ */
+export type SidecarDelete = "deleted" | "absent" | "failed";
+
+/**
  * Delete the backup sidecar beside the given Live Set, if present. Used when the
  * user clears the project context in-session so the clear propagates to disk and
  * isn't resurrected by a restore on the next device load. A missing file is a
  * no-op.
  *
  * @param liveSetPath - Absolute path to the Live Set (.als) file
- * @returns true when a sidecar was deleted, false when there was none or the
- *   delete failed
+ * @returns What happened: deleted, nothing there, or the delete threw
  */
-export function deleteProjectContextSidecar(liveSetPath: string): boolean {
+export function deleteProjectContextSidecar(
+  liveSetPath: string,
+): SidecarDelete {
   const path = projectContextSidecarPath(liveSetPath);
 
-  if (!existsSync(path)) return false;
+  if (!existsSync(path)) return "absent";
 
   try {
     rmSync(path, { force: true });
 
-    return true;
+    return "deleted";
   } catch (error) {
     console.error(
       `Failed to delete project context backup: ${errorMessage(error)}`,
     );
 
-    return false;
+    return "failed";
   }
 }

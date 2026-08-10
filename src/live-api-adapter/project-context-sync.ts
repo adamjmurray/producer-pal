@@ -17,7 +17,7 @@ import { requestNode } from "./node-request-v8-protocol.ts";
 
 /** Subset of the Node route's result this side acts on. */
 interface ProjectContextSyncResult {
-  action: "restore" | "backup" | "clear" | "none";
+  action: "restore" | "backup" | "clear" | "none" | "failed";
   content?: string;
 }
 
@@ -295,6 +295,27 @@ async function requestSync(
 
   if (response.result?.action === "restore") {
     return { ok: true, restored: response.result.content ?? "" };
+  }
+
+  // The filesystem refused. Reported as ok so the caller memoizes it: the
+  // sidecar is broken for a reason retrying won't fix (a read-only volume, a
+  // locked cloud-sync folder), and not memoizing would re-warn on every tool
+  // call for the rest of the session. Memoizing on (path, content) still tells
+  // the user again if they change the context and it still won't save.
+  //
+  // An empty blob was a clear, which fails the opposite way round: the sidecar
+  // survived, so the next device load restores what was just deleted.
+  if (response.result?.action === "failed") {
+    console.warn(
+      content.trim() === ""
+        ? "Could not delete the project context backup beside the Live Set, " +
+            "so a device reload will restore the context that was just " +
+            "cleared. Tell the user to delete " +
+            '"Producer Pal Project Context.md" by hand.'
+        : "Could not save the project context backup beside the Live Set " +
+            "(the Live project folder may be read-only). The context is safe " +
+            "in the device, but won't survive a device upgrade. Tell the user.",
+    );
   }
 
   return { ok: true, restored: null };

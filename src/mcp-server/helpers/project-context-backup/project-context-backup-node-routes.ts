@@ -47,7 +47,12 @@ export interface ProjectContextSyncArgs {
 
 /** What the route did, echoed back so V8 can apply a restore to the param. */
 export interface ProjectContextSyncResult {
-  action: "restore" | "backup" | "clear" | "none";
+  /**
+   * "none" means there was nothing to do. "failed" means there WAS and the
+   * filesystem refused — the two must not collapse, or V8 memoizes a backup
+   * that never reached disk as a success and the user is never told.
+   */
+  action: "restore" | "backup" | "clear" | "none" | "failed";
   /** The restored blob — present only when action === "restore". */
   content?: string;
 }
@@ -136,13 +141,20 @@ function restoreIfBackupExists(
  * delete the sidecar so the clear sticks and isn't restored on the next load.
  *
  * @param filePath - Absolute path to the Live Set (.als) file
- * @returns A "clear" result when a sidecar was deleted, else "none" — including
- *   when the delete failed, for the same reason a failed write reports "none"
+ * @returns "clear" when a sidecar was deleted, "failed" when the delete threw
+ *   (the sidecar survives and would restore over the clear), else "none"
  */
 function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
-  return deleteProjectContextSidecar(filePath)
-    ? { action: "clear" }
-    : { action: "none" };
+  switch (deleteProjectContextSidecar(filePath)) {
+    case "deleted":
+      return { action: "clear" };
+
+    case "failed":
+      return { action: "failed" };
+
+    default:
+      return { action: "none" };
+  }
 }
 
 /**
@@ -154,7 +166,7 @@ function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param content - The device param's current project-context blob
  * @param isEdit - Whether a genuine project-context write triggered this sync
- * @returns A "backup" result when written, else "none"
+ * @returns "backup" when written, "failed" when the write threw, else "none"
  */
 function backupIfStale(
   filePath: string,
@@ -185,10 +197,11 @@ function backupIfStale(
     }
   }
 
-  // A failed write reports "none" rather than throwing: an RPC failure is what
-  // V8 refuses to memoize, so it would retry — and warn into the tool result —
-  // on every call from here on. Node-side logging is the whole report.
+  // A failed write reports its own action rather than throwing: an RPC failure
+  // is what V8 refuses to memoize, so it would retry — and warn into the tool
+  // result — on every call from here on. "failed" is a successful RPC carrying
+  // bad news, so V8 can memoize it and say so once.
   return writeProjectContextSidecar(filePath, content)
     ? { action: "backup" }
-    : { action: "none" };
+    : { action: "failed" };
 }

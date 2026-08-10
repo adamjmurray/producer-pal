@@ -27,6 +27,9 @@ const { requestNode } =
   await import("#src/live-api-adapter/node-request-v8-protocol.ts");
 const mockRequestNode = vi.mocked(requestNode);
 
+const { warn } = await import("#src/shared/max/v8-max-console.ts");
+const mockWarn = vi.mocked(warn);
+
 const SAVED_PATH = "/Users/x/MySong Project/MySong.als";
 
 /**
@@ -46,7 +49,7 @@ function setFilePath(filePath: string | null): void {
  * @param content - Restored content to include (for the restore action)
  */
 function mockSyncResult(
-  action: "restore" | "backup" | "clear" | "none",
+  action: "restore" | "backup" | "clear" | "none" | "failed",
   content?: string,
 ): void {
   mockRequestNode.mockResolvedValueOnce({
@@ -233,6 +236,57 @@ describe("syncProjectContextBackup — failure", () => {
     await syncProjectContextBackup("Genre: jungle");
 
     expect(mockRequestNode).toHaveBeenCalledTimes(2);
+  });
+});
+
+// A filesystem refusal is a SUCCESSFUL round-trip carrying bad news, so it's
+// memoized like any other: retrying won't fix a read-only folder, and the whole
+// point is to say so once instead of on every tool call for the rest of the
+// session. The user believing a broken backup is fine is the bug being fixed.
+describe("syncProjectContextBackup — the filesystem refused", () => {
+  it("warns that the backup didn't reach disk, and memoizes so it says so once", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("failed");
+
+    await syncProjectContextBackup("Genre: jungle");
+
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining("Could not save the project context backup"),
+    );
+
+    // Memoized: the same content doesn't round-trip or re-warn.
+    await syncProjectContextBackup("Genre: jungle");
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it("warns again when the context changes and it still won't save", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("failed");
+    await syncProjectContextBackup("Genre: jungle");
+    mockSyncResult("failed");
+
+    await syncProjectContextBackup("Genre: techno");
+
+    expect(mockWarn).toHaveBeenCalledTimes(2);
+  });
+
+  // A failed CLEAR fails the opposite way round: the sidecar survived, so the
+  // next device load restores what the user just deleted. Different message.
+  it("warns that a clear didn't stick when the delete failed", async () => {
+    setFilePath(SAVED_PATH);
+    // A completed first sync spends the restore and settles the wipe question,
+    // so the empty param that follows reaches Node's clear path.
+    mockSyncResult("backup");
+    await syncProjectContextBackup("Genre: jungle");
+    mockSyncResult("failed");
+
+    await syncProjectContextBackup("");
+
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining("Could not delete the project context backup"),
+    );
   });
 });
 

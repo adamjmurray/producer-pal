@@ -256,19 +256,31 @@ describe("projectContext.sync — the filesystem refuses", () => {
     expect(sidecarText()).toBe("newer notes from another Set in this folder");
   });
 
-  it("reports none, not a failed request, when the backup write fails", async () => {
+  // "failed", never "none": collapsing them lets V8 memoize a backup that never
+  // reached disk as a success, and the user is told their context is safe when
+  // it isn't. Still a SUCCESSFUL RPC — see the comment above this describe.
+  it("reports failed, not a failed request, when the backup write fails", async () => {
     vi.mocked(writeProjectContextSidecar).mockReturnValueOnce(false);
 
     const res = await sync({ content: "Genre: jungle", allowRestore: false });
 
     expect(res.success).toBe(true);
-    expect(res.result).toStrictEqual({ action: "none" });
+    expect(res.result).toStrictEqual({ action: "failed" });
   });
 
-  it("reports none, not a failed request, when the clearing delete fails", async () => {
+  it("reports failed, not a failed request, when the clearing delete fails", async () => {
     seedSidecar("Genre: jungle");
-    vi.mocked(deleteProjectContextSidecar).mockReturnValueOnce(false);
+    vi.mocked(deleteProjectContextSidecar).mockReturnValueOnce("failed");
 
+    const res = await sync({ content: "", allowRestore: false });
+
+    expect(res.success).toBe(true);
+    expect(res.result).toStrictEqual({ action: "failed" });
+  });
+
+  // The other half of the rule: nothing to delete is not a failure. The clear
+  // already holds, so there is nothing to tell the user about.
+  it("still reports none when there was no sidecar to clear", async () => {
     const res = await sync({ content: "", allowRestore: false });
 
     expect(res.success).toBe(true);
