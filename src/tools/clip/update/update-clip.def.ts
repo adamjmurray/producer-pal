@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
+import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -134,9 +135,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
-          code: param(z.string().max(MAX_CODE_LENGTH).optional(), {
-            default:
-              "JS function body (broadcast across ids): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)",
+          code: param(boundedString(MAX_CODE_LENGTH).optional(), {
+            default: `JS function body (broadcast across ids; max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)`,
             smallModel: null,
           }),
         }

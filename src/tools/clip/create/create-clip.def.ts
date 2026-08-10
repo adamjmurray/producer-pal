@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
+import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -98,9 +99,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
-          code: param(z.string().max(MAX_CODE_LENGTH).optional(), {
-            default:
-              "JS function body: receives (notes, context), returns notes array (see Skills for properties) - MIDI only",
+          code: param(boundedString(MAX_CODE_LENGTH).optional(), {
+            default: `JS function body (max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array (see Skills for properties) - MIDI only`,
             smallModel: null,
           }),
         }

@@ -139,7 +139,9 @@ describe("ppal-context modal config — small-model mode", () => {
     const config = registerContext({ smallModelMode: true });
     const shape = getShape(config);
 
-    expect(shape.content?.description).toBe("The full document text to write.");
+    expect(shape.content?.description).toBe(
+      "The full document text to write. Max 10000 chars.",
+    );
   });
 
   it("uses the shorter blobs-only tool description", () => {

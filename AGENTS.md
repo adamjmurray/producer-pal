@@ -105,6 +105,11 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   and the MCP SDK validates before our handler runs. For choosing a param's
   shape and writing per-mode descriptions, see `dev/Tool-Schemas.md`.
 
+- **String length caps of 2000+**: never let them reach the JSON Schema as
+  `maxLength` — llama.cpp-based clients compile it into a grammar repetition and
+  then reject every tool call, for every tool. Use `boundedString()` and state
+  the limit in the param description. See ADR-0021.
+
 - **The filesystem is Node-side only**: the V8 runtime (`src/live-api-adapter/`)
   has no filesystem, and shipped `src/**` can't shell out. All `node:fs` work
   lives in `src/mcp-server/`. User-content features (`~/.producer-pal`
