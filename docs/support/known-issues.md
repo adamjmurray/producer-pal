@@ -34,7 +34,7 @@ Your **project context** lives inside the Producer Pal device, so it travels
 with your Live Set. To survive a device upgrade — a newer `.amxd` starts as a
 fresh, empty device — Producer Pal also keeps a backup:
 `Producer Pal Project Context.md`, saved next to your Set's `.als`. It restores
-this automatically the first time you use Producer Pal after upgrading.
+this automatically the first time the AI uses a tool after upgrading.
 
 The backup is (re)written whenever the context changes through a Producer Pal
 tool call, a chat, or an edit in the device or Chat UI. One narrow sequence can

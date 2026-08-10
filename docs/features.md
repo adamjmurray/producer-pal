@@ -473,8 +473,9 @@ levers.
 
 There are **21 tools on by default**. Two more are experimental and opt-in:
 [Direct Live API](#ppal-live-api) and [Subagent](#subagents). The Chat UI counts
-all 23, so it reads `21/23` out of the box. An MCP client sees 22 — Subagent is
-client-side and never appears in `listTools`.
+all 23, so it reads `21/23` out of the box. An MCP client sees 21 — Subagent is
+client-side and never appears in `listTools`, and Direct Live API is only
+registered when the device flag is on (which makes it 22).
 
 :::
 

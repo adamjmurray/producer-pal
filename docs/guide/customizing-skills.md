@@ -215,8 +215,8 @@ Skills **Preview** view shows a warning, and so does the Max window.
 
 After editing, use the Skills tab's **Preview** view to see the assembled
 document, and start a new conversation for the change to take effect. The
-preview shows what an external MCP client receives; a chat whose preset disables
-tools gets a shorter document still.
+preview defaults to **Enabled tools only**, the gated view a chat gets; uncheck
+it to see the full document an external MCP client receives.
 
 :::
 
@@ -233,9 +233,9 @@ instead of the Full skills document.
 ::: details Small model mode
 
 Small model mode uses the `basic` document, which is already heavily trimmed: it
-includes the notation guide and its write half, `transforms-basic`, and the
-context fragment, and writes a short list of general rules inline. To customize
-it, override `basic` (or the `*-basic` fragments — notation, transforms, and
-context) the same way.
+includes the notation guide and its write half, `transforms-basic`, the context
+fragment and `getting-help-basic`, and writes a short list of general rules
+inline. To customize it, override `basic` (or the `*-basic` fragments —
+notation, transforms, context, and getting-help) the same way.
 
 :::

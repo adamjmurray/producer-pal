@@ -38,15 +38,15 @@ safe. Paste it back into the new device once it's in place.
 Replacing the `.amxd` gives you a fresh, empty device, and no earlier version
 wrote a backup to restore from — so anything only stored in the old device is
 lost. Version 2.1.0 adds that backup (a `Producer Pal Project Context.md` file
-saved next to each Set's `.als`), which is why **this is the last upgrade that
+saved in each Live Project folder), which is why **this is the last upgrade that
 needs the manual step.**
 
 :::
 
 ::: tip From 2.1.0 onward, your project context carries over
 
-Project context is backed up next to each Set's `.als` and restored
-automatically on the new device — see
+Project context is backed up in your Live Project folder and restored the first
+time the AI uses a tool on the new device — see
 [the rare exception](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-rare)
 if you changed it right before a first save.
 

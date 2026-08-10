@@ -134,10 +134,11 @@ size.
 
 Tool results are a per-message cost, and they add up over a long session.
 
-- **Response format.** The default `compact` format is a token-optimized
-  literal; `json` is easier for scripts to parse but larger. Keep `compact` for
-  normal conversations. See [`--format`](/guide/npx-cli#flags) and the REST
-  API's [format option](/guide/rest-api#response-format-format-json-default).
+- **Response format.** `compact` is a token-optimized literal and the default
+  everywhere except the REST API, which defaults to `json` — easier for scripts
+  to parse, but larger. Keep `compact` for normal conversations. See
+  [`--format`](/guide/npx-cli#flags) and the REST API's
+  [format option](/guide/rest-api#response-format-format-json-default).
 - **Read only what you need.** The read tools take an `include` list — reading a
   track without `notes` or `devices` is dramatically smaller than
   `include: ["*"]`. Ask for a specific track or clip rather than the whole Live

@@ -432,10 +432,10 @@ selection — a transcript full of successful calls to a tool is itself an
 instruction to keep calling it.
 
 When your current selection has moved on from the open conversation's, the
-header's tools count turns amber (hover it to see what the selection would
-enable), and the settings dialog says which conversation-specific settings are
-in play. Conversations saved before 2.1.0 have no pinned toolset and reconnect
-on the current selection.
+header's tools count turns amber (hover it for the conversation's locked count
+and what the default is now), and the settings dialog says which
+conversation-specific settings are in play. Conversations saved before 2.1.0
+have no pinned toolset and reconnect on the current selection.
 
 Consult [the Features page](/features) for more info on what each tool does.
 
@@ -473,7 +473,8 @@ costs much less.
 
 Pressing **Stop** while a subagent is working no longer throws its work away.
 The card reads **stopped** and keeps the work log it got through, and the AI can
-resume that subagent to finish the job.
+resume that subagent to finish the job — you may have to say which one, since a
+run stopped before it reported back doesn't hand the AI its number.
 
 If a provider rate-limits a subagent, its card shows a **rate limited**
 countdown and the subagent retries on its own instead of failing. Subagents
@@ -518,7 +519,7 @@ The Preferences tab controls visual preferences and conversation management:
 - **Show message token usage** - Display token counts after each AI response
   (see [Token Usage](#token-usage) below)
 - **Automatically check for new versions** - On by default. Producer Pal asks
-  GitHub once per session whether a newer release exists, and shows an
+  GitHub once per device load whether a newer release exists, and shows an
   `(update)` link next to the version number when there is one. Turn this off
   and it never contacts GitHub.
 - **Cleanup Conversations** - Bulk-delete conversations:

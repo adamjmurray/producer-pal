@@ -56,7 +56,7 @@ places:
 
 - **Max for Live device** — the **Notation** control on the
   [Setup tab](/guide/device#behavior)
-- **Chat UI** — Settings → Tools → Advanced → **Notation**
+- **Chat UI** — Settings → Tools, at the bottom of the **Clip** group
 - **REST API** — `POST /config` with `{"notation": "stark"}`
 - **Command line** — `npx producer-pal --notation stark`
 
@@ -204,11 +204,11 @@ into concrete pitches. Drums use the 16 General MIDI names (`kick`, `snare`,
 `hihat`, `clap`, …); an absolute pitch name works as a header too (`C3:`) for
 pads outside that set.
 
-Octave numbers work too — `melody: C3 Eb3 G3` is the same line written without
-the marks, and the two combine (`C3'` = C4). Note it's a note-level spelling:
-inside a chord symbol the digits are the chord quality (`C7` is a dominant
-seventh), so symbols place themselves with octave marks only. Reading a clip
-back always re-emits the octave-mark spelling.
+Octave numbers work too — `C Eb G` is `C3 Eb3 G3` spelled out, and the two
+combine (`C3'` = C4). Note it's a note-level spelling: inside a chord symbol the
+digits are the chord quality (`C7` is a dominant seventh), so symbols place
+themselves with octave marks only. Reading a clip back always re-emits the
+octave-mark spelling.
 
 **Strengths.** Literal and predictable — no key, no scale, no snapping, and
 accidentals spelled explicitly. Reading a clip back re-emits Stark rather than

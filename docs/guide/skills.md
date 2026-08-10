@@ -213,7 +213,7 @@ skills directory:
   but no API key needed, which also makes it the way to get a plain bounce or
   stem on disk. **Analyze** any audio file with Google's Gemini API for feedback
   on timbre, mix, and arrangement: any platform, no Ableton involved, needs a
-  `GEMINI_KEY`. The analysis is one short script against one HTTP endpoint —
+  `GEMINI_API_KEY`. The analysis is one short script against one HTTP endpoint —
   swapping in a different audio-capable model or service is a small edit.
 
 See the
