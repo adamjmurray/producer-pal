@@ -27,9 +27,9 @@ export interface RequestOverrides {
    * Carried in the same contextJSON blob as the rest — V8's buildRequestContext
    * spreads it straight onto the per-request ToolContext. Filled on every call
    * that goes through the enriched wrapper, MCP and REST alike (see
-   * notation-override.ts), so it is rarely absent in practice. Which value it
-   * carries is what differs: an MCP request may name its own notation on the
-   * NOTATION_HEADER, while REST gets the device global.
+   * notation-override.ts), so it is rarely absent in practice. MCP and REST
+   * both honor NOTATION_HEADER and fall back to the device global — see
+   * resolveRequestProfile, which is what keeps them from drifting.
    */
   notation?: Notation;
 }
