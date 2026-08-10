@@ -219,7 +219,11 @@ export async function handleWriteGlobalContext(
  * Both sides are normalized first (list marker
  * stripped, internal whitespace collapsed, trailing punctuation dropped) so a
  * reformat OF A LINE — bulleted, re-indented, a period added — still counts as
- * surviving; headings are ignored for the same reason. Tolerance stops there:
+ * surviving. Headings are held out of that: a heading is structure, so letting
+ * one vouch would pass a write that keeps `# Project Context` and drops
+ * everything under it. The exception is a document that is ONLY headings, which
+ * has no body line to vouch for it — holding them out there means no guard at
+ * all, so the headings themselves become the needles. Tolerance stops there:
  * the needle is a whole existing line and the haystack is one incoming line, so
  * restructuring that SPLITS a line across several (or merges several into one)
  * trips the guard even though every fact survived. That is the conservative
@@ -269,10 +273,16 @@ export function clobberWarning(
 ): string | null {
   if (incoming.trim() === "") return null;
 
-  const lines = existing
+  const nonBlank = existing
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line !== "" && !line.startsWith("#"));
+    .filter((line) => line !== "");
+  const body = nonBlank.filter((line) => !line.startsWith("#"));
+  // Headings can't vouch while there is body content under them, or a write
+  // that kept `# Project Context` and dropped everything below would pass. A
+  // headings-only document has no body to vouch for it and used to fall
+  // straight through unguarded, so there the headings are what's at stake.
+  const lines = body.length > 0 ? body : nonBlank;
 
   if (lines.length === 0) return null;
 

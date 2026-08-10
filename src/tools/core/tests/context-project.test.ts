@@ -242,6 +242,34 @@ describe("context - project scope (default)", () => {
       await expectWriteAllowed(rewritten);
     });
 
+    // Headings vouch only when there is nothing else to vouch. A document that
+    // is all headings used to fall through the guard entirely.
+    describe("headings-only document", () => {
+      const HEADINGS = "# Genres\n# Artists\n# Reference tracks";
+
+      it("guards a document that is nothing but headings", async () => {
+        await expectWriteSkipped(HEADINGS, "# Something else entirely");
+      });
+
+      it("allows a write that keeps one of the headings", async () => {
+        toolContext.projectContext!.content = HEADINGS;
+
+        await expectWriteAllowed(`${HEADINGS}\n- Genre: deep house.`);
+      });
+
+      it("stays inert when the headings carry no letters or digits", async () => {
+        toolContext.projectContext!.content = "#\n##";
+
+        await expectWriteAllowed("- Key: A minor.");
+      });
+    });
+
+    // The reason headings are held out while a body exists: keeping the shell
+    // and dropping everything under it is the clobber, not an edit.
+    it("still guards a write that keeps only the heading", async () => {
+      await expectWriteSkipped(EXISTING, "# Notes\n- Key: A minor.");
+    });
+
     // Both sides are normalized before the containment test, so an ordinary
     // reformat still counts as surviving — without it, this guard would fire on
     // the everyday rewrite and teach models to reach for force.
