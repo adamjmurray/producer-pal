@@ -56,6 +56,12 @@ the context after that first save, no backup has been written there yet.
 **To be safe:** after saving and before upgrading, use Producer Pal once — any
 chat, tool call, or context edit writes the backup.
 
+**Right after an upgrade, the context box looks empty.** The restore runs the
+first time the AI uses a tool, so until you start a chat there's nothing in it
+yet. Start the chat and your notes come back. Typing into the empty box before
+then keeps what you type, but leaves the backup alone until the next time you
+load the device.
+
 **If context does go missing after an upgrade:** copy it out of the old device
 before removing it, or open one of Live's automatic project backups (Live keeps
 several).
