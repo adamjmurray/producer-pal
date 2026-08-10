@@ -216,20 +216,20 @@ export async function handleWriteGlobalContext(
  * line floor described below, but it only decides WHICH lines are allowed to
  * vouch; it never becomes a percentage anyone has to calibrate.
  *
- * Both sides are normalized first (list marker
- * stripped, internal whitespace collapsed, trailing punctuation dropped) so a
- * reformat OF A LINE — bulleted, re-indented, a period added — still counts as
- * surviving. Headings are held out of that: a heading is structure, so letting
- * one vouch would pass a write that keeps `# Project Context` and drops
- * everything under it. The exception is a document that is ONLY headings, which
- * has no body line to vouch for it — holding them out there means no guard at
- * all, so the headings themselves become the needles. Tolerance stops there:
- * the needle is a whole existing line and the haystack is one incoming line, so
- * restructuring that SPLITS a line across several (or merges several into one)
- * trips the guard even though every fact survived. That is the conservative
- * direction, and the designed recovery — the model gets the warning and re-sends
- * a merged write. One surviving line is enough to read as an edit rather than a
- * replacement.
+ * Both sides are normalized first (list marker stripped, emphasis markers
+ * dropped, internal whitespace collapsed, trailing punctuation dropped, case
+ * folded) so a reformat OF A LINE — bulleted, re-indented, bolded, re-cased, a
+ * period added — still counts as surviving. Headings are held out of that: a
+ * heading is structure, so letting one vouch would pass a write that keeps
+ * `# Project Context` and drops everything under it. The exception is a
+ * document that is ONLY headings, which has no body line to vouch for it —
+ * holding them out there means no guard at all, so the headings themselves
+ * become the needles. Tolerance stops there: the needle is a whole existing
+ * line and the haystack is one incoming line, so restructuring that SPLITS a
+ * line across several (or merges several into one) trips the guard even though
+ * every fact survived. That is the conservative direction, and the designed
+ * recovery — the model gets the warning and re-sends a merged write. One
+ * surviving line is enough to read as an edit rather than a replacement.
  *
  * Only SUBSTANTIVE lines can vouch for a write, measured in ALPHANUMERIC
  * characters so punctuation can't pad a line over the floor. Without that, a
@@ -336,9 +336,19 @@ function alphanumericCount(line: string): number {
 
 /**
  * Reduce a line to what containment should ignore differences in: leading list
- * marker or blockquote, indentation and repeated spaces, trailing punctuation.
- * The needle is normalized the same way as the haystack lines, so re-bulleting a
- * prose line or adding a period still reads as the same content.
+ * marker or blockquote, inline emphasis markers, indentation and repeated
+ * spaces, trailing punctuation, letter case. The needle is normalized the same
+ * way as the haystack lines, so re-bulleting a prose line, bolding it, or adding
+ * a period still reads as the same content.
+ *
+ * Order matters twice: the list marker goes before the emphasis strip (or `* x`
+ * loses its bullet's trailing space and stops matching the marker), and the
+ * emphasis strip goes before the trailing-punctuation strip (or `**done.**`
+ * keeps a period that plain `done.` drops).
+ *
+ * Dropping markers and case only ever makes two lines MORE alike, and neither
+ * touches the alphanumeric count the two guard tiers are measured in, so this
+ * can't tighten the guard — only stop it firing on a pure restyle.
  *
  * @param line - One raw line of either document
  * @returns The line reduced to its comparable text
@@ -347,8 +357,10 @@ function normalizeForContainment(line: string): string {
   return line
     .trim()
     .replace(/^(?:[-*+>]|\d+[.)])\s+/, "")
+    .replaceAll(/[*_`]/g, "")
     .replaceAll(/\s+/g, " ")
     .replace(/[.,;:!?]+$/, "")
+    .toLowerCase()
     .trim();
 }
 

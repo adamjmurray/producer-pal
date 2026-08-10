@@ -278,6 +278,8 @@ describe("context - project scope (default)", () => {
       ["re-indented", "  Genre: deep house.\n\t- Drop at bar 33."],
       ["trailing punctuation added", "Genre: deep house!\n- Drop at bar 33."],
       ["numbered instead of dashed", "1. Genre: deep house\n2. Drop at bar 33"],
+      ["re-cased", "GENRE: Deep House.\nDROP at bar 33."],
+      ["emphasis added", "Genre: **deep house**.\nDrop at **bar 33**."],
     ])(
       "allows a reformat that keeps the content (%s)",
       async (_, rewritten) => {
@@ -287,6 +289,16 @@ describe("context - project scope (default)", () => {
         await expectWriteAllowed(rewritten);
       },
     );
+
+    // The other direction: the needle carries the markup and the write drops it.
+    // Both sides are normalized, so stripping emphasis off the whole document is
+    // still an edit — it used to read as keeping none of it.
+    it("allows a rewrite that strips the document's emphasis", async () => {
+      toolContext.projectContext!.content =
+        "- **Genre**: deep house.\n- _Drop at bar 33._";
+
+      await expectWriteAllowed("- Genre: deep house.\n- Drop at bar 33.");
+    });
 
     // Where that tolerance ends: normalization forgives a line's markup, not a
     // restructuring that splits one line across several. Every fact below
