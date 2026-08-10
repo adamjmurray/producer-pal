@@ -11,6 +11,10 @@ import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
 // Realtime + Gemini Live). Both bridges build on the same mcp-client-helpers, so
 // they share one fake client + one vi.mock factory rather than duplicating the
 // setup in each test file.
+//
+// Only mcp-client-helpers is mocked. connectAndListTools is left real, so each
+// bridge's close-on-catalog-failure path is genuinely exercised — which is also
+// why it lives in its own module: a mock can't intercept a same-module call.
 
 export const callToolMock = vi.fn();
 export const listToolsMock = vi.fn();
@@ -50,10 +54,17 @@ export function resetMcpClientMocks(): void {
   listToolsMock.mockReset();
   closeMock.mockReset();
   createConnectedMcpClientMock.mockReset();
-  createConnectedMcpClientMock.mockResolvedValue(fakeMcpClient);
+  applyMcpClientDefaults();
 }
 
-createConnectedMcpClientMock.mockResolvedValue(fakeMcpClient);
+/** The defaults every test starts from: connect resolves, close resolves. */
+function applyMcpClientDefaults(): void {
+  createConnectedMcpClientMock.mockResolvedValue(fakeMcpClient);
+  // The real close() returns a promise, and the bridges chain .catch() onto it.
+  closeMock.mockResolvedValue(undefined);
+}
+
+applyMcpClientDefaults();
 
 /**
  * Queue a `listTools()` response that returns the named bare tools (no input

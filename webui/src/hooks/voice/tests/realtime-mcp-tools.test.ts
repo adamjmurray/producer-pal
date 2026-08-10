@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
 import {
   callToolMock,
+  closeMock,
   createConnectedMcpClientMock,
   fakeMcpClient,
   listToolsMock,
@@ -20,6 +21,7 @@ import {
   resetMcpClientMocks,
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
+// connectAndListTools stays real — it owns the close-on-catalog-failure path.
 vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () =>
   mcpClientHelpersMock(),
 );
@@ -105,6 +107,7 @@ describe("createRealtimeMcpTools", () => {
       MCP_URL,
       undefined,
       enabledTools,
+      undefined,
     );
   });
 
@@ -218,6 +221,27 @@ describe("createRealtimeMcpTools", () => {
     expect(t.parameters.properties).toStrictEqual({});
     expect(t.parameters.required).toStrictEqual([]);
     expect(t.parameters.additionalProperties).toBe(true);
+  });
+
+  // The caller (use-voice-session) only stores mcpClient once this resolves, so a
+  // throw past a successful connect leaves an open transport nothing can reach —
+  // one more on every Talk retry.
+  it("closes the connection when the catalog read fails", async () => {
+    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
+
+    await expect(createRealtimeMcpTools(MCP_URL)).rejects.toThrow(
+      "catalog unavailable",
+    );
+    expect(closeMock).toHaveBeenCalledOnce();
+  });
+
+  it("reports the original failure even when the close fails too", async () => {
+    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
+    closeMock.mockRejectedValueOnce(new Error("socket already gone"));
+
+    await expect(createRealtimeMcpTools(MCP_URL)).rejects.toThrow(
+      "catalog unavailable",
+    );
   });
 });
 

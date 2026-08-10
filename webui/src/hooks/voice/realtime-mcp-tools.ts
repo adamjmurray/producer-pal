@@ -6,10 +6,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type Tool } from "@openai/agents";
 import { tool } from "@openai/agents/realtime";
-import {
-  createConnectedMcpClient,
-  filterEnabledTools,
-} from "#webui/chat/helpers/mcp-client-helpers";
+import { connectAndListTools } from "#webui/chat/helpers/connect-and-list-tools";
 import { callMcpToolToString } from "#webui/hooks/voice/voice-mcp-call";
 
 /** Result of creating Realtime SDK tools from MCP */
@@ -33,13 +30,11 @@ export async function createRealtimeMcpTools(
 ): Promise<RealtimeMcpTools> {
   // Pass only the toolset: voice locks no small-model mode or notation of its
   // own, so those stay undefined and fall through to the device globals.
-  const mcpClient = await createConnectedMcpClient(
+  const { mcpClient, tools: filtered } = await connectAndListTools(
     mcpUrl,
     undefined,
     enabledTools,
   );
-  const toolsResult = await mcpClient.listTools();
-  const filtered = filterEnabledTools(toolsResult.tools, enabledTools);
 
   const tools: Tool[] = filtered.map((t) =>
     tool({

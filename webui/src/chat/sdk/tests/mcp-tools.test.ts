@@ -5,7 +5,8 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Mock MCP client helpers
+// Mock MCP client helpers. connectAndListTools is deliberately NOT mocked — it
+// owns the close-on-catalog-failure path asserted below.
 vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () => ({
   createConnectedMcpClient: vi.fn(),
   filterEnabledTools: vi.fn((tools) => tools),

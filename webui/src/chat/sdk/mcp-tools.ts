@@ -6,10 +6,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ToolSet, jsonSchema } from "ai";
 import { type Notation } from "#src/shared/notation";
-import {
-  createConnectedMcpClient,
-  filterEnabledTools,
-} from "#webui/chat/helpers/mcp-client-helpers";
+import { connectAndListTools } from "#webui/chat/helpers/connect-and-list-tools";
 import { extractMcpText } from "#webui/lib/utils/mcp-content";
 
 /** Result of creating AI SDK tools from MCP */
@@ -40,26 +37,12 @@ export async function createMcpTools(
   smallModelMode?: boolean,
   notation?: Notation,
 ): Promise<McpTools> {
-  const mcpClient = await createConnectedMcpClient(
+  const { mcpClient, tools: filtered } = await connectAndListTools(
     mcpUrl,
     smallModelMode,
     enabledTools,
     notation,
   );
-  // Close the connection ourselves if the catalog read fails. The caller only
-  // learns of the client through a successful return, so a throw here would
-  // strand an open transport (a held-open SSE stream) that nothing can reach.
-  let filtered;
-
-  try {
-    const toolsResult = await mcpClient.listTools();
-
-    filtered = filterEnabledTools(toolsResult.tools, enabledTools);
-  } catch (error) {
-    await mcpClient.close().catch(() => {});
-    throw error;
-  }
-
   const tools: ToolSet = {};
 
   for (const t of filtered) {
