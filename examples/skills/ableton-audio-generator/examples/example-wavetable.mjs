@@ -9,7 +9,7 @@
 //
 // Usage:
 //   node examples/example-wavetable.mjs [--out <dir>] [--type saw]
-//                                       [--frames 16] [--frame-size 2048]
+//                                       [--frames 16] [--frame-size 1024]
 
 import { resolve } from "node:path";
 import { normalize, writeWav } from "../lib/audio-io.mjs";
@@ -19,7 +19,7 @@ const { opt, int, fail } = parseArgs();
 const OUT = resolve(opt("--out", "./wavetables"));
 const TYPE = opt("--type", "saw");
 const FRAMES = int("--frames", 16, 1, 1024);
-const FRAME = int("--frame-size", 2048, 4, 16384); // samples per single cycle
+const FRAME = int("--frame-size", 1024, 4, 16384); // what Wavetable slices at
 const SR = int("--sr", 48000, 8000, 192000);
 
 const TWO_PI = 2 * Math.PI;
@@ -137,6 +137,6 @@ const file = writeWav(resolve(OUT, `wavetable-${TYPE}.wav`), table, SR);
 
 process.stderr.write(
   `Wrote ${TYPE} wavetable: ${FRAMES} frames x ${FRAME} = ${table.length} samples, ` +
-    `mono ${SR}Hz float32. Import at ${FRAME} samples per cycle.\n`,
+    `mono ${SR}Hz float32. Drop on a Wavetable oscillator and turn Raw on.\n`,
 );
 process.stdout.write(`${file}\n`);
