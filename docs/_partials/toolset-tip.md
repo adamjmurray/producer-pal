@@ -13,6 +13,8 @@ Unlike the other flags, this one is per client: the [Chat UI](/guide/chat-ui)
 and your other MCP clients keep the full toolset. `ppal-connect` is always kept
 — it is how the AI connects and receives the skills.
 
-One wrinkle with `--tools`: it is resolved against the tool list this copy of
-`npx producer-pal` knows, so a tool added in a newer Producer Pal stays enabled
-until you update. `--disable-tools` names tools directly and has no such gap.
+One wrinkle with `--tools`: it keeps what you list by withholding everything
+else, and "everything else" is the tool list this copy of `npx producer-pal`
+knows — so a tool added in a newer Producer Pal stays enabled until you update.
+`--disable-tools` names tools directly, so it can withhold a newer tool even
+from an older copy; only its _group_ names are limited to the ones above.

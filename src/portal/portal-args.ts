@@ -8,6 +8,7 @@ import {
   ALL_TOOL_IDS,
   CONNECT_TOOL_ID,
   resolveToolNames,
+  toToolName,
 } from "#src/shared/tool-groups.ts";
 import { logger } from "./file-logger.ts";
 import { type BridgeOptions } from "./stdio-http-bridge.ts";
@@ -217,8 +218,13 @@ function resolveJsonOutputArg(
  * `--tools` becomes a local complement over the FULL catalog so both flags feed
  * the one `x-producer-pal-disabled-tools` header. Consequence worth knowing: the
  * complement is a snapshot of what this portal build knows, so a tool the device
- * added after the portal was cached isn't in it and stays enabled.
- * `--disable-tools` has no such skew.
+ * added after the portal was cached isn't in it and stays enabled. There is no
+ * fix from here — the complement can only name tools this build has heard of.
+ *
+ * `--disable-tools` names tools directly, so an unrecognized item is forwarded
+ * to the device rather than dropped (see forwardUnknownTool) and a newer tool
+ * can still be withheld. Its own limit is groups: the header carries tool
+ * names, so a GROUP added in a newer version resolves to nothing.
  *
  * `ppal-connect` is never withheld. A subagent worker drops it on purpose (it is
  * briefed instead of connecting), but an external MCP client that loses connect
@@ -233,6 +239,7 @@ function resolveDisabledTools(
   rawDisable: string | undefined,
 ): string[] | undefined {
   const disabled = new Set<string>();
+  const forwarded: string[] = [];
 
   if (rawTools?.trim()) {
     const keep = new Set(resolveToolNames(rawTools, warnUnknownTool));
@@ -243,7 +250,9 @@ function resolveDisabledTools(
   }
 
   if (rawDisable?.trim()) {
-    for (const id of resolveToolNames(rawDisable, warnUnknownTool)) {
+    for (const id of resolveToolNames(rawDisable, (item) =>
+      forwarded.push(forwardUnknownTool(item)),
+    )) {
       disabled.add(id);
     }
   }
@@ -252,9 +261,12 @@ function resolveDisabledTools(
     logger.info(`Keeping ${CONNECT_TOOL_ID}: MCP clients need the entry point`);
   }
 
-  if (disabled.size === 0) return undefined;
+  const names = [
+    ...ALL_TOOL_IDS.filter((id) => disabled.has(id)),
+    ...forwarded,
+  ];
 
-  const names = ALL_TOOL_IDS.filter((id) => disabled.has(id));
+  if (names.length === 0) return undefined;
 
   logger.info(`Withholding tools from this client: ${names.join(", ")}`);
 
@@ -262,10 +274,33 @@ function resolveDisabledTools(
 }
 
 /**
- * Log an unrecognized `--tools` / `--disable-tools` item. Ignored rather than
- * fatal so an npx-cached portal still starts against a newer device.
+ * Log an unrecognized `--tools` item. Ignored rather than fatal so an
+ * npx-cached portal still starts against a newer device — and a name this
+ * build doesn't know is one the whitelist's complement can't withhold anyway,
+ * so the tool it names stays enabled either way.
  * @param item - The item as the user spelled it
  */
 function warnUnknownTool(item: string): void {
   logger.error(`Ignoring unknown tool or group "${item}"`);
+}
+
+/**
+ * Handle an unrecognized `--disable-tools` item by passing it to the device
+ * instead of dropping it. A subtraction can name a tool this build has never
+ * heard of, and the device is the side that knows its own catalog, so an
+ * npx-cached portal can still withhold a tool added after it was cached.
+ *
+ * A name that matches nothing on the device (a typo) subtracts nothing, which
+ * is the same outcome as dropping it here. Group aliases added in a newer
+ * version still don't resolve: the header carries tool names, and the device
+ * matches them exactly.
+ * @param item - The item as the user spelled it
+ * @returns The normalized tool name to forward
+ */
+function forwardUnknownTool(item: string): string {
+  const name = toToolName(item);
+
+  logger.info(`Unknown to this portal build, passing "${name}" to the device`);
+
+  return name;
 }

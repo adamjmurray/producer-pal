@@ -61,9 +61,26 @@ describe("--disable-tools", () => {
     ]);
   });
 
-  it("skips an unknown name instead of failing to start", () => {
+  // An older npx-cached portal must still be able to withhold a tool the
+  // device added after it was cached, so an unrecognized name is forwarded
+  // rather than dropped. Known names keep catalog order; forwarded ones follow.
+  it("forwards an unknown name to the device instead of dropping it", () => {
     expect(disabledFor(["--disable-tools", "nonesuch,library"])).toStrictEqual([
       "ppal-library",
+      "ppal-nonesuch",
+    ]);
+  });
+
+  it("adds the ppal- prefix to a forwarded name", () => {
+    expect(disabledFor(["--disable-tools", "ppal-nonesuch"])).toStrictEqual([
+      "ppal-nonesuch",
+    ]);
+  });
+
+  it("starts rather than failing when every name is unknown", () => {
+    expect(disabledFor(["--disable-tools", "nope,alsonope"])).toStrictEqual([
+      "ppal-nope",
+      "ppal-alsonope",
     ]);
   });
 
@@ -94,6 +111,15 @@ describe("--tools", () => {
 
   it("keeps ppal-connect even when the request omits it", () => {
     expect(disabledFor(["--tools", "clip"])).not.toContain(CONNECT_TOOL_ID);
+  });
+
+  // The other half of the asymmetry: a whitelist withholds by complement, and
+  // a name this build doesn't know can't be in one — so unlike --disable-tools,
+  // there is nothing useful to forward.
+  it("skips an unknown name rather than forwarding it", () => {
+    expect(disabledFor(["--tools", "clip,nonesuch"])).not.toContain(
+      "ppal-nonesuch",
+    );
   });
 
   it("keeps ppal-connect even when --disable-tools names it", () => {

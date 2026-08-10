@@ -161,9 +161,7 @@ export function resolveToolNames(
       continue;
     }
 
-    const name = key.startsWith(TOOL_NAME_PREFIX)
-      ? key
-      : `${TOOL_NAME_PREFIX}${key}`;
+    const name = toToolName(key);
 
     if (catalog.has(name)) {
       resolved.add(name);
@@ -173,4 +171,17 @@ export function resolveToolNames(
   }
 
   return ALL_TOOL_IDS.filter((id) => resolved.has(id));
+}
+
+/**
+ * Normalize one user-typed item to a full tool name, adding the `ppal-` prefix
+ * if it is missing. Does not check the catalog — callers that need to know
+ * whether the tool exists check for themselves.
+ * @param item - The item as the user spelled it
+ * @returns The full tool name, lowercased
+ */
+export function toToolName(item: string): string {
+  const key = item.trim().toLowerCase();
+
+  return key.startsWith(TOOL_NAME_PREFIX) ? key : `${TOOL_NAME_PREFIX}${key}`;
 }
