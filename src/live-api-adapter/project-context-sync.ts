@@ -44,8 +44,8 @@ interface SyncMemo {
   wipe: WipeState;
   lastFilePath: string | null;
   lastContent: string | null;
-  /** Whether the unreadable-sidecar warning has already been said this session. */
-  warnedUnreadable: boolean;
+  /** Whether the unreadable-on-restore warning was already said this session. */
+  warnedUnreadableRestore: boolean;
 }
 
 const memo: SyncMemo = {
@@ -53,7 +53,7 @@ const memo: SyncMemo = {
   wipe: "open",
   lastFilePath: null,
   lastContent: null,
-  warnedUnreadable: false,
+  warnedUnreadableRestore: false,
 };
 
 /**
@@ -203,7 +203,7 @@ export function resetProjectContextSyncMemo(): void {
   memo.wipe = "open";
   memo.lastFilePath = null;
   memo.lastContent = null;
-  memo.warnedUnreadable = false;
+  memo.warnedUnreadableRestore = false;
 }
 
 // --- Helpers below main export ---
@@ -301,14 +301,10 @@ async function requestSync(
     return { ok: true, restored: response.result.content ?? "" };
   }
 
-  // There IS a sidecar and Node couldn't read it, so the restore this device
-  // load was owed didn't happen. Reported as NOT ok, unlike "failed" below: the
-  // next tool call retries (a cloud-sync lock can clear), and leaving the wipe
-  // question open keeps later edits from burying notes nothing has read yet.
+  // There IS a sidecar and Node couldn't read it, so it skipped what it would
+  // otherwise have done. What that cost depends on which sync this was.
   if (response.result?.action === "unreadable") {
-    warnUnreadableOnce();
-
-    return { ok: false, restored: null };
+    return handleUnreadableSidecar(content, flags.isEdit);
   }
 
   // The filesystem refused. Reported as ok so the caller memoizes it: the
@@ -336,15 +332,54 @@ async function requestSync(
 }
 
 /**
+ * React to a sidecar Node couldn't read. Node skipped what it would have done;
+ * three callers reach it, and only two of them lost something:
+ *
+ * - An empty blob was the restore, which is still owed. NOT memoized, so the
+ *   next tool call retries a lock that may have cleared, and the wipe question
+ *   stays open so no later edit buries notes nothing has read.
+ * - A genuine write didn't reach disk. Memoized and warned like any other
+ *   filesystem refusal — once per blob, so a later edit says so again.
+ * - A passing sync lost nothing: it was never allowed to overwrite an existing
+ *   sidecar anyway. Memoized silently.
+ *
+ * @param content - The blob this sync carried ("" means it was the restore)
+ * @param isEdit - Whether a genuine project-context write triggered this sync
+ * @returns The requestSync result for this case
+ */
+function handleUnreadableSidecar(
+  content: string,
+  isEdit: boolean,
+): { ok: boolean; restored: null } {
+  if (content.trim() === "") {
+    warnUnreadableRestoreOnce();
+
+    return { ok: false, restored: null };
+  }
+
+  if (isEdit) {
+    console.warn(
+      "Could not read the project context backup beside the Live Set, so it " +
+        "was left alone rather than risk burying notes shared with the other " +
+        "Sets in the folder. The context is safe in the device, but won't " +
+        'survive a device upgrade. Tell the user to check that "Producer Pal ' +
+        'Project Context.md" in their Live project folder is readable.',
+    );
+  }
+
+  return { ok: true, restored: null };
+}
+
+/**
  * Say once per session that the sidecar couldn't be read, so the context wasn't
  * restored. Once, because unlike a failed write this isn't memoized — the read
  * retries on every tool call, and a permission problem would re-warn into every
  * tool result for the rest of the session.
  */
-function warnUnreadableOnce(): void {
-  if (memo.warnedUnreadable) return;
+function warnUnreadableRestoreOnce(): void {
+  if (memo.warnedUnreadableRestore) return;
 
-  memo.warnedUnreadable = true;
+  memo.warnedUnreadableRestore = true;
 
   console.warn(
     "Could not read the project context backup beside the Live Set, so the " +

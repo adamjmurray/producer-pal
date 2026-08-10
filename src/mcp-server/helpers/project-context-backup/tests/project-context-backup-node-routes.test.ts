@@ -239,6 +239,9 @@ describe("projectContext.sync — backup (non-empty param)", () => {
 // would be retried on every tool call from then on, appending its warning to
 // every tool result.
 describe("projectContext.sync — the filesystem refuses", () => {
+  // Reported as "unreadable", not "none": the skip is right, but on a genuine
+  // write the user believes their notes were backed up and they weren't. Only V8
+  // knows which kind of sync this was, so it decides whether to say anything.
   it("does not write over a sidecar it couldn't read, even on a genuine write", async () => {
     seedSidecar("newer notes from another Set in this folder");
     vi.mocked(readProjectContextSidecar).mockReturnValueOnce({
@@ -251,7 +254,7 @@ describe("projectContext.sync — the filesystem refuses", () => {
       isEdit: true,
     });
 
-    expect(res.result).toStrictEqual({ action: "none" });
+    expect(res.result).toStrictEqual({ action: "unreadable" });
     expect(writeProjectContextSidecar).not.toHaveBeenCalled();
     expect(sidecarText()).toBe("newer notes from another Set in this folder");
   });

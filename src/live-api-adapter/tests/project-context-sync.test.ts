@@ -335,6 +335,47 @@ describe("syncProjectContextBackup — the backup couldn't be read", () => {
       isEdit: false,
     });
   });
+
+  // A genuine write is the other half: the skip is right (the sidecar may hold
+  // the folder's shared notes), but the user thinks their edit was backed up.
+  it("tells the user when a genuine write was skipped, once per blob", async () => {
+    setFilePath(SAVED_PATH);
+    noteProjectContextLoaded("Genre: house");
+    mockSyncResult("unreadable");
+
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining("was left alone rather than risk burying notes"),
+    );
+
+    // Memoized like any other refusal: the same blob doesn't re-round-trip.
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+
+    // A later edit is a new chance to lose something, so it says so again.
+    mockSyncResult("unreadable");
+    await backupProjectContextOnEdit("Genre: techno");
+
+    expect(mockWarn).toHaveBeenCalledTimes(2);
+  });
+
+  // A passing sync only observes the param — it was never allowed to overwrite
+  // an existing sidecar, so an unreadable one costs it nothing worth saying.
+  it("says nothing when a passing sync couldn't read the sidecar", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("unreadable");
+
+    expect(await syncProjectContextBackup("Genre: jungle")).toBeNull();
+    expect(mockWarn).not.toHaveBeenCalled();
+
+    // Memoized, so it doesn't round-trip again on every tool call.
+    await syncProjectContextBackup("Genre: jungle");
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("backupProjectContextOnEdit — manual edits", () => {

@@ -249,12 +249,20 @@ setter classifies a set that changes nothing, or the session's first set, as a
 load echo rather than an edit.
 
 A sidecar that exists but can't be read is its own outcome
-(`action: "unreadable"`), never `"none"`. On the restore path that answer
-settles nothing — so V8 leaves the session's one restore unspent and the wipe
-question open, warns once, and retries the read on the next tool call.
-Collapsing it into `"none"` would look like "no backup": the restore is silently
-forfeited and the next edit overwrites the sidecar as soon as it's readable
-again.
+(`action: "unreadable"`), never `"none"`. The route always skips — it can't tell
+whether writing would bury the folder's shared notes — but only V8 knows what
+the skip cost, so it decides what to do:
+
+- **Restore** (empty blob): still owed. V8 leaves the session's one restore
+  unspent and the wipe question open, warns once, and retries the read on the
+  next tool call. Collapsing this into `"none"` would look like "no backup": the
+  restore is silently forfeited and the next edit overwrites the sidecar as soon
+  as it's readable again.
+- **Genuine write** (`isEdit`): didn't reach disk, and the user thinks it did.
+  Memoized and warned like any other filesystem refusal — once per blob, so a
+  later edit says so again.
+- **Passing sync**: lost nothing, since it was never allowed to overwrite an
+  existing sidecar. Memoized silently.
 
 The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
 through the config-markdown store — it writes into the user's Live project

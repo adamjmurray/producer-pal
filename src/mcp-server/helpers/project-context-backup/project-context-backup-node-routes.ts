@@ -177,7 +177,8 @@ function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param content - The device param's current project-context blob
  * @param isEdit - Whether a genuine project-context write triggered this sync
- * @returns "backup" when written, "failed" when the write threw, else "none"
+ * @returns "backup" when written, "failed" when the write threw, "unreadable"
+ *   when a sidecar is there but couldn't be read, else "none"
  */
 function backupIfStale(
   filePath: string,
@@ -188,9 +189,11 @@ function backupIfStale(
 
   // There IS a sidecar and we can't see what's in it, so we can't tell whether
   // writing would bury the folder's shared notes. Treating it as "no backup"
-  // would skip the isEdit guard below in the one case it matters most.
+  // would skip the isEdit guard below in the one case it matters most. Not
+  // "none" either: on a genuine write the user believes their notes were backed
+  // up, and only V8 knows which kind of sync this was.
   if (existing.status === "unreadable") {
-    return { action: "none" };
+    return { action: "unreadable" };
   }
 
   if (existing.status === "found") {
