@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// analyze-audio.mjs — send a rendered .wav to Google's Gemini API and print the
+// analyze-audio.mjs — send an audio file to Google's Gemini API and print the
 // model's analysis. Zero dependencies (Node 18+ global fetch).
 //
 // Auth: set GEMINI_API_KEY in the environment (or pass --api-key). This is the
@@ -12,9 +12,9 @@
 // override the model with --model / GEMINI_MODEL and check Google's docs.
 //
 // Usage:
-//   node analyze-audio.mjs render.wav
-//   node analyze-audio.mjs render.wav --prompt "Describe the timbre and any mix issues."
-//   GEMINI_MODEL=gemini-2.5-pro node analyze-audio.mjs render.wav
+//   node analyze-audio.mjs render.mp3
+//   node analyze-audio.mjs render.mp3 --prompt "Describe the timbre and any mix issues."
+//   GEMINI_MODEL=gemini-2.5-pro node analyze-audio.mjs render.mp3
 //
 // Expectations: Gemini gives strong QUALITATIVE description (timbre, character,
 // obvious problems, transcription). It is not a precise MIR tool — don't trust
@@ -77,7 +77,7 @@ async function main() {
   const file = positionals[0];
   if (!file)
     throw new Error(
-      "Usage: node analyze-audio.mjs <file.wav> [--prompt <text>]",
+      "Usage: node analyze-audio.mjs <audio-file> [--prompt <text>]",
     );
 
   const apiKey =

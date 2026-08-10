@@ -46,7 +46,7 @@ macOS requirement does not block analyzing a file you already have.
 
 **To analyze (`analyze-audio.mjs`):**
 
-- A **`GEMINI_KEY`** (or `GEMINI_API_KEY`) in the environment, or pass
+- A **`GEMINI_API_KEY`** (or `GEMINI_KEY`) in the environment, or pass
   `--api-key`. Model IDs move — override with `--model` / `GEMINI_MODEL`.
 - Network access. Any platform; no Ableton involved.
 
@@ -114,7 +114,7 @@ printf '%s' "$OUT" | node -e 'const fs=require("fs");process.stdin.once("data",d
   labels and the default ⇧⌘R / ⌥2 / ⌘A shortcuts. A remapped or non-English Live
   needs adjustment.
 - **Qualitative, not measurement:** Gemini describes character and flags obvious
-  issues (imbalance, harshness, clipping) well, but is not a precise tempo/key/
-  onset detector — measure those with DSP if you need exact numbers.
+  issues (imbalance, harshness, clipping) well, but is not a precise detector of
+  tempo, key, or onsets — measure those with DSP if you need exact numbers.
 - **Rendered Track remembers its last value** across exports; `render.mjs`
   always forces it, so an earlier manual choice won't leak into your render.

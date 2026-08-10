@@ -55,11 +55,12 @@ node ppal.mjs ppal-connect --disable-tools ppal-create-clip,ppal-update-clip,ppa
 ```
 
 Run `--list-tools` first if you need the exact names. Only skip tools you're
-sure the task won't need — a withheld tool is unavailable for the whole session,
-and you'd have to re-run `ppal-connect` without it to get its instructions back.
+sure the task won't need — while you keep passing the same list, a withheld tool
+stays unavailable, and you'd have to re-run `ppal-connect` without it to get its
+instructions back.
 
 Like `--notation`, this changes nothing on the device: it never affects the chat
-UI or another client, and it resets when your session ends.
+UI or another client, and nothing is remembered between calls.
 
 ## Notation
 

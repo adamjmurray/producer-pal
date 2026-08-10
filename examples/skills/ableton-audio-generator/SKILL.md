@@ -121,7 +121,8 @@ import { parseArgs } from "./lib/cli.mjs";
   images survive.
 - `declick(channels, sampleRate, { fadeIn, fadeOut })` — fade-out only by
   default, to protect transients. **Never on wavetable frames.**
-- `parseArgs()` — `opt` / `num` / `int` / `flag`, all range-checked.
+- `parseArgs()` — `opt` / `num` / `int` / `flag`; `num` and `int` take a min and
+  max and reject anything outside it.
 
 Run `node lib/audio-io.mjs --selftest` to confirm the encoder on a new machine.
 

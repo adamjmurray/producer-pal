@@ -22,7 +22,7 @@ made (via `producer-pal`'s `ppal.mjs` or any connected MCP client).
   algorithm for what was actually asked for; a shared `lib/` handles WAV
   encoding, normalization, and declicking, so custom DSP costs nothing extra.
 
-A `cookbook.md` alongside them translates the words people actually use —
+The audio generator's `cookbook.md` translates the words people actually use —
 "gritty", "boomy", "808", "dusty", "sounds cheap" — into concrete parameters
 with starting numbers, so a described sound doesn't become a guessed one.
 

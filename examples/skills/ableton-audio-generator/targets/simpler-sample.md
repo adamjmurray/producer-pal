@@ -66,4 +66,5 @@ to your filename is a good sign it actually decoded the audio.
   multi-sample mode; it will warn and skip.
 - **MIDI track required.** Simpler is an instrument. Targeting an audio track
   fails.
-- **Absolute paths only.** Relative paths are rejected — resolve before calling.
+- **Absolute paths only.** A relative path warns and skips — resolve before
+  calling.
