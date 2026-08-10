@@ -59,6 +59,12 @@ export interface CreateClipsParams {
   takeLane: LiveAPI | null;
   /** Requested audio warp state, or null to keep Live's own choice */
   warping: boolean | null;
+  /** Audio clip gain in decibels; omitted leaves it alone */
+  gainDb?: number | null;
+  /** Audio clip pitch shift in semitones; omitted leaves it alone */
+  pitchShift?: number | null;
+  /** Audio clip warp mode; omitted leaves it alone */
+  warpMode?: string | null;
 }
 
 /**
@@ -187,7 +193,12 @@ async function createClipAtIndex(
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
       params.takeLane,
-      params.warping,
+      {
+        warping: params.warping,
+        gainDb: params.gainDb,
+        pitchShift: params.pitchShift,
+        warpMode: params.warpMode,
+      },
       params.timeSignature,
     );
 

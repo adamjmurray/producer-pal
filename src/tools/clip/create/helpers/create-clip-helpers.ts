@@ -10,6 +10,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import {
   prepareSessionClipSlot,
@@ -184,6 +185,17 @@ function createArrangementClip(
   return { clip, arrangementStartBeats };
 }
 
+export interface CreateClipAudioParams {
+  /** Requested warp state, or null/undefined to keep Live's own choice */
+  warping?: boolean | null;
+  /** Gain in decibels, or null to leave it alone */
+  gainDb?: number | null;
+  /** Pitch shift in semitones, or null to leave it alone */
+  pitchShift?: number | null;
+  /** Warp mode, or null to leave it alone */
+  warpMode?: string | null;
+}
+
 /**
  * Processes one clip creation at a specific position
  * @param view - View type (session or arrangement)
@@ -207,7 +219,7 @@ function createArrangementClip(
  * @param sampleFile - Audio file path (for audio clips)
  * @param transformedCount - Number of notes matched by transform selectors
  * @param takeLane - Take lane to create arrangement clips on, or null for main lane
- * @param warping - Requested audio warp state, or null to keep Live's own choice
+ * @param audio - Audio clip properties; a null entry leaves that property alone
  * @param timeSignature - The raw timeSignature argument, or null for the song's
  * @returns Clip result for this iteration
  */
@@ -233,7 +245,7 @@ export function processClipIteration(
   sampleFile: string | null,
   transformedCount: number | undefined,
   takeLane: LiveAPI | null = null,
-  warping: boolean | null = null,
+  audio: CreateClipAudioParams = {},
   timeSignature: string | null = null,
 ): object {
   let clip: LiveAPI;
@@ -283,7 +295,14 @@ export function processClipIteration(
       clip.setAll(propsToSet);
     }
 
-    applyAudioClipWarping(clip, warping);
+    // Same order as update-clip: properties first, then the warp toggle, which
+    // is the one with side effects on the clip region.
+    setAudioClipProperties(clip, {
+      gainDb: audio.gainDb ?? undefined,
+      pitchShift: audio.pitchShift ?? undefined,
+      warpMode: audio.warpMode ?? undefined,
+    });
+    applyAudioClipWarping(clip, audio.warping);
   } else {
     // MIDI clip creation
     if (view === "session") {

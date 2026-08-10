@@ -63,6 +63,12 @@ export interface CreateClipArgs {
   looping?: boolean | null;
   /** Audio clips only: warp state, or null to keep Live's own choice */
   warping?: boolean | null;
+  /** Audio clip gain in decibels (-70 to 24) */
+  gainDb?: number | null;
+  /** Audio clip pitch shift in semitones (-48 to 48) */
+  pitchShift?: number | null;
+  /** Audio clip warp mode */
+  warpMode?: string | null;
   /** Automatic playback action */
   auto?: string | null;
   /** Select the created clip and show clip detail view */
@@ -92,6 +98,9 @@ export interface CreateClipArgs {
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.warping - Audio warp state, or null to keep Live's own choice
+ * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
+ * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
+ * @param args.warpMode - Audio clip warp mode
  * @param args.auto - Automatic playback action
  * @param args.focus - Select the created clip and show clip detail view
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
@@ -116,6 +125,9 @@ export async function createClip(
     firstStart = null,
     looping = null,
     warping = null,
+    gainDb,
+    pitchShift,
+    warpMode,
     auto = null,
     focus,
     code = null,
@@ -125,6 +137,7 @@ export async function createClip(
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
   const deadline = computeLoopDeadline(_context.timeoutMs);
+  const audio = { warping, gainDb, pitchShift, warpMode };
 
   // Treat a blank/whitespace-only transforms string as "no transform".
   transformString = normalizeTransforms(transformString);
@@ -139,7 +152,7 @@ export async function createClip(
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
   warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
-  warnAudioOnlyMidiParams(sampleFile, { warping });
+  warnAudioOnlyMidiParams(sampleFile, audio);
   validateSessionTracks(sessionSlots);
   validateArrangementTrack(arrangementStarts, trackIndex);
 
@@ -147,15 +160,7 @@ export async function createClip(
 
   // Resolve time signatures and convert timing parameters to Ableton beats
   // (arrangementStart is converted per-position later)
-  const {
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-    timeSigNumerator,
-    timeSigDenominator,
-    startBeats,
-    firstStartBeats,
-    endBeats,
-  } = resolveClipTimingContext(liveSet, timeSignature, sampleFile, {
+  const timing = resolveClipTimingContext(liveSet, timeSignature, sampleFile, {
     start,
     firstStart,
     length,
@@ -166,9 +171,9 @@ export async function createClip(
   const { notes, clipLength: initialClipLength } = prepareClipData(
     sampleFile,
     notationString,
-    endBeats,
-    timeSigNumerator,
-    timeSigDenominator,
+    timing.endBeats,
+    timing.timeSigNumerator,
+    timing.timeSigDenominator,
     _context.notation,
     transformString,
   );
@@ -207,24 +212,24 @@ export async function createClip(
       nameStartIndex,
       initialClipLength,
       liveSet,
-      startBeats,
-      endBeats,
-      firstStartBeats,
+      startBeats: timing.startBeats,
+      endBeats: timing.endBeats,
+      firstStartBeats: timing.firstStartBeats,
       looping,
       color,
-      timeSigNumerator,
-      timeSigDenominator,
+      timeSigNumerator: timing.timeSigNumerator,
+      timeSigDenominator: timing.timeSigDenominator,
       timeSignature,
       notationString,
       notes,
       transformString,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
+      songTimeSigNumerator: timing.songTimeSigNumerator,
+      songTimeSigDenominator: timing.songTimeSigDenominator,
       length,
       sampleFile,
       deadline,
       code,
-      warping,
+      ...audio,
     });
 
   const sessionClips = await clipsForView("session", 0);

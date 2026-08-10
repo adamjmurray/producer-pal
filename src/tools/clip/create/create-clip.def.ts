@@ -117,6 +117,27 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       smallModel: "audio clips only: false plays the file as rendered",
     }),
 
+    gainDb: z.coerce
+      .number()
+      .min(-70)
+      .max(24)
+      .optional()
+      .describe("audio clip gain in decibels (ignored for MIDI)"),
+
+    pitchShift: z.coerce
+      .number()
+      .min(-48)
+      .max(48)
+      .optional()
+      .describe(
+        "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
+      ),
+
+    warpMode: z
+      .enum(["beats", "tones", "texture", "repitch", "complex", "pro"])
+      .optional()
+      .describe("audio clip warp mode (ignored for MIDI)"),
+
     auto: param(z.enum(["play-scene", "play-clip"]).optional(), {
       default: "auto-play session clips (play-scene keeps scene in sync)",
       smallModel: null,
