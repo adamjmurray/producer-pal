@@ -334,6 +334,11 @@ function warnRetiredOverrides(
  * assuming every override of a split slot is stale — a fork made today carries
  * none of the sibling's prose and stays quiet.
  *
+ * Runs before assembly, so it can't know whether the active notation and level
+ * include this slot at all — an override of `stark-standard` under bar|beat ships
+ * nothing. Hence the warning says "whenever this override is in use" rather than
+ * claiming the duplication is happening right now.
+ *
  * @param overrides - The user's per-fragment overrides
  * @param builtIns - The release built-ins, read for the sibling's text
  * @param suppressed - Fragments resolving to empty (a suppressed sibling ships nothing to duplicate)
@@ -360,7 +365,7 @@ function warnSplitOverrides(
     if (shared.length === 0) continue;
 
     onWarn?.(
-      `skills override "${head}.md" predates the writing-notes split: ${shared.length} of its lines are still the built-in's, e.g. ${shared.slice(0, EXAMPLE_LINES).map(snippet).map(quoted).join(", ")} — that text is now the separate fragment "${write}", so it ships twice. Delete it from your override, or switch "${write}" off.`,
+      `skills override "${head}.md" predates the writing-notes split: ${shared.length} of its lines are still the built-in's, e.g. ${shared.slice(0, EXAMPLE_LINES).map(snippet).map(quoted).join(", ")} — that text is now the separate fragment "${write}", so it ships twice whenever this override is in use. Delete it from your override, or switch "${write}" off.`,
     );
   }
 }

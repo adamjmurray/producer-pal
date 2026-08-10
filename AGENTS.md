@@ -135,7 +135,7 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   before pushing. PR titles and bodies are fine.
 
 - **Keep the Skills and specs current**: the Producer Pal Skills
-  (`src/tools/core/connect.ts`) need updating whenever notation or tool behavior
+  (`src/skills/fragments/`) need updating whenever notation or tool behavior
   changes under them. The grammar specs in `dev/specs/` have no test guarding
   them, so update them by hand when you change grammar syntax.
 

@@ -12,6 +12,10 @@ export const toolDefSelect = defineTool("ppal-select", {
   description:
     'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state.',
 
+  // read-only on purpose, even though selecting changes view state and can
+  // show/hide/focus views. None of that touches the Live Set or its undo history,
+  // and a user who puts a client in read-only mode still expects "show me track
+  // 3" to work. Don't "correct" this to false.
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
