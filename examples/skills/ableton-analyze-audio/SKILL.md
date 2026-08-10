@@ -1,6 +1,6 @@
 ---
 name: ableton-analyze-audio
-description:
+description: >-
   Get audio out of Ableton Live and optionally hand it to an audio-capable LLM.
   Two halves that work independently: render/bounce/export the whole mix or a
   single track to a file (macOS UI automation, no API key needed), and analyze
