@@ -51,8 +51,10 @@ export interface ProjectContextSyncResult {
    * "none" means there was nothing to do. "failed" means there WAS and the
    * filesystem refused — the two must not collapse, or V8 memoizes a backup
    * that never reached disk as a success and the user is never told.
+   * "unreadable" is the restore-side version of the same rule: a sidecar is
+   * there but couldn't be read, so the restore is still owed.
    */
-  action: "restore" | "backup" | "clear" | "none" | "failed";
+  action: "restore" | "backup" | "clear" | "none" | "failed" | "unreadable";
   /** The restored blob — present only when action === "restore". */
   content?: string;
 }
@@ -119,13 +121,22 @@ function syncRoute(
  *
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param deps - Node-side collaborators (the project-context mirror setter)
- * @returns A "restore" result carrying the blob, or "none"
+ * @returns A "restore" result carrying the blob, "unreadable" when a sidecar is
+ *   there but couldn't be read, else "none"
  */
 function restoreIfBackupExists(
   filePath: string,
   deps: ProjectContextBackupDeps,
 ): ProjectContextSyncResult {
   const sidecar = readProjectContextSidecar(filePath);
+
+  // There IS a sidecar and we can't see what's in it, so this device load may
+  // still be owed a restore. Reporting "none" would read as "no backup": V8
+  // memoizes the sync as done, spends the session's one restore, settles the
+  // wipe question, and the next edit writes over notes nothing ever read.
+  if (sidecar.status === "unreadable") {
+    return { action: "unreadable" };
+  }
 
   if (sidecar.status !== "found" || sidecar.content.trim() === "") {
     return { action: "none" };

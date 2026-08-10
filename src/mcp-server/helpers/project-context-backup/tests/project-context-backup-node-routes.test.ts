@@ -259,6 +259,23 @@ describe("projectContext.sync — the filesystem refuses", () => {
   // "failed", never "none": collapsing them lets V8 memoize a backup that never
   // reached disk as a success, and the user is told their context is safe when
   // it isn't. Still a SUCCESSFUL RPC — see the comment above this describe.
+  // The restore-side half of the same rule. "none" would read as "no backup":
+  // V8 spends the session's one restore, settles the wipe question, and the next
+  // edit overwrites the sidecar as soon as it's readable again.
+  it("reports unreadable, not none, when the sidecar to restore can't be read", async () => {
+    seedSidecar("notes nobody can read right now");
+    vi.mocked(readProjectContextSidecar).mockReturnValueOnce({
+      status: "unreadable",
+    });
+
+    const res = await sync({ content: "", allowRestore: true });
+
+    expect(res.success).toBe(true);
+    expect(res.result).toStrictEqual({ action: "unreadable" });
+    expect(setProjectContext).not.toHaveBeenCalled();
+    expect(sidecarText()).toBe("notes nobody can read right now");
+  });
+
   it("reports failed, not a failed request, when the backup write fails", async () => {
     vi.mocked(writeProjectContextSidecar).mockReturnValueOnce(false);
 

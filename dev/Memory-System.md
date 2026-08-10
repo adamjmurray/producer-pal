@@ -248,6 +248,14 @@ backup). A device load is additionally filtered before it gets that far: the
 setter classifies a set that changes nothing, or the session's first set, as a
 load echo rather than an edit.
 
+A sidecar that exists but can't be read is its own outcome
+(`action: "unreadable"`), never `"none"`. On the restore path that answer
+settles nothing — so V8 leaves the session's one restore unspent and the wipe
+question open, warns once, and retries the read on the next tool call.
+Collapsing it into `"none"` would look like "no backup": the restore is silently
+forfeited and the next edit overwrites the sidecar as soon as it's readable
+again.
+
 The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
 through the config-markdown store — it writes into the user's Live project
 folder using a path the Live API supplied.

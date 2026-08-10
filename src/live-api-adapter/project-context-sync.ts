@@ -17,7 +17,7 @@ import { requestNode } from "./node-request-v8-protocol.ts";
 
 /** Subset of the Node route's result this side acts on. */
 interface ProjectContextSyncResult {
-  action: "restore" | "backup" | "clear" | "none" | "failed";
+  action: "restore" | "backup" | "clear" | "none" | "failed" | "unreadable";
   content?: string;
 }
 
@@ -44,6 +44,8 @@ interface SyncMemo {
   wipe: WipeState;
   lastFilePath: string | null;
   lastContent: string | null;
+  /** Whether the unreadable-sidecar warning has already been said this session. */
+  warnedUnreadable: boolean;
 }
 
 const memo: SyncMemo = {
@@ -51,6 +53,7 @@ const memo: SyncMemo = {
   wipe: "open",
   lastFilePath: null,
   lastContent: null,
+  warnedUnreadable: false,
 };
 
 /**
@@ -200,6 +203,7 @@ export function resetProjectContextSyncMemo(): void {
   memo.wipe = "open";
   memo.lastFilePath = null;
   memo.lastContent = null;
+  memo.warnedUnreadable = false;
 }
 
 // --- Helpers below main export ---
@@ -274,8 +278,8 @@ function readLiveSetFilePath(): string | null {
  *   sidecar (the session's first sync only)
  * @param flags.isEdit - Whether a genuine project-context write triggered this,
  *   the only thing allowed to overwrite an existing, differing sidecar
- * @returns `ok` false when the round-trip failed (so the caller can retry
- *   later); `restored` carries the blob on a restore, else null
+ * @returns `ok` false when the round-trip failed or a restore is still owed (so
+ *   the caller retries later); `restored` carries the blob on a restore, else null
  */
 async function requestSync(
   filePath: string,
@@ -295,6 +299,16 @@ async function requestSync(
 
   if (response.result?.action === "restore") {
     return { ok: true, restored: response.result.content ?? "" };
+  }
+
+  // There IS a sidecar and Node couldn't read it, so the restore this device
+  // load was owed didn't happen. Reported as NOT ok, unlike "failed" below: the
+  // next tool call retries (a cloud-sync lock can clear), and leaving the wipe
+  // question open keeps later edits from burying notes nothing has read yet.
+  if (response.result?.action === "unreadable") {
+    warnUnreadableOnce();
+
+    return { ok: false, restored: null };
   }
 
   // The filesystem refused. Reported as ok so the caller memoizes it: the
@@ -319,4 +333,23 @@ async function requestSync(
   }
 
   return { ok: true, restored: null };
+}
+
+/**
+ * Say once per session that the sidecar couldn't be read, so the context wasn't
+ * restored. Once, because unlike a failed write this isn't memoized — the read
+ * retries on every tool call, and a permission problem would re-warn into every
+ * tool result for the rest of the session.
+ */
+function warnUnreadableOnce(): void {
+  if (memo.warnedUnreadable) return;
+
+  memo.warnedUnreadable = true;
+
+  console.warn(
+    "Could not read the project context backup beside the Live Set, so the " +
+      "saved context was not restored into the device. Tell the user to check " +
+      'that "Producer Pal Project Context.md" in their Live project folder is ' +
+      "readable; the restore retries on the next tool call.",
+  );
 }

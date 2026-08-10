@@ -49,7 +49,7 @@ function setFilePath(filePath: string | null): void {
  * @param content - Restored content to include (for the restore action)
  */
 function mockSyncResult(
-  action: "restore" | "backup" | "clear" | "none" | "failed",
+  action: "restore" | "backup" | "clear" | "none" | "failed" | "unreadable",
   content?: string,
 ): void {
   mockRequestNode.mockResolvedValueOnce({
@@ -287,6 +287,53 @@ describe("syncProjectContextBackup — the filesystem refused", () => {
     expect(mockWarn).toHaveBeenCalledWith(
       expect.stringContaining("Could not delete the project context backup"),
     );
+  });
+});
+
+// The one refusal that is NOT memoized. A sidecar we couldn't read may still
+// hold the notes a device (re)load blanked, so the session's restore isn't spent
+// and the wipe question isn't settled — the read retries instead. The warning
+// says so once, since it would otherwise land in every tool result.
+describe("syncProjectContextBackup — the backup couldn't be read", () => {
+  it("warns once and retries, so a lock that clears still restores", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("unreadable");
+
+    expect(await syncProjectContextBackup("")).toBeNull();
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining("Could not read the project context backup"),
+    );
+
+    // Not memoized: the same empty param round-trips again, and it still carries
+    // allowRestore — the session's one restore wasn't spent on a failed read.
+    mockSyncResult("restore", "Genre: jungle");
+
+    expect(await syncProjectContextBackup("")).toBe("Genre: jungle");
+    expect(mockRequestNode).toHaveBeenLastCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "",
+      allowRestore: true,
+      isEdit: false,
+    });
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the wipe question open, so a later edit can't bury the backup", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("unreadable");
+    await syncProjectContextBackup("");
+
+    // The user types into the still-empty box. isEdit stays false: nothing has
+    // managed to read the sidecar, so nothing may overwrite it.
+    mockSyncResult("none");
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    expect(mockRequestNode).toHaveBeenLastCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "Genre: jungle",
+      allowRestore: false,
+      isEdit: false,
+    });
   });
 });
 
