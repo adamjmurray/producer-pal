@@ -68,9 +68,10 @@ determines the note syntax in every tool description and in the `ppal-connect`
 Skills, and it also decides how the notes you send are parsed and how the notes
 you read back are formatted:
 
-- **`midi-json`** (recommended for coding agents) — notes as a JSON array, e.g.
-  `[{p:60,t:0,d:4,v:100}]`: `p` pitch, `t` start beat, `d` duration in beats,
-  `v` velocity. Trivial to build and parse programmatically.
+- **`midi-json`** (recommended for coding agents) — a JSON array **passed as a
+  string**, e.g. `"notes":"[{p:60,t:0,d:4,v:100}]"`: `p` pitch, `t` start beat,
+  `d` duration in beats, `v` velocity. Trivial to build and parse
+  programmatically.
 - **`barbeat`** (Producer Pal's default) — a compact human-readable text format
   (e.g. `v100 n1/4 C3 1|1`), tuned for models writing notes by hand.
 - **`stark`** — a simpler literal per-line `type: content` format with
@@ -97,10 +98,10 @@ node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 # Tool calls (args are a JSON object)
 node ppal.mjs ppal-read-live-set
 node ppal.mjs ppal-read-track '{"trackIndex": 0}'
-node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16:0","notes":[...]}' --notation midi-json
+node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16bar","notes":"[{p:60,t:0,d:4,v:100}]"}' --notation midi-json
 
 # Long-running calls — bump the timeout (1–60000 ms)
-node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16:0","notes":"..."}' --timeout-ms 10000
+node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16bar","notes":"..."}' --timeout-ms 10000
 
 # Non-default URL (e.g. remote machine over a tunnel)
 node ppal.mjs --url http://other-host:3350 --list-tools
