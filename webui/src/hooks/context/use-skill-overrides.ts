@@ -35,8 +35,18 @@ export interface SkillSlotView {
   gate: SkillGate | null;
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
+  /** Set when this override predates the slot's `-write` split (null if not). */
+  splitStale: SplitStale | null;
   /** Producer Pal version the override was forked from (null when none). */
   forkedFromVersion: string | null;
+}
+
+/** A pre-split override's overlap with the `-write` sibling it duplicates. */
+export interface SplitStale {
+  /** The `-write` fragment that ships this text now. */
+  sibling: string;
+  /** How many of the override's lines are still the built-in's. */
+  sharedLines: number;
 }
 
 /**
@@ -164,6 +174,8 @@ interface RawSkillSlot {
   override: string;
   drifted: boolean;
   provenance: { producerPalVersion: string } | null;
+  /** Absent on an older server, and null whenever nothing is stale. */
+  splitStale?: SplitStale | null;
   /** Optional so a slot from an older server reads as on rather than off. */
   enabled?: boolean;
   canDisable?: boolean;
@@ -286,6 +298,7 @@ function toView(raw: RawSkillSlot): SkillSlotView {
     canDisable: raw.canDisable !== false,
     gate: toGate(raw.gate),
     drifted: raw.drifted,
+    splitStale: raw.splitStale ?? null,
     forkedFromVersion: raw.provenance?.producerPalVersion ?? null,
   };
 }

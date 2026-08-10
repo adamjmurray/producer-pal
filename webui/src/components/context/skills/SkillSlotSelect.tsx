@@ -23,9 +23,10 @@ interface SkillSlotSelectProps {
  * controls strip shows it in full for the selected slot.
  *
  * Each option is glyph-marked so the whole set's state is visible without
- * clicking through: "✕" when the fragment is switched off, "⚠" when the built-in
- * changed since the override was forked (drift), "✎" when customized and in
- * sync, and unmarked when the slot tracks the built-in.
+ * clicking through: "✕" when the fragment is switched off, "⚠" when the override
+ * needs attention (the built-in changed under it, or it predates a `-write`
+ * split), "✎" when customized and in sync, and unmarked when the slot tracks the
+ * built-in.
  * @param props - Select props
  * @returns Select element
  */
@@ -56,15 +57,17 @@ export function SkillSlotSelect(
 /**
  * The leading status glyph for a slot's dropdown option. A pencil (rather than a
  * heavy "●" dot) reads as "customized/edited" and stays lighter in the option
- * row; the "⚠" drift mark takes precedence since drift implies an override too.
- * Being switched off outranks both — a fragment that isn't sent at all makes its
- * override and any drift in it moot.
+ * row; the "⚠" mark takes precedence since both things it stands for imply an
+ * override too. Drift and a pre-split override share the one glyph rather than
+ * splitting the vocabulary — either way the override wants a look, and the
+ * editor says which it is. Being switched off outranks both: a fragment that
+ * isn't sent at all makes any problem in it moot.
  * @param slot - The slot to mark
- * @returns "✕ " when off, "⚠ " when drifted, "✎ " when customized, else ""
+ * @returns "✕ " when off, "⚠ " when it wants attention, "✎ " when customized, else ""
  */
 function slotGlyph(slot: SkillSlotView): string {
   if (!slot.enabled) return "✕ ";
-  if (slot.drifted) return "⚠ ";
+  if (slot.drifted || slot.splitStale) return "⚠ ";
   if (slot.override) return "✎ ";
 
   return "";

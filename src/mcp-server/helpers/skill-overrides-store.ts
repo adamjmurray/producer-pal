@@ -32,7 +32,9 @@ import {
   SKILL_SLOT_NAMES,
   SKILL_SLOTS,
   type SkillSlotName,
+  SPLIT_SKILL_SLOTS,
 } from "#src/skills/skill-slots.ts";
+import { staleSplitLines } from "#src/skills/stale-split-lines.ts";
 import {
   deleteConfigMarkdown,
   listConfigMarkdownFilesRecursive,
@@ -76,6 +78,14 @@ const BUILT_IN_HASHES: Record<SkillSlotName, string> = Object.fromEntries(
   ]),
 ) as Record<SkillSlotName, string>;
 
+/** A pre-split override's overlap with the `-write` sibling it duplicates. */
+export interface SplitStaleness {
+  /** The `-write` sibling that ships this text now. */
+  sibling: SkillSlotName;
+  /** How many of the override's lines are still the sibling's, word for word. */
+  sharedLines: number;
+}
+
 /** Full state of one override slot, for the webui editor. */
 export interface SkillSlotState {
   /** Stable public slot name. */
@@ -101,6 +111,12 @@ export interface SkillSlotState {
   gate: FragmentGate | null;
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
+  /**
+   * Set when this override predates the slot's `-write` split and still carries
+   * the sibling's text (null otherwise). Separate from `drifted`: that one is
+   * "the default moved under you", this one is "your fork ships text twice".
+   */
+  splitStale: SplitStaleness | null;
   /** Fork-time provenance (null when there is no override). */
   provenance: OverrideProvenance | null;
 }
@@ -183,6 +199,7 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
     canDisable: isDisableableSkillSlot(name),
     gate: fragmentGate(name),
     drifted: isDrifted(provenance, BUILT_IN_HASHES[name]),
+    splitStale: splitStaleness(name, override),
     provenance,
   };
 }
@@ -241,6 +258,38 @@ export function deleteSkillOverride(name: SkillSlotName): SkillSlotState {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Whether a slot's override predates its `-write` split and still holds the
+ * sibling's text — the same check buildSkills warns about (warnSplitOverrides),
+ * reported per slot so the editor can say it where the editing happens. An
+ * override of the sibling, or switching it off, means the user has already met
+ * the split, so both stay quiet.
+ *
+ * Tool gating is deliberately left out: whether the sibling ships is a property
+ * of the CALLER's toolset, not of the slot, and the editor states that gate
+ * separately.
+ *
+ * @param name - The slot being read
+ * @param override - Its override body ("" when the slot tracks the built-in)
+ * @returns The overlap, or null when there is nothing stale to report
+ */
+function splitStaleness(
+  name: SkillSlotName,
+  override: string,
+): SplitStaleness | null {
+  const sibling = SPLIT_SKILL_SLOTS[name];
+
+  if (!override || sibling == null) return null;
+
+  const { data, body } = readSlotFile(filenameFor(sibling));
+
+  if (body.trim() || !isEnabled(data)) return null;
+
+  const shared = staleSplitLines(override, SKILL_SLOTS[sibling].builtIn);
+
+  return shared.length === 0 ? null : { sibling, sharedLines: shared.length };
+}
 
 /**
  * The override filename for a slot, under the skills/ subfolder of the config

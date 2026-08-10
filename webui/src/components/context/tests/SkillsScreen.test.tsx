@@ -265,6 +265,57 @@ describe("SkillsScreen", () => {
     expect(note.textContent).not.toContain("(v");
   });
 
+  it("shows the split-staleness fix on the fragment being edited", () => {
+    renderSlots([
+      slot({
+        override: "MINE",
+        splitStale: { sibling: "barbeat-standard-write", sharedLines: 7 },
+      }),
+    ]);
+
+    const note = screen.getByRole("alert");
+
+    expect(note.textContent).toContain("predates the writing-notes split");
+    expect(note.textContent).toContain("7 of its lines");
+    expect(note.textContent).toContain("barbeat-standard-write.md");
+  });
+
+  it("points at a stale fragment from the driver, and jumps to it", () => {
+    // The editor opens on the driver, so that is where a stale fragment
+    // elsewhere in the list has to be announced — otherwise the note waits to be
+    // selected and never reaches the user who has the problem.
+    renderSlots([
+      slot({ name: "standard", builtIn: "DRIVER", canDisable: false }),
+      slot({
+        name: "stark",
+        builtIn: "STARK",
+        override: "MINE",
+        splitStale: { sibling: "stark-write", sharedLines: 3 },
+      }),
+    ]);
+
+    expect(screen.getByRole("alert").textContent).toContain("stark.md");
+
+    fireEvent.click(screen.getByText("Open it"));
+
+    expect(editorValues()).toContain("MINE");
+  });
+
+  it("leaves an unaffected fragment to the dropdown glyph alone", () => {
+    // The banner is the driver's and the affected slot's; repeating it on all 25
+    // other fragments until the fix lands is noise.
+    renderSlots([
+      slot({ name: "library" }),
+      slot({
+        name: "stark",
+        override: "MINE",
+        splitStale: { sibling: "stark-write", sharedLines: 3 },
+      }),
+    ]);
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("surfaces an external-update banner when the override changes under a clean draft", () => {
     const { rerenderSlots } = renderSlots([slot({ override: "" })]);
 

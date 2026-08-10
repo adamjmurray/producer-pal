@@ -21,6 +21,7 @@ export function slot(over: Partial<SkillSlotView> = {}): SkillSlotView {
     canDisable: true,
     gate: null,
     drifted: false,
+    splitStale: null,
     forkedFromVersion: null,
     ...over,
   };

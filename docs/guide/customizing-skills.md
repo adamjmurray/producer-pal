@@ -81,8 +81,9 @@ The notation guides also split in two: the `-write` fragments above were carved
 out of `barbeat-standard`, `barbeat-basic`, `stark-standard`, and `stark-basic`.
 An override of one of those still loads, but it carries a copy of the writing
 material that now ships separately — so the model reads it twice. Producer Pal
-warns when it spots that. Delete the duplicated sections from your override, or
-override its `-write` fragment too.
+flags that on the fragment itself in the Skills editor, as well as in the
+**Preview** view. Delete the duplicated sections from your override, or override
+its `-write` fragment too.
 
 :::
 

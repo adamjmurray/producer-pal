@@ -26,6 +26,7 @@ import {
 } from "#webui/hooks/context/use-skill-overrides";
 import { SkillGateNote } from "./SkillGateNote";
 import { SkillSlotSelect } from "./SkillSlotSelect";
+import { SplitOverrideNote } from "./SplitOverrideNote";
 
 const RESET_CONFIRM =
   "Reset this skill fragment to Producer Pal's default? This deletes your override.";
@@ -115,6 +116,11 @@ export function SkillSlotScreen(
       <div
         className={`mx-auto w-full ${widthClass} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
       >
+        <SplitOverrideNote
+          slots={slots}
+          slot={slot}
+          onSelectSlot={onSelectSlot}
+        />
         {editor.externalUpdate && (
           <ExternalUpdateBanner
             message={EXTERNAL_UPDATE_MESSAGE}

@@ -15,6 +15,10 @@ import {
 } from "#src/mcp-server/helpers/skill-overrides-store.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
+import {
+  barbeatStandard,
+  barbeatStandardWrite,
+} from "#src/skills/notation/barbeat-standard.ts";
 import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
@@ -279,6 +283,42 @@ describe("readSkillSlotState", () => {
     expect(state.override).toBe("hand-edited fork");
     expect(state.provenance).toBeNull();
     expect(state.drifted).toBe(false);
+  });
+});
+
+describe("readSkillSlotState — overrides that predate a -write split", () => {
+  /** A pre-split fork of `barbeat-standard`: the whole guide, both halves. */
+  const preSplitFork = `${barbeatStandard}\n\n${barbeatStandardWrite}`;
+
+  it("names the sibling that now ships the copied text, and counts the lines", () => {
+    writeSkillOverride("barbeat-standard", { content: preSplitFork });
+
+    const { splitStale } = readSkillSlotState("barbeat-standard");
+
+    expect(splitStale?.sibling).toBe("barbeat-standard-write");
+    expect(splitStale?.sharedLines).toBeGreaterThan(0);
+  });
+
+  it("stays quiet once the sibling is overridden or switched off", () => {
+    // Either one means the user has already met the split.
+    writeSkillOverride("barbeat-standard", { content: preSplitFork });
+    writeSkillOverride("barbeat-standard-write", { content: "mine" });
+
+    expect(readSkillSlotState("barbeat-standard").splitStale).toBeNull();
+
+    deleteSkillOverride("barbeat-standard-write");
+    writeSkillOverride("barbeat-standard-write", { enabled: false });
+
+    expect(readSkillSlotState("barbeat-standard").splitStale).toBeNull();
+  });
+
+  it("stays quiet for a fork made after the split, and for slots that never split", () => {
+    writeSkillOverride("barbeat-standard", { content: barbeatStandard });
+    writeSkillOverride("library", { content: "my library notes" });
+
+    expect(readSkillSlotState("barbeat-standard").splitStale).toBeNull();
+    expect(readSkillSlotState("library").splitStale).toBeNull();
+    expect(readSkillSlotState("midi-json").splitStale).toBeNull();
   });
 });
 

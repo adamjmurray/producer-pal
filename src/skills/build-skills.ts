@@ -21,13 +21,7 @@ import {
   RETIRED_SKILL_SLOTS,
   SPLIT_SKILL_SLOTS,
 } from "#src/skills/skill-slots.ts";
-
-/**
- * How long a line has to be before matching it verbatim means the override
- * copied it. Short enough for one bullet lead or a specific heading, long
- * enough that a generic `## Examples` can't trip it.
- */
-const MIN_COPIED_LINE = 40;
+import { staleSplitLines } from "#src/skills/stale-split-lines.ts";
 
 /** How much of a copied line a warning quotes. */
 const SNIPPET_LENGTH = 60;
@@ -361,7 +355,7 @@ function warnSplitOverrides(
       continue;
     }
 
-    const shared = sharedLines(body, builtIns[write] ?? "");
+    const shared = staleSplitLines(body, builtIns[write] ?? "");
 
     if (shared.length === 0) continue;
 
@@ -369,30 +363,6 @@ function warnSplitOverrides(
       `skills override "${head}.md" predates the writing-notes split: ${shared.length} of its lines are still the built-in's, e.g. ${shared.slice(0, EXAMPLE_LINES).map(snippet).map(quoted).join(", ")} — that text is now the separate fragment "${write}", so it ships twice. Delete it from your override, or switch "${write}" off.`,
     );
   }
-}
-
-/**
- * The substantial lines a built-in and an override body both carry, word for
- * word.
- *
- * Headings alone were the wrong signal in both directions. Stark's authoring
- * half was a BULLET before the split, with no heading of its own, so a stale
- * fork of it could never be detected; meanwhile a fresh fork that writes its own
- * `## Examples` shares a heading with content it never copied, and was told to
- * delete its own text. A long line reproduced verbatim is what actually says
- * "this came from the built-in".
- *
- * @param body - The override body
- * @param builtIn - The built-in fragment to compare against
- * @returns Shared lines, in the built-in's order
- */
-function sharedLines(body: string, builtIn: string): string[] {
-  const bodyLines = new Set(body.split("\n").map((line) => line.trim()));
-
-  return builtIn
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length >= MIN_COPIED_LINE && bodyLines.has(line));
 }
 
 /**

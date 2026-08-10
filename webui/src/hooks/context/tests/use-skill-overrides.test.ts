@@ -99,6 +99,7 @@ describe("useSkillOverrides", () => {
         canDisable: true,
         gate: null,
         drifted: false,
+        splitStale: null,
         forkedFromVersion: null,
       },
       {
@@ -111,10 +112,25 @@ describe("useSkillOverrides", () => {
         canDisable: true,
         gate: null,
         drifted: true,
+        splitStale: null,
         forkedFromVersion: "1.4.0",
       },
     ]);
     expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+  });
+
+  it("carries a slot's split-staleness through, and reads it as absent on an older server", async () => {
+    const splitStale = { sibling: "barbeat-standard-write", sharedLines: 6 };
+    const result = await renderReady([
+      rawSlot({ override: "MINE", splitStale }),
+      rawSlot({ name: "stark" }),
+    ]);
+    const { status } = result.current;
+
+    expect(
+      status.kind === "ready" && status.slots[0]?.splitStale,
+    ).toStrictEqual(splitStale);
+    expect(status.kind === "ready" && status.slots[1]?.splitStale).toBeNull();
   });
 
   it("maps each gate shape, and reads anything unrecognized as no gate", async () => {
