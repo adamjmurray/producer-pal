@@ -7,6 +7,7 @@
 import Max from "max-api";
 import { BUILD_SHA, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { isConfigDirInert } from "./helpers/config-store/config-markdown-store.ts";
 import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
 import { registerMemoryNodeRoutes } from "./helpers/memory/memory-node-routes.ts";
@@ -63,6 +64,18 @@ if (devFlags.length > 0) {
     `Producer Pal: dev-only flags enabled — do not use this build in production: ${devFlags
       .map(([name]) => name)
       .join(", ")}`,
+  );
+}
+
+// Only a Live started from a test process gets here (VITEST is inherited by an
+// app macOS cold-starts). Say it out loud: everything under ~/.producer-pal —
+// global context, memory, skill overrides — reads empty and writes vanish,
+// which otherwise looks like a working server with nothing saved.
+if (isConfigDirInert()) {
+  console.warn(
+    "Producer Pal: ~/.producer-pal is disabled (VITEST is set in this " +
+      "process). Global context, memory, and skill overrides will read as " +
+      "empty and writes will be dropped.",
   );
 }
 
