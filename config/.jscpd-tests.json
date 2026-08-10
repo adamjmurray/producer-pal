@@ -1,11 +1,12 @@
 {
-  "threshold": 1.2,
+  "threshold": 0.9,
   "reporters": ["console"],
   "ignorePattern": [
     "// Producer Pal",
     "// Copyright \\(C\\).*",
     "// AI assistance:.*",
-    "// SPDX-License-Identifier:.*"
+    "// SPDX-License-Identifier:.*",
+    "(?m)^vi\\.mock\\(.*(?:\\n(?:[ \\t].*)?)*\\n[)};]+$"
   ],
   "ignore": ["**/node_modules/**", "**/parser/*.js"],
   "pattern": "**/{*.test.ts,*.test.tsx,*.spec.ts,*.spec.tsx,*-test-cases.ts,*-test-helpers.ts,*-test-helpers.tsx,test/**,tests/**,test-cases/**,test-utils/**}",
