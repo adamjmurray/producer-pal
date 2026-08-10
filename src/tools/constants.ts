@@ -1,12 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 export const MAX_AUTO_CREATED_TRACKS = 100;
 export const MAX_AUTO_CREATED_SCENES = 1000;
 export const MAX_ARRANGEMENT_POSITION_BEATS = 1_576_800;
 export const MAX_SPLIT_POINTS = 32;
-export const MAX_CODE_LENGTH = 2500;
+// Enforced with boundedString(), not z.string().max() — see ADR-0021.
+export const MAX_CODE_LENGTH = 10_000;
 
 // State string constants (6 valid states)
 export const STATE = {

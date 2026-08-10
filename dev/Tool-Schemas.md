@@ -32,6 +32,19 @@ schema tolerant. There's no built-in "degrade to a comma-separated string"
 switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 `params` array adds a `preprocess` that also accepts a JSON-stringified array.
 
+## Length caps
+
+`z.string().max(n)` emits `maxLength: n`. llama.cpp-based clients (Jan, LM
+Studio, Ollama, llama-server) compile all the tool schemas into one GBNF grammar
+and turn that into a `char{0,n}` repetition, which their parser rejects at 2000
+or above — killing every tool call, not just the one tool.
+
+So for a cap of 2000 or more, use `boundedString(max)` from
+`src/tools/shared/tool-framework/bounded-string.ts` and put the limit in the
+param description. It validates the same and emits no keyword. Smaller caps can
+stay as `z.string().max()`. `src/test/meta/tool-schema-grammar-safety.test.ts`
+checks every tool. Background: ADR-0021.
+
 ## Coercion
 
 Use `z.coerce.string()` for ID params (`ids`, `trackId`, `clipId`,
