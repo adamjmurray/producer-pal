@@ -445,6 +445,41 @@ describe("useSkillOverrides", () => {
     expect(overrideOf(result, 0)).toBe("NEW");
   });
 
+  it("does not let a superseded write's FAILURE paint over a newer one", async () => {
+    // The error-path mirror of the test above. A discarded write's failure says
+    // nothing about what is on disk either: reporting it tells the user their
+    // edit was lost while the PUT that owns the file is still on the wire (or has
+    // already succeeded).
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    const older = deferred<Response>();
+    const newer = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(older.promise);
+    fetchMock.mockReturnValueOnce(newer.promise);
+
+    let newerPending: Promise<boolean> | undefined;
+
+    await act(async () => {
+      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
+
+      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
+      older.reject(new Error("network died"));
+      await olderPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saving");
+    expect(result.current.saveError).toBeNull();
+
+    await act(async () => {
+      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+      await newerPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
   it("does not let a save of one slot discard another slot's echo", async () => {
     // Ordering is per slot: newest-write-wins across the whole collection would
     // drop this first slot's merge just because a second slot was saved after.

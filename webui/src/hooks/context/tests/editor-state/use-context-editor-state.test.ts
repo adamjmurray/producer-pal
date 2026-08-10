@@ -422,6 +422,25 @@ describe("useContextEditorState", () => {
       expect(result.current.dirty).toBe(false);
     });
 
+    it("leaves an unflushed draft dirty when the clear fails", async () => {
+      // This draft never reached the server: the replace cancelled its debounce
+      // before dispatching. Rolling the baseline back to the draft rather than to
+      // what was really saved would call it saved — leaving it clean, so the next
+      // external-update banner's Reload discards it.
+      const clear = vi.fn().mockResolvedValue(false);
+      const { result } = renderReadyEditor({ clear });
+
+      stubConfirm(true);
+      await typeDraft(result, "never saved");
+
+      await act(async () => {
+        await result.current.handleClear();
+      });
+
+      expect(result.current.getContent()).toBe("never saved");
+      expect(result.current.dirty).toBe(true);
+    });
+
     it("getContent returns the live draft", async () => {
       const { result } = renderEditor(makeReady("seed"));
 

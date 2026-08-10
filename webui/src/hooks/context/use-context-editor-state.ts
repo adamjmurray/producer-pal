@@ -123,6 +123,9 @@ async function replaceDocument(
   write: () => Promise<boolean>,
 ): Promise<boolean> {
   const previousDraft = ctx.draftRef.current;
+  // stageDraft cancels the debounce, so a draft typed but not yet flushed never
+  // reaches the server. Keep the real baseline to put back if the write fails.
+  const previousLastSaved = ctx.lastSavedRef.current;
 
   stageDraft(ctx, content);
   ctx.replacingRef.current += 1;
@@ -145,14 +148,17 @@ async function replaceDocument(
   // Nothing remounted and the server still holds the old content, so leaving
   // the markers forward would make getContent() (Export) and the size readout
   // describe text nobody can see, with nothing to retry it. A draft typed since
-  // is kept — only the baseline goes back, leaving it dirty for the next flush.
+  // is kept; the baseline goes back to what was really SAVED, not to
+  // previousDraft — the debounce stageDraft cancelled may never have flushed it,
+  // and calling it saved leaves the edit reading clean, for the next "updated
+  // outside the editor" Reload to discard.
   if (ctx.draftRef.current === content) {
     ctx.draftRef.current = previousDraft;
     ctx.setCharCount(previousDraft?.length ?? 0);
   }
 
-  ctx.lastSavedRef.current = previousDraft;
-  ctx.setDirty(ctx.draftRef.current !== previousDraft);
+  ctx.lastSavedRef.current = previousLastSaved;
+  ctx.setDirty(ctx.draftRef.current !== previousLastSaved);
 
   return false;
 }

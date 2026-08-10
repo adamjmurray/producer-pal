@@ -345,7 +345,11 @@ export function useCollectionMutator(): CollectionMutator {
       } catch (error: unknown) {
         if (isUnmounted()) return null;
 
-        if (saveGenerationRef.current === generation) {
+        // Same superseded check as the success path, for the same reason: a
+        // newer write for this entry owns the file, so a stale failure must not
+        // paint "error" over its result — or over the "Saving…" it is still
+        // showing. Whichever write finishes last is the one that describes disk.
+        if (!superseded() && saveGenerationRef.current === generation) {
           setSaveError(errorMessage(error));
           setSaveStatus("error");
         }
