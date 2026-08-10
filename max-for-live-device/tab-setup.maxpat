@@ -14,6 +14,33 @@
         "boxes": [
             {
                 "box": {
+                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for manipulating MIDI with code",
+                    "annotation_name": "Notation",
+                    "id": "obj-90",
+                    "maxclass": "live.menu",
+                    "numinlets": 1,
+                    "numoutlets": 3,
+                    "outlettype": [ "", "", "float" ],
+                    "parameter_enable": 1,
+                    "patching_rect": [ 728.0, 143.0, 49.0, 15.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 9.000000268220901, 126.33333709836006, 54.0, 15.0 ],
+                    "saved_attribute_attributes": {
+                        "valueof": {
+                            "parameter_enum": [ "barbeat", "stark", "midi-json" ],
+                            "parameter_invisible": 1,
+                            "parameter_longname": "notation",
+                            "parameter_mmax": 2,
+                            "parameter_modmode": 0,
+                            "parameter_shortname": "notation",
+                            "parameter_type": 2
+                        }
+                    },
+                    "varname": "notation"
+                }
+            },
+            {
+                "box": {
                     "id": "obj-93",
                     "maxclass": "newobj",
                     "numinlets": 2,
@@ -162,33 +189,6 @@
                     "outlettype": [ "" ],
                     "patching_rect": [ 743.0, 167.0, 68.0, 22.0 ],
                     "text": "notation $1"
-                }
-            },
-            {
-                "box": {
-                    "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for manipulating MIDI with code",
-                    "annotation_name": "Notation",
-                    "id": "obj-90",
-                    "maxclass": "live.menu",
-                    "numinlets": 1,
-                    "numoutlets": 3,
-                    "outlettype": [ "", "", "float" ],
-                    "parameter_enable": 1,
-                    "patching_rect": [ 728.0, 143.0, 49.0, 15.0 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 9.000000268220901, 126.33333709836006, 54.0, 15.0 ],
-                    "saved_attribute_attributes": {
-                        "valueof": {
-                            "parameter_enum": [ "barbeat", "stark", "midi-json" ],
-                            "parameter_invisible": 1,
-                            "parameter_longname": "notation",
-                            "parameter_mmax": 2,
-                            "parameter_modmode": 0,
-                            "parameter_shortname": "notation",
-                            "parameter_type": 2
-                        }
-                    },
-                    "varname": "notation"
                 }
             },
             {
