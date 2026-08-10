@@ -34,6 +34,43 @@ describe("Tooltip", () => {
     } as DOMRect;
   }
 
+  /**
+   * Stub getBoundingClientRect on every element, keyed by call order — the
+   * tooltip div only exists after the first render, so the spy has to live on
+   * the prototype. Calls with no entry fall through to the real measurement.
+   * @param byCall - Rect fields per 1-based call index
+   */
+  function stubRects(byCall: Record<number, Partial<DOMRect>>): void {
+    const origGetBCR = Element.prototype.getBoundingClientRect;
+    let callCount = 0;
+
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        callCount++;
+        const parts = byCall[callCount];
+
+        return parts ? rect(parts) : origGetBCR.call(this);
+      },
+    );
+  }
+
+  /** Render the tooltip and hover it open. */
+  const showTooltip = (): void => {
+    render(<Tooltip text="Some description" />);
+    fireEvent.mouseEnter(infoButton());
+  };
+
+  /** Wait for the tooltip's inline style `prop` to settle on `value`. */
+  const expectTooltipStyle = (
+    prop: "top" | "left",
+    value: string,
+  ): Promise<void> =>
+    vi.waitFor(() => {
+      expect((screen.getByRole("tooltip") as HTMLElement).style[prop]).toBe(
+        value,
+      );
+    });
+
   it("renders info icon button", () => {
     render(<Tooltip text="Some description" />);
     expect(infoButton()).toBeDefined();
@@ -126,59 +163,34 @@ describe("Tooltip", () => {
     // Set a narrow viewport
     Object.defineProperty(window, "innerWidth", { value: 200, writable: true });
 
-    // Spy on Element.prototype.getBoundingClientRect so all elements
-    // (including the tooltip div created after the first render) get the mock.
-    const origGetBCR = Element.prototype.getBoundingClientRect;
-    let callCount = 0;
-
-    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: Element) {
-        callCount++;
-
-        // First call is for the button (positioning effect)
-        if (callCount === 1) {
-          return {
-            top: 0,
-            left: 150,
-            right: 170,
-            bottom: 20,
-            width: 20,
-            height: 20,
-            x: 150,
-            y: 0,
-            toJSON: () => ({}),
-          } as DOMRect;
-        }
-
-        // Second call is for the tooltip (overflow check effect)
-        if (callCount === 2) {
-          return {
-            top: 26,
-            left: 150,
-            right: 400,
-            bottom: 50,
-            width: 250,
-            height: 24,
-            x: 150,
-            y: 26,
-            toJSON: () => ({}),
-          } as DOMRect;
-        }
-
-        return origGetBCR.call(this);
+    stubRects({
+      // Button (positioning effect), then tooltip (overflow check effect).
+      1: {
+        top: 0,
+        left: 150,
+        right: 170,
+        bottom: 20,
+        width: 20,
+        height: 20,
+        x: 150,
       },
-    );
+      2: {
+        top: 26,
+        left: 150,
+        right: 400,
+        bottom: 50,
+        width: 250,
+        height: 24,
+        x: 150,
+        y: 26,
+      },
+    });
 
-    render(<Tooltip text="Some description" />);
-    fireEvent.mouseEnter(infoButton());
+    showTooltip();
 
     // Wait for the overflow adjustment to reposition the tooltip.
     // With innerWidth=200 and tooltip width=250: Math.max(8, 200-250-8) = 8
-    await vi.waitFor(() => {
-      const tooltip = screen.getByRole("tooltip");
-
-      expect((tooltip as HTMLElement).style.left).toBe("8px");
-    });
+    await expectTooltipStyle("left", "8px");
 
     vi.restoreAllMocks();
   });
@@ -189,48 +201,20 @@ describe("Tooltip", () => {
       writable: true,
     });
 
-    const origGetBCR = Element.prototype.getBoundingClientRect;
-    let callCount = 0;
+    // Button, near the bottom of the viewport; measured again on the re-check.
+    const button = { top: 280, left: 10, right: 30, bottom: 300, height: 20 };
 
-    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: Element) {
-        callCount++;
+    stubRects({
+      1: button,
+      3: button,
+      // Tooltip, rendered below the button and hanging off the bottom.
+      2: { top: 306, left: 10, right: 110, bottom: 406, height: 100 },
+    });
 
-        // Button, near the bottom of the viewport.
-        if (callCount === 1 || callCount === 3) {
-          return rect({
-            top: 280,
-            left: 10,
-            right: 30,
-            bottom: 300,
-            height: 20,
-          });
-        }
-
-        // Tooltip, rendered below the button and hanging off the bottom.
-        if (callCount === 2) {
-          return rect({
-            top: 306,
-            left: 10,
-            right: 110,
-            bottom: 406,
-            height: 100,
-          });
-        }
-
-        return origGetBCR.call(this);
-      },
-    );
-
-    render(<Tooltip text="Some description" />);
-    fireEvent.mouseEnter(infoButton());
+    showTooltip();
 
     // Flipped: button top (280) - tooltip height (100) - gap (6) = 174
-    await vi.waitFor(() => {
-      const tooltip = screen.getByRole("tooltip");
-
-      expect((tooltip as HTMLElement).style.top).toBe("174px");
-    });
+    await expectTooltipStyle("top", "174px");
 
     vi.restoreAllMocks();
   });

@@ -31,6 +31,23 @@ function registerTrack1WithDevice456(): void {
   registerMockObject("device456", { path: livePath.track(1).device(0) });
 }
 
+/**
+ * Re-register track 0 holding one existing device, so an insert at position 1
+ * lands after it, plus the device that insert_device returns.
+ * @returns The re-registered track 0 mock
+ */
+function registerTrack0WithExistingDevice(): RegisteredMockObject {
+  const track = registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: { devices: children("existing-device") },
+    methods: { insert_device: () => ["id", "device123"] },
+  });
+
+  registerMockObject("device123", { path: livePath.track(0).device(1) });
+
+  return track;
+}
+
 function registerTrack0WithDevice123(): void {
   registerMockObject("track-0", {
     path: livePath.track(0),
@@ -196,15 +213,7 @@ describe("createDevice", () => {
       });
 
       it("should create device on track via path with position", () => {
-        track0 = registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("existing-device") },
-          methods: { insert_device: () => ["id", "device123"] },
-        });
-
-        registerMockObject("device123", {
-          path: livePath.track(0).device(1),
-        });
+        track0 = registerTrack0WithExistingDevice();
 
         const result = createDevice({
           path: "t0/d1",
@@ -270,15 +279,7 @@ describe("createDevice", () => {
       it("should warn and append when position is past the end of the chain", async () => {
         const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
-        track0 = registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("existing-device") },
-          methods: { insert_device: () => ["id", "device123"] },
-        });
-
-        registerMockObject("device123", {
-          path: livePath.track(0).device(1),
-        });
+        track0 = registerTrack0WithExistingDevice();
 
         const result = createDevice({
           path: "t0/d5",

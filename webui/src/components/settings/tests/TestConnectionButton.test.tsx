@@ -17,7 +17,37 @@ vi.mock(import("#webui/utils/test-connection"), () => ({
   testConnection: mockTestConnection,
 }));
 
+import { type ComponentProps } from "preact";
 import { TestConnectionButton } from "#webui/components/settings/TestConnectionButton";
+
+const button = () =>
+  screen.getByTestId("test-connection-button") as HTMLButtonElement;
+const message = () => screen.getByTestId("test-connection-message");
+
+/**
+ * Render the button and click it. Defaults to the openai/key pairing the
+ * status tests use; the prop-forwarding tests pass overrides.
+ */
+const clickTest = (
+  overrides: Partial<ComponentProps<typeof TestConnectionButton>> = {},
+): void => {
+  render(
+    <TestConnectionButton provider="openai" apiKey="key" {...overrides} />,
+  );
+  fireEvent.click(button());
+};
+
+/** Wait for the status message to appear. */
+const waitForMessage = (): Promise<void> =>
+  waitFor(() => {
+    expect(message()).toBeDefined();
+  });
+
+/** Wait for the status message to read `text`. */
+const waitForMessageText = (text: string): Promise<void> =>
+  waitFor(() => {
+    expect(message().textContent).toBe(text);
+  });
 
 describe("TestConnectionButton", () => {
   beforeEach(() => {
@@ -32,9 +62,7 @@ describe("TestConnectionButton", () => {
   it("renders button with idle text", () => {
     render(<TestConnectionButton provider="openai" apiKey="key" />);
 
-    expect(screen.getByTestId("test-connection-button").textContent).toBe(
-      "Test Connection",
-    );
+    expect(button().textContent).toBe("Test Connection");
   });
 
   it("shows Testing... while in progress", async () => {
@@ -46,18 +74,11 @@ describe("TestConnectionButton", () => {
       }),
     );
 
-    render(<TestConnectionButton provider="openai" apiKey="key" />);
+    clickTest();
 
-    fireEvent.click(screen.getByTestId("test-connection-button"));
+    expect(button().textContent).toBe("Testing\u2026");
 
-    expect(screen.getByTestId("test-connection-button").textContent).toBe(
-      "Testing\u2026",
-    );
-
-    expect(
-      (screen.getByTestId("test-connection-button") as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    expect(button().disabled).toBe(true);
 
     resolve({ ok: true, message: "Connected" });
   });
@@ -65,19 +86,11 @@ describe("TestConnectionButton", () => {
   it("shows success message", async () => {
     mockTestConnection.mockResolvedValue({ ok: true, message: "Connected" });
 
-    render(<TestConnectionButton provider="openai" apiKey="key" />);
+    clickTest();
 
-    fireEvent.click(screen.getByTestId("test-connection-button"));
+    await waitForMessageText("Connected");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("test-connection-message").textContent).toBe(
-        "Connected",
-      );
-    });
-
-    expect(screen.getByTestId("test-connection-message").className).toContain(
-      "text-green",
-    );
+    expect(message().className).toContain("text-green");
   });
 
   it("shows error message", async () => {
@@ -86,31 +99,19 @@ describe("TestConnectionButton", () => {
       message: "Invalid API key",
     });
 
-    render(<TestConnectionButton provider="openai" apiKey="key" />);
+    clickTest();
 
-    fireEvent.click(screen.getByTestId("test-connection-button"));
+    await waitForMessageText("Invalid API key");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("test-connection-message").textContent).toBe(
-        "Invalid API key",
-      );
-    });
-
-    expect(screen.getByTestId("test-connection-message").className).toContain(
-      "text-red",
-    );
+    expect(message().className).toContain("text-red");
   });
 
   it("auto-clears status after timeout", async () => {
     mockTestConnection.mockResolvedValue({ ok: true, message: "Connected" });
 
-    render(<TestConnectionButton provider="openai" apiKey="key" />);
+    clickTest();
 
-    fireEvent.click(screen.getByTestId("test-connection-button"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("test-connection-message")).toBeDefined();
-    });
+    await waitForMessage();
 
     vi.advanceTimersByTime(5000);
 
@@ -122,37 +123,27 @@ describe("TestConnectionButton", () => {
   it("restarts the auto-clear window when tested again", async () => {
     mockTestConnection.mockResolvedValue({ ok: true, message: "Connected" });
 
-    render(<TestConnectionButton provider="openai" apiKey="key" />);
-
-    fireEvent.click(screen.getByTestId("test-connection-button"));
-    await waitFor(() => {
-      expect(screen.getByTestId("test-connection-message")).toBeDefined();
-    });
+    clickTest();
+    await waitForMessage();
 
     vi.advanceTimersByTime(4000);
-    fireEvent.click(screen.getByTestId("test-connection-button"));
-    await waitFor(() => {
-      expect(screen.getByTestId("test-connection-message")).toBeDefined();
-    });
+    fireEvent.click(button());
+    await waitForMessage();
 
     // Past the first click's 5s deadline; only the second timer is live.
     vi.advanceTimersByTime(2000);
 
-    expect(screen.getByTestId("test-connection-message")).toBeDefined();
+    expect(message()).toBeDefined();
   });
 
   it("passes provider, apiKey, and baseUrl to testConnection", async () => {
     mockTestConnection.mockResolvedValue({ ok: true, message: "Connected" });
 
-    render(
-      <TestConnectionButton
-        provider="ollama"
-        apiKey=""
-        baseUrl="http://myhost:9999"
-      />,
-    );
-
-    fireEvent.click(screen.getByTestId("test-connection-button"));
+    clickTest({
+      provider: "ollama",
+      apiKey: "",
+      baseUrl: "http://myhost:9999",
+    });
 
     await waitFor(() => {
       expect(mockTestConnection).toHaveBeenCalledWith(
@@ -166,11 +157,7 @@ describe("TestConnectionButton", () => {
   it("converts null baseUrl to undefined", async () => {
     mockTestConnection.mockResolvedValue({ ok: true, message: "Connected" });
 
-    render(
-      <TestConnectionButton provider="openai" apiKey="key" baseUrl={null} />,
-    );
-
-    fireEvent.click(screen.getByTestId("test-connection-button"));
+    clickTest({ baseUrl: null });
 
     await waitFor(() => {
       expect(mockTestConnection).toHaveBeenCalledWith(
