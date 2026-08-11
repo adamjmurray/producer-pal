@@ -40,6 +40,7 @@ src/notation/*/parser/generated-*-parser.js
 # Generated docs artifacts
 docs/_generated
 docs/public/markdown
+docs/public/downloads
 
 # VitePress Documentation Site
 docs/.vitepress/dist

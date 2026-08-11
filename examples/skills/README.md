@@ -2,8 +2,24 @@
 
 Agent skills that pair with [Producer Pal](https://producer-pal.org) to compose
 music in Ableton Live. Each is a self-contained folder with a `SKILL.md` and,
-where relevant, zero-dependency Node.js scripts. Copy the folders you want into
-your agent's skills directory.
+where relevant, zero-dependency Node.js scripts.
+
+## Install
+
+Download a zip and unzip it into your agent's skills directory —
+[`producer-pal-skill.zip`](https://producer-pal.org/downloads/producer-pal-skill.zip)
+for just the main skill,
+[`producer-pal-all-skills.zip`](https://producer-pal.org/downloads/producer-pal-all-skills.zip)
+for all of them:
+
+```bash
+curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip
+unzip -o /tmp/ppal-skills.zip -d ~/.claude/skills/
+# or ~/.codex/skills/, or ~/.gemini/skills/
+```
+
+The zips are built from `main`. From a checkout, copy the folders you want into
+that same directory instead.
 
 ## Connect first
 

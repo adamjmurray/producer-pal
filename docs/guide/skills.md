@@ -65,15 +65,24 @@ for scripts and pipelines that don't run an MCP client at all.
 
 ## Install
 
-Copy the
-[`examples/skills/producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
-folder from the Producer Pal repo into your agent's skills directory.
+Download
+<a href="/downloads/producer-pal-skill.zip" download>producer-pal-skill.zip</a>
+and unzip it into your agent's skills directory:
 
 ```bash
-# Clone (or download) the repo, then copy the skill folder
+curl -L https://producer-pal.org/downloads/producer-pal-skill.zip -o /tmp/ppal-skill.zip
+unzip -o /tmp/ppal-skill.zip -d ~/.claude/skills/
+# or ~/.codex/skills/, or ~/.gemini/skills/
+```
+
+The zip holds one folder, `producer-pal/`, so it lands in the right place with
+no reshuffling. It tracks the repo's `main` branch, same as this site.
+
+To take it from a git checkout instead:
+
+```bash
 git clone --depth 1 https://github.com/adamjmurray/producer-pal.git
 cp -r producer-pal/examples/skills/producer-pal ~/.claude/skills/
-# or ~/.codex/skills/, or ~/.gemini/skills/
 ```
 
 The skill folder contains a `SKILL.md` (frontmatter + instructions for the
@@ -198,9 +207,7 @@ into the skill folder.
 
 ## Companion skills
 
-The `producer-pal` skill is the connection. Two more skills in the same folder
-build on it, and are installed the same way — copy the folder into your agent's
-skills directory:
+The `producer-pal` skill is the connection. Two more skills build on it:
 
 - **`ableton-audio-generator`** — synthesize audio from scratch with plain
   Node.js DSP and place it in Live: drum kits and Drum Racks, samples for
@@ -209,13 +216,28 @@ skills directory:
   library handles WAV encoding so custom algorithms are cheap to try.
 - **`ableton-analyze-audio`** — get audio back out of Live, in two halves that
   work independently. **Render** the mix, a single track, or one Session clip to
-  a file: macOS only (it drives Live's Export dialog with AppleScript, since
-  there's no render API) but no API key needed, which also makes it the way to
-  get a plain bounce or stem on disk. **Analyze** any audio file with Google's
+  a file: macOS only, but no API key needed, which also makes it the way to get
+  a plain bounce or stem on disk. **Analyze** any audio file with Google's
   Gemini API for feedback on timbre, mix, and arrangement: any platform, no
   Ableton involved, needs a `GEMINI_API_KEY`. The analysis is one short script
   against one HTTP endpoint — swapping in a different audio-capable model or
   service is a small edit.
+
+<a href="/downloads/producer-pal-all-skills.zip" download>producer-pal-all-skills.zip</a>
+has all three — unzip it the same way:
+
+```bash
+curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip
+unzip -o /tmp/ppal-skills.zip -d ~/.claude/skills/
+```
+
+::: warning One part needs macOS
+
+`ableton-analyze-audio`'s **render** step drives Live's Export dialog with
+AppleScript, since Live has no render API. Everything else in the bundle — audio
+generation and the Gemini analysis — runs anywhere Node does.
+
+:::
 
 See the
 [skills README](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills)

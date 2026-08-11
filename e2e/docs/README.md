@@ -67,6 +67,11 @@ npm run docs:test:headed
   - pinggy.io
   - ngrok.com
 
+### 4. Skill Downloads
+
+The zips the skills page links to (`/downloads/*.zip`, generated during
+`docs:build`) are served and are real, non-empty archives.
+
 ## Adding New External Domains
 
 If you add links to new external domains in the documentation, update the
