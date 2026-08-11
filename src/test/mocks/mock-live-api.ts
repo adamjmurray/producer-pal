@@ -31,6 +31,21 @@ export interface MockLiveAPIContext {
   type?: LiveObjectType;
 }
 
+/**
+ * Derive the mock id from a path, matching how the real LiveAPI reports one
+ * @param path - Path or "id N" string
+ * @returns The bare id
+ */
+function deriveId(path?: string): string | undefined {
+  // An empty path reports "0" on Live 12.4.3, the same as any path that
+  // doesn't resolve — so exists() stays false after set_path "".
+  if (path === "") return "0";
+
+  return path?.startsWith("id ")
+    ? path.slice(3)
+    : path?.replaceAll(/\s+/g, "/");
+}
+
 export class LiveAPI {
   _path?: string;
   _id?: string;
@@ -45,9 +60,7 @@ export class LiveAPI {
 
   constructor(path?: string) {
     this._path = path;
-    this._id = path?.startsWith("id ")
-      ? path.slice(3)
-      : path?.replaceAll(/\s+/g, "/");
+    this._id = deriveId(path);
 
     this._registered = lookupMockObject(this._id, this._path);
 
@@ -132,6 +145,13 @@ export class LiveAPI {
     return this._path ?? "";
   }
 
+  /** Retarget the object, mirroring the real LiveAPI's writable path */
+  set path(value: string) {
+    this._path = value;
+    this._id = deriveId(value);
+    this._registered = lookupMockObject(this._id, this._path);
+  }
+
   get unquotedpath(): string {
     return this.path;
   }
@@ -184,6 +204,11 @@ export class LiveAPI {
 
     return detectTypeFromPath(this.path, this._id);
   }
+
+  // Built-in Max methods with no mock implementation — suites that exercise
+  // them stub the prototype themselves, the way they already do for goto.
+  declare getcount: (name: string) => number;
+  declare getstring: (property: string) => string;
 
   // Extension properties/methods added by live-api-extensions.js at runtime
   // These are stubs for TypeScript - actual implementations come from the extension

@@ -125,27 +125,37 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 
 ### Operation Types
 
-**Core operations:**
+**Live Object Model:**
 
-- `get_property` - Get property value using Live API convention
-- `set_property` - Set property value
-- `call_method` - Call a method
-
-**Convenience shortcuts:**
-
-- `get` - Alias for get_property
-- `set` - Alias for set_property
-- `call` - Alias for call_method
+- `get` - Get a property's raw value (an array)
+- `set` - Set a property value; returns Live's status code
+- `set_property` - The same write as `set`, but returns the value you sent
+- `call` - Call a method on the Live object
 - `goto` - Navigate to a new path
 - `info` - Get object information
 
-**Extension methods:**
+**Extension methods** (normalized values):
 
-- `getProperty` - Get property with cleaner interface
+- `getProperty` - Get a property, unwrapped to a scalar
 - `getChildIds` - Get child object IDs
 - `exists` - Check if object exists
 - `getColor` - Get color as hex string
 - `setColor` - Set color from hex string
+
+**The LiveAPI object itself,** not the Live object it points at:
+
+- `get_property` - Read a JavaScript field (`path`, `id`, `type`, `mode`,
+  `valid`, `children`, ...). Not the same as `get`.
+- `call_method` - Call a JavaScript method (`getProperty`, `getChildIds`,
+  `child`, ...). Not the same as `call`:
+  `call_method get_current_beats_song_time` fails, because that method lives on
+  the Live object.
+- `set_path` - Assign `path`. `""` clears it, releasing the path listeners Live
+  installs.
+- `set_mode` - Assign `mode`: `0` follows the path, `1` follows the object. Max
+  coerces anything else to 0 or 1.
+- `getcount` - Count children in a collection
+- `getstring` - Read a property as a string
 
 ### Important Limitations
 

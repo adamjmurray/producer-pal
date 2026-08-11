@@ -1,8 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import {
+  LIVE_API_OPERATION_TYPES,
+  MAX_OPERATIONS,
+} from "#src/tools/advanced/live-api-operations.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefLiveApi = defineTool("ppal-live-api", {
@@ -26,27 +31,17 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
       .array(
         z.object({
           type: z
-            .enum([
-              "get_property",
-              "set_property",
-              "call_method",
-              "get",
-              "set",
-              "call",
-              "goto",
-              "info",
-              "getProperty",
-              "getChildIds",
-              "exists",
-              "getColor",
-              "setColor",
-            ])
-            .describe("operation type"),
+            .enum(LIVE_API_OPERATION_TYPES)
+            .describe(
+              "Operation type. Live Object Model: get, set, call, goto, info. set_property writes exactly like set, but reports the value you sent. " +
+                "Producer Pal helpers returning normalized values: getProperty, getChildIds, exists, getColor, setColor. " +
+                "The LiveAPI object itself, not the Live object it points at: get_property (reads a JS field, not a Live property), set_path, set_mode, getcount, getstring, and call_method (calls a JS method, not a Live method)",
+            ),
           property: z
             .string()
             .optional()
             .describe(
-              "Property name for get_property/set_property/get/set/getProperty operations, or child type for getChildIds operations",
+              "Property name for get/set/set_property/get_property/getProperty/getstring operations, or child type for getChildIds/getcount operations",
             ),
           method: z
             .string()
@@ -60,12 +55,14 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
             .union([z.string(), z.number(), z.boolean(), z.array(z.number())])
             .optional()
             .describe(
-              'Value for set_property/set operations, path for goto operations, or color for setColor operations (a "#RRGGBB" hex string)',
+              'Value for set/set_property operations, path for goto or set_path operations (set_path accepts "" to release the object), ' +
+                "mode for set_mode operations (0 follows the path, 1 follows the object), " +
+                'or color for setColor operations (a "#RRGGBB" hex string)',
             ),
         }),
       )
       .min(1)
-      .max(50)
-      .describe("Array of operations to execute (max 50)"),
+      .max(MAX_OPERATIONS)
+      .describe(`Array of operations to execute (max ${MAX_OPERATIONS})`),
   },
 });

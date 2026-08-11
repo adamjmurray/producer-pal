@@ -62,17 +62,20 @@ describe("liveApi", () => {
       color: string,
     ) => string;
 
-    // goto is not on the mock LiveAPI type, so cast to assign it
-    (LiveAPI.prototype as unknown as Record<string, unknown>).goto = vi.fn(
-      function (this: MockLiveAPIContext, path: string) {
-        this._path = path;
-        this._id = path.replaceAll(/\s+/g, "/");
-        // Clear registration so getters use updated _path/_id
-        this._registered = undefined;
+    // goto/getcount/getstring are not on the mock LiveAPI type, so cast to assign them
+    const proto = LiveAPI.prototype as unknown as Record<string, unknown>;
 
-        return 1;
-      },
-    );
+    proto.goto = vi.fn(function (this: MockLiveAPIContext, path: string) {
+      this._path = path;
+      this._id = path.replaceAll(/\s+/g, "/");
+      // Clear registration so getters use updated _path/_id
+      this._registered = undefined;
+
+      return 1;
+    });
+
+    proto.getcount = vi.fn(() => 4);
+    proto.getstring = vi.fn((property: string) => `<${property}>`);
   });
 
   describe("input validation", () => {
@@ -393,6 +396,111 @@ describe("liveApi", () => {
           operations: [{ type: "setColor" }],
         }),
       ).toThrow("setColor operation requires value (color)");
+    });
+  });
+
+  describe("LiveAPI object operations", () => {
+    it("should handle set_path operation", () => {
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      const result = liveApi({
+        operations: [{ type: "set_path", value: String(livePath.track(0)) }],
+      });
+
+      // The result is a read-back of api.path, not an echo of the input.
+      expect(result.results[0]!.result).toBe(String(livePath.track(0)));
+      expect(result.path).toBe(String(livePath.track(0)));
+    });
+
+    it("should handle set_path operation with an empty path", () => {
+      // Clearing the path is the whole point of this operation: it is what
+      // releases the path listeners Live installs. "" is falsy, so this only
+      // works because the operation requires a defined value, not a truthy one.
+      const result = liveApi({
+        operations: [{ type: "set_path", value: "" }],
+      });
+
+      expect(result.results[0]!.result).toBe("");
+      expect(result.path).toBe("");
+      // A cleared path reports id "0", the same as any path that doesn't
+      // resolve, so the object reads as nonexistent. (This suite stubs
+      // exists(); the e2e suite asserts it against real Live.)
+      expect(result.id).toBe("0");
+    });
+
+    it("should throw error for set_path without value", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "set_path" }],
+        }),
+      ).toThrow("set_path operation requires value (path)");
+    });
+
+    it("should handle set_mode operation", () => {
+      const result = liveApi({
+        operations: [
+          { type: "set_mode", value: 1 },
+          { type: "get_property", property: "mode" },
+        ],
+      });
+
+      expect(result.results[0]!.result).toBe(1);
+      expect(result.results[1]!.result).toBe(1);
+    });
+
+    it("should handle set_mode operation with mode 0", () => {
+      // 0 is falsy, so this only passes validation because set_mode requires a
+      // defined value rather than a truthy one.
+      const result = liveApi({
+        operations: [{ type: "set_mode", value: 0 }],
+      });
+
+      expect(result.results[0]!.result).toBe(0);
+    });
+
+    it("should throw error for set_mode without value", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "set_mode" }],
+        }),
+      ).toThrow("set_mode operation requires value (mode)");
+    });
+
+    it("should handle getcount operation", () => {
+      const result = liveApi({
+        operations: [{ type: "getcount", property: "tracks" }],
+      });
+
+      expect(result.results[0]!.result).toBe(4);
+      expect(LiveAPI.prototype.getcount).toHaveBeenCalledWith("tracks");
+    });
+
+    it("should throw error for getcount without property", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "getcount" }],
+        }),
+      ).toThrow("getcount operation requires property (child type)");
+    });
+
+    it("should handle getstring operation", () => {
+      const result = liveApi({
+        operations: [{ type: "getstring", property: "tempo" }],
+      });
+
+      expect(result.results[0]!.result).toBe("<tempo>");
+      expect(LiveAPI.prototype.getstring).toHaveBeenCalledWith("tempo");
+    });
+
+    it("should throw error for getstring without property", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "getstring" }],
+        }),
+      ).toThrow("getstring operation requires property");
     });
   });
 

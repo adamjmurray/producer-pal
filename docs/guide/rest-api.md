@@ -324,18 +324,32 @@ object mid-sequence.
 
 Available operation types:
 
-| Type                   | Properties used             | Description                                                                                                                             |
-| ---------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_property` / `get` | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                                 |
-| `set_property` / `set` | `property`, `value`         | Write a property value                                                                                                                  |
-| `call_method` / `call` | `method`, `args` (optional) | Call a method                                                                                                                           |
-| `goto`                 | `value` (path)              | Navigate to a different object                                                                                                          |
-| `info`                 | —                           | Get object info                                                                                                                         |
-| `getProperty`          | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get`/`get_property` for the full array |
-| `getChildIds`          | `property` (child type)     | Get child object IDs                                                                                                                    |
-| `exists`               | —                           | Check if the object exists                                                                                                              |
-| `getColor`             | —                           | Read object color                                                                                                                       |
-| `setColor`             | `value` (hex string)        | Write object color                                                                                                                      |
+| Type           | Properties used             | Description                                                                                                                      |
+| -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `get`          | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                          |
+| `set`          | `property`, `value`         | Write a property value; returns Live's status code                                                                               |
+| `set_property` | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                          |
+| `call`         | `method`, `args` (optional) | Call a method on the Live object                                                                                                 |
+| `goto`         | `value` (path)              | Navigate to a different object                                                                                                   |
+| `info`         | —                           | Get object info                                                                                                                  |
+| `getProperty`  | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get` for the full array         |
+| `getChildIds`  | `property` (child type)     | Get child object IDs                                                                                                             |
+| `exists`       | —                           | Check if the object exists                                                                                                       |
+| `getColor`     | —                           | Read object color                                                                                                                |
+| `setColor`     | `value` (hex string)        | Write object color                                                                                                               |
+| `get_property` | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property |
+| `call_method`  | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method              |
+| `set_path`     | `value` (path)              | Assign the LiveAPI object's `path`. `""` clears it, releasing the path listeners Live installs                                   |
+| `set_mode`     | `value` (`0` or `1`)        | Assign the LiveAPI object's `mode`: `0` follows the path, `1` follows the object                                                 |
+| `getcount`     | `property` (child type)     | Count the object's children in a collection                                                                                      |
+| `getstring`    | `property`                  | Read a property as a string                                                                                                      |
+
+The last group operates on the JavaScript wrapper, not the Live object it points
+at. Despite the names, `get`/`get_property` and `call`/`call_method` are **not**
+aliases — `call get_current_beats_song_time` works, while
+`call_method get_current_beats_song_time` fails because that method lives on the
+Live object, not the wrapper. Only `set` and `set_property` perform the same
+write, and even they report different results.
 
 ### Examples
 

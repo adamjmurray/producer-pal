@@ -149,6 +149,156 @@ describe("ppal-live-api", () => {
     expect(typeof parsed.results[1]!.result).toBe("string");
   });
 
+  it("counts children with getcount and reads a property as a string with getstring", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set",
+        operations: [
+          { type: "getcount", property: "tracks" },
+          { type: "getstring", property: "tempo" },
+        ],
+      },
+    });
+
+    const parsed = parseToolResult<LiveApiResult>(result);
+
+    expect(parsed.results[0]!.result).toBeGreaterThan(0);
+    // Max renders a float property with a trailing dot: "120."
+    expect(parsed.results[1]!.result).toMatch(/^\d/);
+  });
+
+  it("retargets the object with set_path", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set tracks 0",
+        operations: [
+          { type: "get_property", property: "id" },
+          { type: "set_path", value: "live_set tracks 1" },
+          { type: "get_property", property: "id" },
+        ],
+      },
+    });
+
+    const parsed = parseToolResult<LiveApiResult>(result);
+
+    // set_path reads the field back rather than echoing the input.
+    expect(parsed.results[1]!.result).toBe("live_set tracks 1");
+    expect(parsed.results[2]!.result).not.toBe(parsed.results[0]!.result);
+    expect(parsed.path).toBe("live_set tracks 1");
+  });
+
+  it('releases the object with set_path ""', async () => {
+    // The whole point of the operation: clearing the path is the only way to
+    // release the listeners Live installs along it, and "" is falsy, so this
+    // only works because set_path requires a defined value, not a truthy one.
+    const result = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set tracks 0",
+        operations: [
+          { type: "set_path", value: "" },
+          { type: "get_property", property: "id" },
+          { type: "exists" },
+        ],
+      },
+    });
+
+    const parsed = parseToolResult<LiveApiResult>(result);
+
+    expect(parsed.results[0]!.result).toBe("");
+    expect(parsed.results[1]!.result).toBe("0");
+    expect(parsed.results[2]!.result).toBe(false);
+    expect(parsed.path).toBe("");
+  });
+
+  it("assigns mode with set_mode, which Max coerces to 0 or 1", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set",
+        operations: [
+          { type: "get_property", property: "mode" },
+          { type: "set_mode", value: 1 },
+          // 0 is falsy — same valueDefined requirement as set_path "".
+          { type: "set_mode", value: 0 },
+          // Max normalizes anything else, so the read-back is the truth.
+          { type: "set_mode", value: 7 },
+        ],
+      },
+    });
+
+    const parsed = parseToolResult<LiveApiResult>(result);
+
+    expect(parsed.results[0]!.result).toBe(0);
+    expect(parsed.results[1]!.result).toBe(1);
+    expect(parsed.results[2]!.result).toBe(0);
+    expect(parsed.results[3]!.result).toBe(1);
+  });
+
+  it("distinguishes call from call_method", async () => {
+    // Despite the names these are not aliases: call reaches the Live object,
+    // call_method reaches the JavaScript wrapper.
+    const liveMethod = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set",
+        operations: [{ type: "call", method: "get_current_beats_song_time" }],
+      },
+    });
+
+    expect(
+      parseToolResult<LiveApiResult>(liveMethod).results[0]!.result,
+    ).toMatch(/^\d+\./);
+
+    const wrapperMethod = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set",
+        operations: [
+          { type: "call_method", method: "getProperty", args: ["tempo"] },
+        ],
+      },
+    });
+
+    expect(
+      typeof parseToolResult<LiveApiResult>(wrapperMethod).results[0]!.result,
+    ).toBe("number");
+
+    const wrongTarget = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set",
+        operations: [
+          { type: "call_method", method: "get_current_beats_song_time" },
+        ],
+      },
+    });
+
+    expect(isToolError(wrongTarget)).toBe(true);
+    expect(getToolErrorMessage(wrongTarget)).toContain(
+      "not found on LiveAPI object",
+    );
+  });
+
+  it("surfaces a tool error when a falsy-value operation omits its value", async () => {
+    // set_path and set_mode take "" and 0, so they check for a defined value
+    // rather than a truthy one. Omitting the value must still fail.
+    for (const type of ["set_path", "set_mode"]) {
+      const result = await ctx.client!.callTool({
+        name: "ppal-live-api",
+        arguments: {
+          path: "live_set",
+          operations: [{ type }],
+        },
+      });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain("requires value");
+    }
+  });
+
   it("surfaces a tool error when get_property is missing the property param", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-live-api",
