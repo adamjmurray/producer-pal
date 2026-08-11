@@ -276,6 +276,28 @@ describe("ToolToggles", () => {
       expect(call?.["ppal-read-live-set"]).toBe(false); // Was true, now false
     });
 
+    it("disables a default-enabled tool on the FIRST click", () => {
+      // The map is sparse — an absent tool is enabled — so inverting the raw
+      // entry re-wrote "enabled": the checkbox snapped back and only a second
+      // click disabled the tool.
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{}}
+          setEnabledTools={setEnabledTools}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Read Live Set"));
+
+      expect(setEnabledTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools.mock.calls[0]?.[0]?.["ppal-read-live-set"]).toBe(
+        false,
+      );
+    });
+
     it("connect tool checkbox is always checked and disabled", () => {
       render(
         <ToolToggles

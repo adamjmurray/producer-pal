@@ -99,6 +99,16 @@ export function ToolToggles({
     return undefined;
   };
 
+  const isToolChecked = (toolId: string) => {
+    if (isAlwaysEnabled(toolId)) return true;
+    // Live API binds to the device flag, not the map (see the prop comment).
+    if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
+
+    // Shared with the MCP layer and preset/transfer code, so the checkbox can't
+    // drift from what the model is actually offered.
+    return isToolEnabled(enabledTools, toolId);
+  };
+
   const handleToggle = (toolId: string) => {
     if (isToolDisabled(toolId)) return;
 
@@ -110,18 +120,11 @@ export function ToolToggles({
 
     setEnabledTools({
       ...enabledTools,
-      [toolId]: !enabledTools[toolId],
+      // Invert what the checkbox SHOWS, not the raw map entry: the map is sparse
+      // (an absent tool is enabled), so `!enabledTools[toolId]` re-wrote
+      // "enabled" and the first click on a never-touched tool did nothing.
+      [toolId]: !isToolChecked(toolId),
     });
-  };
-
-  const isToolChecked = (toolId: string) => {
-    if (isAlwaysEnabled(toolId)) return true;
-    // Live API binds to the device flag, not the map (see the prop comment).
-    if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
-
-    // Shared with the MCP layer and preset/transfer code, so the checkbox can't
-    // drift from what the model is actually offered.
-    return isToolEnabled(enabledTools, toolId);
   };
 
   const enableDefaultTools = () => {
