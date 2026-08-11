@@ -226,6 +226,7 @@ export const OLLAMA_MODELS = [
   { value: "qwen3-coder", label: "qwen3-coder" },
   { value: "mistral", label: "mistral" },
   { value: "devstral-small-2", label: "devstral-small-2" },
+  { value: "muse-glimmer:30b-mlx", label: "muse-glimmer:30b-mlx" },
   { value: "lfm2.5", label: "lfm2.5" },
   { value: "nemotron-cascade-2", label: "nemotron-cascade-2" },
   { value: "glm-4.7-flash", label: "glm-4.7-flash" },
