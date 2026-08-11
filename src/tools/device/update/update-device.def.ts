@@ -42,7 +42,11 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     params: param(paramsInputSchema, {
       default:
         "array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
-      smallModel: "array of {name, value} (name = param name or id)",
+      // The Drum Rack pad-path example is large-mode only, but the value format
+      // can't go: small mode ships no devices skills fragment, so this is the
+      // only place saying a value is a display value, not a normalized 0-1.
+      smallModel:
+        "array of {name, value}. name = param name or id; value in display units (enum string, note name, number)",
     }),
     // Intentionally an array (not the usual comma-separated string): action
     // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so

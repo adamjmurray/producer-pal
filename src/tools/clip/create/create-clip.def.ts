@@ -11,10 +11,18 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
-  description:
-    "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
-    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
-    "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only.",
+  // The MIDI-only list names the params in play, so small model mode gets its
+  // own — `firstStart` is not one of them there.
+  description: {
+    default:
+      "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
+      "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
+      "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only.",
+    smallModel:
+      "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
+      "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
+      "The sample defines an audio clip's region, so start/length/looping are MIDI-only.",
+  },
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

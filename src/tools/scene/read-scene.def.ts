@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
@@ -24,13 +25,23 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
       .min(0)
       .optional()
       .describe("0-based index"),
-    include: z
-      .array(
-        z.enum(["clips", "notes", "sample", "timing", "warp", "color", "*"]),
-      )
-      .default([])
-      .describe(
-        'clips = clip list. notes, sample, timing, warp = clip detail (use with clips). color = scene + clip color. "*" = all',
-      ),
+    include: param(
+      z
+        .array(
+          z.enum(["clips", "notes", "sample", "timing", "warp", "color", "*"]),
+        )
+        .default([]),
+      {
+        default:
+          'clips = clip list. notes, sample, timing, warp = clip detail (use with clips). color = scene + clip color. "*" = all',
+        // Same trim as the other read tools: a small model that learns `"*"`
+        // works here generalizes it to siblings that reject it.
+        smallModel: {
+          description:
+            "clips = clip list. notes, sample, timing = clip detail (use with clips). color = scene + clip color",
+          excludeEnumValues: ["warp", "*"],
+        },
+      },
+    ),
   },
 });
