@@ -62,7 +62,7 @@ const NOTE_WRITE_TOOLS = [CREATE_CLIP, UPDATE_CLIP] as const;
 /** The tools whose schemas accept `transforms` / `preTransforms`. */
 const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, DUPLICATE] as const;
 
-/** The three device tools; the path grammar serves all of them. */
+/** The three device tools. */
 const DEVICE_TOOLS = [
   "ppal-read-device",
   "ppal-create-device",
@@ -70,8 +70,24 @@ const DEVICE_TOOLS = [
 ] as const;
 
 /**
+ * Everything that addresses a device by path — the gate on `devices`, which is
+ * the only place the path grammar (`t`/`rt`/`mt`/`d`/`c`/`rc`/`p`) is written
+ * down. Three non-device tools take one: `devicePath` on select (plus
+ * `openPluginWindow`, which the same fragment's VST/AU half qualifies), `path`
+ * on delete, `toPath` on duplicate. Gating this on {@link DEVICE_TOOLS} alone
+ * left them addressing returns and the master track with no vocabulary for
+ * either.
+ */
+const DEVICE_PATH_TOOLS = [
+  ...DEVICE_TOOLS,
+  "ppal-select",
+  "ppal-delete",
+  DUPLICATE,
+] as const;
+
+/**
  * The two device tools that can BUILD — the gate on `devices-write`. A strict
- * subset of {@link DEVICE_TOOLS}, so the requires-subset invariant holds.
+ * subset of {@link DEVICE_PATH_TOOLS}, so the requires-subset invariant holds.
  */
 const DEVICE_WRITE_TOOLS = [
   "ppal-create-device",
@@ -79,14 +95,19 @@ const DEVICE_WRITE_TOOLS = [
 ] as const;
 
 /**
- * Every clip tool that reports or sets an arrangement position: read-clip is how
- * one comes back, and the other three put clips there.
+ * Every tool that reports or sets an arrangement position: three put clips
+ * there, and two report an `arrangementStart` back — read-clip directly,
+ * read-track in the `arrangementClips` entries it returns. A reader needs the
+ * dual-meter rule to make sense of the number either way. read-scene is absent
+ * because it reads session slots only, so no arrangement position ever reaches
+ * it.
  */
 const ARRANGEMENT_TOOLS = [
   CREATE_CLIP,
   "ppal-read-clip",
   UPDATE_CLIP,
   DUPLICATE,
+  "ppal-read-track",
 ] as const;
 
 /**
@@ -145,12 +166,13 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "transforms-basic": [UPDATE_CLIP],
 
   library: ["ppal-library"],
-  devices: DEVICE_TOOLS,
+  devices: DEVICE_PATH_TOOLS,
   // The build recipes: only create-device and update-device can run any of them.
   "devices-write": DEVICE_WRITE_TOOLS,
   // Reading a Drift or an EQ Eight benefits from the pseudo-param names as much
-  // as building or editing one does, so all three device tools carry it — same
-  // gate as `devices`, which also satisfies the requires-subset test.
+  // as building or editing one does, so all three device tools carry it. Not
+  // DEVICE_PATH_TOOLS: select/delete/duplicate address a device, they never
+  // touch its parameters. A subset of the `devices` gate it requires.
   "specialized-devices": DEVICE_TOOLS,
   arrangement: ARRANGEMENT_TOOLS,
   // Moving, splitting, and take lanes: read-clip has no tool to run any of it.

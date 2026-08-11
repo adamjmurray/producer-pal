@@ -59,9 +59,6 @@ const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
 // can't act on it. Shrink toward empty as the splits land; an entry that stops
 // bleeding must be deleted, which the "still bleeds" test below enforces.
 const KNOWN_BLEED: Record<string, readonly string[]> = {
-  // The plug-in editor window is the one thing in `devices` that isn't a device
-  // tool, and it belongs with the limits it qualifies.
-  devices: ["ppal-select"],
   // Clearing a pad before replacing its sample.
   "devices-write": ["ppal-delete"],
   // Take-lane clips refuse a delete the same way they refuse an update, so the
@@ -81,8 +78,6 @@ const TEACHES_NO_FRAGMENT: Record<string, string> = {
   "ppal-create-scene": "its schema is the whole guide",
   "ppal-update-scene": "its schema is the whole guide",
   "ppal-playback": "its schema is the whole guide",
-  "ppal-select": "named inside `devices`, but never the reason it ships",
-  "ppal-delete": "named inside the write fragments, but never why one ships",
   "ppal-live-api": "the dev-only escape hatch, deliberately unguided",
 };
 
@@ -322,6 +317,21 @@ describe("gatedOutFragments", () => {
     expect(noDeviceTools).toContain("devices");
   });
 
+  it("keeps the path grammar for a tool that only addresses a device", () => {
+    // select/delete/duplicate take a device path (`devicePath`, `path`,
+    // `toPath`) without reading or building one, and `devices` is the only
+    // place `rt`/`mt`/`c`/`rc` are written down. The per-device param catalog
+    // is not their business and stays behind.
+    for (const tool of ["ppal-select", "ppal-delete", "ppal-duplicate"]) {
+      const dropped = gatedOutFragments([tool]);
+
+      expect(dropped, `${tool} should keep devices`).not.toContain("devices");
+      expect(dropped, `${tool} should drop specialized-devices`).toContain(
+        "specialized-devices",
+      );
+    }
+  });
+
   it("drops the device build recipes for a read-only device toolset", () => {
     // The direction split: a caller that can only read devices has no tool to
     // run a Simpler or Drum Rack build recipe with.
@@ -343,6 +353,13 @@ describe("gatedOutFragments", () => {
       "arrangement-write",
     );
     expect(gatedOutFragments(["ppal-playback"])).toContain("arrangement");
+  });
+
+  it("keeps arrangement for read-track but not read-scene", () => {
+    // read-track returns arrangementClips carrying arrangementStart; read-scene
+    // reads session slots only, so no arrangement position ever reaches it.
+    expect(gatedOutFragments(["ppal-read-track"])).not.toContain("arrangement");
+    expect(gatedOutFragments(["ppal-read-scene"])).toContain("arrangement");
   });
 });
 

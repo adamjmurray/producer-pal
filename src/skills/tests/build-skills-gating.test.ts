@@ -56,11 +56,16 @@ describe("buildSkills - tool gating", () => {
   });
 
   it("drops a dependent together with what it requires, never alone", () => {
+    // Dropping `devices` takes the device tools AND the three that only address
+    // a device by path — the gate is any-of, so one survivor keeps the grammar.
+    const pathOnly = new Set(["ppal-select", "ppal-delete", "ppal-duplicate"]);
     const warnings: string[] = [];
     const result = buildSkills(
       {
         notation: "barbeat",
-        tools: ALL_TOOLS.filter((name) => !name.endsWith("-device")),
+        tools: ALL_TOOLS.filter(
+          (name) => !name.endsWith("-device") && !pathOnly.has(name),
+        ),
       },
       {},
       (message) => warnings.push(message),

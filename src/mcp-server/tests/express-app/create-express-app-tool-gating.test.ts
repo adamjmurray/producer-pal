@@ -95,11 +95,16 @@ describe("POST /mcp per-request disabled-tools header", () => {
       const full = await connectSkillsBlock(appState.serverUrl, headers());
       const narrow = await connectSkillsBlock(
         appState.serverUrl,
+        // The path grammar goes with the last tool that addresses a device by
+        // path, not with the last device tool — hence select/delete/duplicate.
         headers(
           "ppal-library",
           "ppal-read-device",
           "ppal-create-device",
           "ppal-update-device",
+          "ppal-select",
+          "ppal-delete",
+          "ppal-duplicate",
         ),
       );
 
