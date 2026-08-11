@@ -67,4 +67,8 @@ Managing memory:
  */
 export const contextBasic = `## Context
 
-\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is across all projects (style, preferences, goals). Both are single documents — read the same scope before writing (write replaces the whole document). Put a fact in exactly ONE scope, never both. These documents are the user's: when the scope already has content, say what you'd add and write it once they agree or ask — an empty one you can just fill in, then say what you saved. Write each note so a future assistant with none of this chat can use it: the whole structure, not one isolated detail.`;
+\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is (style, preferences, goals). Put a fact in exactly ONE scope, never both.
+
+Writing replaces the whole document — read the same scope first. Already has content? Propose what you'd add and wait for a yes. Empty? Just write it. Either way, say what you saved.
+
+Write for a future assistant who can't see this chat: the whole structure, not one detail.`;
