@@ -262,6 +262,20 @@ describe("context - project scope (default)", () => {
 
         await expectWriteAllowed("- Key: A minor.");
       });
+
+      // Headings over a body of pure structure: the body exists but can vouch
+      // for nothing, so holding the headings out left this unguarded on the
+      // strength of its `---` and an unrelated write destroyed the heading
+      // silently.
+      it("guards headings whose only body is structure", async () => {
+        await expectWriteSkipped("# Song Ideas\n---", "- Key: A minor.");
+      });
+
+      it("allows a write that keeps a heading over structure", async () => {
+        toolContext.projectContext!.content = "# Song Ideas\n---";
+
+        await expectWriteAllowed("# Song Ideas\n\n- Key: A minor.");
+      });
     });
 
     // The reason headings are held out while a body exists: keeping the shell

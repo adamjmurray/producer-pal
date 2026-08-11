@@ -221,15 +221,17 @@ export async function handleWriteGlobalContext(
  * folded) so a reformat OF A LINE — bulleted, re-indented, bolded, re-cased, a
  * period added — still counts as surviving. Headings are held out of that: a
  * heading is structure, so letting one vouch would pass a write that keeps
- * `# Project Context` and drops everything under it. The exception is a
- * document that is ONLY headings, which has no body line to vouch for it —
- * holding them out there means no guard at all, so the headings themselves
- * become the needles. Tolerance stops there: the needle is a whole existing
- * line and the haystack is one incoming line, so restructuring that SPLITS a
- * line across several (or merges several into one) trips the guard even though
- * every fact survived. That is the conservative direction, and the designed
- * recovery — the model gets the warning and re-sends a merged write. One
- * surviving line is enough to read as an edit rather than a replacement.
+ * `# Project Context` and drops everything under it. The exception is a document
+ * with no body TEXT to vouch for it — only headings, or headings over pure
+ * structure like `# Song Ideas` + `---`. Holding them out there means no guard
+ * at all, so the headings themselves become the needles.
+ *
+ * Tolerance stops there: the needle is a whole existing line and the haystack is
+ * one incoming line, so restructuring that SPLITS a line across several (or
+ * merges several into one) trips the guard even though every fact survived. That
+ * is the conservative direction, and the designed recovery — the model gets the
+ * warning and re-sends a merged write. One surviving line is enough to read as
+ * an edit rather than a replacement.
  *
  * Only SUBSTANTIVE lines can vouch for a write, measured in ALPHANUMERIC
  * characters so punctuation can't pad a line over the floor. Without that, a
@@ -278,20 +280,23 @@ export function clobberWarning(
     .map((line) => line.trim())
     .filter((line) => line !== "");
   const body = nonBlank.filter((line) => !line.startsWith("#"));
+  const bodyWithText = textBearing(body);
   // Headings can't vouch while there is body content under them, or a write
-  // that kept `# Project Context` and dropped everything below would pass. A
-  // headings-only document has no body to vouch for it and used to fall
-  // straight through unguarded, so there the headings are what's at stake.
-  const lines = body.length > 0 ? body : nonBlank;
+  // that kept `# Project Context` and dropped everything below would pass. What
+  // counts as "under them" is body TEXT, not body lines: a body of pure
+  // structure vouches for nothing either way, so holding the headings out there
+  // left `# Song Ideas\n---` unguarded on the strength of its `---`. In both
+  // cases — headings only, or headings over structure — the headings are what's
+  // at stake, so they become the needles.
+  const hasBodyText = bodyWithText.length > 0;
+  const lines = hasBodyText ? body : nonBlank;
 
   if (lines.length === 0) return null;
 
   // Compared line-by-line rather than against the whole blob, so a match can't
   // straddle two lines of the incoming content.
   const incomingLines = incoming.split("\n").map(normalizeForContainment);
-  const withText = lines
-    .map(normalizeForContainment)
-    .filter((line) => alphanumericCount(line) > 0);
+  const withText = hasBodyText ? bodyWithText : textBearing(nonBlank);
   const substantive = withText.filter(
     (line) => alphanumericCount(line) >= MIN_SURVIVING_CHARS,
   );
@@ -322,6 +327,20 @@ export function clobberWarning(
  * a fence, a one-word list item — can't stand in for the user's content.
  */
 const MIN_SURVIVING_CHARS = 8;
+
+/**
+ * The lines that can vouch for a write, normalized for containment: the ones
+ * carrying at least one letter or digit. Pure structure — a `---` rule, a bare
+ * fence, a table separator — vouches for nothing, so it drops out here.
+ *
+ * @param lines - Trimmed, non-blank lines of the existing document
+ * @returns The normalized lines that carry text
+ */
+function textBearing(lines: string[]): string[] {
+  return lines
+    .map(normalizeForContainment)
+    .filter((line) => alphanumericCount(line) > 0);
+}
 
 /**
  * Count the letters and digits in a line, ignoring punctuation, markup and
