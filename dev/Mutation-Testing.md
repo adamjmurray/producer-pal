@@ -121,7 +121,7 @@ flips (killing them over-fits to a ~1e-9 / 0.001 slack), warning/error message
 strings, and equivalent mutants (e.g. a `.sort()` that is provably a no-op
 because its input is already ascending). Triage before acting.
 
-Clean (100%): `barbeat-apply-v0-deletions.ts`.
+Clean (100%): `apply-v0-deletions.ts`.
 
 ### Gaps closed
 

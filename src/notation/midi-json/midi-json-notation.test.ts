@@ -3,9 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { formatMidiJson, interpretMidiJson } from "./midi-json-notation.ts";
+
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  warn: vi.fn(),
+  log: vi.fn(),
+  error: vi.fn(),
+}));
 
 describe("interpretMidiJson", () => {
   it("parses a compact JS-literal array into note events (4/4: musical beats == Ableton beats)", () => {
@@ -90,6 +97,115 @@ describe("interpretMidiJson", () => {
 
   it("throws when the input is not an array", () => {
     expect(() => interpretMidiJson("{p:60}")).toThrow(/Invalid MIDI JSON/);
+  });
+});
+
+describe("v:0 deletes", () => {
+  it("deletes an earlier note at the same pitch+start (last wins)", () => {
+    const result = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:100},{p:62,t:0,d:1,v:100},{p:60,t:0,d:1,v:0}]",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.pitch).toBe(62);
+  });
+
+  it("keeps a note restated after the marker", () => {
+    const result = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:100},{p:60,t:0,d:1,v:0},{p:60,t:0,d:4,v:80}]",
+    );
+
+    expect(result).toStrictEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 4,
+        velocity: 80,
+        velocity_deviation: 0,
+        probability: 1,
+      },
+    ]);
+  });
+
+  it("is per-note, not sticky: the next note keeps its own velocity", () => {
+    const result = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:0},{p:62,t:1,d:1,v:100}]",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.velocity).toBe(100);
+  });
+
+  it("leaves notes at a different pitch or start alone", () => {
+    const result = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:100},{p:60,t:1,d:1,v:100},{p:62,t:0,d:1,v:0},{p:60,t:2,d:1,v:0}]",
+    );
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("never lets a velocity-0 note through (Live rejects it)", () => {
+    // The clamp used to turn v:0 into a velocity-1 note — a silent footgun.
+    expect(interpretMidiJson("[{p:60,t:0,d:1,v:0}]")).toStrictEqual([]);
+  });
+
+  it("treats a negative velocity as a delete marker too", () => {
+    // Matches the transform rule that velocity <= 0 deletes.
+    expect(
+      interpretMidiJson("[{p:60,t:0,d:1,v:100},{p:60,t:0,d:1,v:-5}]"),
+    ).toStrictEqual([]);
+  });
+
+  it("still clamps a positive velocity into 1-127", () => {
+    const [low, high] = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:0.6},{p:62,t:0,d:1,v:200}]",
+    );
+
+    expect(low?.velocity).toBe(1);
+    expect(high?.velocity).toBe(127);
+  });
+
+  it("keeps a quiet fractional velocity a note, not a marker", () => {
+    // The marker test runs on the raw velocity: rounding v:0.4 (or a v:1/3
+    // ratio) down to 0 would turn a model's 0-1 velocity scale into deletions.
+    const result = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:100},{p:60,t:0,d:1,v:0.4}]",
+    );
+
+    // The v:100 note survives (a marker would have deleted it); the quiet one
+    // clamps up to velocity 1.
+    expect(result.map((note) => note.velocity)).toStrictEqual([100, 1]);
+    expect(interpretMidiJson("[{p:60,t:0,d:1,v:1/3}]")[0]?.velocity).toBe(1);
+  });
+
+  it("warns and ignores a marker whose pitch is outside 0-127", () => {
+    // Clamping the marker into range would delete a note at 127 (or 0) that the
+    // caller never named.
+    const result = interpretMidiJson(
+      "[{p:127,t:0,d:1,v:100},{p:130,t:0,d:1,v:0}]",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.pitch).toBe(127);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("pitch 130 is outside 0-127"),
+    );
+  });
+
+  it("rounds a marker's pitch before the range check (p:127.4 deletes 127)", () => {
+    expect(
+      interpretMidiJson("[{p:127,t:0,d:1,v:100},{p:127.4,t:0,d:1,v:0}]"),
+    ).toStrictEqual([]);
+  });
+
+  it("keeps the markers when keepV0Deletes is set (update-clip's merge)", () => {
+    const result = interpretMidiJson(
+      "[{p:60,t:0,d:1,v:100},{p:60,t:0,d:1,v:0}]",
+      { keepV0Deletes: true },
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[1]?.velocity).toBe(0);
   });
 });
 

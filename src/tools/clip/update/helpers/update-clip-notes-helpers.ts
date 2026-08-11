@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
 import {
   formatNotation,
   interpretNotation,
@@ -167,8 +168,9 @@ export function handleNoteUpdates(
  *   notation can delete overlapping existing notes during interpretation.
  * - midi-json / stark: these have no lossless text serializer for the existing
  *   notes, so combine the NoteEvent arrays directly (new notes last, so they win
- *   same-pitch+start collisions in dedupeNotesKeepingLast). There is no
- *   `v0`-delete convention — use preTransforms to delete or edit existing notes.
+ *   same-pitch+start collisions in dedupeNotesKeepingLast) and resolve the delete
+ *   markers over that combined array instead — same result as bar|beat's text
+ *   round-trip, so midi-json's `v:0` deletes existing notes too.
  * @param notation - Global notation setting the new notes string is written in (or undefined)
  * @param notationString - The new notes
  * @param existingNotes - Existing notes (preTransforms already applied)
@@ -183,17 +185,15 @@ function mergeNewNotes(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): NoteEvent[] {
-  // Only bar|beat round-trips through text (so `v0` in the new notes can delete
-  // overlapping existing notes). midi-json and stark lack a serializer for the
-  // existing notes, so they merge NoteEvent arrays directly.
   if (resolveNotation(notation) !== "barbeat") {
     const newNotes = interpretNotation(notationString, {
       notation,
       timeSigNumerator,
       timeSigDenominator,
+      keepV0Deletes: true,
     });
 
-    return [...existingNotes, ...newNotes];
+    return applyV0Deletions([...existingNotes, ...newNotes]);
   }
 
   let combinedNotationString = notationString;

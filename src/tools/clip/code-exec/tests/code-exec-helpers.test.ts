@@ -570,6 +570,17 @@ describe("code-exec-helpers", () => {
       expect(high.valid && high.note.velocity).toBe(127);
     });
 
+    it("keeps velocity 0 with allowVelocityZero (MIDI JSON's delete marker)", () => {
+      // Only MIDI JSON opts in; user code returning velocity 0 still clamps to 1
+      // (above), since Live rejects it and there is nothing to delete.
+      const result = validateAndSanitizeNote(
+        { pitch: 60, start: 0, duration: 1, velocity: 0 },
+        { allowVelocityZero: true },
+      );
+
+      expect(result.valid && result.note.velocity).toBe(0);
+    });
+
     it("should default optional properties", () => {
       const result = validateAndSanitizeNote({
         pitch: 60,

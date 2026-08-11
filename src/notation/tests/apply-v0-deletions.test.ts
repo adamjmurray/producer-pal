@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { type NoteEvent } from "../types.ts";
-import { applyV0Deletions } from "./barbeat-apply-v0-deletions.ts";
+import { applyV0Deletions } from "../apply-v0-deletions.ts";
 
 // A regular (audible) note of the standard 1-beat duration.
 function note(pitch: number, start_time: number): NoteEvent {

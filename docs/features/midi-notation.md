@@ -26,7 +26,7 @@ There are three notations to choose from, and one expression language —
 | Notation                | Best for                              | Strengths                                                                     | Tradeoffs                                                                 |
 | ----------------------- | ------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | [bar\|beat](#bar-beat)  | **The default.** Capable models.      | Most expressive: velocity ranges, probability, bar copying, note deletion     | Stateful syntax; bars and beats shift meaning in odd meters               |
-| [MIDI JSON](#midi-json) | Coding agents; exact data             | Highest fidelity: exact velocities and tuplets; trivial to generate and parse | Verbose — every note spelled out in full; no delete syntax                |
+| [MIDI JSON](#midi-json) | Coding agents; exact data             | Highest fidelity: exact velocities and tuplets; trivial to generate and parse | Verbose — every note spelled out in full                                  |
 | [Stark](#stark)         | Small and local models; drums; chords | Literal and round-trippable; chord symbols; event-based drum lines            | Velocity is lossy (three dynamics); no probability or velocity randomness |
 
 If you're using Claude, GPT, Gemini, or another frontier model through the chat
@@ -154,6 +154,9 @@ Times are absolute musical beats: `t:0` is the clip start, `t:4` is beat 5, and
 chords share a `t`. Tuplets can be written as exact fractions — `d:2/3` is a
 triplet quarter — and read back as fractions rather than a lossy `0.3333`.
 
+`v:0` deletes instead of adding: it removes the note at that same `p` and `t`,
+whether it's already in the clip or was written earlier in the same array.
+
 The parser is deliberately tolerant, so whatever an LLM emits still parses: keys
 may be quoted or bare, short (`p`/`t`/`d`/`v`) or long (`pitch`/`start`/…).
 
@@ -163,8 +166,8 @@ than composing a text notation by hand, which is why the
 [Agent Skill](/guide/skills) selects it.
 
 **Tradeoffs.** It's the most verbose per note — there's no statefulness, no bar
-copying, no repeats, so a busy clip costs the most tokens. And it has no delete
-syntax; to remove or edit existing notes, use [`preTransforms`](#transforms).
+copying, no repeats, so a busy clip costs the most tokens. Deleting is per note,
+so clearing a whole region is a job for [`preTransforms`](#transforms).
 
 <!--@include: ../_generated/notation-params-midi-json.md-->
 
@@ -270,8 +273,8 @@ single call, and it pairs naturally with [take lanes](/features#take-lanes).
 
 `preTransforms` is the same language, applied to a clip's _existing_ notes
 before any new `notes` merge in. It's the general editing path — and for
-[MIDI JSON](#midi-json) and [Stark](#stark), which have no delete syntax of
-their own, it's how you remove or rewrite notes.
+[Stark](#stark), which has no delete syntax of its own, it's how you remove or
+rewrite notes.
 
 ::: info Transforms are the same in every notation
 

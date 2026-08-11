@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
 import {
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,

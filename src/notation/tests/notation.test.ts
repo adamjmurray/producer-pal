@@ -8,7 +8,7 @@ import {
   formatNotation,
   interpretNotation,
   resolveNotation,
-} from "./notation.ts";
+} from "../notation.ts";
 
 describe("interpretNotation router", () => {
   it("defaults to barbeat when no notation is given", () => {
