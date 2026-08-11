@@ -258,9 +258,12 @@ the skip cost, so it decides what to do:
   next tool call. Collapsing this into `"none"` would look like "no backup": the
   restore is silently forfeited and the next edit overwrites the sidecar as soon
   as it's readable again.
-- **Genuine write** (`isEdit`): didn't reach disk, and the user thinks it did.
-  Memoized and warned like any other filesystem refusal — once per blob, so a
-  later edit says so again.
+- **Genuine write**: didn't reach disk, and the user thinks it did. Warned once
+  per blob, so a later edit says so again, and not memoized either — an
+  unreadable sidecar is usually a passing lock (cloud sync), so the next sync
+  retries. This is keyed off "was this a write", not off `isEdit`: a write made
+  while the wipe question is open carries `isEdit: false`, and it is still the
+  user's own text that didn't reach disk.
 - **Passing sync**: lost nothing, since it was never allowed to overwrite an
   existing sidecar. Memoized silently.
 

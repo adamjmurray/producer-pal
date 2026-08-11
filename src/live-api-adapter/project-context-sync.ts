@@ -101,6 +101,7 @@ export async function syncProjectContextBackup(
   const { ok, restored } = await requestSync(filePath, content, {
     allowRestore,
     isEdit: false,
+    isWrite: false,
   });
 
   // Only memoize a completed sync, so a transient failure retries next call
@@ -173,11 +174,14 @@ export async function backupProjectContextOnEdit(
   // first thing typed into an empty box would otherwise bury the folder's
   // notes, and nothing can restore them afterward (the param is no longer empty
   // and the sync only restores into an empty one). A missing sidecar is still
-  // created either way, which covers the ordinary "no backup yet" case. Only
-  // memoize a completed sync so a transient failure retries next edit.
+  // created either way, which covers the ordinary "no backup yet" case. isWrite
+  // stays true even then — it's what this sync IS, not what Node may do with it,
+  // and a write that didn't reach disk has to say so either way. Only memoize a
+  // completed sync so a transient failure retries next edit.
   const { ok } = await requestSync(filePath, content, {
     allowRestore: false,
     isEdit: !maybeWiped,
+    isWrite: true,
   });
 
   if (ok) rememberSync(filePath, content);
@@ -273,22 +277,31 @@ function readLiveSetFilePath(): string | null {
  *
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param content - The device param's current project-context blob
- * @param flags - How Node should interpret this sync
+ * @param flags - How to interpret this sync
  * @param flags.allowRestore - Whether an empty param may be restored from the
  *   sidecar (the session's first sync only)
- * @param flags.isEdit - Whether a genuine project-context write triggered this,
- *   the only thing allowed to overwrite an existing, differing sidecar
- * @returns `ok` false when the round-trip failed or a restore is still owed (so
- *   the caller retries later); `restored` carries the blob on a restore, else null
+ * @param flags.isEdit - Whether Node may overwrite an existing, differing
+ *   sidecar with this blob
+ * @param flags.isWrite - Whether a genuine project-context write triggered this
+ *   sync. Local only (not sent): it decides what an unreadable sidecar COST,
+ *   which isEdit can't answer — a write while the wipe question is open is a
+ *   real write that still isn't allowed to overwrite.
+ * @returns `ok` false when nothing reached disk and the next sync should retry;
+ *   `restored` carries the blob on a restore, else null
  */
 async function requestSync(
   filePath: string,
   content: string,
-  flags: { allowRestore: boolean; isEdit: boolean },
+  flags: { allowRestore: boolean; isEdit: boolean; isWrite: boolean },
 ): Promise<{ ok: boolean; restored: string | null }> {
   const response = await requestNode<ProjectContextSyncResult>(
     "projectContext.sync",
-    { filePath, content, ...flags },
+    {
+      filePath,
+      content,
+      allowRestore: flags.allowRestore,
+      isEdit: flags.isEdit,
+    },
   );
 
   if (!response.success) {
@@ -304,7 +317,7 @@ async function requestSync(
   // There IS a sidecar and Node couldn't read it, so it skipped what it would
   // otherwise have done. What that cost depends on which sync this was.
   if (response.result?.action === "unreadable") {
-    return handleUnreadableSidecar(content, flags.isEdit);
+    return handleUnreadableSidecar(content, flags.isWrite);
   }
 
   // The filesystem refused. Reported as ok so the caller memoizes it: the
@@ -335,21 +348,24 @@ async function requestSync(
  * React to a sidecar Node couldn't read. Node skipped what it would have done;
  * three callers reach it, and only two of them lost something:
  *
- * - An empty blob was the restore, which is still owed. NOT memoized, so the
- *   next tool call retries a lock that may have cleared, and the wipe question
- *   stays open so no later edit buries notes nothing has read.
- * - A genuine write didn't reach disk. Memoized and warned like any other
- *   filesystem refusal — once per blob, so a later edit says so again.
+ * - An empty blob was the restore, which is still owed. The wipe question stays
+ *   open too, so no later edit buries notes nothing has read.
+ * - A genuine write didn't reach disk. Warned once per blob, so a later edit
+ *   says so again.
  * - A passing sync lost nothing: it was never allowed to overwrite an existing
  *   sidecar anyway. Memoized silently.
  *
+ * Neither of the first two memoizes. Unlike a filesystem refusal, an unreadable
+ * sidecar is usually a passing lock (cloud sync), and memoizing would forfeit
+ * the retry for the rest of the session.
+ *
  * @param content - The blob this sync carried ("" means it was the restore)
- * @param isEdit - Whether a genuine project-context write triggered this sync
+ * @param isWrite - Whether a genuine project-context write triggered this sync
  * @returns The requestSync result for this case
  */
 function handleUnreadableSidecar(
   content: string,
-  isEdit: boolean,
+  isWrite: boolean,
 ): { ok: boolean; restored: null } {
   if (content.trim() === "") {
     warnUnreadableRestoreOnce();
@@ -357,7 +373,7 @@ function handleUnreadableSidecar(
     return { ok: false, restored: null };
   }
 
-  if (isEdit) {
+  if (isWrite) {
     console.warn(
       "Could not read the project context backup beside the Live Set, so it " +
         "was left alone rather than risk burying notes shared with the other " +
@@ -365,6 +381,8 @@ function handleUnreadableSidecar(
         'survive a device upgrade. Tell the user to check that "Producer Pal ' +
         'Project Context.md" in their Live project folder is readable.',
     );
+
+    return { ok: false, restored: null };
   }
 
   return { ok: true, restored: null };

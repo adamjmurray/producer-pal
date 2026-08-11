@@ -338,7 +338,7 @@ describe("syncProjectContextBackup — the backup couldn't be read", () => {
 
   // A genuine write is the other half: the skip is right (the sidecar may hold
   // the folder's shared notes), but the user thinks their edit was backed up.
-  it("tells the user when a genuine write was skipped, once per blob", async () => {
+  it("tells the user when a genuine write was skipped, and retries it", async () => {
     setFilePath(SAVED_PATH);
     noteProjectContextLoaded("Genre: house");
     mockSyncResult("unreadable");
@@ -349,17 +349,39 @@ describe("syncProjectContextBackup — the backup couldn't be read", () => {
       expect.stringContaining("was left alone rather than risk burying notes"),
     );
 
-    // Memoized like any other refusal: the same blob doesn't re-round-trip.
+    // Not memoized: an unreadable sidecar is usually a passing lock, so the next
+    // sync tries again rather than forfeiting the backup for the session.
+    mockSyncResult("backup");
     await backupProjectContextOnEdit("Genre: jungle");
 
-    expect(mockRequestNode).toHaveBeenCalledTimes(1);
-    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockRequestNode).toHaveBeenCalledTimes(2);
+    expect(mockRequestNode).toHaveBeenLastCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "Genre: jungle",
+      allowRestore: false,
+      isEdit: true,
+    });
+  });
 
-    // A later edit is a new chance to lose something, so it says so again.
+  // The same write with the wipe question still open. It travels with isEdit
+  // false — it may not overwrite the sidecar yet — but it is still the user's own
+  // text that didn't reach disk, and silence there hid every edit of a session
+  // where the wipe latched "stuck".
+  it("tells the user even when the skipped write couldn't claim write privileges", async () => {
+    setFilePath(SAVED_PATH);
     mockSyncResult("unreadable");
-    await backupProjectContextOnEdit("Genre: techno");
 
-    expect(mockWarn).toHaveBeenCalledTimes(2);
+    await backupProjectContextOnEdit("Genre: jungle");
+
+    expect(mockRequestNode).toHaveBeenCalledWith("projectContext.sync", {
+      filePath: SAVED_PATH,
+      content: "Genre: jungle",
+      allowRestore: false,
+      isEdit: false,
+    });
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining("was left alone rather than risk burying notes"),
+    );
   });
 
   // A passing sync only observes the param — it was never allowed to overwrite
