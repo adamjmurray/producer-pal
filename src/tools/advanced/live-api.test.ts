@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -501,6 +501,54 @@ describe("liveApi", () => {
           operations: [{ type: "getstring" }],
         }),
       ).toThrow("getstring operation requires property");
+    });
+  });
+
+  describe("releasing the object", () => {
+    // Live arms a path listener on every collection along a path-based
+    // LiveAPI's path and never takes it down; clearing the path is the only
+    // thing that does. LiveAPI.from is wrapped so the test can reach the
+    // instance liveApi() builds internally.
+    let created: { path: string }[];
+    let originalFrom: typeof LiveAPI.from;
+
+    beforeEach(() => {
+      created = [];
+      originalFrom = LiveAPI.from.bind(LiveAPI);
+      LiveAPI.from = ((idOrPath: Parameters<typeof LiveAPI.from>[0]) => {
+        const api = originalFrom(idOrPath);
+
+        created.push(api as unknown as { path: string });
+
+        return api;
+      }) as typeof LiveAPI.from;
+    });
+
+    afterEach(() => {
+      LiveAPI.from = originalFrom;
+    });
+
+    it("should clear the path when the call ends", () => {
+      const result = liveApi({
+        path: String(livePath.track(0)),
+        operations: [{ type: "exists" }],
+      });
+
+      // The response still reports the path — it is captured before release.
+      expect(result.path).toBe(String(livePath.track(0)));
+      expect(created).toHaveLength(1);
+      expect(created[0]!.path).toBe("");
+    });
+
+    it("should clear the path even when an operation fails", () => {
+      // A failed call armed a listener just the same, so the release has to
+      // survive the throw.
+      expect(() => liveApi({ operations: [{ type: "get_property" }] })).toThrow(
+        "Operation failed",
+      );
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.path).toBe("");
     });
   });
 

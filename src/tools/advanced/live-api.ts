@@ -271,33 +271,46 @@ export function liveApi(
   const api = LiveAPI.from(path ?? defaultPath);
   const results: OperationResult[] = [];
 
-  for (const operation of operations) {
-    let result: unknown;
+  try {
+    for (const operation of operations) {
+      let result: unknown;
 
-    try {
-      validateOperationParameters(operation);
-      result = executeOperation(api, operation);
-    } catch (error) {
-      throw new Error(`Operation failed: ${errorMessage(error)}`, {
-        cause: error,
+      try {
+        validateOperationParameters(operation);
+        result = executeOperation(api, operation);
+      } catch (error) {
+        throw new Error(`Operation failed: ${errorMessage(error)}`, {
+          cause: error,
+        });
+      }
+
+      results.push({
+        operation,
+        result,
       });
     }
 
-    results.push({
-      operation,
-      result,
-    });
+    // Read both before the release below zeroes them.
+    const finalPath = api.path;
+    const finalId = api.id;
+
+    // Include path in result if:
+    // 1. Path was explicitly provided, OR
+    // 2. Path changed during operations (e.g., via goto)
+    const pathChanged = finalPath !== defaultPath;
+    const includePath = path != null || pathChanged;
+
+    return {
+      ...(includePath ? { path: finalPath } : {}),
+      id: finalId,
+      results,
+    };
+  } finally {
+    // Live arms a path listener on every collection along a path-based
+    // LiveAPI's path and never takes them down on its own — clearing the path
+    // is the only thing that does. Skip this and every call leaves one armed
+    // for the life of the device, costing ~4,900 bytes of Ableton log apiece
+    // on every later structural change to the Live Set. Measured on 12.4.3.
+    (api as unknown as { path: string }).path = "";
   }
-
-  // Include path in result if:
-  // 1. Path was explicitly provided, OR
-  // 2. Path changed during operations (e.g., via goto)
-  const pathChanged = api.path !== defaultPath;
-  const includePath = path != null || pathChanged;
-
-  return {
-    ...(includePath ? { path: api.path } : {}),
-    id: api.id,
-    results,
-  };
 }

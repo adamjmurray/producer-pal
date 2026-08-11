@@ -150,8 +150,7 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
   `child`, ...). Not the same as `call`:
   `call_method get_current_beats_song_time` fails, because that method lives on
   the Live object.
-- `set_path` - Assign `path`. `""` clears it, releasing the path listeners Live
-  installs.
+- `set_path` - Assign `path`, retargeting the object. `""` clears it.
 - `set_mode` - Assign `mode`: `0` follows the path, `1` follows the object. Max
   coerces anything else to 0 or 1.
 - `getcount` - Count children in a collection
@@ -166,6 +165,11 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 - **Max operations**: 50 operations per tool call to prevent performance issues
 - **Full access**: This tool provides unrestricted Live API access - use with
   caution
+- **Object lifetime**: the tool builds one LiveAPI object per call and clears
+  its path when the call ends, success or failure. Live arms a path listener on
+  every collection along a path-based object's path and never takes them down,
+  so an unreleased object costs ~4,900 bytes of Ableton log on every later
+  structural change to the Live Set. Don't add `set_path ""` yourself.
 
 ## MCP Inspector
 

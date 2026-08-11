@@ -55,7 +55,7 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
             .union([z.string(), z.number(), z.boolean(), z.array(z.number())])
             .optional()
             .describe(
-              'Value for set/set_property operations, path for goto or set_path operations (set_path accepts "" to release the object), ' +
+              "Value for set/set_property operations, path for goto or set_path operations, " +
                 "mode for set_mode operations (0 follows the path, 1 follows the object), " +
                 'or color for setColor operations (a "#RRGGBB" hex string)',
             ),

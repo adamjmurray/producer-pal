@@ -339,7 +339,7 @@ Available operation types:
 | `setColor`     | `value` (hex string)        | Write object color                                                                                                               |
 | `get_property` | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property |
 | `call_method`  | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method              |
-| `set_path`     | `value` (path)              | Assign the LiveAPI object's `path`. `""` clears it, releasing the path listeners Live installs                                   |
+| `set_path`     | `value` (path)              | Assign the LiveAPI object's `path`, retargeting it. `""` clears it                                                               |
 | `set_mode`     | `value` (`0` or `1`)        | Assign the LiveAPI object's `mode`: `0` follows the path, `1` follows the object                                                 |
 | `getcount`     | `property` (child type)     | Count the object's children in a collection                                                                                      |
 | `getstring`    | `property`                  | Read a property as a string                                                                                                      |
@@ -350,6 +350,11 @@ aliases — `call get_current_beats_song_time` works, while
 `call_method get_current_beats_song_time` fails because that method lives on the
 Live object, not the wrapper. Only `set` and `set_property` perform the same
 write, and even they report different results.
+
+You don't need to call `set_path ""` yourself for cleanup. Live arms a path
+listener on every collection along a path-based object's path and never takes
+them down, so the tool clears the path of the object it created at the end of
+every call, whether or not the call succeeded.
 
 ### Examples
 
