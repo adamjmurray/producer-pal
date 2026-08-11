@@ -27,8 +27,10 @@ analysis needs an API key + network — neither fits the Max-for-Live runtime
 (`child_process` is banned there, and it has no secrets story). A coding-agent
 skill runs in an environment that has both.
 
-**Non-destructive.** Export never alters the Set. By default the render goes to
-a temp file that you delete after analysis; pass `--out <dir>` to keep it.
+**Non-destructive.** Export never alters the Set. `--session` is the one
+exception: it adds a temp track and deletes it again in the same run, leaving
+your own tracks untouched. By default the render goes to a temp file that you
+delete after analysis; pass `--out <dir>` to keep it.
 
 ## Prerequisites
 
@@ -40,9 +42,13 @@ macOS requirement does not block analyzing a file you already have.
 - **macOS** with **Accessibility permission** for whatever app runs the agent
   (Terminal, your IDE, etc.): System Settings → Privacy & Security →
   Accessibility. Without it the keystrokes silently do nothing.
-- **Ableton Live 12** running and **frontmost**, with the material you want in
-  the **Arrangement** (Export renders the arrangement timeline).
+- **Ableton Live 12** running and **frontmost**. Export renders the arrangement
+  timeline, so Arrangement material works directly; a Session clip needs
+  `--session` (below).
 - English Live UI and default shortcuts are assumed.
+- **`--session` only:** the Producer Pal device loaded, since staging the clip
+  goes through its REST API on port 3350 (`PPAL_PORT` to override). Nothing else
+  in this skill needs it.
 
 **To analyze (`analyze-audio.mjs`):**
 
@@ -52,36 +58,67 @@ macOS requirement does not block analyzing a file you already have.
 
 **Both:** Node.js 18+ (global `fetch`; no npm packages).
 
-## Render — whole mix or one track
+## Render — whole mix, one track, or one Session clip
 
 `render.mjs` focuses the Arrangement and Selects All (so the render range is the
 whole arrangement), opens **File ▸ Export Audio/Video** (⇧⌘R), sets **Rendered
-Track**, turns **Encode MP3** on and distracting options off, exports
-**offline** (faster than realtime), and saves into a fresh temp dir. It prints
-JSON.
+Track**, turns **Encode MP3** on and every other option off, exports **offline**
+(faster than realtime), and saves into a fresh temp dir. It prints JSON.
 
 ```bash
 node render.mjs                 # whole mix (Rendered Track = Main) → temp .mp3
 node render.mjs --track "Bass"  # one track by name → temp .mp3
+node render.mjs --track "Drums" --session 0   # its Session clip in scene 0
+node render.mjs --track "Bass" --with-returns # include send/master processing
 node render.mjs --out ~/renders # move the render into a chosen dir instead
 ```
+
+**A track renders dry by default.** Live's **Include Return and Main Effects**
+is off, so a stem has its own devices but no send reverb/delay and no master
+chain — it can sound very different from what the user hears. Add
+`--with-returns` when the question is about the mix; leave it off to judge a
+sound in isolation. Either way the script forces the setting, so a value left
+over from a previous export can't change your render.
+
+**Expect silence in the output.** Every render — whole mix, single track, or
+Session clip — covers the **entire arrangement length**. Live's Render
+Start/Length fields can't be set by UI automation, so the only way to establish
+a range is Select All. A track that only plays in the last chorus, or a short
+Session clip, therefore comes back mostly silent. Harmless (silence costs almost
+nothing as MP3), but tell the analysis where the music actually is, and don't
+read the file's duration as the material's duration.
 
 Output on stdout:
 
 ```json
 {
   "audio": "/…/ppal-Main-<stamp>.mp3",
-  "created": ["/…/ppal-Main-<stamp>.mp3", "/…/ppal-Main-<stamp>.wav"]
+  "created": ["/…/ppal-Main-<stamp>.mp3"]
 }
 ```
 
 - `audio` — the `.mp3` to analyze.
-- `created` — **every** file the render produced. Live also honors its PCM
-  setting, so a `.wav`/`.aiff`/`.flac` twin usually appears next to the `.mp3`;
-  delete everything in `created` when you're done.
+- `created` — **every** file the render produced. Normally just the `.mp3`: the
+  script turns **Encode PCM** off, so Live's lossless twin isn't written. Still
+  delete everything in `created` rather than just `audio`.
 
 To render a specific track you need its **name** (the Rendered Track value).
 Producer Pal's `ppal-read-live-set` / `ppal-read-track` will list track names.
+
+### Session clips
+
+Export can only render the arrangement, so `--session <sceneIndex>` puts the
+clip there first: it duplicates the track, deletes the copy's inherited
+arrangement clips, duplicates the wanted Session clip to `1|1`, renders the
+copy, and deletes it. **The user's own track is never modified**, and the temp
+track is removed even when the render fails.
+
+Take the scene index from `ppal-read-track` — a clip's `slot` is
+`trackIndex/sceneIndex`, so `"0/3"` is scene **3**.
+
+**One clip per render.** Several clips laid end to end would leave the analysis
+no way to tell which audio came from which clip. To cover a few, call the script
+once per clip — ask the user which ones if it isn't obvious.
 
 ## Analyze the rendered file
 
@@ -116,5 +153,15 @@ printf '%s' "$OUT" | node -e 'const fs=require("fs");process.stdin.once("data",d
 - **Qualitative, not measurement:** Gemini describes character and flags obvious
   issues (imbalance, harshness, clipping) well, but is not a precise detector of
   tempo, key, or onsets — measure those with DSP if you need exact numbers.
-- **Rendered Track remembers its last value** across exports; `render.mjs`
-  always forces it, so an earlier manual choice won't leak into your render.
+- **You delete the audio, the script deletes the track.** `render.mjs` leaves
+  every rendered file on disk — that's its output — so clean up `created` once
+  the analysis is done. The temp track from `--session` is the script's own
+  responsibility and is always removed.
+- **`PPAL-RENDER-TEMP-<6 hex>` is a reserved track-name pattern.** `--session`
+  deletes any track matching it before and after rendering, which also clears
+  leftovers from a crashed run. The random suffix is what keeps that sweep from
+  ever matching a real track.
+- **Export settings are sticky**, so the script forces all of them — Rendered
+  Track, Include Return and Main Effects, Encode MP3/PCM, Normalize, Convert to
+  Mono and the rest. What you last chose by hand can't leak into a render, and
+  equally, a render leaves those toggles changed in the dialog.
