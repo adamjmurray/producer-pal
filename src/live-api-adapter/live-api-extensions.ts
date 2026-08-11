@@ -28,6 +28,10 @@ if (typeof LiveAPI !== "undefined") {
     // kept as cheap insurance against other Live versions, not because either
     // form is known to occur. Do not read them as documentation that `id` can
     // be a number: see the contract on `id` in src/types/live-api.d.ts.
+    //
+    // Don't replace this with the LiveAPI `valid` field, obvious as that looks.
+    // Measured on 12.4.3, it reads 1 for a bad path, a bad index, a bad id, and
+    // a path cleared to "" — it describes the wrapper, not the target.
     const id = this.id as string | number;
 
     return id !== "id 0" && id !== "0" && id !== 0;
