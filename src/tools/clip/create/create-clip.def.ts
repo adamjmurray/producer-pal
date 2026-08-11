@@ -146,8 +146,13 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .optional()
       .describe("audio clip warp mode (ignored for MIDI)"),
 
+    // Carries the recommendation, not just the mechanism: without one the model
+    // reads a neutral option, omits it, and hands back a clip the user has to
+    // click. The skills blob used to say this; it belongs with the param, which
+    // ships only when this tool does.
     auto: param(z.enum(["play-scene", "play-clip"]).optional(), {
-      default: "auto-play session clips (play-scene keeps scene in sync)",
+      default:
+        "auto-play the new session clip(s) — worth setting whenever the user will want to hear what you made. play-scene launches the whole scene so the new clip stays in sync with the others (it restarts them; say so first). play-clip fires the clip alone",
       smallModel: null,
     }),
 
