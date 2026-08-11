@@ -27,8 +27,6 @@ interface UseExecuteWithRetryDeps<
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   autoSaveRef?: { current: (() => void) | null };
   abortControllerRef: { current: AbortController | null };
-  /** The turn ticket runChatTurn dispenses; see stillCurrent below. */
-  turnIdRef: { current: number };
   setMessages: (messages: UIMessage[]) => void;
   setRateLimitState: (state: RateLimitState | null) => void;
 }
@@ -43,6 +41,18 @@ interface ExecuteWithRetryArgs<TMessage> {
    */
   resumeStream: () => AsyncIterable<TMessage[]>;
   getHistory: () => TMessage[];
+  /**
+   * Whether the turn that started this still holds the current ticket —
+   * runChatTurn dispenses it and hands it down through the turn's setup.
+   *
+   * Stop re-enables the composer while the stopped turn is still unwinding, so a
+   * newer turn can take the shared refs below — the abort controller AND
+   * retryAbortRef — out from under this one. Once that happens the
+   * aborted-signal checks are reading the NEW turn's controllers and stop
+   * protecting anything, so everything that paints or persists checks the ticket
+   * instead.
+   */
+  stillCurrent: () => boolean;
 }
 
 /**
@@ -63,7 +73,7 @@ export function useExecuteWithRetry<
   TMessage,
   TConfig,
 >(deps: UseExecuteWithRetryDeps<TClient, TMessage, TConfig>) {
-  const { adapter, autoSaveRef, abortControllerRef, turnIdRef } = deps;
+  const { adapter, autoSaveRef, abortControllerRef } = deps;
   const { setMessages, setRateLimitState } = deps;
   const retryAbortRef = useRef<AbortController | null>(null);
 
@@ -76,20 +86,13 @@ export function useExecuteWithRetry<
       executeStream,
       resumeStream,
       getHistory,
+      stillCurrent,
     }: ExecuteWithRetryArgs<TMessage>): Promise<boolean> => {
       let attempt = 0;
       const contentState = {
         hasAssistantContent: false,
         savedUsageCount: 0,
       };
-      // This turn's ticket, read after runChatTurn dispensed it. Stop re-enables
-      // the composer while the stopped turn is still unwinding, so a newer turn
-      // can take the shared refs below — the abort controller AND retryAbortRef —
-      // out from under this one. Once that happens the aborted-signal checks are
-      // reading the NEW turn's controllers and stop protecting anything, so
-      // everything that paints or persists has to check the ticket instead.
-      const turnId = turnIdRef.current;
-      const stillCurrent = () => turnId === turnIdRef.current;
 
       retryAbortRef.current = new AbortController();
 
@@ -182,14 +185,7 @@ export function useExecuteWithRetry<
 
       return false;
     },
-    [
-      adapter,
-      autoSaveRef,
-      abortControllerRef,
-      turnIdRef,
-      setMessages,
-      setRateLimitState,
-    ],
+    [adapter, autoSaveRef, abortControllerRef, setMessages, setRateLimitState],
   );
 
   return { executeWithRetry, abortRetry };

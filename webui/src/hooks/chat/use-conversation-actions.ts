@@ -7,6 +7,7 @@ import { type MutableRef, useCallback } from "preact/hooks";
 import {
   type ChatAdapter,
   type ChatClient,
+  type MessageOverrides,
   type PendingForkRef,
 } from "#webui/hooks/chat/use-chat-types";
 import { type UIMessage } from "#webui/types/messages";
@@ -22,15 +23,20 @@ interface ConversationActionsDeps<
   clientRef: MutableRef<TClient | null>;
   pendingHistoryRef: MutableRef<TMessage[] | null>;
   abortControllerRef: MutableRef<AbortController | null>;
-  initializeChat: (chatHistory?: TMessage[]) => Promise<void>;
+  initializeChat: (
+    chatHistory?: TMessage[],
+    overrides?: MessageOverrides,
+    stillCurrent?: () => boolean,
+  ) => Promise<void>;
   runWithChat: <T>(
-    fn: () => Promise<T>,
+    fn: (stillCurrent: () => boolean) => Promise<T>,
     userMessage?: TMessage,
   ) => Promise<T | undefined>;
   executeWithRetry: (args: {
     executeStream: () => AsyncIterable<TMessage[]>;
     resumeStream: () => AsyncIterable<TMessage[]>;
     getHistory: () => TMessage[];
+    stillCurrent: () => boolean;
   }) => Promise<boolean>;
   invalidateCompactionUndo: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
@@ -101,7 +107,7 @@ export function useConversationActions<
 
       invalidateCompactionUndo();
 
-      const succeeded = await runWithChat(async () => {
+      const succeeded = await runWithChat(async (stillCurrent) => {
         const slicedHistory = history.slice(0, rawIndex);
 
         // Signal the branch BEFORE initializeChat replaces the client. init
@@ -126,7 +132,12 @@ export function useConversationActions<
           pendingForkRef.current = { anchorIndex };
         }
 
-        await initializeChat(slicedHistory);
+        await initializeChat(slicedHistory, undefined, stillCurrent);
+
+        // Superseded while init was in flight (Stop mid-connect, then a re-send):
+        // the newer turn owns the abort ref and the client's stream, so this one
+        // must not take either. Same guard as handleSend's send path.
+        if (!stillCurrent()) return false;
 
         // Init succeeded, so the new client now owns the (truncated) history;
         // clear the restored-conversation fallback. Deferred until after init
@@ -148,6 +159,7 @@ export function useConversationActions<
             client.sendMessage(newMessage, controller.signal),
           resumeStream: () => client.resumeStream(controller.signal),
           getHistory: () => client.chatHistory,
+          stillCurrent,
         });
       });
 

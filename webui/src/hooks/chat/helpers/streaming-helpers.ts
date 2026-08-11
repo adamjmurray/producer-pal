@@ -237,7 +237,12 @@ interface RunChatTurnDeps<
  * controller (its Stop then silently no-ops), clears its responding flag
  * mid-stream, and drops its retry stash.
  *
- * @param fn - The turn to run
+ * The ticket is dispensed HERE and handed to `fn` as `stillCurrent`, so the
+ * turn's own setup (client init, then streaming) is measured against the ticket
+ * it started with. Reading the dispenser again later would hand a superseded
+ * turn the NEWER turn's ticket, making its guard vacuously true.
+ *
+ * @param fn - The turn to run; receives this turn's currency check
  * @param userMessage - Message to stash for retry/edit, if this turn sends one
  * @param deps - Adapter, the chat refs, and the per-turn state setters
  * @returns What the turn returned, or undefined when it failed
@@ -248,7 +253,7 @@ export async function runChatTurn<
   TConfig,
   T,
 >(
-  fn: () => Promise<T>,
+  fn: (stillCurrent: () => boolean) => Promise<T>,
   userMessage: TMessage | undefined,
   deps: RunChatTurnDeps<TClient, TMessage, TConfig>,
 ): Promise<T | undefined> {
@@ -262,7 +267,7 @@ export async function runChatTurn<
   pendingUserMessageRef.current = userMessage ?? null;
 
   try {
-    const result = await fn();
+    const result = await fn(stillCurrent);
 
     if (stillCurrent()) {
       pendingUserMessageRef.current = null;
