@@ -55,6 +55,11 @@ macOS requirement does not block analyzing a file you already have.
 - A **`GEMINI_API_KEY`** (or `GEMINI_KEY`) in the environment, or pass
   `--api-key`. Defaults to `gemini-3.6-flash`; model IDs move, so override with
   `--model` / `GEMINI_MODEL` if that one is gone.
+- **Not in the environment? Look for a `.env`** in the project root before
+  asking the user for a key, and grep it for the name rather than assuming one —
+  `grep -iE 'gemini|google' .env`. Projects spell it `GEMINI_KEY`,
+  `GEMINI_API_KEY`, `GOOGLE_API_KEY`, and worse. Pass what you find as
+  `--api-key`, or export it under a name the script knows.
 - Network access. Any platform; no Ableton involved.
 
 **Both:** Node.js 18+ (global `fetch`; no npm packages).
@@ -163,13 +168,18 @@ missed cleanup costs nothing — but it does leave the user's music on Google's
 servers until then. For a single question, skip all of this: the plain form
 uploads nothing when the file is small.
 
+**Keep the rendered file until the user is finished with it.** Any surprise in
+an answer is worth a direct follow-up (see Gotchas), and that only costs a
+second request — unless you deleted the audio, in which case it costs another
+render.
+
 ## End to end
 
 ```bash
 OUT=$(node render.mjs --track "Bass")
 MP3=$(printf '%s' "$OUT" | node -e 'process.stdin.once("data",d=>console.log(JSON.parse(d).audio))')
 node analyze-audio.mjs "$MP3" --prompt "Say where the audible material starts and ends. How does this bass part sound? Tone, groove, problems?"
-# cleanup: delete every file the render created
+# cleanup, once the user has no more questions about it: delete every file the render created
 printf '%s' "$OUT" | node -e 'const fs=require("fs");process.stdin.once("data",d=>JSON.parse(d).created.forEach(f=>fs.rmSync(f,{force:true})))'
 ```
 
@@ -188,9 +198,12 @@ printf '%s' "$OUT" | node -e 'const fs=require("fs");process.stdin.once("data",d
   vocal stabs" when asked directly. The default prompt pushes back on this, but
   check anything surprising with a yes/no question before acting on it.
 - **You delete the audio, the script deletes the track.** `render.mjs` leaves
-  every rendered file on disk — that's its output — so clean up `created` once
-  the analysis is done. Same for a Files API upload (`--delete`). The temp track
-  from `--session` is the script's own responsibility and is always removed.
+  every rendered file on disk — that's its output — so clean up `created`, and
+  any upload (`--delete`), when the **user** is done with the audio: not the
+  moment the first answer prints. A follow-up question needs that file, and
+  re-rendering to answer one is minutes of UI automation to recover something
+  you just threw away. The temp track from `--session` is the script's own
+  responsibility and is always removed.
 - **`PPAL-RENDER-TEMP-<6 hex>` is a reserved track-name pattern.** `--session`
   deletes any track matching it before and after rendering, which also clears
   leftovers from a crashed run. The random suffix is what keeps that sweep from
