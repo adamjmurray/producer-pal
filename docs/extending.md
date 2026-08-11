@@ -65,11 +65,12 @@ Two [companion skills](/guide/skills#companion-skills) build on that connection.
 **`ableton-audio-generator`** synthesizes audio from scratch with plain Node.js
 DSP — drum kits, Simpler samples, wavetables, reverb impulse responses, drones —
 and places it in Live. **`ableton-analyze-audio`** goes the other way, in two
-halves that also work on their own: render the mix or a single track to a file
-(**macOS only** — Live exposes no render API, so this drives the Export dialog
-with AppleScript), then optionally hand that file to Google's Gemini for
-feedback on how it actually sounds (any platform, needs a `GEMINI_KEY`; it's one
-small script, so pointing it at a different audio-capable API is a short edit).
+halves that also work on their own: render the mix, a single track, or one
+Session clip to a file (**macOS only** — Live exposes no render API, so this
+drives the Export dialog with AppleScript), then optionally hand that file to
+Google's Gemini for feedback on how it actually sounds (any platform, needs a
+`GEMINI_KEY`; it's one small script, so pointing it at a different audio-capable
+API is a short edit).
 
 Neither could be a Producer Pal tool: writing DSP, driving another app's UI, and
 calling an external API all need a real runtime, which a coding agent has and

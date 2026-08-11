@@ -53,7 +53,8 @@ macOS requirement does not block analyzing a file you already have.
 **To analyze (`analyze-audio.mjs`):**
 
 - A **`GEMINI_API_KEY`** (or `GEMINI_KEY`) in the environment, or pass
-  `--api-key`. Model IDs move — override with `--model` / `GEMINI_MODEL`.
+  `--api-key`. Defaults to `gemini-3.6-flash`; model IDs move, so override with
+  `--model` / `GEMINI_MODEL` if that one is gone.
 - Network access. Any platform; no Ableton involved.
 
 **Both:** Node.js 18+ (global `fetch`; no npm packages).
@@ -85,8 +86,9 @@ Session clip — covers the **entire arrangement length**. Live's Render
 Start/Length fields can't be set by UI automation, so the only way to establish
 a range is Select All. A track that only plays in the last chorus, or a short
 Session clip, therefore comes back mostly silent. Harmless (silence costs almost
-nothing as MP3), but tell the analysis where the music actually is, and don't
-read the file's duration as the material's duration.
+nothing as MP3), and nothing trims it — the script has no way to know where the
+music is, so **the analysis prompt asks the model to report that** (see below).
+Never read the file's duration as the material's duration.
 
 Output on stdout:
 
@@ -124,21 +126,49 @@ once per clip — ask the user which ones if it isn't obvious.
 
 ```bash
 node analyze-audio.mjs /…/ppal-Main-<stamp>.mp3 \
-  --prompt "Describe the timbre and flag any mix problems."
+  --prompt "Say where the audible material starts and ends, then describe the timbre and flag any mix problems."
 ```
+
+**Writing your own `--prompt` replaces the default one**, which asks the model
+where the audible material starts and ends. Since a render is padded with
+silence, keep that instruction in any prompt you write — otherwise timings in
+the answer are relative to a mostly-empty file, and a silent render (wrong
+track, muted, plays nowhere in the arrangement) looks like a bad analysis
+instead of an obvious mistake.
 
 MP3 is the default render format because it's a fraction of a WAV's size — this
 matters for upload speed and for staying under Gemini's 20 MB inline-data limit
 on full songs. It does **not** change token cost (Gemini prices audio by
 duration and downsamples internally, so MP3 and WAV cost the same and analyze
-the same). Files under ~14 MB are sent inline; larger go through the Files API.
+the same).
+
+### Asking more than one question
+
+Files under ~14 MB are sent inline and cost nothing but the request. Bigger ones
+are uploaded to Gemini's Files API first, and `--upload` forces that for a small
+file too. Either way **each run is one question** — reusing an upload saves the
+transfer, not the conversation; the model never sees the previous answer.
+
+An upload isn't deleted for you. The script prints its `files/<id>` on stderr,
+and you use it like the rendered file: reuse, then clean up.
+
+```bash
+node analyze-audio.mjs render.mp3 --upload            # prints "Uploaded as files/abc…"
+node analyze-audio.mjs --file-uri files/abc --prompt "Now just the drums — how do they sit?"
+node analyze-audio.mjs --delete files/abc             # done with it
+```
+
+Storage is free (20 GB per project) and Google drops an upload after 48 h, so a
+missed cleanup costs nothing — but it does leave the user's music on Google's
+servers until then. For a single question, skip all of this: the plain form
+uploads nothing when the file is small.
 
 ## End to end
 
 ```bash
 OUT=$(node render.mjs --track "Bass")
 MP3=$(printf '%s' "$OUT" | node -e 'process.stdin.once("data",d=>console.log(JSON.parse(d).audio))')
-node analyze-audio.mjs "$MP3" --prompt "How does this bass part sound? Tone, groove, problems?"
+node analyze-audio.mjs "$MP3" --prompt "Say where the audible material starts and ends. How does this bass part sound? Tone, groove, problems?"
 # cleanup: delete every file the render created
 printf '%s' "$OUT" | node -e 'const fs=require("fs");process.stdin.once("data",d=>JSON.parse(d).created.forEach(f=>fs.rmSync(f,{force:true})))'
 ```
@@ -153,10 +183,14 @@ printf '%s' "$OUT" | node -e 'const fs=require("fs");process.stdin.once("data",d
 - **Qualitative, not measurement:** Gemini describes character and flags obvious
   issues (imbalance, harshness, clipping) well, but is not a precise detector of
   tempo, key, or onsets — measure those with DSP if you need exact numbers.
+- **Open description invents instrumentation.** Asked to describe a drum stem,
+  the model added a bass part and vocal stabs that weren't in it — then said "no
+  vocal stabs" when asked directly. The default prompt pushes back on this, but
+  check anything surprising with a yes/no question before acting on it.
 - **You delete the audio, the script deletes the track.** `render.mjs` leaves
   every rendered file on disk — that's its output — so clean up `created` once
-  the analysis is done. The temp track from `--session` is the script's own
-  responsibility and is always removed.
+  the analysis is done. Same for a Files API upload (`--delete`). The temp track
+  from `--session` is the script's own responsibility and is always removed.
 - **`PPAL-RENDER-TEMP-<6 hex>` is a reserved track-name pattern.** `--session`
   deletes any track matching it before and after rendering, which also clears
   leftovers from a crashed run. The random suffix is what keeps that sweep from

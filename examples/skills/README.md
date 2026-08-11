@@ -50,9 +50,10 @@ a draggable Session clip); only the final drop is manual.
 
 - **[`ableton-analyze-audio`](ableton-analyze-audio/)** — get audio _out_ of
   Live. Two halves that also work on their own:
-  - **Render** the Main mix or a single track to a file (whole arrangement).
-    **macOS only** — AppleScript UI automation. No API key needed, so this is
-    also the way to get a plain bounce or stem on disk.
+  - **Render** the Main mix, a single track, or one Session clip to a file (a
+    render always spans the whole arrangement). **macOS only** — AppleScript UI
+    automation. No API key needed, so this is also the way to get a plain bounce
+    or stem on disk.
   - **Analyze** any audio file with Google's Gemini API for feedback on timbre,
     mix, and arrangement. Needs `GEMINI_KEY` (or `GEMINI_API_KEY`); works on
     files from anywhere, no Ableton involved.
