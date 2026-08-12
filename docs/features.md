@@ -36,9 +36,9 @@ the loop.
   reshape the region, and arrange them on the timeline. Producer Pal manages
   audio but can't listen to it — see [Limitations](#limitations).
   [Clip tools →](/features/tools#clip-tools)
-- **Arrangement** — place, move, split, and tile clips along the timeline, work
-  with locators, and stack alternates on [take lanes](#take-lanes).
-  [Duplicate →](/features/tools#ppal-duplicate)
+- **Arrangement** — place, move, split, and duplicate clips along the timeline,
+  add locators, and stack alternate versions on [take lanes](#take-lanes).
+  [Clip tools →](/features/tools#clip-tools)
 - **Session view** — create scenes, capture what's playing into a new one, and
   give a scene its own tempo and time signature.
   [Scene tools →](/features/tools#scene-tools)
@@ -160,8 +160,11 @@ required. For fully remote control, use
   clips in the Arrangement, and load and manage samples on Simpler instruments
   (including Drum Rack pads) — but it cannot listen to, analyze, or transcribe
   the audio itself (no detecting notes, key, or tempo from a waveform; no
-  audio-to-MIDI), nor synthesize audio from scratch. These are common requests
-  and are under consideration for a future release.
+  audio-to-MIDI), nor synthesize audio from scratch. Not from the device,
+  anyway: the Live API exposes no audio content, and Max for Live gives it no
+  runtime for DSP or file writing. A coding agent has both, so the
+  [companion audio skills](/guide/skills#companion-skills) generate and analyze
+  audio today; native support is still under consideration.
 - **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
   with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
   per track for predictable results.

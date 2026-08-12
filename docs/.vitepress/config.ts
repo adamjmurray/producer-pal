@@ -145,6 +145,7 @@ export default defineConfig({
           { text: "MCP (npx producer-pal)", link: "/guide/npx-cli" },
           { text: "REST API", link: "/guide/rest-api" },
           { text: "Agent Skills", link: "/guide/skills" },
+          { text: "Extending", link: "/extending" },
         ],
       },
       {
@@ -154,7 +155,6 @@ export default defineConfig({
           { text: "Tool Reference", link: "/features/tools" },
           { text: "Usage Examples", link: "/features/examples" },
           { text: "MIDI Notation", link: "/features/midi-notation" },
-          { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },
