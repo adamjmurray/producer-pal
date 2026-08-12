@@ -84,8 +84,9 @@ Live, or make sure your standalone Max is up to date. See
   grouped per query, so the AI can assemble a whole drum kit in one round trip
 - List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
   (filter by query, vendor, format, device kind, or subcategory)
-- Find samples that _sound_ like a seed sample with `action: "findSimilar"`, or
-  group library samples with identical audio (re-shipped duplicates) with
+- Rank samples by audio similarity to a seed sample with `action: "findSimilar"`
+  — Live's own similarity index, not Producer Pal listening — or group library
+  samples with identical audio (re-shipped duplicates) with
   `action: "findDuplicates"` — both can be narrowed with the search filters
 
 <!--@include: ../_generated/ppal-library-schema.md-->
@@ -142,7 +143,9 @@ limitation).
 ### 🔧 Read Live Set (`ppal-read-live-set`) {#ppal-read-live-set}
 
 - Get complete Live project overview
-- View all tracks, scenes, and clips at once
+- View all tracks and scenes at once, with a clip count per track (clip contents
+  come from [Read Track](#ppal-read-track), [Read Scene](#ppal-read-scene), and
+  [Read Clip](#ppal-read-clip))
 - See tempo, time signature, and scale settings
 - View arrangement locators with times and names
 - Check what's playing and track states

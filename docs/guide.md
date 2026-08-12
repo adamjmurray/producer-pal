@@ -49,9 +49,10 @@ After installation:
    - "Change the tempo to 108 BPM"
 
 Using the [Agent Skill](/guide/skills) instead? Steps 3 and 4 are handled by its
-bootstrap. Using the [REST API](/guide/rest-api) directly? Call `ppal-connect`
-before the other tools — it starts the session and returns Producer Pal's skills
-and [context](/guide/context).
+bootstrap. Using the [REST API](/guide/rest-api) directly? Nothing connects for
+you — call `ppal-connect` first when a model is in the loop, since that's what
+returns the skills and [context](/guide/context). A plain script can call the
+other tools straight away.
 
 ## User Interface
 

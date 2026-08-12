@@ -2,7 +2,7 @@
 title: Features
 description:
   Full feature list for Producer Pal, the Ableton MCP server that brings AI to
-  Ableton Live — 22 tools for tracks, MIDI/audio clips, devices, and
+  Ableton Live — 21 tools for tracks, MIDI/audio clips, devices, and
   arrangements.
 ---
 
@@ -47,15 +47,15 @@ the loop.
   into racks, and drive macro variations. Third-party VST/AU plug-ins need a
   mapping step first — see [Limitations](#limitations).
   [Device tools →](/features/tools#device-tools)
-- **Library** — search Live's browser and your own sample folder by name, tag,
-  or category, find samples similar to a seed sample, and list installed
-  plug-ins. Requires Live 12.4 or later.
+- **Library** — search Live's browser by name or tag, browse its category
+  taxonomy, rank samples by similarity to a seed sample, and list installed
+  plug-ins (Live 12.4+). Your own sample folder is searched by name.
   [Library →](/features/tools#ppal-library)
 - **Playback** — start and stop Session or Arrangement playback, launch clips
   and scenes, set loop points, and jump to locators.
   [Playback →](/features/tools#ppal-playback)
-- **Project settings and overview** — read every track, scene, and clip in one
-  call; change tempo, time signature, and scale.
+- **Project settings and overview** — read every track and scene in one call,
+  with a clip count per track; change tempo, time signature, and scale.
   [Live Set tools →](/features/tools#live-set-tools)
 - **Context & memory** — project notes, global preferences, and memory the AI
   builds as you work. [Context & Memory →](/guide/context)

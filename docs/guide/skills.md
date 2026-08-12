@@ -54,8 +54,9 @@ agent decides the skill is relevant. The same folder works across all three:
 
 Both agent paths give the AI the same thing. The skill's bootstrap discovers the
 tools and their schemas (`--list-tools`) and calls `ppal-connect`, which returns
-the same Producer Pal Skills and [context](/guide/context) that MCP clients
-receive at session start — so neither route is "more automatic" than the other.
+the same Producer Pal Skills and [context](/guide/context) an MCP client gets
+from its own `ppal-connect` call — so neither route is "more automatic" than the
+other.
 
 Use **MCP** when your client speaks it and isn't a coding agent: chat apps like
 [Claude Desktop](/installation/claude-desktop), the [Chat UI](/guide/chat-ui),
@@ -119,7 +120,7 @@ follows its bootstrap:
 2. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
    Skills (the note syntax for the notation it asked for,
    [transforms](/features/midi-notation#transforms), conventions) — the same
-   instructions Producer Pal's MCP clients receive at session start. The skill
+   instructions an MCP client gets from its own `ppal-connect` call. The skill
    stays small; the heavy guidance comes from Producer Pal itself.
 3. **Use the other tools** per those instructions, via
    `node ppal.mjs <tool> [json-args] --notation midi-json`.

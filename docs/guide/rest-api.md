@@ -289,7 +289,7 @@ Works with Python 3.6+ (no dependencies).
 
 Use the [list tools endpoint](#list-tools) to discover all available tools and
 their input schemas at runtime. You can also browse the full tool documentation
-on the [Features](/features) page.
+in the [Tool Reference](/features/tools).
 
 ## Live API
 
