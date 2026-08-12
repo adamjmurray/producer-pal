@@ -30,6 +30,15 @@ Producer Pal ships a portable Agent Skill that lets coding agents control
 Ableton Live through Producer Pal's [REST API](/guide/rest-api) — no MCP client
 required.
 
+::: warning Not the same as Producer Pal Skills
+
+Two different things are called "skills" around here. An **Agent Skill** — this
+page — is an integration package that teaches a coding agent how to connect to
+Producer Pal. The [**Producer Pal Skills**](/guide/customizing-skills) are
+instructions the model receives after connecting, whichever route it took.
+
+:::
+
 Agent Skills are a small, open convention shared across the major coding-agent
 CLIs: a folder containing a `SKILL.md` (with frontmatter describing when to use
 it) plus optional scripts and resources. The folder is loaded lazily when the

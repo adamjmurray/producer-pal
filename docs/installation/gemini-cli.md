@@ -17,6 +17,8 @@ Producer Pal. Also consider using Gemini with Producer Pal's
 [built-in chat UI](./gemini) (but probably via OpenRouter as noted on that
 page).
 
+<!--@include: ../_partials/agent-skill-callout.md-->
+
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->

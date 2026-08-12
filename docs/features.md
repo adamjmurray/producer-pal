@@ -16,7 +16,10 @@ tracks, clips, devices, and more in your Live Set.
 It works with virtually any AI, including its
 [built-in Chat UI](/guide/chat-ui), desktop apps like
 [Claude Desktop](/installation/claude-desktop) and
-[ChatGPT](/installation/chatgpt-app), CLI tools, and web apps.
+[ChatGPT](/installation/chatgpt-app), CLI tools, and web apps. Coding agents can
+use the portable [Agent Skill](/guide/skills) instead of MCP, and the
+[REST API](/guide/rest-api) exposes the same tools over plain HTTP with no AI in
+the loop.
 
 [Get started →](/installation)
 

@@ -14,6 +14,16 @@ library, and work with Ableton Live. They're sent to external MCP clients (like
 Claude Desktop) in the `ppal-connect` result and used by the built-in
 [Chat UI](/guide/chat-ui) on every conversation.
 
+::: warning Not the same as the Agent Skill
+
+Two different things are called "skills" here. **Producer Pal Skills** — this
+page — are instructions sent to the model after it connects. The
+[**Agent Skill**](/guide/skills) is an integration package that teaches a coding
+agent how to connect in the first place. Customizing the skills below changes
+what every client is taught, including agents using the Agent Skill.
+
+:::
+
 You can override any part of them, and — since every part of the skills costs
 tokens on every conversation — trim the parts you never use. Trimming is one of
 several levers; [Optimizing](/guide/optimizing) covers them all and says which

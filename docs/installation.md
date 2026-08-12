@@ -38,8 +38,9 @@ Upgrading from a previous version? See the
 ## Choose How You Want to Use It
 
 Producer Pal works the same with any provider — the main choice is _how_ you
-want to interact with it. Every group below supports multiple AI providers, so
-pick the experience you like best.
+want to interact with it. Most groups below support multiple AI providers, so
+pick the experience you like best. Or skip the AI and drive Live from your own
+code.
 
 ### Desktop Apps
 
@@ -73,6 +74,10 @@ For users comfortable with the terminal:
   rate limits)
 - **[Mistral Vibe](./installation/mistral-vibe)** — Mistral (API key required)
 
+Claude Code, Codex CLI, and Gemini CLI can also use the portable
+**[Agent Skill](/guide/skills)** instead of MCP — one folder dropped into the
+agent's skills directory, no MCP config.
+
 ### Web Apps
 
 Use a provider's website in your browser — each requires a
@@ -87,6 +92,12 @@ Use a provider's website in your browser — each requires a
 Already have an MCP-compatible app? Connect directly with
 [`npx producer-pal`](https://www.npmjs.com/package/producer-pal) — see
 [Other MCP LLMs](./installation/other-mcp).
+
+### Scripts and Automation
+
+Skip the AI entirely. The [REST API](/guide/rest-api) is plain HTTP on the same
+port the device already serves, so any script, language, or tool that can make a
+request can read and edit your Live Set. Nothing to install beyond the device.
 
 ## Prefer to Pick by AI Provider?
 

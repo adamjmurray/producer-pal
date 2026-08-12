@@ -8,8 +8,9 @@ description:
 
 # Context & Memory
 
-Producer Pal remembers things about your music in three layers. Each one is
-included in every conversation, and each answers a different question:
+Producer Pal remembers things about your music and about you, in three layers.
+Each one is available in every conversation, and each answers a different
+question:
 
 | Layer               | Answers                        | Stored                                                           |
 | ------------------- | ------------------------------ | ---------------------------------------------------------------- |
@@ -31,7 +32,7 @@ records facts as you work, and you can edit them. AI can edit all three with the
 
 All three reach every client — the built-in [Chat UI](/guide/chat-ui), external
 MCP clients like Claude Desktop, and the [REST API](/guide/rest-api) — because
-they are attached to the result when AI connects.
+they ride along with the `ppal-connect` result, no matter which route called it.
 
 ## The context editor
 

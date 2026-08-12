@@ -2,6 +2,8 @@
 
 Use Producer Pal with Anthropic's command line coding assistant.
 
+<!--@include: ../_partials/agent-skill-callout.md-->
+
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->

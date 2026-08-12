@@ -14,6 +14,8 @@ setting up Producer Pal in one makes it available in the other.
 If you feel comfortable with the command line and have an OpenAI subscription,
 this is a good option.
 
+<!--@include: ../_partials/agent-skill-callout.md-->
+
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->

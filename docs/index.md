@@ -55,7 +55,7 @@ features:
 
 <div class="download-band">
   <h2 class="download-title">Get Producer Pal</h2>
-  <p class="download-subtitle">The Max for Live device is all you need to start — drop it onto a track in Ableton Live and it links you to the docs, the chat UI, and everything else.</p>
+  <p class="download-subtitle">The Max for Live device is all you need to start — drop it onto a track in Ableton Live and it links you to the docs and the chat UI.</p>
   <div class="download-actions">
     <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
       <span class="download-btn-label">Download Max for Live Device</span>
@@ -124,18 +124,18 @@ features:
         <div class="card-header">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="19" cy="12" r="1" />
-              <circle cx="5" cy="12" r="1" />
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
             </svg>
           </div>
-          <h3 class="card-title"><a href="/installation">More Options</a></h3>
+          <h3 class="card-title"><a href="/extending">Agents &amp; Code</a></h3>
         </div>
-        <p class="card-description">Other ways to connect</p>
+        <p class="card-description">Coding agents and your own code</p>
         <ul class="card-links">
+          <li><a href="/guide/skills">Agent Skill</a> <span class="tag">no MCP</span></li>
+          <li><a href="/guide/rest-api">REST API</a> <span class="tag">no AI</span></li>
           <li><a href="/installation/cli">Command Line Tools</a></li>
-          <li><a href="/installation/web-apps">Web Apps</a></li>
-          <li><a href="/installation/other-mcp">Other LLMs</a></li>
+          <li><a href="/installation">Web apps &amp; more</a></li>
         </ul>
       </div>
     </div>

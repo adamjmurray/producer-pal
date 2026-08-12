@@ -135,7 +135,14 @@ export default defineConfig({
           { text: "Context & Memory", link: "/guide/context" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "Optimizing Cost & Context", link: "/guide/optimizing" },
-          { text: "npx producer-pal", link: "/guide/npx-cli" },
+        ],
+      },
+      {
+        // The three ways into the device. Keep them together and out of the
+        // Guide list, or MCP reads as the only real path.
+        text: "Integrations",
+        items: [
+          { text: "MCP (npx producer-pal)", link: "/guide/npx-cli" },
           { text: "REST API", link: "/guide/rest-api" },
           { text: "Agent Skills", link: "/guide/skills" },
         ],
