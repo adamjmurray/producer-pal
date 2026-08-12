@@ -39,20 +39,24 @@ the loop.
 - **Arrangement** — place, move, split, and tile clips along the timeline, work
   with locators, and stack alternates on [take lanes](#take-lanes).
   [Duplicate →](/features/tools#ppal-duplicate)
-- **Session view** — create scenes, capture what's playing into a new one, give
-  a scene its own tempo and time signature, and launch clips and scenes.
+- **Session view** — create scenes, capture what's playing into a new one, and
+  give a scene its own tempo and time signature.
   [Scene tools →](/features/tools#scene-tools)
 - **Devices and instruments** — add native Live instruments and effects, set
   their parameters, build Drum Racks and Simpler instruments from samples, move
-  devices into racks, and drive macro variations.
-  [Device tools →](/features/tools#device-tools)
+  devices into racks, and drive macro variations. Native devices only —
+  third-party VST/AU plug-ins need a mapping step, see
+  [Limitations](#limitations). [Device tools →](/features/tools#device-tools)
 - **Library** — search Live's browser and your own sample folder by name, tag,
   or category, find samples that sound like a seed sample, and list installed
-  plug-ins. [Library →](/features/tools#ppal-library)
-- **Playback** — start and stop Session or Arrangement playback, set loop
-  points, and jump to locators. [Playback →](/features/tools#ppal-playback)
-- **The whole Set** — read every track, scene, and clip at once; change tempo,
-  time signature, and scale. [Live Set tools →](/features/tools#live-set-tools)
+  plug-ins. Requires Live 12.4 or later.
+  [Library →](/features/tools#ppal-library)
+- **Playback** — start and stop Session or Arrangement playback, launch clips
+  and scenes, set loop points, and jump to locators.
+  [Playback →](/features/tools#ppal-playback)
+- **Project settings and overview** — read every track, scene, and clip in one
+  call; change tempo, time signature, and scale.
+  [Live Set tools →](/features/tools#live-set-tools)
 - **What the AI knows about you** — project notes, global preferences, and
   memory it builds as you work. [Context & Memory →](/guide/context)
 
