@@ -18,7 +18,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 ### 2. Configure Claude Code
 
-**Option A: With npx (recommended)** - Allows flexible startup order and
+**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
 auto-reconnection:
 
 ```bash
@@ -27,10 +27,10 @@ claude mcp add producer-pal npx producer-pal
 
 ::: tip Scripting or building against Producer Pal?
 
-If you'll have the agent **write code that generates or parses** Producer Pal
-data — building MIDI programmatically, or piping tool output through JSON
-tooling — add `--format json --notation midi-json` (the `--` separates them from
-`claude mcp add`'s own options):
+If you're using MCP and will have the agent **write code that generates or
+parses** Producer Pal data — building MIDI programmatically, or piping tool
+output through JSON tooling — add `--format json --notation midi-json` (the `--`
+separates them from `claude mcp add`'s own options):
 
 ```bash
 claude mcp add producer-pal -- npx producer-pal --format json --notation midi-json

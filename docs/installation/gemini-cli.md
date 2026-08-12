@@ -35,7 +35,7 @@ page).
 
 Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
 
-**Option A: With npx (recommended)** - Allows flexible startup order and
+**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
 auto-reconnection:
 
 ```json
@@ -51,9 +51,10 @@ auto-reconnection:
 
 ::: tip Scripting or building against Producer Pal?
 
-If you'll have the agent **write code that generates or parses** Producer Pal
-data — building MIDI programmatically, or piping tool output through JSON
-tooling — add `--format json` and `--notation midi-json` to the args:
+If you're using MCP and will have the agent **write code that generates or
+parses** Producer Pal data — building MIDI programmatically, or piping tool
+output through JSON tooling — add `--format json` and `--notation midi-json` to
+the args:
 
 ```json
 {

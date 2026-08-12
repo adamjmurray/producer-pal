@@ -50,12 +50,12 @@ agent decides the skill is relevant. The same folder works across all three:
 | [Codex CLI](https://developers.openai.com/codex/skills/)          | `~/.codex/skills/<name>/SKILL.md`  |
 | [Gemini CLI](https://geminicli.com/docs/cli/skills/)              | `~/.gemini/skills/<name>/SKILL.md` |
 
-::: info When to use this vs MCP
+::: info When to use this vs MCP or REST
 
-Both paths give the AI the same thing. The skill's bootstrap discovers the tools
-and their schemas (`--list-tools`) and calls `ppal-connect`, which returns the
-same Producer Pal Skills and [context](/guide/context) that MCP clients receive
-at session start — so neither route is "more automatic" than the other.
+Both agent paths give the AI the same thing. The skill's bootstrap discovers the
+tools and their schemas (`--list-tools`) and calls `ppal-connect`, which returns
+the same Producer Pal Skills and [context](/guide/context) that MCP clients
+receive at session start — so neither route is "more automatic" than the other.
 
 Use **MCP** when your client speaks it and isn't a coding agent: chat apps like
 [Claude Desktop](/installation/claude-desktop), the [Chat UI](/guide/chat-ui),
@@ -67,8 +67,10 @@ the [REST API](/guide/rest-api) directly, it can pick its own
 [notation](/features/midi-notation), toolset, and small-model mode per request
 and re-read the schemas mid-session — without moving your Chat UI or any other
 client off theirs. MCP clients bake the tool descriptions at the start of a
-conversation, so the same switch means starting a new one. It's also the answer
-for scripts and pipelines that don't run an MCP client at all.
+conversation, so the same switch means starting a new one.
+
+For scripts and pipelines with no agent involved, skip both and use the
+[REST API](/guide/rest-api) directly.
 
 :::
 

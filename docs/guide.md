@@ -48,9 +48,10 @@ After installation:
    - "Create a new MIDI track called Bass"
    - "Change the tempo to 108 BPM"
 
-Using the [Agent Skill](/guide/skills) or the [REST API](/guide/rest-api)
-instead? Steps 3 and 4 are handled for you — the skill's bootstrap and the REST
-API's `ppal-connect` endpoint do the same thing.
+Using the [Agent Skill](/guide/skills) instead? Steps 3 and 4 are handled by its
+bootstrap. Using the [REST API](/guide/rest-api) directly? Call `ppal-connect`
+before the other tools — it starts the session and returns Producer Pal's skills
+and [context](/guide/context).
 
 ## User Interface
 

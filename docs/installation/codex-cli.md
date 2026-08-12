@@ -33,7 +33,7 @@ this is a good option.
 
 Add Producer Pal to Codex's settings in `~/.codex/config.toml`:
 
-**Option A: With npx (recommended)** - Allows flexible startup order and
+**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
 auto-reconnection:
 
 ```toml
@@ -44,9 +44,10 @@ args = ["-y", "producer-pal"]
 
 ::: tip Scripting or building against Producer Pal?
 
-If you'll have the agent **write code that generates or parses** Producer Pal
-data — building MIDI programmatically, or piping tool output through JSON
-tooling — add `--format json` and `--notation midi-json` to the args:
+If you're using MCP and will have the agent **write code that generates or
+parses** Producer Pal data — building MIDI programmatically, or piping tool
+output through JSON tooling — add `--format json` and `--notation midi-json` to
+the args:
 
 ```toml
 [mcp_servers.producer-pal]
