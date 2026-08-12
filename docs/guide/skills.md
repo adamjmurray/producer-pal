@@ -1,5 +1,5 @@
 ---
-title: Ableton Live Agent Skill
+title: Ableton Live Agent Skills
 description:
   Producer Pal ships a portable Agent Skill for Ableton Live — works as a Claude
   Skill, Codex Skill, Gemini Skill, or any coding agent that supports the
@@ -15,7 +15,7 @@ head:
         Ableton AI agent, AI music production skill, Producer Pal skill
   - - meta
     - property: og:title
-      content: Ableton Live Agent Skill — Producer Pal
+      content: Ableton Live Agent Skills — Producer Pal
   - - meta
     - property: og:description
       content:
@@ -24,7 +24,7 @@ head:
         no MCP client required.
 ---
 
-# Ableton Live Agent Skill
+# Ableton Live Agent Skills
 
 Producer Pal ships a portable Agent Skill that lets coding agents control
 Ableton Live through Producer Pal's [REST API](/guide/rest-api) — no MCP client
@@ -35,7 +35,7 @@ CLIs: a folder containing a `SKILL.md` (with frontmatter describing when to use
 it) plus optional scripts and resources. The folder is loaded lazily when the
 agent decides the skill is relevant. The same folder works across all three:
 
-| Tool                                                              | Skills location                    |
+| Tool                                                              | Global skills location             |
 | ----------------------------------------------------------------- | ---------------------------------- |
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/skills) | `~/.claude/skills/<name>/SKILL.md` |
 | [Codex CLI](https://developers.openai.com/codex/skills/)          | `~/.codex/skills/<name>/SKILL.md`  |
@@ -77,6 +77,11 @@ unzip -o /tmp/ppal-skill.zip -d ~/.claude/skills/
 
 The zip holds one folder, `producer-pal/`, so it lands in the right place with
 no reshuffling. It tracks the repo's `main` branch, same as this site.
+
+Those paths install it **globally**, for every project. Most agents also read a
+skills folder inside a project — for Claude Code that's `.claude/skills/` in the
+project root — which keeps the skill to that one project. Consult your coding
+agent's docs for its exact project-local path.
 
 To take it from a git checkout instead:
 
@@ -230,6 +235,9 @@ has all three — unzip it the same way:
 curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip
 unzip -o /tmp/ppal-skills.zip -d ~/.claude/skills/
 ```
+
+Same global-vs-project choice as above — unzip into a project's own skills
+folder (`.claude/skills/`) to scope all three to that project.
 
 ::: warning One part needs macOS
 
