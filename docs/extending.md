@@ -72,9 +72,10 @@ Google's Gemini for feedback on how it actually sounds (any platform, needs a
 `GEMINI_KEY`; it's one small script, so pointing it at a different audio-capable
 API is a short edit).
 
-Neither could be a Producer Pal tool: writing DSP, driving another app's UI, and
-calling an external API all need a real runtime, which a coding agent has and
-the Max for Live device doesn't.
+Neither belongs in Producer Pal. Driving another app's UI and calling an
+external API need a real runtime the Max for Live device doesn't have. The
+device could technically do DSP, but synthesis is open-ended enough that an
+agent writing real code beats any DSL Producer Pal would have to teach.
 
 [Set up the Agent Skill →](/guide/skills)
 
