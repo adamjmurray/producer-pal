@@ -28,12 +28,13 @@ when you're driving Producer Pal from the [REST API](/guide/rest-api) or the
 
 ### 🔧 Connect (`ppal-connect`) {#ppal-connect}
 
-- Establish the connection with Ableton Live (required before using other tools)
 - Summarizes the state of the current Live Set
-- Returns a [skill set](/features#skills) that teaches the AI how to use
-  Producer Pal effectively. Standard skills cover the full feature set.
-  [Small model mode](/features#small-model-mode) provides simplified skills and
-  schemas for less capable models.
+- Returns a [skill set](/features#skills) and [context](/guide/context) that
+  teach the AI how to use Producer Pal effectively. Standard skills cover the
+  full feature set. [Small model mode](/features#small-model-mode) provides
+  simplified skills and schemas for less capable models.
+- Call it first when a model is driving Producer Pal — that's how the AI learns
+  the notation and conventions. A plain REST script can skip it.
 
 <!--@include: ../_generated/ppal-connect-schema.md-->
 

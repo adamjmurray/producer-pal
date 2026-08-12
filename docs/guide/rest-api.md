@@ -186,8 +186,8 @@ without a `POST /config` changing everyone else's:
 
 Absent or unrecognized values fall back to the device's global setting, so
 clients that send nothing are unaffected. Nothing is remembered between requests
-— **send the headers on every request in the session**, `GET /api/tools`
-included, so the schemas you read match what you send.
+— **send the headers on every request**, `GET /api/tools` included, so the
+schemas you read match what you send.
 
 #### Notation {#per-request-notation}
 
