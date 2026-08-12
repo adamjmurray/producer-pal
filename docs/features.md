@@ -42,13 +42,13 @@ the loop.
 - **Session view** — create scenes, capture what's playing into a new one, and
   give a scene its own tempo and time signature.
   [Scene tools →](/features/tools#scene-tools)
-- **Devices and instruments** — add native Live instruments and effects, set
-  their parameters, build Drum Racks and Simpler instruments from samples, move
-  devices into racks, and drive macro variations. Native devices only —
-  third-party VST/AU plug-ins need a mapping step, see
-  [Limitations](#limitations). [Device tools →](/features/tools#device-tools)
+- **Devices and instruments** — add and control native Live instruments and
+  effects, build Drum Racks and Simpler instruments from samples, move devices
+  into racks, and drive macro variations. Third-party VST/AU plug-ins need a
+  mapping step first — see [Limitations](#limitations).
+  [Device tools →](/features/tools#device-tools)
 - **Library** — search Live's browser and your own sample folder by name, tag,
-  or category, find samples that sound like a seed sample, and list installed
+  or category, find samples similar to a seed sample, and list installed
   plug-ins. Requires Live 12.4 or later.
   [Library →](/features/tools#ppal-library)
 - **Playback** — start and stop Session or Arrangement playback, launch clips
@@ -57,8 +57,8 @@ the loop.
 - **Project settings and overview** — read every track, scene, and clip in one
   call; change tempo, time signature, and scale.
   [Live Set tools →](/features/tools#live-set-tools)
-- **What the AI knows about you** — project notes, global preferences, and
-  memory it builds as you work. [Context & Memory →](/guide/context)
+- **Context & memory** — project notes, global preferences, and memory the AI
+  builds as you work. [Context & Memory →](/guide/context)
 
 Every tool, with its full parameter list:
 **[Tool Reference →](/features/tools)**
