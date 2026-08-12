@@ -164,7 +164,9 @@ required. For fully remote control, use
   anyway: the Live API exposes no audio content, and Max for Live gives it no
   runtime for DSP or file writing. A coding agent has both, so the
   [companion audio skills](/guide/skills#companion-skills) generate and analyze
-  audio today; native support is still under consideration.
+  audio today — and that's the better home for it, since synthesis is open-ended
+  enough that an agent writing real code beats any DSL Producer Pal could teach
+  it.
 - **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
   with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
   per track for predictable results.
